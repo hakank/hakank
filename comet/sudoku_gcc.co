@@ -1,0 +1,183 @@
+/*
+
+  Suduko using global cardinality constraint in Comet.
+
+
+  The standard way of solving Sudoku is using the alldifferent constraint
+  on rows, columns, and regions.
+  
+  Here we instead use of constraint global_cardinality:
+  http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_cardinality.html
+ 
+  For a discussion about this approach see my blog post:
+  "Solving Pi Day Sudoku 2009 with the global cardinality constraint"
+  http://www.hakank.org/constraint_programming_blog/2009/03/solving_pi_day_sudoku_2009_wit.html
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+int n = 9;
+range R = 1..9;
+
+
+// Example data:
+// This is the same Suduko problem as the example in
+// the Comet distribution: compiler/examples/cp/sudoku.co
+//
+// int data[1..n,1..n] = 
+// [
+//  [0,0,0,0,0,0,0,0,0],
+//  [4,7,3,0,5,0,0,0,0],
+//  [0,6,8,0,0,0,0,0,0],
+//  [0,0,0,0,1,0,0,8,0],
+//  [0,2,0,0,0,3,7,0,6],
+//  [5,1,0,2,0,7,4,0,3],
+//  [0,3,0,0,0,0,1,0,0],
+//  [0,0,0,0,0,0,0,0,0],
+//  [1,8,0,0,6,0,0,2,5],
+//  ];
+
+// From Gecode sudoku.cpp
+// """
+// 5
+// Hard one from one from http://www.cs.mu.oz.au/671/proj3/node5.html
+// """
+// int data[R,R] = 
+// [
+//  [0,0,0, 0,0,3, 0,6,0],
+//  [0,0,0, 0,0,0, 0,1,0],
+//  [0,9,7, 5,0,0, 0,8,0],
+//  [0,0,0, 0,9,0, 2,0,0],
+//  [0,0,8, 0,7,0, 4,0,0],
+//  [0,0,3, 0,6,0, 0,0,0],
+//  [0,1,0, 0,0,2, 8,9,0],
+//  [0,4,0, 0,0,0, 0,0,0],
+//  [0,5,0, 1,0,0, 0,0,0]
+//  ];
+
+
+// From
+// http://www.tellmehowto.net/sudoku/veryhardsudoku.html
+// int data[R,R] = 
+//   [
+//    [0,0,6, 0,0,0, 0,9,0],
+//    [0,0,0, 5,0,1, 7,0,0],
+//    [2,0,0, 9,0,0, 3,0,0],
+//    [0,7,0, 0,3,0, 0,5,0],
+//    [0,2,0, 0,9,0, 0,6,0],
+//    [0,4,0, 0,8,0, 0,2,0],
+//    [0,0,1, 0,0,3, 0,0,4],
+//    [0,0,5, 2,0,7, 0,0,0],
+//    [0,3,0, 0,0,0, 8,0,0]
+//    ];
+
+
+// From http://www.koalog.com/resources/samples/SudokuProblem.java.html
+// """
+// A very very hard instance generated for http://sudoku.koalog.com.
+// """
+int data[R,R] =
+[
+ [4,0,0,0,3,9,0,2,0],
+ [0,5,6,0,0,0,0,0,0],
+ [0,0,0,0,0,0,6,0,4],
+ [0,0,0,0,0,0,9,0,0],
+ [5,0,0,1,0,0,2,0,0],
+ [0,9,0,0,2,7,0,3,0],
+ [0,3,7,0,0,0,0,0,0],
+ [0,0,0,0,0,0,8,0,6],
+ [9,0,8,0,1,0,0,0,0]
+ ];
+  
+
+// the number of occurrences
+int occ_count[R] = [1,1,1,1,1,1,1,1,1];
+
+Solver<CP> m();
+
+var<CP>{int} x[R,R](m, R);
+var<CP>{int} occ[R](m, 1..1); // all 1
+
+Integer num_solutions(0);
+
+exploreall<m> {
+// explore<m> {
+
+
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << data[i,j] << " ";
+      if (data[i,j] > 0) {
+        m.post(x[i,j] == data[i,j]);
+      }
+    }
+    cout << endl;
+  }
+
+  cout << endl;
+  
+  // we don't need this since 1 is the only possible value
+  forall(i in R) {
+    m.post(occ[i] == occ_count[i]);
+  }
+
+
+  // using cardinality
+  forall(i in 0..2,j in 0..2) 
+    m.post(cardinality(occ, all(r in i*3+1..i*3+3,
+                                  c in j*3+1..j*3+3) x[r,c]));
+
+  forall(i in R) m.post(cardinality(occ, all(j in R) x[i,j]));
+
+  forall(j in R) m.post(cardinality(occ, all(i in R) x[i,j]));
+  
+  /*
+  // using alldifferent
+  forall(i in 0..2,j in 0..2) 
+    m.post(alldifferent(all(r in i*3+1..i*3+3,
+                                  c in j*3+1..j*3+3) x[r,c]));
+
+  forall(i in R) m.post(alldifferent(all(j in R) x[i,j]));
+
+  forall(j in R) m.post(alldifferent(all(i in R) x[i,j]));
+  */
+
+
+} using  {
+ 
+  // labelFF(m);
+
+  // reversing i and j may give a faster solution
+  forall(j in 1..n, i in 1..n: !x[i,j].bound()) {
+    tryall<m>(v in R : x[i,j].memberOf(v)) by(v) 
+      m.post(x[i,j] == v);
+    onFailure m.diff(x[i,j], v);
+  }
+
+  num_solutions++;
+
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << x[i,j] << " ";
+    }
+    cout << endl;
+  }
+
+  cout << endl;
+
+}
+
+cout << "num_solutions: " << num_solutions << endl;
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;

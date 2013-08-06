@@ -1,0 +1,90 @@
+/*
+  Coin application in Comet.
+   
+  From "The ECLiPSe Book" pages 99f and 234 ff
+  The solution in ECLiPSe is at page 236.
+
+  """
+  What is the minimum number of coins that allows one to pay _exactly_
+  any amount smaller than one Euro? Recall that there are six different
+  euro cents, of denomination 1, 2, 5, 10, 20, 50
+  """
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+// the original problem (page 99)
+int n = 6; // number of different coins
+
+Solver<CP> m();
+// var<CP>{int} variables[1..n](m, 1..99); //  = [1, 2, 5, 10, 25, 50]; 
+int variables[1..n] = [1, 2, 5, 10, 25, 50]; 
+
+// alternative problems
+// int n = 7; // 
+// int variables[1..n] = [1, 5, 10, 25, 50, 100];
+// int variables[1..n] = [1, 2, 4, 8, 16, 32, 64];
+
+var<CP>{int} x[1..n](m, 0..99); // array for the changes
+var<CP>{int} num_coins(m, 0..99); // = sum(i in 1..n) (x[i]);  // number of coins used
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> num_coins subject to {
+
+
+//       num_coins <= 7
+//       /\
+//       variables[n] <= 36
+//       /\
+//       forall(i in 1..n) (
+//          x[i] = 1
+//       )
+//       /\
+
+  m.post(num_coins == sum(i in 1..n) x[i]);
+
+  /*
+  // symmetry breaking for the elaborate case when variables is not initiated
+  forall(i in 2..n) 
+    m.post(variables[i-1] < variables[i]);
+  ///
+  // variables = [1, 2, 5, 10, 25, 50]
+  m.post(alldifferent(variables));
+
+  // m.post(sum(i in 1..n) (variables[i]) <= 99 );
+  */
+
+  // This is the "main loop"        
+  // Checks that all changes from 1 to 99 can be made
+  forall(j in 1..99) {
+    var<CP>{int} tmp[1..n](m, 0..99);
+    m.post(sum(i in 1..n) (tmp[i]*variables[i]) == j);
+    forall(i in 1..n) 
+      m.post(tmp[i] <= x[i]);
+  }
+
+} using {
+
+  // label(m);
+  forall(i in 1..n : !x[i].bound())  by (x[i].getSize(), variables[i]) {
+    label(x[i]);
+  }
+  cout << "num_coins: " << num_coins << endl;
+  cout << x << endl;
+  cout << variables << endl;
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;

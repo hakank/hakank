@@ -1,0 +1,151 @@
+/*
+  Transportation problem in Comet.
+
+  This is in princple the same model as in 
+  Pascal Van Hentenryck "The OPL Optimization Programming Language",
+  page 116.
+
+  Data from OPL example transp1.dat
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+import cotln;
+int t0 = System.getCPUTime();
+
+enum Cities = { GARY, CLEV, PITT, FRA,  DET,  LAN,  WIN, STL,  FRE,  LAF };
+
+enum Products = { bands, coils, plate };
+
+float Capacity = 625;
+float Supply[Products,Cities] = 
+  [
+   [400, 700,800,0,0,0,0,0,0,0],
+   [800, 1600, 1800,0,0,0,0,0,0,0],
+   [200, 300, 300,0,0,0,0,0,0,0]
+   ];
+
+float Demand[Products,Cities] = 
+[
+ [0, 0, 0,300,300,100,75,650,225,250],  // bands
+ [0, 0, 0,500,750,400,250,950,850,500], // coils
+ [0, 0, 0,100,100,0,50,200,100,250]     // plate
+ ];
+
+
+forall(p in Products) {
+  cout << p << endl;
+  cout << sum(o in Cities) Supply[p,o] << " == " << sum(d in Cities) Demand[p,d] << endl;
+   assert(sum(o in Cities) Supply[p,o] == sum(d in Cities) Demand[p,d]);
+}
+
+
+// It seems that Comet cannot handle initiation of array of > 2 dimension.
+float bands_Cost[Cities,Cities] = 
+  [  // bands
+   [    0,    0,    0,    30,    10,    8,    10,    11,    71,    6],
+   [    0,    0,    0,    22,    7,    10,    7,    21,    82,    13],
+   [    0,    0,    0,    19,    11,    12,    10,    25,    83,    15],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],     
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ]
+     ];
+
+float coils_Cost[Cities,Cities]  =
+  [ // coils
+   [    0,    0,    0,    39,    14,    11,    14,    16,    82,    8    ],
+   [    0,    0,    0,    27,    9,    12,    9,    26,    95,    17    ],
+   [    0,    0,    0,    24,    14,    17,    13,    28,    99,    20    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ]
+    ];
+
+float plate_Cost[Cities,Cities]  =
+  [  // plate,
+   [    0,    0,    0,    41,    15,    12,    16,    17,    86,    8    ],
+   [    0,    0,    0,    29,    9,    13,    9,    28,    99,    18    ],
+   [    0,    0,    0,    26,    14,    17,    13,    31,    104,    20    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ],
+   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ]
+     ];
+
+
+float Cost[Products,Cities,Cities];
+forall(c1 in Cities, c2 in Cities) { Cost[bands, c1,c2] = bands_Cost[c1,c2];}
+forall(c1 in Cities, c2 in Cities) { Cost[coils, c1,c2] = coils_Cost[c1,c2];}
+forall(c1 in Cities, c2 in Cities) { Cost[plate, c1,c2] = plate_Cost[c1,c2];}
+
+
+/*
+Solver<CP> m();
+var<CP>{float} Trans[Products,Cities,Cities](m,0,1000000);
+var<CP>{float} z(m, 0,1000000);
+*/
+
+Solver<MIP> m("lp_solve");
+var<MIP>{float} Trans[Products,Cities,Cities](m,0,1000000);
+var<MIP>{float} z(m, 0,1000000);
+
+
+Integer num_solutions(0);
+
+minimize<m> z subject to {
+
+  m.post(z == sum( p in Products , o in Cities, d in Cities )
+         Cost[p,o,d] * Trans[p,o,d]);
+
+ forall( p in Products , o in Cities )
+   m.post(sum( d in Cities )
+          Trans[p,o,d] == Supply[p,o]);
+
+  forall( p in Products , d in Cities )
+    m.post(sum( o in Cities )
+           Trans[p,o,d] == Demand[p,d]);
+
+   forall( o in Cities, d in Cities )
+     m.post(sum( p in Products ) (Trans[p,o,d]) <= Capacity);
+
+} 
+
+function Setw setw(int n) { return new Setw(n); }
+function SetPrecision setprec(int n) { return new SetPrecision(n); }
+
+cout << "z: " << z.getValue() << endl;
+forall( p in Products) {
+  cout << p << endl;
+  forall(o in Cities) {
+    forall( d in Cities ) {
+      // if( Trans[p,o,d].getValue() > 0)
+      //  cout << o << "-> " << d << " : " << Trans[p,o,d].getValue() << endl;
+      cout <<  setprec(2) << setw(6) << Trans[p,o,d].getValue() << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+}
+
+// }
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+
+

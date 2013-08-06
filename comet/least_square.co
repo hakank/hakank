@@ -1,0 +1,67 @@
+/*
+  Least square optimization in Comet.
+
+  From the swedish book "Optimeringslära", page 286f.
+  Solving a fourth grade least square equation.
+
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/least_square_optimeringslara_286.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+
+import cotln;
+int t0 = System.getCPUTime();
+
+// Using the MIP Solver
+Solver<MIP> m("lp_solve");
+
+
+// number of points 
+int num = 14;
+
+// temperature
+int t[1..num] = [20, 30, 80,125,175,225,275,325,360,420,495,540,630,700];
+
+// percentage gas
+float F[1..num] = [0.0,5.8,14.7,31.6,43.2,58.3,78.4,89.4,96.4,99.1,99.5,99.9,100.0,100.0];
+
+int p = 4;
+
+var<MIP>{float} a[0..p](m,-1000,1000); // equation
+var<MIP>{float} z(m, -1000,1000);
+
+Integer num_solutions(0);
+
+minimize<m> z subject to {
+
+  m.post(z == sum(i in 1..num) 
+         // note: t[i]^4 instead of t[i]*t[i]*t[i]*t[i] gives the wrong answer
+         // (F[i] - sum(j in 0..4) a[j]*t[i]^j )
+         (F[i] - (a[0] + a[1]*t[i] + a[2]*t[i]^2 + a[3]*t[i]^3 + a[4]*t[i]*t[i]*t[i]*t[i]))
+         );
+
+  m.post(sum(i in 0..p) 20^i*a[i] == 0);
+
+  m.post(a[0] + 700.0*a[1] + 700.0^2*a[2] + 700.0^3*a[3] + 700.0^4*a[4] == 100.0);
+  // m.post(sum(i in 0..4) 700^i*a[i] == 100); // gives wrong answer
+
+  forall(i in 1..num) 
+    m.post(sum(j in 1..p) j*a[j]*t[i]^(j-1) >= 0);
+
+} 
+
+cout << "z: " << z.getValue() << endl;
+forall(i in 0..4) 
+  cout << a[i].getValue() << " ";
+cout << endl;
+
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+

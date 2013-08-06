@@ -1,0 +1,116 @@
+/*
+
+  Set partition problem in Comet.
+  
+  Problem formulation from
+    http://www.koalog.com/resources/samples/PartitionProblem.java.html
+  """
+   This is a partition problem.
+   Given the set S = {1, 2, ..., n},
+   it consists in finding two sets A and B such that:
+ 
+     A U B = S,
+     |A| = |B|,
+     sum(A) = sum(B),
+     sum_squares(A) = sum_squares(B)
+ 
+  """
+
+  This model uses a binary matrix to represent the sets.
+
+  
+  Also, compare with other models which uses var sets:
+  * MiniZinc: http://www.hakank.org/minizinc/set_partition.mzn
+  * Gecode/R: http://www.hakank.org/gecode_r/set_partition.rb 
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 16;
+int num_sets = 2;
+
+assert(n % num_sets == 0); // sanity: is the partition possible?
+
+Solver<CP> m();
+
+var<CP>{bool} a[1..num_sets, 1..n](m); // the set
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  forall(i in 1..num_sets, j in i+1..num_sets) {
+
+    // same cardinality
+    m.post(sum(k in 1..n) a[i,k] == sum(k in 1..n) a[j,k]);
+    
+    // same sum
+    m.post(sum(k in 1..n) k*a[i,k] == sum(k in 1..n) k*a[j,k]);
+    
+    // same sum squared
+    m.post((sum(k in 1..n) (k*a[i,k])^2) == (sum(k in 1..n) (k*a[j,k])^2));
+    
+  }
+
+  partition_sets(a);
+  
+  // symmetry breaking (for num_sets == 2)
+  if (num_sets == 2)
+    m.post(a[1,1] == true);
+
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << "sums: " << sum(j in 1..n) j*a[1,j] << endl;
+  cout << "sums squared: " << (sum(j in 1..n) (j*a[1,j])^2) << endl;
+
+  // show the partitions
+  forall(i in 1..num_sets) {
+    if ( sum(j in 1..n) a[i,j] > 0) {
+      cout << i << ": ";
+      forall(j in 1..n) {
+        if (a[i,j])
+          cout << j << " ";
+      }
+      cout << endl;
+    }
+  }
+  cout << endl;
+
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+//
+// Partition the sets (binary matrix representation).
+//
+function void partition_sets(var<CP>{bool} [,] x) {
+  Solver<CP> m = x[1,1].getSolver();
+  range R1 = x.getRange(0);
+  range R2 = x.getRange(1);
+
+  forall(i in R1, j in R1 : i != j)
+      m.post(sum(k in R2) (x[i,k] && x[j,k]) == 0);
+
+  // ensure that all integers is in (exactly) one partition
+  m.post((sum(i in R1, j in R2) x[i,j]) == R2.getSize());
+}

@@ -1,0 +1,76 @@
+/*
+
+  Some explorations of ISBN13 in Comet.
+
+  See http://en.wikipedia.org/wiki/ISBN
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/isbn.mzn
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 13;
+
+// 978-0262720304: The OPL Optimization Programming Language 
+//int test_isbn[1..12] = [9,7,8,0,2,6,2,7,2,0,3,0];
+
+// isbn = 978-0262220774: Constraint-based Local Search
+int test_isbn[1..12] = [9,7,8,0,2,6,2,2,2,0,7,7];
+
+Solver<CP> m();
+
+var<CP>{int} isbn[i in 1..n](m, 0..9);
+var<CP>{int} mult0(m, 1..9);
+var<CP>{int} mult1(m, 1..9);
+var<CP>{int} t[i in 1..n-1](m, 0..100);
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  m.post(isbn[n] == 0 || isbn[n] == 4);
+  // testing try
+  // try<m> m.post(isbn[n] == 0); | m.post(isbn[n] == 4);
+
+  m.post(mult0 == 3);
+  m.post(mult1 == 1);
+
+  forall(i in 1..n-1) {
+    m.post(isbn[i] == test_isbn[i]); // copy from test isbn
+
+    // prepare for the checksum below
+    if (i % 2 == 0)
+      m.post(t[i] == isbn[i] * mult0);
+    else 
+      m.post(t[i] == isbn[i] * mult1 );
+  } 
+
+  m.post(isbn[n] == (10 - sum(i in 1..n-1) (t[i]) % 10) % 10);
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << isbn << endl;
+  cout << "mult0: " << mult0 << " mult1: " << mult1 << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

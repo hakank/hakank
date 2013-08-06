@@ -1,0 +1,98 @@
+/*
+
+  Bales of hay problem in Comet.
+
+  From The Math Less Traveled, 
+  "The haybaler", http://www.mathlesstraveled.com/?p=582 
+  """
+  You have five bales of hay.
+
+  For some reason, instead of being weighed individually, they were weighed 
+  in all possible combinations of two. The weights of each of these 
+  combinations were written down and arranged in numerical order, without 
+  keeping track of which weight matched which pair of bales. The weights, 
+  in kilograms, were 80, 82, 83, 84, 85, 86, 87, 88, 90, and 91.
+
+  How much does each bale weigh? Is there a solution? Are there multiple 
+  possible solutions? 
+  """
+
+  Compare with the following models:
+  * MiniZinc: http://hakank.org/minizinc/bales_of_hay.mzn
+  * Gecode: http://hakank.org/gecode/bales_of_hay.cpp
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+// import cotls;
+// import cotln;
+int t0 = System.getCPUTime();
+
+int n = 5;
+int weights[1..10] = [80, 82, 83, 84, 85, 86, 87, 88, 90, 91];
+
+Solver<CP> m();
+int ub = 50;
+var<CP>{int} bales[i in 1..n](m, 0..ub);
+
+
+Integer num_solutions(0);
+// explore<m> {
+exploreall<m> {
+// minimize<m> z subject to {
+
+  forall(w in 1..10) {
+    var<CP>{int} i(m, 1..n);
+    var<CP>{int} j(m, 1..n);
+     
+    m.post(i < j);
+    m.post(bales[i] + bales[j] == weights[w]);
+  }
+
+  // symmetry breaking
+  forall(i in 2..n) {
+    m.post(bales[i-1] < bales[i]);
+  }
+
+
+} using {
+
+  // not enough
+  // label(m);
+
+  // this is not enough either
+  /*
+  forall(i in 1..n: !bales[i].bound()) by (bales[i].getMinRegret()) {
+    tryall<m>(v in 0..ub : bales[i].memberOf(v)) by (-v)
+      m.post(bales[i] == v);
+    onFailure
+      m.diff(bales[i], v);
+  }
+  */
+
+  // better
+  while (!bound(bales)) {
+    selectMin(i in 1..n: !bales[i].bound()) (bales[i].getMinRegret()) {
+      int mid = (bales[i].getMin() + bales[i].getMax()) / 2;
+      try<m> m.post(bales[i] <= mid); | m.post(bales[i] > mid);
+    }
+  }
+
+  num_solutions++;      
+
+  cout << bales << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

@@ -1,0 +1,102 @@
+/*
+
+  Fixed-charge problem in Comet.
+
+  From the OPL documentation, and example model fixed.mod:
+  """
+  Fixed-charge problems are another classic application of integer programs 
+  (see Applications and Algorithms by W. Winston in the Bibliography). 
+  They resemble some of the production problems seen previously but differ 
+  in two respects: the production is an integer value (e.g., a factory 
+  must produce bikes or toys), and the factories need to rent (or acquire) 
+  some tools to produce some of the products. Consider the following 
+  problem. A company manufactures shirts, shorts, and pants. Each 
+  product requires a number of hours of labor and a certain amount of 
+  cloth, and the company has a limited capacity of both. In addition, 
+  all of these products can be manufactured only by renting an appropriate 
+  machine. The profit on the products (excluding the cost of renting 
+  the equipment) are also known. The company would like to maximize 
+  its profit.
+  """
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+
+enum Machines = { shirtM, shortM, pantM };
+enum Products = { shirt, shorts, pants };
+enum Resources = { labor, cloth };
+int Capacity[Resources] = [ 150, 160 ];
+int MaxProduction = max(r in Resources) Capacity[r];
+int RentingCost[Machines] = [ 200, 150, 100 ];
+
+tuple productType {
+   int profit;
+   set{Machines} machines;
+   int[] use; // [Resources]; // don't work in Comet
+}
+
+
+int use[Products, Resources] = 
+  [
+   [3,4],
+   [2,3],
+   [6,4]
+   ];
+
+
+productType Product[Products] = 
+ [
+  productType(6, {shirtM}, all(i in Resources) use[shirt,i]), // this works
+  productType(4, {shortM}, all(i in Resources) use[shorts,i]),
+  productType(7, {pantM}, all(i in Resources) use[pants,i])
+  ];
+
+Solver<CP> m();
+
+var<CP>{bool} Rent[Machines](m);
+var<CP>{int} Produce[Products](m, 0..MaxProduction);
+
+
+Integer num_solutions(0);
+
+maximize <m>
+  sum( p in Products ) Product[p].profit * Produce[p] -
+  sum( m in Machines ) RentingCost[m] * Rent[m]
+subject to {
+  
+  forall( r in Resources ) {
+    m.post(sum( p in Products ) 
+           // use[p,r] * Produce[p] <= Capacity[r]);
+           Product[p].use[r] * Produce[p] <= Capacity[r]); // this works
+  }
+
+  forall( p in Products , mm in Product[p].machines )
+    m.post(Produce[p] <= MaxProduction * Rent[mm]);
+
+
+} using {
+ 
+  forall(mm in Machines : !Rent[mm].bound()) { // by (Rent[mm].getSize(), RentingCost[mm]) {
+     label(Rent[mm]);
+  }
+  labelFF(Produce);
+
+}
+      
+cout << Rent << endl;
+cout << Produce << endl;
+cout << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

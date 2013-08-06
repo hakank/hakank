@@ -1,0 +1,69 @@
+/*
+   
+  Bus scheduling in Comet.
+
+  Problem from Taha "Introduction to Operations Research", page 58.
+
+  This is a slightly more general model than Taha's.
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/bus_scheduling.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+int time_slots = 6; // number of time slots
+
+// demand: minimum number of buses at time t
+int demands[1..time_slots] = [8, 10, 7, 12, 4, 4];
+int max_num = sum(i in 1..time_slots) (demands[i]);
+
+Solver<CP> m();
+
+// result: how many buses start the schedule at time slot t?
+var<CP>{int} x[1..time_slots](m,0..max_num);
+
+// the objective to minimize: the total number of buses
+var<CP>{int} num_buses(m, 0..max_num); 
+
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> num_buses subject to {
+
+  m.post(num_buses == sum(i in 1..time_slots) x[i]);
+
+  // meet the demands for this and the next time slot
+  forall(i in 1..time_slots-1) 
+    m.post(x[i]+x[i+1] >= demands[i]);
+
+  // demand "around the clock"
+  m.post(x[time_slots] + x[1] == demands[time_slots]);
+
+
+  // for exploreall
+  // m.post(sum(i in 1..time_slots) (x[i]) == 26);
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+      
+  cout << x << " num buses: " << num_buses.getValue() <<endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

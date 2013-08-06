@@ -1,0 +1,246 @@
+/*
+
+  Simple user defined constraints in Comet.
+
+  The following constraints are defined:
+    - alldifferent_except_0
+    - increasing
+    - decreasing
+    - toNum
+    - correspondence
+
+
+  Note: These constraints are just on the syntactic level, to be able
+  to write something like
+     m.post(constraint(..));
+  
+  The constraints use the underlying propagation methods etc. Nothing
+  fancy at all, just some syntactic sugar.
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 5;
+range R = 1..5;
+
+
+//
+// alldifferent except 0
+//
+class alldifferent_except_0 extends UserConstraint<CP> {
+  var<CP>{int}[] _x;
+  int _n;
+  
+  alldifferent_except_0(var<CP>{int}[] x) : UserConstraint<CP>() {
+    _x = x;
+    _n = _x.getSize();      
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _x[1].getSolver();
+    forall(i in 1.._n, j in i+1.._n) {
+      cp.post(
+             _x[i] != 0 && _x[j] != 0 => 
+             _x[i] != _x[j], cl           
+             );
+    }
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+    return Suspend;
+  }
+
+}
+
+
+//
+// increasing
+//
+class increasing extends UserConstraint<CP> {
+  var<CP>{int}[] _x;
+  int _n;
+  
+  increasing(var<CP>{int}[] x) : UserConstraint<CP>() {
+    _x = x;
+    _n = _x.getSize();      
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _x[1].getSolver();
+    forall(i in 2.._n) {
+      cp.post(_x[i-1] <= _x[i], cl);
+    }
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+     return Suspend;
+  }  
+
+}
+
+
+//
+// decreasing
+//
+class decreasing extends UserConstraint<CP> {
+  var<CP>{int}[] _x;
+  int _n;
+  
+  decreasing(var<CP>{int}[] x) : UserConstraint<CP>() {
+    _x = x;
+    _n = _x.getSize();      
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _x[1].getSolver();
+    forall(i in 2.._n) {
+      cp.post(_x[i-1] >= _x[i], cl);
+    }
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+     return Suspend;
+  }  
+
+}
+
+
+//
+// Convert array <-> number
+//
+class toNum extends UserConstraint<CP> {
+  var<CP>{int}[] _x;
+  var<CP>{int} _num;
+  int _base;
+
+  toNum(var<CP>{int}[] x, var<CP>{int} num, int base) : UserConstraint<CP>() {
+    _x = x;
+    _num = num;
+    _base = base;
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _x[1].getSolver();
+    int start = _x.getLow();
+    int end = _x.getHigh();
+
+    cp.post(_num == sum(i in start..end) 
+            _base^(end-i)*_x[i], cl
+         );
+    
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+     return Suspend;
+  }  
+
+}
+
+
+
+//
+// correspondence
+//
+// See Global Constraint Catalog
+// http://www.emn.fr/x-info/sdemasse/gccat/Ccorrespondence.html
+//
+class correspondence extends UserConstraint<CP> {
+  var<CP>{int}[] _from;
+  var<CP>{int}[] _to;
+  var<CP>{int}[] _permutation;
+
+  correspondence(var<CP>{int}[] from, var<CP>{int}[] permutation, var<CP>{int}[] c_to) : UserConstraint<CP>() {
+    _from        = from;
+    _permutation = permutation;
+    _to          = c_to;
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _from[1].getSolver();
+
+    cp.post(alldifferent(_permutation));
+    
+    forall(i in _from.rng()) 
+      cp.post(_from[i] == _to[_permutation[i]]);
+    
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+     return Suspend;
+  }  
+
+}
+
+
+Solver<CP> m();
+
+// testing alldifferent_except_0, increasing, decreasing, toNum
+var<CP>{int} x[R](m, 0..n);
+var<CP>{int} num(m, 0..10^n);
+
+// testing correspondence
+range c_R = 1..6;
+int from_init[c_R] = [1,9,1,5,2,1];
+int permutation_init[c_R] = [6,1,3,5,4,2];
+var<CP>{int} c_from[c_R](m, 1..9);
+var<CP>{int} c_permutation[c_R](m, 1..6);
+var<CP>{int} c_to[c_R](m, 1..9);
+
+
+Integer num_solutions(0);
+// explore<m> {
+exploreall<m> {
+
+
+  m.post(alldifferent_except_0(x));
+  m.post(increasing(x));
+  // m.post(decreasing(x));
+  m.post(toNum(x, num,10));
+  m.post(num == 1345 || num == 5431); // for testing either increasing or decreasing
+  
+
+  // correspondence
+  forall(i in c_R) {
+    m.post(c_from[i] == from_init[i]);
+    m.post(c_permutation[i] == permutation_init[i]);
+  }
+  // c_to should be [9,1,1,2,5,1]
+  m.post(correspondence(c_from, c_permutation, c_to));
+
+
+} using {
+      
+
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << x << " " << num << endl;
+
+  cout << c_from << endl;
+  cout << c_permutation << endl;
+  cout << c_to << endl;
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

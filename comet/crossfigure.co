@@ -1,0 +1,366 @@
+/*
+
+  Crossfigure in Comet.
+
+  CSPLib problem 21
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob021/index.html
+  """
+  Crossfigures are the numerical equivalent of crosswords. You have a grid and some 
+  clues with numerical answers to place on this grid. Clues come in several different 
+  forms (for example: Across 1. 25 across times two, 2. five dozen, 5. a square number, 
+  10. prime, 14. 29 across times 21 down ...). 
+  """
+ 
+  Also, see 
+  http://en.wikipedia.org/wiki/Cross-figure
+  
+  William Y. Sit: "On Crossnumber Puzzles and The Lucas-Bonaccio Farm 1998
+  http://scisun.sci.ccny.cuny.edu/~wyscc/CrossNumber.pdf
+  
+  Bill Williams: Crossnumber Puzzle, The Little Pigley Farm
+  http://jig.joelpomerantz.com/fun/dogsmead.html
+
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+
+/*
+
+  This model was inspired by the ECLiPSe model written by Warwick Harvey:
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob021/code.html
+ 
+ 
+  Data from 
+  http://thinks.com/crosswords/xfig.htm.
+ 
+  This problem is 001 from http://thinks.com/crosswords/xfig.htm 
+  ("X" is the blackbox and is fixed to the value of 0)
+ 
+  1  2  3  4  5  6  7  8  9
+  ---------------------------
+  1  2  _  3  X  4  _  5  6    1
+  7  _  X  8  _  _  X  9  _    2
+  _  X  10 _  X  11 12 X  _    3
+  13 14 _  _  X  15 _  16 _    4 
+  X  _  X  X  X  X  X  _  X    5 
+  17 _  18 19 X  20 21 _ 22    6
+  _  X  23 _  X  24 _  X  _    7
+  25 26 X  27 _  _  X  28 _    8
+  29 _  _  _  X  30 _  _  _    9
+
+ 
+  The answer is
+   1608 9183
+   60 201 42
+   3 72 14 1
+   5360 2866
+    3     4
+   4556 1156
+   9 67 16 8
+   68 804 48
+   1008 7332
+
+  Solutions:
+  MiniZinc and Gecode/fz solves the problem in about 8 seconds.
+  ECLiPSe/ic: 35 seconds
+  MiniZinc/fdmip in 14 seconds.
+
+  Comet: 1 second.
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 9;
+
+range D = 0..9999; // the max length of the numbers in this problem is 4
+
+Solver<CP> m();
+
+var<CP>{int} M[1..n, 1..n](m, 0..9);
+
+var<CP>{int} A1(m, D);
+var<CP>{int} A4(m, D);
+var<CP>{int} A7(m, D);
+var<CP>{int} A8(m, D);
+var<CP>{int} A9(m, D);
+var<CP>{int} A10(m, D);
+var<CP>{int} A11(m, D);
+var<CP>{int} A13(m, D);
+var<CP>{int} A15(m, D);
+var<CP>{int} A17(m, D);
+var<CP>{int} A20(m, D);
+var<CP>{int} A23(m, D);
+var<CP>{int} A24(m, D);
+var<CP>{int} A25(m, D);
+var<CP>{int} A27(m, D);
+var<CP>{int} A28(m, D);
+var<CP>{int} A29(m, D);
+var<CP>{int} A30(m, D);
+
+var<CP>{int} D1(m, D);
+var<CP>{int} D2(m, D);
+var<CP>{int} D3(m, D);
+var<CP>{int} D4(m, D);
+var<CP>{int} D5(m, D);
+var<CP>{int} D6(m, D);
+var<CP>{int} D10(m, D);
+var<CP>{int} D12(m, D);
+var<CP>{int} D14(m, D);
+var<CP>{int} D16(m, D);
+var<CP>{int} D17(m, D);
+var<CP>{int} D18(m, D);
+var<CP>{int} D19(m, D);
+var<CP>{int} D20(m, D);
+var<CP>{int} D21(m, D);
+var<CP>{int} D22(m, D);
+var<CP>{int} D26(m, D);
+var<CP>{int} D28(m, D);
+
+
+//
+// Convert array <-> number
+//
+function void toNum10(var<CP>{int}[] x, var<CP>{int} num) {
+  Solver<CP> m = x[1].getSolver();
+
+  int start = x.getLow();
+  int end = x.getHigh();
+  m.post(num == sum(i in start..end) 
+         10^(end-i)*x[i]
+         );
+}
+
+
+/*
+ across(Matrix, Across, Len, Row, Col)
+	Constrains 'Across' to be equal to the number represented by the
+	'Len' digits starting at position (Row, Col) of the array 'Matrix'
+	and proceeding across.
+*/
+function void across(var<CP>{int}[,] Matrix, var<CP>{int} Across, int Len, int Row, int Col) {
+
+  Solver<CP> m = Matrix[1,1].getSolver();
+  var<CP>{int} tmp[1..Len](m, 0..9999);
+
+  toNum10(tmp, Across);
+  forall(i in 0..Len-1) {
+    m.post(Matrix[Row,Col+i] == tmp[i+1]);
+  }
+}
+
+/*
+ down(Matrix, Down, Len, Row, Col):
+	Constrains 'Down' to be equal to the number represented by the
+	'Len' digits starting at position (Row, Col) of the array 'Matrix'
+	and proceeding down.
+*/
+function void down(var<CP>{int}[,] Matrix, var<CP>{int} Across, int Len, int Row, int Col) {
+
+  Solver<CP> m = Matrix[1,1].getSolver();
+  var<CP>{int} tmp[1..Len](m, 0..9999);
+
+  toNum10(tmp, Across);
+  forall(i in 0..Len-1) {
+    m.post(Matrix[Row+i,Col] == tmp[i+1]);
+  }
+}
+
+/*
+ x is a prime (is not needed, since I found m.inside)
+*/
+function void is_prime(Solver<CP> m, var<CP>{int} x) {
+  forall(i in 2..x.getMax() / 2)
+    m.post(i != x => x % i > 0);
+}
+
+//
+// x is a square (is not needed, since I found m.inside)
+//
+function void square(Solver<CP> m, var<CP>{int} x) {
+  var<CP>{int} tmp(m, 0..x.getSize());
+  m.post(x == tmp^2);
+}
+
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+   // Set up the constraints between the matrix elements and the
+   // clue numbers.
+   across(M, A1, 4, 1, 1); 
+   across(M, A4, 4, 1, 6); 
+   across(M, A7, 2, 2, 1); 
+   across(M, A8, 3, 2, 4); 
+   across(M, A9, 2, 2, 8); 
+   across(M, A10, 2, 3, 3); 
+   across(M, A11, 2, 3, 6); 
+   across(M, A13, 4, 4, 1); 
+   across(M, A15, 4, 4, 6); 
+   across(M, A17, 4, 6, 1); 
+   across(M, A20, 4, 6, 6); 
+   across(M, A23, 2, 7, 3); 
+   across(M, A24, 2, 7, 6); 
+   across(M, A25, 2, 8, 1); 
+   across(M, A27, 3, 8, 4); 
+   across(M, A28, 2, 8, 8); 
+   across(M, A29, 4, 9, 1); 
+   across(M, A30, 4, 9, 6); 
+
+   down(M, D1, 4, 1, 1); 
+   down(M, D2, 2, 1, 2); 
+   down(M, D3, 4, 1, 4); 
+   down(M, D4, 4, 1, 6); 
+   down(M, D5, 2, 1, 8); 
+   down(M, D6, 4, 1, 9); 
+   down(M, D10, 2, 3, 3); 
+   down(M, D12, 2, 3, 7); 
+   down(M, D14, 3, 4, 2); 
+   down(M, D16, 3, 4, 8); 
+   down(M, D17, 4, 6, 1); 
+   down(M, D18, 2, 6, 3); 
+   down(M, D19, 4, 6, 4); 
+   down(M, D20, 4, 6, 6); 
+   down(M, D21, 2, 6, 7); 
+   down(M, D22, 4, 6, 9); 
+   down(M, D26, 2, 8, 2); 
+   down(M, D28, 2, 8, 8); 
+
+
+   // Set up the clue constraints.
+   //  Across
+   //  1 27 across times two
+   //  4 4 down plus seventy-one
+   //  7 18 down plus four
+   //  8 6 down divided by sixteen
+   //  9 2 down minus eighteen
+   // 10 Dozen in six gross
+   // 11 5 down minus seventy
+   // 13 26 down times 23 across
+   // 15 6 down minus 350
+   // 17 25 across times 23 across
+   // 20 A square number
+   // 23 A prime number
+   // 24 A square number
+   // 25 20 across divided by seventeen
+   // 27 6 down divided by four
+   // 28 Four dozen
+   // 29 Seven gross
+   // 30 22 down plus 450 
+
+    m.post(A1 == 2 * A27);
+    m.post(A4 == D4 + 71);
+    m.post(A7 == D18 + 4);
+    m.post(A8 == D6 / 16);
+    m.post(A9 == D2 - 18);
+    m.post(A10 == 6 * 144 / 12);
+    m.post(A11 == D5 - 70);
+    m.post(A13 == D26 * A23);
+    m.post(A15 == D6 - 350);
+    m.post(A17 == A25 * A23);
+    square(m, A20);
+    is_prime(m, A23);
+    square(m, A24);
+    m.post(A25 == A20 / 17);
+    m.post(A27 == D6 / 4);
+    m.post(A28 == 4 * 12);
+    m.post(A29 == 7 * 144);
+    m.post(A30 == D22 + 450);
+  
+   // Down
+   //
+   //  1 1 across plus twenty-seven
+   //  2 Five dozen
+   //  3 30 across plus 888
+   //  4 Two times 17 across
+   //  5 29 across divided by twelve
+   //  6 28 across times 23 across
+   // 10 10 across plus four
+   // 12 Three times 24 across
+   // 14 13 across divided by sixteen
+   // 16 28 down times fifteen
+   // 17 13 across minus 399
+   // 18 29 across divided by eighteen
+   // 19 22 down minus ninety-four
+   // 20 20 across minus nine
+   // 21 25 across minus fifty-two
+   // 22 20 down times six
+   // 26 Five times 24 across
+   // 28 21 down plus twenty-seven 
+
+    m.post(D1 == A1 + 27);
+    m.post(D2 == 5 * 12);
+    m.post(D3 == A30 + 888);
+    m.post(D4 == 2 * A17);
+    m.post(D5 == A29 / 12);
+    m.post(D6 == A28 * A23);
+    m.post(D10 == A10 + 4);
+    m.post(D12 == A24 * 3);
+    m.post(D14 == A13 / 16);
+    m.post(D16 == 15 * D28);
+    m.post(D17 == A13 - 399);
+    m.post(D18 == A29 / 18);
+    m.post(D19 == D22 - 94);
+    m.post(D20 == A20 - 9);
+    m.post(D21 == A25 - 52);
+    m.post(D22 == 6 * D20);
+    m.post(D26 == 5 * A24);
+    m.post(D28 == D21 + 27);
+
+
+    // Fix the black boxes
+    m.post(M[1,5] == 0);
+    m.post(M[2,3] == 0);
+    m.post(M[2,7] == 0);
+    m.post(M[3,2] == 0);
+    m.post(M[3,5] == 0);
+    m.post(M[3,8] == 0);
+    m.post(M[4,5] == 0);
+    m.post(M[5,1] == 0);
+    m.post(M[5,3] == 0);
+    m.post(M[5,4] == 0);
+    m.post(M[5,5] == 0);
+    m.post(M[5,6] == 0);
+    m.post(M[5,7] == 0);
+    m.post(M[5,9] == 0);
+    m.post(M[6,5] == 0);
+    m.post(M[7,2] == 0);
+    m.post(M[7,5] == 0);
+    m.post(M[7,8] == 0);
+    m.post(M[8,3] == 0);
+    m.post(M[8,7] == 0);
+    m.post(M[9,5] == 0);
+
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << M[i,j] << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;

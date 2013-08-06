@@ -1,0 +1,74 @@
+/*
+
+  Number of runs in a sequence in Comet.
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/runs.mzn .
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 6;
+int t[1..n] = [1,1,2,2,1,1]; // test sequence
+
+Solver<CP> m();
+
+var<CP>{int} x[1..n](m, 0..n);
+var<CP>{int} r(m, 0..n);
+
+Integer num_solutions(0);
+
+exploreall<m> {
+// minimize<m> z subject to {
+
+  // m.post(r == 3); 
+
+  // copy the test sequence
+  forall(i in 1..n)
+    m.post(x[i] == t[i]);
+
+  runs(r, x);
+
+} using {
+
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << "r: " << r << endl;
+  cout << x << endl;
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+/*
+  runs: The number of runs is the number of switches + 1.
+*/
+function void runs(var<CP>{int} nruns, var<CP>{int}[] x) {
+  Solver<CP> cp = x[1].getSolver();
+  int n = x.getSize();
+  var<CP>{int} runs_ix[1..n](cp,0..1);
+
+  forall(i in 2..n) {
+    cp.post(runs_ix[i] == 1 => x[i-1] == x[i]);
+    cp.post(x[i-1] == x[i] => runs_ix[i] == 1);
+  }
+
+  cp.post(runs_ix[1] == 1 && nruns == 1 + (sum(i in 1..n) (runs_ix[i] == 0)));
+
+}

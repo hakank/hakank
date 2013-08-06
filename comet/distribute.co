@@ -1,0 +1,136 @@
+/*
+
+  Global constraint distribute in Comet.
+
+  From MiniZinc globals.mzn:
+  """
+  Requires that 'card[i]' is the number of occurences of 'value[i]' in 'base'.
+  XXX: currently the values in 'value' need not be distinct.  Perhaps they
+  should be?
+  """
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+// This test is from MiniZinc testcases where 0 is the unknowns.
+int dcard_init[1..4] = [4, 0, 1, 0];
+int value_init[1..4] = [0, 7, 8, 9];
+int base_init[1..7] = [0, 7, 6, 8, 6, 9, 0];
+
+range R = 1..10;
+
+Solver<CP> m();
+
+var<CP>{int} dcard[1..4](m, R);
+var<CP>{int} value[1..4](m, R);
+var<CP>{int} base[1..7](m, R);
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  copy_a_except_0(dcard_init, dcard);
+  copy_a_except_0(value_init, value);
+  copy_a_except_0(base_init, base);
+
+  m.post(distribute(dcard, value, base));
+
+} using {
+      
+  label(m);
+
+  num_solutions++;
+      
+  cout << dcard << endl;
+  cout << value << endl;
+  cout << base << endl;
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+
+//
+// copy_a(init_x, x)
+// copy an int[] -> var int[]
+//
+function void copy_a(int[] init_x, var<CP>{int}[] x) {
+  Solver<CP> cp = x[1].getSolver();
+  forall(i in x.rng()) {
+    cp.post(x[i] == init_x[i]);
+  }
+}
+
+
+//
+// copy_a(init_x, x)
+// copy an int[] -> var int[]
+//
+function void copy_a_except_0(int[] init_x, var<CP>{int}[] x) {
+  Solver<CP> cp = x[1].getSolver();
+  forall(i in x.rng()) {
+    if (init_x[i] > 0)
+      cp.post(x[i] == init_x[i]);
+  }
+}
+
+
+
+/*
+  From MiniZinc globals.mzn:
+  """
+  Requires that 'card[i]' is the number of occurences of 'value[i]' in 'base'.
+  
+  XXX: currently the values in 'value' need not be distinct.  Perhaps they
+  should be?
+  """
+
+*/
+class distribute extends UserConstraint<CP> {
+  var<CP>{int}[] dcard;
+  var<CP>{int}[] value;
+  var<CP>{int}[] base;
+                                           
+  distribute(var<CP>{int}[] _dcard,
+             var<CP>{int}[] _value,
+             var<CP>{int}[] _base) : UserConstraint<CP>() {
+    dcard = _dcard;
+    value = _value;
+    base = _base;
+
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+
+    // distribute: card and value arrays must have identical index sets
+    assert(dcard.rng() == value.rng());
+    
+    Solver<CP> cp = dcard[1].getSolver();
+    
+    forall (i in dcard.rng()) {
+      cp.post(dcard[i] == sum(j in base.rng()) (value[i] == base[j]));
+    }
+
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+     return Suspend;
+  }  
+
+} // end distribute
+ 

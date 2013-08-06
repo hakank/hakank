@@ -1,0 +1,108 @@
+/*
+
+  Max flow problem in Comet.
+
+  From Winston "Operations Research", page 420f, 423f
+  Sunco Oil example.
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/max_flow_winston1.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+
+range nodes = 1..5;
+
+// the arcs
+int num_arcs = 7;
+int arcs[1..num_arcs, 1..2] =
+  [
+   [1, 2],
+   [1, 3],
+   [2, 3],
+   [2, 4],
+   [3, 5],
+   [4, 5],
+   [5, 1]
+   ];
+
+// convert arcs to matrix
+int mat[nodes, nodes];
+forall(i in nodes, j in nodes) {
+  int c = 0;
+  forall(k in 1..num_arcs) 
+    // this is an arcs
+    if (arcs[k,1] == i && arcs[k,2] == j)
+      c = 1;
+  
+  mat[i,j] = c;
+}
+
+// capacities
+int cap[1..num_arcs] = [2,3,3,4,2,1,100];
+
+
+Solver<CP> m();
+var<CP>{int} flow[nodes, nodes](m, 0..200); // the flow
+var<CP>{int} z(m, 0..10000);// = flow[5,1]; // the objective
+
+
+Integer num_solutions(0);
+exploreall<m> {
+// maximize<m> z subject to {
+
+  m.post(z == flow[5,1]);
+  
+  // capacity of argcs
+  forall(i in 1..num_arcs) 
+    m.post(flow[arcs[i,1], arcs[i,2]] <= cap[i]);
+                            
+
+  // inflows == outflows
+  forall(i in nodes)
+    m.post(
+           sum(k in 1..num_arcs : arcs[k,2] == i ) flow[arcs[k,1], arcs[k,2]]
+           ==
+           sum(k in 1..num_arcs : arcs[k,1] == i) flow[arcs[k,1], arcs[k,2]] 
+           );
+
+  // sanity: just arcs with connections can have a flow
+  forall(i in nodes, j in nodes) {
+    if (mat[i,j] == 0)
+      m.post(flow[i,j] == 0);
+  }
+
+  // for exploreall
+  m.post(z >= 3);
+
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+      
+  cout << "z: " << z << endl;
+  forall(i in nodes) {
+    forall(j in nodes) {
+    cout << flow[i,j] << " ";
+    }
+    cout << endl;
+  }
+
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;

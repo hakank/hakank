@@ -1,0 +1,108 @@
+/*
+
+  Broken weights problem in Comet.
+
+  From
+  http://www.mathlesstraveled.com/?p=701
+  """
+  Here's a fantastic problem I recently heard. Apparently it was first 
+  posed by Claude Gaspard Bachet de MÃ©ziriac in a book of arithmetic problems 
+  published in 1612, and can also be found in Heinrich Dorrieâ€™s 100 
+  Great Problems of Elementary Mathematics.
+  
+      A merchant had a forty pound measuring weight that broke 
+      into four pieces as the result of a fall. When the pieces were 
+      subsequently weighed, it was found that the weight of each piece 
+      was a whole number of pounds and that the four pieces could be 
+      used to weigh every integral weight between 1 and 40 pounds. What 
+      were the weights of the pieces?
+  
+  Note that since this was a 17th-century merchant, he of course used a 
+  balance scale to weigh things. So, for example, he could use a 1-pound 
+  weight and a 4-pound weight to weigh a 3-pound object, by placing the 
+  3-pound object and 1-pound weight on one side of the scale, and 
+  the 4-pound weight on the other side.
+  """
+  
+  Compare with the following problems:
+  * MiniZinc: http://www.hakank.org/minizinc/broken_weights.mzn
+  * ECLiPSE: http://www.hakank.org/eclipse/broken_weights.ecl
+  * Gecode: http://www.hakank.org/gecode/broken_weights.cpp
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 4;  // the number of different weights
+int m = 40; // original weight
+
+Integer mm(m);
+
+Solver<CP> cp();
+
+var<CP>{int} weights[1..n](cp, 1..m);  // the weights
+var<CP>{int} x[1..m, 1..n](cp, -1..1); // the combinations
+
+Integer num_solutions(0);
+explore<cp> {
+// exploreall<cp> {
+// minimize<cp> z subject to {
+
+  // symmetry breaking
+  forall(i in 2..n) {
+    cp.post(weights[i-1] <= weights[i]);
+  }
+
+  cp.post(sum(i in 1..n) weights[i] == m);
+         
+  // Check that all weights from 1 to 40 can be made.
+  //
+  // Since all weights can be on either side
+  // of the side of the scale we allow either
+  // -1, 0, or 1 or the weights, assuming that
+  // -1 is the weights on the left and 1 is on the right.
+  // 
+  forall(j in 1..m) {
+    cp.post(sum(i in 1..n) (x[j,i]*weights[i]) == j);
+  }
+
+
+
+} using {
+      
+  // labelFF(x);
+  // forall(i in 1..n : !x[i].bound()) {// by (-x[i].getSize()) {
+  //   label(x[i]);
+  // }
+  label(cp);
+
+  num_solutions++;
+
+      
+  cout << weights << endl;
+  forall(i in 1..m) {
+    forall(j in 1..n) {
+      if (x[i,j] > -1) 
+        cout << " ";
+      cout << x[i,j] << " ";           
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+}
+
+// cout << x << endl;
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;
+

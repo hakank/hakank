@@ -1,0 +1,96 @@
+/*
+
+  Game theory in Comet.
+
+  2 player zero sum game.
+
+  From Taha, Operations Research (8'th edition), page 528. 
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotln;
+int t0 = System.getCPUTime();
+
+int rows = 3;
+int cols = 3;
+float game[1..rows, 1..cols] = 
+[ 
+ [3.0, -1.0, -3.0],
+ [-2.0,  4.0, -1.0], 
+ [-5.0, -6.0,  2.0]
+];
+                           
+
+Solver<MIP> m1("lp_solve");
+var<MIP>{float} x1[1..rows](m1,0,1); // row player
+// var<MIP>{float} x2[1..cols](m1,0,1); // column player dual problem
+var<MIP>{float} v(m1, -2,2);
+
+
+// 
+// Row player
+//
+maximize<m1> v subject to {
+
+  // For row player:
+  forall(i in 1..rows) 
+    m1.post(v - sum(j in 1..cols) (x1[j]* game[j,i]) <= 0);
+
+  m1.post(sum(i in 1..rows) x1[i] == 1);
+
+  /*
+  // column player: 
+  // This is the dual problem using the same v.
+  // Gives the same result as the one below.
+  forall(i in 1..cols) 
+    m1.post(v - sum(j in 1..cols) (x2[j]* game[i,j]) >= 0);
+
+  m1.post(sum(i in 1..cols) x2[i] == 1);
+  */
+
+} 
+
+
+cout << "row player:" << endl;
+cout << "v: " << v.getValue() << endl;
+cout << "Strategies: ";
+forall(i in 1..rows)
+  cout << x1[i].getValue() << " ";
+cout << endl;
+
+
+//
+// Column player
+//
+// Instead of using the duality of the two problems,
+// here we separates the problem for the column player.
+// In part because we can. :-)
+//
+Solver<MIP> m2("lp_solve");
+var<MIP>{float} x2[1..cols](m2,0,1); // column player
+var<MIP>{float} v2(m2, -2,2);
+minimize<m2> v subject to {
+
+  forall(i in 1..cols) 
+    m2.post(v2 - sum(j in 1..cols) (x2[j]* game[i,j]) >= 0);
+
+  m2.post(sum(i in 1..cols) x2[i] == 1);
+
+} 
+
+
+cout << "\ncolumn player:" << endl;
+cout << "v2: " << v2.getValue() << endl;
+cout << "Strategies: ";
+forall(i in 1..cols)
+  cout << x2[i].getValue() << " ";
+cout << endl;
+
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+

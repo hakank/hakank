@@ -1,0 +1,175 @@
+/*
+  Pandigital numbers in Comet.
+
+
+  From 
+  Albert H. Beiler "Recreations in the Theory of Numbers", quoted from
+  http://www.worldofnumbers.com/ninedig1.htm
+  """
+  [ Chapter VIII : Digits - and the magic of 9 ]
+  [ I found the same exposé in Shakuntala Devi's book 
+    "Figuring : The Joy of Numbers" ]
+ 
+  The following curious table shows how to arrange the 9 digits so that 
+  the product of 2 groups is equal to a number represented by the 
+  remaining digits."
+ 
+    12 x 483 = 5796 
+    42 x 138 = 5796 
+    18 x 297 = 5346 
+    27 x 198 = 5346 
+    39 x 186 = 7254 
+    48 x 159 = 7632 
+    28 x 157 = 4396 
+    4 x 1738 = 6952 
+    4 x 1963 = 7852
+  """
+ 
+  See also
+  
+  * MathWorld http://mathworld.wolfram.com/PandigitalNumber.html
+  """
+  A number is said to be pandigital if it contains each of the digits 
+  from 0 to 9 (and whose leading digit must be nonzero). However, 
+  "zeroless" pandigital quantities contain the digits 1 through 9. 
+  Sometimes exclusivity is also required so that each digit is 
+  restricted to appear exactly once.
+  """
+  
+  * Wikipedia http://en.wikipedia.org/wiki/Pandigital_number
+ 
+  * Also see my other pandigital number models
+    - MiniZinc: http://www.hakank.org/minizinc/pandigital_numbers.mzn
+    - Gecode/R: http://www.hakank.org/gecode_r/pandigital_numbers.rb
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+
+/*
+//
+// Converts a number to/from (slice of) an array.
+//
+function void toNumX(Solver<CP> m, var<CP>{int}[] x, var<CP>{int} num, int base, int start, int end) {
+  int n = x.getSize();
+  m.post(num == sum(i in start..end) 
+         base^(end-i)*x[i]
+         );
+}
+*/
+
+//
+// Converts a number to/from (slice of) an array.
+// This version is better than the one above since it allows
+// "all-slices". See below for usage.
+//
+function void toNum(Solver<CP> m, var<CP>{int}[] x, var<CP>{int} num, int base) {
+  int start = x.getLow();
+  int end = x.getHigh();
+  m.post(num == sum(i in start..end) 
+         base^(end-i)*x[i]
+         );
+}
+
+
+Integer num_solutions(0);
+
+
+int base = 10;      // the base to use
+
+cout << "Using base " << base << endl;
+int max_d = base-1; // Max digit
+int start = 1;      // Set to 0 for including 0.
+int x_len = max_d+1-start; // length of the array
+
+int max_num = base^(base-3); // largest possible number 
+
+//
+// Loop through combinations of len1 and len2
+//
+forall(len1 in 1..1+(x_len / 3)) {
+
+  forall(len2 in 1..1+(x_len / 3)) {
+
+    Solver<CP> m();
+    var<CP>{int} x[1..x_len](m, start..max_d);
+    var<CP>{int} num1(m, 1..max_num); // first number
+    var<CP>{int} num2(m, 1..max_num); // second number
+    var<CP>{int} res(m,  1..max_num); // product
+
+    exploreall<m> {
+      
+      m.post(alldifferent(x));
+
+      // Note: this must be before the toNumX constraints
+      m.post(num1 * num2 == res);
+
+      // num1. 
+      toNum(m, all(i in 1..len1) (x[i]), num1, base);
+      // toNumX(m, x, num1, base, 1, len1);
+      
+      // num2
+      toNum(m, all(j in len1+1..len1+len2) (x[j]), num2, base);
+      // toNumX(m, x, num2, base, len1+1, len1+len2);
+      
+      // the product
+      toNum(m, all(k in len1+len2+1..x_len) (x[k]), res, base);
+      // toNumX(m, x, res, base, len1+len2+1, x_len);
+      
+      // sanitizing and symmetry breaking
+      m.post(x[1] > 0);
+      m.post(x[len1+1] > 0);
+      m.post(x[len1+len2+1] > 0);
+      
+      m.post(num1 > 0 && num1 < num2);
+      m.post(num2 > 0 && num2 < res);
+      m.post(res > 0);
+      
+    } using {
+      
+      label(m);
+
+      num_solutions := num_solutions + 1;
+
+      //
+      // Print the solution
+      //
+      cout << "solution #" << num_solutions << "  : ";
+      // cout << x << endl;
+      cout << num1 << " * " << num2 << " = " << res  << " base 10 " << endl;
+
+      if (base != 10) {
+        forall(i in 1..len1) 
+          cout << x[i] << " ";
+
+        cout << " * ";
+
+        forall(i in len1+1..len1+len2) 
+          cout << x[i] << " ";
+        
+        cout << " =  ";
+
+        forall(i in len1+len2+1..x_len) 
+          cout << x[i] << " ";
+        
+        cout << " base " << base << endl;
+
+        cout << endl;
+      }
+
+
+    }
+
+  }
+}
+
+cout << "\nnum_solutions (base " << base << "): " << num_solutions << endl;
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;

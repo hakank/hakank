@@ -1,0 +1,106 @@
+/*
+
+  Assignment problem in Comet.
+
+  Assignment problem from Winston "Operations Research.
+  The swimming team example, page 398:
+  """
+  Doc Councillman is putting together a relay team for
+  the 400-meter relay. Each swimmer must swin 100 meter
+  of breaststroke, backstroke, butterfly or freestyle.
+  Doc believes that each swimmer will attain the times
+  given in table 51. To minimize the team's time for the race,
+  which swimmer should swim which stroke.
+  """
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int rows = 4;
+int cols = 4;
+string name[1..rows] = ["Gary Hall", "Mark Spitz", "Jim Montgomery", "Chet Jastremski"];
+
+
+string type[1..cols] = ["free", "breast", "fly", "back"];
+
+
+int cost[1..rows, 1..cols] = 
+ [
+  [54, 54, 51, 53],
+  [51, 57, 52, 52],
+  [50, 53, 54, 56],
+  [56, 54, 55, 53]
+  ];
+
+Solver<CP> m();
+
+var<CP>{int} x[1..rows, 1..cols](m, 0..1);
+var<CP>{int} total_cost(m, 0..10000);
+
+
+Integer num_solutions(0);
+
+
+function void assignment(var<CP>{int}[,] x ,
+                         int[,] cost,
+                         var<CP>{int} total_cost) {
+
+  Solver<CP> cp = x[1,1].getSolver();
+  range rowR = x.getRange(0);
+  range colR = x.getRange(1);
+  bool same_range = rowR == colR;
+
+  forall(i in rowR) cp.post(sum(j in colR) (x[i,j]) == 1);
+
+  // somewhat general: if #cols > #rows then all columns don't have
+  //                   to be used.
+  if (same_range) {
+    forall(j in colR) cp.post(sum(i in rowR) (x[i,j]) == 1);
+  } else {
+    forall(j in colR) cp.post(sum(i in rowR) (x[i,j]) <= 1);
+  }
+  
+  cp.post(total_cost == sum(i in rowR, j in colR) x[i,j]*cost[i,j]);
+
+}
+
+
+minimize<m> total_cost subject to {
+
+  assignment(x, cost, total_cost);
+
+} using {
+
+  label(m);
+
+  num_solutions++;
+
+}
+
+cout << "total_cost: " << total_cost << endl;
+cout << "Matrix: " << endl;
+forall(i in 1..rows) {
+  forall(j in 1..cols) {
+    cout << x[i,j] << " ";
+  }
+  cout << endl;
+}
+
+cout << "\nAssignments: " << endl;
+forall(i in 1..rows, j in 1..cols: x[i,j] > 0) 
+  cout << name[i] << ": " << type[j] << endl;
+
+   
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

@@ -1,0 +1,186 @@
+/*
+
+  Water buckets problem in Comet.
+
+  From http://www.dis.uniroma1.it/~tmancini/index.php?currItem=research.publications.webappendices.csplib2x.problemDetails&problemid=018
+  """
+  Problem description
+  This is a generalization of the CSPLib specification, which is as follows: 
+  Given an 8 pint bucket of water, and two empty buckets which can contain 
+  5 and 3 pints respectively, the problem requires to divide the water into 
+  two by pouring water between buckets (that is, to end up with 4 pints in 
+  the 8 pint bucket, and 4 pints in the 5 pint bucket) in the smallest number 
+  of transfers.
+
+  The generalization consists in making the specification parametric with 
+  respect to the start and goal configurations, which are now inputs to the problem.
+
+  Problem input
+
+    * Function start, assigning an initial amount of water to each bucket
+    * Function goal, assigning the goal amount of water to each bucket 
+
+  Search space
+  The set of all possibile sequences of configurations (states), where a 
+  configuration is a triple encoding the amount of water in each bucket at 
+  a given time-step
+
+  Constraints
+
+    * C1: At beginning, buckets contain the amount of water specified by 
+          function start
+    * C2: At the end, buckets contain the amount of water specified by 
+          function goal
+    * C3: The configuration at each step differs from that of the next one 
+          in that the amount of water of exactly 2 buckets changes (that in 
+          the others remain the same)
+    * C4: The overall amount of water is the same at each time step
+    * C5: After each transition (involving buckets b1 and b2), either the 
+          source bucket becomes empty, or the target becomes full
+  """
+
+  Translation from the OPL code at
+  http://www.dis.uniroma1.it/~tmancini/index.php?problemid=018&solver=OPL&spec=BASE&currItem=research.publications.webappendices.csplib2x.problemDetails#listing
+
+
+  Compare with the MIP model http://www.hakank.org/3_jugs.co
+  and the MiniZinc version of this model 
+    http://www.hakank.org/minizinc/water_buckets1.mzn
+  
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int nb_buckets = 3;
+int max_step = 10;
+range buckets = 1..nb_buckets;
+range steps = 1..max_step;  
+
+int capacity[buckets] = [8,5,3];
+int start[buckets]= [8,0,0]; 
+int goal[buckets]= [4,4,0];
+
+
+Solver<CP> m();
+
+// Assertions
+forall(b in buckets) {
+  assert(start[b] <= capacity[b] &&
+         goal[b] <= capacity[b]);
+}
+assert( (sum(b in buckets)(start[b]) == sum(b in buckets)(goal[b])));
+
+
+
+// Search space: The set of all possibile sequences of configurations 
+// (states), where a configuration is a triple encoding the amount of 
+// water in each bucket at a given time-step
+var<CP>{int} state[s in steps,b in buckets](m, 0..capacity[b]);
+var<CP>{int} goal_step(m, 1..max_step); // Objective function
+
+ // For the AUX constraint, see below.
+// var<CP>{bool} change[1..max_step-1, buckets](m);
+
+Integer num_solutions(0);
+
+minimize<m> goal_step subject to {
+
+  forall(b in buckets) {
+    // C1: At beginning, buckets contain the amount of water specified by 
+    //     function start
+    m.post(state[1,b]==start[b]);
+
+
+    // C2: At the end, buckets contain the amount of water specified 
+    //     by function goal
+
+    // 
+    // hakank: Note: This constraint gives the following error
+    // """
+    // Comet/compiler/cotfd.cob[388]: Element on matrix of var not yet implemented
+    // """
+    // m.post(state[goal_step,b] == goal[b]);
+
+    // hakank: This works, though:
+    forall(i in 1..max_step)
+      m.post(i == goal_step => state[i, b] == goal[b]);
+  }
+
+ 
+  forall(step in 1..max_step-1) {
+    // C3: The configuration at each step differs from that of the next 
+    //     one in that the amount of water of exactly 2 buckets changes 
+    //     (that in the others remain the same)
+    m.post(sum(b in buckets)(state[step,b] != state[step+1, b]) == 2);
+    
+    // C4: The overall amount of water is the same at each time step
+    m.post(sum(b in buckets)(state[step,b]) == sum(b in buckets)(state[step+1,b]));
+    
+    // C5: After each transition (involving buckets b1 and b2), 
+    //     either the source bucket becomes empty, or the target becomes full
+    forall(b1 in buckets, b2 in buckets : b1 != b2) {
+      m.post(
+             (
+              (state[step, b1] != state[step+1, b1]) && 
+              (state[step, b2] != state[step+1, b2])
+              ) 
+             =>
+             (
+              state[step+1,b1] == 0 || 
+              state[step+1,b1] == capacity[b1] ||
+              state[step+1,b2] == 0 || 
+              state[step+1,b2] == capacity[b2]
+              )
+             );
+    }
+
+  }
+
+  // From the second version
+  // http://www.dis.uniroma1.it/~tmancini/index.php?problemid=018&solver=OPL&spec=AUX&currItem=research.publications.webappendices.csplib2x.problemDetails#listing
+  // AUX: Addition of auxiliary predicates
+  // Auxiliary predicate stores, for each time step, which buckets change 
+  // their amount of water wrt the next one
+  
+  // hakank: This actually makes it slightly slower, so I skip it.
+  /*
+   forall(step in 1..max_step-1, b in buckets) {
+     m.post(change[step,b] == (state[step,b] != state[step+1,b]));
+   }
+  */
+  
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << "goal_step: " << goal_step << endl;
+  forall(s in steps) {
+    if (s <= goal_step) {
+      forall(b in buckets) {
+        cout << state[s,b] << " ";
+      }
+      cout << endl;
+    }
+  }
+  cout << endl;
+    
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

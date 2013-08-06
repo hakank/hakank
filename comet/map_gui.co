@@ -1,0 +1,155 @@
+/*
+
+ Simple coloring problem in Comet.
+
+ From Pascal Van Hentenryck "The OPL Optimization Programming Language", 
+ page 7, 42.
+
+ Note: a somewhat generalized model is in country_cp.co.
+ 
+ This version animates the solution.
+
+ This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+ Also, see my Comet page: http://www.hakank.org/comet 
+
+
+*/
+
+import cotfd;
+import qtvisual;
+include "stree";
+
+// This Animation class is adapted from the example
+// queensg.co
+//
+class Animation {
+   Visualizer         _gui;
+   int              _scale;
+   VisualRectangle[,] _grq;
+   range              Size;
+   var<CP>{int}[]    x;
+   STree              tree;
+   boolean        _tracing;
+
+   Animation(Solver<CP> m,var<CP>{int}[] q) {
+      _gui  = new Visualizer();
+      _tracing =true;
+      x = q;
+      Size = q.getRange();
+      cout << "Size: " << Size << endl;
+      int sizeDraw = 800;
+      VisualDrawingBoard board(_gui,"Diet CP-style"); 
+      _scale = (sizeDraw)/(Size.getSize());
+      _grq = new VisualRectangle[Size,Size];
+      forall(i in Size,j in Size) {
+         _grq[i,j] = new VisualRectangle(board,_scale*(i-1)+2,_scale*(j-1)+2,_scale-4,_scale-4);
+         _grq[i,j].setColor("green");
+      }     
+      _gui.addNotebookPage(board);     
+      board.fitContent();      
+      tree = new STree(_gui,m);
+
+      // Toggle "tracing mode" whenever the button in the toolbar is clicked.
+      whenever _gui.getTracingButton()@clicked() 
+         _tracing = !_tracing;
+      // Whenever COMET backtracks (after a failure), change the status line to green
+      whenever m.getSearchController()@doBacktrack() { 
+         if (_tracing) {
+            _gui.getStatusBar().setColor("green");
+            pause("Backtracked...");
+         }
+      }
+      // Whenever COMET fails (before it backtracks), change the status line to red.
+      whenever m.getSearchController()@onFail(int f) {   
+         if (_tracing) {
+            _gui.getStatusBar().setColor("red");
+            pause("Failing...");
+         }
+      }   
+      // Whenever COMET produces a solution, report it and pause until the user clicks on "run"
+      whenever m.getSearchController()@onFeasibleSolution(Solution s) 
+         tellSolution();
+      // Whenever we return from a labeling on the manager, pause with a suitable message.
+      whenever return(m@label(var<CP>{int} x,int v)) {
+         pause("labeled " + IntToString(x.getId()) + " to " + IntToString(v) + " ... ");         
+      }      
+      // setup the xs board. 
+      animate();
+      // pause before the initial start
+      pause("");
+   }
+   void pause(string msg) { 
+      if (_tracing) {
+         _gui.getStatusBar().setText(msg.concat("Press Run to continue"));
+         sleepUntil _gui.getRunButton()@clicked();
+      }
+   }
+   void waitQuit() {
+      sleepUntil _gui.getCloseButton()@clicked();
+   }
+   void tellSolution() {
+     if (_tracing) {
+        _gui.getStatusBar().setText("Solution Found. Press Run to continue");
+        _gui.getStatusBar().setColor("yellow");      
+        sleepUntil _gui.getRunButton()@clicked();
+        _gui.getStatusBar().setColor("gray");
+      }
+   }
+   void animate() {
+      forall(i in Size) {
+        cout << "i: " << i << endl;
+         whenever x[i]@onRecover(int v)   _grq[i,v].setColor("green");
+         whenever x[i]@onUnbind(int v)    _grq[i,v].setColor("green");     
+         whenever x[i]@onValueBind(int v) _grq[i,v].setColor("blue");
+         whenever x[i]@onValueLost(int v) _grq[i,v].setColor("red");        
+      } 
+   }
+}
+
+int t0 = System.getCPUTime();
+
+enum Country = {Belgium, Denmark, France, Germany, Netherlands, Luxembourg};
+enum Colors  = {blue, red, yellow, gray};
+
+
+Solver<CP> m();
+var<CP>{int} color[Country](m,Colors);
+
+Animation theAnim(m,color);
+
+Integer num_solutions(0); 
+
+exploreall<m> {
+
+  
+  m.post(color[France] != color[Belgium]);
+  m.post(color[France] != color[Luxembourg]);
+  m.post(color[France] != color[Germany]);
+  m.post(color[Luxembourg] != color[Germany]);
+  m.post(color[Luxembourg] != color[Belgium]);
+  m.post(color[Belgium] != color[Netherlands]);
+  m.post(color[Belgium] != color[Germany]);
+  m.post(color[Germany] != color[Netherlands]);
+  m.post(color[Germany] != color[Denmark]);
+
+  m.post(color[Belgium] == 0);
+
+} using {
+
+  labelFF(m);
+
+  num_solutions++;
+  cout << num_solutions << ": " << color << endl;
+
+}
+
+cout << "It was " << num_solutions << " solutions." << endl;
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+cout << "isFeasible  = " << m.isFeasible() << endl;
+
+theAnim.waitQuit();

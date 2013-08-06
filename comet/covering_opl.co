@@ -1,0 +1,117 @@
+/*
+
+  Set covering problem in Comet.
+
+  This example is from the OPL example covering.mod
+  """
+  Consider selecting workers to build a house. The construction of a 
+  house can be divided into a number of tasks, each requiring a number of 
+  skills (e.g., plumbing or masonry). A worker may or may not perform a 
+  task, depending on skills. In addition, each worker can be hired for a 
+  cost that also depends on his qualifications. The problem consists of 
+  selecting a set of workers to perform all the tasks, while minimizing the 
+  cost. This is known as a set-covering problem. The key idea in modeling 
+  a set-covering problem as an integer program is to associate a 0/1 
+  variable with each worker to represent whether the worker is hired. 
+  To make sure that all the tasks are performed, it is sufficient to 
+  choose at least one worker by task. This constraint can be expressed by a 
+  simple linear inequality.
+  """
+
+  Solution from the OPL model:
+  """
+  Optimal solution found with objective: 14
+  crew= {23 25 26}
+  """
+
+  Comet solution:
+  objective tightened to: 14
+  Crew={23,25,26}
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int NbWorkers = 32;
+range Workers = 1..NbWorkers;
+enum Tasks = { masonry, carpentry, plumbing, ceiling,
+     electricity, heating, insulation, roofing, 
+     painting, windows, facade, garden, 
+     garage, driveway, moving };
+
+set{int} Qualified[Tasks] = 
+  [
+   { 1,  9, 19,  22,  25,  28,  31 },
+   { 2, 12, 15, 19, 21, 23, 27, 29, 30, 31, 32 },
+   { 3, 10, 19, 24, 26, 30, 32 },
+   { 4, 21, 25, 28, 32 },
+   { 5, 11, 16, 22, 23, 27, 31 },
+   { 6, 20, 24, 26, 30, 32 },
+   { 7, 12, 17, 25, 30, 31 } ,
+   { 8, 17, 20, 22, 23  },
+   { 9, 13, 14,  26, 29, 30, 31 },
+   { 10, 21, 25, 31, 32 },
+   { 14, 15, 18, 23, 24, 27, 30, 32 },
+   { 18, 19, 22, 24, 26, 29, 31 },
+   { 11, 20, 25, 28, 30, 32 },
+   { 16, 19, 23, 31 },
+   { 9, 18, 26, 28, 31, 32 }
+];
+
+int Cost[Workers] = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 8, 9 ];
+
+Solver<CP> m();
+
+var<CP>{bool} Hire[Workers](m);
+
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> sum(c in Workers) Cost[c] * Hire[c] subject to {
+
+  // m.post(sum(c in Workers) Cost[c] * Hire[c] <= 14); // for exploreall
+
+  forall(j in Tasks)
+    m.post(sum( c in Qualified[j] ) 
+           Hire[c] >= 1);
+  
+} using {
+
+  // A note about the labeling:
+  // label(m) or label(Hire) gives the follwing statistics:
+  //  #choices = 42703
+  //  #fail    = 51348
+  //  #propag  = 651888
+
+  // With this labeling, it's better
+  //  #choices = 144
+  //  #fail    = 169
+  //  #propag  = 2078
+  forall(c in Workers : !Hire[c].bound()) by (Hire[c].getSize(), -Cost[c]) {
+     label(Hire[c]);
+  }
+
+  num_solutions := num_solutions + 1;
+
+  set{int} Crew = filter(c in Workers) Hire[c];
+  cout << "Crew=" << Crew << endl;
+
+}
+
+cout << endl;
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

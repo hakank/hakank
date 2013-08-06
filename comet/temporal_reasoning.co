@@ -1,0 +1,224 @@
+/*
+
+  Temporal reasoning in Comet.
+
+
+  From Krzysztof R. Apt "Principle of Constraint Programming", page 23ff
+  
+  Also see the presentation 
+  http://homepages.cwi.nl/~apt/pcp/ch2-sli.pdf.gz, page 15ff)
+  
+  """
+  Consider the following problem:
+ 
+  The meeting ran non-stop the whole day.
+  Each person stayed at the meeting for a continous period of time.
+  The meeting began while Mr Jones was present and finished
+  while Ms White was present.
+  Ms_White arrived after the meeting has began.
+  In turn, Director Smith, was also present but he arrived after
+  Jones had left.
+  Mr Brown talked to Ms White in presence of Smith.
+  Could possibly Jones and White have talked during this meeting?
+  """
+
+  The solution in Apt's presentation is 
+  [0,3,1,5,0,5,4,5,2,6]
+  
+ 
+  Compare with the MiniZinc model:
+  http://www.hakank.org/minizinc/temporal_reasoning.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+/*
+
+  Coding:
+
+  J: Jones
+  B: Brown
+  S: Smith
+  W: White
+  M: Meeting
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+range D = 0..9;
+
+Solver<CP> m();
+var<CP>{int} J1(m, D);
+var<CP>{int} J2(m, D);
+var<CP>{int} M1(m, D);
+var<CP>{int} M2(m, D);
+var<CP>{int} B1(m, D);
+var<CP>{int} B2(m, D);
+var<CP>{int} S1(m, D);
+var<CP>{int} S2(m, D);
+var<CP>{int} W1(m, D);
+var<CP>{int} W2(m, D);
+
+
+
+Integer num_solutions(0);
+// explore<m> {
+// exploreall<m> {
+minimize<m>  J2+W2  subject to {
+
+
+  //
+  // The story
+  // 
+
+  // Meeting and Jones
+  m.post(J1 < M1 && M1 < J2);
+
+  // Meeting and White  
+  overlaps(m, M1, M2, W1, W2);
+
+  // Meeting and Smith
+  real_overlap(m, M1, M2, S1, S2);
+    
+  // Jones and Smith
+  before(m, J1, J2, S1, S2);
+    
+  // Brown and Smith
+  real_overlap(m, B1, B2, S1, S2);
+
+  // Brown and White
+  real_overlap(m, B1, B2, W1, W2);
+
+  // Smith and White
+  real_overlap(m, S1, S2, W1, W2);
+
+  // "Could possibly Jones and White have talked during this meeting?"
+  weak_overlap(m,J1, J2, W1, W2);
+
+   // L = [0,2,1,4,0,4,3,4,2,5]
+   // L = [0,3,1,5,0,5,4,5,2,6] // Apt's solution in the presentation
+
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << J1 << " " << J2 << " " << M1 << " " << M2 << " " << B1 << " ";
+  cout << B2 << " " << S1 << " " << S2 << " " << W1 << " " << W2 << endl;
+
+  cout << "[J1,J2]: " << "[" << J1 << "," << J2 << "]" << endl;
+  cout << "[W1,W2]: " << "[" << W1 << "," << W2 << "]" << endl;
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+
+//
+// General
+//
+function void t_interval(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2) {
+  m.post(X1 < X2);
+}
+
+
+function void before(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m,X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X2 < Y1);
+}
+
+function void after(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  before(m, Y1, Y2, X1, X2);
+}
+
+function void meets(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m, X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X2 == Y1);
+}
+
+function void met_by(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  meets(m,Y1, Y2, X1, X2);
+}
+
+function void overlaps(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m, X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X1 < Y1);
+  m.post(Y1 < X2);
+  m.post(X2 < Y2);
+}
+
+function void overlapped_by(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  overlaps(m, Y1, Y2, X1, X2);
+}
+
+function void starts(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m,X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X1 == Y1);
+  m.post(X2 < Y2);
+}
+
+
+function void started_by(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  starts(m, Y1, Y2, X1, X2);
+}
+
+
+function void during(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m, X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X1 > Y1);
+  m.post(X2 < Y2);
+}
+
+function void t_contains(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  during(m, Y1, Y2, X1, X2);
+}
+
+function void finishes(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m, X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X1 > Y1);
+  m.post(X2 == Y2);
+}
+
+function void finished_by(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  finishes(m, Y1, Y2, X1, X2);
+}
+
+function void t_equal(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  t_interval(m, X1, X2);
+  t_interval(m, Y1, Y2);
+  m.post(X1 == Y1);
+  m.post(X2 == Y2);
+}
+
+function void real_overlap(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  m.post(X1 < Y2); 
+  m.post(Y1 < X2);
+}
+
+function void weak_overlap(Solver<CP> m, var<CP>{int} X1, var<CP>{int} X2, var<CP>{int} Y1, var<CP>{int} Y2) {
+  m.post(X1 <= Y2); 
+  m.post(Y1 <= X2);
+}
+

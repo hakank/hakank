@@ -1,0 +1,226 @@
+/*
+
+  KenKen in Comet.
+
+  http://en.wikipedia.org/wiki/KenKen
+  """
+  KenKen or KEN-KEN is a style of arithmetic and logical puzzle sharing 
+  several characteristics with sudoku. The name comes from Japanese and 
+  is translated as "square wisdom" or "cleverness squared".
+  ...
+  The objective is to fill the grid in with the digits 1 through 6 such that:
+
+    * Each row contains exactly one of each digit
+    * Each column contains exactly one of each digit
+    * Each bold-outlined group of cells is a cage containing digits which 
+      achieve the specified result using the specified mathematical operation: 
+        addition (+), 
+        subtraction (-), 
+        multiplication (x), 
+        and division (÷). 
+        (Unlike in Killer sudoku, digits may repeat within a group.)
+  """
+
+  The solution is:
+
+    5 6 3 4 1 2
+    6 1 4 5 2 3
+    4 5 2 3 6 1
+    3 4 1 2 5 6
+    2 3 6 1 4 5
+    1 2 5 6 3 4
+    
+  This model also implements the harder problem where the operation
+  is not stated, using the calc() for all operations.
+  The result is the same:
+    5 6 3 4 1 2
+    6 1 4 5 2 3
+    4 5 2 3 6 1
+    3 4 1 2 5 6
+    2 3 6 1 4 5
+    1 2 5 6 3 4
+    
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+
+/*
+  I am not (yet) comfortable with the "slice" operators in Comet, hence
+  the hardwired function with different number of parameters.
+
+  Also, this model is - of course - not at all general.
+
+  On second thought, see kenken2.co for a more general model.
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 6;
+range R = 1..6;
+
+Solver<CP> m();
+
+var<CP>{int} x[1..n, 1..n](m, R);
+
+// a + b = res
+function void add(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, int res) {
+  m.post(a + b == res);
+}
+
+// a + b + c = res
+function void add(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, var<CP>{int} c, int res) {
+  m.post(a + b + c == res);
+}
+
+// a + b + c + d = res
+function void add(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, var<CP>{int} c, var<CP>{int} d, int res) {
+  m.post(a + b + c + d == res);
+}
+
+// a * b = res
+function void mult(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, int res) {
+  m.post(a * b == res);
+}
+
+// a * b * c = res
+function void mult(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, var<CP>{int} c, int res) {
+  m.post(a * b * c == res);
+}
+ 
+// a * b * c * d = res
+function void mult(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, var<CP>{int} c, var<CP>{int} d, int res) {
+  m.post(a * b * c * d == res);
+}
+
+
+// (a / b || b / a)
+function void div(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, int res) {
+  m.post(
+         (a * res == b) || ( b * res == a )
+         );
+}
+
+// (a - b || b - a)
+function void minus(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, int res) {
+  m.post( (abs(a-b) == res) );
+}
+
+
+//
+// calc(): for the harder problem where there is no operator stated
+//
+
+// a op b = res
+function void calc(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, int res) {
+  m.post(
+
+         (a + b == res) ||
+         (a * b == res) ||
+         (a * res == b) || 
+         (b * res == a) ||
+         (abs(a-b) == res)
+         );
+}
+
+// a op b op c = res
+function void calc(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, var<CP>{int} c, int res) {
+  m.post(
+         (a + b + c == res) ||
+         (a * b * c == res)
+         
+);
+}
+
+// a op b op c op d = res
+function void calc(Solver<CP> m, var<CP>{int} a, var<CP>{int} b, var<CP>{int} c, var<CP>{int} d, int res) {
+  m.post(
+         (a + b + c + d == res) ||
+         (a * b * c * d == res)
+          );
+}
+
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  // all rows and columns must be unique
+  forall(i in R)
+      m.post(alldifferent(all(j in R) x[i,j]));
+
+  forall(j in R)
+    m.post(alldifferent(all(i in R) x[i,j]));
+
+  
+  // Now, the specific constraints for the puzzle
+  // from the Wikipedia page.
+  // For a better view of the problem, see 
+  // http://en.wikipedia.org/wiki/File:KenKenProblem.svg
+  /*
+  // original problem
+  add(  m, x[1,1], x[2,1], 11);
+  div(  m, x[1,2], x[1,3],  2);
+  mult( m, x[1,4], x[2,4], 20);
+  mult( m, x[1,5], x[1,6],  x[2,6], x[3,6], 6);
+  minus(m, x[2,2], x[2,3],  3);
+  div(  m, x[2,5], x[3,5],  3);
+  mult( m, x[3,1], x[3,2],  x[4,1], x[4,2], 240);
+  mult( m, x[3,3], x[3,4],  6);
+  mult( m, x[4,3], x[5,3],  6);
+  add(  m, x[4,4], x[5,4],  x[5,5], 7);
+  mult( m, x[4,5], x[4,6], 30);
+  mult( m, x[5,1], x[5,2],  6);
+  add(  m, x[5,6], x[6,6],  9);
+  add(  m, x[6,1], x[6,2],  x[6,3], 8);
+  div(  m, x[6,4], x[6,5],  2);
+  */
+
+  // harder problem where just the result is stated
+  calc(m, x[1,1], x[2,1], 11);
+  calc(m, x[1,2], x[1,3],  2);
+  calc(m, x[1,4], x[2,4], 20);
+  calc(m, x[1,5], x[1,6],  x[2,6], x[3,6], 6);
+  calc(m, x[2,2], x[2,3],  3);
+  calc(m, x[2,5], x[3,5],  3);
+  calc(m, x[3,1], x[3,2],  x[4,1], x[4,2], 240);
+  calc(m, x[3,3], x[3,4],  6);
+  calc(m, x[4,3], x[5,3],  6);
+  calc(m, x[4,4], x[5,4],  x[5,5], 7);
+  calc(m, x[4,5], x[4,6], 30);
+  calc(m, x[5,1], x[5,2],  6);
+  calc(m, x[5,6], x[6,6],  9);
+  calc(m, x[6,1], x[6,2],  x[6,3], 8);
+  calc(m, x[6,4], x[6,5],  2);
+
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+      
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << x[i,j] << " ";
+    }
+    cout << endl;
+  }
+
+  cout << endl;
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

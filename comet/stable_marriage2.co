@@ -1,0 +1,126 @@
+/*
+
+  Stable marriage in Comet.
+
+  Problem from Pascal Van Hentenryck
+  "The OPL Optimization Programming Language", page 43ff.
+
+
+  Data from
+  http://mathworld.wolfram.com/StableMarriageProblem.html
+  """
+  In the rankings illustrated above, the male-optimal stable
+  marriage is
+      4, 2, 6, 5, 3, 1, 7, 9, 8,
+  and the female-optimal stable marriage is
+      1, 2, 8, 9, 3, 4, 7, 6, 5.
+  A stable marriage can be found using StableMarriage[m, w] in the
+  Mathematica package Combinatorica` (which can be loaded with the
+  command <<Combinatorica`)
+  """
+
+  There are 6 solutions, but none is the solution given above:
+     wife   : 6 4 9 8 3 7 1 5 2
+     husband: 7 9 5 2 8 1 6 4 3
+
+     wife   : 6 5 9 8 3 7 1 4 2
+     husband: 7 9 5 8 2 1 6 4 3
+
+     wife   : 6 1 4 8 5 7 3 2 9
+     husband: 2 8 7 3 5 1 6 4 9
+
+     wife   : 6 1 4 8 5 9 3 2 7
+     husband: 2 8 7 3 5 1 9 4 6
+
+     wife   : 6 4 1 8 5 7 3 2 9
+     husband: 3 8 7 2 5 1 6 4 9
+
+     wife   : 7 5 9 8 3 6 1 4 2
+     husband: 7 9 5 8 2 6 1 4 3
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+Solver<CP> cp();
+
+range Women = 1..9;
+range Men = 1..9;
+
+int rankWomen[Women,Men] = 
+  [
+   [3, 1, 5, 2, 8, 7, 6, 9, 4],
+   [9, 4, 8, 1, 7, 6, 3, 2, 5],
+   [3, 1, 8, 9, 5, 4, 2, 6, 7],
+   [8, 7, 5, 3, 2, 6, 4, 9, 1],
+   [6, 9, 2, 5, 1, 4, 7, 3, 8],
+   [2, 4, 5, 1, 6, 8, 3, 9, 7],
+   [9, 3, 8, 2, 7, 5, 4, 6, 1],
+   [6, 3, 2, 1, 8, 4, 5, 9, 7],
+   [8, 2, 6, 4, 9, 1, 3, 7, 5]
+   ];
+
+int rankMen[Men,Women] = 
+  [
+   [7, 3, 8, 9, 6, 4, 2, 1, 5],
+   [5, 4, 8, 3, 1, 2, 6, 7, 9],
+   [4, 8, 3, 9, 7, 5, 6, 1, 2],
+   [9, 7, 4, 2, 5, 8, 3, 1, 6],
+   [2, 6, 4, 9, 8, 7, 5, 1, 3],
+   [2, 7, 8, 6, 5, 3, 4, 1, 9],
+   [1, 6, 2, 3, 8, 5, 4, 9, 7],
+   [5, 6, 9, 1, 2, 8, 4, 3, 7],
+   [6, 1, 4, 7, 5, 8, 3, 9, 2]
+   ];
+
+
+var<CP>{int} wife[Men](cp,Men);
+var<CP>{int} husband[Women](cp,Women);
+
+Integer num_solutions(0);
+
+solveall<cp> {
+  forall(m in Men)
+    cp.post(husband[wife[m]] == m);
+  
+  forall(w in Women)
+    cp.post(wife[husband[w]] == w);
+  
+  forall(m in Men, o in Women)
+    cp.post(rankMen[m,o] < rankMen[m, wife[m]] => rankWomen[o,husband[o]] < rankWomen[o,m]);
+  
+  forall(w in Women, o in Men)
+    cp.post(rankWomen[w,o] < rankWomen[w,husband[w]] => rankMen[o,wife[o]] < rankMen[o,w]);
+  
+} using {
+  
+  labelFF(cp);
+  num_solutions++;
+
+  cout << "wife   : ";
+  forall(i in Men)
+    cout << wife[i] << " ";
+  cout << endl;
+
+  cout << "husband: ";
+  forall(i in Women)
+    cout << husband[i] << " ";
+  cout << endl;
+
+  cout << endl;
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;

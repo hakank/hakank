@@ -1,0 +1,133 @@
+/*
+
+  Assignment problem in Comet.
+
+  From GLPK:s example assign.mod:
+  """
+  The assignment problem is one of the fundamental combinatorial
+  optimization problems.
+ 
+  In its most general form, the problem is as follows:
+ 
+  There are a number of agents and a number of tasks. Any agent can be
+  assigned to perform any task, incurring some cost that may vary
+  depending on the agent-task assignment. It is required to perform all
+  tasks by assigning exactly one agent to each task in such a way that
+  the total cost of the assignment is minimized.
+ 
+  (From Wikipedia, the free encyclopedia.) 
+  """
+  
+  Note: This model use the MIP solver which returns a solution in 0.5 secs.
+  Using the CP solver takes about 14 seconds...
+
+
+  Compare with the MiniZinc model:
+  http://www.hakank.org/minizinc/assignment6.mzn
+
+ 
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+// import cotfd;
+import cotln;
+
+int t0 = System.getCPUTime();
+
+// number of agents 
+int m = 8;
+
+// number of tasks
+int n = 8;
+
+// set of agents 
+range I = 1..m;
+
+// set of tasks 
+range J = 1..n;
+
+// cost of allocating task j to agent i 
+// """
+// These data correspond to an example from [Christofides].
+//
+// Optimal solution is 76
+// """
+int c[I,J] = 
+[
+ [13, 21, 20, 12,  8, 26, 22, 11],
+ [12, 36, 25, 41, 40, 11,  4,  8],
+ [35, 32, 13, 36, 26, 21, 13, 37],
+ [34, 54,  7,  8, 12, 22, 11, 40],
+ [21,  6, 45, 18, 24, 34, 12, 48],
+ [42, 19, 39, 15, 14, 16, 28, 46],
+ [16, 34, 38,  3, 34, 40, 22, 24],
+ [26, 20,  5, 17, 45, 31, 37, 43]
+ ];
+
+
+Solver<MIP> cp("lp_solve");
+
+
+// For the output: the assignment as task number.
+var<MIP>{int} assigned[J](cp, 0..10000);
+
+var<MIP>{int} costs[I](cp, 0..10000); // the cost per assignment
+
+// x[i,j] = 1 means task j is assigned to agent i
+// note that variables x[i,j] are binary, however, there is no need to
+// declare them so due to the totally unimodular constraint matrix 
+var<MIP>{int} x[I,J](cp, 0..10000);
+
+// the objective is to find a cheapest assignment 
+var<MIP>{int} z(cp, 0..10000);
+
+Integer num_solutions(0);
+
+minimize<cp> z subject to {
+
+  // each agent can perform at most one task 
+  forall(i in I) 
+    cp.post(sum(j in J) x[i,j] <= 1);
+
+  // each task must be assigned exactly to one agent 
+  forall(j in J) 
+    cp.post(sum(i in I) x[i,j] == 1);
+
+  // the total cost
+  cp.post(z == sum(i in I, j in J) c[i,j] * x[i,j]);
+
+  // to which task and what cost is person i assigned (for output in MiniZinc)
+  forall(i in I) {
+    cp.post(assigned[i] == sum(j in J) j*x[i,j]);
+    cp.post(costs[i] == sum(j in J) c[i,j]*x[i,j]);
+  }
+
+}
+// using { labelFF(cp); } 
+
+
+
+cout << "z: " << z.getValue() << endl;
+cout << "Assigned: " << endl;
+forall(j in J) 
+   cout << assigned[j].getValue() << " ";
+cout << endl;
+cout << "Matrix: " << endl;
+forall(i in I) {
+  forall(j in J) {
+    cout << x[i,j].getValue() << " ";
+  }
+  cout << endl;
+}
+
+cout << endl;
+
+   
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+
+

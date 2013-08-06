@@ -1,0 +1,100 @@
+/*
+  Blending problem in Comet.
+
+  From the OPL model blending.mod
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+import cotln;
+
+int t0 = System.getCPUTime();
+
+int   NbMetals = 3;
+int   NbRaw = 2;
+int   NbScrap = 2;
+int   NbIngo = 1;
+range Metals = 1..NbMetals;
+range Raws = 1..NbRaw;
+range Scraps = 1..NbScrap;
+range Ingos = 1..NbIngo;
+
+float CostMetal[Metals] = [22, 10, 13];
+float CostRaw[Raws] =  [6, 5];
+float CostScrap[Scraps] =  [ 7, 8];
+float CostIngo[Ingos] =   [9 ];
+float Low[Metals] =  [0.05, 0.30, 0.60];
+float Up[Metals] =  [0.10, 0.40, 0.80];
+float PercRaw[Metals,Raws] = [ [ 0.20, 0.01 ], [ 0.05, 0 ], [ 0.05, 0.30 ] ]; 
+float PercScrap[Metals,Scraps] =  [ [ 0 , 0.01 ], [ 0.60, 0 ], [ 0.40, 0.70 ] ];
+float PercIngo[Metals,Ingos] =  [ [ 0.10 ], [ 0.45 ], [ 0.45 ] ];
+int Alloy  = 71;
+
+
+Solver<MIP> m("lp_solve");
+var<MIP>{float} p[Metals](m);
+var<MIP>{float} r[Raws](m);
+var<MIP>{float} s[Scraps](m);
+var<MIP>{int} i[Ingos](m);
+var<MIP>{float} metal[j in Metals](m, Low[j] * Alloy, Up[j] * Alloy);
+
+
+Integer num_solutions(0);
+minimize<m> 
+  sum(j in Metals) CostMetal[j] * p[j] +
+  sum(j in Raws)   CostRaw[j]   * r[j] +
+  sum(j in Scraps) CostScrap[j] * s[j] +
+  sum(j in Ingos)  CostIngo[j]  * i[j]
+
+subject to {
+
+  forall( j in Metals )
+    m.post(metal[j] ==
+      p[j] + 
+           sum(k in Raws)   PercRaw[j,k]   * r[k] +
+           sum(k in Scraps) PercScrap[j,k] * s[k] +
+           sum(k in Ingos)  PercIngo[j,k]  * i[k]);
+
+  m.post(sum( j in Metals ) metal[j] == Alloy);
+
+}
+
+cout << "objective: " << m.getObjectiveValue() << endl;
+
+cout << "P: " << endl;
+forall(i in Metals) {
+  cout << i << ": " << p[i].getValue() << endl;
+}
+
+cout << "Raws: " << endl;
+forall(i in Raws) {
+  cout << i << ": " << r[i].getValue() << endl;
+}
+
+cout << "Scraps: " << endl;
+forall(i in Scraps) {
+  cout << i << ": " << s[i].getValue() << endl;
+}
+
+cout << "Ingos: " << endl;
+forall(j in Ingos) {
+  cout << j << ": " << i[j].getValue() << endl;
+}
+
+cout << "Metals: " << endl;
+forall(i in Metals) {
+  cout << i << ": " << metal[i].getValue() << endl;
+}
+
+
+
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+
+

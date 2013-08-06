@@ -1,0 +1,125 @@
+/*
+
+  The House problem (scheduling) in Comet.
+
+  From Pascal Van Hentenryck "The OPL Optimization Programming Language",
+  page 52.
+
+  Note: something don't work or I use them wrong:
+  * DiscreteResource don't have a consumes method,
+    Reservoir does, however.
+  * Reservoir must have an initial capacity
+  * setCapacityMax don't work: gives a null pointer exception
+
+  According to the book the solution should be:
+
+  masonry: [0 -- 7 --> 7]
+  carpentry: [7 -- 3 --> 10]
+  plumbing: [7 -- 8 --> 15]
+  ceiling: [15 -- 3 --> 18] <---
+  roofing: [10 -- 1 --> 11]
+  painting: [18 -- 2 --> 20] <---
+  windows: [11 -- 1 --> 12]
+  facade: [15 -- 2 --> 17]
+  garden: [15 -- 1 --> 16]
+  moving: [20 -- 1 --> 21] <---
+  
+  With the objective value = 21.
+
+
+
+  This model gives the following result:
+  masonry: [0 -- 7 --> 7]
+  carpentry: [7 -- 3 --> 10]
+  plumbing: [7 -- 8 --> 15]
+  ceiling: [7 -- 3 --> 10] <---
+  roofing: [10 -- 1 --> 11]
+  painting: [10 -- 2 --> 12] <---
+  windows: [11 -- 1 --> 12]
+  facade: [15 -- 2 --> 17]
+  garden: [15 -- 1 --> 16]
+  moving: [17 -- 1 --> 18] <---
+
+  With the objective value = 18
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+enum Tasks = {masonry,carpentry,plumbing,ceiling,roofing,painting,
+              windows,facade,garden,moving};
+
+int duration[Tasks] =  [ 7, 3, 8, 3, 1, 2, 1, 2, 1, 1];
+int totalDuration   = sum(t in Tasks) duration[t];
+
+Scheduler<CP> cp(totalDuration);
+Activity<CP> a[t in Tasks](cp,duration[t]);
+
+// DiscreteResource don't have an consumes method
+// alternative version: uses a[t].requires (but requires don't consume!)
+// DiscreteResource<CP> budget(cp,29000);
+
+
+// Reservoir has a consumes method...
+// must have initial capacity (should be 20000?)
+Reservoir<CP> budget(cp,29000,29000); 
+
+Integer num_solutions(0);
+
+minimize<cp> a[moving].end() subject to {
+
+  // note: no cp.post(...) here
+  a[masonry].precedes(a[carpentry]);
+  a[masonry].precedes(a[plumbing]);
+  a[masonry].precedes(a[ceiling]);
+  a[carpentry].precedes(a[roofing]);
+  a[ceiling].precedes(a[painting]);
+  a[roofing].precedes(a[windows]);
+  a[roofing].precedes(a[facade]);
+  a[plumbing].precedes(a[facade]);
+  a[roofing].precedes(a[garden]);
+  a[plumbing].precedes(a[garden]);
+  a[windows].precedes(a[moving]);
+  a[facade].precedes(a[moving]);
+  a[garden].precedes(a[moving]);
+  a[painting].precedes(a[moving]);
+  
+  // for budget as Reservoir: throws null pointer exception 
+  // for budget as DiscreteResource, this don't change anything (of course!)
+  // budget.setCapacityMax(0, 15, 20000); 
+
+  forall(t in Tasks)  {
+
+    // a[t].consumes(budget, 1000*duration[t]); // for Reservoir
+    budget.consumes(a[t], 1000*duration[t]); // alternative 
+
+    // a[t].requires(budget, 1000*duration[t]); // for DiscreteResource
+  }
+
+
+} using {
+
+  label(cp);
+
+}
+
+
+forall(t in Tasks) {
+  cout << t << ": " << a[t] << " ";
+  cout << endl;
+}
+
+cout << endl;  
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;
+

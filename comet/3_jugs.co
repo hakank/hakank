@@ -1,0 +1,134 @@
+/*
+
+  Three jugs problem in Comet.
+  Modelled as a shortest path problem, using the MIP solver.
+
+  Problem from Taha "Introduction to Operations Research", page 245f
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/3_jugs.mzn
+
+  
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotln;
+
+int t0 = System.getCPUTime();
+
+int n = 15;
+int start = 1; // start node
+int end = 15;  // end node
+int M = 999; // large number
+
+string nodes[1..n] = [
+                      "8,0,0",
+                      "5,0,3",
+                      "5,3,0",
+                      "2,3,3",
+                      "2,5,1",
+                      "7,0,1",
+                      "7,1,0",
+                      "4,1,3",
+                      "3,5,0",
+                      "3,2,3",
+                      "6,2,0",
+                      "6,0,2",
+                      "1,5,2",
+                      "1,4,3",
+                      "4,4,0" // goal!
+                      ];
+
+// distance
+int d[1..n, 1..n] = 
+[
+ [M, 1, M, M, M, M, M, M, 1, M, M, M, M, M, M],
+ [M, M, 1, M, M, M, M, M, M, M, M, M, M, M, M],
+ [M, M, M, 1, M, M, M, M, 1, M, M, M, M, M, M],
+ [M, M, M, M, 1, M, M, M, M, M, M, M, M, M, M],
+ [M, M, M, M, M, 1, M, M, 1, M, M, M, M, M, M],
+ [M, M, M, M, M, M, 1, M, M, M, M, M, M, M, M],
+ [M, M, M, M, M, M, M, 1, 1, M, M, M, M, M, M],
+ [M, M, M, M, M, M, M, M, M, M, M, M, M, M, 1], 
+ [M, M, M, M, M, M, M, M, M, 1, M, M, M, M, M],
+ [M, 1, M, M, M, M, M, M, M, M, 1, M, M, M, M],
+ [M, M, M, M, M, M, M, M, M, M, M, 1, M, M, M],
+ [M, 1, M, M, M, M, M, M, M, M, M, M, 1, M, M],
+ [M, M, M, M, M, M, M, M, M, M, M, M, M, 1, M],
+ [M, 1, M, M, M, M, M, M, M, M, M, M, M, M, 1], 
+ [M, M, M, M, M, M, M, M, M, M, M, M, M, M, M]
+ ];
+
+Solver<MIP> m("lp_solve");
+
+var<MIP>{int} rhs[1..n](m, -1..1); // requirements (right hand statement)
+
+// objective to minimize
+var<MIP>{int} z(m, 0..M);
+
+// the resulting matrix, 1 if connected, 0 else
+var<MIP>{int} x[1..n, 1..n](m, 0..1);
+var<MIP>{int} outFlow[1..n](m, 0..1);
+var<MIP>{int} inFlow[1..n](m, 0..1);
+
+Integer num_solutions(0);
+
+minimize<m> z subject to {
+
+  m.post(z == sum(i in 1..n, j in 1..n: d[i,j]<M) d[i,j]*x[i,j]);
+  
+  forall(i in 1..n) {
+    if (i == start)
+      m.post(rhs[i] == 1);
+    else if (i == end) 
+      m.post(rhs[i] == -1);
+    else  
+      m.post(rhs[i] == 0);
+  }
+
+  // must be larger than 0
+  forall(i in 1..n, j in 1..n : d[i,j] < M)
+    m.post(x[i,j] >= 0);
+  
+  // outflow constraint
+  forall(i in 1..n) 
+    m.post(outFlow[i] == sum(j in 1..n : d[i,j]<M) (x[i,j]));
+  
+  // inflow constraint
+  forall(j in 1..n)
+    m.post(inFlow[j]  == sum(i in 1..n : d[i,j]<M) (x[i,j]));
+
+  // inflow = outflow
+  forall(i in 1..n) 
+    m.post(outFlow[i]-inFlow[i]==rhs[i]);
+
+
+}
+
+/*
+forall(i in 1..n) {
+  forall(j in 1..n : x[i,j].getValue() == 1) {
+    // cout << x[i,j].getValue() << " ";
+    cout << nodes[i] << " (" << i << ") -> " << nodes[j] << " (" << j << ")" << endl;
+  }
+}
+*/
+
+int t = start;
+while (t != end) {
+  cout << nodes[t] << " -> ";
+  tryall<m>(j in 1..n : x[t,j].getValue() == 1 ) {
+    cout << nodes[j] << endl;
+    t = j;
+  }  
+}
+
+
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+
+

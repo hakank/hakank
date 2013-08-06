@@ -1,0 +1,225 @@
+/*
+
+  Set covering, scheduling in Comet.
+  
+  Example from the swedish book 
+  Lundgren, Rönnqvist, Värbrand "Optimeringslära", page 410.
+  
+  Work schedule for a security company with three employees: Anders, Lotta, Per
+  (common swedish names).
+ 
+  The tasks has different qualifications, and each person
+  may give preferences to each task (each person has 10 points to spread).
+ 
+  Task     Time (h)           Anders           Lotta            Per
+                         Qualify, Points  Qualify, Points  Qualify, Points
+   1             4         X        5      X         4       
+   2             3         X        2                        X       2
+   3             3         X        1      X         2       X       4
+   4             3                         X         2       X       1
+   5             3         X        1                        X       1
+   6             2         X        1                        X       2
+   7             2                         X         1
+   8             2                         X         1
+ 
+  Each person must work 7 or 8 hour per night.
+ 
+  From the table above, 19 different combinations is construed, given at
+  page 412. See the model below for the combinations.
+ 
+  The problem is now to assign one combination to each person so
+  that all tasks is covered exactly once, and maximizing the total
+  preference points.
+ 
+  The answer from the book, page 413: 
+  The combination is 1 (Anders), 13 (Lotta), 18 (Per) with the following
+  tasks:
+    Anders: 1,2    Lotta: 4,7,8    Per: 3,5,6
+ 
+  The total preference points is 18.
+
+  
+  Note: There is another solution with preference points 18:
+  tasks 3, 13, 14
+    Anders: 1,5  Lotta: 4,7,8   Per: 2,3,6
+
+
+  Compare with the MiniZinc model 
+  http://www.hakank.org/minizinc/set_covering5.mzn
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+
+int num_tasks = 8;  // the tasks
+int num_combinations =  19; // number of combinations
+int num_persons = 3;
+range preference_range = 1..10;
+
+// which combination belongs to which person
+// 1: Anders, 2: Lotta, 3: Per
+int combinations_person[1..num_combinations] = 
+ [
+  // Anders, comb. 1..6
+  1, 1, 1, 1, 1, 1,
+
+  // Lotta, comb. 7..13
+  2, 2, 2, 2, 2, 2, 2,
+
+  // Per, comb., 14..19
+  3, 3, 3, 3, 3, 3
+];
+
+// preference point per tasks
+int preferences[1..num_persons, 1..num_tasks] =
+[ 
+  // 1 2 3 4 5 6 7 8
+ [5,2,1,0,1,1,0,0], // Anders
+ [4,0,2,2,0,0,1,1], // Lotta
+ [0,2,4,1,1,2,0,0] // Per
+];
+
+// the combinations and the tasks they contain (set representation)
+set{int} c[1..num_combinations] = 
+  [
+   // Anders
+   {1,2},   // 1
+   {1,3},   // 2
+   {1,5},   // 3
+   {2,3,6}, // 4
+   {2,5,6}, // 5
+   {3,5,6}, // 6 
+   
+   // Lotta
+   {1,3},   // 7
+   {1,4},   // 8
+   {1,7,8}, // 9
+   {3,4,7}, // 10
+   {3,4,8}, // 11
+   {3,7,8}, // 12
+   {4,7,8}, // 13
+   
+   // Per
+   {2,3,6}, // 14
+   {2,4,6}, // 15
+   {2,5,6}, // 16
+   {3,4,6}, // 17
+   {3,5,6}, // 18 
+   {4,5,6}  // 19
+   ];
+
+
+// time per task
+int time_per_task[1..num_tasks] = [4,3,3,3,3,2,2,2];
+
+
+Solver<CP> m();
+
+// decision variable: which alternatives to choose
+var<CP>{int} x[1..num_combinations](m, 0..1);
+
+// the total preference points per person fullfilled in the task
+// (larger is better)
+var<CP>{int} preference_points[1..num_persons](m, preference_range);
+
+// how long do the work?
+var<CP>{int} time_per_person[1..num_persons](m, 0..100);
+
+// the objective to optimize: total of preference points, 
+var<CP>{int} sum_pref_points(m, 0..preference_range.getSize()*num_persons);
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+// maximize<m> sum_pref_points subject to {
+
+  m.post(sum_pref_points == sum(i in 1..num_persons) preference_points[i]);
+  
+  m.post(sum_pref_points >= 18); // for exploreall
+
+  // for each person...
+  forall(p in 1..num_persons) {
+
+    // select one combination per person
+    m.post(sum(j in 1..num_combinations : 
+               combinations_person[j] == p) (
+                                             x[j]
+                                             ) == 1);
+    
+    // the preference points for the person
+    m.post(preference_points[p] ==
+           sum(i in 1..num_combinations, 
+               j in 1..num_tasks: 
+               combinations_person[i] == p) (
+                                             x[i] * (c[i].contains(j)) * preferences[p,j]
+                                             )
+           );
+    
+    // all must work between 7 and 8 hours per night
+    m.post(time_per_person[p] ==
+           sum(i in 1..num_combinations, 
+               j in 1..num_tasks: 
+               combinations_person[i] == p) (
+                                             x[i] * (c[i].contains(j)) * time_per_task[j]
+                                             )
+           );
+    
+  }
+
+  // all tasks must be covered exactly once
+  forall(j in 1..num_tasks) {
+    m.post(sum(i in 1..num_combinations) (x[i] * (c[i].contains(j))) == 1);
+  }
+
+
+  // check the time for each person
+  forall(p in 1..num_persons) 
+    m.post(time_per_person[p] >= 7 && time_per_person[p] <= 8);
+
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << "Solution #" << num_solutions << endl;
+  cout << "sum_pref_points: " << sum_pref_points << endl;
+  cout << preference_points << endl;
+  cout << time_per_person << endl;
+
+  cout << "The tasks for each person: " << endl;
+  string person = "";
+  forall(i in 1..num_combinations) {
+    if (x[i] == 1) {
+      if (i >= 1 && i <= 6) 
+        person = "Anders";
+      else if (i >= 7 && i <= 13) 
+        person = "Lotta";
+      else 
+        person = "Per";
+
+      cout << person << ": " << c[i] << " (task " << i << ")" << endl;
+    }
+  }
+
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

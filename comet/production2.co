@@ -1,0 +1,84 @@
+/*
+  Production-planning in Comet.
+
+  From the OPL model production.mod
+  Added tuple.
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotln;
+int t0 = System.getCPUTime();
+
+enum Products = {kluski, capellini, fettucine};
+enum Resources = {flour, eggs};
+
+tuple productData {
+  float demand;
+  float insideCost;
+  float outsideCost;
+  // float consumption[Resources]; // hakank: this don't work!
+}
+
+/*
+// This is how it is stated in OPL (v6)
+productData Product[Products] = 
+[
+ <100,0.6,0.8, [0.5,0.2]>,
+ <200,0.8,0.9, [0.4,0.4]>,
+ <300,0.3,0.4, [0.3,0.6]>
+ ];
+*/
+// This works.
+productData Product[Products] = 
+  [
+   productData(100,0.6,0.8),
+   productData(200,0.8,0.9),
+   productData(300,0.3,0.4)
+ ];
+
+float Capacity[Resources] = [ 20, 40 ];
+
+// Consumption must be outside of the tuple
+float Consumption[Products, Resources] = [ [0.5, 0.2], [0.4, 0.4], [0.3, 0.6] ];
+Solver<LP> m("lp_solve");
+var<LP>{float} Inside[Products](m);
+var<LP>{float} Outside[Products](m);
+
+Integer num_solutions(0);
+minimize<m>  
+  sum(p in Products) 
+    (Product[p].insideCost*Inside[p] + Product[p].outsideCost * Outside[p])
+
+subject to {
+
+  forall(r in Resources)
+    m.post(sum(p in Products)
+           Consumption[p,r]*Inside[p] <= Capacity[r]);
+  // Product[p].consumption[r]*Inside[p] <= Capacity[r]); // don't work
+
+  forall(p in Products)
+    m.post(Inside[p] + Outside[p] >= Product[p].demand);
+
+
+}
+
+cout << "objective: " << m.getObjectiveValue() << endl;
+forall(p in Products) {
+  cout << p << " Inside: " << Inside[p].getValue()  << " Outside: " << Outside[p].getValue() << endl;
+}
+
+cout << "\nReduced costs" << endl;
+forall(p in Products) {
+  cout << p << " Inside: " << Inside[p].getReducedCost()  << " Outside: " << Outside[p].getReducedCost() << endl;
+}
+
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+
+

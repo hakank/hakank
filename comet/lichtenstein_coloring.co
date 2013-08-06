@@ -1,0 +1,248 @@
+/*
+  Lichtenstein coloring problem in Comet.
+
+  From 
+  http://bit-player.org/2008/the-chromatic-number-of-liechtenstein
+  and
+  """
+  It seems that Liechtenstein is divided into 11 communes, which 
+  emphatically do not satisfy the connectivity requirement of the four 
+  color map theorem. Just four of the communes consist of a single 
+  connected area (Ruggell, Schellenberg and Mauren in the north, and 
+  Triesen in the south). 
+  ...
+  In the map above, each commune is assigned its own color, and so we 
+  have an 11-coloring. It’s easy to see we could make do with fewer 
+  colors, but how many fewer? I have found a five-clique within the map; 
+  that is, there are five communes that all share a segment of border 
+  with one another. It follows that a four-coloring is impossible. Is 
+  there a five-coloring? What is the chromatic number of Liechtenstein?
+  """
+ 
+  Also see
+  * http://blog.mikael.johanssons.org/archive/2008/10/on-the-chromatic-number-of-lichtenstein/
+
+  * "Map coloring problem: Lichtenstein"
+    http://www.hakank.org/constraint_programming_blog/2009/01/map_coloring_lichtensteing.html
+    and the MiniZinc model: http://www.hakank.org/minizinc/lichtenstein_coloring.mzn
+  
+ 
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+
+//
+// communes
+//
+int BalzersC = 1;
+int EschenC = 2;
+int GamprinC = 3;
+int MaurenC = 4;
+int PlankenC = 5;
+int RuggellC = 6;
+int SchaanC = 7;
+int SchellenbergC = 8;
+int TriesenC = 9;
+int TriesenbergC = 10;
+int VaduzC = 11;
+
+
+//
+// enclaves/exclaves
+//
+int Balzers1 = 1;
+int Balzers2 = 2;
+int Balzers3 = 3;
+int Eschen1 = 4;
+int Eschen2 = 5;
+int Eschen3 = 6;
+int Gamprin1 = 7;
+int Gamprin2 = 8;
+int Mauren = 9;
+int Planken1 = 10;
+int Planken2 = 11;
+int Planken3 = 12;
+int Planken4 = 13;
+int Ruggell = 14;
+int Schaan1 = 15;
+int Schaan2 = 16;
+int Schaan3 = 17;
+int Schaan4 = 18;
+int Schaan5 = 19;
+int Schellenberg = 20;
+int Triesen = 21;
+int Triesenberg1 = 22;
+int Triesenberg2 = 23;
+int Vaduz1 = 24;
+int Vaduz2 = 25;
+int Vaduz3 = 26;
+int Vaduz4 = 27;
+int Vaduz5 = 28;
+int Vaduz6 = 29;
+
+
+
+int num_communes = 11;
+int num_colors = 11; // num_communes; // 6
+int num_edges = 45;
+int num_enclaves = 29;
+
+//
+// the enclaves and corresponding commune
+//
+int cc[1..num_enclaves] =
+[
+BalzersC, BalzersC, BalzersC, 
+EschenC, EschenC, EschenC, 
+GamprinC, GamprinC, 
+MaurenC, 
+PlankenC, PlankenC, PlankenC, PlankenC, 
+RuggellC, 
+SchaanC, SchaanC, SchaanC, SchaanC, SchaanC, 
+SchellenbergC, 
+TriesenC, 
+TriesenbergC, TriesenbergC, 
+VaduzC, VaduzC, VaduzC, VaduzC, VaduzC, VaduzC
+];
+
+//
+// neighbours
+//
+int Lichtenstein[1..num_edges, 1..2] = 
+[
+  [Ruggell, Schellenberg],
+  [Ruggell, Gamprin1],
+  [Schellenberg, Mauren],
+  [Schellenberg, Eschen1],
+  [Mauren, Eschen1],
+  [Gamprin1, Eschen2],
+  [Gamprin1, Vaduz2],
+  [Gamprin1, Schaan1],
+  [Gamprin1, Planken3],
+  [Gamprin1, Eschen1],
+  [Eschen1, Gamprin2],
+  [Eschen1, Planken1],
+  [Eschen2, Schaan1],
+  [Vaduz3, Schaan1],
+  [Vaduz2, Schaan1],
+  [Planken3, Schaan1],
+  [Planken2, Schaan1],
+  [Schaan1, Planken1],
+  [Schaan1, Planken4],
+  [Schaan1, Vaduz1],
+  [Gamprin2, Eschen3],
+  [Eschen3, Vaduz4],
+  [Eschen3, Schaan2],
+  [Vaduz4, Schaan2],
+  [Vaduz4, Planken1],
+  [Schaan2, Planken1],
+  [Planken1, Schaan3],
+  [Vaduz1, Triesenberg1],
+  [Vaduz1, Triesen],
+  [Planken4, Triesenberg1],
+  [Planken4, Balzers2],
+  [Balzers2, Vaduz5],
+  [Balzers2, Schaan4],
+  [Vaduz5, Schaan4],
+  [Schaan4, Triesenberg1],
+  [Schaan4, Vaduz6],
+  [Schaan4, Triesenberg2],
+  [Triesenberg1, Vaduz6],
+  [Triesenberg1, Triesen],
+  [Triesenberg1, Balzers3],
+  [Triesen, Balzers3],
+  [Triesen, Balzers1],
+  [Triesen, Schaan5],
+  [Vaduz6, Schaan5],
+  [Triesenberg2, Schaan5]
+ ];
+
+
+Solver<CP> m();
+
+// colors for the en-/exclaves
+var<CP>{int} color[1..num_enclaves](m,  1..num_communes);
+
+// colors for the communes
+var<CP>{int} color_communes[1..num_communes](m, 1..num_colors);
+
+// what colors are used (for minimizing number of colors)
+var<CP>{int} color_used[1..num_colors](m, 0..num_colors);
+
+// number of colors used
+var<CP>{int} n_colors(m, 1..num_communes); // n_colors = sum(color_used);
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> 
+  n_colors 
+subject to {
+
+  // number of colors used
+  m.post(n_colors == sum(i in 1..num_communes) color_used[i]);
+
+  // connect between colors_used and color
+  forall(i in 1..num_colors) {
+    m.post(color_used[i] == 1 => sum(c in 1..num_enclaves) (color[c] == i) >= 1);
+    m.post(sum(c in 1..num_enclaves) (color[c] == i) >= 1 => color_used[i] == 1);
+  }
+
+
+  // all neighbours must have different colors
+  forall(i in 1..num_edges) {
+    m.post(color[Lichtenstein[i,1]] != color[Lichtenstein[i,2]]);
+  }
+      
+  // first commune (Balzers) has color 1
+  m.post(color_communes[BalzersC] == 1);
+
+  // exclaves of the same commune must have the same color
+  forall(i in 1..num_enclaves, j in 1..num_enclaves : i != j) {
+    if (cc[i] == cc[j]) 
+      m.post(color[i] == color[j]);
+  }
+
+  // connection between commune and en-/exclaves
+  forall(c in 1..num_communes) {
+                                
+    m.post(
+           sum(e in 1..num_enclaves) (
+                                     color_communes[c] == color[e] && cc[e] == c) >= 1);
+      }
+
+
+  // m.post(n_colors <= 5); // for exploreall
+
+} using {
+      
+  // forall(i in 1..color.getSize() : !color[i].bound()) by (color[i].getSize()) {
+  //   label(color[i]);
+  //}
+
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+
+}
+
+cout << "n_colors: " << n_colors << endl;
+cout << color_communes << endl;      
+cout << color << endl;
+cout << color_used << endl;
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

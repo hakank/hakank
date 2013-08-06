@@ -1,0 +1,95 @@
+/*
+
+  Global constraint among in Comet.
+
+  Among: Requires exactly 'n' variables in 'x' to take one of the values in 'v'.
+
+
+  See Global constraint catalog:
+  http://www.emn.fr/x-info/sdemasse/gccat/Camong.html
+
+
+ 
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 5;
+range R = 1..8;
+
+set{int} s = {1,5,8};
+Solver<CP> m();
+var<CP>{int} x[1..n](m, R);
+var<CP>{int} a(m, R);
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  m.post(a == 3);
+  m.post(among(a, x, s));
+
+} using {
+      
+  label(m);
+
+  num_solutions++;
+
+
+  cout << "a: " << a << endl;      
+  cout << x << endl;
+  cout << s << endl;
+  cout << endl;
+
+}
+
+// cout << x << endl;
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+
+/*
+  among(n, x, v)
+
+  From MiniZinc globals.mzn:
+  """
+  Requires exactly 'n' variables in 'x' to take one of the values in 'v'.
+  """
+*/
+class among extends UserConstraint<CP> {
+
+  var<CP>{int} n;
+  var<CP>{int}[] x;
+  set{int} v;
+  
+  among(var<CP>{int} _n, 
+        var<CP>{int}[] _x, 
+        set{int} _v) : UserConstraint<CP>() {
+    n = _n;
+    x = _x;
+    v = _v;
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+
+    Solver<CP> cp = x[1].getSolver();
+    // It would be nice with a neater way of checking if x[i] is in v ...
+    cp.post(n == sum(i in x.rng()) (0 < sum(j in v) (x[i] == j)));
+
+    return Suspend;
+  }
+
+} // end among

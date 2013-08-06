@@ -1,0 +1,99 @@
+/*
+
+  Global constraint inverse in Comet.
+
+  From MiniZinc globals.mzn
+  """
+  Constrains two arrays of int variables, 'f' and 'invf', to represent
+  inverse functions.  All the values in each array must be within the index
+  set of the other array.
+  """
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+// import cotls;
+// import cotln;
+int t0 = System.getCPUTime();
+
+int n = 10;
+range R = 1..n;
+
+int x_init[R]  = [10,1,6,7,4,5,8,3,2,9];
+
+Solver<CP> m();
+var<CP>{int} x[i in 1..n](m, R);
+var<CP>{int} y[i in 1..n](m, R);
+
+
+
+/*
+  From MiniZinc globals.mzn
+  """
+  Constrains two arrays of int variables, 'f' and 'invf', to represent
+  inverse functions.  All the values in each array must be within the index
+  set of the other array.
+  """
+*/
+class inverse extends UserConstraint<CP> {
+  var<CP>{int}[] f;
+  var<CP>{int}[] invf;
+  
+  inverse(var<CP>{int}[] _f, var<CP>{int}[] _invf) : UserConstraint<CP>() {
+    f = _f;
+    invf = _invf;
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = f[1].getSolver();
+    range f_range = f.rng();
+    range invf_range = invf.rng();
+    forall(i in f_range, j in invf_range) {
+      cp.inside(f[i], invf_range);
+      cp.inside(invf[j], f_range);
+      cp.post(j == f[i] => i == invf[j]);
+      cp.post(i == invf[j] => j == f[i]);
+    }
+    
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+    return Suspend;
+  }
+
+}
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  forall(i in R) m.post(x[i] == x_init[i]);
+
+  m.post(inverse(x,y));
+
+} using {
+      
+  label(m);
+
+  num_solutions++;
+      
+  cout << x << endl;
+  cout << y << endl;
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;

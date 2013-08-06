@@ -1,0 +1,201 @@
+/*
+  
+  Word square in Comet.
+
+  From http://en.wikipedia.org/wiki/Word_square
+  """
+  A word square is a special case of acrostic. It consists of a set of words, 
+  all having the same number of letters as the total number of words (the 
+  "order" of the square); when the words are written out in a square grid 
+  horizontally, the same set of words can be read vertically.
+  """
+
+  Compare with the crossword model:
+  * http://www.hakank.org/comet/crossword.co
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+/*
+  
+  Order 6 (i.e. word_len = 6)
+
+  Square:
+  aahing
+  abadia
+  hageen
+  idealy
+  nielli
+  ganyie
+
+  num_solutions: 1
+  time:      4963
+  #choices = 3
+  #fail    = 6
+  #propag  = 1794582
+
+
+  Order 7 (using a bigger dictionary)
+  Square:
+  aalborg
+  abaiser
+  lantaca
+  bittman
+  osamine
+  recanes
+  granese
+
+  num_solutions: 1
+  time:      17343
+  #choices = 5
+  #fail    = 4
+  #propag  = 6315788
+
+ */
+
+
+import cotfd;
+
+int word_len = 5;
+
+int t0 = System.getCPUTime();
+string fileName = "/usr/dict/words";
+cout << "Using problem file: " << fileName << endl;
+  
+ifstream f(fileName);
+//
+// we just use lower case words
+string lower[1..26] = ["a","b","c","d","e","f","g","h","i","j","k","l","m",
+                       "n","o","p","q","r","s","t","u","v","w","x","y","z"];
+
+// Experimental: use a random 1/10th of the words
+UniformDistribution RAND(1..10);
+bool use_random = false;
+
+
+//
+// mapping characters a..z -> 1..26
+// Used for mapping an int in the constraint model. 
+// Also for checking if a word is lower case.
+//
+dict{string->int} lower_int();
+int i = 1;
+forall(c in 1..26) {
+  string tmp = lower[i];
+  lower_int{tmp} = i;
+  i++;
+}
+
+//
+// read the dictionary file and
+// collect the words in a set (_words)
+//
+string line;
+set{string} _words(); 
+int _loaded_words = 0;
+while (true) {
+  line = f.getLine();
+  if (line.length() == 0) {
+    break;
+  }
+  // line = line.substring(0, line.length()-1); // EXPERIMENTAL
+  // cout << line << " " << line.length() << endl;
+  if (line.length() == word_len) {
+    bool isLower = true;
+    forall(i in 0..word_len-1) {
+      string t = line.substring(i,1);
+      if (!lower_int.hasKey(t)) {
+        isLower = false;
+        break;
+      }
+    }
+    // yes, it is a lower case word...
+    if (isLower && (use_random == false || (use_random && RAND.get() == 1) )) {
+      _words.insert(line);
+    }
+  }
+ }
+
+int num_words = _words.getSize();
+cout << "words.getSize(): " << num_words << endl;
+
+//
+// put all word (as ints) in the matrix words.
+//
+int words[1.._words.getSize(), 1..word_len];
+int w_ix = 1;
+forall(w in _words) {
+  forall(i in 0..word_len-1) {
+    int tmp = lower_int{w.substring(i,1)};
+    words[w_ix,i+1] = tmp;
+  }
+  w_ix++;
+}
+
+//
+// This is the model
+//
+Solver<CP> cp();
+
+//
+// E contains which word (position in words) to select for the overlappings.
+//
+int n = word_len; 
+var<CP>{int} E[1..n](cp, 1..num_words);
+
+
+Integer num_solutions(0);
+
+explore<cp> {
+
+  cout << "start explore" << endl;
+
+  forall(i in 1..word_len) {
+    forall(j in 1..word_len) {    
+      cp.post(words[E[i], j] == words[E[j],i], onDomains);
+    }
+  }
+
+  // Ensure that the words are distinct
+  cp.post(alldifferent(E), onDomains);
+
+  // Sorted
+  // forall(i in 1..word_len-1) {
+  //  cp.post(E[i] < E[i+1]);
+  // }
+
+
+} using {
+      
+  cout << "labeling" << endl;
+  labelFF(E);
+  // labelFF(cp);
+
+  num_solutions++;
+
+  cout << "E: " << E << endl;
+  cout << "\nSquare: " << endl;
+  forall(I in 1..word_len) {
+    forall(J in 1..word_len) {
+      cout << lower[words[E[I], J]]; 
+    }
+    cout << endl;
+  }
+
+  cout << endl;
+
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;
+
+

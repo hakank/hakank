@@ -1,0 +1,137 @@
+/*
+
+  Einstein puzzle in Comet.
+
+  This is a Comet version of the OPL code presented in 
+  Daniel Selman's "Einstein's Puzzle - Or, 'The Right Tool for the Job'"
+  http://blogs.ilog.com/brms/2009/02/16/einsteins-puzzle/
+  """
+  * Norwegian cats water Dunhill yellow
+  * Dane horses tea Blends blue
+  * Brit birds milk Pall Mall red
+  * German fish coffee Prince green
+  * Sweed dogs beer Blue Master white
+  """
+
+  // I let the "Sweed" stand, it should - of course - be "Swede".
+
+  See 
+  * http://www.stanford.edu/~laurik/fsmbook/examples/Einstein%27sPuzzle.html
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+
+enum States  = { Brit, Sweed, Dane, Norwegian, German};
+enum Animals = { dogs, fish, birds, cats, horses};
+enum Drinks  = { tea, coffee, milk, beer, water};
+enum Smoke   = { Pall_Mall, Dunhill, Blends, Blue_Master, Prince };
+enum Colors  = { red, green, white, yellow, blue};
+
+range R = 1..5;
+tuple House {
+  States  state;
+  Animals animal;
+  Drinks  drink;
+  Smoke   smoke;
+  Colors  color;
+}
+
+Solver<CP> m();
+
+var<CP>{int} s[States](m,1..5);
+var<CP>{int} a[Animals](m,1..5);
+var<CP>{int} d[Drinks](m, 1..5);
+var<CP>{int} k[Smoke](m,1..5);
+var<CP>{int} c[Colors](m,1..5);
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  // allDifferent needed
+  m.post(alldifferent(s));
+  m.post(alldifferent(a));
+  m.post(alldifferent(d));
+  m.post(alldifferent(k));
+  m.post(alldifferent(c));
+
+  // 1. The Brit lives in a red house.
+  m.post(s[Brit] == c[red]);
+  // 2. The Swede keeps dogs as pets.
+  m.post(s[Sweed] == a[dogs]);
+  // 3. The Dane drinks tea.
+  m.post(s[Dane] == d[tea]);
+  // 5. The owner of the Green house drinks coffee.
+  m.post(c[green] == d[coffee]);
+  // 6. The person who smokes Pall Mall rears birds.
+  m.post(k[Pall_Mall] == a[birds]);
+  // 7. The owner of the Yellow house smokes Dunhill.
+  m.post(c[yellow] == k[Dunhill]);
+  // 8. The man living in the centre house drinks milk.
+  m.post(d[milk] == 3);
+  // 9. The Norwegian lives in the first house.
+  m.post(s[Norwegian] == 1);
+  // 12. The man who smokes Blue Master drinks beer.
+  m.post(k[Blue_Master] == d[beer]);
+  // 13. The German smokes Prince.
+  m.post(s[German] == k[Prince]);
+  // 4. The Green house is on the left of the White house.
+  m.post(c[green] == c[white]-1);
+  // 10. The man who smokes Blends lives next to the one who keeps cats.
+  m.post(abs(k[Blends] - a[cats]) == 1);
+  // 11. The man who keeps horses lives next to the man who smokes Dunhill.
+  m.post(abs(a[horses] - k[Dunhill]) == 1);
+  // 14. The Norwegian lives next to the blue house.
+  m.post(abs(s[Norwegian] - c[blue]) == 1);
+  // 15. The man who smokes Blends has a neighbour who drinks water.
+  m.post(abs(k[Blends] - d[water]) == 1);
+
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  /*
+  // this don't work in Comet
+  House houses[R] = [ n : <S,A,D,K,C> | n in R, S in States, A in Animals, D in Drinks,  K in Smoke, C in Colors :
+          s[S]==n && a[A]==n && d[D]==n && k[K]==n && c[C]==n ];
+                      
+    forall(i in R)
+       writeln(houses[i]);
+  */
+
+  // This is quite close the OPL version, except for the "collecting" stuff.
+  House houses[R];
+  forall(n in R, S in States, A in Animals, D in Drinks, K in Smoke, C in Colors:
+         s[S] == n && a[A] ==n && d[D] == n && k[K] == n && c[C] == n) {
+    houses[n] = House(S,A,D,K,C);
+    cout << S << "\t" << A << "\t"<< D << "\t"<< K << "\t"<< C << "\t"<< endl;
+  }
+
+  forall(i in R) {
+    // cout << houses[i] << endl; // not very beautiful
+    cout << houses[i].state << " " << houses[i].animal << " " << houses[i].drink << " " << houses[i].smoke << " " << houses[i].color <<  endl;
+  }
+    
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+

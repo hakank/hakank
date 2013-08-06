@@ -1,0 +1,86 @@
+/*
+
+  Global constraint sliding sum in Comet.
+
+  From Global Constraint Catalog
+  http://www.emn.fr/x-info/sdemasse/gccat/Csliding_sum.html
+  """
+  sliding_sum(LOW, UP, SEQ, VARIABLES)
+  
+  Purpose
+ 
+  Constrains all sequences of SEQ consecutive variables of the collection 
+  VARIABLES so that the sum of the variables belongs to interval [LOW, UP].
+ 
+  Example
+      (
+      3, 7, 4,<1, 4, 2, 0, 0, 3, 4>
+      )
+ 
+  The example considers all sliding sequences of SEQ=4 consecutive values of 
+  <1, 4, 2, 0,0,3, 4> collection and constraints the sum to be in 
+  [LOW,UP] = [3, 7]. The sliding_sum constraint holds since the sum associated 
+  with the corresponding subsequences 1 4 2 0, 4 2 0 0, 2 0 0 3, and 0 0 3 4 are 
+  respectively 7, 6, 5 and 7.
+  """
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int seq = 4;
+int n = 7;
+int variables_init[1..n] = [1,4,2,0,0,3,3];
+int sum_max = sum(i in 1..n) variables_init[i];
+Solver<CP> m();
+var<CP>{int} variables[1..n](m, 0..4);
+var<CP>{int} low(m, 0..10);
+var<CP>{int} up(m, 0..10);
+
+function void sliding_sum(var<CP>{int} low, var<CP>{int}up, int seq, var<CP>{int} [] variables, int sum_max) {
+  Solver<CP> cp = variables[1].getSolver();
+
+  forall(i in 1..variables.getSize()-seq+1) {
+    var<CP>{int} s(cp, 0..sum_max);
+    cp.post(s == sum(j in i..i+seq-1) variables[j]);
+    cp.post(s >= low);
+    cp.post(s <= up);
+  }
+}
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  forall(i in 1..n) m.post(variables[i] == variables_init[i]);
+  m.post(low == 3);
+  m.post(up == 7);
+
+  // m.post(up == low);
+
+  sliding_sum(low, up, seq, variables, sum_max);
+
+} using {
+      
+  label(m);
+  num_solutions++;
+      
+  cout << variables << " low: " << low << " up: " << up << endl;
+
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

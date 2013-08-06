@@ -1,0 +1,166 @@
+/*
+
+  Global constraint cumulative in Comet.
+
+
+  From MiniZinc globals.mzn
+  """
+  Requires that a set of tasks given by start times 's', durations 'd', and
+  resource requirements 'r', never require more than a global resource bound
+  'b' at any one time.
+  Assumptions:
+  - forall i, d[i] >= 0 and r[i] >= 0
+  """
+
+  Also see Global constraint catalog:
+  http://www.emn.fr/x-info/sdemasse/gccat/Ccumulative.html
+
+  from which the example below is taken.
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 5;
+range R = 1..20;
+
+int origin_init[1..n] = [1,2,3,6,7];
+int duration_init[1..n] = [3,9,10, 6,2];
+int height_init[1..n] = [1,2,1,1,3];
+int end_init[1..n] = [4,11,13,12,9];
+
+ 
+
+Solver<CP> m();
+
+var<CP>{int} origin[1..n](m, R);
+var<CP>{int} duration[1..n](m, R);
+var<CP>{int} height[1..n](m, R);
+var<CP>{int} end[1..n](m, R);
+
+var<CP>{int} limit(m, 0..max(i in 1..n) (origin_init[i]+duration_init[i])); // = 8;  // the minimum limit is 7
+
+
+/*
+  This is heavily borrowed from the cumulative constraint in MiniZinc globals.mzn .
+  """
+  Requires that a set of tasks given by start times 's', durations 'd', and
+  resource requirements 'r', never require more than a global resource bound
+  'b' at any one time.
+  Assumptions:
+  - forall i, d[i] >= 0 and r[i] >= 0
+  """
+*/
+class cumulative extends UserConstraint<CP> {
+  var<CP>{int}[] s;
+  var<CP>{int}[] d;
+  var<CP>{int}[] r;
+  var<CP>{int} b;
+  
+  cumulative(var<CP>{int}[] _s, 
+             var<CP>{int}[] _d, 
+             var<CP>{int}[] _r, 
+             var<CP>{int} _b
+             ) : UserConstraint<CP>() {
+    s = _s;
+    d = _d;
+    r = _r;
+    b = _b;
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+
+    Solver<CP> cp = s[1].getSolver();
+    set{int} tasks = collect(j in filter(i in s.rng()) (r[i].getMax() > 0 && d[i].getMax() > 0 )) j;
+
+    range times = (min(i in tasks) s[i].getMin())..(max(i in tasks) (s[i].getMax() + d[i].getMax()));
+    
+    forall( t in times ) {
+      cp.post(b >= sum(i in tasks) ( ( s[i] <= t && t < s[i] + d[i] ) * r[i] ));
+    }
+    
+    return Suspend;
+  }
+
+}
+
+/*
+  cumulative/5
+  convenience function for cumulative/4: includes the relation
+     end[i] = origin[i] + duration[i]
+ */
+function void cumulative5(var<CP>{int}[] s, 
+                         var<CP>{int}[] d, 
+                         var<CP>{int}[] r, 
+                         var<CP>{int} b,
+                         var<CP>{int}[] e) {
+
+  Solver<CP> cp = e[1].getSolver();
+  cp.post(cumulative(s,d,r,b));
+  forall(i in e.rng()) 
+    cp.post(e[i] == s[i] + d[i]);
+
+}
+                         
+
+//
+// copy_a(init_x, x)
+// copy an int[] -> var int[]
+//
+function void copy_a(int[] init_x, var<CP>{int}[] x) {
+  Solver<CP> cp = x[1].getSolver();
+  forall(i in x.rng()) {
+    cp.post(x[i] == init_x[i]);
+  }
+}
+
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> limit subject to {
+
+  copy_a(origin_init, origin);
+  copy_a(duration_init, duration);
+  // copy_a(end_init, end);
+  copy_a(height_init,height); 
+
+  // m.post(limit >= 7); // for test
+
+  // m.post(cumulative(origin, duration, height, limit));
+  cumulative5(origin, duration, height, limit, end);
+
+  // Note: we must handle  end = origin + duration by ourselves
+  // forall(i in 1..n) 
+  //  m.post(end[i] == origin[i] + duration[i]);
+
+
+} using {
+      
+  label(m);
+
+  num_solutions++;
+      
+  cout << origin << endl;
+  cout << duration << endl;
+  cout << height << endl;
+  cout << end << endl;
+  cout << "limit: " << limit << endl;
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

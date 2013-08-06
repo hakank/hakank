@@ -1,0 +1,136 @@
+/*
+
+  Assignment problem in Comet.
+
+  Assignment problem from Winston "Operations Research.
+  Problem 3, page 399
+  """
+  Tom Cruise, Freddy Prinze Jr, Harrison Ford, and Matt LeBlanc
+  are marooned on a desert island with Jennifer Anniston,
+  Courtney Cos, Gwynneth Paltrow, and Julia Roberts.
+  The 'compatibility matrix' in Table 52 indicate how much happiness
+  each couple would experience if the spend all their time toghether.
+  The happiness earned by a couple is proportional to the fraction
+  of time the spend toghether.
+  ...
+  The optimal solution requires that that each person send all their
+  time with one person of the opposite sex, so this result is often
+  referred to as the Marriage Theorem.
+  """
+
+  There are two optimal solutions with total_cost = 30:
+
+    Solution #1
+    Tom Cruise: Gwynneth Paltrow
+    Freddie Prinz Jr: Courtney Cox
+    Harrison Ford: Julia Roberts
+    Mark LeBlanc: Jennifer Anniston
+
+    Solution #2
+    Tom Cruise: Jennifer Anniston
+    Freddie Prinz Jr: Courtney Cox
+    Harrison Ford: Julia Roberts
+    Mark LeBlanc: Gwynneth Paltrow
+
+
+  Compare with the MiniZinc model:
+  http://www.hakank.org/minizinc/assignment3.mzn
+
+ 
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int rows = 4;
+int cols = 4;
+string row_string[1..rows] = ["Tom Cruise", "Freddie Prinz Jr", "Harrison Ford", "Mark LeBlanc"];
+string col_string[1..cols] = ["Jennifer Anniston", "Courtney Cox", "Gwynneth Paltrow", "Julia Roberts"];
+
+
+int cost[1..rows, 1..cols] = 
+ [
+
+  [7, 5, 8, 2],
+  [7, 8, 8, 4],
+  [3, 5, 7, 9],
+  [5, 5, 6, 7]
+  ];
+
+Solver<CP> m();
+
+var<CP>{int} x[1..rows, 1..cols](m, 0..1);
+var<CP>{int} total_cost(m, 0..10000);
+
+
+Integer num_solutions(0);
+
+
+//
+// assignment(x, cost, total_cost) 
+//
+function void assignment(var<CP>{int}[,] x ,
+                         int[,] cost,
+                         var<CP>{int} total_cost) {
+
+  Solver<CP> cp = x[1,1].getSolver();
+  range rowR = x.getRange(0);
+  range colR = x.getRange(1);
+  bool same_range = rowR == colR;
+
+  forall(i in rowR) cp.post(sum(j in colR) (x[i,j]) == 1);
+
+  // somewhat general: if #cols > #rows then all columns don't have
+  //                   to be used.
+  if (same_range) {
+    forall(j in colR) cp.post(sum(i in rowR) (x[i,j]) == 1);
+  } else {
+    forall(j in colR) cp.post(sum(i in rowR) (x[i,j]) <= 1);
+  }
+  
+  cp.post(total_cost == sum(i in rowR, j in colR) x[i,j]*cost[i,j]);
+
+}
+
+
+exploreall<m> {
+// maximize<m> total_cost subject to {
+
+  m.post(total_cost >= 30); // for exploreall
+  
+  assignment(x, cost, total_cost);
+
+} using {
+
+  label(m);
+
+  num_solutions++;
+
+  cout << "total_cost: " << total_cost << endl;
+  cout << "Matrix: " << endl;
+  forall(i in 1..rows) {
+    forall(j in 1..cols) {
+      cout << x[i,j] << " ";
+    }
+    cout << endl;
+  }
+  
+  cout << "\nAssignments: " << endl;
+  forall(i in 1..rows, j in 1..cols: x[i,j] > 0) 
+    cout << row_string[i] << ": " << col_string[j] << endl;
+  
+  cout << endl;
+
+}
+
+   
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

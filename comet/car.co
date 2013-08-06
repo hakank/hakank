@@ -1,0 +1,106 @@
+/*
+
+  Car sequencing in Comet.
+
+  This is based on the OPL3 model car.mod.
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int nbCars = 6;
+int nbOptions = 5;
+int nbSlots = 10;
+range Cars = 1..nbCars;
+range Options = 1..nbOptions;
+range Slots = 1..nbSlots;
+
+int demand[Cars] = [1, 1, 2, 2, 2, 2];
+
+
+int option[Options,Cars] =
+[
+ [ 1, 0, 0, 0, 1, 1],
+ [ 0, 0, 1, 1, 0, 1],
+ [ 1, 0, 0, 0, 1, 0],
+ [ 1, 1, 0, 1, 0, 0],
+ [ 0, 0, 1, 0, 0, 0]
+ ];
+
+
+tuple Tcapacity {
+   int l;
+   int u;
+}
+
+Tcapacity capacity[Options] = 
+[
+ Tcapacity(1,2),
+ Tcapacity(2,3),
+ Tcapacity(1,3),
+ Tcapacity(2,5),
+ Tcapacity(1,5)
+];
+
+int optionDemand[i in Options] = sum(j in Cars) demand[j] * option[i,j];
+
+cout << "optionDemand: " << optionDemand<< endl;
+
+Solver<CP> m();
+
+var<CP>{int} slot[Slots](m,Cars);
+var<CP>{int} setup[Options,Slots](m,0..1);
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> sum(s in Cars) s*slot[s] subject to {
+
+  forall(c in Cars )
+    m.post(sum(s in Slots ) (slot[s] == c) == demand[c]);
+
+  forall(o in Options, s in 1..nbSlots - capacity[o].u + 1)
+    m.post(sum(j in s..s + capacity[o].u - 1) setup[o,j] <= capacity[o].l);
+
+  forall(o in Options, s in Slots )
+    m.post(setup[o,s] == option[o,slot[s]]);
+
+  forall(o in Options, i in 1..optionDemand[o])
+    m.post(sum(s in 1..(nbSlots - i * capacity[o].u)) setup[o,s] >=
+           (optionDemand[o] - i * capacity[o].l));
+
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << slot << endl;
+  forall(o in Options) {
+    cout << capacity[o].l << "/" << capacity[o].u << ": " ;
+    forall(s in Slots) {
+      cout << setup[o,s] << " ";
+    }
+  cout << endl;
+  }
+  cout << endl;
+    
+
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

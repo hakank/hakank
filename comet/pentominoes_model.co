@@ -1,0 +1,168 @@
+/*
+
+  Pentominoes in Comet.
+
+  This is a port of the MiniZinc benchmark pentominoes_int.mzn 
+
+  See http://en.wikipedia.org/wiki/Pentomino
+
+  Note: In Comet version 2.0 there is a built in regular constraint.
+        This model use my own home brewed...
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+Solver<CP> m();
+
+var<CP>{int} board[1..width*height](m, filled..ntiles+1);
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+explore<m> {
+
+  forall (h in 1..height, w in 1..width-1) {
+    m.post(board[(h-1)*width+w] != ntiles+1, onDomains);
+  }
+
+  forall (h in 1..height) {
+    m.post(board[(h-1)*width+width] == ntiles+1, onDomains);
+  }
+
+  forall (t in 1..ntiles) {
+    int q = tiles[t,Q]; // rows
+    int s = tiles[t,S]; // cols
+    range f = tiles[t,Fstart]..tiles[t,Fend];
+
+    int d[1..q,1..s]; 
+    int ii = 1; int jj = 1;
+    forall(i in tiles[t,Dstart]+1..tiles[t,Dstart]+q*s) {
+      d[ii, jj] = dfa[i];
+      if (jj == s) { jj = 0; ii++; }
+      jj++;
+    }
+
+    m.post(myregular(board,q,s,d,1,f), onDomains);
+  }
+
+} using {
+
+  label(m);
+
+  num_solutions++;
+
+      
+  forall(h in 1..height) {
+    forall(w in 1..width-1) {
+      cout << board[(h-1)*width+w] ;
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+
+//
+// This is a translation of MiniZinc's regular constraint. All comments
+// are from the MiniZinc code.
+// """
+// The sequence of values in array 'x' (which must all be in the range 1..S)
+// is accepted by the DFA of 'Q' states with input 1..S and transition
+// function 'd' (which maps (1..Q, 1..S) -> 0..Q)) and initial state 'q0'
+// (which must be in 1..Q) and accepting states 'F' (which all must be in
+// 1..Q).  We reserve state 0 to be an always failing state.
+// """
+//
+class myregular extends UserConstraint<CP> {
+  var<CP>{int}[] x; 
+  int Q;     // number of states
+  int S;     // input_max
+  int[,] d;  // transition matrix
+  int q0;    // initital_state
+  set{int} F; // accepting states  
+
+  myregular(
+          var<CP>{int}[] _x, 
+          int _Q,     // number of states
+          int _S,     // input_max
+          int[,] _d,  // transition matrix
+          int _q0,    // initital_state
+          set{int} _F // accepting states
+          ) : UserConstraint<CP>() {
+    x = _x;
+    Q = _Q;
+    S = _S;
+    d = _d;
+    q0 = _q0;
+    F = _F;
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+
+    Solver<CP> cp = x[1].getSolver();
+
+    assert(Q > 0); // "regular: 'Q' must be greater than zero",
+    assert(S > 0); // "regular: 'S' must be greater than zero",
+    
+    // d2 is the same as d, except we add one extra transition for
+    // each possible input;  each extra transition is from state zero
+    // to state zero.  This allows us to continue even if we hit a
+    // non-accepted input.
+    int d2[0..Q, 1..S];
+    forall(i in 0..Q) {
+      forall(j in 1..S) {
+        if (i == 0)
+          d2[i,j] = 0;
+        else
+          d2[i,j] = d[i, j];
+      }
+    }
+    
+    // If x has index set m..n, then a[m-1] holds the initial state
+    // (q0), and a[i+1] holds the state we're in after processing
+    // x[i].  If a[n] is in F, then we succeed (ie. accept the
+    // string).
+    range x_range = x.rng();
+    int m = min(i in x_range) i;
+    int n = 1+max(i in x_range) i;
+    
+    var<CP>{int} a[m..n](cp, 0..Q);
+    cp.post(a[m] == q0, onDomains);     // Set a[0].
+    if (cp.getCPStore().getStatus() == Failure)
+      return Failure;
+
+    forall(i in x_range) {
+      cp.inside(x[i], 1..S); // Do this in case it's a var.
+      cp.post(a[i+1] == d2[a[i], x[i]], onDomains); // Determine a[i+1].
+      if (cp.getCPStore().getStatus() == Failure)
+           return Failure;
+    } 
+    cp.inside(a[n], F); // Check the final state is in F.
+    if (cp.getCPStore().getStatus() == Failure)
+      return Failure;
+
+    return Suspend;
+  }
+
+  var<CP>{int}[] getVariables() {
+    return x;      
+  }
+
+}

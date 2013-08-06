@@ -1,0 +1,144 @@
+/*
+
+  Scheduling (building a house) in Comet.
+
+  This model is adapted to Comet from the OPL model sched_intro.mod (examples).
+  """
+  This is a basic problem that involves building a house. The masonry,
+  roofing, painting, etc.  must be scheduled. Some tasks must
+  necessarily take place before others, and these requirements are
+  expressed through precedence constraints.
+  """
+
+  The OPL solution is
+  """
+  Masonry  : 0..35
+  Carpentry: 35..50
+  Plumbing : 35..75
+  Ceiling  : 35..50
+  Roofing  : 50..55
+  Painting : 50..60
+  Windows  : 55..60
+  Facade   : 75..85
+  Garden   : 75..80
+  Moving   : 85..90
+  """
+
+  The Comet solution is
+  masonry: [0 -- 35 --> 35]
+  carpentry: [35 -- 15 --> 50]
+  plumbing: [35 -- 40 --> 75]
+  ceiling: [35 -- 15 --> 50]
+  roofing: [50 -- 5 --> 55]
+  painting: [50 -- 10 --> 60]
+  windows: [55 -- 5 --> 60]
+  facade: [75 -- 10 --> 85]
+  garden: [75 -- 5 --> 80]
+  moving: [85 -- 5 --> 90]
+  objective tightened to: 90
+
+  time:      4
+  #choices = 11
+  #fail    = 0
+  #propag  = 178
+
+  With the extra objective (from sched_time.mod) the result is
+
+  masonry: [20 -- 35 --> 55]
+  carpentry: [75 -- 15 --> 90]
+  plumbing: [55 -- 40 --> 95]
+  ceiling: [75 -- 15 --> 90]
+  roofing: [90 -- 5 --> 95]
+  painting: [90 -- 10 --> 100]
+  windows: [95 -- 5 --> 100]
+  facade: [95 -- 10 --> 105]
+  garden: [95 -- 5 --> 100]
+  moving: [105 -- 5 --> 110]
+
+  time:      122
+  #choices = 1205
+  #fail    = 183
+  #propag  = 35334
+
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+enum tasks = {masonry,carpentry,plumbing,ceiling,roofing,painting,windows,
+             facade,garden,moving};
+
+int duration[tasks] =  [35,15,40,15, 5,10, 5,10, 5, 5];
+int demand[tasks]   =  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+int totalDuration   = sum(t in tasks) duration[t];
+int capacity = 10;
+
+tuple P { tasks before; tasks after; }
+set{P} setOfPrecedences = {
+  P(masonry,   carpentry),
+  P(masonry,   plumbing),
+  P(masonry,   ceiling),
+  P(carpentry, roofing),
+  P(ceiling,   painting),
+  P(roofing,   windows),
+  P(roofing,   facade),
+  P(plumbing,  facade),
+  P(roofing,   garden),
+  P(plumbing,  garden),
+  P(windows,   moving),
+  P(facade,    moving),
+  P(garden,    moving),
+  P(painting,  moving)};
+
+
+Scheduler<CP> cp(totalDuration);
+Activity<CP> a[t in tasks](cp,duration[t]);
+DiscreteResource<CP> d(cp,capacity);
+Activity<CP> makespan(cp,0);
+
+Integer num_solutions(0);
+
+
+// minimize<cp> makespan.end() 
+// This objective is from OPL example sched_time.mod
+minimize<cp> 400 * max(a[moving].end() - 100, 0)     +
+  200 * max(25 - a[masonry].start(), 0)   +
+  300 * max(75 - a[carpentry].start(), 0) +
+  100 * max(75 - a[ceiling].start(), 0)
+
+subject to {
+
+   forall(t in tasks)
+      a[t].precedes(makespan);
+   
+   forall(p in setOfPrecedences)
+      a[p.before].precedes(a[p.after]);
+
+   forall(t in tasks)
+      a[t].requires(d,demand[t]);
+
+} using {
+      
+  labelFF(cp);
+
+}
+
+forall(t in tasks) {
+  cout << t << ": " << a[t] << " ";
+  cout << endl;
+}
+
+cout << endl;  
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;
+

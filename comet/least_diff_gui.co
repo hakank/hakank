@@ -1,0 +1,202 @@
+/*
+   Least diff problem in Comet
+
+   The program solves the following problem:
+
+   What is the smallest difference between two numbers X - Y
+   if you must use all the digits (0..9) exactly once.
+
+   This version also animates the progression of the solver,
+   as well as shows the search tree.
+   1) Start the program 
+        comet least_diff_gui.co
+   2) To show each step click on the Run button
+   3) For showing without pause, click on the Trace button,
+      and the Run again.
+
+   The Animation class was adapted from the example in
+   the distribution.
+     compiler/examples/visu/queensg.co
+
+
+   Compare with the following models:
+   * Comet: http://www.hakank.org/comet/least_diff.co
+            (without the GUI)
+   * MiniZinc: http://www.hakank.org/minizinc/least_diff.mzn
+   * Gecode/R: http://www.hakank.org/gecode_r/least_diff.rb
+   * Choco: http://www.hakank.org/choco/LeastDiff.java
+   * JaCoP: http://www.hakank.org/JaCoP/LeastDiff.java
+
+ */
+
+int t0 = System.getCPUTime();
+
+import cotfd;
+import qtvisual;
+include "stree";
+
+bool debug = false; // show all values of the events
+
+//
+// This Animation class is adapted from the example
+// queensg.co
+// Note the adding of +1 in the animate() function.
+// 
+class Animation {
+   Visualizer         _gui;
+   int              _scale;
+   VisualRectangle[,] _grq;
+   range              Size;
+   var<CP>{int}[]    x;
+   STree              tree;
+   boolean        _tracing;
+
+  Animation(Solver<CP> m,var<CP>{int}[] q, bool debug) {
+      _gui  = new Visualizer();
+      _tracing =true;
+      x = q;
+      Size = q.getRange();
+      int sizeDraw = 800;
+      VisualDrawingBoard board(_gui,"Least Diff Problem"); 
+      _scale = (sizeDraw)/(Size.getSize());
+      _grq = new VisualRectangle[Size,Size];
+      forall(i in Size,j in Size) {
+         _grq[i,j] = new VisualRectangle(board,_scale*(i-1)+2,_scale*(j-1)+2,_scale-4,_scale-4);
+         _grq[i,j].setColor("green");
+      }     
+      _gui.addNotebookPage(board);     
+      board.fitContent();      
+      tree = new STree(_gui,m);
+
+      // Toggle "tracing mode" whenever the button in the toolbar is clicked.
+      whenever _gui.getTracingButton()@clicked() 
+         _tracing = !_tracing;
+
+      // Whenever COMET backtracks (after a failure), change the status 
+      // line to green
+      whenever m.getSearchController()@doBacktrack() { 
+         if (_tracing) {
+            _gui.getStatusBar().setColor("green");
+            pause("Backtracked...");
+         }
+      }
+
+      // Whenever COMET fails (before it backtracks), change the status 
+      // line to red.
+      whenever m.getSearchController()@onFail(int f) {   
+         if (_tracing) {
+            _gui.getStatusBar().setColor("red");
+            pause("Failing...");
+         }
+      }  
+ 
+      // Whenever COMET produces a solution, report it and pause until 
+      // the user clicks on "run"
+      whenever m.getSearchController()@onFeasibleSolution(Solution s) 
+         tellSolution();
+      // Whenever we return from a labeling on the manager, pause with a 
+      // suitable message.
+      whenever return(m@label(var<CP>{int} x,int v)) {
+         pause("labeled " + IntToString(x.getId()) + " to " + IntToString(v) + " ... ");         
+      }  
+    
+      // setup the array
+      animate(debug);
+      // pause before the initial start
+      pause("");
+   }
+
+   void pause(string msg) { 
+      if (_tracing) {
+         _gui.getStatusBar().setText(msg.concat("Press Run to continue"));
+         sleepUntil _gui.getRunButton()@clicked();
+      }
+   }
+   void waitQuit() {
+      sleepUntil _gui.getCloseButton()@clicked();
+   }
+   void tellSolution() {
+     if (_tracing) {
+        _gui.getStatusBar().setText("Solution Found. Press Run to continue");
+        _gui.getStatusBar().setColor("yellow");      
+        sleepUntil _gui.getRunButton()@clicked();
+        _gui.getStatusBar().setColor("gray");
+      }
+   }
+   void animate(bool debug) {
+      forall(i in Size) {
+        cout << "i: " << i << endl;
+        whenever x[i]@onRecover(int v) {  
+          if (debug) cout  << "onRecover " << v << endl;
+          _grq[i,v+1].setColor("green"); 
+        }
+        whenever x[i]@onUnbind(int v)  {  
+          if (debug) cout  << "onUnbind " << v << endl;
+          _grq[i,v+1].setColor("green"); 
+        }
+        whenever x[i]@onValueBind(int v) {  
+          if (debug) cout  << "onValueBind " << v << endl;
+          _grq[i,v+1].setColor("blue"); 
+        }
+        whenever x[i]@onValueLost(int v) {  
+          if (debug) cout  << "onValueLost " << v << endl;
+          _grq[i,v+1].setColor("red"); 
+        }
+      } 
+   }
+}
+
+range Digits = 0..9;
+
+Solver<CP> m();
+var<CP>{int} A(m,Digits);
+var<CP>{int} B(m,Digits);
+var<CP>{int} C(m,Digits);
+var<CP>{int} D(m,Digits);
+var<CP>{int} E(m,Digits);
+var<CP>{int} F(m,Digits);
+var<CP>{int} G(m,Digits);
+var<CP>{int} H(m,Digits);
+var<CP>{int} I(m,Digits);
+var<CP>{int} J(m,Digits);
+
+var<CP>{int} x[1..10];
+x[1]=A; x[2]=B; x[3]=C; x[4]=D;x[5]=E;
+x[6]=F; x[7]=G; x[8]=H; x[9]=I;x[10]=J;
+  
+var<CP>{int} Diff(m, 0..100000);
+var<CP>{int} X(m, 0..100000);
+var<CP>{int} Y(m, 0..100000);
+
+Animation theAnim(m,x, debug);
+
+minimize<m> Diff subject to {
+// exploreall<m> {
+  m.post(alldifferent(x));
+  m.post(X == 10000*A+1000*B+100*C+10*D+E);
+  m.post(Y == 10000*F+1000*G+100*H+10*I+J);
+
+  m.post(X > Y);
+  m.post(Diff == X - Y);
+
+
+} using {
+
+  forall(i in 1..10 : !x[i].bound()) by (-x[i].getSize()) {
+    label(x[i]);
+  }
+
+}
+
+cout << x << endl;
+cout << "Diff: " << Diff << endl;
+cout << "X: " << X << endl;
+cout << "Y: " << Y << endl;
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+theAnim.waitQuit();

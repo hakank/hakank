@@ -1,0 +1,241 @@
+/*
+
+  Generate Sudoku puzzle in Comet.
+
+  This is a very simple (however long) model of generating Sudoko problems.
+  Input is num_unknowns, which is the number of unknowns in the problem.
+
+  The model uses a randomized approach:
+
+   - generate a problem matrix with the proper number of unknowns
+   - try to solve the problem. If there are exactly one solution all is
+     fine, else generate another problem.
+
+  It also use two limits to ensure that one generation/solution is not
+  to costy (which may miss some good problems).
+   - timeout 
+   - number of failures
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int num_unknowns = 20;
+int timeout = 2; // seconds
+int failure_limit = 100; // number of failure to accept
+range R = 1..9;
+int mat[R, R]; // the generated matrix
+
+bool good = false;
+int c = 0; // how many tries?
+dict{int->int} solutions(); // frequency of the number of solutions
+
+
+//
+// Generate/solve problems
+//
+while (!good) {
+
+  c++;
+
+  // generate
+  generate(num_unknowns, mat, timeout, failure_limit);
+ 
+  // solve
+  int n_sol = solveIt(mat, timeout, failure_limit);
+  cout << "It was " << n_sol << " solutions (" << c << ")" << endl;
+
+  solutions{n_sol}++;
+
+  // check for _exactly_ one solution
+  if (n_sol == 1) {
+    good = true; // at last!
+  }
+
+}
+
+cout << "Found one in " << c << " tries" << endl;
+cout << "The generated problem with " << num_unknowns << " unknowns: " << endl;
+forall(i in R) {
+  forall(j in R) {
+    cout << mat[i,j] << " ";
+  }
+  cout << endl;
+}
+
+cout << endl;
+
+cout << "Frequency of number of solutions: " << endl;
+cout << solutions << endl;
+
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+
+
+
+//
+// generate one random problem
+//
+function int[,] generate(int num_unknowns, int[,] mat, int timeout, int failure_limit) {
+  
+  int n = 9;
+  range R = 1..n;
+
+  UniformDistribution d(1..9);
+  
+  Solver<CP> m();
+  m.limitTime(timeout);
+  m.limitFailures(failure_limit);
+
+  var<CP>{int} x[R, R](m, 0..n);
+  
+  Integer num_sol(0);
+
+  explore<m> {
+    
+    // fix the number of unknowns, randomize
+    forall(r in 1..num_unknowns) {
+      m.post(x[d.get(), d.get()] == 0);
+    }
+    
+    // check the number of unknowns
+    m.post(sum(i in R, j in R) (x[i,j] == 0) == num_unknowns);
+    
+    forall(i in R)
+      m.post(alldifferent_except_0(all(j in R) x[i,j]));
+    
+    forall(j in R)
+      m.post(alldifferent_except_0(all(i in R) x[i,j]));
+    
+    forall(i in 0..2,j in 0..2) {
+      m.post(alldifferent_except_0(all(r in i*3+1..i*3+3,c in j*3+1..j*3+3)  x[r,c]));
+    }
+    
+  } using {
+    
+    labelFF(m);
+    num_sol++;
+  
+  }
+
+  if(num_sol == 1 && m.isFeasible()) {
+    forall(i in R) {
+      forall(j in R) {
+        mat[i,j] = x[i,j] ;
+      }
+    }
+  } else {
+    // return just a non Sudoku matrix
+    forall(i in R) {
+      forall(j in R) {
+        mat[i,j] = 0 ;
+      }
+    }
+  }
+  
+  cout << "#propag  = " << m.getNPropag() << endl;
+  cout << "#fail    = " << m.getNFail() << endl;
+  
+  return mat;
+
+} // end generate
+
+
+//
+// Solve a generated Sudoku problem
+//
+function int solveIt(int[,] board, int timeout, int failure_limit) {
+
+  int n = 9;
+  range Range = 1..n;
+
+  Solver<CP> cp();  
+  cp.limitTime(timeout);
+  cp.limitFailures(failure_limit);
+
+  var<CP>{int} x[Range, Range](cp, 0..n);
+ 
+  Integer n_sol(0);
+  exploreall<cp> {
+
+    // populate the problem
+    forall(i in Range, j in Range) {
+      if (board[i,j] > 0) 
+        cp.post(x[i,j] == board[i,j]);
+    }
+
+    forall(i in Range)
+      cp.post(alldifferent(all(j in Range) x[i,j]));
+    forall(j in Range)
+      cp.post(alldifferent(all(i in Range) x[i,j]));
+    forall(i in 0..2,j in 0..2) 
+      cp.post(alldifferent(all(r in i*3+1..i*3+3,c in j*3+1..j*3+3)  x[r,c]));
+        
+  } using {
+
+    labelFF(cp);    
+    n_sol++;
+
+  }
+  
+  return n_sol;
+
+} // end solveIt
+
+
+
+//
+// Print a solution
+//
+function void print(var<CP>{int}[,] x) {
+
+  forall(i in x.getRange(0)) {
+      forall(j in x.getRange(1)) {
+        cout << x[i,j] << " ";
+      }
+      cout << endl;
+  }
+
+  cout << endl;
+
+} // end print
+
+
+
+
+//
+// alldifferent except 0
+//
+class alldifferent_except_0 extends UserConstraint<CP> {
+  var<CP>{int}[] _x;
+  int _n;
+  
+  alldifferent_except_0(var<CP>{int}[] x) : UserConstraint<CP>() {
+    _x = x;
+    _n = _x.getSize();      
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _x[1].getSolver();
+    range RR = _x.rng();
+    forall(i in RR, j in RR: i != j) {
+      cp.post(
+             _x[i] != 0 && _x[j] != 0 => 
+             _x[i] != _x[j], cl           
+             );
+    }
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+    return Suspend;
+  }
+
+} // end alldifferent_except_0
+

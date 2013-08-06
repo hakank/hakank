@@ -1,0 +1,240 @@
+/*
+
+  Nontransitive dice in Comet.
+
+  From 
+  http://en.wikipedia.org/wiki/Nontransitive_dice
+  """
+  A set of nontransitive dice is a set of dice for which the relation 
+  "is more likely to roll a higher number" is not transitive. See also 
+  intransitivity.
+  
+  This situation is similar to that in the game Rock, Paper, Scissors, 
+  in which each element has an advantage over one choice and a 
+  disadvantage to the other.
+  """
+
+  Compare with the following model:
+  * MiniZinc: http://www.hakank.org/minizinc/nontransitive_dice.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+// import cotls;
+// import cotln;
+int t0 = System.getCPUTime();
+
+int m = 3; // number of dice
+int n = 6; // number of sides of each die
+
+
+// Problem instance from the Wikipedia page
+//   % A > B = 5/9   B > C = 5/9  C > A = 5/9
+/*
+m = 3; // number of dice
+n = 6; // number of sides of each die
+int p1[1..m, 1..n] =  [
+                       [2,2,4,4,9,9], // die A
+                       [1,1,6,6,8,8], // die B
+                       [3,3,5,5,7,7]  // die C
+                  ];
+*/
+
+/*
+// From Numberjack tutorial, page 32 (slide 67/175)
+m = 3; // number of dice
+n = 6; // number of sides of each die
+int p2[1..m, 1..n] = [
+                      [3,3,3,3,3,3], // die B
+                      [2,2,2,3,6,6], // die C
+                      [1,2,3,4,5,5]  // die A
+                     ];
+*/
+
+/*
+// Efron's 4 dice, the number of each die are re-ordered
+// (from the Wikipedia page)
+m = 4; // number of dice
+n = 6; // number of sides of each die
+int p3[1..m, 1..n] = [
+                      [0,0,4,4,4,4], //  A
+                      [3,3,3,3,3,3], //  B        
+                      [2,2,2,2,6,6], //  C
+                      [1,1,1,5,5,5]  //  D
+                      ];
+*/
+
+/// Miwin's dice (3 dice)
+// Miwin's Dice were invented in 1975 by the physicist Michael Winkelmann.
+// (from the Wikipedia page)
+/*
+m = 3; // number of dice
+n = 6; // number of sides of each die
+int p4[1..m, 1..n] = [
+                      [1,2,5,6,7,9], // die III
+                      [1,3,4,5,8,9], // die IV
+                      [2,3,4,6,7,8] // die V
+                      ];
+*/
+
+
+Solver<CP> cp();
+
+// the dice
+var<CP>{int} dice[1..m, 1..n](cp, 1..n*2);
+
+// The competitions: 
+// (die 1 vs die 2, die 2 vs die 1), ... (die m vs die 1, die 1 vs die m)
+// And the first die must beat the second in each round.
+// Note the last wrap around which breaks the transitivity.
+var<CP>{int} comp[0..m-1, 1..2](cp, 0..n*n);
+
+// max value of the dice
+var<CP>{int} max_val(cp, 0..n*2);
+// max win
+var<CP>{int} max_win(cp, 0..n*n);
+
+// gap, gap_sum: the difference between
+// two dice in a competition
+var<CP>{int} gap[0..m-1](cp, 0..n*n);
+var<CP>{int} gap_sum(cp, 0..n*n*m);
+
+
+// uncomment one or zero problem instances
+// cp2d(dice, p1);
+// cp2d(dice, p2);
+// cp2d(dice, p3);
+// cp2d(dice, p4);
+
+
+Integer num_solutions(0);
+
+
+// explore<cp> {
+// exploreall<cp> {
+minimize<cp> max_val subject to {
+// maximize<cp> max_win subject to {
+// maximize<cp> gap_sum subject to {
+// maximize<cp> max(d in 0..m-1) (comp[d,1]) subject to {
+
+  cp.post(gap_sum == sum(i in 0..m-1) gap[i]);
+  cp.post(max_val == max(i in 1..m, j in 1..n) (dice[i,j]));
+  cp.post(max_win == max(i in 0..m-1) (comp[i,1]));
+
+  // symmetry breaking: order the number of each die
+  forall(d in 1..m) {
+    forall(i in 2..n) {
+      cp.post(dice[d,i-1] <= dice[d,i]);
+    }
+  }
+
+  // and now we roll...
+  // Number of wins for [A vs B, B vs A]
+  forall(d in 0..m-1) {
+
+    cp.post(comp[d,1] == sum(r1 in 1..n, r2 in 1..n) (dice[1+(d % m), r1] >
+                                                      dice[1+((d + 1) % m), r2]));
+
+    cp.post(comp[d,2] == sum(r1 in 1..n, r2 in 1..n) (dice[1+((d+1) % m), r1] >
+                                                     dice[1+((d) % m), r2]));
+    
+    cp.post(gap[d] == comp[d,1] - comp[d,2]);
+  }
+
+  forall(d in 0..m-1) {
+    cp.post(comp[d,1] > comp[d,2]);
+  }
+
+  // extra: all wins are the same
+  /*
+  forall(d in 1..m-1) {
+    cp.post(comp[d,1] == comp[d-1,1]);
+  }
+  */
+
+  // extra: we want big winners
+  /*
+  forall(d in 0..m-1) {
+    cp.post(comp[d,1]/(n*n*1.0) > 0.7);
+  }
+  */
+
+} using {
+
+  labelFF(dice);
+  labelFF(gap);
+  labelFF(comp);      
+
+
+  /*
+  forall(i in 1..m, j in 1..n: !dice[i,j].bound()) {
+    tryall<cp>(v in 0..n*2)
+      cp.label(dice[i,j], v);
+    onFailure
+      cp.post(dice[i,j] != v);
+  }
+  */
+
+  // labelFF(cp);
+
+  num_solutions++;
+
+  cout << "solution #" << num_solutions << endl;
+  cout << "dice:" << endl;
+  forall(i in 1..m) {
+    forall(j in 1..n) {
+      cout << dice[i,j] << " ";
+    }
+    cout << endl;
+  }
+  cout << "comp:" << endl;
+  forall(i in 0..m-1) {
+    if (i < m-1) {
+      cout << i+1 << " vs " << i+2 << ": ";
+    } else {
+      cout << m << " vs " << 1 << ": ";
+    }
+    forall(j in 1..2) {
+      float c = comp[i,j].getValue()/(n*n*1.0);
+      cout << comp[i,j] << " (p:" << c << ") ";
+    }
+    cout << endl;
+  }
+  cout << gap << endl;
+  cout << "max_val: " << max_val << endl;
+  cout << "max_win: " << max_win << endl;
+  cout << "gap_sum: " << gap_sum << endl;
+  cout << endl;
+
+}
+
+// cout << x << endl;
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;
+
+
+// copy a int matrix to int var matrix
+function void cp2d(var<CP>{int}[,] x, int[,] init_x) {
+  Solver<CP> cp = x[1,1].getSolver();
+  forall(i in x.rng(0)) {
+    forall(j in x.rng(1)) {
+      cp.post(x[i,j] == init_x[i,j]);
+    }
+  }
+}
+
+function void cp1d(var<CP>{int}[] x, int[] init_x) {
+  Solver<CP> cp = x[1].getSolver();
+  forall(i in x.rng()) {
+    cp.post(x[i] == init_x[i]);
+  }
+}

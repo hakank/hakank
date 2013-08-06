@@ -1,0 +1,365 @@
+/*
+   deBruijn sequences in Comet
+
+  
+  Implementation of de Bruijn sequences in Comet, both "classical" and "arbitrary". 
+ 
+  Compare with the the web based programs:
+    http://www.hakank.org/comb/debruijn.cgi   
+    http://www.hakank.org/comb/debruijn_arb.cgi
+ 
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+import qtvisual;
+include "stree";
+
+bool debug = false; // show all values of the events
+
+//
+// This Animation class is adapted from the example
+// queensg.co
+// Note the adding of +1 in the animate() function.
+// 
+class Animation {
+   Visualizer         _gui;
+   int              _scale;
+   VisualRectangle[,] _grq;
+   range              Size;
+   var<CP>{int}[]    x;
+   STree              tree;
+   boolean        _tracing;
+
+  Animation(Solver<CP> m,var<CP>{int}[] q, bool debug, range size2,
+            string title) {
+      _gui  = new Visualizer();
+      _tracing =true;
+      x = q;
+      Size = q.getRange();
+      int sizeDraw = 800;
+      VisualDrawingBoard board(_gui,title); 
+      _scale = (sizeDraw)/(Size.getSize());
+      _grq = new VisualRectangle[Size,size2];
+      forall(i in Size,j in size2) {
+         _grq[i,j] = new VisualRectangle(board,_scale*(i-1)+2,_scale*(j-1)+2,_scale-4,_scale-4);
+         _grq[i,j].setColor("green");
+      }     
+      _gui.addNotebookPage(board);     
+      board.fitContent();      
+      tree = new STree(_gui,m);
+
+      // Toggle "tracing mode" whenever the button in the toolbar is clicked.
+      whenever _gui.getTracingButton()@clicked() 
+         _tracing = !_tracing;
+
+      // Whenever COMET backtracks (after a failure), change the status 
+      // line to green
+      whenever m.getSearchController()@doBacktrack() { 
+        cout << "Backtracked..." << endl; 
+         if (_tracing) {
+            _gui.getStatusBar().setColor("green");
+            pause("Backtracked...");
+         }
+      }
+
+      // Whenever COMET fails (before it backtracks), change the status 
+      // line to red.
+      whenever m.getSearchController()@onFail(int f) {   
+        cout << "onFail" << endl;
+         if (_tracing) {
+            _gui.getStatusBar().setColor("red");
+            pause("Failing...");
+         }
+      }  
+ 
+      // Whenever COMET produces a solution, report it and pause until 
+      // the user clicks on "run"
+      whenever m.getSearchController()@onFeasibleSolution(Solution s) {
+        cout << "onFeasibleSolution: " << s << endl;
+         tellSolution();
+      }
+
+      // Whenever we return from a labeling on the manager, pause with a 
+      // suitable message.
+      whenever return(m@label(var<CP>{int} x,int v)) {
+         pause("labeled " + IntToString(x.getId()) + " to " + IntToString(v) + " ... ");         
+         cout << "labeled " + IntToString(x.getId()) + " to " + IntToString(v) + " ... " << endl;
+      }  
+    
+      // setup the array
+      animate(debug);
+      // pause before the initial start
+      pause("");
+   }
+
+   void pause(string msg) { 
+      if (_tracing) {
+         _gui.getStatusBar().setText(msg.concat("Press Run to continue"));
+         sleepUntil _gui.getRunButton()@clicked();
+      }
+   }
+   void waitQuit() {
+      sleepUntil _gui.getCloseButton()@clicked();
+   }
+   void tellSolution() {
+     if (_tracing) {
+        _gui.getStatusBar().setText("Solution Found. Press Run to continue");
+        _gui.getStatusBar().setColor("yellow");      
+        sleepUntil _gui.getRunButton()@clicked();
+        _gui.getStatusBar().setColor("gray");
+      }
+   }
+   void animate(bool debug) {
+      forall(i in Size) {
+        whenever x[i]@onChangeMax() {  
+          if (debug) cout  << "onChangeMax " << endl;
+        }
+        whenever x[i]@onChangeMin() {  
+          if (debug) cout  << "onChangeMin " << endl;
+        }
+        whenever x[i]@onRecover(int v) {  
+          if (debug) cout  << "onRecover " << v << endl;
+          _grq[i,v].setColor("green"); 
+          // _grq[i,v].setToolTip("onRecover: " + IntToString(v));
+        }
+        whenever x[i]@onUnbind(int v)  {  
+          if (debug) cout  << "onUnbind " << v << endl;
+          _grq[i,v].setColor("green"); 
+          // _grq[i,v].setToolTip("onUnbind: " + IntToString(v));
+        }
+        whenever x[i]@onValueBind(int v) {  
+          if (debug) cout  << "onValueBind " << v << endl;
+          _grq[i,v].setColor("blue"); 
+          //_grq[i,v].setToolTip("onValueBind " + IntToString(v));
+        }
+        whenever x[i]@onValueLost(int v) {  
+          if (debug) cout  << "onValueLost " << v << endl;
+          _grq[i,v].setColor("red"); 
+          // _grq[i,v].setToolTip("onValueLost: " + IntToString(v));
+        }
+      } 
+   }
+}
+
+int t0 = System.getCPUTime();
+
+Solver<CP> M();
+
+int nbArgs = System.argc();
+string[] args = System.getArgs();
+
+// offset for command line
+int offset = 0;
+forall(i in 2..nbArgs) {
+   if (args[i-1].prefix(1).equals("-")) {
+      cout << "found -" << endl;
+      offset = 1;
+   }
+}
+
+// the base to use, i.e. the alphabet 0..base-1
+int base =  2;
+if (nbArgs >= 3+offset) {
+  base = args[2+offset].toInt();
+  cout << "base: " << base << endl;
+}
+
+// number of bits to use 
+// E.g. 
+//   if base = 2 and n = 4 then we use 
+//   the integers 0..base^n-1 = 0..2^4 -1, i.e. 0..15.
+int n = 4;  
+if (nbArgs >= 4+offset) {
+  n = args[3+offset].toInt();
+  cout << "n: " << n << endl;
+}
+
+
+// The length of the sequence.
+// Default is the  "classic" de Bruijn sequence, i.e. base^n. 
+int m = base^n;  
+// Or set for an "arbitrary" de Bruijn sequence.
+// int m    = 52;  
+if (nbArgs >= 5+offset) {
+  int m_tmp = args[4+offset].toInt();
+  if (m_tmp > m) {
+    cout << "m: " << m_tmp << " is > than possible " << m << "! Exits." << endl;
+    System.exit(0);
+  } else {
+    m = m_tmp; 
+  }
+  cout << "m: " << m << endl;
+
+}
+
+ // number of solution to show: 0 -> all
+int n_sol = 0;
+
+if (nbArgs >= 6+offset) {
+  n_sol = args[5+offset].toInt();
+  cout << "n_sol: " << n_sol << endl;
+}
+
+
+cout << "Using base: " << base << " n: " << n << " m: " << m << endl;
+
+//
+// x: the integers
+//
+var<CP>{int} x[i in 1..m](M, 0..(base^n)-1); 
+
+//
+// binary: "binary" representation of the numbers
+//
+var<CP>{int} binary[i in 1..m, j in 1..n](M, 0..base-1);
+
+//
+// bin_code: the sequence in base-representation
+//
+var<CP>{int} bin_code[i in 1..m](M, 0..base-1);
+
+// number of occurrences of the values in bin_code
+var<CP>{int} gcc[i in 0..base-1](M, 0..m);
+
+
+/*
+  toNum(m, x, num, base)
+  converts the array x into a number num, using base base
+*/
+function void toNum(Solver<CP> m, var<CP>{int}[] x, var<CP>{int} num, int base) {
+  m.post(num == sum(i in 1..x.getSize()) 
+                    base^(x.getSize()-i)*x[i]
+         );
+}
+
+range size2 = 0..m-1;
+cout << "size2: " << size2 << endl;
+Animation theAnim(M, x, debug, size2, "de bruijn sequence");
+
+
+Integer num_solutions(0); // number of solutions
+
+explore<M> {
+
+  // all number must be different
+  M.post(alldifferent(x));
+
+  // symmetry breaking: the minimum element should be the first element
+  forall(i in 2..m) 
+    M.post(x[1] < x[i]);
+
+  // converts x <-> binary (for alldifferent(x) )
+ forall(i in 1..m) 
+   toNum(M, all(j in 1..n) binary[i,j], x[i], base);
+
+ // the de Bruijn condition: 
+ // the first elements in binary[i] is the same as the last elements in binary[i-1]
+ forall(i in 2..m) 
+   forall(j in 2..n) 
+     M.post(binary[i-1, j] == binary[i, j-1] );
+
+ // ... and around the corner
+ forall(j in 2..n) 
+   M.post(binary[m, j] == binary[1, j-1] );
+
+ //  
+ // converts binary -> bin_code, i.e. the first element in each row 
+ forall(i in 1..m) 
+   M.post(bin_code[i] == binary[i,1]);
+
+
+ 
+ //
+ // The constraints below is for the constraint that there should be equal number
+ // number of occurrences of "bits".
+ 
+ // number of occurences in bin_code 
+ /// M.post(cardinality(bin_code, gcc));
+  forall(i in 0..base-1) 
+    M.post(sum(j in 1..m) (bin_code[j]==i) == gcc[i]);
+ 
+
+ // An experimental constraint.
+ // when m mod base = 0 ->
+ //    it should be exactly equal number of occurrences
+ // Note: this may take some time for larger problems.
+ /*
+ if (m % base == 0) 
+   forall(i in 1..base-1) 
+     M.post(gcc[i] == gcc[i-1]);
+ */
+  
+  
+
+} using {
+
+  // labelFF(M); // base 2, n 10 -> about 10 seconds
+  
+  // with separate label on each variables -> about 4-5 seconds
+
+  // label(x);
+  // labelFF(x);
+  forall(i in x.getRange() : !x[i].bound()) by (x[i].getSize()) {
+    label(x[i]);
+  }
+
+  /*
+  forall(i in x.getRange() : !x[i].bound()) {
+    tryall<M>(v in x.getRange() : x[i].memberOf(v)){
+      M.label(x[i], v);
+    }
+  }
+  */
+
+  label(bin_code);
+  /*
+  forall(i in bin_code.getRange(): !bin_code[i].bound()) {
+    tryall<M>(v in bin_code.getRange() : bin_code[i].memberOf(v)){
+      M.label(bin_code[i], v);
+    }
+  }
+  */
+
+  forall(i in 1..m, j in 1..n) 
+    label(binary[i,j]);
+
+  label(gcc);
+  /*
+  forall(i in gcc.getRange(): !gcc[i].bound()) {
+    tryall<M>(v in gcc.getRange() : gcc[i].memberOf(v)){
+      M.label(gcc[i], v);
+    }
+  }
+  */
+
+
+  cout << "base: " << base << " n: " << n << " m: " << m << endl;      
+  cout << x << endl;
+  // cout << binary << endl;
+  cout << bin_code << endl;
+  cout << gcc << endl;
+  cout << endl;
+
+  if (n_sol > 0 && num_solutions >= n_sol) {
+    cout << "this is the last solution!" << endl;
+  }
+  
+  num_solutions := num_solutions + 1;
+
+}
+    
+cout << "num_solutions " << num_solutions << endl;
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << M.getNChoice() << endl;
+cout << "#fail    = " << M.getNFail() << endl;
+cout << "#propag  = " << M.getNPropag() << endl;
+
+cout << bin_code << endl;
+cout << x << endl;
+theAnim.waitQuit();

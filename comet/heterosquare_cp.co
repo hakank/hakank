@@ -1,0 +1,112 @@
+/*
+
+  Heterosquare problem in Comet.
+
+  From http://willow.engr.uconn.edu/cometPubWiki/index.php/Heterosquare
+  """
+  A heterosquare of order n is a n*n square whose elements are distinct integers from 
+  1 to n^2 such that the sums of the rows, columns and diagonals are all different. 
+  Here is an example of heterosquare of order 3 
+             19
+  
+  1  2  3    6
+  8  9  4    21
+  7  6  5    18
+  
+  16 17 12   15  (Sums)
+  """
+
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/heterosquare.mzn
+  
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+
+Solver<CP> m();
+
+int n = 3; // the size of the matrix
+int n3 = n^3;
+
+var<CP>{int} mat[1..n, 1..n](m, 1..n*n);   // the matrix
+var<CP>{int} row_sums[1..n](m, 1..n3);
+var<CP>{int} col_sums[1..n](m, 1..n3);
+var<CP>{int} all_sums[1..n*2+2](m, 1..n3); // for all sums together
+var<CP>{int} diag1(m, 1..n3);
+var<CP>{int} diag2(m, 1..n3);
+
+
+Integer num_solutions(0);
+explore<m> {
+// exploreall<m> {
+// minimize<m> z subject to {
+
+  // all the entries in the matrix should be different
+  m.post(alldifferent(all(i in 1..n, j in 1..n) mat[i,j])); 
+
+  // and all sums should be different
+  // is there an append operator which we could use instead?
+  forall(i in 1..n) {
+    m.post(all_sums[i] == row_sums[i]);
+    m.post(all_sums[n+i] == col_sums[i]);
+  }
+
+  m.post(all_sums[2*n+1] == diag1);
+  m.post(all_sums[2*n+2] == diag2);
+  
+  m.post(alldifferent(all(i in 1..n*2+2) all_sums[i]));
+
+  // calculate rows sums
+  forall(i in 1..n) 
+    m.post(sum(j in 1..n) (mat[i,j]) == row_sums[i]);
+  
+  // calculate column sums
+  forall(j in 1..n) 
+    m.post(sum(i in 1..n) (mat[i,j]) == col_sums[j]);
+   
+  // diag1 sums
+  m.post(sum(i in 1..n) (mat[i,i]) == diag1);
+
+  // diag2 sums
+  m.post(sum(i in 1..n) (mat[i,n-i+1]) == diag2);
+
+} using {
+      
+  // labelFF(x);
+  // forall(i in 1..n : !x[i].bound()) {// by (-x[i].getSize()) {
+  //   label(x[i]);
+  // }
+  label(m);
+  // label(z);
+  num_solutions := num_solutions + 1;
+
+      
+  cout << "diag1: " << diag1 << " diag2: " << diag2 << endl;
+  cout << row_sums << endl;
+  cout << col_sums << endl;
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << mat[i,j] << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

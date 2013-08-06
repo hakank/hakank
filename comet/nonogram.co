@@ -1,0 +1,271 @@
+/*
+
+  Nonogram (Painting by numbers)  in Comet
+  
+  http://en.wikipedia.org/wiki/Nonogram
+  """
+  Nonograms or Paint by Numbers are picture logic puzzles in which cells in a 
+  grid have to be colored or left blank according to numbers given at the 
+  side of the grid to reveal a hidden picture. In this puzzle type, the 
+  numbers measure how many unbroken lines of filled-in squares there are 
+  in any given row or column. For example, a clue of "4 8 3" would mean 
+  there are sets of four, eight, and three filled squares, in that order, 
+  with at least one blank square between successive groups.
+ 
+  """
+
+  See problem 12 at http://www.csplib.org/.
+  
+  http://www.puzzlemuseum.com/nonogram.htm
+ 
+  Haskell solution:
+  http://twan.home.fmf.nl/blog/haskell/Nonograms.details
+
+  Brunetti, Sara & Daurat, Alain (2003)
+  "An algorithm reconstructing convex lattice sets"
+  http://geodisi.u-strasbg.fr/~daurat/papiers/tomoqconv.pdf
+
+
+
+  Note: I've written a much faster Nonogram solver using the regular constraint:
+  http://www.hakank.org/comet/nonogram_regular.co
+
+  The developments of this model has been written in the following blog posts (sorted in reversed order of
+  publication):
+
+  * "Comet: Nonogram improved: solving problem P200 from 1:30 minutes to about 1 second"
+    http://www.hakank.org/constraint_programming_blog/2009/03/comet_nonogram_improved_solvin_1.html
+
+  * "Comet: regular constraint, a much faster Nonogram with the regular constraint, some OPL models, and more"
+    http://www.hakank.org/constraint_programming_blog/2009/02/comet_regular_constraint_a_muc_1.html
+
+  * "More Comet models, e.g. Nonogram, Steiner triplets, and different set covering problems"
+    http://www.hakank.org/constraint_programming_blog/2009/02/more_comet_models_eg_nonogram.html
+
+
+
+  Compare with the following models:
+  * MiniZinc: http://www.hakank.org/minizinc/nonogram.mzn
+  * Gecode/R: http://www.hakank.org/gecode_r/nonogram.rb (using "regexps")
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+//
+// Problems
+//
+
+// From http://twan.home.fmf.nl/blog/haskell/Nonograms.details
+// The lambda picture
+// Comet: 12 sec
+include "nonogram_lambda";
+/*
+int rows = 12;
+int row_rule_len = 3;
+int row_rules[1..rows, 1..row_rule_len] = 
+  [
+   [0,0,2],
+   [0,1,2],
+   [0,1,1],
+   [0,0,2],
+   [0,0,1],
+   [0,0,3],
+   [0,0,3],
+   [0,2,2],
+   [0,2,1],
+   [2,2,1],
+   [0,2,3],
+   [0,2,2]
+   ];
+
+int cols = 10;
+int col_rule_len = 2;
+int col_rules[1..cols, 1..col_rule_len] = 
+  [
+   [2,1],
+   [1,3],
+   [2,4],
+   [3,4],
+   [0,4],
+   [0,3],
+   [0,3],
+   [0,3],
+   [0,2],
+   [0,2]
+   ];
+*/
+
+// hard! 
+// Note: I don't remember where I found this problem, and it isn't very hard.
+// Comet: 12 seconds
+// include "nonogram_hard";
+
+// https://prof.ti.bfh.ch/hew1/informatik3/prolog/p-99/p98.pl
+// 'Hen'
+// include "nonogram_hen";
+
+// ECLiPSe
+// http://eclipse.crosscoreop.com/eclipse/examples/nono.ecl.txt
+// Problem n3 ( http://www.pro.or.jp/~fuji/java/puzzle/nonogram/index-eng.html )
+// 'Car'
+//include "nonogram_car";
+
+
+// http://eclipse.crosscoreop.com/eclipse/examples/nono.ecl.txt
+// Problem n4
+// Comet: 0.5 sec
+// include "nonogram_n4";
+
+// http://eclipse.crosscoreop.com/eclipse/examples/nono.ecl.txt
+// Problem n6
+// MiniZinc/fztini: 18 sec
+// Comet: 
+// include "nonogram_n6";
+
+// Nonogram problem from Gecode: Nonunique
+// There are 43 solutions to this nonogram.
+// http://www.gecode.org/gecode-doc-latest/classNonogram.html
+//
+// Note: This seems to be very hard for Comet!
+//include "nonogram_nonunique";
+
+
+// Nonogram problem from Gecode: Dragonfly
+// http://www.gecode.org/gecode-doc-latest/classNonogram.html
+// include "nonogram_dragonfly";
+
+
+Solver<CP> m();
+
+//
+// variables
+//
+var<CP>{int} board[1..rows, 1..cols](m, 0..1);
+
+
+//
+// alldifferent except 0: for symmetry breaking
+//
+function void alldifferent_except_0(Solver<CP> m, var<CP>{int}[] x) {
+  int n = x.getSize();
+  forall(i in 1..n, j in i+1..n) {
+    m.post(
+           x[i] > 0 && x[j] > 0 => 
+           x[i] != x[j]
+           );
+  }
+}
+
+//
+// check_rule: The main function. 
+//
+function void check_rule(Solver<CP> m, int[] rules, var<CP>{int}[] y) {
+
+  int n = y.getSize();
+  int r_len = rules.getSize();
+  
+  var<CP>{int} start_pos[1..r_len](m, 0..n);
+
+
+  // fill with data for 0 values in rules and start_pos
+  forall(i in 1..r_len) {
+    if (rules[i] == 0) {
+      m.post(start_pos[i] == 0);
+    }
+
+    m.post(start_pos[i] == 0 => rules[i] == 0);
+  }
+
+
+  // ensure that the number of 1's is the same in the rules
+  // and the array
+  m.post(sum(i in 1..n) y[i] == sum(i in 1..r_len) rules[i]) ;
+
+  //
+  // Create the sequence
+  //
+  forall(i in 1..r_len : rules[i] > 0) {
+
+    var<CP>{int} j(m, 1..n);
+    var<CP>{int} k(m, 1..n);
+
+    // ordering of start_pos
+    if (i > 1) 
+      m.post(start_pos[i] > start_pos[i-1] + rules[i-1]);
+
+    m.post(j <= k);
+    m.post(k == j + rules[i]-1);
+    m.post(start_pos[i] == j);
+
+    // fill the range        
+    forall(mm in 1..n) {
+      m.post((mm >= j && mm <= k) => y[mm] == 1);
+    }
+  }
+
+  // symmetry breaking
+  alldifferent_except_0(m, start_pos);
+
+  // symmetry breaking: start_pos should be ordered
+  forall(i in 1..r_len-1) 
+    m.post(start_pos[i] <= start_pos[i+1]);
+
+} // end check_rule
+
+
+Integer num_solutions(0);
+explore<m> {
+// exploreall<m> {
+
+  forall(i in 1..rows) {
+    check_rule(m, all(j in 1..row_rule_len) row_rules[i,j], all(j in 1..cols) board[i,j]);
+  }
+
+  forall(j in 1..cols) {
+    check_rule(m, all(k in 1..col_rule_len) col_rules[j,k] , all(i in 1..rows) board[i, j]);
+  }
+
+
+} using {
+
+  // labelFF(m);
+
+  forall(i in 1..rows, j in 1..cols : !board[i,j].bound()) {
+    // label(board[i,j]);
+    tryall<m>(v in 0..1)
+      m.label(board[i,j], v);
+  }
+
+  num_solutions := num_solutions + 1;
+  cout << "#propag  = " << m.getNPropag() << endl;
+      
+  forall(i in 1..rows) {
+    forall(j in 1..cols) {
+      string s = ".";
+      if (board[i,j] == 1) {
+        s = "X";
+      }
+      cout << s << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+  cout << flush;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

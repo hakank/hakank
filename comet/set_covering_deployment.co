@@ -1,0 +1,103 @@
+/*
+
+  Set covering employment in Comet.
+
+  Problem from
+  http://mathworld.wolfram.com/SetCoveringDeployment.html
+
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/set_covering_deployment.mzn  
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+// number of countries
+int n = 8;                          
+string Countries[1..n] = ["alexandria", "asia_minor", "britain", "byzantium", "gaul", "iberia", "rome", "tunis"];
+
+
+// the incidence matrix   
+int mat[1..n, 1..n] = 
+[ 
+ [0,   1,   0,   1,   0,   0,   1,   1],
+ [1,   0,   0,   1,   0,   0,   0,   0],
+ [0,   0,   0,   0,   1,   1,   0,   0],
+ [1,   1,   0,   0,   0,   0,   1,   0],
+ [0,   0,   1,   0,   0,   1,   1,   0],
+ [0,   0,   1,   0,   1,   0,   1,   1],
+ [1,   0,   0,   1,   1,   1,   0,   1],
+ [1,   0,   0,   0,   0,   1,   1,   0]
+  ];
+
+Solver<CP> m();
+
+// number of armies (objective to minimize)
+var<CP>{int} num_armies(m, 0..10000);
+
+var<CP>{int} X[1..n](m, 0..1); // the first army
+var<CP>{int} Y[1..n](m, 0..1); // the second (reserve) army
+
+// how many times where an army selected in the solutions?
+dict{string -> int} d();
+
+Integer num_solutions(0);
+
+exploreall<m> {
+// minimize<m> num_armies subject to {
+
+  m.post(num_armies == sum(i in 1..n) (X[i] + Y[i])); 
+  
+  // Constraint 1: There is always an army in a city (+ maybe a backup)
+  //               Or rather: Is there a backup, there must be an an army
+  forall(i in 1..n) 
+    m.post(X[i] >= Y[i]);
+
+  // Constraint 2: There should always be an backup army near every city
+  forall(i in 1..n) 
+    m.post((X[i] + sum(j in 1..n : mat[i,j] == 1) (Y[j]))  >= 1);
+
+
+  // Constraint 3 for exploreall
+  m.post(sum(i in 1..n) (X[i] + Y[i]) <= 4);
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << "num armies: " << num_armies << endl;
+  cout << "first armies : ";
+  forall(i in 1..n : X[i] == 1) {
+    cout << Countries[i] << " ";
+    d{Countries[i]} = d{Countries[i]} + 1;
+  }
+  cout << endl;
+
+  cout << "second armies: ";
+  forall(i in 1..n : Y[i] == 1) {
+    cout << Countries[i] << " ";
+    d{Countries[i]} = d{Countries[i]} + 1;
+  }
+  cout << endl;
+
+  cout << endl;
+
+}
+
+
+cout << "frequency of selected countries:" << endl << d << endl;
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

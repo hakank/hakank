@@ -1,0 +1,136 @@
+/*
+
+  Quasigroup completion in Comet.
+
+  See 
+  Carla P. Gomes and David Shmoys:
+  "Completing Quasigroups or Latin Squares: Structured Graph Coloring Problem"
+ 
+  
+  See also
+  Ivars Peterson "Completing Latin Squares"
+  http://www.maa.org/mathland/mathtrek_5_8_00.html
+  """
+  Using only the numbers 1, 2, 3, and 4, arrange four sets of these numbers into 
+  a four-by-four array so that no column or row contains the same two numbers. 
+  The result is known as a Latin square.
+  ...
+  The so-called quasigroup completion problem concerns a table that is correctly 
+  but only partially filled in. The question is whether the remaining blanks in 
+  the table can be filled in to obtain a complete Latin square (or a proper 
+  quasigroup multiplication table).
+  """
+
+  Compare with the following models:
+  * MiniZinc: http://www.hakank.org/minzinc/quasigroup_completion.mzn
+  * Gecode/R: http://www.hakank.org/gecode_r/quasigroup_completion.rb
+  * Choco: http://www.hakank.org/choco/QuasigroupCompletion.java
+  * JaCoP: http://www.hakank.org/JaCoP/QuasigroupCompletion.java
+ 
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+int n = 5;
+int X = 0;
+
+// default problem
+int t[1..n, 1..n] = 
+  [
+   [1, X, X, X, 4],
+   [X, 5, X, X, X],
+   [4, X, X, 2, X],
+   [X, 4, X, X, X],
+   [X, X, 5, X, 1]
+];
+
+
+int nbArgs = System.argc();
+string[] args = System.getArgs();
+string fileName = "";
+forall(i in 2..nbArgs-1) {
+  fileName = args[i];
+}
+
+if (fileName.length() > 0) {
+  cout << "Using problem file: " << fileName << endl;
+  
+  ifstream f(fileName);
+  
+  n = f.getInt();
+  // cout << "n: " << n << endl;
+
+  int t_game[1..n, 1..n];
+  forall (i in 1..n) {
+    forall(j in 1..n) {
+      string s = f.getString();
+      int tmp = X;
+      if (s != ".") {
+        tmp = s.toInt();
+      }
+      t_game[i,j] = tmp;
+    }
+  }
+
+  t = t_game;
+
+} // end if fileName
+
+
+cout << "The problem:" << endl;      
+forall(i in 1..n) {
+  forall(j in 1..n) {
+    cout << t[i,j] << " ";
+  }
+  cout << endl;
+}
+cout << endl;
+
+
+cout << "\nThe solution:" << endl;
+Solver<CP> m();
+var<CP>{int} x[1..n, 1..n](m, 1..n);
+
+Integer num_solutions(0);
+
+exploreall<m> {
+// explore<m> {
+
+  forall(i in 1..n, j in 1..n) 
+    if (t[i,j] > 0)
+      m.post(x[i,j] == t[i,j]);
+
+  forall(i in 1..n) {
+    m.post(alldifferent( all(j in 1..n) x[i,j]));  
+    m.post(alldifferent( all(j in 1..n) x[j,i]));
+  }
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+      
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << x[i,j] << " ";
+    }
+    cout << endl;
+  }
+
+  cout << endl;
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

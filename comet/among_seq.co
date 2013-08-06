@@ -1,0 +1,134 @@
+/*
+
+  Global constraint among_seq in Comet.
+
+  From Global constraint catalog:
+  http://www.emn.fr/x-info/sdemasse/gccat/Camong_seq.html
+  """
+  Constraint
+
+    among_seq(LOW, UP, SEQ, VARIABLES, VALUES)
+
+  Purpose  
+  Constrains all sequences of SEQ consecutive variables of the collection 
+  VARIABLES to take at least LOW values in VALUES and at most UP values 
+  in VALUES.
+
+  Example
+    (
+    1, 2, 4, <9, 2, 4, 5, 5, 7, 2>,
+    <0, 2, 4, 6, 8>
+    )
+
+  The among_seq constraint holds since the different sequences of 4 
+  consecutive variables contains respectively 2, 2, 1 and 1 even numbers.
+
+
+  """
+
+
+ 
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 7;
+range R = 0..9;
+int seq = 4;
+
+int x_init[1..n] = [9, 2, 4, 5, 5, 7, 2];
+
+set{int} s = {0,2,4,6,8};
+
+Solver<CP> m();
+var<CP>{int} x[1..n](m, R);
+var<CP>{int} low(m, 0..n);
+var<CP>{int} up(m, 0..n);
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  // The example above
+  m.post(low == 1);
+  m.post(up == 2);
+  forall(i in 1..n) m.post(x[i] == x_init[i]);
+
+  m.post(among_seq(low, up, seq, x, s));
+
+} using {
+      
+  label(m);
+
+  num_solutions++;
+
+  cout << "low: " << low << endl;      
+  cout << "up: " << up << endl;      
+  cout << "seq: " << seq << endl;      
+  cout << x << endl;
+  cout << s << endl;
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+
+/*
+  among(low, up, seq, x, v)
+
+  Constrains all sequences of SEQ consecutive variables of the collection 
+  x to take at least LOW values in v and at most UP values in v.
+*/
+class among_seq extends UserConstraint<CP> {
+
+  var<CP>{int} low;
+  var<CP>{int} up;
+  var<CP>{int}[] x;
+  int seq;
+  set{int} v;
+  
+  among_seq(var<CP>{int} _low, 
+        var<CP>{int} _up, 
+        int _seq, 
+        var<CP>{int}[] _x, 
+        set{int} _v) : UserConstraint<CP>() {
+    low = _low;
+    up  = _up;
+    seq = _seq;
+    x = _x;
+    v = _v;
+  }
+  
+  Outcome<CP> post(Consistency<CP> cl) {
+    
+    Solver<CP> cp = x[1].getSolver();
+
+    int n = x.getSize();
+    forall(i in 1..n-seq+1) {
+      var<CP>{int} s(cp, 0..n);
+      cp.post(s == sum(j in i..i+seq-1)
+              (0 < sum(k in v) (x[j] == k))
+              );
+      cp.post(s >= low && s <= up);
+
+    }
+
+    return Suspend;
+  }
+
+} // end among_seq

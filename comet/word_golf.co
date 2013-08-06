@@ -1,0 +1,204 @@
+/*
+
+  Word golf in Comet.
+
+
+  http://en.wikipedia.org/wiki/Word_golf
+  """
+  Word golf (also called a word chain) is a game, a version of Word Ladders, 
+  in which one word is turned into another through a process of substituting 
+  single letters. A new English word must be formed each time a letter is 
+  replaced, and players score points according to the number of steps taken. As 
+  in regular golf, the player with the lowest score at the end of the game wins.
+  """
+  
+  This model loops over ladder length of 2..max_ladder_len.
+ 
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/word_golf.mzn
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+int num_letters = 26;
+enum alpha = {zero, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z};
+string az[1..num_letters] = ["a","b","c","d","e","f","g","h","i","j","k","l","m",
+                             "n","o","p","q","r","s","t","u","v","w","x","y","z"];
+
+
+// example from the Wikipedia article: lass -> male
+/*
+int word_len = 4;
+int start[1..word_len] = [l,a,s,s];
+int end[1..word_len] = [m,a,l,e];
+int num_words = 5;
+int ladder_len = 5;
+int words[1..num_words, 1..word_len] =
+  [
+   [l,a,s,s],
+   [m,a,l,e],
+   [m,a,r,e],
+   [m,a,r,s],
+   [m,a,s,s] 
+];
+*/
+
+
+
+// example from the Wikipedia article: right -> wrong
+/*
+int word_len = 5;
+int start[1..word_len] = [r,i,g,h,t]; // right
+int end[1..word_len] = [w,r,o,n,g]; // wrong
+int num_words = 13;
+int ladder_len = 13;
+int words[1..num_words, 1..word_len] = 
+  [
+   [b,o,i,n,g], // boing
+   [b,r,i,n,g], // bring
+   [l,i,o,n,s], // lions
+   [l,o,i,n,g], // loing
+   [l,o,i,n,s], // loins
+   [l,o,o,n,s], // loons
+   [r,i,g,h,t], // right
+   [s,i,g,h,s], // sighs
+   [s,i,g,h,t], // sight
+   [s,i,g,n,s], // signs
+   [s,i,o,n,s], // sions
+   [w,r,i,n,g], // wring
+   [w,r,o,n,g] // wrong
+   ];
+*/
+
+
+// work -> play
+// (hakank: I added some words to complicate the problem somewhat)
+int word_len = 4;
+int start[1..word_len] = [w,o,r,k];
+int end[1..word_len] = [p,l,a,y];
+int ladder_len = 14;
+int num_words = 19;
+int words[1..num_words, 1..word_len] =
+[
+ [f,e,a,r], // fear
+ [f,e,a,t], // feat
+ [f,l,a,t], // flat
+ [f,l,a,y], // flay
+ [f,o,r,e], // fore
+ [f,o,r,k], // fork
+ [p,a,r,e], // pare
+ [p,a,r,k], // park
+ [p,e,a,k], // peak
+ [p,e,a,r], // pear
+ [p,e,r,k], // perk
+ [p,l,a,y], // play
+ [p,o,r,e], // pore
+ [w,o,r,k], // work
+ 
+ // these were added to complicate the problem
+ [l,a,s,s], // lass
+ [m,a,l,e], // male
+ [m,a,r,e], // mare
+ [m,a,r,s], // mars
+ [m,a,s,s] // mass
+];
+
+
+
+// testing reading a lot more words from /usr/dict/words
+
+// Got the following error: "memory exhausted".
+/*
+include "word_golf_len4"; // contains 6803 words. 
+int start[1..word_len] = [w,o,r,k]; // work
+int end[1..word_len] = [p,l,a,y]; // play
+*/
+
+
+// This works, though.
+/*
+include "word_golf_len3"; // contains 2044 words
+int start[1..word_len] = [n,a,y];
+int end[1..word_len] = [y,e,s];
+*/
+
+
+Integer num_solutions(0);
+
+int max_ladder_len = 30;
+
+//
+// check different ladder lengths
+//
+forall(ladder_len in 2..max_ladder_len) {
+
+
+  Solver<CP> m();
+  var<CP>{int} x[1..ladder_len, 1..word_len](m, alpha);
+  var<CP>{int} ladder_num[1..ladder_len](m, 1..num_words);
+
+  exploreall<m> {
+
+  
+    // initialize the problem
+    forall(i in 1..word_len) {
+      m.post(x[1, i] == start[i]);
+      m.post(x[ladder_len, i] == end[i]);
+    }
+
+    m.post(alldifferent(ladder_num));
+
+    // just one difference is allowed between the words
+    forall(i in 2..ladder_len) {
+      m.post(sum(j in 1..word_len) 
+             (x[i-1, j] != x[i, j]) == 1);
+    }
+
+
+    // assign word j to the ladder position i
+    forall(i in 1..ladder_len) {
+      var<CP>{int} j(m,1..num_words);
+        
+         // assign the specific word
+         forall(k in 1..word_len) 
+           m.post(x[i,k] == words[j,k]);
+        
+          m.post(ladder_num[i] == j);
+      
+    }
+
+    
+  } using {
+    
+
+    label(m);
+    
+    num_solutions := num_solutions + 1;
+    
+    cout << "ladder_len: " << ladder_len << endl;
+    cout << ladder_num << endl;
+    forall(i in 1..ladder_len) {
+      forall(j in 1..word_len) {
+        cout << az[x[i,j]] << " ";
+      }
+      cout << endl;
+    }
+    cout << endl;
+    
+    int t1 = System.getCPUTime();
+    cout << "time:      " << (t1-t0) << endl;
+    cout << "#choices = " << m.getNChoice() << endl;
+    cout << "#fail    = " << m.getNFail() << endl;
+    cout << "#propag  = " << m.getNPropag() << endl;
+    
+    cout << "ladder len: "  << ladder_len << " num_solutions: " << num_solutions << endl;
+    
+  }
+
+} // end forall(ladder_len)

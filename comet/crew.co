@@ -1,0 +1,151 @@
+/*
+
+  Crew allocation problem in Comet.
+
+  From Gecode example crew
+  examples/crew.cc
+ 
+  (Original text from crew.cc)
+  * Example: Airline crew allocation
+  *
+  * Assign 20 flight attendants to 10 flights. Each flight needs a certain
+  * number of cabin crew, and they have to speak certain languages.
+  * Every cabin crew member has two flights off after an attended flight.
+  *
+ 
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/crew.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+Solver<CP> m();
+int numPersons = 20; // number of persons
+int attributes[1..numPersons, 1..5] = 
+// steward, hostess, french, spanish, german
+[
+ [1,0,0,0,1],   // Tom     = 1
+ [1,0,0,0,0],   // David   = 2
+ [1,0,0,0,1],   // Jeremy  = 3
+ [1,0,0,0,0],   // Ron     = 4
+ [1,0,0,1,0],   // Joe     = 5
+ [1,0,1,1,0],   // Bill    = 6
+ [1,0,0,1,0],   // Fred    = 7
+ [1,0,0,0,0],   // Bob     = 8
+ [1,0,0,1,1],   // Mario   = 9
+ [1,0,0,0,0],   // Ed      = 10
+ [0,1,0,0,0],   // Carol   = 11
+ [0,1,0,0,0],   // Janet   = 12
+ [0,1,0,0,0],   // Tracy   = 13
+ [0,1,0,1,1],   // Marilyn = 14
+ [0,1,0,0,0],   // Carolyn = 15
+ [0,1,0,0,0],   // Cathy   = 16
+ [0,1,1,1,1],   // Inez    = 17
+ [0,1,1,0,0],   // Jean    = 18
+ [0,1,0,1,1],   // Heather = 19
+ [0,1,1,0,0]    // Juliet  = 20
+ ];
+
+int numFlights = 10;                           // number of flights
+
+
+/* stewards = {Tom, David, Jeremy, Ron, Joe, Bill, Fred, Bob, Mario, Ed};
+  hostesses = {Carol, Janet, Tracy, Marilyn, Carolyn, Cathy, Inez,
+                                      Jean, Heather, Juliet};
+  frenchSpeaking = {Bill, Inez, Jean, Juliet};
+  germanSpeaking = {Tom, Jeremy, Mario, Cathy, Juliet};
+  spanishSpeaking = {Joe, Bill, Fred, Mario, Marilyn, Inez, Heather};
+*/
+
+/* required crew per flight 
+ The columns are in the following order
+ staff:     Overall number of cabin crew needed
+ stewards:  How many stewards are required
+ hostesses: How many hostesses are required
+ french:    How many French speaking employees are required
+ spanish:   How many Spanish speaking employees are required
+ german:    How many German speaking employees are required
+*/
+int requiredCrew[1..numFlights,1..6] = 
+  [
+   [4,1,1,1,1,1], // Flight 1
+   [5,1,1,1,1,1], // Flight 2
+   [5,1,1,1,1,1], // ..
+   [6,2,2,1,1,1],
+   [7,3,3,1,1,1],
+   [4,1,1,1,1,1],
+   [5,1,1,1,1,1],
+   [6,1,1,1,1,1],
+   [6,2,2,1,1,1],
+   [7,3,3,1,1,1]  // Flight 10
+   ];
+
+
+// the crew schedule
+var<CP>{int} crew[1..numFlights, 1..numPersons](m, 0..1);
+
+// objective to minimize: number of persons working
+var<CP>{int} z(m, 1..numPersons);
+
+
+Integer num_solutions(0);
+explore<m> {
+// minimize<m> z subject to {
+
+  m.post(z == sum(p in 1..numPersons) 
+         (sum(f in 1..numFlights) (crew[f,p]) > 0)
+         );
+
+  forall(f in 1..numFlights) {
+    // size of crew
+    m.post(sum(i in 1..numPersons) (crew[f,i]) == requiredCrew[f, 1]);
+
+    // attribute and requirements
+    forall(j in 1..5) 
+      m.post(sum(i in 1..numPersons) (attributes[i,j]*crew[f,i]) >=  requiredCrew[f,j+1]);
+                      
+  }
+
+  // after a flight, break for two flights
+  forall(f in 1..numFlights-2, i in 1..numPersons) 
+    m.post(crew[f,i] + crew[f+1,i] + crew[f+2,i] <= 1);
+  
+
+  // extra contraint: must work at least two times
+  forall(i in 1..numPersons)  
+    m.post(sum(f in 1..numFlights) (crew[f,i]) >= 2);
+
+
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+
+      
+  cout << "z: " << z << endl;
+  forall(i in 1..numFlights) {
+    forall(j in 1..numPersons) {
+      cout << crew[i,j] << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

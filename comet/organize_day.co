@@ -1,0 +1,91 @@
+/*
+
+  Organizing a day in Comet.
+
+  Simple scheduling problem.
+
+  Problem formulation:
+  Slides on (finite domain) Constraint Logic Programming, page 38f
+ 
+  http://www.icparc.ic.ac.uk/eclipse/reports/eclipse.ppt
+  (via http://www.icparc.ic.ac.uk/eclipse/reports/ )
+  
+
+  Also, see the MiniZinc model 
+  http://www.hakank.org/minizinc/organize_day.mzn
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+// The tasks are: 
+enum tasks = {Work, Mail, Shop, Bank};
+
+int n = 4;
+int Durations[tasks] = [4,1,2,1];
+
+// task[i,1] must be finished before task[i,2]
+tasks BeforeTasks[1..2, 1..2] = 
+[
+ [Bank, Shop],
+ [Mail, Work]
+];
+
+
+// No overlapping of tasks
+function void no_overlap(Solver<CP> m, var<CP>{int} s1, int d1, var<CP>{int} s2, int d2) {
+  m.post(s1 + d1 <= s2 || s2 + d2 <= s1);
+}
+ 
+Solver<CP> m();
+var<CP>{int} Begins[tasks](m, 9..17);
+var<CP>{int} Ends[tasks](m, 9..17);
+
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  forall(i in tasks) {
+    m.post(Ends[i] == Begins[i] + Durations[i]);
+  }
+
+  forall(i in tasks, j in tasks : i < j) 
+    no_overlap(m, Begins[i], Durations[i], Begins[j], Durations[j]);
+
+           
+  // specific constraints
+  forall(i in 1..2) 
+    m.post(Ends[BeforeTasks[i,1]] <= Begins[BeforeTasks[i,2]]);
+   
+  m.post(Begins[Work] >= 11);
+
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions++;
+
+  forall(t in tasks) 
+    cout << t << ": " << Begins[t] << ".." << Ends[t] << endl;
+
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

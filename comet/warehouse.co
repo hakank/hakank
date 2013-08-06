@@ -1,0 +1,94 @@
+/*
+
+  Warehouse location problem in Comet.
+
+  From OPL model warehouse.mod
+  Solution:
+  """
+  Optimal solution found with objective: 383
+  open= [1 1 1 0 1]
+  storesof= [{3} {1 5 6 8} {7 9} {} {0 2 4}]
+  """
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int Fixed = 30;
+enum Warehouses = {Bonn, Bordeaux, London, Paris, Rome};
+int NbStores = 10;
+range Stores = 0..NbStores-1;
+int Capacity[Warehouses] = [1,4,2,1,3];
+int SupplyCost[Stores, Warehouses] = 
+  [ 
+   [ 20, 24, 11, 25, 30 ], 
+   [ 28, 27, 82, 83, 74 ],
+   [ 74, 97, 71, 96, 70 ],
+   [  2, 55, 73, 69, 61 ],
+   [ 46, 96, 59, 83,  4 ],
+   [ 42, 22, 29, 67, 59 ],
+   [  1,  5, 73, 59, 56 ],
+   [ 10, 73, 13, 43, 96 ],
+   [ 93, 35, 63, 85, 46 ],
+   [ 47, 65, 55, 71, 95 ] 
+];
+
+Solver<CP> m();
+
+var<CP>{bool} Open[Warehouses](m);
+var<CP>{bool} Supply[Stores, Warehouses](m);
+
+Integer num_solutions(0);
+
+minimize<m>
+  sum( w in Warehouses ) Fixed * Open[w] +
+  sum( w in Warehouses, s in Stores ) SupplyCost[s,w] * Supply[s, w]
+
+subject to{
+
+  forall( s in Stores )
+    m.post(sum( w in  Warehouses ) 
+           Supply[s, w] == 1);
+
+  forall( w in Warehouses, s in Stores )
+    m.post(Supply[s, w] <= Open[w]);
+
+  forall( w in Warehouses )
+    m.post(sum( s in Stores ) 
+           Supply[s, w] <= Capacity[w]);
+
+} using {
+
+  labelFF(Supply);
+
+  forall(w in Warehouses : !Open[w].bound()) by (Open[w].getSize(), Capacity[w]) {
+     label(Open[w]);
+  }
+
+}
+
+set{int} Storesof[w in Warehouses] = filter(s in Stores) Supply[s, w] == 1;
+cout << Open <<endl;
+cout << Storesof << endl;
+
+forall(w in Warehouses) {
+  cout << "Warehouse " << w << ":" << endl;
+  cout << "\topen: " << Open[w] << endl;
+  if (Open[w])
+    cout << "\tstores of: " << Storesof[w] << endl;
+  cout << endl;
+}
+
+cout << endl;
+
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

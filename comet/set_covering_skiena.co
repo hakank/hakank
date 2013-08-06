@@ -1,0 +1,86 @@
+/*
+
+  Set covering in Comet.
+
+ 
+  Example from Steven Skiena, The Stony Brook Algorithm Repository
+  http://www.cs.sunysb.edu/~algorith/files/set-cover.shtml
+  """
+  Input Description: A set of subsets S_1, ..., S_m of the 
+  universal set U = {1,...,n}.
+  
+  Problem: What is the smallest subset of subsets T subset S such 
+  that \cup_{t_i in T} t_i = U?
+  """
+  Data is from the pictures INPUT/OUTPUT.
+
+
+  Compare with the MiniZinc model 
+  http://www.hakank.org/minizinc/set_covering_skiena.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int num_sets = 7;   // number of sets
+int num_elements = 12; // number of elements
+int belongs[1..num_sets, 1..num_elements] =
+  [
+   // 1 2 3 4 5 6 7 8 9 0 1 2  elements
+      [1,1,0,0,0,0,0,0,0,0,0,0],      // Set 1
+      [0,1,0,0,0,0,0,1,0,0,0,0],      //     2
+      [0,0,0,0,1,1,0,0,0,0,0,0],      //     3
+      [0,0,0,0,0,1,1,0,0,1,1,0],      //     4
+      [0,0,0,0,0,0,0,0,1,1,0,0],      //     5
+      [1,1,1,0,1,0,0,0,1,1,1,0],      //     6
+      [0,0,1,1,0,0,1,1,0,0,1,1]       //     7
+   ];
+
+Solver<CP> m();
+
+var<CP>{int} x[1..num_sets](m, 0..1);
+// number of choosen sets 
+var<CP>{int} z(m, 0..num_sets*2); 
+// total number of elements in the choosen sets
+var<CP>{int} tot_elements(m, 0..num_sets*num_elements); 
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> z subject to {
+
+  // m.post(z <= 3); // for exploreall
+
+  m.post(z == sum(j in 1..num_sets) (x[j]));
+
+  forall(j in 1..num_elements)
+    m.post(sum(i in 1..num_sets) (belongs[i,j]*x[i])>=1);
+
+  m.post(tot_elements == sum(i in 1..num_sets) 
+         sum(j in 1..num_elements) (x[i]*belongs[i,j]));
+
+} using {
+      
+
+  labelFF(m);
+
+  num_solutions := num_solutions + 1;
+      
+  cout << x << " z: " << z << " tot_elements: " << tot_elements << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

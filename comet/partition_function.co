@@ -1,0 +1,108 @@
+/*
+
+  Function partitions in Comet.
+
+  Partitions the integers 1..n according to a function, e.g.
+  - mod
+  - div 
+  - a boolean test, e.g. i > 3
+
+  Compare with the MiniZinc model 
+  http://www.hakank.org/minizinc/modulo_partition.mzn
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+ 
+int t0 = System.getCPUTime();
+
+int n = 30;
+
+Solver<CP> m();
+
+// binary matrix: which integer 0..n is included 
+// in which partition 1..n
+var<CP>{bool} x_bool[0..n, 1..n](m);
+
+//
+// Partition the sets (binary matrix representation).
+//
+function void partition_sets(var<CP>{bool} [,] x) {
+  Solver<CP> m = x[1,1].getSolver();
+  range R1 = x.getRange(0);
+  range R2 = x.getRange(1);
+
+  forall(i in R1, j in R1 : i != j)
+      m.post(sum(k in R2) (x[i,k] && x[j,k]) == 0);
+
+}
+
+Integer num_solutions(0);
+
+exploreall<m> {
+
+  forall(j in 1..n) {
+    // calculate the function 
+    var<CP>{int} z(m, 0..n);
+
+    // m.post(z == n % j);   // modulo
+    // m.post(z == (j > 3)); // a boolean test
+    m.post(z == (j % 5 == 2 || j % 5 == 3)); // another boolean test
+    // m.post(z == n / j);   // div
+
+    // put the result in the right partition (slot)
+    m.post(x_bool[z,j] == true);
+
+  }
+
+  // partition the sets, i.e. make sure that a value is 
+  // only in one partition
+  partition_sets(x_bool);
+
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  // show the partitions
+  forall(i in 0..n) {
+    if ( sum(j in 1..n) x_bool[i,j] > 0) {
+      cout << i << ": ";
+      forall(j in 1..n) {
+        if (x_bool[i,j])
+          cout << j << " ";
+      }
+      cout << endl;
+    }
+  }
+  cout << endl;
+
+
+  /*
+  // matrix form
+  forall(i in 0..n) {
+    forall(j in 1..n) {
+      cout << x_bool[i,j]*1 << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+  */
+ 
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

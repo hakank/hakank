@@ -1,0 +1,249 @@
+/*
+
+  Fill-in the squares problem (Brainjammer) in Comet.
+
+  This problem is from the ZDC system, available from 
+  http://www.bracil.net/CSP/cacp/cacpdemo.html , in the
+  file 
+     Brainjammer.txt 
+  from 2003-01-26, which states:
+  """
+  Only Solution is:
+        1	2	3	4	5
+  ====================================================
+  A  	 7	11	2	17	1
+  B	13	19	23	22	3
+  C	9	20	24	14	12
+  D	16	21	25	18	10
+  E	4	8	15	6	5
+
+  22mins55secs of CPU time to find first solution
+  50mins42secs of CPU time with duplicate induced variables removed?
+  Maybe this has something to do with the variable ordering...as this might change
+  as a result of removing duplicate induced variables.
+  1hr:34 mins of CPU time to find a single solution and determine no other solutions
+  exist.
+
+  Statistics for finding the first solution:
+  (with duplicate induced nodes removed)
+  CPU seconds: 		4880.63	(On a Pentium Pro 200Mhz, VC++)
+  Node count:			4036162
+  Induced node count:	1849214
+  Backtracks:			5885311
+
+  """
+
+  2009-02-07: on my dual core 3.2 Mhz (Linux) it took about 0.5 second to solve 
+  the Comet model using explore, and about a second using exploreall, 
+  but the comparison is really not fair considering the difference in machines.
+
+  The statistics on a run for explore and exploreall:
+
+  explore:
+    time:      52
+    #choices = 117
+    #fail    = 382
+    #propag  = 80695
+
+  exploreall:
+    time:      537
+    #choices = 1502
+    #fail    = 4982
+    #propag  = 1017798
+
+
+  The only references to this problem I've found is the following pages:
+    http://discuss.fogcreek.com/techInterview/default.asp?cmd=show&ixPost=2787
+    http://notdarkandstormy.blogspot.com/2005/05/funky-logic-problem.html
+  and especially 
+    http://perplexus.info/show.php?pid=2683
+  which has a lot of comments about manually solving the problem.
+
+  I've yet to know the original source.
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 5;
+range Cell = 1..n^2;
+
+
+//
+// x is a prime
+//
+function void isPrime(Solver<CP> m, var<CP>{int} x) {
+  forall(i in 2..x.getMax() / 2)
+    m.post(i != x => x % i > 0);
+}
+
+//
+// x is a square
+//
+function void isSquare(Solver<CP> m, var<CP>{int} x) {
+  var<CP>{int} tmp(m, 0..x.getSize());
+  m.post(x == tmp^2);
+}
+
+/*
+// Not used since inSet don't work (as I expect it to work).
+set{int} Primes = {1,2,3,5,7,11,13,17,19,23};
+set{int} Primes2 = {1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47};
+set{int} Squares = {1,4,9,16,25};
+*/
+
+
+Solver<CP> m();
+
+var<CP>{int} a[0..n-1](m, Cell);
+var<CP>{int} b[0..n-1](m, Cell);
+var<CP>{int} c[0..n-1](m, Cell);
+var<CP>{int} d[0..n-1](m, Cell);
+var<CP>{int} e[0..n-1](m, Cell);
+
+var<CP>{int} ALL[0..n^2-1](m, Cell); // All numbers
+
+int max_sum = sum(i in 21..25) i;
+var<CP>{int} a_sum(m, 1..max_sum);
+var<CP>{int} b_sum(m, 1..max_sum);
+var<CP>{int} c_sum(m, 1..max_sum);
+var<CP>{int} d_sum(m, 1..max_sum);
+var<CP>{int} e_sum(m, 1..max_sum);
+
+Integer num_solutions(0);
+
+// explore<m> {
+exploreall<m> {
+
+  m.post(a_sum == (sum(i in 0..n-1) a[i]));
+  m.post(b_sum == (sum(i in 0..n-1) b[i]));
+  m.post(c_sum == (sum(i in 0..n-1) c[i]));
+  m.post(d_sum == (sum(i in 0..n-1) d[i]));
+  m.post(e_sum == (sum(i in 0..n-1) e[i]));
+
+  // Each number from 1-25, used only once
+  forall(i in 0..n-1) {
+    m.post(ALL[i]     == a[i]);
+    m.post(ALL[i+n]   == b[i]);
+    m.post(ALL[i+2*n] == c[i]);
+    m.post(ALL[i+3*n] == d[i]);
+    m.post(ALL[i+4*n] == e[i]);
+  }
+  m.post(alldifferent(ALL));
+
+
+  //1.Sum of each column is odd
+  forall (i in 0..n-1) {
+    m.post((a[i] + b[i] + c[i] + d[i] + e[i]) % 2 == 1); 
+  } 
+  
+  //2.Sum of each row, except C is even
+  m.post(a_sum % 2 == 0);	
+  m.post(b_sum % 2 == 0);	
+  m.post(c_sum % 2 == 1);	
+  m.post(d_sum % 2 == 0);	
+  m.post(e_sum % 2 == 0);	
+
+  
+  //3.Sum of row A is not greater than the sum of any other row
+  m.post(a_sum <= b_sum);	
+  m.post(a_sum <= c_sum);	
+  m.post(a_sum <= d_sum);	
+  m.post(a_sum <= e_sum);	
+
+  
+  //4.The sum of diagonal A1 to E5 is greater than the sum of
+  //  diagonal E1 to A5
+  m.post(a[0] + b[1] + c[2] + d[3] + e[4]  > e[0] + d[1] + c[2] + b[3] + a[4]);
+  
+  //5.(A4 + B4) is greater than (C4+D4+E4)
+  m.post(a[3] + b[3] > c[3] + d[3] + e[3]);
+  
+  //6. A1 + B1 = D1 + E1
+  m.post(a[0] + b[0] == d[0] + e[0]); 
+         
+  //7. A1 > E1
+  m.post(a[0] > e[0]); 
+  
+  //8. A1, A3 and B1 are primes
+  isPrime(m, a[0]);
+  isPrime(m, a[2]);
+  isPrime(m, b[0]);
+  /*
+  m.post(inSet(a[0], Primes)); // inSet don't work.
+  m.post(inSet(a[2], Primes)); 
+  m.post(inSet(b[0], Primes)); 
+  */
+  
+  //9.(A3 + E3) is a prime number
+  // m.post(inSet( a[2]+e[2], Primes2)); // inSet don't work.
+  var<CP>{int} c9(m, 0..25^2);
+  m.post(c9 == a[2]+e[2]);
+  isPrime(m, c9);
+
+  
+  //10. A5,D1,D3 and E1 are squares
+  /*
+  m.post(inSet(a[4], Squares)); // inSet don't work.
+  m.post(inSet(d[0], Squares)); 
+  m.post(inSet(d[2], Squares)); 
+  m.post(inSet(e[0], Squares)); 
+  */
+  isSquare(m, a[4]);
+  isSquare(m, d[0]);
+  isSquare(m, d[2]);
+  isSquare(m, e[0]);
+
+  //11. B2, C2, and D2 are ascending consecutive numbers
+  m.post(b[1] + 1 == c[1]); 
+  m.post(c[1] + 1 == d[1]); 
+  
+  //12. B3, C3, and D3 are ascending consecutive numbers
+  m.post(b[2] + 1 == c[2]); 
+  m.post(c[2] + 1 == d[2]); 
+  
+  //13. B5 + D5 = A5 + C5
+  m.post(b[4] + d[4] == a[4] + c[4]); 
+  
+  //14. (c1)^2 + (c5)^2 = (e3)^2
+  m.post(c[0]^2 + c[4]^2 == e[2]^2);
+  
+  //15. C5 is a two-digit number
+  m.post(c[4] > 9); 
+  
+  //16. D5 is a multiple of E5
+  m.post(d[4] % e[4] == 0); 
+  
+  //17. E1 + E3 = E2 + E4 + E5
+  m.post(e[0] + e[2] == e[1] + e[3] + e[4]); 
+  
+
+} using {
+      
+  labelFF(ALL);
+
+  num_solutions := num_solutions + 1;
+
+  cout << a << endl;
+  cout << b << endl;
+  cout << c << endl;
+  cout << d << endl;
+  cout << e << endl;
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

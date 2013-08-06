@@ -1,0 +1,115 @@
+/*
+ 
+  Set partition and set covering in Comet.
+  
+  Example from the swedish book Lundgren, Rönnqvist, Värbrand "Optimeringslära" (translation: "Optimization theory"), page 408.
+
+  * Set partition:
+    We want to minimize the cost of the alternatives which covers all the 
+    objects, i.e. all objects must be choosen. The requirement is than an 
+    object may be selected _exactly_ once.
+ 
+    Alternative        Cost        Object
+    1                  19           1,6
+    2                  16           2,6,8
+    3                  18           1,4,7
+    4                  13           2,3,5
+    5                  15           2,5
+    6                  19           2,3
+    7                  15           2,3,4
+    8                  17           4,5,8
+    9                  16           3,6,8
+    10                 15           1,6,7
+    
+    The problem has a unique solution of z = 49 where alternatives 
+    3, 5, and 9 is selected. 
+ 
+  * Set covering:
+    If we, however, allow that an object is selected _more than one time_, 
+    then the solution is z = 45 (i.e. less cost than the first problem),
+    and the alternatives 4, 8, and 10 is selected, where object 5 is 
+    selected twice (alt. 4 and 8). It's an unique solution as well.
+
+
+  Compare with the MiniZinc model http://www.hakank.org/minizinc/set_covering4.mzn
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int num_alternatives = 10;
+int num_objects = 8;
+
+// costs for the alternatives
+int costs[1..num_alternatives] = [ 19, 16, 18, 13, 15, 19, 15, 17, 16, 15];
+
+// the alternatives, and their objects
+int a[1..num_alternatives, 1..num_objects] = 
+[
+// 1 2 3 4 5 6 7 8    the objects 
+  [1,0,0,0,0,1,0,0],  // alternative 1
+  [0,1,0,0,0,1,0,1],  // alternative 2
+  [1,0,0,1,0,0,1,0],  // alternative 3
+  [0,1,1,0,1,0,0,0],  // alternative 4
+  [0,1,0,0,1,0,0,0],  // alternative 5
+  [0,1,1,0,0,0,0,0],  // alternative 6
+  [0,1,1,1,0,0,0,0],  // alternative 7
+  [0,0,0,1,1,0,0,1],  // alternative 8
+  [0,0,1,0,0,1,0,1],  // alternative 9
+  [1,0,0,0,0,1,1,0]  // alternative 10
+];
+
+
+Solver<CP> m();
+
+// decision variable: which alternative to choose
+var<CP>{int} x[1..num_alternatives](m, 0..1);
+
+// the objective to minimize
+var<CP>{int} z(m, 0..100000);
+
+Integer num_solutions(0);
+
+// exploreall<m> {
+minimize<m> z subject to {
+
+  // m.post(z <= 45); // for exploreall
+
+  m.post(z == sum(i in 1..num_alternatives) x[i]*costs[i]); 
+
+  forall(j in 1..num_objects) {
+    // set partition: all objects must be covered _exactly_ once
+    m.post(sum(i in 1..num_alternatives) (x[i]*a[i,j]) == 1);
+
+    // set covering: all objects must be covered _at least_ once
+    // m.post(sum(i in 1..num_alternatives) (x[i]*a[i,j]) >= 1);
+  }
+
+} using {
+      
+  label(m);
+
+  num_solutions := num_solutions + 1;
+
+  cout << x << " z: " << z << endl;
+  cout << "selected: ";
+  forall(i in 1..num_alternatives)
+    if (x[i] == 1)
+      cout << i << " ";
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

@@ -1,0 +1,129 @@
+/*
+
+  Tourist Site Competition in Comet.
+
+
+  From Pierre Flener's presentation 
+  "Constraint Technology - A Programming Paradigm on the Rise"
+  http://www.it.uu.se/edu/course/homepage/ai/vt08/AI-CT.pdf
+     pages 5f: problem statement 
+     pages 12f: model
+     pages 21ff: walktrough of a solution
+
+  With 7 tourist sites and 7 judges:
+  """
+  Every tourist site is visited by r = 3 judges.
+  Every judge visits c = 3 tourist sites.
+  Every pair of sites is visited by lambda = 1 common judge.
+  """
+
+  There are 151200 solutions to this problem.
+  With the additional constraint that Ali should visit Birka, Falun and Lund
+  there are 4320 solutions.
+
+
+  This problem was also presented as "The Airline-of-the-Year Problem"
+  in his (Flener's) presentation
+  "Constraint Programming - Programming Paradigm on the Rise"
+  http://www.it.uu.se/research/group/astra/ATM-CT/Flener.pdf
+  page 4f
+  The problem is stated as follows for 7 airlines and 7 judges:
+  """
+  Constant jury: Every airline is tested by 3 judges.
+  Constant load: Every judge tests 3 airlines.
+  Equity: Every airline pair is tested by 1 common judge.
+  """
+  
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+
+int r = 3;
+int c = 3;
+int lambda = 1;
+
+enum sites = {Birka, Falun, Lund, Mora, Sigtuna, Uppsala, Ystad};
+enum judges = {Ali, Dan, Eva, Jim, Leo, Mia, Ulla};
+
+// A more general representation
+/* 
+int num_sites = 7;
+int num_judges = 7;
+range sites = 1..num_sites;
+range judges = 1..num_judges;
+*/
+
+Solver<CP> m();
+
+// Decision variable: which judge go to which site?
+var<CP>{bool} x[sites,judges](m);
+
+
+Integer num_solutions(0);
+
+explore<m> {
+
+  // Symmetry breaking
+  forall(s in {Birka, Falun, Lund}) 
+    m.post(x[s, Ali] == 1);
+
+  // Symmetry breaking (general representation)
+  /*
+  forall(s in 1..3) 
+    m.post(x[s, 1] == 1);
+  */  
+
+  // Every tourist site is visited by r judges.
+  forall(s in sites)
+    m.post(r == sum(j in judges) x[s,j]);
+
+  // Every judge visits c tourist sites.
+  forall(j in judges)
+    m.post(c == sum(s in sites) x[s,j]);
+
+  // Every pair of sites is visited by lambda common judge.
+  forall(s1 in sites, s2 in sites : s1 < s2) 
+    m.post(lambda == sum(j in judges) (x[s1,j] && x[s1,j] == x[s2,j]) );
+
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions++;
+
+  /*
+  // matrix solution
+  forall(s in sites) {
+    forall(j in judges) {
+      cout << 1*x[s,j] << " "; // convert to integer
+    }
+    cout << endl;
+  }
+  cout << endl;
+  */
+
+  forall(j in judges) 
+    cout << j << ": " << filter(s in sites) (x[s,j]) << endl;
+
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

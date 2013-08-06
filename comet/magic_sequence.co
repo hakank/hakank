@@ -1,0 +1,112 @@
+/*
+
+  Magic sequence in Comet.
+
+  From CSPLib problem 19:
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob019/spec.html
+  """
+  A magic sequence of length n is a sequence of integers x0 . . xn-1 between 
+  0 and n-1, such that for all i in 0 to n-1, the number i occurs exactly 
+  xi times in the sequence. For instance, 6,2,1,0,0,0,1,0,0,0 is a magic 
+  sequence since 0 occurs 6 times in it, 1 occurs twice, ... 
+  """
+
+  This model is not very unlike the OPL models magic1.mod, magic2.mod,
+  and magic3.mod in 
+  Pascal Van Hentenryck "The OPL Optimization Programming Language", page 39ff.
+
+
+  The problem n = 50 is solved in about 1 second, n = 500 is solved in about 18 seconds.
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 50;
+range Range = 0..n-1;
+range Domain = 0..n;
+
+int value[i in Range] = i;
+
+Solver<CP> m();
+var<CP>{int} s[Range](m, Domain);
+
+Integer num_solutions(0);
+
+
+//
+// distribute
+//
+// Imitates the OPL constraint distribute.
+//
+class distribute extends UserConstraint<CP> {
+  var<CP>{int}[] _occurrence;
+  int[] _value;
+  var<CP>{int}[] _element;
+  int _n;
+  
+  distribute(var<CP>{int}[] occurrence,
+             int[] value,
+             var<CP>{int}[] element) : UserConstraint<CP>() {
+    _occurrence = occurrence;
+    _value = value;
+    _element = element;
+    _n = _occurrence.getSize();      
+  }
+
+  Outcome<CP> post(Consistency<CP> cl) {
+    Solver<CP> cp = _occurrence[1].getSolver();
+    range Range = _occurrence.getRange();
+    forall(i in Range) 
+      cp.post(sum(j in Range) (_occurrence[j] == _value[i]) == _element[i]);
+
+    return Suspend;
+  }
+
+  Outcome<CP> propagate() { 
+    return Suspend;
+  }
+
+}
+
+
+explore<m> {
+
+  /*
+  // original constraint
+  forall(i in Range)
+    m.post(s[i] == sum(j in Range) (s[j] == i));
+  */
+
+  // added in the OPL model magic2.mod
+  m.post(sum(i in Range) s[i] == n);
+  m.post(sum(i in Range) s[i]*i == n);
+
+  // added in the OPL model magic3.mod
+  m.post(distribute(s, value, s));
+
+} using {
+      
+  labelFF(m);
+
+  num_solutions++;
+      
+  cout << s << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

@@ -1,0 +1,111 @@
+/*
+
+  Social golfer problem in Comet.
+
+  CSPLib problem 10:
+  http://www.csplib.org/prob/prob010/index.html
+  """
+  The coordinator of a local golf club has come to you with the following 
+  problem. In her club, there are 32 social golfers, each of whom play golf 
+  once a week, and always in groups of 4. She would like you to come up 
+  with a schedule of play for these golfers, to last as many weeks as 
+  possible, such that no golfer plays in the same group as any other golfer 
+  on more than one occasion.
+
+  Possible variants of the above problem include: finding a 10-week schedule 
+  with ``maximum socialisation''; that is, as few repeated pairs as possible 
+  (this has the same solutions as the original problem if it is possible 
+  to have no repeated pairs), and finding a schedule of minimum length 
+  such that each golfer plays with every other golfer at least once 
+  (``full socialisation'').
+
+  The problem can easily be generalized to that of scheduling m groups of 
+  n golfers over p weeks, such that no golfer plays in the same group as any 
+  other golfer twice (i.e. maximum socialisation is achieved). 
+  """
+
+
+  This model is a translation of the OPL code from 
+  http://www.dis.uniroma1.it/~tmancini/index.php?currItem=research.publications.webappendices.csplib2x.problemDetails&problemid=010
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int weeks = 4;
+int groups = 3;
+int groupSize = 3;
+int golfers = groups * groupSize;
+
+range Golfer = 1..golfers;
+range Week = 1..weeks;
+range Group = 1..groups;
+
+
+Solver<CP> m();
+// Search space: The set of all possible group assignments to all players 
+// in each of the weeks weeks.
+var<CP>{int} assign[Golfer,Week](m,  Group);
+
+
+Integer num_solutions(0);
+explore<m> {
+// exploreall<m> {
+// minimize<m> z subject to {
+
+  // C1: Each group has exactly groupSize players
+  forall (gr in Group, w in Week){// c1
+    m.post(sum (g in Golfer) (assign[g,w] == gr) == groupSize);
+  }
+
+  // C2: Each pair of players only meets at most once
+  forall (g1 in Golfer, g2 in Golfer: g1 != g2, w1 in Week, w2 in Week: w1 != w2) {
+    m.post((assign[g1,w1] == assign[g2,w1]) + (assign[g1,w2] == assign[g2,w2]) <= 1);
+  }
+
+  // SBSA: Symmetry-breaking by selective assignment
+  // On the first week, the first groupSize golfers play in group 1, the 
+  // second groupSize golfers play in group 2, etc. On the second week, 
+  // golfer 1 plays in group 1, golfer 2 plays in group 2, etc.
+  forall(g in Golfer){
+    m.post(assign[g,1]==((g-1) / groupSize) + 1);
+  }
+
+  forall(g in Golfer : g <= groupSize){
+    m.post(assign[g,2]==g);
+  }
+
+
+
+} using {
+      
+
+  label(m);
+
+  num_solutions++;
+
+  forall(g in Golfer) {
+    forall(w in Week) {
+      cout << assign[g, w] << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+}
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

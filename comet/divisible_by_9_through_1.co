@@ -1,0 +1,114 @@
+/*
+
+  Divisible by 9 through 1 problem in Comet.
+
+  From http://msdn.microsoft.com/en-us/vcsharp/ee957404.aspx
+  "Solving Combinatory Problems with LINQ"
+  """
+  Find a number consisting of 9 digits in which each of the digits 
+  from 1 to 9 appears only once. This number must also satisfy these 
+  divisibility requirements:
+  
+   1. The number should be divisible by 9.
+   2. If the rightmost digit is removed, the remaining number should 
+      be divisible by 8.
+   3. If the rightmost digit of the new number is removed, the remaining 
+      number should be divisible by 7.
+   4. And so on, until there's only one digit (which will necessarily 
+      be divisible by 1).
+  """
+  
+  Also, see
+  "Intel(R) Parallel Studio: Great for Serial Code Too (Episode 1)"
+  http://software.intel.com/en-us/blogs/2009/12/07/intel-parallel-studio-great-for-serial-code-too-episode-1/
+
+
+  This is a slighly more general model by supporting
+  different bases.
+  However, using base > 10 giver integer overflow.
+  
+  For base <= 10 there are solution (i.e. the array x) 
+  for the following
+    2: [1]
+    4: [1, 2, 3] 
+       [3, 2, 1]
+    6: [1, 4, 3, 2, 5] 
+       [5, 4, 3, 2, 1]
+    8: [3, 2, 5, 4, 1, 6, 7]
+       [5, 2, 3, 4, 7, 6, 1]
+       [5, 6, 7, 4, 3, 2, 1]
+   10: [3, 8, 1, 6, 5, 4, 7, 2, 9]
+
+  The ECLiPSe model also finds the following solution 
+  in base 14
+   14: [9, 12, 3, 10, 5, 4, 7, 6, 11, 8, 1, 2, 13]
+
+
+  Compare with the following models:
+  * MiniZinc: http://hakank.org/minizinc/divisible_by_9_through_1.mzn
+  * Gecode: http://hakank.org/gecode/divisible_by_9_through_1.cpp
+  * ECLiPSe: http://www.hakank.org/eclipse/divisible_by_9_trough_1.ecl
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+*/
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int base = 10;
+int n = base-1;
+int m = base^n-1;
+
+Solver<CP> cp();
+var<CP>{int} x[i in 1..n](cp, 1..base-1); // the digits
+var<CP>{int} t[i in 1..n](cp, 0..m); // the numbers. t[1] contains the answer
+
+
+Integer num_solutions(0);
+// explore<m> {
+exploreall<cp> {
+// minimize<m> z subject to {
+
+  cp.post(alldifferent(x));
+
+  forall(i in 1..n) {
+    toNum(cp, all(j in 1..base-i) x[j], t[i], base);
+    cp.post(t[base-i] % i == 0);
+  }
+
+
+} using {
+      
+  labelFF(x);
+  /*
+  forall(i in 1..n : !x[i].bound()) by (x[i].getSize()) {
+    label(x[i]);
+  }
+  */
+
+  num_solutions++;
+
+  cout << x << endl;
+  cout << t << endl;
+  cout << endl;
+}
+
+// cout << x << endl;
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << cp.getNChoice() << endl;
+cout << "#fail    = " << cp.getNFail() << endl;
+cout << "#propag  = " << cp.getNPropag() << endl;
+
+
+// convert between an array of digits (in base base) and a number 
+function void toNum(Solver<CP> m, var<CP>{int}[] x, var<CP>{int} num, int base) {
+  int start = x.getLow();
+  int end = x.getHigh();
+  m.post(num == sum(i in start..end) base^(end-i)*x[i] );
+}

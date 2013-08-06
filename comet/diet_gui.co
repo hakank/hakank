@@ -1,0 +1,188 @@
+/*
+  Simple diet probblem in Comet
+  
+  Standard Operations Research example in Comet.
+
+  Minimize the cost for the products:
+  Type of                        Calories   Chocolate    Sugar    Fat
+  Food                                      (ounces)     (ounces) (ounces)
+  ------------------------------------------------------------------------
+  Chocolate Cake (1 slice)       400           3            2      2
+  Chocolate ice cream (1 scoop)  200           2            2      4
+  Cola (1 bottle)                150           0            4      1
+  Pineapple cheesecake (1 piece) 500           0            4      5
+
+
+  This version animates the solution.
+
+  Compare with other models:
+  * Comet   : http://www.hakank.org/comet/diet.co (no GUI)
+  * MiniZinc: http://www.hakank.org/minizinc/diet1.mzn
+  * Choco:    http://www.hakank.org/gecode_r/Choco.java
+  * JaCoP:    http://www.hakank.org/gecode_r/Diet.java
+  * Gecode/R: http://www.hakank.org/gecode_r/diet.rb
+  * Excel/OpenOffice Scalc: http://www.hakank.org/oocalc_excel/diet.xls
+
+
+  Comet model created by Hakan Kjellerstrand, hakank@bonetmail.com
+  See also my Comet page: http://www.hakank.org/comet/
+
+ */
+
+int t0 = System.getCPUTime();
+
+import cotfd;
+import qtvisual;
+include "stree";
+
+bool debug = true;
+
+// This Animation class is adapted from the example
+// queensg.co
+//
+class Animation {
+   Visualizer         _gui;
+   int              _scale;
+   VisualRectangle[,] _grq;
+   range              Size;
+   var<CP>{int}[]    x;
+   STree              tree;
+   boolean        _tracing;
+
+  Animation(Solver<CP> m,var<CP>{int}[] q, bool debug) {
+      _gui  = new Visualizer();
+      _tracing =true;
+      x = q;
+      Size = q.getRange();
+      cout << "Size: " << Size << endl;
+      int sizeDraw = 800;
+      range Size2 = 1..11;
+      VisualDrawingBoard board(_gui,"Diet CP-style"); 
+      _scale = (sizeDraw)/(Size.getSize());
+      _grq = new VisualRectangle[Size,Size2];
+      forall(i in Size,j in Size2) {
+         _grq[i,j] = new VisualRectangle(board,_scale*(i-1)+2,_scale*(j-1)+2,_scale-4,_scale-4);
+         _grq[i,j].setColor("green");
+      }     
+      _gui.addNotebookPage(board);     
+      board.fitContent();      
+      tree = new STree(_gui,m);
+
+      // Toggle "tracing mode" whenever the button in the toolbar is clicked.
+      whenever _gui.getTracingButton()@clicked() 
+         _tracing = !_tracing;
+      // Whenever COMET backtracks (after a failure), change the status line to green
+      whenever m.getSearchController()@doBacktrack() { 
+         if (_tracing) {
+            _gui.getStatusBar().setColor("green");
+            pause("Backtracked...");
+         }
+      }
+      // Whenever COMET fails (before it backtracks), change the status line to red.
+      whenever m.getSearchController()@onFail(int f) {   
+         if (_tracing) {
+            _gui.getStatusBar().setColor("red");
+            pause("Failing...");
+         }
+      }   
+      // Whenever COMET produces a solution, report it and pause until the user clicks on "run"
+      whenever m.getSearchController()@onFeasibleSolution(Solution s) 
+         tellSolution();
+      // Whenever we return from a labeling on the manager, pause with a suitable message.
+      whenever return(m@label(var<CP>{int} x,int v)) {
+         pause("labeled " + IntToString(x.getId()) + " to " + IntToString(v) + " ... ");         
+      }      
+      // setup the xs board. 
+      animate(debug);
+      // pause before the initial start
+      pause("");
+   }
+   void pause(string msg) { 
+      if (_tracing) {
+         _gui.getStatusBar().setText(msg.concat("Press Run to continue"));
+         sleepUntil _gui.getRunButton()@clicked();
+      }
+   }
+   void waitQuit() {
+      sleepUntil _gui.getCloseButton()@clicked();
+   }
+   void tellSolution() {
+     if (_tracing) {
+        _gui.getStatusBar().setText("Solution Found. Press Run to continue");
+        _gui.getStatusBar().setColor("yellow");      
+        sleepUntil _gui.getRunButton()@clicked();
+        _gui.getStatusBar().setColor("gray");
+      }
+   }
+
+  void animate(bool debug) {
+    cout << endl;
+      forall(i in Size) {
+        cout << "i: " << i << endl;
+        whenever x[i]@onRecover(int v) {  
+          if (debug) cout  << "onRecover " << v << endl;
+          _grq[i,v+1].setColor("green"); 
+        }
+        whenever x[i]@onUnbind(int v)  {  
+          if (debug) cout  << "onUnbind " << v << endl;
+          _grq[i,v+1].setColor("green"); 
+        }
+        whenever x[i]@onValueBind(int v) {  
+          if (debug) cout  << "onValueBind " << v << endl;
+          _grq[i,v+1].setColor("blue"); 
+        }
+        whenever x[i]@onValueLost(int v) {  
+          if (debug) cout  << "onValueLost " << v << endl;
+          _grq[i,v+1].setColor("red"); 
+        }
+      } 
+   }
+}
+
+
+
+int n = 4;
+int p = 4;
+
+Solver<CP> m();
+
+int price[1..n] = [50, 20, 30, 80]; // in cents
+
+int limits [1..p]   = [500, 6,10,8];
+
+int calories[1..n]  = [400, 200, 150, 500];
+int chocolate[1..n] = [3,2,0,0];
+int sugar[1..n]     = [2,2,4,4];
+int fat[1..n]       = [2,4,1,5];
+
+var<CP>{int} x[i in 1..n](m, 0..10);
+var<CP>{int} cost(m,0..100);
+
+Animation theAnim(m,x, debug);
+
+minimize<m> cost subject to {
+
+  m.post(cost == sum(i in 1..n) price[i]*x[i]);
+
+  m.post(sum(i in 1..n) (x[i]*calories[i])  >= limits[1]);
+  m.post(sum(i in 1..n) (x[i]*chocolate[i]) >= limits[2]);
+  m.post(sum(i in 1..n) (x[i]*sugar[i])     >= limits[3]);
+  m.post(sum(i in 1..n) (x[i]*fat[i])       >= limits[4]);
+  
+} using {
+
+  labelFF(x);
+  label(cost);
+
+}
+ 
+int t1 = System.getCPUTime();
+cout << "cost: " << cost << endl;
+cout << "x: " << x << endl;
+cout << "time:      " << (t1-t0) / 1000.0 << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
+
+theAnim.waitQuit();

@@ -1,0 +1,118 @@
+/*
+  Seseman problem in Comet.
+
+  Description of the problem:
+  
+  n is the length of a border
+  There are (n-2)^2 "holes", i.e.
+  there are n^2 - (n-2)^2 variables to find out.
+ 
+  The simplest problem, n = 3 (n x n matrix)
+  which is represented by the following matrix:
+ 
+   a b c 
+   d   e 
+   f g h 
+  
+  Where the following constraints must hold:
+ 
+    a + b + c = border_sum
+    a + d + f = border_sum
+    c + e + h = border_sum
+    f + g + h = border_sum
+    a + b + c + d + e + f = total_sum
+
+
+  For a (swedish) discussion of this problem, see
+  "Sesemans matematiska klosterproblem samt lite Constraint Logic Programming"
+  http://www.hakank.org/webblogg/archives/001084.html
+  and
+  Seseman's Convent Problem: http://www.hakank.org/seseman/seseman.cgi
+  (using Eclipse code)
+
+  It was also is commented in the (swedish) blog post
+  "Constraint Programming: Minizinc, Gecode/flatzinc och ECLiPSe/minizinc"
+  http://www.hakank.org/webblogg/archives/001209.html
+  
+
+  Also compare with other models:
+  - MiniZinc: http://www.hakank.org/minizinc/seseman.mzn
+  - JaCoP:    http://www.hakank.org/JaCoP/Seseman.java
+  - Choco:    http://www.hakank.org/Choco/Seseman.java
+  - Gecode/R: http://www.hakank.org/gecode_r/seseman.rb
+  - Excel/OpenOffice Scalc: http://www.hakank.org/oocalc_excel/seseman.xls
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+
+ */
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 3; // size of the matrix, may be varied
+int border_sum = n*n;
+
+Solver<CP> m();
+var<CP>{int} x[i in 1..n, j in 1..n](m, 0..n*n);
+var<CP>{int} total_sum(m, 1..(n*n)*(n*n));
+
+Integer num_solutions(0); // number of solutions
+
+// explore<m> {
+exploreall<m> {
+
+   // inner grid of the box
+   forall(i in 2..n-1, j in 2..n-1) 
+     m.post(x[i,j] == 0);
+
+   // sum the borders (border_sum)
+   m.post(sum(i in 1..n) (x[i,1]) == border_sum);
+   m.post(sum(i in 1..n) (x[i,n]) == border_sum);
+   m.post(sum(j in 1..n) (x[1,j]) == border_sum);
+   m.post(sum(j in 1..n) (x[n,j]) == border_sum);
+
+   // all borders must be >= 1 (may be changed to 0 or whatever)
+   forall(i in 1..n) {
+     forall(j in 1..n : i == 1 || j == 1 || i == n || j == n) {
+       m.post(x[i,j] >= 1);
+     }
+   }
+   
+   // sum the total
+   m.post(sum(i in 1..n, j in 1..n) (x[i,j]) == total_sum);
+
+  } using {
+      
+   // labelFF(x);
+   forall(i in 1..n, j in 1..n : !x[i,j].bound()) {// by (-x[i,j].getSize()) {
+     label(x[i,j]);
+   }
+   label(total_sum);
+
+   cout << "total_sum: " << total_sum << endl;
+
+   forall(i in 1..n) {
+     forall(j in 1..n) {
+       cout << x[i,j] << " ";
+     }
+     cout << endl;
+   }
+
+   cout << endl;
+
+   num_solutions := num_solutions + 1;
+
+}
+
+cout << "num_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "\ntime:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+

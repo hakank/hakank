@@ -1,0 +1,53 @@
+/*
+  Production-planning in Comet.
+
+  From the OPL model production.mod.
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotln;
+int t0 = System.getCPUTime();
+
+enum Products = {kluski, capellini, fettucine};
+enum Resources = {flour, eggs};
+float Consumption[Products, Resources] = [ [0.5, 0.2], [0.4, 0.4], [0.3, 0.6] ];
+float Capacity[Resources] = [ 20, 40 ];
+float Demand[Products] = [ 100, 200, 300 ];
+float InsideCost[Products] = [0.6, 0.8, 0.3 ];
+float OutsideCost[Products] = [0.8, 0.9, 0.4];
+
+Solver<LP> m("lp_solve");
+var<LP>{float} Inside[Products](m);
+var<LP>{float} Outside[Products](m);
+
+Integer num_solutions(0);
+minimize<m>  
+  sum(p in Products) 
+    (InsideCost[p]*Inside[p] + OutsideCost[p] * Outside[p])
+subject to {
+  forall(r in Resources)
+    m.post(sum(p in Products)
+           Consumption[p,r]*Inside[p] <= Capacity[r]);
+
+  forall(p in Products)
+    m.post(Inside[p] + Outside[p] >= Demand[p]);
+
+
+}
+
+cout << "objective: " << m.getObjectiveValue() << endl;
+forall(p in Products) {
+  cout << p << " Inside: " << Inside[p].getValue()  << " Outside: " << Outside[p].getValue() << endl;
+}
+
+
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+
+

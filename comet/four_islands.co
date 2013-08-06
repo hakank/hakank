@@ -1,0 +1,239 @@
+/*
+
+  Four Islands puzzle (Dell Logic Puzzles) in Comet.
+
+
+  http://brownbuffalo.sourceforge.net/FourIslandsClues.html
+  """
+  Title: Four Islands
+  Author: Humphrey Dudley
+  Publication: Dell Logic Puzzles
+  Issue: April, 1998
+  Page: 9
+  Stars: 1
+  
+  A tiny nation in the South Pacific contains four islands connected by bridges
+  as shown (see below). Each of the four islands (Pwana, Quero, Rayou, and Skern)
+  boasts a different primary export (alabaster, bananas, coconuts, and durian
+  fruit) and a different tourist attraction (hotel, ice skating rink, jai alai 
+  stadium, and koala preserve). Can you find the name, export, and tourist 
+  attraction of each island on the map?
+  
+    N
+  W   E     *compass directions
+    S
+  
+  A, B, C, D are the islands
+  
+  (A) -- (B)
+   |      |
+   |      |
+  (C) -- (D)
+  
+  
+  1. The island noted for its koala preserve is due south of Pwana.
+  2. The island with the largest alabaster quarry is due west of Quero.
+  3. The island with the resort hotel is due east of the one that exports 
+     durian fruit.
+  4. Skern and the island with the jai alai stadium are connected by a 
+     north-south bridge. 
+  5. Rayou and the island that exports bananas are connected by an east-west
+     bridge.
+  6. The islands noted for the South Pacific's largest ice skating rink and 
+     for the jai alai stadium are not connected by a bridge.
+  
+  Determine: Island island -- Island name -- Export -- Tourist Attraction
+  """
+
+
+  Compare with other models:
+  * MiniZinc: http://www.hakank.org/minizinc/four_island.mzn 
+  * F1      : http://www.f1compiler.com/samples/Four%20Islands.f1.html
+
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+
+
+/* 
+   Solution:
+
+                A                 B                 C                 D
+            Pwana             Skern             Rayou             Quero
+         coconuts      durian_fruit           bananas         alabaster
+ ice_skating_rink      resort_hotel    koala_preserve  jai_alai_stadium
+
+
+ */
+
+
+import cotfd;
+
+int t0 = System.getCPUTime();
+
+int n = 4;
+range R = 1..n;
+int A = 1;
+int B = 2;
+int C = 3;
+int D = 4;
+
+
+
+Solver<CP> m();
+
+var<CP>{int} Pwana(m, R);
+var<CP>{int} Quero(m, R);
+var<CP>{int} Rayou(m, R);
+var<CP>{int} Skern(m, R);
+var<CP>{int} island[R](m, R);
+island[1] = Pwana; island[2] = Quero; 
+island[3] = Rayou; island[4] = Skern;
+
+string island_s[R] = ["Pwana", "Quero", "Rayou", "Skern"];
+
+var<CP>{int} alabaster(m, R);
+var<CP>{int} bananas(m, R);
+var<CP>{int} coconuts(m, R);
+var<CP>{int} durian_fruit(m, R);
+var<CP>{int} export[R](m, R);
+export[1] = alabaster; export[2] = bananas; 
+export[3] = coconuts; export[4] = durian_fruit;
+
+string export_s[R] = ["alabaster", "bananas", "coconuts", "durian_fruit"];
+
+
+var<CP>{int} resort_hotel(m, R);
+var<CP>{int} ice_skating_rink(m, R);
+var<CP>{int} jai_alai_stadium(m, R);
+var<CP>{int} koala_preserve(m, R);
+var<CP>{int} attraction[R](m, R);
+attraction[1] = resort_hotel; attraction[2] = ice_skating_rink; 
+attraction[3] = jai_alai_stadium; attraction[4] = koala_preserve;
+
+string attraction_s[R] = ["resort_hotel", "ice_skating_rink", "jai_alai_stadium", "koala_preserve"];
+
+// find the max length for presentation
+int max_len = 0;
+forall(i in R)  {
+  if (island_s[i].length() > max_len)
+    max_len = island_s[i].length();
+
+  if (export_s[i].length() > max_len)
+    max_len = export_s[i].length();
+
+  if (attraction_s[i].length() > max_len)
+    max_len = attraction_s[i].length();
+
+}
+
+Integer num_solutions(0);
+
+function Setw setw(int n) { return new Setw(n); }
+
+exploreall<m> {
+  
+  m.post(alldifferent(island));
+  m.post(alldifferent(export));
+  m.post(alldifferent(attraction));
+
+  // 1. The island noted for its koala preserve is due south of Pwana.
+  m.post(
+         (Pwana == A && koala_preserve == C)
+         ||
+         (Pwana == B && koala_preserve == D)
+         ) ;
+
+  // 2. The island with the largest alabaster quarry is due west of Quero.
+  m.post( 
+         (alabaster == A && Quero == B) 
+         || 
+         (alabaster == C && Quero == D) 
+          );
+
+  // 3. The island with the resort hotel is due east of the one that exports 
+     //    durian fruit.
+  m.post( 
+         ( durian_fruit == A && resort_hotel ==  B )
+         ||
+         ( durian_fruit == C && resort_hotel ==  D)
+          );
+
+  // 4. Skern and the island with the jai alai stadium are connected by a 
+     //    north-south bridge. 
+  m.post(
+         (Skern == A && jai_alai_stadium == C) 
+         ||
+         (Skern == C && jai_alai_stadium == A) 
+         ||
+         (Skern == B && jai_alai_stadium == D) 
+         ||
+         (Skern == D && jai_alai_stadium == B) 
+         );
+
+  // 5. Rayou and the island that exports bananas are connected by an 
+  //    east-west bridge.
+  m.post(
+         (Rayou == A && bananas == B) 
+         ||
+         (Rayou == B && bananas == A) 
+         ||
+         (Rayou == C && bananas == D) 
+         ||
+         (Rayou == D && bananas == C) 
+         );
+
+  // 6. The islands noted for the South Pacific's largest ice skating rink 
+     //    and for the jai alai stadium are not connected by a bridge.
+  m.post( 
+         (ice_skating_rink == A && jai_alai_stadium == D)
+         ||
+         (ice_skating_rink == D && jai_alai_stadium == A)
+         
+         ||
+         (ice_skating_rink == B && jai_alai_stadium == C)
+         ||
+         (ice_skating_rink == C && jai_alai_stadium == B)
+          );
+
+} using {
+
+  label(island);
+  label(export);
+  label(attraction);
+  
+  num_solutions++;
+
+  forall(i in {"A", "B", "C", "D"})
+    cout << setw(max_len+1) << i << " ";
+  cout << endl;
+
+  forall(i in R) 
+    cout << setw(max_len+1) << island_s[island[i]] << " ";
+  cout << endl;
+
+  forall(i in R)
+    cout << setw(max_len+1) << export_s[export[i]] << " ";
+  cout << endl;
+
+  forall(i in R)
+    cout << setw(max_len+1) << attraction_s[attraction[i]] << " ";
+  cout << endl;
+
+  
+}
+
+
+
+
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
