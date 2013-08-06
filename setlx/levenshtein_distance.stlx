@@ -1,0 +1,187 @@
+//
+// Levenshtein distance in SetlX
+//
+// From Rosetta code:
+// http://rosettacode.org/wiki/Levenshtein_distance
+// """
+// In information theory and computer science, the Levenshtein distance 
+// is a metric for measuring the amount of difference between two sequences 
+// (i.e. an edit distance). The Levenshtein distance between two strings is 
+// defined as the minimum number of edits needed to transform one string 
+// into the other, with the allowable edit operations being insertion, deletion, 
+// or substitution of a single character.
+//
+// For example, the Levenshtein distance between "kitten" and "sitting" is 3, 
+// since the following three edits change one into the other, and there is no 
+// way to do it with fewer than three edits:
+//
+//     kitten sitten (substitution of 'k' with 's')
+//     sitten sittin (substitution of 'e' with 'i')
+//     sittin sitting (insert 'g' at the end). 
+//
+// The Levenshtein distance between "rosettacode", "raisethysword" is 8; 
+// The distance between two strings is same as that when both strings is reversed.
+//
+// Task : Implements a Levenshtein distance function, or uses a library function, 
+// to show the Levenshtein distance between "kitten" and "sitting". 
+// """
+//
+// This SetlX program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my SetlX page: http://www.hakank.org/setl/
+//
+
+var cache;
+
+// Using a cache, otherwise is too slow
+levenshtein := procedure (s, t) {
+  if (#s == 0) { return #t; }
+  if (#t == 0) { return #s; }
+
+  cc := cache[[s,t]];
+  if (cc != om) {
+    return cc;
+  }
+
+  s2 := "";
+  if(#s >= 2) { s2 := s[2..]; } else { s2 := ""; }
+  t2 := "";
+  if(#t >= 2) { t2 := t[2..]; } else { t2 := ""; }
+  if (s[1] == t[1]) {
+    c2 := levenshtein(s2,t2);
+    cache[[s,t]] := c2;
+    return c2;
+  }
+  a := levenshtein(s2, t2);
+  cache[[s2,t2]] := a;
+  b := levenshtein(s , t2);
+  cache[[s,t2]] := b;
+  c := levenshtein(s2, t );
+  cache[[s2,t]] := c;
+  if (a > b) {
+    a := b;
+  }
+  if (a > c) {
+    a := c;
+  }
+  return a + 1;
+};
+
+// Same as levenstein() but memoized
+levenshtein4 := cachedProcedure (s, t) {
+  if (#s == 0) { return #t; }
+  if (#t == 0) { return #s; }
+
+  s2 := "";
+  if(#s >= 2) { s2 := s[2..]; } else { s2 := ""; }
+  t2 := "";
+  if(#t >= 2) { t2 := t[2..]; } else { t2 := ""; }
+  if (s[1] == t[1]) {
+    c2 := levenshtein4(s2,t2);
+    return c2;
+  }
+  a := levenshtein4(s2, t2);
+  b := levenshtein4(s , t2);
+  c := levenshtein4(s2, t );
+  if (a > b) {
+    a := b;
+  }
+  if (a > c) {
+    a := c;
+  }
+  return a + 1;
+};
+
+
+// Based on the algorithm at
+// http://en.wikipedia.org/wiki/Levenshtein_distance
+//
+// Note: SetlX is 1-based so some adjustments are needed
+//
+levenshtein_w := procedure(s, t) {
+  m := 1+#s;
+  n := 1+#t;
+  
+  // for all i and j, d[i,j] will hold the Levenshtein distance between
+  // the first i characters of s and the first j characters of t;
+  // note that d has (m+1)x(n+1) values
+  // set each element to zero
+  d := [ [0,0] : i in [1..m], j in [1..n]];
+
+  // source prefixes can be transformed into empty string by
+  // dropping all characters 
+  for (i in [1..m]) {
+    d[i][1] := i-1;
+  }
+  
+  // target prefixes can be reached from empty source prefix
+  // by inserting every characters
+  for (j in [1..n]) {
+    d[1][j] := j-1;
+  }
+  
+  for (j in [2..n], i in [2..m]) {
+    if (s[i-1] == t[j-1]) {
+      d[i][j] := d[i-1][j-1];           // no operation required
+    } else {
+      d[i][j] := min([d[i-1][j  ] + 1,  // a deletion
+                      d[i  ][j-1] + 1,  // an insertion
+                      d[i-1][j-1] + 1]  // a substitution
+                     );
+    }
+  }
+
+  return d[m][n];
+
+};
+
+test := procedure(s1,s2) {
+  // clearCache(levenshtein4);
+  cache := {};
+  t1 := now();
+  r1 := levenshtein4(s1,s2); // memoized version
+  t2 := now();
+  d1 := (t2-t1)/1000.0;
+  r2 := levenshtein_w(s1,s2);
+  t3 := now();
+  d2 := (t3-t2)/1000.0;
+  d  := d1 - d2;
+  checkx := r1 == r2;
+  clearCache(levenshtein4);
+
+  return [r1, d1, r2, d2, d, checkx];
+};
+
+generate_string := procedure(max_len) {
+  alpha := "abcdefghijklmnopqrstuvxyz";
+  return +/[alpha[rnd([1..#alpha])] : j in [1..rnd([1..max_len])] ];
+};
+
+
+pairs := [
+          ["kitten", "sitting"],
+          ["rosettacode", "raisethysword"],
+          ["stop", "tops"],
+          ["saturday", "sunday"],
+          ["edocattesor", "drowsyhtesiar"],
+          ["abracadabra", "abracadabra"],
+          ["abracadabra", "abracadabrr"],
+          ["cabracadabra", "abracadabra"],
+          ["abraccadabra", "abracadabra"]
+          ];
+
+total_diff := 0; // diffs s1 - s2
+for([s1,s2] in pairs) {
+  [r1, d1, r2, d2, d, checkx] := test(s1,s2);
+  print("($s1$,$s2$): $[r1, d1, r2, d2, d, checkx]$");
+  total_diff += d;
+}
+
+for(t in [1..10]) {
+  s1 := generate_string(100);
+  s2 := generate_string(100);
+  [r1, d1, r2, d2, d, checkx] := test(s1,s2);
+  print("($s1$,$s2$): $[r1, d1, r2, d2, d, checkx]$");
+  total_diff += d;
+}
+
+print("Total diff: $total_diff$");

@@ -1,0 +1,141 @@
+// 
+// Movie scheduling in SetlX
+// 
+// From Steven Skiena "The Algorithm Design Manual", page 9ff.
+//
+// Data from figure 1.5 (where I have estimated the times).
+// 
+// Tarjan of the Jungle        4..13
+// The Four Volume Problem     17..27
+// The President's Algorist    1..10
+// Steiner's Tree              12..18
+// Process Terminated          23..30
+// Halting State               9..16
+// Programming Challenges      19..25
+// "Discrete" Mathematics      2..7
+// Calculated Bets             26..31
+// 
+//
+// Compare with the MiniZinc version (using Constraint Programming):
+// http://www.hakank.org/minizinc/movie_scheduling.mzn
+//
+// 
+// This SetlX program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my SETL page: http://www.hakank.org/setl/
+//
+
+npow := procedure (a,b) {
+  switch {
+     case (isInteger(a) && isSet(b)):
+         return {x in pow(b) | #x == a};
+     case (isSet(a) && isInteger(b)):
+         return {x in pow(a) | #x == b};
+    }
+};
+
+noOverlap := procedure(s1, e1, s2, e2) {
+  return s1 >= e2 || s2 >= e1;
+
+};
+
+//
+// quicksort for maps,
+// sort on a certain column: col 1..2
+//
+qsort_c := procedure(a, col) {
+  if (#a > 1) {
+    pivot := a[#a \ 2 + 1][col];
+    a := qsort_c([x in a | compare(x[col],pivot)  < 0], col) +
+                 [x in a | compare(x[col],pivot) == 0]  +
+         qsort_c([x in a | compare(x[col],pivot)  > 0], col);
+  }
+
+  return a;
+};
+
+
+data := [
+         [4,13,  "Tarjan of the Jungle"],
+         [17,27, "The Four Volume Problem"],
+         [1,10,  "The President's Algorist"],
+         [12,18, "Steiner's Tree"],
+         [23,30, "Process Terminated"],
+         [9,16,  "Halting State"],
+         [19,25, "Programming Challenges"],
+         [2,7,   "'Discrete' Mathematics"],
+         [2,7,   "'Discrete' Mathematics2"],
+         [26,31,  "Calculated Bets"]
+         ];
+
+s := {1..#data};
+
+//
+// The first two approaches are ExhaustiveSheduling 
+// (page 10f)
+//
+
+// ExhaustiveSheduling I:
+//
+// Try all subsets in order of size using npow()
+//
+print("ExhaustiveSheduling: Using ordered subsets");
+t1 := now();
+print("Using npow");
+for(n in [#data,#data-1..1]) {
+  ok := false;
+  for (p in npow(n, s)) {
+    if (forall(i in p, j in p - {i} | 
+               noOverlap(data[i][1], data[i][2], data[j][1], data[j][2]))) {
+      print([data[i] : i in p]);
+      ok := true;
+    }
+  }
+  if (ok) {
+    break;
+  }
+}
+print("It took $(now()-t1)/1000.0$s");
+t2 := now();
+
+//
+// ExhaustiveSheduling II,
+// Sort the subsets on (reversed) lengths.
+// This is slightly faster.
+//
+print("\n\nExhaustiveScheduling: sorted subsets on length");
+lens := reverse(qsort_c([[p,#p] : p in [] + pow({1..#data})], 2));
+len_ok := 0;
+for ([p, len] in lens) {
+  if (len < len_ok) {
+    break;
+  }
+  if (forall(i in p, j in p - {i} | 
+             noOverlap(data[i][1], data[i][2], data[j][1], data[j][2]))) {
+    print([data[i] : i in p]);
+    len_ok := len;
+  }
+}
+print("It took $(now()-t2)/1000.0$s");
+
+
+//
+// This is a much better solution: OptimalScheduling, page 11.
+// 
+// (The drawback with this method is that we just get one solution,
+// even if there are many.)
+//
+print("\n\nOptimalScheduling");
+t3 := now();
+s := {} + data;
+r := {}; // The solution
+while (#s > 0) {
+  // Get the movie who is finished earliest (pick any if more than one)
+  earliest := arb([i : i in s | i[2] == min([i[2] : i in s])]);
+  s -= {earliest}; // Remove this movie
+  r += {earliest}; // Add to solution
+  // And keep just the movies is not overlapping with the earliest.
+  s := { i : i in s | noOverlap(earliest[1], earliest[2], i[1], i[2]) };
+}
+print(r);
+t3 := now();
+print("It took $(now()-t3)/1000.0$s");

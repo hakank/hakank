@@ -1,0 +1,146 @@
+// 
+// Longest common subsequence in SETL.
+//
+// From http://rosettacode.org/wiki/Longest_common_subsequence
+// """
+// The longest common subsequence (or LCS) of groups A and B is the 
+// longest group of elements from A and B that are common between the 
+// two groups and in the same order in each group. For example, the 
+// sequences "1234" and "1224533324" have an LCS of "1234":
+//
+// 1234
+// 1224533324
+//
+// For a string example, consider the sequences "thisisatest" and 
+// "testing123testing". An LCS would be "tsitest":
+//
+// thisisatest
+// testing123testing
+//
+// In this puzzle, your code only needs to deal with strings. Write a 
+// function which returns an LCS of two strings (case-sensitive). 
+// You don't need to show multiple LCS's. 
+// """
+// 
+// Also, see http://en.wikipedia.org/wiki/Longest_common_subsequence
+//
+// This SETL program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my SETL page: http://www.hakank.org/setl/
+//
+
+
+lcs := procedure(x,y) {
+  [c, llen] := lcs_length(x,y);
+  return [backTrace(c,x,y,#x+1,#y+1), c];
+};
+
+// From 
+// http://en.wikipedia.org/wiki/Longest_common_subsequence
+// with added trickery for a 1-based language.
+//
+lcs_length := procedure(x, y) {
+  m := #x; n := #y;
+  // SetlX don't have support for array copy [..] * n
+  // c := (m+1) * [ (n+1) * [0]];
+  c := [ [0 : j in [1..n+1]]  : i in [1..n+1]];
+
+  for (i in [2..m+1]) {
+    for (j in [2..n+1]) {
+      if (x[i-1] == y[j-1]) {
+        c[i][j] := c[i-1][j-1] + 1;
+      } else {
+        c[i][j] := max([c[i][j-1], c[i-1][j]]);
+      }
+    }
+  }
+  return [c, c[m+1][n+1]];
+};
+
+
+backTrace := procedure(c, x, y, i, j) {
+  if (i == 1 || j == 1) {
+    return "";
+  } else if (x[i-1] == y[j-1]) {
+    return backTrace(c, x, y, i-1, j-1) + x[i-1];
+  } else {
+    if (c[i][j-1] > c[i-1][j]) {
+      return backTrace(c, x, y, i, j-1);
+    } else {
+      return backTrace(c, x, y, i-1, j);
+    }
+  }
+};
+
+
+// From the ADA solution
+//
+// Very slow! The "thisisatest" problem takes about 4.5 seconds.
+//
+lcs2 := procedure(a,b) {
+  if (a == "" || b == "") { return ""; }
+  if (a[#a] == b[#b]) {
+    return lcs2(a[1..#a-1], b[1..#b-1]) + a[#a];
+  } else {
+     x := lcs2(a, b[1..#b-1]);
+     y := lcs2(a[1..#a-1], b);
+     if (#x > #y) {
+        return x;
+     } else {
+        return y;
+     }
+  }
+};
+
+//
+// This solution is published at the Rosetta Code:
+// http://rosettacode.org/wiki/Longest_common_subsequence#SETL 
+//
+// """Recursive; Also works on tuples (vectors)"""
+// Note: I have - of course - ported it to SetlX.
+//
+// lcs3 is slower than lcs but faster than lcs2.
+//
+longest := procedure(a, b) {
+  if (#a > #b) { return a;} else { return b;}
+};
+   
+lcs3 := procedure(a, b) {
+  if (exists(empty in {a, b} | #empty == 0)) {
+    return empty;
+  } else if (a[1] == b[1]) {
+    return a[1] + lcs3(a[2..], b[2..]);
+  }  else {
+    return longest(lcs3(a[2..], b), lcs3(a, b[2..]));
+  }
+};
+
+
+// Test the different approaches
+test := procedure(x, y) {
+  print("test($x$, $y$)");
+  t1:=now();
+  [s, c] := lcs(x,y);
+  print("lcs1: $s$  $(now()-t1)/1000.0$s");
+  // for i in [1..#X+1] loop
+  //   for j in [1..#Y+1] loop
+  //      nprint(C(i)(j), " ");
+  //   end loop;
+  //   print();
+  // end loop;
+  
+  t2:=now();
+  s2 := lcs2(x,y);
+  print("lcs2: $s2$  $(now()-t2)/1000.0$s");
+
+  t3:=now();
+  s3 := lcs3(x,y);
+  print("lcs3: $s3$  $(now()-t3)/1000.0$s");
+
+  print();
+};
+
+
+
+test("thisisatest","testing123testing");
+test("XMJYAUZ", "MZJAWXU");
+test("1234", "1224533324");

@@ -1,0 +1,245 @@
+//
+// SEND + MORE = MONEY problem in SetlX
+// 
+// This SetlX program was written by Hakan Kjellerstrand (hakank@bonetmail.com).
+// See also my SETL page: http://www.hakank.org/setl/ .
+//
+
+// Solution should be: 
+// [[9 5 6 7 1 0 8 2]]
+
+test := procedure(s, name) {
+  print(name);
+  time0 := now();
+  res := s();
+  time1 := now();
+  print(res);
+  print("It took (about) ", (time1-time0) / 1000.0, " seconds");
+};
+
+//
+// This is surprisingly fast: 6:54s
+// v1.2.1: 5.084s
+send_more_money1 := procedure() {
+  ss := {0..9};
+
+  smm := [[s,e,n,d,m,o,r,y] : 
+          // ensure that all numbers are different
+          s in ss , 
+          e in ss - {s} , 
+          n in ss - {s,e} ,  
+          d in ss - {s,e,n} , 
+          m in ss - {s,e,n,d} ,  
+          o in ss - {s,e,n,d,m} ,  
+          r in ss - {s,e,n,d,m,o} ,    
+          y in ss - {s,e,n,d,m,o,r} |   
+          s > 0 && m > 0 &&
+          (s * 1000 + e * 100 + n * 10 + d) +
+          (m * 1000 + o * 100 + r * 10 + e) == 
+          (m * 10000 + o * 1000 + n * 100 + e * 10 + y )];
+  
+  return smm;
+
+};
+
+//
+// With some code optimization by Tom it's faster: 5.6s
+// In version 1.2.0: 4.665s!
+// version 1.2.1: 3.775s! 
+//
+// The optimization is to move the constraints that 
+// s > 0 and m > 0 into the set creation
+send_more_money1b := procedure() {
+  ss := {0..9};
+
+  smm := [[s,e,n,d,m,o,r,y] : 
+          // ensure that all numbers are different
+          s in ss - {0}, 
+          e in ss - {s} , 
+          n in ss - {s,e} ,  
+          d in ss - {s,e,n} , 
+          m in ss - {s,e,n,d, 0} ,  
+          o in ss - {s,e,n,d,m} ,  
+          r in ss - {s,e,n,d,m,o} ,    
+          y in ss - {s,e,n,d,m,o,r} |   
+          // s > 0 && m > 0 &&
+          (s * 1000 + e * 100 + n * 10 + d) +
+          (m * 1000 + o * 100 + r * 10 + e) == 
+          (m * 10000 + o * 1000 + n * 100 + e * 10 + y )];
+  
+  return smm;
+
+};
+
+//
+// Tini bit faster than send_more_money1b: 5.4s
+// In 1.2.0: 4.5s
+// In 1.2.1: 3.758s
+// Using the same idea as in send_more_money1b but
+// use the set {1..9} for s and m instead of
+// removing {0} from {0..9}.
+send_more_money1c := procedure() {
+  ss := {0..9};
+  ss2 := {1..9};
+
+  smm := [[s,e,n,d,m,o,r,y] : 
+          // ensure that all numbers are different
+          s in ss2, 
+          e in ss - {s} , 
+          n in ss - {s,e} ,  
+          d in ss - {s,e,n} , 
+          m in ss2 - {s,e,n,d} ,  
+          o in ss - {s,e,n,d,m} ,  
+          r in ss - {s,e,n,d,m,o} ,    
+          y in ss - {s,e,n,d,m,o,r} |   
+          // s > 0 && m > 0 &&
+          (s * 1000 + e * 100 + n * 10 + d) +
+          (m * 1000 + o * 100 + r * 10 + e) == 
+          (m * 10000 + o * 1000 + n * 100 + e * 10 + y )];
+  
+  return smm;
+
+};
+
+
+// 
+// 30.205 seconds using perms([0..9])
+// 23.548 seconds using permutations([0..9])
+// v 1.2.1: 16.982s!
+send_more_money2 := procedure() {
+  perm := permutations([0..9]); // perms([0..9]);
+  print("It's ", #perm, " permutations");
+  // Note: the [...] in perm must assign to _all_ variables
+  // otherwise an error about "unusable for list assignment" come.
+  //
+  smm2 := [[s,e,n,d,m,o,r,y,a,b] : [s,e,n,d,m,o,r,y,a,b] in perm | 
+           a > b &&
+           s > 0 && m > 0 &&
+           (s * 1000 + e * 100 + n * 10 + d) +
+           (m * 1000 + o * 100 + r * 10 + e) == 
+           (m * 10000 + o * 1000 + n * 100 + e * 10 + y )];
+  return smm2;
+
+};
+
+//
+// another variant, using all_different
+// very slow: 4:03.67 minutes
+// 1.2.1: 2:55.54minutes
+send_more_money3 := procedure() {
+  ss := {0..9};
+  smm := [[s,e,n,d,m,o,r,y] : 
+          s in ss ,
+          e in ss,
+          n in ss, 
+          d in ss, 
+          m in ss, 
+          o in ss, 
+          r in ss,  
+          y in ss | 
+          all_different([s,e,n,d,m,o,r,y]) &&
+          s > 0 && m > 0 &&
+          (s * 1000 + e * 100 + n * 10 + d) +
+          (m * 1000 + o * 100 + r * 10 + e) == 
+          (m * 10000 + o * 1000 + n * 100 + e * 10 + y )
+          ];
+  return smm;
+};
+
+// 
+// another variant, using next_permutation
+// better than send_more_money3 but it also
+// slow, takes about 25.192
+// With (experimental) built-in next_permutation: 9.3s
+// With 1.2.0 and nextPermutation: 8.55s
+// 1.2.1: 6.555s!
+send_more_money4 := procedure() {
+  p := [0..9];
+  sols := [];
+  
+  while (p != om) {
+    [s,e,n,d,m,o,r,y,a,b] := p;
+    if (
+        s > 0 && m > 0 &&
+        (s * 1000 + e * 100 + n * 10 + d) +
+        (m * 1000 + o * 100 + r * 10 + e) == 
+        (m * 10000 + o * 1000 + n * 100 + e * 10 + y ) &&
+        a < b 
+        )
+      {
+        sols +=  [s,e,n,d,m,o,r,y];
+      }
+    p:=nextPermutation(p);
+  }
+  
+  return sols;
+};
+
+
+//
+// returns all the permutations of the set s
+//
+
+// Permutations (exhaustive)
+perms := procedure(s) {
+  if (s == []) {
+    return [[]];
+  } else {
+    return [ [a]+b : a in s, b in perms([ p in s | p != a]) ];
+  }
+
+};
+
+
+next_permutation2 := procedure(p) {
+    n := #p;
+    k := n - 1;
+    while (p[k] > p[k+1]) {
+        k := k - 1; 
+        if (k == 0) {
+           return om;
+        }
+    }
+    if (k == 0) {
+        return om;
+    } else {
+         j := n;
+         while (p[k] > p[j]) { j := j - 1; }
+         [p[k],p[j]] := [p[j], p[k]];
+         r := n; 
+         s := k + 1;
+         while (r > s) {
+              [p[r],p[s]] := [p[s],p[r]];
+              r := r - 1; 
+              s := s + 1;
+         }
+    }
+    return p;
+
+};
+
+
+//
+// all elements in x are different
+//
+all_different := procedure(x) {
+  // print("all_different check:", x);
+  return #x == #{i : i in x};
+};
+
+//
+// print, so we can debug x in the | sections
+//
+pp := procedure(x) {
+  print(x);
+  return true;
+};
+
+
+test(send_more_money1, "send_more_money1");
+test(send_more_money1b, "send_more_money1b");
+test(send_more_money1c, "send_more_money1c");
+test(send_more_money2, "send_more_money2");
+// test(send_more_money3, "send_more_money3");
+test(send_more_money4, "send_more_money4");
+

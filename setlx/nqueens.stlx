@@ -1,0 +1,325 @@
+// 
+// n-queens problem in SetlX
+// 
+// One dimensional version of N-queens problem:
+// http://en.wikipedia.org/wiki/Eight_queens_puzzle
+// 
+// This SetlX program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my SETL page: http://www.hakank.org/setl/
+//
+
+/*
+
+  Statistics for _all_ solutions (without printing)
+
+  nqueens2() is extremly slow so it's not in the benchmark
+
+  [n, q, time(s)]  (q -> queens<q>(n))
+  ---------------
+  n: 8 nqueens1: time: 1.077
+  n: 8 nqueens3: time: 0.864
+  n: 8 nqueens4: time: 0.273  <--
+  n: 8 nqueens5: time: 0.545
+  n: 8 nqueens6: time: 0.422
+
+  n: 9 nqueens1: time: 5.039
+  n: 9 nqueens3: time: 6.075
+  n: 9 nqueens4: time: 2.785  <--
+  n: 9 nqueens5: time: 3.748
+  n: 9 nqueens6: time: 3.367
+
+  n: 10 nqueens1: time: 61.173
+  n: 10 nqueens3: time: 71.438
+  n: 10 nqueens4: time: 32.128 <--
+  n: 10 nqueens5: time: 43.916
+  n: 10 nqueens6: time: 35.739
+
+
+  Using 1.2.1:
+  In version 1.2.1 nqueens6 is significant faster (and fastest)
+
+  n: 8 nqueens1: time: 0.871
+  n: 8 nqueens2: time: 0.441
+  n: 8 nqueens3: time: 0.737
+  n: 8 nqueens4: time: 0.259 <-
+  n: 8 nqueens5: time: 0.377
+  n: 8 nqueens6: time: 0.265 <- 
+
+  n: 9 nqueens1: time: 4.317
+  n: 9 nqueens2: time: 3.367
+  n: 9 nqueens3: time: 5.089
+  n: 9 nqueens4: time: 2.538
+  n: 9 nqueens5: time: 3.137
+  n: 9 nqueens6: time: 1.503 <-
+
+  n: 10 nqueens1: time: 53.551
+  n: 10 nqueens2: time: 36.672
+  n: 10 nqueens3: time: 56.797
+  n: 10 nqueens4: time: 27.946
+  n: 10 nqueens5: time: 36.536
+  n: 10 nqueens6: time: 15.984 <-
+
+
+*/
+
+
+next_permutation := procedure(p) {
+  n := #p;
+  k := n - 1;
+  while (p[k] > p[k+1]) {
+    k := k - 1; 
+    if (k == 0) {
+      return om;
+    }
+  }
+  if (k == 0) {
+    return om;
+  } else {
+    j := n;
+    while (p[k] > p[j]) { j := j - 1; }
+    [p[k],p[j]] := [p[j], p[k]];
+    r := n; 
+    s := k + 1;
+    while (r > s) {
+      [p[r],p[s]] := [p[s],p[r]];
+      r := r - 1; 
+      s := s + 1;
+    }
+  }
+
+  return p;
+};
+
+// Permutations (exhaustive)
+perms := procedure(s) {
+  if (s == []) {
+    return [[]];
+  } else {
+    return [ [a]+b : a in s, b in perms([ p in s | p != a]) ];
+  }
+
+};
+
+
+//
+// MiniZinc code (a Constraint Programming system):
+//  constraint
+//    forall(i, j in 1..n where i < j) (
+//      queens[i] != queens[j] /\
+//      queens[i] + i != queens[j] + j /\
+//      queens[i] - i != queens[j] - j
+//   )
+// ;
+
+// Traditional approach
+nqueens1 := procedure(n) {
+  c := 0;
+  s := {1..n};
+  for (q in permutations(s)) {
+    if (forall(i in s, j in [i+1..n] | 
+               q[i]     != q[j]     &&
+               q[i] + i != q[j] + j &&
+               q[i] - i != q[j] - j
+               )) {
+      // print(q);
+      c += 1;
+    }
+  }
+
+  print("It was $c$ solutions.");
+  return c;
+};
+
+//
+// Extremly slow for n=8 (>45 minutes)
+//
+nqueens2 := procedure(n) {
+  c := 0;
+  s := [1..n];
+  q := s;
+  while (q != om) {
+    if (forall(i in s, j in [i+1..n] | 
+               q[i]     != q[j]     &&
+               q[i] + i != q[j] + j &&
+               q[i] - i != q[j] - j
+               )) {
+      c += 1;
+    }
+    // q := next_permutation(q);
+    q := nextPermutation(q);
+  }
+  print("It was $c$ solutions.");
+};
+
+//
+// Using perms()
+//
+// Fast: 
+nqueens3 := procedure(n) {
+  c := 0;
+  s := [1..n];
+  for (q in perms({1..n})) {
+    if (forall(i in s, j in [i+1..n] | 
+               q[i]     != q[j]     &&
+               q[i] + i != q[j] + j &&
+               q[i] - i != q[j] - j
+               )) {
+      // print(q);
+      c += 1;
+    }
+  }
+
+  print("It was $c$ solutions.");
+  return c;
+};
+
+all_different := procedure(x) {
+  return #x == #{i : i in x};
+};
+
+
+// MiniZinc code:
+// constraint
+//   all_different(queens)                    /\
+//   all_different([queens[i]+i | i in 1..n]) /\
+//   all_different([queens[i]-i | i in 1..n]) 
+// ;
+
+//
+// alldifferent + permutations()
+//
+// Very fast:
+nqueens4 := procedure(n) {
+  c := 0;
+  s := [1..n];
+  for (q in permutations({1..n})) {
+    if (
+        all_different([q[i]+i : i in s]) &&
+        all_different([q[i]-i : i in s]) 
+        ) {
+      // print(q);
+      c += 1;
+    }
+  }
+
+  print("It was $c$ solutions.");
+  return c;
+};
+
+
+// alldifferent + perms()
+// n =  8: 2.326s
+// n =  9: 6.1s
+// n = 10: 46.9s
+nqueens5 := procedure(n) {
+  c := 0;
+  s := [1..n];
+  for (q in perms({1..n})) {
+    if (
+        all_different([q[i]+i : i in s]) &&
+        all_different([q[i]-i : i in s]) 
+        ) {
+      // print(q);
+      c += 1;
+    }
+  }
+
+  print("It was $c$ solutions.");
+  return c;
+};
+
+//
+// next_permutation + all_different
+// very fast (and don't takes a lot of memory)
+//
+nqueens6 := procedure(n) {
+  c := 0;
+  s := [1..n];
+  q := [1..n];
+  while (q != om) {
+    if (
+        all_different([q[i]+i : i in s]) &&
+        all_different([q[i]-i : i in s])
+        ) {
+      // print(q);
+      c += 1;
+    }
+    // q := next_permutation(q);
+    q := nextPermutation(q);
+  }
+
+  print("It was $c$ solutions.");
+  return c;
+
+};
+
+// Just generate the first solution
+nqueens6_onesol := procedure(n) {
+  s := [1..n];
+  q := s;
+  while (q != om) {
+    if (
+        all_different([q[i]+i : i in s]) &&
+        all_different([q[i]-i : i in s])
+        ) {
+      return q;
+    }
+    // q := next_permutation(q);
+    q := nextPermutation(q);
+  }
+
+};
+
+check_onesol := procedure(s) {
+  for (n in s) {
+    t1 := now();
+    sol := nqueens6_onesol(n);
+    t2 := now();
+    diff := (t2-t1)/1000.0;
+    print("n:$n$ diff: $diff$s  solution: $sol$");
+  }
+};
+
+run_all := procedure() {
+
+
+bench := [];
+for (n in [8..10]) {
+  all := [[1, nqueens1], 
+          [2, nqueens2], 
+          [3, nqueens3], 
+          [4, nqueens4],
+          [5, nqueens5], 
+          [6, nqueens6]];
+  for ([qq,f] in all) {
+    print("nqueens$qq$($n$)");
+    t1 := now();
+    f(n);
+    t2 := now();
+    diff := (t2-t1)/1000.0;
+    print("It took $diff$s");
+    bench += [[n, qq, diff]];
+  }
+  print("\n");
+}
+
+for(b in bench) {
+  [n, q, t] := b;
+  print("n: $n$ nqueens$q$: time: $t$");
+}
+
+
+};
+
+n:=8;
+// nqueens1(n);
+// nqueens2(n);
+// nqueens3(n);
+// nqueens4(n);
+// nqueens5(n);
+// nqueens6(n);
+
+run_all();
+
+// check_onesol([2..14]);
+

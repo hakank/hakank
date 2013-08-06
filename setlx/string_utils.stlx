@@ -1,0 +1,372 @@
+// strip the string s using chars c
+strip_chars := procedure(s,c) {
+   s2 := "";
+   for (p in [1..#s]) {
+     if (s[p] notin c) {
+        s2 += s[p];
+     }
+   }
+   return s2;
+};
+
+
+// convert a string to an array
+str2a := procedure(s) {
+  return [s[i] : i in [1..#s]];
+};
+
+join2 := procedure(s, c) {
+  return s[1]+ +/[c + t : t in s[2..#s]];
+};
+
+
+// convert a string to position code
+// a=1, b=2, etc
+// (abs(i) gives the ASCII code)
+to_code_ascii := procedure(s) {
+   return [abs(s[i])-64 : i in [1..#s]];
+};
+
+// convert a string to code where
+// the conversion is in the map m
+to_code := procedure(s, m) {
+   return [m[s[i]] : i in [1..#s]];
+};
+
+
+// String scanning primitives (SNOBOL)
+// inspired from "Programming with Sets", page 216ff.
+// Note: SetlX does RW parameters which is used here.
+// The principle is that we return the first characters
+// found and remove them from the scanned string (which
+// is thus modified).
+
+//
+// span(scanned string, pattern string):
+// 
+// """
+// Finds the longest initial segment if the scanned string
+// which consists entirely of characters from the pattern
+// string and breaks it off. If the first character of the 
+// scanned string is not in the pattern string, span yields
+// om (we also say it fails) and the scanned string is 
+// unaffected.
+// """
+//
+span := procedure(rw s, p) {
+
+  if (#s == 0 || s[1] notin p) {
+    return om;
+  }
+
+  res := "";
+  i := 1;
+  while (i <= #s && s[i] in p) {
+     res += s[i];
+     i += 1;
+  }
+  s:= s[i..#s];
+  return res;
+
+};
+
+
+rspan := procedure(rw s, p) {
+  print("rspan($s$,$p$)");
+  if (#s == 0 || s[#s] notin p) {
+    return om;
+  }
+
+  res := "";
+  i := #s;
+  while (i >= 1 && s[i] in p) {
+     res += s[i];
+     i -= 1;
+  }
+  s:= s[1..i-1];
+  return reverse(res);
+
+};
+
+
+//
+// any(string, pattern)
+// """
+// breaks off and yields the first character of ss of this
+// belongs to ps. If the first character of ss does not
+// belong to ps, then ss is unchanged and the value returned
+// by any is om.
+// """
+//
+any := procedure(rw s, p) {
+  if (#s > 0 && s[1] in p) {
+    t := s[1];
+    s := s[2..];
+    return t;
+  } else {
+    return om;
+  } 
+
+};
+
+
+rany := procedure(rw s, p) {
+  if (#s > 0 && s[#s] in p) {
+    t := s[#s];
+    s := s[1..#s-1];
+    return t;
+  } else {
+    return om;
+  } 
+
+};
+
+
+
+many := procedure(rw s, p) {
+
+  if (#s == 0 || s[1] notin p) {
+    return;
+  }
+
+  i := 1;
+  t := "";
+  while (i <= #s && s[i] in p) {
+    t += s[i];
+    i += 1;
+  } 
+  s := s[i..#s];
+  return t;
+};
+
+rmany := procedure(rw s, p) {
+
+  if (#s == 0 || s[#s] notin p) {
+    return om;
+  }
+
+  i := #s;
+  t := "";
+  while (i >= 1 && s[i] in p) {
+    t += s[i];
+    i -= 1;
+  } 
+  s := s[1..i];
+  return reverse(t);
+};
+
+
+//
+// break(string, pattern)
+// """
+// scans ss from the left up to but not including the
+// first character which does belong to ps. This part
+// of ss is broken off and becomes the value of the
+// function.
+// """
+// (Renamed to breaks since it clashed with "break".)
+//  
+breaks := procedure(rw s, p) {
+
+  if (#s == 0 || s[1] in p) {
+     return om;
+  } 
+
+  res := "";
+  i := 1;
+  while (i <= #s && s[i] notin p) {
+     res += s[i];
+     i += 1;
+  }
+  s:=s[i..#s];
+  return res;
+
+};
+
+// break from the right of the string
+rbreaks := procedure(rw s, p) {
+
+  if (#s == 0 || s[#s] in p) {
+     return om;
+  } 
+
+  res := "";
+  i := #s;
+  while (i >= 1 && s[i] notin p) {
+     res += s[i];
+     i -= 1;
+  }
+  s:=s[1..i-1];
+  return reverse(res);
+
+};
+
+
+
+
+//
+// len(string, n)
+// """
+// has an integer second argument. If #ss >= n, then [...]
+// yields the value s(1..n) and the assignment ss:= ss(n+1..)
+// is performed; otherwise [...] yields om and ss is not changed.
+// """
+//
+len := procedure(rw s, n) {
+
+  if (#s >= n) {
+    t := s[1..n];
+    s := s[n+1..];
+
+    return t;
+  } else {
+     return om;
+  } 
+
+};
+
+
+rlen := procedure(rw s, n) {
+
+  if (#s >= n) {
+    t := s[#s-n+1..#s];
+    s := s[1..n];
+    return t;
+  } else {
+     return om;
+  } 
+
+};
+
+// 
+// match(ss, ps) 
+// """
+// yield ps if #ps <= #ss and if ps = ss(1..#ps). In this case the assignment
+// ss := ss(#ps+1..) is performed. Otherwise [it] yields om and ss is 
+// unchanged.
+// """
+matchs := procedure(rw ss, ps) {
+  if (#ss == 0 || #ps > #ss || ps != ss[1..#ps]) {
+    return om;
+  }
+
+  if (ps == ss[1..#ps]) {
+    ss := ss[#ps+1..];
+    return ps;
+  }
+
+  return om;
+
+};
+
+rmatchs := procedure(rw ss, ps) {
+  if (#ss == 0 || #ps > #ss || ps != ss[#ss-#ps+1..]) {
+    return om;
+  }
+
+  if (ps == ss[#ss-#ps+1..]) {
+    ss := ss[1..#ss-#ps+1];
+    return ps;
+  }
+
+  return om;
+
+};
+
+//
+// notany(ss,ps)
+// """
+// breaks off and yields the first character of ss if this does not
+// belong to the string ps. In the contrary case [it] yields om and 
+// ss is unchanged.
+// """
+
+notany := procedure(rw ss,ps) {
+  if (#ss == 0 || ss[1] in ps) {
+    return om;
+  }
+
+  t := ss[1];
+  ss := ss[2..];
+  return t;
+};
+
+rnotany := procedure(rw ss,ps) {
+  print("rnotany($ss$,$ps$)");
+  if (#ss == om || #ss == 0 || ss[#ss] in ps) {
+    return om;
+  }
+  t := ss[#ss];
+  ss := ss[1..#ss-1];
+  return t;
+};
+
+// Generalized version of notany
+notmany := procedure(rw ss,ps) {
+  if (ss == om || #ss == 0 || ss[1] in ps) {
+    return om;
+  }
+
+  t := "";
+  i := 1;
+  while(i <= #ss && ss[i] notin ps) {
+    t += ss[i];
+    i += 1;
+  }
+  ss := ss[i..];
+  return t;
+};
+
+// Generalized version of rnotany
+rnotmany := procedure(rw ss,ps) {
+  if (ss == om || #ss == 0 || ss[#ss] in ps) {
+    return om;
+  }
+
+  t := "";
+  i := #ss;
+  while(i >= 1 && ss[i] notin ps) {
+    t += ss[i];
+    i -= 1;
+  }
+  ss := ss[1..i];
+  return reverse(t);
+};
+
+
+//
+// lpad(ss, n)
+// """
+// returns the string obtained by padding its first argument
+// ss out to length n (which must be an integer) by adding as
+// many blanks to the left of ss as necessary. If #ss >= n, then
+// lpad(ss, n) is simply ss.
+// """
+// 
+lpad := procedure(ss, n) {
+  if (#ss >= n) {
+    return ss;
+  }
+
+  return " "* (n-#ss) + ss;
+};
+
+rpad := procedure(ss, n) {
+  if (#ss >= n) {
+    return ss;
+  }
+  return ss + " "* (n-#ss);
+};
+
+
+ltrim := procedure(s) {
+  many(s, " \t");
+  return s;
+};
+
+rtrim := procedure(s) {
+  rmany(s, " \t");
+  return s;
+};
+
+

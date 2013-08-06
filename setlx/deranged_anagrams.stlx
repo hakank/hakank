@@ -1,0 +1,117 @@
+// 
+// Deranged anagrams in SETL.
+//
+// http://rosettacode.org/wiki/Anagrams/Deranged_anagrams
+// """
+// Two or more words are said to be anagrams if they have the same characters, 
+// but in a different order. By analogy with derangements we define a deranged 
+// anagram as two words with the same characters, but in which the same character 
+// does not appear in the same position in both words.
+//
+// The task is to use the word list at 
+// http://www.puzzlers.org/pub/wordlists/unixdict.txt to find and show 
+// the longest deranged anagram. 
+// """
+//
+//
+// This SETL program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my SETL page: http://www.hakank.org/setl/
+//
+
+// Fixes needed since strings are not collection values.
+qsort2 := procedure(a) {
+  if (#a > 1) {
+    pivot := a[#a \ 2 + 1];
+    a := qsort2([x : x in a | compare(x,pivot) < 0]) +
+                [x : x in a | x == pivot] +
+         qsort2([x : x in a | compare(x, pivot) > 0]);
+  }
+  return a;
+};
+
+qsort := procedure(a) {
+  a := split(a, "");
+  return qsort2(a);
+};
+
+
+//
+// Insertion sort
+//
+insertion_sort := procedure(a) {
+  a := split(a, "");
+  for (i in [2..#a]) {
+    v := a[i];
+    j := i-1;
+    while (j >= 1 && compare(a[j], v) > 0) {
+      a[j+1] := a[j];
+      j := j-1;
+    }
+    a[j+1] := v; 
+  }
+  return +/a;
+};
+
+// deranged: no common character in a and b
+// little trickery here since this is not a valid
+// expression:
+//    .. false notin [...]
+// so we return 1 or 0 instead
+//    .. 0 notin [...]
+is_deranged := procedure(a,b) {
+  return forall(i in [1..#a] | a[i] != b[i]);
+};
+
+
+//
+// get all anagrams
+//
+t1 := now();
+words := readFile("unixdict.txt");
+
+anagrams := {};
+alpha := "abcdefghijklmnopqrstuvwxyz";
+for (word in words) {
+  if (word == om || word == "") {
+    continue;
+  }
+
+  // sorted := qsort(word);             // 2.5s
+  // sorted := insertion_sort(word); // slightly faster: 1.9s
+  sorted := sort(word);           // built-in 0.97s
+
+  if (anagrams[sorted] == om) {
+    anagrams[sorted] := {word};
+  } else {
+    anagrams[sorted] += {word};
+  }
+}
+
+//
+// get the deranged anagrams
+//
+deranged := [];
+max_len := 0;
+for ( [sorted, words] in anagrams) {
+  if (#words == 1) {
+    continue;
+  }
+  
+  if (
+      // #words >= 2 && // don't work together with forall|exists
+      // This works (there must be a final condition!)
+      // forall(t in [is_deranged(w1,w2) : w1 in words, w2 in words | w1 != w2] | t)
+      // Better version (thanks to Tom)
+      forall(w1 in words, w2 in words - {w1} |is_deranged(w1,w2))
+      ) {
+    deranged += [words];
+  }
+}
+
+//
+// print all derangement with max word length
+//
+lens:=[#arb(w) : w in deranged]; // length of the one of the words
+max_val := max(lens);
+ix := [i : i in [1..#lens] | lens[i] == max_val] ;
+print([deranged[i] : i in ix]);

@@ -1,0 +1,105 @@
+// 
+// Anagrams in SETL.
+//
+// This version checks for the largest sets of anagrams from a word list,
+// (default /usr/dict/words). Note: this program just cares about words
+// consisting of a-z.
+//
+// Also compare with the Rosetta Code:
+// http://rosettacode.org/wiki/Anagrams
+//
+//
+// This SETL program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my SETL page: http://www.hakank.org/setl/
+//
+
+//
+// Quick sort
+//
+
+// Fixes needed since strings are not collection values.
+qsort1 := procedure(a) {
+  if (#a > 1) {
+    pivot := a[#a \ 2 + 1];
+    aa := [1..#a];
+    a := qsort1([a[i] : i in aa | compare(a[i],pivot) < 0]) +
+               [a[i] : i in aa | a[i] == pivot] +
+         qsort1([a[i] : i in aa | compare(a[i], pivot) > 0]);
+  }
+  return a;
+};
+
+qsort2 := procedure(a) {
+  if (#a > 1) {
+    pivot := a[#a \ 2 + 1];
+    a := qsort2([x : x in a | compare(x,pivot) < 0]) +
+                [x : x in a | x == pivot] +
+         qsort2([x : x in a | compare(x, pivot) > 0]);
+  }
+  return a;
+};
+
+
+qsort := procedure(a) {
+  return qsort2(a);
+};
+
+
+//
+// Insertion sort
+//
+insertion_sort := procedure(a) {
+  for (i in [2..#a]) {
+    v := a[i];
+    j := i-1;
+    while (j >= 1 && compare(a[j], v) > 0) {
+      a[j+1] := a[j];
+      j := j-1;
+    }
+    a[j+1] := v; 
+  }
+  return +/a;
+};
+
+t1 := now();
+words := readFile("unixdict.txt");
+
+anagrams := {};
+for (word in words) {
+  if (word == om || word == "") {
+    continue;
+  }
+
+  // sorted := qsort(word); // 2.187s
+  // sorted := insertion_sort(word); // 1.747s
+  sorted := sort(word); // using 1.2.0: sort 0.898s
+  
+  if (anagrams[sorted] == om) {
+    anagrams[sorted] := {word};
+  } else {
+    anagrams[sorted] += {word}; // Don't work in 1.1.0
+
+  }
+}
+
+t2 := now();
+print("Finished reading the dictionary: ($t2-t1$ms)");
+
+max_size := 0;
+max_words := {};
+for ([sorted, words] in anagrams) {
+  size := #words;
+  if (size > max_size) {
+    max_size := size;
+    max_words := {words};
+  } else if (size == max_size) {
+    max_words += {words};
+  }
+}
+
+for (w in max_words) {
+  print(w);
+}
+
+t3 := now();
+print("It all took $t3-t1$ms");
