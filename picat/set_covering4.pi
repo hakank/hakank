@@ -1,0 +1,167 @@
+/*
+
+  Set covering and set partition in Picat.
+
+  Example from Lundgren, Ronnqvist, Varbrand "Optimeringslora", page 408.
+  [This is a Swedish book about Operational Research.]
+  
+  We want to minimize the cost of the alternatives which covers all the 
+  objects, i.e. all objects must be choosen. The requirement is than an object 
+  may be selected _exactly_ once.
+ 
+  Alternative        Cost        Object
+  1                  19           1,6
+  2                  16           2,6,8
+  3                  18           1,4,7
+  4                  13           2,3,5
+  5                  15           2,5
+  6                  19           2,3
+  7                  15           2,3,4
+  8                  17           4,5,8
+  9                  16           3,6,8
+  10                 15           1,6,7
+ 
+  The problem has a unique solution of z = 49 where alternatives 
+  3, 5, and 9 is selected. 
+ 
+  If we, however, allow that an object is selected more than one time, 
+  then the solution is z = 45 (i.e. less cost than the first problem),
+  and the alternatives 4, 8, and 10 is selected, where object 5 is 
+  selected twice (alt. 4 and 8). It's an unique solution as well.
+ 
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+% plain scalar product
+scalar_product(A, X, Product) => 
+   Product #= sum([A[I]*X[I] : I in 1..A.length]).
+
+% scalar product with relation
+scalar_product(A, X, Rel, Product) => 
+   scalar_product(A, X, P),
+   call(Rel,P,Product).
+
+
+%
+% First find the optimal value (MinVal), then find all the solutions with that value.
+% Note: This handles both set partition and set covering.
+%
+go =>
+
+        %
+        % set partition
+        %
+        writef("\nSET PARTITION\n"),
+        writef("Find the optimal solution\n"),
+        problem(Costs,Alternatives),
+
+        set_covering4(Costs, Alternatives, set_partition, MinVal, _),
+
+        writef("\nFinding all optimal solutions with MinVal %d:\n", MinVal),
+        L = findall(Assignments, 
+                $set_covering4(Costs, Alternatives, set_partition,MinVal,Assignments)),
+        Len = length(L),
+        writeln(all_solutions=L),
+        writef("It was %d solution(s) (Set partition)\n\n", Len),
+
+
+        %
+        % Set covering
+        %
+        writef("\nSET COVERING\n"),
+        writef("Find the optimal solution\n"),
+
+        set_covering4(Costs, Alternatives, set_covering, MinVal2, _),
+
+        writef("\nFinding all optimal solutions with MinVal %d:\n", MinVal2),
+        L2 = findall(Assignments2, 
+                $set_covering4(Costs, Alternatives, set_covering,MinVal2,Assignments2)),
+        Len2 = length(L2),
+        writeln(all_solutions=L2),
+        writef("It was %d solution(s) (Set covering)\n\n", Len2).
+
+
+
+set_covering4(Costs, Alternatives, Type, MinVal, Assignments) =>
+
+        % get the dimensions
+        NumAlternatives = Costs.length,
+        NumObjects = Alternatives[1].length,
+
+        % decision variable: which alternative to choose
+
+        %
+        % which alternative to choose
+        %
+        X = new_list(NumAlternatives),
+        X in 0..1,
+
+        % 
+        % cover all groups with the senators
+        %
+        foreach(J in 1..NumObjects)
+             Sum #= sum([X[I]*Alternatives[I,J] : I in 1..NumAlternatives]),
+             % which type? set partition or set covering?
+             if Type = set_partition then
+                % all objects must be covered _exactly_ once 
+                % (set partition)
+                Sum #= 1
+             else 
+                % variant: all objects must be covered _at least_ once
+                % (set covering)
+               Sum #>= 1
+            end
+        end,
+
+        %
+        % objective: minimize the number of senators
+        %
+        scalar_product(Costs,X,#=,MinVal),
+
+        %
+        % either search for all solutions (for the minimum value) or
+        % the optimal value
+        %
+        if ground(MinVal) then
+            solve(X)
+        else
+            solve([$min(MinVal)], X)
+        end,
+
+        Assignments1 = [],
+        foreach(I in 1..NumAlternatives)
+             if X[I] #= 1 then
+                Assignments1 := Assignments1 ++ [I]
+             end
+        end,
+        Assignments = Assignments1,
+
+        writeln(minVal=MinVal),
+        writeln(x=X),
+        writeln(assignements=Assignments),
+        writef("\n").
+
+
+%
+% cost and alternatives
+%
+problem(Costs, Alternatives) => 
+        Costs = {19, 16, 18, 13, 15, 19, 15, 17, 16, 15}, % costs
+        Alternatives = 
+          {{1,0,0,0,0,1,0,0},   % alternative 1    % alternatives 
+           {0,1,0,0,0,1,0,1},   % alternative 2
+           {1,0,0,1,0,0,1,0},   % alternative 3
+           {0,1,1,0,1,0,0,0},   % alternative 4
+           {0,1,0,0,1,0,0,0},   % alternative 5
+           {0,1,1,0,0,0,0,0},   % alternative 6
+           {0,1,1,1,0,0,0,0},   % alternative 7
+           {0,0,0,1,1,0,0,1},   % alternative 8
+           {0,0,1,0,0,1,0,1},   % alternative 9
+           {1,0,0,0,0,1,1,0}}. % alternative 10

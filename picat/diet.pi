@@ -1,0 +1,110 @@
+/*
+
+  Diet problem in Picat.
+
+  Standard diet problem.
+
+  Minimize the cost for the products:
+   Type of                        Calories   Chocolate    Sugar    Fat
+   Food                                      (ounces)     (ounces) (ounces)
+   Chocolate Cake (1 slice)       400           3            2      2
+   Chocolate ice cream (1 scoop)  200           2            2      4
+   Cola (1 bottle)                150           0            4      1
+   Pineapple cheesecake (1 piece) 500           0            4      5
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+% find all optimal solutions
+go =>
+        data(Price, Limits, [Calories, Chocolate, Sugar, Fat]),
+        diet(Calories,Chocolate,Sugar,Fat,Price,Limits, Xs,XSum),
+        writeln([cost=XSum, Xs]),
+
+        % and get all optimal solutions
+        % (It's a unique solution.)
+        writef("Find all solutions with cost %d:\n", XSum),
+        Sols = findall(Xs2,diet(Calories,Chocolate,Sugar,Fat,Price,Limits, Xs2,XSum)),
+        writeln(Sols),
+        nl.
+
+
+go2 =>
+        data(Price, Limits, [Calories, Chocolate, Sugar, Fat]),       
+        diet2([Calories,Chocolate,Sugar,Fat],Price,Limits, Xs,XSum),
+        writeln([cost=XSum, Xs]).
+
+
+% plain scalar product
+scalar_product(A, X, Product) => 
+   Product #= sum([A[I]*X[I] : I in 1..A.length]).
+
+% scalar product with relation
+scalar_product(A, X, Rel, Product) => 
+   scalar_product(A, X, P),
+   call(Rel,P,Product).
+
+
+diet(Calories,Chocolate,Sugar,Fat,Price,Limits, Xs,XSum) =>
+
+        Len = length(Price),
+        Xs = new_list(Len),
+ 	Xs in 0..10,
+
+        scalar_product(Calories,  Xs, #>=, Limits[1]), % 500,
+        scalar_product(Chocolate, Xs, #>=, Limits[2]), %   6,
+        scalar_product(Sugar,     Xs, #>=, Limits[3]), %  10,
+        scalar_product(Fat,       Xs, #>=, Limits[4]), %   8,
+
+        scalar_product(Price, Xs, #=, XSum), % to minimize
+
+        % optimize or find all (optimal) solutions
+        if var(XSum) then
+           solve([$min(XSum)], Xs)
+        else 
+           % here XSum is bound so we just label the vars
+           solve(Xs)
+        end.
+
+
+%
+% This is a more general solution where all the nutritions 
+% are collected as a matrix.
+%
+diet2(Products,Price,Limits, Xs,XSum) =>
+
+        Len = length(Price),
+        Xs = new_list(Len),
+ 	Xs in 0..10,
+
+        foreach(P in 1..Products.length)
+           scalar_product(Products[P], Xs,#>=, Limits[P])
+        end,
+        scalar_product(Price, Xs, #=, XSum), % to minimize
+        if var(XSum) then
+           solve([$min(XSum)], Xs)
+        else 
+           % here XSum is bound so we just label the vars
+           solve(Xs)
+        end.
+
+%
+% data
+%
+data(Price, Limits, Nutrition) =>
+     Price = [ 50, 20, 30, 80], % price in cents for each nutrition
+     Limits = [500,  6, 10,  8], % limits, requirements for each nutrition type
+
+     % nutrition for each product
+     Nutrition = 
+     [[400, 200, 150, 500],  % calories
+      [  3,   2,   0,   0],  % chocolate
+      [  2,   2,   4,   4],  % sugar
+      [  2,   4,   1,   5]]. % fat

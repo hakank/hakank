@@ -1,0 +1,93 @@
+/*
+
+  Soundex in Picat.
+
+  See for example:
+  * http://en.wikipedia.org/wiki/soundex
+  * http://rosettacode.org/wiki/Soundex
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+
+   % From J's test at http://rosettacode.org/wiki/Soundex#J
+   % And O'Hara from the Forth test
+
+   Names = split("Lloyd Woolcock Donnell Baragwanath Williams Ashcroft Euler Ellery Gauss Ghosh Hilbert Heilbronn Knuth Kant Ladd Lukasiewicz Lissajous O'Hara", " "),
+  SoundexNames = split("L300 W422 D540 B625 W452 A226 E460 E460 G200 G200 H416 H416 K530 K530 L300 L222 L222 O600", " "),
+
+   foreach({N,Correct} in zip(Names, SoundexNames)) 
+    S = soundex(N, 4),
+    println([N,soundex=S,correct=Correct]),
+    if S != Correct then
+      println("\tThat was wrong!\n")
+    end
+  end,
+  nl.
+
+
+% This was inspired by the Python code from  
+%   http://code.activestate.com/recipes/52213/
+% with the following comment:
+% """
+% soundex module conforming to Knuth's algorithm
+% implementation 2000-12-24 by Gregory Jorgensen
+% public domain
+% """
+
+soundex("", _) = "" => true.
+soundex(Name, Len) = Soundex =>
+
+  % digits holds the soundex values for the alphabet
+  Digits = "01230120022455012623010202",
+  Sndx = "",
+  Fc   = "",
+
+  % translate alpha chars in name to soundex digits
+  foreach(C in Name.to_uppercase()) 
+    if is_alpha(C) then
+      if Fc == "" then
+        Fc := C   % remember first letter
+      end,
+      D = Digits[char_code(C)-64], 
+
+      % duplicate consecutive soundex digits are skipped
+      if Sndx.length == 0; D != Sndx[Sndx.length] then
+        Sndx := Sndx ++ [D]
+      end
+    end
+  end,
+
+  % replace first digit with first alpha character
+  if Sndx.length >= 2 then
+    Sndx := [Fc] ++ [Sndx[J] : J in 2..Sndx.length]
+  else 
+    Sndx := Fc
+  end,
+
+  % remove all 0s from the soundex code
+  Sndx := [S : S in Sndx, S != '0'],
+
+  % return soundex code padded to len characters
+  if Len > Sndx.length then
+    Sndx := Sndx ++ rep('0', (Len - Sndx.length))
+  end,
+  Soundex := [Sndx[J] : J in 1..Len].
+
+% for a single character
+is_alpha(C), char(C) => C in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".
+% check the whole string
+is_alpha(String), string(String) => 
+   Alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+   foreach(C in String) C in Alpha end.
+
+% Repeat a string/character S N times.
+rep(S, N) = [S : _I in 1..N].

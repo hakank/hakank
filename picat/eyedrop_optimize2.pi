@@ -1,0 +1,160 @@
+/*
+
+  Optimize eye drops in Picat.
+
+  After a Cataract operation that didn't go well - they 
+  didn't put back the lens - I am ordinated three different 
+  eye drops to take each day (for a couple of some weeks from now):
+
+    6 drops per day of kind 1 (later: 4 drops)
+    3 drops per day of kind 2
+    1 drop per day of kind 3 (for the night)
+
+  What is the (an) optimal way of distributing these drops, provided:
+
+   - the day start at 7:00 and end at 23:00
+   - the different types should be distributed as "even as possible"
+     (whatever that mean)
+   - there may just be one drop per hour
+   - drop 3 is taken last ("for the night")
+
+  The objective is then to separate the times to take an eye drop type 
+  as much as possible (variables z is the sum of dispersion).
+
+  For more about Cataract surgery:
+  https://en.wikipedia.org/wiki/Cataract_surgery
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => time2(go).
+
+go =>
+   % Original problem
+   % Start = 1, % note: We always start at time 1
+   % End = 16, % 23-7
+   % NumTypes = 3,
+   % Occ = [6,3,1],
+
+   % This is a later ordination:
+   % Start = 1,
+   % End = 16,
+   % NumTypes = 3,
+   % Occ = [4,3,1],
+
+   % Test
+   Start = 1,
+   End = 16,
+   NumTypes = 5,
+   Occ = [5,5,3,2,1],
+
+   % Test 2
+   % Start = 1,
+   % End = 30,
+   % NumTypes = 6,
+   % Occ = [8,5,4,3,2,1],
+
+   MaxTimes = max(Occ),
+   Hours = End - Start + 1,
+
+   if sum(Occ) > Hours then
+      printf("This is an impossible problem. sum(Occ) [%d] > Hours [%d]\n", sum(Occ), Hours)
+   end,
+
+   %
+   % decision variables
+   % 
+
+   % Note: this is from 1..Hours
+   X = new_list(Hours),
+   X in 0..NumTypes,
+
+   % total dispersion
+   Z in 0..1000,
+
+   DropTable = new_array(NumTypes, MaxTimes),
+   DropTable in Start..End,
+   % DropTableVars = DropTable.array_matrix_to_list(),
+   % DropTableVars in Start..End,
+
+   DistsTable = new_array(NumTypes, MaxTimes-1),
+   DistsTable in 0..Hours*NumTypes,
+   % DistsTableVars = DistsTable.array_matrix_to_list(),
+   % DistsTableVars in 0..Hours*NumTypes,
+
+
+   % 
+   % constraints
+   %
+
+   foreach(I in 1..NumTypes) count(I,X,#=, Occ[I]) end,
+
+   foreach(T in 1..NumTypes) 
+      make_drop(X, 
+                T, 
+                Occ[T], 
+                [DropTable[T,J] : J in 1..Occ[T]], 
+                [DistsTable[T, J] : J in 1..Occ[T]-1], 
+                Start, 
+                End),
+      % fix the unknowns (after occ[t]) in drop_table and dists_table since
+      % they are not used in make_drop
+      foreach(J in Occ[T]+1..MaxTimes) 
+         DropTable[T,J] #= Start
+      end,
+      foreach(J in Occ[T]..MaxTimes-1) 
+         DistsTable[T,J] #= 0
+      end
+   end,
+
+
+   % Heuristic to maximize the dispersion
+   Z #= sum([(DistsTable[T,J] * (DistsTable[T,J] #= DistsTable[T,I])) 
+              : 
+              T in 1..NumTypes, I in 1..Occ[T]-1, J in 1..Occ[T]-1, I < J]),
+
+   % Specific constraint: 
+   % Type 3 is the last drop to take (not necessarily at the last hour)
+   % Note: It assume a single occurrence of the drop type.
+   if Occ[NumTypes] == 1 then
+        foreach(I in Start..End) 
+            X[I] #= NumTypes #=> sum([X[J] #= 0 : J in I+1..End]) #= (I+1..End).length
+        end
+   end,
+
+   Vars = DropTable.to_list() ++ DistsTable.to_list(), % ++ DropTableVars ++ DistsTableVars,
+   solve([ff,reverse_split, $max(Z), $report(printf("Found %d\n", Z))],Vars),
+
+   writeln(z=Z),
+   writeln(x=X),
+
+   foreach(H in Start..End)
+     printf("%2dh: %d\n", H, X[H])
+   end,
+
+   nl.
+
+
+% make_drop(_A, _T, _N, _Y, [], _Start, _End) => true.
+make_drop(A, T, N, Y, YDist, Start, End) =>
+   all_different(Y),
+   increasing(Y),
+   if YDist.length > 0 then
+      foreach(I in 1..N-1) YDist[I] #= Y[I+1]-Y[I] end,
+      % Connect the time table (a) with the times of this drop
+      foreach(I in Start..End) 
+          (A[I] #= T) #<=> (sum([Y[J] #= I : J in 1..N]) #> 0)
+      end
+   end.
+
+
+
+increasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #=< List[I] end.
+

@@ -1,0 +1,141 @@
+/*
+
+  Costas array in Picat.
+
+  From http://mathworld.wolfram.com/CostasArray.html:
+  """
+  An order-n Costas array is a permutation on {1,...,n} such
+  that the distances in each row of the triangular difference
+  table are distinct. For example, the permutation {1,3,4,2,5}
+  has triangular difference table {2,1,-2,3}, {3,-1,1}, {1,2},
+  and {4}. Since each row contains no duplications, the permutation
+  is therefore a Costas array.
+  """
+  Also see
+  http://en.wikipedia.org/wiki/Costas_array
+
+  This model is based on Barry O'Sullivan's MiniZinc model
+  (http://www.g12.cs.mu.oz.au/mzn/costas_array/CostasArray.mzn)
+  Here are the two rather simple differences 
+  (marked by "hakank" below)
+   1) no symmetry breaking on the order of the Costas array
+   2) fixes the lower triangular matrix in the difference
+      matrix to -n+1
+  
+  Since there is no symmetry breaking of the order of the Costas 
+  array it gives all the solutions for a specific length of 
+  the array, e.g. those 
+  listed in http://mathworld.wolfram.com/CostasArray.html
+  
+  1	1	(1)
+  2	2	(1, 2), (2,1)
+  3	4	(1, 3, 2), (2, 1, 3), (2, 3, 1), (3, 1, 2)
+  4	12	(1, 2, 4, 3), (1, 3, 4, 2), (1, 4, 2, 3), (2, 1, 3, 4), 
+                (2, 3, 1, 4), (2, 4, 3, 1), (3, 1, 2, 4), (3, 2, 4, 1), 
+                (3, 4, 2, 1), (4, 1, 3, 2), (4, 2, 1, 3), (4, 3, 1, 2)
+  ....
+  
+  See http://www.research.att.com/~njas/sequences/A008404
+  for the number of solutions for n=1..
+  1, 2, 4, 12, 40, 116, 200, 444, 760, 2160, 4368, 7852, 12828, 
+  17252, 19612, 21104, 18276, 15096, 10240, 6464, 3536, 2052, 
+  872, 200, 88, 56, 204,...
+ 
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+   N = 8,
+   L=findall(Costas,$costas(N,Costas,print)),
+   Len=length(L),
+   writeln(len=Len),
+   nl.
+     
+go2 =>
+   Seq1 = [],
+   foreach(N in 2..10)
+       writeln(n=N),
+       L = findall(Costas,$costas(N,Costas,noprint)),
+       Len = length(L),
+       writeln(len=Len),
+       Seq1 := Seq1 ++ [Len],
+       nl
+   end,
+   Seq = Seq1,
+   writeln(sequence=Seq),
+   nl.
+          
+
+
+costas(N,Costas,Print) =>
+   
+   Costas = new_list(N),
+   Costas in 1..N,
+
+   Differences = new_array(N,N),
+   DiffVars = vars(Differences),
+   DiffVars in -N+1..N-1,
+   
+   %
+   % hakank: Here are my two changes
+   %
+   % 1) I skipped this constraint since I want 
+   %    to generate all solutions.
+   % Costas[1] #< Costas[N],
+   
+   % 2) Fix the values in the lower triangle in the
+   % difference matrix to -n+1. This removes variants 
+   % of the difference matrix for the the same Costas array.
+   foreach(I in 1..N, J in 1..I) Differences[I,J] #= -N+1 end,
+
+   % hakank: All the following constraints are from 
+   % Barry O'Sullivans's original MiniZinc model.
+   all_different(Costas),
+
+   % "How do the positions in the Costas array relate 
+   %  to the elements of the distance triangle."
+   foreach(I in 1..N, J in I+1..N)
+      Differences[I,J] #= Costas[J] - Costas[J-I]
+   end,
+
+   % "All entries in a particular row of the difference 
+   %  triangle must be distint."
+   foreach(I in 1..N-1)
+      all_different([Differences[I,J] : J in I+1..N])
+   end,
+
+   % "All the following are redundant - only here to speed up search."
+   
+   % "We can never place a 'token' in the same row as any other."
+   foreach(I in 1..N, J in I+1..N)  Differences[I,J] #!= 0 end,
+
+   foreach(K in 3..N, L in K+1..N)
+      Differences[K-2,L-1] + Differences[K,L] #= 
+      Differences[K-1,L-1] + Differences[K-1,L]
+   end,
+   
+   Vars = Costas ++ DiffVars,
+   solve(Vars),
+   if Print = print then
+       writeln(costas=Costas),
+       foreach(I in 1..N)
+           foreach(J in 1..N)
+              D = Differences[I,J],
+              if D > -N+1 then 
+                 printf("%2d ",D)
+              else 
+                 printf(" ")
+              end
+            end,
+            nl
+        end,
+        nl
+   end.
+   

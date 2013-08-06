@@ -1,0 +1,124 @@
+/*
+
+  N-Queens problem in Picat.
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+
+% another model for N-queens
+% compared to queens2/2 in exs.pi this 
+% variant use list comprehension directly
+% in all_different/1. Nice.
+queens3(N, Q) =>
+    Q=new_list(N),
+    Q in 1..N,
+    all_different(Q),
+    all_different([$Q[I]-I : I in 1..N]),
+    all_different([$Q[I]+I : I in 1..N]),
+    solve([ff],Q).
+
+
+% generate all solutions via solve_all (don't work right now)
+queens3_all(N, Solutions) =>
+    Q=new_list(N),
+    Q in 1..N,
+    all_different(Q),
+    all_different([$Q[I]-I : I in 1..N]),
+    all_different([$Q[I]+I : I in 1..N]),
+    % This yield "Unknown procedure solve/2".
+    % Solutions = solve_all([ff],Q).
+    % This works:
+    Solutions = findall(Q, $solve($Q)).
+
+
+% Using all_distinct instead
+queens3b(N, Q) =>
+    Q=new_list(N),
+    Q in 1..N,
+    all_distinct(Q),
+    all_distinct([$Q[I]-I : I in 1..N]),
+    all_distinct([$Q[I]+I : I in 1..N]),
+    solve([ff],Q).
+
+    
+% alternative approaches
+queens4(N, Q) =>
+   Q = new_list(N),
+   Q in 1..N,
+   foreach(A in [-1,0,1])
+      all_different([$Q[I]+I*A : I in 1..N])
+   end,
+   solve([ffd],Q).
+
+% Decomposition of alldifferent
+all_different_me(L) =>
+   Len = length(L),
+   foreach(I in 1..Len, J in I+1..Len) L[I] #!= L[J] end.
+
+% Using all_different_me (my decomposition)
+queens5(N, Q) =>
+    Q=new_list(N),
+    Q in 1..N,
+    all_different_me(Q),
+    all_different_me([$Q[I]-I : I in 1..N]),
+    all_different_me([$Q[I]+I : I in 1..N]),
+    solve([ff],Q).
+
+% another common (and slower) approach
+queens6(N, Q) =>
+   Q = new_list(N),
+   Q in 1..N,
+   foreach(I in 1..N, J in I+1..N)
+     (
+      Q[I] #!= Q[J],
+      Q[I] + I #!= Q[J],
+      Q[I] - I #!= Q[J]
+    ) ; 
+     true
+   end,
+   solve([ff,updown], Q).
+
+
+
+go => 
+   queens3(8,Q),
+   writeln(Q),
+   N2 = 12, 
+   queens3_all(8, Solutions),
+   % writeln(Solutions),
+   Len=Solutions.length,
+   writef("N:%w %w solutions.\n%w\n", N2, Len, Solutions).
+  
+
+go2 => 
+    foreach(N in 2..14) 
+       statistics(backtracks, Backtracks),
+       statistics(runtime, [_, _Runtime1]),
+       queens3_all(N, Solutions),
+       Len=Solutions.length,
+       statistics(backtracks, Backtracks2),
+       B = Backtracks2 - Backtracks,
+       Backtracks := Backtracks2,
+       statistics(runtime, [_, Runtime2]),
+       writef("N:%3d %10d solutions (%d backtracks, %d millis)\n", N, Len, B, Runtime2)
+    end.
+
+
+go3 => 
+    % queens6 is way too slow for N=100
+    Ps = [queens3=100, queens3b=100, queens4=100,queens5=100,queens6=13],
+    foreach(P=N in Ps) 
+       printf("%w(%d)\n", P, N),
+       time2($once(call(P,N,Q))),
+       writeln(Q),
+       nl
+    end

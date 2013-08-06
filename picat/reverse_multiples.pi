@@ -1,0 +1,131 @@
+/* 
+
+  Reverse multiples in Picat.
+
+  Find reverse multiples.
+  
+  E.g.
+   4*2178 = 8712
+
+
+  Also see:
+    - Richard Green: "Reverse multiple numbers"
+      https://plus.google.com/u/0/101584889282878921052/posts/9HFfd99sFj2
+
+    - N.J.A. Sloane: "2178 And All That"
+      http://arxiv.org/abs/1307.0453
+  via
+  
+  Jekejeke Logic Programming:
+  https://plus.google.com/u/0/103259555581227445618/posts/9HE8iXQaXnM
+
+  (Thanks to Neng-Fa for some improvements.)
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+   % Len = 4,
+   Base = 10,
+   foreach(Len in 2..9) 
+       println(len=Len),
+       time2(All = findall([Num1,Num2,M,A1,A2], reverse_multiples(Len, Base, Num1, Num2, M,A1,A2))),
+       foreach([Num1,Num2,M,A1,A2] in All) 
+          if Base == 10 then
+              println([len=Len,num1=Num1,num2=Num2,m=M])
+          else
+              println([len=Len,num1=Num1,num2=Num2,m=M,a1=A1,a2=A2])
+          end
+       end,
+       nl
+   end,
+   nl.
+
+
+go2 =>
+   Base = 10,
+   Len=6,
+   time2(All = findall([Num1,Num2,M,A1,A2], reverse_multiples(Len, Base, Num1, Num2, M,A1,A2))),
+   foreach([Num1,Num2,M,A1,A2] in All) 
+      writeln([len=Len,num1=Num1,num2=Num2,m=M,a1=A1,a2=A2])
+   end,
+   nl.
+
+% Solve for just one solution.
+go3 =>
+   Base = 10,
+   Len = 6,
+   Variable = [backward,constr,degree,ff,ffc,forward,inout,leftmost,max,min],
+   Value = [down,updown,split,reverse_split],
+   Best = [],
+   Timeout = 10000,
+   foreach(Var in Variable) 
+     foreach(Val in Value) 
+       Labeling = [Var,Val],
+       println(Labeling),
+       time2(time_out(reverse_multiples(Len, Base, Num1, Num2, M,A1,A2, Labeling), Timeout, Status)),
+       if Status == success then
+          writeln([len=Len,num1=Num1,num2=Num2,m=M,a1=A1,a2=A2]),
+          Best := Best ++ [Labeling]
+       end
+     end
+   end,
+   nl.
+   
+
+reverse_multiples(Len, Base,Num1,Num2,M,A1,A2) =>
+   reverse_multiples(Len, Base,Num1,Num2,M,A1,A2,[ff,updown]).
+
+reverse_multiples(Len, Base,Num1,Num2,M,A1,A2, Labeling) =>
+     % writeln(labeling=Labeling),
+     Lower = Base**(Len-1),
+     Upper = Base**(Len)-1,
+
+     Num1 in Lower..Upper,
+     Num2 in Lower..Upper,
+
+     M in 2..Base-1, % the multiplier
+     % M in [4,9],
+
+     A1 = new_list(Len),
+     A1 in 0..Base-1,
+     A2 = new_list(Len),
+     A2 in 0..Base-1,
+
+     %Num2 #< Num1,
+
+     to_num(A1,Base,Num1),
+     to_num(A2,Base,Num2),
+
+     M * Num2 #= Num1,
+
+     A2 = reverse(A1),
+     % reverse2(A1,A2),
+
+     % writeln([num1=Num1,num2=Num2,m=M, a1=A1,a2=A2]),
+
+     Vars = A1 ++ [M] ++ A2 ++ [Num1,Num2],
+     solve(Labeling,Vars).
+ 
+
+
+% converts a number Num to/from a list of integer List given a base Base
+to_num(List, Base, Num) =>
+        Len = List.length,
+        Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+reverse2(L1,L2) =>
+   Len = L1.length, 
+   foreach(I in 1..Len) 
+      L1[I] #= L2[Len-I+1]
+   end.

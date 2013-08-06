@@ -1,0 +1,231 @@
+/*
+
+  Crew allocation problem in Picat.
+
+  From Gecode example crew
+  examples/crew.cc
+  """ 
+  (Original text from crew.cc)
+  * Example: Airline crew allocation
+  *
+  * Assign 20 flight attendants to 10 flights. Each flight needs a certain
+  * number of cabin crew, and they have to speak certain languages.
+  * Every cabin crew member has two flights off after an attended flight.
+  *
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+
+
+main => go.
+
+go =>
+   crew.
+
+
+scalar_product(A, X, Product) => 
+   Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
+
+% scalar product with relation
+scalar_product(A, X, Rel, Product) => 
+   scalar_product(A, X, P),
+   call(Rel,P,Product).
+
+
+crew =>
+
+   attributes(Attributes),
+   required(RequiredCrew),
+   NumFlights = length(RequiredCrew),
+
+   names(Names),
+   NumPersons = length(Names),
+
+   writef("Number of flights: %d Number of persons: %d\n",NumFlights,NumPersons),
+
+   % split this table
+   TotalRequired = [],
+   Required = [],
+   foreach(R in RequiredCrew)
+      R = [Tot|Rest],
+      TotalRequired := TotalRequired ++ [Tot],
+      Required := Required ++ [Rest]
+   end,
+
+   % the crew schedule
+   Crew = new_array(NumFlights, NumPersons).array_matrix_to_list_matrix(),
+   CrewList = flatten(Crew),
+   CrewList in 0..1,
+
+   % objective to (perhaps) minimize:
+   % total number of persons working during these flights
+   Z in 0..NumPersons,
+   Z #= sum([sum([Crew[F,P] : F in 1..NumFlights])#>0 : P in 1..NumPersons]),
+
+   % calculate the persons for a specific flight
+   % that has the proper requirements.
+   % Also the number of persons for a flight.
+   /*
+   foreach({C,Tot2,Req} in zip(Crew,TotalRequired,Required))
+       % number of persons for a flight
+       sum(C) #= Tot2,
+
+       % require the number of persons with the proper attributes
+       foreach({R,Attribute} in zip(Req,transpose(Attributes)))
+          scalar_product(Attribute,C,#>=,R)
+       end
+    end,
+   */
+   foreach(F in 1..NumFlights) 
+      % size of crew
+      sum([Crew[F,I] : I in 1..NumPersons]) #= RequiredCrew[F, 1],
+      % attribute and requirements
+      foreach(J in 1..5)
+        sum([Attributes[I,J]*Crew[F,I] : I in 1..NumPersons]) #>=  RequiredCrew[F,J+1]
+      end
+   end,
+
+   % after a flight, break for two flights, i.e.
+   % for three consecutive flights there can be
+   % work for max 1 of these flights.
+   foreach(F in 1..NumFlights-2, I in 1..NumPersons)
+      Crew[F,I] + Crew[F+1,I] + Crew[F+2,I] #<= 1
+   end,
+
+   % extra contraint: all persons (if at all) 
+   % must work at least two times
+   CrewTransposed = transpose(Crew),
+   foreach(C1 in CrewTransposed) sum(C1) #>=2 #\/ sum(C1) #= 0 end,
+   
+
+   %
+   % search
+   % 
+   Vars = CrewList ++ [Z],
+   solve([], Vars),
+   % optimization: This takes long time...
+   % solve([$min(Z), ff], Vars),
+
+
+   % 
+   % Presentation of the solution
+   %
+   writef("Number of persons working (Z): %d\n", Z),
+   foreach({Flight,C} in zip(1..NumFlights,Crew))
+      printf("Flight %2d: %w (required: %d)\n", Flight, C, RequiredCrew[Flight,1])
+   end,
+
+   nl,
+   writef("Persons working during the flights:\n"),
+   foreach({I,Flight} in zip(1..NumFlights,Crew))
+      Assign = [Name : {F,Name} in zip(Flight,Names), F == 1], 
+      printf("Flight %2d: %w\n", I,Assign)
+   end,
+   
+   writef("\nPersonell working at flights:\n"),
+
+   foreach({P,Person} in zip(1..NumPersons, CrewTransposed))
+      printf("Person %d (%w) Flights: %w\n",P,Names[P],boolean_to_set(Person))
+   end,
+   nl.
+   
+
+boolean_to_set(List) = Set =>
+   Set = [I : {I,C} in zip(1..List.length, List), C #= 1].
+
+
+% Require that all D consecutive numbers sums to =< Sum.
+consecutive_sum_to_less_than(X,D,Sum) =>
+   foreach(I in 1..X.length-D) sum([X[J] : J in I..I+D-1 ]) #=< Sum end.
+   
+
+
+/* 
+  stewards  = {Tom, David, Jeremy, Ron, Joe, Bill, Fred, Bob, Mario, Ed};
+  hostesses = {Carol, Janet, Tracy, Marilyn, Carolyn, Cathy, Inez,
+          Jean, Heather, Juliet};
+  frenchSpeaking = {Bill, Inez, Jean, Juliet};
+  germanSpeaking = {Tom, Jeremy, Mario, Cathy, Juliet};
+  spanishSpeaking = {Joe, Bill, Fred, Mario, Marilyn, Inez, Heather};
+*/
+attributes(A) => 
+   % steward, hostess, french, spanish, german
+A= [[1,0,0,0,1], % Tom     = 1
+    [1,0,0,0,0], % David   = 2
+    [1,0,0,0,1], % Jeremy  = 3
+    [1,0,0,0,0], % Ron     = 4
+    [1,0,0,1,0], % Joe     = 5
+    [1,0,1,1,0], % Bill    = 6
+    [1,0,0,1,0], % Fred    = 7
+    [1,0,0,0,0], % Bob     = 8
+    [1,0,0,1,1], % Mario   = 9
+    [1,0,0,0,0], % Ed      = 10
+
+    [0,1,0,0,0], % Carol   = 11
+    [0,1,0,0,0], % Janet   = 12
+    [0,1,0,0,0], % Tracy   = 13
+    [0,1,0,1,1], % Marilyn = 14
+    [0,1,0,0,0], % Carolyn = 15
+    [0,1,0,0,0], % Cathy   = 16
+    [0,1,1,1,1], % Inez    = 17
+    [0,1,1,0,0], % Jean    = 18
+    [0,1,0,1,1], % Heather = 19
+    [0,1,1,0,0]  % Juliet  = 20
+   ].
+
+
+names(Names) => 
+  Names = [
+     'Tom',     % 1
+     'David',   % 2
+     'Jeremy',  % 3
+     'Ron',     % 4
+     'Joe',     % 5
+     'Bill',    % 6 
+     'Fred',    % 7
+     'Bob',     % 8
+     'Mario',   % 9
+     'Ed',      % 10
+     
+     'Carol',   % 11
+     'Janet',   % 12
+     'Tracy',   % 13
+     'Marilyn', % 14 
+     'Carolyn', % 15 
+     'Cathy',   % 16
+     'Inez',    % 17
+     'Jean',    % 18
+     'Heather', % 19 
+     'Juliet'   % 20
+      ].
+
+
+/* required crew per flight 
+   The columns are in the following order
+     staff:     Overall number of cabin crew needed
+     stewards:  How many stewards are required
+     hostesses: How many hostesses are required
+     french:    How many French speaking employees are required
+     spanish:   How many Spanish speaking employees are required
+     german:    How many German speaking employees are required
+*/
+
+required(Required) =>  
+  Required = 
+   [[4, 1,1,1,1,1], % Flight 1
+    [5, 1,1,1,1,1], % Flight 2
+    [5, 1,1,1,1,1], % Flight 3
+    [6, 2,2,1,1,1], % Flight 4
+    [7, 3,3,1,1,1], % Flight 5
+    [4, 1,1,1,1,1], % Flight 6
+    [5, 1,1,1,1,1], % Flight 7
+    [6, 1,1,1,1,1], % Flight 8
+    [6, 2,2,1,1,1], % Flight 9
+    [7, 3,3,1,1,1]  % Flight 10
+   ].

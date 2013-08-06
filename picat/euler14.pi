@@ -1,0 +1,127 @@
+/* 
+
+  Euler #14 in Picat.
+
+  Problem 14
+  """
+  The following iterative sequence is defined for the set of positive integers:
+
+  n n/2 (n is even)
+  n 3n + 1 (n is odd)
+
+  Using the rule above and starting with 13, we generate the following 
+  sequence:
+  13 40 20 10 5 16 8 4 2 1
+
+  It can be seen that this sequence (starting at 13 and finishing at 1) 
+  contains 
+  10 terms. Although it has not been proved yet (Collatz Problem), it is 
+  thought that all starting numbers finish at 1.
+
+  Which starting number, under one million, produces the longest chain?
+
+  NOTE: Once the chain starts the terms are allowed to go above one million.")
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => go.
+
+go => time(euler14).
+
+% This is from
+% http://picat-lang.org/euler/p14.pi
+% (slightly adjusted)
+% 1.9s
+euler14 =>
+    max_chain(N,_Chain,Len),
+    printf("N=%w,Len=%w%n",N,Len).
+
+table (-,-,max)
+max_chain(N,Chain,Len) =>
+    between(1,1000000,N),
+    gen(N,Chain,Len).
+
+table (+,-,-)
+gen(1,Chain,Len) => Chain=[1], Len=1.
+gen(N,Chain,Len), N mod 2 ==0 => 
+    gen(N div 2,Chain1,Len1),
+    Chain=[N|Chain1],
+    Len=Len1+1.
+gen(N,Chain,Len) =>
+    gen(3*N+1,Chain1,Len1),
+    Chain=[N|Chain1],
+    Len=Len1+1.
+    
+
+% This is 2.6s
+euler14a => 
+   [MaxLen, MaxN] = longest_seq(999999),
+   writeln([maxLen=MaxLen, maxN=MaxN]),
+   nl.
+
+
+% We just care about the lengths so 
+% map will do fine.
+longest_seq(Limit) = [MaxLen, MaxN] =>
+
+   Lens = new_map(),
+   MaxLen = 0,
+   MaxN = 1,
+   foreach(N in 1..Limit) 
+      M = N,
+      CLen = 1,
+      while (M > 1) 
+         if Lens.has_key(M) then
+            CLen := CLen + Lens.get(M) - 1,
+            M := 1
+         else
+            M := hailstone1(M), % 2.5s
+            % Without the call to hailstone1/1: 2.7s
+            % if M mod 2 == 0 then
+            %    M := M // 2
+            % else
+            %     M := 3*M+1
+            % end,
+            CLen := CLen + 1
+         end
+      end,
+      Lens.put(N, CLen),
+      if CLen > MaxLen then
+         MaxLen := CLen,
+         MaxN := N
+      end
+   end.
+
+% With table: 6.2s
+% Without table: 2.5s
+% table
+hailstone1(N) = N//2, N mod 2 == 0 => true.
+hailstone1(N) = 3*N+1,N mod 2 == 1 => true.
+
+% Alternative, a bit slower
+% table
+hailstone2(N) = H => 
+   if N mod 2 == 0 then
+      H := N // 2
+   else 
+      H := 3*N+1
+   end.
+
+hailstoneseq1(N) = Seq =>
+   Seq := [N],
+   while (N > 1)
+      N := hailstone1(N),
+      Seq := Seq ++ [N]
+   end.
+
+hailstoneseq2(N) = Seq =>
+   Seq := [N],
+   while (N > 1)
+      N := hailstone2(N),
+      Seq := Seq ++ [N]
+   end.

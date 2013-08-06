@@ -1,0 +1,116 @@
+/*
+
+  Set covering deployment in Picat.
+
+  From http://mathworld.wolfram.com/SetCoveringDeployment.html
+  """
+  Set covering deployment (sometimes written "set-covering deployment"
+  and abbreviated SCDP for "set covering deployment problem") seeks 
+  an optimal stationing of troops in a set of regions so that a 
+  relatively small number of troop units can control a large 
+  geographic region. ReVelle and Rosing (2000) first described 
+  this in a study of Emperor Constantine the Great's mobile field 
+  army placements to secure the Roman Empire.
+  """
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+% First find the optimal value (MinVal), 
+% then find all the solutions with that value.
+go =>
+   
+   printf("\nFind the optimal solution\n"),
+   problem(Matrix),
+   armies(Armies),
+   println(armies=Armies),
+   set_covering_deployment(Matrix, Armies, MinVal,_),
+
+   writef("\nNow find all optimal solutions with MinVal %d:\n", MinVal),
+   L = findall(Assignments, $set_covering_deployment(Matrix, Armies, MinVal, Assignments)), 
+   Len = length(L),
+   nl,
+   printf("All solutions:\n"),
+   foreach(Sol in L) println(Sol) end,
+   printf("\nIt was %d solution(s)\n", Len).
+
+
+
+set_covering_deployment(Matrix, Armies, MinVal, Assignments) =>
+
+   % adjacency matrix of the cities, order N
+   N = Matrix.length,
+
+   % first army
+   Xs = new_list(N),
+   Xs in 0..1,
+
+   % second army
+   Ys = new_list(N),
+   Ys in 0..1,
+
+   %
+   % Constraint 1: There is always an army in a city (+ maybe a backup)
+   %          Or rather: Is there a backup, there must be an
+   %          an army
+   % 
+   foreach({X,Y} in zip(Xs,Ys)) X #>= Y end,
+
+
+   %
+   % Constraint 2: There should always be an backup army near
+   % every city
+   %
+   foreach({X,MatRow} in zip(Xs,Matrix))
+      X + sum([Y*M : {M,Y} in zip(MatRow,Ys)]) #>= 1
+   end,
+   
+   % objective: minimize the number of armies
+   MinVal #= sum([X+Y : {X,Y} in zip(Xs,Ys)]),
+
+   % either search for all solutions (for the minimum value) or
+   % the optimal value
+   Vars = Xs ++ Ys ++ [MinVal],
+
+   if ground(MinVal) then
+       solve(Vars)
+   else
+       solve([$min(MinVal)], Vars)
+   end,
+   
+
+   % convert X and Y to nicer representation
+   assignments(Xs,Ys,Armies,Assignments),
+
+   println(minVal=MinVal),
+   println(x=Xs),
+   println(y=Ys),nl,
+   println(assigments=Assignments),
+   nl,nl.
+
+
+assignments(Xs,Ys,Armies,Assignments) =>
+   Len = length(Ys),
+   Assignments = [(A=Num) : {X,Y,I} in zip(Xs, Ys,1..Len), 
+                  Num #= X +Y, Num > 0, element(I,Armies,A)].
+
+
+problem(Problem) => 
+ Problem = 
+   [[0, 1, 0, 1, 0, 0, 1, 1],
+    [1, 0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 1, 0, 0],
+    [1, 1, 0, 0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0, 1, 1, 0],
+    [0, 0, 1, 0, 1, 0, 1, 1],
+    [1, 0, 0, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 1, 1, 0]].
+
+armies(Armies) => 
+ Armies = ["Alexandria", "Asia Minor", "Britain", "Byzantium", "Gaul", "Iberia", "Rome", "Tunis"].

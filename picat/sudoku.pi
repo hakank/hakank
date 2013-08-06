@@ -1,0 +1,320 @@
+/*
+
+  Sudoku solver in Picat.
+
+  Some of the problem instances (and some idea) are from 
+  ECLiPSe's Sudoku model: 
+       http://eclipseclp.org/examples/sudoku.ecl.txt
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+   time2($sudoku(13)).
+
+% Using sudoku2/2
+go1 =>
+   problem(13, Board),
+   print_board(Board),
+   time2($sudoku2(3,Board)),
+   print_board(Board).
+
+
+%
+% Test all problems 
+%
+go2 =>
+   foreach(P in 1..13)
+      writeln(problem=P),
+      time2($sudoku(P)),
+      nl
+   end.
+
+%
+% Test all problems 
+%
+go3 =>
+   foreach(P in 1..13)
+      writeln(problem=P),
+      L = findall(P,$sudoku2(P)),
+      Len = length(L),
+      writeln(len=Len),
+      if Len > 1 then
+          writeln('This has more than one solution!')
+      end,
+      nl
+   end.
+
+
+%
+% Just checking the model: It should be a unique solution, and it is.
+%
+go4 =>
+   problem(12,Board),
+   All = findall(Board, $(time2(sudoku(3,Board)))),
+   foreach(B in All) print_board(B) end.
+
+
+
+sudoku(ProblemName) =>
+	problem(ProblemName, Board),
+	print_board(Board),
+	sudoku(3, Board),
+	print_board(Board).
+
+
+% Don't print the solution (for go4/0)
+sudoku2(ProblemName) =>
+	problem(ProblemName, Board),
+	sudoku(3, Board).
+
+
+latin_square(Board) =>
+   foreach(Row in Board) all_different(Row) end,
+   foreach(Column in transpose(Board)) all_different(Column) end.
+
+% Using rows() and columns() from the util module instead.
+latin_square2(Board) => 
+   foreach(Row in Board.rows()) all_different(Row) end,
+   foreach(Column in Board.columns()) all_different(Column) end.
+
+
+sudoku(N, Board) =>
+   N2 = N*N,
+
+   Vars = array_matrix_to_list(Board),
+   Vars in 1..N2,
+
+   latin_square2(Board),
+   foreach(I in 1..N..N2, J in 1..N..N2)
+      all_different([Board[I+K,J+L] : K in 0..N-1, L in 0..N-1])
+   end,
+
+   solve([ff,down], Vars).
+
+
+%
+% Another approach, using matrix extraction slice/2.
+%
+sudoku2(N, Board) =>
+   N2 = N*N,
+
+   Vars = array_matrix_to_list(Board),
+   Vars in 1..N2,
+
+   foreach(I in 1..N2)
+     Board.slice(I,1..N2).all_different(),
+     Board.slice(1..N2,I).all_different()     
+   end,
+
+   foreach(I in 1..N..N2, J in 1..N..N2)
+      % Note: we must flatten the sub matrix
+      Board.slice([I+K:K in 0..N-1],[J+L:L in 0..N-1]).flatten().all_different()
+   end,
+
+   solve([ff,down], Vars).
+
+
+print_board(Board) =>
+   N = Board.length,
+   foreach(I in 1..N)
+      foreach(J in 1..N)
+         X = Board[I,J],
+         if var(X) then printf("  _") else printf("  %w", X) end
+      end,
+      nl
+   end,
+   nl.
+
+
+% Returns the list/array M[I,Range2]
+slice(Matrix, I,Range2) = [ Matrix[I,J] : J in Range2], list(Matrix), integer(I),list(Range2) => true.
+
+% Returns the list/array M[Range1,J]
+slice(Matrix, Range1,J) = [Matrix[I,J] : I in Range1 ], list(Matrix), list(Range1), integer(J) => true.
+
+% Returns the list/array matrix M[Range1,Range2]
+slice(Matrix, Range1,Range2) = [ [Matrix[I,J] : I in Range1 ] : J in Range2], list(Matrix) => true.
+
+
+
+%----------------------------------------------------------------------
+% Sample data
+%----------------------------------------------------------------------
+
+problem(1, Data) => 
+Data = [
+    [_, _, 2, _, _, 5, _, 7, 9],
+    [1, _, 5, _, _, 3, _, _, _],
+    [_, _, _, _, _, _, 6, _, _],
+    [_, 1, _, 4, _, _, 9, _, _],
+    [_, 9, _, _, _, _, _, 8, _],
+    [_, _, 4, _, _, 9, _, 1, _],
+    [_, _, 9, _, _, _, _, _, _],
+    [_, _, _, 1, _, _, 3, _, 6],
+    [6, 8, _, 3, _, _, 4, _, _]].
+
+problem(2, Data) => 
+ Data = [
+    [_, _, 3, _, _, 8, _, _, 6],
+    [_, _, _, 4, 6, _, _, _, _],
+    [_, _, _, 1, _, _, 5, 9, _],
+    [_, 9, 8, _, _, _, 6, 4, _],
+    [_, _, _, _, 7, _, _, _, _],
+    [_, 1, 7, _, _, _, 9, 5, _],
+    [_, 2, 4, _, _, 1, _, _, _],
+    [_, _, _, _, 4, 6, _, _, _],
+    [6, _, _, 5, _, _, 8, _, _]].
+
+problem(3, Data) => 
+Data = [
+    [_, _, _, 9, _, _, _, _, _],
+    [_, _, 7, _, 6, _, 5, _, _],
+    [_, _, 3, 5, _, _, _, 7, 9],
+    [4, _, 5, _, _, 9, _, _, 1],
+    [8, _, _, _, _, _, _, _, 7],
+    [1, _, _, 6, _, _, 9, _, 8],
+    [6, 4, _, _, _, 8, 7, _, _],
+    [_, _, 9, _, 1, _, 2, _, _],
+    [_, _, _, _, _, 7, _, _, _]].
+
+problem(4, Data) => 
+Data = [
+    [_, 5, _, _, _, 1, 4, _, _], 
+    [2, _, 3, _, _, _, 7, _, _], 
+    [_, 7, _, 3, _, _, 1, 8, 2], 
+    [_, _, 4, _, 5, _, _, _, 7], 
+    [_, _, _, 1, _, 3, _, _, _], 
+    [8, _, _, _, 2, _, 6, _, _], 
+    [1, 8, 5, _, _, 6, _, 9, _], 
+    [_, _, 2, _, _, _, 8, _, 3], 
+    [_, _, 6, 4, _, _, _, 7, _]].
+
+% Problems 5-8 are harder, taken from
+% http://www2.ic-net.or.jp/~takaken/auto/guest/bbs46.html
+problem(5, Data) => Data = [
+    [_, 9, 8, _, _, _, _, _, _],
+    [_, _, _, _, 7, _, _, _, _],
+    [_, _, _, _, 1, 5, _, _, _],
+    [1, _, _, _, _, _, _, _, _],
+    [_, _, _, 2, _, _, _, _, 9],
+    [_, _, _, 9, _, 6, _, 8, 2],
+    [_, _, _, _, _, _, _, 3, _],
+    [5, _, 1, _, _, _, _, _, _],
+    [_, _, _, 4, _, _, _, 2, _]].
+
+problem(6, Data) => 
+Data = [
+    [_, _, 1, _, 2, _, 7, _, _],
+    [_, 5, _, _, _, _, _, 9, _],
+    [_, _, _, 4, _, _, _, _, _],
+    [_, 8, _, _, _, 5, _, _, _],
+    [_, 9, _, _, _, _, _, _, _],
+    [_, _, _, _, 6, _, _, _, 2],
+    [_, _, 2, _, _, _, _, _, _],
+    [_, _, 6, _, _, _, _, _, 5],
+    [_, _, _, _, _, 9, _, 8, 3]].
+
+problem(7, Data) => 
+Data = [
+    [1, _, _, _, _, _, _, _, _],
+    [_, _, 2, 7, 4, _, _, _, _],
+    [_, _, _, 5, _, _, _, _, 4],
+    [_, 3, _, _, _, _, _, _, _],
+    [7, 5, _, _, _, _, _, _, _],
+    [_, _, _, _, _, 9, 6, _, _],
+    [_, 4, _, _, _, 6, _, _, _],
+    [_, _, _, _, _, _, _, 7, 1],
+    [_, _, _, _, _, 1, _, 3, _]].
+
+problem(8, Data) => 
+Data = [
+    [1, _, 4, _, _, _, _, _, _],
+    [_, _, 2, 7, 4, _, _, _, _],
+    [_, _, _, 5, _, _, _, _, _],
+    [_, 3, _, _, _, _, _, _, _],
+    [7, 5, _, _, _, _, _, _, _],
+    [_, _, _, _, _, 9, 6, _, _],
+    [_, 4, _, _, _, 6, _, _, _],
+    [_, _, _, _, _, _, _, 7, 1],
+    [_, _, _, _, _, 1, _, 3, _]].
+
+
+% BBC Focus magazine October 2005
+problem(9, Data) => 
+Data = [
+    [_, 6, _, 3, 2, _, _, 7, _],
+    [4, 7, _, _, _, _, _, 3, 2],
+    [_, _, _, 9, _, _, 1, 4, 6],
+    [2, 4, _, 8, _, _, _, _, _],
+    [_, _, 8, _, _, _, 2, _, 1],
+    [1, _, _, _, _, 2, _, _, _],
+    [_, _, 2, 4, 7, 6, 8, _, _],
+    [6, 8, 9, _, _, _, _, 5, 4],
+    [_, _, _, _, 8, _, _, _, _]].
+
+problem(10, Data) => 
+Data = [
+    [1, 8, 2, 7, 5, _, 3, _, 9],
+    [9, 5, 6, _, 3, _, _, 8, _],
+    [3, 4, 7, _, _, 9, _, 5, _],
+    [2, _, 3, _, 4, _, _, 9, 8],
+    [4, _, 8, 9, _, 2, 5, _, 3],
+    [5, 7, 9, 3, 6, 8, 1, 2, 4],
+    [_, 2, _, 4, 9, _, 8, 3, _],
+    [_, 3, _, _, 2, _, 9, _, 5],
+    [_, 9, _, _, _, 3, _, 1, _]].
+
+/*
+  These are from J:s sudoku.ijs
+*/ 
+% Roger Huis example
+problem(11,Data) => 
+Data = [
+       [2,_,_,6,7,_,_,_,_],
+       [_,_,6,_,_,_,2,_,1],
+       [4,_,_,_,_,_,8,_,_],
+       [5,_,_,_,_,9,3,_,_],
+       [_,3,_,_,_,_,_,5,_],
+       [_,_,2,8,_,_,_,_,7],
+       [_,_,1,_,_,_,_,_,4],
+       [7,_,8,_,_,_,6,_,_],
+       [_,_,_,_,5,3,_,_,8]].
+
+
+% This puzzle is the evil puzzle from
+% Perl's Games::Sudoku examples
+problem(12, Data) => 
+Data = [
+       [_,7,6,4,_,_,5,_,_],
+       [_,_,_,_,_,5,_,_,4],
+       [_,_,_,_,7,_,_,6,9],
+       [5,_,_,_,_,2,_,9,_],
+       [_,3,1,_,_,_,2,5,_],
+       [_,6,_,5,_,_,_,_,1],
+       [6,2,_,_,4,_,_,_,_],
+       [8,_,_,3,_,_,_,_,_],
+       [_,_,5,_,_,7,4,3,_]].
+
+
+
+% From https://groups.google.com/d/topic/comp.lang.prolog/sTSzJMflBDw/discussion
+problem(13, Data) => 
+Data = [
+       [_,_,_,_,_,_,_,1,2],
+       [_,_,_,_,_,_,_,_,3],   
+       [_,_,2,3,_,_,4,_,_],
+       [_,_,1,8,_,_,_,_,5],
+       [_,6,_,_,7,_,8,_,_],
+       [_,_,_,_,_,9,_,_,_],
+       [_,_,8,5,_,_,_,_,_],
+       [9,_,_,_,4,_,5,_,_],
+       [4,7,_,_,_,6,_,_,_]].

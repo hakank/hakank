@@ -1,0 +1,197 @@
+/* 
+
+  Read test in Picat.
+
+  This is one of my standard test when learning a new programming
+  language: read a word file and filters the words that match 
+  the regular expression
+      a.*b.*c..., b.*c.*d.., c.*d.*e..., etc
+
+  Since Picat currently don't support regular expressions I've
+  done a hack...
+
+  The pattern with most words found is this pattern of length 6:
+      .*a.*b.*c.*d.*e.* 
+  matching these 26 words:
+
+    abecedaire,
+    abecedaries,
+    abjectedness,
+    aborticide,
+    absconded,
+    abscondedly,
+    abscondence,
+    absconder,
+    absconders,
+    abstractedness,
+    amblycephalidae,
+    ambuscade,
+    ambuscaded, 
+    ambuscader,
+    ambuscades,
+    ambuscadoed,
+    amebicide,
+    amoebicide,
+    bambocciade,
+    bambochade,
+    carbacidometer,
+    cerambycidae,
+    nonabstractedness,
+    oxylabracidae,
+    scabicide,
+    unabstractedness
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+% import cp.
+
+
+main => go.
+
+go =>
+   Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("/usr/share/dict/words"),
+   Alpha = lower(),
+   Len = 5,
+   AllMatch = [],
+   Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+   % println(patterns=Patterns),
+   foreach(Pattern in Patterns) 
+      println(pattern=Pattern),
+      Match = [],
+      foreach(Word in Words)
+         if check(Word,Pattern.to_string()) then
+            Match := Match ++ [Word]
+         end
+      end,
+      println(Match),
+      println(len=Match.length),
+      if Match.length > 0 then
+         AllMatch := AllMatch ++ [[Match.length,Pattern]]
+      end,
+      nl        
+   end,
+
+   println(AllMatch.sort_down()),
+
+   nl.
+
+% using check2
+go2 =>
+   Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("/usr/share/dict/words"),
+   Alpha = lower(),
+   Len = 5,
+   AllMatch = [],
+   Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+   % println(patterns=Patterns),
+   foreach(Pattern in Patterns) 
+      println(pattern=Pattern),
+      Match = [],
+      foreach(Word in Words)
+         if check2(Word,Pattern.to_string()) then
+            Match := Match ++ [Word]
+         end
+      end,
+      println(Match),
+      println(len=Match.length),
+      if Match.length > 0 then
+         AllMatch := AllMatch ++ [[Match.length,Pattern]]
+      end,
+      nl        
+   end,
+
+   println(AllMatch.sort_down()),
+
+   nl.
+
+
+go3 =>
+   Pattern = "abcde",
+   Words = check_word_list("words_lower.txt",Pattern),
+   println(Words),
+   println(len=Words.length),
+   nl.
+
+go4 =>
+   Pattern = "abc",
+   S = "aasdasdbaasdasdcadasdasd",
+   if check(S,Pattern) then
+      writeln(ok)
+   else
+      writeln(not_ok)
+   end,
+   nl.
+
+lower() = [code_char(I+96) : I in 1..26].
+upper() = [code_char(I+64) : I in 1..26].
+
+lower_swe() = [code_char(I+96) : I in 1..26] ++ "åäö".
+
+% Check if the pattern P match the string String. 
+% Pattern P corresponds to the regular expression
+%    /.*P[1].*P[2].*P[3].*...P[P.length].*/
+%
+check(String,Pattern) =>
+   S = String,
+   PLen = Pattern.length,
+   Ix = 1,
+   Found = 0,
+   while (Ix <= PLen, find2(S,Pattern[Ix],From,_To))
+      SS = substr(S,From),
+      S := SS,
+      Found := Found + 1,
+      Ix := Ix + 1
+   end,
+   Found == Pattern.length.
+
+
+%
+% Another approach: slower than check/2
+%
+check2(String,Pattern) =>
+   PLen = Pattern.length,
+   SIx = 1,
+   PIx = 1,
+   Found = 0,
+   while (SIx <= String.length, PIx <= PLen, Found < PLen)
+      if String[SIx] == Pattern[PIx] then 
+         Found := Found + 1,
+         PIx := PIx + 1
+      end,
+      SIx := SIx + 1
+   end,
+   Found == PLen.
+
+  
+substr(S, From) = [S[I] : I in From..S.length].
+substr(S, From, To) = [S[I] : I in From..To].
+
+check_word_list(File,Pattern) = Words =>
+    FD = open(File),    
+    Words = [],
+    while (not at_end_of_stream(FD)) 
+       Word := read_line(FD),
+       if check(Word,Pattern) then
+          % println(Word),
+          Words := Words ++ [Word]
+       end
+    end,
+    close(FD).
+
+
+%
+% find/4 requires that the Substrinc
+% Using a char as substring.
+%
+find2(String, Substring, From, To), char(Substring) => 
+  find(String, Substring.to_string(), From, To).
+
+find2(String, Substring, From, To) => 
+  find(String, Substring, From, To).

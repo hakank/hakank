@@ -1,0 +1,168 @@
+/*
+
+  Set covering, scheduling in Picat.
+
+  Example from the Swedish book 
+  Lundgren, Ronnqvist, Varbrand "Optimeringslara", 
+  ("Optimization theory"), page 410.
+  
+  Work schedule for a security company with three employees: Anders, Lotta, Per
+  (common Swedish names).
+ 
+  The tasks has different qualifications, and each person
+  may give preferences to each task (each person has 10 points to spread).
+ 
+  Task     Time (h)           Anders           Lotta            Per
+                         Qualify, Points  Qualify, Points  Qualify, Points
+   1             4         X        5      X         4       
+   2             3         X        2                        X       2
+   3             3         X        1      X         2       X       4
+   4             3                         X         2       X       1
+   5             3         X        1                        X       1
+   6             2         X        1                        X       2
+   7             2                         X         1
+   8             2                         X         1
+ 
+  Each person must work 7 or 8 hour per night.
+ 
+  From the table above, 19 different combinations is construed, given at
+  page 412. See the model below for the combinations.
+ 
+  The problem is now to assign one combination to each person so
+  that all tasks is covered exactly once, and maximizing the total
+  preference points.
+ 
+  The answer from the book, page 413: 
+  The combination is 1 (Anders), 13 (Lotta), 18 (Per) with the following
+  tasks:
+    Anders: 1,2    Lotta: 4,7,8    Per: 3,5,6
+ 
+  The total preference points is 18.
+
+  
+  Note: There is another solution with preference points 18:
+  tasks 3, 13, 14
+    Anders: 1,5  Lotta: 4,7,8   Per: 2,3,6
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go =>
+
+   NumCombinations = 19,
+   NumTasks = 8,
+   NumPersons = 3,
+
+   Persons = ["Anders","Lotta","Per"],
+
+   % which combination belongs to which person
+   % 1: Anders, 2: Lotta, 3: Per
+   CombinationsPerson = [             
+                % Anders, comb. 1..6
+                1, 1, 1, 1, 1, 1,
+             
+                % Lotta, comb. 7..13
+                2, 2, 2, 2, 2, 2, 2,
+             
+                % Per, comb., 14..19
+                3, 3, 3, 3, 3, 3
+              ],
+
+   % preference point per tasks
+   Preferences = [ % 1 2 3 4 5 6 7 8
+           [5,2,1,0,1,1,0,0], % Anders
+           [4,0,2,2,0,0,1,1], % Lotta
+           [0,2,4,1,1,2,0,0] % Per
+            ],
+
+   % the combinations and the tasks they contain (set representation)
+   Comb = [
+      % Anders
+      [1,2],   % 1
+      [1,3],   % 2
+      [1,5],   % 3
+      [2,3,6], % 4
+      [2,5,6], % 5
+      [3,5,6], % 6 
+      
+      % Lotta
+      [1,3],   % 7
+      [1,4],   % 8
+      [1,7,8], % 9
+      [3,4,7], % 10
+      [3,4,8], % 11
+      [3,7,8], % 12
+      [4,7,8], % 13
+      
+      % Per
+      [2,3,6], % 14
+      [2,4,6], % 15
+      [2,5,6], % 16
+      [3,4,6], % 17
+      [3,5,6], % 18 
+      [4,5,6]  % 19
+       ],
+
+
+   % decision variables
+   X = new_list(NumCombinations),
+   X in 0..1,
+
+   PreferencePoints = new_list(NumPersons),
+   PreferencePoints in 1..10,
+   SumPrefPoints #= sum(PreferencePoints),
+
+   % constraints
+
+   % choose one combination for each person
+   foreach(P in 1..NumPersons)
+      sum([(X[J]) : J in 1..NumCombinations, CombinationsPerson[J] == P]) #= 1,
+
+      % preference points for the person
+      PreferencePoints[P] #=  
+            sum([(X[I]*Preferences[P,J]) : 
+                       I in 1..NumCombinations, 
+                       J in 1..NumTasks,
+                       CombinationsPerson[I] == P,
+                       J.in2(Comb[I])])
+   end,
+   % all tasks must be covered exactly once
+   foreach(J in 1..NumTasks)
+      % sum([(X[I]) : I in 1..NumCombinations, CI = Comb[I], J in CI]) #= 1 % don't work
+      % sum([(X[I]) : I in 1..NumCombinations, J.in2(Comb[I])]) #= 1 % this work
+      % one can use double negation of in as a condition:
+      sum([(X[I]) : I in 1..NumCombinations, not not J in Comb[I]]) #= 1 % this work as well
+   end,
+
+   Vars = X ++ PreferencePoints,
+   % satisfy the employee's preferences as much as possible
+   solve([$max(SumPrefPoints)], Vars),
+
+   % solve(Vars),
+
+   writeln(x=X),
+   writeln(preferencePoints=PreferencePoints),
+   writeln(sumPreferencePoints=SumPrefPoints),
+   println("Selected combinations"),
+   foreach(I in 1..NumCombinations)
+       if X[I] #= 1 then
+         CPI = CombinationsPerson[I],
+         P = Persons[CPI],
+         C = Comb[I],
+         printf("Combination %d: %w Tasks: %w\n", I,P,C)
+       end
+   end,
+
+   nl.
+   % nl, fail.
+
+% To be able to use in/2 as conditional in a list comprehension. 
+in2(E, List) => E in List.

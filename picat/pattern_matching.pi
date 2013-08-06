@@ -1,0 +1,594 @@
+/* 
+
+  Pattern matching in Picat.
+
+  This started to be an etude in pattern matching, and then
+  evolved into porting some Haskell stuff.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+go =>
+
+   writeln(my_factorial=my_factorial(10)),
+   writeln(my_first=my_first([3,1,4,1,5])),
+   writeln(my_second=my_second([3,1,4,1,5])),
+
+   writeln(cumsum=cumsum(1..10)),
+
+   greatestCommonPrefixTest(),
+   rletest(),
+   qsorttest(),
+
+   casetest(),
+   swaptest(),
+
+   concordancetest(),
+   difftest(),
+   permutationstest(),
+
+   partition_bytest(),
+
+   haskelltest(),
+
+   nl.
+
+my_sum([]) = 0.
+my_sum([H|T]) = H + my_sum(T).
+
+my_factorial(0) = 1.
+my_factorial(N) = N*my_factorial(N-1).
+
+my_first([X|_]) = X.
+my_second([_,X|_]) = X.
+
+% See below
+% scanl(_F, E, []) = [E].
+% scanl(F, E, [X|Xs]) = [E] ++ scanl(F, apply(F,E,X), Xs).
+
+% scanl2(F, L) = scanl(F,L.first(),L.rest()).
+
+% scanr(_F, A, []) = [A].
+% scanr(F, A, [X|Xs]) = [apply(F, X, first(Ys))] ++ Ys => Ys = scanr(F,A,Xs).
+
+% cumsum(L) = scanl(+,L.first(), L.rest()).
+cumsum(L) = scanl1(+,L).
+
+rest(L) = [E : E in 2..L.length].
+
+
+% Greatest common prefix
+% Inspired by
+% http://www.shlomifish.org/lecture/Perl/Haskell/slides/list_manip/examples.html
+prefix2(_, []) = [].
+prefix2([], _) = [].
+prefix2([A|As],[B|Bs]) = cond(A == B, [A] ++ prefix2(As,Bs), []).
+
+gc_prefix([]) = [].
+gc_prefix([A|As]) = fold(prefix2,A,As).
+
+greatestCommonPrefixTest =>
+     writeln(gc_prefix=gc_prefix(["anna", "anders","alfred"])),
+     writeln(gc_prefix=gc_prefix(["anna", "anders","andorra"])).
+
+
+% Run Length Encoding
+% http://www.shlomifish.org/lecture/Perl/Haskell/slides/basic/lists.html
+rle([]) = [].
+rle([A|[]]) = [(A=1)].
+rle([X|Xs]) = cond(X == A, 
+                   [(A=Count+1)|As],
+                   [(X=1),(A=Count)|As]) => [(A=Count)|As] = rle(Xs).
+
+rletest => 
+   writeln(rle=rle([1,1,12,12,3,3,3,4,4,4,4,5,6,1,1,1])).
+           
+
+% quicksort
+% http://www.shlomifish.org/lecture/Perl/Haskell/slides/basic/lists.html
+qsort([]) = [].
+qsort([X|Xs]) = qsort(EltsLtX) ++ [X] ++ qsort(EltsGrEqX)
+                =>
+                EltsLtX   = [Y : Y in Xs, Y < X],
+                EltsGrEqX = [Y : Y in Xs, Y >= X].
+
+qsort2([]) = [].
+qsort2([X|Xs]) = qsort2([Y : Y in Xs, Y < X]) ++ 
+                 [X] ++ 
+                 qsort2([Y : Y in Xs, Y >= X]).
+
+qsorttest => 
+    writeln(qsort=qsort([4,6,32,8,6,4,2,1,1,3,45,6,8,65,4])),
+    writeln(qsort2=qsort2([4,6,32,8,6,4,2,1,1,3,45,6,8,65,4])).
+
+
+% case(Element, CheckList, ResponseList)
+%    returns element R in ResponseList for which C in CheckList == Element
+% returns _ if no matching element found.
+case(E, Check, Response) = Case => 
+    Case = _,
+    foreach({C,R} in zip(Check,Response), var(Case))
+       if E == C then Case := R end
+    end.
+
+casetest =>
+   writeln(case=case(10, [3,2,1,5,4,10,3,2],[a,b,c,d,e,f,g,h])),
+   writeln(case=case(10, [3,2,1,5,4,9,3,2],[a,b,c,d,e,f,g,h])).
+
+swap([]) = [].
+swap([X]) = [X].
+swap([X,Y]) = [Y,X].
+swap(List) = List.
+swap(X,Y) = (Y,X).
+swaptest => 
+   writeln(swap=swap([])),
+   writeln(swap=swap([1])),
+   writeln(swap=swap([1,2])),
+   writeln(swap=swap([1,2,3])),
+   writeln(swap=swap(1,2)),
+   A=1, B=2,
+   (B,A) = swap(A,B),
+   writeln(afterswap=[A,B]).
+
+
+%
+% Haskell's group/1: 
+% Groups together consecutive elements of L into sublists.
+%    Picat> G = grouph([1,2,3,2,1,2,2,2,3,3,21])               
+%    G = [[1],[2],[3],[2],[1],[2,2,2],[3,3],[21]]
+%
+grouph(L) = Group =>
+    Group = [],
+    Tmp = [L[1]],
+    foreach(I in 2..L.length) 
+       if L[I] == L[I-1] then
+          Tmp := [L[I]|Tmp]
+       else
+          Group := Group ++ [Tmp],
+          Tmp := [L[I]]
+       end
+    end,
+    Group := Group ++ [Tmp].   
+
+% Haskell's nub/1
+nub(List) = List.remove_dups().
+
+% 
+% This is inspired by an old Haskell function of mine which returns
+% the concordance of the elements in List, as
+%   [{element1,count1},{element2,count2},...]
+%
+% Here's the Haskell function:
+% concordance lst =  zip (nub sortlst) (map length $ group sortlst) 
+%     where sortlst = sort lst
+% 
+concordance(List) = zip(Sorted.nub(),map(length, Sorted.grouph()))
+                     => 
+                     Sorted = List.sort().
+
+% Another version:
+concordance2(List) = [{head(X), length(X)} : X in List.sort().grouph()].
+
+concordancetest => 
+   writeln(concordance=concordance([1,2,3,2,1,2,2,2,3,3,21,2,3,2,1,32,3,1])),
+   println(concordance=concordance(["kalle","pelle","nisse","kalle","pelle","pelle","nisse","nisse","nisse","hakank"])),
+   writeln(concordance2=concordance2([1,2,3,2,1,2,2,2,3,3,21,2,3,2,1,32,3,1])),
+   println(concordance2=concordance2(["kalle","pelle","nisse","kalle","pelle","pelle","nisse","nisse","nisse","hakank"])),
+   % println(concordance2=concordance2(read_file_chars("pattern_matching.pi").split())),
+   nl.
+
+
+% diff
+% butlast(List) = [List[I] : I in 1..List.length-1].
+butlast([])  = [].
+butlast([_])  = [].
+butlast([X|Xs]) = [X] ++ butlast(Xs).
+
+diff(List) = [Y-X : {X,Y} in zip(tail(List), butlast(List))].
+
+difftest =>
+   writeln(diff=diff([2,3,1,8,6,6,5,3,33])),
+   nl.
+
+
+% Permutation inspired by this Haskell code
+% permutation xs = case xs of {[] -> [[]]; _ -> [x:ys | x <- xs, ys <- permutation (delete x xs)]}
+
+% Note: This is much slower than the built-in permutations/1.
+permutations2(Xs) = cond(Xs == [],
+                    [[]],
+                    [[X] ++ Ys : X in Xs, Ys in permutations2(delete_all(Xs,X))]).
+
+permutationstest =>
+    writeln(permutation2=permutations2([1,2,3,4])),
+    % time(_L=permutations2(1..9)), % 0.524s
+    % time(_L=permutations(1..9)), % built-in: 0.08s
+    nl.
+
+
+% Partitions a list in sublists according to function F
+partition_by(F,List) = partition_by(List,F), list(List) => true.
+partition_by(List,F) = [ (K=[X : (V=X) in P, V=K ]): K in map(first,P).nub()] =>
+       P=[(apply(F,X)=X) : X in List].
+
+
+mod3(X) = X mod 3.
+partition_bytest => 
+   writeln(partition_by=partition_by(1..10, mod3)),
+   writeln(partition_by=partition_by(1..20, mod2)), % lambda is undocumented for now
+   writeln(partition_by=partition_by(mod2, 1..20)),
+   % writeln(partition_by=partition_by(1..20, map(apply(mod,2)))),
+   nl.
+
+
+% Hutton: "Programming in Haskell", page 73, ex. 6
+% unfold p h t x | p x = []
+%                | otherwise = h x : unfold p h t (t x)   
+unfold(P,H,T,X) = cond(call(P,X),
+                       [],
+                       [apply(H, X)] ++ unfold(P,H,T,apply(T,X))).
+
+% convert int -> binary
+%  int2bin = unfold (==0) (`mod` 2) (`div` 2)
+eq0(X) => X == 0.
+eq1(X) => X == 0.
+mod2(X) = X mod 2.
+div2(X) = X div 2.
+int2bin(N) = unfold(eq0,mod2,div2, N).reverse().
+
+% a little more "anonymous" version (using lambda)
+% int2bin2(N) = unfold(eq0,lambda([X], X mod 2),lambda([X], X div 2), N).reverse().
+int2bin2(N) = unfold(eq0,mod2,div2, N).reverse().
+
+% int -> radix
+% modRadix(X,Radix) = X mod Radix.
+% divRadix(X,Radix) = X div Radix.
+% int2radix(N,Radix) = unfold(eq0,modRadix(X,Radix),divRadix(X,Radix), N).reverse().
+
+% list to radix
+% radixMult(Radix,I,J) = Radix*J+I.
+% list2int(L,Radix) = fold(radixMult(Radix),0,L).
+% list2int(L) = list2int(L,10).
+
+radixtest => 
+    writeln(int2bin=int2bin(14)),
+    writeln(int2bin=int2bin2(14)),
+    % writeln(int2radix=int2radix(150000000,36)),
+    % writeln(list2int=list2int([1,2,3,4,5])),
+    % writeln(list2int=list2int([1,2,3,4,5],13)),
+    % writeln(list2int=[1,2,3,4,5,6].list2int(13)),
+
+    writeln(int2bin=map(int2bin,2..10)),
+%    writeln(int2radix=map(lambda([X],int2radix(X,4)),2..10)),
+    nl.
+
+%
+% Here are Picat version of the functions in
+% 
+% From "Appendix: Some standard function" 
+% in Richard Bird
+% "Introduction to Functional Programming using Haskell
+% second edition
+%
+% Note: Picat don't support lazy lists and some other Haskell
+%       constructs.
+% Also, some functions are yet to be written:
+%   - cross
+%   - iterate
+%   - unzipx
+
+% 1. Functional composition
+o(F,G,X) = apply(G,apply(F,X)).
+
+% 2. Concatenates to lists:
+conc([], Ys) = Ys.
+conc([X|Xs],Ys) = [X] ++ conc(Xs,Ys).
+
+% 3. Conjunction
+conj(1, X) = X.
+conj(0, _) = 0.
+
+% 4. Disjunction
+disj(1, _) = 1.
+disj(0, X) = X.
+
+% 5. List indexing
+% 0-based
+ix0([], N) = _ => throw $error(index_to_large,ix,[], N).
+ix0([X|_Xs], 0) = X.
+ix0([_X|Xs], N) = ix0(Xs,N-1).
+
+% 1-based
+ix1([], N) = _ => throw $error(index_to_large,ix,[], N).
+ix1([X|_Xs], 1) = X.
+ix1([_X|Xs], N) = ix1(Xs,N-1).
+
+% 6. and
+and(1,1) = 1.
+and(1,0) = 0.
+and(0,_) = 0.
+and(List) = foldr(and, 1, List), list(List) => true.
+
+% 7. concat (i.e. flatten one level)
+concat(List) = foldl(++,[], List).
+
+% 8. const
+const(X,_Y) = X.
+
+% 9 cross
+% cross(F,G,[X1,X2]) = (apply(F, X1),apply(G,X2)).  % TBW
+
+% 10 curry
+curry(F,X,Y) = apply(F,X,Y). % ?
+
+% 11 drop
+drop(0, Xs) = Xs.
+drop(_N,[]) = [].
+drop(N,[_X|Xs]) = drop(N-1, Xs).
+
+% 12 dropWhile
+drop_while2(_P,[]) = [].
+drop_while2(P,[X|Xs]) = cond(call(P,X), drop_while2(P,Xs), [X] ++ Xs).
+
+% 13 filter
+filter(_P,[]) = [].
+filter(P,[X|Xs]) = cond(call(P,X), [X] ++ filter(P,Xs), filter(P,Xs)).
+
+% 14 flip
+% L=flip(++,[4],[1]) -> [1,4] 
+% L=flip(lambda([X,Y], X-Y), 10,3) -> 3 - 10 = -7
+flip(F,X,Y) = apply(F,Y,X).
+
+% 15 foldl
+foldl(_F,E,[]) = E.
+foldl(F,E,[X|Xs]) = foldl(F, apply(F,E,X), Xs).
+
+% 16 fold1
+foldl1(F,[]) = _ => throw $error(empty_list,foldl1,F, []).
+foldl1(F,[X|Xs]) = foldl(F,X,Xs).
+
+% 17 foldr
+foldr(_F,E,[]) = E.
+foldr(F,E,[X|Xs]) = apply(F,X,foldr(F,E,Xs)).
+
+% 18 foldr1f
+foldr1(F,[]) = _ => throw $error(empty_list,fold1,F, []).
+foldr1(F,[X|Xs]) = apply(F, X, foldr1(F,Xs)).
+
+% 19 fst
+fst(X,_Y) = X.
+fst([X,_Y]) = X.
+
+% 20 head
+head([]) = _ => throw $error(empty_list,head,[]).
+head([X|_Xs]) = X. % note: It says Xs in the book
+
+% 21 id
+id(X) = X.
+
+% 22 init
+init([]) = _ => throw $error(empty_list,head,[]).
+init([_X]) = [].
+init([X,Y|Xs]) = [X] ++ init([Y|Xs]).
+
+% 23 iterate
+% iterate(F,X) = [X] ++ iterate(F, apply(F, X)). % TBW
+
+% 24 lastx (slower than built-in last)
+lastx([]) = _ => throw $error(empty_list,lastx,[]).
+lastx([X]) = X.
+lastx([_X,Y|Xs]) = lastx([Y|Xs]).
+
+% 25 length
+lengthx([]) = 0.
+lengthx([_X|Xs]) = 1 + lengthx(Xs).
+
+% 26 map
+mapx(_F,[]) = [].
+mapx(F,[X|Xs]) = [apply(F,X)] ++ mapx(F,Xs).
+
+% 27 not
+notx(1) = 0.
+notx(0) = 1.
+
+% 28 null
+null([]) => true.
+null([_]) => not(true).
+null([_X|_Xs]) => not(true).
+
+% 29 or
+or(1,_) = 1.
+or(0,1) = 1.
+or(0,0) = 0.
+or(List) = foldr(or,0,List).
+
+% 30 pair (NB: I'm not sure about this...)
+pair(F,G,X) = (apply(F,X), apply(G,X)). % ?
+
+% 31 partition
+partition(_P,[]) = [[],[]].
+partition(P,[X|Xs]) = cond(call(P,X),
+                            [[X|Ys],Zs],
+                            [Ys,[X|Zs]]) =>
+                       [Ys,Zs] = partition(P, Xs).
+
+
+% 32 reverse (much slower than built-in reverse/1)
+% reversex(List) = foldl(flip(++,[],List),[],List). % ?
+app2(X,Y) = [Y] ++ X.
+reversex(List) = foldl(app2,[],List).
+
+% 33 scanl
+scanl(_F, E, []) = [E].
+% scanl(F, E, [X|Xs]) = [E] ++ scanl(F, apply(F,E,X), Xs).
+scanl(F,E,Xs) = [E] ++ scanlT(F,E,Xs).
+scanlT(_F,_A,[]) = [].
+scanlT(F,A,[Y|Ys]) = scanl(F, apply(F,A,Y), Ys).
+
+% 34 scanl1
+scanl1(_F,[]) = _ => throw $error(empty_list,scanl1,[]).
+scanl1(F, [X|Xs]) = scanl(F,X,Xs).
+
+% 35 scanr
+scanr(_F,E,[]) = [E].
+scanr(F,E,[X|Xs]) = [apply(F,X,head(Ys))] ++ Ys =>
+                    Ys = scanr(F,E,Xs).
+
+% 36 scanr1
+scanr1(_F, []) = _ => throw $error(empty_list,scanr1,[]).
+scanr1(_F,[X]) = [X].
+scanr1(F,[X,Y|Xs]) = [apply(F,X,head(Zs))] ++ Zs =>
+                   Zs = scanr1(F,[Y|Xs]).
+
+% 37 singleton
+singleton(Xs) => not(null(Xs)), null(tail(Xs)).
+
+% 38 span
+% L=span(prime,[2,3,5,6,7,8,9]) -> [[2,3,5],[6,7,8,9]]
+span(_P,[]) = [[],[]].
+span(P,[X|Xs]) = cond(call(P,X),
+                      [[X|Ys],Zs],
+                      [[],[X|Xs]]) =>
+                 [Ys,Zs] = span(P,Xs).
+
+% 39 splitAt
+% L=splitAt(3,1..10) -> [[1,2],[3,4,5,6,7,8,9,10]]
+% Note: 1-based
+split_at(1,Xs) = [[],Xs].
+split_at(_N,[]) = [[],[]].
+split_at(N,[X|Xs]) = [[X|Ys],Zs] => [Ys,Zs] = split_at(N-1,Xs).
+
+% 40 snd
+snd(_X,Y) = Y.
+snd([_X,Y]) = Y.
+
+% 41 tail
+tailx([]) = _ => throw $error(empty_list,tail,[]).
+tailx([_X|Xs]) = Xs.
+
+% 42 take
+takex(0,_Xs) = [].
+takex(_N,[]) = [].
+takex(N,[X|Xs]) = [X] ++ takex(N-1,Xs).
+
+% 43 takeWhile
+% L=take_while(even,[2,4,6,7,8,9,16]) -> [2,4,6]
+take_while2(_P,[]) = [].
+take_while2(P,[X|Xs]) = cond(call(P,X),
+                           [X] ++ take_while2(P,Xs), 
+                           []).
+
+% 44 uncurry
+uncurry(F,Xy) = apply(F,first(Xy), snd(Xy)).
+
+% 45 until
+% L=until(mod3_1,dec,9) -> 7
+mod3_1(N) => N mod 3 == 1.
+inc(N) = N+1.
+dec(N) = N-1. 
+until(P,F,X) = cond(call(P,X),
+                    X,
+                    until(P,F,apply(F,X))).
+
+
+% 46 unzip
+% unzipx(List) = foldr(unzipxF,[], List). % ?
+% unzipxF(X,Y) = cross(++,++,[X,Y]). % TBW
+
+
+% 47 wrap
+wrap(X) = [X].
+
+% 48 zip
+zipx([], _Ys) = [].
+zipx(_Xs, []) = [].
+zipx([X|Xs], [Y|Ys]) = [[X,Y]] ++ zipx(Xs,Ys).
+
+
+             
+% 49 zipp
+% L=zipp([1..4,5..8]) -> [[1,5],[2,6],[3,7],[4,8]]
+zipp(List) = uncurry(zipx,List).
+
+
+haskelltest=> 
+        println("\nhaskell test:"),
+        % writeln(o=o(lambda([X],X+1),lambda([X],X*2),10)),
+        writeln(conc=conc(1..3,4..8)),
+        writeln(conj=conj(1,0)),
+        writeln(conj=disj(0,1)),
+        writeln(ix0=ix0([1,2,3,4,5,6,7],0)),
+        writeln(ix1=ix1([1,2,3,4,5,6,7],3)),
+        writeln(and=and([1,1,1])),
+        writeln(and=and([1,1,1,0,1,1])),
+        writeln(concat=concat([[1],[2,3],[3,4,5]])),
+        writeln(concat=concat([[1],[2,[3,4,[5,6],7]],[3,4,5]])),
+        writeln(const=const(a,b)),
+        % writeln(cross=cross(...)), % TBW
+        writeln(curry=curry(+,1,2)),
+        writeln(drop=drop(3,1..10)),
+        writeln(drop_while2=drop_while2(even,[2,4,6,1,2,3,4,5,6])),
+        writeln(flip=flip(++,[4],[1])),
+        % writeln(flip=flip(lambda([X,Y], X-Y), 10,3)),
+        writeln(foldl=foldl(+,0,1..10)),
+        writeln(foldl1=foldl1(+,1..10)),
+        writeln(fst=fst(a,b)),
+        writeln(fst=fst([a,b])),
+        writeln(head=head(1..10)),
+        writeln(id=id(3)),
+        writeln(id=id([a,b,c])),
+        writeln(init=init([1,2,3,4,5])),
+        % writeln(iterate=iterate(....)), % TBW
+        writeln(lastx=lastx(1..1000)),
+        writeln(lengthx=lengthx(1..1000)),
+        writeln(mapx=mapx(sin,0..0.1..1)),
+        writeln(notx=notx(1)),
+        writeln(notx=notx(0)),
+        writeln(null=cond(null([]),isnull, isnotnull)),
+        writeln(null=cond(null([a]),isnull, isnotnull)),
+        writeln(null=cond(null([a,b,c]),isnull, isnotnull)),
+        writeln(or=or(0,1)),
+        writeln(or=or(1,0)),
+        writeln(or=or([0,0,0,0,1])),
+        writeln(or=or([0,0,0,0,0])),
+        writeln(pair=pair(sin,cos,0.5)),
+        writeln(partition=partition(prime,1..20)),
+        % writeln(reversex=reversex(1..10)),
+        writeln(scanl=scanl(+,0,1..10)),
+        writeln(scanl=scanl(*,1,1..10)),
+        writeln(scanl=scanl(/,1,1..10)),
+        writeln(scanl=scanl(++,[],[[1],[2],[3]])),
+        writeln(scanl=scanl1(+,1..10)),
+        writeln(scanl=scanl1(*,1..10)),
+        writeln(scanl=scanl1(**,2..5)),
+        writeln(scanr=scanr(+,0,1..10)),
+        writeln(scanr=scanr(*,1,1..10)),
+        writeln(scanr=scanr(++,[],[[1],[2],[3]])),
+        writeln(scanr1=scanr1(+,1..10)),
+        writeln(scanr1=scanr1(*,1..10)),
+        writeln(singleton=cond(singleton([a]),is_singleton, is_not_singleton)),
+        writeln(span=span(prime,[2,3,5,6,7,8,9])),
+        writeln(split_at=split_at(3,1..10)),
+        writeln(snd=snd(a,b)),
+        writeln(snd=snd([a,b])),
+        writeln(tailx=tailx(1..10)),
+        writeln(takex=takex(5,1..10)),
+        writeln(take_while2=take_while2(even, [2,4,6,7,8,9,16])),
+        writeln(uncurry=uncurry(**,[2,10])),
+        writeln(until=until(mod3_1,dec,9)),
+        % writeln(unzipx=unzipx(...)), % TBW
+        writeln(wrap=wrap(a)),
+        writeln(zipx=zipx(1..5,6..10)),
+        writeln(zipp=zipp([1..5,6..10])),
+
+        nl.
+

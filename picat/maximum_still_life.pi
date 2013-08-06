@@ -1,0 +1,94 @@
+/*
+
+  Maximum density still life in Picat.
+
+  CSPLib 032: http://www.csplib.org/prob/prob032
+
+  This model (or rather my earlier MiniZinc and Comet models) was 
+  inspired by the OPL model from
+  Toni Mancini, Davide Micaletto, Fabio Patrizi, Marco Cadoli: 
+  "Evaluating ASP and commercial solvers on the CSPLib"
+  http://www.dis.uniroma1.it/~tmancini/index.php?problemid=032&solver=OPL&spec=BASE&currItem=research.publications.webappendices.csplib2x.problemDetails#listing
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+import cp.
+
+main => go.
+
+go =>
+   Size = 6,
+   life(Size, Grid, Z),
+   print_grid(Grid),
+   writeln(z=Z),
+   nl.
+
+print_grid(Grid) =>
+   foreach(G in Grid) 
+      foreach(V in G) printf("%d", V) end, nl
+   end.
+
+
+life(Size, Grid, Z) =>
+
+   GridSize = Size+4,
+
+   Grid = new_array(GridSize,GridSize),
+   Vars = vars(Grid),
+   Vars in 0..1,
+
+   Z #= sum(Vars),
+  
+   % C1: Cells in the first/last two rows/columns are all 0 (dead)
+   foreach(X in 1..GridSize)
+          Grid[1,X] #= 0,
+          Grid[2,X] #= 0,
+          Grid[Size+3,X] #= 0,  
+          Grid[Size+4,X] #= 0,
+          Grid[X,1] #= 0,       
+          Grid[X,2] #= 0,
+          Grid[X,Size+3] #= 0,  
+          Grid[X,Size+4] #= 0 
+   end,
+ 
+   foreach(R in 2..Size+3, C in 2..Size+3)
+      % C2: Each cell of the board (except those of the first/last row/column) 
+      %     that has exactly three live neighbors is alive. 
+      %     Together with constraint C1, this implies that cells in the
+      %     second/last-but-one row/column cannot have three live neighbors.
+      ( ( Grid[R-1,C-1] + Grid[R-1,C] + Grid[R-1,C+1] + 
+          Grid[R,C-1] + Grid[R,C+1] + 
+          Grid[R+1,C-1] + Grid[R+1,C] + Grid[R+1,C+1]
+        ) #= 3 
+      ) #=> (Grid[R,C] #= 1)
+      ,
+           
+      % C3: Each live cell must have 2 or 3 live neighbors (cells of the first/last 
+      % row/column may be ignored by this constraint)
+      (Grid[R,C] #= 1) #=> 
+            2 #=< 
+            ( Grid[R-1,C-1] + Grid[R-1,C] + Grid[R-1,C+1] +
+              Grid[R,C-1] + Grid[R,C+1] +
+              Grid[R+1,C-1] + Grid[R+1,C] + Grid[R+1,C+1] 
+            )
+            #/\
+            ( Grid[R-1,C-1] + Grid[R-1,C] + Grid[R-1,C+1] +
+              Grid[R,C-1] + Grid[R,C+1] +
+              Grid[R+1,C-1] + Grid[R+1,C] + Grid[R+1,C+1] 
+            ) #=< 3
+   end,
+
+   % SBSO: Symmetry-breaking by selective ordering
+   % The assignment is forced to respect an ordering on the values that occur in corner entries
+   % of the board. In particular:  
+   % - if the NW-corner cell is dead, the SE-corner cell
+   % must be dead too 
+   % - if the NE-corner cell is dead, the SW-corner cell must be dead too
+   % 
+   Grid[2,2] #>= Grid[Size+1,Size+1],
+   Grid[2,Size+1] #>= Grid[Size+1,2],
+
+   solve([$max(Z),min,updown], Vars).
+

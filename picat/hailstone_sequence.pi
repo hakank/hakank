@@ -1,0 +1,135 @@
+/*
+
+  Hailstone sequence (Collatz sequence) in Picat.
+
+  From http://rosettacode.org/wiki/Hailstone_sequence
+  """
+  The Hailstone sequence of numbers can be generated from a starting 
+  positive integer, n by:
+
+   * If n is 1 then the sequence ends.
+   * If n is even then the next n of the sequence = n/2
+   * If n is odd then the next n of the sequence = (3 * n) + 1 
+
+  The (unproven), Collatz conjecture is that the hailstone sequence for 
+  any starting number always terminates.
+
+  Task Description:
+
+   1. Create a routine to generate the hailstone sequence for a number.
+   2. Use the routine to show that the hailstone sequence for the number 
+      27 has 112 elements starting with 27, 82, 41, 124 and ending with 
+      8, 4, 2, 1
+   3. Show the number less than 100,000 which has the longest hailstone 
+      sequence together with that sequences length. (But don't show the 
+      actual sequence)! 
+  """
+   
+  Also see:
+    http://en.wikipedia.org/wiki/Collatz_conjecture
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go =>
+   H27 = hailstoneseq1(27),
+   writeln(H27),   
+
+   MaxN = 0,
+   MaxLen = 0,
+   foreach(N in 1..99999) 
+      Len = hailstoneseq2(N).length,
+      if Len > MaxLen then
+         MaxN := N,
+         MaxLen := Len
+      end
+   end,
+
+   writeln([maxN=MaxN, maxLen=MaxLen]),
+
+   nl.
+
+%
+% Using a map for the lengths: 
+% Much faster 0.23 seconds
+%
+go2 =>
+   longest_seq(99999).
+
+
+% This is project euler problem #14
+% (2.7s)
+go3 => 
+   longest_seq(999999).
+
+%
+% without table: 3.4s
+% with table: 16.38s (> 4Gb memory)
+%
+hailstone1(N) = N // 2, N mod 2 == 0 => true.
+hailstone1(N) = 3*N+1, N mod 2 == 1 => true.
+
+
+% without table: 3.78s
+% with table: out_of_memory (stack_heap)
+hailstone2(N) = H => 
+   if N mod 2 == 0 then
+      H := N // 2
+   else 
+      H := 3*N+1
+   end.
+
+hailstoneseq1(N) = Seq =>
+   Seq := [N],
+   while (N > 1)
+      N := hailstone1(N),
+      Seq := Seq ++ [N]
+   end.
+
+hailstoneseq2(N) = Seq =>
+   Seq := [N],
+   while (N > 1)
+      N := hailstone2(N),
+      Seq := Seq ++ [N]
+   end.
+
+%
+% We just care about the lengths of the sequence.
+% Using a map is much faster: 0.23s
+%
+longest_seq(Limit) =>
+
+   Lens = new_map(),
+   MaxLen = 0,
+   MaxN = 1,
+
+   foreach(N in 1..Limit-1) 
+      M = N,
+      CLen = 1,
+      while (M > 1) 
+         if Lens.has_key(M) then
+            CLen := CLen + Lens.get(M) - 1,
+            M := 1
+         else
+            M := hailstone1(M),
+            CLen := CLen + 1
+         end
+      end,
+
+      Lens.put(N, CLen),
+
+      if CLen > MaxLen then
+         MaxLen := CLen,
+         MaxN := N
+      end
+   end,
+
+   writeln([maxLen=MaxLen, maxN=MaxN]),
+
+   nl.
+

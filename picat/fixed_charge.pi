@@ -1,0 +1,90 @@
+/* 
+
+  Fixed charge in Picat.
+
+  Ported from the B-Prolog model:
+  http://www.probp.com/cp_sat_lp/fixed_charge.pl
+  """
+  by Wen Wei Rong, Feb. 2012
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+go =>
+	machines(Machine),
+	NbMachine = Machine.length,
+	
+	resourceName(ResName),
+	NbRes = ResName.length,
+	
+	products(Product),
+	NbProd = Product.length,
+	
+	go(NbMachine, NbRes,NbProd).
+
+
+go(NbMachine, NbRes, NbProd) =>
+	Rent = new_list(NbMachine),
+	Produce = new_list(NbProd),
+	
+	%accessing the database
+	resources(Use),
+	profit(Profit),
+	rentingCost(RCost),
+	capacity(Cap),
+	MaxCap = max(Cap),	%obtaining the max capacity
+	
+	%domains
+	Rent in 0..1,
+	Produce in 0..MaxCap,
+	
+	%constraints
+	foreach(R in 1..NbRes)
+	   sum([Use[P,R]*Produce[P]: P in 1..NbProd]) #=< Cap[R]
+        end,
+	
+	foreach(P in 1..NbProd)
+            % Rent[P] is actually Rent[M]
+	   Produce[P] #=< Rent[P] * MaxCap
+        end,
+
+	%objective
+	TotalCost #= sum([Profit[P]*Produce[P]: P in 1..NbProd])-sum([RCost[M]*Rent[M]: M in 1..NbMachine]),
+
+        append(Rent,Produce,AllVars),	
+        solve($[max(TotalCost)],AllVars),
+	writeln($total_cost(TotalCost)),
+	writeln($rent(Rent)),
+	writeln($produce(Produce)).
+
+%data
+index(-)
+products([shirts, shorts, pants]). 
+
+index(-)
+resourceName([labor, cloth]).
+
+index(-)
+capacity([150, 160]).
+
+index(-)
+rentingCost([200, 150, 100]).
+%product data
+index(-)
+profit([6,4,7]).
+index(-)
+machines([shirtM, shortM, pantM]).
+index(-)
+resources([[3,4],
+           [2,3],
+	  [6,4]]).

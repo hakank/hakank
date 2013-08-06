@@ -1,0 +1,281 @@
+/*
+
+  Ormat game in Picat.
+
+  From bit-player "The Ormat Game"
+  http://bit-player.org/2010/the-ormat-game
+  """
+  I'm going to give you a square grid, with some of the cells colored 
+  and others possibly left blank. We'll call this a template. Perhaps 
+  the grid will be one of these 3x3 templates:
+  
+  [see pictures at the web page]
+  
+  You have a supply of transparent plastic overlays that match the 
+  grid in size and shape and that also bear patterns of black dots:
+  
+  [ibid.]
+
+  Your task is to assemble a subset of the overlays and lay them on 
+  the template in such a way that dots cover all the colored squares 
+  but none of the blank squares. You are welcome to superimpose multiple 
+  dots on any colored square, but overall you want to use as few overlays 
+  as possible. To make things interesting, I'll suggest a wager. I'll pay 
+  you $3 for a correct covering of a 3x3 template, but you have to pay me 
+  $1 for each overlay you use. Is this a good bet?
+  """
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+%
+% Note: In my B-Prolog model, the fastest version is the ip_solve approach.
+%       Currently Picat don't support mip but it will come.
+%       The CP version below is not very fast.
+%
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+   % Problem 6 is the hardest problem of 1..7
+   foreach(P in 1..7) time2($ormat_game(P)) end.
+
+
+% Problem 8 is the hardest of them all
+go2 =>
+   time2($ormat_game(8)).
+
+
+% generate the 4! overlays
+go3 =>
+   generate(4, Overlays),
+   foreach(O in Overlays) print_grid(O,_I),nl end,
+   writeln(len=Overlays.length),
+   nl.
+
+% generate the (adjusted) overlays for Problem 4
+go4 =>
+   problem(6,N, Problem),
+   generate(N, Problem, Overlays),
+   foreach(O in Overlays) print_grid(O,_I),nl end,
+   writeln(len=Overlays.length),
+   nl.
+
+% How much is reduced for the problems using generate/3?
+go5 =>
+   foreach(P in 1..8)
+      problem(P,N,Problem),
+      factorial(N,Fact),
+      writeln([$problem(P),n=N,fact=Fact]),
+      generate(N,Problem,Overlays),
+      Len = Overlays.length,
+      writeln(num_overlays=Len),
+      Reduction = 1-(Len / Fact),
+      writeln(reduction_factor=Reduction),
+      nl
+   end.
+
+factorial(N,F) =>
+   F1 = 1,
+   foreach(I in 1..N) F1 := I*F1 end,
+   F = F1.
+
+ormat_game(P) =>
+
+   problem(P, N, Problem),
+
+   printf("Problem: %d\n", P),
+   print_grid(Problem,_),
+   nl,
+
+   % There are N! possible overlays
+   % generate(N,Overlays),
+
+   % This version of generate reduces the tentative overlays.
+   generate(N,Problem,Overlays),
+   OSize = Overlays.length,
+   writeln(after_generating),
+
+   % decision variables
+   X = new_list(OSize),
+   X in 0..1,
+   NumOverlays #= sum(X),
+
+   % constraints
+   foreach(I in 1..N, J in 1..N)
+      if Problem[I,J] == 1 then
+          sum([X[O]*Overlays[O,I,J] : O in 1..OSize]) #>=  1
+      else
+          sum([X[O]*Overlays[O,I,J] : O in 1..OSize]) #= 0
+      end
+   end,
+   % minimize the number of overlays needed
+
+   writeln(search),
+   solve([min, $min(NumOverlays)], X),
+
+
+   % output
+   writeln(x=X),
+   writeln(numOverlays=NumOverlays),
+   println('\nThe overlays:'),
+   foreach(I in 1..OSize)
+      if X[I] == 1 then
+         print_grid(Overlays[I],I),
+        nl
+      end
+   end,
+   writeln(numOverlays=NumOverlays),
+   nl.
+
+
+print_grid(Grid,I) =>
+   if nonvar(I) then
+     printf("#%d\n",I)
+   end,
+   foreach(G in Grid) writeln(G) end.
+
+
+
+%
+% generate the N! overlays
+%
+generate(N,Overlays) =>
+   Overlays = findall(Overlay,$generate1(N,Overlay)).
+
+generate1(N,Overlay) =>
+   OverlayA = new_array(N,N),
+   Vars = vars(OverlayA),
+   Vars in 0..1,
+   foreach(I in 1..N)
+      sum([OverlayA[I,J] : J in 1..N]) #= 1,
+      sum([OverlayA[J,I] : J in 1..N]) #= 1 
+   end,
+   solve([ff,split],Vars),
+   % convert to list
+   Overlay = OverlayA.
+
+
+% This version checks that it is a possible overlay,
+% i.e. that is: when then problem has and 0 then the
+% overlay also must have an 0 in the same position.
+% This reduces the number of overlays and the complexity 
+% of the problem
+generate(N,Problem,Overlays) =>
+   Overlays = findall(Overlay,$generate1(N,Problem,Overlay)).
+
+generate1(N,Problem,Overlay) =>
+   OverlayA = new_array(N,N),
+   Vars = vars(OverlayA),
+   Vars in 0..1,
+   foreach(I in 1..N)
+      foreach(J in 1..N)
+         Problem[I,J] #= 0 #=> OverlayA[I,J] #= 0
+      end,
+      sum([OverlayA[I,J] : J in 1..N]) #= 1,
+      sum([OverlayA[J,I] : J in 1..N]) #= 1
+   end,
+   solve([ff,split],Vars),
+   % convert to list
+   Overlay = OverlayA.
+
+
+
+
+% The following problems are from 
+% http://bit-player.org/2010/the-ormat-game
+%
+% Problem grid 1 (n=3)
+problem(1, N, Grid) => N = 3,
+Grid =
+   [[1,0,0],
+    [0,1,1],
+    [0,1,1]].
+
+% Problem grid 2 (n=3)
+problem(2,N, Grid) => N = 3,
+Grid =
+   [[1,1,1],
+    [1,1,1],
+    [1,1,1]
+   ].
+
+% Problem grid 3 (n=3)
+problem(3,N, Grid) => N = 3,
+Grid = 
+   [[1,1,1],
+    [1,1,1],
+    [1,1,0]].
+
+
+%
+% Problem 4 (n=4)
+%
+problem(4,N, Grid) => N=4,
+Grid = 
+   [[1,1,1,1],
+    [1,1,1,1],
+    [1,1,1,1],
+    [1,1,0,0]].
+
+
+%
+% Problem 5 (n=5)
+%
+problem(5,N,Grid) => N = 5,
+Grid =
+   [[1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,0,0,0]].
+   
+
+%
+% Problem 6 (n=6)
+%
+% hard (~7s with ip_solve)
+%
+problem(6,N, Grid) => N=6,
+Grid =
+   [[1,1,1,1,1,1],
+    [1,1,1,1,1,1],
+    [1,1,1,1,1,1],
+    [1,1,1,1,1,1],
+    [1,1,1,1,1,1],
+    [1,1,0,0,0,0]].
+
+
+%
+% Problem 7 (n=7)
+%
+problem(7,N, Grid) => N=7,
+Grid =
+   [[1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,1],
+    [0,0,1,1,1,1,1],
+    [0,0,0,1,1,1,1],
+    [0,0,0,0,1,1,1],
+    [0,0,0,0,0,1,1]].
+
+%
+% Problem 8 (n=7), "flags"
+%
+% quite hard: ~1:50 minutes with ip_solve
+%
+problem(8,N, Grid) => N=7,
+Grid =
+   [[0,0,0,1,1,1,1],
+    [0,0,0,1,1,1,1],
+    [0,0,0,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1]].

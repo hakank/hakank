@@ -1,0 +1,127 @@
+/*
+
+  Partition into subset of equal sums in Picat.
+
+  From Programmers Stack Exchange (C#)
+  http://programmers.stackexchange.com/questions/153184/partitioning-set-into-subsets-with-respect-to-equality-of-sum-among-subsets
+  Partitioning set into subsets with respect to equality of sum among subsets
+  """
+  let say i have {3, 1, 1, 2, 2, 1,5,2,7} set of numbers, I need to split the 
+  numbers such that sum of subset1 should be equal to sum of subset2 
+  {3,2,7} {1,1,2,1,5,2}. First we should identify whether we can split number(one 
+  way might be dividable by 2 without any remainder) and if we can, we should 
+  write our algorithm two create s1 and s2 out of s.
+  
+  How to proceed with this approach? I read partition problem in wiki and even in some 
+  articles but i am not able to get anything. Can someone help me to find the 
+  right algorithm and its explanation in simple English?
+  """
+
+  In my comment I show some possible solutions in MiniZinc and Google or-tools/C#:
+  http://programmers.stackexchange.com/a/153215/13955
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+
+main => go.
+
+go =>
+   
+   S = [3, 1, 1, 2, 2, 1, 5, 2, 7],
+
+   NumSubsets = 2,
+   % NumSubsets = 3,
+   
+   partition(S, NumSubsets, X, Sum),
+   print_result(S,NumSubsets, X, Sum).
+
+
+% All 19 solutions of the original problem.
+go1 => 
+
+   S = [3, 1, 1, 2, 2, 1, 5, 2, 7],
+
+   NumSubsets = 2,
+   % NumSubsets = 3,
+   
+   All = findall(_, $(
+                partition(S, NumSubsets, X, Sum),
+                print_result(S,NumSubsets, X, Sum)
+              )),
+   writeln(len=All.length).
+
+% random test
+go2 =>
+
+   NumSubsets = 2,
+   % NumSubsets = 3,
+   
+   R = 20,
+   N = 100,   
+   test_random(NumSubsets, R, N).
+
+
+% another random test
+go3 =>
+
+   NumSubsets = 3,
+   % NumSubsets = 3,
+   
+   R = 100,
+   N = 1000,
+   test_random(NumSubsets, R, N).
+
+
+test_random(NumSubsets, R,N) =>
+
+   S = [1+(random() mod R) : _I in 1..N],
+
+   while (sum(S) mod NumSubsets != 0)
+       printf("fixing S\n"),
+       S[R] := 1+(random() mod R)
+   end,
+
+   partition(S, NumSubsets, X, Sum),
+   print_result(S,NumSubsets, X, Sum).
+
+
+print_result(S,NumSubsets, X, Sum) =>
+
+   writeln(s=S),
+   writeln(sum=Sum),
+   writeln(x=X),
+
+   N = length(S),
+   foreach(P in 1..NumSubsets)
+      Indices = [I : I in 1..N, X[I] == P],
+      Values = [S[I] : I in 1..N, X[I] == P],
+      printf("Partition %d: Indices: %w  Values: %w.\n", P,Indices, Values)
+   end,
+   nl.
+
+
+partition(S, NumSubsets, X, Sum) =>
+
+   printf("sum(S): %d\n", sum(S)),
+   N = length(S),
+
+   % decision variables
+   X = new_list(N),
+   X in 1..NumSubsets,
+
+   Sum #= sum(S) // NumSubsets,
+   foreach(P in 1..NumSubsets)
+      sum([ (S[I]*(X[I] #= P)) : I in 1..N]) #= Sum
+   end,
+
+
+   % Symmetry breaking
+   X[1] #= 1,
+
+   solve([ff,updown], X).

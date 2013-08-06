@@ -1,0 +1,330 @@
+/*
+
+  Some general utilities in Picat.
+
+  Note: Many of these are now moved to Picat's distribution libraries
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module utils_me.
+
+import util.
+import cp.
+
+main => go.
+
+go => 
+   list_test,
+   test3.
+
+
+
+get_n_solutions(Goal, N) =>
+  printf("Get %d solutions:\n", N),
+  get_global_map().put(solcount,1), 
+  time2(Goal),
+  C = get_global_map().get(solcount),
+  if C < N then get_global_map().put(solcount,C+1), fail end.
+
+
+% Flatten a list/array and remove duplicates
+term_variables(L) = Flatten =>
+   Flatten1 = [],
+   foreach(LL in L) 
+      Flatten1 := Flatten1 ++ LL
+   end,
+   Flatten2 = remove_dups(Flatten1),
+   Flatten = Flatten2.
+
+
+next_permutation(P) = Perm =>
+   Perm1 = P,
+   N = Perm1.length,
+   K = N - 1,
+   while (Perm1[K] > Perm1[K+1], K >= 0) 
+      K := K - 1
+   end,
+   if K > 0 then
+      J = N,
+      while (Perm1[K] > Perm1[J])  J := J - 1 end,      
+      Tmp := Perm1[K],
+      Perm1[K] := Perm1[J],
+      Perm1[J] := Tmp,
+      R = N, 
+      S = K + 1,
+      while (R > S) 
+         Tmp := Perm1[R],
+         Perm1[R] := Perm1[S],
+         Perm1[S] := Tmp,
+         R := R - 1, 
+         S := S + 1
+      end
+   end,
+   Perm = Perm1.
+
+
+%sublist(String1, String2):
+%   succeeds if S2 is a sublist of S
+% (nondet.)
+sublist(S1,S2) =>
+    append(_, S, S1), append(S2, _, S).
+
+
+
+% all the substrings of string List
+all_substrings(List) = L, list(List) =>
+     L = findall(S2, $sublist(List,S2)).remove_dups().
+
+
+%
+% Some list utils etc.
+%
+
+drop(0, Xs) = Xs.
+drop(_N,[]) = [].
+drop(N,[_X|Xs]) = drop(N-1, Xs).
+
+take(0,_Xs) = [].
+take(_N,[]) = [].
+take(N,[X|Xs]) = [X] ++ take(N-1,Xs).
+
+butfirst(L) = drop(L,1).
+butlast(L) = take(L,L.length-1).
+
+% sort/3 using B-Prolog's sort/3
+sort(Order, L1) = L2 => bp.sort(Order,L1,L2).
+
+swap(A,B) = [B,A].
+
+% TODO: scan/2, scan/3?
+
+% Note: F must be a defined function
+group(List, F) = P =>
+   P = new_map(),
+   foreach(E in List) 
+      V = apply(F,E),
+      P.put(V, P.get(V,[]) ++ [E])
+   end.
+
+% example function for group/2:
+mod3(I) = I mod 3.   
+
+list_test =>
+    writeln(map=map(to_integer,to_string(1234567890))),
+    writeln(map=1234567890.to_string().map(to_integer)),
+
+    L = 1..10,
+    writeln(butfirst=butfirst(L)),
+    writeln(butlast=butlast(L)),
+
+    writeln(sort=sort(>=,L)),
+    writeln(swap=swap(1,9999)),
+    writeln(swap=swap([1,2,3],[10,11])),
+
+    writeln(group=(1..40).group(mod3)),
+
+    nl.
+
+
+
+% More utils
+
+
+
+% Inspired by http://www.sci.brooklyn.cuny.edu/~zhou/comp_lang_prolog.pl
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Cartesian product of lists Options 
+% Posted July 1, 2011
+cartprod(L,R) =>
+    L = [L1,L2],    
+    R = [[X1,X2] : X1 in L1, X2 in L2].
+cartprod(L1,R) =>
+    L1 = [L|Ls],
+    cartprod(Ls,R1), 
+    R = [[X|P] : X in L, P in R1].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inspired by http://www.sci.brooklyn.cuny.edu/~zhou/comp_lang_prolog.pl
+% All possible pairs
+% Posted Nov. 25, 2010
+all_pairs(List,Pairs) =>
+    Pairs = [[I=J] : I in List, J in List, I < J].
+
+% From http://www.probp.com/publib/listut.html
+% 
+%   correspond(X, Xlist, Ylist, Y)
+%   is true when Xlist and Ylist are lists, X is an element of Xlist, Y is
+%   an element of Ylist, and X and Y are in similar places in their lists.
+
+correspond(X, X1, Y1, Y) ?=> X1=[X|_], Y1=[Y|_].
+correspond(X, X1, Y1, Y) ?=>
+        X1 = [_|T],
+        Y1 = [_|U],
+	correspond(X, T, U, Y).
+
+
+% Inspired from SWI-Prolog's lib/lists.pl
+%%	prefix(?Part, ?Whole)
+%
+%	True iff Part is a leading substring of Whole.  This is the same
+%	as append(Part, _, Whole).
+prefix([],X) ?=> X = _.
+prefix([E|T0], [E|T]) ?=>
+	prefix(T0, T).
+
+
+% Return a random element from List
+random_list(List) = List[1+random2() mod List.length].
+
+
+%
+% General functions for the simple integer operations:
+% 
+%  plus(A,B)
+%  minus(A,B)
+%  multiply(A,B)
+%  divide(A,B)
+%  power(A,B)
+% 
+% where the parameters can be
+%   integer op integer
+%   integer op list
+%   list op integer
+%   list op list
+%
+% In the latter case, if the two lists are of unequal length we pad the shorter
+% to left with a default value, see pad/3 and pad_default/2.
+% 
+% Also, we define self operators
+% 
+%  plus(A) => plus(A,A)
+%  minus(A) => minus(A,A)
+%  divide(A) => divide(A,A)
+%  plus(A) => plus(A,A)
+%  power(A) => power(A,A)
+%
+arithm(Op,Int1,Int2) = apply(Op, Int1,Int2), integer(Int1), integer(Int2) => true.
+arithm(Op,Int1,List2) = [apply(Op,Int1,E2) : E2 in List2], integer(Int1), list(List2) => true.
+arithm(Op,List1,Int2) = [apply(Op,E1,Int2): E1 in List1], list(List1), integer(Int2)  => true.
+arithm(Op,List1,List2) = [apply(Op,E1,E2): {E1,E2} in zip(List1,List2)], list(List1), list(List2), length(List1) == length(List2) => true.
+% lists of unequal length
+arithm(Op,List1,List2) = Res, list(List1), list(List2), length(List1) != length(List2) =>
+   MaxLen = max(List1.length,List2.length),
+   List1b = pad(List1,MaxLen,Op),
+   List2b = pad(List2,MaxLen,Op),
+   Res = [apply(Op, E1,E2): {E1,E2} in zip(List1b,List2b)].
+
+% operate on self
+arithm(Op,List) = arithm(Op,List,List), list(List) => true.
+
+plus(A,B) = arithm(+,A,B).
+minus(A,B) = arithm(-,A,B).
+multiply(A,B) = arithm(*,A,B).
+divide(A,B) = arithm(/,A,B).
+power(A,B) = arithm(**,A,B).
+modulus(A,B) = arithm(mod,A,B).
+
+plus(A) = arithm(+,A,A).
+minus(A) = arithm(-,A,A). % quite silly...
+multiply(A) = arithm(*,A,A).
+divide(A) = arithm(/,A,A). % quite silly...
+power(A) = arithm(**,A,A). % beware of this!
+modulus(A) = arithm(modulus,A,A).
+
+% We always pad to left
+pad(List, N, Op) = Res => 
+   Res = List,
+   Len = List.length,
+   if N > Len then
+      (pad_default(Op,Default); Default = 1),
+      Res := [Default : _I in 1..N-Len] ++ List
+   end.
+
+% the padding values
+index(+,+)
+pad_default(+,0).
+pad_default(-,0).
+pad_default(*,1).
+pad_default(/,1).
+pad_default(**,1).
+pad_default(mod,1).
+
+
+factors(N) = Factors =>
+     M = N,
+     Factors1 = [],
+     while (M mod 2 == 0) 
+         Factors1 := Factors1 ++ [2],  
+         M := M div 2 
+     end,
+     T = 3,
+     
+     while (M > 1, T < 1+(sqrt(M)))
+        if M mod T == 0 then
+           [Divisors, NewM] = alldivisorsM(M, T),
+           Factors1 := Factors1 ++ Divisors,
+           M := NewM
+        end,
+        T := T + 2
+        % next_prime(T, T2),
+        % T := T2
+     end,
+     if M > 1 then Factors1 := Factors1 ++ [M] end,
+     Factors = Factors1.
+
+alldivisorsM(N,Div) = [Divisors,NewN] =>
+   M = N,
+   Divisors1 = [],
+   while (M mod Div == 0) 
+      Divisors1 := Divisors1 ++ [Div],
+      M := M div Div
+   end,
+   NewN := M,
+   Divisors = Divisors1.
+
+
+table
+prime_cached(N) => prime(N).
+
+
+inc(X) = X+1.
+inc(X,N) = X+N.
+dec(X) = X-1.
+dec(X,N) = X-N.
+
+
+test3 =>
+   cartprod([[a,b,d],[1,2,3,4]],CartProd),
+   writeln(cartprod=CartProd),
+
+   all_pairs([1,2,3], Pairs),
+   writeln(all_pairs=Pairs),
+
+   if prefix("euler","euler10.pi") then
+     writeln($prefix("euler","euler10.pi"))
+   end,
+
+   correspond(CorrespondX,[6,2,3,4,5], [1,2,7,5],CorrespondY),
+   writeln(correspond=[CorrespondX,CorrespondY]),
+   CorrespondAll = findall([CX,CY], $correspond(CX,[6,2,3,4,5], [1,2,3,7,5],CY)),
+   writeln(correspond=CorrespondAll),
+
+   writeln(factors=factors(600851475143)),
+   % foreach(I in 61..100)         
+   %     time(F=factors(2**I-1)),         
+   %     writeln([I,2**I-1, F]) 
+   % end,
+
+   println("arithmetic (integer) functions"),
+   writeln(plus2=plus(1,2)),
+   writeln(multiply2=multiply(1..10,2)),
+   writeln(divide2=divide(1..10,1..3)),
+   writeln(power2=power(2,1..10)),
+
+   writeln(power1x2=power(1..3).power()),
+   writeln(mult_divide=multiply(1..20).divide(2)),
+
+   nl. 

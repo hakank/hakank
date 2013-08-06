@@ -1,0 +1,161 @@
+/*
+
+  Traffic lights problem in Picat.
+
+  CSPLib problem 16
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob016/index.html
+  """
+  Specification:
+  Consider a four way traffic junction with eight traffic lights. Four of the traffic 
+  lights are for the vehicles and can be represented by the variables V1 to V4 with domains 
+  {r,ry,g,y} (for red, red-yellow, green and yellow). The other four traffic lights are 
+  for the pedestrians and can be represented by the variables P1 to P4 with domains {r,g}.
+  
+  The constraints on these variables can be modelled by quaternary constraints on 
+  (Vi, Pi, Vj, Pj ) for 1<=i<=4, j=(1+i)mod 4 which allow just the tuples 
+  {(r,r,g,g), (ry,r,y,r), (g,g,r,r), (y,r,ry,r)}.
+ 
+  It would be interesting to consider other types of junction (e.g. five roads 
+  intersecting) as well as modelling the evolution over time of the traffic light sequence. 
+  ...
+ 
+  Results
+  Only 2^2 out of the 2^12 possible assignments are solutions.
+  
+  (V1,P1,V2,P2,V3,P3,V4,P4) = 
+     {(r,r,g,g,r,r,g,g), (ry,r,y,r,ry,r,y,r), (g,g,r,r,g,g,r,r), (y,r,ry,r,y,r,ry,r)}
+     [(1,1,3,3,1,1,3,3), ( 2,1,4,1, 2,1,4,1), (3,3,1,1,3,3,1,1), (4,1, 2,1,4,1, 2,1)}
+ 
+ 
+  The problem has relative few constraints, but each is very tight. Local propagation 
+  appears to be rather ineffective on this problem.   
+  """
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go => 
+    L = findall([V,P], $traffic_lights(V,P)),
+    writeln(L),
+    print_results(L),
+    nl,
+
+    writef("Using table constraint:\n"),
+    L2 = findall([V2,P2], $traffic_lights_table(V2,P2)),
+    print_results(L2),
+    nl.
+
+
+print_results(L) =>
+    foreach([V,P] in L)
+       foreach(I in 1..4)
+          tr(VC,V[I]),
+          tr(PC,P[I]),
+          writef("%w %w ",VC,PC)
+       end,
+       nl
+    end.
+
+traffic_lights(V, P) =>
+    N  = 4,
+
+    V = new_list(N),
+    V in 1..N,
+    P = new_list(N), 
+    P in 1..N,
+    Allowed = [[r,r,g,g],
+               [ry,r,y,r],
+               [g,g,r,r],
+               [y,r,ry,r]],
+
+    foreach(I in 1..N, J in 1..N) 
+       JJ = (1+I) mod N,
+       writeln([I,J,JJ]),
+       if J == JJ then
+          writeln(J=JJ),
+          check_allowed(V[I], P[I], V[J], P[J])
+          % check_allowed2(V[I], P[I], V[J], P[J], Allowed)
+       end
+    end,
+
+    Vars = V ++ P,
+    solve(Vars),
+    writeln(vars=Vars).
+
+
+check_allowed(VI, PI, VJ, PJ) ?=>
+    L1 = [],
+    foreach(El in [VI, PI, VJ, PJ])
+      writeln(el=El),
+      if tr(C,El) then 
+         L1 := L1 ++ [C] 
+      end
+    end,
+    L = L1,
+
+    allowed(L).
+
+
+check_allowed2(VI, PI, VJ, PJ, Allowed) ?=>
+    L1 = [],
+    foreach(El in [VI, PI, VJ, PJ])
+      writeln(el=El),
+      if tr(C,El) then 
+         L1 := L1 ++ [C] 
+      end
+    end,
+    L = L1,
+    writeln(l=L),
+    writef("before element\n"),
+    element(C,Allowed,L),
+    writef("after element\n"),
+    allowed(L).
+
+
+%
+% Using table Allowed
+%
+traffic_lights_table(V, P) =>
+    N  = 4,
+
+    % allowed/1 as a table (translated)
+    Allowed = [(1,1,3,3),
+               (2,1,4,1),
+               (3,3,1,1),
+               (4,1,2,1)],
+   
+    V = new_list(N),
+    V in 1..N,
+    P = new_list(N), 
+    P in 1..N,
+    foreach(I in 1..N, J in 1..N)
+        JJ = (1+I) mod N,
+        if J #= JJ then
+             VI = V[I], PI = P[I],
+             VJ = V[J], PJ = P[J],
+             % Table constraint
+             (VI, PI, VJ, PJ) in Allowed
+        end
+    end,
+
+    Vars = V ++ P,
+    solve(Vars).
+
+% Note: I'm not sure this is the best 
+%       representation...
+tr(L,A) ?=> L=r,  A=1.
+tr(L,A) ?=> L=ry, A=2.
+tr(L,A) ?=> L=g,  A=3.
+tr(L,A) ?=> L=y,  A=4.
+
+% The allowed combinations
+allowed(A) ?=> A = [r,r,g,g].
+allowed(A) ?=> A = [ry,r,y,r]. 
+allowed(A) ?=> A = [g,g,r,r].
+allowed(A) ?=> A = [y,r,ry,r].

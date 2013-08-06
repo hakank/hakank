@@ -1,0 +1,116 @@
+/* 
+
+  MicroSam in Picat.
+
+  Simplified version of SAM (Script Applier Mechanism).
+
+  This Picat version is based on the Prolog code from
+  Leon S. Sterling: "The Art of Prolog", 2nd edition,
+  page 274ff.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+go => 
+   test_mcsam(Name,UnderstoodStory),
+   writeln(name=Name),
+   % writeln(understoodStory=UnderstoodStory),
+   foreach(S in UnderstoodStory) writeln(S) end,
+   nl,
+   fail.
+
+mcsam(Story,Script) =>  
+   find(Story,Script,Defaults),
+   match(Script,Story),
+   name_defaults(Defaults).
+
+find(Story,Script,Defaults) => 
+   filler(Slot,Story),
+   trigger(Slot,Name),
+   script(Name,Script,Defaults).
+
+/*
+   match(Script,Story) =>
+      Story is a subsequence of Script.
+*/
+match(_Script,Story) ?=> Story = [].
+match(LineScript,LineStory) ?=> 
+    LineScript = [Line|Script],
+    LineStory = [Line|Story],
+    match(Script,Story).
+match(LineScript, LineStory) => 
+    LineScript = [_Line|Script],
+    LineStory = Story,
+    match(Script,Story).
+
+/*
+   filler(Slot,Story) =>
+      Slot is a word in Story.
+*/
+
+filler(Slot,Story) => 
+   member([_Action|Args],Story),
+   member(Slot,Args),
+   nonvar(Slot).
+
+/*
+   name_defaults(Defaults) =>
+      Unifies default pairs in Defaults.
+*/
+
+name_defaults(Defaults) ?=> 
+   Defaults = [].
+name_defaults(Defaults) ?=>  
+   Defaults = [[N,N]|L],
+   name_defaults(L).
+name_defaults(Defaults) =>  
+   Defaults = [[N1,N2]|L],
+   N1 != N2, 
+   name_defaults(L).
+
+
+%
+% Program 14.17 (page 277)
+%
+% The story is
+%    "John went to Leones, ate a hamburger, and left."
+% 
+test_mcsam(Name,UnderstoodStory) =>
+   story(Name,Story), 
+   mcsam(Story,UnderstoodStory).
+
+story(Name, Story) ?=> 
+   Name=test,
+   Story=[[ptrans, john, john, _X1, leones],
+          [ingest, _X2, hamburger, _X3],
+          [ptrans, Actor, Actor, _X4, _X5] ].
+
+script(Name, Script, Defaults) => 
+   Name = restaurant,
+   Script = 
+   [ [ptrans, Actor, Actor, Earlier_place, Restaurant],
+     [ptrans, Actor, Actor, Door, Seat],
+     [mtrans, Actor, Waiter, Food],
+     [ingest, Actor, Food, [mouth, Actor] ],
+     [atrans, Actor, Money, Actor, Waiter],
+     [ptrans, Actor, Actor, Restaurant, Gone] ],
+   Defaults = [ [Actor, customer], [Earlier_place, place1],
+     [Restaurant, restaurant], [Door, door],
+     [Seat, seat], [Food, meal], [Waiter, waiter],
+     [Money, check], [Gone, place2] ].
+
+trigger(Slot, Name) ?=> 
+   Slot = leones, 
+   Name=restaurant.  
+trigger(Slot, Name) => 
+   Slot = waiter, 
+   Name = restaurant.

@@ -1,0 +1,101 @@
+/*
+
+  Set covering problem in Picat.
+
+  Problem from 
+  Katta G. Murty: "Optimization Models for Decision Making", page 302f
+  http://ioe.engin.umich.edu/people/fac/books/murty/opti_model/junior-7.pdf
+ 
+  10 senators making a committee, where there must at least be one 
+  representative from each group:
+  group:        senators:
+  southern      1 2 3 4 5
+  northern      6 7 8 9 10
+  liberals      2 3 8 9 10
+  conservative  1 5 6 7
+  democrats     3 4 5 6 7 9
+  republicans   1 2 8 10
+
+  The objective is to minimize the number of senators.
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+%
+% First find the optimal value (MinVal), then find all the solutions with that value.
+%
+main => go.
+
+go =>
+
+        writeln('Find the optimal solution'),
+        belongs(Belongs),
+        set_covering3(Belongs, MinVal,_),
+
+        writef("\nFinding all optimal solutions with MinVal %d:\n", MinVal),
+        L = findall(X, $set_covering3(Belongs,  MinVal,X)),
+        Len = length(L),
+        writef("It was %d solutions\n", Len).
+
+
+set_covering3(Belongs, MinVal, X) =>
+
+        % The dimensions of Belongs matrix
+        NumGroups = Belongs.length,
+        NumSenators = Belongs[1].length,
+
+        % which senator to choose
+        X = new_list(NumSenators),
+        X in 0..1,
+
+        % cover all groups with the senators
+        foreach(I in 1..NumGroups)
+           sum([X[J]*Belongs[I,J]: J in 1..NumSenators]) #>= 1
+        end,
+
+
+        % objective: minimize the number of senators
+        MinVal #= sum(X),
+
+        % Either search for all solutions (for the minimum value) or
+        % the optimal value.
+        if ground(MinVal) then
+          solve(X)
+        else
+          solve([$min(MinVal)], X)
+        end,
+
+        writeln(x=X),
+        senators(SenatorNames),
+        S = [],
+        foreach(I in 1..NumSenators)
+           if X[I] == 1 then
+             S := S ++ [SenatorNames[I]] 
+           end
+        end,
+        writef("These senators are selected: %w\n", S),
+        writeln(minVal=MinVal).
+
+
+%
+% The Belong matrix:
+%
+% 1 if a senator belongs to the group, 
+% 0 if senator don't belong to the group
+%
+belongs(Matrix) => 
+  Matrix = {{1, 1, 1, 1, 1, 0, 0, 0, 0, 0},   % 1 southern
+            {0, 0, 0, 0, 0, 1, 1, 1, 1, 1},   % 2 northern
+            {0, 1, 1, 0, 0, 0, 0, 1, 1, 1},   % 3 liberals
+            {1, 0, 0, 0, 1, 1, 1, 0, 0, 0},   % 4 conservative
+            {0, 0, 1, 1, 1, 1, 1, 0, 1, 0},   % 5 democrats
+            {1, 1, 0, 0, 0, 0, 0, 1, 0, 1}}.  % 6 republicans
+
+senators(Senators) => 
+    Senators = [a,b,c,d,e,f,g,h,i,j].
+

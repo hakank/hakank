@@ -1,0 +1,140 @@
+/*
+
+  Nontransitive dice in Picat.
+
+  From 
+  http://en.wikipedia.org/wiki/Nontransitive_dice
+  """
+  A set of nontransitive dice is a set of dice for which the relation 
+  "is more likely to roll a higher number" is not transitive. See also 
+  intransitivity.
+  
+  This situation is similar to that in the game Rock, Paper, Scissors, 
+  in which each element has an advantage over one choice and a 
+  disadvantage to the other.
+  """
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => time2($go).
+
+
+go =>
+   
+   M = 3, % number of dice
+   N = 6, % number of sides of each die
+
+   % the data (if any)
+
+   % from the Wikipedia page
+   %  A > B = 5/9   B > C = 5/9  C > A = 5/9
+   D = 
+     [[2,2,4,4,9,9], % die A
+      [1,1,6,6,8,8], % die B
+      [3,3,5,5,7,7]  % die C
+      ],
+
+   UseData = 0,
+
+   % decision variables
+
+   % the dice
+   Dice = new_array(M,N),
+   Dice in 1..N*2,
+
+   % the competitions: 
+   % (die 1 vs die 2, die 2 vs die 1), ... (die m vs die 1, die 1 vs die m)
+   % And the first die must beat the second in each round.
+   % Note the last wrap around which breaks the transitivity.
+   Comp = new_array(M, 2), % [0..M-1, 1..2] in 0..n*n,
+   Comp in 0..N*N,
+
+   % max value of the dice
+   MaxVal in 0..N*2,
+   % max win
+   MaxWin in 0..N*N,
+
+   % gap, gap_sum
+   Gap = new_array(M), % gap[0..m-1] in 0..n*n,
+   Gap in 0..N*N,
+   GapSum in 0..N*N*M,
+
+
+   % constraints 
+
+   if (UseData == 1) then
+      foreach(I in 1..M, J in 1..N) 
+         Dice[I,J] #= D[I,J]
+      end
+   end,
+
+   GapSum #= sum([Gap[I] : I in 1..M-1]),
+   MaxVal #= max([Dice[I,J] : I in 1..M, J in 1..N]),
+   MaxWin #= max([Comp[I,1] : I in 1..M]),
+
+   % order the number of each die (increasing)
+   foreach(DD in 1..M) 
+      foreach(I in 2..N) 
+         Dice[DD,I-1] #<= Dice[DD,I]
+      end
+   end,
+
+   % and now we roll...
+   % Number of wins for [A vs B, B vs A]
+   foreach(DD in 1..M) 
+      Comp[DD,1] #= sum([(Dice[1+(DD mod M), R1] #> Dice[1+((DD + 1) mod M), R2])
+                       : R1 in 1..N, R2 in 1..N]),
+      Comp[DD,2] #= sum([(Dice[1+((DD+1) mod M), R1] #> Dice[1+((DD) mod M), R2]) 
+                                       : R1 in 1..N, R2 in 1..N]),
+
+      Gap[DD] #= Comp[DD,1] - Comp[DD,2]
+   end,
+
+
+   % non-transitivity
+   % All dice 1..m-1 must beat the follower, and die m must beat die 1
+   foreach(DD in 1..M) 
+       Comp[DD,1] #> Comp[DD,2]
+   end,
+   Comp[M,1] #> Comp[1,2],
+
+   % symmetry breaking (be careful if you use one of the examples above)
+   /*
+   foreach(DD in 2..M) {
+      lex(all(j in 1..n) dice[d-1,j],all(j in 1..n) dice[d,j]),
+   } 
+   */
+
+   Vars = Dice.to_list() ++ Comp.to_list(), %  ++ Gap, %  ++ [MaxVal,MaxWin,GapSum],
+
+
+   % maximize sum(i in 0..m-1, j in 1..2) comp[i,j],
+   % maximize min(i in 0..m-1) comp[i,1], % maximize the smallest winning
+   % maximize min(i in 0..m-1) gap[i], % maximize the smallest winning
+
+   solve([constr,split, $report(printf("Found %d\n", MaxVal)), $min(MaxVal)], Vars), 
+   % solve([constr,split], Vars), 
+   % solve([constr, $max(MaxWin)], Vars), 
+   % solve([$report(printf("Found %d\n", GapSum)),$max(GapSum)], Vars), 
+   % solve([$max(sum([Comp[I,1] : I in 1..M]))], Vars), % maximize the sum of the winnings
+
+
+   writeln(maxVal=MaxVal),
+   writeln(maxWin=MaxWin),
+   writeln(gapSum=GapSum),
+   println("Dice:"),
+   foreach(DD in Dice)
+     println(DD)
+   end,
+   println("Comp:"),
+   foreach(C in Comp)
+     println(C)
+   end,
+   nl.

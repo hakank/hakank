@@ -1,0 +1,177 @@
+/* 
+
+  List and matrix extraction in Picat.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module matrix_slice.
+
+import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+   L = 1..10,
+   writeln(L.slice(3..4)),
+
+   L = 1..10,
+   writeln(L.slice(5)),
+
+   nl,
+   writeln(array),
+   N = 4,
+   M = new_array(N,N),
+   foreach(I in 1..M.length, J in 1..M[1].length)
+      M[I,J] := (I-1)*N + J
+   end,
+   print_matrix(M),
+
+   writeln(scalar=M.slice(3,4)),
+   writeln(range1=M.slice(2,3..3)),
+   writeln(range2=M.slice(1..3,3)),
+   writeln(range3=M.slice(1..3,2..4)),
+
+   nl,
+   writeln(list),
+   M2 = new_array(N,N).array_matrix_to_list_matrix(),
+   foreach(I in 1..M2.length, J in 1..M2[1].length)
+      M2[I,J] := (I-1)*N + J
+   end,
+   print_matrix(M2),
+
+   writeln(scalar=M2.slice(3,4)),
+   writeln(range1=M2.slice(2,3..3)),
+   writeln(range2=M2.slice(1..3,3)),
+   writeln(range3=M2.slice(1..3,2..4)),
+
+   writeln(range3_flatten=M2.slicef(1..3,2..4)),
+
+
+   nl.
+
+
+% CP test
+go2 =>
+
+  N = 4,
+  M = new_array(N,N),
+  M in 1..16,
+
+  M.vars().all_different(),
+
+  solve(M),
+  print_matrix(M),
+
+  nl.
+
+
+% CP test
+go3 =>
+
+  N = 4,
+  M = new_array(N,N),
+  M in 1..16,
+
+  foreach(I in 1..N)
+     M.slice(I,1..N).all_different(),
+     M.slice(1..N,I).all_different()
+  end,
+
+  solve(M),
+  print_matrix(M),
+
+  nl.
+
+%
+% CP test.
+% Using a list matrix we have do some conversions
+%
+go4 =>
+
+  N = 4,
+  M = new_list(N,N),
+  M.vars() in 1..16, % convert
+
+  foreach(I in 1..N)
+     M.slice(I,1..N).all_different(),
+     M.slice(1..N,I).all_different()
+  end,
+
+  solve(M.vars()),  % convert
+  print_matrix(M),
+
+  nl.
+
+
+
+%
+% Note that we differ between a list and array and returns the same type 
+% as input (where applicable).
+%
+
+% return the scalar List[I]
+slice(List, I) = List[I], list(List), integer(I) => true.
+
+%
+% return the list/array List[Range]
+%
+slice(List, Range) = [List[I] : I in Range], list(List) => true.
+slice(Array, Range) = [Array[I] : I in Range].to_array(), array(Array) => true.
+
+%
+% Returns the scalar value M[I,J]
+%
+slice(Matrix, I,J) = Matrix[I,J], integer(I),integer(J) => true.
+
+%
+% Returns the list/array M[I,Range2]
+%
+slice(Matrix, I,Range2) = [ Matrix[I,J] : J in Range2], list(Matrix), integer(I),list(Range2) => true.
+slice(Matrix, I,Range2) = [ Matrix[I,J] : J in Range2].to_array(), array(Matrix), integer(I),list(Range2) => true.
+
+%
+% Returns the list/array M[Range1,J]
+%
+slice(Matrix, Range1,J) = [Matrix[I,J] : I in Range1 ], list(Matrix), list(Range1), integer(J) => true.
+slice(Matrix, Range1,J) = [Matrix[I,J] : I in Range1 ].to_array(), array(Matrix), list(Range1), integer(J) => true.
+
+%
+% Returns the list/array matrix M[Range1,Range2]
+%
+slice(Matrix, Range1,Range2) = [ [Matrix[I,J] : I in Range1 ] : J in Range2], list(Matrix) => true.
+slice(Matrix, Range1,Range2) = [ [Matrix[I,J] : I in Range1 ].to_array() : J in Range2].to_array(), array(Matrix) => true.
+
+%
+% Returns a flattened list/array matrix M[Range1,Range2]
+%
+slicef(Matrix, Range1,Range2) = [ [Matrix[I,J] : I in Range1 ] : J in Range2].flatten(), list(Matrix) => true.
+slicef(Matrix, Range1,Range2) = [ [Matrix[I,J] : I in Range1 ].to_array() : J in Range2].to_array().flatten(), array(Matrix) => true.
+
+
+print_matrix(M) =>
+  Max = 0,
+  if list(M) then
+     Max := max(M.flatten())
+  else
+     Max := max(M.array_matrix_to_list_matrix().flatten())
+  end,
+  Len = Max.to_string().length + 1,
+  Format = "%-" ++ Len.to_string() ++ "w",
+  foreach(I in 1..M.length)
+     foreach(J in 1..M[1].length)
+        printf(Format, M[I,J])
+     end,
+     nl
+  end.
+ 
+%    
+% create a 2D list matrix of dimension NxM
+%
+new_list(N,M) = new_array(N,M).array_matrix_to_list_matrix().

@@ -1,0 +1,236 @@
+/*
+
+  Finding an optimal wedding seating chart in Picat.
+
+  From 
+  Meghan L. Bellows and J. D. Luc Peterson
+  "Finding an optimal seating chart for a wedding"
+  http://www.improbable.com/news/2012/Optimal-seating-chart.pdf
+  http://www.improbable.com/2012/02/12/finding-an-optimal-seating-chart-for-a-wedding
+  
+  """
+  Every year, millions of brides (not to mention their mothers, future 
+  mothers-in-law, and occasionally grooms) struggle with one of the 
+  most daunting tasks during the wedding-planning process: the 
+  seating chart. The guest responses are in, banquet hall is booked, 
+  menu choices have been made. You think the hard parts are over, 
+  but you have yet to embark upon the biggest headache of them all. 
+  In order to make this process easier, we present a mathematical 
+  formulation that models the seating chart problem. This model can 
+  be solved to find the optimal arrangement of guests at tables. 
+  At the very least, it can provide a starting point and hopefully 
+  minimize stress and arguments… 
+  """
+
+tables: [1 1 2 2 1 1 3 3 2 3 3 4 4 4 5 5 5]
+z: 271
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => time2($go).
+
+go =>
+
+   % maximize the friends index at a table
+   Maximize = 1, 
+
+   % minimize the "friends index" at a table, i.e. disperse as much as possible
+   % Maximize = 0, %
+
+   max_tables(A), % maximum number of guests a table can seat
+   min_tables(B), % minimum number of people each guest knows at their table
+   num_tables(N), % max number of tables
+   % num_guests(M), % maximum number of quests
+
+   % C[j,k]: Connection matrix, indicating relation of guest j to
+   %         guest k (0..50 where 0 is no relation, 50 is strong relation)
+   guests(C),
+
+   M = C.length,
+
+   writeln([a=A,b=B,n=N,m=M]),
+
+   %
+   % decision variables
+   %
+
+   % At what table sit a person.
+   Tables = new_list(M), 
+   Tables in 1..N,
+
+   % number of guests at each table
+   % TableCount = new_list(N),
+   % TableCount in 0..A,
+
+   % to maximize (or minimize)
+   Z in 0..sum([C[J,K] : J in 1..M, K in 1..M]),
+
+   %
+   % constraints
+   %
+
+   % optimal value
+   Z #= sum([C[J,K]*(Tables[J]#=Tables[K]) : J in 1..M, K in J+1..M]),
+
+   foreach(I in 1..N)
+      % Max number of guests per table
+      sum([Tables[J] #= I : J in 1..M]) #<= A, 
+
+      % Minimum number of friends at table I
+      sum([(C[J,K] #> 0)*(Tables[J] #= I)*(Tables[K] #= I): J in 1..M, K in 1..M]) #>= B
+
+      % must be at least B guests per table
+      % , sum([(Tables[J] #= I): J in 1..M]) #>= B
+   end,
+   
+   % symmetry breaking
+   % foreach(T in 1..N) 
+   %    TableCount[T] #= sum([(Tables[I] #= T) : I in 1..M])
+   % end,
+   % decreasing(TableCount),
+
+   % Tables[3] #= 1, % Martha sits at table 1
+   Tables[1] #= 1, % Dep sits at table 1
+   
+   Vars = Tables, % ++ [Z],
+
+   if Maximize == 1 then
+      writeln(maximize),
+      solve([$max(Z)], Vars)
+   else
+      writeln(minimize),
+      solve([$min(Z)], Vars)
+   end,
+
+   writeln(z=Z),
+   writeln(tables=Tables),
+   % writeln(tableCount=TableCount),
+
+   names(Names),
+   foreach(T in 1..N)
+     printf("At table %d\n", T),
+     foreach(I in 1..M) 
+        if Tables[I] == T then
+          printf("\t%d (%s)\n", I, Names[I])
+        end
+     end,
+     nl
+   end,
+
+   nl.
+
+decreasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #>= List[I] end.
+
+increasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #<= List[I] end.
+
+
+%
+% Data
+%
+
+%  j   Guest         Relation
+%  -------------------------------------
+%  1   Deb           mother of the bride
+%  2   John          father of the bride
+%  3   Martha        sister of the bride
+%  4   Travis        boyfriend of Martha
+%  5   Allan         grandfather of the bride
+%  6   Lois          wife of Allan (the grandfather of the bride)
+%  7   Jayne         aunt of the bride
+%  8   Brad          uncle of the bride
+%  9   Abby          cousin of the bride
+% 10   Mary Helen    mother of the groom
+% 11   Lee           father of the groom
+% 12   Annika        sister of the groom
+% 13   Carl          brother of the groom
+% 14   Colin         brother of the groom
+% 15   Shirley       grandmother of the groom
+% 16   DeAnn         aunt of the groom
+% 17   Lori          aunt of the groom
+%              Table 2: Guest List
+
+% The "friend matrix". Higher value mean stronger bonds.
+guests(M) => 
+M = 
+[[ 1,50, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [50, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1, 1,50, 1, 1, 1, 1,10, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1,50, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1, 1, 1, 1,50, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1, 1, 1,50, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1, 1, 1, 1, 1, 1,50, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1, 1, 1, 1, 1,50, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 1, 1,10, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,50, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0,50, 1, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]].
+
+
+names(Names) =>
+Names =
+[
+ "Deb        mother of the bride",
+ "John       father of the bride",
+ "Martha     sister of the bride",
+ "Travis     boyfriend of Martha",
+ "Allan      grandfather of the bride",
+ "Lois       wife of Allan (the grandfather of the bride)",
+ "Jayne      aunt of the bride",
+ "Brad       uncle of the bride",
+ "Abby       cousin of the bride",
+ "Mary Helen mother of the groom",
+ "Lee        father of the groom",
+ "Annika     sister of the groom",
+ "Carl       brother of the groom",
+ "Colin      brother of the groom",
+ "Shirley    grandmother of the groom",
+ "DeAnn      aunt of the groom",
+ "Lori       aunt of the groom"
+].
+
+names2(Names) =>
+Names =
+[
+ "Deb (B)",
+ "John (B)",
+ "Martha (B)",
+ "Travis (B)",
+ "Allan (B)",
+ "Lois (B)",
+ "Jayne (B)",
+ "Brad (B)",
+ "Abby (B)",
+ "Mary Helen (G)",
+ "Lee (G)",
+ "Annika (G)",
+ "Carl (G)",
+ "Colin (G)",
+ "Shirley (G)",
+ "DeAnn (G)",
+ "Lori (G)"
+].
+
+
+num_tables(N) => N = 5. % max number of tables
+max_tables(A) => A = 4. % maximum number of guests a table can seat
+min_tables(B) => B = 2. % minimum number of people each guest knows at their table
+
+% Easier problem
+% num_tables(N) => N = 2. % max number of tables
+% max_tables(A) => A = 10. % maximum number of guests a table can seat
+% min_tables(B) => B = 1. % minimum number of people each guest knows at their table
+

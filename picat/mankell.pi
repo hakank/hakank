@@ -1,0 +1,257 @@
+/* 
+
+  Generate all spellings of Henning Mankell (and Kjellerstrand) in Picat.
+
+  This is a recurring problem for me: Generating "all" possible
+  spellings of Henning Mankell (and Kjellerstrand) given a grammar 
+  (or regular expression).
+
+  I have written about this before:
+  - Regular expressions in Gecode
+    http://www.hakank.org/constraint_programming_blog/2009/04/regular_expressions_in_gecode.html
+    This blog post contains further links and references.
+
+  - Icon program for the Henning Mankell problem:
+    http://www.hakank.org/unicon/pattern_generation.icn
+
+  - B-Prolog program 
+    http://www.hakank.org/bprolog/mankell.pl
+
+
+  Picat don't have Definite Clause Grammars but it's quite easy
+  to simulate it.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+
+main => go.
+
+go => 
+   go1,go2,go3,go4,go5,go6.
+
+go1 =>
+   println("Variants of '(Henning) Mankell'"),
+   L = findall(S1, $smankell(S1)),
+   println(L),
+   writeln(L.length),
+   nl.
+
+go2 =>
+   println("Variants of '(Henning) Mankell'"),
+   L = findall(S1, $smankell2(S1)),
+   println(L),
+   writeln(L.length),
+   nl.
+
+go3 => 
+   println("Variants of 'Kjellerstrand'"),
+   L = findall(S, $kjellerstrand(S)),
+   println(L),
+   writeln(L.length),
+   nl.
+
+go4 => 
+   println("Variants of 'Kjellerstrand'"),
+   L = findall(S, $kjellerstrand2(S)),
+   println(L),
+   writeln(L.length),
+   nl.
+
+
+
+%
+% The Henning Mankell problem.
+%
+% Given this regular expression, generate all the
+% possible spellings:
+%  [hm][ea](nk|n|nn)(ing|ell|all)
+% 
+% Finds all 36 variants
+smankell(L) => 
+      m(hm,HM), m(ea,EA), m(nknnm,NKNNM), m(ingellall,INGELLALL),
+      L = [HM,EA,NKNNM,INGELLALL].flatten().
+
+% Finds all 36 variants
+smankell2(L) => 
+      m2(hm,HM), m2(ea,EA), m2(nknnm,NKNNM), m2(ingellall,INGELLALL),
+      L = [HM,EA,NKNNM,INGELLALL].flatten().
+
+
+
+m(hm,L) ?=> L = "h".
+m(hm,L) ?=> L = "m".
+
+m(ea,L) ?=> L = "e".
+m(ea,L) ?=> L = "a".
+
+m(nknnm,L) ?=> L = "nk".
+m(nknnm,L) ?=> L = "n".
+m(nknnm,L) ?=> L = "nn".
+
+m(ingellall,L) ?=> L = "ing".
+m(ingellall,L) ?=> L = "ell".
+m(ingellall,L) ?=> L = "all".
+
+% This is nicer
+index (+,-)
+m2(hm,"h").
+m2(hm,"m").
+
+m2(ea,"e").
+m2(ea,"a").
+
+m2(nknnm,"nk").
+m2(nknnm,"n").
+m2(nknnm,"nn").
+
+m2(ingellall,"ing").
+m2(ingellall,"ell").
+m2(ingellall,"all").
+
+
+%
+% kjellerstrand
+%
+% This regular expression is for (most of) the misspellings
+% of my last name, which actually is Kjellerstrand.
+%
+%    k(je|ä)ll(er|ar)?(st|b)r?an?d 
+%
+% skjellerstrand --> [k], je, [ll], erar, stb, r_star, [a], n_star, [d].
+% je      --> [je] | ["ä"].
+% erar    --> [] | [er] | [ar].
+% stb     --> [st] | [b].
+% r_star  --> [] | [r].
+% n_star  --> [] | [n].
+% d       --> [d]. 
+
+% This is more like the original regular expression. And that may be
+% good or bad...
+% kjellerstrand =>
+%         [k], ([je]|['ä']), [ll], ([] | [er] | [ar]), 
+%         ([st] | [b]),
+%         ([] | [r]), [a], ([] | [n]), [d].
+
+
+% Finds all 48 variants
+kjellerstrand(L) =>
+    k(k,K), k(je,JE), k(ll,LL), k(erar,ERAR), k(stb,STB), 
+    k(r_star,R_STAR), k(a,A), k(n_star,N_STAR), k(d,D),
+    L = [K,JE,LL,ERAR,STB,R_STAR,A,N_STAR,D].flatten().
+
+index(+,-)
+k(k,"k").
+k(je,"je").
+k(je,"ä").
+k(ll,"ll").
+k(erar,"").
+k(erar,"er").
+k(erar,"ar").
+k(stb,"st").
+k(stb,"b").
+k(r_star,"").
+k(r_star,"r").
+k(a,"a").
+k(n_star,"").
+k(n_star,"n").
+k(d,"d").
+
+kjellerstrand2(L) =>
+    k2(k,K),  % constant
+    k2(je,JE), 
+    k2(ll,LL), % constant
+    k2(erar,ERAR), 
+    k2(stb,STB), 
+    k2(r_star,R_STAR), 
+    k2(a,A), % constant
+    k2(n_star,N_STAR), 
+    k2(d,D), % constant
+    L = [K,JE,LL,ERAR,STB,R_STAR,A,N_STAR,D].flatten().
+
+         
+% Explicit alternation and the "constants" ("k", "ll","a", and "d")
+% are handled automatically
+k2(je,S)     => S = "je"; S = "ä".
+k2(erar,S)   => S = ""; S = "er"; S = "ar".
+k2(stb,S)    => S = "st"; S = "b".
+k2(r_star,S) => S = ""; S = "r".
+k2(n_star,S) => S = ""; S = "n".
+k2(A,S)      => S = atom_chars(A). % catch all
+
+
+go5 => 
+   println("Variants of ""kjellerstrand"""),
+   List = findall(L,$kjellerstrand3(L)),
+   println(List),
+   println(len=List.length),
+   nl.
+
+%
+% using member
+%
+kjellerstrand3(L) =>
+    member(K,     ["k"]),  % constant
+    member(JE,    ["je","a"]),
+    member(LL,    ["ll"]), % constant
+    member(ERAR,  ["","er","ar"]), 
+    member(STB,   ["st","b"]), 
+    member(R_STAR,["","r"]), 
+    member(A,     ["a"]), % constant
+    member(N_STAR,["","n"]), 
+    member(D,     ["d"]), % constant
+    L = [K,JE,LL,ERAR,STB,R_STAR,A,N_STAR,D].flatten().
+
+
+go6 => 
+   println("Variants of ""kjellerstrand"""),
+   List = findall(L,$kjellerstrand6(L,[])),
+   println([LL.flatten() : LL in List]),
+   println(len=List.length),
+   nl.
+
+%
+% DCG inspired
+%
+kjellerstrand6(S1,S) => 
+   s6_k(S1,S2),
+   s6_je(S2,S3),
+   s6_ll(S3,S4),
+   s6_erar(S4,S5),
+   s6_stb(S5,S6),
+   s6_r(S6,S7),
+   s6_a(S7,S8),
+   s6_n(S8,S9),
+   s6_d(S9,S).
+
+s6_k(S1,S2) => 
+  member(V,["k"]),
+  S1 = [V|S2].
+s6_je(S1,S2)=> 
+  member(V,["je","ä"]),
+  S1 = [V|S2].
+s6_ll(S1,S2)=> 
+  member(V,["ll"]),
+  S1 = [V|S2].
+s6_erar(S1,S2)=> 
+  member(V,["","er","ar"]),
+  S1 = [V|S2].
+s6_stb(S1,S2)=> 
+  member(V,["st","b"]),
+  S1 = [V|S2].
+s6_r(S1,S2)=> 
+  member(V,["","r"]),
+  S1 = [V|S2].
+s6_a(S1,S2)=> 
+  member(V,["a"]),
+  S1 = [V|S2].
+s6_n(S1,S2)=> 
+  member(V,["","n"]),
+  S1 = [V|S2].
+s6_d(S1,S2)=> 
+  member(V,["d"]),
+  S1 = [V|S2].

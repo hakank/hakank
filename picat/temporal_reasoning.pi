@@ -1,0 +1,190 @@
+/* 
+
+  Temporal reasoning in Picat.
+
+  From Krzysztof R. Apt "Principle of Constraint Programming", page 23ff
+  
+  Also see the presentation 
+  http://homepages.cwi.nl/~apt/pcp/ch2-sli.pdf.gz, page 15ff)
+  
+  """
+  Consider the following problem:
+
+  The meeting ran non-stop the whole day.
+  Each person stayed at the meeting for a continous period of time.
+  The meeting began while Mr Jones was present and finished
+  while Ms White was present.
+  Ms_White arrived after the meeting has began.
+  In turn, Director Smith, was also present but he arrived after
+  Jones had left.
+  Mr Brown talked to Ms White in presence of Smith.
+  Could possibly Jones and White have talked during this meeting?
+  """
+
+  The solution in Apt's presentation is 
+  [0, 3, 1, 5, 0, 5, 4, 5, 2, 6]
+  
+  which is a valid solution in this model.
+  Gecode/fz, MiniZinc/flatzinc, etc all gives the following as the 
+  (first) solution: 
+  [0, 2, 1, 4, 0, 4, 3, 4, 2, 5]
+  
+  
+  (There are 32010 solutions to this model.)
+
+
+  Coding:
+
+   J: Jones
+   B: Brown
+   S: Smith
+   W: White
+   M: Meeting
+
+  There are 32009 solution. Here are two of them:
+     [0,2,1,4,0,4,3,4,2,5]
+     [0,3,1,5,0,5,4,5,2,6] % Apt's solution in the presentation
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => time2(go).
+
+go => 
+  temporal_reasoning(List),
+  writeln(List),
+  nl.
+
+go2 => 
+  All=findall(List, $temporal_reasoning(List)),
+  writeln(All),
+  writeln(length=All.length),
+  nl.
+
+
+temporal_reasoning(List2) =>
+   J1 in 0..9, % Jones start
+   J2 in 0..9, % Jones end
+   M1 in 0..9, % Meeting start
+   M2 in 0..9, % Metting end
+   B1 in 0..9, % Brown start
+   B2 in 0..9, % Brown end
+   S1 in 0..9, % Smith start
+   S2 in 0..9, % Smith end
+   W1 in 0..9, % White start
+   W2 in 0..9, % White end
+   List = [J1,J2,M1,M2,B1,B2,S1,S2,W1,W2],
+
+   %
+   % The story
+   % 
+
+   % Meeting and Jones
+   (J1 #< M1, M1 #< J2),
+
+   % Meeting and White  
+   overlaps(M1, M2, W1, W2),
+
+   % Meeting and Smith
+   real_overlap(M1, M2, S1, S2),
+
+   % Jones and Smith
+   before(J1, J2, S1, S2),
+
+   % Brown and Smith
+   real_overlap(B1, B2, S1, S2),
+
+   % Brown and White
+   real_overlap(B1, B2, W1, W2),
+
+   % Smith and White
+   real_overlap(S1, S2, W1, W2),
+
+   % "Could possibly Jones and White have talked during this meeting?"
+   weak_overlap(J1, J2, W1, W2),
+
+   solve(List),
+
+   % writeln(List),
+   List2 = [j=[J1,J2],m=[M1,M2],b=[B1,B2],s=[S1,S2],w=[W1,W2]].
+
+
+
+%
+% General
+%
+interval( X1,  X2) =>
+  X1 #< X2.
+
+before( X1,  X2,  Y1,  Y2) =>
+    interval(X1, X2),
+    interval(Y1, Y2),
+    X2 #< Y1.
+
+after( X1,  X2,  Y1,  Y2) =>
+    before(Y1, Y2, X1, X2).
+
+meets( X1,  X2,  Y1,  Y2) => 
+   interval(X1, X2),
+   interval(Y1, Y2),
+   X2 #= Y1.
+
+met_by( X1,  X2,  Y1,  Y2) =>
+   meets(Y1, Y2, X1, X2).
+
+overlaps( X1,  X2,  Y1,  Y2) =>
+   interval(X1, X2),
+   interval(Y1, Y2),
+   X1 #< Y1,
+   Y1 #< X2,
+   X2 #< Y2.
+
+overlapped_by( X1,  X2,  Y1,  Y2) =>
+   overlaps(Y1, Y2, X1, X2).
+
+starts( X1,  X2,  Y1,  Y2) =>
+   interval(X1, X2),
+   interval(Y1, Y2),
+   X1 #= Y1,
+   X2 #< Y2.
+
+
+started_by( X1,  X2,  Y1,  Y2) =>
+   starts(Y1, Y2, X1, X2).
+
+during( X1,  X2,  Y1,  Y2) =>
+   interval(X1, X2),
+   interval(Y1, Y2),
+   X1 #> Y1,
+   X2 #< Y2.
+
+contains( X1,  X2,  Y1,  Y2) =>
+   during(Y1, Y2, X1, X2).
+
+finishes( X1,  X2,  Y1,  Y2) =>
+   interval(X1, X2),
+   interval(Y1, Y2),
+   X1 #> Y1,
+   X2 #= Y2.
+
+finished_by( X1,  X2,  Y1,  Y2) =>
+   finishes(Y1, Y2, X1, X2).
+
+equal( X1,  X2,  Y1,  Y2) =>
+   interval(X1, X2),
+   interval(Y1, Y2),
+   X1 #= Y1,
+   X2 #= Y2.
+
+real_overlap( X1,  X2,  Y1,  Y2) =>
+   X1 #< Y2, 
+   Y1 #< X2.
+
+weak_overlap( X1,  X2,  Y1,  Y2) =>
+   X1 #<= Y2, 
+   Y1 #<= X2.

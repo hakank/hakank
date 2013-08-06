@@ -1,0 +1,84 @@
+/* 
+
+  Plan module in Picat.
+
+  General planner, inspired by "Thinking as computation" (plan.pl and bplan.pl),
+  page 183ff.
+
+  Assumptions:
+    - the initial state is placed in initial_state/1
+    - the goal state is placed in global_state/1
+    - the legal moves are placed in the predicate legal_move/3 with
+      the parameters legal_move(From,Move,To).
+
+
+  The module is used by the following programs:
+   - http://www.hakank.org/picat/1d_rubiks_cube.pi
+   - http://www.hakank.org/picat/M12.pi
+   - http://www.hakank.org/picat/rotation.pi
+   - http://www.hakank.org/picat/water_jugs.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+module bplan.
+
+% plan(L): L is a list of moves from the initial state to a goal state.
+plan(L) => 
+    initial_state(I), 
+    goal_state(G), 
+    reachable(I,L,G).
+
+% reachable(S1,L,S2): S2 is reachable from S1 using moves L.
+table
+% reachable(S,[],S) => true.
+reachable(S,_,S) => true.   
+reachable(S1,[M|L],S3) => 
+   legal_move(S1,M,S2), 
+   reachable(S2,L,S3).
+
+% This looks for plans, short ones first, using the plan predicate.
+% bplan(L) holds if L is a plan.
+bplan(L) => tryplan([],L). 
+
+% tryplan(X,L): L is a plan and has X as its final elements.
+tryplan(X,L) ?=> X=L, plan(L).
+tryplan(X,L) => tryplan([_|X],L).
+
+
+%
+% An alternative version where the Init is a parameter
+%
+
+% plan(Init,L): L is a list of moves from the initial state to a goal state.
+plan(Init, L) => 
+    writeln(len=L.length),
+    goal_state(G), 
+    reachable(Init,L,G).
+
+% This looks for plans, short ones first, using the plan predicate.
+% bplan(Init, L) holds if L is a plan.
+bplan(Init,L) => tryplan(Init,[],L). 
+
+% tryplan(Init, X,L): L is a plan and has X as its final elements.
+tryplan(Init,X,L) ?=> X=L, plan(Init,L).
+tryplan(Init,X,L) => initialize_table, tryplan(Init, [_|X],L).
+
+
+%
+% This versions was suggested by Neng-Fa Zhou
+% and seems to be faster.
+%
+table (+,-,min)
+plan2(S,Plan,Cost),goal_state(S) => 
+  Plan=[],Cost=0.
+plan2(S,Plan,Cost) =>
+  legal_move(S,Action,S1,ActionCost),
+  plan2(S1,Plan1,Cost1),
+  Plan = [Action|Plan1],
+  Cost = Cost1+ActionCost.
+
+

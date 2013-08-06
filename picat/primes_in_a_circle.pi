@@ -1,0 +1,160 @@
+/*
+
+  Primes in a circle in Picat.
+
+
+  From 
+  http://wordplay.blogs.nytimes.com/2013/06/17/primes-circle/?_r=0
+  """
+  This week’s puzzle was suggested by University of the 
+  Andes Professor Bernardo Recamán.
+
+  Place the numbers 1 to 14 around a circle so that both the sum and 
+  the (positive difference) of any two neighboring numbers is a prime.
+  ""
+
+  For N = 14, there are 28 solutions (14 solutions and there reverses).
+  With symmetry breaking there is 2 solutions (1+its reverse):
+
+     [1,4,7,10,13,6,11,8,3,14,9,2,5,12]
+     [1,12,5,2,9,14,3,8,11,6,13,10,7,4]
+
+  For N = 12 there are 48 solutions, and 4 with symmetry breaking:
+     [1,4,9,2,5,12,7,10,3,8,11,6]
+     [1,6,11,8,3,10,7,4,9,2,5,12]
+     [1,6,11,8,3,10,7,12,5,2,9,4]
+     [1,12,5,2,9,4,7,10,3,8,11,6]
+
+  Here are the results for N=14..26 (even numbers)
+  using symmetry breaking (X[1] #= 1):
+     N   #solutions
+    12      4        
+    14      2
+    16      8
+    18    176
+    20      0
+    22   1952
+    24  44554
+    26  44730
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => time2($go).
+
+
+go =>
+
+    N in 12..18,
+    indomain(N),
+
+    N mod 2 #= 0, % just even
+
+    primes_in_a_circle(N, All),
+    writeln([n=N,num_solutions=All.length]),
+    foreach(A in All)
+      writeln(A)
+    end,
+    nl,
+    fail.
+
+% Just the number of solutions
+go2 =>
+
+    N in 12..28,
+    indomain(N),
+
+    N mod 2 #= 0, % just even
+
+    time($primes_in_a_circle(N,All)),
+    writeln([n=N,num_solutions=All.length]),
+    % foreach(A in All)
+    %   writeln(A)
+    % end,
+    nl,
+    fail.
+
+
+% Just check one solution
+go3 => 
+    foreach(N in 12..128, N mod 2 #= 0)
+       (
+         time2($once(primes_in_a_circle2(N, X))),
+         writeln([n=N,X])
+       ; 
+         true
+       )
+    end,
+    nl.
+
+
+% All solutions (with symmetry breaking)
+primes_in_a_circle(N,All) =>
+    Primes = sieve(N*2),
+    writeln([n=N,primes=Primes]),
+
+    X = new_list(N),
+    X in 1..N,
+
+    % constraints
+    all_different(X),
+    
+    foreach(I in 1..N-1) 
+        p(X[I],X[I+1],Primes)
+    end,
+    p(X[1],X[N],Primes),
+
+    % symmetry breaking
+    X[1] #= 1,
+
+    All = solve_all([ffd,reverse_split], X).
+
+
+% Just one solution
+primes_in_a_circle2(N,X) =>
+    Primes = sieve(N*2),
+    % writeln([n=N,primes=Primes]),
+
+    X = new_list(N),
+    X in 1..N,
+
+    % constraints
+    all_different(X),
+    
+    foreach(I in 1..N-1) 
+        p(X[I],X[I+1],Primes)
+    end,
+    p(X[1],X[N],Primes),
+
+    % symmetry breaking
+    X[1] #= 1,
+
+    solve([ffd,reverse_split], X).
+
+
+
+        
+%% don't work
+% p(A,B,Primes) => 
+%    Plus #= A+B,
+%    Abs #= abs(A-B),
+%    Primes.has_key(Plus),
+%    Primes.has_key(Abs).
+
+
+p(A,B,Primes) =>
+   sum([A+B#=P : P in Primes]) #= 1,
+   sum([abs(A-B)#=P : P in Primes]) #= 1.
+
+sieve(N) = Res => 
+   Sieve = [0 : I in 1..N].to_array(),
+   foreach(I in 2..round(sqrt(N)), J in I*I..I..N)
+      Sieve[J] := 1
+   end,
+   Res := [I : I in 2..N, Sieve[I] == 0].

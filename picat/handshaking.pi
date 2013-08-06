@@ -1,0 +1,180 @@
+/*
+
+  Halmos' handshake problem in Picat.
+
+  Problem formulation from Alloy (examples/puzzles/handshake)
+  """
+  Alloy model of the Halmos handshake problem
+  
+  Hilary and Jocelyn are married. They invite four couples who are friends for dinner. When
+  they arrive, they shake hands with each other. Nobody shakes hands with him or herself
+  or with his or her spouse. After there has been some handshaking, Jocelyn jumps up on
+  a chair and says "Stop shaking hands!", and then asks how many hands each person has
+  shaken. All the answers are different. How many hands has Hilary shaken?
+  
+  The Alloy model represents the problem as a set of constraints. Properties of the spouse
+  relationship and of handshaking in general are given as facts. The particular situation
+  is cast as a function.
+  
+  There are 9 people answering, and all answers are different. Nobody can shake more than
+  8 hands. So answers must be 0..8. The one (p8 say) who answered 8 has shaken everybody's
+  hand except for his or her own, and his or her spouse's. Now consider the person who shook
+  0 hands (p0 say). The persons p0 and p8 are distinct. If they are not married, then p8 cannot
+  have shaken 8 hands, because he or she did not shake the hand of p0 or of his or her spouse.
+  So p8's spouse to p0. Now imagine Jocelyn asking the question again, with p0 and p8 out of
+  the room, and excluding hand shakes with them. Since p8 shook hands with everyone else
+  except p0 and p8, everyone gives an answer one smaller than they did before, giving 0..6.
+  The argument now applies recursively. So Hilary is left alone, having shaken 4 hands. 
+  """
+  Alloy is here: http://alloy.mit.edu/alloy
+  
+  Also, see the following that discuss Halmos' Handshake problem
+  http://docs.law.gwu.edu/facweb/jsiegel/Personal/math/mathhome.htm#halmos
+      http://docs.law.gwu.edu/facweb/jsiegel/Personal/math/shakeanswer.htm
+  
+  The origin of the problem seems to be
+  P.R. Halmos: "To Count or to Think, That is the Question", page 1ff
+  http://bernoulli.math.rug.nl/vorigelezingen/lezing03/lezing03.pdf
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+import cp.
+
+/*
+
+  The solution for N=10 (with symmetry breaking)
+
+  x:[4,4,0,8,1,7,2,6,3,5]
+
+  Who shake hands with whom:
+  [0,0,0,1,0,1,0,1,0,1]
+  [0,0,0,1,0,1,0,1,0,1]
+  [0,0,0,0,0,0,0,0,0,0]
+  [1,1,0,0,1,1,1,1,1,1]
+  [0,0,0,1,0,0,0,0,0,0]
+  [1,1,0,1,0,0,1,1,1,1]
+  [0,0,0,1,0,1,0,0,0,0]
+  [1,1,0,1,0,1,0,0,1,1]
+  [0,0,0,1,0,1,0,1,0,0]
+  [1,1,0,1,0,1,0,1,0,0]
+
+  Person 1 shake hands with [4,6,8,10] (4 shakes)
+  Person 2 shake hands with [4,6,8,10] (4 shakes)
+  Person 3 shake hands with [] (0 shakes)
+  Person 4 shake hands with [1,2,5,6,7,8,9,10] (8 shakes)
+  Person 5 shake hands with [4] (1 shakes)
+  Person 6 shake hands with [1,2,4,7,8,9,10] (7 shakes)
+  Person 7 shake hands with [4,6] (2 shakes)
+  Person 8 shake hands with [1,2,4,6,9,10] (6 shakes)
+  Person 9 shake hands with [4,6,8] (3 shakes)
+  Person 10 shake hands with [1,2,4,6,8] (5 shakes)
+
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+   N = 10, % 5 pairs
+   time2($handshake(N,symmetrybreaking,print)).
+
+go2 =>
+   N = 10,
+   L=findall(_,$handshake(N,nosymmetrybreaking,print)),
+   writeln(len=L.length),
+   nl.
+
+go3 =>
+   N = 300,
+   time2($handshake(N,symmetrybreaking,noprint)).
+
+go4 =>
+   N = 350,
+   time2($handshake(N,symmetrybreaking,print)).
+
+
+
+handshake(N,Symmetry,Print) =>
+
+   % decision variables
+
+   % can shake max n-2 hands
+   %   coded Pair1a,Pair1b,  Pair2a,Pair2b, ...
+   X = new_list(N),
+   X in 0..N-2,
+
+   % who shake with whom:
+   %  (not him/herself and not his/her spouse)
+   Y = new_array(N,N),
+   Y in 0..1,
+
+   
+   % We assume that Hilary is in position x[1]
+   % (and Hilary's spouse - Jocelyn - in x[2])
+   % All except Hilary's counts are different
+   X2 = [X[I] : I in 2..N],
+   all_different(X2),
+   % all_distinct(X2),
+   
+   foreach(I in 0..(N / 2)-1)
+      % don't shake hand with spouse
+      Y[2*I+1,2*I+2] #= 0,
+      Y[2*I+2,2*I+1] #= 0 
+   end,
+
+   foreach(I in 1..N) 
+          % don't shake hand with oneself
+          Y[I,I] #= 0,
+          
+          % how many hands has x[i] shaken
+          X[I] #= sum([Y[I,J] : J in 1..N]) 
+   end,
+
+   foreach(I in 1..N, J in 1..N)
+      % symmetry of handshaking:
+      %    a shake hands with b <-> b shake hands with a
+      Y[I,J] #= 1 #<=> Y[J,I] #= 1
+   end,
+
+   % symmetry breaking which orders the other couples (besides the hosts)
+   % Without it: 384 solutions (all x = [4,4,.....])
+   % With it: 1 solution: x: [4, 4, 0, 8, 1, 7, 2, 6, 3, 5] 
+   %          (since we order 0,1,2,3 shakes)
+   % 
+   % Note that all number of handshaking of the pairs sums to 8, 
+   % i.e. 4+4, 0+8, 1+7, 2+6, 3+5
+   % More general: The number of handshaking per pair sums to n-2.
+   % 
+   % use symmetry breaking?
+   if Symmetry = symmetrybreaking then
+      X3 = [X[3+2*I] : I in 0..(N div 2)-2],
+      increasing(X3),
+      foreach(I in 0..(N / 2)-2) X[3+2*I] #< X[3+2*I+1] end
+   end,
+
+   %
+   % search
+   %
+   solve([ff,split],X),
+
+   if Print = print then
+        writeln(x=X),
+        nl,
+        println('Who shake hands with whom:'),
+        foreach(Row in Y) writeln(Row) end,
+        nl,
+        foreach(I in 1..N)
+           S = [J : J in 1..N, Y[I,J] == 1],
+           printf("Person %d shake hands with %w (%d shakes)\n", I,S,S.length)
+        end,
+        nl
+  end.
+   
+
+increasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #=< List[I] end.

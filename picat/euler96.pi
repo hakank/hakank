@@ -1,0 +1,139 @@
+/* 
+
+  Euler #96 in Picat.
+
+  http://projecteuler.net/problem=96
+  """
+  Su Doku (Japanese meaning number place) is the name given to a popular puzzle concept. 
+  Its origin is unclear, but credit must be attributed to Leonhard Euler who invented a 
+  similar, and much more difficult, puzzle idea called Latin Squares. The objective of 
+  Su Doku puzzles, however, is to replace the blanks (or zeros) in a 9 by 9 grid in such 
+  that each row, column, and 3 by 3 box contains each of the digits 1 to 9. Below is an 
+  example of a typical starting puzzle grid and its solution grid.
+
+  [ ... ]
+
+  A well constructed Su Doku puzzle has a unique solution and can be solved by logic, although 
+  it may be necessary to employ "guess and test" methods in order to eliminate options (there 
+  is much contested opinion over this). The complexity of the search determines the difficulty 
+  of the puzzle; the example above is considered easy because it can be solved by straight 
+  forward direct deduction.
+
+  The 6K text file, [http://projecteuler.net/project/sudoku.txt]  (right click and 
+  'Save Link/Target As...'), contains fifty different Su Doku puzzles ranging in difficulty, 
+  but all with unique solutions (the first puzzle in the file is the example above).
+
+  By solving all fifty puzzles find the sum of the 3-digit numbers found in the top left corner 
+  of each solution grid; for example, 483 is the 3-digit number found in the top left 
+  corner of the solution grid above.
+  """
+
+  [Note to the above: I think that they mean Graeco-Latin Squares (and not Latin Squares) 
+   which Euler invented/studied.]
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => time2(go).
+
+go => 
+  euler96.
+
+euler96 =>
+  Sudokus = read_file("sudoku.txt"),
+  % println(len=Sudokus.length),
+  C = 1,
+  Total = 0,
+  foreach(S in Sudokus) 
+     % printf("Grid %d\n", C),
+     Sudoku = S.convert(),
+     % print_board(Sudoku),
+     Solved = sudoku(3, Sudoku),
+     % print_board(Solved), 
+     C := C +1,
+     Digits = [Solved[1,J].to_string() : J in 1..3].flatten().parse_term(),
+     Total := Total + Digits
+  end,
+  println(Total),
+  nl.
+
+convert(Sudoku) = [[ R.to_integer() :  R in Row] : Row in Sudoku].
+
+
+%
+% Also see http://www.hakank.org/picat/sudoku.pi for some other approaches
+%
+sudoku(N, Board) = Solved =>
+   N2 = N*N,
+   Board2 = new_array(N2,N2),
+   foreach(I in 1..N2, J in 1..N2)
+      if Board[I,J] > 0 then
+         Board2[I,J] #= Board[I,J]
+      end
+   end,
+   Vars = Board2.vars(),
+   Vars in 1..N2,
+   latin_square(Board2),
+   foreach(I in 1..N..N2, J in 1..N..N2)
+      all_different([Board2[I+K,J+L] : K in 0..N-1, L in 0..N-1])
+   end,
+   solve([ff,down], Vars),
+   Solved = Board2.
+
+
+latin_square(Board) => 
+   foreach(Row in Board.rows()) all_different(Row) end,
+   foreach(Column in Board.columns()) all_different(Column) end.
+
+ 
+   
+% Read "sudoku.txt"
+read_file(File) = Sudokus => 
+   FD = open(File),
+   Sudokus = [],
+   Sudoku = [],
+   C = 0,
+   while (not at_end_of_stream(FD))
+      Line = read_line(FD),
+      if once(find(Line, "Grid",1,_To)) then
+          if C > 0 then
+             Sudokus := Sudokus ++ [Sudoku]
+          end,
+          Sudoku := [],
+          C := C + 1
+      else
+          Sudoku := Sudoku ++ [Line]
+      end
+   end,
+   Sudokus := Sudokus ++ [Sudoku],
+   close(FD).
+
+print_board(Board) =>
+   N = Board.length,
+   foreach(I in 1..N)
+      foreach(J in 1..N)
+         X = Board[I,J],
+         if var(X) then printf("  _") else printf("  %w", X) end
+      end,
+      nl
+   end,
+   nl.
+
+
+print_board2(Board) =>
+   N = Board.length,
+   foreach(I in 1..N)
+      foreach(J in 1..N)
+         X = Board[I,J],
+         printf("  %w", X)
+      end,
+      nl
+   end,
+   nl.

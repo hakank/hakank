@@ -1,0 +1,239 @@
+/* 
+
+  Balanced brackets in Picat.
+ 
+  From Rosetta Code
+  http://rosettacode.org/wiki/Balanced_bracket
+  """
+  Task:
+
+  Generate a string with N opening brackets ("[") and N closing brackets ("]"), 
+  in some arbitrary order.
+  Determine whether the generated string is balanced; that is, whether it 
+  consists entirely of pairs of opening/closing brackets (in that order), 
+  none of which mis-nest. 
+
+  Examples:
+
+   (empty)   OK
+   []        OK   ][        NOT OK
+   [][]      OK   ][][      NOT OK
+   [[][]]    OK   []][[]    NOT OK
+   """  
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+/*
+
+Output should be:
+
+Test with Rosetta examples
+
+ ?- rosetta_brackets.
+"""
+(empty) succeed
+[] succeed
+[][] succeed
+[[][]] succeed
+][ failed
+][][ failed
+[]][[] failed
+true.
+"""
+*/
+
+go => 
+   rosetta_brackets(),
+   balanced_brackets.
+
+go2 =>
+   Found = "",
+   N = 100, % size of string
+   C = 0,
+   while(Found == "") 
+      C := C + 1,
+      B = gen_bracket(N),
+      % println(B),
+      if balanced_brackets(B) then
+         Found := B
+      end
+   end,
+   printf("Found in %d steps: %w\n", C, Found),
+   nl.
+
+% Using CP to generate a balanced bracket string.
+% Unfortunately this is not very interesting since it
+% give the first solution which is 
+%     "[" x N ++ "]" x N
+% (Picat don't have a random heuristics which would be of 
+%  some help here.)
+go2b => 
+   N = 1000,
+   gen_cp(N div 2, 1, X),
+   S = "[]",
+   B = [S[X[I]] : I in 1..N],
+   println(B),
+   nl.
+
+rosetta_brackets =>
+   println("rosetta_brackets:"),
+   test_brackets([]),
+   test_brackets("[]"),
+   test_brackets("[][]"),
+   test_brackets("[[][]]"),
+   test_brackets("]["),
+   test_brackets("][]["),
+   test_brackets("[]][[]"),
+   test_brackets("[][][][][][][][][][]"),
+   test_brackets("[[[[[[[]]]]]]]"),
+   test_brackets("[[[[[[[]]]]]]"),
+   test_brackets("[][[]][]"),
+   test_brackets("[[][]][]"),
+   test_brackets("[][][[]][]"),
+   nl.
+
+ 
+balanced_brackets =>
+   println("\nbalanced_brackets (random):"),
+   foreach(N in 2..2..10)
+      test_brackets(gen_bracket(N)),
+      test_brackets(gen_bracket(N))
+   end,
+   nl.
+ 
+test_brackets(Goal) =>
+   if Goal == [] then print("(empty)") else print(Goal) end,
+   print(" "), 
+   if balanced_brackets(Goal) then
+       println(succeed)
+   else
+       println(failed)
+   end.
+
+%
+% check if a string of [] is balanced
+%
+balanced_brackets(B) => 
+   C = 0,
+   foreach(I in 1..B.length, C >= 0)
+      C:= C + cond(B[I] = '[', 1, -1)
+   end,
+   C == 0.
+
+
+% generate a string of random brackets (which may not be balanced)
+gen_bracket(N) = Brackets =>
+   B = "[]",
+   Brackets = "[",
+   foreach(_I in 2..N)
+      Brackets := Brackets ++ [B[1+random2() mod 2]]
+   end.
+
+
+%
+% CP approach
+%
+% This generates all balanced brackets of size m*2.
+%
+% The number of generated solutions for m:
+%
+%  m        #
+%  ----------
+%   1       1
+%   2       2
+%   3       5
+%   4      14
+%   5      42
+%   6     132
+%   7     429
+%   8    1430
+%   9    4862
+%  10   16796
+%  11   58786
+%  12  208012
+%  13  742900
+%
+% 
+% Which - of course - is the Catalan numbers.
+%
+% http://oeis.org/search?q=1%2C2%2C5%2C14%2C42%2C132%2C429%2C1430%2C4862%2C16796%2C58786%2C208012&language=english&go=Search
+% http://oeis.org/A000108
+%
+go3 =>
+
+   % Generating all balanced brackets of length M*2
+   M = 4,
+   N = M*2,
+   S = "[]",
+   gen_cp(M,0,All),
+   writeln(len=All.length),
+
+   if M <= 6 then
+      foreach(X2 in All) 
+        % println(X2),
+        B = [S[X2[I]] : I in 1..N],
+        % println(B),
+        test_brackets(B)
+      end
+   end,
+   nl.
+
+%
+% The number of solutions for M = 1..13
+%
+go4 =>
+  foreach(M in 1..13)
+     time2($gen_cp(M, 0, All)),
+     writeln([m=M, All.length])
+  end,
+  nl.
+
+
+
+%
+% Generate all brackets for size M
+%
+gen_cp(M, Sols, All) => 
+
+   N = M * 2,
+   T = [1,-1], % +1 for "[", -1 for "]"
+   
+   % decision variables
+   X = new_list(N),
+   X in 1..2, % 1="[", 2 = "]"
+
+   C = new_list(N), % the counter (cumulative sum)
+   C in 0..N,
+
+   % leading "["
+   X[1] #= 1,
+   C[1] #= 1,
+
+   foreach(I in 2..N)
+      element(X[I], T, TT),
+      C[I] #= C[I-1] + TT
+   end,
+
+   % concluding "]"
+   X[N] #= 2,  
+   C[N] #= 0, 
+
+   % count(1,X,#=,M), % (makes it slower)
+   writeln(sols=Sols),
+   if Sols == 0 then
+     All = solve_all(X)
+   else 
+     solve(X),
+     All = X
+   end.

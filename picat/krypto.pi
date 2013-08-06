@@ -1,0 +1,235 @@
+/* 
+
+  Krypto puzzle in Picat.
+
+  From http://en.wikipedia.org/wiki/Krypto_%28game%29
+  """
+  The Krypto deck consists of 56 cards: three each of numbers 1-6, four each of 
+  the numbers 7-10, two each of 11-17, one each of 18-25. Six cards are dealt: 
+  a common objective card at the top and five other cards below. Each player must 
+  use all five of the cards' numbers exactly once, using any combination of arithmetic 
+  operations (addition, subtraction, multiplication, and division), to form the 
+  objective card's number. The first player to come up with a correct formula is the winner.
+
+  ...
+  Example of Play:
+
+       Cards:  2, 1, 2, 2, 3 = 24 (Objective Card)
+       2 x   1 =  2
+       2 x   2 =  4
+       4 x   2 =  8
+       8 x   3 = 24 (Krypto)
+
+  All five cards were used once and only once to equal the Objective Card.
+
+  Another Example:
+
+       Cards:  1, 3, 7, 1, 8 = 1 (Objective Card)
+       3 -  1 =  2
+       7 +  2 =  9
+       9 /  1 =  9
+       9 -  8 =  1 (Krypto)
+
+  Here is a more difficult hand:
+
+       Cards:  24, 22, 23, 20, 21 = 1  (Objective Card)
+       24 + 22 = 46
+       46 / 23 =  2
+        2 + 20 = 22
+       22 - 21 =  1 (Krypto)
+  """
+
+  Also, see
+    http://www.math.niu.edu/~rusin/uses-math/games/krypto/
+
+  Note: This model use a restricted version where we don't handle
+        parenthesis around the some of the arguments.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+go =>
+    % The three examples shown above:
+    krypto([2, 1, 2, 2, 3],24),
+    krypto([1, 3, 7, 1, 8],1),
+    krypto([24, 22, 23, 20, 21],1),
+
+    % Testing some failures
+    % Cards=[24,11,17,19,20],Objective=7,
+    % Cards=[25,5,1,9,9],Objective=14,
+    % Cards=[7,2,20,7,7],Objective=4,
+    % krypto(Cards,Objective, 390625),
+
+    nl.
+
+% All solutions
+go1 => 
+    krypto([24, 22, 23, 20, 21],1),
+    fail,
+    nl.
+
+
+%
+% Random problems
+%
+go2 =>
+   Size = 6,
+   Rand = rand_deck(Size),
+   Cards = [Rand[I] : I in 1..Size-1],
+   Objective = Rand[Size],
+   (krypto(Cards,Objective) -> writeln(ok) ; writeln(fail)),
+   nl.
+
+
+%
+% It's about 5% probability of a failure on a random problem.
+%
+go3 =>
+   N = 100, % = 10000, 
+   Size = 6,
+   OK = [],
+   Fails = [],
+   foreach(_K in 1..N) 
+      Rand = rand_deck(Size),
+      Cards = [Rand[I] : I in 1..Size-1],
+      Objective = Rand[Size],
+      (krypto(Cards,Objective) -> 
+          OK := OK ++ [Cards]
+       ; 
+          Fails := Fails ++ [Cards]
+      )
+   end,
+   writeln(ok=OK),
+   writeln(fails=Fails),
+   writeln([numOK=OK.length,numFails=Fails.length]),
+   printf("Failure: %2.2f%%%n", Fails.length / N * 100 ),
+   nl.
+
+%
+% More Cards
+%
+go4 =>
+   Size = 10,
+   Rand = rand_deck(Size),
+   Cards = [Rand[I] : I in 1..Size-1],
+   Objective = Rand[Size],
+   krypto(Cards,Objective,max(100,sum(Cards))),
+   nl.
+
+%
+% 24-game, restricted to just integer operations 
+% and don't handle parenthesis.
+%
+go5 => 
+   Size = 4,
+   Cards = [1+random2() mod 10 : _I in 1..Size],
+   krypto(Cards,24,1000),
+   nl.
+
+
+go6 => 
+  krypto(1..10,2013),
+  nl.
+
+krypto(Cards,Objective) =>
+   krypto(Cards,Objective,100).
+
+krypto(Cards,Objective,Max) =>
+    writeln($krypto(cards=Cards,objective=Objective,max=Max)),
+    writeln(cards=Cards),
+    writeln(objective=Objective),
+
+    N = Cards.length,
+    
+    X = new_list(N),
+    X in 1..max(Max,Objective),
+    
+    % The operations +:1,-:2, *:3, /:4
+    Ops = new_list(N-1),
+    Ops in 1..4,
+
+    % The permutation to use
+    CardsP = new_list(N),
+    CardsP in Cards.remove_dups(),
+  
+    % permutation(Cards,CardsP),
+    bp.permutation(Cards,CardsP),
+
+    X[1] #= CardsP[1],
+    foreach(I in 2..N)
+       op(X[I],X[I-1],CardsP[I], Ops[I-1])
+    end,
+    X[N] #= Objective,
+
+    % solve
+    Vars = X ++ Ops ++ CardsP,
+    % solve($[min(max(X)),ff,split],Vars), % "minimum" solution
+    solve([ff,split],Vars),
+
+    % output
+    write_krypto(CardsP, X, Ops).
+
+% X1 = X2 op C 
+op(X1,X2,C,Op) =>
+ (X1 #= X2 + C #/\ Op #= 1) #\/
+ (X1 #= X2 - C #/\ Op #= 2) #\/
+ (X1 #= X2 * C #/\ Op #= 3) #\/
+ (C #> 0 #/\ X2 mod C #= 0 #/\ X1 #= X2 div C #/\ Op #= 4).
+
+ops(1) = "+" => true.
+ops(2) = "-" => true.
+ops(3) = "*" => true.
+ops(4) = "/" => true.
+
+
+
+% L2 is a permutation of L1
+permutation(L1,L2) =>
+    foreach(V in L1.remove_dups())
+       count(V, L1,#=,C),
+       count(V, L2,#=,C)
+    end.
+
+%
+% Randomize a Krypto deck.
+% 
+% - three each of numbers 1-6, 
+% - four each of  the numbers 7-10, 
+% - two each of 11-17, 
+%  -one each of 18-25. 
+%
+rand_deck(Size) = Rand  =>
+  Deck = ([rep(N,3) : N in 1..6] ++ 
+          [rep(N,4) : N in 7..10] ++
+          [rep(N,2) : N in 11..17] ++
+          [rep(N,1) : N in 18..25]).flatten(),
+  DeckLen = Deck.length,
+  Ixes = new_map(),
+  while(Ixes.keys().length < Size)
+     Ixes.put(1+random2() mod DeckLen,1)
+  end,
+  Rand = [Deck[Ix] : (Ix=_) in Ixes].
+
+
+% Repeat Num Rep times         
+rep(Num, Rep) = [Num : _I in 1..Rep].
+
+write_krypto(CardsP,X,Ops) =>
+    println(cardsP=CardsP),
+    println('x     '=X),
+    println('ops   '=[ops(Op) : Op in Ops ]),
+
+    foreach(I in 2..length(CardsP))
+       printf("%2d %w %2d = %2d\n", X[I-1],ops(Ops[I-1]),CardsP[I],X[I])
+    end, 
+    nl.
+

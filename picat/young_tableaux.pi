@@ -1,0 +1,146 @@
+/*
+
+  Young tableaux and partition in Picat.
+
+  See 
+  http://mathworld.wolfram.com/YoungTableau.html
+  and
+  http://en.wikipedia.org/wiki/Young_tableau
+  """
+  The partitions of 4 are
+   {4}, {3,1}, {2,2}, {2,1,1}, {1,1,1,1}
+ 
+  And the corresponding standard Young tableaux are:
+ 
+  1.   1 2 3 4
+ 
+  2.   1 2 3         1 2 4    1 3 4
+       4             3        2
+ 
+  3.   1 2           1 3
+       3 4           2 4
+ 
+  4    1 2           1 3      1 4 
+       3             2        2 
+       4             4        3
+ 
+  5.   1
+       2
+       3
+       4
+  """  
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+% 
+% Show all solutions for N=6
+%
+go => 
+    N = 5,
+    L = findall(_, young_tableaux(N,_X,_P,1)),
+    writef("It was %d solutions.\n\n", L.length).
+
+
+
+%
+% Get the number of solutions for N in 1..10.
+%
+go2 =>
+    Lens = [],
+    foreach(N in 1..10)
+       L = findall(_, young_tableaux(N,_X,_P,0)),
+       Len = length(L),
+       writef("It was %d solutions.\n\n", Len),       
+       Lens := Lens ++ [Len]
+    end,
+    writeln(lengths=Lens).
+
+
+
+%
+% Ensure that all values in Xs are different (if they are not N).
+% 
+alldifferent_except_N(Xs,N) =>
+    foreach(I in 1..Xs.length, J in 1..I-1)
+         (Xs[I] #!= N #/\ Xs[J] #!= N) #=> (Xs[I] #!= Xs[J])
+    end.
+
+% From Picat Guide, page 74
+my_count(V,L,Rel,N) =>
+   sum([V #= E : E in L]) #= Count,
+   call(Rel,Count,N).
+
+
+young_tableaux(N,X,P,Print) =>
+
+    writef("Young tableaux and partitions of order %d\n", N),
+    X = new_array(N,N),
+    X in 1..N+1,
+
+    % for count and labeling
+    Vars = array_matrix_to_list(X),
+
+
+    % the partition structure
+    P = new_list(N),
+    P in 0..N+1,
+
+    % 1..N is used exactly once (N+1 may be used many times)
+    foreach(I in 1..N) count(I, Vars, #=, 1) end,
+    % foreach(I in 1..N) my_count(I, Vars, #=, 1) end,
+
+    % alternative (but much slower for this purpose)
+    % alldifferent_except_N(Vars,N+1),
+
+    X[1,1] #= 1,
+    % all rows and columns should be ordered
+    foreach(I in 1..N)
+        increasing([X[I,J] : J in 1..N]), % rows
+        increasing([X[J,I] : J in 1..N])  % columns
+    end,
+
+    % calculate the structure (the partition)
+    foreach(I in 1..N) P[I] #= sum([ (X[I,J] #=< N)  : J in 1..N]) end,
+
+    % P should be ordered
+    decreasing(P),
+    N #= sum(P),
+
+    Vars2 = Vars ++ P,
+
+    solve([ff],Vars2),
+    if Print == 1 then
+         writeln(p=P),
+         pretty_print(X)
+    end.
+
+
+increasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #=< List[I] end.
+
+decreasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #>= List[I] end.
+
+
+pretty_print(X) =>
+    N = X.length,
+    foreach(I in 1..N)
+       foreach(J in 1..N)
+            XIJ = X[I,J],
+            if XIJ #=< N then
+               writef("%2d", XIJ)
+            end
+       end,
+       writef(" "),
+       % don't show "empty" lines
+       if X[I,1] #=< N then writef("\n") end
+    end,
+    writef("\n").

@@ -1,0 +1,136 @@
+/*
+
+  Furniture moving (scheduling) in Picat.
+
+  From Marriott & Stukey: "Programming with constraints", page  112f
+
+  One result:
+     Sp Sc Sb  St
+    [0, 0, 30, 45]
+
+  Where the values are the start time for each task:
+   Starts with piano time 0  : 3 persons  (30 min)
+               chair time 0  : 1 person   (10 min)
+               bed   time 30 : 3 persons  (15 min)
+               table time 45 : 2 persons  (15 min)
+
+   0       10   15    30      45      60
+
+   piano --------------|bed---|       
+   piano --------------|       table----|
+   piano --------------|bed---|
+   chair --|            bed---|table----| 
+
+  There are many other solutions...
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go =>
+        L = findall([Sp, Sc, Sb, St], move([Sp, Sc, Sb, St])),
+        NumSolutions = length(L),
+        writef("start_times: %w\n", L),
+        writef("number_of_solutions: %d\n", NumSolutions).
+
+go2 =>
+        L = findall([Sp, Sc, Sb, St], move2([Sp, Sc, Sb, St])),
+        NumSolutions = length(L),
+        writef("start_times: %w\n", L),
+        writef("number_of_solutions: %d\n", NumSolutions).
+
+
+
+% Minimize end time
+go3 =>
+        move3.
+
+
+
+move([Sp, Sc, Sb, St]) =>
+
+        NumPersons in 0..3,
+        
+        Sp in 0..30, % piano: 60 - 30 
+        Sc in 0..50, % chair: 60 - 10
+        Sb in 0..45, % bed  : 60 - 15
+        St in 0..45, % table: 60 - 15
+        
+        Duration = [30,10,15,15],
+        MenNeeded = [3,1,3,2],
+        cumulative([Sp, Sc, Sb, St], Duration, MenNeeded, NumPersons),
+
+
+        % to get the end time of the tasks
+        SpEnd #= Sp + 30,
+        ScEnd #= Sc + 10,
+        SbEnd #= Sb + 15,
+        StEnd #= St + 15,
+
+        Vars = [Sp,Sc,Sb,St] ++ NumPersons,
+
+        % get all solutions
+        % NumPersons = 3,
+        solve(Vars),
+
+        writeln([piano=(Sp,SpEnd), chair=(Sc,ScEnd), 
+                 bed=(Sb,SbEnd), table=(St,StEnd), 
+                 num=NumPersons]).
+        
+        
+
+move2(X) =>
+        N = 4,
+        X = new_list(N),
+        X in 0..60,
+        NumPersons in 0..3,
+        
+        Duration = [30,10,15,15],
+        MenNeeded = [3,1,3,2],
+        cumulative(X, Duration, MenNeeded, NumPersons),
+
+
+        % to get the end time of the tasks
+        End = new_list(N),
+        End in 0..60,
+        foreach(I in 1..N) End[I] #= X[I]+Duration[I] end,
+
+        Vars = X ++ End ++ [NumPersons],
+
+        solve([ff,updown],Vars),
+
+        writeln([X, persons=NumPersons]).
+
+%
+% Minimize the end time (min span)
+%
+move3 =>
+        N = 4,
+        X = new_list(N),
+        X in 0..60,
+        NumPersons in 0..3,
+        
+        Duration = [30,10,15,15],
+        MenNeeded = [3,1,3,2],
+        cumulative(X, Duration, MenNeeded, NumPersons),
+
+
+        % to get the end time of the tasks
+        End = new_list(N),
+        End in 0..60,
+        foreach(I in 1..N) End[I] #= X[I]+Duration[I] end,
+
+        Vars = X ++ End ++ [NumPersons],
+
+        EndTime #= max(End),
+        solve([$min(EndTime),ff,down],Vars),
+
+        writeln([X, persons=NumPersons,endTime=EndTime]).
+

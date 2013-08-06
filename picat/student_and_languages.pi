@@ -1,0 +1,172 @@
+/* 
+
+  Students and Languages problem in Picat.
+
+  This is the Students and Languages problem from section 3.7 of
+  Antoni Niederlinski: 
+  "A Quick and Gentle Guide to Constraint Logic Programming via ECLiPSe",
+  page 122ff.
+
+  Problem formulation (page 122):
+  """
+  Five students of five nationalities spend their vacation on the Masurian
+  Lakes. Its a Pole, a Hungarian, a Finn, a Swede and a German. Determine
+  who speaks what language if:
+  1. Each student is fluent in one o more foreign languages, but only in those
+     that are native for some of the remaining students.
+  2. There is no single language spoken by all of them.
+  3. Each student may speak with any other student using some language.
+  4. The common languages include native languages of all students.
+  5. On average each student speaks two foreign languages.
+  6. The Pole and the Hungarian speak three foreign languages.
+  7. While the Swede has been swimming, the remaining four students could
+     speak a common language.
+  8. A common language could also be spoken while the Swede returned, but
+     the Finn went rowing.
+  9. In order to speak Swedish, two student had to leave the group.
+  10. Polish and Finnish is spoken (as foreign language) by only two students.
+  11. The Pole and Finn may communicate using two languages, none of them
+      being German.
+  12. The Hungarian and the Swede have only one common language.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+% It's a unique solution.
+go =>
+  time2($students(_Students)),
+  fail.
+
+% Just test for max three solutions.
+go2 =>
+  get_N_solutions($students(_Students), 3),
+  nl.
+
+get_N_solutions(Goal, N) =>
+  printf("Get %d solutions:\n", N),
+  get_global_map().put(solcount,1), 
+  time2(Goal),
+  C = get_global_map().get(solcount),
+  if C < N then get_global_map().put(solcount,C+1), fail end,
+  nl.
+
+
+students(Students) =>
+
+  N = 5,
+
+  % Students[Student,Language]
+  Students = new_array(N,N),
+  Students in 0..1,
+
+  Polish    = 1,
+  Hungarian = 2,
+  Finnish   = 3,
+  Swedish   = 4,
+  German    = 5,
+
+
+  % Five students of five nationalities spend their vacation on the Masurian
+  % Lakes. Its a Pole, a Hungarian, a Finn, a Swede and a German. Determine
+  % who speaks what language if:
+
+  % Assumption: A student is fluent is his/her own language
+  foreach(I in 1..N) Students[I,I] := 1 end,
+
+  % 1. Each student is fluent in one or more foreign languages, but only in those
+  %    that are native for some of the remaining students.
+  foreach(S in 1..N) 
+    sum([Students[S,L] : L in 1..N]) #>= 2
+  end,
+
+  % 2. There is no single language spoken by all of them.
+  foreach(L in 1..N) 
+    sum([Students[S, L] : S in 1..N]) #< N
+  end,
+
+  % 3. Each student may speak with any other student using some language.
+  foreach(S1 in 1..N, S2 in 1..N, S1 < S2) 
+    sum([Students[S1,L] + Students[S2,L]: L in 1..N]) #>= 2
+  end,
+
+  % 4. The common languages include native languages of all students.  
+  % foreach(L in 1..N) 
+  %   sum([Students[S,L] : S in 1..N]) #>= 2
+  % end,
+
+  % 5. On average each student speaks two foreign languages.
+  sum([Students[S,L] : L in 1..N, S in 1..N, S != L]) #= 10,
+
+  % 6. The Pole and the Hungarian speak three foreign languages.
+  sum([Students[Polish,L] : L in 1..N, L != Polish]) #= 3,
+  sum([Students[Hungarian,L] : L in 1..N, L != Hungarian]) #= 3,
+
+  % 7. While the Swede has been swimming, the remaining four students could
+  %    speak a common language.
+  CommonNoSwedish in 1..N,
+  CommonNoSwedish #!= Swedish,
+  sum([T : S in [Polish,Hungarian,Finnish,German], matrix_element(Students,S,CommonNoSwedish,T)]) #= 4,
+
+
+  % 8. A common language could also be spoken while the Swede returned, but
+  %    the Finn went rowing.
+  CommonNoFinnish in 1..N,
+  CommonNoFinnish #!= Finnish,
+  sum([T : S in [Polish,Hungarian,Swedish,German], matrix_element(Students,S,CommonNoFinnish,T)]) #= 4,
+
+  % 9. In order to speak Swedish, two student had to leave the group.
+  sum([Students[S,Swedish] : S in 1..N]) #= 3,
+
+  % 10. Polish and Finnish is spoken (as foreign language) by only two students.
+  sum([Students[S,Polish] : S in 1..N, S != Polish]) + 
+      sum([Students[S,Finnish] : S in 1..N, S != Finnish]) #= 2,
+
+  % 11. The Pole and Finn may communicate using two languages, none of them
+  %     being German.
+  sum([Students[Polish,L] #= Students[Finnish,L] : L in 1..N]) #= 2,
+  Students[Polish,German] + Students[Finnish,German] #< 2,
+
+  % 12. The Hungarian and the Swede have only one common language.
+  sum([Students[Hungarian,L] #= Students[Swedish,L] : L in 1..N]) #= 1,
+
+  % 
+  % solve
+  % 
+  Vars = Students.to_list() ++ [CommonNoFinnish, CommonNoSwedish],
+  solve([constr,split], Vars),
+
+  StudentStr = ["Polish","Hungarian","Finnish","Swedish","German"],
+  foreach(S in 1..N) 
+     printf("%-10s: %w\n", StudentStr[S], Students[S])
+  end,
+  nl,
+  foreach(S in 1..N) 
+     printf("The %s student speaks these languages: %w\n", StudentStr[S], [StudentStr[L] : L in 1..N, Students[S,L] == 1])
+  end,
+
+  println(commonNoSwedish=StudentStr[CommonNoSwedish]),
+  println(commonNoFinnish=StudentStr[CommonNoFinnish]),
+
+  nl.
+
+
+% matrix_element(X, I, J, Val) =>
+%    element(I, X, Row),
+%    element(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%    nth(I, X, Row),
+%    nth(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%    freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element(X, I, J, Val) =>
+   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).

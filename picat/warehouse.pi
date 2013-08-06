@@ -1,0 +1,113 @@
+/*
+
+  Warehouse location in Picat.
+
+  From OPL model warehouse.mod
+  Solution:
+  """
+  Optimal solution found with objective: 383
+  open= [1 1 1 0 1]
+  storesof= [{3} {1 5 6 8} {7 9} {} {0 2 4}]
+  """
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+
+   Warehouses = ["Bonn", "Bordeaux", "London", "Paris", "Rome"],
+   Capacity= [1,4,2,1,3],
+   SupplyCost = 
+   [[ 20, 24, 11, 25, 30 ], 
+    [ 28, 27, 82, 83, 74 ],
+    [ 74, 97, 71, 96, 70 ],
+    [  2, 55, 73, 69, 61 ],
+    [ 46, 96, 59, 83,  4 ],
+    [ 42, 22, 29, 67, 59 ],
+    [  1,  5, 73, 59, 56 ],
+    [ 10, 73, 13, 43, 96 ],
+    [ 93, 35, 63, 85, 46 ],
+    [ 47, 65, 55, 71, 95 ]],
+   
+   Fixed = 30,
+
+   NumStores = SupplyCost.length,
+   NumWarehouses = SupplyCost[1].length,
+   SupplyCostList = array_matrix_to_list(SupplyCost),
+
+   % suppliers
+   Supply = new_array(NumStores, NumWarehouses),
+   SupplyList = vars(Supply),
+   SupplyList in 0..1,
+
+
+   % Open suppliers
+   Open = new_list(NumWarehouses),
+   Open in 0..1,
+
+   % Supply
+   foreach(SS in Supply) sum(SS.to_list()) #= 1 end,
+
+   foreach(SS in Supply)
+      foreach({O,S} in zip(Open,SS.to_list())) S #=< O end
+   end,
+
+   % check capacity
+   SupplyTransposed = transpose(Supply).array_matrix_to_list_matrix(),
+   foreach({Column,Cap} in zip(SupplyTransposed, Capacity)) sum(Column) #=< Cap end,
+
+   
+   % calculate total costs: Fixed costs for the open
+   Costs1 #= sum([Fixed*O :  O in Open]),
+
+   % cost for open suppliers
+   scalar_product(SupplyCostList,SupplyList,Costs2),
+
+   TotalCosts #= Costs1 + Costs2,
+
+   % search
+   Vars1 = SupplyList ++ Open,
+   solve([ff,$min(TotalCosts)], Vars1),
+
+
+   % output
+   writeln(open=Open),
+   println("supply:"),
+   foreach(S in Supply) println(S) end,
+   nl,
+   writeln(total_costs=TotalCosts),
+   foreach({Warehouse,W} in zip(Warehouses,1..NumWarehouses))
+       element(W,Open,OpenW),
+       % OpenW = Open[W], 
+       printf("%w: open: %w  Stores: ", Warehouse, OpenW),
+       foreach(S in 1..NumStores)
+           matrix_element(Supply,S,W,SupplySW),
+           if SupplySW == 1  then
+               printf("%w ", S)
+           end
+       end,
+       nl
+   end,
+
+
+   nl.
+
+scalar_product(A, X, Product) => 
+   Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
+
+
+% matrix_element(X, I, J, Val) =>
+%   element(I, X, Row),
+%   element(J, Row, Val).
+
+matrix_element(X, I, J, Val) =>
+    freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+

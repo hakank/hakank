@@ -1,0 +1,350 @@
+/* 
+
+  ABC End View in Picat.
+
+  This is also knows as "Easy as ABC" and "Last Man Standing".
+  
+  From Fun With Puzzles: "ABC End View: A1"
+  http://www.funwithpuzzles.com/2009/12/abcd-end-view-a1.html
+  """
+  This the classical puzzle and appeared in many World Puzzle Championships.
+  
+  This puzzle is also known with following names
+  1. Easy as ABC
+  
+  "ABC End View" Puzzle Instructions:
+  Enter the letters ABC such that each letter is exactly once, in all of the 
+  rows and columns. One cells will remain empty in each row and column. 
+  The letters outside the grid show which letter you come across first 
+  from that direction.
+  
+        ABC End View
+  
+             A               
+         _ _ _ _
+       C _ _ _ _
+       C _ _ _ _ B
+         _ _ _ _
+           B
+  """
+
+  Note: There are some problem instances below that use A..D and
+        5x5 or 6x6 grid which means that there may be 2 empty cells
+        before/after.
+  
+  Also see:
+    http://www.janko.at/Raetsel/AbcEndView/index.htm
+
+  The diagonal constraint means that the two diagonal should
+  also be allDifferent (except empty cells). See problem11
+  for an example: http://www.janko.at/Raetsel/AbcEndView/168.a.htm
+
+ 
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+
+go => 
+    foreach(P in 1..10) 
+       printf("\nProblem %d\n", P),
+       run_problem(P,X),
+       % println(x=X),
+       print_grid(X)
+    end,
+    nl.
+
+run_problem(P,X) => 
+    problem(P,N,MaxLetter,RowUpper,RowLower,ColLeft,ColRight, Diagonal),
+    time2(abc_endview(N,MaxLetter,RowUpper,RowLower,ColLeft,ColRight, Diagonal, X)).
+
+
+abc_endview(N,MaxLetter,RowUpper,RowLower,ColLeft,ColRight, Diagonal, X) =>
+   writeln([n=N,maxLetterMaxLetter,diagonal=Diagonal]),
+   writeln([rowUpper=RowUpper,rowLower=RowLower]),
+   writeln([colLeft=ColLeft,colRight=ColRight]),
+
+   Dist = N-MaxLetter+1, % Number of accepted empty cells before/after
+
+
+   % For global cardinality
+   GCC = [I : I in 0..MaxLetter],
+   Counts = [N-MaxLetter] ++ [1 : I in 1..MaxLetter],
+
+   writeln(gcc=GCC),
+   writeln(counts=Counts),
+   writeln(dist=Dist),
+
+   % decision variables
+   X = new_array(N,N),
+   X in 0..MaxLetter,
+
+   % The hints
+   foreach(J in 1..N) 
+     Tmp = [X[I,J] : I in 1..N],
+     start_with(Tmp, RowUpper[J], Dist),
+     end_with(Tmp, RowLower[J], Dist)
+   end,
+
+   foreach(I in 1..N) 
+     Tmp = [X[I,J] : J in 1..N],
+     start_with(Tmp, ColLeft[I], Dist),
+     end_with(Tmp, ColRight[I], Dist)
+   end,
+
+
+   % Latin square except 0
+   %
+   % (It's an alldifferent_except_0/1 but we also know how many zeros there 
+   %  should be.)
+   foreach(I in 1..N)
+      global_cardinality([X[I,J] : J in 1..N], GCC, Counts),
+      global_cardinality([X[J,I] : J in 1..N], GCC, Counts) 
+   end,
+
+   if Diagonal == 1 then 
+     global_cardinality([X[I,I] : I in 1..N], GCC, Counts),
+     global_cardinality([X[I,N-I+1] : I in 1..N], GCC, Counts) 
+   end,
+
+   Vars = X,
+
+   solve([ff,down],Vars).
+
+
+print_grid(Grid) => 
+   Letters = "ABCDEF",
+   foreach(Row in Grid) 
+      foreach(E in Row.to_list()) 
+         if E == 0 then
+            printf("_ ")
+         else
+            printf("%w ", Letters[E])
+         end
+      end,
+      nl
+   end,
+   nl.
+
+
+
+%
+% A start with letter C and accept D empty slots.
+start_with(A, C, D) =>
+   N = length(A),
+   if C > 0 then
+     I in 1..D,
+     element(I,A,C),
+     foreach(J in 1..N) 
+       I #> J #=> A[J] #= 0
+     end
+   end.
+
+
+%
+% A ends with letter C and accept D empty slots
+%
+end_with(A, C, D) =>
+   N = length(A),
+   if C > 0 then
+     I in N-D..N,
+     element(I,A,C),
+     foreach(J in 1..N)
+       J #> I #=> A[J] #= 0
+     end
+   end.
+
+
+global_cardinality(A,Gcc,Counts) =>
+   foreach(I in 1..Gcc.length) count(Gcc[I],A,#=,Counts[I]) end.
+
+%
+% Problem instances
+%
+
+
+%
+% Problem instance from
+% http://www.funwithpuzzles.com/2009/12/abcd-end-view-a1.html
+% This is a 4x4 with 1 blank
+%
+problem(1,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,B=2,C=3,
+   N = 4,
+   MaxLetter = C,
+   RowUpper = [0,0,A,0],
+   RowLower = [0,B,0,0],
+   ColLeft  = [0,C,C,0],
+   ColRight = [0,0,B,0],
+   Diagonal = 0. % Has diaginal constraint?
+
+
+
+
+% From Dan Moore: Brainpower Bible
+% (introduction example)
+% Note: This is a 5x5 grid with 2 blanks
+problem(2,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,B=2,C=3,
+   N = 5,
+   MaxLetter = C,
+   RowUpper = [C,C,A,C,0],
+   RowLower = [B,B,0,A,0],
+   ColLeft  = [0,A,0,0,0],
+   ColRight = [0,B,A,B,0],
+   Diagonal = 0.
+
+
+% From Dan Moore: Brainpower Bible
+% Alfa 1 (5x5)
+problem(3,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+  A=1,B=2,C=3,
+  N = 5,
+  MaxLetter = C,
+  RowUpper = [0,B,B,C,0],
+  RowLower = [B,C,A,A,B],
+  ColLeft  = [0,0,B,B,C],
+  ColRight = [0,B,0,A,B],
+  Diagonal = 0.
+
+% From Dan Moore: Brainpower Bible
+% Alfa 2 (5x5)
+problem(4,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,B=2,C=3,
+   N = 5,
+   MaxLetter = C,
+   RowUpper = [B,0,0,C,B],
+   RowLower = [0,A,B,A,C],
+   ColLeft  = [0,0,0,A,B],
+   ColRight = [A,B,0,0,0],
+   Diagonal = 0.
+
+% % From Dan Moore: Brainpower Bible
+% % Delta 1 (6x6)
+problem(5,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,_B=2,C=3,D=4,
+   N = 6,
+   MaxLetter = D,
+   RowUpper = [D,D,A,0,C,A],
+   RowLower = [0,0,0,C,0,0],
+   ColLeft  = [D,0,D,0,0,A],
+   ColRight = [0,0,A,D,C,C],
+   Diagonal = 0.
+
+% From Dan Moore: Brainpower Bible
+% Delta 2 (6x6)
+problem(6,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,B=2,C=3,D=4,
+   N = 6,
+   MaxLetter = D,
+   RowUpper = [0,B,D,D,0,C],
+   RowLower = [B,0,0,B,C,D],
+   ColLeft  = [A,D,C,0,B,D],
+   ColRight = [0,0,B,B,0,0],
+   Diagonal = 0.
+
+
+% From http://www.cross-plus-a.com/puzzles.htm#EasyAsABC
+% (6x6)
+problem(7,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,B=2,C=3,D=4,E=5,
+   N = 6,
+   MaxLetter = E,
+   RowUpper = [A,0,0,E,0,0],
+   RowLower = [0,B,C,0,0,A],
+   ColLeft  = [0,0,A,D,0,0],
+   ColRight = [E,0,B,E,0,0],
+   Diagonal = 0.
+
+
+% From http://www.janko.at/Raetsel/AbcEndView/209.a.htm
+% ABC End View Nr. 209
+% (7x7)
+% (Difficulty 8, "schwer")
+problem(8,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+  A=1,B=2,C=3,D=4,E=5,
+  N = 7,
+  MaxLetter = E,
+  RowUpper = [A,0,B,0,0,C,B],
+  RowLower = [0,A,0,B,B,D,0],
+  ColLeft  = [A,C,A,0,E,0,E],
+  ColRight = [0,D,0,C,0,E,0],
+  Diagonal = 0.
+
+% From http://www.janko.at/Raetsel/AbcEndView/046.a.htm
+% ABC End View Nr. 46
+% (7x7)
+% (Difficulty 8, "schwer")
+problem(9,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   _A=1,B=2,C=3,D=4,E=5,
+   N = 7,
+   MaxLetter = E,
+   RowUpper = [0,0,D,C,0,0,C],
+   RowLower = [0,0,E,D,D,C,0],
+   ColLeft  = [0,E,C,C,E,B,0],
+   ColRight = [0,0,B,0,0,C,0],
+   Diagonal = 0.
+
+
+% http://www.janko.at/Raetsel/AbcEndView/168.a.htm
+% ABC End View Nr. 168
+% (7x7)
+% (Difficulty 8, "schwer")
+% NOTE: This has the Diagonal requirement.
+%
+% A B C E F _ D
+% B E F _ D A C
+% _ A D F E C B
+% C _ E B A D F
+% E F _ D C B A
+% D C B A _ F E
+% F D A C B E _
+
+problem(10,N,MaxLetter,
+        RowUpper,RowLower,
+        ColLeft,ColRight,
+        Diagonal) =>
+   A=1,B=2,C=3,D=4,E=5,F=6,
+   N = 7,
+   MaxLetter = F,
+   RowUpper = [A,0,C,E,F,A,0],
+   RowLower = [0,D,0,C,0,0,E],
+   ColLeft  = [A,0,0,C,E,D,0],
+   ColRight = [0,C,B,0,0,E,0],
+   Diagonal = 1.
