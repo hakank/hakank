@@ -1,0 +1,152 @@
+# Sat Jan  3 21:30:29 2009/hakank@bonetmail.com
+# 
+# The obligatory read_test program:
+# 
+# Search in a dictionary file for words matching the sequence
+#   *a.*b.*c.*d* (etc)
+# 
+# Compare with
+#  perl ~/perl2/me/read_test.pl about 4 seconds
+#  pop11 ~/poplog/me/read_test.p about 6 seconds
+
+link ximage, patterns, scan, hakank_utils
+# link allof
+link feval
+
+procedure main(len)
+
+    \len := 5
+
+    # every write(gen_str(4))
+    # exit(0)
+
+  
+    f := open("/usr/dict/words", "r")
+    words := []
+    while word:= read(f) do { 
+        put(words, word)
+    }
+
+    # exit(0)
+
+    every p:= gen_pattern(len) do {
+        write("pattern: ", p)
+        found := check_words(words, p)
+        every write(!found)
+        write("found ", *found, " words")
+        write()
+    }
+
+#     # a different version (but it don't work)
+#     every p:= gen_str(len) do {
+#        write("pattern: ", p)
+#        found := []
+#       
+#         every word := words[1 to *words] do {
+#             word ? {  
+#                 feval(proc(p,0))
+#             } & put(found, word) # & write(word)
+#         }
+#         write("found ", *found)
+#     }
+
+end
+
+
+procedure check_words(words, p) 
+
+    found := []
+
+#     # idea from search_text.icn. More iconish...
+#     # For len = 6 this takes about 1:03 minutes. To compare with pop-11 6 seconds.
+#     every word := words[1 to *words] do {        
+#         word ? { 
+#             s := 0 # character counter
+#             every c := !p do {
+#                 tab(upto(c)) &
+#                 (=c | next) &
+#                 s +:= 1                
+#             } &  # check the solutions
+#               s = *p &
+#               put(found, word)
+            
+#         }
+#     }
+
+
+    # This works, slow but faster than the above
+    # For len = 6 this takes about 28 seconds. To compare with pop-11:s 6 seconds.
+    every word := words[1 to *words] do {        
+        word ? { 
+            res := ""
+            every i := 1 to *p do {
+                tab(upto(p[i]) | break)
+                res ||:= move(1) | tab(0) 
+                # check what we had so far. 
+                # Early breaking which saves some seconds.
+                if res ~== p[1+:i] then break
+            }
+
+            if res == p then {
+                put(found, word)
+            }
+       }
+    }
+
+    
+    return found
+
+end
+
+#
+# generate a string "abcd.." of length n
+#
+procedure gen_pattern(len) 
+
+    # darn, "åäö" don't work...
+    a := "abcdefghijklmnopqrstuvwxyz" # åäö"
+    every i:= 1 to *a do {
+        suspend(a[i+:len])
+    }
+
+end
+
+
+# generates a string version 
+#   tab(upto(c)) & move(1)
+procedure gen_str(len) 
+
+    a := "abcdefghijklmnopqrstuvwxyz" # åäö"
+
+    every i:= 1 to *a do {
+        L := []
+         every p := !a[i+:len] do {
+             s := "tab(upto(\"" || p || "\"))"
+             put(L, s)
+         }
+         str := join(L, " & move(1) & ")
+
+        suspend str
+    }
+    
+    
+end
+
+
+procedure join(vec, char) 
+
+    /char := ""
+
+    str := "";
+    if type(char) == ="list" then {
+        every str ||:= !vec
+        return str
+
+    } else {
+        every str ||:= !vec || char
+    
+        return str[1:-*char]
+    }
+
+
+end
