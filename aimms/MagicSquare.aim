@@ -1,0 +1,156 @@
+
+MAIN MODEL Main_MagicSquare
+
+  DECLARATION SECTION 
+
+    PARAMETER:
+       identifier   :  N
+       initial data :  4 ;
+
+    PARAMETER:
+       identifier   :  N2
+       definition   :  N*N ;
+
+    PARAMETER:
+       identifier   :  UseSymmetry1
+       range        :  binary
+       initial data :  0
+       comment      :  "To use the constraint Symmetry1 or not." ;
+
+    PARAMETER:
+       identifier   :  UseSymmetry2
+       range        :  binary
+       initial data :  0 ;
+
+    PARAMETER:
+       identifier   :  UseSymmetry3
+       range        :  binary
+       initial data :  0 ;
+
+    PARAMETER:
+       identifier   :  UseSymmetry4
+       range        :  binary
+       initial data :  0 ;
+
+    PARAMETER:
+       identifier   :  UseFreeTotal
+       range        :  binary
+       initial data :  0
+       comment      :  "If Total should be = TotalP or calculated." ;
+
+    SET:
+       identifier   :  ij
+       subset of    :  Integers
+       indices      :  i, j
+       definition   :  ElementRange(1,N) ;
+
+    VARIABLE:
+       identifier   :  x
+       index domain :  (i,j)
+       range        :  {1..N2} ;
+
+    CONSTRAINT:
+       identifier   :  Alldifferent
+       definition   :  cp::AllDifferent((i,j), x(i,j)) ;
+
+    VARIABLE:
+       identifier   :  Total
+       range        :  {0..inf} ;
+
+    VARIABLE:
+       identifier   :  NumSolutions
+       range        :  integer
+       definition   :  GMP::Solution::Count('MagicSquarePlan') ;
+
+    PARAMETER:
+       identifier   :  TotalP
+       definition   :   ( N * (N*N + 1)) / 2 ;
+
+    CONSTRAINT:
+       identifier   :  EqTotals
+       definition   :  if (not UseFreeTotal) then
+                         Total = TotalP
+                       endif ;
+
+    CONSTRAINT:
+       identifier   :  Sum1
+       index domain :  i
+       definition   :  Sum(j, x(i,j)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  Sum2
+       index domain :  (j)
+       definition   :  Sum(i, x(i,j)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  SumDiagonal1
+       definition   :  Sum(i, x(i,i)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  SumDiagonal2
+       definition   :  Sum(i, x(i,N-i-1)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  Symmetry1
+       definition   :  if (UseSymmetry1) then
+                          x(1,1) = 1
+                       endif ;
+
+    CONSTRAINT:
+       identifier   :  Symmetry2
+       definition   :  if (UseSymmetry2) then
+                          x(1,1) < x(1,N)
+                       endif ;
+
+    CONSTRAINT:
+       identifier   :  Symmetry3
+       definition   :  if (UseSymmetry3) then
+                         x(1,N) < x(N,1)
+                       endif ;
+
+    CONSTRAINT:
+       identifier   :  Symmetry4
+       definition   :  if (UseSymmetry4) then
+                         x(1,1) < x(N,N)
+                       endif ;
+
+    MATHEMATICAL PROGRAM:
+       identifier   :  MagicSquarePlan
+       direction    :  minimize
+       constraints  :  AllConstraints
+       variables    :  AllVariables
+       type         :  CSP ;
+
+  ENDSECTION  ;
+
+  PROCEDURE
+    identifier :  MainInitialization
+
+  ENDPROCEDURE  ;
+
+  PROCEDURE
+    identifier :  MainExecution
+    body       :  
+      ShowProgressWindow;
+      solve MagicSquarePlan;
+      NumSolutions:=GMP::Solution::Count('MagicSquarePlan');
+      if (MagicSquarePlan.ProgramStatus <> 'Optimal') then
+           empty x, Total;
+      endif;
+      
+      DialogMessage(NumSolutions + " solutions");
+
+  ENDPROCEDURE  ;
+
+  PROCEDURE
+    identifier :  MainTermination
+    body       :  
+      if ( CaseSaveAll( confirm:2 ) = 1 ) then
+          return 1;
+      else
+          return 0;
+      endif ;
+
+  ENDPROCEDURE  ;
+
+ENDMODEL Main_MagicSquare ;

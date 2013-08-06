@@ -1,0 +1,155 @@
+
+MAIN MODEL Main_WhoKilledAgatha
+
+  DECLARATION SECTION 
+
+    PARAMETER:
+       identifier   :  N
+       definition   :  3 ;
+
+    PARAMETER:
+       identifier   :  Agatha
+       definition   :  1 ;
+
+    PARAMETER:
+       identifier   :  Butler
+       definition   :  2 ;
+
+    PARAMETER:
+       identifier   :  Charles
+       definition   :  3 ;
+
+    SET:
+       identifier   :  ij
+       subset of    :  Integers
+       indices      :  i, j
+       definition   :  {1..N} ;
+
+    ELEMENT VARIABLE:
+       identifier   :  TheKiller
+       range        :  ij ;
+
+    ELEMENT VARIABLE:
+       identifier   :  TheVictim
+       range        :  ij ;
+
+    VARIABLE:
+       identifier   :  Hates
+       index domain :  (i,j)
+       range        :  binary ;
+
+    VARIABLE:
+       identifier   :  Richer
+       index domain :  (i,j)
+       range        :  binary ;
+
+    CONSTRAINT:
+       identifier   :  AgathaIsVictim
+       definition   :  TheVictim = Agatha ;
+
+    CONSTRAINT:
+       identifier   :  KillerHatesAVictim
+       definition   :  /*
+                       if (TheKiller = i) then
+                         hates(i, TheVictim) = 1
+                       endif
+                       */
+                       hates(TheKiller, TheVictim) = 1 ;
+
+    CONSTRAINT:
+       identifier   :  KillerNoRicherThanVictim
+       definition   :  Richer(TheKiller, TheVictim) = 0 ;
+
+    CONSTRAINT:
+       identifier   :  RicherDefined1
+       index domain :  i
+       definition   :  Richer(i,i) = 0 ;
+
+    CONSTRAINT:
+       identifier   :  RicherDefined2
+       index domain :  (i,j) | i <> j
+       definition   :  (Richer(i,j) = 1) onlyif (Richer(j,i) = 0) ;
+
+    CONSTRAINT:
+       identifier   :  RicherDefined3
+       index domain :  (i,j) |i <> j
+       definition   :  (Richer(i,j) = 0) onlyif  Richer(j,i) = 1 ;
+
+    CONSTRAINT:
+       identifier   :  CharlesHatesNoOneAgathaHates
+       index domain :  j
+       definition   :  If (Hates(Agatha, j) = 1 ) then
+                          Hates(Charles, j) = 0
+                       endif  ;
+
+    CONSTRAINT:
+       identifier   :  ButlerHatesEveryoneNotRicherThanAgatha
+       index domain :  i
+       definition   :  if (Richer(i, Agatha) = 0) then
+                         Hates(Butler, i) = 1
+                       endif ;
+
+    CONSTRAINT:
+       identifier   :  ButlerHaveEveryoneWhomAgataHates
+       index domain :  i
+       definition   :  if (Hates(Agatha, i) = 1) then
+                         Hates(Butler, i) = 1
+                       endif ;
+
+    CONSTRAINT:
+       identifier   :  Hates1
+       definition   :  hates(Agatha, Charles) = 1 ;
+
+    CONSTRAINT:
+       identifier   :  Hates2
+       definition   :  hates(Agatha, Agatha) = 1 ;
+
+    CONSTRAINT:
+       identifier   :  Hates3
+       definition   :  hates(Agatha, Butler) = 0 ;
+
+    CONSTRAINT:
+       identifier   :  NoOneHatesEveryone
+       index domain :  i
+       definition   :  Sum(j, hates(i,j)) <= 2 ;
+
+    MATHEMATICAL PROGRAM:
+       identifier   :  WhoKilledAgathaPlan
+       direction    :  minimize
+       constraints  :  AllConstraints
+       variables    :  AllVariables
+       type         :  CSP ;
+
+  ENDSECTION  ;
+
+  PROCEDURE
+    identifier :  MainInitialization
+
+  ENDPROCEDURE  ;
+
+  PROCEDURE
+    identifier :  MainExecution
+    body       :  
+      ShowProgressWindow;
+      solve WhoKilledAgathaPlan;
+      
+      if (WhoKilledAgathaPlan.ProgramStatus <> 'Optimal') then
+           empty TheKiller, TheVictim, Hates, Richer;
+      endif;
+      
+      DialogMessage(GMP::Solution::Count('WhoKilledAgathaPlan'));
+
+  ENDPROCEDURE  ;
+
+  PROCEDURE
+    identifier :  MainTermination
+    body       :  
+      if ( CaseSaveAll( confirm:2 ) = 1 ) then
+          return 1;
+      else
+          return 0;
+      endif ;
+
+  ENDPROCEDURE  ;
+
+ENDMODEL Main_WhoKilledAgatha ;

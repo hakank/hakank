@@ -1,0 +1,133 @@
+
+MAIN MODEL Main_MagicSquareWaterRetention
+
+  DECLARATION SECTION 
+
+    PARAMETER:
+       identifier   :  N
+       initial data :  4 ;
+
+    PARAMETER:
+       identifier   :  N2
+       definition   :  N*N ;
+
+    PARAMETER:
+       identifier   :  N3
+       definition   :  N*N*N ;
+
+    MATHEMATICAL PROGRAM:
+       identifier   :  MagicSquareWaterRetentionPlan
+       objective    :  z
+       direction    :  maximize
+       constraints  :  AllConstraints
+       variables    :  AllVariables
+       type         :  Automatic ;
+
+    SET:
+       identifier   :  ij
+       subset of    :  Integers
+       indices      :  i, j
+       definition   :  ElementRange(1,N) ;
+
+    VARIABLE:
+       identifier   :  x
+       index domain :  (i,j)
+       range        :  {1..N2} ;
+
+    VARIABLE:
+       identifier   :  water
+       index domain :  (i,j)
+       range        :  {1..N2} ;
+
+    VARIABLE:
+       identifier   :  retention
+       index domain :  (i,j)
+       range        :  {0..N2}
+       definition   :  water(i,j) - x(i,j) ;
+
+    VARIABLE:
+       identifier   :  z
+       range        :  free
+       definition   :  Sum((i,j), water(i,j)) - (N2*(N2+1)/2)
+       comment      :  "The objective, to maximize." ;
+
+    PARAMETER:
+       identifier   :  Total
+       definition   :  ( N * (N*N + 1)) / 2 ;
+
+    CONSTRAINT:
+       identifier   :  Alldifferent
+       definition   :  cp::AllDifferent((i,j), x(i,j)) ;
+
+    CONSTRAINT:
+       identifier   :  Sum1
+       index domain :  i
+       definition   :  Sum(j, x(i,j)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  Sum2
+       index domain :  (j)
+       definition   :  Sum(i, x(i,j)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  SumDiagonal1
+       definition   :  Sum(i, x(i,i)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  SumDiagonal2
+       definition   :  Sum(i, x(i,N-i-1)) = Total ;
+
+    CONSTRAINT:
+       identifier   :  Symmetry1
+       definition   :  x(1,2) < x(2,1)
+       comment      :  "Frénicle form, part 1." ;
+
+    CONSTRAINT:
+       identifier   :  Symmetry2
+       definition   :   x(1,1) = Min(x(1,1), x(1,N), x(N,1), x(N,N) )
+       comment      :  "Frénicle form, part 2." ;
+
+    CONSTRAINT:
+       identifier   :  water1
+       index domain :  (i,j) | i > 1 and j > 1 and i < N and j < N
+       definition   :  water(i,j) = Max(x(i,j), Min(water(i-1,j), water(i,j-1),
+                                                    water(i+1,j), water(i,j+1)))
+       comment      :  "Water retention part1." ;
+
+    CONSTRAINT:
+       identifier   :  water2
+       index domain :  i
+       definition   :  water(i,1) = x(i,1) and
+                       water(i,N) = x(i,N) and
+                       water(1,i) = x(1,i) and
+                       water(N,i) = x(N,i)
+       comment      :  "Water retention part 2." ;
+
+  ENDSECTION  ;
+
+  PROCEDURE
+    identifier :  MainInitialization
+
+  ENDPROCEDURE  ;
+
+  PROCEDURE
+    identifier :  MainExecution
+    body       :  
+      ShowProgressWindow;
+      solve MagicSquareWaterRetentionPlan;
+      if (MagicSquareWaterRetentionPlan.ProgramStatus <> 'Optimal') then
+         /* empty x; */
+      endif;
+      
+      DialogMessage( GMP::Solution::Count('MagicSquareWaterRetentionPlan')+ " solutions");
+
+  ENDPROCEDURE  ;
+
+  PROCEDURE
+    identifier :  MainTermination
+    body       :  
+      return DataManagementExit();
+
+  ENDPROCEDURE  ;
+
+ENDMODEL Main_MagicSquareWaterRetention ;
