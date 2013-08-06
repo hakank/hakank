@@ -1,0 +1,150 @@
+#!/usr/bin/env setl
+-- 
+-- Anagrams in SETL.
+--
+-- This version checks for the largest sets of anagrams from a word list,
+-- (default /usr/dict/words). Note: this program just cares about words
+-- consisting of a-z.
+--
+-- Syntax:
+--    setl anagrams.setl 
+--    setl anagram2.setl some_word_list
+--
+-- Also compare with the Rosetta Code:
+-- http://rosettacode.org/wiki/Anagrams
+--
+--
+-- This SETL program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+-- Also see my SETL page: http://www.hakank.org/setl/
+--
+
+word_list := command_line(1) ? '/usr/dict/words';
+h := open(word_list, "r");
+
+anagrams := {};
+while not eof(h) loop
+  geta(h, word);
+  if word = om or word = "" then
+    continue;
+  end if;
+  -- sorted := qsort(word); -- 1:10 minutes 
+  sorted := insertion_sort(word); -- 30 seconds
+  -- sorted := merge_sort(word); -- 2:10 minutes
+  anagrams{sorted} with:= word;
+
+end loop;
+
+print("Finished reading the dictionary");
+
+max_size := 0;
+max_words := {};
+for words = anagrams{sorted} loop
+  size := #words;
+  if size > max_size then
+    max_size := size;
+    max_words := {words};
+  elseif size = max_size then
+    max_words with:= {words};
+  end if;
+end loop;
+
+print("max_size:",max_size, " max_words:", max_words, " #max_words:",#max_words);
+
+
+--
+-- Quick sort
+-- About 1:10 minutes
+--
+proc qsort(a);
+  if #a > 1 then
+    pivot := a(#a div 2 + 1);
+    a := qsort([x in a | x < pivot]) +
+         [x in a | x = pivot] +
+         qsort([x in a | x > pivot]);
+  end if;
+  return a;
+end proc;
+
+
+--
+-- insertion sort
+--
+-- Inspired by 
+-- http://en.wikipedia.org/wiki/Insertion_sort
+-- About 34 seconds
+--
+procedure insertion_sort(A);
+   for i in [2..#A] loop
+      v := A(i);
+      j := i-1;
+      while j >= 1 and A(j) > v loop
+        A(j+1) := A(j);
+        j := j - 1;
+      end loop;
+      A(j+1) := v; 
+   end loop;
+
+   return A;
+
+end procedure;
+
+
+--
+-- Merge sort
+-- Inspired by
+-- http://en.wikipedia.org/wiki/Merge_sort
+-- About 2:10 minutes
+--
+procedure merge_sort(m);
+    if #m <= 1 then
+        return m;
+    end if;
+
+    --var list left, right, result;
+    left := [];
+    right := [];
+    result := [];
+
+    middle := #m div 2;
+    for x in m(1..middle) loop
+         left with:= x;
+    end loop;
+    for x in m(middle+1..) loop
+         right with:= x;
+    end loop;
+
+    left := merge_sort(left);
+    right := merge_sort(right);
+
+    if left(#left) > right(1) then
+         result := merge(left, right);
+    else
+         result := left + right;
+    end if;
+
+    return result;
+
+end procedure;
+
+procedure merge(left,right);
+    result := [];
+    while #left > 0 and #right > 0 loop
+        if left(1) <= right(1) then
+            result with:= left(1);
+            left := left(2..#left);
+        else
+            result with:= right(1);
+            right := right(2..#right);
+        end if;
+    end loop;
+
+    if #left > 0 then
+        result +:= left;
+    else  
+        result +:= right;
+    end if;
+
+    return result;
+
+end procedure;
+

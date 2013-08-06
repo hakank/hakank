@@ -1,0 +1,190 @@
+--
+-- SEND + MORE = MONEY problem in SETL
+-- 
+-- This SETL program was written by Hakan Kjellerstrand (hakank@bonetmail.com).
+-- See also my SETL page: http://www.hakank.org/setl/ .
+--
+
+-- Solution: 
+-- [[9 5 6 7 1 0 8 2]]
+-- It takes about 9.8 seconds (send_more_money1)
+--
+
+test(routine send_more_money1, "send_more_money1");
+-- test(routine send_more_money2, "send_more_money2");
+-- test(routine send_more_money3, "send_more_money3");
+-- test(routine send_more_money4, "send_more_money4");
+
+
+proc test(s, name);
+  print(name);
+  time0 := time();
+  res := call(s);
+  time1 := time();
+  print(res);
+  print("It took (about)", (time1-time0) / 1000, "seconds");
+end proc;
+
+-- 9.8s
+proc send_more_money1;
+   ss := {0..9};
+
+   smm := [[S,E,N,D,M,O,R,Y] : 
+    -- ensure that all numbers are different
+    S in ss ,
+    E in ss - {S} ,
+    N in ss - {S,E} , 
+    D in ss - {S,E,N} , 
+    M in ss - {S,E,N,D} , 
+    O in ss - {S,E,N,D,M} , 
+    R in ss - {S,E,N,D,M,O} ,  
+    Y in ss - {S,E,N,D,M,O,R} | 
+    -- pp([S,E,N,D,M,O,R,Y]) and 
+    S > 0 and M > 0 and
+    (S * 1000 + E * 100 + N * 10 + D) +
+    (M * 1000 + O * 100 + R * 10 + E) = 
+    (M * 10000 + O * 1000 + N * 100 + E * 10 + Y )];
+
+   return smm;
+
+end proc;
+
+
+--
+-- This works, in principle.
+-- But it's too slow and memory exhausing to be useful
+--
+proc send_more_money2;
+    perms := perm({0..9});
+    print("It is", #perms,"permutations");
+    smm2 := 
+           [p in perms | 
+              [S,E,N,D,M,O,R,Y] = p and
+              S > 0 and M > 0 and
+              (S * 1000 + E * 100 + N * 10 + D) +
+              (M * 1000 + O * 100 + R * 10 + E) = 
+              (M * 10000 + O * 1000 + N * 100 + E * 10 + Y )];
+    return smm2;
+
+end proc;
+
+--
+-- another variant, using all_different
+-- also very slow
+--
+proc send_more_money3;
+   ss := {0..9};
+   smm := [[S,E,N,D,M,O,R,Y] : 
+      S in ss ,
+      E in ss,
+      N in ss, 
+      D in ss, 
+      M in ss, 
+      O in ss, 
+      R in ss,  
+      Y in ss | 
+      all_different([S,E,N,D,M,O,R,Y]) and
+      S > 0 and M > 0 and
+      (S * 1000 + E * 100 + N * 10 + D) +
+      (M * 1000 + O * 100 + R * 10 + E) = 
+      (M * 10000 + O * 1000 + N * 100 + E * 10 + Y )
+      -- and pp([S,E,N,D,M,O,R,Y])
+   ];
+
+   return smm;
+
+end proc;
+
+--
+-- another variant, using next_permutation
+-- better than send_more_money3 but it
+-- still slow, takes about 85 seconds
+--
+proc send_more_money4;
+   p := [0..9];
+   sols := [];
+   
+   while (p := next_permutation(p)) /= om loop          
+        [S,E,N,D,M,O,R,Y,A,B] := p;
+       if 
+         S > 0 and M > 0 and
+         (S * 1000 + E * 100 + N * 10 + D) +
+         (M * 1000 + O * 100 + R * 10 + E) = 
+         (M * 10000 + O * 1000 + N * 100 + E * 10 + Y ) and
+         A < B 
+        then
+           pp([S,E,N,D,M,O,R,Y]);
+           sols with:=  [S,E,N,D,M,O,R,Y];
+       end if;
+   end loop;
+
+  return sols;
+end proc;
+
+
+--
+-- returns all the permutations of the set S
+--
+proc perm(S);
+   if S = {} then
+      return {[]};
+   else
+      return { [a]+b : a in S, b in perm(S less a) };
+   end if;
+end proc;
+
+
+--
+-- Generates the next permutation
+-- given a permutation
+--
+procedure next_permutation(p);
+    n := #p;
+    k := n - 1;
+    while p(k) > p(k+1) loop 
+        k := k - 1; 
+        if k = 0 then 
+           return om;
+        end if;
+    end loop;
+    if k = 0 then 
+        return om;
+    else
+         j := n;
+         while p(k) > p(j) loop j := j - 1; end loop;
+         [p(k),p(j)] := [p(j), p(k)];
+         r := n; 
+         s := k + 1;
+         while r > s loop
+              [p(r),p(s)] := [p(s),p(r)];
+              r := r - 1; 
+              s := s + 1;
+         end loop;
+    end if;
+    return p;
+end procedure;
+
+
+--
+-- all elements in x are different
+--
+proc all_different(x);
+  -- print("all_different check:", x);
+  return #x = #{i : i in x};
+end proc;
+
+-- variant
+proc alldifferent(A);
+   return forall x in A | 1 = #[1 : i in A | i=x];
+end proc;
+
+
+
+--
+-- print, so we can debug x in the | sections
+--
+proc pp(x);
+  print(x);
+  return true;
+end proc;
+

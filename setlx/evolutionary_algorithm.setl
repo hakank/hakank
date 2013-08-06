@@ -1,0 +1,115 @@
+#!/usr/bin/env setl
+-- 
+-- Evolutionary algorithm in SETL
+-- 
+-- http://rosettacode.org/wiki/Evolutionary_algorithm
+-- """
+-- Starting with:
+--
+--  * The target string: "METHINKS IT IS LIKE A WEASEL".
+--  * An array of random characters chosen from the set of upper-case 
+--    letters together with the space, and of the same length as the 
+--    target string. (Call it the parent).
+--  * A fitness function that computes the ‘closeness’ of its argument 
+--    to the target string.
+--  * A mutate function that given a string and a mutation rate returns 
+--    a copy of the string, with some characters probably mutated.
+--  * While the parent is not yet the target: 
+--     * copy the parent C times, each time allowing some random 
+--       probability that another character might be substituted using mutate.
+--     * Assess the fitness of the parent and all the copies to the 
+--       target and make the most fit string the new parent, discarding 
+--       the others.
+--     * repeat until the parent converges, (hopefully), to the target. 
+-- """
+--
+-- This solution was inspired the Icon/Unicon solution:
+-- http://rosettacode.org/wiki/Evolutionary_algorithm#Icon_and_Unicon
+--
+--
+-- This SETL program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+-- Also see my SETL page: http://www.hakank.org/setl/
+--
+
+-- global variables
+var target, chars, parent, C, M, current_fitness;
+
+ -- Our target string
+target := command_line(1) ? "METHINKS IT IS LIKE A WEASEL";
+chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ "; -- Set of usable characters
+
+if exists t in target | t notin chars then
+  print("The character", t, "is not in the character set: ", chars);
+  stop;
+end if;
+
+setrandom(0);
+-- first random string
+parent := ""+/[chars(my_rand(#chars)) : i in [1..#target]];
+current_fitness := fitness(parent); --The best fitness we have so far
+C := 50;   -- Population size in each generation
+M := 0.5;  -- Mutation rate per individual in a generation
+ 
+gen := 1;
+
+-- Until current fitness reaches a score of perfect match 
+-- with the target string keep generating new populations
+fitnesses := [];
+until (current_fitness := generation()) = #target loop
+  print(gen, current_fitness, parent);
+  fitnesses with := current_fitness;
+  gen +:= 1;
+end loop;
+
+print(gen, current_fitness, parent);
+
+print("Found a perfect fitness", current_fitness, "at generation", gen);
+print("Fitnesses:", fitnesses);
+
+-- Increment the fitness for every position in the string 
+-- s that matches the target
+procedure fitness(s);
+
+  return +/[if s(i) = target(i) then 1 else 0 end if : i in [1..#target] ];
+
+end procedure;
+
+-- If a random number between 0 and 1 is inside the 
+-- bounds of mutation randomly alter a character in the string  
+procedure mutate(s);
+
+  if random(1.0) <= M then 
+      s(my_rand(#s)) := chars(my_rand(#chars));
+  end if;
+  return s;
+
+end procedure;
+
+
+-- Create the next population of parent
+procedure generation();
+
+  next_parent := "";
+  next_fitness := -1;
+ 
+  population := [mutate(parent) : i in [1..C]];
+
+  -- Find the member of the population with highest fitness, 
+  -- or use the last one inspected
+  for x in population | (xf := fitness(x)) > next_fitness loop
+     next_parent  := x;
+     next_fitness := xf;
+  end loop;
+ 
+  parent := next_parent; 
+  return next_fitness;
+
+end procedure;
+
+
+-- use this when we want to randomize a 
+-- tuple access, since random(n) gives 0..n
+-- (SETL use 1-based tuples)
+procedure my_rand(n);
+  return 1+random(n-1);
+end procedure;
