@@ -1,0 +1,442 @@
+/*
+
+  Some utilities in Frink
+
+
+  This Frink program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also see my Frink page: http://www.hakank.org/frink/
+
+*/
+
+reduce[a, f] := 
+{
+  t = a@0
+  for v = sliceLength[a,1,length[a]]
+    t = f[v, t]
+  return t
+}
+
+//  returns a single with with 2 elements lists
+// 2012-10-22: There is now an zip included in Frink
+zipx[a,b] :=
+{
+   r = new array[]
+   for i = 0 to min[[length[a],length[b]]]-1
+      r.push[[a@i,b@i]]
+
+   r
+}
+
+// L is a list of 2 element lists, returns 2 lists
+unzip[L] :=
+{
+   r1 = new array[]
+   r2 = new array[]   
+   for i = 0 to length[L]-1
+   {
+      r1.push[L@i@0]
+      r2.push[L@i@1]
+   }
+   
+   [r1,r2]
+}
+
+concordance[file] :=
+{
+   count = new dict
+   multifor [line, word] = [lines["file:" + file], split[%r/\s+/, line]]
+      if count.containsKey[word]
+         count@word = count@word + 1
+      else
+         count@word = 1
+
+      
+   return count
+
+}
+
+//
+// ensure that all elements in the array a are distinct
+//
+alldifferent[a] := length[toSet[a]] == length[a]
+
+
+//
+// Converts a number to English
+//
+english[n] :=
+{
+
+  divs      =  [1000000000, 1000000,  1000,       100]
+  divnames  =  ["billion", "million", "thousand", "hundred"]
+  prefixes  =  ["0", "twen", "thir", "for", "fif", "six", "seven", "eigh", "nine"]
+  ordinals  =  ["first", "second", "third", "fourth", "fifth", "sixth", "seventh",
+                "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth",
+                "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth"]
+  cardinals =  ["one", "two", "three", "four", "five", "six", "seven",
+                "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
+                "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+
+  sstr = ""
+  printed = false
+  if n < 0
+  {
+    sstr = "minus " + sstr
+    n = -n
+  }
+
+  for i = new range[0, length[divs]-1]
+  {
+    d = n div divs@(i)
+    n = n % divs@(i)
+    if d != 0 
+    {
+      sstr = sstr + english[d]
+      sstr = sstr + divnames@(i) + " "
+      printed = true
+    }
+  }
+
+  if (n > 0 && printed) 
+    sstr = sstr + " and "
+
+  if (n > 19) 
+  {
+    d = n div 10
+    n = n % 10
+    sstr = sstr + prefixes@(d-1)
+    sstr = sstr + "ty "
+    sstr = sstr + english[n]
+  } else 
+  {
+    if n > 0 
+      sstr = sstr + cardinals@(n-1) + " "
+  }
+
+  sstr =~ %s/\s+/ /g
+  return sstr
+
+}
+
+
+fib1[n, cache] := 
+{
+  if cache.containsKey[n] 
+  {
+     return cache@n
+  } else 
+  {
+    if n <= 2 
+    {
+      cache@n = 1
+      return 1
+    } else 
+    {
+       cache@n = fib1[n-1, cache]+fib1[n-2, cache]
+       return cache@n
+     }
+  }
+}
+
+fib[n] := 
+{
+  cache = new dict
+  return fib1[n,cache]
+}
+
+
+// Frink's definition of a prime includes 1
+isPrime2[n] := n == 1 ? false : isPrime[n]
+
+
+// returns the index of the largest/smallest number(s)
+argMax[a] := select[0 to length[a]-1, {|i,a| a@i == max[a]},a]
+argMin[a] := select[0 to length[a]-1, {|i,a| a@i == min[a]},a]
+
+// is a string/array a palindrom?
+isPalindromic[x] := reverse[x] == x
+isPalindromicArray[x] := isPalindromicArray[x+""]
+
+
+even[n]  := n % 2 == 0
+odd[n]   := n % 2 == 1
+
+
+// digitSum of a number
+digitSum[n] :=
+{
+   n = "" + n // ensure that n is a string
+   return sum[map[{|i| parseInt[i]}, charList[n]]]
+}
+
+//
+// Partitions elements according to function f
+// Returns a dictionary with the values as key 
+partition[a, f] :=
+{
+   d = new dict
+   for i = a
+   {
+      v = f[i]
+      if !d.containsKey[v]
+         d@v = new array
+      
+      (d@v).push[i]    
+   }
+   return d
+}
+
+// Returns a frequency table (dict) of the element in array a
+table[a] :=
+{
+   d = new dict
+   for e = a
+      d@e = d@e != undef ? d@e + 1 : 1
+
+   d
+}
+
+/*
+  Timing in Frink.
+
+
+  Note that getFunctions must be used since functions
+  are not complete first order citizens in Frink.
+
+  f = getFunction["ff", 1]
+  println[timeit[f,300001]]
+
+  f2 = getFunction["ff2", 1]
+  println[timeit[f2,31]]
+
+  f3 = getFunction["lcm",2]
+  println[timeit[f3,2^101-1,2^101+1]]
+
+  f4 = getFunction["ff3",2]
+  println[timeit[f4,2^101-1,2^101+1]]
+
+*/
+
+// Zero argument version
+timeit[f] :=
+{
+   t1 = now[]
+   v = f[]
+   return [v, now[] - t1 -> "seconds"]
+}
+
+
+// One argument version
+timeit[f,a] :=
+{
+   t1 = now[]
+   v = f[a]
+   return [v, now[] - t1 -> "seconds"]
+}
+
+// Two argument version
+timeit[f,a1,a2] :=
+{
+   t1 = now[]
+   v = f[a1,a2]
+   return [v, now[] - t1 -> "seconds"]
+}
+
+
+//
+// Decode a Roman numeral
+//
+romanDecode[str] :=
+{
+  if str == "" || str == undef
+    return ""
+
+
+  roman = charList["MDCLXVI"]
+  dec   = map[{|d| parseInt[d]}, split[%r/ /, "1000 500 100 50 10 5 1"]]
+  d     = new dict[zip[roman, dec]]
+  
+  res = old = 0
+  for s = charList[str]
+  {
+    n = d@s
+    // Fix for the Roman convention that XC = 90, not 110.
+    if old > 0 && n > old
+      res = res - 2*old;
+
+    res = res + n
+    old = old + n 
+  }
+
+  return res
+}
+
+//
+// Encode a decimal to Roman numeral
+//
+romanEncode[val] :=
+{
+  if val <= 0
+    return ""
+
+  arabic = [1000, 900, 500, 400,  100, 90,  50, 40,  10,  9,  5,  4,   1]
+  roman  = ["M", "CM", "D", "CD", "C", "XC","L","XL","X","IX","V","IV","I"]
+  res = ""
+  for i = 0 to length[arabic]-1
+  {
+    while val >= arabic@i
+    {
+      res = res + roman@i
+      val = val - arabic@i
+    }
+  }
+  return(res)
+
+}
+
+//
+// rot13
+//
+// Using the generalized version rotN
+//
+rot13[s] := rotN[s, 13]
+
+//
+// Generalized version: rotN
+//
+rotN[s, n, alpha = "abcdefghijklmnopqrstuvwxyz"] :=
+{
+   if length[alpha] % 2 == 1
+      alpha = alpha + "_"
+   m = createMapRotN[alpha, n]
+   s2 = ""
+   for c = charList[s]
+      s2 = s2 + (m@c != undef ? m@c : c)
+   
+   s2
+
+}
+
+// create mapping for rotN
+createMapRotN[s, n] :=
+{
+   f[str, n, len] := substr[str, n, len] + substrLen[str, 0, n]
+
+   len = length[s]
+   d = new dict[zip[charList[s], charList[f[s, n, len]]]]
+   u = uc[s]
+   for [k,v] = zip[charList[u], charList[f[u, n, len]]]
+      d@k = v
+
+   d
+   
+}
+
+//
+// rotX is the "invertable" version for a specific alphabet
+// 
+rotX[s is string, alpha is string] :=
+{
+   if length[alpha] % 2 == 1
+      alpha = alpha + "_"
+   rotN[s, length[alpha] div 2, alpha]
+}
+
+
+last[s] := substrLen[s,length[s]-1,1]
+
+
+// This was inspired by the Python code from  
+//   http://code.activestate.com/recipes/52213/
+// with the following comment:
+// """
+// soundex module conforming to Knuth's algorithm
+// implementation 2000-12-24 by Gregory Jorgensen
+// public domain
+// """
+soundex[name, llen] :=
+{  
+   if name == "" || name == undef
+      return ""
+   
+   // digits holds the soundex values for the alphabet
+   digits = charList["01230120022455012623010202"]
+   //                 ABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+   sndx = ""
+   fc   = ""
+
+   // translate alpha chars in name to soundex digits
+   for c = charList[uc[name]]
+   {
+      if c =~ %r/[[:alpha:]]/i
+      {
+         if fc == ""
+            fc = c  // remember first letter
+         d = digits@(char[c]-char["A"])
+         // duplicate consecutive soundex digits are skipped
+         len = length[sndx]
+         if len == 0 || d != last[sndx]
+            sndx = sndx + d
+      }
+      
+   }
+  
+   // replace first digit with first alpha character
+   len = length[sndx]
+   if len >= 2
+      sndx = fc + substrLen[sndx, 1, len]
+   else 
+      sndx = fc
+   
+   // remove all 0s from the soundex code
+   sndx = join["", select[charList[sndx], {|s| s != "0"}]]
+   
+   // return soundex code padded to len characters
+   len = length[sndx]
+   if llen > len
+      sndx = padRight[sndx, llen, "0"]
+   
+   return substrLen[sndx,0,llen]
+
+}
+
+//
+// Hailstone sequence, starting from n
+//
+hailstoneSeq[n] :=
+{
+  h = [n]
+  max_n = 1
+  while n > 1
+  {
+     n = hailstone[n]
+     h.push[n]
+  }
+
+  return h
+}
+
+
+
+//
+// Hailstone number
+//
+hailstone[n] :=
+{
+   if n == 1
+      return 0
+
+   if n % 2 == 0
+      return n div 2
+   else 
+      return 3*n + 1
+}
+
+//
+// Scalar product of arrays a and b
+//
+scalarProduct[a,b] := sum[map[{|i,j| i*j}, zip[a,b]]]
+
+
+"HakankUtils.frink loaded"

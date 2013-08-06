@@ -1,0 +1,129 @@
+//
+// de Bruijn sequences in Frink
+//
+// For more about de Bruijn sequences see
+//    http://www.hakank.org/comb/debruijn.cgi
+//
+// Note: This program also supports generation of necklaces and
+//       Lyndon words but this is untested.
+
+//
+// This Frink program was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+// Also see my Frink page: http://www.hakank.org/frink/
+//
+
+/*
+  This program is based on a C program with the following copyright
+
+  """
+  -----------------------------------------------------------------------------
+  | C program to generate necklaces, Lyndon words, and De Bruijn              |
+  | sequences.  The algorithm is CAT and is described in the book             |
+  | "Combinatorial Generation."  This program, was obtained from the          |
+  | (Combinatorial) Object Server, COS, at http://www.theory.csc.uvic.ca/~cos |
+  | The inputs are n, the length of the string, k, the arity of the           |
+  | string, and density, the maximum number of non-0's in the string.         |
+  | The De Bruijn option doesn't make sense unless density >= n.              |
+  | The program can be modified, translated to other languages, etc.,         |
+  | so long as proper acknowledgement is given (author and source).           |
+  | Programmer: Frank Ruskey (1994), translated to C by Joe Sawada            |
+  -----------------------------------------------------------------------------
+  """
+
+*/
+
+
+/**
+ *  "Print" a digit
+ */
+Print[p,a,option,n,pos,res,printit] :=
+{
+   if option == 0 || (n % p == 0 && option == 1) || (option == 2 && p == n)
+   {
+      for j = 1 to n
+      {
+         if printit == 1
+            print[a@j + " "]
+         res.push[a@j]
+         pos = pos + 1
+      }
+      if printit == 1
+         println[]
+   } else
+   {
+      if option == 3 && n % p == 0
+         for j = 1 to p
+         {
+            if printit == 1
+               print[a@j + " "]
+            res.push[a@j]
+            pos = pos + 1
+         }
+         if printit == 1
+            println[]
+   }
+
+} // end Print
+
+
+/**
+ *  Generator.
+ */
+Gen[t, p, ones, k, n, a,option,pos,res,printit] :=
+{
+   j = 0
+   if ones <= n && t > n
+      Print[p,a, option,n,pos,res,printit]
+   else
+   {
+      a@t = a@(t-p)
+      if (a@t > 0)
+         Gen[t+1,p,ones+1,k,n,a,option,pos,res,printit]
+      else
+         Gen[t+1,p,ones,k,n,a,option,pos,res,printit]
+      
+      for j = a@(t-p)+1 to k-1
+      {
+         a@t = j 
+         Gen[t+1,t,ones+1,k,n,a,option,pos,res,printit]
+      }
+   }
+
+} // end Gen
+
+
+
+k = 10 // alphabet: 0..k-1
+n = 4  // size
+option = 3 // option (pre-necklace = 0, necklace = 1, lyndon = 2, DeBruijn = 3)
+printit = 0 // print the intermediate values (the structure)
+
+optionDict = new dict[[[0, "pre-necklace"],[1,"necklace"],[2,"lyndon"],[3,"de Bruijn"]]]
+
+// alphabet
+if length[ARGS] > 0
+  k = parseInt[ARGS@0]
+
+// size
+if length[ARGS] > 1
+  n = parseInt[ARGS@1]
+
+// option: pre-necklace = 0, necklace = 1, lyndon = 2, DeBruijn = 3
+// Note: I have mostly used (and tested) the de Bruijn option.
+if length[ARGS] > 2
+  option = parseInt[ARGS@2]
+
+if length[ARGS] > 3
+   printit = parseInt[ARGS@3]
+
+optionName = optionDict@option
+
+println["k: $k n: $n option: $option ($optionName)"]
+
+density = n
+pos = 0
+a = makeArray[[101], 0]
+res = new array
+Gen[1,1,0,k,n,a,option,pos,res,printit]
+len = length[res] + n // including "around the corner"
+println["Res (length: $len):\n" + join[" ", res] + " (" + join[" ", sliceLength[res,0,n]] + ")"]
