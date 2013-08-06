@@ -1,0 +1,184 @@
+/*
+
+  Fill-in the squares problem (Brainjammer) in B-Prolog.
+
+  This problem is from the ZDC system, available from 
+  http://www.bracil.net/CSP/cacp/cacpdemo.html , in the
+  file 
+     Brainjammer.txt 
+  from 2003-01-26, which states:
+  """
+  Only Solution is:
+        1	2	3	4	5
+  ====================================================
+  A  	 7	11	2	17	1
+  B	13	19	23	22	3
+  C	9	20	24	14	12
+  D	16	21	25	18	10
+  E	4	8	15	6	5
+
+  22mins55secs of CPU time to find first solution
+  50mins42secs of CPU time with duplicate induced variables removed?
+  Maybe this has something to do with the variable ordering...as this might change
+  as a result of removing duplicate induced variables.
+  1hr:34 mins of CPU time to find a single solution and determine no other solutions
+  exist.
+
+  Statistics for finding the first solution:
+  (with duplicate induced nodes removed)
+  CPU seconds: 		4880.63	(On a Pentium Pro 200Mhz, VC++)
+  Node count:			4036162
+  Induced node count:	1849214
+  Backtracks:			5885311
+  """
+
+  Notes: 
+  - On my 8 core 2.8 Mhz (Linux Ubuntu) it takes about 0.03 seconds 
+    to solve this problem (include proving the uniqueness of the
+    solution), but the comparison is really not fair considering the 
+    difference in machines then and now.
+
+  - The only references to this problem I've found are the following pages:
+    http://discuss.fogcreek.com/techInterview/default.asp?cmd=show&ixPost=2787
+    http://notdarkandstormy.blogspot.com/2005/05/funky-logic-problem.html
+    and especially 
+    http://perplexus.info/show.php?pid=2683
+    which has a lot of comments about manually solving the problem.
+
+  I've yet to know the original source.
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my B-Prolog page: http://www.hakank.org/bprolog/
+
+*/
+
+time2(Goal):-
+        cputime(Start),
+        statistics(backtracks, Backtracks1),
+        call(Goal),
+        statistics(backtracks, Backtracks2),
+        cputime(End),
+        T is (End-Start)/1000,
+        Backtracks is Backtracks2 - Backtracks1,
+        format('CPU time ~w seconds. Backtracks: ~d\n', [T, Backtracks]).
+
+
+go :-
+        time2(findall([],problem,_L)).
+
+problem :-
+        N = 5,
+
+        length(A,N), A :: 1..N**2,
+        length(B,N), B :: 1..N**2,
+        length(C,N), C :: 1..N**2,
+        length(D,N), D :: 1..N**2,
+        length(E,N), E :: 1..N**2,
+
+        ASum #= sum(A),
+        BSum #= sum(B),
+        CSum #= sum(C),
+        DSum #= sum(D),
+        ESum #= sum(E),
+
+        % Each number from 1-25, used only once
+        N2 is N**2,
+        length(ALL, N2),
+        foreach(I in 1..N,
+                (ALL[I] #= A[I],
+                 ALL[I+N] #= B[I],
+                 ALL[I+2*N] #= C[I],
+                 ALL[I+3*N] #= D[I],
+                 ALL[I+4*N] #= E[I]
+                )),
+        alldifferent(ALL),
+
+        %1.Sum of each column is odd
+        foreach(I in 1..N, (A[I] + B[I] + C[I] + D[I] + E[I]) mod 2 #= 1),
+
+        %2.Sum of each row, except C is even
+        ASum mod 2 #= 0,
+        BSum mod 2 #= 0,
+        CSum mod 2 #= 1,
+        DSum mod 2 #= 0,
+        ESum mod 2 #= 0,
+        
+        
+        %3.Sum of row A is not greater than the sum of any other row
+        ASum #=< BSum,
+        ASum #=< CSum,
+        ASum #=< DSum,
+        ASum #=< ESum,
+  
+        %4.The sum of diagonal A1 to E5 is greater than the sum of
+        %  diagonal E1 to A5
+        A[1] + B[2] + C[3] + D[4] + E[5]  #> E[1] + D[2] + C[3] + B[4] + A[5],
+  
+        %5.(A4 + B4) is greater than (C4+D4+E4)
+        A[4] + B[4] #> C[4] + D[4] + E[4],
+  
+        %6. A1 + B1 = D1 + E1
+        A[1] + B[1] #= D[1] + E[1],
+         
+        %7. A1 > E1
+        A[1] #> E[1],
+  
+        %8. A1, A3 and B1 are primes
+        is_prime(A[1]),
+        is_prime(A[3]),
+        is_prime(B[1]),
+
+        %9.(A3 + E3) is a prime number
+        A3E3 #= A[3]+E[3],
+        is_prime(A3E3),
+
+
+        %10. A5,D1,D3 and E1 are squares
+        is_square(A[5]),
+        is_square(D[1]),
+        is_square(D[3]),
+        is_square(E[1]),
+
+        %11. B2, C2, and D2 are ascending consecutive numbers
+        B[2] + 1 #= C[2],
+        C[2] + 1 #= D[2],
+  
+        %12. B3, C3, and D3 are ascending consecutive numbers
+        B[3] + 1 #= C[3],
+        C[3] + 1 #= D[3],
+        
+        %13. B5 + D5 = A5 + C5
+        B[5] + D[5] #= A[5] + C[5],
+
+        %14. (c1)^2 + (c5)^2 = (e3)^2
+        C1s #= C[1]*C[1],
+        C5s #= C[5]*C[5],
+        E3s #= E[3]*E[3],
+        C1s + C5s #= E3s,
+
+        %15. C5 is a two-digit number
+        C[5] #> 9,
+        
+        %16. D5 is a multiple of E5
+        D[5] mod E[5] #= 0,
+              
+        %17. E1 + E3 = E2 + E4 + E5
+        E[1] + E[3] #= E[2] + E[4] + E[5],
+
+        labeling([ffd,down],ALL),
+
+        writeln(all:ALL),
+        writeln(a:A),
+        writeln(b:B),
+        writeln(c:C),
+        writeln(d:D),
+        writeln(e:E),
+        nl.
+
+
+is_prime(V) :-
+        V in [1,2,3,5,7,11,13,17,19,23].
+
+is_square(V) :-
+        V in [1,4,9,16,25].
