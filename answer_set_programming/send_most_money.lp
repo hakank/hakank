@@ -1,0 +1,49 @@
+%
+% SEND+MOST=MONEY in ASP.
+%
+% And maximize MONEY
+%
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+letter(s;e;n;d;m;o;t;y).
+values(0..9).
+
+% money
+mm(money).
+values2(10000..99999).
+
+% exact 1 occurrence of each letter
+1 { x(L,Val) : values(Val) } 1 :- letter(L).
+
+% 0..1 occurrences of each value
+% { x(L,Val) : letter(L) } 1 :- values(Val).
+
+% no digit can be given to two different symbols
+:- letter(L;L1), values(V1), x(L,V1), x(L1,V1), L != L1.
+
+% money: exact 1 occurrence
+% 1 { y(L, Val) : values2(Val) } 1 :- mm(L).
+1 { y(money, Val) : values2(Val) } 1.
+
+smm :- 
+   values(S;E;N;D;M;O;T;Y),
+   x(s,S), x(e,E), x(n,N), x(d,D),
+   x(m,M), x(o,O), x(t,T), x(y,Y), 
+   M > 0, 
+   S > 0,
+   values2(Money), 
+   y(money, Money),
+   Money = M*10000+O*1000+N*100+E*10+Y,
+   S*1000+E*100+N*10+D + M*1000+O*100+S*10+T == Money.
+
+:- not smm.
+
+% maximize MONEY
+#maximize [ y(money, Val) : values2(Val) = Val].
+
+#hide.
+#show x(L,Val).
+#show y(M, Money).
+

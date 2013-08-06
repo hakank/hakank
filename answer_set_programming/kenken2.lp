@@ -1,0 +1,116 @@
+% 
+% KenKen problem in ASP.
+% 
+% http://en.wikipedia.org/wiki/KenKen
+% """
+% KenKen or KEN-KEN is a style of arithmetic and logical puzzle sharing
+% several characteristics with sudoku. The name comes from Japanese and
+% is translated as "square wisdom" or "cleverness squared".
+% ...
+% The objective is to fill the grid in with the digits 1 through 6 such that:
+%
+% * Each row contains exactly one of each digit
+% * Each column contains exactly one of each digit
+% * Each bold-outlined group of cells is a cage containing digits which
+%   achieve the specified result using the specified mathematical operation:
+%     addition (+),
+%     subtraction (-),
+%     multiplication (x),
+%     and division (÷).
+%     (Unlike in Killer sudoku, digits may repeat within a group.)
+%
+% ...
+% More complex KenKen problems are formed using the principles described
+% above but omitting the symbols +, -, x and ÷, thus leaving them as
+% yet another unknown to be determined.
+% """
+%
+% The solution is:
+%
+%     5 6 3 4 1 2
+%     6 1 4 5 2 3
+%     4 5 2 3 6 1
+%     3 4 1 2 5 6
+%     2 3 6 1 4 5
+%     1 2 5 6 3 4
+%
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+#const n=6.
+
+%
+% Hints:
+% p(Op, Result,  index,....)
+%
+p("+", 11,  1,1, 2,1).
+p("/", 2,   1,2, 1,3).
+p("*", 20,  1,4, 2,4).
+p("-", 3,   2,2, 2,3).
+p("/", 3,   2,5, 3,5).
+p("*", 6,   3,3, 3,4).
+p("*", 6,   4,3, 5,3).
+p("*", 30,  4,5, 4,6).
+p("*", 6,   5,1, 5,2).
+p("+", 9,   5,6, 6,6).
+p("/", 2,   6,4, 6,5).
+p("+", 8,   6,1, 6,2, 6,3).
+p("+", 7,   4,4, 5,4, 5,5).
+p("*", 6,   1,5, 1,6, 2,6, 3,6).
+p("*", 240, 3,1, 3,2, 4,1, 4,2).
+
+%
+% domains
+%
+val(1..n).
+
+% alldifferent rows, columns, values
+1 { x(X,Y,N) : val(N) } 1 :- val(X;Y).
+1 { x(X,Y,N) : val(X) } 1 :- val(N;Y).
+1 { x(X,Y,N) : val(Y) } 1 :- val(N;X). 
+
+
+% 2 arguments
+:- p("+", Res, X1,X2, Y1,Y2), x(X1,X2, A), x(Y1,Y2, B), A+B != Res.
+:- p("*", Res, X1,X2, Y1,Y2), x(X1,X2, A), x(Y1,Y2, B), A*B != Res.
+
+% A op B for op = "/" and "-" may be of any order
+:- p("/", Res, X1,X2, Y1,Y2), x(X1,X2, A), x(Y1,Y2, B), A < B, A*Res != B.
+:- p("/", Res, X1,X2, Y1,Y2), x(X1,X2, A), x(Y1,Y2, B), B < A, B*Res != A.
+
+:- p("-", Res, X1,X2, Y1,Y2), x(X1,X2, A), x(Y1,Y2, B), A > B, A-B != Res.
+:- p("-", Res, X1,X2, Y1,Y2), x(X1,X2, A), x(Y1,Y2, B), B > A, B-A != Res.
+
+
+% 3 arguments
+:- p("*", Res, X1,X2, Y1,Y2, Z1,Z2), 
+    x(X1,X2, X), 
+    x(Y1,Y2, Y),  
+    x(Z1,Z2, Z), 
+    X*Y*Z != Res.
+
+:- p("+", Res, X1,X2, Y1,Y2, Z1,Z2),
+    x(X1,X2, X), 
+    x(Y1,Y2, Y), 
+    x(Z1,Z2, Z), 
+    X+Y+Z != Res.
+
+% 4 arguments
+:- p("*", Res, X1,X2, Y1,Y2, Z1,Z2, A1,A2),
+    x(X1,X2, X), 
+    x(Y1,Y2, Y), 
+    x(Z1,Z2, Z), 
+    x(A1,A2, A),
+    X*Y*Z*A != Res.
+
+:- p("+", Res, X1,X2, Y1,Y2, Z1,Z2, A1,A2),
+    x(X1,X2, X), 
+    x(Y1,Y2, Y), 
+    x(Z1,Z2, Z), 
+    x(A1,A2, A),
+    X+Y+Z+A != Res.
+
+#hide.
+#show x(X,Y,N).

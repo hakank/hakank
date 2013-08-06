@@ -1,0 +1,63 @@
+% 
+% Labeled dice in ASP.
+% 
+% From Jim Orlin "Colored letters, labeled dice: a logic puzzle"
+% http://jimorlin.wordpress.com/2009/02/17/colored-letters-labeled-dice-a-logic-puzzle/
+%   """
+%   My daughter Jenn bough a puzzle book, and showed me a cute puzzle.  There 
+%   are 13 words as follows:  BUOY, CAVE, CELT, FLUB, FORK, HEMP, JUDY, 
+%   JUNK, LIMN, QUIP, SWAG, VISA, WISH.
+
+%   There are 24 different letters that appear in the 13 words.  The question 
+%   is:  can one assign the 24 letters to 4 different cubes so that the 
+%   four letters of each word appears on different cubes.  (There is one 
+%   letter from each word on each cube.)  It might be fun for you to try 
+%   it.  I'll give a small hint at the end of this post. The puzzle was 
+%   created by Humphrey Dudley.
+%   """
+%
+% Compare with the similar program (different letters and different words).
+% http://www.hakank.org/answer_set_programming/building_blocks.lp
+%
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+word(b,u,o,y).
+word(c,a,v,e).
+word(c,e,l,t).
+word(f,l,u,b).
+word(f,o,r,k).
+word(h,e,m,p).
+word(j,u,d,y).
+word(j,u,n,k).
+word(l,i,m,n).
+word(q,u,i,p).
+word(s,w,a,g).
+word(v,i,s,a).
+word(w,i,s,h).
+
+letters(a;b;c;d;e;f;g;h;i;j;k;l;m;n;o;p;q;r;s;t;u;v;w;y).
+d(1..4).
+
+1 { letter(Letter, Dice) : d(Dice) } 1 :- letters(Letter).
+6 { letter(Letter, Dice) : letters(Letter) } 6 :- d(Dice).
+
+% the letters of each word must be on
+% difference dice
+diff(L1,L2,L3,L4) :-
+    letters(L1;L2;L3;L4),d(D1;D2;D3;D4), % for lparse
+    letter(L1,D1), 
+    letter(L2,D2), 
+    letter(L3,D3), 
+    letter(L4,D4),
+    D1 != D2,
+    D1 != D3,
+    D1 != D4,
+    D2 != D3,
+    D2 != D4,
+    D3 != D4.
+:- not diff(L1,L2,L3,L4), word(L1,L2,L3,L4).
+
+#hide.
+#show letter(Letter, Dice).

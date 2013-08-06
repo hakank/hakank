@@ -1,0 +1,55 @@
+% 
+% Langford's number problem in ASP.
+%
+% Langford's number problem (CSP lib problem 24)
+%
+% See CSPLib http://www.csplib.org/prob/prob024/
+% 
+% From http://www.cs.st-andrews.ac.uk/~andrea/examples/langford/langford.eprime
+% """
+% Arrange 2 sets of positive integers 1..k to a sequence,
+% such that, following the first occurence of an integer i, 
+% each subsequent occurrence of i, appears i+1 indices later
+% than the last. 
+% For example, for k=4, a solution would be 41312432
+% """
+% 
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+#const k = 4.
+
+val(1..k).   % for solution
+pos(1..2*k). % for position
+
+%
+% For k = 4 there are two solutions:
+% position = [2, 5, 3, 1, 4, 8, 7, 6]
+% solution = [4, 1, 3, 1, 2, 4, 3, 2]
+% ----------
+% position = [5, 1, 2, 3, 7, 4, 6, 8]
+% solution = [2, 3, 4, 2, 1, 3, 1, 4]
+
+%
+% alldifferent position
+%
+1 { position(I, N) : pos(N) } 1 :- pos(I).
+1 { position(I, N) : pos(I) } 1 :- pos(N).
+
+% The difference in position between the two I's is I.
+:- position(I+k, N1), position(I, N2), N1 != N2 + I+1, val(I).
+
+
+% solution: unique index
+1 { solution(I, N) : val(N) } 1 :- pos(I).
+% exactly two occurrences of 1..k
+2 { solution(I, N) : pos(I) } 2 :- val(N).
+
+% channel solution <-> position
+:- position(I, P1), solution(P1, I2), I != I2, val(I;I2).
+:- position(I+k, P2), solution(P2, I2), I != I2, val(I;I2).
+
+% symmetry breaking
+% :- solution(1) >= solution(2*k).

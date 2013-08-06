@@ -1,0 +1,127 @@
+% 
+% Killer Sudoku puzzle in ASP.
+% 
+% http://en.wikipedia.org/wiki/Killer_Sudoku
+% """
+% Killer sudoku (also killer su doku, sumdoku, sum doku, addoku, or 
+% samunamupure) is a puzzle that combines elements of sudoku and kakuro. 
+% Despite the name, the simpler killer sudokus can be easier to solve 
+% than regular sudokus, depending on the solver's skill at mental arithmetic; 
+% the hardest ones, however, can take hours to crack.
+%
+% ...
+%
+% The objective is to fill the grid with numbers from 1 to 9 in a way that 
+% the following conditions are met:
+%
+%   * Each row, column, and nonet contains each number exactly once.
+%   * The sum of all numbers in a cage must match the small number printed 
+%     in its corner.
+%   * No number appears more than once in a cage. (This is the standard rule 
+%     for killer sudokus, and implies that no cage can include more 
+%     than 9 cells.)
+%
+% In 'Killer X', an additional rule is that each of the long diagonals 
+% contains each number once.
+% """
+%
+% Here we solve the problem from the Wikipedia page, also shown here
+% http://en.wikipedia.org/wiki/File:Killersudoku_color.svg
+%
+% The solution is:
+%   2 1 5 6 4 7 3 9 8
+%   3 6 8 9 5 2 1 7 4
+%   7 9 4 3 8 1 6 5 2
+%   5 8 6 2 7 4 9 3 1
+%   1 4 2 5 9 3 8 6 7
+%   9 7 3 8 1 6 4 2 5
+%   8 2 1 7 3 9 5 4 6
+%   6 5 9 4 2 8 7 1 3
+%   4 3 7 1 6 5 2 8 9
+%
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+% slighly faster:
+%    clingo --stat --heuristic=Vmtf killer_sudoku.lp 0   Choices: 875 Conflicts: 483 Restarts: 0
+%    clingo --stat --heuristic=Vsids killer_sudoku.lp 0   Choices: 291 Conflicts: 210 Restarts: 0
+ 
+
+
+#const n=9.
+
+%
+% Hints:
+% p(Result,  index,....)
+%
+p(3,   1,1,  1,2).
+p(15,  1,3,  1,4, 1,5).
+p(22,  1,6,  2,5, 2,6, 3,5).
+p(4,   1,7,  2,7).
+p(16,  1,8,  2,8).
+p(15,  1,9,  2,9, 3,9, 4,9).
+p(25,  2,1,  2,2, 3,1, 3,2).
+p(17,  2,3,  2,4).
+p(9,   3,3,  3,4, 4,4).
+p(8,   3,6,  4,6, 5,6).
+p(20,  3,7,  3,8, 4,7).
+p(6,   4,1,  5,1).
+p(14,  4,2,  4,3).
+p(17,  4,5,  5,5, 6,5).
+p(17,  4,8,  5,7, 5,8).
+p(13,  5,2,  5,3, 6,2).
+p(20,  5,4,  6,4, 7,4).
+p(12,  5,9,  6,9).
+p(27,  6,1,  7,1, 8,1, 9,1).
+p(6,   6,3,  7,2, 7,3).
+p(20,  6,6,  7,6, 7,7).
+p(6,   6,7,  6,8).
+p(10,  7,5,  8,4, 8,5, 9,4).
+p(14,  7,8,  7,9, 8,8, 8,9).
+p(8,   8,2,  9,2).
+p(16,  8,3,  9,3).
+p(15,  8,6,  8,7).
+p(13,  9,5,  9,6, 9,7).
+p(17,  9,8,  9,9).
+
+
+%
+% domains
+%
+val(1..n).
+border(1;4;7).
+
+% alldifferent rows, columns, values
+1 { x(X,Y,N) : val(N) } 1 :- val(X;Y).
+1 { x(X,Y,N) : val(X) } 1 :- val(N;Y).
+1 { x(X,Y,N) : val(Y) } 1 :- val(N;X). 
+
+% alldifferent boxes
+1 { x(X,Y,N) : val(X;Y):
+    X1<=X:X<=X1+2:Y1<=Y:Y<=Y1+2 } 1 :- val(N), border(X1;Y1).
+
+% 2 arguments
+:- p(Res, X1,X2, Y1,Y2), 
+    x(X1,X2, X), 
+    x(Y1,Y2, Y), 
+    X+Y != Res.
+
+% 3 arguments
+:- p(Res, X1,X2, Y1,Y2, Z1,Z2),
+    x(X1,X2, X), 
+    x(Y1,Y2, Y), 
+    x(Z1,Z2, Z), 
+    X+Y+Z != Res.
+
+% 4 arguments
+:- p(Res, X1,X2, Y1,Y2, Z1,Z2, A1,A2),
+    x(X1,X2, X), 
+    x(Y1,Y2, Y), 
+    x(Z1,Z2, Z), 
+    x(A1,A2, A),
+    X+Y+Z+A != Res.
+
+#hide.
+#show x(X,Y,N).

@@ -1,0 +1,177 @@
+% 
+% Zebra puzzle in ASP.
+% 
+% http://en.wikipedia.org/wiki/Zebra_Puzzle
+% """
+%   1. There are five houses.
+%   2. The Englishman lives in the red house.
+%   3. The Spaniard owns the dog.
+%   4. Coffee is drunk in the green house.
+%   5. The Ukrainian drinks tea.
+%   6. The green house is immediately to the right of the ivory house.
+%   7. The Old Gold smoker owns snails.
+%   8. Kools are smoked in the yellow house.
+%   9. Milk is drunk in the middle house.
+%  10. The Norwegian lives in the first house.
+%  11. The man who smokes Chesterfields lives in the house next to the man with the fox.
+%  12. Kools are smoked in the house next to the house where the horse 
+%      is kept. (should be ".. a house ...", see Discussion section)
+%  13. The Lucky Strike smoker drinks orange juice.
+%  14. The Japanese smokes Parliaments.
+%  15. The Norwegian lives next to the blue house.
+
+% Now, who drinks water? Who owns the zebra? In the interest of clarity, 
+% it must be added that each of the five houses is painted a different color, 
+% and their inhabitants are of different national extractions, own different pets, 
+% drink different beverages and smoke different brands of American cigarets [sic]. 
+% One other thing: in statement 6, right means your right. 
+% """
+
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+% Note:
+% There is a much faster variant (solves in 0.1s) in 
+% http://www.hakank.org/answer_set_programming/zebra.lp
+%
+% With default parameters solving this problem is quite slow, it takes 
+% about 1:40 minutes including grounding.
+% 
+% All tests are ran as
+%   clingo --stat <parameters> zebra.lp 0
+%
+% parameter              Time      Choices   Conflicts  Restarts
+%    default             2:08min   14662     12972       6
+%    --heuristic=Vmtf    29s        7023      5586       5
+%    --heuristic=Vsids   45s       16050      5970       5
+%    --heuristic=Unit    35s           0         0       0
+%    --eq 0              2:35min   16511     15663       6
+%    --heuristic=Vmtf --eq 0 
+%                        12.5s      8073      6369       3
+%    --heuristic=Unit --eq 0
+%                        48.2          0         0       0
+%    --trans-ext all     1:10min   12038     11205       6
+%    --restarts=0        1:56min   14636     13052       0
+%
+
+%   1. There are five houses.
+houses(1..5).
+
+colors(red;green;ivory;yellow;blue).
+nationalities(english;spaniard;ukrainian;norwegian;japanese).
+animals(dog;fox;horse;zebra;snails).
+drinks(coffee;tea;milk;orange_juice;water).
+cigarettes(old_gold;kools;chesterfields;lucky_strike;parliaments).
+
+% alldifferent
+1 { house(House, Color, Nationality, Animal, Drink, Cigarette) :     
+    colors(Color) :
+    nationalities(Nationality) :
+    animals(Animal) :
+    drinks(Drink) :
+    cigarettes(Cigarette)
+   } 1 :- houses(House).
+
+1 { house(House, Color, Nationality, Animal, Drink, Cigarette) :     
+    houses(House) :
+    nationalities(Nationality) :
+    animals(Animal) :
+    drinks(Drink) :
+    cigarettes(Cigarette)
+   } 1 :- colors(Color).
+
+1 { house(House, Color, Nationality, Animal, Drink, Cigarette) :     
+    colors(Color) :
+    houses(House) :
+    animals(Animal) :
+    drinks(Drink) :
+    cigarettes(Cigarette)
+   } 1 :- nationalities(Nationality).
+
+1 { house(House, Color, Nationality, Animal, Drink, Cigarette) :     
+    colors(Color) :
+    nationalities(Nationality) :
+    houses(House):
+    drinks(Drink) :
+    cigarettes(Cigarette)
+   } 1 :- animals(Animal) .
+
+1 { house(House, Color, Nationality, Animal, Drink, Cigarette) :     
+    colors(Color) :
+    nationalities(Nationality) :
+    animals(Animal) :
+    houses(House) :
+    cigarettes(Cigarette)
+   } 1 :- drinks(Drink) .
+
+1 { house(House, Color, Nationality, Animal, Drink, Cigarette) :     
+    colors(Color) :
+    nationalities(Nationality) :
+    animals(Animal) :
+    houses(House) :
+    drinks(Drink)
+   } 1 :- cigarettes(Cigarette) .
+
+
+% house(House, Color, Nationality, Animal, Drink, Cigarette)
+color(House, Color) :- houses(House), colors(Color), house(House, Color, _, _, _, _).
+nationality(House, Nationality) :- houses(House), nationalities(Nationality), house(House, _, Nationality, _, _, _).
+animal(House, Animal) :- houses(House), animals(Animal), house(House, _, _, Animal, _, _).
+drink(House, Drink) :- houses(House), drinks(Drink), house(House, _, _, _, Drink, _).
+smoke(House, Cigarette) :- houses(House), cigarettes(Cigarette), house(House, _, _, _, _, Cigarette).
+
+next_to(H1,H2) :- houses(H1;H2), |H1-H2| == 1.
+
+%   2. The Englishman lives in the red house.
+:- houses(H1;H2), color(H1, red), nationality(H2, english), H1 != H2.
+
+%   3. The Spaniard owns the dog.
+:- houses(H1;H2), nationality(H1, spaniard), animal(H2,dog), H1 != H2.
+
+%   4. Coffee is drunk in the green house.
+:- houses(H1;H2), color(H1, green), drink(H2, coffee), H1 != H2.
+
+%   5. The Ukrainian drinks tea.
+:- houses(H1;H2), nationality(H1, ukrainian), drink(H2, tea), H1 != H2.
+
+%   6. The green house is immediately to the right of the ivory house.
+:- houses(H1;H2), color(H1, green), color(H2, ivory), H1 != H2 + 1.
+
+%   7. The Old Gold smoker owns snails.
+:- houses(H1;H2), smoke(H1,old_gold), animal(H2, snails), H1 != H2.
+
+%   8. Kools are smoked in the yellow house.
+:- houses(H1;H2), smoke(H1, kools), color(H2, yellow), H1 != H2.
+
+%   9. Milk is drunk in the middle house.
+:- not drink(3, milk).
+
+%  10. The Norwegian lives in the first house.
+:- not nationality(1,norwegian).
+
+%  11. The man who smokes Chesterfields lives in the house next to the man with the fox.
+:- houses(H1;H2), smoke(H1, chesterfields), animal(H2, fox), not next_to(H1,H2).
+
+%  12. Kools are smoked in the house next to the house where the horse 
+%      is kept. (should be ".. a house ...", see Discussion section)
+:- houses(H1;H2), smoke(H1, kools), animal(H2, horse), not next_to(H1,H2).
+
+%  13. The Lucky Strike smoker drinks orange juice.
+:- houses(H1;H2), smoke(H1, lucky_strike), drink(H2, orange_juice), H1 != H2.
+
+%  14. The Japanese smokes Parliaments.
+:- houses(H1;H2), nationality(H1, japanese), smoke(H2, parliaments), H1 != H2.
+
+%  15. The Norwegian lives next to the blue house.
+:- houses(H1;H2), nationality(H1, norwegian), color(H2, blue), not next_to(H1, H2).
+
+has_zebra(Nationality) :- nationalities(Nationality), house(_, _, Nationality, zebra, _, _).
+drinks_water(Nationality) :- nationalities(Nationality), house(_, _, Nationality, _, water, _).
+
+#hide.
+#show house(House,Color,Nationality,Animal,Drink,Cigarette).
+#show has_zebra(Nationality).
+#show drinks_water(Nationality).
+

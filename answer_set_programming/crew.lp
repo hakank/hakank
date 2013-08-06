@@ -1,0 +1,208 @@
+% 
+% Crew allocation in ASP.
+% 
+% From Gecode example crew
+% examples/crew.cc
+%
+% (Original text from crew.cc)
+% """
+% Example: Airline crew allocation
+% 
+% Assign 20 flight attendants to 10 flights. Each flight needs a certain
+% number of cabin crew, and they have to speak certain languages.
+% Every cabin crew member has two flights off after an attended flight.
+% """
+%
+% Note: This problem is not really stated as an optimization problem.
+% However, if minimizing the total assigned flight attendants 
+% (by #minimize [...] below) this program finds the optimal value 
+% of 19 in no time, but it then takes "forever" to prove it.
+
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+#const num_flights = 10.
+#const min_rest = 2. % minimum flights off after an attended flight
+
+% domains
+flights(1..num_flights).
+
+%
+% the 20 flight attendants
+%
+p(tom, steward;german).                 % Tom     = 1
+p(david, steward).                      % David   = 2
+p(jeremy, steward;german).              % Jeremy  = 3
+p(ron, steward).                        % Ron     = 4
+p(joe, steward;spanish).                % Joe     = 5
+p(bill, steward;french;spanish).        % Bill    = 6
+p(fred, steward;spanish).               % Fred    = 7
+p(bob, steward).                        % Bob     = 8
+p(mario, steward;spanish;german).       % Mario   = 9
+p(ed, steward).                         % Ed      = 10
+p(carol, hostess).                      % Carol   = 11
+p(janet, hostess).                      % Janet   = 12
+p(tracy, hostess).                      % Tracy   = 13
+p(marilyn, hostess;spanish;german).     % Marilyn = 14
+p(carolyn, hostess).                    % Carolyn = 15
+p(cathy, hostess).                      % Cathy   = 16
+p(inez, hostess;french;spanish;german). % Inez    = 17
+p(jean, hostess;french).                % Jean    = 18
+p(heather, hostess;spanish;german).     % Heather = 19
+p(juliet, hostess;french).              % Juliet  = 20
+
+
+types(Type) :- p(_, Type).
+person(Person) :- p(Person, _).
+
+%
+% crew(flight, num needed).
+% Exact number of needed crew members 
+% of a flight.
+%
+num_crew(1, 4).
+num_crew(2, 5).
+num_crew(3, 5).
+num_crew(4, 6).
+num_crew(5, 7).
+num_crew(6, 4).
+num_crew(7, 5).
+num_crew(8, 6).
+num_crew(9, 6).
+num_crew(10, 7).
+
+% flight(flight, type, num needed)
+flight(1, steward, 1).
+flight(1, hostess, 1).
+flight(1, french, 1).
+flight(1, spanish, 1).
+flight(1, german, 1).
+
+
+flight(2, steward, 1).
+flight(2, hostess, 1).
+flight(2, french, 1).
+flight(2, spanish, 1).
+flight(2, german, 1).
+
+
+flight(3, steward, 1).
+flight(3, hostess, 1).
+flight(3, french, 1).
+flight(3, spanish, 1).
+flight(3, german, 1).
+
+
+flight(4, steward, 2).
+flight(4, hostess, 2).
+flight(4, french, 1).
+flight(4, spanish, 1).
+flight(4, german, 1).
+
+
+flight(5, steward, 3).
+flight(5, hostess, 3).
+flight(5, french, 1).
+flight(5, spanish, 1).
+flight(5, german, 1).
+
+
+flight(6, steward, 1).
+flight(6, hostess, 1).
+flight(6, french, 1).
+flight(6, spanish, 1).
+flight(6, german, 1).
+
+
+flight(7, steward, 1).
+flight(7, hostess, 1).
+flight(7, french, 1).
+flight(7, spanish, 1).
+flight(7, german, 1).
+
+
+flight(8, steward, 1).
+flight(8, hostess, 1).
+flight(8, french, 1).
+flight(8, spanish, 1).
+flight(8, german, 1).
+
+flight(9, steward, 2).
+flight(9, hostess, 2).
+flight(9, french, 1).
+flight(9, spanish, 1).
+flight(9, german, 1).
+
+
+flight(10, steward, 3).
+flight(10, hostess, 3).
+flight(10, french, 1).
+flight(10, spanish, 1).
+flight(10, german, 1).
+
+%
+% a flight must have a crew of exactly Num persons
+%
+Num { crew(Flight, Person) : person(Person) } Num :- num_crew(Flight, Num).
+
+%
+% the crew must have at least Num persons of a certain type
+%
+% Num { crew(Flight, Person) : p(Person, Type) } :- flight(Flight, Type, Num).
+:- flight(Flight, Type, Num), { crew(Flight, Person) : p(Person, Type) } Num-1.
+
+%
+% Every cabin crew member has (at least) 
+% two flights off after an attended flight.
+%
+:- crew(Flight1, Person), 
+    crew(Flight2, Person), 
+    Flight2 > Flight1, 
+    Flight2-Flight1 <= min_rest.
+
+%
+% the assigned crew members
+%
+assigned(Person) : person(Person) :- crew(Flight, Person). 
+
+% experimental: if a person is assigned, then he/she 
+% should work at least on two flights and atmost on 3
+% :- assigned(Person), p_num_flights(Person, N), N < 2.
+% :- assigned(Person), p_num_flights(Person, N), N > 3.
+
+
+%
+% Objective: minimize the number of assigned people
+%
+#minimize [ assigned(Person) : person(Person) ].
+% #maximize [ not_assigned(Person) : person(Person) ].
+
+
+%
+% extra predicates for output/debug
+%
+
+% number of flights for each person
+p_num_flights(Person, N) :- 
+    person(Person), 
+    flights(N), 
+    N = #count { crew(Flight, Person) : flights(Flight) }.
+
+% total number of person in this schedule
+total(Total) :- Total = #sum [ assigned(Person) : person(Person) ].
+
+% Finds a solution (19) in no time...
+% :- total(Total), Total >= 20.
+
+% the members not assigned (just for show)
+not_assigned(Person) :- person(Person), not assigned(Person).
+
+
+#hide.
+#show crew(Flight, Person).
+#show total(Total).
+#show assigned(Person).
+#show not_assigned(Person).
+#show p_num_flights(Person, N).

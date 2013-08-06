@@ -1,0 +1,34 @@
+%
+% SEND+MORE=MONEY in any base in ASP.
+%
+% Change base by
+%   clingo -c base=11 send_more_money_any_base.lp
+% 
+
+#const base=10.
+
+letter(s;e;n;d;m;o;r;y).
+values(0..base-1).
+
+% exact 1 occurrence of each letter
+1 { x(L,Val) : values(Val) } 1 :- letter(L).
+
+% 0..1 occurrences of each value
+{ x(L,Val) : letter(L) } 1 :- values(Val).
+
+% no digit can be given to two different symbols
+% :- letter(L), letter(L1), x(L,V1), x(L1,V1), L != L1.
+
+smm :- 
+   values(S;E;N;D;M;O;R;Y),
+   x(s,S), x(e,E), x(n,N), x(d,D),
+   x(m,M), x(o,O), x(r,R), x(y,Y), 
+   M > 0, 
+   S > 0,
+   S*base**3 +E*base**2+N*base**1+D + M*base**3+O*base**2+R*base**1+E == M*base**4+O*base**3+N*base**2+E*base**1+Y.
+
+:- not smm.
+
+#hide.
+#show x(L,Val).
+

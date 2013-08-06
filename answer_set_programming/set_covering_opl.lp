@@ -1,0 +1,93 @@
+% 
+%  Set covering problem in ASP.
+% 
+%  This example is from the OPL example covering.mod
+%  """
+%  Consider selecting workers to build a house. The construction of a 
+%  house can be divided into a number of tasks, each requiring a number of 
+%  skills (e.g., plumbing or masonry). A worker may or may not perform a 
+%  task, depending on skills. In addition, each worker can be hired for a 
+%  cost that also depends on his qualifications. The problem consists of 
+%  selecting a set of workers to perform all the tasks, while minimizing the 
+%  cost. This is known as a set-covering problem. The key idea in modeling 
+%  a set-covering problem as an integer program is to associate a 0/1 
+%  variable with each worker to represent whether the worker is hired. 
+%  To make sure that all the tasks are performed, it is sufficient to 
+%  choose at least one worker by task. This constraint can be expressed by a 
+%  simple linear inequality.
+%  """
+%
+%  Solution from the OPL model:
+%  """
+%  Optimal solution found with objective: 14
+%  crew= {23 25 26}
+%  """
+%
+%
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+#const num_workers = 32.
+#const num_tasks = 15.
+
+workers(1..num_workers).
+tasks(1..num_tasks).
+
+% qualified(task, workers)
+qualified(1,  1;9;19;22;25;28;31).
+qualified(2,  2;12;15;19;21;23;27;29;30;31;32).
+qualified(3,  3;10;19;24;26;30;32).
+qualified(4,  4;21;25;28;32).
+qualified(5,  5;11;16;22;23;27;31).
+qualified(6,  6;20;24;26;30;32).
+qualified(7,  7;12;17;25;30;31).
+qualified(8,  8;17;20;22;23).
+qualified(9,  9;13;14; 26;29;30;31).
+qualified(10, 10;21;25;31;32).
+qualified(11, 14;15;18;23;24;27;30;32).
+qualified(12, 18;19;22;24;26;29;31).
+qualified(13, 11;20;25;28;30;32).
+qualified(14, 16;19;23;31).
+qualified(15, 9;18;26;28;31;32).
+
+% cost(worker, cost)
+cost(1, 1).
+cost(2, 1).
+cost(3, 1).
+cost(4, 1).
+cost(5, 1).
+cost(6, 1).
+cost(7, 1).
+cost(8, 1).
+cost(9, 2).
+cost(10, 2).
+cost(11, 2).
+cost(12, 2).
+cost(13, 2).
+cost(14, 2).
+cost(15, 2).
+cost(16, 3).
+cost(17, 3).
+cost(18, 3).
+cost(19, 3).
+cost(20, 4).
+cost(21, 4).
+cost(22, 4).
+cost(23, 4).
+cost(24, 5).
+cost(25, 5).
+cost(26, 5).
+cost(27, 6).
+cost(28, 6).
+cost(29, 6).
+cost(30, 7).
+cost(31, 8).
+cost(32, 9).
+
+
+% all tasks must be assigned a worker
+1 { selected(Worker) : workers(Worker) : qualified(Task, Worker) } :- tasks(Task).
+
+
+#minimize [selected(Worker) : cost(Worker, Cost) = Cost ].

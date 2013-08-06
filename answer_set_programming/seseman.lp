@@ -1,0 +1,86 @@
+%
+% Seseman's Convent Problem in ASP.
+%
+%
+% This ASP program was written by Hakan Kjellerstrand, hakank@bonetmail.com,
+% and is commented in the (Swedish) blog post
+% Constraint Programming: Minizinc, Gecode/flatzinc och ECLiPSe/minizinc
+% http://www.hakank.org/webblogg/archives/001209.html
+%
+% 
+% For a (Swedish) discussion of this problem se
+% Sesemans matematiska klosterproblem samt lite Constraint Logic Programming
+% http://www.hakank.org/webblogg/archives/001084.html
+% and
+% Seseman's Convent Problem: http://www.hakank.org/seseman/seseman.cgi
+% (using Eclipse code)
+
+% 
+% n is the length of a border
+% There are (n-2)^2 "holes", i.e.
+% there are n^2 - (n-2)^2 variables to find out.
+%
+% The simplest problem, n = 3 (n x n matrix)
+% which is represented by the following matrix:
+%
+%  a b c 
+%  d   e 
+%  f g h 
+% 
+% Where the following constraints must hold:
+%
+%   a + b + c = border_sum
+%   a + d + f = border_sum
+%   c + e + h = border_sum
+%   f + g + h = border_sum
+%   a + b + c + d + e + f = total_sum
+%
+% For larger matrices just the borders are summed.
+%
+%
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+#const n = 3.
+#const border_sum = n*n.
+
+% size of rows and columns
+size(1..n).
+
+% valid values
+values(0..n*n).
+
+% combinations of rows/columns of the matrix are different
+1 { matrix(Row, Col, Val) : values(Val) } 1 :- size(Row), size(Col).
+
+% identify the borders
+n { borders(1, Col) : size(Col) } n.
+n { borders(n, Col) : size(Col) } n. 
+n { borders(Row, 1) : size(Row) } n .
+n { borders(Row, n) : size(Row) } n.
+
+% sum the borders (border_sum)
+:- not border_sum #sum[ matrix(1, Col, Val) : size(Col) : values(Val) = Val ] border_sum.
+:- not border_sum #sum[ matrix(n, Col, Val) : size(Col) : values(Val) = Val ] border_sum.
+:- not border_sum #sum[ matrix(Row, 1, Val) : size(Row) : values(Val) = Val ] border_sum.
+:- not border_sum #sum[ matrix(Row, n, Val) : size(Row) : values(Val) = Val ] border_sum.
+
+% all border value must be > 0
+% :- matrix(1, Col, Val), Val = 0, size(Col), values(Val).
+% :- matrix(n, Col, Val), Val = 0, size(Col), values(Val).
+% :- matrix(Row, 1, Val), Val = 0, size(Row), values(Val).
+% :- matrix(Row, n, Val), Val = 0, size(Row), values(Val).
+
+% Using borders/2:
+:- matrix(Row, Col, Val), Val = 0, values(Val), borders(Row, Col).
+
+
+% 0:s in all the middle cells
+% matrix(Row, Col, 0) :- size(Row), size(Col), Row > 1, Row < n, Col > 1, Col < n.
+% Simpler using borders/2:
+matrix(Row, Col, 0) :- size(Row), size(Col), not borders(Row, Col).
+
+
+#hide.
+#show matrix(Row, Col, Val).

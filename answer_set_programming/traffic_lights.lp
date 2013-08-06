@@ -1,0 +1,71 @@
+% 
+% Traffic lights problem in ASP.
+% 
+% CSPLib problem 16
+% http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob016/index.html
+% """
+% Specification:
+% Consider a four way traffic junction with eight traffic lights. Four of 
+% the traffic lights are for the vehicles and can be represented by the 
+% variables V1 to V4 with domains 
+% {r,ry,g,y} (for red, red-yellow, green and yellow). 
+%  The other four traffic lights are for the pedestrians and can be 
+%  represented by the variables P1 to P4 with domains {r,g}.
+% 
+% The constraints on these variables can be modelled by quaternary 
+% constraints on 
+% (Vi, Pi, Vj, Pj ) for 1<=i<=4, j=(1+i)mod 4 which allow just the tuples 
+% {(r,r,g,g), (ry,r,y,r), (g,g,r,r), (y,r,ry,r)}.
+%
+% It would be interesting to consider other types of junction (e.g. five roads 
+% intersecting) as well as modelling the evolution over time of the 
+% traffic light sequence. 
+% ...
+%
+% Results
+% Only 2^2 out of the 2^12 possible assignments are solutions.
+% 
+% (V1,P1,V2,P2,V3,P3,V4,P4) = 
+%    {(r,r,g,g,r,r,g,g), (ry,r,y,r,ry,r,y,r), (g,g,r,r,g,g,r,r), (y,r,ry,r,y,r,ry,r)}
+%    [(1,1,3,3,1,1,3,3), ( 2,1,4,1, 2,1,4,1), (3,3,1,1,3,3,1,1), (4,1, 2,1,4,1, 2,1)}
+%
+%
+% The problem has relative few constraints, but each is very tight. 
+% Local propagation appears to be rather ineffective on this problem.
+%   
+% """
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+% r:red, g:green
+% y:yello, ry: red-yellow
+% 
+cars(r;g;ry;y).
+pedestrians(r;g).
+ix(1..4).
+
+allowed(r,r,g,g).
+allowed(ry,r,y,r).
+allowed(g,g,r,r).
+allowed(y,r,ry,r).
+
+% cars
+1 { v(Ix, Car) : cars(Car) } 1 :- ix(Ix).
+
+% pedestrians
+1 { p(Ix, Pedestrian) : pedestrians(Pedestrian) } 1 :- ix(Ix).
+
+:- ix(I), ix(J), J == (1+I) #mod 4, v(I, VI), v(J, VJ), p(I, PI), p(J,PJ),
+    not allowed(VI,PI,VJ,PJ).
+
+% combined for #show
+all(V1,P1,V2,P2,V3,P3,V4,P4) :-
+    v(1,V1), v(2,V2), v(3,V3),v(4,V4), 
+    p(1,P1), p(2,P2), p(3,P3),p(4,P4). 
+
+#hide.
+% #show v(Ix, Car).
+% #show p(Ix, Pedestrian).
+#show all(V1,V2,V3,V4,P1,P2,P3,P4).

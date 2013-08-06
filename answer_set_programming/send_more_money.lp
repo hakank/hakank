@@ -1,0 +1,46 @@
+%
+% SEND+MORE=MONEY problem in ASP.
+%
+% x(e,5) x(n,6) x(d,7) x(m,1) x(o,0) x(r,8) x(y,2) x(s,9)
+% 
+% 
+% x(d,7) 
+% x(e,5) 
+% x(m,1) 
+% x(n,6) 
+% x(o,0) 
+% x(r,8) 
+% x(s,9)
+% x(y,2) 
+%
+%
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+letter(s;e;n;d;m;o;r;y).
+values(0..9).
+
+% exact 1 occurrence of each letter
+1 { x(L,Val) : values(Val) } 1 :- letter(L).
+
+% 0..1 occurrences of each value
+{ x(L,Val) : letter(L) } 1 :- values(Val).
+
+% no digit can be given to two different symbols
+% :- letter(L), letter(L1), x(L,V1), x(L1,V1), L != L1.
+
+
+smm :- 
+   values(S;E;N;D;M;O;R;Y),
+   x(s,S), x(e,E), x(n,N), x(d,D),
+   x(m,M), x(o,O), x(r,R), x(y,Y), 
+   M > 0, 
+   S > 0,
+   S*1000+E*100+N*10+D + M*1000+O*100+R*10+E == M*10000+O*1000+N*100+E*10+Y.
+
+:- not smm.
+
+#hide.
+#show x(L,Val).
+

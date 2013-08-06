@@ -1,0 +1,53 @@
+% 
+% Coin application in ASP.
+%
+% From "The ECLiPSe Book" pages 99f and 234 ff
+% The solution in ECLiPSe is at page 236.
+%
+% """
+% What is the minimum number of coins that allows one to pay _exactly_
+% any amount smaller than one Euro? Recall that there are six different
+% euro cents, of denomination 1, 2, 5, 10, 20, 50
+% """
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+% Answer:
+%  1:1, 2:2, 5:1, 10:2, 25:1, 50:1
+
+#const max_val = 99.
+#const max_amount = 5. 
+coins(1;2;5;10;25;50).
+
+val(1..max_val).     % total
+amount(0..max_amount). % max amount per coin
+
+
+% y(Value, Coin, N) contains the individual amounts for
+% each denomination and coins for the values Value (1..max_val)
+% Note: We don't need these.
+% 1 { y(Value, Coin, N) : amount(N) } 1 :- val(Value), coins(Coin).
+% { y(Value, Coin, N) : val(Value) : coins(Coin) : N <= max_amount } :- amount(N).
+
+% ensure that all number 1..max_val are summed in some way
+Value #sum [y(Value, Coin, N) : coins(Coin) : N*Coin <= Value : amount(N) = N*Coin] Value :- val(Value).
+
+% x(Coin, N): 
+% for each coins Coin, N is the maximum value 
+% in all y's for this Coin
+x(Coin, N) :- 
+    coins(Coin), 
+    amount(N), 
+    N = #max[y(Value, Coin, N2) : val(Value) : amount(N2) = N2].
+
+total(Total) :- Total = #sum [x(Coin, N) = N].
+
+% Object: Minimize the total number of coins.
+#minimize [x(Value, N) = N].
+
+#hide.
+#show x(Coin, N).
+#show total(Total).
+% #show y(Value, Coin, N).

@@ -1,0 +1,54 @@
+% 
+% Daily schedule (logic puzzle) in ASP.
+% 
+% From
+% http://okmij.org/ftp/kakuritu/daily_schedule.ml
+% """ 
+% Solving the logical puzzle (scheduling problem) posed by Mikael More
+% on October 25, 2010:
+%
+% For the daily schedule for Monday to Wednesday:
+%   One of the days I'll shop.
+%   One of the days I'll take a walk.
+%   One of the days I'll go to the barber.
+%   One of the days I'll go to the supermarket.
+%   The same day as I go to the supermarket, I'll shop.
+%   The same day as I take a walk I'll go to the barber.
+%   I'll go to the supermarket the day before the day I'll take a walk.
+%   I'll take a walk Tuesday.
+%
+%   Which are all possible daily schedules, regarding those four events?
+% ...
+% 
+% That is, on Monday I go to the supermarket and shop, on Tuesday I walk
+% and take a haircut. There is only one schedule satisfying the constraints.
+% """
+% 
+% Also see http://okmij.org/ftp/kakuritu/logic-programming.html
+% 
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+days(monday;tuesday;wednesday).
+actions(shop;walk;barber;supermarket).
+
+% an action is done exactly once
+1 { x(Day, Action) : days(Day)  } 1 :- actions(Action).
+
+% The same day as I go to the supermarket, I'll shop.
+:- x(Day1, supermarket), x(Day2, shop), Day1 != Day2.
+
+% The same day as I take a walk I'll go to the barber.
+:- x(Day1, walk), x(Day2, barber), Day1 != Day2.
+
+% I'll go to the supermarket the day before the day I'll take a walk.
+:- x(Day1, supermarket), x(Day2, walk), Day1 >= Day2.
+
+% I'll take a walk Tuesday.
+x(tuesday, walk).
+
+#hide.
+#show x(Day, Action).
+
+

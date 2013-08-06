@@ -1,0 +1,81 @@
+% 
+% Rogo problem in ASP.
+%
+% From Mike Trick: "Operations Research, Sudoko, Rogo, and Puzzles"
+% http://mat.tepper.cmu.edu/blog/?p=1302
+% """
+% In Rogo, the goal is to find a loop through a grid of fixed length
+% that contains as many reward points as possible.
+% ...
+% [T]he goal in this example is to find a loop of no more than 12
+% steps that includes as many points as possible.   The loop must be
+% a real loop:  it must return where it started and can’t cross itself
+% or double back. Steps can be either horizontal or vertical:
+% they cannot be diagonal.  The loop cannot include any of the black squares. 
+% """
+%
+% From http://www.rogopuzzle.co.nz/
+% """
+% Rogo is an entirely new type of puzzle. The object is to collect 
+% the biggest score possible using a given number of steps in a 
+% loop around a grid. The best possible score for a puzzle is given with 
+% it, so you can easily check that you have solved the puzzle. Rogo puzzles 
+% can also include forbidden squares, which must be avoided in your loop.
+% """
+% 
+% From this I assume that the given number of step is also 
+% the optimal number of steps.
+% 
+%
+% This was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also http://www.hakank.org/answer_set_programming/
+%
+
+% domains
+rows(1..r).
+cols(1..c).
+
+% max number of steps
+steps(1..max_steps).
+
+% define adjacency between cells
+adj(R,C, R1,C1) :- rows(R;R1), cols(C;C1), |R-R1| + |C-C1|==1.
+
+% the path: unique index
+0 { path(I, Row, Col) : steps(I) } 1 :- rows(Row), cols(Col).
+1 { path(I, Row, Col) : rows(Row) : cols(Col) } 1 :- steps(I).
+
+% close the circuit: ensure that the first and last cells 
+% in the path are connected.
+:- path(1, R1, C1), path(max_steps, R2, C2), not adj(R1,C1,R2,C2). 
+
+% remove bad paths
+:- path(I-1,R1,C1), path(I,R2,C2), not adj(R1,C1, R2,C2).
+
+% no black cells in the path
+:- path(I, R,C), black(R,C).
+
+% total points, needed since 
+% "Optimization:" don't show the proper value.
+total(Total) :- Total = #sum[got_points(R,C,Value) = Value].
+
+% list the cells in path with points
+got_points(R,C, Value) :- point(R,C,Value), path(I, R, C).
+
+% symmetry breaking: the cell with the lowest coordinates
+% should be in the first step
+:- path(1, R, C), steps(Step), Step > 1, path(Step, R2, C2),
+   R*c+C > R2*c+C2.
+
+% maximize the number of points
+#maximize [ path(I,R,C) : steps(I) : point(R,C,P) = P ].
+
+% alternative: we can add an second objective to
+% start with the cell with lowest indices
+% #maximize [ path(I,R,C) : steps(I) : point(R,C,P) = P@2 ].
+% #minimize [ path(1,R,C) = R*c+C@1].
+
+#hide.
+#show path(I, Row, Col).
+#show total(Total).
+#show got_points(R,C,Value).
