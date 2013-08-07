@@ -30,6 +30,7 @@ Here's a summary of the directories so far:
 * mathematica: Mathematica, mathematical programming
 * minizinc: MiniZinc, constraint programming. Also G12 Zinc files.
 * numberjack: Numberjack, constraint programming
+* oocalc_excel: oocalc/Excel, some few linear/integer programming models
 * oscar: OscaR, constraint programming
 * pddl: PDDL (planning language)
 * perl6: Perl6 programming language
