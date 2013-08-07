@@ -27,6 +27,7 @@ Here's a summary of the directories so far:
 * jgap: JGAP, genetic programming
 * jsr_331: JSR-331, Java API for constraint programming
 * k: K, array programming language  (note: index.html contains code etc)
+* mathematica: Mathematica, mathematical programming
 * minizinc: MiniZinc, constraint programming
 * numberjack: Numberjack, constraint programming
 * oscar: OscaR, constraint programming
@@ -38,6 +39,7 @@ Here's a summary of the directories so far:
 * setlx: SETL and SetlX, high level programming language
 * sicstus: SICStus Prolog, constraint programming, logic programming, loops. etc
 * unicon: Unicon/Icon, high level programming language
+* weka: Weka, data mining/machine learning, Java files, HTML, and data files (ARFF and CSV)
 
 I'll try to keep this repository as updated as possible.
 
