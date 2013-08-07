@@ -1,0 +1,1028 @@
+Perl 6 testing
+
+Note: I sent a report to Carl Mäsak for things that was weird
+in Rakudo Star 2011.01. See carl_masak1.txt
+
+This file is a copy so I let the errors be for now, see ("!!!").
+
+
+
+> sub postfix:<!> { [*] 1..$^n }
+> say 5!;
+
+> sub infix:<+++> { $^a+$^b+1 }
+> 1 +++ 1
+
+# This is nice.
+> [+] (1..10)
+55
+
+# and
+> [\+] 1..10
+1 3 6 10 15 21 28 36 45 55
+
+> [\~] "a".."g"
+a ab abc abcd abcde abcdef abcdefg
+
+> our sub infix:<+++> { $^a + $^b + 1 }
+> say [+++] (1..10)
+
+> for 2..10 -> $i {  say "$i: {[+++] (1..$i)}"}
+  2: 4
+  3: 8
+  4: 13
+  5: 19
+  6: 26
+  7: 34
+  8: 43
+  9: 53
+  10: 64
+
+# Not: .reduce can be used for this
+> for 2..10 -> $i { say "$i: {(1..$i).reduce({$^a+$^b+1})}"}
+2: 4
+3: 8
+4: 13
+5: 19
+6: 26
+7: 34
+8: 43
+9: 53
+10: 64
+
+> [\~] 0..9
+0 01 012 0123 01234 012345 0123456 01234567 012345678 0123456789
+
+> ([\~] 0..9)>>.map: {$_ + 1}
+1 2 13 124 1235 12346 123457 1234568 12345679 123456790
+
+> "hal".split("").map: { $_.succ}
+i b m
+> ( "hal".split("").map: { $_.succ}).join("")
+ibm
+
+# Since .succ is defined for char, this also works.
+> "hal".split("")>>.succ
+i b m
+
+> "ibm".split("")>>.pred
+h a l
+> ("hal".split("")>>.succ).join("")
+ibm
+
+> "kalle".split("")>>.ord
+107 97 108 108 101
+
+# eigenstates
+> my @x = 1|11,2,3,4; ([+] @x).eigenstates.min;
+10
+> my @x = 1|11,2,3,4; ([+] @x).eigenstates;
+10 20
+
+> any(1,2,3) * any(4,5,6)
+any(any(4, 5, 6), any(8, 10, 12), any(12, 15, 18))
+> (any(1,2,3) * any(4,5,6)).eigenstates
+any(4, 5, 6) any(8, 10, 12) any(12, 15, 18)
+> (any(1,2,3) * any(4,5,6)).eigenstates.min
+any(4, 5, 6)
+> (any(1,2,3) * any(4,5,6)).eigenstates.min.eigenstates
+4 5 6
+> (any(1,2,3) * any(4,5,6)).eigenstates.min.eigenstates.min
+4
+
+
+# Kind of boring that there is no arbitrary precision.
+
+# In the file ~/perl6/rakudo-star-2010.07/rakudo/src/gen/core.pm
+# a lot of fun stuff is defined.
+
+> my @a = 1..10
+> my %h = @a.classify({$^x % 2})
+0	2 4 6 8 10
+1	1 3 5 7 9
+
+> my %h = @a.classify({$^x > 4})
+0	1 2 3 4
+1	5 6 7 8 9 10
+   
+> my @x = <kalle pelle nisse perl python I hakank>
+kalle pelle nisse perl python I hakank
+
+
+> my %h = @x.classify({bytes $^x})
+4	perl
+5	kalle pelle nisse
+6	python hakank
+1	I
+
+# and direct sorting
+
+> my %h = @x.classify({bytes $^x}).sort.reverse
+4	perl
+5	kalle pelle nisse
+6	python hakank
+1	I
+
+# variant with "direct call", i.e. unchained
+
+> .say for classify({$_ % 3}, @a)
+0	3 6 9
+1	1 4 7 10
+2	2 5 8
+
+# Checking national characters
+# (I'm quite sensitive for these kind of things. :-)
+> "åke har en häst".capitalize
+Åke Har En Häst
+
+
+# See ~/perl6/git/perl6-examples/euler/
+# for one-liners
+
+# Euler 1
+# 4 variants where gather/take is interesting
+> (1..^1000).grep({ ! ($^a % 3 and $^a % 5) }).reduce({ $^a + $^b }).say;
+
+> my $sum;
+> for (1..^1000) -> $n { $sum+=$n unless $n % 5 and $n % 3};
+> $sum.say;
+
+> say [+] gather { for (1..999) { take $_ if $_ % 3 == 0 || $_ % 5 == 0;  } }
+
+> say [+] (1..^1000).grep: { !($_ % (3&5)) };
+
+# A variant on the 1st
+> (1..^1000).grep({ ($^a % (3|5) == 0) }).reduce({ $^a + $^b }).say;
+233168
+
+# A nice variant on the 3rd
+> say [+] gather { for (1..999) { take $_ if $_ % (3|5) == 0  } }
+233168
+
+# or maybe more natural
+> [+] gather { take $_ if $_ % (3|5) == 0  for 1..999 }
+233168
+
+# or
+>  [+] gather for 1..999 { take $_ if $_ % (3|5) == 0 }
+233168
+
+# or the divisible operator %%:
+>  [+] gather { take $_ if $_ %% (3|5) for 1..999 }
+233168
+
+# And a shorter variant
+> [+](1..999).grep({$_%%(3|5)})
+233168
+
+# Range can be used as alternatives. We can then remove
+# some with grep
+> (1..100).grep({$_%%(2..3|5)}).grep({$_!=(5|8)})
+2 3 4 6 9 10 12 14 15 16 18 20 21 22 24 25 26 27 28 30 32 33 34 35 36 38 39 40 42 44 45 46 48 50 51 52 54 55 56 57 58 60 62 63 64 65 66 68 69 70 72 74 75 76 78 80 81 82 84 85 86 87 88 90 92 93 94 95 96 98 99 100
+
+
+# Take the 10 first divisors of 3 or 5:
+> (1..*).grep({$_%%(3|5)}).[^10]
+3 5 6 9 10 12 15 18 20 21
+
+
+# Primes:
+> my @a = 1..10
+> @a <<*>> 2
+2 4 6 8 10 12 14 16 18 20
+> all ((@a <<*>> 2).map: {$_ % 2 == 0})
+all(Bool::True)
+
+# Is a prime
+> all((2..10).map: {11 % $_ != 0} )
+all(Bool::True)
+
+> sub is_prime($n) { all((2..sqrt($n+1)).map: {$n % $_ != 0} )}
+is_prime
+> is_prime(11)
+all(Bool::True)
+
+# This I don't understand. Why both False and True?
+> is_prime(10)
+all(Bool::False, Bool::True)
+
+# It works in boolean context
+> if is_prime(10) { "yes"} else {"no"}
+no
+
+# And with the "?" operator
+> ?is_prime(11)
+1
+> ?is_prime(10)
+0
+
+> (2..100).grep({is_prime($_)})
+2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97
+
+# A variant:
+> sub is_prime2($n) {(2..sqrt($n+1)).grep({$n %% $_}) == []}
+is_prime2
+> is_prime2(10)
+0
+> is_prime2(11)
+1
+> say "$_: {is_prime2($_)}" for 2..10
+2: 1
+3: 1
+4: 0
+5: 1
+6: 0
+7: 1
+8: 0
+9: 0
+10: 0
+
+# Variant with any
+> sub is_prime($n) {!any((2..sqrt($n+1)).map: {$n % $_ == 0} )}
+
+# And then we put it into Any class
+>  use MONKEY_TYPING; augment class Any { method is_prime {  all((2..sqrt(self+1)).map: {self % $_ != 0} )  } }
+
+# A slighly better (golfier) variant: 
+> use MONKEY_TYPING; augment class Any { method is_prime{all((2..sqrt(self)).map: {!(self%%$_)})}}
+
+# A faster variant:
+# !!! using this in 2011-01 seems to hang perl6 
+# e.g.
+#
+# > for 1,2,3,4,5 -> $x { say "$x: {?$x.is_prime}"}
+#
+# Well, it might be a bug in my code that causes it.
+# I'm quite sure that it worked in earlier Rakudo-Star versions.
+# !!!
+# > use MONKEY_TYPING; augment class Any { method is_prime{?((self == 2|3) || ((!(self%%2))&&all((3,5...sqrt(self)).map: {!(self%%$_)}) )) } }
+
+# Later: masak tipped about this:
+
+> use MONKEY_TYPING; augment class Any { method is_prime{?((self == 2|3) || ((!(self%%2))&&all((3,5...* >= sqrt(self)).map: {!(self%%$_)}) )) } }
+
+
+> ? 10.is_prime
+0
+# Later note: Ah, now it's Bool::True/False instead of 0/1
+> ? 10.is_prime
+Bool::False
+
+# Well, multiply by 1...
+> 1*? 10.is_prime
+0
+
+# This works
+> for 1,2,3,4,5 -> $x { say "$x: {?$x.is_prime}"}
+1: 1
+2: 1
+3: 1
+4: 0
+5: 1
+
+# But this don't
+> for 1..5 -> $x { say "$x: {?$x.is_prime}"}
+1: 1
+Method 'is_prime' not found for invocant of class 'Integer'
+
+> (1,2,3,4,5).WHAT
+Parcel()
+
+# What is a parcel?
+
+# This works
+>  my @a = (1,2,3,4,5,6,7,8,9,10);
+1 2 3 4 5 6 7 8 9 10
+>  for @a -> $x { say "$x: {?$x.is_prime}"}
+1: 1
+2: 1
+3: 1
+4: 0
+5: 1
+6: 0
+7: 1
+8: 0
+9: 0
+10: 0
+> @a.WHAT
+Array()
+
+# And by testing different approaches, this works:
+# (though Bool:True/False in 2011-01)
+> for 2..16 { say "$_: {?"$_".Int.is_prime}"}
+2: 1
+3: 1
+4: 0
+5: 1
+6: 0
+7: 1
+8: 0
+9: 0
+10: 0
+11: 1
+12: 0
+13: 1
+14: 0
+15: 0
+16: 0
+
+# And now we can do...
+> (2..116).grep: { ?"$_".Int.is_prime}
+2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113
+
+# Euler Problem 3
+# """
+# The prime factors of 13195 are 5, 7, 13 and 29.
+# What is the largest prime factor of the number 600851475143 ?
+# ""
+>  my$n=13195;(2..sqrt($n)).grep: {?($n %% $_)&&"$_".Int.is_prime}
+5 7 13 29
+>  my$n=13195;  [max](2..sqrt($n)).grep: {?($n %% $_)&&"$_".Int.is_prime}
+29
+
+> my$n=600851475143;(2..sqrt($n)).grep: {?($n %% $_)&&"$_".Int.is_prime}
+
+# Principal solution. Checking large values of n is very slow...
+>  my$n=60;(2..sqrt($n+1)).grep: {my$x=$_;($n%%$x)&&all((2..sqrt($_)).map: {!($x%%$_)})}
+2 3 5
+
+# It might be better to put all known primes in a hash, but this don't work...
+> my %p = 2=>1
+> (2..sqrt($n)).grep: {my $x = $_; ($n%%$x) && ( %p{$x} || (sqrt($x) > 5 && all((3,5..sqrt($x)).map: {!($x%%$_)}) && %p{$x}++ )) } 
+
+
+>  my $x = 600851475143; for (2..sqrt($x+1)) { if $x % $_ == 0 && is_prime($_) { say $_ }   }
+71
+839
+1471
+6857
+[1]    31684 segmentation fault  perl6
+
+
+
+# Rot13
+> my @a = 1..10
+# !!!
+# 2011-01 gives the following error:
+# """
+# No candidates found to invoke for method 'increment_index' on object of type 'LSM'; available candidates have signatures:
+# :(Mu : Regex $s;; *%_)
+# :(Mu : Str $s;; *%_)
+# """
+# !!!
+> @a>>.trans((1..26) => (14..26,1..13))
+14 15 16 17 18 19 20 21 22 23
+
+# This works:
+> "hakank">>.trans(("a".."z") => ("n".."z","a".."m"))
+unxnax
+
+# Variant with rotate:
+> "hakank">>.trans(("a".."z") => ("a".."z").rotate(13))
+unxnax
+
+# 
+# Everything is an object
+# Note: In perl6 shell all lines must include "use MONKEY_TYPING"
+# (when monkey typing)
+> use MONKEY_TYPING; augment class Any { method xxxx { self + 1} }
+!class_init_25
+> 123.xxxx
+124
+
+# This don't work. Why?
+> my @a = 1..10
+> @a>>.xxxx
+Method 'xxxx' not found for invocant of class 'Integer'
+
+# Why does it works just on the first element?
+> for @a { say "$_ -> {$_.xxxx}" }
+1 -> 2
+Method 'xxxx' not found for invocant of class 'Integer'
+
+
+# This works
+> use MONKEY_TYPING; augment class Array { method sum { [+] self } }
+> @a.sum
+55
+
+# Note: 1..10 is a Range (and not an Array) so it has to be defined separately
+> use MONKEY_TYPING; augment class Range { method sum { [+] self } }
+> (1..10).sum
+55
+
+# Define on Any
+> use MONKEY_TYPING; augment class Any { method prod { [*] self } }
+> (1..10).prod
+3628800
+
+> (1..17).prod
+355687428096000
+> (1..18).prod
+6.402373705728e+15
+
+> ([\*] 1..*).[^10]
+1 2 6 24 120 720 5040 40320 362880 3628800
+
+> ^10
+0 1 2 3 4 5 6 7 8 9
+
+# R is the reverse operator
+> ([\R~] 'a'..*).[^8]
+a ba cba dcba edcba fedcba gfedcba hgfedcba
+
+> ([\R~] 1..*).[^8]
+1 21 321 4321 54321 654321 7654321 87654321
+
+# Note: "." is the array take operator
+# Lazy lists:
+
+> (1..* Z** 1..*).[^5]
+1 4 27 256 3125
+
+> my @a = 1..10
+1 2 3 4 5 6 7 8 9 10
+> @a.[^4]
+1 2 3 4
+
+# Slighly surprising: Any() instead of undef
+> @a.[^15]
+1 2 3 4 5 6 7 8 9 10 Any() Any() Any() Any() Any()
+
+
+> (@a Z~ (1..*)).join("|")
+11|22|33|44|55|66|77|88|99|1010
+
+
+# Reverse operator on numbers:
+> 1 R/ 10
+10
+
+# Note: with "..." (three ".") we can play
+# more with the interval
+# !!! 
+# This hangs in 2011-01
+# !!
+> 1,3...10
+1 3 5 7 9
+
+# !!! This also hangs in 2011-01 !!!
+> (1,3...10)
+
+
+> (1,3...10).WHAT
+List()
+> (1..10).WHAT
+Range()
+
+# I.e., instead of  1 / 10 -> 10 / 1
+
+# Divisible by: %%
+> 6 %% 2
+1
+# Later: Bool::True
+
+# Cycling of elements (they call it "extension")
+> (1,2) <<~<< <A B C D>
+1A 2B 1C 2D
+
+
+# Hyperoperator on hash (intersection)
+> my %a = a => 1, b => 2, c => 3;
+> my %b = a => 5, b => 6, c => 7;
+> .say for (%a >>+<<%b).sort
+a	6
+b	8
+c	10
+
+# Number of element in a hash with +
+>  +%a
+3
+>  +@a
+3
+
+> our sub postfix:<!>($a) {  [*] 1..$a; }
+> my %b = a => 5, b => 6, c => 7;
+a	5
+b	6
+c	7
+
+# Nice!
+> %b>>!
+a	120
+b	720
+c	5040
+
+
+# slurp and sort 
+# (The file README.hkj is 24kB and it takes 2-3 seconds to
+# run this.
+> my %h = (); for slurp("README.hkj").lines -> $h { %h{$h} = $h.chars}
+29 0 0 62 15 0 0 9 42 38 ....
+
+> say "$_: %h{$_}" for %h.keys.sort({ %h{$_} }).reverse
+
+# Shortcut control:
+> my @x = 1,2,3; say ?@x.grep(2); say ?@x.grep(4);
+1
+0
+> @x.grep(2);
+2
+> @x.grep(4);
+# (no result, and it's correct)
+
+> ?@x.grep(4|3) && "yes" || "nope";
+yes
+> ?@x.grep(4|12) && "yes" || "nope";
+nope
+
+# Shell one-liner
+# !!! When I run this the following is thrown:
+# """
+# Method 'match' not found for invocant of class ''
+# in 'Regex::Bool' at line 6143:CORE.setting
+# in 'prefix:<?>' at line 468:CORE.setting
+# in 'coerce-smartmatch-result' at line 7308:CORE.setting
+# in <anon> at line 1504:CORE.setting
+# in <anon> at line 1
+# in main program body at line 1
+# """
+# !!!!
+$ perl6 -e '.say for slurp("README.hkj").lines.grep({/perl:i/})'
+
+# Like R:s sample().
+> gather for (1..10).pick(*)  {take $_}
+9 10 2 5 7 1 8 3 6 4
+# And of course this sums to 55. :-)
+> [+] gather for (1..10).pick(*)  {take $_}
+55
+
+# Easier
+> (1..10).pick(*)
+8 6 10 7 4 3 9 1 2 5
+
+# sample() with replace=T (i R).
+# Note: It's a lazy list so we just take 10 elements
+# !!! I 2011-01 blir det
+# 0 1 Any() Any() Any() Any() Any() Any() Any() Any()
+# 
+# :roll also gives the same result
+# > (0..1).pick(*, :roll).[^10]
+# !!!
+> (0..1).pick(*, :replace).[^10]
+0 1 0 1 1 0 0 0 0 1
+
+# replicate 10:
+# !!! In 2011-01 a lot of warnings is shown
+# """
+# Use of uninitialized value in numeric context
+# ===SORRY!===
+# """
+# and then
+#  1 1 1 1 1 1 1 1 1
+# 
+# Note: replacing with :roll don't help
+# !!!
+> gather for 1..10 { take [+] (0..1).pick(*, :replace).[^10] }
+5 8 5 5 6 6 8 4 6 6
+
+# Take those where sum <= 5
+# !!! Same error as above !!!
+> (gather for 1..10 { take [+] (0..1).pick(*, :replace).[^10] }).grep({$_ <= 5})
+4 1 5 3
+
+# Number of occurrences where sum <= 4
+# !!!
+# Just one error
+# "Use of uninitialized value in numeric context"
+# och ingen "SORRY"
+# !!!
+> +(gather for 1..10 { take [+] (0..1).pick(*, :replace).[^10] }).grep({$_ <= 4})
+2
+
+# Take the unique values
+# !!!
+# Hmm, in 2011-01 this always give 20 unique values
+# which is kinda surprising, statistically speaking.
+# Same result with :roll.
+# !!!
+
+> (1..20).pick(*,:replace).[^20].uniq
+16 6 8 4 9 13 20 12 14 11 10 19
+
+
+# pick also works on hashes and arrays
+> my %h = a=>1,b=>2,c=>3
+c	3
+a	1
+b	2
+
+> %h.pick()
+a
+> %h.pick()
+b
+> %h.pick()
+b
+
+# Question: Why 6 elements and not 3?
+> %h.pick(*)
+c b b a c c
+
+# Answer: because the value is the distribution
+# !!! In 2011-01 it always returns:
+# a	1
+# b	2
+# c	3
+# Same with :roll
+# !!!
+> my %h = (); for {a => 1, b => 2, c => 3}.pick(600,:replace) { %h{$_}++ }; .say for %h.sort
+a	106
+b	196
+c	298
+
+> my @a = "a".."z"
+
+#
+# !!!
+# The following statement gives this message:
+# "Option :replace is deprecated -- please use .roll" 
+# 
+# !!!
+> @a.pick(*, :replace).[^10]
+u o w n p s a h m e
+
+# !!! Yes, this works !!!
+> @a.pick(*, :roll).[^10]
+a t d p c s h y r v
+
+
+# batch() is a synonym for [^$n]
+# > @a.pick(*, :replace).batch(10)
+# y g q m x e m a w z
+# > ("a".."c").pick(*, :replace).batch(20).join("")
+# bbbaabacbbcbbccaaabb
+
+# !!! I tested :roll instead in 2011-01, but
+# got the error message
+# """
+# Method 'batch' not found for invocant of class 'List'
+# """
+> @a.pick(*, :roll).batch(10)
+Method 'batch' not found for invocant of class 'List'
+
+
+
+# Note: instead of "*" one can place the number of occurences
+> my @urn = <black white white>;      # beads, 1/3 black, 2/3 white
+# !!! In 2011-01 it only gives three results, not 50.
+# >  .say for @urn.pick(50, :roll);
+# black
+# white
+# white
+# !!!
+# > .say for @urn.pick(50, :replace);   # put back after each pick
+
+# Antalet träffar där i:te värdet är i i:te position
+# Number of hits where i'th value is in i'th position (fixpoint)
+> gather for 1..10 {take [+] (((1...6).pick(*)) <<===>> (1..6))} 
+0 0 0 0 0 3 1 1 3 0
+
+
+
+# Sets:
+> my $s1 = Set.new(1..10)
+> $s1.exists(4)
+1
+> $s1.exists(14)
+0
+> my $s2 = Set.new(6..15)
+> $s1.intersection($s2)
+set(6, 7, 8, 9, 10)
+> $s1.intersection($s2).keys
+6 7 8 9 10
+> $s1.intersection($s2).values
+1 1 1 1 1
+
+
+> $s1 | $s2
+any(Set.new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), Set.new(6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+> ($s1 | $s2).keys
+any(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+> ($s1 & $s2).keys
+all(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+> ?($s1 & $s2).keys
+1
+> ($s1 & $s2).exists(1)
+all(Bool::True, Bool::False)
+> ?($s1 & $s2).exists(1)
+0
+> ?($s1 | $s2).exists(1)
+1
+
+# And a variant with Ranges
+> (1..10 || 4..10)
+1 2 3 4 5 6 7 8 9 10
+> (1..10 && 4..10)
+4 5 6 7 8 9 10
+> (1..10 <= 4..10)
+0
+
+> 4.roots(3)
+1.5874010519682 + 0i -0.793700525984099 + 1.3747296369986i -0.7937005259841 + -1.3747296369986i
+> 4.roots(3).abs
+3
+> 4.roots(3)>>.abs
+1.5874010519682 1.5874010519682 1.5874010519682
+
+> 4.roots(2)
+2 + 0i -2 + 2.44929359829471e-16i
+> 4.roots(2).perl
+(Complex.new(2, 0), Complex.new(-2, 2.44929359829471e-16))
+> 4.roots(2).abs
+2
+> 4.roots(2)>>.abs
+2 2
+
+# Rationals
+> my $r = Rat.new(1,3)
+0.333333333333333
+
+> $r*2
+0.666666666666667
+> $r.perl
+1/3
+
+> ($r*2).nude
+2 3
+> ($r*2).perl
+2/3
+> ($r*12).perl
+4/1
+
+> pi.Rat.perl
+355/113
+
+> exp(1).Rat.perl
+2721/1001
+
+> exp(1).Rat(0.00000001).perl
+23225/8544
+> pi.Rat(0.00000001).perl
+103993/33102
+> pi.Rat(0.00000000000000001).perl
+245850922/78256779
+
+> 2.12.Rat.perl
+53/25
+
+
+# Fibonacci:
+> my @f = (1,1)
+> for 2..10 { @f[$_] = @f[$_-1] + @f[$_-2]}
+> @f
+1 1 2 3 5 8 13 21 34 55 89
+
+# Wow! Here is three lazy list version from 
+# http://use.perl.org/~masak/journal/40459?from=rss
+# "6 built-ins in Perl 6 that you never knew you needed"
+# (via http://planetsix.perl.org/)
+
+> (1, 1, -> $a, $b { $a + $b } ... *).[^10]
+1 1 2 3 5 8 13 21 34 55
+
+> 1, 1, -> $a, $b { $a + $b } ... *           # fibonacci
+> 1, 1, { $^a + $^b } ... *                   # ditto
+> 1, 1, *+* ... *                             # ditto
+
+# sums the first 100 Fibonacci numbers
+> [+](1,1,*+*...100)
+232
+
+# This is the highest we can go with the Int precision
+> (1, 1, *+* ...*).[^73]
+
+( ....,806515533049393)
+
+# add +1:
+> ( 1, 1, *+* ... *)[^12]>>.succ
+2 2 3 4 6 9 14 22 35 56 90 145
+
+# Add +2 (in two steps)
+> (( 1, 1, *+* ... *)[^12]>>.succ)>>.succ
+3 3 4 5 7 10 15 23 36 57 91 146
+
+# Cumulative sum of the first 10 Fib numbers
+> [\+] (1, 1, *+* ...*).[^10]
+1 2 4 7 12 20 33 54 88 143
+
+# Fibonacci numbers <= 4000000
+> my @fib = (1,1,*+*...4000000)
+1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 987 1597 2584 4181 6765 10946 17711 28657 46368 75025 121393 196418 317811 514229 832040 1346269 2178309 3524578
+
+# Euler 2: Find the sum of all the even-valued terms in the sequence 
+# which do not exceed four million.
+> [+](1,1,*+*...4000000).grep({$_ % 2 == 0})
+4613732
+
+# "*+*" is jokingly called "cheerleading plus":
+# http://leto.net/dukeleto.pl/2010/06/rakudo-perl-6-in-your-postgresql-database.html
+# I think it's the same as "HyperWhatever"
+# http://perlcabal.org/syn/S02.html
+
+> (0, 1, *+1 ... *).[^10]
+0 1 2 3 4 5 6 7 8 9
+
+> ("a","b",*~*...*).[^10]
+a b ab bab abbab bababbab abbabbababbab bababbababbabbababbab abbabbababbabbababbababbabbababbab bababbababbabbababbababbabbababbabbababbababbabbababbab
+
+# And one man use user defined operators 
+# !!! 
+# I 2011-01 this seems to take a long time or hangs...
+# !!!
+> our sub infix:<xxx>($a,$b) {$a+$b}
+> 1,1,*xxx*...100
+1 1 2 3 5 8 13 21 34 55 89
+
+> our sub infix:<xxx>($a,$b) {$a*2+$b*2}
+> (1,1,*xxx*...*).[^10]
+1 1 4 10 28 76 208 568 1552 4240
+
+# One don't have to defined a infix operator
+> (1,1,{$^x+$^y}...*).[^10]
+1 1 2 3 5 8 13 21 34 55
+> (1,1,{2*$^x+2*$^y}...*).[^10]
+1 1 4 10 28 76 208 568 1552 4240
+
+# But it don't work as a "usual" huper operator
+> (1..10) <<{$^a+$^b}>> (1..10)
+0
+
+# Although a user defined infix operator works here
+> our sub infix:<xxx>($a,$b) {$a*2+$b*2}
+infix:<xxx>
+> (1..10) <<xxx>> (1..10)
+4 8 12 16 20 24 28 32 36 40
+
+> (1..10) Zxxx (1..10)
+4 8 12 16 20 24 28 32 36 40
+
+# Another variant, (curring, see http://perlgeek.de/blog-en/perl-5-to-6/ )
+# where "*" är Whatever, i.e. a parameter.
+> my $c = * + *;
+# !!! This also seems to hang the shell in 2011-01!!!
+> 1,1,$c...100
+1 1 2 3 5 8 13 21 34 55 89
+
+# This variant takes 3 parameters
+> my $c = * + * + *;
+_block1474
+# !!! As does this !!!
+> 1,1,1,$c...100
+1 1 1 3 5 9 17 31 57
+
+# Or directly ("Tribonacci sequence"?)
+> (1,1,1,*+*+*...*).[^10]
+1 1 1 3 5 9 17 31 57 105
+
+# Variant on  [+]:
+> (1..10).reduce(&infix:<+>)
+55
+
+# And with argument
+>  (1..10).reduce({$^a+$^b})
+55
+
+# Feed operator <==
+>  my @a <== grep { $_ > 3 } <== map { $_ * 2 } <== grep { $_ % 2 == 0 } <== 1..10
+4 8 12 16 20
+
+
+
+# FizzBuzz (from a tweet)
+> say $_%15??$_%5??$_%3??$_!!"Fizz"!!"Buzz"!!"FizzBuzz"for 0..100
+
+# Note that conditions are 
+#  ... ?? ... !!
+# i.e.
+> 1==2 ?? "yes" !! "no"
+no
+
+# (I thought it was ||)
+
+
+#Euler 4
+# """
+#  A palindromic number reads the same both ways. The largest palindrome made 
+#  from the product of two 2-digit numbers is 9009 = 91  99.
+#
+#  Find the largest palindrome made from the product of two 3-digit numbers.
+# """
+# Start nice...
+> [max] (10..99).map: { (10..$^x).map: {my $z=$x*$_; $z if $z eq $z.flip} }
+9009
+
+# It takes a long time to do 100.999 (I aborted it)
+> [max](100..999).map: { (100..$^x).map: {my $z=$x*$_;$z if $z eq $z.flip}}
+
+
+# X: cross product
+> (1..4) X (1..4)
+1 1 1 2 1 3 1 4 2 1 2 2 2 3 2 4 3 1 3 2 3 3 3 4 4 1 4 2 4 3 4 4
+> (1..4) X~ (1..4)
+11 12 13 14 21 22 23 24 31 32 33 34 41 42 43 44
+
+> our sub infix:<xxx> { $^a ~":"~$^b }
+infix:<xxx>
+> (1..4).pick(*) Xxxx (1..4).pick(*)
+2:4 2:2 2:3 2:1 1:4 1:2 1:3 1:1 3:4 3:2 3:3 3:1 4:4 4:2 4:3 4:1
+
+
+# A variant where xxx returns a pair:
+> our sub infix:<xxx> { ($^a ~":"~$^b)=> $^a+$b }
+infix:<xxx>
+> my %d = (1..3).pick(*) Xxxx (1..3).pick(*)
+1:1	2
+1:2	3
+2:1	3
+1:3	4
+3:1	4
+2:2	4
+3:2	5
+2:3	5
+3:3	6
+
+
+.first Note that it takes a test parameter
+> (1..10).first: {$_>3}
+4
+
+# .fmt
+> my @a = 1..10
+> @a.pick(*).map({$_*2}).fmt('<%2d>', ":")
+<18>:< 2>:<12>:<20>:<16>:< 4>:<14>:< 6>:<10>:< 8>
+
+# Create a concordance table (kind of)
+> my %h; slurp("README.hkj").words.map: {%h{$_}++}
+
+
+# Pascal's triangle
+# http://perlgeek.de/blog-en/perl-6/pascal-triangle.html
+
+> sub pascal { [1], -> @p { [0, @p Z+ @p, 0] } ... * };
+> say pascal[^10].perl
+# output (reformatted for easy readbility):
+# ([1],
+#  [1, 1],
+#  [1, 2, 1],
+#  [1, 3, 3, 1],
+#  [1, 4, 6, 4, 1],
+#  [1, 5, 10, 10, 5, 1],
+#  [1, 6, 15, 20, 15, 6, 1],
+#  [1, 7, 21, 35, 35, 21, 7, 1],
+#  [1, 8, 28, 56, 70, 56, 28, 8, 1],
+#  [1, 9, 36, 84, 126, 126, 84, 36, 9, 1])
+
+# Or as one-liner
+> ([1], -> @p { [0, @p Z+ @p, 0] } ... *).batch(10)
+# !!!
+# This gives:
+# Method 'batch' not found for invocant of class 'List'
+# This works:
+# > ([1],->@p{[0,@p Z+ @p,0]}...*)[^10]
+# !!!
+1 1 1 1 2 1 1 3 3 1 1 4 6 4 1 1 5 10 10 5 1 1 6 15 20 15 6 1 1 7 21 35 35 21 7 1 1 8 28 56 70 56 28 8 1 1 9 36 84 126 126 84 36 9 1
+
+# This works
+>([1],->@p{[0,@p Z+ @p,0]}...*)[^10]
+
+# A better output
+> say $_ for (([1], -> @p { [0, @p Z+ @p, 0] } ... *)[^10])
+1
+1 1
+1 2 1
+1 3 3 1
+1 4 6 4 1
+1 5 10 10 5 1
+1 6 15 20 15 6 1
+1 7 21 35 35 21 7 1
+1 8 28 56 70 56 28 8 1
+1 9 36 84 126 126 84 36 9 1
+
+# Euler 5:
+# """
+# 2520 is the smallest number that can be divided by each of the numbers from 
+# 1 to 10 without any remainder.
+
+# What is the smallest number that is evenly divisible by all of the 
+# numbers from 1 to 20?
+# """
+
+# (from Twitter)
+> reduce {($^a*$^b/($a,$b,*%*...0)[*-2]).Int},(1..20) 
+232792560
+
+
+# quicksort as a one-liner (from a tweet)
+> multi sub qs([]){}; multi sub qs([$p,*@r]){ qs(@r.grep(* <$p)),$p,qs(@r.grep(* >=$p))}; qs([1,9,2,6,3]).join(" ").say
+
+

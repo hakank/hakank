@@ -1,0 +1,1510 @@
+
+# Some of these tests where inspired by my 
+# "Programspråket J: en kort reseskildring"
+# (about the J programming language, in Swedish)
+# http://www.hakank.org/webblogg/archives/001078.html
+
+----
+# This following was unexpected. 
+# After some thoughts: Well, not really. 
+# This stopped to work in rakudo-star-2010.09
+# (as masak already commented).
+# It changed in september:
+# https://github.com/perl6/specs/commit/692474967ab8535f370d859488da592555e17d8d
+
+# This works:
+> 1,3...21
+1 3 5 7 9 11 13 15 17 19 21
+
+# hangs: it seems that the sequence must end in a % = 0 int?
+> 1,3...^20
+
+# This works, since 21 is in the seq.
+> (1,1,*+*...21)
+1 1 2 3 5 8 13 21
+
+> (1,1,*+*...22)
+# hangs
+
+# This works
+> (1,1,*+*...*).[^10]
+1 1 2 3 5 8 13 21 34 55
+
+# As this which is not as elegant...
+> 1,1,*+*...^ { $_ > 100 }
+1 1 2 3 5 8 13 21 34 55 89
+
+# But this is:
+>  1,1,*+*...*> 100
+1 1 2 3 5 8 13 21 34 55 89 144
+
+> (1,1,*+*...*)[^10]
+1 1 2 3 5 8 13 21 34 55
+
+------------------
+
+> sub infix:<!!> { [*] $^a..$^b }
+infix:<!!>
+> 2 !! 5
+120
+
+> ( "a","b",*~*...*)[^7]
+a b ab bab abbab bababbab abbabbababbab
+
+# How large can we get with $n!?
+> for 1...* -> $n { last if $n! ~~ /\./; say "$n: {$n!}" }
+1: 1
+2: 2
+3: 6
+4: 24
+5: 120
+6: 720
+7: 5040
+8: 40320
+9: 362880
+10: 3628800
+11: 39916800
+12: 479001600
+13: 6227020800
+14: 87178291200
+15: 1307674368000
+16: 20922789888000
+17: 355687428096000
+
+---
+#
+# list diff: Diff of numbers in an array.
+#
+
+> my @fib = (1,1,*+*...*)[^10]
+
+> gather for ([1..@fib.elems] Z [0..@fib.elems-2])  { take @fib[$^a] - @fib[$^b] }
+0 1 1 2 3 5 8 13 21
+
+> @fib Z @fib
+1 1 1 1 2 2 3 3 5 5 8 8 13 13 21 21 34 34 55 55
+> ((@fib Z @fib)[1..19])
+1 1 1 2 2 3 3 5 5 8 8 13 13 21 21 34 34 55 55
+
+> @fib[1..*-1]
+1 2 3 5 8 13 21 34 55
+
+This is better:
+> @fib[1..*-1] <<->> @fib[0..*-2]
+0 1 1 2 3 5 8 13 21
+
+> sub diff(@a) { @a[1..*-1] <<->> @a[0..*-2] }
+
+> diff @fib
+0 1 1 2 3 5 8 13 21
+
+# It would be nice with a better way of operating 
+# with an array with one offset, i.e. something like
+# Haskell's     
+#       fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+
+> sub tail(@a) { @a[1...*] }
+tail
+> tail @fib
+# loops forever. I thought that this would be possible 
+# since @fib is of limited length.
+
+# Also, these two variants loops forever:
+> @fib[1...*] <<->> @fib[0...*]
+> (@fib[1...*] <<->> @fib[0...*])[^5]
+
+# This works...
+> sub tail(@a) { @a[1...@a.elems-1] }
+> tail @fib
+1 2 3 5 8 13 21 34 55
+
+> sub butlast(@a) { @a[0...@a.elems-2] }
+> (tail @fib) <<->> (butlast @fib)
+0 1 1 2 3 5 8 13 21
+
+# Must uses parens here, otherwise it parses as
+> tail (@fib <<->> butlast @fib)
+0 0 0 0 0 0 0 0 54
+
+
+# masak tipped me about Z- operator. Nice.
+> @fib[1..*-1] Z- @fib[0..*-2]
+0 1 1 2 3 5 8 13 21
+
+> sub diff(@a) { @a[1..*-1] Z- @a[0..*-2] }
+
+> diff @fib
+0 1 1 2 3 5 8 13 21
+
+# Again, this loops forever (which I already knew...)
+> (@fib[1..*] Z- @fib[0..*])
+
+# as does
+> (@fib[1..*] Z- @fib[0..*])[^8]
+
+
+# and later masak experimented this:
+# (Nice, I must check the "given" more...)
+> my @fib = (1,1,*+*...*)[^10]; 
+> say diff(@fib).perl given my &diff := sub (@a) { @a[1..*-1] Z- @a }
+
+
+-----
+# Another way of creating fib, as a "self-referencing" array
+> my @fib := 1, 1, map { @fib[$_] + @fib[$_ + 1] },0..Inf;  @fib[^30]
+1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 987 1597 2584 4181 6765 10946 17711 28657 46368 75025 121393 196418 317811 514229 832040
+
+
+----
+
+
+#
+# Find words with "increasing" letters.
+# 
+# Create the regex
+> my @a = "a".."z";
+> (0..21).map: {@a[$^a..$^a+4].join(".*")} 
+a.*b.*c.*d.*e b.*c.*d.*e.*f c.*d.*e.*f.*g d.*e.*f.*g.*h e.*f.*g.*h.*i f.*g.*h.*i.*j g.*h.*i.*j.*k h.*i.*j.*k.*l i.*j.*k.*l.*m j.*k.*l.*m.*n k.*l.*m.*n.*o l.*m.*n.*o.*p m.*n.*o.*p.*q n.*o.*p.*q.*r o.*p.*q.*r.*s p.*q.*r.*s.*t q.*r.*s.*t.*u r.*s.*t.*u.*v s.*t.*u.*v.*w t.*u.*v.*w.*x u.*v.*w.*x.*y v.*w.*x.*y.*z
+
+# slightly longer...
+> (0..21).map: {@a[($^a...*)[^4]].join(".*")} 
+
+# "words" is a word file with 14228 Swedish five letter words
+> for ((0..22).map: {("a".."z")[($^a...*)[^3]].join(".*")}) {say $^r; say open("words").lines.grep(/$r/) }
+
+# This is longer, but should be faster...
+> my @words = open("words").lines; for ((0..22).map: {("a".."z")[($^a...*)[^2]].join(".*")}) {say $^r; .say for @words.grep($^r) }
+
+# Using /$^r/ directly don't work. How do I match a regex variable in grep?
+
+
+# More checking about grep and regexes
+> my @a = <kalle pelle abcde>;
+kalle pelle abcde
+
+> @a.grep(/a.*b/)
+abcde
+
+> my $r = 'a.*b'; @a.grep(/$r/)
+
+> my $r = rx/a.*b/; @a.grep($r)
+abcde
+
+# but not:
+> my $r = "a.*b"; @a.grep(rx/$r/)
+# no hit
+
+# Aha! Using /<$r>/ seems to work:
+> my $r = "a.*b"; @a.grep(/<$r>/)
+abcdef
+
+
+# Testing again, using a smaller array
+> my @words = <kalle pelle abcdef>
+> for ((0..22).map: {("a".."z")[($^a...*)[^2]].join(".*")}) {say "$^r:"; .say for @words.grep(/<$^r>/) }
+a.*b:
+abcdef
+b.*c:
+abcdef
+c.*d:
+abcdef
+d.*e:
+abcdef
+e.*f:
+abcdef
+k.*l:
+kalle
+
+
+# So, let's test the bigger version and with 3 chars
+>  my @words = open("words").lines; for ((0..22).map: {("a".."z")[($^a...*)[^2]].join(".*")}) {say "$^r:"; .say for @words.grep(/<$^r>/) }
+
+
+# Idea: use this instead
+#     .succ .*  .succ.succ .* .succ.succ.succ
+#
+> my @a = <kalle pelle abcde>;
+kalle pelle abcde
+
+> @a.grep( / (.) $0 / )
+kalle pelle
+
+# these don't work...
+> @a.grep( / (.) $0.succ / )
+> @a.grep( / (.) $0<ident>.succ / )
+
+# Some hints from Masak...
+> my @words = <kalle pelle abcdef>
+> say @words.grep( / (.) .* (.) { $1 eq $0.succ } /);
+===SORRY!===
+Method 'succ' not found for invocant of class 'Match'
+
+# Hmm, this was unexpected. Why is abcdef shown?
+> .say for @words.grep( / (.) .* (.) { $1 eq $0 } /);
+kalle
+pelle
+abcdef
+
+# Same result:
+> .say for @words.grep( / (.) .* (.) { "$1" eq "$0" } /);
+
+Ah, it should be with <?{ expr }> 
+> .say for @words.grep( / (.) (.) <?{ $0 eq $1 }> /);
+kalle
+pelle
+
+> .say for @words.grep( / (.) .* (.) <?{ $0 eq $1.succ }> /);
+Method 'succ' not found for invocant of class 'Match'
+
+
+# Just to see what we are dealing with here
+> .say for @words.grep( / (.) .* (.) <?{ say "0:$0 1:$1 {$1.perl}" }> /);
+0:k 1:e Match.new(
+ from => 4,
+ orig => "kalle",
+ to   => 5,
+)
+kalle
+0:p 1:e Match.new(
+ from => 4,
+ orig => "pelle",
+ to   => 5,
+)
+pelle
+0:a 1:f Match.new(
+ from => 5,
+ orig => "abcdef",
+ to   => 6,
+)
+abcdef
+
+# Converting to Str works: $0.Str.succ
+# And here it is....
+> .say for @words.grep( / (.) .* (.) <?{ $1 eq $0.Str.succ and say "$0 .* {$0.Str.succ}"  }> /);
+k .* l
+kalle
+a .* b
+abcdef
+
+> .say for @words.grep( / (.) .* (.) .* (.) <?{ $1 eq $0.Str.succ and $2 eq $1.Str.succ  }> /);
+abcdef
+
+# Adds some other words
+> my @words = <pelle kalle abcdef dijkstra misconceptions xenophobia>;
+> .say for @words.grep( / (.) .* (.) .* (.) <?{ $1 eq $0.Str.succ and $2 eq $1.Str.succ and say "$0 .* $1 .* $2" }> /);
+a .* b .* c
+abcdef
+i .* j .* k
+dijkstra
+m .* n .* o
+misconceptions
+n .* o .* p
+xenophobia
+
+# Alternative, using $/ 
+> .say for @words.grep( / (.) (.) (.) <?{ $1 eq $0.Str.succ and $2 eq $1.Str.succ and say "$/" }> /);
+abc
+abcdef
+ijk
+dijkstra
+nop
+xenophobia
+
+
+
+# How do we generalize this, i.e. so we don't have to type in all "$1 eq $0..." 
+# The principle is 
+#     $<n> eq $<n-1>.Str.succ
+
+> my @a = 3,2...0
+> for (@a[0..2] Z @a[1..3]) { say "\$$^a eq \$$^b.Str.succ" }
+$3 eq $2.Str.succ
+$2 eq $1.Str.succ
+$1 eq $0.Str.succ
+
+> my $x = (gather for (@a[0..2] Z @a[1..3]) { take "\$$^a eq \$$^b.Str.succ" }).join(" and ")
+$3 eq $2.Str.succ and $2 eq $1.Str.succ and $1 eq $0.Str.succ
+
+
+> my $y = (1..3).map: {"(.) .*"  }
+(.) .* (.) .* (.) .*
+
+# This is not what I expected, but it has probably something to do with how
+# $y is interpreted.
+>  .say for @words.grep( / <$y> <?{ $x and say "$0 .* $1 .* $2" }> /);
+ .*  .* 
+pelle
+ .*  .* 
+kalle
+ .*  .* 
+abcdef
+ .*  .* 
+dijkstra
+ .*  .* 
+misconceptions
+ .*  .* 
+xenophobia
+
+
+# masak's take. Nice!
+sub letter-regex($n) { 
+         my $r = "(.)"; 
+         for 1 ..^ $n { 
+            my  $l = $_ - 1; 
+            $r ~= " .* (.) <?\{ \${$_} eq \${$l}.Str.succ \}>" 
+         };
+         return eval "rx/$r/" 
+}; 
+.say for @words.grep(letter-regex(3))'
+
+> my @words = <pelle kalle abcdef dijkstra misconceptions xenophobia>; 
+> sub letter-regex($n) { my $r = "(.)"; for 1 ..^ $n { my  $l = $_ - 1; $r ~= " .* (.) <?\{ \${$_} eq \${$l}.Str.succ \}>" }; return eval "rx/$r/" }; 
+>.say for @words.grep(letter-regex(3))
+abcdef
+dijkstra
+misconceptions
+xenophobia
+
+
+# In http://irclog.perlgeek.de/perl6/2011-03-25
+# masak asked if $0 "should behave as Str in the case of .succ and .pred"
+# My comment was that I should probably thought that it should react as 
+# Num in numeric context, i.e "\d" and "==". Example:
+> "1 2 3 4 5 5 4 3 2 1" ~~ / (\d) " " (\d) <?{ $1.Num.succ == $0 and say "$0 $1" }> /
+5 4
+
+# On the other hand, this works as well (surprisingly) i.e. with ".Str" and "eq"
+> "1 2 3 4 5 5 4 3 2 1" ~~ / (\d) " " (\d) <?{ $1.Str.succ eq $0 and say "$0 $1" }> /
+5 4
+
+# Here I would probably have assumed the result of "3 2" but is quite happy with
+# the result.
+> "1 2 3 4 15 14 4 3 2 1" ~~ / (\d+) \s+ (\d+) <?{ $1.Str.succ eq $0 and say "$0 $1" }> /
+15 14
+> "1 2 3 4 15 14 4 3 2 1" ~~ / (\d+) \s+ (\d+) <?{ $1.Str.succ == $0 and say "$0 $1" }> /
+15 14
+
+
+# using rotate to create the patterns
+> (0..22).map: { say @a.rotate($_)[0..2].join(" .* ") }
+a .* b .* c
+b .* c .* d
+c .* d .* e
+d .* e .* f
+e .* f .* g
+f .* g .* h
+g .* h .* i
+h .* i .* j
+i .* j .* k
+j .* k .* l
+k .* l .* m
+l .* m .* n
+m .* n .* o
+n .* o .* p
+o .* p .* q
+p .* q .* r
+q .* r .* s
+r .* s .* t
+s .* t .* u
+t .* u .* v
+u .* v .* w
+v .* w .* x
+w .* x .* y
+
+
+----
+
+# An aside: Testing recursion
+> sub fib($a) { return 1 if $a <= 1; return fib($a-1) + fib($a-2) }
+> (1..10).map: {fib($^a)}
+1 2 3 5 8 13 21 34 55 89
+
+# The 1* is needed here since otherwise it returns Bool::True, 2, 3, 5...
+> sub fib($a) { return 1*($a <= 1 || fib($a-1) + fib($a-2)) }
+fib
+> (1..10).map: {fib($^a)}
+1 2 3 5 8 13 21 34 55 89
+
+# shorter:
+> fib($_) for 1..10
+1 2 3 5 8 13 21 34 55 89
+
+# different approach
+> fib(5).perl given my &fib := sub { return 1*($^a <= 1 || fib($^a-1) + fib($^a-2)) }
+8
+
+
+---
+
+gcd / lcm for euler5.p6: calculate [lcm] 1..20)
+
+# later note: $a.gcd($y) is built-in.
+
+> sub gcd($u, $v) { if $v == 0  { return abs($u) } else { return gcd($v, $u % $v);} }
+gcd
+> gcd(10, 2)
+2
+> gcd(10, 12)
+2
+> gcd(10, 13)
+1
+
+ sub lcm($a, $b) { my $g = gcd($a, $b); return $a*$b / $g;}
+lcm
+> lcm(2,12)
+12
+> lcm(2,6)
+6
+> lcm(2,4)
+4
+> lcm(2,3)
+6
+
+# OK, make them infix
+> sub infix:<gcd>($u, $v) { if $v == 0 { abs($u) } else { $v gcd ($u % $v) } } 
+
+# Note: this don't work as I expect
+# > sub infix:<gcd> { if $^v == 0 { abs($^u) } else { $^v gcd ($^u % $^v); } }  # don't work (as I expect)
+# > 10 gcd 5
+# Too many positional parameters passed; got 2 but expected 1
+
+> our sub infix:<lcm>($a, $b) { return $a * $b / ($a gcd $b) }
+
+> 10 lcm 2
+10
+> 10 lcm 5
+10
+> 10 lcm 6
+30
+
+> 1 lcm 2 lcm 3 lcm 4 lcm 5
+60
+
+> [lcm] 1..5
+60
+
+> [lcm] 1..20
+232792560
+
+# OK. written in euler5.p6
+
+-----
+
+# This is powerful.
+> sub infix:<=>($, $b) { say $b x 3 }
+infix:<=>
+
+> my $x = "kalle"
+kallekallekalle
+
+---
+
+Euler 6:
+"""
+The sum of the squares of the first ten natural numbers is,
+1^(2) + 2^(2) + ... + 10^(2) = 385
+
+The square of the sum of the first ten natural numbers is,
+(1 + 2 + ... + 10)^(2) = 55^(2) = 3025
+
+Hence the difference between the sum of the squares of the first ten 
+natural numbers and the square of the sum is 3025 − 385 = 2640.
+
+Find the difference between the sum of the squares of the first one 
+hundred natural numbers and the square of the sum.
+"""
+
+# sum of the squares for 1..10
+> (1..10).map: {$_**2}
+1 4 9 16 25 36 49 64 81 100
+> [+] (1..10).map: {$_**2}
+385
+
+# square of the sum of 1..10
+> ([+] (1..10))**2
+3025
+
+> my @a = 1..10
+# Difference
+> ([+]@a)**2 - [+]@a.map: {$_**2} 
+2640
+
+> my @a = 1..100;
+> ([+]@a)**2 - [+]@a.map: {$_**2} ;
+25164150
+
+-----
+
+Euler 7
+By listing the first six prime numbers: 2, 3, 5, 7, 11, and 13, we can see 
+that the 6^(th) prime is 13.
+
+What is the 10001^(st) prime number?
+
+# from masak (see testing.txt)
+> use MONKEY_TYPING; augment class Any { method is_prime{?((self == 2|3) || ((!(self%%2))&&all((3,5...* >= sqrt(self)).map: {!(self%%$_)}) )) } }
+
+> .say for (2..20).grep( {"$_".Int.is_prime()})
+2
+3
+5
+7
+11
+13
+17
+19
+
+
+> (2...*).grep( {"$_".Int.is_prime()})[^6]
+2 3 5 7 11 13 17 19 23 29
+
+> (2...*).grep( {"$_".Int.is_prime()})[^6][*-1]
+13
+
+> (2...*).grep( {"$_".Int.is_prime()})[^100][*-1]
+541
+
+# This takes some time....
+> (2...*).grep( {"$_".Int.is_prime()})[^10001][*-1]
+
+------
+
+For Euler 9 (Pythagoras)
+
+> my $c = 10
+10
+
+# This surprised me at first and was the cause of a long
+# debug session. I thought that it should only
+# show just
+#   10, 9 
+# or probably Perl6 should realize that it is a weird sequence.
+# But it's not weird. Really.
+> $c,($c-1)..12
+10 9 10 11 12
+
+
+----
+
+For Euler 10 (sum of primes < 2*10^6)
+
+> my $set = set 1..10
+set(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+> $set.exists(1)
+Bool::True
+
+> $set.exists(11)
+Bool::False
+
+> $set.elems
+10
+
+
+> $set.keys
+1 2 3 4 5 6 7 8 9 10
+
+# see rakudo/src/core/Set.pm
+
+# Hmm, deleting an element seems to require
+# .difference
+> $set.difference(set(1))
+set(2, 3, 4, 5, 6, 7, 8, 9, 10)
+> $set
+set(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+> $set = $set.difference(set 1);
+set(2, 3, 4, 5, 6, 7, 8, 9, 10)
+> $set
+set(2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+> my $s1 = set 1..10
+set(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+> my $s2 = set 4..6
+set(4, 5, 6)
+> $s1.difference($s2)
+set(1, 2, 3, 7, 8, 9, 10)
+
+# No surprises here...
+> $s1.union($s2)
+set(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+> $s1.union(set 100..103)
+set(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 101, 102, 103)
+
+> $s1.symmetricdifference(set 1..4)
+set(5, 6, 7, 8, 9, 10)
+
+> $s1.subset(set 1..4)
+Bool::False
+> $s1.superset(set 1..4)
+Bool::True
+
+# However this surprise me
+> my $s1 = set 1..10
+set(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+> my $s2 = 4..6
+4 5 6
+# This is OK
+> $s1.difference($s2)
+set(1, 2, 3, 7, 8, 9, 10)
+
+# Why 7?
+> $s1 - $s2
+7
+
+# But why don't this work?
+
+
+
+
+----
+
+"Squares which remain squares if you increment every digit by 1 "
+http://benvitale-funwithnum3ers.blogspot.com/2011/03/squares-which-remain-squares-if-you.html
+
+0
+25
+2025
+13225
+4862025
+60415182025
+207612366025
+153668543313582025
+13876266042653742025
+20761288044852366025
+47285734107144405625
+406066810454367265225
+141704161680410868660551655625
+
+
+> sub is_square { my $b = sqrt($^a); $b.Int*$b.Int == $^a }
+> sub is_square { sqrt($^a).Int ** 2  == $^a }
+is_square
+> is_square(22)
+Bool::False
+> is_square(25)
+Bool::True
+
+> (0..10).grep({ is_square($_) })
+0 1 4 9
+
+# comb again!
+> sub incr_all($n) { $n.comb>>.succ.join("") }
+incr_all
+> incr_all(1234)
+2345
+
+> (0..100).grep({ is_square($_) and is_square(incr_all($_)) })
+0 25
+
+# A better approach is to first square 0..sqrt(n) and check 
+# if its incr_all is a square
+> (0..10).grep({ is_square(incr_all($_**2)) }).map: {$_ **2 }
+0 25
+
+> (0..2210).grep({ is_square(incr_all($_**2)) }).map: {$_ **2 }
+0 25 2025 13225 4862025
+
+------------------
+
+# count number of occurrences of each letter in a string:
+
+> my %h; my @x = "hakan kjellerstrand".split("").map: { %h{$_}++ }
+Any() Any() Any() 1 Any() Any() 1 Any() Any() Any() 1 1 Any() Any() Any() 1 2 1 Any()
+
+> %h
+h	1
+a	3
+k	2
+n	2
+ 	1
+j	1
+e	2
+l	2
+r	2
+s	1
+t	1
+d	1
+
+# The assignment to @x is not really needed and was a rest of
+# an earlier test. The Any() .. is the previous value of %h{$_}.
+# Since it disturbes me, it's better to show "0" instead.
+> my %h; my @x = "hakan kjellerstrand".split("").map: { %h{$_}++ || 0 };
+0 0 0 1 0 0 1 0 0 0 1 1 0 0 0 1 2 1 0
+
+# I like the "inlines" assigments, i.e. that @y can be
+# assigned at the same time.
+
+> my %h; my @x = (my @y="hakan kjellerstrand".split("")).map: { %h{$_}++ || 0 };
+0 0 0 1 0 0 1 0 0 0 1 1 0 0 0 1 2 1 0
+> @y
+h a k a n   k j e l l e r s t r a n d
+
+# And now we can recreate the hash from @x and @y (whatever reason we have
+# for doing this).
+
+> my %h2 = @y Z=> (@x>>.succ)
+h	1
+a	3
+k	2
+n	2
+ 	1
+j	1
+e	2
+l	2
+r	2
+s	1
+t	1
+d	1
+
+# With a minor change we here shows the first position of
+# each letter.
+> my %h; my $c = 0; my @x = (my @y="hakan kjellerstrand".split("")).map: {  %h{$_} //= $c++ };
+0 1 2 1 4 5 2 7 8 9 9 8 12 13 14 12 1 4 18
+
+# as a hash
+> %h
+h	0
+a	1
+k	2
+n	4
+ 	5
+j	7
+e	8
+l	9
+r	12
+s	13
+t	14
+d	18
+
+# And to the the original string back:
+> my %h2=%h.reverse; @x.map: { say "$_: %h2{$_}" }
+0: h
+1: a
+2: k
+1: a
+4: n
+5:  
+2: k
+7: j
+8: e
+9: l
+9: l
+8: e
+12: r
+13: s
+14: t
+12: r
+1: a
+4: n
+18: d
+Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True Bool::True
+
+# I'm not sure why the Bool values where shown ...
+# (.reverse makes the values as keys)
+> my %h2=%h.reverse; (@x.map: { %h2{$_} }).join("")
+hakan kjellerstrand
+
+
+----------------------
+
+# Convert a string to its numeric variant
+#
+#  i.e. "bach" -> 2 1 3 8
+#
+
+> my %alpha = "a".."z" Z=> (1..26)
+> %alpha{"bach".split("")}
+2 1 3 8
+
+# With some more chars
+> my %alpha2 = ("a".."z","å","ä","ö"," ") Z=> (1..30)
+
+# or if you are too lazy to count the characters
+> my %alpha2 = (my @z = ("a".."z","å","ä","ö"," ")) Z=> (1..@z.elems)
+
+# Note: this loops forever, so it can't be used.
+> "å".."ö"
+
+> %alpha2{"håkan kjellerstrand".split("")}
+8 27 11 1 14 30 11 10 5 12 12 5 18 19 20 18 1 14 4
+
+# And the "letter number" for my name is:
+> [+] %alpha2{"håkan kjellerstrand".split("")}
+240
+
+# Reduced digit sum
+# i.e.  777 -> 7+7+7 => 21 => => 2+1 => 3
+
+> [+] "777".comb 
+21
+> ([+] "777".comb).comb
+2 1
+> [+] ([+] "777".comb).comb
+3
+
+# Here is one way
+> my $x = 777; while ($x > 9) { $x = [+] $x.comb}; say $x
+3
+
+> sub red_digit_sum($x) { my $z = $x;  while ($z > 9) { $z = [+] $z.comb}; $z }
+red_digit_sum
+> red_digit_sum(777)
+3
+
+# or slightly golfier
+> my $x = 777; $x = [+] $x.comb while $x > 9; say $x;
+3
+
+> sub red_digit_sum2($x) { my $z = $x; $z = [+] $z.comb while $z > 9; $z }
+red_digit_sum2
+> red_digit_sum2(777)
+3
+
+
+> red_digit_sum2(%alpha2{"håkan kjellerstrand".split("")})
+6
+
+# skip the " "
+> red_digit_sum2(%alpha2{"håkankjellerstrand".split("")})
+3
+
+
+# Or another way that I like more...
+> 777,{[+] $^a.comb}...*<10
+777 21 3
+
+> (777,{[+] $^a.comb}...*<10)[*-1]
+3
+
+# Shorter
+> 777,{[+] .comb}...*<10
+777 21 3
+
+# This works too
+> 777,{[+].comb}...*<10
+777 21 3
+
+> sub red_digit_sum3($x) {my $z = [+] $x.comb; ($x,{[+] .comb}...*<10)[*-1] } 
+> red_digit_sum3(777)
+3
+
+# Darn, that don't work well with an array of numbers.
+# OK, let's fix that with an initial reduce:
+>  sub red_digit_sum3($x) {my $z = [+] $x.comb; ($z,{[+] .comb}...*<10)[*-1] }
+red_digit_sum3
+> red_digit_sum3(%alpha2{"håkan kjellerstrand".split("")})
+6
+
+# Better (but more obscure), put the initial fix into the sequence.
+>  sub red_digit_sum3($x) { (([+] $x.comb),{[+] .comb}...*<10)[*-1] }
+red_digit_sum3
+> red_digit_sum3(%alpha2{"håkan kjellerstrand".split("")})
+6
+
+-------------------------------
+
+# (from masas, see testing.txt)
+> use MONKEY_TYPING; augment class Any { method is_prime{?((self == 2|3) || ((!(self%%2))&&all((3,5...* >= sqrt(self)).map: {!(self%%$_)}) )) } }
+
+> (2..16).grep({"$_".Int.is_prime})
+2 3 5 7 11 13
+
+> (2..50).grep({$_.Str.Int.is_prime})
+2 3 5 7 11 13 17 19 23 29 31 37 41 43 47
+
+# Cumulative sum of the squares of primes
+> [\+] ((2..50).grep({$_.Str.Int.is_prime})).map: {$^a**2}
+4 13 38 87 208 377 666 1027 1556 2397 3358 4727 6408 8257 10466
+
+
+# (Spooky... :-)
+> (2..17).grep({$_.Str.Int.is_prime})
+2 3 5 7 11 13 17
+> [\+] ((2..17).grep({$_.Str.Int.is_prime})).map: {$^a**2}
+4 13 38 87 208 377 666
+
+
+------
+
+# Rot13 and its cousins
+
+> my @a = "n".."z", "a".."m"
+n o p q r s t u v w x y z a b c d e f g h i j k l m
+
+> @a.rotate(13)
+n o p q r s t u v w x y z a b c d e f g h i j k l m
+> @a.rotate(12)
+m n o p q r s t u v w x y z a b c d e f g h i j k l
+
+> my %alpha = "a".."z" Z=> (0..25)
+> @a[%alpha{"hakan".split("")}]
+h a k a n
+> @a.rotate(13)[%alpha{"hakan".split("")}]
+u n x n a
+
+
+---
+Tests for Euler 11
+
+> my $x = "1 2 3\n4 5 6\n7 8 9";
+> .say for $x.split("\n")>>.split(" ")
+1
+2
+3
+4
+5
+6
+7
+8
+9
+
+# This works, but it must be a better way than this...
+> my @a = (); for $x.split("\n") -> $line { my $t = $line.split(" "); @a.push($t) }
+1 2 3 1 2 3 4 5 6 1 2 3 4 5 6 7 8 9
+> .say for @a
+1 2 3
+4 5 6
+7 8 9
+
+> @a[1][1]
+5
+> @a[0][0]
+1
+
+# But I don't understand ranges in a multidim...
+> @a[0][0]
+1
+> @a[1][0]
+4
+> @a[2][0]
+7
+
+# But:
+> @a[0..2][0]
+1 2 3
+
+> @a[0][0..2]
+1 2 3
+
+# Maybe this has something to do with it...
+> @a.perl
+[("1", "2", "3"), ("4", "5", "6"), ("7", "8", "9")]
+
+# But if I defined this by explicit it's not "matrix":
+> @a = [("1","2","3"),("4","5","6"),("7","8","9")]
+1 2 3 4 5 6 7 8 9
+> @a
+1 2 3 4 5 6 7 8 9
+> .say for @a
+1 2 3 4 5 6 7 8 9
+
+
+# This don't work (of course, but it would be nice)
+> gather for 1..4 -> $a, ($a..$a+3) -> $b { take $a+$b }
+Redeclaration of symbol $a at line 1, near "..$a+3) ->"
+
+# this works (but then I can't do anything with $a for the
+# second range)
+> for 1..4, 1..4 -> $a, $b { say "$a $b" }
+1 2
+3 4
+1 2
+3 4
+
+# Hrmm, what I wanted was of course
+ for 1..4 X 1..4 -> $a, $b { say "$a $b" }
+1 1
+1 2
+1 3
+1 4
+# ...
+
+
+# This works...
+> gather for 1..4 -> $a { for $a..$a+4 -> $b { take "$a $b" } }
+1 1 1 2 1 3 1 4 1 5 2 2 2 3 2 4 2 5 2 6 3 3 3 4 3 5 3 6 3 7 4 4 4 5 4 6 4 7 4 8
+
+# Another test
+> my $x = "11 22 33\n44 55 66\n77 88 99";
+
+---
+
+# Nice, "continuations" of arrays
+
+> my @a = 2,4...20
+2 4 6 8 10 12 14 16 18 20
+
+# continue (expand) this to 30 instead
+> @a...30
+2 4 6 8 10 12 14 16 18 20 22 24 26 28 30
+
+-------------
+# For Euler 14 (Collatz)
+
+# Nice...
+> 10,{($^x %% 2) ?? ($^x / 2) !! (1+ $^x * 3)}...1
+10 5 16 8 4 2 1
+> 11,{($^x %% 2) ?? ($^x / 2) !! (1+ $^x * 3)}...1
+11 34 17 52 26 13 40 20 10 5 16 8 4 2 1
+
+
+--------------
+
+# Methods etc...
+
+
+> my $x = 10
+10
+
+> $x.WHAT
+Int()
+
+> $x.^methods
+perl pred succ WHICH Str Bridge Int Rat Num sign gcd ACCEPTS Real Bool Complex reals isNaN abs exp ln sqrt roots floor ceiling truncate round cis unpolar rand sin asin cos acos tan atan sec asec cosec acosec cotan acotan sinh asinh cosh acosh tanh atanh sech asech cosech acosech cotanh acotanh atan2 Numeric conjugate log log10 to-radians from-radians Numeric Real Int Rat Num abs conjugate exp log log10 sqrt roots to-radians from-radians floor ceiling round truncate sign cis unpolar chr chrs rand sin cos tan sec cosec cotan sinh cosh tanh sech cosech cotanh asin acos atan atan2 asec acosec acotan asinh acosh atanh asech acosech acotanh bytes capitalize chars chomp subst comb samecase samespace split substr trans index rindex chop fmt lc lcfirst match ord ords p5chop eval flip trim-leading trim-trailing trim words lines uc ucfirst sprintf IO can isa does list ACCEPTS Str Numeric Seq all any one none join elems flat map sort rotate first grep reverse end min max minmax pick roll classify reduce uniq kv keys values pairs postcircumfix:<[ ]> at_pos postcircumfix:<{ }> at_key clone defined bless BUILD BUILDALL CREATE new PARROT WHENCE WHERE WHICH  Bool item notdef note so not perl print say Capture WALK
+
+> 10.^methods 
+# .... same thing
+
+# And I didn't know that gcd is already supported.
+
+> 97.chr
+a
+
+> "h".ord
+104
+
+# Hmm, I thought that the ">>" would loop through all chars here
+> "hakank">>.ord
+104
+
+> "hakank".split("")>>.ord
+104 97 107 97 110 107
+
+
+> $hakank.^methods
+ACCEPTS perl pred succ WHICH Bool Str encode Numeric Real Int Rat Num abs conjugate exp log log10 sqrt roots to-radians from-radians floor ceiling round truncate sign cis unpolar chr chrs rand sin cos tan sec cosec cotan sinh cosh tanh sech cosech cotanh asin acos atan atan2 asec acosec acotan asinh acosh atanh asech acosech acotanh bytes capitalize chars chomp subst comb samecase samespace split substr trans index rindex chop fmt lc lcfirst match ord ords p5chop eval flip trim-leading trim-trailing trim words lines uc ucfirst sprintf IO can isa does list ACCEPTS Str Numeric Seq all any one none join elems flat map sort rotate first grep reverse end min max minmax pick roll classify reduce uniq kv keys values pairs postcircumfix:<[ ]> at_pos postcircumfix:<{ }> at_key clone defined bless BUILD BUILDALL CREATE new PARROT WHENCE WHERE WHICH  Bool item notdef note so not perl print say Capture WALK
+
+--
+
+# list comprehensions
+> my @a = ([$_, $_ ** 2] if $_ > 4 for 1..10)
+5 25 6 36 7 49 8 64 9 81 10 100
+
+> my @a = ([$_, $_ ** 2] if $_ > 4 for 1..10); @a.perl
+[[5, 25], [6, 36], [7, 49], [8, 64], [9, 81], [10, 100]]
+
+> my @a = ([$_, $_ ** 2] if !($_%% 4) for 1..10); @a.perl
+[[1, 1], [2, 4], [3, 9], [5, 25], [6, 36], [7, 49], [9, 81], [10, 100]]
+
+> @a.WHAT
+Array()
+
+# without parens it's no comprehension
+>  my @a = [$_, $_ ** 2] if !($_%% 4) for 1..10
+1 1 2 4 3 9 5 25 6 36 7 49 9 81 10 100
+> @a.perl
+[[10, 100]]
+
+---
+For Euler 21
+
+# Sum of divisors
+> my $n = 10; ($_ if ($n %% $_) for 1..1+($n/2).Int)
+1 2 5
+
+> my $n = 10; [+] ($_ if ($n %% $_) for 1..1+($n/2).Int)
+8
+
+----
+
+# Some simulations
+# Note: This was inspired by some of my simulations in R
+# which was written about in http://www.hakank.org/sims/simulering.html
+# (mostly in Swedish, but the R code is in ... R).
+#
+
+#
+# (.roll is used when we want with replacements, .pick is without replacements)
+> my @r = (1..20).roll(20)
+8 5 5 2 14 20 3 5 12 2 4 15 12 2 18 7 7 9 2 12
+
+# mean value
+> ([+] @r) / @r.elems
+8.2
+
+> sub mean(@r) { ([+] @r) / @r.elems }
+mean
+> mean @r
+8.2
+
+
+# How long does it take until a value > 8 roll?
+> (my $c = 0; for (1..10).roll(*) -> $r { $c++; last if $r > 8 }; say $c) for 1..10
+7
+3
+3
+3
+4
+4
+8
+2
+6
+2
+
+> my @a = ( (gather for (1..10).roll(*) -> $r { take $r; last if $r > 8 }).elems  for 1..10)
+1 4 1 1 5 2 4 1 1 8
+> @a
+1 4 1 1 5 2 4 1 1 8
+
+> mean ( (gather for (1..10).roll(*) -> $r { take $r; last if $r > 8 }).elems  for 1..100)
+5.27
+> mean ( (gather for (1..10).roll(*) -> $r { take $r; last if $r > 8 }).elems  for 1..1000)
+4.909
+
+# Count the number of fixpoints
+> say [+] (my @r = (1..10).pick(*)) Z== 1..10; say @r.perl
+2
+[10, 9, 6, 4, 1, 5, 3, 8, 7, 2]
+
+# Hmm, why error?
+> mean(([+] (1..10).pick(*) Z== 1..10) for 1..100)
+Unable to parse postcircumfix:sym<( )>, couldn't find final ')' at line 1
+
+# Ah, must enclose the expression with parens
+> mean( ([+] ((1..10).pick(*) Z== 1..10) for 1..10) )
+1.2
+
+> my @r = (([+] (1..10).pick(*) Z== 1..10) for 1..1000); mean @r
+1.026
+
+
+# Birthday "paradox" (or rather "surprise")
+
+> (1..365).roll(20)
+90 328 319 112 57 195 182 108 4 43 40 342 257 108 70 341 120 146 165 101
+
+
+> my %h = ();  ((1..365).roll(30)).map: { %h{$_}++ }
+> %h.perl
+{"109" => 1, "351" => 1, "90" => 1, "106" => 1, "25" => 1, "82" => 1, "184" => 1, "71" => 1, "258" => 2, "290" => 1, "139" => 1, "198" => 1, "57" => 1, "91" => 1, "32" => 1, "143" => 1, "107" => 1, "265" => 1, "142" => 1, "341" => 1, "87" => 1, "88" => 1, "224" => 1, "49" => 1, "253" => 1, "333" => 1, "162" => 1, "314" => 1, "267" => 1}
+> %h.values.max
+2
+
+# STRANGE
+# But why is this different, i.e. where %h.values.max is on the same line?
+> my %h = ();  ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+-Inf
+> my %h = ();  ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+-Inf
+> my %h = ();  ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+-Inf
+
+# Hmm, if I fetch the return value of the map, it works:
+> my %h = ();  my @p = ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+2
+> my %h = ();  my @p = ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+2
+> my %h = ();  my @p = ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+1
+> my %h = ();  my @p = ((1..365).roll(30)).map: { %h{$_}++ }; say %h.values.max 
+2
+
+# OK, use gather/for
+> my @x = gather for 1..10 { my %h = ();  my @p = ((1..365).roll(30)).map: { %h{$_}++ }; take %h.values.max }
+1 2 1 1 1 2 2 2 1 2
+
+> [+] gather for 1..10 { my %h = ();  my @p = ((1..365).roll(20)).map: { %h{$_}++ }; take %h.values.max > 1 }
+5
+
+# What is the percentage of times where we got >= 2 same birthdays, with 20 persons.
+# For a simulation of 100
+> my $t = 100; ([+] gather for 1..$t { my %h = ();  my @p = ((1..365).roll(20)).map: { %h{$_}++ }; take %h.values.max > 1 }) / $t
+0.36
+
+# 21 persons
+> my $t = 100; ([+] gather for 1..$t { my %h = ();  my @p = ((1..365).roll(21)).map: { %h{$_}++ }; take %h.values.max > 1 }) / $t
+0.4
+
+# 22 persons
+> my $t = 100; ([+] gather for 1..$t { my %h = ();  my @p = ((1..365).roll(22)).map: { %h{$_}++ }; take %h.values.max > 1 }) / $t
+0.41
+
+# 23 persons, Should I be surprised?
+> my $t = 100; ([+] gather for 1..$t { my %h = ();  my @p = ((1..365).roll(23)).map: { %h{$_}++ }; take %h.values.max > 1 }) / $t
+0.51
+
+# 30 persons
+> my $t = 100; ([+] gather for 1..$t { my %h = ();  my @p = ((1..365).roll(30)).map: { %h{$_}++ }; take %h.values.max > 1 }) / $t
+0.74
+
+# Hmm, but why a map here? Why not a simple for loop?
+> my $t = 100; ([+] gather for 1..$t { my %h = (); for (1..365).roll(23) { %h{$_}++ }; take %h.values.max > 1 }) / $t
+0.54
+
+
+
+# add sum to List and Array
+> use MONKEY_TYPING; augment class List { method sum { [+] self } }
+> use MONKEY_TYPING; augment class Array { method sum { [+] self } }
+
+# add mean to List and Array
+> use MONKEY_TYPING; augment class Array { method mean { ([+] self) / self.elems } }
+> use MONKEY_TYPING; augment class List { method mean { ([+] self) / self.elems } }
+
+# To brutal? 
+# Note: This don't work as I expect. It just repeat the list (see below)
+# > use MONKEY_TYPING; augment class Any { method repeat($times) { (self for 1..$times) } }
+
+# table
+> use MONKEY_TYPING; augment class Any { method table() { my %h = (); for self {%h{$_}++}; return %h } }
+
+
+
+# testing sum
+> (1..10).roll(10).sum()
+54
+> (1..10).roll(10).sum()
+58
+> ((1..10).roll(10).sum() for 1..10)
+56 64 47 66 56 64 59 58 71 46
+
+
+# testing mean
+> (1..10).roll(10).mean()
+6.9
+> (1..10).roll(10).mean()
+6.6
+> ((1..10).roll(10).mean() for 1..10)
+5.9 7.5 5.1 5.5 5.8 5.2 7.3 5.1 4.6 3.8
+> ((1..10).roll(10).mean() for 1..10).WHAT
+List()
+> ((1..10).roll(10).mean() for 1..10).mean
+5.72
+> ((1..10).roll(10).mean() for 1..100).mean
+5.441
+
+# repeat( code, times), returns a list of running &code()
+> sub repeat(&code, $times) { (&code() for 1..$times) }
+
+
+# Not yet there..
+> repeat(   ((1..10).roll(10).mean())   , 10)
+Nominal type check failed for parameter '&code'; expected Callable but got Rat instead
+
+# Works. Must use {}
+> repeat(  { ((1..10).roll(10).mean()) }  , 10)
+5.5 5.9 4.8 3.5 6.2 5.9 4.5 6.8 4.5 6
+
+> repeat(  { ((1..10).roll(10).mean()) }  , 10).mean()
+5.48
+
+# Well, the MONKEY_TYPING version don't work as I expect..
+# testing (...).repeat(10)
+# >  ((1..10).roll(10).mean())
+# 5.4
+# >  ((1..10).roll(10).repeat(10).mean())
+# 4.6
+# >  ((1..10).roll(10).repeat(1000).mean())
+# 6.4
+
+# # Using Blocks. { ... }(). Is this what I want?
+# > {((1..10).roll(10))}.repeat(2)
+# _block804 _block804
+
+# # adding () works
+# > {((1..10).roll(10))}().repeat(2)
+# 8 3 4 3 6 4 1 1 1 10 8 3 4 3 6 4 1 1 1 10
+
+# Aha! It's not at all what I want: It just repeats the sequence. 
+# My bad...
+# It's just the list repeated twice...
+> {((1..100).roll(10))}().repeat(2)
+# (slighly edited)
+49 24 62 85 26 34 7 53 70 90       49 24 62 85 26 34 7 53 70 90
+
+# OK, we skip .repeat() for now. 
+
+
+> sub table(@a) { my %h = (); for @a {%h{$_}++}; return %h } }
+
+> ((1..6).roll(6) for 1..10).table() <</>> 10
+1	0.6
+4	1.2
+5	1.1
+2	1.2
+3	0.8
+6	1.1
+
+> my $t = 100; ((1..6).roll(6) for 1..$t).table() <</>> $t
+2	1.13
+6	1.09
+5	1
+3	0.95
+4	0.98
+1	0.85
+
+# Coupon collector's problem
+# How many times must a die be thrown to get all 6 values?
+> my @c = (); for 1...* { last if @c.uniq.elems == 6; @c.push((1..6).roll(1));   }; say @c.elems; say @c.perl
+17
+[5, 3, 3, 2, 6, 6, 4, 2, 3, 6, 6, 2, 4, 5, 5, 2, 1]
+
+> gather for 1..10 { my @c = (); for 1...* { last if @c.uniq.elems == 6; @c.push((1..6).roll(1));   };  take @c.elems }
+11 15 16 9 33 23 11 12 15 13
+
+> (gather for 1..10 { my @c = (); for 1...* { last if @c.uniq.elems == 6; @c.push((1..6).roll(1));   };  take @c.elems }).mean()
+14.8
+
+# Test with 100 runs
+> (gather for 1..100 { my @c = (); for 1...* { last if @c.uniq.elems == 6; @c.push((1..6).roll(1));   };  take @c.elems }).mean()
+15.21
+
+> my @r = (gather for 1..100 { my @c = (); for 1...* { last if @c.uniq.elems == 6; @c.push((1..6).roll(1));   };  take @c.elems })
+> @r.mean()
+13.56
+> @r.sort.table()
+6	1
+7	4
+8	7
+9	7
+10	13
+11	9
+12	9
+13	11
+14	4
+15	8
+16	5
+17	4
+18	5
+19	3
+20	1
+22	1
+23	2
+24	3
+26	1
+27	1
+39	1
+
+# on values
+> .say for @r.table().sort({-.value})
+10	13
+13	11
+12	9
+11	9
+15	8
+8	7
+9	7
+16	5
+18	5
+7	4
+17	4
+14	4
+19	3
+24	3
+23	2
+6	1
+27	1
+22	1
+26	1
+20	1
+39	1
+
+# For 1000 simulations we got a lot wider spread.
+# (TODO? R's `describe` which also the percentiles shows etc)
+> my @r = (gather for 1..1000 { my @c = (); for 1...* { last if @c.uniq.elems == 6; @c.push((1..6).roll(1));   };  take @c.elems })
+>  .say for @r.table().sort({-.value})
+10	95
+12	88
+11	85
+9	81
+13	79
+15	62
+14	56
+16	55
+8	52
+17	47
+19	41
+18	35
+7	28
+20	26
+21	22
+23	20
+27	18
+22	18
+6	14
+29	13
+25	12
+24	12
+28	6
+26	5
+30	4
+31	3
+37	2
+38	2
+42	2
+57	2
+36	2
+39	2
+41	2
+35	2
+32	2
+45	1
+46	1
+54	1
+52	1
+33	1
+
+
+---
+
+
+# Date / time
+> say now
+Instant:2011-04-01T05:28:55.179874Z
+
+> my $t = DateTime.new(now)
+2011-04-01T05:28:25Z
+> $t.year
+2011
+> $t.perl
+DateTime.new(year => 2011, month => 4, day => 1, hour => 5, minute => 28, second => 25.3632829189301)
+
+> $t + 10
+Cannot take numeric value for object of type DateTime
+> $t.Instant + 10
+Instant:2011-04-01T05:29:46.463135Z
+
+
+---
+
+# Crashes. Here I log some crashes, i.e. the ===SORRY=== stuff
+
+> :36<hakank>
+1045668080
+> my $radix = 36
+36
+> :$radix<hakank>
+===SORRY!===
+postcircumfix:<{ }> not defined for type Pair()
+
+
+
+>  my $x = "11 22 33\n44 55 66\n77 88 99";
+11 22 33
+44 55 66
+77 88 99
+
+> $x.split("\n").map: { .split }
+===SORRY!===
+No applicable candidates found to dispatch to for 'split'. Available candidates are:
+:(Mu : Regex $matcher, Any $limit = { ... }, Any :all($all);; *%_)
+:(Mu : Any $delimiter, Any $limit = { ... }, Any :all($all);; *%_)
+
+
+
+> DateTime.new
+===SORRY!===
+invoke() not implemented in class 'Any'
+
