@@ -1,18 +1,16 @@
 /*******************************************************************************
- * This file is part of OscaR (Scala in OR).
- *   
  * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 2.1 of the License, or
  * (at your option) any later version.
- * 
+ *   
  * OscaR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/gpl-3.0.html
+ * GNU Lesser General Public License  for more details.
+ *   
+ * You should have received a copy of the GNU Lesser General Public License along with OscaR.
+ * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
  ******************************************************************************/
 package oscar.examples.cp.hakank
 
@@ -70,8 +68,8 @@ object AllDifferentExcept0 {
 
     // variables
     val x = Array.fill(n)(CPVarInt(cp, 0 to n))
-    val occurrences = Array.tabulate(n+1)(i => (CPVarInt(cp, 0 to n), i))
-    val z = occurrences(0)._1  // the tuple is (#occurrences, value)
+    val occurrences = Array.tabulate(n+1)(i => (i,CPVarInt(cp, 0 to n)))
+    val z = occurrences(0)._2  // the tuple is (#occurrences, value)
 
     //
     // constraints
