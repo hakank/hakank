@@ -28,7 +28,7 @@ Here's a summary of the directories so far:
 * jsr_331: JSR-331, Java API for constraint programming
 * k: K, array programming language  (note: index.html contains code etc)
 * mathematica: Mathematica, mathematical programming
-* minizinc: MiniZinc, constraint programming
+* minizinc: MiniZinc, constraint programming. Also G12 Zinc files.
 * numberjack: Numberjack, constraint programming
 * oscar: OscaR, constraint programming
 * pddl: PDDL (planning language)
