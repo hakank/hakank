@@ -1,0 +1,80 @@
+% 
+% Survo puzzle in Zinc.
+% 
+% http://en.wikipedia.org/wiki/Survo_Puzzle
+% """
+% Survo puzzle is a kind of logic puzzle presented (in April 2006) and studied 
+% by Seppo Mustonen. The name of the puzzle is associated to Mustonen's 
+% Survo system which is a general environment for statistical computing and 
+% related areas.
+% 
+% In a Survo puzzle the task is to fill an m * n table by integers 1,2,...,m*n so 
+% that each of these numbers appears only once and their row and column sums are 
+% equal to integers given on the bottom and the right side of the table. 
+% Often some of the integers are given readily in the table in order to 
+% guarantee uniqueness of the solution and/or for making the task easier.
+% """
+% 
+% See also
+% http://www.survo.fi/english/index.html
+% http://www.survo.fi/puzzles/index.html
+%
+% References:
+% Mustonen, S. (2006b). "On certain cross sum puzzles"
+% http://www.survo.fi/papers/puzzles.pdf 
+% Mustonen, S. (2007b). "Enumeration of uniquely solvable open Survo puzzles." 
+% http://www.survo.fi/papers/enum_survo_puzzles.pdf 
+% Kimmo Vehkalahti: "Some comments on magic squares and Survo puzzles" 
+% http://www.helsinki.fi/~kvehkala/Kimmo_Vehkalahti_Windsor.pdf
+% R code: http://koti.mbnet.fi/tuimala/tiedostot/survo.R
+
+%
+% Compare with
+%  * magic_square*.mzn, which has the sane row/sum sum and diagonal constraints
+%    magic squares can be seen as a special case of survo puzzles.  
+%  * puzzle1.mzn, which also requires constraints on diagonals, but 
+%    no there is no all_different constraint.
+%  * tomography*.mzn: which uses binary values in the matrix.
+
+% 
+% This Zinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also my MiniZinc/Zinc page: http://www.hakank.org/minizinc
+%
+
+include "globals.zinc"; 
+
+int: r; % number of rows 
+int: c; % number of columns
+array[1..r] of int: rowsums;
+array[1..c] of int: colsums;
+array[1..r, 1..c] of 0..r*c: matrix;  % known values (the clues)
+
+% the solution:
+array[1..r, 1..c] of var 1..r*c: x;
+
+% solve satisfy;
+solve :: int_search([x[i,j] | i in 1..r, j in 1..c], 
+        first_fail, indomain_min, complete) satisfy;
+
+constraint
+  alldifferent([x[i,j] | i in 1..r, j in 1..c])
+  /\
+
+  forall(i in 1..r, j in 1..c where matrix[i,j] > 0) (
+     matrix[i,j] = x[i,j]
+  )
+  /\
+  forall(i in 1..r) (
+     sum(j in 1..c) (x[i,j]) = rowsums[i]
+  )
+  /\
+  forall(j in 1..c) (
+   sum(i in 1..r) (x[i,j]) = colsums[j]
+  )
+;
+
+output [
+  show_array2d(x)
+] ++ ["\n"]
+;
+

@@ -1,0 +1,92 @@
+% 
+% Labeled dice in Zinc.
+% 
+% From Jim Orlin "Colored letters, labeled dice: a logic puzzle"
+% http://jimorlin.wordpress.com/2009/02/17/colored-letters-labeled-dice-a-logic-puzzle/
+%   """
+%   My daughter Jenn bough a puzzle book, and showed me a cute puzzle.  There 
+%   are 13 words as follows:  BUOY, CAVE, CELT, FLUB, FORK, HEMP, JUDY, 
+%   JUNK, LIMN, QUIP, SWAG, VISA, WISH.
+
+%   There are 24 different letters that appear in the 13 words.  The question 
+%   is:  can one assign the 24 letters to 4 different cubes so that the 
+%   four letters of each word appears on different cubes.  (There is one 
+%   letter from each word on each cube.)  It might be fun for you to try 
+%   it.  I'll give a small hint at the end of this post. The puzzle was 
+%   created by Humphrey Dudley.
+%   """
+% 
+% Compare with the following models:
+% * MiniZinc: http://www.hakank.org/minizinc/building_blocks.mzn
+% 
+% * Comet: http://www.hakank.org/comet/building_blocks.co
+% * ECLiPSe: http://www.hakank.org/eclipse/building_blocks.ecl
+% * SICStus Prolog: http://www.hakank.org/sicstus/building_blocks.pl
+% * Gecode: http://www.hakank.org/gecode/building_blocks.cpp
+%
+% This Zinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also my MiniZinc/Zinc page: http://www.hakank.org/minizinc
+%
+include "globals.zinc"; 
+
+int: n = 4;
+set of int: Cube = 1..n;
+int: num_words = 13;
+
+%               1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
+enum letters = {A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,Y};
+
+array[1..num_words, 1..n] of letters: words = array2d(1..num_words, 1..n,
+  [
+   B,U,O,Y,
+   C,A,V,E, 
+   C,E,L,T, 
+   F,L,U,B, 
+   F,O,R,K, 
+   H,E,M,P, 
+   J,U,D,Y, 
+   J,U,N,K, 
+   L,I,M,N, 
+   Q,U,I,P, 
+   S,W,A,G, 
+   V,I,S,A, 
+   W,I,S,H
+  ]);
+
+% decision variable
+array[letters] of var Cube: dice :: is_output;
+
+% solve satisfy;
+solve :: int_search([dice[i] | i in letters], first_fail, indomain_min, complete) satisfy;
+
+constraint
+  % the letters in a word must be on a different die
+  forall(i in 1..num_words) (
+    alldifferent([dice[words[i,j]] | j in 1..n])
+  )
+
+  /\
+  % there must be exactly 6 letters of each die
+  forall(i in 1..n) (
+    sum(j in letters) (bool2int(dice[j] = i)) = 6
+  )
+
+  /\ % symmetry breaking
+  forall(d in 1..n-1) (
+     lex_lt([dice[i]*bool2int(dice[i] == d+1) | i in letters],
+            [dice[i]*bool2int(dice[i] == d)| i in letters])
+  )
+  /\
+  dice[A] = 1
+
+;
+
+
+output [
+  if i == A then "\ndice: " ++ show(d) ++ ": " else "" endif ++
+  if fix(dice[i]) == d then
+    show(i) ++ " "
+  else ""
+  endif 
+  | d in 1..4, i in letters
+] ++ ["\n"];

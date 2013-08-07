@@ -1,0 +1,117 @@
+%
+% Constraint Programming: Moving furnitures in Zinc
+%
+% This version uses a tuple of (start, duration, resources)
+% 
+% Problem from Marriott & Stuckey: 'Programming with constraints', page  112f
+%
+% Model created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also my MiniZinc/Zinc page: http://www.hakank.org/minizinc
+%
+
+include "globals.zinc";
+
+int: n; % number of things
+int: upper_limit;
+type Task = (record(string: desc,
+           var 0..upper_limit: start, 
+           int: duration, 
+           int: resource, 
+           var 0..upper_limit*2: end): t where t.end = t.start + t.duration);
+
+% decision variables
+array[1..n] of Task: tasks; 
+var 0..100: num_persons; 
+var 0..upper_limit: max_time;
+
+% solve satisfy;               % just give a solution (combined with the extra constraints)
+solve minimize num_persons;  % minimize the number of persons
+% solve minimize max_time;       % minimize total end time (as many people as needed)
+
+constraint
+    % basic constraints
+    cumulative(
+        [tasks[t].start | t in 1..n], 
+        [tasks[t].duration | t in 1..n], 
+        [tasks[t].resource | t in 1..n], 
+        num_persons)
+
+   /\ max_time = max([tasks[t].end | t in 1..n])
+;
+
+%
+% Some extra constraint to play with.
+% 
+
+%  How many persons if everything should start at the same time
+% constraint forall(t in 1..n) (tasks[t].start = 0);
+
+% Must be finished in 60 minutes
+% constraint forall(t in 1..n) (tasks[t].end <= 60);
+
+% Must be finished in 45 minutes
+% constraint forall(t in 1..n) (tasks[t].end <= 45);
+
+% limitation of the number of people
+% constraint num_persons <= 3;
+
+% must start on an even 10 minutes 
+% constraint forall(t in 1..n) (tasks[t].start mod 10 = 0);
+
+
+%
+% data
+%
+% This is defined in furniture_moving2b-zinc.dzn
+/*
+upper_limit = 160;
+n = 4;
+tasks = [
+                               ("piano", _, 30, 3, _) ,
+                               ("chair", _, 10, 1, _),
+                               ("bed"  , _, 15, 3, _),
+                               ("table", _, 15, 2, _)
+                          ];
+*/
+
+%
+% output
+%
+output [
+       "num_persons: ", show(num_persons),"\n",
+       "max_time   : ", show(max_time)   , "\n",
+       % "tasks     : ", show(tasks)      , "\n"
+] ++ 
+["\nThe tasks:\n"] ++
+[
+  show(tasks[t]) ++ "\n"
+  | t in 1..n
+] ++ 
+["\nTasks in start order:\n"] ++
+[
+  if fix(tasks[task].start) == time then
+     "start: " ++ show(time) ++ " task: " ++ show(tasks[task].desc) ++ " ends: " ++ show(tasks[task].end) ++ 
+     " duration: " ++ show(tasks[task].duration) ++ " resources: " ++ show(tasks[task].resource) ++ "\n"
+  else 
+    ""
+  endif
+  | time in 0..upper_limit, task in 1..n
+]
+;
+
+/*
+ ++
+[
+  if fix(Starts[i]) == t then
+     "start: " ++ show(t) ++ " task: " ++ show(Tasks[i]) ++ " ends: " ++ show(EndTimes[i]) ++ 
+     " (duration: " ++ show(Durations[i]) ++ " resources: " ++ show(Resources[i]) ++ ")\n"
+  else 
+    ""
+  endif
+  | t in 0..upper_limit, i in 1..n
+]
+;
+*/
+
+
+

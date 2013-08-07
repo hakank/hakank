@@ -1,0 +1,119 @@
+% 
+% Implementation of de Bruijn sequences in Zinc, both "classical" and "arbitrary". 
+%
+% Compare with the the web based programs:
+%   http://www.hakank.org/comb/debruijn.cgi   
+%   http://www.hakank.org/comb/debruijn_arb.cgi
+%
+% This Zinc program was written by Hakan Kjellerstrand, hakank@bonetmail.com,
+% See also my MiniZinc/Zinc page: http://www.hakank.org/minizinc
+%
+
+% Note: the pow() function should be able to take integer values but 
+% it doesn't in Minizinc (0.7.1), 
+% hence the ceil and int2float stuff. 
+
+% for the global constraints 
+%   - alldifferent
+%   - global_cardinality
+include "globals.zinc"; 
+%include "minimum_int.mzn"; 
+% include "globals.mzn";
+
+
+int: base; % =  2;  % the base to use, i.e. the alphabet 0..base-1
+int: n;    % =  3;  % number of bits to use (n = 4 -> 0..base^n-1 = 0..2^4 -1, i.e. 0..15)
+int: m;    % = 8;  % the length of the sequence. For "arbitrary" de Bruijn sequences
+% int: m = pow(base, n);  % the length of the sequence k^n. Use this for "classic" de Bruijn sequences
+array[1..m] of var 0..pow(base, n)-1: x; 
+array[1..m, 1..n] of var 0..base-1: binary :: is_output;              % binary representation of the numbers
+array[1..m] of var 0..base-1: bin_code;                  % the sequence in base-representation
+
+
+solve satisfy;
+
+%
+% converts a number (s) <-> an array of numbers (t) in the specific base.
+%
+predicate toNum(array[int] of var 0..base-1: t, var 0..ceil(pow(int2float(base), int2float(n))): s,  float: base) =
+          let { int: len = length(t) }
+          in
+          s = sum(i in 1..len) (
+            ceil(pow(base, int2float(len-i))) * t[i]
+          )
+          /\ forall(i in 1..len) (t[i] >= 0)
+;
+
+predicate minimum_int_me(var int: m, array[int] of var int: x) =
+  forall(i in index_set(x)) (
+    m <= x[i]
+  )
+;
+
+%
+% the constraints
+%
+constraint
+
+    % all number must be different
+    alldifferent(x) 
+
+    %/\ % symmetry breaking: the minimum element should be the first element
+    %minimum_int(x[1], x)
+
+
+    /\ % converts x <-> binary (for all_different(x) )
+    forall(i in 1..m) (
+       % toNum( [binary[i,j] | j in 1..n], x[i], int2float(base)) % this should work, but don't
+       let {
+          array[1..n] of var 0..base-1: t
+       }
+       in
+       toNum(t, x[i], int2float(base)) /\
+       forall(j in 1..n) (
+         binary[i,j] = t[j]
+        )
+    )
+    /\ % the de Bruijn condition: 
+       % the first elements in binary[i] is the same as the last elements in binary[i-1]
+      forall(i in 2..m) (
+        forall(j in 2..n) ( binary[i-1, j] = binary[i, j-1] )
+     ) 
+    /\ % ... and around the corner
+    forall(j in 2..n) ( binary[m, j] = binary[1, j-1] )
+
+    %
+    % The constraints below is for the constraint that there should be equal number
+    % number of occurrences of "bits".
+    %  
+    /\ % converts binary -> bin_code 
+    forall(i in 1..m) (
+      bin_code[i] = binary[i,1]
+    ) 
+;
+
+
+%
+% A lot of information is printed.
+%
+output [
+  if i = 1 then 
+    "\nn: "        ++ show(n)        ++ " m: " ++ show(m) ++ " base: " ++ show(base) ++ 
+    "\nbin_code: " ++ show(bin_code) ++
+    "\nbinary code: " 
+  else "" endif      ++
+   show(bin_code[i]) ++ ""
+  | i in 1..m
+] 
+++
+[
+%  if i = 1 /\ j = 1 then
+    "\nx (decimal representation):\n" ++ show(x) 
+%  else "" endif 
+%  ++
+%  if j = 1 then "\n" else " " endif ++
+%    show(binary[i,j])
+%  | i in 1..m, j in 1..n
+] ++ 
+["\n"]
+;

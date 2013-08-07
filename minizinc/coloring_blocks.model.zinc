@@ -1,0 +1,93 @@
+% 
+% Coloring blocks model in Zinc.
+% 
+% This is a general model for the two problems:
+%   building_blocks.zinc
+%   labeled_dice.mzn
+% 
+% This is the description of labeling_dice:
+% From Jim Orlin "Colored letters, labeled dice: a logic puzzle"
+% http://jimorlin.wordpress.com/2009/02/17/colored-letters-labeled-dice-a-logic-puzzle/
+%   """
+%   My daughter Jenn bough a puzzle book, and showed me a cute puzzle.  There 
+%   are 13 words as follows:  BUOY, CAVE, CELT, FLUB, FORK, HEMP, JUDY, 
+%   JUNK, LIMN, QUIP, SWAG, VISA, WISH.
+
+%   There are 24 different letters that appear in the 13 words.  The question 
+%   is:  can one assign the 24 letters to 4 different cubes so that the 
+%   four letters of each word appears on different cubes.  (There is one 
+%   letter from each word on each cube.)  It might be fun for you to try 
+%   it.  I'll give a small hint at the end of this post. The puzzle was 
+%   created by Humphrey Dudley.
+%   """
+% 
+% Compare with the following models:
+% * MiniZinc: http://www.hakank.org/minizinc/building_blocks.mzn
+% 
+% * Comet: http://www.hakank.org/comet/building_blocks.co
+% * ECLiPSe: http://www.hakank.org/eclipse/building_blocks.ecl
+% * SICStus Prolog: http://www.hakank.org/sicstus/building_blocks.pl
+% * Gecode: http://www.hakank.org/gecode/building_blocks.cpp
+%
+% This Zinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% See also my MiniZinc/Zinc page: http://www.hakank.org/minizinc
+%
+include "globals.zinc"; 
+
+int: n;
+set of int: Cube = 1..n;
+int: num_words;
+int: num_sides;
+array[1..num_words, 1..n] of string: words;
+% additional is to ensure that there are at least 24 letters to color.
+% It is needed in the building_blocks problem where the distinct letters 
+% sums only to 23.
+% (I'm not happy about this fix.)
+set of string: additional;
+
+
+% the used letters
+set of string: letters = {words[i,j] | i in 1..num_words, j in 1..n} union additional;
+% lookup table: letter <-> index in letters
+array[1..card(letters)] of tuple(string, int): letters2 = [(letters[i],i) | i in 1..card(letters)];
+
+% decision variable
+array[1..card(letters)] of var Cube: dice :: is_output;
+
+
+function int: lookup($T: c, % the key (here a character)
+                      array[int] of tuple($T, int): h) =
+         % take the first (and only) value in the list
+         head([k.2 | k in h where k.1 = c])
+;
+
+
+% solve satisfy;
+solve :: int_search(dice, first_fail, indomain_min, complete) satisfy;
+
+constraint
+  % the letters in a word must be on a different die
+  forall(i in 1..num_words) (
+    alldifferent([dice[lookup(words[i,j],letters2)] | j in 1..n])
+  )
+
+  /\
+  % there must be exactly 6 letters of each die
+  forall(d in 1..n) (
+    sum(j in 1..card(letters)) (bool2int(dice[j] = d)) = num_sides
+  )
+
+  /\ % symmetry breaking
+  forall(d in 1..n-1) (
+     lex_lt([letters2[i].2*bool2int(dice[i] == d+1) | i in 1..card(letters)],
+            [letters2[i].2*bool2int(dice[i] == d)| i in 1..card(letters)])
+  )
+  /\ dice[1] = 1
+
+;
+
+
+output [
+    "Die " ++ show(d) ++ ": " ++ string_intersperse("", [letters2[i].1 | i in 1..card(letters) where fix(dice[i]) == d]) ++ "\n"
+  | d in 1..n
+] ++ ["\n"];

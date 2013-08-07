@@ -1,0 +1,181 @@
+%
+% General alphametic solver in Zinc.
+%
+% Solves these type of puzzles:
+% SEND + MORE = MONEY
+%
+% This Zinc program is written by Hakan Kjellerstrand
+% See also my MiniZinc page: http://www.hakank.org/minizinc
+%
+
+include "globals.zinc";
+
+int: base;
+
+int: num_words;
+int: num_letters;
+array[1..num_words, 1..num_letters] of string: words; 
+
+% Here we define the letters that must be > 0,
+% i.e. the first non-"" digits in each word
+set of string: non_zeros = {  
+        words[i, min([j | j in 1..num_letters where words[i,j] != ""])] | i in 1..num_words                       };
+
+% Collect the different letters
+% Note: I use the feature that it is possible to
+% access this sorted set as an array.
+set of string: letters = {""} union {words[i,j] | i in 1..num_words, j in 1..num_letters};
+
+% This is the lookup table (hash-table) for each 
+% (letter, index in x) in the set letters
+array[1..card(letters)] of tuple(string, int): letters2 = [(letters[i],i) | i in 1..card(letters)];
+
+% decision variables
+
+% positive integer
+type varintpos = (var int: i where i >= 0);
+
+% contains the value of each letter (in words[i,j])
+array[1..num_words, 1..num_letters] of varintpos: letter_num;
+
+% word sums
+% Note: this may be handled implicit via let {} etc, 
+% but I wanted to see the sum of each word.
+array[1..num_words] of varintpos: word_sums;
+
+% x contains the assignments of each letter, which is
+% the same position as in the set letters
+% Assumption: we assume that "" always is in the first position
+% and is assigned `base` below. 
+% Thus, the real domain is 0..base-1.
+array[1..card(letters)] of var 0..base: x;
+
+
+% Predicate lookup/3 get the index a specific letter has in the 
+% lookup table (letters2).
+% Note: this is not used anymore.
+predicate lookup(string: c,  % letter
+                 array[int] of tuple(string, int): h, % lookup table
+                 var int: ix) =
+   exists(k in dom(ix)) (
+        h[k].1 = c /\
+        ix = k
+   )
+;
+
+% Return the index a specific letter has in the lookup table (letters2).
+% This is better than lookup/3 since we don't have to use
+% a temporary variable in the call.
+%
+% h is a lookup table, an array of ($T, int). The normal usage
+% is to search for the key of type $T and get the index of 
+% the key in the table.
+function int: lookup($T: c, % the key (here a character)
+                      array[int] of tuple($T, int): h) =
+         % take the first (and only) value in the list
+         head([k.2 | k in h where k.1 = c])
+;
+
+constraint
+  alldifferent(x)
+  /\
+  x[1] = base % dummy for ""
+
+  /\
+  forall(i in 1..num_words) (
+
+    % calculate the value for each letter in the word
+    forall(j in 1..num_letters where words[i,j] != "") (
+
+       % first version
+       % exists(k in 2..card(letters)) (
+       %   letters2[k].1 = words[i,j] /\
+       %   letter_num[i,j] = pow(base, num_letters-j)*x[letters2[k].2]
+       %)
+
+       % second version using lookup/3, need a temporary variable 
+       % let {
+       %   var 2..card(letters): ix
+       % } in
+       % lookup(words[i,j], letters2, ix)
+       % /\
+       % letter_num[i,j] = pow(base, num_letters-j)*x[ix]
+       % /\
+
+       % using the function lookup/2 is better but slightly hairier
+       letter_num[i,j] = pow(base, num_letters-j)*x[lookup(words[i,j],letters2)]
+
+    )
+
+    /\ % constraint that the sum in the empty positions ("") is 0
+    forall(j in 1..num_letters where words[i,j] = "") (
+       letter_num[i,j] = 0
+    )
+
+    /\ % get the sums for this word
+    word_sums[i] = sum(j in 1..num_letters) (letter_num[i,j])
+
+  )
+
+  /\ % ensure that the leading digits are > 0
+  forall(z in non_zeros) (
+
+       % % first version
+       % exists(k in 2..card(letters)) (
+       %   letters2[k].1 = z /\
+       %   x[letters2[k].2] > 0
+       % )
+
+       % % second version using lookup/3
+       % let {
+       %   var 2..card(letters): ix
+       % } in
+       % lookup(z, letters2, ix) /\
+       % x[ix] > 0
+
+       % much better, using lookup/2
+       x[lookup(z,letters2)] > 0
+  )
+
+  /\ % sum the words
+  sum(i in 1..num_words-1) (word_sums[i]) == word_sums[num_words]
+
+;  
+
+solve satisfy;
+
+output 
+[
+ % print the problem
+ string_intersperse("", [words[i,j] | j in 1..num_letters] ) ++
+ if i < num_words-1 then "+" else "" endif
+ | i in 1..num_words-1 
+] ++
+[
+ " == ",
+ string_intersperse("", [words[num_words,j] | j in 1..num_letters] ) 
+]
+++ 
+["\n"] ++
+[
+  %"words: ", show(words), "\n",
+  %"letters: ", show(letters),"\n",
+  "letters2: ", show(letters2),"\n",
+  "non_zeros: ", show(non_zeros), "\n"
+  %"x: ", show(x), "\n"  
+] ++ 
+[ % print the totals of the words
+  if j = 1 then "\n" else " " endif ++
+    if words[i,j] != "" then
+        show(letter_num[i,j]) ++ "*" ++ words[i,j] ++ " "
+    else "" endif
+  | i in 1..num_words, j in 1..num_letters
+] ++
+["\n"] ++
+["\nword_sums: ", show(word_sums), "\n"] ++
+[ % show the value of each letter
+  show(letters[i]) ++ ": " ++ show(x[i]) ++ "\n"
+  | i in 2..card(letters)
+] ++ 
+["\n"]
+;
