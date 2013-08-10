@@ -1,0 +1,273 @@
+/* 
+
+  Drive Ya Nuts puzzle in Picat.
+
+  From http://www.samstoybox.com/toys/DriveYaNuts.html
+  """
+  The Drive Ya Nuts puzzle by Milton Bradley was cool and quite difficult. The object of 
+  the puzzle is to place all seven nuts such that the numbers on all sides of each 
+  nut match the numbers on the adjoining nut. There is but one way to solve the puzzle. 
+  Here are two versions of puzzle. Note that the second one is still factory sealed and 
+  shows the solution. So you think it sounds easy? 
+  """
+
+  Some other links: 
+  - http://www.jaapsch.net/puzzles/circus.htm
+
+  Representation:
+
+  A side of a nut is numbered as following
+  
+             1
+
+        6        2
+    
+        5        3
+
+             4
+
+
+  and the 7 nuts are numbered as follows:
+
+             1 
+
+         6       2
+             7
+         5        3
+  
+             4
+  
+  i.e. nut 7 is the master (center) nut.
+
+
+  Note: There are 6 solutions, depending on how we orient
+        the center nut (7). This is handled by symmetry breaking below.
+
+  Here is one solution (which has the center nut start with 1):
+  
+     2 3 5 1 4 6    Nut 1 (in the representation above)
+     3 2 4 1 6 5    Nut 2
+     1 4 3 6 5 2    Nut 3
+     4 5 6 1 2 3    Nut 4
+     2 5 3 1 6 4    Nut 5
+     5 4 3 2 1 6    Nut 6
+     1 6 2 4 5 3    Nut 7 (center nut)
+
+  E.g. the first nut is the nut 1,4,6,2,3,5 rotated like this, i.e.
+  with 2 at 12 o'clock and then clock wise: 2,3,5,1,4, and 6:
+     
+             2
+
+        6        3
+    
+        4        5
+
+             1
+
+  And so on with the other nuts.
+  
+
+  [Comment from the MiniZinc model
+   http://www.hakank.org/minizinc/drive_ya_nuts.mzn:
+  Note: I started with this MiniZinc model after reading the Frink 
+  implementation by Alan Eliasen 
+      http://futureboy.us/fsp/colorize.fsp?f=DriveYaNuts.frink
+  which had the link cited above. The Frink program use a different 
+  approach, though.
+  ]
+
+  [Personal comment: 
+   This is the same puzzle as the infamous AWA-Patent problem 
+  from a long long time ago, though I didn't then know what 
+  it was called.
+  Yes, I did solve it manually without any computational help.]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go => 
+   foreach(P in 1..3) 
+      problem(P, Nuts),
+      nuts(Nuts),
+      nl
+   end,
+   nl.
+
+
+nuts(Nuts) => 
+
+    M = 7,
+    N = 6,
+
+    connections(Connections),
+    NumConnections = Connections.length,
+
+
+    % decision variables
+    X = new_array(M,N),  % the final solution
+    X in 1..N,
+    
+    Pos = new_list(M), % which nut is this? (in the nuts matrix)
+    Pos in 1..M,
+    PosInv = new_list(M), % Permutation array of pos.
+    PosInv in 1..M,
+    % indices to start the nut (in the nuts m x n*2 matrix)
+    StartIx = new_list(M),
+    StartIx in 0..N-1,
+
+    Ks = [],
+    Ps = [],
+    foreach(I in 1..M) 
+      all_different([X[I,J] : J in 1..N]),
+
+      % for some "rotation" of each nut...
+      K in 0..N-1, % the "rotation" (i.e. shift in the n*2 array)
+      P in 1..M,   % which nut is at position pos[i] 
+      StartIx[I] #= K,
+      Pos[I] #= P,
+      % foreach(J in 1..N) X[I,J] #= Nuts[P,JK] end % offset by k
+      foreach(J in 1..N) 
+          JK #= J+K,          
+          matrix_element(Nuts,P,JK,X[I,J])
+      end,
+      Ks := [K|Ks],
+      Ps := [P|Ps]
+   end,
+
+   all_different(Pos),
+   % all_different(PosInv),
+
+   % for display (and pondering)
+   assignment(Pos, PosInv), % inverse
+
+   % symmetry breaking: 
+   % We pick the solution where the center nut (nut 7) start with 1.
+   StartIx[7] #= 0,
+
+
+   % check the connections
+   foreach(C in 1..NumConnections)
+      CC = [Connections[C,J] : J in 1..4],
+      X[CC[1], CC[3]] #= X[CC[2], CC[4]]
+   end,
+   
+
+   Vars = Ps ++ Ks, 
+   solve($[split], Vars),
+
+   println("X:"),
+   foreach(Row in X) println(Row.to_list()) end,
+   println("Nuts:"),
+   foreach(Row in X) println(Row.to_list()) end,
+
+   println(pos=Pos),
+   println(posInv=PosInv),
+   println(startIx=StartIx),
+
+   nl.
+
+
+% matrix_element(X, I, J, Val) =>
+%  element(I, X, Row),
+%  element(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%  nth(I, X, Row),
+%  element(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%   nth(I, X, Row),
+%   nth(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%     freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element(X, I, J, Val) =>
+    freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+% matrix_element(X, I, J, Val) =>
+%    freeze(I, (nth(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+
+
+
+%
+% The connection points between the nuts, i.e. where the values
+% must be the same.
+% (Not surprisingly there are some permutations involved.)
+%
+connections(Connections) => 
+   Connections = 
+   [
+     % nuts    sides to be equal
+     [1,2,       3,6],
+     [2,3,       4,1],
+     [3,4,       5,2],
+     [4,5,       6,3],
+     [5,6,       1,4],
+     [6,1,       2,5],
+
+     [7,1,       1,4],
+     [7,2,       2,5],
+     [7,3,       3,6],
+     [7,4,       4,1],
+     [7,5,       5,2],
+     [7,6,       6,3]
+    ].
+
+
+
+% "arbitrary" order (sorted)
+% Note that pos_inv for the shown solution is the permutation 
+% [4,3,1,7,5,2,6]
+problem(1, Nuts) => 
+  Nuts =  
+   [
+     [1,2,3,4,5,6, 1,2,3,4,5,6], % 4 (row 4 in the solution order shown above)
+     [1,4,3,6,5,2, 1,4,3,6,5,2], % 3
+     [1,4,6,2,3,5, 1,4,6,2,3,5], % 1 
+     [1,6,2,4,5,3, 1,6,2,4,5,3], % 7 [center nut]
+     [1,6,4,2,5,3, 1,6,4,2,5,3], % 5
+     [1,6,5,3,2,4, 1,6,5,3,2,4], % 2 
+     [1,6,5,4,3,2, 1,6,5,4,3,2]  % 6 
+    ].
+
+%
+% This is the nuts in the solution order.
+%
+problem(2, Nuts) =>
+  Nuts = 
+   [
+     [1,4,6,2,3,5, 1,4,6,2,3,5], % 1 
+     [1,6,5,3,2,4, 1,6,5,3,2,4], % 2 
+     [1,4,3,6,5,2, 1,4,3,6,5,2], % 3
+     [1,2,3,4,5,6, 1,2,3,4,5,6], % 4
+     [1,6,4,2,5,3, 1,6,4,2,5,3], % 5
+     [1,6,5,4,3,2, 1,6,5,4,3,2], % 6 
+     [1,6,2,4,5,3, 1,6,2,4,5,3]  % 7 % center nut
+   ].
+
+% Another order
+% nuts = array2d(1..m], 1..n*2,
+problem(3, Nuts) =>
+  Nuts = 
+   [
+     [1,6,5,3,2,4, 1,6,5,3,2,4], % 2 
+     [1,2,3,4,5,6, 1,2,3,4,5,6], % 4 (row 4 in the solution order shown above)
+     [1,6,2,4,5,3, 1,6,2,4,5,3], % 7 [center nut]
+     [1,6,4,2,5,3, 1,6,4,2,5,3], % 5
+     [1,6,5,4,3,2, 1,6,5,4,3,2], % 6 
+     [1,4,6,2,3,5, 1,4,6,2,3,5], % 1 
+     [1,4,3,6,5,2, 1,4,3,6,5,2]  % 3
+   ].

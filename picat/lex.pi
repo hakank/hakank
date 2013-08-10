@@ -1,0 +1,146 @@
+/* 
+
+  Global constraints lex_less, lex_lesseq, lex2, etc in Picat.
+
+  Theese is some decomposition of the lex family constraints.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+go => 
+
+   N = 4,
+   X = new_list(N),
+   X in 1..N,
+   Y = new_list(N),
+   Y in 1..N,
+
+   Y = [3,2,1,4],
+   
+   all_different(X),
+   all_different(Y),
+
+   % lex_less(X,Y,5), % Base = 5
+   lex_less(X,Y),
+
+   % lex_lesseq(X,Y),
+   % lex_greater(X,Y),
+   % lex_greatereq(X,Y),
+
+   Vars = X ++ Y,
+   solve(Vars),
+
+   writeln(x=X),
+   writeln(y=Y),
+   nl.
+
+
+% Testing lex2
+go2 =>
+  N = 4,
+  X = new_array(N,N),
+  X in 1..N,
+
+  foreach(I in 1..N) all_different([X[I,J] : J in 1..N]) end,
+  lex2(X),
+  solve($[ff], X),
+  foreach(Row in X) writeln(Row.to_list())  end,
+  nl.
+
+
+% Port of MiniZinc's lex2.mzn 
+% """
+%-----------------------------------------------------------------------------%
+% Require adjacent rows and adjacent columns in the array 'x' to be
+% lexicographically ordered.  Adjacent rows and adjacent columns may be equal.
+%-----------------------------------------------------------------------------%
+% """
+% Note: This use lex_less/1.
+lex2(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_less([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.
+
+% This use lex_lesseq/1
+lex2eq(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_lesseq([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.
+
+
+% Port of MiniZinc's lex_less_int.mzn
+% """
+%-----------------------------------------------------------------------------%
+% Requires that the array 'x' is strictly lexicographically less than array 'y'.
+% Compares them from first to last element, regardless of indices
+%-----------------------------------------------------------------------------%
+% """
+lex_less(X,Y) =>
+   LX = 1,
+   UX = X.length,
+   LY = 1,
+   UY = Y.length,
+   Size = max(UX-LX,UY-LY),
+   B = new_list(Size+2), % (Note: The MiniZinc version is 0-based.)
+   B in 0..1,
+   B[1] #= 1,
+   foreach(I in 1..Size+1) 
+      B[I] #= ( X[I] #<= Y[I] #/\ (X[I] #< Y[I] #\/ B[I+1] #= 1) )
+   end,
+   B[Size + 2] #= (Size - 1 #< Size - 1).
+
+
+% Port of MiniZinc's lex_lesseq_in.mzn
+% """
+%-----------------------------------------------------------------------------%
+% Requires that the array 'x' is lexicographically less than or equal to
+% array 'y'.  Compares them from first to last element, regardless of indices
+%-----------------------------------------------------------------------------%
+% """
+lex_lesseq(X,Y) =>
+   LX = 1,
+   UX = X.length,
+   LY = 1,
+   UY = Y.length,
+   Size = max(UX-LX,UY-LY),
+   B = new_list(Size+2), % (Note: The MiniZinc version is 0-based.)
+   B in 0..1,
+   B[1] #= 1,
+   foreach(I in 1..Size+1) 
+      B[I] #= ( X[I] #<= Y[I] #/\ (
+                ((I #= Size) #=> 1)
+                #/\ 
+                ((I #< Size) #=> X[I] #< Y[I] #\/ B[I+1] #= 1) 
+                )
+              )
+   end.
+
+
+lex_greater(X,Y) => lex_less(Y,X).
+lex_greatereq(X,Y) => lex_lesseq(Y,X).
+
+
+
+%
+% Alternative approach where we convert to two
+% numbers and ensure that the first number is < second number.
+%
+lex_less2(X,Y,Base) =>
+  to_num(X,Base,NumX),
+  to_num(Y,Base,NumY),
+  NumX #<= NumY.
+
+to_num(List, Base, Num) =>
+        Len = length(List),
+        Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
