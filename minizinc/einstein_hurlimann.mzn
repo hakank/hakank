@@ -60,5 +60,5 @@ output [
    "E: ", show(E), "\n"
 ] ++
 [
-  "The " ++ show(nationalities[fix(A[c[5]])]) ++ " owns the fish\n"
+  "The " ++ show(nationalities[fix(A[C[5]])]) ++ " owns the fish\n"
 ]++["\n"];
