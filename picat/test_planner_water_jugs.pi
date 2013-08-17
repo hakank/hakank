@@ -1,0 +1,182 @@
+/*
+
+  Water jugs problem in Picat.
+
+  We have two jugs with water, one with 4L and one with 3L: [4,3].
+  The goal is to have 2L in the first and 0L in the last: [2,0]
+
+  This is a planning model.
+
+  This version use the built-in module planner.
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner. 
+
+main => go.
+
+go =>
+   %           Max  Init  Goal
+   water_jugs([4,3],[0,0],[2,0]),
+   nl.
+
+go2 =>
+   water_jugs([5,4],[0,0],[3,0]),
+   nl.
+
+go3 =>
+   water_jugs([6,5],[0,0],[4,0]),
+   nl.
+
+go4 =>
+   water_jugs([7,6],[0,0],[5,0]),
+   nl.
+
+% The Die Hard problem
+% http://www.math.tamu.edu/~dallen/hollywood/diehard/diehard.htm
+go5 =>
+   water_jugs([5,3],[0,0],[4,0]),
+   nl.
+
+% http://www.cs.ucsb.edu/~pconrad/cs40/lessons/numberTheory/JugsMake1from5and7.html
+go6 =>
+   water_jugs([7,5],[0,0],[1,0]),
+   nl.
+
+go7 =>
+   water_jugs([82,39],[0,0],[2,0]), % 118 steps
+   nl,
+   water_jugs([85,58],[0,0],[2,0]), % 137 steps
+   nl,
+   water_jugs([88,65],[0,0],[2,0]), % 146 steps
+   nl,
+   water_jugs([87,80],[0,0],[2,0]), % 142 steps
+   nl,
+   water_jugs([301,80],[0,0],[2,0]), % 362 steps
+   nl,
+   water_jugs([968,921],[0,0],[2,0]), % 803 steps
+   nl,
+   water_jugs([968,283],[0,0],[2,0]), % 946 steps
+   nl.
+
+
+% Random version
+go8 => 
+   XMax = 3+random2() mod 400,
+   YMax = random_list([I : I in 2..XMax,gcd(XMax,I) == 1]),
+   time_out(water_jugs([XMax,YMax],
+              [0,0],
+              [2,0]),
+            60000, Status),
+   writeln(Status),
+   writeln([XMax,YMax]),
+   nl.
+
+% Random version
+go9 => 
+   XMax = 3+random2() mod 1000,
+   YMax = random_list([I : I in 2..XMax,gcd(XMax,I) == 1]),
+   time_out(water_jugs([XMax,YMax],
+              [0,0],
+              [2,0]),
+            60000, Status),
+   writeln(Status),
+   writeln([XMax,YMax]),
+   nl.
+
+go10 =>
+   time(water_jugs([301,80],[0,0],[2,0])), % 362 steps
+   nl.
+
+
+go11 =>
+   time(water_jugs([968,283],[0,0],[2,0])), % 362 steps
+   nl.
+
+
+
+%
+% For bplan.plan2/3
+%
+% _Much_ faster than water_jugs.pi
+% 
+water_jugs([XMax,YMax],[XInit,YInit],[XGoal,YGoal]) =>
+
+   writeln(max=[XMax,YMax]),
+   writeln(init=[XInit,YInit]),
+   writeln(final=[XGoal,YGoal]),
+
+   % Add the facts for bplan etc.
+   cl_facts($[initial_state([XInit,YInit]), 
+              final([XGoal,YGoal])]),
+
+   get_global_map().put(x,XMax),
+   get_global_map().put(y,YMax),
+
+   time(best_plan([XInit,YInit],L)),
+   foreach(E in L) println(E) end,
+   writeln(len=L.length),
+   % writeln(cost=Cost),
+   nl.
+
+table
+% fill X from ground
+action([X,Y],To,M,Cost), X < get2(x) ?=> 
+  To = [X2,Y2], 
+  X2 = get2(x), 
+  Y2 = Y,
+  Cost=1,
+  M = [fill,x,from,ground,[X2,Y2]].
+
+% fill Y from ground
+action([X,Y],To,M,Cost), Y < get2(y) ?=> 
+  To=[X2,Y2], 
+  X2 = X, 
+  Y2 = get2(y),
+  Cost=1,
+  M = [fill,y,from,ground,[X2,Y2]].
+
+% Y -> X
+action([X,Y],To,M,Cost), Y > 0, X < get2(x) ?=> 
+   To = [X2,Y2], 
+   MaxToFill = get2(x)-X,
+   ToFill = min(Y,MaxToFill),
+   Y2 = Y-ToFill,
+   X2 = X+ToFill,
+   Cost=1,
+   M = [fill,x,from,y,with,ToFill,[X2,Y2]].
+
+% X -> Y
+action([X,Y],To,M,Cost), X > 0, Y < get2(y) ?=> 
+   To = [X2,Y2], 
+   MaxToFill = get2(y)-Y,
+   ToFill = min(X,MaxToFill),
+   X2 = X-ToFill,
+   Y2 = Y+ToFill,
+   Cost=1,
+   M = [fill,y,from,x,with,ToFill,[X2,Y2]].
+
+% empty X
+action([X,Y],To,M,Cost), X > 0 ?=> 
+   To = [X2,Y2], 
+   X2 = 0, Y2 = Y,
+   Cost=1,
+   M = [empty,x,[X2,Y2]].
+
+% empty Y
+action([X,Y],To,M,Cost), Y > 0 => 
+   To=[X2,Y2], 
+   X2 = X, Y2 = 0,
+   Cost=1,
+   M = [empty,y,[X2,Y2]].
+
+
+% Get the global x and y
+get2(X) = get_global_map().get(X).
+
+
+random_list(List) = List[1+random2() mod List.length].
+

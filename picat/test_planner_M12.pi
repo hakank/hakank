@@ -1,0 +1,124 @@
+/* 
+
+  M12 problem in Picat.
+
+  See 
+  Igor Kriz and Paul Siegel: 
+      Rubik's Cube Inspired Puzzles Demonstrate Math's "Simple Groups"
+  http://www.sciam.com/article.cfm?id=simple-groups-at-play
+
+  Programs:
+   http://www.math.lsa.umich.edu/~ikriz/
+   http://www.sciam.com/article.cfm?id=puzzles-simple-groups-at-play
+
+  This model implements the M12 puzzle:
+   - length is 12 (2*6)
+   - the two operations are 
+       * merge (shuffle) and 
+       * inverse (reverse)
+   - some init configuration
+
+  For a group theoretic solution of the M12 puzzle using the abstract algebra system GAP, 
+  see http://www.hakank.org/group_theory/M12_gap.txt
+  It is presented in my (Swedish) blog post
+  "Gruppteoretisk lösning av M12 puzzle i GAP" [Group theoretical solution of the M12 puzzle in GAP]
+  http://www.hakank.org/webblogg/archives/001226.html
+
+
+
+  This variant use the built-in planner module instead of my bplan.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+
+go =>
+
+   problem(1,Init),
+   % time(best_plan_unbounded(Init, 40,Plan,Cost)), % problem 1 (27 steps): 6.1s
+   % time(best_plan(Init, 40,Plan,Cost)), % problem 1 (27 steps): 3.1s
+   % time(best_plan(Init, 30,Plan,Cost)), % problem 1 (27 steps): 2.4s
+   % time(best_plan_downward(Init, Plan)), % problem 1 (27 steps): 2.7s
+   time(best_plan_downward(Init, Plan)), % problem 1 (27 steps) with table: 1.9s
+   % time(best_plan_upward(Init, 30,Plan)), % problem 1 (27 steps) with table
+   writeln(Plan),
+   writeln(len=Plan.length),
+   % writeln(cost=Cost),
+   nl.
+
+%
+% Solving all 21 problems with 
+%   * best_plan_downward(Init, Plan): 2.3s (without table: 3.58s)
+%
+go2 =>
+   foreach(P in 1..21) 
+     problem(P, Init),
+     writeln([p=P, init=Init]),
+     time(best_plan_downward(Init, Plan)), % problem 1 (27 steps) with table: 1.9s
+     writeln(Plan),
+     writeln(len=Plan.length),
+     nl
+   end,
+   nl.
+
+final(Goal) => Goal=[1,2,3,4,5,6,7,8,9,10,11,12].
+
+
+table
+% merge
+action([M1,M12,M2,M11,M3,M10,M4,M9,M5,M8,M6,M7], To, M, Cost) ?=>
+   Cost=1, M=m,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12],Cost=1.
+% reverse
+action([M12,M11,M10,M9,M8,M7,M6,M5,M4,M3,M2,M1], To,M, Cost) => 
+   Cost=1, M=r,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12],Cost=1.
+
+
+
+rand_perm(List) = List, List.length == 1 => true.
+rand_perm(List) = Perm => rand_perm(List, List.length, Perm).
+
+remove_at(X,L,1,R) => L=[X|Xs], R=Xs.
+remove_at(X,L,K,R) => L=[Y|Xs], R=[Y|Ys], K > 1, K1 = K - 1, remove_at(X,Xs,K1,Ys).
+
+rand_perm(_,0,R) ?=> R = [].
+rand_perm(Xs,N,R) ?=> 
+    R = [X|Zs],
+    N > 0,
+    L = length(Xs),
+    I = 1+random2() mod L,
+    remove_at(X,Xs,I,Ys),
+    N1 = N - 1,
+    rand_perm(Ys,N1,Zs).
+
+
+
+problem(1, Problem) => Problem = [8,11,6,1,10,9,4,3,12,7,2,5]. % 27 steps
+problem(2, Problem) => Problem = [10,5,4,7,1,2,8,3,12,11,9,6]. % this is random generated from M12proj.exe. 15 steps
+problem(3, Problem) => Problem = [10,8,6,12,5,2,1,4,11,7,9,3]. % generated from M12proj.exe. harder  22 steps
+problem(4, Problem) => Problem = [11,7,3,8,5,2,12,1,9,10,4,6]. % generated from M12proj.exe 22 steps
+problem(5, Problem) => Problem = [7,5,8,3,1,11,2,9,4,12,6,10]. % generated from M12proj.exe 19 steps
+problem(6, Problem) => Problem = [8,11,6,1,10,9,4,3,12,7,2,5]. % 27 steps
+problem(7, Problem) => Problem = [3,8,6,12,4,7,5,11,1,10,9,2]. % 19 steps
+problem(8, Problem) => Problem = [4,1,10,7,9,12,3,6,5,2,11,8]. % 4 steps. generated from the following moves:  M2I1M
+problem(9, Problem) => Problem = [7,1,8,9,12,5,3,10,4,11,6,2]. % 9 steps
+problem(10, Problem) => Problem = [5,6,11,10,8,2,3,12,7,4,9,1]. % 13 steps
+problem(11, Problem) => Problem = [5,6,10,4,1,11,9,2,12,8,3,7]. % 12 steps
+problem(12, Problem) => Problem = [3,4,6,10,11,1,9,7,8,2,12,5]. % 22 steps
+problem(13, Problem) => Problem = [1,12,2,11,3,10,4,9,5,8,6,7]. % 1 step: m
+problem(14, Problem) => Problem = [1,4,7,10,12,9,6,3,2,5,8,11]. % 3 steps: mmm
+problem(15, Problem) => Problem = [11,2,9,7,1,10,6,5,8,3,12,4]. % 7 steps. mmmrmmm
+problem(16, Problem) => Problem = [12,11,10,9,8,7,6,5,4,3,2,1]. % 1 step: r
+
+problem(17, Problem) => Problem = [10,7,5,3,12,11,9,1,8,6,2,4].
+problem(18, Problem) => Problem = [11,8,6,3,7,2,1,9,4,12,10,5].
+
+problem(19, Problem) => Problem = [4,2,7,12,1,5,10,9,3,8,11,6]. % [r,m,m,m,r,m,r,m]
+problem(20, Problem) => Problem = [6,7,10,9,2,11,12,5,3,4,8,1].
+problem(21, Problem) => Problem = [10,9,7,4,6,5,11,1,8,3,2,12]. % 15 steps m,r,m,r,m,r,m,r,m,m,m,r,m,m,m
