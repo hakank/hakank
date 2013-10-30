@@ -1,0 +1,171 @@
+/*
+
+  General alphametic (cryptarithmetic) solver in Picat.
+
+  This is a more general solver for alphametic problems
+  than http://www.hakank.org/picat/alphametic.pi
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+        go1.
+
+go1 => 
+   L = "SEND + MORE = MONEY",
+   _Solution = runit(L, 10),
+   nl.   
+
+go2 => 
+   problems(Problems),   
+   println(problems=Problems),
+   Base = 10,
+   foreach(Problem in Problems) 
+      _Res = runit(Problem, Base)
+   end,
+   nl.
+
+%
+% Reading the problem from standard input.
+% We assume base 10.
+% 
+go3 => 
+   Base = 10,
+   print("Type the problem (e.g. send+more=money): "),  
+   Problem= read_line(),
+   printf("The problem is: %w\n", Problem),
+   _Solution = runit(Problem, Base),
+   nl.
+
+%
+% This was inspired by one of the problem from the 
+% Celebration Of Mind (Gathering for Gardner) Google Hangout 
+% 2013-10-21.
+% 
+% Here are some solutions.
+%
+% HOMAGE+HOMAGE=GATHER
+% MAGIC+MAGIC=GATHER
+% MAGIC+MAGIC=HOMAGE
+% MARTIN+HOMAGE=GATHER
+% MARTIN+MARTIN=GATHER
+% MARTIN+MARTIN=HOMAGE
+%
+go4 => 
+   Words = [
+      "MARTIN",
+      "GARDNER",
+      "HOMAGE",
+      "GATHERING",
+      "GATHER",
+      "MIND",
+      "MAGIC",
+      "MATH",
+      "CELEBRATION"
+      ],
+
+   Base = 10,
+
+   % Weed out impossible words, i.e. 
+   % those with more than 10 different digits
+   Words := [W : W in Words, W.remove_dups().length <= Base],
+   println(Words),
+
+   P = [],
+   foreach(W1 in Words, W2 in Words, W3 in Words, compare_terms(W1,W2) >= 0, compare_terms(W2,W3) >= 0) 
+      W = W1 ++ "+" ++ W2 ++ "=" ++ W3,
+      (
+       (_ = runit(W,Base)) -> P := P ++ [W] ; true
+      )
+   end,
+   foreach(PP in P.sort()) println(PP) end,
+   nl.
+
+
+
+%
+% Parses the problem string, solve it and print the solution.
+%
+runit(Problem, Base) = Res => 
+   Problem := delete_all(Problem,' '), % remove spaces
+   println(problem=Problem),
+   Split = split(Problem,"+="),
+
+   Unique=delete_all(Problem,+).delete_all(=).remove_dups(),
+   HashDigits = new_map(),
+   foreach(U in Unique)    
+      T in 0..Base-1,
+      HashDigits.put(U,T)
+   end,
+
+   List = [[HashDigits.get(T) : T in SS] : SS in Split],
+   alphametic(List, Base, Res), % solve it
+   writeln(res=Res),
+   foreach(I in 1..Unique.length)
+     println(Unique[I]=Res[I])
+   end,
+   print_res(List),
+   nl.
+
+
+term_variables(L) = Flatten =>
+   Flatten1 = [],
+   foreach(LL in L) 
+      Flatten1 := Flatten1 ++ LL
+   end,
+   Flatten2 = remove_dups(Flatten1),
+   Flatten = Flatten2.
+
+alphametic(L,Base, Vars) => 
+   Last = L.last(),
+   Sums = L.reverse().tail(),
+   Vars = term_variables(L),
+   all_different(Vars),
+   Vals #= sum([Val : S in Sums, Val = calc(S,Base)]),
+   Vals = calc(Last,Base),
+   foreach(S in Sums) S[1] #> 0 end,
+   Last[1] #> 0,
+   solve([ff,split], Vars).
+
+calc(X,Base) = Y =>
+   Len = length(X),
+   Y #= sum([X[I]*Base**(Len-I) : I in 1..Len]).
+
+print_res(L) =>
+   MaxLen = max([length(E) : E in L]),
+   Last = L.last(),
+   Sums = L.reverse().tail(),
+   foreach(S in Sums) print_single(S,MaxLen) end,
+   println("="),
+   print_single(Last,MaxLen),
+   nl.
+
+% print a single term
+print_single(L,MaxLen) =>
+   S = L,
+   Len = L.length,
+   if Len < MaxLen then
+      foreach(_I in 1..(MaxLen-length(L)))
+         S := " " ++ S
+      end
+   end,
+   foreach(SS in S) print(SS) end,
+   nl.
+
+problems(Problems) => Problems = 
+   [
+    "SEND+MORE=MONEY",
+    "DONALD+GERALD=ROBERT",
+    "SATURN+URANUS+NEPTUNE+PLUTO=PLANETS",
+    "VINGT+CINQ+CINQ=TRENTE",
+    "EIN+EIN+EIN+EIN=VIER",
+    "WRONG+WRONG=RIGHT",
+    "GATHER+HOMAGE=MARTIN"
+   ].

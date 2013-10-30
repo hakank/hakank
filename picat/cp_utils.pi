@@ -1,0 +1,265 @@
+/*
+
+  Some CP utilities in Picat.
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module cp_utils.
+
+import cp.
+import util. 
+
+
+% Different implementations of matrix_element(X,I,J,Val)
+% to handle
+%    Val = X[I,J]
+% which is not available when I or J are CP-variables.
+% 
+
+% matrix_element(X, I, J, Val) =>
+%  element(I, X, Row),
+%  element(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%  nth(I, X, Row),
+%  element(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%     freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element(X, I, J, Val) =>
+   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+        Len = length(List),
+        Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+%
+% Ensure a Latin square, 
+% i.e. all rows and all columns are different
+%
+latin_square(Board) =>
+   foreach(Row in Board) all_different(Row) end,
+   foreach(Column in transpose(Board)) all_different(Column) end.
+
+
+increasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #=< List[I] end.
+
+decreasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #>= List[I] end.
+
+%
+% Scalar product of the list A and X
+%
+scalar_product(A, X, Product) => 
+   Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
+
+%
+% scalar product with relation: 
+% 
+%   #=, #<, #>, #<=, #>=, #!=
+%
+scalar_product(A, X, Rel, Product) => 
+   scalar_product(A, X, P),
+   call(Rel,P,Product).
+
+%%
+%% Product = prod(List)
+%%
+%% returns the product of the numbers in List
+%%
+%% Note: This is now a built-in in Picat.
+%
+% prod(List, Product) =>
+%    Product1 = 1, 
+%    foreach(L in List)
+%       % We must "taint" the variable to be a CP variable
+%       Product1 := $Product1 * L
+%    end,
+%    Product #= Product1.
+
+
+%
+% Requires that all values in Xs != 0 must be distinct.
+%
+alldifferent_except_0(Xs) =>
+        foreach(I in 1..Xs.length, J in 1..I-1)
+             (Xs[I] #!= 0 #/\ Xs[J] #!= 0) #=> (Xs[I] #!= Xs[J])
+        end.
+
+
+%
+% nvalue(?N,?X)
+%
+% Requires that the number of distinct values in X is N.
+%
+nvalue(N, X) =>
+   Len = length(X),
+   N #= sum([ (sum([ (X[J] #= I) : J in 1..Len]) #> 0) : I in 1..Len]).
+
+
+nvalue(N, X) =>
+   [Min, Max] = fd_min_max_array(X),
+   N #= sum([ (sum([ (X[J] #= I) : J in 1..X.length]) #> 0) : I in Min..Max]).
+
+% Get Min and Max for an array/list
+fd_min_max_array(X) = [Min,Max] =>
+   Max = fd_max(X[1]),
+   Min = fd_min(X[1]),
+   foreach(Y in X) 
+      if fd_min(Y) < Min then Min = fd_min(Y) end,
+      if fd_max(Y) > Max then Max = fd_max(Y) end
+   end.
+   
+
+%
+% nvalues(X,Op,N)
+%
+% Requires that the number of distinct values in the array X is 
+%    Op N 
+% where
+% Op is either one of 
+%   #=, #<m, #=<, #>=, #>
+% (this is not checked though)    
+%
+nvalues(X, Op, N) =>
+   nvalue(M,X),
+   call(Op, M, N).
+
+
+%
+% Both A and Gcc are (plain) lists.
+% 
+% This version is bidirectional but limited:
+% 
+% The list A can contain only values 1..Max (i.e. the length of Gcc).
+% This means that the caller must know the max values of A.
+% Or rather: if A contains another values they will not be counted.
+% 
+global_cardinality(A, Gcc) =>
+   Len = length(A),
+   Max = length(Gcc),
+   Gcc in 0..Len,
+   foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.
+
+
+
+% Port of MiniZinc's lex2.mzn 
+% """
+%-----------------------------------------------------------------------------%
+% Require adjacent rows and adjacent columns in the array 'x' to be
+% lexicographically ordered.  Adjacent rows and adjacent columns may be equal.
+%-----------------------------------------------------------------------------%
+% """
+% Note: This use lex_less/1.
+lex2(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_less([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.
+
+% This use lex_lesseq/1
+lex2eq(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_lesseq([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.
+
+
+% Port of MiniZinc's lex_less_int.mzn
+% """
+%-----------------------------------------------------------------------------%
+% Requires that the array 'x' is strictly lexicographically less than array 'y'.
+% Compares them from first to last element, regardless of indices
+%-----------------------------------------------------------------------------%
+% """
+lex_less(X,Y) =>
+   LX = 1,
+   UX = X.length,
+   LY = 1,
+   UY = Y.length,
+   Size = max(UX-LX,UY-LY),
+   B = new_list(Size+2), % (Note: The MiniZinc version is 0-based.)
+   B in 0..1,
+   B[1] #= 1,
+   foreach(I in 1..Size+1) 
+      B[I] #= ( X[I] #<= Y[I] #/\ (X[I] #< Y[I] #\/ B[I+1] #= 1) )
+   end,
+   B[Size + 2] #= (Size - 1 #< Size - 1).
+
+
+% Port of MiniZinc's lex_lesseq_in.mzn
+% """
+%-----------------------------------------------------------------------------%
+% Requires that the array 'x' is lexicographically less than or equal to
+% array 'y'.  Compares them from first to last element, regardless of indices
+%-----------------------------------------------------------------------------%
+% """
+lex_lesseq(X,Y) =>
+   LX = 1,
+   UX = X.length,
+   LY = 1,
+   UY = Y.length,
+   Size = max(UX-LX,UY-LY),
+   B = new_list(Size+2), % (Note: The MiniZinc version is 0-based.)
+   B in 0..1,
+   B[1] #= 1,
+   foreach(I in 1..Size+1) 
+      B[I] #= ( X[I] #<= Y[I] #/\ (
+                ((I #= Size) #=> 1)
+                #/\ 
+                ((I #< Size) #=> X[I] #< Y[I] #\/ B[I+1] #= 1) 
+                )
+              )
+   end.
+
+
+
+lex_greater(X,Y) => lex_less(Y,X).
+lex_greatereq(X,Y) => lex_lesseq(Y,X).
+
+
+
+%
+% Alternative approach where we convert to two
+% numbers and ensure that the first number is < second number.
+%
+lex_less2(X,Y,Base) =>
+  to_num(X,Base,NumX),
+  to_num(Y,Base,NumY),
+  NumX #<= NumY.
+
+
+%
+% exactly(?N,?X,?V)
+%
+% Requires that exactly N variables in X takes the value V.
+%
+exactly(N, X, V) =>
+  count(V,X,#=,N).
+
+%
+% atmost(?N,?X,?V)
+%
+% Requires that atmost N variables in X takes the value V.
+%
+atmost(N,X,V) => 
+  count(V,X,#=<,N).
+
+%
+% atleast(?N,?X,?V)
+%
+% Requires that atleast N variables in X takes the value V.
+%
+atleast(N,X,V) => 
+  count(V,X,#>=,N).
+
