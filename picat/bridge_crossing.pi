@@ -1,0 +1,142 @@
+/* 
+
+  Bridge crossing problem in Picat.
+
+  From Prolog code
+  http://www.anselm.edu/internet/compsci/faculty_staff/mmalita/HOMEPAGE/logic/flashlight2.txt
+  """
+  Author: MM
+  Title: Four Men Crossing a Bridge (from Microsoft interview process)
+
+  There are four men who would all like to cross a rickety old bridge. 
+  The old bridge will only support 2 men at a time, and it is night time, so every 
+  crossing must use the one flashlight that they all share. 
+  The four men each have different walking speeds; the fastest each of them can 
+  cross is 1 minute, 2 minutes, 5, minutes, and 10 minutes. If they pair up, since 
+  they must share the flashlight, they can only cross in the time that it would take 
+  the slower of the two. Given that the shortest time to get them all across is 
+  17 minutes total, how should they all cross?
+
+  ...
+ 
+  We describe the problem as Nodes in a graph and the solution means to find a path from
+  the initial node to the final node.
+  assume the names of the four people are: a,b,c,d
+  state = node is graph
+  state = [Time,Flash_place,[a,b,c,d],[]] 
+  Bank can be left (l) or right (r).  Thus Flash_place is l or r.
+  [5,l,[a,b,c],[d]] - means 5 minutes passed and a,b,c are on the left bank and d is on the right
+
+  | ?- start,fail.
+  Found sol=[17,r,[],[a,b,c,d]]
+  [15,l,[a,b],[c,d]]
+  [14,r,[b],[c,d,a]]
+  [4,l,[b,c,d],[a]]
+  [2,r,[c,d],[a,b]]
+  [0,l,[a,b,c,d],[]]
+  """
+  
+
+  Cf my CP version 
+  http://www.hakank.org/picat/bridge_and_torch_problem.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  initial(S),
+  path(S,[],Sol),
+  println("Found sol="),
+  foreach(X in Sol) writeln(X) end,
+  fail,
+  nl.
+
+
+/* finding a path in a graph from initial node to final node */
+path(N,P,NP) ?=> NP=[N|P], final(N).
+path(N,P,Sol) => arc(N,N1),not(member(N1,P)),path(N1,[N|P],Sol).
+
+/* at the beginning All are on the same bank and Time=0 */
+initial(Initial) => Initial = [0,l,[a,b,c,d],[]].
+
+/* at the end they have all to be on the other bank and Time=17*/
+final(Final) => Final = [17,r,[],[a,b,c,d]].
+
+/* opposite bank. */
+index(-,-)
+opp(l,r).  
+opp(r,l).
+
+/* time for crossing the bridge - time is a system predicate */
+index(-,-)
+tim(a,1).
+tim(b,2).
+tim(c,5).
+tim(d,10).
+
+/* define the arcs (or move conditions from a state node) to another state(node) */
+arc(TA, TB) => 
+       TA = [T1,F1,L1,R1],
+       TB = [T2,F2,L2,R2],
+       opp(F1,F2),
+	((F1=l,cross(X,L1),
+        take(X,L1,L2),append(X,R1,R2),findtime(X,T),T2 is T1+T)
+        ;
+    	(F1=r,cross(X,R1),
+        take(X,R1,R2),append(X,L1,L2),findtime(X,T),T2 is T1+T)),
+        T2 < 18.
+
+/* remove all elements in S from L result is in R */
+take(S,L,R) => R = findall(Z,(member(Z,L),not(member(Z,S)))).
+
+/* we know just one or two persons cross the bridge */
+findtime([X],Tim) => tim(X,Tim).
+findtime([A,B],Tim) =>
+   tim(A,Ta),
+   tim(B,Tb),
+   Tim is max(Ta,Tb).
+
+/* take all the combinations of 1 person, and 2 persons from our group: [a,b,c,d] */
+cross(X,L) => (comb(1,L,X); comb(2,L,X)).
+
+% From 
+% http://www.anselm.edu/internet/compsci/faculty_staff/mmalita/HOMEPAGE/logic/bibmm.txt
+
+
+/* mem1(Lr,L). For comb/3. Same as mem/2 but does not generate [a,b] and [b,a]. 	
+	?- mem1([X,Y],[a,b,c]),write([X,Y]),fail.
+	[a,b][a,c][b,a][b,c][c,a][c,b]no
+*/
+mem1([],_Y) ?=> true.
+mem1([H|T],Y) => member(H,Y),rest(H,Y,New),mem1(T,New).
+
+/* rest(A,L,R). For comb/3. Return the rest of the list after the first occurrence of A. 
+	| ?- rest(a,[a,b,c,d],I).
+	I = [b,c,d]
+	| ?- rest(a,[b,c,a,d],I).
+	I = [d]
+	| ?- rest(a,[b,c,d],I).
+	I = []
+*/
+rest(_X,[],T) => T = [].
+rest(X,[X|T],TT) => TT=T.
+rest(X,XT,R) => XT = [_|T], rest(X,T,R).
+
+/* comb(N,L,Res). Combinations. Arangements without " order".	
+	| ?- comb(2,[a,b,c],I).
+	I = [a,b] ;
+	I = [a,c] ;
+	I = [b,c] ;
+*/
+comb(N,L,X) => X = new_list(N),mem1(X,L).
+

@@ -65,6 +65,18 @@ next_permutation(P) = Perm =>
    end,
    Perm = Perm1.
 
+random_perm(L,N) = Perm => 
+  Perm = L,
+  Len = L.length,
+  foreach(_I in 1..N) 
+     R1 = 1+(random2() mod Len),
+     R2 = 1+(random2() mod Len),
+     T = Perm[R1],
+     Perm[R1] := Perm[R2],
+     Perm[R2] := T
+  end.
+
+
 
 %sublist(String1, String2):
 %   succeeds if S2 is a sublist of S
@@ -102,7 +114,7 @@ swap(A,B) = [B,A].
 % TODO: scan/2, scan/3?
 
 % Note: F must be a defined function
-group(List, F) = P =>
+group(List, F) = P, list(List) =>
    P = new_map(),
    foreach(E in List) 
       V = apply(F,E),
@@ -153,12 +165,13 @@ cartprod(L1,R) =>
 all_pairs(List,Pairs) =>
     Pairs = [[I=J] : I in List, J in List, I < J].
 
+%
 % From http://www.probp.com/publib/listut.html
 % 
 %   correspond(X, Xlist, Ylist, Y)
 %   is true when Xlist and Ylist are lists, X is an element of Xlist, Y is
 %   an element of Ylist, and X and Y are in similar places in their lists.
-
+%
 correspond(X, X1, Y1, Y) ?=> X1=[X|_], Y1=[Y|_].
 correspond(X, X1, Y1, Y) ?=>
         X1 = [_|T],
@@ -172,7 +185,7 @@ correspond(X, X1, Y1, Y) ?=>
 %	True iff Part is a leading substring of Whole.  This is the same
 %	as append(Part, _, Whole).
 prefix([],X) ?=> X = _.
-prefix([E|T0], [E|T]) ?=>
+prefix([E|T0], [E|T]) =>
 	prefix(T0, T).
 
 
@@ -221,6 +234,10 @@ arithm(Op,List1,List2) = Res, list(List1), list(List2), length(List1) != length(
 % operate on self
 arithm(Op,List) = arithm(Op,List,List), list(List) => true.
 
+% 
+% Picat> L=plus(2,3).plus(4).multiply(4).power(4)
+% L = 1679616
+% 
 plus(A,B) = arithm(+,A,B).
 minus(A,B) = arithm(-,A,B).
 multiply(A,B) = arithm(*,A,B).
@@ -350,7 +367,59 @@ pi(Len) = Res =>
    end,
    nl.
 
+%
+% Shuffle the list List.
+% 
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  foreach(I in 1..Len) 
+    R2 = 1+(random2() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
 
+
+%
+% Swap position I <=> J in list L
+%
+swap(L,I,J) = L2, list(L) =>
+  L2 = L,
+  T = L2[I],
+  L2[I] := L2[J],
+  L2[J] := T.
+
+
+num_fixpoints(List) = sum([1 :  I in 1..List.length, List[I] = I]).
+
+%
+% occurrences(List): 
+% returns a map with all the keys and the 
+% number of occurrences of each elements.
+%
+occurrences(List) = Map =>
+  Map = new_map(),
+  foreach(E in List)
+     Map.put(E, cond(Map.has_key(E),Map.get(E)+1,1))
+  end.
+
+
+push(L,E) = L ++ [E].
+
+%
+% This is a bit strange, but might work...
+%
+% Picat> L=1..10, L:=L.pop(E1).pop(E2).pop(E3)
+% L = [4,5,6,7,8,9,10]
+% E1 = 1
+% E2 = 2
+% E3 = 3
+pop(L,First) = [ L[I] : I in 2..L.length] => First = L.first().
+
+
+%
+% scalar produt of L1 and L2
+%
+scalar(L1,L2) = [L1I*L2I : {L1I,L2I} in zip(L1,L2)].sum().
 
 test3 =>
    cartprod([[a,b,d],[1,2,3,4]],CartProd),
@@ -383,4 +452,198 @@ test3 =>
    writeln(power1x2=power(1..3).power()),
    writeln(mult_divide=multiply(1..20).divide(2)),
    writeln(pi100=pi(100)),
+
+   nl,
+
+   writeln(shuffle=(1..20).shuffle()),
+   writeln(fixpoints=num_fixpoints((1..20).shuffle())),
+
+   nl,
+
+   P = 1..10,
+   writeln(push=P.push(11)),
+   writeln(P.shuffle().pop(E1).pop(E2).pop(E3)),
+   writeln([e1=E1,e2=E2,e3=E3]),
+
+
    nl. 
+
+
+% From 
+% Mihaela Malita: "Library for Logic Puzzles"
+% http://www.anselm.edu/internet/compsci/faculty_staff/mmalita/HOMEPAGE/logic/bibmm.txt
+% 
+% Note: I have changed some of the predicate names.
+%
+
+/* mem(Lr,L). Elements from Lr are all members in L. Same as subset(Lr,L).
+	?- mem([X,Y],[a,b,c]).
+	X = Y = a ;
+	X = a ,Y = b ;
+	X = a ,Y = c ;
+	X = b ,Y = a ;	
+	X = Y = b ;
+	X = b ,Y = c ;
+	X = c ,Y = a ;
+	X = c ,Y = b ;
+	X = Y = c ;
+*/
+mem([],_) => true.
+mem([H|T],Y) => member(H,Y),mem(T,Y).
+
+subset(X,Y) => mem(X,Y).
+
+/* all(N,L,X). All possible pairs with elements from [a,b,c,d]:
+	| ?- all(2,[a,b,c],I).
+	I = [a,a] ;
+	I = [a,b] ;
+	I = [a,c] ;
+	I = [b,a] ;
+	I = [b,b] ;
+	I = [b,c] ;
+	I = [c,a] ;
+	I = [c,b] ;
+	I = [c,c] ;
+*/
+subsets(N,L,X) => X = new_list(N),mem(X,L).
+
+/* list_all(N,L,R).  
+	?- list_all(2,[a,b,c],R).
+	R = [[a,a],[a,b],[a,c],[b,a],[b,b],[b,c],[c,a],[c,b],[c,c]]
+*/
+all_subsets(N,L) = findall(X,subsets(N,L,X)).
+
+
+/* 
+ set(L). Tests if a list has no duplicates. 
+*/
+set([]) => true.
+set([H|T]) => not(member(H,T)),set(T).
+
+no_duplicates(M) => set(M).
+distinct(M) => set(M).
+% alldifferent(M) =>  set(M).
+
+/*
+ Picat> N=3, R=all_subsets(N,1..N).filter2(distinct) 
+ R = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
+*
+
+filter(_P,[]) = [].
+filter(P,[X|Xs]) = cond(call(P,X), [X] ++ filter(P,Xs), filter(P,Xs)).
+
+filter2([],_P) = [].
+filter2([X|Xs],P) = cond(call(P,X), [X] ++ filter2(Xs,P), filter2(Xs,P)).
+
+/* arange(N,L,R). Lists have to be sets! That is: elements do not repeat.
+	?- arange(2,[a,b,c],R).    
+	R = [a,b] ;
+	R = [a,c] ;
+	R = [b,a] ;
+	R = [b,c] ;	
+	R = [c,a] ;
+	R = [c,b] ;
+*/
+arange(N,L,X) => X = new_list(N), mem(X,L),no_duplicates(X).
+list_arange(N,L) = findall(X,arange(N,L,X)).
+
+
+
+/* mem1(Lr,L). For comb/3. Same as mem/2 but does not generate [a,b] and [b,a]. 	
+	?- mem1([X,Y],[a,b,c]),write([X,Y]),fail.
+	[a,b][a,c][b,a][b,c][c,a][c,b]no
+*/
+mem1([],_Y) ?=> true.
+mem1([H|T],Y) => member(H,Y),rest(H,Y,New),mem1(T,New).
+
+/* rest(A,L,R). For comb/3. Return the rest of the list after the first occurrence of A. 
+	| ?- rest(a,[a,b,c,d],I).
+	I = [b,c,d]
+	| ?- rest(a,[b,c,a,d],I).
+	I = [d]
+	| ?- rest(a,[b,c,d],I).
+	I = []
+*/
+rest(_X,[],T) => T = [].
+rest(X,[X|T],TT) => TT=T.
+rest(X,XT,R) => XT = [_|T], rest(X,T,R).
+
+/* comb(N,L,Res). Combinations. Arangements without " order".	
+	| ?- comb(2,[a,b,c],I).
+	I = [a,b] ;
+	I = [a,c] ;
+	I = [b,c] ;
+*/
+comb(N,L,X) => X = new_list(N),mem1(X,L).
+
+/* list_comb(N,L,Res).	
+	?-  list_comb(2,[a,b,c,d],L).
+	L = [[a,b],[a,c],[a,d],[b,c],[b,d],[c,d]]
+*/
+% Picat> L = [C : C in all_comb(4,1..10), sum(C) = 30]
+% L = [[3,8,9,10],[4,7,9,10],[5,6,9,10],[5,7,8,10],[6,7,8,9]]
+%
+all_comb(N,L) = findall(X,comb(N,L,X)).
+
+
+/* Order in a list: 
+	List= ....X,Y,... means: Y is in the right of X
+	?- right(a,b,[c,a,b,m,n]).
+	yes
+	?- right(a,X,[c,a,b,m,n]).
+	X = b ;
+	?- right(a,m,[c,a,b,m,n]).
+	no
+*/
+right(X,Y,L) => append(_,[X,Y|_],L).
+
+
+/* next(X,Y,L). If X and Y are next to each other in the list.	
+	?- next(X,Y,[a,b,c]).
+	X = a ,Y = b ;
+	X = b ,Y = c ;
+	X = b ,Y = a ;
+	X = c ,Y = b ;
+	?- next(a,b,[m,a,b,c]).
+	yes
+	?- next(a,c,[m,a,b,c,d]).
+	yes
+	?- next(a,c,[m,a,b,c,d]).
+	no
+	?- next(a,X,[m,a,b,c]).
+	X = b ;
+	X = m ;
+*/
+next(X,Y,L) => right(X,Y,L) ; right(Y,X,L).
+
+
+
+/* neighbor(+X,+Y,X1,Y1,+S). Two cells are neighbors in an array size S
+- starts from 0. Assume X and Y are in the range 0 - S.
+integer_bound(0,I,5) means 0 <= I <= 5
+	?-neighbor(1,1,2,2,3). 
+	yes
+	?-neighbor(1,2,I,J,2).  
+	I = J = 2 ;
+	I = 0 ,J = 2 ;
+	I = J = 1 ;
+	I = 2 ,	J = 1 ;
+	I = 0 ,	J = 1 ;
+*/
+neighbor(X,Y,X1,Y1,S) => ((X1 is X+1, Y=Y1);
+                      (X1 is X-1, Y=Y1);
+		      (X1=X, Y1 is Y+1);
+                      (X1=X, Y1 is Y-1);
+		      (X1 is X+1, Y1 is Y-1);
+		      (X1 is X-1, Y1 is Y-1);
+		      (X1 is X+1, Y1 is Y+1);
+		      (X1 is X-1, Y1 is Y+1)), 
+		      between(0,S,X1),between(0,S,Y1).
+
+
+/* before (X,Y,List). Checks if X is before Y in the List.
+	Starts from Left to right (normal order..).
+	?-before(a,c,[m,a,v,c,d]).
+	yes
+*/
+before(X,Y,L) => append(_,[X|T],L), member(Y,T).

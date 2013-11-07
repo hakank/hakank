@@ -1,0 +1,171 @@
+/* 
+
+  Lunch problem in Picat.
+
+  From Prolog code
+  http://www.anselm.edu/internet/compsci/faculty_staff/mmalita/HOMEPAGE/logic/lunch2.txt
+  """
+  Author: sol MM
+  Title: Insider Trading
+  From:  Dell- Math Puzzles Logic Problems, Jan 2002, p 36.
+
+  Kids are notorious for trading their lunches away, and the kids at 
+  PT Elementary are no exception. Mrs. Day, the lunch lady recently watched four 
+  big-time traders at work, swapping everything their parents had packed. 
+  She had trouble keeping it all straight, but shrugged when she realized 
+  that May and her friends each finished with a sandwich, piece of fruit, 
+  and a dessert (one was a brownie).
+  Can you untangle the " insider trading" and determine what each child 
+  ate and who brought it to school?
+
+  1. Each child swapped with each friend exactly once, 
+     always trading like items
+  2. The child who ate the apple also gobbled up the chocolate cupcake.
+  3. Jay traded his fruit for Ray's orange.
+  4. One child bought a bologna sandwich and a banana to school.
+  5. The child who ate the turkey sandwich also ate the grapes.
+  6. The child who ate the ham cheese sandwich traded away the cookie 
+     Mom had packed.
+  7. Ray enjoyed Faye's peanut butter sandwich.
+  8. The child who ate Joy's sandwich also ate the candy bar.
+
+  | ?- start(S),write_list(S),nl,fail.
+  [may,bologna,turkey,banana,grapes,cupcake,candy_bar]
+  [jay,turkey,bologna,apple,orange,brownie,cookie]
+  [ray,ham_cheese,peanut,orange,apple,candy_bar,cupcake]
+  [faye,peanut,ham_cheese,grapes,banana,cookie,brownie]
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+
+main => go.
+
+
+go =>
+  Sols = findall(Sol, start(Sol)),
+  foreach(Sol in Sols) 
+      foreach(S in Sol) writeln(S) end,
+      nl
+  end,
+  
+  nl.
+
+
+fruit(Fruit) => Fruit = [grapes,orange,apple,banana].
+sandwich(Sandwich) => Sandwich = [turkey,peanut,ham_cheese,bologna].
+dessert(Dessert) => Dessert = [candy_bar,cupcake,cookie,brownie].
+child(Child) => Child = [may,jay,ray,faye].  
+
+start(Sol) => 
+   dessert(Dessert),fruit(Fruit),sandwich(Sand),child(Child),
+   Child=[C1,C2,C3,C4],
+   Sol=[[C1,Sb1,Se1,Fb1,Fe1,Db1,De1],
+        [C2,Sb2,Se2,Fb2,Fe2,Db2,De2],
+        [C3,Sb3,Se3,Fb3,Fe3,Db3,De3],
+        [C4,Sb4,Se4,Fb4,Fe4,Db4,De4]],	
+%3. Jay traded his fruit for Ray's orange. 
+	member([jay,Sbjay,_,Fbjay,orange,_,_],Sol),
+%8. The child who ate Jay's sandwich also ate the candy bar. 	 
+	member([_,_,Sbjay,_,_,_,candy_bar],Sol),
+%5. The child who ate the turkey sandwich also ate the grapes. 	
+	member([_,_,turkey,_,grapes,_,_],Sol),
+%7. Ray enjoyed Faye's peanut butter sandwich. 	
+	member([ray,Sbfaye,peanut,orange,Fbjay,_,_],Sol),
+	member([faye,peanut,Sbfaye,_,_,_,_],Sol),
+%2. The child who ate the apple also gobbled up the chocolate cupcake
+	member([_,_,_,_,apple,_,cupcake],Sol),
+%4. One child bought a bologna sandwich and a banana to school
+	member([_,bologna,_,banana,_,_,_],Sol),
+%6. The child who ate the ham cheese sandwich traded away the cookie
+	member([_,_,ham_cheese,_,_,cookie,_],Sol),	
+%1. Each child swapped with each friend exactly once, always trading like items
+	set_equal([Sb1,Sb2,Sb3,Sb4],Sand),
+	set_equal([Se1,Se2,Se3,Se4],Sand),
+        set_equal([Fb1,Fb2,Fb3,Fb4],Fruit),
+	set_equal([Fe1,Fe2,Fe3,Fe4],Fruit),
+        set_equal([Db1,Db2,Db3,Db4],Dessert),
+	set_equal([De1,De2,De3,De4],Dessert),
+        Pairs=all_comb(2,Sol),all_prop(intersection_2,Pairs).
+
+intersection_2([X,Y]) =>intersection_n(X,Y,2).
+
+/* Explain: 
+	1. Each child swapped with each friend exactly once, 
+   	   always trading like items
+All the pairs have intersection_n = 2 - means 2 items in common
+or take all the 2 pairs (only once) and see if they have exactly 
+2 elements in common:
+   list_comb(2,L,Pairs),all_prop(intersection_2,Pairs).
+*/
+
+
+set_equal(P1,P2) => permutation(P1,P2).
+
+/* intersection(L1,L2,R). Intersection of 2 sets.
+	?- intersection([a,c],[m,a,b,c],R).
+	R = [a,c]
+	?- intersection([p,r],[a,b,c],R).
+	R = []
+*/
+intersection([],_, R) => R = [].
+intersection([H|T],L,HR) ?=> HR = [H|R], member(H,L),intersection(T,L,R).
+intersection([_H|T],L,R) => intersection(T,L,R).
+
+/* intersection_n(L1,L2,N). Sets have in common just N elements 
+	?- intersection_n([p,r,t],[a,b,c],0).
+	yes
+	?- intersection_n([p,r,a],[a,b,c],1).
+	yes
+	?- intersection_n([p,r,a],[a,b,c],N).
+	N = 1
+*/
+intersection_n(L1,L2,N) => 
+  intersection(L1,L2,R), R.length = N.
+
+
+/* mem1(Lr,L). For comb/3. Same as mem/2 but does not generate [a,b] and [b,a]. 	
+	?- mem1([X,Y],[a,b,c]),write([X,Y]),fail.
+	[a,b][a,c][b,a][b,c][c,a][c,b]no
+*/
+mem1([],_Y) ?=> true.
+mem1([H|T],Y) => member(H,Y),rest(H,Y,New),mem1(T,New).
+
+/* rest(A,L,R). For comb/3. Return the rest of the list after the first occurrence of A. 
+	| ?- rest(a,[a,b,c,d],I).
+	I = [b,c,d]
+	| ?- rest(a,[b,c,a,d],I).
+	I = [d]
+	| ?- rest(a,[b,c,d],I).
+	I = []
+*/
+rest(_X,[],T) => T = [].
+rest(X,[X|T],TT) => TT=T.
+rest(X,XT,R) => XT = [_|T], rest(X,T,R).
+
+/* comb(N,L,Res). Combinations. Arangements without " order".	
+	| ?- comb(2,[a,b,c],I).
+	I = [a,b] ;
+	I = [a,c] ;
+	I = [b,c] ;
+*/
+comb(N,L,X) => X = new_list(N),mem1(X,L).
+
+/* list_comb(N,L,Res).	
+	?-  list_comb(2,[a,b,c,d],L).
+	L = [[a,b],[a,c],[a,d],[b,c],[b,d],[c,d]]
+*/
+all_comb(N,L) = findall(X,comb(N,L,X)).
+
+
+/* all_prop(P,L). All elements from a list (first level) have property Prop
+*/
+all_prop(_P,[]) => true.
+all_prop(P,[H|T]) =>  call(P,H),all_prop(P,T).
+
