@@ -26,12 +26,20 @@
   This model assume that the same cell is used only once (i.e. that it 
   have just one "direction"). 
 
-  puzzle/3 don't assume that we start at first position, though with Start > 0 
-  it requires the start position.
+  There are three different approaches:
 
-  It also generates random problem instances.
+   - puzzle/3 CP approach
+     don't assume that we start at first position, though with Start > 0 
+     it requires the start position.
 
-  puzzle2/2 is a shortest path approach (assumes we start at position 1).
+     It also generates random problem instances.
+
+  - puzzle2/2 shortest path approach
+    assumes we start at position 1).
+
+  - puzzle3/2 planner approach
+    assumes we start at position 1.
+
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -41,7 +49,7 @@
 
 % import util.
 import cp.
-
+import planner.
 
 main => go.
 
@@ -125,6 +133,47 @@ go7 =>
   end,
   nl.
 
+go8 =>
+   A = [3,6,4,1,3,4,2,5,3,0],  
+   println(a=A),
+   print_pos(A,1),
+   puzzle3(A,Path),
+   foreach([Pos1,Step,Pos2] in Path) 
+     println((pos1=Pos1,step=Step,pos2=Pos2)),
+     print_pos(A,Pos2)
+   end,
+   nl.
+
+go9 =>
+  N = 1000,
+  Found = false,
+  % Generate until a solvable problem is found.
+  while (Found == false) 
+    println(generating),
+    A := generate_random2(N),
+    puzzle3(A,Path) -> 
+      println(a=A),
+      println(path=Path),
+      foreach([Pos1,Step,Pos2] in Path) 
+        println((pos1=Pos1,step=Step,pos2=Pos2)),
+        if N <= 30 then
+           print_pos(A,Pos2)
+        end
+      end,
+      Found := true
+    ;
+      true
+  end,
+  nl.
+
+
+
+print_pos(A,Pos) =>
+  foreach(I in 1..A.length) 
+      printf("%d%s ", A[I], cond(I=Pos,"*",""))
+  end,
+  nl.
+
 % print a shortest path
 print_path(A,Path) =>
  foreach((From,To) in Path) 
@@ -203,7 +252,7 @@ generate_random(N,Start) = A =>
        true
    end.
 
-% real random puzzle (perhaps not solvable
+% real random puzzle (perhaps not solvable)
 generate_random2(N) = A => 
    Mod = cond(N > 4, N - N div 3, N),
    A := [1+random2() mod Mod : _I in 1..N-1] ++ [0].
@@ -231,7 +280,7 @@ puzzle2(A, Path,Cost) =>
 
 %
 % General shortest path, requires the fact predicate
-%   edge(From,To,Weight
+%   edge(From,To,Weight)
 %
 table(+,+,-,min)
 shortest_path(X,Y,Path,W) ?=>
@@ -242,3 +291,27 @@ shortest_path(X,Y,Path,W) =>
    edge(X,Z,W1),
    shortest_path(Z,Y,PathR,W2),
    W = W1+W2.
+
+
+%
+% Planner approach
+%
+puzzle3(A, Path) => 
+  best_plan_unbounded([1|A],Path).
+
+% using planner
+action([Ix1|L],Ix2L,Move,Cost) ?=>
+   Ix2L = [Ix2|L],
+   Cost = 1,
+   Ix2 = Ix1+L[Ix1],
+   Ix2 <= L.length,
+   Move = [Ix1,L[Ix1],Ix2].
+
+action([Ix1|L],Ix2L,Move,Cost) ?=>
+   Ix2L = [Ix2|L],
+   Cost = 1,
+   Ix2 = Ix1-L[Ix1],
+   Ix2 > 0,
+   Move = [Ix1,-L[Ix1],Ix2].
+
+final([Ix|L]) => Ix == L.length.
