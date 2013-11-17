@@ -1,0 +1,244 @@
+/* 
+
+  Movement puzzle in Picat.
+
+  From StackOverflow
+  "python recursion: solving movement puzzle"
+  http://stackoverflow.com/questions/20011395/python-recursion-solving-movement-puzzle
+  """
+  im trying to figure out how to write a recursive python program which takes a list
+  i.e [1,2,3,4,0] while each number donates [denotes?] the number of steps you can take 
+  left or right. and figure out of a way you to get to the zero cell at the end.
+  
+  for example [3,6,4,1,3,4,2,5,3,0] , if i start at the leftmost cell(3), i could 
+  take: 3 steps right to the 1 cell -> 1 step back to the 4 cell -> 4 steps right 
+  to the 2 cell- > 2 steps right to the 3 cell -> 3 steps left to the 4 cell -> and 
+  4 steps right to the 0 cell
+  i can start on any cell on the board.. and also need to figure out when it is 
+  not possible to solve the board.
+  
+  how do i start to think about this using recursion?
+  """
+
+  The same problem is described here (also as a recursion homework assignment):
+  http://see.stanford.edu/materials/icspacs106b/H18-Assign3RecPS.pdf‎
+
+  This model assume that the same cell is used only once (i.e. that it 
+  have just one "direction"). 
+
+  puzzle/3 don't assume that we start at first position, though with Start > 0 
+  it requires the start position.
+
+  It also generates random problem instances.
+
+  puzzle2/2 is a shortest path approach (assumes we start at position 1).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+go =>  
+  A = [3,6,4,1,3,4,2,5,3,0],
+  Start = 0,
+  println(a=A),
+  puzzle(A,Start,X),
+  println(x=X),
+  nl.
+
+go2 =>
+  A = [14, 11, 8, 16, 9, 11, 3, 3, 10, 7, 2, 4, 3, 13, 3, 10, 7, 11, 7, 0],
+  println(a=A),
+  Start = 0,
+  puzzle(A,Start,X),
+  println(x=X),
+  nl.
+
+go3 =>
+  A = [3,6,4,1,3,4,2,5,3,0],
+  Start = 0,
+  println(a=A),
+  time2(All = puzzle_all(A,Start)),
+  println(All),
+  println(len=All.length),
+  nl.
+
+go4 =>
+  A = [14, 11, 8, 16, 9, 11, 3, 3, 10, 7, 2, 4, 3, 13, 3, 10, 7, 11, 7, 0],
+  Start = 1,
+  println(a=A),
+  time2(All = puzzle_all(A,Start)),
+  println(All),
+  println(len=All.length),
+  nl.
+
+
+go5 => 
+  Start = 0,
+  A = generate_random(10,Start),
+  Start = 0,
+  println(a=A),
+  time2(All = puzzle_all(A,Start)),
+  println(All),
+  println(len=All.length),
+  nl.
+
+
+
+% Shortest path approach
+go6 =>
+  % A = [3,6,4,1,3,4,2,5,3,0],
+  % A = [14, 11, 8, 16, 9, 11, 3, 3, 10, 7, 2, 4, 3, 13, 3, 10, 7, 11, 7, 0],
+  A = [8, 28, 22, 27, 28, 2, 29, 9, 30, 7, 5, 10, 8, 21, 13, 3, 10, 13, 1, 6, 11, 16, 17, 17, 15, 8, 2, 5, 5, 8, 3, 31, 14, 3, 23, 32, 27, 27, 24, 0],
+  println(a=A),
+  puzzle2(A,Path,Cost),
+  println(path=Path),
+  println(cost=Cost), 
+  print_path(A,Path),
+  nl.
+
+%
+% Random problem
+%
+go7 =>
+  N = 1000,
+  Found = false,
+  % Generate until a solvable problem is found.
+  while (Found == false) 
+    println(generating),
+    A := generate_random2(N),
+    puzzle2(A,Path,Cost) -> 
+      println(a=A),
+      println(path=Path),
+      println(cost=Cost), 
+      print_path(A,Path),
+      Found := true
+    ;
+      true
+  end,
+  nl.
+
+% print a shortest path
+print_path(A,Path) =>
+ foreach((From,To) in Path) 
+   T = To-From,
+   T2 = abs(T),
+   Dir = cond(T > 0, "+","-"),
+   printf("From %3d (%3d) .. %s%3d step(s) .. To %3d (%3d)\n", From, A[From], Dir, T2, To, A[To])
+   % println([From, A[From], Dir, T2, To, A[To]])
+ end.
+
+
+
+puzzle_all(A,Start) = findall(X,puzzle(A,Start,X)).
+
+%
+% CP approach
+% Here we don't assume any start position
+%
+puzzle(A,Start,X) => 
+
+   N = A.length,
+
+   % decision variables
+   X = new_list(N),
+   X :: 0..N, 
+
+   C #= sum([X[I] #> 0 : I in 1..N]),
+
+   % constraints
+   alldifferent_except_0(X),
+
+   % X[N] is the last step of the sequence
+   X[N] #= max(X),
+   X[N] #> 0,
+
+   % The main loop:
+   % For all entries (x[i] > 0):
+   %   identify position of the previous move in X and the 
+   %   length to the next element.
+   % 
+   foreach(I in 2..N) 
+     (I #<= X[N]) #=>
+        sum([
+           X[J] #= I       #/\ 
+           X[K] #= I-1     #/\ 
+           A[K] #= abs(J-K) 
+        : J in 1..N, K in 1..N]) #> 0 
+   end,
+
+   %
+   % connect at the end as well:
+   % There must be a (proper) last step which is
+   % connected to X[N].
+   % 
+   sum([X[J] #= X[N]-1 #/\ A[J] #= N-J : J in 1..N]) #> 0,
+
+   if Start > 0 then
+      X[Start] #= 1
+   end,
+
+   solve([ffc,split],X),
+
+   println([x=X,c=C]).
+
+
+
+generate_random(N,Start) = A => 
+   A = new_list(N),
+   Found = 0,
+   Mod = cond(N > 4, N - N div 3, N),
+   while (Found == 0) 
+     A := [1+random2() mod Mod : _I in 1..N-1] ++ [0],
+     puzzle(A,Start,_X) -> 
+       Found := 1
+     ; 
+       true
+   end.
+
+% real random puzzle (perhaps not solvable
+generate_random2(N) = A => 
+   Mod = cond(N > 4, N - N div 3, N),
+   A := [1+random2() mod Mod : _I in 1..N-1] ++ [0].
+
+
+
+alldifferent_except_0(Xs) =>
+        foreach(I in 1..Xs.length, J in 1..I-1)
+             (Xs[I] #!= 0 #/\ Xs[J] #!= 0) #=> (Xs[I] #!= Xs[J])
+        end.
+
+
+%
+% A graph (shortest path) approach.
+%
+puzzle2(A, Path,Cost) =>
+
+   N = A.length,
+   % create the graph
+   Graph = [$edge(I,T,1) : I in 1..N-1, T = I+A[I], T <= N] ++
+           [$edge(I,T,1) : I in 1..N-1, T = I-A[I], T > 0],
+   % println(graph=Graph),
+   cl_facts(Graph,$[edge(+,-,-),edge(-,+,-)]),
+   shortest_path(1,N,Path,Cost).
+
+%
+% General shortest path, requires the fact predicate
+%   edge(From,To,Weight
+%
+table(+,+,-,min)
+shortest_path(X,Y,Path,W) ?=>
+   Path=[(X,Y)],
+   edge(X,Y,W).
+shortest_path(X,Y,Path,W) =>
+   Path = [(X,Z)|PathR],
+   edge(X,Z,W1),
+   shortest_path(Z,Y,PathR,W2),
+   W = W1+W2.
