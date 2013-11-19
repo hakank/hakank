@@ -1,0 +1,216 @@
+/* 
+
+  Leap frog puzzle in Picat.
+
+  The original (3 + 3) problem:
+  - Two groups of 3 frogs (A and Z) originally placed as
+      A A A _ Z Z Z     
+  - A frog can only jump forward
+      (A to the right, Z to the left)
+  - A frog can jump either forward to the empty stone in front of it
+  - or leap over 1 frog (of either type) to an empty stone. 
+  - The goal state is to reverse the order, i.e.
+      Z Z Z _ A A A
+
+  The 3 + 3 problem has this solution:
+
+     [a,slide_right,[a,a,empty,a,z,z,z]]
+     [z,jump_left  ,[a,a,z,a,empty,z,z]]
+     [z,slide_left ,[a,a,z,a,z,empty,z]]
+     [a,jump_right ,[a,a,z,empty,z,a,z]]
+     [a,jump_right ,[a,empty,z,a,z,a,z]]
+     [a,slide_right,[empty,a,z,a,z,a,z]]
+     [z,jump_left  ,[z,a,empty,a,z,a,z]]
+     [z,jump_left  ,[z,a,z,a,empty,a,z]]
+     [z,jump_left  ,[z,a,z,a,z,a,empty]]
+     [a,slide_right,[z,a,z,a,z,empty,a]]
+     [a,jump_right ,[z,a,z,empty,z,a,a]]
+     [a,jump_right ,[z,empty,z,a,z,a,a]]
+     [z,slide_left ,[z,z,empty,a,z,a,a]]
+     [z,jump_left  ,[z,z,z,a,empty,a,a]]
+     [a,slide_right,[z,z,z,empty,a,a,a]]
+     len=15
+     ix=[4,3,5,6,4,2,1,3,5,7,6,4,2,3,5,4]
+     diffs=[-1,2,1,-2,-2,-1,2,2,2,-1,-2,-2,1,2,-1]
+ 
+    ("ix" contains the positions of the empty stone, 
+     "diffs" are the differences of these positions.)
+
+
+  For N = 1..15 (go2/0) this program gives these counts (lengths):
+    counts=[3,8,15,24,35,48,63,80,99,120,143,168,195,224,255]
+
+
+  From
+  http://britton.disted.camosun.bc.ca/frog_puzzle_sol.htm
+  """
+  The Number of Moves
+  The 3-frogs-a-side problem is non-trivial.  When they do manage to get the 
+  frogs interchanged, it is well worth verbalizing the pattern of moves.  The challenge 
+  then is to predict the number of moves that it takes to complete the problem with 
+  any number of frogs on each side.  To do this it may help to construct a table 
+  such as the one below.
+
+  number of frogs a side 1  2   3   4   5   6   7   8   x   n 
+  number of moves        3  8  15  24  35   x 	x   x 	x   ? 
+  """
+
+  Checking with OEIS:
+  http://oeis.org/search?q=3%2C8%2C15%2C24%2C35%2C48%2C63%2C80%2C99%2C120&language=english&go=Search
+  which give sequence http://oeis.org/A005563
+  """
+  A005563   n*(n+2) (or, (n+1)^2-1)
+  ....
+  
+  This is also the number of moves that it takes n frogs to swap places with n 
+  toads on a strip of 2n+1 squares (or positions, or lilypads) where a move is 
+  a single slide or jump,
+  """
+  
+  In puzzle2/2 we expoit this knowledge and obtain faster solutions.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go => 
+   puzzle(3,L),
+   print_moves(3,L),
+   nl.
+
+
+% Note: best_plan_downward/2 takes about ~23s for N=1..10
+%       best_plan/2 takes 0.5s.
+go2 =>
+  Counts = [],
+  foreach(N in 1..15) 
+    puzzle(N,L),
+    print_moves(N,L),
+    Counts := Counts ++ [L.length],
+    nl
+  end,
+  nl,
+  println(counts=Counts).
+
+
+% Using a limited version:
+%  N=1..15 takes 5.5s
+go3 =>
+  Counts = [],
+  foreach(N in 1..15) 
+    puzzle2(N,L),
+    print_moves(N,L),
+    Counts := Counts ++ [L.length],
+    nl
+  end,
+  nl,
+  println(counts=Counts).
+
+% print the moves
+print_moves(N,L) =>
+    Ixs = [N+1], % the indices of the empty stone
+    foreach(Move in L) 
+       println(Move),
+       Ix = find_empty(Move[3]),
+       Ixs := Ixs ++ [Ix]
+    end,
+    println(len=L.length),  
+    println(ix=Ixs),
+    println(diffs=diff(Ixs)),
+    nl.
+
+% find the empty stone
+find_empty(L) = [I : I in 1..L.length, L[I] = empty].first().
+
+diff(L) = [L[I]-L[I-1] : I in 2..L.length].
+
+%
+% Using best_plan/2
+%
+puzzle(N,L) =>
+  println(n=N), 
+  create_puzzle(N, Init, Final),
+  println(init=Init),
+  println(final=Final),
+  cl_facts($[final(Final)]),
+
+  time(best_plan(Init, L)).
+
+
+%
+% Here we use plan/3, with Limit according to
+% the calculated number of moves, i.e. N*(N+2) moves.
+% For N=15:
+%   using best_plan(Init,L) takes about 13.5s
+%   using plan(Init,Limit,L) takes about 2.9s
+%
+puzzle2(N,L) =>
+  Limit = N*(N+2),
+  println([n=N,limit=Limit]), 
+  create_puzzle(N, Init, Final),
+  println(init=Init),
+  println(final=Final),
+  cl_facts($[final(Final)]),
+
+  time(plan(Init, Limit, L)).
+
+
+%
+% Create Init and Final state for the N puzzle
+%
+create_puzzle(N, Init, Final) =>
+   Init = [a : _I in 1..N] ++ [empty] ++ [z : _I in 1..N],
+   Final = [z : _I in 1..N] ++ [empty] ++ [a : _I in 1..N].
+
+
+% For the 3 + 3 problem:
+% initial(Init) => Init = [a,a,a,empty,z,z,z].
+% final(Final) =>  Final = [z,z,z,empty,a,a,a].
+
+
+%
+% a can jump to right, to empty stone
+%     [...,a,empty,....] -> [...,empty,a,....]
+%
+action(From,To,Move,Cost),
+   once(append(Left,[a,empty],Right,From)) ?=>
+   To = [Left,empty,a,Right].flatten(),
+   Move=[a,'slide_right',To],
+   Cost = 1.
+
+%
+% a can jump to right, over a frog
+%     [...,a,W,empty,....] -> [...,empty,W,a,....]
+%
+action(From,To,Move,Cost), 
+   once(append(Left,[a,W,empty],Right,From)) ?=>
+   To = [Left,empty,W,a,Right].flatten(),
+   Move=[a,'jump_right ',To],
+   Cost = 1.
+
+%
+% z jump to left to an empty stone
+%     [...,empty,z,....] -> [...,z,empty,....]
+%
+action(From,To,Move,Cost), 
+   once(append(Left,[empty,z],Right,From)) ?=>
+   To = [Left,z,empty,Right].flatten(),
+   Move=[z,'slide_left ',To],
+   Cost = 1.
+
+%
+% z jump to left over a frog
+%     [...,empty,W,z,....] -> [...,z,W,empty,....] -> 
+%
+action(From,To,Move,Cost),  
+   once(append(Left,[empty,W,z],Right,From))  =>
+   To = [Left,z,W,empty,Right].flatten(),
+   Move=[z,'jump_left  ',To],
+   Cost = 1.
+

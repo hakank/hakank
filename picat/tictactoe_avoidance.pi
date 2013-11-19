@@ -1,0 +1,262 @@
+/* 
+
+  Tic Tac Toe avoidance in Picat.
+
+  From Richard Wiseman
+  http://richardwiseman.wordpress.com/2013/11/15/its-the-friday-puzzle-233/
+  """
+  Can you place six X’s on this noughts and crosses board without making three-in-a-row in any direction?
+  """
+
+  This model assumes that it's not a trick question (which it very well might be)
+  
+  Yes, there are two different ways:
+  0 1 1
+  1 0 1
+  1 1 0
+  ----------
+  
+  1 1 0
+  1 0 1
+  0 1 1
+
+  Hmm, I assume that this mean that just the 'X's (1's) should don't have three-in-a-row.
+  Both these solutions give one three-in-a-row for the 'O's (0's).
+
+
+  For the general problem, for a NxN matrix, placing NxN-N 'X's without any
+  row, column, or diagonal with N 'X', here are the number of solutions for each N.
+
+  [N,#solutions]
+
+  [1,1]
+  [2,0]
+  [3,2]
+  [4,10]
+  [5,48]
+  [6,270]
+  [7,2004]
+  [8,15406]
+  [counts=[1,0,2,10,48,270,2004,15406]]
+
+  This sequence is not in OEIS:
+  http://oeis.org/search?q=1%2C0%2C2%2C10%2C48%2C270%2C2004%2C15406&sort=&language=english&go=Search
+
+  With the symmetry breaking that X[1,1] = 0
+  [1,1]
+  [2,0]
+  [3,1]
+  [4,3]
+  [5,13]
+  [6,67]
+  [7,411]
+  [8,2921]
+  [9,23633]
+
+
+  If we also require that the 0's should not give three-in-a-row, then we
+  have a slightly different result
+  [1,0]
+  [2,0]
+  [3,0]
+  [4,10]
+  [5,46]
+  [6,270]
+  [7,2002]
+  [counts=[0,0,0,10,46,270,2002]]
+
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+%
+% Standard problem, one solution
+%
+go =>
+  ttt(3,X),
+  println(X),
+  
+  nl.
+
+%
+% Standard problem, using findall
+%
+go2 => 
+  Counts = [],
+  foreach(N in 1..7) 
+    time2(All = findall(X, ttt(N,X))),
+    Len = All.length,
+    println([N,Len]),
+    Counts := Counts ++ [Len]
+  end,
+
+  println([counts=Counts]),
+  nl.
+
+%
+% Standard problem, using using solve_all
+%
+go3 => 
+  Counts = [],
+  foreach(N in 1..8) 
+    (
+    ttt2(N,All) ->
+      Len := All.length
+    ;
+      Len := 0
+    ),
+    println([N,Len]),
+    Counts := Counts ++ [Len]
+  end,
+
+  println([counts=Counts]),
+  nl.
+
+
+% Both Xs and Os should not be three-in-a-row
+% findall N=1..7
+go4 => 
+  Counts = [],
+  foreach(N in 1..7) 
+    time2(All = findall(X, ttt3(N,X))),
+    Len = All.length,
+    println([N,Len]),
+    Counts := Counts ++ [Len]
+  end,
+
+  println([counts=Counts]),
+  nl.
+
+%
+% Standard problem with symmetry breaking X[1,1] = 0
+%
+go5 => 
+  Counts = [],
+  foreach(N in 1..9) 
+    time2(All = findall(X, ttt4(N,X))),
+    Len = All.length,
+    println([N,Len]),
+    Counts := Counts ++ [Len]
+  end,
+
+  println([counts=Counts]),
+  nl.
+
+
+%
+% Standard problem: 
+% 'X's should not give three-in-a-row (no symmetry breaking)
+%            
+ttt(N, X) =>
+
+  M = N*N-N,
+  P = N-1,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  sum([X[I,J] : I in 1..N, J in 1..N]) #= M,
+
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #<= P,
+     sum([X[J,I] : J in 1..N]) #<= P
+  end,
+  % Diagonals
+  sum([X[I,I] : I in 1..N]) #<= P,
+  sum([X[I,N-I+1] : I in 1..N]) #<= P,
+
+  solve([],X).
+
+% using solve_all
+ttt2(N, Sols) =>
+
+  M = N*N-N,
+  P = N-1,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  sum([X[I,J] : I in 1..N, J in 1..N]) #= M,
+
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #<= P,
+     sum([X[J,I] : J in 1..N]) #<= P
+  end,
+  % Diagonals
+  sum([X[I,I] : I in 1..N]) #<= P,
+  sum([X[I,N-I+1] : I in 1..N]) #<= P,
+
+  Sols=solve_all([],X).
+
+
+% If we also require that both Xs and Ys should not give
+% three-in-a-row
+ttt3(N, X) =>
+
+  M = N*N-N,
+  P = N-1,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  Y = new_array(N,N),
+  Y :: 0..1,
+
+  % Y is the complementary matrix
+  foreach(I in 1..N, J in 1..N) X[I,J] + Y[I,J] #= 1 end,
+
+  sum([X[I,J] : I in 1..N, J in 1..N]) #= M,
+
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #<= P,
+     sum([X[J,I] : J in 1..N]) #<= P
+  end,
+  % Diagonals
+  sum([X[I,I] : I in 1..N]) #<= P,
+  sum([X[I,N-I+1] : I in 1..N]) #<= P,
+
+  foreach(I in 1..N)
+     sum([Y[I,J] : J in 1..N]) #<= P,
+     sum([Y[J,I] : J in 1..N]) #<= P
+  end,
+  % Diagonals
+  sum([Y[I,I] : I in 1..N]) #<= P,
+  sum([Y[I,N-I+1] : I in 1..N]) #<= P,
+
+  solve([],X).
+
+
+% Symmetry breaking: X[1,1] = 0 
+ttt4(N, X) =>
+
+  M = N*N-N,
+  P = N-1,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  sum([X[I,J] : I in 1..N, J in 1..N]) #= M,
+
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #<= P,
+     sum([X[J,I] : J in 1..N]) #<= P
+  end,
+  % Diagonals
+  sum([X[I,I] : I in 1..N]) #<= P,
+  sum([X[I,N-I+1] : I in 1..N]) #<= P,
+
+  % symmery breaking
+  X[1,1] #= 0,
+
+  solve([],X).
