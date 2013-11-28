@@ -1,0 +1,142 @@
+/* 
+
+  Topological sort in Picat.
+
+  It is inspired by a SETL program I saw. See below.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  Prec = findall([X,Y], $precedence(X,Y)).reverse(),
+  println(prec=Prec),
+  topological_sort(Prec,Sort),
+  println(tsort=Sort),
+  nl.
+
+
+%
+% Precedences: task1 must be done before task2.
+%
+index(-,-)
+precedence(masonry,carpentry).
+precedence(masonry,plumbing). 
+precedence(masonry,ceiling). 
+precedence(carpentry,roofing). 
+precedence(ceiling,painting). 
+precedence(roofing,windows). 
+precedence(roofing,facade). 
+precedence(plumbing,facade). 
+precedence(roofing,garden). 
+precedence(plumbing,garden). 
+precedence(windows,moving). 
+precedence(facade,moving). 
+precedence(garden,moving). 
+precedence(painting,moving).
+
+
+%
+% Example from 
+% https://en.wikipedia.org/wiki/Tsort_%28Unix%29
+% 
+go2 =>
+
+  Prec = [
+           [main,parse_options],
+           [main,tail_file],
+           [main,tail_forever],
+           [tail_file,pretty_name],
+           [tail_file,write_header],
+           [tail_file,tail],
+           [tail_forever,recheck],
+           [tail_forever,pretty_name],
+           [tail_forever,write_header],
+           [tail_forever,dump_remainder],
+           [tail,tail_lines],
+           [tail,tail_bytes],
+           [tail_lines,start_lines],
+           [tail_lines,dump_remainder],
+           [tail_lines,file_lines],
+           [tail_lines,pipe_lines],
+           [tail_bytes,xlseek],
+           [tail_bytes,start_bytes],
+           [tail_bytes,dump_remainder],
+           [tail_bytes,pipe_bytes],
+           [file_lines,dump_remainder],
+           [recheck,pretty_name]],
+
+  topological_sort(Prec,Sort),
+  println(tsort=Sort),
+  nl.
+
+% Another example from 
+% https://en.wikipedia.org/wiki/Tsort_%28Unix%29
+go3 => 
+  Prec = [
+           [3,8],
+           [3,10],
+           [5,11],
+           [7,8],
+           [7,11],
+           [8,9],
+           [11,2],
+           [11,9],
+           [11,10]],
+
+  topological_sort(Prec, Sort),
+  println(tsort=Sort),
+  nl.
+
+% domain are the keys in L
+domain(L) = [K : K=_V in L].
+
+% range are the values of L
+range(L) = [V : _K=V in L].
+
+% deletes all pairs in L where a value is X
+% (this is less on a multi-map in GNU SETL)
+delete_value(L,X) = [K=V : K=V in L, V!=X].
+
+% deletes all pairs in L where a key is X
+% (this is lessf on a multi-map in GNU SETL)
+delete_key(L,X) = [K=V : K=V in L, K!=X].
+
+
+% Inspired by this SETL snippet:
+%   (while exists x in nodes | x notin range edges)
+%      print(x);
+%      nodes less:= x;
+%      edges lessf:= x;
+%   end;
+topological_sort(Precedences, Sorted) =>
+
+  % Note: Picat don't support multi-maps so we work with a 
+  %       list of K=V (i.e. key=value)
+  Edges = [K=V : [K,V] in Precedences],
+  println(edges=Edges),
+  % Nodes = [[K,V] : K=V in Edges].flatten().remove_dups(),
+  Nodes = (domain(Edges) ++ range(Edges)).remove_dups(),
+  println(nodes=Nodes),
+
+  Sorted1 = [],
+  while (member(X,Nodes), not member(X,range(Edges))) 
+      println(X),
+      Sorted1 := Sorted1 ++ [X],
+      Nodes := Nodes.delete(X),
+      Edges := Edges.delete_key(X)
+  end,
+  Sorted = Sorted1,
+  
+  nl.
+
+  

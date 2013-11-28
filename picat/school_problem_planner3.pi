@@ -1,0 +1,204 @@
+/* 
+
+  GPS School problem in Picat.
+
+  School problem from Chapter 4 of 
+  Peter Norvig's Paradigms of Artificial Intelligence Programming (PAIP)
+
+  The comments in quotes ("...") is also from this book.
+   
+  Notes: 
+  * The order of a rule are
+     - name (action)
+     - preconditions
+     - delete rule
+     - add rule
+  
+  In PAIP, the two last items are in the reversed order.
+
+
+  For alternative approaches in action/4:
+  - http://www.hakank.org/picat/school_problem_planner1.pi
+  - http://www.hakank.org/picat/school_problem_planner2.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import planner.
+
+
+main => go.
+
+/*
+ The plan is:
+     [look up number]
+     [telephone shop]
+     [tell shop problem]
+     [give shop money]
+     [shop installs battery]
+     [drive son to school]
+
+*/
+go =>
+  %  "Here are some examples of using GPS"
+  % "The first example works with a complex chain of steps."
+  Init = [[son,at,home], [car,needs,battery],[have,money], [have,phone,book]],
+  Final = [[son,at,school]],
+  school_problem(Init,Final),
+  nl.
+
+go2 =>
+
+  Init= [[freddy,at,home],[car,needs,battery],[have,money],[have,phone,book]],
+  Final= [[freddy,at,school]],
+
+  school_problem(Init,Final),
+  nl.
+
+go3 =>
+
+  % "The next example fails because there is no way to make the car work,"
+  %  "because we can't contact the shop to get the battery fixed."
+  Init = [[son,at,home],[car,needs,battery],[have,money]],
+  Final= [[son,at, school]],
+
+  school_problem(Init,Final),
+  nl.
+
+go4 =>
+
+  % "The third example is easy, because the car is currently working."
+  Init = [[son,at,home],[car,works]],
+  Final = [[son,at,school]],
+  school_problem(Init,Final),
+  nl.
+
+go5 =>
+
+  % This has no solution since we spend the money on battery
+  Init = [[son,at,home],[have,money],[car,needs,battery]],
+  Final = [[have,money],[son,at,school]],
+  school_problem(Init,Final),
+  nl.
+
+
+school_problem(Init,Final) =>
+  println(init_state=Init),
+  println(final_state=Final),
+  cl_facts($[final2(Final)],$[final2(-)]),
+
+  best_plan(Init, Plan),
+  % println(Plan),
+  foreach(Move in Plan)
+     println(move=Move)
+  end,
+  println(len=Plan.length),
+  nl.
+
+
+%
+% ensure that all goals in final2/1 are in the list L.
+%
+final(L) =>
+  final2(Final2),
+  pre(L,Final2),
+  writeln(final=L).
+
+
+% prerequisite:
+%    all elements in X must be in L
+pre(L,X) => 
+  foreach(M in X)
+    member(M, L)
+  end.
+
+%
+% delete all occurrences of X (a list) in L
+%
+del(L, X) = L2 =>
+   L2 = L,
+   foreach(E in X)
+      L2 := delete_all(L2,E)
+   end.
+
+%
+% add X to L (if it's not already there)
+%
+add(L, X) = L2 =>
+  L1 = L,
+  foreach(E in X)
+    if not member(E,L1) then
+       L1 := L1 ++ [E]
+    end
+  end,
+  L2 = L1.
+
+%
+% Actions
+% 
+
+table
+
+
+%
+% Alternative III
+%
+action(From,To,Move,Cost) =>
+   moves(Moves),
+   member(M, Moves),
+   Move = M[1],
+   pre(From,M[2]),
+   To = From.del(M[3]).add(M[4]),
+   Cost = 1.
+
+
+moves(Moves) =>
+ Moves = 
+  [
+     [
+       [drive,X,to,school],       % action
+       [[X,at,home],[car,works]], % pre
+       [[X,at,home]],             % del
+       [[X,at,school]]            % add
+     ],
+     [
+       [shop,installs,battery],
+       [[car,needs,battery],[shop,knows,problem],[shop,has,money]],
+       [[car,needs,battery]],
+       [[car,works]]
+     ],
+     [
+       [tell,shop,problem],
+       [[in,communication,with,shop]],
+       [[in,communication,with,shop]],
+       [[shop,knows,problem]]
+     ],
+     [
+        [telephone,shop],
+        [[know,phone,number]],
+        [[know,phone,number]],
+        [[in,communication,with,shop],[know,phone,number]]
+     ],
+     [
+        [look,up,number],
+        [[have,phone,book]],
+        [[have,phone,book]],
+        [[know,phone,number],[have,phone,book]]
+     ],
+     [
+        [give,shop,money],
+         [[have,money]],
+         [[have,money]],
+         [[shop,has,money]]
+     ]
+     % , [ % extra rule  (from PAIP, page 143)
+     %     [taxi,X,to,school],
+     %      [[X,at,home],[have,money]],
+     %      [[have,money],[X,at,home]],
+     %      [[X,at,school]]
+     %  ]
+
+  ].

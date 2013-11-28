@@ -1,0 +1,72 @@
+/* 
+
+  Air cargo transport problem in Picat.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import gps_utils.
+
+
+main => go.
+
+
+%
+% From
+% Martin Kalisch, Stefan König:
+% "Comparison of STRIPS, ADL and PDDL", page 2
+% """
+% This problem is involving loading and unloading cargo onto and off planes and 
+% flying it from place to place. The problem can be defined with tree 
+% actions: Load, unload and fly.
+% """
+%  
+%  A,From,To:   jfk, sfo  (airports)
+%  C        :   c1,c2     (cargos)
+%  P        :   P1,P2     (planes)
+% 
+go =>
+  Init = $[at(c1,sfo),at(c2,jfk),at(p1,sfo),at(p2,jfk),
+           cargo(c1),cargo(c2),plane(p1),plane(p2),
+           airport(jfk),airport(sfo)],
+  Final = $[at(c1,jfk),at(c2,sfo)],
+  println(final_state=Final),
+  cl_facts($[final2(Final)]),
+
+  gps_best_plan_downward(Init),
+
+  nl.
+
+final(L) =>
+  final2(Final2),
+  pre(L,Final2),
+  writeln(final=L).
+
+table
+
+% Load(C,P,A)
+action(From,To,Move,Cost) ?=>
+  pre(From, $[cargo(C),plane(P),airport(A),at(C,A),at(P,A)]),
+  To = From.del($[at(C,A)]).add($[inx(C,P)]),
+  Move = $[load(C,P,A)],
+  Cost = 1.
+
+% Unload(C,P,A)
+action(From,To,Move,Cost) ?=>
+  pre(From, $[cargo(C),plane(P),airport(A),inx(C,P),at(P,A)]),
+  To = From.del($[inx(C,P)]).add($[at(C,A)]),
+  Move = $[unload(C,P,A)],
+  Cost = 1.
+
+
+% Fly(P,From,To)
+action(From,To,Move,Cost) =>
+  pre(From, $[plane(P),airport(AirportFrom),airport(AirportTo),at(P,AirportFrom)]),
+  AirportFrom != AirportTo, % remove silly self flights
+  To = From.del($[at(P,AirportFrom)]).add($[at(P,AirportTo)]),
+  Move = $[fly(P,AirportFrom,AirportTo)],
+  Cost = 1.

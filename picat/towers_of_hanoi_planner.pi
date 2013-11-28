@@ -1,0 +1,295 @@
+/*
+
+  Towers of Hanoi Picat.
+
+  Towers of Hanoi as a planner problem
+
+  https://en.wikipedia.org/wiki/Tower_of_Hanoi
+  """
+  The objective of the puzzle is to move the entire stack to another 
+  rod, obeying the following simple rules:
+
+   - Only one disk may be moved at a time.
+   - Each move consists of taking the upper disk from one of the stacks 
+     and placing it on top of another stack.
+   - No disk may be placed on top of a smaller disk.
+  """
+
+  This program has two slightly different approaches:
+  - hanoi/2: find the best plan via best_plan_downward/2
+  - hanoi2/2: find the best via plan/3 using the (theoretical) Limit (2**N-1)
+  - hanoi3/2: find a plan via plan/2 (no extra limit, no optimization)
+
+  Note: Since this is a planner version, i.e. a search problem, where we 
+        shuffle a lot of data etc, it will never be as fast as the 
+        traditional recursive approach of solving the Hanoi puzzle
+        (which has a linear complexity).
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go => 
+   N = 4,
+   println(theoretical=2**N-1),
+   hanoi(N,Plan),
+   foreach(Move in Plan) 
+     println(Move)
+   end,
+   println(len=Plan.length),
+   nl.
+
+go2 => 
+   Lens = [],
+   foreach(N in 1..9) 
+      println([n=N,theoretical=2**N-1]),
+      hanoi(N,Plan),
+      % MoveTypes = [],
+      foreach(Move in Plan) 
+        println(Move) % ,
+        % MoveTypes := MoveTypes ++ [Move[2]]
+      end,
+      println(len=Plan.length),
+      % println(moveTypes=MoveTypes),
+      Lens := Lens ++ [Plan.length],
+      nl
+   end,
+   println(lens=Lens),
+   nl.
+
+go3 => 
+   Lens = [],
+   foreach(N in 1..9) 
+      println([n=N,theoretical=2**N-1]),
+      hanoi2(N,Plan),
+      foreach(Move in Plan) 
+        println(Move)
+      end,
+      println(len=Plan.length),
+      Lens := Lens ++ [Plan.length],
+      nl
+   end,
+   println(lens=Lens),
+   nl.
+
+go4 =>
+  N = 9,
+  hanoi2(N,Plan),
+  foreach(Move in Plan) 
+     println(Move)
+  end,
+  println(len=Plan.length),
+  nl.
+
+go5 => 
+   Lens = [],
+   foreach(N in [1,2,3,4,5,6,7,8,9,10]) 
+      println([n=N,theoretical=2**N-1]),
+      hanoi2(N,Plan),
+      foreach(Move in Plan) 
+        println(Move)
+      end,
+      println(len=Plan.length),
+      Lens := Lens ++ [Plan.length],
+      nl
+   end,
+   println(lens=Lens),
+   nl.
+
+
+%
+% a non-standard problem
+%
+go6 =>
+  Initial = [[1,4],[2,3,8],[5,6,7]],
+  % Final = [[],[],1..10],
+  Final = [[1,2,3],[4,5,6],[7,8]],
+  cl_facts($[final(Final)]),
+
+  time(best_plan(Initial,Plan)),
+  foreach(Move in Plan)
+     println(Move)
+  end,
+  println(len=Plan.length),
+  nl.
+
+
+go7 => 
+   Lens = [],
+   foreach(N in 1..10) 
+      println([n=N,theoretical=2**N-1]),
+      hanoi3(N,Plan),
+      foreach(Move in Plan) 
+        println(Move)
+      end,
+      println(len=Plan.length),
+      Lens := Lens ++ [Plan.length],
+      nl
+   end,
+   println(lens=Lens),
+   nl.
+
+run_hanoi1(N) => 
+  println([n=N,theoretical=2**N-1]),
+  hanoi(N,Plan),
+  % foreach(Move in Plan) 
+  %    println(Move)
+  %  end,
+  println(len=Plan.length),
+  nl.
+
+run_hanoi2(N) => 
+  println([n=N,theoretical=2**N-1]),
+  hanoi2(N,Plan),
+  % foreach(Move in Plan) 
+  %    println(Move)
+  %  end,
+  println(len=Plan.length),
+  nl.
+
+run_hanoi3(N) => 
+  println([n=N,theoretical=2**N-1]),
+  % hanoi3(N,Plan),
+  hanoi3(N,Plan),
+  % foreach(Move in Plan) 
+  %    println(Move)
+  %  end,
+  println(len=Plan.length),
+  nl.
+
+
+
+%
+% hanoi(N) without Limit
+%   best_plan_downward: 
+%   N=1..9: 7.2s
+% (without table: 9.98s)
+%
+hanoi(N,Plan) =>
+   [Initial,Final] = make_problem(N),
+   println(init=Initial),
+   println(final=Final),
+   cl_facts($[final(Final)]),
+
+   time(best_plan_downward(Initial,Plan)).
+
+
+%
+% hanoi(N) with Limit (2**N-1) moves
+%   plan
+% N=1..9: 6.8s
+% (without table: 10.2s)
+%
+% Note: This assumes the standard problem, i.e. to move   
+%    1..N, [],[] -> [],[],1..N
+%
+hanoi2(N,Plan) =>
+   [Initial,Final] = make_problem(N),   
+   println(init=Initial),
+   println(final=Final),
+   cl_facts($[final(Final)]),
+
+   Limit = 2**N-1,
+   time(best_plan(Initial,Limit,Plan)).
+
+
+hanoi3(N,Plan) =>
+   [Initial,Final] = make_problem(N),   
+   println(init=Initial),
+   println(final=Final),
+   cl_facts($[final(Final)]),
+   time(plan(Initial,Plan)).
+
+
+
+%%
+%% Simple example (this is automatically generated)
+%%
+% initial(Init) => Init = [[1,2,3],[],[]].
+% final(Final) => Final = [[],[],[1,2,3]].
+
+
+%
+% Returns the [Initial, Final] states 
+% for the "standard" Towers of Hanoi problem.
+%
+make_problem(N) = [[[I : I in 1..N],[],[]], 
+                  [[],[],[I : I in 1..N]]].
+
+
+%
+% Actions
+%
+
+table
+
+%
+% Move from S1 -> S2
+%
+action([[S1H|S1T],S2,S3],To,Move,Cost), 
+   (S2 == [] ; (S2 = [S2H|_S2T], S1H < S2H) ) ?=>
+   To = [S1T,[S1H|S2],S3],
+   Move = [move,S1H,from,a,to,b,To],
+   Cost = 1.
+
+
+%
+% Move from S1 -> S3
+%
+action([[S1H|S1T],S2,S3],To,Move,Cost), 
+   (S3 == [] ; (S3 = [S3H|_S3T], S1H < S3H)) ?=>
+   To = [S1T,S2,[S1H|S3]],
+   Move = [move,S1H,from,a,to,c,To],
+   Cost = 1.
+
+%
+% Move from S2 -> S3
+%
+action([S1,[S2H|S2T],S3],To,Move,Cost), 
+   (S3 == [] ; (S3 = [S3H|_S3T],S2H < S3H)) ?=> 
+   To = [S1,S2T,[S2H|S3]],
+   Move = [move,S2H,from,b,to,c,To],
+   Cost = 1.
+
+%
+% Move from S2 -> S1
+%
+action([S1,[S2H|S2T],S3],To,Move,Cost),
+   (S1 == [] ; (S1 = [S1H|_S1T], S2H < S1H) ) ?=> 
+   To = [[S2H|S1],S2T,S3],
+   Move = [move,S2H,from,b,to,a,To],
+   Cost = 1.
+
+%
+% Move from S3 -> S1
+%
+action([S1,S2,[S3H|S3T]],To,Move,Cost),
+   (S1 == [] ; (S1 = [S1H|_S1T], S3H < S1H)) ?=>
+   % don't move discs that already in place
+   % N = [S1,S2,[S3H|S3T]].flatten().length,
+   % F2 = [S3H|S3T].flatten(),
+   % FF = [ N-I+1 : I in 1..F2.length ].reverse(),
+   % F2 != FF,
+   To = [[S3H|S1],S2,S3T],
+   Move = [move,S3H,from,c,to,a,To],
+   Cost = 1.
+
+%
+% Move from S3 -> S2
+%
+action([S1,S2,[S3H|S3T]],To,Move,Cost),
+   (S2 == [] ; (S2 = [S2H|_S2T], S3H < S2H) ) =>
+   % don't move discs that already in place
+   % N = [S1,S2,[S3H|S3T]].flatten().length,
+   % F2 = [S3H|S3T].flatten(),
+   % FF = [ N-I+1 : I in 1..F2.length ].reverse(),
+   % F2 != FF,
+   To = [S1,[S3H|S2],S3T],
+   Move = [move,S3H,from,c,to,b,To],
+   Cost = 1.

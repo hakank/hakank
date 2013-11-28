@@ -1,0 +1,215 @@
+/* 
+
+  House building problem as a planner problem in Picat.
+
+  This program implements a house building problem with
+  precedences as a planner problem, and we just get 
+  the order of tasks (not the duration).
+
+  It is inspired by the OPL example sched_intro.mod.
+
+  Cf a CP version of this problem in
+    http://www.hakank.org/picat/building_a_house.pi
+
+  which has this optimal solution (which includes durations etc),
+  though it have 3 people to work with:
+
+        masonry    :   0.. 35
+        carpentry  :  35.. 50
+        plumbing   :  35.. 75
+        ceiling    :  35.. 50
+        roofing    :  50.. 55
+        painting   :  50.. 60
+        windows    :  55.. 60
+        facade     :  75.. 85
+        garden     :  75.. 80
+        moving     :  85.. 90
+
+  In this program we just have one person working on the house, 
+  so we just want to get the predecenses correct.
+
+  Also, one can see this as a topological sort.
+
+  There are two principal approaches:
+  - one using the planner module (action/4), go/0 and go/1
+  - one brute force variant which go through all precedences to
+    finally get a proper order.
+
+  Both use final/1 for checking.
+
+  Also, as an experiment, there is an action/4 variant where
+  the cost is the difference between two values, thus minimizing
+  the distance between each elements in the precedence list.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => time(go).
+
+go =>
+  Init = [moving,windows,ceiling,masonry,plumbing,garden,facade,roofing,painting,carpentry],
+  println(init=Init),
+  best_plan_downward(Init, 268435455,L,Cost),
+  % best_plan_downward(Init,L),
+  foreach(Move in L)
+     println(Move)
+  end,
+  println(len=L.length),
+  println(cost=Cost),
+  nl.
+
+% Random init
+go2 =>
+  Init = findall([X,Y], $precedence(X,Y)).flatten().remove_dups().shuffle(),
+  println(init=Init),
+  best_plan_downward(Init, 268435455,L,Cost),
+  foreach(Move in L)
+     println(Move)
+  end,
+  println(len=L.length),
+  println(cost=Cost),
+  nl.
+
+%
+% A non planner solution (brute force).
+% Though this don't guarantee minimum number of "moves" (swaps)
+%
+go3 =>
+  L = [moving,windows,ceiling,masonry,plumbing,garden,facade,roofing,painting,carpentry],
+  % L = findall([X,Y], $precedence(X,Y)).flatten().remove_dups().shuffle(),
+  Precedences = findall([X,Y], $precedence(X,Y)),
+  C = 0,
+  while (not final(L))
+    println(test=L),
+    foreach([T1,T2] in Precedences) 
+       if not before(T1,T2,L) then
+          L:=swap(L,get_ix(T1,L),get_ix(T2,L)),
+          C := C + 1,
+          println([swap,T1,T2])
+        end
+      end
+    end,
+  println(L),
+  println(number_of_swaps=C),
+
+  tasks2(Tasks),
+  duration(Duration),
+
+  % Note: Building this house is considered a one-person task
+  Time = 0,
+  foreach(T in L)
+    Dur = Duration[Tasks.get(T)],
+    Time0 = Time,
+    Time := Time + Dur,
+    printf("%10w %3d..(%2d)..%3d\n", T,Time0,Dur,Time)
+  end,
+  nl.
+
+
+% check that all precedences are fullfilled
+final(L) =>
+   L.last() == moving, % this test shaves some cycles...
+   Prec = findall([X,Y], $precedence(X,Y)),
+   foreach([T1,T2] in Prec)
+     before(T1,T2,L)
+   end,
+   println($final(L)).
+
+
+%
+% Precedences: task1 must be done before task2.
+%
+index(-,-)
+precedence(masonry,carpentry).
+precedence(masonry,plumbing). 
+precedence(masonry,ceiling). 
+precedence(carpentry,roofing). 
+precedence(ceiling,painting). 
+precedence(roofing,windows). 
+precedence(roofing,facade). 
+precedence(plumbing,facade). 
+precedence(roofing,garden). 
+precedence(plumbing,garden). 
+precedence(windows,moving). 
+precedence(facade,moving). 
+precedence(garden,moving). 
+precedence(painting,moving).
+
+table
+% action(From,To,Move,Cost) =>
+%    precedence(X,Y), % generate the move
+%    not before(X,Y,From), % fix only if is broken
+%    % after the swap X and Y are in precedence order
+%    To1 := swap(From, get_ix(X,From), get_ix(Y,From)),
+%    To = To1,
+%    Move = [swap,X,and,Y],
+%    Cost = 1.
+  
+%
+% This variant has a cost of the distance between
+% X,Y, thus minimizes the distances between
+% two values in a precedence.
+%
+action(From,To,Move,Cost) =>
+   precedence(X,Y), % generate the move
+   not before(X,Y,From), % fix only if is broken
+   % after the swap X and Y are in precedence order
+   IxX = get_ix(X,From),
+   IxY = get_ix(Y,From),
+   To1 := swap(From, IxX, IxY),
+   To = To1,
+   Move = [swap,X,and,Y],
+   Cost = abs(IxX-IxY).
+  
+   
+
+before(X,Y,L) => append(_,[X|T],L), member(Y,T).
+% before(X,Y,L) =>
+%     XI = get_ix(X,L),
+%     YI = get_ix(Y,L),   
+%     XI < YI.
+
+get_ix(X,L) = [ I: I in 1..L.length, L[I] == X].first().
+
+%
+% Shuffle the list List.
+% 
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  foreach(I in 1..Len) 
+    R2 = 1+(random2() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
+
+%
+% Swap position I <=> J in list L
+%
+swap(L,I,J) = L2, list(L) =>
+  L2 = new_list(L.length),
+  T = L[I],
+  L2[I] := L[J],
+  L2[J] := T,
+  foreach(K in 1..L.length, K != I, K != J)
+    L2[K] := L[K]
+  end.
+
+
+% Get one element of list L
+oneof([L]) = L.
+oneof(L) = L[1+(random2() mod L.length)].
+
+
+tasks(Tasks) => 
+  Tasks = [masonry,carpentry,plumbing,ceiling,roofing,painting,windows,facade,garden,moving].
+
+% For indices in the constraints
+tasks2(Tasks) => 
+  Tasks = new_map([masonry=1,carpentry=2,plumbing=3,ceiling=4,roofing=5,painting=6,windows=7,facade=8,garden=9,moving=10]).
+
+
+duration(Durations) => Durations = [35,15,40,15, 5,10, 5,10, 5, 5].

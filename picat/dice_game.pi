@@ -1,0 +1,141 @@
+/* 
+
+  Dice game in Picat.
+
+  From
+  http://www.informs.org/ORMS-Today/Public-Articles/December-Volume-38-Number-6/THE-PUZZLOR
+  """
+  A         B           C           D
+     7          4          6            5 
+   1 1 1 1    4 4 4 4    2 2 2 2      3 5 3 3
+     7          4          6            5
+  Figure 1 shows four dice with varying numbers on each face. You and 
+  three friends will play a simple game where you will each roll one 
+  of the dice and the highest number wins. You get first pick from 
+  the dice.
+
+  Which die should you choose in order to maximize your chance of winning?
+  """
+
+  Analysis
+    A vs B:  A wins 2 times, B wins 4 times
+    A vs C:  A wins 2 times, C wins 4 times
+    A vs D:  A wins 2 times, D wins 4 times
+    B vs C:  B wins 4 times, C wins 2 times
+    B vs D:  B wins 3 times, D wins 3 times
+    C vs D:  C wins 2 times, D wins 4 times
+
+    Wins (of row vs col)
+      A  B  C  D    Sum (winning)
+   A  -  2  2  2      6    0.166667
+   B  4  -  4  3     11    0.305556   <---
+   C  4  2  -  2      8    0.222222
+   D  4  4  3  -     11    0.305556   <---
+                    --- 
+                     36
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  Game = [
+          [1,1,1,1,7,7], % A
+          [4,4,4,4,4,4], % B
+          [2,2,2,2,6,6], % C
+          [3,5,3,3,5,5]  % D
+         ],
+  N = 10000,
+  dice_game1(Game, N),
+  nl.
+
+go2 =>
+  Game = [
+          [1,1,1,1,7,7], % A
+          [4,4,4,4,4,4], % B
+          [2,2,2,2,6,6], % C
+          [3,5,3,3,5,5]  % D
+         ],
+  dice_game2(Game),
+  nl.
+
+
+%
+% Simulation version
+%
+dice_game1(Game, N) =>
+  Len = Game.length,
+  L = [], 
+  foreach(_I in 1..Len) 
+    Sum = 0,
+    Sum2 = 0,
+    foreach(J in 1..Len)
+      foreach(_K in 1..N)
+        Sum := Sum + cond(oneof(Game[J]) > oneof(Game[J]), 1, 0),
+        Sum2 := Sum2 + cond(oneof(Game[J]) >= oneof(Game[J]), 1, 0)
+      end
+    end,
+    println([sum=Sum,sum2=Sum2]),
+    L := L ++ [Sum]
+  end,
+  println(results=L),
+  println(maxarg=maxarg(L)),
+
+  nl.
+
+
+
+oneof(L) = L[1+(random2() mod L.length)].
+
+% returns a list of the index of the max value(s)
+maxarg(L) = MaxI => 
+   MaxL = max(L),
+   MaxI = [I : I in 1..L.length, L[I] = MaxL].
+
+
+
+%
+% "Theoretical" version
+%
+dice_game2(Game) =>
+  println("Theoretical:"),
+  Len = Game.length,
+  Len2 = Game[1].length,
+  L = new_map(), 
+  foreach(I in 1..Len, J in 1..Len)
+     Sum = 0,
+     foreach(A in 1..Len2)
+        Sum := Sum + cond(Game[I,A] > Game[J,A], 1, 0)
+     end,
+     L.put([I,J],Sum)
+  end,
+
+  Wins = [],
+  foreach(I in 1..Len) 
+     foreach(J in 1..Len)
+        printf("%d ", L.get([I,J]))
+     end,
+     Win = sum([L.get([I,J]) : J in 1..Len]),
+     printf(": sum=%2d\n",Win),
+     Wins := Wins ++ [Win]
+  end,
+  println("column sums (losses):"),
+  foreach(J in 1..Len) 
+     printf("%2d ",sum([L.get([I,J]) : I in 1..Len]))
+  end,
+  nl,
+
+  println(wins=Wins),
+  println(winners=maxarg(Wins)),
+
+
+  nl.

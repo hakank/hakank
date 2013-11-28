@@ -1,0 +1,219 @@
+/* 
+
+  GPS School problem in Picat.
+
+  School problem from Chapter 4 of 
+  Peter Norvig's Paradigms of Artificial Intelligence Programming (PAIP)
+
+  The comments in quotes ("...") is also from this book.
+   
+  Notes: 
+  * The order of a rule are
+     - name (action)
+     - preconditions
+     - delete rule
+     - add rule
+  
+  In PAIP, the two last items are in the reversed order.
+
+
+  For alternative approaches in action/4:
+  - http://www.hakank.org/picat/school_problem_planner2.pi
+  - http://www.hakank.org/picat/school_problem_planner3.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import planner.
+
+
+main => go.
+
+/*
+ The plan is:
+     [look up number]
+     [telephone shop]
+     [tell shop problem]
+     [give shop money]
+     [shop installs battery]
+     [drive son to school]
+
+*/
+go =>
+  %  "Here are some examples of using GPS"
+  % "The first example works with a complex chain of steps."
+  Init = [[son,at,home], [car,needs,battery],[have,money], [have,phone,book]],
+  Final = [[son,at,school]],
+  school_problem(Init,Final),
+  nl.
+
+go2 =>
+
+  Init= [[freddy,at,home],[car,needs,battery],[have,money],[have,phone,book]],
+  Final= [[freddy,at,school]],
+
+  school_problem(Init,Final),
+  nl.
+
+go3 =>
+
+  % "The next example fails because there is no way to make the car work,"
+  %  "because we can't contact the shop to get the battery fixed."
+  Init = [[son,at,home],[car,needs,battery],[have,money]],
+  Final= [[son,at, school]],
+
+  school_problem(Init,Final),
+  nl.
+
+go4 =>
+
+  % "The third example is easy, because the car is currently working."
+  Init = [[son,at,home],[car,works]],
+  Final = [[son,at,school]],
+  school_problem(Init,Final),
+  nl.
+
+go5 =>
+
+  % This has no solution since we spend the money on battery
+  Init = [[son,at,home],[have,money],[car,needs,battery]],
+  Final = [[have,money],[son,at,school]],
+  school_problem(Init,Final),
+  nl.
+
+
+school_problem(Init,Final) =>
+  println(init_state=Init),
+  println(final_state=Final),
+  cl_facts($[final2(Final)],$[final2(-)]),
+
+  best_plan(Init, Plan),
+  % println(Plan),
+  foreach(Move in Plan)
+     println(move=Move)
+  end,
+  println(len=Plan.length),
+  nl.
+
+
+%
+% ensure that all goals in final2/1 are in the list L.
+%
+final(L) =>
+  final2(Final2),
+  pre(L,Final2),
+  writeln(final=L).
+
+
+% prerequisite:
+%    all elements in X must be in L
+pre(L,X) => 
+  foreach(M in X)
+    member(M, L)
+  end.
+
+%
+% delete all occurrences of X (a list) in L
+%
+del(L, X) = L2 =>
+   L2 = L,
+   foreach(E in X)
+      L2 := delete_all(L2,E)
+   end.
+
+%
+% add X to L (if it's not already there)
+%
+add(L, X) = L2 =>
+  L1 = L,
+  foreach(E in X)
+    if not member(E,L1) then
+       L1 := L1 ++ [E]
+    end
+  end,
+  L2 = L1.
+
+%
+% Actions
+% 
+
+table
+
+% [[drive ?X to school]
+%  [[?X at home] [car works]]
+%  [[?X at home]]
+%  [[?X at school]]
+%  ]
+action(From,To,Move,Cost),
+ pre(From,[[X,at,home],[car,works]]) ?=>
+ To = From.del([[X,at,home]]).add([[X,at,school]]),
+ Move = [drive,X,to,scool],
+ Cost = 1.
+
+   
+% [[shop installs battery]
+%  [[car needs battery] [shop knows problem] [shop has money]]
+%  [[car needs battery]]
+%  [[car works]]
+%  ]
+action(From,To,Move,Cost),
+ pre(From,[[car,needs,battery],[shop,knows,problem],[shop,has,money]]) ?=>
+ Move = [shop,installs,battery],
+ To = From.del([[car,needs,battery]]).add([[car,works]]),
+ Cost = 1.
+
+% [[tell shop problem]
+%  [[in communication with shop]]
+%  [[in communication with shop]]
+%  [[shop knows problem]]
+%  ]
+action(From,To,Move,Cost),
+ pre(From,[[in,communication,with,shop]]) ?=>
+ Move = [tell,shop,problem],
+ To = From.del([[in,communication,with,shop]]).add([[shop,knows,problem]]),
+ Cost = 1.
+
+% [[telephone shop]
+%  [[know phone number]]
+%  [[know phone number]]  ;;; hakank: must do this for the solver to work
+%  [[in communication with shop] [know phone number]] ;;; put the knowledge back
+%  ]
+action(From,To,Move,Cost),
+ pre(From,[[know,phone,number]]) ?=>
+ Move = [telephone,shop],
+ To = From.del([[know,phone,number]]).add([[in,communication,with,shop],[know,phone,number]]), % put the knowledge back
+ Cost = 1.
+
+
+% [[look up number]
+%  [[have phone book]]
+%  [[have phone book]]  ;;; hakank: must do this for the solver to work
+%  [[know phone number] [have phone book]]  ;;; we still have the phone book...
+%  ]
+action(From,To,Move,Cost),
+ pre(From,[[have,phone,book]]) ?=>
+ Move = [look,up,number],
+ To = From.del([[have,phone,book]]).add([[know,phone,number],[have,phone,book]]), % we still have the phone book...
+ Cost = 1.
+
+
+% [[give shop money]
+%  [[have money]]
+%  [[have money]]
+%  [[shop has money]]
+%  ]
+action(From,To,Move,Cost),
+ pre(From,[[have,money]]) ?=>
+ Move = [give,shop,money],
+ To = From.del([[have,money]]).add([[shop,has,money]]),
+ Cost = 1.
+
+% % extra rule (from PAIP, page 143)
+% action(From,To,Move,Cost),
+%  pre(From,[[have,money],[X,at,home]]) ?=>
+%  Move = [taxi,X,to,school],
+%  To = From.del([[have,money]]).add([[X,at,school]]),
+%  Cost = 1.

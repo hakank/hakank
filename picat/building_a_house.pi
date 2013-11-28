@@ -1,0 +1,175 @@
+/* 
+
+  Scheduling (Building a house) in Picat.
+
+  This model is adapted OPL model sched_intro.mod (examples).
+  """
+  This is a basic problem that involves building a house. The masonry,
+  roofing, painting, etc.  must be scheduled. Some tasks must
+  necessarily take place before others, and these requirements are
+  expressed through precedence constraints.
+  """
+
+  The OPL solution is
+  """
+  Masonry  : 0..35
+  Carpentry: 35..50
+  Plumbing : 35..75
+  Ceiling  : 35..50
+  Roofing  : 50..55
+  Painting : 50..60
+  Windows  : 55..60
+  Facade   : 75..85
+  Garden   : 75..80
+  Moving   : 85..90
+  """
+
+  When minimizing MakeSpan, this model give the following solution:
+        makeSpan=90
+        z=21000
+        limit=3
+        masonry    :   0.. 35
+        carpentry  :  35.. 50
+        plumbing   :  35.. 75
+        ceiling    :  35.. 50
+        roofing    :  50.. 55
+        painting   :  50.. 60
+        windows    :  55.. 60
+        facade     :  75.. 85
+        garden     :  75.. 80
+        moving     :  85.. 90
+
+  When minimizing Z the result is:
+
+        makeSpan=110
+        z=5000
+        limit=3
+        masonry    :  20.. 55
+        carpentry  :  75.. 90
+        plumbing   :  55.. 95
+        ceiling    :  75.. 90
+        roofing    :  90.. 95
+        painting   :  90..100
+        windows    : 100..105
+        facade     :  95..105
+        garden     :  95..100
+        moving     : 105..110
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+
+go =>
+ 
+  tasks(Tasks),
+  NumTasks = Tasks.length,
+
+  tasks2(Map),
+  
+  duration(Duration),
+  TotalDuration = sum(Duration),
+
+  Height = [1 : _I in 1..NumTasks], 
+  
+  precedences(Precedences),
+
+  % decision variables
+  Start = new_list(NumTasks),  
+  Start :: 0..TotalDuration,
+
+  End = new_list(NumTasks),  
+  End :: 0..TotalDuration,
+
+  Limit :: 1..3, % We have Limit people (resources) for building the house
+  MakeSpan :: 1..TotalDuration,
+  
+
+  % constraints
+
+  cumulative(Start, Duration, Height, Limit),
+
+  Z #=  400 * max(End[Map.get(moving)]- 100, 0)      +
+        200 * max(25 - Start[Map.get(masonry)], 0)   +
+        300 * max(75 - Start[Map.get(carpentry)], 0) +
+        100 * max(75 - Start[Map.get(ceiling)], 0),
+
+  MakeSpan #= max(End),
+   
+  foreach(T in 1..NumTasks)
+     End[T] #= Start[T] + Duration[T]
+  end,
+
+  % precedences
+  foreach(P in Precedences) 
+    prec(Map.get(P[1]), Map.get(P[2]), Start, Duration)
+  end,
+
+  % search
+
+  Vars = Start ++ End, % ++ [Limit],
+
+  solve($[split,min(MakeSpan),report($println([makespan=MakeSpan]))], Vars), % minimizing MakeSpan
+  % solve($[ffc,split,min(Z)], Vars), % minimizing Z
+
+
+
+  println(start=Start),
+  println(end=End),
+  println(makeSpan=MakeSpan),
+  println(limit=Limit),
+  println(z=Z),
+
+  foreach(T in 1..NumTasks) 
+    printf("\t%10w : %3d..%3d\n", Tasks[T], Start[T], End[T])
+  end,
+
+  nl.
+
+
+%
+% predence:
+%   Task X must precede task Y
+% 
+prec(X, Y, S, D) =>
+  S[X] + D[X] #=< S[Y].
+
+
+tasks(Tasks) => 
+  Tasks = [masonry,carpentry,plumbing,ceiling,roofing,painting,windows,facade,garden,moving].
+
+% For indices in the constraints
+tasks2(Tasks) => 
+  Tasks = new_map([masonry=1,carpentry=2,plumbing=3,ceiling=4,roofing=5,painting=6,windows=7,facade=8,garden=9,moving=10]).
+
+
+duration(Durations) => Durations = [35,15,40,15, 5,10, 5,10, 5, 5].
+
+
+%
+% The precedences: Task1 must be done before Task2.
+%
+precedences(Precedences) =>
+  Precedences = [
+[masonry,   carpentry], 
+[masonry,   plumbing], 
+[masonry,   ceiling],
+[carpentry, roofing],
+[ceiling,   painting],
+[roofing,   windows],
+[roofing,   facade],
+[plumbing,  facade],
+[roofing,   garden],
+[plumbing,  garden],
+[windows,   moving],
+[facade,    moving],
+[garden,    moving],
+[painting,  moving]
+].
