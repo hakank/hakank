@@ -1,0 +1,258 @@
+/* 
+
+  9-puzzle in Picat.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+import planner.
+
+
+main => go.
+
+
+go =>
+  % initial_state(Board),
+  % Board=[4,5,9,1,6,7,8,2,3], % 2.2s, 26 moves
+  % Board=[6,1,5,9,4,8,2,7,3], % 1.2s, 23 moves
+  % Board=[4,7,3,2,9,6,1,8,5], % 0.4s, 20 moves
+  % Board=[7,9,4,6,8,2,5,3,1], % 28.1s
+  Board=[5,4,6,2,3,8,1,9,7], % 0.5s
+  % Board= [8,1,2,5,9,3,4,7,6], % 0.03, 12 moves
+
+
+  println('Board'=Board),
+  print_board(Board),
+  time(best_plan_downward(Board,L)),
+  write(L), nl,
+  print_board(Board),
+  print_moves(Board, L),
+  writeln(len=L.length),
+  nl.
+
+go1 =>
+  % initial_state(Board),
+  % initial_state(Board),
+  % Board=[2,6,5,3,8,7,4,9,1], % 11s
+  Board=[4,5,9,1,6,7,8,2,3], % 3.2s
+  % Board=[6,1,5,9,4,8,2,7,3], % 4.5s
+  % Board=[4,7,3,2,9,6,1,8,5], % 1.6s
+  % Board=[7,9,4,6,8,2,5,3,1], % 28.1s
+
+  println('Board'=Board),
+  print_board(Board),
+  N :: 1..26,
+  indomain(N),
+  (
+     time(best_plan(Board,N,L)) ->
+     write(L), nl,
+     print_board(Board),
+     print_moves(Board, L),
+     writeln(len=L.length)
+    ; 
+     fail
+  ),
+  nl.
+
+
+%
+% Random board (may be fixpoints)
+%
+go2 =>
+  println("Random moves"),
+  NumMoves = 55, 
+  println(numMoves=NumMoves),
+  Board = random_moves(1..9,NumMoves),
+  println(numFixPoints=fixpoints(Board)),
+  println('Board'=Board),
+  print_board(Board),
+  time(best_plan_downward(Board,L)),
+  % time(plan2(Board,L,Cost)),
+  % time(plan3(Board,L,_Cost,Down)),
+  write(L), nl,
+  print_moves(Board, L),
+  writeln(len=L.length),
+  nl.
+
+%
+% Generate a no fixpoint board
+%
+go3 =>
+  println("Random moves"),
+  Board = random_moves2(1..9),
+  println(numFixPoints=fixpoints(Board)),
+  println('Board'=Board),
+  print_board(Board),
+  time(best_plan_downward(Board,L)),
+  write(L), nl,
+  print_moves(Board, L),
+  writeln(len=L.length),
+  nl.
+
+
+%
+% Experimental: random shuffle of 1..9
+%
+go4 =>
+  println("Random permutation"),
+  Board = random_perm(1..9,10),
+  println(numFixPoints=fixpoints(Board)),
+  println('Board'=Board),
+  print_board(Board),
+  time(best_plan_downward(Board,L)),
+  write(L), nl,
+  print_moves(Board, L),
+  writeln(len=L.length),
+  nl.
+
+
+
+
+%
+% The fixpoints of the board
+%
+fixpoints(Board) = [P : P in 1..Board.length, P = Board[P]].
+
+%
+% Print the board
+%
+print_board(Board) => 
+   foreach(I in 1..Board.length)
+      printf("%2d ", Board[I]),
+      if I mod 3 == 0 then nl end
+   end,
+   nl.
+
+%
+% Print all the moves.
+%
+print_moves(Board,Moves) => 
+  foreach([From,To] in Moves) 
+     Board := swap(Board,From,To),
+     println(move=[From,To]),
+     print_board(Board)
+  end,
+  nl.
+
+
+
+%
+% Shuffle a list N times.
+% Note: This don't guarantee a solution.
+%
+random_perm(L,N) = Perm => 
+  Perm = L,
+  Len = L.length,
+  foreach(_I in 1..N) 
+     R1 = 1+(random2() mod Len),
+     R2 = 1+(random2() mod Len),
+     Perm := Perm.swap(R1,R2)
+  end.
+
+%
+% Swap position I <=> J in list L
+%
+swap(L,I,J) = L2 =>
+  L2 = L,
+  T = L2[I],
+  L2[I] := L2[J],
+  L2[J] := T.
+
+%
+% Make N valid moves of the Board
+%
+random_moves(Board, N) = Board2 => 
+  Board2 = Board,
+  all_moves(Moves),
+  Tabu = [],
+  foreach(_I in 1..N) 
+     % identify where blank is now
+     Blank = [P : P in 1..Board.length, Board[P] = 9].first(),
+     ValidNew = [M[1] : M in Moves, M[2] = Blank],
+     New = ValidNew[1+(random2() mod ValidNew.length)],
+     % don't redo last move
+     while (Tabu = [Blank,New])
+        New := ValidNew[1+(random2() mod ValidNew.length)]
+     end,
+     Board2 := swap(Board2,Blank,New),
+     println(move=[Blank,New]),
+     Tabu := [New,Blank]
+  end.
+
+%
+% Random board: Generate until no fixpoint
+%
+random_moves2(Board) = Board2 => 
+  Board2 = Board,
+  all_moves(Moves),
+  Tabu = [],
+  % loop until no fixpoint
+  Count = 0,
+  while (fixpoints(Board2).length > 0)
+     % identify where blank is now
+     Blank = [P : P in 1..Board.length, Board[P] = 9].first(),
+     ValidNew = [M[1] : M in Moves, M[2] = Blank],
+     New = ValidNew[1+(random2() mod ValidNew.length)],
+     % don't redo last move
+     while (Tabu = [Blank,New])
+        New := ValidNew[1+(random2() mod ValidNew.length)]
+     end,
+     Board2 := swap(Board2,Blank,New),
+     println(move=[Blank,New]),
+     Tabu := [New,Blank],
+     Count := Count+1
+  end,
+  println(count=Count).
+
+
+all_moves(Moves) =>
+  Moves = [[1,2],[1,4],[2,1],[2,3],[2,5],[3,2],[3,6],
+           [4,1],[4,5],[4,7],[5,2],[5,4],[5,6],[5,8],
+           [6,3],[6,5],[6,9],[7,4],[7,8],[8,5],[8,7],
+           [8,9],[9,6],[9,8]].
+
+
+
+% initial_state(Init) => Init= [ 1,3,6,
+%                                9,4,2,
+%                                7,5,8].
+
+final(Goal) => Goal=1..9.
+
+
+%
+% The valid actions, where 9 is the blank.
+%
+% table
+action([ 9,X2,X3,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[1,2],To=[X2, 9,X3,X4,X5,X6,X7,X8,X9].
+action([ 9,X2,X3,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[1,4],To=[X4,X2,X3, 9,X5,X6,X7,X8,X9].
+action([X1, 9,X3,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[2,1],To=[ 9,X1,X3,X4,X5,X6,X7,X8,X9].
+action([X1, 9,X3,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[2,3],To=[X1,X3, 9,X4,X5,X6,X7,X8,X9].
+action([X1, 9,X3,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[2,5],To=[X1,X5,X3,X4, 9,X6,X7,X8,X9].
+action([X1,X2, 9,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[3,2],To=[X1, 9,X2,X4,X5,X6,X7,X8,X9].
+action([X1,X2, 9,X4,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[3,6],To=[X1,X2,X6,X4,X5, 9,X7,X8,X9].
+action([X1,X2,X3, 9,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[4,1],To=[ 9,X2,X3,X1,X5,X6,X7,X8,X9].
+action([X1,X2,X3, 9,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[4,5],To=[X1,X2,X3,X5, 9,X6,X7,X8,X9].
+action([X1,X2,X3, 9,X5,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[4,7],To=[X1,X2,X3,X7,X5,X6, 9,X8,X9].
+action([X1,X2,X3,X4, 9,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[5,2],To=[X1, 9,X3,X4,X2,X6,X7,X8,X9].
+action([X1,X2,X3,X4, 9,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[5,4],To=[X1,X2,X3, 9,X4,X6,X7,X8,X9].
+action([X1,X2,X3,X4, 9,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[5,6],To=[X1,X2,X3,X4,X6, 9,X7,X8,X9].
+action([X1,X2,X3,X4, 9,X6,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[5,8],To=[X1,X2,X3,X4,X8,X6,X7, 9,X9].
+action([X1,X2,X3,X4,X5, 9,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[6,3],To=[X1,X2, 9,X4,X5,X3,X7,X8,X9].
+action([X1,X2,X3,X4,X5, 9,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[6,5],To=[X1,X2,X3,X4, 9,X5,X7,X8,X9].
+action([X1,X2,X3,X4,X5, 9,X7,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[6,9],To=[X1,X2,X3,X4,X5,X9,X7,X8, 9].
+action([X1,X2,X3,X4,X5,X6, 9,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[7,4],To=[X1,X2,X3, 9,X5,X6,X4,X8,X9].
+action([X1,X2,X3,X4,X5,X6, 9,X8,X9],To,Move,Cost) ?=> Cost=1, Move=$[7,8],To=[X1,X2,X3,X4,X5,X6,X8, 9,X9].
+action([X1,X2,X3,X4,X5,X6,X7, 9,X9],To,Move,Cost) ?=> Cost=1, Move=$[8,5],To=[X1,X2,X3,X4, 9,X6,X7,X5,X9].
+action([X1,X2,X3,X4,X5,X6,X7, 9,X9],To,Move,Cost) ?=> Cost=1, Move=$[8,7],To=[X1,X2,X3,X4,X5,X6, 9,X7,X9].
+action([X1,X2,X3,X4,X5,X6,X7, 9,X9],To,Move,Cost) ?=> Cost=1, Move=$[8,9],To=[X1,X2,X3,X4,X5,X6,X7,X9, 9].
+action([X1,X2,X3,X4,X5,X6,X7,X8, 9],To,Move,Cost) ?=> Cost=1, Move=$[9,6],To=[X1,X2,X3,X4,X5, 9,X7,X8,X6].
+action([X1,X2,X3,X4,X5,X6,X7,X8, 9],To,Move,Cost)  => Cost=1, Move=$[9,8],To=[X1,X2,X3,X4,X5,X6,X7, 9,X8].
+

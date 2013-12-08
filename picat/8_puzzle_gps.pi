@@ -1,0 +1,139 @@
+/* 
+
+  8 puzzle in Picat.
+
+  This approach is using a GPS/STRIPS like approach and is slower than the plain 
+  planner program in
+     http://www.hakank.org/picat/8_puzzle.pi
+
+  We have two representation:
+  1) The first approach (orignal action/4) have everything in the data structure, 
+     including the tile id's and the adjacent structure. And shuffling this around costs 
+     quite much. Here is what's shuffling around, for the problem [4,7,3,2,9,6,1,8,5]:
+ 
+         on(4,1),on(7,2),on(3,3),on(2,4),on(6,6),on(1,7),on(8,8),on(5,9),
+         adjacent(1,2),adjacent(1,4),adjacent(2,1),adjacent(2,3),adjacent(2,5),
+         adjacent(3,2),adjacent(3,6),adjacent(4,1),adjacent(4,5),adjacent(4,7),
+         adjacent(5,2),adjacent(5,4),adjacent(5,6),adjacent(5,8),adjacent(6,3),
+         adjacent(6,5),adjacent(6,9),adjacent(7,4),adjacent(7,8),adjacent(8,5),
+         adjacent(8,7),adjacent(8,9),adjacent(9,6),adjacent(9,8),
+         tile(1),tile(2),tile(3),tile(4),tile(5),tile(6),tile(7),tile(8),
+         blank(5)
+
+
+  2) The second approach just have the on/2 and blank/1:
+
+        on(4,1),on(7,2),on(3,3),on(2,4),on(6,6),on(1,7),on(8,8),on(5,9),
+        blank(5)
+      
+     The adjacent/2 and tile/1 are handled outside the structure (or implicit as tile/1).
+     This is significantly faster than the first approach. Using a tabled action/4 
+     boosts it further.
+
+     Though it's still slower than 8_puzzle.pi using the plain planner approach.
+     
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import gps_utils.
+
+
+main => go.
+
+%
+%  1 2 3
+%  4 5 6
+%  7 8 9
+%
+%  
+go =>
+  % Problems from 8_puzzle.pi:
+  Problem1=[5,4,6,2,3,8,1,9,7], % 21 moves,  5.4s  with tabled action/4: 2.1s
+  Problem2=[4,5,9,1,6,7,8,2,3], % 26 moves, 22.6s  with tabled action/4: 6.8s
+  Problem3=[6,1,5,9,4,8,2,7,3], % 23 moves, 13.5s  with tabled action/4: 4.1s
+  Problem4=[4,7,3,2,9,6,1,8,5], % 20 moves,  4.9s  with tabled action/4: 1.9s
+  Problem5=[6,7,3,8,4,2,5,9,1], % 27 moves, 30.4s  with tabled action/4: 7.9s
+  Problem6=[1,3,6,9,4,2,7,5,8], %  7 moves, 0.02s  with tabled action/4: 0.02s
+  Problem7=[8,1,2,5,9,3,4,7,6], % 12 moves, 0.13s  with tabled action/4: 0.08s
+ 
+  Problem = Problem1,
+
+  println(problem=Problem),
+  Init = gener(Problem) ++ find_blank(Problem), 
+
+  gps_best_plan_downward(Init),
+  
+  nl.
+
+
+%
+% This is for the first approach. You have to activate the uncomment action/4
+% to test this.
+%
+go2 =>
+  % Problems from 8_puzzle.pi:
+  Problem1=[5,4,6,2,3,8,1,9,7], % 21 moves, 14.1s  with tabled action/4: 6.4s
+  Problem2=[4,5,9,1,6,7,8,2,3], % 26 moves, 1:10min with tabled action/4: 20.3s
+  Problem3=[6,1,5,9,4,8,2,7,3], % 23 moves, 41.9s with tabled action/4: 12.7s
+  Problem4=[4,7,3,2,9,6,1,8,5], % 20 moves, 15.2s with tabled action/4: 6.1s
+  Problem5=[6,7,3,8,4,2,5,9,1], % 27 moves, 1:17min  with tabled action/4: 22.6s
+  Problem6=[1,3,6,9,4,2,7,5,8], % 7 moves, 0.04s with tabled action/4: 0.03s
+  Problem7=[8,1,2,5,9,3,4,7,6], % 12 moves, 0.36s with tabled action/4: 0.2s
+
+  Problem = Problem1,
+  println(problem=Problem),
+  Gen = gener(Problem),
+ 
+  adj(Adj),
+  Adjacent = $[adjacent(I,J) : [I,J] in Adj],
+  Tiles = $[tile(I) : I in 1..8],
+  Init = Gen ++ Adjacent ++ Tiles ++ find_blank(Problem), 
+  println(init=Init),
+
+  gps_best_plan_downward(Init),
+
+ 
+  nl.
+
+
+gener(L) = $[on(L[I],I) : I in 1..L.length, L[I] != 9].
+
+find_blank(L) = [ $blank(I) : I in 1..L.length, L[I] = 9].
+
+adj(Adjacent) =>
+   Adjacent = [[1,2],[1,4],[2,1],[2,3],[2,5],[3,2],[3,6],
+               [4,1],[4,5],[4,7],[5,2],[5,4],[5,6],[5,8],
+               [6,3],[6,5],[6,9],[7,4],[7,8],[8,5],[8,7],
+               [8,9],[9,6],[9,8]].
+
+
+final(L) =>
+   % println($final(L)),
+   Final = $[on(I,I) : I in 1..8],
+   final_check(L,Final),
+   println(final=L).
+
+
+table
+
+%% Include everything in the structure
+% action(From,To,Move,Cost),
+%    From.pre($[on(T,S1),tile(T),blank(S2),adjacent(S1,S2)]) ?=>
+%    To = From.del($[on(T,S1),blank(S2)]).add($[on(T,S2),blank(S1)]),
+%    Move = $[move(T,from,S1,to,S2)],
+%    Cost = 1.
+
+
+% We put adjacent and tile outside the data structure
+action(From,To,Move,Cost),
+  From.pre($[on(T,S1),blank(S2)]) ?=>
+  adj(Adjacent),
+  member([S1,S2],Adjacent),
+  To = From.del($[on(T,S1),blank(S2)]).add($[on(T,S2),blank(S1)]),
+  Move = $[move(T,from,S1,to,S2)],
+  Cost = 1.

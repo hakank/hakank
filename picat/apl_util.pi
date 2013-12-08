@@ -1,0 +1,330 @@
+/* 
+
+  Some APL/K inspired utilities in Picat.
+ 
+  Here are some functions inspired by APL and/or K.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module apl_util_me.
+
+import util.
+
+main => apl_utils_test.
+
+%
+% Returns the positions for which apply(F,E) is true in List.
+% Note: F must be a predefined function.
+% (Inspired by APL,K)
+%
+positions(List, F) = [Pos : {E,Pos} in zip(List,1..List.length), call(F,E)].
+ 
+% 
+% Return the positions for this the element in List is true (1)
+% (Inspired by APL,K)
+%
+bool2pos(List) = [Pos : {E,Pos} in zip(List,1..List.length), E==1].
+
+%
+% Returns a list of a boolean list with position in 
+% the (sorted) List as 1 and 0 for the rest.
+% (Inspired by APL,K)
+%
+pos2bool(Bool) = List =>
+   List = [],
+   foreach(I in 1..max(Bool))
+      if member(I,Bool) then
+         List := List ++ [1]
+      else 
+         List := List ++ [0]
+      end
+   end.
+
+%
+% Returns the elements in ListA for which the elements in 
+% the boolean list ListB is true (i.e. == 1)
+% (Inspired by APL,K)
+%
+compress(ListA,ListB) = [ A : {A,B} in zip(ListA,ListB), B == 1].
+
+%
+% (Reduced) digit sum (digital root) of a number
+% 
+digit_sum(N) = Sum, integer(N)  =>
+   Sum = N,
+   while(Sum > 9)
+     Sum := sum([I.to_integer() : I in Sum.to_string()]) 
+   end.
+digit_sum(List) = digit_sum(sum(List)), list(List) => true.
+
+%
+% Converts a character "a".."z" or A..Z to a digit 1..26.
+%
+alpha_code(C) = char_code(C) - 96, lowercase(C) => true.
+alpha_code(C) = char_code(C) - 64, uppercase(C) => true.
+
+
+%
+% tc(List, Start)
+%
+% "Transitive closure" (pointer chasing) of a list.
+%
+% The is as a graph where the indices points to the next node.
+% It can also be seen as a sub circuit/path with a start node.
+% 
+%   Picat> tc([2 3 4 5 1], 1)
+%   [2,3,4,5,1]
+%   Picat> tc([3 2 1 5 6 5], 5)
+%   [5,6,4]
+%   
+%   Picat> tc([1 3 4 1 2 5], 6)
+%   [6,5,2,3,4,1]
+%
+%   % We stop when a cycle is detected
+%   Picat> tc([2,3,3,4,5,1], 2)
+%   [2,3]
+%
+%   Picat> foreach(I in 1..5) writeln([I, tc([2,3,4,6,1,6], I)]) end
+%   [1,[1,2,3,4,6]]
+%   [2,[2,3,4,6]]
+%   [3,[3,4,6]]
+%   [4,[4,6]]
+%   [5,[5,1,2,3,4,6]]
+%
+% This was inspired by K:s transitive closure function
+% "over until fixed" (\) i.e. list\start (which is 0 based)
+%       (2 1 0 4 5 3)\4
+%   4 5 3
+%
+% which is represented in Picat (1-based) as:
+%
+%   Picat> L=tc([3,2,1,5,6,4],5)
+%   L = [5,6,4]
+% 
+tc(List, Start) = TC => 
+   TC = [Start],
+   Next = List[Start],
+   while (not member(Next,TC))
+       TC := TC ++ [Next],
+       Next := List[Next]
+   end.
+
+%
+% all transitive closures for a list L (Start in 1..L.length)
+%
+tc_all(List) = [tc(List,I) : I in 1..List.length].   
+
+% 
+% Grade up: The positions of the elements in a sorted list
+% 
+%   Picat> grade_up([13,2,0,1,4])
+%   [3,4,2,5,1]
+% 
+% A double grade_up give the ranking of the list.
+% Here 70 is the fourth number, 10 is the first etc
+%   Picat> [70,10,30,20].grade_up().grade_up()
+%   [4,1,3,2]
+% 
+% (This was inspired by APL/K' grade up)
+%
+grade_up(L) = [ I : (E,I) in sort([(E,I) : {E,I} in zip(L,1..L.length)])].
+grade_down(L) = [ I : (E,I) in sort_down([(E,I) : {E,I} in zip(L,1..L.length)])].
+
+
+%
+% base(Radix,List)
+%
+% converts a List with radix list Radix to a number
+%
+%  % decimal
+%  Picat> base([10,10,10,10],[4,1,2,3]))
+%  4123
+%  Picat> base(10,[4,1,2,3]))
+%  4123
+%
+%  % Binary
+%  Picat> base([2,2,2,2],[1,0,1,1]))
+%  11
+%  Picat> base(2,[1,0,1,1]))
+%  11
+%
+%  % These two are the same
+%  Picat> base([0,3,12],[3,0,1])),
+%  109
+%  Picat> base([1736,3,12],[3,0,1]))
+%  109
+%
+%  % Hours,Minutes,Seconds
+%  Picat  base([24,60,60],[2,27,19])),
+%  8839
+%
+%  % Days,Hours,Minutes,Seconds as Seconds
+%  Picat> base([7,24,60,60],[1,3,0,1]))
+%  90721
+% 
+% (This was inspired from APL base function (and K's _sv function)
+%
+
+% When N is an integer: Radix = [N,N,N,...,N]
+base(N,List) = base([N : _I in 1..List.length],List), integer(N) => true.
+
+% Radix is a list
+base(Radix,List) = S, list(Radix) => 
+   S = sum([E*R :{R,E} in zip(Radix.cumprod_base().reverse(),List)]).
+
+% cumulative product (special for base)
+private
+cumprod_base(List) = C =>
+   One = 1,
+   C = [One],
+   Len = List.length,
+   foreach(I in Len..-1..2)
+     One := One * List[I],
+     C := C ++ [One]
+   end.
+ 
+
+% unbase(Radix, N)
+% 
+% This is the reverse of base(Radix,N), i.e. 
+% convert the the number N to "radix slots"
+% 
+%   Picat> unbase([10,10,10,10], 1234)
+%   [1,2,3,4]
+%   Picat> unbase(10, 1234)
+%   [1,2,3,4]
+%
+%   Picat> unbase([24,60,60], 12345)
+%   [3,25,45]
+%
+% We add an extra element if the value is too large 
+%
+%   Picat> unbase([24,60,60], 123456)
+%   [1,10,17,36]
+%
+%   Picat> unbase([24,60,60], 3)
+%   [3]
+%
+%   Picat> unbase([fibt(I):I in 1..25].reverse(),2**200)        
+%   [8,43367,7198,15921,1340,2912,1090,3499,1367,137,76,245,164,98,109,76,49,0,0,1,0,2,2,0,0]
+%
+%
+% This was inspired by APL's unbase and K's _vs
+%
+
+% Radix (N) is an integer
+unbase(N, Val) = reverse(List), integer(N) => 
+   List = [],
+   V = Val,
+   while(V > 0)
+      List := List ++ [V mod N],
+      V := V div N
+   end,
+   if V > 0 then 
+      List := List ++ [V]
+   end.
+
+% Radix is a list
+unbase(Radix, Val) = reverse(List), list(Radix) => 
+   List = [],
+   V = Val,
+   foreach(R in Radix.reverse(), V > 0)
+      List := List ++ [V mod R],
+      V := V div R
+   end,
+   if V > 0 then 
+      List := List ++ [V]
+   end.
+
+%
+% Forward difference
+%
+
+% 1'st forward difference of L
+diff(L) = Diff => 
+   Diff = [L[I]-L[I-1] : I in 2..L.length].
+
+% The D'th different of list L
+diffi(L,D) = Diff =>
+   Diff1 = L,
+   foreach(_I in 1..D) 
+      Diff1 := diff(Diff1)
+   end,
+   Diff = Diff1.
+
+% all forward differences
+alldiffs(L) = Diffs =>
+   Diffs1 = [],
+   Diff = L,
+   foreach(_I in 1..L.length-1) 
+      Diff := diff(Diff),
+      Diffs1 := Diffs1 ++ [Diff]
+   end,
+   Diffs = Diffs1.
+
+
+
+apl_utils_test =>
+   writeln(positions=positions([1,2,3,1,10,12,13,15,4],odd)),
+   writeln(bool2pos=bool2pos([0,1,1,0,1,0,1,0,0,0,1])),
+   writeln(pos2bool=pos2bool([2,3,5,7,11,13])),
+   writeln(compress=compress([2,3,5,7,11,13,17,19],[1,0,1,0,1,0,1,0])),
+   writeln(digit_sum=[digit_sum(I) : I in 100..120]),
+   writeln(digit_sum=digit_sum([2,1,3,8])),
+   writeln(alpha_code=[alpha_code(C) : C in "BACH"]),
+   writeln(alpha_code=[alpha_code(C) : C in "bach"]),
+   writeln(alpha_code=[(C=alpha_code(C)) : C in "HakanKjellerstrand"]),
+   writeln(digit_sum=digit_sum([alpha_code(C) : C in "BACH"])),
+
+   % transitive closure (the examples above)
+   writeln(tc=tc([2,3,4,5,1],2)),
+   writeln(tc=tc([3,2,1,5,6,4],5)),
+   writeln(tc=tc([1,3,4,1,2,5],6)),
+   writeln(tc=tc([2,3,3,4,5,1],2)),
+   foreach(I in 1..6) writeln([I, tc([2,3,4,6,1,6], I)]) end,
+   writeln(tc_all=tc_all([2,3,4,6,1,6])),
+
+   % average lengths of the cycles in 100 runs of 100 random lists
+   % writeln([tc_all([1+random2(2) mod 100 : _I in 1..100]).map2(length).avg() : J in 1..100].sort()),
+
+   % grade up/down
+   L1 = [13,2,0,1,4],
+   writeln(grade_up=grade_up(L1)),
+   L2 = [13,2,0,1,4],
+   writeln(grade_up2=L2.grade_up().grade_up()), % sorting
+   writeln(grade_down=grade_down(L1)),
+   writeln(grade_down2=L2.grade_down().grade_down()),
+
+   % base
+   writeln(base=base([10,10,10,10],[4,1,2,3])), % decimal
+   writeln(base=base(10,[4,1,2,3])), % decimal
+   writeln(base=base([2,2,2,2],[1,0,1,1])), % binary
+   writeln(base=base(2,[1,0,1,1])), % binary
+   writeln(base=base([0,3,12],[3,0,1])),
+   writeln(base=base([1736,3,12],[3,0,1])),
+   writeln(base=base([24,60,60],[2,27,19])),
+   writeln(base=base([7,24,60,60],[1,3,0,1])), % Day,Hours,Minutes,Seconds as Seconds
+   writeln(base=base([100,1000,10,100],[35,681,7,24])),
+
+   % unbase
+   writeln(unbase=unbase([10,10,10,10],4123)), % decimal
+   writeln(unbase=unbase(10,4123)),
+   writeln(unbase=unbase([2,2,2,2],11)), % binary
+   writeln(unbase=unbase(2,11)),
+   writeln(unbase=unbase([24,60,60],8839)),
+   writeln(unbase=unbase([7,24,60,60],90721)),
+   writeln(unbase=unbase([24,60,60],123456)),
+   Radix = [1736,3,12],
+   writeln(unbase=unbase(Radix,109)),
+   writeln(unbase_base=base(Radix,unbase(Radix,109))),
+
+   L = [random2() mod 20 : _I in 1..10],
+   writeln(diff=diff(L)),
+   writeln(diffi=L.diffi(3)),
+   writeln(alldiffs(L)),
+
+
+   nl.
