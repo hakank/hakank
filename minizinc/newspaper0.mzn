@@ -66,6 +66,14 @@
 %   Sun            : 175..179  165..174   45.. 74   75..164 
 %
 
+%
+% Cf the more general model
+%   - http://www.hakank.org/minizinc/jobshop.mzn
+%   - http://www.hakank.org/minizinc/jobshop2.mzn (more output)
+%
+% Data file that includes this newpaper problem:
+%   - http://www.hakank.org/minizinc/jobshop_newspaper.mzn
+%
 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
