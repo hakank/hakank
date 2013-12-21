@@ -190,10 +190,12 @@ object KenKen2 {
 
       }
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x_flat)
+      binaryMaxDegree(x_flat)
 
+    } onSolution {
+      
       for(i <- RANGE) {
         println(x(i).mkString(""))
       }
@@ -201,11 +203,8 @@ object KenKen2 {
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
-
+   } 
+   println(cp.start())  
   }
 
 }

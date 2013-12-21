@@ -71,8 +71,6 @@ object ClockTriplets {
     //
     // constraints
     //
-    var numSols = 0
-
     cp.solve subjectTo {
 
       cp.add(allDifferent(x), Strong)
@@ -87,10 +85,12 @@ object ClockTriplets {
       cp.add(x(10) + x(11) + x(0)  <= triplet_sum)
       cp.add(x(11) + x(0)  + x(1)  <= triplet_sum)
       
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x)
-
+      binaryMaxDegree(x)
+      
+    } onSolution {
+      
       println("x:" + x.mkString(""))
 
       println("       " + x(0)                 )
@@ -102,12 +102,11 @@ object ClockTriplets {
       println("       " + x(6)                 )
       println()
 
-      numSols += 1
 
-    } run()
+    } 
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
+
 
   }
 

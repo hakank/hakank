@@ -65,17 +65,15 @@ object SchedulingSpeakers {
         cp.add(allDifferent(speakers))
 
 
-      } exploration {
+      } search {
 
-        cp.binary(speakers)
-
+        binaryStatic(speakers)
+      } onSolution {
         println(speakers.mkString(""))
 
         numSols += 1
-      } run()
-
-      println("\nIt was " + numSols + " solutions.")	  
-      cp.printStats()
+      } 
+      println(cp.start())
 
   }
 

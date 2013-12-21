@@ -127,7 +127,6 @@ object CrossWord {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.solve subjectTo {
 
@@ -157,10 +156,12 @@ object CrossWord {
       }
 
 
-     } exploration {
+     } search {
 
-        cp.binary(E)
-          
+        binaryStatic(E)
+        
+     } onSolution {
+       
         println("E: " + E.mkString(" "))
         for(ee <- 0 until N) {
           print(ee + ": (" + "%2d".format(E(ee).value) + ") ")
@@ -169,16 +170,12 @@ object CrossWord {
           }
           println()
         }
-
         println()
 
-        numSols += 1
 
-     } run()
-
-     println("\nIt was " + numSols + " solutions.")
-
-     cp.printStats()
+     } 
+     
+     println(cp.start())
    }
 
 }

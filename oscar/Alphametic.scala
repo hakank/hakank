@@ -141,10 +141,12 @@ object Alphametic {
       }
 
       
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x)
+      binaryMaxDegree(x)
 
+    } onSolution {
+      
       println("\nSolution:")
       println("x:" + x.mkString(""))
       val sep = if (base == 10) "" else " ";
@@ -161,12 +163,10 @@ object Alphametic {
       println()
 
       numSols += 1
-
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+      
+    }
     
+    println(cp.start())    
   }
 
   def testProblems(base: Int, start: Int = 0) {

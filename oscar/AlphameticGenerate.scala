@@ -162,10 +162,12 @@ object AlphameticGenerate {
       }
 
       
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x)
+      binaryMaxDegree(x)
 
+    } onSolution {
+      
       println("\nSolution:")
       println("x:" + x.mkString(""))
       val sep = if (base == 10) "" else " ";
@@ -181,12 +183,11 @@ object AlphameticGenerate {
       }
       println()
 
-      numSols += 1
-
-    } run()
+      numSols += 1   
+      
+    } start()
 
     println("\nIt was " + numSols + " solutions to the problem " + problem_in)
-    cp.printStats()
 
     if (numSols > 0) 1 else 0
     

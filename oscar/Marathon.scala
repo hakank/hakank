@@ -130,10 +130,11 @@ object Marathon {
         cp.add(ignace     != 3)
         cp.add(dominique  != 3)
 
-      } exploration {
+      } search {
 
-        cp.binary(runners ++ places)
-
+        binaryStatic(runners ++ places)
+        
+      } onSolution {
         println("Runners: " ++ runners.mkString(""))
         println("Places:")
         for(p <- 0 until n) {
@@ -142,10 +143,9 @@ object Marathon {
         println()
 
         numSols += 1
-      } run()
+      }
 
-      println("\nIt was " + numSols + " solutions.")	  
-      cp.printStats()
+      println(cp.start())
 
   }
 

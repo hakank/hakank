@@ -81,12 +81,13 @@ object CuriousSetOfIntegers {
                (x(0) === 1 && x(1) === 3 && x(2) === 8 && x(3) === 120 && (x(4) >>= 120))
                )
 
-      } exploration {
+      } search {
 
-        cp.binary(x)
+        binaryStatic(x)
 
+      } onSolution {
+        
         println(x.mkString(""))
-
         val s = Set(1,3,8,120)
         for(i <- 0 until n) {
           val v = x(i).value
@@ -96,11 +97,9 @@ object CuriousSetOfIntegers {
         }
 
         numSols += 1
-      } run()
-
-      println("\nIt was " + numSols + " solutions.")	  
-      cp.printStats()
-
+      } 
+      
+      println(cp.start())
   }
 
 }

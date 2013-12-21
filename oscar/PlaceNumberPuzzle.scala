@@ -111,18 +111,16 @@ object PlaceNumberPuzzle {
       cp.add(x(0) < x(n-1))
 
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x)
-
+      binaryMaxDegree(x)
+    } onSolution {
       println("x: " + x.mkString(""))
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+   println(cp.start())
 
   }
 

@@ -102,18 +102,16 @@ object Olympic {
       cp.add(abs_minus(x9, x10, x6))
 
 
-    } exploration {
+    } search {
        
-      cp.binary(x, _.size, _.min)
-
+      binary(x, _.size, _.min)
+    } onSolution {
       println("x: " + x.mkString(""))
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   }
+   println(cp.start())
 
   }
 

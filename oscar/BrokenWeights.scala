@@ -82,7 +82,6 @@ object BrokenWeights {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.minimize(weights(n-1)) subjectTo {
 
@@ -100,10 +99,12 @@ object BrokenWeights {
       }
 
       
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(weights ++ x_flat)
+      binaryMaxDegree(weights ++ x_flat)
 
+    } onSolution {
+      
       println("\nSolution:")
       println("weights:" + weights.mkString(""))
       for(i <- 0 until m) {
@@ -113,13 +114,9 @@ object BrokenWeights {
         }
         println()
       }
-
-      numSols += 1
-
-   }
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    }
+    
+    println(cp.start())
 
   }
 

@@ -105,21 +105,21 @@ object DeBruijn {
       cp.add(minimum(x, x(0)))
 
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(x)
-
+       binaryFirstFail(x)
+       
+     } onSolution {
+       
        println("x: " + x.mkString(""))
        println("de Bruijn sequence:" + bin_code.mkString("")) 
        println("gcc:" + gccv.mkString(""))
        println()
 
-       numSols += 1
        
-     } run()
-     println("\nIt was " + numSols + " solutions.")
-
-     cp.printStats()
+     } 
+     
+     println(cp.start())
    }
 
 }

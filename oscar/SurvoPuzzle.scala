@@ -130,10 +130,12 @@ object SurvoPuzzle {
       }
       
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(x.flatten)
-
+       binaryFirstFail(x.flatten.toSeq)
+       
+     } onSolution {
+       
        println("\nSolution:")
        for(i <- 0 until r) {
          println(x(i).map(j=>"%3d".format(j.value)).mkString(""))
@@ -142,10 +144,10 @@ object SurvoPuzzle {
 
        numSols += 1
        
-    } run()
+    }
     
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
+ 
 
   }
 

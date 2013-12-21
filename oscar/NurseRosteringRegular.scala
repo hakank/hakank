@@ -170,11 +170,13 @@ object NurseRosteringRegular {
 
       }
 
-     } exploration {
+     } search {
 
-      cp.binary(all, _.size, _.min)
-
-      for(n <- nurses) {
+      binary(all, _.size, _.min)
+     
+     } onSolution {
+     
+       for(n <- nurses) {
         print("Nurse " + n + ": ")
         var wd = 0
         for(d <- days) {
@@ -203,10 +205,9 @@ object NurseRosteringRegular {
       numSols += 1
 
       
-     } run(numToShow)
-
-     println("\nIt was " + numSols + " solutions.")
-     cp.printStats()
+     } 
+     
+     println(cp.start())
 
    }
 

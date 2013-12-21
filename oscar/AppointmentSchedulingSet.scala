@@ -148,17 +148,16 @@ object AppointmentSchedulingSet {
       
       cp.add(allDifferent(x), Strong)
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x)
+      binaryMaxDegree(x)
 
+    } onSolution {
+     
       numSols += 1      
-      println("\nSolution #" + numSols + ": " + x.mkString(" "))
-
-      if (num_to_show > 0 && numSols >= num_to_show) {
-        cp.stop()
-      }
-   } run()
+      println("\nSolution #" + numSols + ": " + x.mkString(" "))  
+   
+    } start(num_to_show)
 
     println("\nIt was " + numSols + " solutions.")
     cp.printStats()

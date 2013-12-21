@@ -109,10 +109,10 @@ object PostOfficeProblem {
       // cp.add(total_cost <= 20000)
 
       
-    } exploration {
+    } search {
        
-      cp.binary(x,_.min, _.min)
-
+      binary(x,_.min, _.min)
+    } onSolution {
       println("\nSolution:")
 
       println("x          : " + x.mkString(""))
@@ -124,8 +124,7 @@ object PostOfficeProblem {
 
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

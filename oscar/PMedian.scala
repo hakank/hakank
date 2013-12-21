@@ -91,10 +91,10 @@ object PMedian {
         cp.add(sum(for(w <- WAREHOUSES) yield ship(c)(w)) == 1)
       }
         
-    } exploration {
+    } search {
        
-      cp.binary(ship.flatten ++ open, _.constraintDegree, _.max)
-
+      binary(ship.flatten ++ open, _.constraintDegree, _.max)
+    } onSolution {
       println("z:" + z)
       println("open:" + open.mkString(""))
       println("ship:")
@@ -107,8 +107,7 @@ object PMedian {
 
    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   println(cp.start())
 
   }
 

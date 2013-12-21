@@ -108,10 +108,12 @@ object Lectures {
       cp.add(v(0) == 0);
       cp.add(v(1) <= 1);
 
-    } exploration {
+    } search {
        
-      cp.binary(v)
-
+      binaryStatic(v)
+      
+    } onSolution {
+      
       println("\nSolution:")
       println("max hour: " + max_c)
       println("v: " + v.mkString(""))
@@ -121,10 +123,9 @@ object Lectures {
 
       numSols += 1
 
-   }
+    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

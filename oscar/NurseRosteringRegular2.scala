@@ -143,10 +143,12 @@ object NurseRosteringRegular2 {
       }
 
 
-     } exploration {
+     } search {
 
-      cp.binaryFirstFail(all)
-         
+      binaryFirstFail(all)
+      
+     } onSolution {
+       
       for(n <- nurses) {
         print("Nurse " + n + ": ")
         var vv = Array(0,0,0) // shift stats
@@ -172,18 +174,10 @@ object NurseRosteringRegular2 {
         println()
       }
       println()
-
-      numSols += 1
-
-      if (num_to_show > 0 && numSols >= num_to_show) {
-         cp.stop()
-      }
       
      }
 
-     println("\nIt was " + numSols + " solutions.")
-
-     cp.printStats()
+     println(cp.start(nbSolMax = num_to_show))
    }
 
 }

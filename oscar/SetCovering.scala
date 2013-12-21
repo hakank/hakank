@@ -79,10 +79,11 @@ object SetCovering {
                )
       }
       
-    } exploration {
+    } search {
        
-      cp.binary(x)
-
+      binaryStatic(x)
+    } onSolution {
+      
       println("\nSolution:")
       println("x: " + x.mkString(""))
       println("z: " + z)
@@ -91,8 +92,7 @@ object SetCovering {
 
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

@@ -150,10 +150,11 @@ object EinavPuzzle {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(col_signs ++ row_signs)
-
+      binaryMaxDegree(col_signs ++ row_signs)
+    } onSolution {
+      
       println("\nSolution:")
       println("row_sums: " + row_sums.mkString(""))
       println("row_signs: " + row_signs.mkString(""))
@@ -168,12 +169,9 @@ object EinavPuzzle {
       }
       println()
 
-      numSols += 1
-
-   }
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    
+    println(cp.start())
 
   }
 

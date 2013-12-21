@@ -79,18 +79,16 @@ object SendMoreMoneyAnyBase {
         cp.add(M > 0)
 
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(all)
-
+       binaryFirstFail(all)
+     } onSolution {
        println(all.mkString(""))
 
        numSols += 1
        
-     } run()
-
-     println("\nIt was " + numSols + " solutions.")
-     cp.printStats()
+     } 
+     println(cp.start())
 
    }
 

@@ -53,18 +53,18 @@ object ToNum {
         cp.add(y == toNum(x))
         // cp.add(y == 2143)
 
-      } exploration {
+      } search {
 
-        cp.binaryFirstFail(x)
+        binaryFirstFail(x)
         
-        println("x:" + x.mkString("") + "  y:" + y)
-        
+      } onSolution {
+
+        println("x:" + x.mkString("") + "  y:" + y) 
         numSols += 1     
 
-      } run()
+      } 
 
-      println("\nIt was " + numSols + " solutions.") 
-      cp.printStats()
+      println(cp.start()) 
 
   }
 

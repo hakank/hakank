@@ -74,7 +74,6 @@ object AllDifferentExcept0 {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.solve subjectTo {
 
@@ -88,20 +87,19 @@ object AllDifferentExcept0 {
       cp.add(z == 2)
 
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(x)
-
+       binaryFirstFail(x)
+       
+     } onSolution {
+ 
        println("x:" + x.mkString(""))
        println("z:" + z)
        println()
-
-       numSols += 1
-       
-     } run()
-     println("\nIt was " + numSols + " solutions.")
-
-     cp.printStats()
+     
+     }
+     
+     println(cp.start())
    }
 
 }

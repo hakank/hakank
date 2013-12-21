@@ -148,7 +148,6 @@ object Crew {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.solve subjectTo {
     // cp.minimize(num_working) subjectTo {
@@ -189,10 +188,12 @@ object Crew {
       */
 
 
-     } exploration {
+     } search {
 
-        cp.binary(crew_flat)
-
+        binaryStatic(crew_flat)
+        
+     } onSolution {
+       
         println("num_working: " + num_working)
         for(f <- FLIGHTS) {
           for(p <- PERSONS) {
@@ -226,17 +227,10 @@ object Crew {
         println()
         println();
 
-        numSols += 1
-
-        if (num_to_show > 0 && numSols >= num_to_show) {
-          cp.stop()
-        }
-
-     } run()
-
-     println("\nIt was " + numSols + " solutions.")
-
-     cp.printStats()
+     } 
+     
+     println(cp.start(nbSolMax = num_to_show))
+    
    }
 
 }

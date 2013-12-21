@@ -99,10 +99,12 @@ object GolombRuler {
       // (Cred to Pierre Schaus.)
       differences.foreach(d => cp.add(d > 0))
 
-     } exploration {
+     } search {
  
-       cp.binary(mark) // 756 backtracks for m=8
-
+       binaryStatic(mark) // 756 backtracks for m=8
+     
+     } onSolution {
+       
        println("\nSolution:")
        print("mark: " + mark.mkString(""))
        println("\ndifferences: " + differences.mkString(""))
@@ -112,9 +114,7 @@ object GolombRuler {
 
    }
 
-    println("\nIt was " + numSols + " solutions.")
-
-    cp.printStats()
+   println(cp.start())
 
   }
 

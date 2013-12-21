@@ -101,10 +101,11 @@ object FurnitureMoving {
       myCumulative(cp, starts, durations, resources, num_persons)
   
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(starts ++ Array(num_persons))
-
+      binaryFirstFail(starts ++ Array(num_persons))
+    } onSolution {
+      
       println("\nSolution:")
 
       println("num_persons : " + num_persons)
@@ -119,8 +120,7 @@ object FurnitureMoving {
 
    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   println(cp.start())
 
   }
 

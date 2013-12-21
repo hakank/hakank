@@ -92,10 +92,11 @@ object MagicSquareAndCards {
       cp.add(x(n-1)(n-1) == values)
 
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x.flatten)
-
+      binaryMaxDegree(x.flatten.toSeq)
+    
+    } onSolution {
       println("\nSolution:")
       println("counts: " + counts.mkString(""))
       for(i <- RANGE) {
@@ -106,8 +107,7 @@ object MagicSquareAndCards {
 
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

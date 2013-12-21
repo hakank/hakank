@@ -73,21 +73,21 @@ object AddedCorner {
       cp.add(g == f + h)
 
       
-    } exploration {
-       
-      cp.binaryFirstFail(x)
+    } search {
+      
+      binaryFirstFail(x)
 
+    } onSolution {
+      
       println(a + " " + b   + " " + c)
       println(d + "   "     + " " + e)
       println(f + " " + g   + " " + h)
       println()
+      numSols += 1  
+      
+    }
 
-      numSols += 1
-
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

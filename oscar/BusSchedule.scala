@@ -64,7 +64,6 @@ object BusSchedule {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.minimize(num_buses) subjectTo {
 
@@ -77,22 +76,22 @@ object BusSchedule {
       cp.add(x(time_slots-1) + x(0) - demands(time_slots-1) == 0)
       
       
-    } exploration {
+    } search {
        
-      cp.binary(x)
+      binaryStatic(x)
 
+
+    } onSolution {
+      
       println("\nSolution:")
 
       println("x: " + x.mkString(""))
       println("num_buses : " + num_buses)
       println()
 
-      numSols += 1
+    }
 
-   }
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

@@ -116,10 +116,10 @@ object MaxFlowWinston1 {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binary(flow.flatten)
-
+      binaryStatic(flow.flatten.toSeq)
+    } onSolution {
       println("z: " + z)
       for(i <- NODES) {
         for(j <- NODES) {
@@ -132,9 +132,8 @@ object MaxFlowWinston1 {
       numSols += 1
        
      }
-     println("\nIt was " + numSols + " solutions.\n")
+     println(cp.start())
 
-     cp.printStats()
    }
 
 }

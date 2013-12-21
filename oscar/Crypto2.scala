@@ -64,8 +64,7 @@ object Crypto2 {
     //
     // constraints
     //
-    var numSols = 0
-
+    
     cp.solve subjectTo {
 
       cp.add(allDifferent(all), Strong)
@@ -92,18 +91,17 @@ object Crypto2 {
       cp.add(sums(all, "waltz",      34, ht))
 
       
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(all)
-
+      binaryMaxDegree(all)
+      
+    } onSolution {
+      
       println("all:" + all.mkString(""))
 
-      numSols += 1
-
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    
+    println(cp.start())
 
   }
 

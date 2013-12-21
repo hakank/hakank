@@ -397,38 +397,30 @@ object ABCEndview {
         }
 
 
-      } exploration {
+      } search {
 
-        /*
-        println("\nBefore labeling: ")
-        for(i <- RANGE) {
-           println(x(i).mkString(""))
-        }
-        println()
-        */
-  
-        while (!allBounds(x_flat)) {
-
-          // all unbound variables
+    	if (allBounds(x_flat)) noAlternative
+    	else {
+           // all unbound variables
           val notbound = x_flat.filterNot(_.isBound)
 
           // "max regret"
-          val y = argMax(notbound)(v=>v.max-v.min).last
+          val y = notbound.maxBy(v=>v.max-v.min)
 
           //    
           // value selection
           // 
           val vMax = y.max
           val v = vMax
-    	  cp.branch {
-            cp.post(y == v)
+    	  branch {
+            cp.add(y == v)
           } {
-            cp.post(y != v)
+            cp.add(y != v)
           }
-
-        }
-
-
+   	  
+    	}
+    
+     } onSolution {
         println("Solution:")
         for(i <- RANGE) {
           println(x(i).mkString(""))
@@ -443,13 +435,11 @@ object ABCEndview {
         }
         println()
           
-        numSols +=1
-
-     } run()
+        numSols +=1      
+     }
  
+     println(cp.start())
      
-     println("\nIt was " + numSols + " solution(s).")
-     cp.printStats()
 
   }
 

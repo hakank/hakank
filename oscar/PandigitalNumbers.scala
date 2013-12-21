@@ -117,18 +117,15 @@ object PandigitalNumbers {
       cp.add(num1 < num2)
 
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(all)
-
+      binaryFirstFail(all)
+    } onSolution {
       println(num1 + " +" + num2 + " =" + res )
 
       numSols += 1
 
-    } run()
-
-    // println("\nIt was " + numSols + " solutions.")
-    // cp.printStats()
+    } start()
 
   }
 

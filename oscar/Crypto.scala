@@ -140,19 +140,20 @@ object Crypto {
       cp.add(                W + A + L + T + Z == WALTZ)
 
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(LD)
-
+      binaryMaxDegree(LD)
+      
+    } onSolution {
+      
       println("\nSolution:")
       println("LD:" + LD.mkString(""))
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+    
+   println(cp.start())
 
   }
 

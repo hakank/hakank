@@ -78,7 +78,6 @@ import scala.math._
 */
 object CircuitTest {
 
-
   /*
    * circuit_me(x) 
    *
@@ -89,9 +88,9 @@ object CircuitTest {
    * 
    */
   def circuit_me(cp: CPSolver, x: Array[CPVarInt]) = {
-    
+
     val len = x.length
-    val z = Array.tabulate(len)(i=> CPVarInt(cp, 0 to len-1))
+    val z = Array.tabulate(len)(i => CPVarInt(cp, 0 to len - 1))
 
     cp.add(allDifferent(x), Strong)
     cp.add(allDifferent(z), Strong)
@@ -99,18 +98,17 @@ object CircuitTest {
     cp.add(z(0) == x(0))
 
     // then put the orbit of x(0) in z(1..n-1)
-    for(i <- 1 until len) {
-      cp.add(x(z(i-1)) == z(i), Strong)
+    for (i <- 1 until len) {
+      cp.add(x(z(i - 1)) == z(i), Strong)
     }
 
     // for(i <- lb until len-1) {
     //    cp.add(z(i) != 0)
     // }
-    
-    cp.add(z(len-1) == 0)
+
+    cp.add(z(len - 1) == 0)
 
   } // end circuit_me
-
 
   /*
    * circuit_path(x, p)
@@ -119,20 +117,17 @@ object CircuitTest {
    * We assume that the path starts from 1
    * 
    */
-  def circuit_path(cp: CPSolver, x: Array[CPVarInt], p:Array[CPVarInt]) = {
+  def circuit_path(cp: CPSolver, x: Array[CPVarInt], p: Array[CPVarInt]) = {
 
     val len = x.length
 
     cp.add(allDifferent(p), Strong)
     cp.add(p(0) == 0) // path always starts with 1
-    for(i <- 1 until len) {
-      cp.add(x(p(i-1)) == p(i), Strong) 
+    for (i <- 1 until len) {
+      cp.add(x(p(i - 1)) == p(i), Strong)
     }
 
   } // end circuit_path
-
-
-
 
   def main(args: Array[String]) {
 
@@ -148,34 +143,30 @@ object CircuitTest {
     //
 
     // Note: Here we use domain of 0..n-1
-    val x = Array.fill(n)(CPVarInt(cp, 0 to n-1))
-    val p = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val x = Array.fill(n)(CPVarInt(cp, 0 to n - 1))
+    val p = Array.fill(n)(CPVarInt(cp, 0 to n - 1))
 
     //
     // constraints
     //
-    var numSols = 0
+
     cp.solve subjectTo {
 
       // cp.add(circuit(x), Strong) // use the built-in
       circuit_me(cp, x)
       circuit_path(cp, x, p)
- 
 
-    } exploration {
-       
-      cp.binaryFirstFail(x)
+    } search {
 
-      println("\nCircuit: "+ x.mkString(""))
+      binaryFirstFail(x)
+    } onSolution {
+
+      println("\nCircuit: " + x.mkString(""))
       println("Path   : " + p.mkString(""))
 
-      numSols += 1
+    }
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
-
+    println(cp.start())
   }
 
 }

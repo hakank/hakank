@@ -121,17 +121,17 @@ object WhoKilledAgatha {
 
       // Who killed Agatha?
 
-   } exploration {
+   } search {
        
-      cp.binaryFirstFail(the_killer)
- 
+      binaryFirstFail(Seq(the_killer))
+   } onSolution {
       println("the_killer: " + names(the_killer.value))
 
       numSols += 1
        
-   } run()
+   } 
 
-   println("\nIt was " + numSols + " solutions.\n")
+   println(cp.start())
    cp.printStats()
 
  }

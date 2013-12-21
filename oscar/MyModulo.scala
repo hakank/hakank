@@ -140,18 +140,16 @@ object MyModulo {
         // cp.add(modulo(x(i), x(i-1)), 1)
       }
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x)
-
+      binaryMaxDegree(x)
+    } onSolution {
       println(x.mkString(" "))
 
       numSols += 1
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    println(cp.start())
 
   }
 

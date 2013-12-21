@@ -62,7 +62,6 @@ object Coins3 {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.minimize(num_coins) subjectTo {
 
@@ -77,22 +76,21 @@ object Coins3 {
         
       }
 
-    } exploration {
+    } search {
        
-      cp.binary(x)
-
+      binaryStatic(x)
+    } onSolution {
       println("\nSolution:")
 
       println("num_coins : " + num_coins)
       println("x: " + x.mkString(""))
       println()
 
-      numSols += 1
 
    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   println(cp.start())
+
 
   }
 

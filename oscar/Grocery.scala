@@ -72,20 +72,19 @@ object Grocery {
         // cp.add(item(0).mul(item(1)).mul(item(2)).mul(item(3)) == m2)
         cp.add(item.reduceLeft((acc,x) => acc*x) == m2, Strong)
 
-      } exploration {
+      } onSolution {
 
-         cp.binaryFirstFail(item)
-
+         binaryFirstFail(item)
+      
+      } onSolution {
+        
          println(item.mkString(""))
          println()
 
          numSols += 1
 
-      } run()
-	  
-      println("\nIt was " + numSols + " solutions.\n")
-  
-      cp.printStats()
+      } 
+      println(cp.start())
 
   }
 

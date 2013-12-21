@@ -68,14 +68,15 @@ object SendMostMoney {
           cp.add(Money == money)
     	  cp.add(allDifferent(all), Strong)
 
-         } exploration {
+         } search {
 
-           cp.binaryFirstFail(all)
-
+           binaryFirstFail(all)
+         } onSolution {
+           
            println(all.mkString(""))
            println("Money: " + Money)
 
-        } run()
+        }
 
 
       } else {
@@ -90,19 +91,18 @@ object SendMostMoney {
           cp.add(M > 0)
     	  cp.add(allDifferent(all), Strong)
 
-         } exploration {
+         } search {
 
-           cp.binaryFirstFail(all)
-
+           binaryFirstFail(all)
+         } onSolution {
            println(all.mkString(""))
            println("Money: " + Money)
            this_money = Money.value
-        }
+        } 
 
       }
       
-      println()
-      cp.printStats()
+      println(cp.start())
 
       return this_money
 

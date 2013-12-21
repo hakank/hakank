@@ -74,7 +74,6 @@ object CoinsGrid {
     //
     // constraints
     //
-    var numSols = 0
     cp.minimize(z) subjectTo {
       
       // sum rows = c
@@ -83,22 +82,22 @@ object CoinsGrid {
       List.tabulate(n)(i => cp.add(sum(List.tabulate(n)(j => x(j)(i) )) == c))
 
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(x.flatten)
-
+      binaryFirstFail(x.flatten.toSeq)
+    } onSolution {
+      
       println("\nz:" + z)
       print("x:\n")
       for(i <- 0 until n) {
         println(x(i).mkString(" "))
       }
 
-      numSols += 1
+      
 
    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   println(cp.start())
 
   }
 

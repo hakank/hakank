@@ -77,22 +77,21 @@ object SkiAssignment {
 
       cp.add(allDifferent(x), Strong)
 
-     } exploration {
-       
-       cp.binaryFirstFail(x)
+    } search {
 
-       for(s <- 0 until num_skiers) {
-         println("skier " + s + " ski: " + x(s))
-       }
-       println()
+      binaryFirstFail(x.toSeq)
+    } onSolution {
+      for (s <- 0 until num_skiers) {
+        println("skier " + s + " ski: " + x(s))
+      }
+      println()
 
-       numSols += 1
-       
-     }
+      numSols += 1
 
-     println("\nIt was " + numSols + " solutions.\n")
-     cp.printStats()
+    }
 
-   }
+    println(cp.start())
+
+  }
 
 }

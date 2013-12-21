@@ -113,9 +113,9 @@ object BreakingNews {
     val eventsInv = inverse2(cp, events)
 
     //
-     // constraints
+    // constraints
     //
-    var numSols = 0
+
 
     cp.solve subjectTo {
 
@@ -148,9 +148,13 @@ object BreakingNews {
       cp.add(( bayonne === corey) + (bayonne === whale)  >= 1)
       
 
-    } exploration {
+    } search {
        
-      cp.binary(locations ++ events)
+      binaryStatic(locations ++ events)
+      
+
+
+    } onSolution {
       
       println("Names    : " + names.mkString(" "))
       println("Locations:" + locations.mkString(""))
@@ -163,13 +167,13 @@ object BreakingNews {
       println((0 until n).
               map(s=>Array(names(s), locationsStr(locationsInv(s).value), eventsStr(eventsInv(s).value)).mkString(", ")).mkString("\n"))
       println()
+ 
+      
+    } 
+    
+    println(cp.start())
 
-      numSols += 1
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
 
   }
 

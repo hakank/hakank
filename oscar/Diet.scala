@@ -69,15 +69,15 @@ object Diet {
        cp.add(weightedSum(sugar, x) >= limits(2))
        cp.add(weightedSum(fat, x) >= limits(3))
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(x)
+       binaryFirstFail(x)
+       
+     } onSolution {
        println(x.mkString(" "))
-       
      }
 
-     println()
-     cp.printStats()
+     println(cp.start())
    }
 
 }

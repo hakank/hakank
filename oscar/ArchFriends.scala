@@ -130,10 +130,12 @@ object ArchFriends {
       cp.add(the_shoe_palace + 2 == suede_sandals)
 
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(shoes ++ shops)
+      binaryMaxDegree(shoes ++ shops)
 
+    } onSolution {
+      
       println("Shops: " + shops.mkString(" "))
       println("Shoes: " + shoes.mkString(" "))
       println()
@@ -143,9 +145,9 @@ object ArchFriends {
       println((0 until n).
               map(s=>Array(shopsStr(shopsInv(s).value), shoesStr(shoesInv(s).value)).mkString(": ")).mkString("\n"))
 
-      numSols += 1
-
-    } run()
+      numSols += 1     
+      
+    } start()
 
     println("\nIt was " + numSols + " solutions.")
     cp.printStats()

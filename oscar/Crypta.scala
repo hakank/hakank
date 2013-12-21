@@ -69,7 +69,6 @@ object Crypta {
     //
     // constraints
     //
-    var numSols = 0
     cp.solve subjectTo {
 
         cp.add(allDifferent(x), Strong)
@@ -92,19 +91,18 @@ object Crypta {
                (c + a*10 + g*100 + e*1000 + j*10000 + g*100000))
 
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(x)
-
+      binaryFirstFail(x)
+      
+    } onSolution {
+      
       println("\nSolution:")
       println("x:" + x.mkString(""))
 
-      numSols += 1
-
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    
+    println(cp.start())
 
   }
 

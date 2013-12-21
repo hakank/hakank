@@ -76,10 +76,12 @@ object MagicSquare {
        cp.add(x(0)(0)   < x(n-1)(n-1))
 
 
-     } exploration {
+     } search {
        
-       cp.binary(x.flatten, _.size, _.min)
-
+       binary(x.flatten.toSeq, _.size, _.min)
+     
+     } onSolution {
+       
        println("\nSolution:\ntotal " + total)
        for(i <- 0 until n) {
          println(x(i).map(j=>"%3d".format(j.value)).mkString(""))
@@ -93,10 +95,9 @@ object MagicSquare {
          cp.stop()
        }
        
-     } run()
-     println("\nIt was " + numSols + " solutions.")
-
-     cp.printStats()
+     } 
+     
+     println(cp.start())
    }
 
 }

@@ -179,10 +179,11 @@ object KillerSudoku {
 
       }
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(x_flat)
-
+      binaryFirstFail(x_flat)
+    } onSolution {
+      
       for(i <- RANGE) {
         println(x(i).mkString(""))
       }
@@ -190,10 +191,8 @@ object KillerSudoku {
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+   println(cp.start())
 
   }
 

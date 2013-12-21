@@ -102,10 +102,11 @@ object MaxFlowTaha {
       }
 
 
-     } exploration {
+     } search {
        
-      cp.binary(x.flatten, _.min, _.max)
-
+      binary(x.flatten.toSeq, _.min, _.max)
+     
+     } onSolution {
       println("total: " + total)
       println(x.map(i=>i.map(j=>"%3d".format(j.value)).mkString(" ")).mkString("\n"))
 
@@ -114,9 +115,8 @@ object MaxFlowTaha {
       numSols += 1
        
      }
-     println("\nIt was " + numSols + " solutions.\n")
+     println(cp.start())
 
-     cp.printStats()
    }
 
 }

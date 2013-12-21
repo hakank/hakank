@@ -87,10 +87,11 @@ object Assignment {
       COLS.foreach(j => cp.add( sum(x.col(j) ) <= 1))
       
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x.flatten)
+      binaryMaxDegree(x.flatten.toSeq)
 
+   } onSolution {
       println("total_cost:" + total_cost)
       for(i <- ROWS) {
         println(x(i).mkString(""))
@@ -102,12 +103,10 @@ object Assignment {
       }
       println()
 
-      numSols += 1
-
-   }
+      numSols += 1     
+   } start()
 
     println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
 
   }
 

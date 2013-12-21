@@ -174,10 +174,11 @@ object Hidato {
       }
   
 
-    } exploration {
+    } search {
  
-      cp.binary(x)
-
+      binaryStatic(x)
+    } onSolution {
+      
       println("\nSolution:")
       for(i <- 0 until n) {
         for(j <- 0 until n) {
@@ -189,12 +190,10 @@ object Hidato {
 
       numSols += 1
 
-   } run()
-
-    println("It was " + numSols + " solutions.")
-
-    cp.printStats()
-
+    } 
+   
+    println(cp.start())
+    
   }
 
 }

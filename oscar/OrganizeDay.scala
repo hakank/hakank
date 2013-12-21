@@ -101,10 +101,11 @@ object OrganizeDay {
 
       cp.add(begins(work) >= 11)
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(begins)
-
+      binaryMaxDegree(begins)
+    } onSolution {
+      
       for( t <- tasks) {
         println(tasks_str(t) + ":" + begins(t) + " -- " + durations(t) + "h --" + ends(t) )
       }
@@ -112,10 +113,8 @@ object OrganizeDay {
 
       numSols += 1
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    println(cp.start())
 
   }
 

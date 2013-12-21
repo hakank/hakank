@@ -91,18 +91,19 @@ object BalesOfHay {
       // symmetry breaking
       increasing(cp, bales)
       
-    } exploration {
+    } search {
        
-      cp.binary(bales, -_.constraintDegree, _.max)
+      binary(bales, -_.constraintDegree, _.max)
 
+    } onSolution {
+      
       println("bales:" + bales.mkString(""))
+      numSols += 1      
+    
+    } 
+    
+    println(cp.start())
 
-      numSols += 1
-
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
 
   }
 

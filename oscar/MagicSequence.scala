@@ -69,19 +69,18 @@ object MagicSequence {
         cp.add(x(i) == all_values(i)._1)
       }
 
-    } exploration {
+    } search {
        
-      cp.binary(x, -_.constraintDegree, _.min)
-
+      binary(x, -_.constraintDegree, _.min)
+    } onSolution {
+      
       println("\nSolution:")
       println("x: " + x.mkString(" "))
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+   println(cp.start())
 
   }
 

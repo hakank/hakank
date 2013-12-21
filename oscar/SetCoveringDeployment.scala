@@ -117,10 +117,11 @@ object SetCoveringDeployment {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binary(x)
-
+      binaryStatic(x)
+    } onSolution {
+      
       println("\nSolution:")
       println("num_armies: " + num_armies)
       println("x: " + x.mkString(""))
@@ -138,8 +139,7 @@ object SetCoveringDeployment {
 
    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   println(cp.start())
 
   }
 

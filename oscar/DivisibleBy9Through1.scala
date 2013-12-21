@@ -89,7 +89,7 @@ object DivisibleBy9Through1 {
     //
     // constraints
     //
-    var numSols = 0
+
     cp.solve subjectTo {
       
       cp.add(allDifferent(digits), Strong)
@@ -98,22 +98,21 @@ object DivisibleBy9Through1 {
         cp.add(numbers(i-1) == divisors(i-1) * i)
       }
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(digits)
-
+      binaryFirstFail(digits)
+      
+    } onSolution {
+      
       println("\nSolution:")
       println("digits:" +  digits.mkString(""))
       print("number base 10:" +  numbers.last +  " Base " + base + ": " + 
             digits.map(_.value).mkString(""))
       println()
 
-      numSols += 1
-
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    
+    println(cp.start())
 
   }
 

@@ -138,10 +138,12 @@ object ARoundOfGolf {
       }
 
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(last_name ++ job ++ score)
-
+       binaryFirstFail(last_name ++ job ++ score)
+       
+     } onSolution {
+ 
        println("last_name:" + last_name.mkString(""))
        println("job      :" + job.mkString(""))
        println("score    :" + score.mkString(""))
@@ -149,7 +151,8 @@ object ARoundOfGolf {
 
        numSols += 1
        
-     } run()
+     } start()
+     
      println("\nIt was " + numSols + " solutions.")
 
      cp.printStats()

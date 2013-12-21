@@ -174,10 +174,11 @@ object Kakuro {
 
       }
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(x.flatten)
-
+      binaryMaxDegree(x.flatten.toSeq)
+    } onSolution {
+      
       for(i <- 0 until n) {
         for(j <- 0 until n) {
           val v = x(i)(j).value
@@ -193,10 +194,9 @@ object Kakuro {
 
       numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+    
+   println(cp.start())
 
   }
 

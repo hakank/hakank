@@ -88,20 +88,19 @@ object CoveringOpl {
                                )
                         )
       
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(hire)
-
+      binaryMaxDegree(hire)
+      
+    } onSolution {
+      
       println("\nSolution:")
       println("total_cost: " + total_cost)
       println("hire: " + hire.zipWithIndex.filter(_._1.value == 1).map(_._2).mkString(" "))
 
-      numSols += 1
-
    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   println(cp.start())
 
   }
 

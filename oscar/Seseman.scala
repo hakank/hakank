@@ -95,10 +95,10 @@ object Seseman {
        cp.add(total_sum == sum(x.flatten))
 
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(x.flatten)
-
+       binaryFirstFail(x.flatten.toSeq)
+     } onSolution {
        for(i <- 0 until n) {
          println(x(i).mkString(""))
        }
@@ -106,10 +106,8 @@ object Seseman {
 
        numSols += 1
        
-     } run()
-
-     println("\nIt was " + numSols + " solutions.")
-     cp.printStats()
+     } 
+     println(cp.start())
   }
 
 }

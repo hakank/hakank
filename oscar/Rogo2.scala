@@ -211,10 +211,10 @@ object Rogo2 {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binary(path ++ points ++ Array(sum_points))
-
+      binaryStatic(path ++ points ++ Array(sum_points))
+    } onSolution {
       println("sum_points: " + sum_points);
       println("(Adding 1 to coords...)");
       val sol = Array.fill(rows,cols)(0)
@@ -246,8 +246,8 @@ object Rogo2 {
 
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
+ 
 
   }
 

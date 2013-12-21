@@ -225,18 +225,19 @@ object APuzzle {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binary(all)
+      binaryStatic(all)
 
-      println("all:" + all.mkString("") + "  x:" + x)
-
-      numSols += 1
+     } onSolution {
        
-     } run()
+       println("all:" + all.mkString("") + "  x:" + x)
+       numSols += 1 
+       
+     } start()
+     
      println("\nIt was " + numSols + " solutions.\n")
 
-     cp.printStats()
    }
 
 }

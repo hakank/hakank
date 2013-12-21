@@ -120,10 +120,12 @@ object Sudoku2 {
      }
 
 
-     } exploration {
+     } search {
        
-      cp.binaryFirstFail(x.flatten)
-
+       binaryFirstFail(x.flatten.toSeq)
+       
+     } onSolution {
+       
        println("\nSolution:")
        for(i <- NRANGE) {
          println(x(i).map(j=>alpha(j.value)).mkString(" "))
@@ -132,10 +134,10 @@ object Sudoku2 {
 
        numSols += 1
        
-     } run()
-     println("\nIt was " + numSols + " solutions.")
+     }
+     
+     println(cp.start())
 
-     cp.printStats()
    }
 
 }

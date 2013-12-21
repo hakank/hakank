@@ -87,19 +87,18 @@ object FiveFloors {
        cp.add((fletcher-cooper).abs() > 1)
 
 
-     } exploration {
+     } search {
        
-       cp.binaryMaxDegree(x)
-
+       binaryMaxDegree(x)
+     } onSolution {
        println(x.mkString(""))
 
        numSols += 1
        
-     } run()
+     } 
 
-     println("\nIt was " + numSols + " solutions.\n")
+     println(cp.start())
 
-     cp.printStats()
    }
 
 }

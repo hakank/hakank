@@ -91,10 +91,11 @@ object MrSmith {
       cp.add((matt === 1) ==> ((john === 1) && (mr_smith === 1)))
 
 
-    } exploration {
+    } search {
        
-      cp.binary(x)
-
+      binaryStatic(x)
+    } onSolution {
+      
       println("\nSolution:")
       println(x.mkString(""))
       println("Mr Smith : " + mr_smith)
@@ -105,10 +106,9 @@ object MrSmith {
 
       numSols += 1
 
-   } run()
+   } 
+   println(cp.start())
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
 
   }
 

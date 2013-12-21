@@ -67,8 +67,6 @@ object EinsteinPuzzle {
     //
     // constraints
     //
-    var numSols = 0
-
     cp.solve subjectTo {
 
        cp.add(allDifferent(nationality), Strong)    
@@ -127,10 +125,12 @@ object EinsteinPuzzle {
        cp.add((smoke(blends) - drink(water)).abs == 1);      
 
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(nationality ++ animal ++ drink ++ smoke ++ color)
-
+      binaryFirstFail(nationality ++ animal ++ drink ++ smoke ++ color)
+      
+    } onSolution {
+      
       println("\nSolution:")
       val nats = "Brit, Swede, Dane, Norwegian, German"            split(", *")
       val anis = "dogs, fish, birds, cats, horses"                 split(", *")
@@ -154,12 +154,10 @@ object EinsteinPuzzle {
 
       println("\nWho owns the fish: The " + nats(getIndex(animal, fish )))
 
-      numSols += 1
+    }
+    
+    println(cp.start())
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
 
   }
 

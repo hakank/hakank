@@ -104,7 +104,6 @@ object FourIslands {
     //
     // constraints
     //
-    var numSols = 0
     cp.solve subjectTo {
       
       cp.add(allDifferent(island), Strong)
@@ -169,10 +168,11 @@ object FourIslands {
        (ice_skating_rink === c && jai_alai_stadium === b)
       )
 
-    } exploration {
+    } search {
      
-      cp.binary(island)
-
+      binaryStatic(island)
+    } onSolution {
+      
       println("\nSolution:")
       println("island    : " +  island.mkString(""))
       println("export    : " +  export.mkString(""))
@@ -188,12 +188,10 @@ object FourIslands {
 
       println()
 
-      numSols += 1
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    
+    println(cp.start())
 
   }
 

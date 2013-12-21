@@ -67,18 +67,17 @@ object MapColoring {
       cp.add(color(0) == 1)
 
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(color)
-
+       binaryFirstFail(color)
+     } onSolution {
+       
        println("color:" + color.mkString(""))
 
        numSols += 1
        
-     } run()
-     println("\nIt was " + numSols + " solutions.\n")
-
-     cp.printStats()
+     }
+     println(cp.start())
    }
 
 }

@@ -67,7 +67,6 @@ object CostasArray {
     //
     // constraints
     //
-    var numSols = 0
 
     cp.solve subjectTo {
 
@@ -120,10 +119,11 @@ object CostasArray {
       }
       
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(costas)
-
+      binaryFirstFail(costas)
+    } onSolution {
+      
       println("\nSolution:")
 
       println("costas:" + costas.mkString(""))
@@ -137,12 +137,9 @@ object CostasArray {
       }
       println()
  
-      numSols += 1
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+   println(cp.start())
 
   }
 

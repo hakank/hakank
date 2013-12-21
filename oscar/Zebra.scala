@@ -145,10 +145,10 @@ object Zebra {
 
 
 
-    } exploration {
+    } search {
        
-      cp.binary(all_vars)
-
+      binaryStatic(all_vars)
+    } onSolution {
       println("\nSolution:")
       val p  = Array(englishman, spaniard, japanese, ukrainian, norwegian)
       val ps = Array("englishman", "spaniard", "japanese", "ukrainian", "norwegian")
@@ -158,10 +158,8 @@ object Zebra {
 
       numSols += 1
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    println(cp.start())
 
   }
 

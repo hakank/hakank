@@ -223,21 +223,19 @@ object StableMarriage {
         }
       }
 
-     } exploration {
+     } search {
        
-       cp.binaryFirstFail(wife ++ husband)
-
+       binaryFirstFail(wife ++ husband)
+     } onSolution {
        println("wife   :" + wife.mkString(""))
        println("husband:" + husband.mkString(""))
        println()
 
        numSols += 1
        
-     } run()
+     }
 
-     println("\nIt was " + numSols + " solutions.\n")
-
-     cp.printStats()
-   }
+     println(cp.start())
+  }
 
 }

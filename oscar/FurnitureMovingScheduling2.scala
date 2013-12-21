@@ -67,21 +67,24 @@ object FurnitureMovingScheduling2 {
     // variables
     //
     val resource  =  MaxResource(cp, capa, "FurnitureMoving")
-    instance.map(a => Activity(cp, a._1) needs a._2 ofResource resource)
-    
+    val activities = for (a <- instance) yield {
+      val act = Activity(cp, a._1)
+      act needs a._2 ofResource resource
+      act
+    }
     val makespan = cp.makespan
 
     //
     // constraints
     //
-    var numSols = 0
-
     cp.minimize(makespan) subjectTo{ 
       
 
-    } exploration {
+    } search {
        
-      cp.setTimes(cp.activities)
+      setTimes(activities.map(_.start),activities.map(_.dur),activities.map(_.end))
+
+    } onSolution {
 
       println("\nSolution:")
 
@@ -90,12 +93,9 @@ object FurnitureMovingScheduling2 {
       println("cp.activities:\n" + cp.activities.mkString("\n"))
       println()
 
-      numSols += 1
-
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

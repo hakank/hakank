@@ -74,9 +74,8 @@ object Fancy {
     val cost = weightedSum(Array(10,2,12,11), Array(t2,h2,s2,n2))
 
     //
-     // constraints
+    // constraints
     //
-    var numSols = 0
 
     cp.minimize(cost) subjectTo {
     // cp.solveAll subjectTo {
@@ -98,28 +97,20 @@ object Fancy {
       // cp.add( ((r===1 || h===1 || s===0) ==> (t===1)) || n===1 )
 
 
-    } exploration {
+    } search {
        
-      // cp.binary(x2) // don't work with CPVarBool
+      binaryStatic(x)
 
-      // For CPVarBool
-      while (!allBounds(x)) {
-        val y = x.filter(!_.isBound).head
-          cp.branch {cp.post(y == 0)} {cp.post(y == 1)}
-      }
-
+    } onSolution {
 
       println("Cost: " + cost)
       println(" " + z.mkString(" "))
       println(x2.mkString(""))
       println()
 
-      numSols += 1
-
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

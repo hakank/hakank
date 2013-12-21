@@ -105,20 +105,20 @@ object CalculsDEnfer {
       // for solveAll
       // cp.add(x_max == 16);
 
-    } exploration {
+    } search {
        
-      cp.binaryMaxDegree(X ++ Array(x_max))
+      binaryMaxDegree(X ++ Array(x_max))
 
+    } onSolution {
+      
       println("\nSolution:");
       println("x_max: " + x_max)
       println("X: " + X.mkString(""))
 
-      numSols += 1
+    }
 
-   }
+    println(cp.start())
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
 
   }
 

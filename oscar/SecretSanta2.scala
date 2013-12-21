@@ -195,10 +195,10 @@ object SecretSanta2 {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(santas ++ santa_distance)
-
+      binaryFirstFail(santas ++ santa_distance)
+    } onSolution {
       println("santas: " + santas.mkString(""))
       println("santa_distance: " + santa_distance.mkString(""))
       for(i <- RANGE) {
@@ -212,8 +212,7 @@ object SecretSanta2 {
 
     }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

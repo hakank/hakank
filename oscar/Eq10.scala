@@ -52,7 +52,6 @@ object Eq10 {
     //
     // constraints
     //
-    var numSols = 0
     cp.solve subjectTo {
 
       cp.add(x1*98527+x2*34588+x3*5872+x5*59422+x7*65159
@@ -85,20 +84,18 @@ object Eq10 {
       cp.add(x1*78693+x5*38592+x6*38478+361921
                  == x2*94129+x3*43188+x4*82528+x7*69025)
       
-      
-      
-    } exploration {
+   
+    } search {
        
-      cp.binary(x)
+      binaryStatic(x)
 
+    } onSolution {
+      
       println("x:" + x.mkString(""))
+    
+    }
 
-      numSols += 1
-
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

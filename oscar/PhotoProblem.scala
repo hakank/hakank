@@ -147,10 +147,10 @@ object PhotoProblem {
       // cp.add(z == 6)
 
 
-    } exploration {
+    } search {
        
-      cp.binary(positions)
-
+      binaryStatic(positions)
+    } onSolution {
       println("\nSolution:")
       println("positions: " + positions.mkString(""))
       println("places   : " + places.mkString(""))
@@ -178,11 +178,8 @@ object PhotoProblem {
 
       numSols += 1
 
-   }
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
-
+   } 
+   println(cp.start())
   }
 
 }

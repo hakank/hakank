@@ -69,15 +69,17 @@ object Diet2 {
            cp.add(weightedSum(all(i), x) >= limits(i))
        )
 
-    } exploration {
+    } search {
        
-       cp.binaryFirstFail(x)
+       binaryFirstFail(x)
+       
+    } onSolution {
+      
        println(x.mkString(" "))
-       
+  
     }
 
-    println()
-    cp.printStats()
+    println(cp.start())
 
   }
 

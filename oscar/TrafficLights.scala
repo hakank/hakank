@@ -122,10 +122,10 @@ object TrafficLights {
         cp.add( table(Array(V(i),P(i),V(j),P(j)), allowed), Strong)
       }
 
-    } exploration {
+    } search {
        
-      cp.binary( V ++ P)
-
+      binaryStatic( V ++ P)
+    } onSolution {
       println("\nSolution:")
       println("V: " + V.mkString(""))
       println("P: " + P.mkString(""))
@@ -136,11 +136,9 @@ object TrafficLights {
 
       numSols += 1
 
-    } run()
+    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
-
+    println(cp.start())
   }
 
 }

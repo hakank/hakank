@@ -114,10 +114,9 @@ object YoungTableaux {
       }
 
 
-    } exploration {
-       
-      cp.binaryFirstFail(x.flatten)
-
+    } search {
+      binaryFirstFail(x.flatten.toSeq)
+    } onSolution {
       println("\nSolution:")
       print("p: ")
       for(i <- RANGE0) {
@@ -141,10 +140,9 @@ object YoungTableaux {
 
       numSols += 1
 
-    } run()
+    } 
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 

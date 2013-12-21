@@ -70,19 +70,17 @@ object SequenceSum {
       // cp.add(x(0) == 1)
       
       
-    } exploration {
+    } search {
       
-      cp.binaryFirstFail(x)
-        
+      binaryFirstFail(x)
+    } onSolution {  
       print("x: " + x.mkString(""))
       println("  m: " + m)
         
       numSols += 1
         
-     } run()
-
-     println("\nIt was " + numSols + " solutions.")
-     cp.printStats()
+    } 
+    println(cp.start())
 
    }
 

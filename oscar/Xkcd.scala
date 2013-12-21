@@ -58,18 +58,17 @@ object Xkcd {
 
       cp.add(weightedSum(price, x) == total)
 
-    } exploration {
+    } search {
        
-       cp.binaryFirstFail(x)
-
+       binaryFirstFail(x)
+    } onSolution {
        println("x:" + x.mkString(" "))
 
        numSols += 1
        
-    } run()
+    } 
 
-    println("\nIt was " + numSols + " solutions.\n")
-    cp.printStats()
+    println(cp.start())
 
   }
 

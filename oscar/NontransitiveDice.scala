@@ -141,10 +141,10 @@ object NontransitiveDice {
 
       }
         
-    } exploration {
+    } search {
         
-      cp.binaryMaxDegree(all)
-
+      binaryMaxDegree(all)
+    } onSolution {
       println("\ngap_sum: " + gap_sum)
       println("gap: " + gap.mkString(""))
       println("max_val: " + max_val)
@@ -165,10 +165,8 @@ object NontransitiveDice {
         cp.stop()
       } 
 
-    } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    } 
+    println(cp.start())
 
   }
 

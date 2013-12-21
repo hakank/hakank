@@ -166,10 +166,10 @@ object HidatoTable {
       }
 
 
-    } exploration {
+    } search {
        
-      cp.binaryFirstFail(positions)
-
+      binaryFirstFail(positions)
+    } onSolution {
       println("\nSolution:")
 
       //
@@ -191,11 +191,9 @@ object HidatoTable {
 
       numSols += 1
 
-    } run()
+    }
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
-
+    println(cp.start())
   }
 
 }

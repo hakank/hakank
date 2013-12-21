@@ -106,23 +106,19 @@ object WordSquare {
       }
 
 
-    } exploration {
+    } search {
 
-      cp.binaryFirstFail(E)
-        
+      binaryFirstFail(E)
+    } onSolution {  
       println("solution #" + (numSols+1))
       println(E.map(e=>words(e.value)).mkString("\n"))
       println()
-
       numSols += 1
-      if (num_to_show > 0 && numSols >= num_to_show) {
-        cp.stop();
-      }
 
-    } run()
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    }
+
+    println(cp.start(nbSolMax = num_to_show))
 
  }
 

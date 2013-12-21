@@ -83,10 +83,11 @@ object Langford {
       // symmetry breaking
       cp.add(solution(0) < solution(2*k-1))
 
-    } exploration {
+    } search {
        
-      cp.binary(position, _.size, _.min)
-
+      binary(position, _.size, _.min)
+    
+    } onSolution {
       print("solution:" + solution.mkString("") + " ")
       println("position:" + position.mkString(""))
 
@@ -96,10 +97,8 @@ object Langford {
         cp.stop()
       }
 
-   } run()
-
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+   } 
+   println(cp.start())
 
   }
 

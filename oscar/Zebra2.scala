@@ -121,10 +121,9 @@ object Zebra2 {
 
 
 
-    } exploration {
-       
-      cp.binaryFirstFail(all_vars)
-
+    } search {       
+      binaryFirstFail(all_vars)
+    } onSolution {
       println("\nSolution:")
       val ns = Array("englishman", "spaniard", "japanese", "ukrainian", "norwegian")
       println("water drinker: " + 
@@ -134,10 +133,9 @@ object Zebra2 {
 
       numSols += 1
 
-    } run()
+    } 
 
-    println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(cp.start())
 
   }
 
