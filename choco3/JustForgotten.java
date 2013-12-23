@@ -33,6 +33,7 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -67,10 +68,15 @@ public class JustForgotten extends AbstractProblem {
     for(int r = 0; r < rows; r++) {
       BoolVar[] b = VariableFactory.boolArray("b", cols, solver);
       for(int c = 0; c < cols; c++) {
+        /*
         solver.post(IntConstraintFactory.implies(b[c],
                                                  IntConstraintFactory.arithm(x[c], "=", a[r][c])));
         solver.post(IntConstraintFactory.implies(VariableFactory.not(b[c]),
                                                  IntConstraintFactory.arithm(x[c], "!=", a[r][c])));
+        */
+        solver.post(LogicalConstraintFactory.ifThen(b[c],
+                                                    IntConstraintFactory.arithm(x[c], "=", a[r][c])));
+
       }
       
       solver.post(IntConstraintFactory.sum(b,VariableFactory.fixed(4, solver)));

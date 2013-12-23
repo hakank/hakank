@@ -49,6 +49,7 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -139,51 +140,48 @@ public class KenKen2 extends AbstractProblem {
 
       // a+b=res
       BoolVar r1 = VariableFactory.bool("r1", solver);
-      solver.post(IntConstraintFactory.implies(r1,
-                                               IntConstraintFactory.arithm(a,"+",b,"=",res)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(r1),
-                                               IntConstraintFactory.arithm(a,"+",b,"!=",res)));
+      solver.post(LogicalConstraintFactory.ifThenElse(r1,
+                                                      IntConstraintFactory.arithm(a,"+",b,"=",res),
+                                                      IntConstraintFactory.arithm(a,"+",b,"!=",res)));
+
 
       // a*b=res
       IntVar t2 = VariableFactory.bounded("t2", 0, a.getUB()*b.getUB(), solver);
       solver.post(IntConstraintFactory.times(a,b,t2));
       BoolVar r2 = VariableFactory.bool("r2", solver);
-      solver.post(IntConstraintFactory.implies(r2,
-                                               IntConstraintFactory.arithm(t2,"=",resVar)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(r2),
-                                               IntConstraintFactory.arithm(t2,"!=",resVar)));
+      solver.post(LogicalConstraintFactory.ifThenElse(r2,
+                                                      IntConstraintFactory.arithm(t2,"=",resVar),
+                                                      IntConstraintFactory.arithm(t2,"!=",resVar)));
+
       
       // a*res=b (b/a=res)
       IntVar t3 = VariableFactory.bounded("t3", 0, a.getUB()*res, solver);
       solver.post(IntConstraintFactory.times(a,resVar, t3));
       BoolVar r3 = VariableFactory.bool("r3", solver);
-      solver.post(IntConstraintFactory.implies(r3,
-                                               IntConstraintFactory.arithm(t3,"=",b)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(r3),
-                                               IntConstraintFactory.arithm(t3,"!=",b)));
+      solver.post(LogicalConstraintFactory.ifThenElse(r3,
+                                                      IntConstraintFactory.arithm(t3,"=",b),
+                                                      IntConstraintFactory.arithm(t3,"!=",b)));
+
 
       // b*res=a (a/b=res)
       IntVar t4 = VariableFactory.bounded("t4", 0, b.getUB()*res, solver);
       solver.post(IntConstraintFactory.times(b,resVar, t4));
       BoolVar r4 = VariableFactory.bool("r4", solver);
-      solver.post(IntConstraintFactory.implies(r4,
-                                               IntConstraintFactory.arithm(t4,"=",a)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(r4),
-                                               IntConstraintFactory.arithm(t4,"!=",a)));
+      solver.post(LogicalConstraintFactory.ifThenElse(r4,
+                                                      IntConstraintFactory.arithm(t4,"=",a),
+                                                      IntConstraintFactory.arithm(t4,"!=",a)));
 
       // a-b=res
       BoolVar r5 = VariableFactory.bool("r5", solver);
-      solver.post(IntConstraintFactory.implies(r5,
-                                               IntConstraintFactory.arithm(a,"-",b,"=",res)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(r5),
-                                               IntConstraintFactory.arithm(a,"-",b,"!=",res)));
+      solver.post(LogicalConstraintFactory.ifThenElse(r5,
+                                                      IntConstraintFactory.arithm(a,"-",b,"=",res),
+                                                      IntConstraintFactory.arithm(a,"-",b,"!=",res)));
       
       // b-a=res
       BoolVar r6 = VariableFactory.bool("r6", solver);
-      solver.post(IntConstraintFactory.implies(r6,
-                                               IntConstraintFactory.arithm(b,"-",a,"=",res)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(r6),
-                                               IntConstraintFactory.arithm(b,"-",a,"!=",res)));
+      solver.post(LogicalConstraintFactory.ifThenElse(r6,
+                                                      IntConstraintFactory.arithm(b,"-",a,"=",res),
+                                                      IntConstraintFactory.arithm(b,"-",a,"!=",res)));
 
 
       // r1+r2+r3+r4+r5+r6 >= 1
@@ -209,19 +207,17 @@ public class KenKen2 extends AbstractProblem {
       IntVar ssum = VariableFactory.bounded("ssum", 0, n*len, solver);
       solver.post(IntConstraintFactory.sum(xx,ssum));
       BoolVar rsum = VariableFactory.bool("rsum", solver);
-      solver.post(IntConstraintFactory.implies(rsum,
-                                               IntConstraintFactory.arithm(ssum,"=",resVar)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(rsum),
-                                               IntConstraintFactory.arithm(ssum,"!=",resVar)));
+      solver.post(LogicalConstraintFactory.ifThenElse(rsum,
+                                                      IntConstraintFactory.arithm(ssum,"=",resVar),
+                                                      IntConstraintFactory.arithm(ssum,"!=",resVar)));
 
 
       // Product
       IntVar prod = product(xx);
       BoolVar rprod = VariableFactory.bool("rprod", solver);
-      solver.post(IntConstraintFactory.implies(rprod,
-                                               IntConstraintFactory.arithm(prod,"=",resVar)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(rprod),
-                                               IntConstraintFactory.arithm(prod,"!=",resVar)));
+      solver.post(LogicalConstraintFactory.ifThenElse(rprod,
+                                                      IntConstraintFactory.arithm(prod,"=",resVar),
+                                                      IntConstraintFactory.arithm(prod,"!=",resVar)));
 
       solver.post(IntConstraintFactory.arithm(rsum, "+", rprod, ">=", 1));
 

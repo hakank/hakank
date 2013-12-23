@@ -34,11 +34,6 @@ import solver.ResolutionPolicy;
 import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
-import solver.search.limits.FailLimit;
 import solver.search.strategy.IntStrategyFactory;
 import solver.search.loop.monitors.SearchMonitorFactory;
 import solver.variables.IntVar;
@@ -108,7 +103,7 @@ public class CoinsGrid extends AbstractProblem {
   @Override
   public void configureSearch() {
     solver.set(IntStrategyFactory.domOverWDeg_InDomainMin(ArrayUtils.flatten(x), seed));
-    SearchMonitorFactory.luby(solver, 2, 2, new FailLimit(solver, 2), 2500);
+    // SearchMonitorFactory.luby(solver, 2, 2, new FailLimit(solver, 2), 2500);
   }
 
   @Override

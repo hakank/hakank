@@ -33,6 +33,7 @@ import solver.ResolutionPolicy;
 import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.search.strategy.selectors.values.InDomainMax;
 import solver.search.strategy.selectors.values.InDomainMiddle;
@@ -130,10 +131,10 @@ public class PickingTeams extends AbstractProblem {
     for(int k = 0; k < 2; k++) {
       BoolVar[] bteam = VariableFactory.boolArray("bteam", n, solver);
       for(int i = 0; i < n; i++) {
-        solver.post(IntConstraintFactory.implies(bteam[i],
-                                                 IntConstraintFactory.arithm(x[i],"=",k)));
-        solver.post(IntConstraintFactory.implies(VariableFactory.not(bteam[i]),
-                                                 IntConstraintFactory.arithm(x[i],"!=",k)));
+        solver.post(LogicalConstraintFactory.ifThenElse(bteam[i],
+                                                        IntConstraintFactory.arithm(x[i],"=",k),
+                                                        IntConstraintFactory.arithm(x[i],"!=",k)));
+
       }
       solver.post(IntConstraintFactory.scalar(bteam, s, sums[k]));
     }

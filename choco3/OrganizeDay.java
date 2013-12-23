@@ -21,10 +21,7 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -70,17 +67,15 @@ public class OrganizeDay extends AbstractProblem {
   {
     // (s1 + d1 <= s2) + (s2 + d2 <= s1) == 1
     BoolVar[] b = VariableFactory.boolArray("b", 2, solver);
-    
-    solver.post(IntConstraintFactory.implies(b[0],
-                                           IntConstraintFactory.arithm(VariableFactory.offset(s1,d1), "<=", s2)));
-    solver.post(IntConstraintFactory.implies(VariableFactory.not(b[0]),
-                                           IntConstraintFactory.arithm(VariableFactory.offset(s1,d1), ">", s2)));
+    solver.post(LogicalConstraintFactory.ifThenElse(b[0],
+                                                    IntConstraintFactory.arithm(VariableFactory.offset(s1,d1), "<=", s2),
+                                                    IntConstraintFactory.arithm(VariableFactory.offset(s1,d1), ">", s2)));
 
-    solver.post(IntConstraintFactory.implies(b[1],
-                                           IntConstraintFactory.arithm(VariableFactory.offset(s2,d2), "<=", s1)));
-    solver.post(IntConstraintFactory.implies(VariableFactory.not(b[1]),
-                                           IntConstraintFactory.arithm(VariableFactory.offset(s2,d2), ">", s1)));
-    
+    solver.post(LogicalConstraintFactory.ifThenElse(b[1],
+                                                    IntConstraintFactory.arithm(VariableFactory.offset(s2,d2), "<=", s1),
+                                                    IntConstraintFactory.arithm(VariableFactory.offset(s2,d2), ">", s1)));
+
+
     solver.post(IntConstraintFactory.sum(b, VariableFactory.fixed(1, solver)));
                 
   }

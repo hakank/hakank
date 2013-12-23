@@ -26,10 +26,7 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -167,10 +164,8 @@ public class NontransitiveDice extends AbstractProblem {
       BoolVar[][] sum1B = VariableFactory.boolMatrix("sum1B_"+d, n, n,solver);
       for(int r1 = 0; r1 < n; r1++) {
         for(int r2 = 0; r2 < n; r2++) {
-          solver.post(IntConstraintFactory.implies(sum1B[r1][r2],
-                                                   IntConstraintFactory.arithm(dice[d % m][r1],">", dice[(d+1)%m][r2])));
-          solver.post(IntConstraintFactory.implies(VariableFactory.not(sum1B[r1][r2]),
-                                                   IntConstraintFactory.arithm(dice[d % m][r1],"<=", dice[(d+1)%m][r2])));
+          solver.post(LogicalConstraintFactory.ifThen(sum1B[r1][r2],
+                                                      IntConstraintFactory.arithm(dice[d % m][r1],">", dice[(d+1)%m][r2])));
 
         }
       }
@@ -179,10 +174,9 @@ public class NontransitiveDice extends AbstractProblem {
       BoolVar[][] sum2B = VariableFactory.boolMatrix("sum2B_"+d, n, n,solver);
       for(int r1 = 0; r1 < n; r1++) {
         for(int r2 = 0; r2 < n; r2++) {
-          solver.post(IntConstraintFactory.implies(sum2B[r1][r2],
-                                                   IntConstraintFactory.arithm(dice[(d+1) % m][r1],">", dice[d%m][r2])));
-          solver.post(IntConstraintFactory.implies(VariableFactory.not(sum2B[r1][r2]),
-                                                   IntConstraintFactory.arithm(dice[(d+1) % m][r1],"<=", dice[d%m][r2])));
+          solver.post(LogicalConstraintFactory.ifThen(sum2B[r1][r2],
+                                                      IntConstraintFactory.arithm(dice[(d+1) % m][r1],">", dice[d%m][r2])));
+
         }
       }
       solver.post(IntConstraintFactory.sum(ArrayUtils.flatten(sum2B), comp[d%m][1]));

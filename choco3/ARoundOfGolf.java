@@ -45,6 +45,7 @@ import solver.ResolutionPolicy;
 import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.search.strategy.selectors.values.InDomainMax;
 import solver.search.strategy.selectors.values.InDomainMiddle;
@@ -136,42 +137,26 @@ public class ARoundOfGolf extends AbstractProblem {
     solver.post(IntConstraintFactory.element(scoreSands, score, Sands, 0));
     solver.post(IntConstraintFactory.element(score_caddy, score, caddy, 0));
 
-    solver.post(IntConstraintFactory.implies(b3_a_1,
+    solver.post(LogicalConstraintFactory.ifThen(b3_a_1,
                                              IntConstraintFactory.arithm(VariableFactory.offset(scoreSands, 4),
                                                                          "=",
                                                                          score[Frank])));
-    solver.post(IntConstraintFactory.implies(VariableFactory.not(b3_a_1),
-                                             IntConstraintFactory.arithm(VariableFactory.offset(scoreSands, 4),
-                                                                         "!=",
-                                                                         score[Frank])));
 
-    solver.post(IntConstraintFactory.implies(b3_a_2,
+    solver.post(LogicalConstraintFactory.ifThen(b3_a_2,
                                              IntConstraintFactory.arithm(score_caddy,
                                                                          "=",
                                                                          VariableFactory.offset(scoreSands, 7))));
-    solver.post(IntConstraintFactory.implies(VariableFactory.not(b3_a_2),
-                                             IntConstraintFactory.arithm(score_caddy,
-                                                                         "!=",
-                                                                         VariableFactory.offset(scoreSands, 7))));
 
-
-    solver.post(IntConstraintFactory.implies(b3_b_1,
+    solver.post(LogicalConstraintFactory.ifThen(b3_b_1,
                                              IntConstraintFactory.arithm(VariableFactory.offset(scoreSands, 7),
                                                                          "=",
                                                                          score[Frank])));
-    solver.post(IntConstraintFactory.implies(VariableFactory.not(b3_b_1),
-                                             IntConstraintFactory.arithm(VariableFactory.offset(scoreSands, 7),
-                                                                         "!=",
-                                                                         score[Frank])));
 
-    solver.post(IntConstraintFactory.implies(b3_b_2,
+    solver.post(LogicalConstraintFactory.ifThen(b3_b_2,
                                              IntConstraintFactory.arithm(score_caddy,
                                                                          "=",
                                                                          VariableFactory.offset(scoreSands, 4))));
-    solver.post(IntConstraintFactory.implies(VariableFactory.not(b3_b_2),
-                                             IntConstraintFactory.arithm(score_caddy,
-                                                                         "!=",
-                                                                         VariableFactory.offset(scoreSands, 4))));
+
 
     BoolVar b3_a = VariableFactory.bool("b3_a", solver);
     BoolVar b3_b = VariableFactory.bool("b3_a", solver);

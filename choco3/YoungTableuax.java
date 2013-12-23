@@ -43,11 +43,7 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
-import solver.search.limits.FailLimit;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.search.loop.monitors.SearchMonitorFactory;
 import solver.variables.IntVar;
@@ -129,8 +125,9 @@ public class YoungTableuax extends AbstractProblem {
       // sum all entries where x[i][j] <= n
       for(int j = 0; j < n; j++) {
         // reification
-        solver.post(IntConstraintFactory.implies(p_bin[j], (IntConstraintFactory.arithm(x[i][j],"<=", n))));
-        solver.post(IntConstraintFactory.implies(VariableFactory.not(p_bin[j]), (IntConstraintFactory.arithm(x[i][j],">", n))));
+        solver.post(LogicalConstraintFactory.ifThenElse(p_bin[j], 
+                                                    IntConstraintFactory.arithm(x[i][j],"<=", n),
+                                                    IntConstraintFactory.arithm(x[i][j],">", n)));
 
       }
 

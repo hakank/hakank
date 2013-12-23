@@ -24,6 +24,7 @@ import solver.ResolutionPolicy;
 import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.search.strategy.selectors.values.InDomainMax;
 import solver.search.strategy.selectors.values.InDomainMiddle;
@@ -150,10 +151,10 @@ public class Crew extends AbstractProblem {
       }
       IntVar tmpSum = VariableFactory.enumerated("tmpSum", 0, num_flights, solver);
       solver.post(IntConstraintFactory.sum(tmp, tmpSum));
-      solver.post(IntConstraintFactory.implies(nw[p],
-                                               IntConstraintFactory.arithm(tmpSum, ">", 0)));
-      solver.post(IntConstraintFactory.implies(VariableFactory.not(nw[p]),
-                                               IntConstraintFactory.arithm(tmpSum, "=", 0)));
+      solver.post(LogicalConstraintFactory.ifThenElse(nw[p],
+                                                      IntConstraintFactory.arithm(tmpSum, ">", 0),
+                                                      IntConstraintFactory.arithm(tmpSum, "=", 0)));
+
 
     }
     solver.post(IntConstraintFactory.sum(nw, num_working));

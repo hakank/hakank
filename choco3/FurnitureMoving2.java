@@ -19,10 +19,6 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -83,7 +79,7 @@ public class FurnitureMoving2 extends AbstractProblem {
     } else {
       NumPersons = VariableFactory.fixed(num_persons, solver);
     }
-    solver.post(IntConstraintFactory.cumulative(tasks, heights, NumPersons));
+    solver.post(IntConstraintFactory.cumulative(tasks, heights, NumPersons, true));
     
     solver.post(IntConstraintFactory.maximum(MaxEndTime, ends));
     

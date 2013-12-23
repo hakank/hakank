@@ -51,6 +51,7 @@ import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
 import solver.search.strategy.IntStrategyFactory;
+import solver.constraints.LogicalConstraintFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
 import solver.variables.VariableFactory;
@@ -88,10 +89,10 @@ public class SichermanDice extends AbstractProblem {
         for(int j = 0; j < n; j++) {
           IntVar ss = VariableFactory.enumerated("ss", -2*m, 2*m, solver);
           solver.post(IntConstraintFactory.sum(new IntVar[] {x1[i],x2[j],k2}, ss));
-          solver.post(IntConstraintFactory.implies(b[i][j],
-                                                    IntConstraintFactory.arithm(ss,"=",0)));
-          solver.post(IntConstraintFactory.implies(VariableFactory.not(b[i][j]),
-                                                    IntConstraintFactory.arithm(ss,"!=",0)));
+          solver.post(LogicalConstraintFactory.ifThenElse(b[i][j],
+                                                        IntConstraintFactory.arithm(ss,"=",0),
+                                                        IntConstraintFactory.arithm(ss,"!=",0)));
+
         }
       }
 

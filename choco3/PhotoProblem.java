@@ -42,6 +42,7 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
+import solver.constraints.LogicalConstraintFactory;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -100,10 +101,10 @@ public class PhotoProblem extends AbstractProblem {
     for(int i = 0; i < n; i++) {
       for(int j = 0; j < n; j++) {
         if (preferences[i][j] == 1) {
-          solver.post(IntConstraintFactory.implies(b[i][j],
-                                                 IntConstraintFactory.distance(positions[i],positions[j],"=", 1)));
-          solver.post(IntConstraintFactory.implies(VariableFactory.not(b[i][j]),
-                                                 IntConstraintFactory.distance(positions[i],positions[j],"!=", 1)));
+          solver.post(LogicalConstraintFactory.ifThenElse(b[i][j],
+                                                      IntConstraintFactory.distance(positions[i],positions[j],"=", 1),
+                                                      IntConstraintFactory.distance(positions[i],positions[j],"!=", 1)));
+
         } else {
           solver.post(IntConstraintFactory.arithm(b[i][j],"=", 0));
         }
