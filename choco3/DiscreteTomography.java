@@ -42,10 +42,6 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -88,12 +84,10 @@ public class DiscreteTomography extends AbstractProblem {
     x = VariableFactory.enumeratedMatrix("x", r, c, 0, 1, solver); 
 
     for(int i = 0; i < r; i++) {
-      System.out.println("i: " + i);
       solver.post(IntConstraintFactory.sum(x[i], VariableFactory.fixed(row_sums[i], solver)));
     }
 
     for(int j = 0; j < c; j++) {
-      System.out.println("j: " + j);
       solver.post(IntConstraintFactory.sum(ArrayUtils.getColumn(x, j), VariableFactory.fixed(col_sums[j], solver)));
     }
   }

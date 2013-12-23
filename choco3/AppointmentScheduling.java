@@ -73,6 +73,7 @@ import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
 import solver.variables.VariableFactory;
+import solver.constraints.LogicalConstraintFactory;
 import solver.explanations.ExplanationFactory;
 import solver.search.strategy.strategy.AbstractStrategy;
 import solver.search.strategy.selectors.variables.*;
@@ -112,10 +113,20 @@ public class AppointmentScheduling extends AbstractProblem {
     // Ensure that the selected person for the alotted time is avaiable.
     BoolVar[] b = VariableFactory.boolArray("b", n, solver);
     for(int i = 0; i < n; i++) {
+      
+      /*
+        // For first beta of Choco3
       solver.post(IntConstraintFactory.implies(b[i],
                                                IntConstraintFactory.member(x[i], s[i])));
       solver.post(IntConstraintFactory.implies(VariableFactory.not(b[i]),
                                                                    IntConstraintFactory.not_member(x[i], s[i])));
+      */
+      // Works in later versions
+      solver.post(LogicalConstraintFactory.ifThenElse(b[i], 
+                                                      IntConstraintFactory.member(x[i], s[i]),
+                                                      IntConstraintFactory.not_member(x[i], s[i])
+                                                      ));
+
     }
     solver.post(IntConstraintFactory.sum(b, VariableFactory.fixed(n, solver)));
   

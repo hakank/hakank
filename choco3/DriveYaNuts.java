@@ -213,10 +213,8 @@ public class DriveYaNuts extends AbstractProblem {
 
   @Override
   public void configureSearch() {
-
     // solver.set(IntStrategyFactory.domOverWDeg_InDomainMin(ArrayUtils.append(pos, ArrayUtils.flatten(x)), seed));
     solver.set(IntStrategyFactory.maxReg_InDomainMin(ArrayUtils.append(pos, ArrayUtils.flatten(x))));
-
   }
 
   @Override
