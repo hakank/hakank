@@ -23,10 +23,12 @@ import solver.Solver;
 import solver.constraints.Constraint;
 import solver.constraints.IntConstraintFactory;
 import solver.constraints.IntConstraintFactory.*;
-import solver.constraints.nary.cnf.Literal;
-import solver.constraints.nary.cnf.Node;
-import solver.constraints.nary.cnf.Node.*;
-import solver.constraints.nary.cnf.ALogicTree;
+import solver.constraints.LogicalConstraintFactory;
+import solver.constraints.SatFactory;
+import solver.constraints.nary.cnf.ILogical;
+import solver.constraints.nary.cnf.LogOp;
+import solver.constraints.nary.cnf.LogicTreeToolBox;
+
 import solver.search.strategy.IntStrategyFactory;
 import solver.variables.IntVar;
 import solver.variables.BoolVar;
@@ -35,7 +37,7 @@ import util.ESat;
 
 public class AllDifferentExcept0 extends AbstractProblem {
 
-  @Option(name = "-n", usage = "n, size of array (default 6).", required = false)
+  @Option(name = "-n", usage = "n, size of array (default 4).", required = false)
   int n = 4;
 
   @Option(name = "-m", usage = "Max value (default n).", required = false)
@@ -62,7 +64,7 @@ public class AllDifferentExcept0 extends AbstractProblem {
       for(int j = i+1; j < v.length; j++) {
 
         // if v[i] != c && v[j] != c -> v[i] != v[j]
-        // Alternative approach
+        // Alternative approach:
         // a[i] != c) * (a[j] != c) <= (a[i] != a[j])
 
         /*
@@ -78,53 +80,32 @@ public class AllDifferentExcept0 extends AbstractProblem {
                                 );
         */
 
-        // 2013-04-15/hakank: How do I a similar construct in Choco3?
-
-        // 
-        // This works but is way too complex to be natural...
-        //
         BoolVar[] b = VariableFactory.boolArray("b_"+i+"_"+j, 3, solver);
+        solver.post(LogicalConstraintFactory.ifThenElse(b[0], 
+                                                        IntConstraintFactory.arithm(v[i], "!=", c),
+                                                        IntConstraintFactory.arithm(v[i], "=", c)));
+        
+        solver.post(LogicalConstraintFactory.ifThenElse(b[1], 
+                                                        IntConstraintFactory.arithm(v[j], "!=", c),
+                                                        IntConstraintFactory.arithm(v[j], "=", c)));
 
-        // Note: As stated in IntConstraintFactory.java, we have to state both ways 
-        // of implies, i.e. 
-        //        B => C
-        //        not(B) => "not"(C)
-        //
-        solver.post(IntConstraintFactory.implies(
-                                                 b[0],
-                                                 (IntConstraintFactory.arithm(v[i], "!=", c))));
-        solver.post(IntConstraintFactory.implies(
-                                                 VariableFactory.not(b[0]),
-                                                 (IntConstraintFactory.arithm(v[i], "=", c))));
 
-        solver.post(IntConstraintFactory.implies(
-                                                 b[1],
-                                                 (IntConstraintFactory.arithm(v[j], "!=", c))));
-        solver.post(IntConstraintFactory.implies(
-                                                 VariableFactory.not(b[1]),
-                                                 (IntConstraintFactory.arithm(v[j], "=", c))));
+        solver.post(LogicalConstraintFactory.ifThenElse(b[2],
+                                                        IntConstraintFactory.arithm(v[i], "!=", v[j]),
+                                                        IntConstraintFactory.arithm(v[i], "=",  v[j])));
 
-        solver.post(IntConstraintFactory.implies(
-                                                 b[2],
-                                                 (IntConstraintFactory.arithm(v[i], "!=", v[j]))));
-        solver.post(IntConstraintFactory.implies(
-                                                 VariableFactory.not(b[2]),
-                                                 (IntConstraintFactory.arithm(v[i], "=", v[j]))));
 
-        // b[0] * b[1] <= b[2]
-        /*
-        IntVar b01 = VariableFactory.enumerated("b2", 0, 1, solver);
-        solver.post(IntConstraintFactory.times(b[0], b[1], b01));
-        solver.post(IntConstraintFactory.arithm(b01, "<=", b[2]));
-        */
-
-        // This works as well (and is a little more natural the variant above):
         // if b[0] && b[1] -> b[2]
-        ALogicTree t = Node.implies(
-                                    Node.and(Literal.pos(b[0]), Literal.pos(b[1])), 
-                                    Literal.pos(b[2])
-                                    );
-        solver.post(IntConstraintFactory.clauses(t, solver));
+        // I haven't got it to work with implies so I rely on the MIP trick 
+        // for implication, i.e. b[0] * b[1] <= b[2].
+        // LogOp root = LogOp.implies(LogOp.and(b[0], b[1]), b[2]);
+        // ILogical l = LogicTreeToolBox.toCNF(root, solver);
+        // System.out.println("l: " + l);
+
+        IntVar t = VariableFactory.enumerated("t", 0, 2, solver); 
+        solver.post(IntConstraintFactory.times(b[0],b[1],t));
+        solver.post(IntConstraintFactory.arithm(t,"<=",b[2])); // b[0]*b[1] <= b[2]
+
 
       }
     }
