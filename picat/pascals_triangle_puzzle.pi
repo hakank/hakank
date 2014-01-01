@@ -1,0 +1,172 @@
+/* 
+
+  Pascal's triange Puzzle (Rosetta Code) in Picat.
+
+  http://rosettacode.org/wiki/Pascal%27s_triangle/Puzzle
+  """
+  This puzzle involves a Pascals Triangle, also known as a 
+  Pyramid of Numbers.
+
+           [ 151]
+          [  ][  ]
+        [40][  ][  ]
+      [  ][  ][  ][  ]
+    [ X][11][ Y][ 4][ Z]
+
+  Each brick of the pyramid is the sum of the two bricks situated below it.
+  Of the three missing numbers at the base of the pyramid, the 
+  middle one is the sum of the other two (that is, Y = X + Z).
+
+  Write a program to find a solution to this puzzle. 
+  """
+
+  Solution:
+
+               151
+            81     70
+        40     41     29
+      16    24    17     12
+    5    11    13     4      8
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+%
+% Hard coded approach (and using CP).
+%
+go =>
+  %       1
+  %      2  3
+  %    4  5  6
+  %  7  8  9  10
+  %11 12 13 14 15 
+  
+  X = new_list(15),
+  X :: 0..151,
+  X[1] #= X[2]+X[3],
+  X[2] #= X[4]+X[5],
+  X[3] #= X[5]+X[6],
+  X[4] #= X[7]+X[8],
+  X[5] #= X[8]+X[9],
+  X[6] #= X[9]+X[10],
+  X[7] #= X[11]+X[12],
+  X[8] #= X[12]+X[13],
+  X[9] #= X[13]+X[14],
+  X[10] #= X[14]+X[15],
+  X[13] #= X[11] + X[15], % Y=X+Z,
+
+  X[1] #= 151,
+  X[4] #= 40,
+  X[12] #= 11,
+  X[14] #= 4,
+
+  All=solve_all(X),
+
+  println(All),
+
+  nl.
+
+%
+% A more general CP approach.
+%
+% Cf. my MiniZinc model:
+% http://www.hakank.org/minizinc/pyramid_of_numbers.mzn
+%
+go2 =>
+
+  N = 5, % number of rows
+  Len = (N*(N+1)) div 2, % number of entries
+  
+  % The triangle numbers for 1..N
+  T = [I*(I+1) div 2 : I in 1..N],
+
+
+  % The index of first number to use in addition
+  % create the indices of the numbers to add, i.e. Adds[I] + Adds[I+1]
+  Adds = new_list(T[N-1]),
+  Adds[1] := 2,
+  foreach(I in 2..T[N-1]) 
+      % "jump" of 2 when i-1 is a triangle number
+      if member(I-1,T) then  
+        Adds[I] := Adds[I-1] + 2 
+      else
+        Adds[I] := Adds[I-1] + 1
+      end
+  end,
+
+
+  % the pyramid
+  X = new_list(Len),
+  X :: 1..10000,
+
+  % The three "unknowns"
+  Xx :: 1..10000,
+  Yx :: 1..10000,
+  Zx :: 1..10000,
+
+
+  % The clues.
+  X =    [   151,
+            _, _,
+            40, _, _,
+          _, _,_ , _ ,
+         Xx, 11, Yx, 4, Zx
+   ],
+
+   % The sums
+   foreach(I in 1..T[N-1]) 
+      X[I] #= X[Adds[I]]+X[Adds[I]+1]
+   end,
+
+   % The extra constraint
+   Yx #= Xx + Zx,
+
+   solve(X),
+
+   println(x=X),
+
+   nl.
+
+
+
+% Port of Prolog solution
+go3 =>
+   puzzle(T, X, Y,Z),
+   println(t=T),
+   println([x=X,y=Y,z=Z]),
+   nl.
+  
+
+puzzle(Ts, X, Y, Z) =>
+    Ts =   [ [151],
+            [_, _],
+          [40, _, _],
+         [_, _, _, _],
+       [X, 11, Y, 4, Z]],
+    Y #= X + Z, triangle(Ts), Vs = term_variables(Ts), Vs :: 0..10000, solve(Vs).
+ 
+triangle([T|Ts]) => ( Ts = [N|_] -> triangle_(T, N), triangle(Ts) ; true ).
+ 
+triangle_([], _) ?=> true.
+triangle_([T|Ts], ABRest) => 
+   ABRest = [A,B|Rest],
+   T #= A + B, triangle_(Ts, [B|Rest]).
+
+
+term_variables(L) = Flatten =>
+   Flatten1 = [],
+   foreach(LL in L) 
+      Flatten1 := Flatten1 ++ LL
+   end,
+   Flatten2 = remove_dups(Flatten1),
+   Flatten = Flatten2.

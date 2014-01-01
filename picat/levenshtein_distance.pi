@@ -1,0 +1,171 @@
+/* 
+
+  Levenshtein distance (Rosetta Code) in Picat.
+
+  http://rosettacode.org/wiki/Levenshtein_distance
+  """
+  In information theory and computer science, the Levenshtein distance is a 
+  metric for measuring the amount of difference between two sequences 
+  (i.e. an edit distance). The Levenshtein distance between two strings 
+  is defined as the minimum number of edits needed to transform one string 
+  into the other, with the allowable edit operations being insertion, 
+  deletion, or substitution of a single character.
+
+  For example, the Levenshtein distance between "kitten" and "sitting" is 3, 
+  since the following three edits change one into the other, and there is 
+  no way to do it with fewer than three edits:
+
+   - kitten sitten (substitution of 'k' with 's')
+   - sitten sittin (substitution of 'e' with 'i')
+   - sittin sitting (insert 'g' at the end). 
+
+  The Levenshtein distance between "rosettacode", "raisethysword" is 8; 
+  The distance between two strings is same as that when both strings is reversed.
+
+  Task : Implements a Levenshtein distance function, or uses a library 
+  function, to show the Levenshtein distance between "kitten" and "sitting". 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  
+  S = [
+       ["kitten","sitting"],
+       ["rosettacode","raisethysword"],
+       ["levenshtein","levenshtein"],
+       ["saturday", "sunday"],
+       ["stop", "tops"],
+       ["saturday", "sunday"],
+       ["edocattesor", "drowsyhtesiar"],
+       ["abracadabra", "abracadabra"],
+       ["abracadabra", "abracadabrr"],
+       ["cabracadabra", "abracadabra"],
+       ["abraccadabra", "abracadabra"]
+      
+  ],
+  foreach([W1,W2] in S)
+    initialize_table,
+    println(iter=[W1,W2,levenshtein(W1,W2)]),
+    println(recu=[W1,W2,levenshtein_rec(W1,W2)]),
+    nl
+  end,
+  nl.
+
+
+%
+% Larger random string with larger differences.
+% Note: The generation of string sometimes takes
+% longer that calculating the distances.
+%
+go2 =>
+  Len = 400,
+  foreach(_ in 1..10)
+      initialize_table,
+      time(S1 = generate_string(400)),
+      println(s1=S1),
+      time(S2 = generate_string(400)),
+      println(s2=S2),
+      time(L1 = levenshtein(S1,S2)),
+      time(L2 = levenshtein_rec(S1,S2)),
+      println([iter=L1,rec=L2]),
+      nl
+  end,
+  nl.
+
+%
+% Generate a random string of max length MaxLen
+% 
+generate_string(MaxLen) = S => 
+  println($generate_string(MaxLen)),
+  Alpha = "abcdefghijklmnopqrstuvxyz",
+  Len = Alpha.length,
+  S := [Alpha[1+random2() mod Len] : _ in 1..1+random2() mod MaxLen].
+
+
+
+% Based on the algorithm at
+% http://en.wikipedia.org/wiki/Levenshtein_distance
+%
+% Note: Picat is 1-based so some adjustments are needed
+%
+levenshtein(S,T) = Dist =>
+  M = 1+S.length,
+  N = 1+T.length,
+  
+  % for all i and j, d[i,j] will hold the Levenshtein distance between
+  % the first i characters of s and the first j characters of t,
+  % note that d has (m+1)x(n+1) values
+  % set each element to zero
+  D = new_array(M,N),
+
+  % source prefixes can be transformed into empty string by
+  % dropping all characters 
+  foreach(I in 1..M)
+    D[I,1] := I-1
+  end,
+  
+  % target prefixes can be reached from empty source prefix
+  % by inserting every characters
+  foreach(J in 1..N) 
+    D[1,J] := J-1
+  end,
+  
+  foreach(J in 2..N, I in 2..M)
+    if S[I-1] == T[J-1] then
+      D[I,J] := D[I-1,J-1]            % no operation required
+    else 
+      D[I,J] := min([D[I-1,J  ] + 1,  % a deletion
+                     D[I  ,J-1] + 1,  % an insertion
+                     D[I-1,J-1] + 1]  % a substitution
+                    )
+    end
+  end,
+
+  Dist = D[M,N].
+
+
+% 
+% Recursive version.
+% Without table/0 it takes - unsurprisingly - very long time 
+% for the rosettacode case.
+%
+% And don't forget to empty the cache between each word 
+% (with initialize_table) otherwise old words are still cached
+% and just take RAM.
+% 
+%
+table
+levenshtein_rec(S,T) = Dist =>
+  Dist = 0,
+  if S.length == 0 then
+    Dist := T.length
+  elseif T.length == 0 then
+    Dist := S.length
+  elseif S[1] == T[1] then
+    Dist := levenshtein_rec(S.tail(), T.tail())
+  else
+    A := levenshtein_rec(S.tail(), T.tail()),
+    B := levenshtein_rec(S       , T.tail()),
+    C := levenshtein_rec(S.tail(), T),
+    if A > B then
+       A := B
+    elseif A > C then
+       A := C
+    end,
+
+    Dist := A + 1
+
+  end.
+
