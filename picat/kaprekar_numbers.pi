@@ -1,0 +1,199 @@
+/* 
+
+  Kaprekar numbers (Rosetta Code) in Picat.
+
+  http://rosettacode.org/wiki/Kaprekar_numbers
+  """
+  A positive integer is a Kaprekar number if:
+
+   - It is 1
+   - The decimal representation of its square may be split once into 
+     two parts consisting of positive integers which sum to the original 
+     number. Note that a split resulting in a part consisting purely of 
+     0s is not valid, as 0 is not considered positive. 
+
+  Example Kaprekar numbers
+
+   - 2223 is a Kaprekar number, as 2223 * 2223 = 4941729, 4941729 may be split 
+     to 494 and 1729, and 494 + 1729 = 2223.
+   - The series of Kaprekar numbers is known as A006886, and begins as 1,9,45,55,.... 
+
+  Example process
+
+  10000 (100^2) splitting from left to right:
+
+   - The first split is [1, 0000], and is invalid; the 0000 element 
+     consists entirely of 0s, and 0 is not considered positive.
+   - Slight optimization opportunity: When splitting from left to right, 
+     once the right part consists entirely of 0s, no further testing is 
+     needed; all further splits would also be invalid. 
+
+  Task description
+ 
+   - Generate and show all Kaprekar numbers less than 10,000.
+
+  Extra credit
+
+  Optionally, count (and report the count of) how many Kaprekar numbers are less than 1,000,000.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  
+  % [1,9,45,55,99,297,703,999,2223,2728,4879,4950,5050,5292,7272,7777,9999]
+  % len=17
+
+  % slow: about 12.5s for 10**6
+  % K1 = [N : N in 1..10000, kaprekar_number3(N)],
+  % println(K1),
+  % println(len=K1.length),
+  % println([N : N in 1..1000000, kaprekar_number3(N)].length),
+
+  % faster: about 4s for 10**6 
+  println(base=10),
+  time(println(kaprekar_number5(10,10000))),
+  time(println(kaprekar_number5(10,1000000))),
+  println(base=16),
+  println([I.to_hex_string() : I in kaprekar_number5(16,1000000)]),
+
+  println(base=17),
+  println(kaprekar_number5(17,1000000)),
+
+  nl.
+
+% 19s
+kaprekar_number(1) => true.
+kaprekar_number(N) =>
+  X = (N**2).to_string(),
+  append(A,B,X),
+  A != [],
+  B != [],
+  if B.remove_dups() = ['0'] then fail end,
+  A.to_integer() + B.to_integer() = N.   
+
+
+%
+% Slower variant: 26.3s
+%
+kaprekar_number2(1) => true.
+kaprekar_number2(N) =>
+  X = (N**2).to_string(),
+  Found = false,
+  foreach(I in 1..X.length,Found=false) 
+     A = X.slice(1,I),
+     B = X.slice(I+1),
+     if B.remove_dups() = ['0'] then Found := nope end,
+     if A != [], B != [], A.to_integer() + B.to_integer() = N then
+       Found := true
+     end
+  end,
+  Found = true.
+
+
+%
+% Inspired by D's version.
+% Faster: 12.5s
+%
+kaprekar_number3(1) => true.
+kaprekar_number3(N) =>
+  X = N**2,
+  R = 1,
+  L = 1,
+  Tens = 1,
+  Found = false,
+  while (R < N, Found = false)
+    R := X mod Tens,
+    L := X div Tens,
+    if R > 0, L + R == N then
+      Found := true
+    end,
+    Tens := Tens * 10
+  end,
+  Found = true.
+
+%
+% Shorter but slow: 16.8s
+%
+kaprekar_number4(1) => true.
+kaprekar_number4(N) =>
+  X = N**2,
+  [1 : I in 1..ceiling(log10(X)), J=10**I, R=X mod J, R>0, R < N, L=X div J, L+R=N].length > 0.
+
+
+%
+% Using casting out nines
+% (from the C++ example)
+%
+% kaprekar_number5(10,10**6) takes 4.0s
+%
+kaprekar_number5(Base,Limit) = Ks =>
+  N = ceiling(log(Base,Limit)),
+  println(n=N),
+  Paddy_cnt = 0,
+  Ks = [],
+  foreach(Nz in 1..N)
+    foreach(K in Base**(Nz-1)..(Base**Nz)-1, K <= Limit)
+       if (K*(K-1))mod(Base-1) == 0 then
+          Found = false,
+	  foreach(N2 in Nz..Nz*2-1,Found = false)
+ 	     B = Base**N2,
+	     Nr = K*(B-K) div (B-1),
+	     Q = K-Nr,
+	     if (K*K==Q*B+Nr && 0<Nr) then
+                Paddy_cnt := Paddy_cnt+1,
+                % printf("%d: %d is %d + %d and squared is %w. It is a member of Residual Set %d\n", Paddy_cnt, K,Q,Nr,K*K, K mod (Base-1)),
+                Ks := Ks ++ [K],
+		Found := true
+	     end
+          end
+       end
+    end
+  end,
+  println(len=Ks.length).
+
+
+%
+% From the C# example: Generates Kaprekar numbers from 1..Max
+%   kaprekar_number6(1000000) takes 17.2s
+%
+kaprekar_number6(Max) => 
+  Ks = [1],
+  foreach(Next in 2..Max) 
+     Square = Next * Next,
+     Check = 10,
+     Found = false,
+     while(Found = false ) 
+       % If the power of 10 to be checked against is greater than or equal to the square, stop checking
+       if Square <= Check then
+          Found := true
+       end,
+
+      % Given a power of 10 as 10^n, the remainder when dividing the square number by that power
+      % of 10 is equal to the last n digits of the number (starting from the right) and the
+      % quotient gives the remaining digits.
+      % If the last n digits are all zeroes, then the remainder will be zero, which is not
+      % accepted.
+ 
+      R = Square mod Check,
+      Q = (Square - R) div Check,
+      if R != 0, Q + R == Next then
+         Ks := Ks ++ [Next],
+         Found := true
+      end,
+      Check := Check*10
+    end
+  end,
+  println(Ks),
+  println(len=Ks.length).

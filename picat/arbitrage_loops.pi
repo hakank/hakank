@@ -1,0 +1,466 @@
+/* 
+
+  Arbitrage loop problem in Picat.
+
+  This program shows some different approaches and examples for
+  detecting arbitrage loops (and don't care about broker's fees etc).
+
+  The most general approaches are
+    go7/0 and go8/0
+  which uses
+    arbitrage_loop4/1
+    profit4/6
+
+
+  First versions where inspired by Dan Goldin's Prolog code at
+  http://dangoldin.com/2013/06/07/fun-with-prolog-priceonomics-puzzle/
+
+  Problem description and some examples from
+  http://priceonomics.com/jobs/puzzle/
+  """
+  Daily trading volume in currency exchange markets often exceeds $1 
+  trillion. With the advent of new crypto-currencies, your knowledge of 
+  algorithms, and a good pair of sound-canceling headphones, you're 
+  convinced that there could be some profitable arbitrage opportunities to 
+  exploit.
+
+  Sometimes, these currency pairs drift in a way that creates arbitrage 
+  loops where you can convert through a certain sequence of currencies to 
+  return a profit in your base currency. This is referred to as an arbitrage 
+  loop. For example, you could do the following trades with $100 US and the 
+  exchange data below:
+
+			TO 		
+		USD 	EUR 	JPY 	BTC
+	USD 	- 	0.7779 	102.4590 	0.0083
+  FROM 	EUR 	1.2851 	- 	131.7110 	0.01125
+	JPY 	0.0098 	0.0075 	- 	0.0000811
+	BTC 	115.65 	88.8499 	12325.44 	-
+
+  Trade $100 to €77.79
+  Trade €77.79 to .8751375 BTC
+  Trade .8751375 BTC for $101.20965.
+  """
+
+  Notes: 
+    - Picat don't support HTTP calls right now, so I just went to 
+          http://fx.priceonomics.com/v1/rates/
+      and extracted the entries.
+    - This program don't care at all about such reality stuff like
+      broker's fee etc.
+    - This program is for fun and not for profit. :-)
+
+
+  Also, see
+    - https://en.wikipedia.org/wiki/Triangular_arbitrage
+    - "Two-Currency, Three-Currency and Multi-Currency Arbitrage"
+      http://www.fem.uniag.sk/mefi/pdf/arbitraz.pdf
+
+  A warning:
+  From Triangular Arbitrage
+  http://www.nusinvest.com/wp-content/uploads/2013/01/Triangular-Arbitrage.pdf
+  """
+  As a matter of fact, triangular arbitrage opportunities do actually exist in 
+  the forex trading market. However, it is important to note that these opportunities 
+  are very rare and often exist only for a few seconds. Why? One has to realize 
+  that these arbitrage opportunities will not last forever. Once people start to 
+  engage in these profit taking activities, the market will correct itself and bring 
+  the foreign exchange rate to the equivalent level. Furthermore, with the presence 
+  of several high-frequency-trading (HFT) firms today, which uses advance and 
+  complicated computer programs to execute trades automatically, the time for the market to
+  correct itself is made a lot faster as compared to a century ago. These complex computer
+  soft wares are programmed to specifically sift out such arbitraging opportunities and will
+  profit from these imbalance at the very split second that these opportunities present
+  themselves.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+%
+% Arbitrage loops (chains) of length 3 using fail/0.
+% This is straight port of the Prolog code at
+%   http://dangoldin.com/2013/06/07/fun-with-prolog-priceonomics-puzzle/
+% 
+go ?=>
+  profit(First, Second, Profit),
+  Profit > 1.0,
+  print('usd '),
+  print(first=First), print(' '),
+  print(second=Second), print(' '), print(usd),print(' '), 
+  println(profit=Profit), 
+  fail,
+  nl.
+
+go => true.
+
+%
+% Loops of length 4 using the same approach as go/0, 
+% i.e. using fail to generate all chains.
+% 
+go2 ?=>
+  profit2(First, Second, Third, Profit),
+  Profit > 1.0,
+  write('usd '),
+  write(First), write(' '),
+  write(Second), write(' '),
+  write(Third), write(' usd '),
+  write(Profit), nl, fail,
+  nl.
+
+go2 => true.
+
+%
+% A little more general approach than go/0 and go2/0
+%
+go3 ?=>
+  Start = usd,
+  Len = 4,
+  profit3(Start,Len,Currencies,Profit),
+  println([Currencies,Profit]),
+  fail,
+  nl.
+
+go3 => true.
+
+%
+% Check all possible chains and show the most protifable,
+% using findall/2 instead of fail/0.
+%
+go4 =>
+  currencies(All),
+  MaxProfit = 0,
+  MaxArb = [],
+  foreach(Len in 2..4, Start in All)
+     writeln([len=Len,start=Start]),
+     Chains=findall([Chain,Profit],profit3(Start,Len,Chain,Profit)),
+     foreach([Chain,Profit] in Chains) 
+       println([Chain,Profit]),
+       if Profit > MaxProfit then
+          println(newMax=[Profit,Chain]),
+          MaxProfit := Profit,
+          MaxArb := Chain
+       end
+    end
+  end,
+  println([maxArb=MaxArb,maxProfit=MaxProfit]),
+  nl.
+
+%
+% Slighly more general version, with parsing of the rates.
+%
+% From http://fx.priceonomics.com/v1/rates/ (in JSON format)
+%
+go5 => 
+  % Manual changed to conform to Picat's syntax of lists/strings.
+  X=["USD_JPY: 114.7002817", "USD_USD: 1.0000000", "JPY_EUR: 0.0066797", "BTC_USD: 111.6923455", 
+     "JPY_BTC: 0.0000714", "USD_EUR: 0.8708395", "EUR_USD: 1.3780821", "EUR_JPY: 141.1955858", 
+     "JPY_USD: 0.0085868", "BTC_BTC: 1.0000000", "EUR_BTC: 0.0120654", "BTC_JPY: 11433.5226075", 
+     "JPY_JPY: 1.0000000", "BTC_EUR: 82.3871099", "EUR_EUR: 1.0000000", "USD_BTC: 0.0092938"],
+
+  Cs = [$exchange(From,To,Rate.parse_term()) : 
+           C in X,
+           [FromTo,Rate] = split(C,":"),
+           [From,To] = split(FromTo,"_"),
+           From != To],
+  println(Cs),
+
+  cl_facts(Cs), % add them
+
+  currencies(All),
+  MaxProfit = 0,
+  MaxArb = [],
+  foreach(Len in 2..4, Start in All)
+     println([len=Len,start=Start]),
+     Chains=findall([Chain,Profit],profit3(Start,Len,Chain,Profit)) ->
+       foreach([Chain,Profit] in Chains) 
+          println([Chain,Profit]),
+          if Profit > MaxProfit then
+             println(newMax=[Profit,Chain]),
+             MaxProfit := Profit,
+             MaxArb := Chain
+          end
+       end
+     ;
+       true
+  end,
+  println([maxArb=MaxArb,maxProfit=MaxProfit]),
+  nl.
+
+%
+% Different approach:
+% Using an "exhange matrix" (i.e. a hash table) instead and 
+% the general arbitrage_loop4/1.
+%
+go6 => 
+  % Manual changed to conform to Picat's syntax of lists/strings.
+  X=["USD_JPY: 114.7002817", "USD_USD: 1.0000000", "JPY_EUR: 0.0066797", "BTC_USD: 111.6923455", 
+     "JPY_BTC: 0.0000714", "USD_EUR: 0.8708395", "EUR_USD: 1.3780821", "EUR_JPY: 141.1955858", 
+     "JPY_USD: 0.0085868", "BTC_BTC: 1.0000000", "EUR_BTC: 0.0120654", "BTC_JPY: 11433.5226075", 
+     "JPY_JPY: 1.0000000", "BTC_EUR: 82.3871099", "EUR_EUR: 1.0000000", "USD_BTC: 0.0092938"],
+
+  Exchange = new_map(),
+  foreach(C in X)  
+     [FromTo,Rate] = split(C,":"),
+     [From,To] = split(FromTo,"_"),
+     Exchange.put([From,To], Rate.parse_term())
+  end,
+  println(exchange=Exchange),
+
+  arbitrage_loop4(Exchange),
+
+  nl.
+
+%
+% Example from 
+% "Triangular Arbitrage in Forex Market"
+% http://www.nusinvest.com/wp-content/uploads/2013/01/Triangular-Arbitrage.pdf
+% page 2
+%
+go7 => 
+  Exchange = new_map([ 
+                     [eur,usd]=1.1837,
+                     [eur,gbp]=0.7231,
+                     [gbp,usd]=1.6388,
+                     [usd,eur]=1/1.1837,
+                     [gbp,eur]=1/0.7231,
+                     [usd,gbp]=1/1.6388
+                     ]),
+  arbitrage_loop4(Exchange),
+  nl.
+
+% 
+% Example from
+% "Two-Currency, Three-Currency and Multi-Currency Arbitrage"
+% http://www.fem.uniag.sk/mefi/pdf/arbitraz.pdf
+% page 17
+%
+% Result (example):
+% """
+% newMax=[1.010302582169334,[aud,dkk,eur,aud]]
+% newMax=[1.010496754437378,[aud,nzd,eur,aud]]
+% newMax=[1.010586305727208,[aud,sek,eur,aud]]
+% newMax(tie)=[1.010586305727208,[eur,aud,sek,eur]]
+% newMax=[1.010821556965591,[aud,nzd,sek,eur,aud]]
+% newMax=[1.010994979070738,[aud,usd,sek,eur,aud]]
+% newMax(tie)=[1.010994979070738,[usd,sek,eur,aud,usd]]
+% newMax(tie)=[1.010994979070738,[eur,aud,usd,sek,eur]]
+% newMax(tie)=[1.010994979070738,[sek,eur,aud,usd,sek]]
+% newMax=[1.011018346802945,[aud,nzd,usd,sek,eur,aud]]
+% newMax=[1.011018346802945,[nzd,usd,sek,eur,aud,nzd]]
+% newMax=[1.011110812688754,[aud,nzd,dkk,usd,sek,eur,aud]]
+% newMax(tie)=[1.011110812688754,[dkk,usd,sek,eur,aud,nzd,dkk]]
+% newMax(tie)=[1.011110812688754,[nzd,dkk,usd,sek,eur,aud,nzd]]
+% newMax(tie)=[1.011110812688754,[usd,sek,eur,aud,nzd,dkk,usd]]
+% newMax(tie)=[1.011110812688754,[eur,aud,nzd,dkk,usd,sek,eur]]
+% [maxArb=[aud,nzd,dkk,usd,sek,eur,aud],maxProfit=1.011110812688754]
+% Real profit where we start with 1000 AUD: 1000*1.011111-1000 = 11.110813 AUD
+% """
+go8 =>
+   Exchange = new_map([
+                       [sek,usd]=10.54,
+                       [dkk,usd]=8.2449,
+                       [dkk,sek]=0.7819,
+                       [nzd,usd]=2.3941,
+                       [nzd,sek]=0.2271,
+                       [nzd,dkk]=0.2904,
+                       [eur,usd]=1.1073,
+                       [eur,sek]=0.1050,
+                       [eur,dkk]=0.1343,
+                       [eur,nzd]=0.4625,
+                       [aud,usd]=1.9296,        
+                       [aud,sek]=0.1830,
+                       [aud,dkk]=0.2340,
+                       [aud,nzd]=0.8060,
+                       [aud,eur]=1.7246
+                      ]),
+    foreach([From,To]=Rate in Exchange) 
+       Exchange.put([To,From],1/Rate)
+    end,
+
+    arbitrage_loop4(Exchange),
+
+    nl.
+                     
+
+%
+% These are the exchange rates show at
+% http://dangoldin.com/2013/06/07/fun-with-prolog-priceonomics-puzzle/
+%
+% Results (from go/0)
+% usd eur jpy usd 1.0040882716200001
+% usd eur btc usd 1.0120965187500002
+% usd btc jpy usd 1.0025512896
+
+index(-,-,-)
+exchange(usd,eur,0.7779).
+exchange(usd,jpy,102.459).
+exchange(usd,btc,0.0083).
+exchange(eur,usd,1.2851).
+exchange(eur,jpy,131.711).
+exchange(eur,btc,0.01125).
+exchange(jpy,usd,0.0098).
+exchange(jpy,eur,0.0075).
+exchange(jpy,btc,0.0000811).
+exchange(btc,usd,115.65).
+exchange(btc,eur,88.8499).
+exchange(btc,jpy,12325.44).
+
+%
+% Another example from 
+% http://fx.priceonomics.com/v1/rates/ (per 2013-11-09 09:18)
+%
+% Max profit:
+% Interestingly the best loop is just USD <-> EUR <-> USD
+%    [[usd,eur,usd],1.2023634238308] 
+%    [[eur,usd,eur],1.2023634238308]
+% 
+% Here are the possible profits (> 1.0)
+% [[usd,eur,usd],1.2023634238308] 
+% [new,1.2023634238308,[usd,eur,usd]]
+% [[eur,usd,eur],1.2023634238308]
+% [[jpy,eur,jpy],1.02915192590145]
+% [[usd,eur,jpy,usd],1.108615335990782]
+% [[eur,usd,jpy,eur],1.108641505563778]
+% [[jpy,usd,eur,jpy],1.108615335990782]
+% [[btc,usd,eur,btc],1.119786041425115]
+% [[usd,eur,btc,jpy,usd],1.031551157856315]
+% [[eur,btc,usd,jpy,eur],1.032500871424996]
+% [[jpy,usd,eur,btc,jpy],1.031551157856315]
+% [[btc,usd,jpy,eur,btc],1.032500871424996]
+% [maxArb=[usd,eur,usd],maxProfit=1.2023634238308]
+%
+% However, if we allow repeating the currencies, then there are 
+% better loops:
+% [maxArb=[jpy,eur,usd,eur,jpy],maxProfit=1.237414633268929]
+% [maxArb=[jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,eur,jpy],maxProfit=1.520888986922179]
+% ...
+% maxArb=[jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,jpy,eur,usd,eur,jpy],maxProfit=33.560740000202571]
+
+%
+% index(-,-,-)
+% exchange(usd,jpy,110.3716895).
+% exchange(jpy,eur,0.0070005).
+% exchange(btc,usd,106.3737613).
+% exchange(jpy,btc,0.0000748).
+% exchange(usd,eur,0.8379756).
+% exchange(eur,usd,1.4348430).
+% exchange(eur,jpy,147.0112029).
+% exchange(jpy,usd,0.0089991).
+% exchange(eur,btc,0.0125623).
+% exchange(btc,jpy,10889.0792695).
+% exchange(btc,eur,78.4639871).
+% exchange(usd,btc,0.0089430).
+%
+
+%
+% Get the currencies
+%
+currencies(Currencies) => 
+   Currencies = findall(C, exchange(C,_,_)).remove_dups().
+
+
+%
+% Calculate profit for a usd->x->y->usd currency chain.
+%
+profit(First,Second,Profit) =>
+    exchange(usd,First,P1),
+    exchange(First,Second,P2),
+    exchange(Second,usd,P3),
+    Profit is P1 * P2 * P3.
+
+%
+% Calculate profit for a usd->x->y->z->usd currency chain.
+%
+profit2(First,Second, Third,Profit) =>
+    exchange(usd,First,P1),
+    exchange(First,Second,P2),
+    exchange(Second,Third,P3),
+    exchange(Third,usd,P4),
+    Profit is P1 * P2 * P3 * P4.
+
+%
+% A more general approach:
+%   For any Start currency of any length (Len)
+%   we greate an arbitrage loop (for positive profit).
+%
+profit3(Start,Len, Chain,Profit) =>
+    Chain = new_list(Len+1),
+    Chain[1] := Start,
+    Profit1 := 1,
+    currencies(All),
+    println(all=All),
+    foreach(I in 2..Len)
+       % we just care about the currencies we haven't had before
+       Left = difference(All,Chain.slice(1,I-1)),
+       member(Chain[I],Left),
+       exchange(Chain[I-1],Chain[I],P),
+       Profit1 := Profit1 * P
+    end,
+    exchange(Chain[Len],Start,P2),
+    Chain[Len+1] := Start,
+    Profit1 := Profit1 * P2,
+    %Profit1 > 1.0,
+    Profit = Profit1.
+
+%
+% Using a exchange matrix instead.
+%
+profit4(Start,Len, All,Matrix,Currencies,Profit) =>
+    Currencies = new_list(Len+1),
+    Currencies[1] := Start,
+    Profit1 := 1,
+    foreach(I in 2..Len)
+       Left = difference(All,Currencies.slice(1,I-1)),
+       member(Currencies[I],Left),
+       Profit1 := Profit1 * Matrix.get([Currencies[I-1],Currencies[I]])
+    end,
+    Currencies[Len+1] := Start,
+    Profit1 := Profit1 * Matrix.get([Currencies[Len],Start]),
+    Profit1 > 1.0, % comment this for showing unprofitable chains as well
+    Profit = Profit1.
+
+%
+% General loop for the "matrix" version.
+%
+% Exchange is a map containing the different exchange rates
+%    [From,To]=Rate
+%
+arbitrage_loop4(Exchange) =>
+
+  All = [From : [From,_] in Exchange.keys()].remove_dups(), 
+  MaxProfit = 0,
+  MaxArb = [],
+  foreach(Len in 2..All.length, Start in All)
+     Chains=findall([Chain,Profit],profit4(Start,Len,All,Exchange,Chain,Profit)),
+     foreach([Chain,Profit] in Chains) 
+        % println([Chain,Profit]),
+        if Profit = MaxProfit then
+           println('newMax(tie)'=[Profit,Chain])
+       end,
+        if Profit > MaxProfit then
+           println(newMax=[Profit,Chain]),
+           MaxProfit := Profit,
+           MaxArb := Chain
+       end
+     end
+  end,
+  println([maxArb=MaxArb,maxProfit=MaxProfit]),
+
+  % We start with Init units (and don't care about broker costs etc.)
+  Init = 1000,
+  Currency = MaxArb.first().to_string().to_uppercase(),
+  printf("Real profit where we start with %d %w: %d*%f-%d = %f %w\n", Init,Currency,Init,MaxProfit,Init,Init*MaxProfit-Init,Currency ),
+  nl.
+
+
+% C is the relative complement of A w.r.t. B (A-B)
+difference(A,B) = C =>
+    C = [X : X in A, not member(X,B)].
