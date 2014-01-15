@@ -1,0 +1,191 @@
+/* 
+
+  Test of some length implementations in Picat.
+
+   length/1: Picat's built-in
+   length/2: using var(List) and var(Length) and new_list/1 and length/1.
+             It seems to be almost as fast as length/1, perhaps not surprising
+             since it use length/1 if Len is unknown.
+   length2/2: accumulator version, almost standard Prolog tail-recursive implementation
+   length3/3: plain recursive, not tail-recursive
+
+  See below for some results.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import utils_me.
+
+main => go1.
+
+
+% Case I: Length of a list:
+%
+%   For a list of 1 000000 elements:
+% length/1 (built-in):
+% CPU time 0.0 seconds.
+%
+% length/2:
+% CPU time 0.004 seconds.
+%
+% length2/2:
+% CPU time 0.016 seconds.
+%
+% length3/2:
+% CPU time 0.716 seconds.
+%
+%  For a list of 10 000 000 elements:
+%
+% goal=go1
+% length/1 (built-in):
+% CPU time 0.024 seconds.
+%
+% length/2:
+% CPU time 0.024 seconds.
+%
+% length2/2:
+% CPU time 0.168 seconds.
+%
+% length3/2:
+% CPU time 6.124 seconds.
+%
+go1 =>
+  L = 1..10000000,
+
+  print("length/1 (built-in):"),
+  time(_=length(L)),
+
+  print("length/2:"),
+  time(length(L,_)),
+
+  print("length2/2:"),
+  time(length2(L,_)),
+
+  print("length3/2:"),
+  time(length3(L,_)),
+  
+  nl.
+
+%
+% Case II: Creating a list given the length.
+% 
+% Here we test against new_list(Len).
+%
+% 
+% For Len = 1000000:
+%   new_list/1
+%   CPU time 0.084 seconds.
+%
+%   length/2:
+%   CPU time 0.152 seconds.
+% 
+%   length2/2:
+%   CPU time 0.044 seconds.
+% 
+%   length3/2 is too slow
+%
+% For Len = 10000000:
+%
+% new_list/1
+% CPU time 1.9 seconds.
+%
+% length/2:
+% CPU time 1.596 seconds.
+%
+% length2/2:
+% CPU time 0.356 seconds.
+%
+% Interestingly, length2/2 is faster than new_list/1.
+% Perhaps it's because we don't save the list? 
+% This is tested in go3/0. See below.
+%
+go2 =>
+  Len = 10000000,
+
+  print("new_list/1"),
+  time(_=new_list(Len)),
+
+  print("length/2:"),
+  time(length(_,Len)),
+
+  print("length2/2:"),
+  time(length2(_,Len)),
+
+  if Len <= 10000 then
+    print("length3/2:"),
+    time(length3(_,Len))
+  else 
+    println("length3/2 is too slow...")
+  end,
+
+  nl.
+
+% Case IIb: Creating a list with a proper variable.
+%
+% When we save the list into a proper variable then length2/2 is still faster.
+%
+% new_list/1
+% CPU time 1.88 seconds.
+%
+% length/2:
+% CPU time 1.568 seconds.
+%
+% length2/2:
+% CPU time 0.384 seconds.
+%
+go3 =>
+  Len = 10000000,
+
+  print("new_list/1"),
+  time(L1=new_list(Len)),
+
+  print("length/2:"),
+  time(length(L2,Len)),
+
+  print("length2/2:"),
+  time(length2(L3,Len)),
+
+  if Len <= 10000 then
+    print("length3/2:"),
+    time(length3(L4,Len))
+  else 
+    println("length3/2 is too slow...")
+  end,
+
+  nl.
+
+
+
+%
+% length/2
+% as Prolog standard "two-way" length/2
+%
+length(List,Len), var(List), integer(Len) => List = new_list(Len).
+length(List,Len), var(Len), list(List) => Len = List.length.
+
+%% This don't work from Len -> List
+% lengthX([],Len) ?=> Len = 0.
+% lengthX([_|T], L) =>
+%   lengthX(T,L1),
+%   L = L1 + 1.
+
+% This works (with accumulator)
+length2(List,Len) => 
+  length2(List,0,Len).
+length2(List,Len0,Len) ?=>  List = [], Len = Len0.
+length2(List, Len0,Len) =>
+  List = [_|T],
+  Len1 = Len0 + 1,
+  length2(T,Len1,Len).
+
+% This works as well, but is not tail recursive.
+length3(List,Len) ?=> 
+  List = [],
+  Len = 0.
+length3(List,Len) => 
+  List = [_|T],
+  length3(T,Len1),
+  Len = Len1+1.

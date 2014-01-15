@@ -30,12 +30,13 @@ main => time(go).
 
 go => euler23.
 
+% 1.374s
 euler23 =>
   % N = 28123, 
   % From http://mathworld.wolfram.com/AbundantNumber.html: 
   %  "Every number greater than 20161 can be expressed as a sum of two abundant numbers."
   N = 20161, 
-  Abundant = [A : A in 1.. N, sum_divisors3(A) > A],
+  Abundant = [A : A in 1.. N, sum_divisors5(A) > A],
   Vec = [0 : _I in 1..N].to_array(),
   foreach(A in Abundant, B in Abundant, A >= B, A+B <= N) 
     Vec[A+B] := 1
@@ -43,12 +44,10 @@ euler23 =>
   println(sum([A : A in 1..N, Vec[A] == 0])).
 
 
+% 1.38s
 euler23a =>
-  % N = 28123, 
-  % From http://mathworld.wolfram.com/AbundantNumber.html: 
-  %  "Every number greater than 20161 can be expressed as a sum of two abundant numbers."
   N = 20161, 
-  Abundant = [A : A in 1.. N, sum_divisors3(A) > A],
+  Abundant = [A : A in 1.. N, sum_divisors2(A) > A],
   Vec = new_array(N),
   foreach(I in 1..N) Vec[I] := 0 end,
   foreach(A in Abundant, B in Abundant) 
@@ -59,10 +58,10 @@ euler23a =>
   println(sum([A : A in 1..N, Vec[A] == 0])).
 
 
+% 1.38s
 euler23b =>
-  % N = 28123, 
   N = 20161, 
-  Abundant = [A : A in 1.. N, sum_divisors3(A) > A],
+  Abundant = [A : A in 1.. N, sum_divisors4(A) > A],
   Vec = new_array(N),
   foreach(I in 1..N) Vec[I] := 0 end,
   foreach(A in Abundant, B in Abundant, A >= B, A+B <= N) 
@@ -71,25 +70,91 @@ euler23b =>
   println(sum([A : A in 1..N, Vec[A] == 0])).
 
 
-table
+% using map: 2.3s
+euler23c =>
+  N = 20161, 
+  Abundant = [A : A in 1.. N, sum_divisors5(A) > A],
+  Vec = new_map(),
+  foreach(A in Abundant, B in Abundant, A >= B, A+B <= N) 
+    Vec.put(A+B,1)
+  end,
+  println(sum([A : A in 1..N, not Vec.has_key(A)])).
+
+% testing Vec var() instead: 1.396s
+euler23d =>
+  N = 20161, 
+  Abundant = [A : A in 1.. N, sum_divisors2(A) > A],
+  Vec = new_array(N), % we don't initialize this with 0
+  foreach(A in Abundant, B in Abundant) 
+    if A >= B, A+B <= N then
+      Vec[A+B] := 1
+    end
+  end,
+  println(sum([A : A in 1..N, var(Vec[A])])).
+
+
+
 sum_divisors2(N) = Sum =>
-    D = floor(sqrt(N)),
-    Sum1 = 1,
-    foreach(I in 2..D) 
-        if N mod I == 0 then
-            Sum1 := Sum1+I,
-            if I != N div I then
-                Sum1 := Sum1 + N div I
-            end
-        end
-    end,
-    Sum = Sum1.
+  D = floor(sqrt(N)),
+  Sum = 1,
+  foreach(I in 2..D) 
+     if N mod I == 0 then
+       Sum := Sum+I,
+       if I != N div I then
+         Sum := Sum + N div I
+       end
+     end
+  end.
 
 
-table
 sum_divisors3(N) = Sum =>
-    Sum1 = 1,
-    foreach(I in 2..floor(sqrt(N)), N mod I == 0) 
-        Sum1 := Sum1 + I + cond(I != N div I,N div I, 0)
-    end,
-    Sum = Sum1.
+  Sum = 1,
+  foreach(I in 2..floor(sqrt(N)), N mod I == 0) 
+     Sum := Sum + I + cond(I != N div I,N div I, 0)
+  end.
+
+% as a sum
+sum_divisors4(N) = 1+sum([I + cond(I != N div I,N div I, 0) 
+                          : I in 2..floor(sqrt(N)), N mod I == 0]). 
+
+
+%
+% This recursive version is slightly faster than sum_divisors2/1.
+%
+sum_divisors5(N) = Sum =>
+  sum_divisors5(2,N,1,Sum).
+
+% Part 0: base case
+sum_divisors5(I,N,Sum0,Sum), I > floor(sqrt(N)) =>
+  Sum = Sum0.
+
+% Part 1: I is a divisor of N
+sum_divisors5(I,N,Sum0,Sum), N mod I == 0 =>
+  Sum1 = Sum0 + I,
+  (I != N div I -> 
+    Sum2 = Sum1 + N div I 
+    ; 
+    Sum2 = Sum1
+  ),
+  sum_divisors5(I+1,N,Sum2,Sum).
+
+% Part 2: I is no divisor of N.
+sum_divisors5(I,N,Sum0,Sum) =>
+  sum_divisors5(I+1,N,Sum0,Sum).
+
+% very slow
+is_abundant(J) =>
+  Divisors = 0,
+  Loop = 1,
+  foreach(N in 2..J, N*N <= J, Loop == 1)
+    if J mod N == 0 then
+       Divisors := Divisors + N,
+       if N < J div N then
+          Divisors := Divisors + J div N
+       end,
+       if J <= Divisors then
+         Loop := 0
+       end
+    end
+  end,
+  J <= Divisors.
