@@ -1,0 +1,114 @@
+$
+$ Pancake sorting problem in Essence'.
+$ 
+$ http://www.research.att.com/~njas/sequences/A058986
+$ 
+$ Ivars Peterson: Pancake Sorting
+$    http://www.sciencenews.org/articles/20060902/mathtrek.asp
+$ 
+$ """
+$ The cook at the Sunrise Cafe is sloppy. When she prepares pancakes, they 
+$ all come out a different size. The server, however, is tidy. Before he 
+$ delivers a stack to a customer, he rearranges the pancakes in order of 
+$ size, with the smallest one on top and the largest on the bottom. To do 
+$ so, he grabs several pancakes from the top and flips them over. 
+$ He repeats this "grab-and-flip" operation as many times as necessary, 
+$ varying the number of pancakes that he flips each time. If he has a 
+$ stack of n pancakes, what's the maximum number of flips that he'll 
+$ ever need to use to rearrange them?
+$ """
+$
+$ Ivars Peterson: Improved Pancake Sorting
+$    http://www.maa.org/mathtourist/mathtourist_10_9_08.html
+$
+$ Mathpuzzle.com: http://www.mathpuzzle.com/pancakes.htm
+$
+
+$ Model created by Hakan Kjellerstrand, hakank@bonetmail.com
+$ See also my Essence'/Tailor page: http://www.hakank.org/minion_tailor
+$
+language ESSENCE' 1.0
+
+
+given n : int(1..20)
+given stack : matrix indexed by [int(1..n)] of int(1..n)
+
+letting progress_size be ((5*n+5) / 3)
+$ letting progress_size be 1+(17*n/16)
+
+
+$ param n be 6
+
+
+$ From http://www.mathpuzzle.com/pancakes.htm
+$ One answer is (2, 3, 6, 2, 4, 3, 2)
+$ param stack be [5,3,6,1,4,2]
+$ param stack be [3,2,1,4,5,6]
+$ param stack be [4,6,2,5,1,3]
+
+
+$ According to http://www.sciencenews.org/articles/20060902/mathtrek.asp
+$ """
+$ In 1979, William "Bill" H. Gates and Christos H. Papadimitriou used 
+$ a different sorting algorithm to improve on the upper and lower limits, 
+$ showing that (5n + 5)/3 flips always suffice and that 17n/16
+$ flips may be needed
+$ """
+
+
+$ Decision variables
+find positions : matrix indexed by [int(1..progress_size-1)] of int(0..n)
+find progress  : matrix indexed by [int(1..progress_size), int(1..n)] of int(1..n)
+find solution_pos : int(1..progress_size)
+
+branching on progress
+$ heuristic static
+$ heuristic sdf
+heuristic conflict
+$ heuristic srf
+
+minimising solution_pos
+
+such that
+
+  $ solution_pos = 8,
+
+  $ copy puzzle stack to the progress list
+  (forall j : int(1..n) .
+     progress[1,j] = stack[j]
+  ),
+
+  $ progress...
+  (forall i : int(2..progress_size) . 
+ 
+    $ all pancake sizes are different
+    alldifferent(progress[i,..])
+    /\
+    $ fetch a position to cut
+    exists pos : int(2..n) . (
+      (positions[i-1] = pos)
+
+      /\ $ reverse (flip) the first pos positions
+      (forall j : int(1..pos) . 
+         progress[i,pos-j+1] = progress[i-1,j]
+      )
+      /\ $ ... the rest are in the same positions as before
+      ( forall j : int(pos+1..n) . 
+        progress[i,j] = progress[i-1,j]
+      )
+     
+    )
+  ),
+
+  $ There must be some position where all items are sorted
+  exists pos : int(2..progress_size) . (
+    (solution_pos = pos)
+    /\ $ the pancakes are is sorted
+    (forall i : int(1..n) . 
+      progress[pos,i] = i
+    )
+    /\ $ and after that, just take the same flip position
+    (forall p : int(pos+1..progress_size) . 
+      positions[p-1] = positions[p-2]
+    )
+  ) 
