@@ -68,7 +68,7 @@ object Kakuro {
    */
   def calc(cp: CPSolver,
            cc: Array[Int],
-           x: Array[Array[CPVarInt]],
+           x: Array[Array[CPIntVar]],
            res: Int) {
 
     // ensure that the values are positive
@@ -146,7 +146,7 @@ object Kakuro {
     //
     // Variables
     // 
-    val x = Array.fill(n)(Array.fill(n)(CPVarInt(cp, 0 to 9)))
+    val x = Array.fill(n)(Array.fill(n)(CPIntVar(0 to 9)(cp)))
 
     //
     // constraints

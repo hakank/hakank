@@ -44,7 +44,7 @@ import oscar.cp.core._
 object AllDifferentExcept0 {
 
   // Decomposition of allDifferent_except_0
-  def allDifferent_except_0(cp: CPSolver, y: Array[CPVarInt]) = {
+  def allDifferent_except_0(cp: CPSolver, y: Array[CPIntVar]) = {
 
     for(i <- 0 until y.length; j <- 0 until i) {
       cp.add( ((y(i) !== 0) && (y(j) !== 0)) ==> (y(i) !== y(j)) )
@@ -52,7 +52,7 @@ object AllDifferentExcept0 {
   }
 
   // Decomposition of increasing
-  def increasing(cp: CPSolver, y: Array[CPVarInt]) = {
+  def increasing(cp: CPSolver, y: Array[CPIntVar]) = {
     for (i <- 1 until y.length) {
       cp.add(y(i-1) <= y(i))
     }
@@ -67,8 +67,8 @@ object AllDifferentExcept0 {
     val n = if (args.length > 0) args(0).toInt else 7
 
     // variables
-    val x = Array.fill(n)(CPVarInt(cp, 0 to n))
-    val occurrences = Array.tabulate(n+1)(i => (i,CPVarInt(cp, 0 to n)))
+    val x = Array.fill(n)(CPIntVar(0 to n)(cp))
+    val occurrences = Array.tabulate(n+1)(i => (i,CPIntVar(0 to n)(cp)))
     val z = occurrences(0)._2  // the tuple is (#occurrences, value)
 
     //

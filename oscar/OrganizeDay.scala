@@ -40,8 +40,8 @@ object OrganizeDay {
 
 
   // No overlapping of tasks s1 and s2
-  def noOverlap(s1: CPVarInt, d1: Int,
-                s2: CPVarInt, d2: Int) = 
+  def noOverlap(s1: CPIntVar, d1: Int,
+                s2: CPIntVar, d2: Int) = 
     (s1 + d1 <== s2) || (s2 + d2 <== s1)
 
 
@@ -74,8 +74,8 @@ object OrganizeDay {
     //
     // variables
     //
-    val begins = Array.fill(n)(CPVarInt(cp, begin to end))
-    val ends   = Array.fill(n)(CPVarInt(cp, begin to end))
+    val begins = Array.fill(n)(CPIntVar(begin to end)(cp))
+    val ends   = Array.fill(n)(CPIntVar(begin to end)(cp))
 
     //
     // constraints

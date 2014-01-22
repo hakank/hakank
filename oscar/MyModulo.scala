@@ -26,11 +26,11 @@ import scala.math._
 
   As of writing, OscaR supports these two versions
   of modulo
-    modulo(CPVarInt, Int, CPVarInt) : Constraint
-    modulo(CPVarInt, Int, Int) : Constraint
+    modulo(CPIntVar, Int, CPIntVar) : Constraint
+    modulo(CPIntVar, Int, Int) : Constraint
   
   but not
-    modulo(CPVarInt, CPVarInt, CPVarInt)
+    modulo(CPIntVar, CPIntVar, CPIntVar)
 
   here is an implementation (decomposition)
   of the latter version.
@@ -58,11 +58,11 @@ object MyModulo {
 
 
   def mod(cp: CPSolver,
-          x: CPVarInt,
-          y: CPVarInt) : CPVarInt = {
+          x: CPIntVar,
+          y: CPIntVar) : CPIntVar = {
     val mmin = min(x.min, y.min)
     val mmax = min(x.max, y.max)
-    val r = CPVarInt(cp, mmin, mmax)
+    val r = CPIntVar(mmin, mmax)(cp)
     myMod(cp, x, y, r) 
     r
 
@@ -73,9 +73,9 @@ object MyModulo {
   //    x % y == r
   //
   def myMod(cp: CPSolver,
-            x: CPVarInt,
-            y: CPVarInt,
-            r: CPVarInt) = {
+            x: CPIntVar,
+            y: CPIntVar,
+            r: CPIntVar) = {
 
     val lbx = x.min
     val ubx = x.max;
@@ -84,7 +84,7 @@ object MyModulo {
     val min_x = min(lbx, ubx_neg);
     val max_x = max(ubx, lbx_neg);
 
-    val d = CPVarInt(cp, min_x, max_x)
+    val d = CPIntVar(min_x, max_x)(cp)
 
     // r >= 0
     cp.add(r >= 0)
@@ -122,10 +122,10 @@ object MyModulo {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 0 to 9))
-    val two = CPVarInt(cp, 2 to 2)
-    val zero = CPVarInt(cp, 0 to 0)
-    val one = CPVarInt(cp, 1 to 1)
+    val x = Array.fill(n)(CPIntVar(0 to 9)(cp))
+    val two = CPIntVar(2 to 2)(cp)
+    val zero = CPIntVar(0 to 0)(cp)
+    val one = CPIntVar(1 to 1)(cp)
 
     //
     // constraints

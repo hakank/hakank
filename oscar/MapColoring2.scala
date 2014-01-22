@@ -47,7 +47,7 @@ object MapColoring2 {
     val num_colors = 4
       
     // variables
-    val color = Array.fill(n)(CPVarInt(cp, 1 to num_colors))
+    val color = Array.fill(n)(CPIntVar(1 to num_colors)(cp))
 
     //
     // constraints

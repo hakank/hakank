@@ -86,15 +86,15 @@ object FourIslands {
     // variables
     //
     // the digits
-    val island = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val island = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(pwana, quero, rayou, skern) = island
     val islandStr = Array("Pwana", "Quero", "Rayou", "Skern")
 
-    val export = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val export = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(alabaster, bananas, coconuts, durian_fruit) = export
     val exportStr = Array("alabaster", "bananas", "coconuts", "durian fruit")
 
-    val attraction =  Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val attraction =  Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(resort_hotel, ice_skating_rink, jai_alai_stadium, koala_preserve) = attraction
     val attractionStr = Array("resort hotel", "ice skating rink", "jai alai stadium", "koala preserve")
     val Array(a,b,c,d) = (0 to n-1).toArray

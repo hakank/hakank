@@ -66,7 +66,7 @@ object SetCovering2 {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(n)(CPIntVar(0 to 1)(cp))
     // number of telephones, to be minimized
     val z = sum(x)
 

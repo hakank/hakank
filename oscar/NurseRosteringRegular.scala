@@ -39,7 +39,7 @@ import scala.collection.JavaConversions._
  */
 object NurseRosteringRegular {
 
-  def maxDomNotbound(vars: Iterable[CPVarInt]): Iterable[(CPVarInt, Int)] = {
+  def maxDomNotbound(vars: Iterable[CPIntVar]): Iterable[(CPIntVar, Int)] = {
     val notbound = vars.filterNot(_.isBound)
     if (notbound.nonEmpty) {
       val sizeMax = notbound.map(_.getSize).max
@@ -119,9 +119,9 @@ object NurseRosteringRegular {
     //
     // variables
     //
-    val x = Array.fill(num_nurses,num_days)(CPVarInt(cp, shifts_r))
-    val day_stat = Array.fill(num_days,num_shifts)(CPVarInt(cp, nurses))
-    val nurse_stat = Array.fill(num_nurses,num_shifts)(CPVarInt(cp, days))
+    val x = Array.fill(num_nurses,num_days)(CPIntVar(shifts_r)(cp))
+    val day_stat = Array.fill(num_days,num_shifts)(CPIntVar(nurses)(cp))
+    val nurse_stat = Array.fill(num_nurses,num_shifts)(CPIntVar(days)(cp))
 
     val all = x.flatten
 

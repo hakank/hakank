@@ -77,7 +77,7 @@ object QuasigroupCompletion {
 
 
     // variables
-    val x = Array.fill(n)(Array.fill(n)(CPVarInt(cp, 1 to n)))
+    val x = Array.fill(n)(Array.fill(n)(CPIntVar(1 to n)(cp)))
 
     //
     // constraints

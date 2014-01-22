@@ -45,16 +45,15 @@ object MagicSquare {
     //
     // variables
     //
-    val x = Array.fill(n,n)(CPVarInt(cp, 1 to n2))
+    val x = Array.fill(n,n)(CPIntVar(1 to n2)(cp))
     val x_t = x.transpose
 
-    // val total = CPVarInt(cp, 1 to n*n*n)
+    // val total = CPIntVar(cp, 1 to n*n*n)
     val total = (n * (n*n + 1) / 2)
 
     //
     // constraints
     //
-    var numSols = 0
 
     cp.solve subjectTo {
 
@@ -87,17 +86,10 @@ object MagicSquare {
          println(x(i).map(j=>"%3d".format(j.value)).mkString(""))
        }
        println()
-
-
-       numSols += 1
-
-       if (num_to_show > 0 && numSols >= num_to_show) {
-         cp.stop()
-       }
        
      } 
      
-     println(cp.start())
+     println(cp.start(num_to_show))
    }
 
 }

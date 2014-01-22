@@ -49,7 +49,7 @@ import scala.collection.JavaConversions._
 object ContiguityRegular {
 
 
-  def MyContiguity(x: Array[CPVarInt]) : Constraint = {
+  def MyContiguity(x: Array[CPIntVar]) : Constraint = {
 
     // all states are accepting states
     val accepting_states: Set[java.lang.Integer] = Set(0,1,2)
@@ -88,7 +88,7 @@ object ContiguityRegular {
     //
     // variables
     //
-    val reg_input = Array.fill(n)(CPVarInt(cp, 0 to 1))
+    val reg_input = Array.fill(n)(CPIntVar(0 to 1)(cp))
 
     //
     // constraints

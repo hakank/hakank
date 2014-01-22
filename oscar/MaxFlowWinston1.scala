@@ -79,7 +79,7 @@ object MaxFlowWinston1 {
 
 
     // variables
-    val flow = Array.fill(n,n)(CPVarInt(cp, 0 to 200))
+    val flow = Array.fill(n,n)(CPIntVar(0 to 200)(cp))
     // to maximize
     val z = flow(n-1)(0)
 

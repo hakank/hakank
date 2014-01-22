@@ -57,7 +57,7 @@ object SchedulingSpeakers {
       //
       // decision variables
       // 
-      val speakers = Array.tabulate(num_speakers)(i=>CPVarInt(cp, available(i).toSet ))
+      val speakers = Array.tabulate(num_speakers)(i=>CPIntVar(available(i).toSet)(cp))
 
       var numSols = 0
       cp.solve subjectTo {

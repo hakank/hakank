@@ -66,7 +66,7 @@ object CoinsGrid {
     // variables
     //
 
-    val x = Array.fill(n,n)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(n,n)(CPIntVar(0 to 1)(cp))
 
     // quadratic horizonal distance (to minimize)
     val z = sum(List.tabulate(n)(i => List.tabulate(n)(j => x(i)(j)*abs(i-j)*abs(i-j) )).flatten)

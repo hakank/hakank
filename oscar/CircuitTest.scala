@@ -16,7 +16,7 @@ package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
 
-import oscar.cp.core.CPVarInt
+import oscar.cp.core.CPIntVar
 import scala.io.Source._
 import scala.math._
 
@@ -87,10 +87,10 @@ object CircuitTest {
    * length of x
    * 
    */
-  def circuit_me(cp: CPSolver, x: Array[CPVarInt]) = {
+  def circuit_me(cp: CPSolver, x: Array[CPIntVar]) = {
 
     val len = x.length
-    val z = Array.tabulate(len)(i => CPVarInt(cp, 0 to len - 1))
+    val z = Array.tabulate(len)(i => CPIntVar(0 to len - 1)(cp))
 
     cp.add(allDifferent(x), Strong)
     cp.add(allDifferent(z), Strong)
@@ -117,7 +117,7 @@ object CircuitTest {
    * We assume that the path starts from 1
    * 
    */
-  def circuit_path(cp: CPSolver, x: Array[CPVarInt], p: Array[CPVarInt]) = {
+  def circuit_path(cp: CPSolver, x: Array[CPIntVar], p: Array[CPIntVar]) = {
 
     val len = x.length
 
@@ -143,8 +143,8 @@ object CircuitTest {
     //
 
     // Note: Here we use domain of 0..n-1
-    val x = Array.fill(n)(CPVarInt(cp, 0 to n - 1))
-    val p = Array.fill(n)(CPVarInt(cp, 0 to n - 1))
+    val x = Array.fill(n)(CPIntVar(0 to n - 1)(cp))
+    val p = Array.fill(n)(CPIntVar(0 to n - 1)(cp))
 
     //
     // constraints

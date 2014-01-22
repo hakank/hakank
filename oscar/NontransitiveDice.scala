@@ -78,21 +78,21 @@ object NontransitiveDice {
     //
     // Decision variables
     // 
-    val dice = Array.fill(m,n)(CPVarInt(cp, 1 to n*2))
+    val dice = Array.fill(m,n)(CPIntVar(1 to n*2)(cp))
     val dice_flat = dice.flatten
 
-    val comp = Array.fill(m,2)(CPVarInt(cp, 0 to n*n))
+    val comp = Array.fill(m,2)(CPIntVar(0 to n*n)(cp))
     val comp_flat = comp.flatten
 
     // The following variables are for summaries or objectives
-    val gap = Array.fill(m)(CPVarInt(cp, 0 to n*n))
+    val gap = Array.fill(m)(CPIntVar(0 to n*n)(cp))
     val gap_sum = sum(gap)
 
-    val max_val = maximum(dice_flat) // CPVarInt(cp, 0 to n*2) // max of dice_flat
-    val max_win = maximum(comp_flat) // CPVarInt(cp, 0 to n*n)   // max of comp_flat
+    val max_val = maximum(dice_flat) // CPIntVar(cp, 0 to n*2) // max of dice_flat
+    val max_win = maximum(comp_flat) // CPIntVar(cp, 0 to n*n)   // max of comp_flat
 
     // number of occurrences of each value of the dice
-    // val counts  = Array.tabulate(n*2+1)(i => (CPVarInt(cp, 0 to n*m), i))
+    // val counts  = Array.tabulate(n*2+1)(i => (CPIntVar(cp, 0 to n*m), i))
 
     // for labeling
     val all = dice_flat ++ Array(max_val, max_win)
@@ -161,12 +161,8 @@ object NontransitiveDice {
        
       numSols += 1
 
-      if (num_to_show > 0 && numSols >= num_to_show) {
-        cp.stop()
-      } 
-
     } 
-    println(cp.start())
+    println(cp.start(num_to_show))
 
   }
 

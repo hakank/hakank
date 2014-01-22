@@ -49,7 +49,7 @@ object MapColoring {
     val num_countries = connections.length
       
     // variables
-    val color = Array.fill(num_countries)(CPVarInt(cp, 1 to num_colors))
+    val color = Array.fill(num_countries)(CPIntVar(1 to num_colors)(cp))
 
     //
     // constraints

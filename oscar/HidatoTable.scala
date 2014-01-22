@@ -143,7 +143,7 @@ object HidatoTable {
     //
     // variables
     //
-    val positions = Array.fill(n*n)(CPVarInt(cp, 0 to n*n-1))
+    val positions = Array.fill(n*n)(CPIntVar(0 to n*n-1)(cp))
 
 
     //

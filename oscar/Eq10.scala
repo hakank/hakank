@@ -46,7 +46,7 @@ object Eq10 {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 0 to 9))
+    val x = Array.fill(n)(CPIntVar(0 to 9)(cp))
     val Array(x1,x2,x3,x4,x5,x6,x7) = x
 
     //

@@ -103,7 +103,7 @@ object SurvoPuzzle {
 
 
     // variables
-    val x = Array.fill(r,c)(CPVarInt(cp, 1 to r*c))
+    val x = Array.fill(r,c)(CPIntVar(1 to r*c)(cp))
 
     //
     // constraints

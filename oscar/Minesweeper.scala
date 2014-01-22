@@ -98,7 +98,7 @@ object Minesweeper {
 
 
     // variables
-    val mines = Array.fill(r)(Array.fill(c)(CPVarInt(cp, 0 to 1)))
+    val mines = Array.fill(r)(Array.fill(c)(CPIntVar(0 to 1)(cp)))
 
     //
     // constraints

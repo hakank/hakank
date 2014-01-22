@@ -59,9 +59,9 @@ object CostasArray {
     //
     // variables
     //
-    val costas = Array.fill(n)(CPVarInt(cp, 1 to n))
+    val costas = Array.fill(n)(CPIntVar(1 to n)(cp))
     // Matrix of differences
-    val differences = Array.fill(n,n)(CPVarInt(cp, -n+1 to n-1))
+    val differences = Array.fill(n,n)(CPIntVar(-n+1 to n-1)(cp))
 
 
     //

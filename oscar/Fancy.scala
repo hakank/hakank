@@ -66,11 +66,11 @@ object Fancy {
     // variables
     //
 
-    val x = Array.fill(k)(CPVarBool(cp))
-    val x2 = Array.fill(k)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(k)(CPBoolVar()(cp))
+    val x2 = Array.fill(k)(CPIntVar(0 to 1)(cp))
     val Array(t,h,r,s,n) = x
     val Array(t2,h2,r2,s2,n2) = x2
-    // This don't work with CPVarBool
+    // This don't work with CPBoolVar
     val cost = weightedSum(Array(10,2,12,11), Array(t2,h2,s2,n2))
 
     //
@@ -80,7 +80,7 @@ object Fancy {
     cp.minimize(cost) subjectTo {
     // cp.solveAll subjectTo {
 
-      // channeling between CPVarBool and CPVarInt
+      // channeling between CPBoolVar and CPIntVar
       for(i <- 0 until k) {
         cp.add(x(i)==x2(i))
       }
@@ -91,7 +91,7 @@ object Fancy {
       cp.add( ((s || r) ==> (t || h)) || n )  
       cp.add( ((r || h || !s) ==> t) || n )
 
-      // Using CPVarInt instead (not as nice...)
+      // Using CPIntVar instead (not as nice...)
       // cp.add( ((t===1) ==> (r===1)) || n===1 )
       // cp.add( ((s===1 || r===1) ==> (t===1 || h===1)) || n===1 )  
       // cp.add( ((r===1 || h===1 || s===0) ==> (t===1)) || n===1 )

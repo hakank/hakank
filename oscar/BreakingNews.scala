@@ -69,7 +69,7 @@ object BreakingNews {
    // 
    // Note: This requires the domain 0..n-1
    //
-   def inverse(cp: CPSolver, x: Array[CPVarInt], y: Array[CPVarInt]) {
+   def inverse(cp: CPSolver, x: Array[CPIntVar], y: Array[CPIntVar]) {
       val len = x.length
       for(i <- 0 until len;
           j <- 0 until len) {
@@ -78,8 +78,8 @@ object BreakingNews {
    }
 
    // Convenient function which returns y (for presentation)
-   def inverse2(cp: CPSolver, x: Array[CPVarInt]) : Array[CPVarInt] = {
-     val y = Array.fill(x.length)(CPVarInt(cp, x(0).min to x(0).max))
+   def inverse2(cp: CPSolver, x: Array[CPIntVar]) : Array[CPIntVar] = {
+     val y = Array.fill(x.length)(CPIntVar(x(0).min to x(0).max)(cp))
      inverse(cp, x, y)
      y
    }
@@ -100,13 +100,13 @@ object BreakingNews {
     //
     // variables
     //
-    val locations = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val locations = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(bayonne, new_hope, port_charles, south_amboy) = locations
     // for output
     val locationsStr = Array("Bayonne", "New Hope", "Port Charles", "South Amboy")
     val locationsInv = inverse2(cp, locations)
 
-    val events = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val events = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(baby, blimp, skyscraper, whale) = events
     // for output
     val eventsStr = Array("Baby", "Blimp", "Skyscraper", "Whale")

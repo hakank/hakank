@@ -65,7 +65,7 @@ object ArchFriends {
    // 
    // Note: This requires the domain 0..n-1
    //
-   def inverse(cp: CPSolver, x: Array[CPVarInt], y: Array[CPVarInt]) {
+   def inverse(cp: CPSolver, x: Array[CPIntVar], y: Array[CPIntVar]) {
       val len = x.length
       for(i <- 0 until len;
           j <- 0 until len) {
@@ -74,8 +74,8 @@ object ArchFriends {
    }
 
    // Convenient function which returns y (for presentation)
-   def inverse2(cp: CPSolver, x: Array[CPVarInt]) : Array[CPVarInt] = {
-     val y = Array.fill(x.length)(CPVarInt(cp, x(0).min to x(0).max))
+   def inverse2(cp: CPSolver, x: Array[CPIntVar]) : Array[CPIntVar] = {
+     val y = Array.fill(x.length)(CPIntVar(x(0).min to x(0).max)(cp))
      inverse(cp, x, y)
      y
    }
@@ -93,13 +93,13 @@ object ArchFriends {
     //
     // variables
     //
-    val shoes = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val shoes = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(ecru_espadrilles, fuchsia_flats, purple_pumps, suede_sandals) = shoes
     // for output
     val shoesStr = Array("Ecru Espadrilles", "Fuchsia Flats", "Purple Pumps", "Suede Sandals")
     val shoesInv = inverse2(cp, shoes)
 
-    val shops = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val shops = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(foot_farm, heels_in_a_handcart, the_shoe_palace, tootsies) = shops
     // for output
     val shopsStr = Array("Foot Farm", "Heels in a Handcart", "The Shoe Palace", "Tootsies")
@@ -147,10 +147,12 @@ object ArchFriends {
 
       numSols += 1     
       
-    } start()
+    } 
+    
+    val stats = cp.start()
 
     println("\nIt was " + numSols + " solutions.")
-    cp.printStats()
+    println(stats)
 
   }
 

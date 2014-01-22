@@ -95,7 +95,7 @@ object Crypto {
     //
     // variables
     //
-    val LD = Array.fill(num_letters)(CPVarInt(cp, 1 to num_letters))
+    val LD = Array.fill(num_letters)(CPIntVar(1 to num_letters)(cp))
 
     // Note: D is not used in the constraints below
     // Note: Scala only allows for max 22-tuple... 

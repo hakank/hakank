@@ -58,7 +58,7 @@ object Diet2 {
      val all = Array(calories, chocolate, sugar, fat)
 
      // variables
-     val x = Array.fill(n)(CPVarInt(cp, 0 to 10))
+     val x = Array.fill(n)(CPIntVar(0 to 10)(cp))
      val cost = weightedSum(price, x)
 
      // constraints

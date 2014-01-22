@@ -67,7 +67,7 @@ object CoveringOpl {
     //
     // variables
     //
-    val hire = Array.fill(num_workers)(CPVarInt(cp, 0 to 1))
+    val hire = Array.fill(num_workers)(CPIntVar(0 to 1)(cp))
     val total_cost = weightedSum(cost, hire)
 
     //

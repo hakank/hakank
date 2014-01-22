@@ -88,7 +88,7 @@ object WordSquare {
     // word matrix 
     val A = Array.tabulate(num_words,word_len)((i,j) => d(words(i)(j)))
     // the selected words
-    val E = Array.fill(word_len)(CPVarInt(cp, 0 to num_words))
+    val E = Array.fill(word_len)(CPIntVar(0 to num_words)(cp))
 
     //
     // constraints
@@ -102,7 +102,7 @@ object WordSquare {
       // now find the connections
       for{i <- WORDLEN
           j <- WORDLEN} {
-        cp.add(A(E(i))(CPVarInt(cp,j)) == A(E(j))(CPVarInt(cp,i)))
+        cp.add(A(E(i))(CPIntVar(j)(cp)) == A(E(j))(CPIntVar(i)(cp)))
       }
 
 

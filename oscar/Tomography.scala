@@ -99,7 +99,7 @@ object Tomography {
     //
     // decicion variables
     //
-    val x = Array.fill(r,c)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(r,c)(CPIntVar(0 to 1)(cp))
     val x_t = x.transpose
 
     //

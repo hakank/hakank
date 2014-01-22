@@ -37,10 +37,10 @@ object FurnitureMoving {
 
   // Thanks Pierre Schaus for help with this decomposition of cumulative.
   def myCumulative(cp: CPSolver,
-                   s: Array[CPVarInt],
+                   s: Array[CPIntVar],
                    d: Array[Int],
                    r: Array[Int],
-                   b: CPVarInt) {
+                   b: CPIntVar) {
     
     val tasks = for{
       i <- 0 to s.length-1
@@ -75,9 +75,9 @@ object FurnitureMoving {
     //
     // variables
     //
-    val starts = Array.fill(n)(CPVarInt(cp, 0 to upper_limit))
-    val end_times = Array.fill(n)(CPVarInt(cp, 0 to upper_limit*2))
-    val num_persons = CPVarInt(cp, 1 to 100)
+    val starts = Array.fill(n)(CPIntVar(0 to upper_limit)(cp))
+    val end_times = Array.fill(n)(CPIntVar(0 to upper_limit*2)(cp))
+    val num_persons = CPIntVar(1 to 100)(cp)
 
     val max_end_time = maximum(end_times) 
 

@@ -60,7 +60,7 @@ object Sudoku {
                         Array(0, 0, 0, 6, 0, 8, 0, 0, 0))
 
     // variables
-    val x = Array.fill(n,n)(CPVarInt(cp, 1 to n))
+    val x = Array.fill(n,n)(CPIntVar(1 to n)(cp))
     val x_t = x.transpose
 
     //

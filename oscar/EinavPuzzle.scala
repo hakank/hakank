@@ -121,11 +121,11 @@ object EinavPuzzle {
     //
     // variables
     //
-    val x = Array.fill(rows,cols)(CPVarInt(cp, -100 to 100))
+    val x = Array.fill(rows,cols)(CPIntVar(-100 to 100)(cp))
     val total_sum = sum(x.flatten)
     
-    val row_signs = Array.fill(rows)(CPVarInt(cp, sign_domains))
-    val col_signs = Array.fill(cols)(CPVarInt(cp, sign_domains))
+    val row_signs = Array.fill(rows)(CPIntVar(sign_domains)(cp))
+    val col_signs = Array.fill(cols)(CPIntVar(sign_domains)(cp))
 
     val row_sums = for(i <- ROWS) yield sum(for(j <- COLS) yield x(i)(j))
     val col_sums = for(j <- COLS) yield sum(for(i <- ROWS) yield x(i)(j))

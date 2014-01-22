@@ -59,7 +59,7 @@ object Marathon {
    //   x is the position array
    //   y are the placements
    // 
-   def inverse(cp: CPSolver, x: Array[CPVarInt], y: Array[CPVarInt]) {
+   def inverse(cp: CPSolver, x: Array[CPIntVar], y: Array[CPIntVar]) {
       val len = x.length
       for(i <- 0 until len;
           j <- 0 until len) {
@@ -68,9 +68,9 @@ object Marathon {
    }
 
    // Same as inverse() but returns the y Array
-   def inverse2(cp: CPSolver, x: Array[CPVarInt]) : Array[CPVarInt] = {
+   def inverse2(cp: CPSolver, x: Array[CPIntVar]) : Array[CPIntVar] = {
       val len = x.length
-      val y = Array.fill(len)(CPVarInt(cp, 0 to len-1))
+      val y = Array.fill(len)(CPIntVar(0 to len-1)(cp))
       for(i <- 0 until len;
           j <- 0 until len) {
         cp.add( (y(j) === i) == (x(i) === j) )
@@ -95,7 +95,7 @@ object Marathon {
       // 
 
       // Note: in order to use inverse(), the runners and places are in the domain 0..n-1
-      val runners = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+      val runners = Array.fill(n)(CPIntVar(0 to n-1)(cp))
       val Array(dominique, ignace, naren, olivier, philippe, pascal) = runners
       val places = inverse2(cp, runners)
 

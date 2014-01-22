@@ -107,8 +107,8 @@ object TrafficLights {
     //
     // variables
     // 
-    val V = Array.fill(n)(CPVarInt(cp, 0 to n-1))
-    val P = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val V = Array.fill(n)(CPIntVar(0 to n-1)(cp))
+    val P = Array.fill(n)(CPIntVar(0 to n-1)(cp))
 
     //
     // constraints

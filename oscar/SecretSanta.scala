@@ -81,7 +81,7 @@ object SecretSanta {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val x = Array.fill(n)(CPIntVar(0 to n-1)(cp))
 
     //
     // constraints

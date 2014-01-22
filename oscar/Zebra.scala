@@ -69,39 +69,39 @@ object Zebra {
     // variables
     // 
     // Colors
-    val red           = CPVarInt(cp, 1 to n)
-    val green         = CPVarInt(cp, 1 to n)
-    val yellow        = CPVarInt(cp, 1 to n)
-    val blue          = CPVarInt(cp, 1 to n)
-    val ivory         = CPVarInt(cp, 1 to n)
+    val red           = CPIntVar(1 to n)(cp)
+    val green         = CPIntVar(1 to n)(cp)
+    val yellow        = CPIntVar(1 to n)(cp)
+    val blue          = CPIntVar(1 to n)(cp)
+    val ivory         = CPIntVar(1 to n)(cp)
 
     // Nationality
-    val englishman    = CPVarInt(cp, 1 to n)
-    val spaniard      = CPVarInt(cp, 1 to n)
-    val japanese      = CPVarInt(cp, 1 to n)
-    val ukrainian     = CPVarInt(cp, 1 to n)
-    val norwegian     = CPVarInt(cp, 1 to n)
+    val englishman    = CPIntVar(1 to n)(cp)
+    val spaniard      = CPIntVar(1 to n)(cp)
+    val japanese      = CPIntVar(1 to n)(cp)
+    val ukrainian     = CPIntVar(1 to n)(cp)
+    val norwegian     = CPIntVar(1 to n)(cp)
 
     // Animal
-    val dog           = CPVarInt(cp, 1 to n)
-    val snails        = CPVarInt(cp, 1 to n)
-    val fox           = CPVarInt(cp, 1 to n)
-    val zebra         = CPVarInt(cp, 1 to n)
-    val horse         = CPVarInt(cp, 1 to n)
+    val dog           = CPIntVar(1 to n)(cp)
+    val snails        = CPIntVar(1 to n)(cp)
+    val fox           = CPIntVar(1 to n)(cp)
+    val zebra         = CPIntVar(1 to n)(cp)
+    val horse         = CPIntVar(1 to n)(cp)
 
     // Drink
-    val tea           = CPVarInt(cp, 1 to n)
-    val coffee        = CPVarInt(cp, 1 to n)
-    val water         = CPVarInt(cp, 1 to n)
-    val milk          = CPVarInt(cp, 1 to n)
-    val fruit_juice   = CPVarInt(cp, 1 to n)
+    val tea           = CPIntVar(1 to n)(cp)
+    val coffee        = CPIntVar(1 to n)(cp)
+    val water         = CPIntVar(1 to n)(cp)
+    val milk          = CPIntVar(1 to n)(cp)
+    val fruit_juice   = CPIntVar(1 to n)(cp)
 
     // Smoke
-    val old_gold      = CPVarInt(cp, 1 to n)
-    val kools         = CPVarInt(cp, 1 to n)
-    val chesterfields = CPVarInt(cp, 1 to n)
-    val lucky_strike  = CPVarInt(cp, 1 to n)
-    val parliaments   = CPVarInt(cp, 1 to n)
+    val old_gold      = CPIntVar(1 to n)(cp)
+    val kools         = CPIntVar(1 to n)(cp)
+    val chesterfields = CPIntVar(1 to n)(cp)
+    val lucky_strike  = CPIntVar(1 to n)(cp)
+    val parliaments   = CPIntVar(1 to n)(cp)
 
     // for labeling
     val all_vars = Array(

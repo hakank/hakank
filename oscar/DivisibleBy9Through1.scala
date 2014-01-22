@@ -82,9 +82,9 @@ object DivisibleBy9Through1 {
     //
     // variables
     //
-    val digits   = Array.fill(n)(CPVarInt(cp, 1 to n))
-    val numbers  = Array.fill(n)(CPVarInt(cp, 1 to m))
-    val divisors = Array.fill(n)(CPVarInt(cp, 1 to m2))
+    val digits   = Array.fill(n)(CPIntVar(1 to n)(cp))
+    val numbers  = Array.fill(n)(CPIntVar(1 to m)(cp))
+    val divisors = Array.fill(n)(CPIntVar(1 to m2)(cp))
 
     //
     // constraints

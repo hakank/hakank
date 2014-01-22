@@ -33,7 +33,7 @@ import scala.math._
 object ToNum {
 
   // channeling between IntVar array t <=> IntVar s
-  def toNum(t: Array[CPVarInt], base: Int=10) = sum(
+  def toNum(t: Array[CPIntVar], base: Int=10) = sum(
       Array.tabulate(t.length)(i=> t(i)*pow(base, t.length-i-1).toInt))
 
    def main(args: Array[String]) {
@@ -44,8 +44,8 @@ object ToNum {
       val base = 10
 
       // variables
-      val x = Array.tabulate(n)(i => CPVarInt(cp, 0 to base-1))
-      val y = CPVarInt(cp, 0 to pow(n, base).toInt)
+      val x = Array.tabulate(n)(i => CPIntVar(0 to base-1)(cp))
+      val y = CPIntVar(0 to pow(n, base).toInt)(cp)
 
       var numSols = 0
       cp.solve subjectTo {

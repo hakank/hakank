@@ -47,7 +47,7 @@ object Xkcd {
 
 
     // variables
-    val x = Array.fill(num_prices)(CPVarInt(cp, 0 to 10))
+    val x = Array.fill(num_prices)(CPIntVar(0 to 10)(cp))
 
     //
     // constraints

@@ -43,7 +43,7 @@ import scala.math._
 */
 
 object OrganizeDaySchedule {
-
+	/*
 	def main(args : Array[String]) {
 
 		//
@@ -104,5 +104,5 @@ object OrganizeDaySchedule {
 			numSols += 1
 		} 
 		println(cp.start())
-	}
+	}*/
 }

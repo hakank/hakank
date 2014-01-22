@@ -58,10 +58,10 @@ object MaxFlowTaha {
     // variables
     val x = Array.tabulate(n)(i=>
                               Array.tabulate(n)(j =>
-                                                CPVarInt(cp, 0 to c(i)(j))))
+                                                CPIntVar(0 to c(i)(j))(cp)))
 
-    val out_flow = Array.fill(n)(CPVarInt(cp, 0 to 1000))
-    val in_flow = Array.fill(n)(CPVarInt(cp, 0 to 1000))
+    val out_flow = Array.fill(n)(CPIntVar(0 to 1000)(cp))
+    val in_flow = Array.fill(n)(CPIntVar(0 to 1000)(cp))
     val total = sum(for{j <- NODES
                       if c(start)(j) > 0} yield x(start)(j))
 

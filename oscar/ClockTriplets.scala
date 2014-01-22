@@ -65,7 +65,7 @@ object ClockTriplets {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 1 to n))
+    val x = Array.fill(n)(CPIntVar(1 to n)(cp))
 
 
     //

@@ -138,10 +138,10 @@ object Crew {
     //
     // variables
     //
-    val crew = Array.fill(num_flights,num_persons)(CPVarInt(cp, 0 to 1))
+    val crew = Array.fill(num_flights,num_persons)(CPIntVar(0 to 1)(cp))
     val crew_flat = crew.flatten
 
-    // val num_working = CPVarInt(cp, 1 to num_persons)
+    // val num_working = CPIntVar(cp, 1 to num_persons)
     val num_working = sum(for{p <- PERSONS}
                            yield sum(for{f <- FLIGHTS} yield (crew(f)(p)))>>= 0)
 

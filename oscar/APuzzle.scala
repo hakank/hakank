@@ -109,11 +109,11 @@ object APuzzle {
       }
     }
     
-    val all = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val all = Array.fill(n)(CPIntVar(0 to n-1)(cp))
     val Array(x0,x1,x2,x3,x4,x5,x6,x7,x8,x9) = all
 
     // the unknown, i.e. 2581 = x
-    val x = CPVarInt(cp, 0 to n-1)
+    val x = CPIntVar(0 to n-1)(cp)
 
     //
     // constraints

@@ -56,7 +56,7 @@ object SetCovering {
     // variables
     //
  
-    val x = Array.fill(num_cities)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(num_cities)(CPIntVar(0 to 1)(cp))
     val z = sum(x)
 
 

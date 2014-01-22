@@ -170,8 +170,8 @@ object StableMarriage {
 
       
     // variables
-    val wife    = Array.fill(n)(CPVarInt(cp, 0 to n-1))
-    val husband = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val wife    = Array.fill(n)(CPIntVar(0 to n-1)(cp))
+    val husband = Array.fill(n)(CPIntVar(0 to n-1)(cp))
 
     //
     // constraints

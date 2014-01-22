@@ -33,7 +33,7 @@ object SequenceSum {
 
   // Sum the elements in y where each subsequence of length s
   // sums to m
-  def sequence_sum(cp: CPSolver, y: Array[CPVarInt], m: CPVarInt, s: Int) = {
+  def sequence_sum(cp: CPSolver, y: Array[CPIntVar], m: CPIntVar, s: Int) = {
     val n = y.length
     for(i <- 0 until n - s + 1) {
       cp.add(sum( Range(i,i+s).map(j => y(j) ).toList) == m)
@@ -52,9 +52,9 @@ object SequenceSum {
 
 
     // variables
-    val x = Array.fill(n)(CPVarInt(cp, 1 to n))
+    val x = Array.fill(n)(CPIntVar(1 to n)(cp))
     // the sum
-    val m = CPVarInt(cp, 1 to n*n)
+    val m = CPIntVar(1 to n*n)(cp)
 
     //
     // constraints

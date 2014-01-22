@@ -57,7 +57,7 @@ object BusSchedule {
     //
  
     // How many buses start the schedule at time slot t
-    val x = Array.fill(time_slots)(CPVarInt(cp, 0 to max_num))
+    val x = Array.fill(time_slots)(CPIntVar(0 to max_num)(cp))
     // Total number of buses
     val num_buses  = sum(x)
 

@@ -41,10 +41,8 @@ import scala.math._
  
 */
 
-object FurnitureMovingScheduling {
-
-  def main(args: Array[String]) {
-
+object FurnitureMovingScheduling extends CPModel with App {
+/*
     //
     // data
     //
@@ -57,7 +55,6 @@ object FurnitureMovingScheduling {
     val capa = 4 // capacity, number of workers
 
     val horizon = durations.sum
-    val cp = CPScheduler(horizon)
 
     //
     // variables
@@ -97,6 +94,6 @@ object FurnitureMovingScheduling {
 
     println(cp.start())
 
-  }
+  }*/
 
 }

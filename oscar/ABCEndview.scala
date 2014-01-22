@@ -108,10 +108,10 @@ object ABCEndview {
     //
     // a start with letter c and accept d empty slots.
     // 
-    def startWith(cp: CPSolver, a: Array[CPVarInt], c: Int, d: Int) = {
+    def startWith(cp: CPSolver, a: Array[CPIntVar], c: Int, d: Int) = {
       val n = a.length
       if (c > 0) {
-        val i = CPVarInt(cp, 0 until d)
+        val i = CPIntVar(0 until d)(cp)
         cp.add(a(i) == c)
         for(j <- 0 until n) {
           cp.add((i >>= j) ==> (a(j) === 0))
@@ -123,10 +123,10 @@ object ABCEndview {
     //
     // a ends with letter c and accept d empty slots
     //
-    def endWith(cp: CPSolver, a: Array[CPVarInt], c: Int, d: Int) = {
+    def endWith(cp: CPSolver, a: Array[CPIntVar], c: Int, d: Int) = {
       val n = a.length
       if (c > 0) {
-        val i = CPVarInt(cp, n-d until n)
+        val i = CPIntVar(n-d until n)(cp)
         cp.add(a(i) == c)
         for(j <- 0 until n) {
           cp.add((i <<= j) ==> (a(j) === 0))
@@ -358,7 +358,7 @@ object ABCEndview {
       //
 
       // 0 -> empty cell, 1..max_letter: the letters
-      val x = Array.fill(n,n)(CPVarInt(cp, 0 to max_letter))
+      val x = Array.fill(n,n)(CPIntVar(0 to max_letter)(cp))
       val x_flat = x.flatten
 
       //

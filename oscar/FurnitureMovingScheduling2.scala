@@ -45,7 +45,7 @@ import scala.math._
 
 object FurnitureMovingScheduling2 {
 
-  def main(args: Array[String]) {
+  /*def main(args: Array[String]) {
 
     //
     // data
@@ -97,6 +97,6 @@ object FurnitureMovingScheduling2 {
 
     println(cp.start())
 
-  }
+  }*/
 
 }

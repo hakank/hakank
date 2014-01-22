@@ -34,16 +34,16 @@ import scala.math._
 */
 object Assignment {
 
-  // Nicer syntax for a CPVarInt matrix 
-  class CPVarIntMatrix(m: Array[Array[CPVarInt]]) {
-    def row(r: Int) : Array[CPVarInt] =  m(r)
-    def col(c: Int) : Array[CPVarInt] = for{r <- 0 until m.length} yield m(r)(c)
+  // Nicer syntax for a CPIntVar matrix 
+  class CPIntVarMatrix(m: Array[Array[CPIntVar]]) {
+    def row(r: Int) : Array[CPIntVar] =  m(r)
+    def col(c: Int) : Array[CPIntVar] = for{r <- 0 until m.length} yield m(r)(c)
   }
 
-  implicit def mat(t: Array[Array[CPVarInt]]) = new CPVarIntMatrix(t)
+  implicit def mat(t: Array[Array[CPIntVar]]) = new CPIntVarMatrix(t)
 
-  def makeCPVarIntMatrix(cp: CPSolver, rows: Int, cols: Int, range: Range) =
-    Array.fill(rows)(Array.fill(cols)((CPVarInt(cp, range))))
+  def makeCPIntVarMatrix(cp: CPSolver, rows: Int, cols: Int, range: Range) =
+    Array.fill(rows)(Array.fill(cols)((CPIntVar(range)(cp))))
 
 
   def main(args: Array[String]) {
@@ -71,7 +71,7 @@ object Assignment {
     //
     // variables
     //
-    val x = makeCPVarIntMatrix(cp, rows, cols, 0 to 1)
+    val x = makeCPIntVarMatrix(cp, rows, cols, 0 to 1)
     val total_cost = weightedSum(cost, x)
 
     //

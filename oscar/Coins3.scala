@@ -55,7 +55,7 @@ object Coins3 {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 0 to 99))
+    val x = Array.fill(n)(CPIntVar(0 to 99)(cp))
     val num_coins  = sum(x)
 
 
@@ -67,7 +67,7 @@ object Coins3 {
 
       // Check that all changes from 1 to 99 can be made.
       for(j <- 1 until 100) {
-        val tmp = Array.fill(n)(CPVarInt(cp, 0 to 99))
+        val tmp = Array.fill(n)(CPIntVar(0 to 99)(cp))
         cp.add(weightedSum(variables, tmp) == j)
         
         for(i <- 0 until n) {

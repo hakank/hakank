@@ -38,7 +38,7 @@ object Crypto2 {
 
 
   // sums(all, "ballet", 45, ht)
-  def sums(x: Array[CPVarInt], str: String, s: Int, m: Map[Char,Int]) =
+  def sums(x: Array[CPIntVar], str: String, s: Int, m: Map[Char,Int]) =
     sum( for(v <- str.toCharArray.map(m(_))) yield(x(v)) ) === s
 
 
@@ -56,7 +56,7 @@ object Crypto2 {
     //
     // variables
     //
-    val all = Array.fill(num)(CPVarInt(cp, 1 to num))
+    val all = Array.fill(num)(CPIntVar(1 to num)(cp))
     val Array(a,b,c,d,e,f,g,h,i,j,k,l,m) = all slice( 0, 13)
     val Array(n,o,p,q,r,s,t,u,v,w,x,y,z) = all slice(13, 26)
 

@@ -65,7 +65,7 @@ object MrSmith {
     // variables
     // 
     // The matrix
-    val x = Array.fill(n)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(n)(CPIntVar(0 to 1)(cp))
     val Array(mr_smith, mrs_smith, matt, john, tim) = x
 
     //

@@ -53,7 +53,7 @@ import Array._
 */
 object GolombRuler {
 
-  def increasing(cp: CPSolver, y: Array[CPVarInt]) = {
+  def increasing(cp: CPSolver, y: Array[CPIntVar]) = {
     for (i <- 1 until y.length) {
       cp.add(y(i-1) <= y(i), Strong)
     }
@@ -77,7 +77,7 @@ object GolombRuler {
     //
     // variables
     //
-    val mark = Array.fill(m)(CPVarInt(cp, 0 to n))
+    val mark = Array.fill(m)(CPIntVar(0 to n)(cp))
     val differences = for{i <- 0 until m; j <- i+1 until m} yield mark(j)-mark(i)
                         
     //

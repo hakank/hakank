@@ -71,7 +71,7 @@ object SetCovering4 {
     // variables
     //
  
-    val x = Array.fill(num_alternatives)(CPVarInt(cp, 0 to 1))
+    val x = Array.fill(num_alternatives)(CPIntVar(0 to 1)(cp))
     val z = weightedSum(costs, x)
 
 

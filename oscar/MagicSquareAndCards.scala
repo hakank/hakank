@@ -54,9 +54,9 @@ object MagicSquareAndCards {
     //
     // variables
     // 
-    val x = Array.fill(n,n)(CPVarInt(cp, 1 to values))
-    val s = CPVarInt(cp, 1 to values*colors)
-    val counts = Array.tabulate(values+1)(i => (i,CPVarInt(cp, 0 to colors)))
+    val x = Array.fill(n,n)(CPIntVar(1 to values)(cp))
+    val s = CPIntVar(1 to values*colors)(cp)
+    val counts = Array.tabulate(values+1)(i => (i,CPIntVar(0 to colors)(cp)))
 
     //
     // constraints

@@ -135,7 +135,7 @@ object Futoshiki {
     //
     // variables
     //
-    val field = Array.fill(size)(Array.fill(size)(CPVarInt(cp, 1 to size)))
+    val field = Array.fill(size)(Array.fill(size)(CPIntVar(1 to size)(cp)))
 
     //
     // constraints

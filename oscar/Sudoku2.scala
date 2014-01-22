@@ -91,7 +91,7 @@ object Sudoku2 {
     val RRANGE = 0 until reg
 
     // variables
-    val x = Array.fill(n,n)(CPVarInt(cp, 1 to n))
+    val x = Array.fill(n,n)(CPIntVar(1 to n)(cp))
     val x_t = x.transpose
 
     //

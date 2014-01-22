@@ -58,11 +58,11 @@ object EinsteinPuzzle {
     //
     // variables
     // 
-    val nationality = Array.fill(n)(CPVarInt(cp, RANGE))
-    val animal      = Array.fill(n)(CPVarInt(cp, RANGE))
-    val drink       = Array.fill(n)(CPVarInt(cp, RANGE))
-    val smoke       = Array.fill(n)(CPVarInt(cp, RANGE))
-    val color       = Array.fill(n)(CPVarInt(cp, RANGE))
+    val nationality = Array.fill(n)(CPIntVar(RANGE)(cp))
+    val animal      = Array.fill(n)(CPIntVar(RANGE)(cp))
+    val drink       = Array.fill(n)(CPIntVar(RANGE)(cp))
+    val smoke       = Array.fill(n)(CPIntVar(RANGE)(cp))
+    val color       = Array.fill(n)(CPIntVar(RANGE)(cp))
 
     //
     // constraints
@@ -139,7 +139,7 @@ object EinsteinPuzzle {
       val cols = "red, green, white, yellow, blue"                 split(", *")
 
       // find the index in x where thing is
-      def getIndex(x : Array[CPVarInt], thing: Int) =
+      def getIndex(x : Array[CPIntVar], thing: Int) =
         x.zipWithIndex.filter(_._1.value == thing)(0)._2 
 
 

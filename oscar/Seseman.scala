@@ -67,8 +67,8 @@ object Seseman {
      val border_sum = n*n
 
      // variables
-     val x = Array.fill(n,n)(CPVarInt(cp, 0 to n*n))
-     val total_sum = CPVarInt(cp, 1 to n*n*n*n)
+     val x = Array.fill(n,n)(CPIntVar(0 to n*n)(cp))
+     val total_sum = CPIntVar(1 to n*n*n*n)(cp)
 
      // constraints
      var numSols = 0

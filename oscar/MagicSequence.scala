@@ -47,12 +47,12 @@ object MagicSequence {
     // data
     //
     val n = if (args.length > 0) args(0).toInt else 10;
-    val all_values = Array.tabulate(n)(i=> (i,CPVarInt(cp, 0 to n-1)))
+    val all_values = Array.tabulate(n)(i=> (i,CPIntVar(0 to n-1)(cp)))
 
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, 0 to n-1))
+    val x = Array.fill(n)(CPIntVar(0 to n-1)(cp))
 
     //
     // constraints

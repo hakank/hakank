@@ -78,7 +78,7 @@ object AlphameticGenerate {
   // 
   // wordSum(x, "SEND", base, ht) -> 1000*S + 100*E + 10*N + D
   //
-  def wordSum(x: Array[CPVarInt], s: String, base: Int, m: Map[Char,Int]) : CPVarInt = {
+  def wordSum(x: Array[CPIntVar], s: String, base: Int, m: Map[Char,Int]) : CPIntVar = {
     val n = s.length
     weightedSum(for(i <- 0 until n) yield pow(base, n-1-i).toInt, 
                 for(i <- 0 until n) yield x(m(s(i))))
@@ -137,7 +137,7 @@ object AlphameticGenerate {
     //
     // variables
     //
-    val x = Array.fill(n)(CPVarInt(cp, start to base-1))
+    val x = Array.fill(n)(CPIntVar(start to base-1)(cp))
 
     //
     // constraints
