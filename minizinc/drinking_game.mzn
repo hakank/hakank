@@ -1,5 +1,5 @@
 % 
-% Puzzle in Minizinc
+% Drinking game problem in Minizinc
 
 % From Marriott & Stuckey "Programming with Constraints", 
 % excercise page 184, drinking game
@@ -11,8 +11,8 @@
 % drinking = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
 % number_of_drinks = 10
 %
-% Model created by Hakan Kjellerstrand, hakank@bonetmail.com
-% See also my MiniZinc page: http://www.hakank.org/minizinc
+% Model created by Hakan Kjellerstrand, hakank@gmail.com
+% See also my MiniZinc page: http://www.hakank.org/minizinc/
 %
 
 
@@ -39,6 +39,8 @@ constraint
 output
 [
   "drinking: " ++ show(drinking) ++ "\n" ++
-  "num_drinks: " ++ show(num_drinks) ++ "\n"
+  "num_drinks: " ++ show(num_drinks) ++ "\n" ++
+  % "last_8min: " ++ show(last_8min) ++ "\n" ++
+  "drinking times: " ++ show([t | t in 1..n where fix(drinking[t]) = 1])
 
 ];

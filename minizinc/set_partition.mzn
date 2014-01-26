@@ -22,12 +22,12 @@
 % 
 include "globals.mzn"; 
 
-int: n = 28;
+int: n = 16;
 set of 1..n: S = 1..n;
 int: num_sets = 2;
 array[1..num_sets] of var set of S: a;
-array[1..num_sets] of var int: sums;
-array[1..num_sets] of var int: sum_squared;
+array[1..num_sets] of var 0..n*n: sums;
+array[1..num_sets] of var 0..n*n*n*n: sum_squared;
 
 
 %
@@ -43,7 +43,7 @@ predicate set_sum_squared(var set of int: s, var int: the_sum) =
 ;
 
 
-solve satisfy;
+solve :: set_search(a, first_fail, indomain_min, complete) satisfy;
 % solve maximize sums[1];
 
 constraint
@@ -70,6 +70,9 @@ constraint
      sums[i] = sums[i-1] 
      /\ sum_squared[i] = sum_squared[i-1] 
    )
+
+  % symmetry breaking
+  /\ 1 in a[1]
 
 ;
 
