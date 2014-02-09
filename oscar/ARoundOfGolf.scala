@@ -1,26 +1,9 @@
-/*******************************************************************************
- * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *   
- * OscaR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License  for more details.
- *   
- * You should have received a copy of the GNU Lesser General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
-
 import oscar.cp.core._
 
-
 /**
- *
  * A Round of Golf puzzle (Dell Logic Puzzles) in Oscar.
  *
  * From http://brownbuffalo.sourceforge.net/RoundOfGolfClues.html
@@ -57,107 +40,85 @@ import oscar.cp.core._
  *
  * @author Hakan Kjellerstrand hakank@gmail.com
  * http://www.hakank.org/oscar/
- *
  */
-object ARoundOfGolf {
+object ARoundOfGolf extends CPModel with App {
 
+  // data
+  val n = 4
 
-  def main(args: Array[String]) {
+  val Jack = 0
+  val Bill = 1
+  val Paul = 2
+  val Frank = 3
 
-    val cp = CPSolver()
+  // variables
+  val last_name = Array.fill(n)(CPIntVar(0 to n - 1))
+  val Array(clubb, sands, carter, green) = last_name
 
-    // data
-    val n = 4
+  val job = Array.fill(n)(CPIntVar(0 to n - 1))
+  val Array(cook, maintenance_man, clerk, caddy) = job
 
-    val Jack  = 0
-    val Bill  = 1
-    val Paul  = 2
-    val Frank = 3
+  val score = Array.fill(n)(CPIntVar(70 to 85))
 
-    // variables
-    val last_name = Array.fill(n)(CPIntVar(0 to n-1)(cp))
-    val Array(clubb, sands, carter, green) = last_name
+  //
+  // constraints
+  //
+  var numSols = 0
 
-    val job = Array.fill(n)(CPIntVar(0 to n-1)(cp))
-    val Array(cook, maintenance_man, clerk, caddy) = job
+  add(allDifferent(last_name), Strong);
+  add(allDifferent(job), Strong);
+  add(allDifferent(score), Strong);
 
-    val score = Array.fill(n)(CPIntVar(70 to 85)(cp))
+  // 1. Bill, who is not the maintenance man, plays golf often and had
+  //    the lowest score of the foursome.
+  add(maintenance_man != Bill);
+  add(score(Bill) < score(Jack));
+  add(score(Bill) < score(Paul));
+  add(score(Bill) < score(Frank));
 
+  // 2. Mr. Clubb, who isn't Paul, hit several balls into the woods and
+  //    scored ten strokes more than the pro-shop clerk.
+  add(clubb != Paul);
+  add(score(clubb) == score(clerk) + 10);
 
-    //
-    // constraints
-    //
-    var numSols = 0
+  // 3. In some order, Frank and the caddy scored four and seven more
+  //    strokes than Mr. Sands.
+  add(caddy != Frank);
+  add(sands != Frank);
+  add(caddy != sands);
 
-    cp.solve subjectTo {
+  add(
+    (
+      (score(Frank) === score(sands) + 4) &&
+      (score(caddy) === score(sands) + 7))
+      ||
+      (
+        (score(Frank) === score(sands) + 7) &&
+        (score(caddy) === score(sands) + 4)))
 
-      cp.add(allDifferent(last_name), Strong);
-      cp.add(allDifferent(job), Strong);
-      cp.add(allDifferent(score), Strong);
+  // 4. Mr. Carter thought his score of 78 was one of his better games,
+  //    even though Frank's score was lower.
+  add(carter != Frank);
+  add(score(carter) == 78);
+  add(score(Frank) < score(carter));
 
-      // 1. Bill, who is not the maintenance man, plays golf often and had
-      //    the lowest score of the foursome.
-      cp.add(maintenance_man != Bill);
-      cp.add(score(Bill) < score(Jack));
-      cp.add(score(Bill) < score(Paul));
-      cp.add(score(Bill) < score(Frank));
-      
-      // 2. Mr. Clubb, who isn't Paul, hit several balls into the woods and
-      //    scored ten strokes more than the pro-shop clerk.
-      cp.add(clubb != Paul);
-      cp.add(score(clubb) == score(clerk) + 10);
-      
-      // 3. In some order, Frank and the caddy scored four and seven more
-      //    strokes than Mr. Sands.
-      cp.add(caddy != Frank);
-      cp.add(sands != Frank);
-      cp.add(caddy != sands);
+  // 5. None of the four scored exactly 81 strokes.
+  for (i <- 0 until n) {
+    add(score(i) != 81);
+  }
 
-      cp.add(
-             (
-              (score(Frank) === score(sands) + 4) &&
-              (score(caddy) === score(sands) + 7 )
-              )
-             ||
-             (
-              (score(Frank) === score(sands) + 7)   &&
-              (score(caddy) === score(sands) + 4)
-              )
-             )
+  search { binaryFirstFail(last_name ++ job ++ score) }
 
+  onSolution {
+    println("last_name:" + last_name.mkString(""))
+    println("job      :" + job.mkString(""))
+    println("score    :" + score.mkString(""))
+    println()
+    numSols += 1
+  }
 
-      // 4. Mr. Carter thought his score of 78 was one of his better games,
-      //    even though Frank's score was lower.
-      cp.add(carter != Frank);
-      cp.add(score(carter) == 78);
-      cp.add(score(Frank) < score(carter));
-      
-      // 5. None of the four scored exactly 81 strokes.
-      for(i <- 0 until n) {
-        cp.add(score(i) != 81);
-      }
+  val stats = start()
 
-
-     } search {
-       
-       binaryFirstFail(last_name ++ job ++ score)
-       
-     } onSolution {
- 
-       println("last_name:" + last_name.mkString(""))
-       println("job      :" + job.mkString(""))
-       println("score    :" + score.mkString(""))
-       println()
-
-       numSols += 1
-       
-     } 
-     
-     val stats = cp.start()
-     
-     println("\nIt was " + numSols + " solutions.")
-
-     println(stats)
-   }
-
+  println("\nIt was " + numSols + " solutions.")
+  println(stats)
 }

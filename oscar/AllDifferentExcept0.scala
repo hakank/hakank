@@ -1,105 +1,63 @@
-/*******************************************************************************
- * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *   
- * OscaR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License  for more details.
- *   
- * You should have received a copy of the GNU Lesser General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
-
 import oscar.cp.core._
 
-
 /**
- *
  * Decomposition of the global constraint allDifferent_except_0 in in Oscar.
- * 
+ *
  *  From Global constraint catalogue:
  * http://www.emn.fr/x-info/sdemasse/gccat/CallDifferent_except_0.html
- *  """ 
- * Enforce all variables of the collection VARIABLES to take distinct 
+ *  """
+ * Enforce all variables of the collection VARIABLES to take distinct
  * values, except those variables that are assigned to 0.
- * 
+ *
  * Example
  *    (<5, 0, 1, 9, 0, 3>)
- * 
- * The allDifferent_except_0 constraint holds since all the values 
+ *
+ * The allDifferent_except_0 constraint holds since all the values
  * (that are different from 0) 5, 1, 9 and 3 are distinct.
  * """
  *
- *
  * @author Hakan Kjellerstrand hakank@gmail.com
  * http://www.hakank.org/oscar/
- *
  */
-object AllDifferentExcept0 {
+object AllDifferentExcept0 extends CPModel with App {
 
+  // Data
+  val n = if (args.length > 0) args(0).toInt else 7
+
+  // Variables
+  val x = Array.fill(n)(CPIntVar(0 to n))
+  val occurrences = Array.tabulate(n + 1)(i => (i, CPIntVar(0 to n)))
+  val z = occurrences(0)._2 // the tuple is (#occurrences, value)
+
+  // Constraints
+  
   // Decomposition of allDifferent_except_0
-  def allDifferent_except_0(cp: CPSolver, y: Array[CPIntVar]) = {
-
-    for(i <- 0 until y.length; j <- 0 until i) {
-      cp.add( ((y(i) !== 0) && (y(j) !== 0)) ==> (y(i) !== y(j)) )
-    }
+  for (i <- 0 until x.size; j <- 0 until i) {
+    add(((x(i) !== 0) && (x(j) !== 0)) ==> (x(i) !== x(j)))
   }
 
+  // Just for fun, we add that x should be increasing
+  
   // Decomposition of increasing
-  def increasing(cp: CPSolver, y: Array[CPIntVar]) = {
-    for (i <- 1 until y.length) {
-      cp.add(y(i-1) <= y(i))
-    }
+  for (i <- 1 until x.size) {
+    add(x(i - 1) <= x(i)) 
   }
 
+  // and that there must be exactly 2 0's
+  add(gcc(x, occurrences))
+  add(z == 2)
 
-  def main(args: Array[String]) {
+  search { binaryFirstFail(x) }
 
-    val cp = CPSolver()
+  onSolution {
+    println("x:" + x.mkString(""))
+    println("z:" + z)
+    println()
+  }
 
-    // data
-    val n = if (args.length > 0) args(0).toInt else 7
-
-    // variables
-    val x = Array.fill(n)(CPIntVar(0 to n)(cp))
-    val occurrences = Array.tabulate(n+1)(i => (i,CPIntVar(0 to n)(cp)))
-    val z = occurrences(0)._2  // the tuple is (#occurrences, value)
-
-    //
-    // constraints
-    //
-
-    cp.solve subjectTo {
-
-      allDifferent_except_0(cp, x)
-
-      // Just for fun, we add that x should be increasing
-      increasing(cp, x)
-
-      // and that there must be exactly 2 0's
-      cp.add(gcc(x, occurrences))
-      cp.add(z == 2)
-
-
-     } search {
-       
-       binaryFirstFail(x)
-       
-     } onSolution {
- 
-       println("x:" + x.mkString(""))
-       println("z:" + z)
-       println()
-     
-     }
-     
-     println(cp.start())
-   }
-
+  val stats = start()
+  println(stats)
 }

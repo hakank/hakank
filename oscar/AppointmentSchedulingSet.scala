@@ -1,17 +1,3 @@
-/*******************************************************************************
- * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *   
- * OscaR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License  for more details.
- *   
- * You should have received a copy of the GNU Lesser General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
@@ -20,7 +6,6 @@ import oscar.cp.core._
 import scala.io.Source._
 import scala.math._
 import java.util.Random
-
 
 /*
 
@@ -91,18 +76,14 @@ import java.util.Random
  
 */
 
-object AppointmentSchedulingSet {
+object AppointmentSchedulingSet extends CPModel with App {
 
-  def main(args: Array[String]) {
+  //
+  // data
+  //
 
-    val cp = CPSolver()
-
-    //
-    // data
-    //
-
-    // Original problem
-    /*
+  // Original problem
+  /*
     val s = Array(
                   Array(1,2,3,4),
                   Array(2,3),
@@ -111,57 +92,47 @@ object AppointmentSchedulingSet {
                   )
     */
 
-    val n = if (args.length > 0) args(0).toInt else 10;
-    val limit = if (args.length > 1) args(1).toFloat else 0.6;
-    val num_to_show = if (args.length > 2) args(2).toInt else 0;
+  val n = if (args.length > 0) args(0).toInt else 10;
+  val limit = if (args.length > 1) args(1).toFloat else 0.6;
+  val num_to_show = if (args.length > 2) args(2).toInt else 0;
 
-    println("n: " + n + " limit: " + limit + " num_to_show: " + num_to_show)
+  println("n: " + n + " limit: " + limit + " num_to_show: " + num_to_show)
 
-    val rand = new Random(System.currentTimeMillis());
-    val s = Array.fill(n)(
-                          (for{i <- 1 to n if rand.nextFloat() >= limit} yield i).toArray
-                          )
+  val rand = new Random(System.currentTimeMillis());
+  val s = Array.fill(n)((for (i <- 1 to n if rand.nextFloat() >= limit) yield i).toArray)
 
-    println("Generated " + n + " time slots")
+  println("Generated " + n + " time slots")
 
-    if (n <= 30) {
-      for(i <- 0 until n) {
-        println("p #" + i + ": " + s(i).mkString(" "))
-      }
+  if (n <= 30) {
+    for (i <- 0 until n) {
+      println("p #" + i + ": " + s(i).mkString(" "))
     }
-  
-
-    //
-    // variables
-    //
-
-    // The assignment of persons to a time slot (appointment number 1..n).
-    val x = Array.tabulate(n)(i=>CPIntVar(s(i).toSet)(cp))
-
-
-    //
-    // constraints
-    //
-    var numSols = 0
-
-    cp.solve subjectTo { 
-      
-      cp.add(allDifferent(x), Strong)
-
-    } search {
-       
-      binaryMaxDegree(x)
-
-    } onSolution {
-     
-      numSols += 1      
-      println("\nSolution #" + numSols + ": " + x.mkString(" "))  
-   
-    } 
-    
-    val stats = cp.start(num_to_show)
-
-    println("\nIt was " + numSols + " solutions.")
-    println(stats)
   }
+
+  //
+  // variables
+  //
+
+  // The assignment of persons to a time slot (appointment number 1..n).
+  val x = Array.tabulate(n)(i => CPIntVar(s(i).toSet))
+
+  //
+  // constraints
+  //
+  var numSols = 0
+
+  add(allDifferent(x), Strong)
+
+  search { binaryMaxDegree(x) }
+
+  onSolution {
+    numSols += 1
+    println("\nSolution #" + numSols + ": " + x.mkString(" "))
+  }
+
+  val stats = start(num_to_show)
+
+  println("\nIt was " + numSols + " solutions.")
+  println(stats)
+
 }

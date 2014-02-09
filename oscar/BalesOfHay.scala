@@ -1,21 +1,22 @@
-/*******************************************************************************
+/**
+ * *****************************************************************************
  * OscaR is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 2.1 of the License, or
  * (at your option) any later version.
- *   
+ *
  * OscaR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License  for more details.
- *   
+ *
  * You should have received a copy of the GNU Lesser General Public License along with OscaR.
  * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
+ * ****************************************************************************
+ */
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
-
 import oscar.cp.core._
 import scala.io.Source._
 import scala.math._
@@ -39,72 +40,53 @@ import scala.math._
   possible solutions? 
   """
 
-
   @author Hakan Kjellerstrand hakank@gmail.com
   http://www.hakank.org/oscar/
- 
 */
 
-object BalesOfHay {
+object BalesOfHay extends CPModel with App {
 
   // Decomposition of increasing
-  def increasing(cp: CPSolver, y: Array[CPIntVar]) = {
+  def increasing(y: Array[CPIntVar]) = {
     for (i <- 1 until y.length) {
-      cp.add(y(i-1) <= y(i))
+      add(y(i - 1) <= y(i))
     }
   }
 
+  //
+  // data
+  //
+  val n = 5
+  val weights = Array(80, 82, 83, 84, 85, 86, 87, 88, 90, 91)
 
-  def main(args: Array[String]) {
+  //
+  // variables
+  //
+  val bales = Array.fill(n)(CPIntVar(0 to 50))
 
-    val cp = CPSolver()
+  //
+  // constraints
+  //
+  var numSols = 0
 
-    //
-    // data
-    //
-    val n = 5
-    val weights = Array(80, 82, 83, 84, 85, 86, 87, 88, 90, 91)
+  for (w <- 0 until weights.length) {
+    // indices in bales
+    val i = CPIntVar(0 until n)
+    val j = CPIntVar(0 until n)
 
-    //
-    // variables
-    //
-    val bales = Array.fill(n)(CPIntVar(0 to 50)(cp))
-
-
-    //
-    // constraints
-    //
-    var numSols = 0
-
-    cp.solve subjectTo {
-
-      for(w <- 0 until weights.length) {
-        // indices in bales
-        val i = CPIntVar(0 until n)(cp) 
-        val j = CPIntVar(0 until n)(cp)
-        
-        cp.add(bales(i) + bales(j) == weights(w))
-        cp.add(i < j) // symmetry breaking
-
-      }
-
-      // symmetry breaking
-      increasing(cp, bales)
-      
-    } search {
-       
-      binary(bales, -_.constraintDegree, _.max)
-
-    } onSolution {
-      
-      println("bales:" + bales.mkString(""))
-      numSols += 1      
-    
-    } 
-    
-    println(cp.start())
-
-
+    add(bales(i) + bales(j) == weights(w))
+    add(i < j) // symmetry breaking
   }
 
+  // symmetry breaking
+  increasing(bales)
+
+  search { binary(bales, -_.constraintDegree, _.max) }
+
+  onSolution {
+    println("bales:" + bales.mkString(""))
+    numSols += 1
+  }
+
+  println(start())
 }

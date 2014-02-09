@@ -1,21 +1,6 @@
-/*******************************************************************************
- * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *   
- * OscaR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License  for more details.
- *   
- * You should have received a copy of the GNU Lesser General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
-
 import oscar.cp.core._
 import scala.io.Source._
 import scala.math._
@@ -41,54 +26,33 @@ import scala.math._
  
 */
 
-object AddedCorner {
+object AddedCorner extends CPModel with App {
 
-  def main(args: Array[String]) {
+  // Data
+  val n = 8
 
-    val cp = CPSolver()
+  // Variables
+  val x = Array.fill(n)(CPIntVar(1 to n))
+  val Array(a, b, c, d, e, f, g, h) = x
 
-    //
-    // data
-    //
-    val n = 8
+  // Constraints
+  add(allDifferent(x), Strong)
+  add(b == a + c)
+  add(d == a + f)
+  add(e == c + h)
+  add(g == f + h)
 
-    //
-    // variables
-    //
-    val x = Array.fill(n)(CPIntVar(1 to n)(cp))
-    val Array(a,b,c,d,e,f,g,h) = x
+  search { binaryFirstFail(x) }
 
-    //
-    // constraints
-    //
-    var numSols = 0
-
-    cp.solve subjectTo {
-
-
-      cp.add(allDifferent(x), Strong)
-      cp.add(b == a + c)
-      cp.add(d == a + f)
-      cp.add(e == c + h)
-      cp.add(g == f + h)
-
-      
-    } search {
-      
-      binaryFirstFail(x)
-
-    } onSolution {
-      
-      println(a + " " + b   + " " + c)
-      println(d + "   "     + " " + e)
-      println(f + " " + g   + " " + h)
-      println()
-      numSols += 1  
-      
-    }
-
-    println(cp.start())
-
+  var nSols = 0
+  onSolution {
+    println(a + " " + b + " " + c)
+    println(d + "   " + " " + e)
+    println(f + " " + g + " " + h)
+    println()
+    nSols += 1
   }
 
+  val stats = start()
+  println(stats)
 }

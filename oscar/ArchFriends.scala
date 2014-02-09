@@ -1,27 +1,11 @@
-/*******************************************************************************
- * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *   
- * OscaR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License  for more details.
- *   
- * You should have received a copy of the GNU Lesser General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
-
 import oscar.cp.core._
 import scala.io.Source._
 import scala.math._
 
 /*
-
   Arch friends puzzle (Dell Logic Puzzles) in Oscar.
 
   Problem formulation from 
@@ -55,105 +39,92 @@ import scala.math._
  
 */
 
-object ArchFriends {
+object ArchFriends extends CPModel with App {
 
-   // 
-   // Decomposition of inverse constraint
-   // 
-   // Channel of positions of x and y:
-   //    j == x(i) <=> y(j) == i
-   // 
-   // Note: This requires the domain 0..n-1
-   //
-   def inverse(cp: CPSolver, x: Array[CPIntVar], y: Array[CPIntVar]) {
-      val len = x.length
-      for(i <- 0 until len;
-          j <- 0 until len) {
-        cp.add( (y(j) === i) == (x(i) === j) )
-      }
-   }
-
-   // Convenient function which returns y (for presentation)
-   def inverse2(cp: CPSolver, x: Array[CPIntVar]) : Array[CPIntVar] = {
-     val y = Array.fill(x.length)(CPIntVar(x(0).min to x(0).max)(cp))
-     inverse(cp, x, y)
-     y
-   }
-
-
-  def main(args: Array[String]) {
-
-    val cp = CPSolver()
-
-    //
-    // data
-    //
-    val n = 4
-
-    //
-    // variables
-    //
-    val shoes = Array.fill(n)(CPIntVar(0 to n-1)(cp))
-    val Array(ecru_espadrilles, fuchsia_flats, purple_pumps, suede_sandals) = shoes
-    // for output
-    val shoesStr = Array("Ecru Espadrilles", "Fuchsia Flats", "Purple Pumps", "Suede Sandals")
-    val shoesInv = inverse2(cp, shoes)
-
-    val shops = Array.fill(n)(CPIntVar(0 to n-1)(cp))
-    val Array(foot_farm, heels_in_a_handcart, the_shoe_palace, tootsies) = shops
-    // for output
-    val shopsStr = Array("Foot Farm", "Heels in a Handcart", "The Shoe Palace", "Tootsies")
-    val shopsInv = inverse2(cp, shops)
-
-    //
-    // constraints
-    //
-    var numSols = 0
-
-    cp.solve subjectTo {
-
-      cp.add(allDifferent(shoes), Strong)
-      cp.add(allDifferent(shops), Strong)
-
-      // 1. Harriet bought fuchsia flats at Heels in a Handcart.
-      cp.add(fuchsia_flats == heels_in_a_handcart)
-
-      // 2. The store she visited just after buying her purple
-      //    pumps was not Tootsies.
-      cp.add(purple_pumps + 1 != tootsies)
-
-      //  3. The Foot Farm was Harriet's second stop.
-      cp.add(foot_farm == 1)
-
-      // 4. Two stops after leaving The Shoe Place, Harriet 
-      //    bought her suede sandals.
-      cp.add(the_shoe_palace + 2 == suede_sandals)
-
-
-    } search {
-       
-      binaryMaxDegree(shoes ++ shops)
-
-    } onSolution {
-      
-      println("Shops: " + shops.mkString(" "))
-      println("Shoes: " + shoes.mkString(" "))
-      println()
-      println("Shops: " + shopsInv.map(s=>shopsStr(s.value)).mkString(", "))
-      println("Shoes: " + shoesInv.map(s=>shoesStr(s.value)).mkString(", "))
-      println()
-      println((0 until n).
-              map(s=>Array(shopsStr(shopsInv(s).value), shoesStr(shoesInv(s).value)).mkString(": ")).mkString("\n"))
-
-      numSols += 1     
-      
-    } 
-    
-    val stats = cp.start()
-
-    println("\nIt was " + numSols + " solutions.")
-    println(stats)
-
+  // 
+  // Decomposition of inverse constraint
+  // 
+  // Channel of positions of x and y:
+  //    j == x(i) <=> y(j) == i
+  // 
+  // Note: This requires the domain 0..n-1
+  //
+  def inverse(cp: CPSolver, x: Array[CPIntVar], y: Array[CPIntVar]) {
+    val len = x.length
+    for (
+      i <- 0 until len;
+      j <- 0 until len
+    ) {
+      cp.add((y(j) === i) == (x(i) === j))
+    }
   }
 
+  // Convenient function which returns y (for presentation)
+  def inverse2(cp: CPSolver, x: Array[CPIntVar]): Array[CPIntVar] = {
+    val y = Array.fill(x.length)(CPIntVar(x(0).min to x(0).max)(cp))
+    inverse(cp, x, y)
+    y
+  }
+
+  //
+  // data
+  //
+  val n = 4
+
+  //
+  // variables
+  //
+  val shoes = Array.fill(n)(CPIntVar(0 to n - 1))
+  val Array(ecru_espadrilles, fuchsia_flats, purple_pumps, suede_sandals) = shoes
+  // for output
+  val shoesStr = Array("Ecru Espadrilles", "Fuchsia Flats", "Purple Pumps", "Suede Sandals")
+  val shoesInv = inverse2(solver, shoes)
+
+  val shops = Array.fill(n)(CPIntVar(0 to n - 1))
+  val Array(foot_farm, heels_in_a_handcart, the_shoe_palace, tootsies) = shops
+  // for output
+  val shopsStr = Array("Foot Farm", "Heels in a Handcart", "The Shoe Palace", "Tootsies")
+  val shopsInv = inverse2(solver, shops)
+
+  //
+  // constraints
+  //
+  var numSols = 0
+
+  add(allDifferent(shoes), Strong)
+  add(allDifferent(shops), Strong)
+
+  // 1. Harriet bought fuchsia flats at Heels in a Handcart.
+  add(fuchsia_flats == heels_in_a_handcart)
+
+  // 2. The store she visited just after buying her purple
+  //    pumps was not Tootsies.
+  add(purple_pumps + 1 != tootsies)
+
+  //  3. The Foot Farm was Harriet's second stop.
+  add(foot_farm == 1)
+
+  // 4. Two stops after leaving The Shoe Place, Harriet 
+  //    bought her suede sandals.
+  add(the_shoe_palace + 2 == suede_sandals)
+
+  search { binaryMaxDegree(shoes ++ shops) }
+
+  onSolution {
+    println("Shops: " + shops.mkString(" "))
+    println("Shoes: " + shoes.mkString(" "))
+    println()
+    println("Shops: " + shopsInv.map(s => shopsStr(s.value)).mkString(", "))
+    println("Shoes: " + shoesInv.map(s => shoesStr(s.value)).mkString(", "))
+    println()
+    println((0 until n).
+      map(s => Array(shopsStr(shopsInv(s).value), shoesStr(shoesInv(s).value)).mkString(": ")).mkString("\n"))
+
+    numSols += 1
+  }
+
+  val stats = start()
+
+  println("\nIt was " + numSols + " solutions.")
+  println(stats)
 }

@@ -1,27 +1,11 @@
-/*******************************************************************************
- * OscaR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *   
- * OscaR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License  for more details.
- *   
- * You should have received a copy of the GNU Lesser General Public License along with OscaR.
- * If not, see http://www.gnu.org/licenses/lgpl-3.0.en.html
- ******************************************************************************/
 package oscar.examples.cp.hakank
 
 import oscar.cp.modeling._
-
 import oscar.cp.core._
 import scala.io.Source._
 import scala.math._
 
 /*
-
   Fairly general (simple) alphametic solver in Oscar.
 
   Usage:
@@ -73,27 +57,26 @@ object Alphametic {
   //  Sum of the words
   // 
   // wordSum(x, "SEND", base, ht) -> 1000*S + 100*E + 10*N + D
-  def wordSum(x: Array[CPIntVar], s: String, base: Int, m: Map[Char,Int]) = {
+  def wordSum(x: Array[CPIntVar], s: String, base: Int, m: Map[Char, Int]) = {
     val n = s.length
-    sum(for(i <- 0 until n) yield x(m(s(i)))*pow(base, n-1-i).toInt)
+    sum(for (i <- 0 until n) yield x(m(s(i))) * pow(base, n - 1 - i).toInt)
   }
 
   //
   // alternative version
   // 
-  def wordSum2(x: Array[CPIntVar], s: String, base: Int, m: Map[Char,Int]) : CPIntVar = {
+  def wordSum2(x: Array[CPIntVar], s: String, base: Int, m: Map[Char, Int]): CPIntVar = {
     val n = s.length
-    weightedSum(for(i <- 0 until n) yield pow(base, n-1-i).toInt, 
-                for(i <- 0 until n) yield x(m(s(i))))
+    weightedSum(for (i <- 0 until n) yield pow(base, n - 1 - i).toInt,
+      for (i <- 0 until n) yield x(m(s(i))))
   }
-
 
   //
   // Main solve function
   //
   def solve(problem_in: String = "SEND+MORE=MONEY", base: Int = 10, start: Int = 0) {
 
-    val cp = CPSolver()
+    implicit val cp = CPSolver()
 
     //
     // data
@@ -105,10 +88,10 @@ object Alphametic {
     println("problem_words: " + problem_words.mkString(" "))
 
     // get all unique characters
-    val chars = problem_in.filter( _.toString.matches("[a-zA-Z]+")).distinct.sorted
+    val chars = problem_in.filter(_.toString.matches("[a-zA-Z]+")).distinct.sorted
     val n = chars.length
     println("chars: " + chars.mkString(""))
-                   
+
     // create a lookup table: list of (char, index)
     val ht = chars.zipWithIndex.toMap
     println("ht: " + ht)
@@ -116,37 +99,30 @@ object Alphametic {
     //
     // variables
     //
-    val x = Array.fill(n)(CPIntVar(start to base-1)(cp))
+    val x = Array.fill(n)(CPIntVar(start to base - 1))
 
     //
     // constraints
     //
     var numSols = 0
 
-    cp.solve subjectTo {
+    add(allDifferent(x), Strong)
 
-      cp.add(allDifferent(x), Strong)
+    // The equation: 
+    //    word<0> + word<1> + ... = word<p-1>
+    //
+    add(
+      sum(for (p <- 0 until p_len - 1) yield wordSum2(x, problem_words(p), base, ht)) ==
+        wordSum2(x, problem_words(p_len - 1), base, ht))
 
-      // The equation: 
-      //    word<0> + word<1> + ... = word<p-1>
-      //
-      cp.add(
-             sum(for(p <- 0 until p_len -1) yield wordSum2(x, problem_words(p), base, ht)) ==
-             wordSum2(x, problem_words(p_len-1), base, ht)
-             )
+    // ensure that all initial digits > 0
+    for (p <- 0 until p_len) {
+      add(x(ht(problem_words(p)(0))) > 0)
+    }
 
-      // ensure that all initial digits > 0
-      for(p <- 0 until p_len) {
-        cp.add( x(ht(problem_words(p)(0))) > 0)
-      }
+    search { binaryMaxDegree(x) }
 
-      
-    } search {
-       
-      binaryMaxDegree(x)
-
-    } onSolution {
-      
+    onSolution {
       println("\nSolution:")
       println("x:" + x.mkString(""))
       val sep = if (base == 10) "" else " ";
@@ -156,40 +132,39 @@ object Alphametic {
       sol.foreach(println)
       println()
 
-      for (p<- 0 until p_len) {
+      for (p <- 0 until p_len) {
         val e = problem_words(p)
-        println(e + ": " + e.map(sol(_)+"").mkString(sep))
+        println(e + ": " + e.map(sol(_) + "").mkString(sep))
       }
       println()
 
       numSols += 1
-      
     }
-    
-    println(cp.start())    
+
+    val stats = cp.start()
+    println(stats)
   }
 
   def testProblems(base: Int, start: Int = 0) {
 
     val problems = Array(
-                         "SEND+MORE=MONEY",
-                         "SEND+MOST=MONEY",
-                         "VINGT+CINQ+CINQ=TRENTE",
-                         "EIN+EIN+EIN+EIN=VIER",
-                         "DONALD+GERALD=ROBERT",
-                         "SATURN+URANUS+NEPTUNE+PLUTO=PLANETS",
-                         "WRONG+WRONG=RIGHT"
-                         )
+      "SEND+MORE=MONEY",
+      "SEND+MOST=MONEY",
+      "VINGT+CINQ+CINQ=TRENTE",
+      "EIN+EIN+EIN+EIN=VIER",
+      "DONALD+GERALD=ROBERT",
+      "SATURN+URANUS+NEPTUNE+PLUTO=PLANETS",
+      "WRONG+WRONG=RIGHT")
 
-    for (p<-problems) {
+    for (p <- problems) {
       try {
         solve(p, base, start)
       } catch {
-        case e: Exception => println("Sorry, couldn't solve this one...")
-                             println("Error: " + e + "\n")
+        case e: Exception =>
+          println("Sorry, couldn't solve this one...")
+          println("Error: " + e + "\n")
       }
     }
-
 
   }
 
@@ -202,31 +177,31 @@ object Alphametic {
       try {
         solve(problem, base, start)
       } catch {
-        case e: Exception => println("Sorry, couldn't solve this one...")
-                             println("Error: " + e + "\n")
+        case e: Exception =>
+          println("Sorry, couldn't solve this one...")
+          println("Error: " + e + "\n")
       }
     }
 
   }
 
-
   def main(args: Array[String]) {
 
     val problem = if (args.length > 0) args(0) else "SEND+MORE=MONEY";
-    val base    = if (args.length > 1) args(1).toInt else 10;
-    val start   = if (args.length > 2) args(2).toInt else 0;
+    val base = if (args.length > 1) args(1).toInt else 10;
+    val start = if (args.length > 2) args(2).toInt else 0;
 
     problem match {
-    case "TEST"  | "test"  => testProblems(base, start)
-    case "TEST2" | "test2" => testProblems2(start=start)
-    case _ => try {
-                solve(problem, base, start)
-              } catch {
-                case e: Exception => println("\nSorry, couldn't solve this one...")
-                                     println("Error: " + e + "\n")
-              }
+      case "TEST" | "test" => testProblems(base, start)
+      case "TEST2" | "test2" => testProblems2(start = start)
+      case _ => try {
+        solve(problem, base, start)
+      } catch {
+        case e: Exception =>
+          println("\nSorry, couldn't solve this one...")
+          println("Error: " + e + "\n")
+      }
     }
-
 
   }
 
