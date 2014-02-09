@@ -24,7 +24,7 @@ var 0.0..10000.0: z = 40.0 * production[gas] + 50.0 * production[chloride] ;
 
 % solve maximize z;
 % solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
-solve :: float_search(production, 0.00001, input_order, indomain, complete) maximize z;
+solve :: float_search(production, 0.00001, input_order, indomain_split, complete) maximize z;
 
 constraint
   production[gas] + production[chloride] <= 50.0 /\

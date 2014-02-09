@@ -12,7 +12,9 @@
 %
 
 
-solve satisfy;
+% solve satisfy;
+solve :: float_search([V,R1,R2,VD,ID,I], 0.00001, input_order, indomain_split, complete) satisfy;
+
 
 %%
 %% Rules for voltage divider program page 138

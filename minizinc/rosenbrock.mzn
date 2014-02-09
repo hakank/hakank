@@ -32,9 +32,10 @@
 
 var -1.0..8.0: x1;
 var -1.0..8.0: x2;
+var float: z =   100.0*(x2-x1*x1)*(x2-x1*x1)+(1.0-x1)*(1.0-x1);
 
-solve minimize 
-  100.0*(x2-x1*x1)*(x2-x1*x1)+(1.0-x1)*(1.0-x1)
+solve :: float_search([x1,x2], 0.0001, input_order, indomain_split,complete) minimize 
+  z
   % 105.0*(x2-x1*x1)*(x2-x1*x1)+(1.0-x1)*(1.0-x1) % variation
 ;
 
@@ -43,5 +44,5 @@ solve minimize
 
 output 
 [
- show([x1,x2])
+ show([x1,x2,z])
 ];

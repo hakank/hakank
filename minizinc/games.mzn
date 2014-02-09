@@ -12,11 +12,13 @@
 
 int: n = 3;
 array[1..n, 1..n] of float: A; % payoff matrix
-array[1..n] of var float: X;   % probability of strategy j for column player
-var float: w;
+array[1..n] of var 0.0..1.0: X;   % probability of strategy j for column player
+var -1.0..1.0: w;
 
 % solve satisfy;
 solve maximize w;
+% solve :: float_search(X, 0.00001,input_order,indomain_split,complete) maximize w;
+
 
 constraint 
         forall(i in 1..n) (

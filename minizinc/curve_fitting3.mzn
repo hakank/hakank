@@ -25,8 +25,6 @@
 %      variables of type `array of var float' are not supported by the FD solver backend.
 %    * MiniZinc/mip: 
 %      the built-in operation `float_times/3' is not supported by the MIP solver backend.
-%    * Gecode/fz: 
-%      Error: Floats not supported. in line no. 1
 %    * ECLiPSe/eplex: 
 %      calling an undefined procedure fzn_eplex : float_times
 %     
@@ -55,7 +53,8 @@ array[Sample] of var float: Ey;
 var float: b1 = (sum(z in Sample) (Ex[z]*Ey[z]))/(sum(z in Sample) (Ex[z]*Ex[z]));
 
 
-solve satisfy;
+% solve satisfy;
+solve :: float_search(Ex++Ey,0.000000000001, input_order, indomain_split, complete) satisfy;
 
 constraint
   % sum of variances is zero for Sx

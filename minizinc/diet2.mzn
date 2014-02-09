@@ -31,26 +31,24 @@ set of int: F = 1..num_foods;
 array[N] of float: b;
 
 % nutritive value of foods (per dollar spent) 
-array[F, N] of float: a;
+array[F, N] of 0.0..2000.0: a;
 
 % dollars of food f to be purchased daily
-array[F] of var float: x;
+array[F] of var 0.0..1.0: x;
 
 %  total food bill (dollars) 
 var float: cost = sum(f in F) (x[f]);
 
 solve minimize cost;
+% solve :: float_search(x++[a[i,j] |i in F, j in N]++b, 0.000001, input_order,indomain_split, complete) minimize cost;
 
 constraint
+  cost >= 0.0 /\
+  
 %  nutrient balance (units) 
   forall(n in N) (
-        sum(f in F) (a[f,n] * x[f]) = b[n]
+     sum(f in F) (a[f,n] * x[f]) = b[n]
   )
-  /\
-  forall(f in F) (
-    x[f] >= 0.0
-  )
-
 ;
 
 
@@ -121,4 +119,6 @@ output [
  "Limabeans  : $", show(x[19]), "\n",
  "Navybeans  : $", show(x[20]), "\n",
  "Total cost : $", show(cost), "\n",
+ "a: ", show(a), "\n",
+ "b: ", show(b), "\n"
 ];

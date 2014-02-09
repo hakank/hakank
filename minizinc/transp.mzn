@@ -47,11 +47,13 @@ array[I,J] of float: c = array2d(I,J, [f*d[i,j] / 1000.0 | i in I, j in J]);
 
 % shipment quantities in cases 
 % var x{i in I, j in J} >= 0;
-array[I,J] of var float: x; % >= 0
+array[I,J] of var 0.0..1000.0: x; % >= 0
 
 % total transportation costs in thousands of dollars 
 var float: cost = sum(i in I, j in J) (c[i,j] * x[i,j]);
-solve minimize cost;
+
+% solve minimize cost;
+solve :: float_search([x[i,j]|i in I, j in J],0.00001,input_order,indomain_split,complete) minimize cost;
 
 constraint
     forall(i in I, j in J) (

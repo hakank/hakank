@@ -28,6 +28,5 @@ constraint
 
 output
 [
-  "X: " ++ show(X) ++ "\n" ++
-  "Y: " ++ show(Y) ++ "\n"
+  "X: " ++ show(X) ++ " " ++ "Y: " ++ show(Y) ++ "\n"
 ];

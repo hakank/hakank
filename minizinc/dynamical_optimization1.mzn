@@ -39,7 +39,8 @@ array[1..Ng] of var 0.00..10.00: u;
 var float: cost = sum(j in 1..Ng) (x[j]);
 
 % Objective
-solve minimize cost; % discrete integral approximation
+% solve minimize cost; % discrete integral approximation
+solve :: float_search(x ++ u,0.0001,input_order,indomain_split,complete) minimize cost; % discrete integral approximation
 
 % Constraints
 constraint

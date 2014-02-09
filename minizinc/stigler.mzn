@@ -142,16 +142,19 @@ array[N] of float: allowance;
 
 
 % dollars of food to be purchased daily 
-array[C] of var float: x;
-array[C] of var float: x_cost;
-array[C] of var float: quant;
+array[C] of var 0.0..1.0: x;
+array[C] of var 0.0..100.0: x_cost;
+array[C] of var 0.0..1000.0: quant;
 
 % total food bill 
 var float: total_cost = days * sum(c in C) (x[c]);
 var float: cost = sum(c in C) (x[c]); % cost per day
+
 solve minimize cost;
+% solve :: float_search(x_cost ++ quant ++ x, 0.01, input_order, indomain_split,complete) minimize cost;
 
 constraint
+  cost >= 0.0 /\
 
   % nutrient balance 
   forall(n in 3..num_nutrients+2) (

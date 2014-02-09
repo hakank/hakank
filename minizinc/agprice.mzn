@@ -39,7 +39,8 @@ array[point] of var float: mq;
 
 var float: revenue = -6492.0*milksq-1200.0*buttsq-194.0*chasq-8.0*chbsq-qsq +6748.0*milk+1185.0*butt+420.0*cha+70.0*chb;
 
-solve maximize revenue;
+% solve maximize revenue;
+solve :: float_search(lmilk++lbutt++lcha++lchb++lq++mq, 0.0001, input_order, indomain_split, complete)  maximize revenue;
 
 constraint
    milk >= 0.0 /\

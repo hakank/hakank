@@ -17,14 +17,15 @@
 % matrix given the stable state.
 
 
-% Model created by Hakan Kjellerstrand, hakank@bonetmail.com
+% Model created by Hakan Kjellerstrand, hakank@gmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 
 
 % Result for minizinc version 0.7.1:
-% fz cannot handle floats
-% eplex, ic and minizinc/flatzinc gives:
+% eplex, ic, mip, and gecode all finds:
 % x = [ 0.5142857142857142, 0.2, 0.2857142857142858 ]
+% gecode: [0.514285714285714, 0.2, 0.285714285714286]
+
 %
 % minizinc and eplex are fast for larger matrices. ic is not.
 

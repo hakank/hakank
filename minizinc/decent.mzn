@@ -43,7 +43,8 @@ var float: tcost  = sum(i in ndepts, j in ncitiesm1) (int2float(benefit[i,j])*in
                   comm[i,k]*int2float(dist[j,l])*int2float(g[i,j,k,l])
               );
 
-solve maximize tcost;
+% solve maximize tcost;
+solve :: int_search([d[i,j] | i in ndepts, j in ncities], first_fail, indomain_min, complete) maximize tcost;
 
 constraint
    tcost >= 0.0

@@ -15,10 +15,10 @@
 %  - MiniZinc/fdmip
 %  - ECLiPSe ic
 %  - ECLiPSe eplex
+%  - Gecode/fz
 %
 % The following solver don't work with this model:
 %  - MiniZinc/flatzinc (standard fd solver)
-%  - Gecode/fz
 %  - ECLiPSe/fd
 %  - Tini fz
 %  
@@ -30,24 +30,30 @@
 
 % include "globals.mzn"; 
 
-var float: C; % Celsius
-var float: F; % Fahrenheigh
+var -300.0..300.00: C; % Celsius
+var -300.0..300.00: F; % Fahrenheigh
 
 predicate convert(var float: C, var float: F) =
   C = (F - 32.0) * 5.0 / 9.0
 ;
 
-solve satisfy;
+% solve satisfy;
+solve :: float_search([C,F],0.000001,input_order,indomain_split, complete) satisfy;
 
 constraint
 
 %  F = 100.0
 %  /\
-%  C = 37.0
-%  /\
-  convert(C, F)
+  C = 37.0
   /\
-  C = F
+  convert(C, F)
+%  /\
+%  C = F
+
+  /\ (C > 1.0 \/ F > 1.0)
+
+  % /\ % either C or F must be an integer
+  % floor(F) = F  % floor don't accept var float
 
 ;
 

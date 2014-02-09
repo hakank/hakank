@@ -36,8 +36,9 @@ array[M] of var 0..100: t; % total cost of books on day j
 
 var 0.0..200.0: totcost = int2float(sum(i in M) (cost[i])) - sum(k in Q) (0.001*int2float(t[k-1])*int2float(t[k]));
 
-% solve :: int_search([x[i,j] | i, j in M], "first_fail", "indomain", "complete") minimize totcost;
-solve minimize totcost;
+solve :: int_search([x[i,j] | i, j in M], first_fail, indomain_min, complete) minimize totcost;
+% solve minimize totcost;
+
 
 constraint
   forall(j in M) (
@@ -53,7 +54,8 @@ constraint
 
 output 
 [ 
-  "t: ", show(t), 
+  "t: ", show(t), "\n",
+  "totcost: ", show(totcost)
 ] ++
 [
   if j = 1 then "\n" else " " endif ++

@@ -52,9 +52,10 @@ var float: totalprofit = sum(m in month) (productprice*production[m])
 var float: turnover = sum(m in month) (productprice*production[m]);
 var float: buying_costs = sum(m in month, o in oils) (buyingprices[m,o]*buys[m,o]);
 var float: storage_costs = sum(m in month, o in oils) (storagecost*stock[m,o]);
-% array[month] of var float: hardness; % don't work, see below...
+array[month] of var float: hardness; % don't work with MIP solvers, see below...
 
-solve maximize totalprofit;
+% solve maximize totalprofit;
+solve :: float_search([useoil[i,j] | i in month, j in oils]++production, 0.00001, input_order, indomain_split, complete) maximize totalprofit;
 
 constraint
 
@@ -114,10 +115,12 @@ constraint
   )
 
   %    % don't work! Gives the following error:
-  % /\ % float_times/3 is not supported by the MIP solver backend.
-  % forall(m in month) (
-  %    (sum(o in oils) (useoil[m,o])) * hardness[m] = (sum(o in oils) (oilhardness[o]*useoil[m,o])) 
-  % )
+  /\ % float_times/3 is not supported by the MIP solver backend.
+     % Gecode and ic don't complain, on the other hand they don't give
+     % any solution either...
+  forall(m in month) (
+      (sum(o in oils) (useoil[m,o])) * hardness[m] = (sum(o in oils) (oilhardness[o]*useoil[m,o])) 
+  )
 ;
 
 

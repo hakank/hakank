@@ -52,7 +52,9 @@ array[I,J] of var 0..1: y;
 var float: cost  = sum(i in I, j in J) (varcost[i,j] * x[i,j]) +
                   sum(i in I, j in J) (fixcost[i,j] * int2float(y[i,j]));
 
-solve minimize cost;
+% solve minimize cost;
+solve :: int_search([y[i,j] | i in I, j in J], first_fail, indomain_min, complete) minimize cost;
+% solve :: float_search([x[i,j] | i in I, j in J], 0.0001, input_order, indomain_split, complete) minimize cost;
 
 
 constraint

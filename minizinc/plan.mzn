@@ -20,7 +20,11 @@ var float: silicon; % , >= 0;
 
 var float: value = 0.03 * bin1 + 0.08 * bin2 + 0.17 * bin3 + 0.12 * bin4 + 0.15 * bin5 + 0.21 * alum + 0.38 * silicon;
 
-solve minimize value;
+% solve minimize value;
+solve :: float_search(
+         [bin1,bin2,bin3,bin4,bin5,alum,silicon], 0.0001, 
+         input_order, indomain_split,complete) 
+     minimize value;
 
 constraint
 

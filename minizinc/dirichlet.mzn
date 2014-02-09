@@ -10,7 +10,7 @@
 %
 
 int: n;
-array[1..n, 1..n] of var float: temp;
+array[1..n, 1..n] of var 0.0..100.0: temp;
 
 constraint
   forall(i,j in 2..n-1) (
@@ -19,7 +19,8 @@ constraint
 );
 
 
-solve satisfy;
+% solve satisfy;
+solve :: float_search([temp[i,j] | i,j in 1..n],0.0001,input_order, indomain_split, complete) satisfy;
 
 int: half_n = n div 2;
 

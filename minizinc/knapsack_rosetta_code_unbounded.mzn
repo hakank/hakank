@@ -50,8 +50,8 @@ var float: total_value = sum(i in 1..n) (int2float(x[i])*value[i]);
 var float: total_weight = sum(i in 1..n) (int2float(x[i])*weight[i]);
 var float: total_volume = sum(i in 1..n) (int2float(x[i])*volume[i]);
 
-% solve maximize total_value;
-solve satisfy;
+solve maximize total_value;
+% solve satisfy;
 
 constraint
    total_weight <= 25.0

@@ -87,7 +87,8 @@ array[1..num_products, 1..num_cities,1..num_cities] of int: Cost =
 array[1..num_products,1..num_cities,1..num_cities] of var 0.0..1000000.0: Trans;
 var 0.0..1000000.0: z;
 
-solve minimize z;
+% solve minimize z;
+solve :: float_search([Trans[i,j,k] |i in 1..num_products,j,k in 1..num_cities],0.001,input_order,indomain_split,complete) minimize z;
 
 constraint
   z = sum( p in Products , o in Cities, d in Cities ) (

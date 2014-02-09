@@ -31,10 +31,11 @@ array[dmus, outputs] of float: output_data;
 
 
 %%% PROGRAM %%%
-array[dmus] of var float: theta;
-array[dmus, dmus] of var float: lambda;
+array[dmus] of var 0.0..1.0: theta;
+array[dmus, dmus] of var 0.0..1.0: lambda;
 
-solve minimize sum(td in dmus) (theta[td]);
+% solve minimize sum(td in dmus) (theta[td]);
+solve :: float_search(theta, 0.0001, input_order, indomain_split, complete) minimize sum(td in dmus) (theta[td]);
 
 constraint 
   forall(td in dmus) (
@@ -82,6 +83,10 @@ output [
 [
   show(td) ++ "\t" ++ show(theta[td]) ++ "\n"
   | td in dmus
+]
+++
+[
+ "z: " ++ show(sum(theta))
 ];
 
 

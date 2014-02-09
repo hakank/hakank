@@ -13,13 +13,14 @@
 
 int: n = 3;
 array[1..n, 1..n] of float: mat;
-array[1..n] of var float: p; % probabilities
-array[1..n] of var float: mean_first_return_time;
+array[1..n] of var 0.0..1.0: p; % probabilities
+array[1..n] of var 0.0..1.0: mean_first_return_time;
 array[1..n] of float: cost; % cost, page 651
-var 0.0..100000.0: tot_cost;
+var 0.0..1000.0: tot_cost;
 
 
-solve satisfy;
+% solve satisfy;
+solve :: float_search(p++mean_first_return_time, 0.0001, input_order, indomain_split, complete) satisfy;
 
 %
 % Calculates the steady state probablity of a transition matrix m
