@@ -1,0 +1,209 @@
+/* 
+
+  Three piles of coins (planning problem) in Picat.
+
+  From
+  "Monday Puzzle: Three Piles of Coins"
+  http://mindyourdecisions.com/blog/2014/02/10/monday-puzzle-three-piles-of-coins/#.UvkA9Pim0s4
+  """
+  In front of you are three piles of coins. You are allowed to transfer coins 
+  between piles, but there is a restriction on how you can move the coins. If you 
+  wish to move coins from pile A to pile B, you can only do so by removing the 
+  number of coins from pile A to exactly double the coins in pile B.
+
+  The question is, if you’re allowed unlimited moves of this type, can you always 
+  find a way to make one of the piles empty? 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+import planner.
+
+main => go.
+
+
+go =>
+  
+  % Problems from the blog post
+  % Start = [1, 2, 4], % length = 2
+  % Start = [4, 5, 9],  % length = 2
+  % Start = [2, 4, 6],
+  % Start = [1, 3, 5],
+  % Start = [7, 11, 13], % len 4
+  % Start = [8, 17, 29], % len 4
+  % Start = [2, 6, 10], % len 2
+  % Start = [8, 10, 18], % len 2
+
+  % other problems
+  Start = [23,17,37], % len 4
+  % Start = [3035,5043,5621], % len=13
+
+  println(start=Start),
+  best_plan_downward(Start,Plan),
+  foreach(P in Plan) 
+    println(P)
+  end,
+  println(len=Plan.length),
+  
+  nl.
+
+
+% Founds some longer plans:
+%   Len=11: start=[4081,6486,8839]
+%   Len=12: start=[3862,6985,7159] [3535,9687,9952]
+%   Len=13: start=[3035,5043,5621] [2902,6444,9377]
+%   Len=15: start=[7529,20498,95313] (1.2s)
+%   Len=16:  start=[35931,47089,97667] (5.4s)
+%   Len=17: start=[6464,72311,93786] (9.1s)
+go2 => 
+  Max = 1000,
+  Start = [1+random2() mod Max : _I in 1..3].sort(),
+ 
+  println(start=Start),
+  best_plan_downward(Start,Plan),
+  foreach(P in Plan) 
+    println(P)
+  end,
+  println(len=Plan.length),
+  
+  nl.
+
+% find the longest plan
+%   MaxVal=100: 4 plans of maxLen=10
+%     Best starts for MaxLen 10
+%       start=[73,65,57]
+%       start=[95,79,63]
+%       start=[95,81,67]
+%       start=[97,87,77]
+% 
+%   MaxVal=10: 1 plan of maxLen=5  (start=[10,9,8])
+%       
+go3 => 
+  MaxVal = 100,
+  MaxLen = 0,
+  MaxStarts = [],
+  foreach(I in 1..MaxVal, J in 1..I-1, K in 1..J-1)
+    Start = [I,J,K],
+    %  println(start=Start),
+    best_plan_downward(Start,Plan),
+    % foreach(P in Plan) 
+    %    println(P)
+    % end,
+    Len = Plan.length,
+    % println(len=Len),
+    if Len > MaxLen then
+       MaxLen := Len,
+       MaxStarts := [Start],
+       println(len=MaxLen),
+       println(start=Start),
+       println(plan=Plan),
+       println([maxLen=MaxLen,numPlans=MaxStarts.length]),
+       nl
+    elseif Len = MaxLen then
+       MaxStarts:= MaxStarts ++ [Start],
+       println(start=Start),
+       println(plan=Plan),
+       println([maxLen=MaxLen,numPlans=MaxStarts.length]),
+       nl
+    end 
+  end,
+  println(maxLen=MaxLen),
+  println(maxStarts=MaxStarts),
+  println(numStarts=MaxStarts.length),
+  printf("\nBest starts for MaxLen %d\n", MaxLen),
+  foreach(Start in MaxStarts)
+    println(start=Start)
+  end,
+  nl.
+  
+%
+% Goal: either pile is empty
+% 
+final(L) => 
+  % println(l=L),
+  (L=[0,_,_]; L=[_,0,_]; L=[_,_,0]).
+          
+
+%
+% The actions
+%
+
+
+/*
+%
+% General approach.
+%
+% However, it's much slower than multiple action/4:
+% For go3/0 with MaxVal=100 it takes 83s 
+% to get the best Starts, compared to 
+% 42s with the multiple action/4.
+%
+action(L,To,Move,Cost) =>
+   Len=L.length,
+   select(PileFrom,1..Len,Rest), % 
+   member(PileTo,Rest),
+   Z = L[PileTo],
+   L[PileFrom]-Z>=0,
+   To=copy_term(L),
+   To[PileFrom] := To[PileFrom]-Z,
+   To[PileTo] := To[PileTo]+Z,
+   Move=[move,Z,coins,from,pile,PileFrom,to,PileTo,To],
+   Cost = 1.
+*/
+
+
+% from 1 -> 2
+action([N1,N2,N3],To,Move,Cost) ?=>
+   Z = N2,
+   N1-Z >= 0,
+   To=[N1-Z,N2+Z,N3],
+   Move=[move,Z,coins,from,pile,1,to,2,To],
+   Cost = 1.
+
+
+% from 1 -> 3
+action([N1,N2,N3],To,Move,Cost) ?=>
+   Z = N3,
+   N1-Z >= 0,
+   To=[N1-Z,N2,N3+Z],
+   Move=[move,Z,coins,from,pile,1,to,3,To],
+   Cost = 1.
+
+% from 2 -> 1
+action([N1,N2,N3],To,Move,Cost) ?=>
+   Z = N1,
+   N2-Z>=0,
+   To=[N1+Z,N2-Z,N3],
+   Move=[move,Z,coins,from,pile,2,to,1,To],
+   Cost = 1.
+
+% from 2 -> 3
+action([N1,N2,N3],To,Move,Cost) ?=>
+   Z = N3,
+   N2 -Z >= 0,
+   To=[N1,N2-Z,N3+Z],
+   Move=[move,Z,coins,from,pile,2,to,3,To],
+   Cost = 1.
+
+% from 3 -> 1
+action([N1,N2,N3],To,Move,Cost) ?=>
+   Z = N1,
+   N3-Z>=1,
+   To=[N1+Z,N2,N3-Z],
+   Move=[move,Z,coins,from,pile,3,to,1,To],
+   Cost = 1.
+
+
+% from 3 -> 2
+action([N1,N2,N3],To,Move,Cost) ?=>
+   Z = N2,
+   N3-Z>=0,
+   To=[N1,N2+Z,N3-Z],
+   Move=[move,Z,coins,from,pile,3,to,2,To],
+   Cost = 1.

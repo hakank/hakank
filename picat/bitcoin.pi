@@ -1,0 +1,116 @@
+/* 
+
+  Reading "bitcoins "currency" in Picat.
+
+  Reading the "currencies" (not real) from
+    http://fx.priceonomics.com/v1/rates/
+  and parses it to a proper currency table.
+
+  Note: read_url/1 use the program curl to fetch the data.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  
+  % Parse the JSON file from http://fx.priceonomics.com/v1/rates/
+  % C = read_file_chars("bitcoin_currency.txt").delete('{').delete('}').delete_all('"'),
+
+  URL="http://fx.priceonomics.com/v1/rates/",
+  C=read_url(URL).delete('{').delete('}').delete_all('"'),
+
+  S = split(C,","),
+  M = new_map(),
+  foreach(Curr in S)
+    [Currencies,Rate] = split(Curr.strip(),":"),
+    [From,To] = split(Currencies,"_"),
+    RateF = parse_term(Rate),
+    if From != To then
+       println([From,To,RateF]),
+       M.put([From,To],RateF)
+    end
+  end,
+  arbitrage_loop4(M),
+  nl.
+
+
+%
+% Version 0.1 of Picat don't support read_url,
+% so here's a poor man's versions of it,
+% using curl is used to fetch the file.
+%
+read_url(URL) = Content =>
+  Tmp = "read_url_tmp.txt",
+  URL2 = "curl -s " ++ URL ++ " -o " ++ Tmp,
+  _=command(URL2),
+  read_file_chars(Tmp) = Content.
+
+
+%
+% Generate the most profitable arbitrage loop.
+%
+% Exchange is a map containing the different exchange rates
+%    [From,To]=Rate
+%
+% For more experiments in arbitrage loops, see
+%    http://www.hakank.org/picat/arbitrage_loops.pi
+%
+arbitrage_loop4(Exchange) =>
+  All = [From : [From,_] in Exchange.keys()].remove_dups(), 
+  MaxProfit = 0,
+  MaxArb = [],
+  foreach(Len in 2..All.length, Start in All)
+     Chains=findall([Chain,Profit],profit4(Start,Len,All,Exchange,Chain,Profit)),
+     foreach([Chain,Profit] in Chains) 
+        if Profit = MaxProfit then
+           println('newMax(tie)'=[Profit,Chain])
+       end,
+        if Profit > MaxProfit then
+           println(newMax=[Profit,Chain]),
+           MaxProfit := Profit,
+           MaxArb := Chain
+       end
+     end
+  end,
+  println([maxArb=MaxArb,maxProfit=MaxProfit]),
+
+  % We start with Init units (and don't care about broker costs etc.)
+  Init = 1000,
+  Currency = MaxArb.first().to_string().to_uppercase(),
+  printf("Real profit where we start with %d %w: %d*%f-%d = %f %w\n", Init,Currency,Init,MaxProfit,Init,Init*MaxProfit-Init,Currency ),
+  nl.
+
+
+
+% C is the relative complement of A w.r.t. B (A-B)
+difference(A,B) = C =>
+    C = [X : X in A, not member(X,B)].
+
+
+%
+% Profits
+%
+profit4(Start,Len, All,Matrix,Currencies,Profit) =>
+    Currencies = new_list(Len+1),
+    Currencies[1] := Start,
+    Profit1 := 1,
+    foreach(I in 2..Len)
+       Left = difference(All,Currencies.slice(1,I-1)),
+       member(Currencies[I],Left),
+       Profit1 := Profit1 * Matrix.get([Currencies[I-1],Currencies[I]])
+    end,
+    Currencies[Len+1] := Start,
+    Profit1 := Profit1 * Matrix.get([Currencies[Len],Start]),
+    Profit1 > 1.0, % comment this for showing unprofitable chains as well
+    Profit = Profit1.
