@@ -1,0 +1,253 @@
+/* 
+
+  Skyskraper puzzle in Picat.
+
+  http://www.puzzlepicnic.com/genre?flats
+  http://www.puzzlepicnic.com/puzzle?909
+  http://www.puzzlemix.com/Skyscraper
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+% Problems without cell hints
+go =>
+  NumProblems = 6,
+  foreach(P in 1..NumProblems) 
+    println(problem=P),
+    time2(All=findall(_,one_problem(P))),
+    println(num_solutions=All.length),
+    nl
+  end,
+  nl.
+
+%
+% Problems with cell hints
+% 
+go2 => 
+  Problems = [hint1,hint2],
+  foreach(Problem in Problems)
+     println(problem=Problem),
+     problem(Problem,CU,CL,RL,RR,X),
+     time2(All = findall([CU,CL,RL,RR,X], skyscraper(CU,CL,RL,RR,X))),
+     foreach([CUX,CLX,RLX,RRX,XX] in All) 
+        print_solution(CUX,CLX,RLX,RRX,XX)
+     end,
+     println(num_solutions=All.length),
+     nl
+  end,
+  nl.
+
+
+
+one_problem(P) =>
+  problem(P,CU,CL,RL,RR),
+  skyscraper(CU,CL,RL,RR,X),
+  % foreach(Row in X) println(Row) end,
+  print_solution(CU,CL,RL,RR,X),
+  nl.
+ 
+
+skyscraper(CU,CL,RL,RR, X) =>
+  N = CU.length,
+
+  if var(X) then 
+    X = new_array(N,N),
+    X :: 1..N
+  end,
+
+  % latin square
+  foreach(I in 1..N) 
+    all_distinct([X[I,J] : J in 1..N]),
+    all_distinct([X[J,I] : J in 1..N])
+  end,
+
+  foreach(I in 1..N)
+     RL_A = new_list(N), RL_A :: 1..N,
+     RR_A = new_list(N), RR_A :: 1..N,
+     CU_A = new_list(N), CU_A :: 1..N,
+     CL_A = new_list(N), CL_A :: 1..N,
+
+     % rows
+     foreach(J in 1..N) (RL_A[J] #= X[I,J]) end,
+     num_skyscrapes(RL_A, RL[I]),
+
+     RR_A = reverse(RL_A),
+     % reverse2(RL_A,RR_A),
+     num_skyscrapes(RR_A, RR[I]),
+     % columns
+     foreach(J in 1..N) (CU_A[J] #= X[J,I]) end,
+     num_skyscrapes(CU_A, CU[I]),
+
+     CL_A = reverse(CU_A),
+     % reverse2(CL_A,CU_A),
+     num_skyscrapes(CL_A, CL[I])
+
+  end,
+
+  solve([ff,split],X).
+
+
+print_solution(CU,CL,RL,RR,X) =>
+  N = CU.length,
+  println("Solution:"),
+  print("     "), foreach(I in 1..N) printf("%d ",cc(CU[I])) end,
+  nl,
+  foreach(I in 1..N) 
+    printf("  %w %w %w\n", cc(RL[I]),[X[I,J] : J in 1..N], cc(RR[I]))
+
+  end,
+  print("     "), foreach(I in 1..N) printf("%d ",cc(CL[I])) end,
+  nl.
+
+cc(V) = cond(var(V), "_", V).
+
+%
+% number of seen skyscrapes
+% 
+num_skyscrapes(Y, Num) =>
+  N = length(Y),
+  NPos :: 1..N,
+  element(NPos,Y,N), % identify position of N
+  Num #=< NPos, 
+  Num #=< N-Y[1]+1,
+  % Now count all the positions where Y[I] is larger then all Y[1..I-1]
+  Num #= 1+ 
+           sum([
+             sum([Y[I] #> Y[J] : J in 1..I-1]) #= I-1
+           : I in 2..N]).
+
+  
+
+
+%
+% reverses an array from -> to.
+% (This is not needed.)
+%
+reverse2(From, To) =>
+   N = length(From),
+   foreach(I in 1..N)
+      To[I] #= From[N-I+1]
+   end.
+
+
+
+%
+% Puzzle:
+%   1 2 2 3
+% 1         4
+% 3         2
+% 2         2
+% 3         1
+%   3 2 2 1
+% 
+% Solution:
+%   1 2 2 3
+% 1 4 3 2 1 4 
+% 3 1 2 4 3 2 
+% 2 3 4 1 2 2 
+% 3 2 1 3 4 1
+%   3 2 2 1
+%
+problem(1,CU,CL,RL,RR) =>
+ CU = [1,2,2,3],
+ CL = [3,2,2,1],
+ RL = [1,3,2,3],
+ RR = [4,2,2,1].
+
+% http://www.puzzlepicnic.com/puzzle?900
+problem(2,CU,CL,RL,RR) =>
+ CU = [_,_,_,_,_],
+ CL = [_,_,_,_,_],
+ RL = [5,2,3,1,2],
+ RR = [1,4,2,4,2].
+
+% http://logicgames.blogspot.com/2008/06/skyscraper.html
+problem(3,CU,CL,RL,RR) =>
+ CU = [_,1,2,_],
+ CL = [_,_,_,_],
+ RL = [_,3,3,_],
+ RR = [_,_,2,_].
+
+% From
+% http://stackoverflow.com/questions/22096963/waffle-stacking-puzzle-algorithm
+problem(4, CU,CL,RL,RR) =>
+  CU = [2,2,3,2,1],
+  CL = [3,2,1,3,4],
+  RL = [4,1,3,2,3],
+  RR = [1,4,2,2,2].
+
+
+% From
+% http://www.puzzlemix.com/Skyscraper
+problem(5, CU,CL,RL,RR) =>
+  CU = [4,2,1,2,3],
+  CL = [1,4,3,2,2],
+  RL = [3,2,3,2,1],
+  RR = [3,4,1,2,2].
+
+
+% From 
+% http://www.puzzlemix.com/playgrid.php?id=74166&type=sky&share=1
+% (Skyscraper-5 87)
+problem(6, CU,CL,RL,RR) =>
+  CU = [4,_,_,_,4],
+  CL = [_,2,3,_,_],
+  RL = [_,_,_,_,_],
+  RR = [3,_,_,_,2].
+
+% From http://www.brainbashers.com/showskyscraper.asp
+% Nov 03 - Hard 7x7 (random)
+problem(7,CU,CL,RL,RR) =>
+ CU = [_,3,_,_,4,4,3],
+ CL = [5,4,_,3,_,_,2],
+ RL = [_,_,_,_,_,_,_],
+ RR = [_,_,_,_,_,_,_].
+
+
+%
+% Instances with hints.
+% 
+% From http://www.brainbashers.com/showskyscraper.asp
+% Apr 12 Easy 6x6
+%
+% Note: This instance has also hints.
+%
+problem(hint1,CU,CL,RL,RR,Hints) =>
+ CU = [4,2,1,2,2,3],
+ CL = [2,2,4,3,2,1],
+ RL = [3,2,2,2,1,4],
+ RR = [4,2,3,3,3,1],
+ Hints = {
+   {_,_,_,_,2,_},
+   {_,_,2,_,_,_},
+   {1,_,_,_,_,_},
+   {_,_,_,6,_,_},
+   {_,_,4,_,_,_},
+   {_,_,1,_,_,_}
+   }.
+
+% http://www.brainbashers.com/showskyscraper.asp
+% Nov 03 Hard 7x7 [Random]
+problem(hint2,CU,CL,RL,RR,Hints) =>
+ CU = [_,3,_,_,4,4,3],
+ CL = [5,4,_,3,_,_,2],
+ RL = [2,_,_,7,_,3,_],
+ RR = [_,3,3,_,2,_,_],
+ Hints = {
+   {_,_,_,_,_,_,_},
+   {_,_,_,_,_,3,_},
+   {_,_,_,_,_,_,_},
+   {_,_,_,_,_,_,_},
+   {_,_,_,_,_,_,_},
+   {_,_,_,2,_,_,_},
+   {_,_,_,_,_,_,_}
+   }.

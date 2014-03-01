@@ -1,0 +1,125 @@
+/* 
+
+  Josephus problem in Picat.
+
+
+  This was inspired by a Mathematica program by Robert Cowen:
+  LearnMathProg.nb available at
+  https://sites.google.com/site/robertcowen/home/mathematica-programming
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+import apl_util. % for base
+
+main => go.
+
+
+go =>
+  
+  println(rotate_left(1..10,3)),
+
+  L= 1..10,
+  println(survivor=survivor(L)),
+
+  nl.
+
+go2 =>
+  N=100,
+  println([I=survivor(1..I) : I in 1..N]),
+  nl.
+
+%
+% using nest_list to see the progression
+%
+go3 =>
+  L= 1..10,
+  foreach(E in survivor2(L))
+     println(E)
+  end,
+  nl.
+
+%
+% faster: using josephus/1
+%
+go4 =>
+  N=100,
+  println([I=josephus(I) : I in 1..N]),
+  nl.
+
+%
+% Faster solution from Graham, Knuth, Patashnik: "Concrete Mathematics"
+%
+josephus(N) = J =>
+   T=[to_integer(I): I in N.to_binary_string().rotate_left()],
+   J=base(2,T).
+
+%
+% Slower solution, using a list of 1..N
+%
+survivor([L]) = L. % one element
+survivor(L) = nest(ff,L,L.length-1).first().
+
+% using nest_list instead
+survivor2(L) = nest_list(ff,L,L.length-1).
+
+% the elimination procedure
+ff([]) = [].
+ff(L) = rotate_left(L).tail(), list(L) => true.
+
+
+% rotate list L to the left N times
+rotate_left(L) = rotate_left(L,1).
+rotate_left(L,_) = L, not list(L) => true.
+rotate_left(L,N) = slice(L,N+1,L.length) ++ slice(L,1,N).
+
+% rotate list L to the right N times
+rotate_right(L) = rotate_right(L,1).
+rotate_right(L,N) = Rot =>
+  Len = L.length,
+  Rot=slice(L,Len-N+1,Len) ++ slice(L,1,Len-N).
+
+
+% apply F to Expr N times, return a single value
+nest(F,Expr,N) = Nest =>
+   Nest = apply(F,Expr),
+   foreach(_I in 1..N-1)
+      Nest := apply(F,Nest)
+   end.
+
+% recursive version of nest/3
+nest2(_F,Expr0,0,Expr1) => 
+   Expr1=Expr0.
+nest2(F,Expr0,N,Expr1) => 
+   ExprNew = apply(F,Expr0),
+   nest2(F,ExprNew,N-1,Expr1).
+
+
+%
+% nest_list/3
+%
+% apply F to Expr N times, return the complete history
+%
+nest_list(F,Expr,N) = Nest =>
+   L = [Expr] ++ [apply(F,Expr)],
+   foreach(_I in 1..N-1)
+      L := L ++ [apply(F,L.last())]
+   end,
+   Nest = L.
+
+
+% recursive version
+nest_list2(F,Expr,N,Nest) =>
+   nest_list2(F,Expr,N,[Expr],Nest).
+
+nest_list2(_F,_Expr,0,Nest0,Nest) =>
+   Nest = Nest0.reverse().
+nest_list2(F,Expr,N,Nest0,Nest) =>
+   Expr1 = apply(F,Expr),
+   nest_list2(F,Expr1,N-1,[Expr1|Nest0],Nest).

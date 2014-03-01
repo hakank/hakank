@@ -20,8 +20,6 @@ test =>
    list_test,
    test3.
 
-
-
 get_n_solutions(Goal, N) =>
   printf("Get %d solutions:\n", N),
   get_global_map().put(solcount,1), 
@@ -134,6 +132,15 @@ butlast(L) = take(L,L.length-1).
 
 % sort/3 using B-Prolog's sort/3
 sort(Order, L1) = L2 => bp.sort(Order,L1,L2).
+
+%
+% sort_map(Map,keys)  : sort Map on keys
+% sort_map(Map,values): sort Map on values
+%
+sort_map(Map,values) = [K=V:_=(K=V) in sort([V=(K=V): K=V in Map])].
+sort_map(Map,keys)   = sort([K=V:K=V in Map]).
+sort_map(Map) = sort_map(Map,keys).
+
 
 swap(A,B) = [B,A].
 
@@ -474,6 +481,19 @@ inc(X,N) = X+N.
 dec(X) = X-1.
 dec(X,N) = X-N.
 
+inc2(N1,N2) =>
+  between(N1,99999999,N2).
+
+% with step Step
+inc2(N1,Step,N2) =>
+  between(N1,99999999,Tmp),
+  N2 = (Tmp-N1)*Step+N1.
+
+between(From,Step,To,N) =>
+  between(From,To,Tmp),
+  N = (Tmp-From)*Step+From.
+
+
 to_string2(Expr) = [E.to_string() : E in Expr].flatten().
 
 % E=["4","+","3","-","2"].flatten().eval()
@@ -551,7 +571,6 @@ occurrences(List) = Map =>
      Map.put(E, cond(Map.has_key(E),Map.get(E)+1,1))
   end.
 
-
 push(L,E) = L ++ [E].
 
 %
@@ -621,6 +640,15 @@ test3 =>
 
    nl. 
 
+table
+binomial(N,K) = Res =>
+   R = 1,
+   foreach(I in 1..K) 
+     R := floor(R * ((N-I+1)/I))
+   end,
+   Res = R.
+
+
 % From 
 % Mihaela Malita: "Library for Logic Puzzles"
 % http://www.anselm.edu/internet/compsci/faculty_staff/mmalita/HOMEPAGE/logic/bibmm.txt
@@ -674,7 +702,7 @@ set([H|T]) => not(member(H,T)),set(T).
 
 no_duplicates(M) => set(M).
 distinct(M) => set(M).
-% alldifferent(M) =>  set(M).
+% aldifferent(M) =>  set(M).
 
 /*
  Picat> N=3, R=all_subsets(N,1..N).filter2(distinct) 
@@ -838,6 +866,13 @@ lcm(X,Y)=LCM => GCD=gcd(X,Y), LCM = X*Y//GCD.
 % lcm/3
 lcm(X,Y,LCM) => GCD=gcd(X,Y), LCM = X*Y//GCD.
 
+lcm(List) = LCM =>
+  LCM = fold(lcm,1,List).
+
+gcd(List) = GCD =>
+  GCD = fold(gcd,List.first(),List.tail()).
+
+
 %
 % argmax:
 % find the index/indices for the max value(s) of L
@@ -859,3 +894,76 @@ table
 fibt(0)=1.
 fibt(1)=1.
 fibt(N)=F,N>1 => F=fibt(N-1)+fibt(N-2).
+
+%
+% rotate_left/1 and rotate_right/2:
+% rotate list L to the left N times
+%
+rotate_left(L) = rotate_left(L,1).
+rotate_left(L,N) = slice(L,N+1,L.length) ++ slice(L,1,N).
+
+ 
+%
+% rotate_right/1 and rotate_right/2:
+% rotate list L to the right N times 
+%
+rotate_right(L) = rotate_right(L,1).
+rotate_right(L,N) = Rot =>
+  Len = L.length,
+  Rot=slice(L,Len-N+1,Len) ++ slice(L,1,Len-N).
+
+%
+% nest/3:
+% apply F to Expr N times, return a single value
+%
+nest(F,Expr,N) = Nest =>
+   Nest = apply(F,Expr),
+   foreach(_I in 1..N-1)
+      Nest := apply(F,Nest)
+   end.
+
+% recursive version of nest/3
+nest2(_F,Expr0,0,Expr1) => 
+   Expr1=Expr0.
+nest2(F,Expr0,N,Expr1) => 
+   ExprNew = apply(F,Expr0),
+   nest2(F,ExprNew,N-1,Expr1).
+
+
+% 
+% next_list/3:
+% apply F to Expr N times, return the complete history
+%
+nest_list(F,Expr,N) = Nest =>
+   L = [Expr] ++ [apply(F,Expr)],
+   foreach(_I in 1..N-1)
+      L := L ++ [apply(F,L.last())]
+   end,
+   Nest = L.
+
+% recursive version
+nest_list2(F,Expr,N,Nest) =>
+   nest_list2(F,Expr,N,[Expr],Nest).
+
+nest_list2(_F,_Expr,0,Nest0,Nest) =>
+   Nest = Nest0.reverse().
+nest_list2(F,Expr,N,Nest0,Nest) =>
+   Expr1 = apply(F,Expr),
+   nest_list2(F,Expr1,N-1,[Expr1|Nest0],Nest).
+
+
+%
+% apply F to Expr until no difference
+%
+fixpoint(F,Expr) = Fix =>
+   E1 = Expr, 
+   E2 = apply(F,Expr),
+   L = [E1,E2],
+   while (E1 != E2) 
+      E1 := E2,
+      E2 := apply(F,E1),
+      if (E1 != E2) then
+         L := L ++ [E2]
+      end
+   end,
+   Fix = L.
