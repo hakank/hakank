@@ -28,16 +28,14 @@ predicate num_skyscrapes(array[1..n] of var 1..n: y, var 1..n: num) =
         var 1..n: n_pos
     }
     in 
-    y[n_pos] = n % identify position of n
+    y[n_pos] = n % identify position of n (the "stop value")
     /\
+    num <= n_pos /\
+    num <= n-y[1]+1 /\
+    % count the number of cells where y[i] is larger than all y[1..i-1]
     num = 1 + sum(i in 2..n) (
-                bool2int(
-                  i <= n_pos /\
-                  y[i] > y[i-1]
-                  /\ 
-                  y[i] > y[1]
-                ) 
-              )    
+                 bool2int(i<=n_pos/\sum([bool2int(y[i] > y[j]) | j in 1..i-1]) = i-1)
+               )
 ;
 
 %
@@ -68,9 +66,9 @@ solve :: int_search([x[i,j] | i,j in 1..n], first_fail, indomain_min, complete) 
 constraint
     % It's a latin square
     forall(i in 1..n) (
-       all_different([x[i,j] | j in 1..n]) :: domain
+       all_different([x[i,j] | j in 1..n]) % :: domain
        /\
-       all_different([x[j,i] | j in 1..n]) :: domain
+       all_different([x[j,i] | j in 1..n]) % :: domain
     )
 ;
 
@@ -78,10 +76,10 @@ constraint
     % check the row and column constraints
      forall(i in 1..n) (
        let {
-         array[1..n] of var int: rl_a,
-         array[1..n] of var int: rr_a,
-         array[1..n] of var int: cu_a,
-         array[1..n] of var int: cl_a,
+         array[1..n] of var 1..n: rl_a,
+         array[1..n] of var 1..n: rr_a,
+         array[1..n] of var 1..n: cu_a,
+         array[1..n] of var 1..n: cl_a,
        }
        in 
        % rows
@@ -131,23 +129,42 @@ constraint
 % rr = [1,4,2,4,2];
 
 % http://logicgames.blogspot.com/2008/06/skyscraper.html
-n = 4;
-cu = [_,1,2,_];
-cl = [_,_,_,_];
-rl = [_,3,3,_];
-rr = [_,_,2,_];
+% n = 4;
+% cu = [_,1,2,_];
+% cl = [_,_,_,_];
+% rl = [_,3,3,_];
+% rr = [_,_,2,_];
+
+
+% From
+% http://stackoverflow.com/questions/22096963/waffle-stacking-puzzle-algorithm
+% n = 5;
+% cu = [2,2,3,2,1];
+% cl = [3,2,1,3,4];
+% rl = [4,1,3,2,3];
+% rr = [1,4,2,2,2];
+
+% From 
+% http://www.puzzlemix.com/playgrid.php?id=74166&type=sky&share=1
+% (Skyscraper-5 87)
+% n = 5;
+% cu = [4,_,_,_,4];
+% cl = [_,2,3,_,_];
+% rl = [_,_,_,_,_];
+% rr = [3,_,_,_,2];
 
 
 % From http://www.brainbashers.com/showskyscraper.asp
 % Apr 12 Easy 6x6
+% Note: This instance has hints as well.
+% (If no hints are given there are 60 solutions.)
 % n = 6;
 % cu = [4,2,1,2,2,3];
 % cl = [2,2,4,3,2,1];
 % rl = [3,2,2,2,1,4];
 % rr = [4,2,3,3,3,1];
 
-% % given hints
-% % Nope, this don't work!
+% % % given hints
 % constraint
 %   cp2d(x, array2d(1..n, 1..n,
 % [
@@ -156,10 +173,34 @@ rr = [_,_,2,_];
 %   1,_,_,_,_,_,
 %   _,_,_,6,_,_,
 %   _,_,4,_,_,_,
-%   _,_,1,_,_,_, % the 1 should be 3 according to this model...
-% ]))  
-
+%   _,_,1,_,_,_, 
+% ]))
 % ;
+
+
+% http://www.brainbashers.com/showskyscraper.asp
+% Nov 03 Hard 7x7 [Random]
+% With hints
+n = 7;
+cu = [_,3,_,_,4,4,3];
+cl = [5,4,_,3,_,_,2];
+rl = [2,_,_,7,_,3,_];
+rr = [_,3,3,_,2,_,_];
+
+% % given hints
+constraint
+  cp2d(x, array2d(1..n, 1..n,
+[
+  _,_,_,_,_,_,_,
+  _,_,_,_,_,3,_,
+  _,_,_,_,_,_,_,
+  _,_,_,_,_,_,_,
+  _,_,_,_,_,_,_,
+  _,_,_,2,_,_,_,
+  _,_,_,_,_,_,_
+]))
+;
+
 
 
 output 
