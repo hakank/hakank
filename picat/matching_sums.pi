@@ -1,0 +1,192 @@
+/* 
+
+  Matching sums in Picat.
+
+  From "match elements to a list of sums"
+  http://stackoverflow.com/questions/21924832/match-elements-to-a-list-of-sums
+  """
+  If I have an array of numbers and a list of sums that total the array elements, 
+  what's the most effective approach (or at least a not a brute force hack) for 
+  determining which of the elements are included in the sum?
+  
+  A simplified example might look like:
+  
+  array = [6, 5, 7, 8, 6, 12, 16] sums = [14, 24, 22]
+  
+  and I would want to know:
+  
+  14 includes 8, 6
+  
+  24 includes 5, 7, 12
+  
+  22 includes 6, 16
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+% import sat.
+
+
+main => go.
+
+
+% original problem
+go =>
+  Nums = [6, 5, 7, 8, 6, 12, 16],
+  Sums = [14, 24, 22],
+  
+  matching(Nums, Sums, _X, _NumUsed),
+
+  nl.
+
+
+go2 =>
+  N = 30,
+  MaxNum = 100,
+  NumSums = 10,
+  MaxSum = 1000,
+
+  random_matching(N,MaxNum,NumSums,MaxSum),
+
+  nl.
+
+% checking all numbers 1..99 using 1..99
+go3 =>
+  N = 99,
+  matching(1..N, 1..N, _X, _NumUsed),
+
+  nl.
+
+
+% checking all numbers 1..99 using 1..99
+% using matching/4.
+go4 =>
+  N = 99,
+  matching(1..N, 1..N, _X, _NumUsed),
+  nl.
+
+
+%
+% From "The ECLiPSe Book" pages 99f and 234 ff
+% The solution in ECLiPSe is at page 236.
+%
+% """
+% What is the minimum number of coins that allows one to pay _exactly_
+% any amount smaller than one Euro? Recall that there are six different
+% euro cents, of denomination 1, 2, 5, 10, 20, 50
+% """
+%
+% Compare with http://www.hakank.org/picat/coins3.pi
+%
+go5 => 
+  matching2([1,2,5,10,20,50], 1..99, _X,_NumUsed),
+  nl.
+
+
+go6 => 
+  matching2([1,2,5,10,20,50,100], 1..999, _X,_NumUsed),
+  nl.
+
+%
+% make a random matching and solve it.
+%
+random_matching(N,MaxNum,NumSums,MaxSum) =>
+  Nums = [1+random2() mod MaxNum : _ in 1..N].sort(),
+  Sums = [1+random2() mod MaxSum : _ in 1..NumSums].sort(),
+
+  println(n=N),
+  println(num_sums=NumSums),
+  println(nums=Nums),
+  println(sums=Sums),
+
+  matching(Nums, Sums, _X, _NumUsed).
+  
+
+%
+% Original matching: plain sum of numbers.
+%
+matching(Nums, Sums, X, NumUsed) => 
+  
+  % Sanity check
+  if sum(Nums) < max(Sums) then
+    println("This is impossible: sum(Nums) < max(Sums)"),
+    halt
+  end,
+
+  N = Nums.length,  
+  NumSums = Sums.length,  
+
+  % decision variables 
+  X = new_array(NumSums,N),
+  X :: 0..1,
+
+  NumUsed = new_list(N),
+  NumUsed :: 0..1,
+
+  Z #= sum(NumUsed),
+
+  foreach(I in 1..NumSums)
+    sum([X[I,J]*Nums[J] : J in 1..N]) #= Sums[I]
+  end,
+
+  foreach(J in 1..N)
+    (NumUsed[J] #=1) #<=> (sum([X[I,J] : I in 1..NumSums]) #> 0)
+  end,
+
+  Vars = X.to_list() ++ NumUsed,
+  solve($[constr,updown,report($printf("z: %d\n", Z))], Vars),
+
+  println(z=Z),
+  println(numUsed=[Nums[J] : J in 1..N, NumUsed[J] = 1]),
+  foreach(I in 1..NumSums)
+    printf("%3d: %w\n", Sums[I], [Nums[J] : J in 1..N, X[I,J] = 1])
+  end,
+  nl.
+
+
+%
+% In this variant we can use as many occurrences of a
+% number as possible.
+%
+matching2(Nums, Sums, X, NumUsed) => 
+  
+  N = Nums.length,  
+  NumSums = Sums.length,  
+
+  % decision variables 
+  X = new_array(NumSums,N),
+  X :: 0..max(Sums),
+
+  NumUsed = new_list(N),
+  NumUsed :: 0..max(Sums),
+
+  Z #= sum(NumUsed), % total numbers needed
+
+  % Ensure that all numbers can be make
+  foreach(I in 1..NumSums)
+    sum([X[I,J]*Nums[J] : J in 1..N]) #= Sums[I]
+  end,
+
+  % Maximum number of coins of each "denomination" needed.
+  foreach(J in 1..N)
+    NumUsed[J] #= max([X[I,J] : I in 1..NumSums])
+  end,
+
+  println(solve),
+  Vars = X.to_list() ++ NumUsed,
+  solve($[ffd,updown,report($printf("z: %d\n", Z))], Vars),
+
+  foreach(I in 1..NumSums)
+    printf("%3d: %w\n", Sums[I], [Nums[J]=X[I,J] : J in 1..N, X[I,J] > 0])
+  end,
+  println(z=Z),
+  println(numUsed=NumUsed),
+  println(numUsed=[J=NumUsed[J] : J in 1..N, NumUsed[J] > 0]),
+  nl.

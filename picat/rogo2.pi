@@ -22,18 +22,18 @@
 */
 
 
-% import util.
+import util.
 import cp.
 
 main => go.
   
 go => 
-   rogo(mike_trick),
+   time2(rogo(mike_trick)),
    nl.
 
 % The hardest problem
 go2 => 
-   rogo(intro8), 
+   time2(rogo(intro8)), 
    nl.
 
 % All problems
@@ -112,6 +112,7 @@ rogo(PNr) =>
    % end,
 
    % all coordinates must be unique
+   % all_different(Path),
    all_distinct(Path),
 
 
@@ -124,7 +125,7 @@ rogo(PNr) =>
    % calculate the points (to maximize)
    foreach(S in 1..MaxSteps) 
       % Points[S] #= Problem[X[S], Y[S]]
-      matrix_element3(Problem, X[S], Y[S], Points[S]),
+      matrix_element(Problem, X[S], Y[S], Points[S]),
 
       % ensure that there are no black cells
       % in the path
@@ -167,7 +168,7 @@ rogo(PNr) =>
 
    Vars = Points ++ Path ++ X ++ Y ,
 
-   solve($[max(SumPoints), inout, forward,
+   solve($[max(SumPoints), degree,
              $report(printf("sumPoints=%w\npoints=%w\n     x=%w\n     y=%w\n  path=%w\n", SumPoints,Points,X,Y,Path))],
            Vars),
    nl,
@@ -185,7 +186,7 @@ rogo(PNr) =>
 % Different implementations of matrix_element(Matrix,I,J,Val)
 % to handle
 %    Val = Matrix[I,J]
-% which is not available when I or J are CP-variables.
+% which is not available when I or J are decision variables.
 % 
 matrix_element1(X, I, J, Val) =>
   element(I, X, Row),
@@ -196,10 +197,48 @@ matrix_element2(X, I, J, Val) =>
   element(J, Row, Val).
 
 matrix_element3(X, I, J, Val) =>
-     freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+  freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
 
 matrix_element4(X, I, J, Val) =>
-   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+  freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+%%
+%% matrix_element/4
+%% by Neng-Fa Zhou and Hakan Kjellerstrand
+%%
+matrix_element(M,I,J,Val) => 
+   matrix_element_cp(M,I,J,Val).
+
+matrix_element_cp(M,I,J,Val),list(M) =>
+    list_matrix_to_array_matrix(M) = M1,
+    matrix_element_aux(M1,I,J,Val).
+matrix_element_cp(M,I,J,Val),array(M) =>
+    matrix_element_aux(M,I,J,Val).
+
+matrix_element_aux(M,I,J,Val) =>
+    NRows = M.length,
+    NCols = M[1].length,
+    if not valid_matrix(M,NRows,NCols) then
+       handle_exception($invalid_matrix(M),matrix_element)
+    end,
+    I :: 1..NRows,
+    J :: 1..NCols,
+    if ground(M) then
+       Table = [(R,C,M[R,C]) : R in 1..NRows, C in 1..NCols],
+       table_in((I,J,Val),Table)
+    else
+       wait_until_ij(M,I,J,Val)
+    end.
+
+valid_matrix(M,NRows,NCols) =>
+   foreach(R in 2..NRows) 
+      M[R].length==NCols 
+   end.
+
+% wait until I and J becomes non-var
+wait_until_ij(_M,I,J,_Val),var(I),{ins(I),ins(J)} => true.
+wait_until_ij(_M,_I,J,_Val),var(J),{ins(J)} => true.
+wait_until_ij(M,I,J,Val) => Val=M[I,J].
 
 
 % Data from
