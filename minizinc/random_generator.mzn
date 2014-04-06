@@ -18,7 +18,7 @@
 
 int: n = 10;
 int: max_value = 10;
-int: seed; %  = 0;
+int: seed = 1;
 
 % decision variables
 array[1..n] of var int: rand; % random data

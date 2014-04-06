@@ -20,7 +20,7 @@
 
 int: n = 20;
 int: max_value = 10;
-int: seed; %  = 0;
+int: seed = 1;
 
 % It probably don't pass many randomness tests but it _looks_ quite random.
 array[1..n] of int: rand = [ (((seed*104729*i) mod 65537) mod max_value) | i in 1..n];

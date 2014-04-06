@@ -21,7 +21,7 @@
 int: n = 10;
 int: m = 10; % "cardinality" of the set, either approximately or as a generator for the cardinality
 int: max_value = 10;
-int: seed; % = 2;
+int: seed = 2;
 
 % decision variables
 array[1..n] of var set of 0..max_value: rand; % random data

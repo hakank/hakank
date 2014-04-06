@@ -52,7 +52,7 @@
 
 % include "globals.mzn"; 
 
-int: n; % = 3; % number of men
+int: n = 3; % number of men
 
 array[0..n] of var int: left;
 array[1..n+1] of var int: removed;
