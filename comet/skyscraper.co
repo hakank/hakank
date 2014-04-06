@@ -1,0 +1,177 @@
+/*
+
+  Skyscraper puzzle in Comet.
+
+  See 
+  http://logicgames.blogspot.com/2008/06/skyscraper.html
+  http://www.puzzlepicnic.com/genre?flats
+  http://www.puzzlepicnic.com/puzzle?909
+
+  This Comet model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  Also, see my Comet page: http://www.hakank.org/comet 
+
+ */
+
+import cotfd;
+int t0 = System.getCPUTime();
+
+/*
+ Puzzle:
+   1 2 2 3
+ 1         4
+ 3         2
+ 2         2
+ 3         1
+   3 2 2 1
+ 
+ Solution:
+   1 2 2 3
+ 1 4 3 2 1 4 
+ 3 1 2 4 3 2 
+ 2 3 4 1 2 2 
+ 3 2 1 3 4 1
+   3 2 2 1
+*/
+/*
+int n = 4;
+int cu[1..n] = [1,2,2,3]; // column upper
+int cl[1..n] = [3,2,2,1]; // column lower
+int rl[1..n] = [1,3,2,3]; // row left
+int rr[1..n] = [4,2,2,1]; // row right
+*/
+
+/*
+  Problem from http://logicgames.blogspot.com/2008/06/skyscraper.html
+       1 2
+      x x x x
+   3  x x x x
+   3  x x x x 2
+      x x x x
+
+   Solution:
+   3 4 2 1
+   2 3 1 4
+   1 2 4 3
+   4 1 3 2
+
+*/
+// int n = 4;
+// int cu[1..n] = [0,1,2,0]; // column upper
+// int cl[1..n] = [0,0,0,0]; // column lower
+// int rl[1..n] = [0,3,3,0]; // row left
+// int rr[1..n] = [0,0,2,0]; // row right
+
+
+// From 
+// http://www.puzzlemix.com/playgrid.php?id=74166&type=sky&share=1
+// (Skyscraper-5 87)
+int n = 5;
+int cu[1..n] = [4,0,0,0,4];
+int cl[1..n] = [0,2,3,0,0];
+int rl[1..n] = [0,0,0,0,0];
+int rr[1..n] = [3,0,0,0,2];
+
+
+
+Solver<CP> m();
+var<CP>{int} x[1..n, 1..n](m, 1..n);
+
+
+//
+// number of seen skyscrapes
+//
+function void num_skyscrapes(
+                             var<CP>{int}[] y, 
+                             int num) {
+
+  Solver<CP> cp = y[1].getSolver();
+  int n = y.getSize();
+  var<CP>{int} n_pos(cp, 1..n);
+
+  // find the position of n, i.e. the largest building 
+  cp.post(y[n_pos] == n);
+  cp.post(num <= n_pos);
+  cp.post(num <= n-y[1]+1);
+  if (num > 0) {
+    // Count all the positions where y[i] is larger then all y[1..i-1]
+    cp.post(num == 1 + sum(i in 2..n) (
+                                       i-1 == sum(j in 1..i-1) (y[i] > y[j])
+                                       ));  
+  }
+  
+
+}
+
+
+//
+// reverses an array from -> to
+//
+function void reverse(var<CP>{int}[] xfrom, var<CP>{int}[] xto) {
+  Solver<CP> cp = xfrom[1].getSolver();
+  int n = xfrom.getSize();
+  forall(i in 1..n) {
+    cp.post( xto[i] == xfrom[n-i+1]);
+  }
+}
+
+
+Integer num_solutions(0);
+exploreall<m> {
+
+  // It's a latin square
+  forall(i in 1..n) {
+    m.post(alldifferent(all(j in 1..n) x[i,j]), onDomains);
+    m.post(alldifferent(all(j in 1..n) x[j,i]), onDomains);
+  }
+
+  // check the row and column constraints
+  forall(i in 1..n) {
+    var<CP>{int} rl_a[1..n](m, 1..n);
+    var<CP>{int} rr_a[1..n](m, 1..n);
+    var<CP>{int} cu_a[1..n](m, 1..n);
+    var<CP>{int} cl_a[1..n](m, 1..n);
+  
+
+    // rows
+    forall(j in 1..n) m.post(rl_a[j] == x[i,j]);
+    num_skyscrapes(rl_a, rl[i]); 
+    reverse(rl_a, rr_a);
+    num_skyscrapes(rr_a, rr[i]);
+
+    // columns
+    forall(j in 1..n) m.post(cu_a[j] == x[j,i]);
+    num_skyscrapes(cu_a, cu[i]);
+    reverse(cu_a, cl_a);
+    num_skyscrapes(cl_a, cl[i]);
+
+  }
+
+} using {
+
+  label(m);
+  num_solutions++;
+
+  cout << "cu: " << cu << endl;
+  cout << "cl: " << cl << endl;
+  cout << "rl: " << rl << endl;
+  cout << "rr: " << rr << endl;
+  cout << endl;
+
+  forall(i in 1..n) {
+    forall(j in 1..n) {
+      cout << x[i,j] << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+
+}
+
+cout << "\nnum_solutions: " << num_solutions << endl;
+    
+int t1 = System.getCPUTime();
+cout << "time:      " << (t1-t0) << endl;
+cout << "#choices = " << m.getNChoice() << endl;
+cout << "#fail    = " << m.getNFail() << endl;
+cout << "#propag  = " << m.getNPropag() << endl;
+
