@@ -108,7 +108,8 @@ constraint
   /\
   e+l+e+v+e+n = 11
   /\
-  t+w+e+l+f = 12
+  t+w+e+l+f = 12     % a_max: 16
+  % t+w+e+l+v+e = 12 % a_max: 13
 
 
 % /\ 
