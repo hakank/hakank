@@ -1,0 +1,141 @@
+/* 
+
+  Coins of the realm problem in Picat.
+
+  Martin Gardner:
+  What is the smallest number of different coins that will enable any value 
+  from 1 to 100 to be made with no more than two coins, i.e. either one 
+  or two coins.
+
+  """
+  In this country at least eight coins are required to make the sum of 
+  99 cents: a half-dollar, a quarter, two dimes and four pennies. Imagine 
+  you are the leader of a small country and you have the task of setting up 
+  a system of coinage based on the cent as the smallest unit. Your objective 
+  is to issue the smallest number of different coins that will enable any 
+  value from 1 to 100 cents (inclusive) to be made with no more than two coins. 
+
+  For example, the objective is easily met with 18 coins of the following 
+  values: 1, 2, 3, 4, ... 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90. Can 
+  you do better? Every value must be obtainable either by one coin or 
+  as a sum of two coins. The two coins need not, of course, have different values. 
+  """
+
+  sat finds this solution in 12.6s (using coins2)
+    [1,3,4,9,11,16,20,25,30,34,39,41,46,47,49,50]
+
+  cp is much slower.
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp.
+import sat.
+
+
+main => go.
+
+
+go => 
+  coins(100,X,Z),
+  println(x=X),
+  println(z=Z),
+  println([I : I in 1..length(X), X[I] = 1]),
+  nl.
+
+
+go2 =>
+  coins2(100,X,Z),
+  println(x=X),
+  println(z=Z),
+  println([I : I in 1..length(X), X[I] = 1]),
+  nl.
+
+
+% sat: 20.1s
+coins(N, X,Z) =>
+
+    M = N div 2,
+    
+    % decision variables
+    X = new_list(M),
+    X :: 0..1,
+
+    Z :: 0..M, 
+    Z #= sum(X),
+
+    foreach(K in 1..N) 
+       % check(X,K,M)       
+       Limit = min(K,M),
+       I :: 1..Limit,
+       element(I,X,1),
+       J :: 1..Limit,
+       I #=< J,
+       element(J,X,1),
+       ( I #= K #\/ I+J #= K )
+
+    end,
+
+    % symmetry breaking
+    X[1] #= 1,
+
+    solve($[min(Z),ffc,inout, report(printf("X=%w  Z=%d\n",X, Z))], X). % for cp
+    % solve($[min(Z),report(printf("X=%w  Z=%d",X, Z))], X). % for sat
+
+
+% alternative: explicit arrays of I and J
+% sat: 12.6s
+coins2(N, X,Z) =>
+
+    M = N div 2,
+    
+    % decision variables
+    X = new_list(M),
+    X :: 0..1,
+
+    Z :: 1..M, 
+    Z #= sum(X),
+
+    Is = new_list(N), Is :: 1..M,
+    Js = new_list(N), Js :: 1..M,
+    foreach(K in 1..N) 
+       Limit = min(K,M),
+       Is[K] #<= Limit,
+       Js[K] #<= Limit,
+       element(Is[K],X,1),
+       element(Js[K],X,1),
+       Is[K] #=< Js[K],
+       (
+          (Is[K] #= K #/\ Js[K] #= K) 
+          #\/ 
+          (Is[K]+Js[K] #= K)
+       )
+    end,
+
+    X[1] #= 1, % symmetry breaking
+
+    Vars = X ++ Is ++ Js,
+    % Vars = Is ++ Js ++ X,
+
+    % solve($[min(Z),ffc,inout,report(printf("X=%w  Z=%d\n",X, Z))], Vars). % for cp
+    solve($[min(Z),report(printf("X=%w  Z=%d\n",X, Z))], Vars). % for sat
+
+
+
+  
+%
+% Ensure that the value K can be made by either one 
+% coin or two coins
+% 
+check(X,K,M) => 
+  Limit = min(K,M),
+  I :: 1..Limit,
+  element(I,X,1),
+  J :: 1..Limit,
+  I #=< J,
+  element(J,X,1),
+  ( I #= K #\/ I+J #= K ).
