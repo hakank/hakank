@@ -11,24 +11,8 @@
 
 
 % Note:
-% Only ECLiPSe/ic can handle var float arrays and float times and gives two solutions:
+% Only ECLiPSe/ic, Gecode and JaCoP can handle var float arrays and float times.
 % 
-% best linear fit is:
-%   y = 0.42605241908607366__0.42613144794484259 + 0.6107651182266145__0.61078797277176222Total time 0.140s cpu (0.010 setup + 0.130 search)
-%
-% best linear fit is:
-%   y = 0.42613144794484259__0.42621047680361152 + 0.61075525153229093__0.61077810628296558Total time 0.160s cpu (0.010 setup + 0.150 search)
-% 
-%
-% Here are the error messages for the other solvers 
-%    * MiniZinc/flatzinc (minizinc):  
-%      variables of type `array of var float' are not supported by the FD solver backend.
-%    * MiniZinc/mip: 
-%      the built-in operation `float_times/3' is not supported by the MIP solver backend.
-%    * ECLiPSe/eplex: 
-%      calling an undefined procedure fzn_eplex : float_times
-%     
-
 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com

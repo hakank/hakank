@@ -13,14 +13,17 @@
 % 
 %   x = -20.846182797708117__-20.846121006743424;
 %
+% Later: Both Gecode and JaCoP solves this problem:
+%    -20.84690810148
+
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
 
 var -100.00..10.00: x; 
 
-% solve minimize x;
-solve::float_search([x], 0.000001, input_order, indomain_split, complete) minimize x;
+solve minimize x;
+% solve::float_search([x], 0.000001, input_order, indomain_split, complete) minimize x;
 
 output [
  show(x)

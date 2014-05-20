@@ -19,8 +19,8 @@ constraint
 );
 
 
-% solve satisfy;
-solve :: float_search([temp[i,j] | i,j in 1..n],0.0001,input_order, indomain_split, complete) satisfy;
+solve satisfy;
+% solve :: float_search([temp[i,j] | i,j in 1..n],0.0000001,input_order, indomain_split, complete) satisfy;
 
 int: half_n = n div 2;
 
