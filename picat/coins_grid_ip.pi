@@ -1,0 +1,92 @@
+/*
+
+  Coins puzzle in Picat.
+
+  Problem from 
+  Tony Hürlimann: "A coin puzzle - SVOR-contest 2007"
+  http://www.svor.ch/competitions/competition2007/AsroContestSolution.pdf
+  """
+  In a quadratic grid (or a larger chessboard) with 31x31 cells, one 
+  should place coins in such a way that the following conditions are 
+  fulfilled:
+    1. In each row exactly 14 coins must be placed.
+    2. In each column exactly 14 coins must be placed.
+    3. The sum of the quadratic horizontal distance from the main
+       diagonal of all cells containing a coin must be as small as possible.
+    4. In each cell at most one coin can be placed.
+
+   The description says to place 14x31 = 434 coins on the chessboard 
+   each row containing 14 coins and each column also containing 14 coins.
+  """
+
+  Note: Picat's mip module don't support complex nonlinear 
+  constraints (abs(X)*abs(X)) so we have to tweak a little.
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+
+main => go.
+
+
+% mip: 0.14s
+go =>
+   N = 31,
+   C = 14,
+   time(coins_ip(N, C)).
+
+
+go2 => 
+   foreach(N in 20..35, C in 10..20)
+      println([n=N,c=C]),
+      time(coins_ip(N, C))
+   end,
+   nl.
+
+pretty_print(X) =>
+   foreach(I in 1..X.length)
+      foreach(J in 1..X[1].length)
+         printf("%w ", X[I,J])
+      end,
+      nl
+   end.
+
+
+coins_ip(N,C) =>
+   X = new_array(N,N),
+   X :: 0..1,
+
+   foreach(I in 1..N)
+       C #= sum([X[I,J] : J in 1..N]), % rows
+       C #= sum([X[J,I] : J in 1..N]) % columns
+   end,
+
+   % quadratic horizontal distance
+   Sum #>= 0,
+
+   %% This don't work: (complex_nonlinear_constraint,*)
+   % Sum #= sum([T : I in 1..N, J in 1..N,
+   %             T #= (X[I,J] * abs(I-J)*abs(I-J)) % nonlinear abs
+   %             % T #= (X[I,J] * abs2(I,J)*abs2(I,J)) % don't work
+   %             ]),
+
+   % This works: separate the two cases of I < J and I > J
+   % so we alway have |I-J| > 0
+   Sum #= sum([T : I in 1..N, J in 1..N, I < J,
+               T #= (X[I,J] * (J-I)*(J-I)) 
+               ])
+          + 
+          sum([T : I in 1..N, J in 1..N, I > J,
+               T #= (X[I,J] * (I-J)*(I-J)) 
+               ]),
+
+   solve([$min(Sum)],X),
+   writeln(sum=Sum),
+   pretty_print(X).
+
+% don't work
+abs2(X,Y) = cond(X #>= Y, X - Y, Y -X).

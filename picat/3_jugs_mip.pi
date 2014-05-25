@@ -1,0 +1,126 @@
+/*
+
+  Three jugs problem in Picat.
+
+  Modelled as a shortest path problem.
+
+  Problem from Taha "Introduction to Operations Research", page 245f
+
+  Also see http://mathworld.wolfram.com/ThreeJugProblem.html
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+
+main => go.
+
+go =>
+   N = 15,
+   Start = 1, % start node
+   End = 15,  % end node
+   M = 9, % large number
+   
+   Nodes = [
+          "8,0,0", % start
+          "5,0,3",
+          "5,3,0",
+          "2,3,3",
+          "2,5,1",
+          "7,0,1",
+          "7,1,0",
+          "4,1,3",
+          "3,5,0",
+          "3,2,3",
+          "6,2,0",
+          "6,0,2",
+          "1,5,2",
+          "1,4,3",
+          "4,4,0" % goal
+      ],
+
+   % distance matrix (the moves)
+   D = [[M, 1, M, M, M, M, M, M, 1, M, M, M, M, M, M],
+        [M, M, 1, M, M, M, M, M, M, M, M, M, M, M, M],
+        [M, M, M, 1, M, M, M, M, 1, M, M, M, M, M, M],
+        [M, M, M, M, 1, M, M, M, M, M, M, M, M, M, M],
+        [M, M, M, M, M, 1, M, M, 1, M, M, M, M, M, M],
+        [M, M, M, M, M, M, 1, M, M, M, M, M, M, M, M],
+        [M, M, M, M, M, M, M, 1, 1, M, M, M, M, M, M],
+        [M, M, M, M, M, M, M, M, M, M, M, M, M, M, 1], 
+        [M, M, M, M, M, M, M, M, M, 1, M, M, M, M, M],
+        [M, 1, M, M, M, M, M, M, M, M, 1, M, M, M, M],
+        [M, M, M, M, M, M, M, M, M, M, M, 1, M, M, M],
+        [M, 1, M, M, M, M, M, M, M, M, M, M, 1, M, M],
+        [M, M, M, M, M, M, M, M, M, M, M, M, M, 1, M],
+        [M, 1, M, M, M, M, M, M, M, M, M, M, M, M, 1], 
+        [M, M, M, M, M, M, M, M, M, M, M, M, M, M, M]],
+
+   N = D.length,
+   
+   % decision variables
+   Rhs = new_list(N), % requirements (right hand statement)
+   Rhs :: -1..1,
+
+   % objective to minimize
+   Z :: 0..M,
+
+   % the resulting matrix, 1 if connected, 0 else
+   X = new_array(N,N),
+   X :: 0..1,
+
+   Z #= sum([D[I,J]*X[I,J] : I in 1..N, J in 1..N, D[I,J] < M]),
+
+   OutFlow = new_list(N),
+   OutFlow :: 0..1,
+
+   InFlow = new_list(N),
+   InFlow :: 0..1,
+   
+   foreach(I in 1..N)
+       if I == Start then 
+         Rhs[I] #= 1
+       elseif I == End then 
+         Rhs[I] #= -1
+       else 
+         Rhs[I] #= 0
+       end
+   end,
+
+   % must be larger than 0
+   % foreach(I in 1..N, J in 1..N, D[I,J] < M) X[I,J] #>= 0 end,
+
+   % outflow constraint
+   foreach(I in 1..N) OutFlow[I] #= sum([X[I,J] : J in 1..N, D[I,J] < M]) end,
+   % inflow constraint
+   foreach(J in 1..N) InFlow[J] #= sum([X[I,J] : I in 1..N, D[I,J] < M]) end,
+   % inflow = outflow
+   foreach(I in 1..N) OutFlow[I]-InFlow[I]#=Rhs[I] end,
+
+   % Z #= 7,
+
+   % solve
+   Vars = OutFlow ++ InFlow ++ X.to_list() , % ++ Rhs,
+
+   solve([$min(Z)], Vars),
+   
+   writeln(z=Z),
+   printf("InFlow = %w\n", InFlow),
+   printf("OutFlow= %w\n", OutFlow),
+   T = Start,
+   while (T != End)
+      printf("%s -> ", Nodes[T]),
+      Found = 0,
+      foreach(J in 1..N,Found==0) 
+        if X[T,J] = 1 then
+          T := J,
+          println(Nodes[T]),
+          Found := 1 
+        end
+      end
+   end,
+   nl.
+
