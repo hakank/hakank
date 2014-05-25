@@ -16,9 +16,12 @@ set of int: ncities = 1..3; %  cities, Bristol, Brighton, london
 set of int: ncitiesm1 = 1..2; % cities, Bristol, Brighton
 
 % benefits (£k)
-array[ndepts,ncities] of int: benefit = array2d(ndepts, ncities, [10,10,0,15,20,
-                                         0, 10,15,0,20,
-                                         15,0,5,15,0]); 
+array[ndepts,ncities] of int: benefit = array2d(ndepts, ncities, 
+              [10,10,0,
+               15,20,0, 
+               10,15,0,
+               20,15,0,
+               5,15,0]); 
 
 %  communication costs/unit(£)
 array[ncities,ncities] of int: dist = array2d(ncities, ncities, [5,14,13,14,5,9,13,9,10]);

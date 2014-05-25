@@ -21,7 +21,7 @@
 int: n = 4;
 array[1..n] of var 1..8: x;
 
-predicate decreasing(array[int] of var int: x) = 
+predicate decreasing_me(array[int] of var int: x) = 
    let {
      int: lbx = min(index_set(x)),
      int: ubx = max(index_set(x))
@@ -44,7 +44,7 @@ solve satisfy;
 constraint
    cp1d([8,4,1,1],x)
    /\
-   decreasing(x)
+   decreasing_me(x)
 ;
 
 output

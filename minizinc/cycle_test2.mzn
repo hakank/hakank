@@ -50,7 +50,8 @@ predicate cycle(var int: nc, array[int] of var int: x) =
     first_fixed(tmp, i, ff_pos[i])
   )
   /\ 
-  global_cardinality(ff_pos, set2array(index_set(gcc_card)),  gcc_card)
+  % global_cardinality_old(ff_pos, gcc_card)
+  global_cardinality(ff_pos, [i | i in lb_array(ff_pos)..ub_array(ff_pos)], gcc_card)
   /\
   num_cycles = sum(i in lbx..ubx) (
                   gcc_card[i] div i
@@ -103,8 +104,9 @@ constraint
   all_different(x) /\
   cycle(num_cycles, x)
   % some constraints...
-  /\ num_cycles >= 0
-  /\ num_cycles = 4
+  % /\ num_cycles >= 0
+  % /\ num_cycles = 4
+  /\ num_cycles = 2
 
 ;
 
