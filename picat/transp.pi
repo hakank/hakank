@@ -1,0 +1,92 @@
+/* 
+
+  Transportation problem in Picat.
+
+  From GLPK:s example transp.mod
+  
+  """
+  A TRANSPORTATION PROBLEM
+  
+  This problem finds a least cost shipping schedule that meets
+  requirements at markets and supplies at factories.
+  
+  References:
+               Dantzig G B, "Linear Programming and Extensions."
+               Princeton University Press, Princeton, New Jersey, 1963,
+               Chapter 3-3.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import mip.
+
+
+main => go.
+
+
+go =>
+
+  % canning plants 
+  % set I := Seattle San-Diego;
+  NumPlants = 2,
+
+  % markets
+  % set J := New-York Chicago Topeka;
+  NumMarkets = 3,
+
+
+  % capacity of plant i in cases 
+  A = [350.0, 600.0],
+
+  % demand at market j in cases 
+  B = [325.0, 300.0, 275.0],
+
+  % distance in thousands of miles 
+  D = [ 
+       [2.5, 1.7, 1.8],
+       [2.5, 1.8, 1.4]
+      ],
+
+  % freight in dollars per case per thousand miles 
+  F = 90.0,
+
+
+  % transport cost in thousands of dollars per case 
+  % param c{i in I, j in J} := f * d[i,j] / 1000;
+  % array[I,J] of float: c = array2d(I,J, [f*d[i,j] / 1000.0 | i in I, j in J]);
+  C = [ [F*D[I,J]  : J in 1..NumMarkets]   : I in 1..NumPlants],
+
+  
+  X = new_array(NumPlants,NumMarkets),
+  X.vars() :: 0.0..1000.0,
+
+  Cost * 1000.0 #= sum([C[I,J]*X[I,J] : I in 1..NumPlants, J in 1..NumMarkets]),
+
+  % observe supply limit at plant i 
+  foreach(I in 1..NumPlants) 
+     sum([X[I,J] : J in 1..NumMarkets]) #<= A[I]
+  end,
+
+
+  % satisfy demand at market j 
+  foreach(J in 1..NumMarkets) 
+     sum([X[I,J] :  I in 1..NumPlants]) #>= B[J]
+  end,
+
+  solve($[min(Cost)],X),
+
+  printf("cost: %0.3f\n", Cost),
+  println("X:"),
+  foreach(Row in X) 
+     foreach(R in Row) 
+       printf("%8.2f ",R)
+     end,
+     nl
+  end,
+
+  nl.
+

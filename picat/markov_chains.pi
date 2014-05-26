@@ -1,0 +1,122 @@
+/* 
+
+  Markov chains in Picat.
+
+  From the (Swedish) book "Statistisk Dataanalys", page 299ff.
+  
+  Transition matrix of market shares for three products A, B, and C.
+    
+    From   To
+           A    B     C
+      A   0.7  0.1   0,2
+      B   0.2  0.6   0.2
+      C   0.4  0.1   0.5
+
+  What is the stable state of the transitions?
+
+  Also, this model solves the reversed problem: 
+  given a stable state, generate a transition matrix.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import mip.
+
+
+main => go.
+
+go =>
+  transitions(1,Transitions),
+  markov_chain(Transitions, X),
+  println(X),
+  nl.
+
+go2 =>
+  transitions(2,Transitions),
+  markov_chain(Transitions, X),
+  println(X),
+  nl.
+
+
+% reversed problem
+go3 => 
+  % This is the result from go/0
+  X = [ 0.514285714285714,  0.2, 0.285714285714286],
+  markov_chain_rev(X, Transitions),
+  foreach(Row in Transitions) println(Row) end,
+  nl.
+
+% reversed problem 2
+go4 =>
+  % This is the result from go2/0
+  X = [0.367182763904145,0.07548189012462,0.102060886308352,0.15336027885601,0.034415433900105,0.080532266138785,0.13700725112718,0.023360147677889,0.01100743321783,0.015591648745084],
+  markov_chain_rev(X, Transitions),
+
+  foreach(Row in Transitions) println(Row) end,
+  nl.
+
+
+
+%
+% Given a transition matrix, yield stable state X
+%
+markov_chain(Transitions, X) => 
+
+  N = Transitions.length,
+
+  X = new_list(N),
+  X :: 0.0..1.0,
+
+  foreach(I in 1..N) 
+     X[I] #= sum([Transitions[I,J]*X[J] : J in 1..N])
+  end,
+  
+  sum(X) #= 1.0,
+
+  solve(X).
+
+
+transitions(1,Transitions) =>
+ Transitions = 
+ [[0.7,0.2,0.4],
+  [0.1,0.6,0.1],
+  [0.2,0.2,0.5]].
+
+% Another problem from the book "Optimieringslara":
+transitions(2,Transitions) =>
+ Transitions = 
+[[0.01782,0.54024,0.46916,0.85467,0.30838,0.62996,0.42815,0.22189,0.37009,0.74681],
+ [0.04633,0.04427,0.14569,0.03971,0.50937,0.09334,0.01055,0.12776,0.36217,0.04528],
+ [0.12289,0.22650,0.12335,0.02186,0.10853,0.14409,0.05414,0.01577,0.01709,0.03761],
+ [0.28441,0.01805,0.09189,0.04428,0.00565,0.00538,0.16482,0.20185,0.15423,0.11391],
+ [0.00980,0.07623,0.03248,0.00753,0.01028,0.00424,0.12144,0.11167,0.05904,0.00009],
+ [0.15721,0.09004,0.07690,0.00448,0.03511,0.05270,0.00859,0.00057,0.00754,0.04810],
+ [0.29881,0.00202,0.00490,0.00909,0.00343,0.00296,0.17159,0.05433,0.00924,0.00041],
+ [0.02110,0.00004,0.02863,0.00255,0.01232,0.06338,0.02043,0.16868,0.00080,0.00129],
+ [0.01843,0.00002,0.02181,0.00453,0.00290,0.00011,0.00819,0.00118,0.00312,0.00163],
+ [0.02320,0.00259,0.00519,0.01130,0.00403,0.00384,0.01210,0.09630,0.01668,0.00487]].
+
+
+%
+% reversed problem: Given stable state X, yield a transition matrix.
+%
+markov_chain_rev(X, Transitions) =>
+
+  N = length(X),
+
+  Transitions = new_array(N,N),
+  Transitions.vars() :: 0.0..1.0,
+
+  % Transitions[1,1] #<= 0.99, % to make it more interesting...
+  foreach(I in 1..N) 
+     X[I] #= sum([Transitions[I,J]*X[J] : J in 1..N])
+  end,
+  
+  sum(X) #= 1.0,
+
+
+  solve(Transitions).
