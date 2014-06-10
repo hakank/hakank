@@ -1,0 +1,187 @@
+/* 
+
+  Moving coins in Picat.
+
+  10 coins are ordered in a triangle pointed to the top.
+  Arrange the coins in a triangle such that it is pointing down 
+  by moving as few coins as possible.
+
+
+  Start:
+          C 
+        C   C
+      C   C   C
+    C   C   C   C
+
+  Goal:
+
+   
+    C   C   C   C
+      C   C   C          
+        C   C
+          C
+
+
+  Representation a grid of 20 x 20  (so we can expand in any direction)
+
+  
+     1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 9 0
+  ...
+  10                   C 
+  11                 C   C
+  12               C   C   C
+  13             C   C   C   C
+  ...
+  20
+
+
+  This model is a generalized version of this problem.
+
+    moving_coins(K,true|false)
+
+  solve the problem for N=sum(1..K), where K is the number of 
+  rows to use. For the original problem N=10, K is 4.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  moving_coins(4,true),
+  nl.
+
+go2 => 
+  moving_coins(5,true),
+  nl.
+
+go3 =>
+  foreach(K in 1..10) 
+     time2(moving_coins(K,false)),
+     nl
+  end,
+  nl.
+
+%
+% moving_coins(K) 
+% where K is the number of rows to use.
+% N is then sum(1..K)
+%
+moving_coins(K,Print) =>  
+
+  println(k=K),
+
+  N = sum(1..K),
+  println(n=N),
+
+  N2 = N*2,
+
+  % generate the problem instance
+  generate(N,K,Mat),
+
+  if Print then
+    println("Problem instance:"),
+    foreach(Row in Mat) println(Row.to_list()) end
+  end,
+
+  X = new_array(N2,N2),
+  X :: 0..1,
+
+  % We must convert to a list of list since element/3 can't handle arrays
+  XList = X.array_matrix_to_list_matrix().flatten(),
+
+  % same number of coins in X as in Mat
+  sum([X[I,J] : I in 1..N2, J in 1..N2]) #= sum([Mat[I,J] : I in 1..N2, J in 1..N2]),
+
+  % count in columns must be intact
+  foreach(J in 1..N2)
+     sum([X[I,J] : I in 1..N2]) #= sum([Mat[I,J] : I in 1..N2])
+  end,
+
+  % Start position, the single coin
+  NDiv2 = N div 2,
+  StartI :: NDiv2..N2-NDiv2,
+  StartJ :: NDiv2..N2-NDiv2,
+  foreach(A in 1..K) 
+    foreach(B in 2..2*A, B mod 2 = 0)
+       % X[StartI-A,StartJ+A-B] #= 1 % don't work
+      
+       % This don't work either: "dvar_or_int_list_expected"
+       % Start1 #= StartI-A,
+       % element(Start1,X,S1),
+       % Start2 #= StartJ+A-B,
+       % element(Start2,SI,1)
+
+       % Use flattened matrix
+       Start2 #= (StartI-A-1)*N2 + StartJ+A-B +1,
+       element(Start2,XList,1)
+    end
+  end,
+
+  % number of places intact, to maximize
+  Z #= sum([X[I,J] #> 0 #/\ X[I,J] #= Mat[I,J]  : I in 1..N2, J in 1..N2]),
+  Z :: 0..N,
+
+  % The number of moves needed is (N div 3)
+  % Z #= N - (N div 3), % this is somewhat cheating
+
+  Vars = XList ++ [StartI,StartJ],
+  solve($[max,updown,max(Z),report(printf("Z: %d\n",Z))], Vars),
+
+
+  if Print then
+    println("\nSolution:"),
+    foreach(Row in X) 
+      println(Row.to_list())
+    end,
+    println("\nThe move matrix:"),
+    println("C: same position, N: new position, R: a removed coin."),
+    foreach(I in 1..N2)
+       foreach(J in 1..N2)
+          if     X[I,J] = 1, Mat[I,J] = 1 then
+             print("C ") % same position in X
+          elseif X[I,J] = 0, Mat[I,J] = 1 then
+              print("R ") % removed position
+          elseif X[I,J] = 1, Mat[I,J] = 0 then
+             print("N ") % new position
+          else
+             print("_ ")
+          end
+       end,
+       nl
+    end
+  end,
+
+  println(z=Z),
+  println(n=N),
+  println(k=K),
+  printf("The number of moves needed is n(%d) - z(%d) = %d.\n", N,Z, N-Z),
+  printf("(By theory we need n div 3 = %d moves.)\n", N div 3),
+  % println(startI=StartI),
+  % println(startJ=StartJ),
+ 
+  
+  nl.
+
+% generate the problem instance
+% Picat> X = [ [I-J: I in 1..2..2*J] : J in 1..5]             
+% X = [[0],[-1,1],[-2,0,2],[-3,-1,1,3],[-4,-2,0,2,4]]
+generate(N,K, Mat) => 
+  N2 = N*2,
+  Mat = new_array(N2,N2),
+  bind_vars(Mat,0),
+  foreach(A in 1..K) 
+    foreach(B in 2..2*A, B mod 2 = 0)
+       Mat[N+A-1,N+A-B+1] := 1
+    end
+  end.
+   

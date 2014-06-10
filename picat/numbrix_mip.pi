@@ -1,0 +1,113 @@
+/* 
+
+  Numbrix, Number Placement Puzzle (MIP model) in Picat.
+
+  Translation of GLPK example numbrix.mod
+  """
+  Written in GNU MathProg by Robert Wood <rwood@targus.com> 
+
+  Numbrix is a logic-based number-placement puzzle.[1]
+  The objective is to fill the grid so that each cell contains
+  digits in sequential order taking a horizontal or vertical
+  path; diagonal paths are not allowed. The puzzle setter
+  provides a grid often with the outer most cells completed.
+  
+  Completed Numbrix puzzles are usually a square of numbers
+  in order from 1 to 64 (8x8 grid) or from 1 to 81 (9x9 grid),
+  following a continuous path in sequence.
+  
+  The modern puzzle was invented by Marilyn vos Savant in 2008
+  and published by Parade Magazine under the name "Numbrix",
+  near her weekly Ask Marilyn article.
+  
+  http://en.wikipedia.org/wiki/Numbrix
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% Note: The cp module is significantly faster on this MIP model
+
+% import mip. % 1.6s (slightly faster than glpsol's time for solving the GLPK MathProg model)
+import cp. % 0.2s
+% import sat. % 0.6s
+
+
+main => go.
+
+
+go =>
+
+  givens(Givens),
+
+  Rows = Givens.length,
+  Cols = Givens[1].length,
+  Vals = Rows*Cols,
+
+  Neighbors = neighbors(Rows,Cols),
+
+  %  
+  % decision variables
+  %
+  X = new_array(Rows,Cols,Vals),
+  X :: 0..1,
+
+  %
+  % (MIP) constraints
+  % 
+
+  % assign pre-defined numbers using the "givens"
+  foreach(I in 1..Rows, J in 1..Cols, K in 1..Vals, Givens[I,J] != 0) 
+     X[I,J,K] = cond(Givens[I,J] = K, 1, 0)
+  end,
+
+  % each cell must be assigned exactly one number 
+  foreach(I in 1..Rows, J in 1..Cols) 
+     sum([X[I,J,K] : K in 1..Vals]) #= 1
+  end,
+
+  % a value can only occur once 
+  foreach(K in 1..Vals) 
+     sum([X[I,J,K] : I in 1..Rows, J in 1..Cols])  #= 1
+  end,
+
+  % each cell must have a neighbor with the next higher value 
+  foreach(I in 1..Rows, J in 1..Cols, K in 1..Vals-1)
+     X[I,J,K] #<= sum([ X[I2,J2,K+1] * Neighbors[I,J,I2,J2] : I2 in 1..Rows, J2 in 1..Cols])
+  end,
+
+
+  solve(X),
+
+  % output
+  foreach(I in 1..Rows, J in 1..Cols, K in 1..Vals)
+     if J = 1, K = 1 then nl end,
+     if X[I,J,K] = 1 then
+        printf("%4d", K)
+     end
+  end, 
+  nl.
+
+
+% make a 4 dim matrix
+neighbors(Rows,Cols) = 
+   [ [[[cond(abs(I1 - I2) + abs(J1 -J2) == 1, 1 , 0)
+    : I1 in 1..Rows] : J1 in 1..Cols] : I2 in 1..Rows] : J2 in 1..Cols].
+
+
+givens(Givens) => 
+  Givens = 
+[
+[0,  0,  0,  0,  0,  0,  0,  0,  0], 
+[0, 11, 12, 15, 18, 21, 62, 61,  0], 
+[0,  6,  0,  0,  0,  0,  0, 60,  0], 
+[0, 33,  0,  0,  0,  0,  0, 57,  0], 
+[0, 32,  0,  0,  0,  0,  0, 56,  0], 
+[0, 37,  0,  0,  0,  0,  0, 73,  0], 
+[0, 38,  0,  0,  0,  0,  0, 72,  0], 
+[0, 43, 44, 47, 48, 51, 76, 77,  0], 
+[0,  0,  0,  0,  0,  0,  0,  0,  0] 
+].

@@ -1,0 +1,90 @@
+/* 
+
+  Stamp licking puzzle in Picat.
+
+  From Martin Chlond Integer Programming Puzzles:
+  http://www.chlond.demon.co.uk/puzzles/puzzles4.html, puzzle nr. 4.
+  Description  : The gentle art of stamp-licking
+  Source       : Dudeney, H.E., (1917), Amusements in Mathematics, Thomas Nelson and Sons.
+
+  """
+  The Insurance Act is a most prolific source of entertaining puzzles, particularly 
+  entertaining if you happen to be among the exempt. One's initiation into the 
+  gentle art of stamp-licking suggests the following little poser: 
+  
+  If you have a card divided into sixteen spaces (4 × 4), and are provided with 
+  plenty of stamps of the values 1d., 2d., 3d., 4d., and 5d., what is the greatest 
+  value that you can stick on the card if the Chancellor of the Exchequer 
+  forbids you to place any stamp in a straight line (that is, horizontally, 
+  vertically, or diagonally) with another stamp of similar value? Of course, only 
+  one stamp can be affixed in a space. The reader will probably find, when he 
+  sees the solution, that, like the stamps themselves, he is licked 
+  He will most likely be twopence short of the maximum. A friend asked the Post 
+  Office how it was to be done; but they sent him to the Customs and Excise 
+  officer, who sent him to the Insurance Commissioners, who sent him to an 
+  approved society, who profanely sent him—but no matter.
+  """
+
+  This model was inspired by the XPress Mosel (IP) model created by Martin Chlond.
+  http://www.chlond.demon.co.uk/puzzles/sol4s4.html
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import mip. % 14.6s
+import cp. % 0.2s
+% import sat. % 5.2s
+
+
+main => go.
+
+
+go =>
+  Size = 4,
+  Stamp = 5,
+
+  X = new_array(Size,Size,Stamp),
+  X :: 0..1,
+  A = new_array(Size,Size,Stamp),
+  A :: 0..1,
+  Y = new_array(Size,Size), % the result
+  Y :: 1..Stamp,
+  
+  Z #= sum([K*X[I,J,K] : I in 1..Size,J in 1..Size, K in 1..Stamp]),
+
+  foreach(I in 1..Size,J in 1..Size) 
+     sum([X[I,J,K] : K in 1..Stamp]) #=< 1
+  end,
+
+
+  % a(i,j,k) = 1 if stamp on square (i,j) is in line with similar stamp
+  foreach(I in 1..Size,J in 1..Size,K in 1..Stamp)
+    sum([X[M,M-I+J,K] : M in 1..Size, M != I, M-I+J >= 1, M-I+J <= Size]) +
+    sum([X[M,I+J-M,K] : M in 1..Size, M != I, I+J-M >= 1, I+J-M <= Size])+
+    sum([X[M,J,K] : M in 1..Size, M != I]) + 
+    sum([X[I,M,K] : M in 1..Size, M != J])  #<= 99*A[I,J,K]
+  end,
+
+  % square not both occupied and attacked by same stamp value
+  foreach(I in 1..Size,J in 1..Size,K in 1..Stamp) 
+        A[I,J,K]+X[I,J,K] #=< 1
+  end,
+
+  % calculate the output matrix
+  foreach(I in 1..Size,J in 1..Size)
+    Y[I,J] #= sum([(K*X[I,J,K]) : K in 1..Stamp]) 
+  end,
+
+  solve($[ffd,updown,max(Z)], X ++ A ++ Y),
+
+  println(z=Z),
+  println("Y:"),
+  foreach(Row in Y)
+    println(Row.to_list())
+  end,
+  
+  nl.
+

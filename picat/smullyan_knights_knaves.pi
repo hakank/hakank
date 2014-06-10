@@ -1,0 +1,208 @@
+/* 
+
+  Smullyan's Knights and Knaves problems in Picat.
+
+  Here are the problems 26 to 34 from Raymond Smullyan's wonderful book
+  "What is the name of this book? - The riddle of dracula and 
+  other logical puzzles".
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+%
+% This is the basic approach.
+%
+% Problem 26: 
+% B: A says he is a knave
+% C: B is a knave
+% What are B and C?
+% Solution: A: unknown, B: knave, C: knight
+go =>
+  knight_knave(3,_Knight,Knave,P),
+
+  % B: A says he is a knave
+  (P[2] #= (P[1] #= (P[1] #= Knave))),
+  % says(P[2], $says(P[1], P[1] #= Knave)),
+
+  % C: B is a knave
+  (P[3] #= (P[2] #= Knave)),
+  % says(P[3], P[2] #= Knave),
+
+  solve(P),
+
+  println(translate(P)),  
+  nl.
+
+
+% more general version
+go2 => 
+  Problems = [p26,p26b,p27,p28,p29,p30,p31,p32,p33,p34],
+  foreach(Problem in Problems) 
+    printf("Problem %w:\n", Problem),
+    problem(Problem,Ss,P),
+    foreach(S in Ss)
+      println(S)
+    end,
+    ((smullyan(Ss,P), fail)  ; true),
+    nl
+  end.
+
+  
+
+%
+% smullyan(Statements,People)
+%
+smullyan(Statements,P) =>
+ foreach(S in Statements) 
+     call(S)
+  end,
+  solve(P),
+  println(translate(P)).
+
+
+translate(P) = [cond(K=1,knight,knave) : K in P].
+
+
+% Two different uses of says/2:
+%   - as a predicate
+%   - as a "structure" which is first unravelled
+says(Kind, Says) => 
+  if Says = $says(Kind2,Says2) then 
+     Kind #= (Kind2 #= Says2)
+  else
+     Kind #= (Says)
+  end.
+
+
+% - knights always tells the truth (1)
+% - knave always lies (0)
+knight_knave(N, Knight,Knave,P) => 
+   Knight = 1, 
+   Knave=0, 
+   P = new_list(N),
+   P :: 0..1.
+
+
+%
+% Problems
+%
+
+% Problem 26: 
+% B: A says he is a knave
+% C: B is a knave
+% What are B and C?
+% Solution: A: unknown, B: knave, C: knight
+problem(p26,S,P) => 
+  knight_knave(3,_Knight,Knave,P),
+  S = $[
+         says(P[2], $says(P[1], P[1] #= Knave)), % B: A says he is a knave
+         says(P[3], P[2] #= Knave)               % C: B is a knave
+       ].
+
+% Variant of problem 26, commented in problem 27, we don't need
+% C to know that B is a knave.
+% B: A says he is a knave 
+% What are B?
+% Solutution: A: unknown, B is a knave
+problem(p26b,S,P) => 
+  knight_knave(2,_Knight,Knave,P),
+  S = $[
+         says(P[2], $says(P[1], P[1] #= Knave)) % B: A says he is a knave
+       ].
+
+
+% Problem 27
+% B: A said that there are exactly 1 knights
+% C: B is a knave      
+% What are B and C
+% Solution: B: knave, C: knight
+problem(p27,S,P) =>
+  knight_knave(3,_Knight,Knave,P),
+  S = $[
+        says(P[2], $says(P[1], sum(P) #= 1)), % B: A said that there are exactly 1 knights
+        says(P[3], P[2] #= Knave)             % C: C: B is a knave
+       ].
+
+
+% Problem 28
+% Just a and b (sets c = 1)
+% A: at least one of us is a knave
+% Solution: A: knight, B: knave
+problem(p28,S,P) =>
+  knight_knave(2,_Knight,Knave,P),
+  S = $[
+         says(P[1], sum([P[I] #=Knave : I in 1..2]) #>= 1) % A: at least one of us is a knave
+       ].
+
+
+% Problem 29
+% A: either A is a knave or B is a knight
+% Solution: A: knight, B: knight
+problem(p29,S,P) => 
+  knight_knave(2,Knight,Knave,P),
+  S = $[
+         says(P[1], P[1] #= Knave #\/ P[2] #= Knight) % A: either A is a knave or B is a knight
+       ].
+
+% Problem 30
+% A: either A is a knave or 2 + 2 = 5
+% Solution: Infeasible.
+problem(p30,S,P) =>
+  knight_knave(1,_Knight,Knave,P),
+  S = $[
+         says(P[1], P[1] #= Knave #\/  2 + 2 #= 5) % A: either A is a knave or 2 + 2 = 5
+       ].
+
+
+% Problem 31
+% A: All are knaves
+% B: Exactly one is a knight
+% Solution: A: knave, B: knight, C: knave
+problem(p31,S,P) =>
+  knight_knave(3,Knight,Knave,P),
+  S = $[
+       says(P[1], sum([K #= Knave : K in P]) #= 3), % A: All are knaves
+       says(P[2], sum([K #= Knight :K in P]) #= 1)  % B: Exactly one is a knight
+      ].
+
+% Problem 32
+% A: all are knaves
+% B: exactly one is a knave
+% Solution: A: knave, B: knight or knave, C: knight
+problem(p32,S,P) => 
+  knight_knave(3,_Knight,Knave,P),
+  S = $[
+       says(P[1], sum([K #= Knave : K in P]) #= 3), % A: all are knaves
+       says(P[2], sum([K #= Knave : K in P]) #= 1)  % B: exactly one is a knave
+       ].
+
+% Problem 33
+% A: A is knave, B is knight.
+% Solutions: A: knave, B: knave
+problem(p33,S,P) =>
+  knight_knave(2,Knight,Knave,P),
+  S = $[
+        says(P[1], P[1] #= Knave #/\ P[2] #= Knight) % A: A is knave, B is knight.
+      ].
+
+% Problem 34
+% A: B is a knave
+% B: A and C is of the same type
+% Solution: A and B is not of the same type, C: knave
+problem(p34,S,P) =>
+  knight_knave(3,_Knight,Knave,P),
+  S = $[
+        says(P[1], P[2] #= Knave), % A: B is a knave
+        says(P[2], P[1] #= P[3])   % B: A and C is of the same type
+      ].
+
