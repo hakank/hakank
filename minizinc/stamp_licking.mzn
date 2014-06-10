@@ -22,7 +22,7 @@ set of 1..stamp: T = 1..stamp;
 
 array[S,S,T] of var 0..1: x;
 array[S,S,T] of var 0..1: a;
-array[S,S] of var int: y; % the result
+array[S,S] of var 1..stamp: y; % the result
 
 var int: z = sum(i in S,j in S,k in T) (k*x[i,j,k]);
 
@@ -49,6 +49,7 @@ constraint
   forall(i,j in S) (
     y[i,j] = sum(k in T) (k*x[i,j,k])
   )
+
 ;
 
 
