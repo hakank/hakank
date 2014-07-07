@@ -1,0 +1,284 @@
+/* 
+
+  ABC problem in Picat.
+
+  From 
+  http://rosettacode.org/wiki/ABC_Problem
+  """
+  You are given a collection of ABC blocks. Just like the ones you had when you were a kid. 
+  There are twenty blocks with two letters on each block. You are guaranteed to have a complete alphabet 
+  amongst all sides of the blocks. The sample blocks are:
+
+    ((B O) 
+    (X K) 
+    (D Q) 
+    (C P) 
+    (N A) 
+    (G T) 
+    (R E) 
+    (T G) 
+    (Q D) 
+    (F S) 
+    (J W) 
+    (H U) 
+    (V I) 
+    (A N) 
+    (O B) 
+    (E R) 
+    (F S) 
+    (L Y) 
+    (P C) 
+    (Z M)) 
+
+   The goal of this task is to write a function that takes a string and can determine whether 
+   you can spell the word with the given collection of blocks. The rules are simple:
+
+   Once a letter on a block is used that block cannot be used again
+   The function should be case-insensitive
+   Show your output on this page for the following words: 
+
+   Example
+
+ 
+    >>> can_make_word("A")
+    True
+    >>> can_make_word("BARK")
+    True
+    >>> can_make_word("BOOK")
+    False
+    >>> can_make_word("TREAT")
+    True
+    >>> can_make_word("COMMON")
+    False
+    >>> can_make_word("SQUAD")
+    True
+    >>> can_make_word("CONFUSE")
+    True
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  Blocks = findall([A,B], block(A,B)),
+  Words = findall(W,word(W)),
+  foreach(Word in Words)
+     println(word=Word),
+     ( check_word(Word,Blocks,_X,_Pos) ;  println("Cannot make word.")),
+     nl
+  end,
+  nl.
+
+% recursive version
+go2 =>
+  Blocks = findall([A,B], block(A,B)),
+  Words = findall(W,word(W)),
+  foreach(Word in Words)
+     println(word=Word),
+     ( check_word2(Word,Blocks,X), println(X) ;  println("Cannot make word.")),
+     nl
+  end,
+  nl.
+
+%
+% show all possible versions
+%
+go3 =>
+  Blocks = findall([A,B], block(A,B)),
+  Words = findall(W,word(W)),
+  foreach(Word in Words)
+     println(word=Word),
+     All = findall(X, check_word2(Word,Blocks,X)),
+     if All.length > 0 then
+       println(all=All),
+       println(len=All.length)
+     else
+       println("Cannot make word.") 
+     end,
+     nl
+  end,
+  nl.
+
+go4 =>
+  Blocks = findall([A,B], block(A,B)),
+  Words = findall(W,word(W)),
+  foreach(Word in Words)
+     println(word=Word),
+     ( check_word3(Word,Blocks) ;  println("Cannot make word.")),
+     nl
+  end,
+  nl.
+
+%
+% Using a wordlist to find all longest acceptable words:
+% 
+% [15,[coestablishment,dermatophytosis,dyschromatopsia,ektodynamorphic,extrascholastic,
+%     pachydermatosis,pharmacologists,pseudobaptismal,schoolmastering,spermatoblastic,
+%     thoracoplasties,trachelomastoid]]
+%
+go5 => 
+  Wordlist = "unixdict.txt",
+  % Wordlist = "words_lower.txt",
+  Blocks = findall([A,B], block(A,B)),
+  Words = read_file_lines(Wordlist),
+  MaxWords = [],
+  MaxLen = 0,
+  foreach(Word in Words)
+     if pick_block(Word,Blocks,[],_) then
+       Len = Word.length,
+       if Len > MaxLen then
+          MaxWords := [Word],
+          MaxLen := Len
+       elseif Len == MaxLen then
+          MaxWords := MaxWords ++ [Word]
+       end
+     end
+  end,
+  println([MaxLen,MaxWords]),
+  nl.
+
+% recursive version
+go6 =>
+  Wordlist = "unixdict.txt",
+  Blocks = findall([A,B], block(A,B)),
+  pick_block2(read_file_lines(Wordlist),Blocks,0,Len,[],Res),
+  println(Len=Res),
+  nl.
+
+pick_block2([],_Blocks,Len0,Len,Res0,Res) =>
+  Len = Len0,
+  Res = Res0.reverse().
+pick_block2([Word|Words],Blocks,Len0,Len,Res0,Res) =>
+  if pick_block(Word,Blocks,[],_X) then
+     Len1 = Word.length,
+     if Len1 > Len0 then
+       pick_block2(Words,Blocks,Len1,Len,[Word],Res)
+     else
+       if Len1 = Len0 then
+        pick_block2(Words,Blocks,Len1,Len,[Word|Res0],Res)
+       else
+         pick_block2(Words,Blocks,Len0,Len,Res0,Res)
+       end 
+     end
+  else 
+     pick_block2(Words,Blocks,Len0,Len,Res0,Res)
+  end.
+
+
+check_word(Word, Blocks, X, Pos) =>  
+  WordC = atom_chars(Word),
+  WordLen = length(WordC),
+  X = new_list(WordLen),
+  Pos = new_list(WordLen),
+  foreach(I in 1..WordLen)
+    nth(X[I],Blocks,XI),
+    nth(Pos[I],XI, WordC[I])
+  end,
+  alldiff(X),
+
+  foreach(I in 1..WordLen)
+    println([WordC[I], X[I], Blocks[X[I]]])
+  end,
+
+  nl.
+
+
+%
+% alldiff(L):
+%   ensure that all elements in L are different
+%
+alldiff([]) ?=> true. 
+alldiff([_]) ?=> true. 
+alldiff([H|T]) =>
+   neq(H,T),
+   alldiff(T).
+
+neq(_,[]) ?=> true.
+neq(X,[H|T]) =>
+  X != H,
+  neq(X,T).
+
+%
+% Recursive version 
+% (where we don't have to worry about duplicate blocks)
+%
+check_word2(Word, Blocks, X) =>
+  pick_block(atom_chars(Word),Blocks,[],X).
+
+pick_block([], _, Res1,Res2) ?=> 
+  Res2 = Res1.reverse().
+pick_block([C|WordRest], Blocks, Res1,Res2) =>
+  select(Block,Blocks,BlocksRest),
+  member(C,Block),
+  pick_block(WordRest, BlocksRest, [Block|Res1],Res2).
+  
+
+
+
+%
+% imperative
+%
+check_word3(Word, Blocks) =>
+  WordC = atom_chars(Word),
+  FoundWord = [],
+  foreach(Char in WordC)
+     Found = false,
+     foreach(Block in Blocks, Found = false)
+        if member(Char,Block) then
+           Blocks := delete(Blocks, Block),
+           FoundWord := FoundWord ++ [[Char,Block]],
+           Found := true
+        end
+     end
+  end,
+  if length(WordC) == FoundWord.length then 
+    println(FoundWord)
+  end,
+  nl.
+
+
+
+index(-)
+word(a).
+word(bark).
+word(book).
+word(treat).
+word(common).
+word(squad).
+word(confuse).
+word(auto).
+word(abba).
+word(coestablishment).
+word(schoolmastering).
+
+index(-,-)
+block(b,o).
+block(x,k).
+block(d,q).
+block(c,p).
+block(n,a).
+block(g,t).
+block(r,e).
+block(t,g).
+block(q,d).
+block(f,s).
+block(j,w).
+block(h,u).
+block(v,i).
+block(a,n).
+block(o,b).
+block(e,r).
+block(f,s).
+block(l,y).
+block(p,c).
+block(z,m).

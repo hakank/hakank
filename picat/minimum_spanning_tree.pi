@@ -1,0 +1,206 @@
+/* 
+
+  Minimum spanning tree in Picat.
+
+  Port of Prolog program (Paul Tarau).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  test(MinSpanTree),
+  println(MinSpanTree),
+  
+  nl.
+
+% larger random graph
+go2  =>
+  test2(MinSpanTree),
+  println(mst=MinSpanTree),
+  println(lenMST=MinSpanTree.length),
+  nl.
+
+
+%
+% http://computer-programming-forum.com/55-prolog/f7c474e827b79062.htm
+% (Paul Tarau)
+% """
+% MinSpanTree is a minimum spanning tree of an undirected graph
+% represented by its list of Edges of the form: "edge(Cost,From,To)"
+% with From<To, sorted by cost (in ascending order),
+% and having as vertices natural numbers in 1..NbOfVertices.
+%
+% If sorting by cost is not provided, it may take O(E*log(E)).
+% If the number of vertices is not provided it takes O(E) to
+% find it as the biggest vertex on the list of edges.
+% Unification may have chains of variables representing connected
+% components to follow, but that is C or machine-language time...
+%
+% The point is is that the '==' hack seems very useful, and
+% this kind of algorithm works fine on many related problems.
+% In this example logical variables seem to work basically
+% as equivalence classes, and unification means replacing
+% two of them by their union. With this interpretation, the
+% program is sound, but I do not know at this time how to
+% to force '==' inherit this kind of soundness in the general case.
+%
+% Does someone have an elegant (meta-)logical semantics for '==' ?
+%
+%   Paul Tarau 
+% """
+
+
+mst(NbOfVertices,Edges,MinSpanTree) =>
+  % makes an array of connected components
+  % functor(Components,'$',NbOfVertices),
+  Components = new_struct('$',NbOfVertices),
+  mst(NbOfVertices,Components,Edges,MinSpanTree).
+
+mst(1,_,_,T) => T=[].         % no more vertices left
+mst(N,Cs,EES,T) =>
+  EES = $[edge(Cost,V1,V2)|Es],
+  N > 1,
+  % arg(V1,Cs,C1), % C1,C2 are the components of V1,V2
+  % arg(V2,Cs,C2),
+  C1 = Cs[V1],
+  C2 = Cs[V2],
+  ( 
+    C1==C2->                     % Both endpoints are already in the same
+    T1=T,                        % connected component - skip the edge
+    N1 = N  
+  ; 
+    C1=C2,                       % Put endpoints in the same component
+    T = $[edge(Cost,V1,V2)|T1],  % Take the edge
+    N1 = N-1                    % Count a new vertex
+  ),
+  mst(N1,Cs,Es,T1).
+
+
+% Original test
+test(MinSpanTree) =>
+  mst(
+      % Number of vertices
+      5,
+      % sorted list of edges (by cost)
+      $[
+         edge(10,1,2),edge(20,4,5),edge(30,1,4),
+         edge(40,2,5),edge(50,3,5),edge(60,2,3),
+         edge(70,1,3),edge(80,3,4),edge(90,1,5)
+       ],
+      MinSpanTree
+      ).
+
+%
+% Create a complete graph with random costs
+% (a complete graph)
+%
+% For a random random
+test2(MinSpanTree) =>
+  NumVertices = 1000, % number of vertices
+  NumEdges = 5000,
+  MaxCost = 100,
+
+  %
+  % Most of the runtime is to create a complete graph since it has about N**2 vertices.
+  % For N=300 it takes about 5s to create the graph and 0.08s to create the MST
+  % For N=500 it takes about 14.8s to create the graph and 0.28s to create the MST.
+  %
+  % time(Edges = complete_graph(NumVertices, MaxCost)),
+
+  %
+  % This is much faster: For 1000 vertices and 5000 edges it takes 
+  % 0.9s to generate the graph and 0.008 to generate the MST.
+  %
+  time(Edges = random_graph(NumVertices, NumEdges, MaxCost)),
+
+  % println(edges=Edges),
+  println(len=Edges.length),
+  % println(random_ok),
+  time(mst(
+      % Number of vertices
+      NumVertices,
+      % sorted list of edges (by cost)
+      Edges,
+      MinSpanTree
+      )).
+
+
+complete_graph(N,MaxCost) = Graph =>
+  Graph = [
+      $edge(Cost,E1,E2) : E1 in 1..N, 
+                          E2 in 1..N, 
+                          E1 != E2,
+                          Cost = 1+(random2() mod MaxCost)
+  ].sort().
+
+
+%
+% create a random (but not a complete) graph
+%
+random_graph(NumVertices,NumEdges,MaxCost) = Graph =>
+
+   println($random_graph(numVertices=NumVertices,numEdges=NumEdges,maxCost=MaxCost)),
+   % first create edges that connect the graph
+   Edges = [ $edge(Cost,E1,E2) : E1 in 1..NumVertices-1, E2 = E1+1, Cost = 1+random2() mod MaxCost],
+   foreach(_I in NumVertices+1..NumEdges)
+      Cost = 1+random2() mod MaxCost,
+      E1 = 1+random2() mod NumVertices,
+      E2 = 1+random2() mod NumVertices,
+      if E1 != E2 then
+         Edges := Edges ++ [$edge(Cost,E1,E2)]
+      end
+   end,
+   Graph = Edges.sort().
+
+
+% This version is also from 
+% http://computer-programming-forum.com/55-prolog/f7c474e827b79062.htm
+% (later in thre thread)
+
+/*
+
+% hakank: This works but requires that the nodes are represented as
+%   variables:  edge(10,V1,V2), ... which is not as neat
+%
+
+% mst(NbOfVertices,Edges,MinSpanTree)
+mst(1,_,T) => T = [].
+% No more vertices left
+mst(N,EES,T) =>
+   EES = [$edge(Cost,V1-C1,V2-C2)|Es],
+   N>1,
+   (  C1==C2->  % Both endpoints are already in the same
+      T1=T,     % connected component - skip the edge
+      N1 is N  
+   ;  C1=C2,    % Put endpoints in the same component
+      T = $[edge(Cost,V1,V2)|T1],  % Take the edge
+      N1 is N-1        % Count a new vertex
+   ),
+   mst(N1,Es,T1).
+
+test(MinSpanTree) =>
+  % sorted list of edges (by cost)
+  Edges = $[
+      edge(10,V1,V2),edge(20,V4,V5),edge(30,V1,V4),
+      edge(40,V2,V5),edge(50,V3,V5),edge(60,V2,V3),
+      edge(70,V1,V3),edge(80,V3,V4),edge(90,V1,V5)
+    ].sort(), % .reverse(),
+
+  mst(
+      % Number of vertices
+  5,
+  Edges, 
+  MinSpanTree
+      ),
+      _NV = number_vars(MinSpanTree,1). % just for a nice output 
+*/

@@ -1,0 +1,111 @@
+/* 
+
+  Shortest path problem in Picat.
+
+  Problem and model from Winston "Operations Research", page 415.
+
+  When to buy/sell a car depending on the cost of maintenance etc.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import mip. % nonlinear constraint
+% import sat. % nonlinear constraint
+import cp.
+
+
+main => time2(go).
+
+
+go =>
+
+  timex(Time),
+  new_car(NewCar),
+
+  trade_in(TradeIn),
+  maintenance(Maintenance),
+  supply(Supply),
+  demand(Demand),
+
+  % decision variables
+
+  % cost matrix
+  Cost = new_array(Time,Time+1),
+
+  % the "delivery-table" (in transhipment parlor)
+  X = new_array(Time,Time+1),
+
+  % Z #= sum([X[I,J]*Cost[I,J] : I in 1..Time, J in 1..Time+1]),
+  Z #= sum([T : I in 1..Time, J in 1..Time+1, T #= X[I,J]*Cost[I,J]]),
+
+  foreach(I in 1..Time,J in 1..Time+1) 
+    Cost[I,J] #>= 0,
+    X[I,J] #>= 0,
+    Cost[I,J] #<= 1000
+  end,
+
+
+  % cost matrix:
+  % cost[i,j] =   maintenance cost incurred during years i, i+1,..j-1 
+  %             + cost of purchasing new car at beginning of year i 
+  %             - trade-in value received at beginning of year j
+  foreach(I in 1..Time, J in I+1..Time+1)
+    Cost[I,J] #= NewCar + sum([Maintenance[K] : K in 1..J-I]) - TradeIn[J-I]
+  end,
+
+
+  % new_car^2 in the lower diagonal
+  foreach(I in 1..Time, J in 1..Time+1, J < I) 
+     Cost[I,J] #= NewCar*NewCar
+  end,
+
+  % rows represent the timex
+  foreach(I in 1..Time) 
+    sum([X[I,J] : J in 1..Time+1]) #= Supply[I]
+  end,
+
+  % what strategy to choose
+  foreach(J in 1..Time+1)
+    sum([X[I,J] : I in 1..Time]) #= Demand[J]
+  end,
+
+  solve($[ffc,split,min(Z)], X ++ Cost),
+
+  println(z=Z),
+  println("X:"),
+  print_matrix(X),
+  println("Cost:"),
+  print_matrix(Cost),
+  
+  nl.
+
+print_matrix(M) =>
+  foreach(Row in M) 
+    foreach(I in Row)
+      printf("%4d ", I)
+    end,
+    nl
+  end,
+  nl.
+
+timex(Time) => Time = 5.
+new_car(NewCar) => NewCar = 12.
+
+% car trade-in price, in 1000 dollar
+trade_in(TradeIn) => TradeIn = [7, 6, 2, 1, 0].
+
+% cost to repair a car year x
+% in 1000 dollar
+maintenance(Maintenance) => Maintenance = [2,  4, 5, 9,12].
+
+% The "transshipment table" which is the key to this
+% type of modelling.
+% 2..5 is transshipment points with "unlimited" supply and demand
+% 
+supply(Supply) => Supply = [1,11,11,11,11,0].
+demand(Demand) => Demand = [0,11,11,11,11,1].

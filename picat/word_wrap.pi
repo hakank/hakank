@@ -1,0 +1,154 @@
+/* 
+
+  Word wrap (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Word_wrap
+  """
+  Even today, with proportional fonts and complex layouts, there are still cases 
+  where you need to wrap text at a specified column. The basic task is to wrap a 
+  paragraph of text in a simple way in your language. If there is a way to do this 
+  that is built-in, trivial, or provided in a standard library, show that. Otherwise 
+  implement the minimum length greedy algorithm from Wikipedia.
+
+  Show your routine working on a sample of text at two different wrap columns.
+
+  Extra credit! Wrap text using a more sophisticated algorithm such as the Knuth and 
+  Plass TeX algorithm. If your language provides this, you get easy extra credit, but 
+  you must reference documentation indicating that the algorithm is something better 
+  than a simple minimimum length algorithm.
+
+  If you have both basic and extra credit solutions, show an example where the two 
+  algorithms give different results. 
+  """
+
+  Also see: http://en.wikipedia.org/wiki/Word_wrap#Minimum_length
+
+  Note: Even though the task is to format a single paragraph, this program also handles
+        multi paragraph texts (not very pretty but still).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+% import cp.
+
+
+main => go.
+
+% multi paragraph text
+go =>
+  test(1,Text),
+  foreach(LineWidth in [60,72,80])
+     println(lineWidth=LineWidth),
+     println(wrap_multi(Text,LineWidth,1)),
+     nl
+  end,
+  nl.
+
+% single paragraph
+go2 => 
+  test(2,Text),
+  foreach(LineWidth in [60,72,80])
+     println(lineWidth=LineWidth),
+     println(wrap_para(Text,LineWidth,1)),
+     nl
+  end,
+  nl.
+
+% single paragraph
+go3 => 
+  test(3,Text),
+  println(wrap_para(Text,32,1)),
+  nl.
+
+%
+% Format a single paragraph.
+%
+% From http://en.wikipedia.org/wiki/Word_wrap#Minimum_length
+%
+wrap_para(Text,LineWidth,SpaceWidth) = Wrapped => 
+  SpaceLeft = LineWidth,
+  Wrapped = "",
+  foreach(Word in Text.split())
+    WordLen = Word.length,
+    if (WordLen + SpaceWidth) > SpaceLeft then
+        Wrapped := Wrapped ++ "\n",
+        SpaceLeft := LineWidth - WordLen
+    else
+        SpaceLeft := SpaceLeft - (WordLen + SpaceWidth)
+    end,
+    Wrapped := Wrapped ++ Word ++ " "
+  end.
+
+
+%
+% Note: Picat's split() splits on all whitespace so the paragraphs are not
+% detectable. Here we first identify the paragraphs ("\n\n") and send each
+% paragraph to wrap_para/3
+%
+wrap_multi(Text,LineWidth,SpaceWidth) = Wrapped =>
+  % positions of paragraphs
+  All = findall([From,To],find(Text,"\n\n",From,To)),
+  S = 1,
+  Wrapped = "",
+  if All.length > 0 then
+    foreach({[From,To],I} in zip(All,1..All.length))
+      Wrapped := Wrapped ++ wrap_para(slice(Text,S,From-1), LineWidth,SpaceWidth),
+      if I < All.length then
+        Wrapped := Wrapped ++ "\n\n"
+      end,
+      S := To + 1
+    end
+  else
+     % just one paragraph
+     Wrapped := wrap_para(Text, LineWidth,SpaceWidth)
+  end.
+
+
+
+test(1,Text) => 
+Text = 
+"Even today, with proportional fonts and complex layouts, there are still cases 
+where you need to wrap text at a specified column. The basic task is to wrap a 
+paragraph of text in a simple way in your language. If there is a way to do this 
+that is built-in, trivial, or provided in a standard library, show that. Otherwise 
+implement the minimum length greedy algorithm from Wikipedia.
+
+Show your routine working on a sample of text at two different wrap columns.
+
+Extra credit! Wrap text using a more sophisticated algorithm such as the Knuth and 
+Plass TeX algorithm. If your language provides this, you get easy extra credit, but 
+you must reference documentation indicating that the algorithm is something better 
+than a simple minimimum length algorithm.
+
+If you have both basic and extra credit solutions, show an example where the two 
+algorithms give different results.".
+
+
+test(2,Text) => 
+Text =
+"Lorem ipsum dolor sit amet, consectetur
+adipiscing elit. Mauris consequat ornare
+lectus, dignissim iaculis libero
+consequat sed. Proin quis magna in arcu
+sagittis consequat sed ac risus. Ut a
+pharetra dui. Phasellus molestie, mauris
+eget scelerisque laoreet, diam dolor
+vulputate nulla, in porta sem sem sit
+amet lacus.".
+
+
+test(3,Text) =>
+Text = 
+"In olden times when wishing still helped one, there lived a king
+whose daughters were all beautiful, but the youngest was so beautiful
+that the sun itself, which has seen so much, was astonished whenever
+it shone-in-her-face.  Close-by-the-king's castle lay a great dark
+forest, and under an old lime-tree in the forest was a well, and when
+the day was very warm, the king's child went out into the forest and
+sat down by the side of the cool-fountain, and when she was bored she
+took a golden ball, and threw it up on high and caught it, and this
+ball was her favorite plaything.".

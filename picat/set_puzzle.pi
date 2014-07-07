@@ -1,0 +1,329 @@
+/* 
+
+  Set puzzle in Picat.
+
+  From http://rosettacode.org/wiki/Set_puzzle
+  """
+  Set Puzzles are created with a deck of cards from the Set Game™. The object of 
+  the puzzle is to find sets of 3 cards in a rectangle of cards that have been 
+  dealt face up. There are 81 cards in a deck. Each card contains a unique variation 
+  of the following four features: color, symbol, number and shading.
+
+  there are three colors
+    red, green, or purple 
+
+  there are three symbols
+    oval, squiggle, or diamond 
+
+  there is a number of symbols on the card
+    one, two, or three 
+
+  there are three shadings
+    solid, open, or striped 
+
+  Three cards form a set if each feature is 
+      - either the same on each card, or 
+      - is different on each card. 
+  For instance: all 3 cards are red, all 3 cards have a different 
+  symbol, all 3 cards have a different number of symbols, all 3 cards are striped.
+
+  There are two degrees of difficulty: basic and advanced. The basic mode deals 9 
+  cards, that contain exactly 4 sets; the advanced mode deals 12 cards that contain 
+  exactly 6 sets. When creating sets you may use the same card more than once.
+
+  The task
+
+  Is to write code that deals the cards (9 or 12, depending on selected mode) from a 
+  shuffled deck in which the total number of sets that could be found is 4 (or 6, 
+  respectively); and print the contents of the cards and the sets. For instance:
+
+  DEALT 9 CARDS:
+
+    green, one, oval, striped 
+    green, one, diamond, open 
+    green, one, diamond, striped 
+    green, one, diamond, solid 
+    purple, one, diamond, open 
+    purple, two, squiggle, open 
+    purple, three, oval, open 
+    red, three, oval, open 
+    red, three, diamond, solid 
+
+  CONTAINING 4 SETS:
+
+    green, one, oval, striped 
+    purple, two, squiggle, open 
+    red, three, diamond, solid 
+    green, one, diamond, open 
+    green, one, diamond, striped 
+    green, one, diamond, solid 
+    green, one, diamond, open 
+    purple, two, squiggle, open 
+    red, three, oval, open 
+    purple, one, diamond, open 
+    purple, two, squiggle, open 
+    purple, three, oval, open 
+  """
+
+  Also see:
+    - http://en.wikipedia.org/wiki/Set_%28game%29
+    - http://www.setgame.com/
+    - Benjamin Lent Davis and Diane Maclagan, The Card Game Set:
+      http://www.math.rutgers.edu/~maclagan/papers/set.pdf
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+%
+% basic: test three named instances
+%
+go ?=>
+  foreach(Instance in [0,1,2,3])
+    println(instance=Instance),
+    (sets(Instance,Sets,SetLen,NumWanted),
+     set_puzzle(Sets,SetLen,NumWanted,X),
+     print_sol(Sets,X)
+    )
+  end,
+  nl.
+
+go => true.
+
+
+%
+% Generate and solve a random instance with NumCards cards,
+% giving exactly NumSets sets.
+%
+go2 => 
+  NumCards = 9,
+  NumSets = 4,
+  SetLen = 3,
+  generate_instance(NumCards,NumSets,SetLen, Cards),
+  set_puzzle(Cards,SetLen,NumSets,X), % solve it
+  println("Cards:"),
+  foreach({Card,I} in zip(Cards,1..NumCards)) println([I,Card]) end,
+  println("Solution:"),        
+  print_sol(Cards,X),
+  nl.
+
+
+go3 => 
+  NumCards = 12,
+  NumSets = 6,
+  SetLen = 3,
+  generate_instance(NumCards,NumSets,SetLen, Cards),
+  set_puzzle(Cards,SetLen,NumSets,X), % solve it
+  println("Cards:"),
+  foreach({Card,I} in zip(Cards,1..NumCards)) println([I,Card]) end,
+  println("Solution:"),        
+  print_sol(Cards,X),
+  nl.
+
+
+%
+% Solve a Set Puzzle.
+%
+set_puzzle(Cards,SetLen,NumWanted, X) =>
+  Len = Cards.length,
+  NumFeatures = Cards[1].length,
+
+  X = new_list(NumWanted),
+  foreach(I in 1..NumWanted)
+    Y = new_list(SetLen),
+    foreach(J in 1..SetLen)
+      member(Y[J], 1..Len)
+    end,
+    increasing(Y), % unicity and symmetry breaking of Y
+    % alldiff(Y),
+    % ensure unicity of the selected cards in X
+    if I > 1 then
+      foreach(J in 1..I-1) X[J] @< Y  end
+    end,
+    foreach(F in 1..NumFeatures)
+       Z = [Cards[Y[J],F] : J in 1..SetLen],
+       (allequal(Z) ; alldiff(Z))
+    end,
+    X[I] = Y
+  end.
+
+
+% print a solution
+print_sol(Sets,X) =>
+  println(x=X),
+  foreach(R in X)
+    println(r=R),
+    println([Sets[R[I]] : I in 1..3])
+  end,
+  nl.
+
+% strict increasing
+increasing(List) => 
+  foreach(I in 1..List.length-1)
+    List[I] @< List[I+1]
+  end.
+
+allequal(List) => 
+  foreach(I in 1..List.length-1)
+    List[I] = List[I+1]
+  end.
+
+alldiff(List) => 
+  Len = List.length,
+  foreach(I in 1..Len, J in 1..I-1)
+    List[I] != List[J]
+  end.
+
+%
+% Generate a problem instance with NumSets sets (a unique solution).
+%
+% Note: not all combinations of cards give a solution so
+%       we have to generate a number of deals
+%
+generate_instance(NumCards,NumSets,SetLen, Cards) =>
+  N = 0,
+  println([numCards=NumCards,numWantedSets=NumSets,setLen=SetLen]),
+  Found = false,
+  while(Found = false) 
+      N := N + 1,
+      if Cards = random_deal(NumCards), 
+         findall(X,set_puzzle(Cards,SetLen,NumSets,X)).length = 1
+         then
+        Found := true
+      end
+  end,
+  println(num_tests=N),
+  nl.
+
+
+%
+% problem instances
+%
+
+%
+% From the Rosetta code description above
+%
+% A solution: [[1,6,9],[2,3,4],[2,6,8],[5,6,7]]
+%
+sets(0,Sets,SetLen,Wanted) => 
+  Sets = 
+  [
+    [green, one, oval, striped], % 1 
+    [green, one, diamond, open], % 2 
+    [green, one, diamond, striped], % 3
+    [green, one, diamond, solid], % 4
+    [purple, one, diamond, open], % 5
+    [purple, two, squiggle, open], % 6
+    [purple, three, oval, open], % 7
+    [red, three, oval, open], % 8
+    [red, three, diamond, solid] % 9
+ ],
+ SetLen = 3,
+ Wanted = 4.
+
+%
+% From http://www.hakank.org/minizinc/set_puzzle.mzn
+%
+% [1,2,3], [2,4,5], [3,5,8], [6,8,9]
+sets(1, Sets,SetLen,Wanted) =>
+ Sets = 
+ [
+ [oval,       green,  3, solid],
+ [squiggles,  green,  3, striped],
+ [diamond,    green,  3, open],
+ [oval,       green,  3, open],
+ [diamond,    green,  3, solid],
+ [squiggles,  purple, 3, open],
+ [diamond,    purple, 3, solid],
+ [diamond,    green,  3, striped],
+ [oval,       red,    3, solid]
+ ],
+ SetLen = 3,
+ Wanted = 4.
+
+%
+% From http://www.hakank.org/minizinc/set_puzzle.mzn
+%
+% [[1,2,9],[2,3,5],[2,4,8],[4,7,9]]
+%
+sets(2,Sets,SetLen,Wanted) =>
+  Sets =
+[
+[diamond,   red,    1,  solid],
+[diamond,   green,  3,  solid],
+[oval,      green,  3,  solid],
+[squiggles, purple, 1,  solid],
+[squiggles, green,  3,  solid],
+[squiggles, green,  1,  solid],
+[oval,      purple, 3,  solid],
+[oval,      red,    2,  solid],
+[diamond,   purple, 2,  solid]
+],
+SetLen = 3,
+Wanted = 4.
+
+
+%
+% From "The Card Game Set" (see above), 
+% Benjamin Lent Davis and Diane Maclagan, The Card Game Set:
+%  http://www.math.rutgers.edu/~maclagan/papers/set.pdf
+% page 2, figure 2
+% number of items: 12 Sets to find: 5
+% Solution: [[1,2,3], [1,5,9], [2,6,10], [3,7,11], [4,8,12]]
+sets(3,Sets,SetLen,Wanted) =>
+  Sets = 
+  [
+[oval,       red,     1, solid],
+[squiggles,  green,   2, striped],
+[diamond,    purple,  3, open],
+[oval,       purple,  1, striped],
+[squiggles,  red,     1, solid],
+[diamond,    purple,  2, striped],
+[oval,       red,     3, solid],
+[squiggles,  red,     2, open],
+[diamond,    red,     1, solid],
+[oval,       red,     2, striped],
+[squiggles,  green,   3, striped],
+[diamond,    green,   3, solid]
+  ],
+  SetLen = 3,
+  Wanted = 5.
+
+
+%
+% deal a random problem instance of N cards
+%
+random_deal(N) = Deal =>
+  all_combinations(Combinations),
+  Deal = [], 
+  foreach(_I in 1..N)
+    Len = Combinations.length,
+    Rand = 1 + random2() mod Len,
+    Deal := Deal ++ [Combinations[Rand]],
+    Combinations := delete(Combinations, Rand)
+  end.
+
+
+%
+% generate all the 81 possible combinations (cards)
+%
+all_combinations(All) =>
+
+   Colors = [red, green, purple],
+   Symbols = [oval, squiggle, diamond],
+   Numbers = [one, two, three],
+   Shadings = [solid, open, striped],
+   
+   All = findall([Color,Symbol,Number,Shading],
+                  (member(Color,Colors),
+                   member(Symbol,Symbols),
+                   member(Number,Numbers),
+                   member(Shading,Shadings))).

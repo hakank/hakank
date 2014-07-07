@@ -1,0 +1,189 @@
+/* 
+
+  CountDown problem in Picat.
+
+  From Ruby Quiz #7
+  http://www.rubyquiz.com/quiz7.html
+  """
+  One of the longest-running quiz shows on UK TV is called Countdown, 
+  and has a "numbers round". There are some cards laid face down in 
+  front of the host - the top row contains 'large' numbers (from the 
+  set 25, 50, 75, 100), and the rest are 'small' (1 to 10). Six cards 
+  are picked and displayed: the choice is made by one of the contestants, 
+  who typically will ask for one large number and five small ones.
+  
+  Next, a machine called "Cecil" picks a target number between 100 and 
+  999 at random. The contestants then have 30 seconds to find a way of 
+  combining the source numbers using the normal arithmetic operators 
+  (+, -, *, /) to make the target number, or to get as close as possible.
+  
+  Each source card can be used no more than once. The same applies to any 
+  intermediate results, although of course you don't have to explicitly 
+  show the intermediate results.
+  
+  Example: source 100 5 5 2 6 8, target 522
+  
+  100 * 5 = 500
+  5 + 6 = 11
+  11 * 2 = 22
+  500 + 22 = 522
+  
+  or more succinctly, (5*100)+((5+6)*2) = 522
+  
+  Another solution is (100+6)*5-8 = 522
+  
+  Normal arithmetic rules apply, and in particular you are not allowed to 
+  use integer rounding. That is, 7 divided by 3 is 2 1/3, not 2.
+  
+  The quiz is to write a program which will accept one target number and 
+  a list of source numbers, and generate a solution which calculates 
+  the target or a number as close to the target as possible.
+  """
+
+  Note: This model is more restricted in how the operators works: It only solve
+  solutions of this form:
+ 
+   Numbers =  [3,5,9,9,10,100]
+   Target  = 564
+   Solution:
+    (((((100/5)*10)-9)*3)-9) = 564
+    100/5 = 20
+    20*10 = 200
+    200-9 = 191
+    191*3 = 573
+    573-9 = 564
+
+  Also, if there are some duplicates it will show duplicated solutions, since
+  two permutations give the same result.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => time2(go).
+
+go ?=>
+  Target=564,
+  Numbers = [3,5,9,9,10,100],
+  countdown(Numbers,Target),
+  nl,
+  fail,
+  nl.
+
+go => true.
+
+
+go2 => 
+  Numbers = [4,4,4,4],
+  foreach(Target in 1..4**4)
+     All=findall(_, countdown(Numbers,Target)),
+     printf("\tTarget=%4d: %4d solutions\n", Target,All.length)
+  end,
+  nl.
+
+
+  
+%
+% check(Target, Print, S)
+%  Target: the target number to be constructed
+%  Print : true -> print the solution string, else -> don't
+%  S     : the solution string
+%
+countdown(Numbers,Target) =>
+   println([target=Target,numbers=Numbers]),
+   N = Numbers.length,
+   
+   % Picat's integer operator is "//" and is used for the check below
+   OpsString = ["+","-","*","//"],
+   OpsString2 = ["+","-","*","/"], % "/" instead of "//" for nicer presentation
+   
+   % decision variables 
+   % The result, the numbers in correct positions
+   X = new_list(N),
+   X :: Numbers.remove_dups(),
+
+   % permutations of Numbers
+   Perms = new_list(N),
+   Perms :: 1..N,
+
+   % array of the consecutive results (S[N] = Target)
+   S = new_list(N),
+   S :: 1..10000,
+
+   % Operators
+   % 1: +
+   % 2: -
+   % 3: *
+   % 4: // (integer division)
+   Ops = new_list(N-1),
+   Ops :: 1..OpsString.length,
+   
+   %
+   % constraints
+   % 
+   all_different(Perms),
+
+   foreach(I in 1..N)
+      % x[i] = numbers[perm[i]]
+      element(Perms[I],Numbers,X[I])
+      % nth(Perms[I],Numbers,X[I])
+   end,
+
+   make_ops(X,Ops,Target,S),
+
+   % search
+   Vars = X ++ Ops ++ Perms ++ S ++ [Target],
+
+   solve([ff,split], Vars),
+
+   %
+   % solution
+   % 
+   % println(numbers=Numbers),
+   % println(target=Target),
+   println(x=X),
+   % println(s=S),
+   % println(perms=Perms),
+   % println(ops=Ops),
+
+   % The solution as a string
+   Str = ['(' : _ in 1..N-1] ++ X[1].to_string(),
+   Str2 = Str,
+   foreach(I in 1..N-1)
+     Str := Str ++ " " ++ OpsString[Ops[I]] ++ " " ++ X[I+1].to_string() ++ ")",
+     Str2 := Str2 ++ " " ++ OpsString2[Ops[I]] ++ " " ++ X[I+1].to_string() ++ ")"
+   end,
+
+   % check it
+   S2 = apply(Str.parse_term()),
+   if S2 = Target then
+     println(str=Str2),
+     foreach(I in 1..N-1)
+       printf("%d %w %d = %d\n", S[I],OpsString2[Ops[I]],X[I+1],S[I+1])
+     end,
+     nl
+   else
+     println([not_correct_parsed,target=Target,s2=S2]),
+     halt
+   end.
+
+% The (basic) operations
+make_op(A,B, Op,Res) =>
+  (Op #= 1) #<=> (Res #= A + B),
+  (Op #= 2) #<=> (Res #= A - B),
+  (Op #= 3) #<=> (Res #= A * B),
+  % (Op #= 4) #<=> (A #= Res * B). % division 
+  (Op #= 4) #<=> (Res #= A // B). % division 
+
+make_ops(Y, Ops, Res, S) =>
+  N = Y.length,
+  S[1] #= Y[1],
+  foreach(I in 1..N-1)
+    make_op(S[I], Y[I+1], Ops[I], S[I+1])
+  end,
+  Res #= S[N].
