@@ -1,0 +1,231 @@
+/* 
+
+  Edit distance in Picat.
+
+  This includes:
+    - edit/3: Edit distance between 2 words (no replace operator)
+    - edit2/2: Edit distance with a replace operator
+    - edit_all/5: Find all edit operations for a given edit distance
+                  (not very efficient).
+
+  Compare with:
+   - http://hakank.org/picat/levenshtein_distance.pi
+   - http://www.hakank.org/edit_distances/edit_distances.cgi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import cp.
+
+main => go.
+
+
+go =>
+   edit("kalle","pelle",D),
+   writeln(D),
+   nl.
+
+
+go2 =>
+   edit("rosettacode","raisethysword",D),
+   writeln(D),
+   nl.
+
+%
+% edit2/2: include replace as operator
+%
+go3 =>
+   Word1 = "neurologist",
+   Word2 = "phrenologist",
+   [D,Ops] = edit2(Word1,Word2),
+   writeln(D),
+   println(Word1),
+   println(Word2),
+   println(Ops),
+   nl.
+
+%
+% Testing edit2 on the instances from 
+%   http://hakank.org/picat/levenshtein_distance.pi
+%
+% [kitten,sitting,3]
+% [rosettacode,raisethysword,8]
+% [levenshtein,levenshtein,0]
+% [saturday,sunday,3]
+% [stop,tops,2]
+% [saturday,sunday,3]
+% [edocattesor,drowsyhtesiar,8]
+% [abracadabra,abracadabra,0]
+% [abracadabra,abracadabrr,1]
+% [cabracadabra,abracadabra,1]
+% [abraccadabra,abracadabra,1]
+go4 =>
+  S = [
+       ["kitten","sitting"],
+       ["rosettacode","raisethysword"],
+       ["levenshtein","levenshtein"],
+       ["saturday", "sunday"],
+       ["stop", "tops"],
+       ["saturday", "sunday"],
+       ["edocattesor", "drowsyhtesiar"],
+       ["abracadabra", "abracadabra"],
+       ["abracadabra", "abracadabrr"],
+       ["cabracadabra", "abracadabra"],
+       ["abraccadabra", "abracadabra"],
+       ["neurologist","phrenologist"]
+  ],
+
+  foreach([Word1,Word2] in S)
+     println([Word1,Word2]),
+     [D,Ops] = edit2(Word1,Word2),
+     println(Word1),
+     println(Word2),
+     println(Ops),
+     println(distance=D),
+     println(opsLen=Ops.length),
+     nl,
+
+     println("Swap words"),
+     [D2,Ops2] = edit2(Word2,Word1),
+     println(Word2),
+     println(Word1),
+     println(Ops2),
+     println(distance=D2),
+     println(opsLen=Ops2.length),
+     nl
+
+  end,
+  nl.
+
+
+% Get all the possible (optimal) operations given a distance.
+% Note: This takes quite long time...
+% """
+% neurologist
+% phrenologist
+% distance=5
+%
+% ops=drrciiccccccc
+% ops=rdrciiccccccc
+% ops=rrdciiccccccc
+% ops=rrrriccccccc
+% ops=rrrirccccccc
+% ops=rrirrccccccc
+% ops=rirrrccccccc
+% ops=riicdrccccccc
+% ops=riicrdccccccc
+% ops=irrrrccccccc
+% ops=iricdrccccccc
+% ops=iricrdccccccc
+% ops=iircdrccccccc
+% ops=iircrdccccccc
+%
+% CPU time 30.985 seconds.
+% """
+%
+go5 =>
+   Word1 = "neurologist",
+   Word2 = "phrenologist",
+   % Word1 = "rosettacode",
+   % Word2 = "raisethysword",
+
+   println(Word1),
+   println(Word2),
+   [D,_] = edit2(Word1,Word2),
+   writeln(distance=D),
+   nl,
+   edit_all(Word1,Word2,Ops,D,D),
+   println(ops=Ops),
+   fail,
+
+   nl.
+
+
+%
+% From exs.pi
+% Computing the minimal editing distance of two given lists
+% Note: This version don't have an replace operation, so
+%       a replacement is a delete + a insert (2 operations)
+% See edit2 for a version with replace
+%
+table(+,+,min)
+edit([],[],D) => 
+  D=0.
+edit([X|Xs],[X|Ys],D) =>   % copy (no cost)
+  edit(Xs,Ys,D).
+edit(Xs,[_Y|Ys],D) ?=>     % insert
+  edit(Xs,Ys,D1),
+  D=D1+1.
+edit([_X|Xs],Ys,D) =>      % delete
+  edit(Xs,Ys,D1),
+  D=D1+1.
+
+%
+% edit2(Word1,Word2) = [Distance,Operations]
+%
+% Note: This version adds a replace operator, and
+%       also shows the operations.
+% 
+% Examples:
+%  - rosettacode, raisethysword -> cricccrrricrr  distance 8
+%  - raisethysword, rosettacode -> cdrcccdrrrcdci distance 8
+%  - phrenologist, neurologist  -> ddrcriccccccc  distance 5
+%
+edit2(X,Y) = [D,Ops] =>
+  edit2(X,Y,Ops,D).
+
+%
+% edit2(Word1,Word2,Operations,MinDistance)
+%   finds the minimum edit distance between Word1 and Word2
+%
+table(+,+,+,min)
+edit2([],[],PP,D) ?=> 
+  PP = [],
+  D=0.
+edit2([X|Xs],[X|Ys],PP,D) ?=> % copy (no cost)
+  PP = [c|P],
+  edit2(Xs,Ys,P,D).
+edit2([_X|Xs],Ys,PP,D)    ?=> % delete
+  PP = [d|P],
+  edit2(Xs,Ys,P,D1),
+  D=D1+1.
+edit2([X|Xs],[Y|Ys],PP,D) ?=> % replace
+  X != Y,
+  PP = [r|P],
+  edit2(Xs,Ys,P,D1),
+  D=D1+1.
+edit2(Xs,[_Y|Ys],PP,D)    ?=> % insert
+  PP = [i|P],
+  edit2(Xs,Ys,P,D1),
+  D=D1+1.
+
+
+%
+% Find all the different (optimal) operations given
+% a distance (D).
+%
+edit_all([],[],PP,_D0,D) => 
+  PP = [],
+  D=0.
+edit_all([X|Xs],[X|Ys],PP,D0,D) ?=> % copy (no cost)
+  PP = [c|P],
+  edit_all(Xs,Ys,P,D0,D).
+edit_all([X|Xs],[Y|Ys],PP,D0,D) ?=> % replace
+  X != Y,
+  PP = [r|P],
+  edit_all(Xs,Ys,P,D0,D1),
+  D1 < D0,
+  D=D1+1.
+edit_all([_X|Xs],Ys,PP,D0,D)    ?=> % delete
+  PP = [d|P],
+  edit_all(Xs,Ys,P,D0,D1),
+  D1 < D0,
+  D=D1+1.
+edit_all(Xs,[_Y|Ys],PP,D0,D)     => % insert
+  PP = [i|P],
+  edit_all(Xs,Ys,P,D0,D1),
+  D1 < D0,
+  D=D1+1.
