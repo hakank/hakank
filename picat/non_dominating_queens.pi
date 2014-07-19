@@ -1,0 +1,79 @@
+/* 
+
+  Non dominating queens in Picat.
+
+
+  From Martin Chlond Integer Programming Puzzles:
+  http://www.chlond.demon.co.uk/puzzles/puzzles4.html, puzzle nr. 6.
+  Description  : Non-dominating queens problem
+  Source       : http://www.cli.di.unipi.it/~velucchi/queens.txt
+  """
+  Place N queens on an order N chessboard to leave a maximum number of 
+  unattacked vacant squares. 
+
+  (Velucchi)
+  """
+
+  This model was inspired by the XPress Mosel model created by Martin Chlond.
+  http://www.chlond.demon.co.uk/puzzles/sol4s6.html
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import sat. % 1.64s
+% import mip. % 0.092s
+import cp. % 0.01s / 0 backtracks
+
+
+main => go.
+
+
+go =>
+  Size = 5,
+
+  % x(i,j) = 1 if square (i,j) occupied, 0 otherwise
+  X = new_array(Size,Size),
+  X :: 0..1,
+
+  % a(i,j) = 1 if square (i,j) attacked, 0 otherwise
+  A = new_array(Size,Size), 
+  A :: 0..1, 
+
+  NumA #= sum(A.vars()),
+
+  % number of pieces placed equals size of board
+  sum(X.vars()) #= Size,
+
+  % a[i,j) = 1 if square (i,j) attacked or occupied
+  % a[i,j) = 0 if square (i,j) not attacked or occupied
+  foreach(I in 1..Size, J in 1..Size) 
+      T #= 
+      (sum([X[M,M-I+J] : M in 1..Size, M != I, M-I+J >= 1, M-I+J <= Size]) +
+       sum([X[M,I+J-M] : M in 1..Size, M != I, I+J-M >= 1, I+J-M <= Size]) +
+       sum([X[M,J] : M in 1..Size])  + 
+       sum([X[I,M] : M in 1..Size,  M != J])  +
+       X[I,J]
+      ),
+      T #<= Size*A[I,J],
+      T #>= A[I,J] 
+  end,
+
+  % minimize number of squares attacked or occupied
+  Vars = A ++ X,
+  solve($[ff,split,min(NumA)], Vars),
+
+  println(numA=NumA),
+  print_matrix("X:",X),
+  print_matrix("A:",A),
+
+  nl.
+
+
+print_matrix(Name,X) =>
+  println(Name),
+  foreach(Row in X) println(Row.to_list()) end,
+  nl.

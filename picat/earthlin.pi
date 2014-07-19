@@ -1,0 +1,130 @@
+/* 
+
+  Earthlings puzzle in Picat.
+
+  From Martin Chlond Integer Programming Puzzles
+  http://www.chlond.demon.co.uk/puzzles/puzzles3.html, puzzle nr. 11
+  Description  : Earthlings
+  Source       : Poniachik, J. & L., (1998), Hard-to-solve Brainteasers, Sterling
+  """
+  11. The Earthlings
+  August 2002.
+  The spaceship landed.
+  "Earth!" they shouted.
+  They knew that earthlings are divided into three groups: those who always tell the truth, those who always
+  lie, and those who do both, alternating between true and false statements, starting with either.
+  "Let's go!" said the captain.
+  The aliens approached three earthlings, who each were from a different group, and asked, "Who won the last
+  World Cup? Who came in second? Who came in third?"
+  One of them responded, "Zaire first. Uruguay second. Spain third."
+  Another one said, "Zaire first. Spain second. Uruguay third."
+  The third one said, "Uruguay first. Spain second. Zaire third."
+  The aliens returned to their spaceship and flew back to where they came from.
+  Do you know which response was the true ranking in the World Cup? (Poniachek)    Solution
+  """
+ 
+ This model was inspired by the XPress Mosel model created by Martin Chlond.
+ http://www.chlond.demon.co.uk/puzzles/sol3s11.html
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  Team = 3,   % 1 = Zaire, 2 = Uruguay, 3 = Spain
+  Place = 3,  % 1st, 2nd or 3rd 
+  Ttype = 3,  % 1 = truth-teller, 2 = alternator, 3 = liar
+  State = 3,  % statements 1 = x(1,1)+x(2,2)+x(3,3)=3
+              %            2 = x(1,1)+x(3,2)+x(2,3)=3
+              %            3 = x(2,1)+x(3,2)+x(1,3)=3 
+
+  % set of 1..team: T = 1..team;
+  % set of 1..place: P = 1..place;
+  % set of 1..ttype: E = 1..ttype;
+  % set of 1..state: S = 1..state;
+
+  % x(i,j) = 1 if team i in place j , 0 otherwise 
+  X = new_array(Team,Place),
+  X :: 0..1,
+
+  % y(k,l) = 1 if statement k made by type l
+  Y = new_array(State,Ttype),
+  Y :: 0..1,
+
+  % d(k) = number of truths in statement k
+  D = new_list(State),
+  D :: 0..3,
+
+  % each place one team
+  foreach(J in 1..Place) 
+    sum([X[I,J] : I in 1..Team])  #= 1
+  end,
+
+  % each team one place
+  foreach(I in 1..Team) 
+     sum([X[I,J]: J in 1..Place])  #= 1
+  end,
+
+  % each type makes one statement
+  foreach(K in 1..Ttype) 
+    sum([Y[K,L] : L in 1..State])  #= 1
+  end,
+
+  % each statement made by one type
+  foreach(L in 1..State)
+     sum([ Y[K,L] : K in 1..Ttype]) #= 1
+  end,
+
+  % d[i] = number of truths in statement i
+  X[1,1]+X[2,2]+X[3,3] #= D[1],
+  X[1,1]+X[3,2]+X[2,3] #= D[2],
+  X[2,1]+X[3,2]+X[1,3] #= D[3],
+
+  foreach(K in 1..State)
+    % if statement k made by truthteller (i.e. d[k]=3 ] then y[k,1] = 1, else 0
+    D[K] - 3*Y[K,1] #>= 0
+  end,
+  
+  foreach(K in 1..State) 
+    D[K] - 3*Y[K,1] #<= 2
+  end,
+
+  % if statement k made by liar (i.e. d[k]=0 ] then y[k,3] = 1, else 0
+  foreach(K in 1..State) 
+    D[K] + 3*Y[K,3] #<= 3
+  end,
+
+  foreach(K in 1..State) 
+    D[K] + Y[K,3] #>= 1
+  end,
+
+  % assertion 1 and 3 either both true or both false for all statements
+  X[1,1]=X[3,3],
+  X[1,1]=X[2,3],
+  X[2,1]=X[1,3],
+
+  Vars = D ++ X ++ Y,
+  solve(Vars),
+
+  print_matrix("X:",X),
+  print_matrix("Y:",Y),
+  println(d=D),
+
+  nl.
+
+print_matrix(Name,M) =>
+  println(Name),
+  foreach(Row in M)
+    println(Row.to_list())
+  end,
+  nl.

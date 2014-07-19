@@ -1,0 +1,281 @@
+/* 
+
+  Bus driver scheduling problem (prob022 in CSPLib) in Picat.
+
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob022/index.html
+  
+  From 
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob022/spec.html
+  """
+  Specification
+  Bus driver scheduling can be formulated as a set paritioning problem. 
+  We propose 12 set partitioning problems derived from small bus driver 
+  scheduling problems. These consist of a given set of tasks (pieces of 
+  work) to cover and a large set of possible shifts, where each shift 
+  covers a subset of the tasks and has an associated cost. We must select 
+  a subset of possible shifts that covers each piece of work once and 
+  only once: this is called a partition. Further,
+  
+  In the driver scheduling (unlike air crew scheduling) the main aim is 
+  to reduce the number of shifts used in the solution partition and the 
+  total cost of the partition is secondary. To simplify the problem we have 
+  made the cost of each shift the same. This means that the goal is to 
+  minimise the number of shifts.
+  
+  The problems come from four different bus companies: 
+  Reading (r1 to r5a), 
+  CentreWest Ealing area (c1, c1a, c2), 
+  the former London Transport (t1 and t2). 
+
+  The problems have differing regulations and features (e.g. urban and 
+  short distance rural bus schedules can have very different features). Note 
+  that r1 and r1a are the same problem, but have different numbers of 
+  generated shifts. Similarly with the problems: c1, c1a and r5, r5a. 
+  
+  Problems are presented in the same format as the set partitioning 
+  examples in ORLIB. The first line gives the number of rows (pieces of work), 
+  columns (shifts) and the minimum number of columns need for a partition. 
+  Then each line after that corresponds to one column. It starts with 
+  the cost (which is always 1 in our case) then the number of rows it 
+  covers, followed by the rows it covers. 
+  """
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import os.
+
+% import cp.
+% import sat.
+import mip.
+
+main => go.
+
+
+go =>
+  problem(t1,NumWork,MinNumShifts,Shifts),
+  bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts),
+  print_solution(Shifts,X,TotShifts),
+
+  nl.
+
+go2 => 
+
+  % File="bus_scheduling_csplib/t1",
+  % File="bus_scheduling_csplib/t2",
+  File="bus_scheduling_csplib/r2", 
+  % File="bus_scheduling_csplib/c2", 
+  [NumWork, NumShifts,MinNumShifts,Shifts] = read_instance(File),
+  println([numWork=NumWork, numShifts=NumShifts,minNumShifts=MinNumShifts]),
+
+  bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts),
+  print_solution(Shifts,X,TotShifts),
+  nl.
+
+%
+% Test all the instance files in ./bus_scheduling_csplib/ .
+% 
+% Timeout 20s (mip)
+%  - solved=[r1,r1a,r2,r4,t1,t2]
+%  - notSolved=[c1,c1a,c2,r3,r5,r5a]
+% 
+% Timeout 60s (mip):
+%  - solved=[c1,r1,r1a,r2,r4,r5,t1,t2]
+%  - notSolved=[c1a,c2,r3,r5a]
+%
+% Timeout 60s (cp):
+%  - solved=[r2,t1]
+%  - notSolved=[c1,c1a,c2,r1,r1a,r3,r4,r5,r5a,t2]
+%
+% Timeout 10min (mip)
+%  - solved=[[c1,20.32s],[c1a,101.64s],[c2,525.91s],[r1,1.72s],[r1a,7.157s],[r2,5.332s],[r4,7.54s],[r5,52.67s],[r5a,568.07s],[t1,0.0s],[t2,6.288s]]
+%  - notSolved=[r3]
+
+go3 =>
+  Timeout = 600000, 
+  % Timeout = 2000, 
+  D = "bus_scheduling_csplib",
+  Solved = [],
+  NotSolved = [],
+  Ignore = [".","..", "README.txt"],
+  foreach(File in listdir(D).sort())
+    if not member(File,Ignore) then
+       Instance = D ++ "/" ++ File,
+       println(instance=Instance),
+       [NumWork, NumShifts,MinNumShifts,Shifts] = read_instance(Instance),
+       statistics(runtime,_),
+       println([numWork=NumWork, numShifts=NumShifts,minNumShifts=MinNumShifts]),
+       time(time_out(bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts),Timeout,Status)),
+        if Status = time_out then
+         println("timeout"),
+         NotSolved := NotSolved ++ [File],
+         true
+       else
+         print_solution(Shifts,X,TotShifts),
+         statistics(runtime,[_,Time]),
+         TimeF = Time / 1000.0,
+         Solved := Solved ++ [[File,TimeF]],
+         nl
+       end,
+       nl
+    end
+  end,
+  println(solved=Solved),
+  println(notSolved=NotSolved),
+  nl.
+
+%
+% 
+%
+bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts) =>
+  NumShifts = Shifts.length,
+
+  % decision variables
+  X = new_list(NumShifts),
+  X :: 0..1,
+
+  foreach(J in 0..NumWork-1) 
+    sum([X[I] : I in 1..NumShifts, member(J,Shifts[I])]) #= 1
+  end,
+
+  TotShifts #= sum(X),
+  TotShifts #>= MinNumShifts,
+
+  println(totShifts=TotShifts),
+  % solve($[ffc,updown,min(TotShifts),report((printf("TotShifts: %d\n", TotShifts),flush(stdout)))], X). % for cp
+  solve($[min(TotShifts)], X).
+
+
+%
+%
+%
+print_solution(Shifts,X,TotShifts) =>
+  NumShifts = Shifts.length,
+  println(totShifts=TotShifts),
+
+  println(choosen=[I : I in 1..NumShifts, X[I] = 1]),
+  println(shifts=[Shifts[I] : I in 1..NumShifts, X[I] = 1]),
+  nl.  
+
+
+%
+% read an instance from file File.
+% 
+% Format of the file:
+% """
+% The problems are formatted in the same way as the set partitioning problems that 
+% are given in ORlib.  The first line gives the number of rows (pieces of work), 
+% columns (shifts) and the minimum number of columns need for a partition. 
+% Then each line after that corresponds to one column.  
+% It starts with the cost (which is always 1 in our case) then the number of rows 
+% it covers, followed by the rows it covers.
+% """
+%
+read_instance(File) = [NumWork, NumShifts,MinNumShifts,Shifts] =>
+  Lines = read_file_lines(File),
+  [NumWork, NumShifts,MinNumShifts] = split(Lines[1]).map(to_integer),
+  if NumWork > NumShifts then
+    printf("NumWork (%d) > NumShifts (%d), which is weird. Exits.\n", NumWork, NumShifts),
+    halt
+  end,
+  Shifts = [slice(Lines[I].split().map(to_integer),3) :  I in 2..Lines.length].
+
+
+
+%
+% Data for bus driver scheduling (CSPLib problem 22).
+%
+% This is the problem t1 from
+% http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob022/index.htm
+% 
+%
+problem(t1, NumWork,MinNumShifts,Shifts) =>
+
+  NumWork = 24,
+  % NumShifts = 77,
+  MinNumShifts = 7,
+  Shifts = 
+[
+[11,18],
+[11,3,4],
+[11,18,19],
+[11,12,14,15],
+[11,18,19,20],
+[11,12,19,20],
+[1,18],
+[1,3,4],
+[1,18,19],
+[1,2,14,15],
+[1,18,19,20],
+[1,2,19,20],
+[1,2,3,10],
+[7,18],
+[7,3,4],
+[7,18,19],
+[7,14,15],
+[7,18,19,20],
+[7,8,9,10],
+[7,14,15,16],
+[7,8,9,5,6],
+[7,3,4,5,6],
+[12,13,14,10],
+[12,13,15,16],
+[12,13,5,6],
+[12,13,20,21],
+[12,13,14,21],
+[2,3,10],
+[2,3,15,16],
+[2,3,5,6],
+[2,3,20,21],
+[2,3,4,21],
+[8,9,10],
+[8,9,5,6],
+[8,9,20,21],
+[8,9,16,17],
+[13,14,10],
+[13,14,21],
+[13,14,16,17],
+[13,14,15,17],
+[13,14,15,16,22],
+[13,14,21,22],
+[3,4,21],
+[3,4,16,17],
+[3,4,21,22],
+[18,10],
+[18,15,16],
+[18,5,6],
+[18,20,21],
+[18,19,21],
+[18,15,16,17],
+[18,19,16,17],
+[18,19,20,17],
+[18,20,21,22],
+[18,19,21,22],
+[18,19,20,22],
+[14,15,17],
+[14,15,16,22],
+[4,5,6,23],
+[19,20,17],
+[19,20,22],
+[19,20,21,23],
+[19,20,22,23],
+[19,20,21,0],
+[15,16,22],
+[15,16,17,23],
+[15,16,22,23],
+[15,16,17,0],
+[5,6,23],
+[20,21,23],
+[20,21,0],
+[10,22],
+[10,22,23],
+[16,17,23],
+[16,17,0],
+[21,23],
+[21,0]].

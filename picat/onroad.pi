@@ -1,0 +1,114 @@
+/* 
+
+  On the road puzzle in Picat.
+
+  From Martin Chlond Integer Programming Puzzles:
+  http://www.chlond.demon.co.uk/puzzles/puzzles4.html, puzzle nr. 1.
+  Description  : On the road
+  Source       : Poniachik, J. & L, (1998), Hard-to-solve Brainteasers, Sterling
+  """
+  On my way to Philadelphia, I pass five mileposts that indicate their respective 
+  distances to Philadelphia.
+  The mileposts are at fixed intervals. What's curious is that each milepost has a 
+  two-digit number, and together the five mileposts use all the digits from 0 to 9 
+  once. What is the smallest distance that the closest milepost can be from 
+  Philadelphia? Mileposts don't begin with 0.
+
+  (Poniachek)
+
+  """
+
+  This model was inspired by the XPress Mosel model created by Martin Chlond.
+  http://www.chlond.demon.co.uk/puzzles/sol4s1.html
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go =>
+
+  N = 10,  
+
+  % decision variables
+  %  x(i,j) = 1 if digit (i-1) is in position j
+  X = new_array(N,N),
+  X :: 0..1,
+
+  D #>= 0,
+
+  % the number (not a proper integer programming constraint)
+  Y = new_list(N),
+  Y :: 0..9,
+
+  Closest #= sum([10*(I-1)*X[I,1] : I in 1..N]) + sum([(I-1)*X[I,2] : I in 1..N]),
+
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..N]) #= 1,
+    sum([X[J,I] : J in 1..N]) #= 1
+  end,
+  
+  sum([X[I,1] : I in 1..2..9]) #= 0,
+
+  foreach(J in 1..7)
+      sum([10*(I-1)*X[I,J+0] + (I-1)*X[I,J+1] : I in 1..N]) + D #=
+      sum([10*(I-1)*X[I,J+2] + (I-1)*X[I,J+3] : I in 1..N])
+  end,
+
+  foreach(I in 1..N)
+    J :: 1..N,    
+    nonground_matrix_element(X,N,N,I,J,1),
+    Y[I] #= J - 1
+  end,
+
+  Vars = X.vars() ++ Y ++ [D],
+  solve($[ffc,split,min(Closest)], Vars),
+
+  println(closest=Closest),
+  foreach(Row in X) println(Row.to_list()) end,
+  println(y=Y),
+  println(d=D),
+
+  nl.
+
+
+%
+% CP version 
+%
+go2 =>
+  N = 10,
+
+  X = new_list(N),
+  X :: 0..9,
+
+  D #> 0, % constant distant between mileposts
+
+  all_different(X),
+
+  Closest #= 10*X[1]+X[2],
+
+  % identify the mileposts
+  foreach(I in 1..2..7)
+    10*X[I+0]+X[I+1] + D #= 10*X[I+2]+X[I+3] 
+  end,
+
+  % mileposts don't start with 0
+  foreach(I in 1..2..10)
+    X[I] #> 0
+  end,
+
+  solve($[ff,min(Closest)], X ++ [D]),
+
+  println(closest=Closest),
+  println(x=X),
+  println(d=D),
+
+  nl.

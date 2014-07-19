@@ -1,0 +1,1406 @@
+/* 
+
+  Nonogram in Picat.
+
+  This is a translation of my MiniZinc model
+  http://www.hakank.org/minizinc/nonogram_create_automaton2.mzn
+
+  Also, see these older blog posts about some other Nonogram solvers:
+
+  * "At last, a Nonogram solver using regular constraint in MiniZinc"
+    http://www.hakank.org/constraint_programming_blog/2009/09/at_last_a_nonogram_solver_usin.html
+
+  * "At last 2: A Nonogram solver using regular written in 'all MiniZinc'"
+    http://www.hakank.org/constraint_programming_blog/2009/09/at_last_2_a_nonogram_solver_us.html
+
+  * "Comparison of some Nonogram solvers: Google CP Solver vs Gecode and two MiniZinc solvers"
+    http://www.hakank.org/constraint_programming_blog/2010/11/comparion_of_some_nonogram_solvers_google_cp_solver_vs_gecode_and_two_1.html
+
+  * "Google CP Solver: A much faster Nonogram solver using DefaultSearch"
+     http://www.hakank.org/constraint_programming_blog/2010/11/google_cp_solver_a_much_faster_nonogram_solver_using_defaultsearch.html
+
+
+  Note: Some of the experiments below are for testing a weirdness when 
+        testing many problems instances.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+% import sat.
+% import mip.
+
+main => go6.
+
+go ?=>
+  nonogram(p200,X), 
+
+  % nonogram(p199,X),
+  % nonogram(bucks,X), % Note: Has a zero clue!
+  % nonogram(dragonfly,X),
+  % nonogram(bear,X),
+  % nonogram(hen,X),
+  % nonogram(flag,X), % large number of solutions 
+  % nonogram(merka,X),
+  
+  % nonogram(tragic,X), % very hard problem
+  % lion is a very hard problem, 
+  % see http://www.hakank.org/constraint_programming_blog/2010/11/comparion_of_some_nonogram_solvers_google_cp_solver_vs_gecode_and_two_1.html
+  % nonogram(lion,X),  
+
+  print_nonogram(X),
+  % fail,
+
+  nl.
+
+go => true.
+
+
+go2 ?=>
+  Problems = [p200,p199,dragonfly,bear, hen],
+  % nonogram(p200,X), 
+  % nonogram(dragonfly,X),
+  % nonogram(lion,X),
+  % nonogram(bear,X),
+  % nonogram(hen,X),
+
+  foreach(Problem in Problems) 
+     (nonogram(Problem, X),
+     print_nonogram(X),
+     fail) ; 
+     true,
+     nl
+  end,
+  
+  nl.
+
+go2 => true.
+
+
+% Reading one Nonogram instance file:
+go3 =>
+  % cl(nonogram_pbn_merka),
+  cl(nonogram_p200),
+  problem_name(ProblemName),
+  instance(ProblemName,RowRules,ColRules),
+  println(problemName=ProblemName),
+  nonogram(RowRules,ColRules,X),
+  print_nonogram(X),
+  nl.
+
+go3b =>
+  Status=test_instance_file(nonogram_p200,10000),
+  println(Status),
+  fail,
+  nl.
+
+go3c =>
+  test_instance_file2(nonogram_p200,10000),
+  fail,
+  nl.
+
+
+%
+% These failed when using the 10s timeout:
+% failed=[nonogram_castle,nonogram_p200,nonogram_pbn_hot,nonogram_pbn_karate,nonogram_pbn_light,nonogram_pbn_lion,nonogram_pbn_marley,nonogram_pbn_nature,nonogram_pbn_petro,nonogram_pbn_sierp,nonogram_pbn_signed,nonogram_pbn_thing]
+%
+%
+% It's strange that nonogram_p200 failed since when testing it in go3/0 it's about 2s. 
+% Perhaps I mess things up using this construct...
+%
+go4 =>
+  Timeout = 10000, % 10s timeout
+  % cl(nonogram_all_files),
+  % nonogram_all(All),
+
+  % Skip = [nonogram_nonunique,nonogram_pbn_hot,nonogram_pbn_karate,nonogram_pbn_light,nonogram_pbn_lion,nonogram_pbn_marley,nonogram_pbn_nature,nonogram_pbn_petro,nonogram_pbn_sierp,nonogram_pbn_signed,nonogram_pbn_thing],
+
+  % All = [nonogram_bear,nonogram_car,nonogram_castle,nonogram_crocodile,nonogram_difficult,nonogram_dom9,nonogram_dragonfly,nonogram_gondola,nonogram_griddler,nonogram_hard,nonogram_hen,nonogram_house,nonogram_lambda,nonogram_logigraphe,nonogram_merka,nonogram_n2,nonogram_n3,nonogram_n4,nonogram_n5,nonogram_n6,nonogram_nonunique,nonogram_optima,nonogram_p199,nonogram_p200,nonogram_pbn_9_dom],
+
+  % All = [nonogram_bear,nonogram_car,nonogram_castle,nonogram_crocodile,nonogram_difficult,nonogram_dom9,nonogram_dragonfly,nonogram_gondola,nonogram_griddler,nonogram_hard,nonogram_hen,nonogram_house,nonogram_lambda,nonogram_logigraphe,nonogram_merka,nonogram_n2,nonogram_n3,nonogram_n4,nonogram_n5,nonogram_n6,nonogram_nonunique,nonogram_optima,nonogram_p199,nonogram_pbn_9_dom],
+
+  % All = [nonogram_nonunique,nonogram_p199,nonogram_p200],
+  All = [nonogram_p199,nonogram_nonunique,nonogram_p200],
+
+  OK = [],
+  Failed = [],
+  Tested = [],
+  % foreach(File in All, not(member(File,Skip))) 
+  foreach(File in All) 
+    time2(Status = test_instance_file(File,Timeout)),
+    % test_instance_file2(File,Timeout),
+    if Status = success then
+        OK := OK ++ [File]
+    else 
+        Failed := Failed ++ [File]
+    end,
+    Tested := Tested ++ [File],
+    println(tested=Tested)
+  end,
+  println(ok=OK),
+  println(failed=Failed),
+  nl.
+
+ 
+%
+% Check the harder instances with a longer timeout.
+%
+go5 =>
+  Timeout = 60000, % 1 min
+  println(timeout=Timeout),
+  % Failed10s=[nonogram_castle,nonogram_p200,nonogram_pbn_hot,nonogram_pbn_karate,nonogram_pbn_light,nonogram_pbn_lion,nonogram_pbn_marley,nonogram_pbn_nature,nonogram_pbn_petro,nonogram_pbn_sierp,nonogram_pbn_signed,nonogram_pbn_thing],
+  Failed10s=[nonogram_p200,nonogram_castle,nonogram_pbn_karate], % Testing just a few...
+  OK = [],
+  Failed = [],
+  foreach(File in Failed10s) 
+    % garbage_collect,
+    Status = test_instance_file(File,Timeout),
+    if Status = success then
+       OK := OK ++ [File]
+    else 
+       Failed := Failed ++ [File]
+    end,
+    println(statistics_all()) 
+  end,
+  println(ok=OK),
+  println(failed=Failed),
+  nl.
+
+
+go6 =>
+  % Timeout = 10000, % 10s timeout
+  Timeout = 3000, % 10s timeout
+  cl(nonogram_all_files),
+  nonogram_all(All),
+  test_files(All,Timeout,OK,Failed),
+  println(ok=OK),
+  println(failed=Failed),
+  println(numFailed=Failed.length),
+  nl.
+
+% using foreach
+go6b =>
+  % Timeout = 10000, % 10s timeout
+  Timeout = 3000, % 10s timeout
+  cl(nonogram_all_files),
+  nonogram_all(All),
+  println(all=All),
+  OK = [],
+  Failed = [],
+  Loop = true,
+  foreach(File in All.remove_dups(), Loop = true)
+     println(file=File),
+     time2(Status = test_instance_file(File,Timeout)),
+     if Status = success then
+        OK := OK ++ [File]
+     else
+        Failed := Failed ++ [File]
+     end
+     % , if File = nonogram_p200 then Loop := false end
+  end,
+  println(ok=OK),
+  println(failed=Failed),
+  println(numFailed=Failed.length),
+  nl.
+
+
+% a different approach:
+% read all instances first.
+go7 =>
+  cl(nonogram_all_files),
+  nonogram_all(All),
+  Instances = [],
+  foreach(File in All)
+    cl(File),
+    instance(File,RowRules,ColRules),
+    Instances := Instances ++ [[File,RowRules,ColRules]]
+  end,
+  println(Instances),
+  Timeout = 10000,
+  OK = [],
+  Failure = [],
+  foreach([File,RowRules,ColRules] in Instances)
+    println(File),
+    % time_out(nonogram(RowRules,ColRules,X),Timeout,Status),
+    nonogram(RowRules,ColRules,X),
+    if Status = success then
+       print_nonogram(X),
+       OK := OK ++ [File]
+    else 
+       Failure := Failure ++ [File]
+    end,  
+    nl
+  end,
+  println(ok=OK),
+  println(failure=Failure),
+  nl.
+
+%
+% Neng-Fa's failure driven loop ("should be much more effective")
+%
+go8 =>
+  Timeout = 3000, 
+  cl(nonogram_all_files),
+  nonogram_all(All),
+
+  M = get_global_map(),
+  M.put(ok,[]),
+  M.put(failed,[]),
+  (  member(File,All), 
+     Status = test_instance_file(File,Timeout),
+     if Status = success then
+        M.put(ok,[File|M.get(ok)])
+     else 
+        M.put(failed,[File|M.get(ok)])
+     end,
+     fail 
+  ;
+     println(ok=M.get(ok)),
+     println(failed=M.get(failed))
+   ).
+
+% for go6/0
+test_files(Files,Timeout,OK, Failed) =>
+  test_files(Files,Timeout,[],OK,[],Failed).
+  
+test_files([],_,OK0,OK,Failed0,Failed) =>
+   OK=OK0.reverse(), Failed=Failed0.reverse().
+test_files([File|Files],Timeout,OK0,OK,Failed0,Failed) =>
+   time2(Status = test_instance_file(File,Timeout)),
+   (
+   Status = success ->
+      OK1 = [File|OK0],
+      test_files(Files,Timeout,OK1,OK,Failed0,Failed)
+   ;
+      Failed1 = [File|Failed0],
+      test_files(Files,Timeout,OK0,OK,Failed1,Failed)
+   ).
+
+    
+
+%
+% Testing an instance file
+%
+test_instance_file(File,Timeout) = Status =>
+    println(testing=File),
+    cl(File),
+    % problem_name(File),
+    instance(File,RowRules,ColRules),
+    % println(rowRules=RowRules),
+    % println(colRules=ColRules),
+    println(problemName=File),
+    % println(timeout=Timeout),
+    time_out(nonogram(RowRules,ColRules,X),Timeout,Status),
+    % nonogram(RowRules,ColRules,X),
+    % nonogram(RowRules,ColRules,Timeout,X,Status),
+    if Status = success then
+       println(ok),
+       print_nonogram(X),
+       nl
+    else 
+       println(timeout)
+    end,
+    % flush(stdout),
+    nl.
+
+
+test_instance_file2(File,Timeout) =>
+    println(testing=File),
+    cl(File),
+    % problem_name(File),
+    instance(File,RowRules,ColRules),
+    println(problemName=File),
+    time_out(nonogram(RowRules,ColRules,X),Timeout,Status),
+    % nonogram(RowRules,ColRules,X),
+    % nonogram(RowRules,ColRules,Timeout,X,Status),
+    if Status = success then
+       println(ok),
+       print_nonogram(X),
+       nl
+    else 
+       println(timeout)
+    end,
+    nl.
+
+  
+%
+% Print a solution of Nonogram
+%
+print_nonogram(X) =>
+  foreach(I in 1..X.length)
+    foreach(J in 1..X[1].length)
+      printf("%w", cond(X[I,J]=1," ","#"))
+    end,
+    nl
+  end,
+  nl.
+
+
+% 
+% nonogram/2:
+%
+% Problem instance from this model.
+%
+nonogram(Problem, X) =>
+   println(problem=Problem),
+   problem(Problem,RowRules,ColRules),
+   nonogram(RowRules,ColRules,X).
+
+
+% 
+% nonogram/3: Used by nonogram/2.
+%
+nonogram(RowRules,ColRules,X) =>
+
+  garbage_collect(1000000), % seems to slice some millis or two
+  % garbage_collect,
+
+  Rows=RowRules.length,
+  % println(rows=Rows),
+  Cols=ColRules.length,
+  % println(cols=Cols),
+  X = new_array(Rows,Cols),
+  X :: 1..2, % to be translated in output to 0..1
+  
+  foreach(I in 1..Rows)
+    make_automaton2([X[I,J] : J in 1..Cols], RowRules[I])
+  end,
+
+  foreach(J in 1..Cols) 
+    make_automaton2([X[I,J] : I in 1..Rows], ColRules[J])
+  end,
+
+  % experimental labeling,
+  % See http://www.hakank.org/comet/nonogram_automaton.co
+  % (originally suggested by Pascal Van Hentenryck (private communation))
+  % Vars2 = [],
+  % if Rows*RowRules[1].length < Cols*ColRules[1].length then
+  %    Vars2 := [X[I,J] : I in 1..Rows, J in 1..Cols]
+  % else
+  %    Vars2 := [X[I,J] : J in 1..Cols, I in 1..Rows]
+  % end,
+
+  println(solve),
+
+  Vars = X.to_list(),
+  % Vars = Vars2,
+  % Vars = X.array_matrix_to_list_matrix().flatten().shuffle(),
+  % println(vars=Vars),
+  % solve($[ffc,split],Vars). 
+  % solve($[split],Vars). 
+  % solve($[constr,split],Vars).       % v0.3 solve all (3s timeout, my regular): 1:02.51min
+  % solve($[constr,split],Vars).         % v0.4 solve all (3s timeout, my regular): 56.04s
+  % once(solve($[constr,split],Vars)). % v0.4 solve all (3s timeout, my regular): 59.255s
+  % solve($[constr,split],Vars).       % v0.4 solve all (3s timeout,built-in regular): 58.964s
+  % once(solve($[constr,split],Vars)). % v0.4 solve all (3s timeout, built-in regular): 59.447s (p200 fails)
+  solve($[constr,split],Vars). % v0.4 solve all (3s timeout, built-in regular): 
+
+
+
+%
+% Shuffles the list List.
+% 
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  foreach(I in 1..Len) 
+    R2 = 1+(random2() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
+
+%
+% Swap position I <=> J in list L
+%
+swap(L,I,J) = L2, list(L) =>
+  L2 = L,
+  T = L2[I],
+  L2[I] := L2[J],
+  L2[J] := T.
+
+
+swap2(L,I,J) = L2, list(L) =>
+  L2 = copy_term(L),
+  L2[I] := L[J],
+  L2[J] := L[I].
+
+
+
+%
+% This is a translation the conversion to states in my MiniZinc 
+% model http://www.hakank.org/minizinc/nonogram_create_automaton2.mzn
+%
+% It doesn't assume that all patterns are of the same length (as MiniZinc do)
+% but using the LeadingZeros supports that as well.
+%
+% A somewhat neater version is shown below (make_automaton2/2).
+%
+make_automaton(X,Pattern) =>
+   N = length(Pattern),
+   % fix for "zero clues"
+   Len = max(length([Pattern[I] : I in 1..N, Pattern[I] > 0]) + sum(Pattern),1),
+   LeadingZeros = sum([1 : I in 1..N, Pattern[I] = 0]),
+   ZeroPositions = [sum([Pattern[J]+1 : J in 1..I]) -LeadingZeros : I in 1..N, Pattern[I] > 0],
+   States = [],
+   if (length([Pattern[I] : I in 1..N, Pattern[I] > 0]) + sum(Pattern)) = 0 then 
+       States := [1,1]  % fix for "zero clues"
+   else 
+     States := [1, 2],
+     % Yes, it's a mess...
+     foreach(I in 3..2*(Len-1))
+       if member(I div 2, ZeroPositions) then
+           if I mod 2 = 0 then
+            States := States ++ [0]
+           else
+            States := States ++ [(I div 2) + 1]
+           end
+       elseif member((I-1) div 2, ZeroPositions) then
+           if I mod 2 = 0 then
+            States := States ++ [(I div 2)+1]
+           else
+            States := States ++ [(I div 2)+2]
+           end
+       else
+         if not(member((((I-1) div 2) - 1),ZeroPositions)) then
+            if I mod 2 = 0 then
+              States := States ++ [(I div 2) + 1]
+            else 
+              if member((I div 2) + 1,ZeroPositions) then
+                 States := States ++ [(I div 2) + 2]
+              else 
+                 States := States ++ [0]
+              end
+            end
+         else
+             if I mod 2 = 0 then
+               States := States ++ [(I div 2) + 1]
+             else 
+               if not(member((I div 2) + 1, ZeroPositions)) then
+                  States := States ++ [0]
+               else 
+                  States := States ++ [(I div 2) + 2 ]
+               end
+            end
+         end
+       end
+     end,
+     States := States ++ [Len,0]
+   end,
+   States2 = [], % convert to 2D matrix
+   foreach(I in 1..States.length div 2)
+     States2 := States2 ++ [[States[I*2-1],States[I*2]]]
+   end,
+   regular(X,Len,2,States2.list_matrix_to_array_matrix(),1,[Len]).
+
+
+%
+% Another approach of encoding of the transition states.
+% It seems to be faster sometimes than make_automaton/2.
+%
+make_automaton2(X,Pattern) =>
+  N = Pattern.length,
+
+  if N = 0; sum(Pattern) = 0 then
+    % zero clues
+    Len = 1,
+    States = new_array(1,2),
+    States[1,1] := 1,
+    States[1,2] := 1
+  else 
+    Len = max(length([Pattern[I] : I in 1..N, Pattern[I] > 0]) + sum(Pattern),1),
+    Tmp = [0],
+    % NumStates = N+sum(Pattern),
+    C = 0,
+    foreach(P in Pattern) 
+       foreach(I in 1..P)
+         Tmp := Tmp ++ [1],
+         C:= C+1
+       end,
+       if C < Len - 2 then
+         Tmp := Tmp ++ [0]
+       end
+    end, 
+
+    States = new_array(Len,2),
+    States[Len,1] := Len, % final state
+    States[Len,2] := 0,
+    foreach(I in 1..Len)
+      if Tmp[I] == 0 then
+        States[I,1] := I,
+        States[I,2] := I+1
+      else 
+        if I < Len then
+          if Tmp[I+1] = 1 then
+            States[I,1] := 0,
+            States[I,2] := I+1
+          else 
+            States[I,1] := I+1,
+            States[I,2] := 0
+          end
+        end
+      end    
+    end
+  end,
+
+  % foreach(State in States)
+  %   println(state=State)
+  % end,
+  regular(X,Len,2,States,1,[Len]).
+
+
+%
+% Note: Picat v0.4 includes a built-in regular/6.
+% This variant is kept for testing.
+%
+/*
+  This is a translation of MiniZinc's regular constraint (defined in
+  lib/zinc/globals.mzn), via the Comet code refered above.
+  All comments are from the MiniZinc code.
+  """
+  The sequence of values in array 'x' (which must all be in the range 1..S)
+  is accepted by the DFA of 'Q' states with input 1..S and transition
+  function 'd' (which maps (1..Q, 1..S) -> 0..Q)) and initial state 'q0'
+  (which must be in 1..Q) and accepting states 'F' (which all must be in
+  1..Q).  We reserve state 0 to be an always failing state.
+  """
+  
+  x : IntVar array
+  Q : number of states
+  S : input_max
+  d : transition matrix
+  q0: initial state
+  F : accepting states
+
+  MiniZinc parameters:
+  predicate regular(array[int] of var int: x, int: Q, int: S,
+                  array[int,int] of int: d, int: q0, set of int: F) =
+    
+
+*/
+my_regular(X, Q, S, D, Q0, F) =>
+    % """
+    % If x has index set m..n-1, then a[m] holds the initial state
+    % (q0), and a[i+1] holds the state we're in after  processing
+    % x[i].  If a[n] is in F, then we succeed (ie. accept the string).
+    % """
+
+    M = 1,
+    N2 = X.length+1,
+    A = new_array(N2),
+    A :: 1..Q,
+
+    X :: 1..S, % """Do this in case it's a var."""
+
+    A[M] #= Q0, % Set a[0], initial state
+    foreach(I in 1..X.length)  
+       % X[I] :: 1..S,      % Do this in case it's a var.
+       % Here is MiniZinc's infamous matrix element
+       % which I try to translate here:
+       %     a[i+1] = d[a[i], x[i]]
+       matrix_element(D,A[I], X[I], A[I+1])
+    end,
+    element(_,F,A[N2]).
+    % member(A[N2], F). % """Check the final state is in F."""
+    % A[N2] :: F. % """Check the final state is in F."""
+
+
+%%
+%% matrix_element/4
+%% by Neng-Fa Zhou and Hakan Kjellerstrand
+%%
+matrix_element(M,I,J,Val) => 
+   matrix_element_cp(M,I,J,Val).
+
+matrix_element_cp(M,I,J,Val),list(M) =>
+    list_matrix_to_array_matrix(M) = M1,
+    matrix_element_aux(M1,I,J,Val).
+matrix_element_cp(M,I,J,Val),array(M) =>
+    matrix_element_aux(M,I,J,Val).
+
+matrix_element_aux(M,I,J,Val) =>
+    NRows = M.length,
+    NCols = M[1].length,
+    if not valid_matrix(M,NRows,NCols) then
+       handle_exception($invalid_matrix(M),matrix_element)
+    end,
+    I :: 1..NRows,
+    J :: 1..NCols,
+    if ground(M) then
+       Table = [(R,C,M[R,C]) : R in 1..NRows, C in 1..NCols],
+       table_in((I,J,Val),Table)
+    else
+       wait_until_ij(M,I,J,Val)
+    end.
+
+valid_matrix(M,NRows,NCols) =>
+   foreach(R in 2..NRows) 
+      M[R].length==NCols 
+   end.
+
+% wait until I and J becomes non-var
+wait_until_ij(_M,I,J,_Val),var(I),{ins(I),ins(J)} => true.
+wait_until_ij(_M,_I,J,_Val),var(J),{ins(J)} => true.
+wait_until_ij(M,I,J,Val) => Val=M[I,J].
+
+
+%
+% Nonogram problem from Gecode: P200
+% http://www.gecode.org/gecode-doc-latest/classNonogram.html
+%
+problem(p200,RowRules,ColRules) =>
+  % Rows = 25,
+  % RowRuleLen = 7,
+  RowRules =
+  [
+  [2,2,3],
+  [4,1,1,1,4],
+  [4,1,2,1,1],
+  [4,1,1,1,1,1,1],
+  [2,1,1,2,3,5],
+  [1,1,1,1,2,1],
+  [3,1,5,1,2],
+  [3,2,2,1,2,2],
+  [2,1,4,1,1,1,1],
+  [2,2,1,2,1,2],
+  [1,1,1,3,2,3],
+  [1,1,2,7,3],
+  [1,2,2,1,5],
+  [3,2,2,1,2],
+  [3,2,1,2],
+  [5,1,2],
+  [2,2,1,2],
+  [4,2,1,2],
+  [6,2,3,2],
+  [7,4,3,2],
+  [7,4,4],
+  [7,1,4],
+  [6,1,4],
+  [4,2,2],
+  [2,1]],
+
+ % Cols = 25,
+ % ColRuleLen = 6.
+ ColRules = 
+  [
+   [1,1,2,2],
+   [5,5,7],
+   [5,2,2,9],
+   [3,2,3,9],
+   [1,1,3,2,7],
+   [3,1,5],
+   [7,1,1,1,3],
+   [1,2,1,1,2,1],
+   [4,2,4],
+   [1,2,2,2],
+   [4,6,2],
+   [1,2,2,1],
+   [3,3,2,1],
+   [4,1,15],
+   [1,1,1,3,1,1],
+   [2,1,1,2,2,3],
+   [1,4,4,1],
+   [1,4,3,2],
+   [1,1,2,2],
+   [7,2,3,1,1],
+   [2,1,1,1,5],
+   [1,2,5],
+   [1,1,1,3],
+   [4,2,1],
+   [3]].
+
+
+%% Nonogram problem from Gecode: Bear
+%% http://www.gecode.org/gecode-doc-latest/classNonogram.html
+%%
+problem(bear,RowRules,ColRules) => 
+% rows = 8;
+% row_rule_len = 2;
+RowRules = 
+ [
+  [1],
+  [2],
+  [4,4],
+  [12],
+  [8],
+  [9],
+  [3,4],
+  [2,2]],
+
+% cols = 13;
+% col_rule_len = 2;
+ColRules = 
+ [
+  [2],
+  [2,1],
+  [3,2],
+  [6],
+  [1,4],
+  [3],
+  [4],
+  [4],
+  [4],
+  [5],
+  [4],
+  [1,3],
+  [2]].
+
+
+% hen
+problem(hen,RowRules,ColRules) =>
+% rows = 9;
+% row_rule_len = 2;
+RowRules  =
+    [[3], 
+     [2,1], 
+     [3,2], 
+     [2,2], 
+     [6], 
+     [1,5], 
+     [6], 
+     [1], 
+     [2]],
+% cols = 8;
+% col_rule_len = 2;
+ColRules = 
+    [[1,2],
+     [3,1], 
+     [1,5], 
+     [7,1], 
+     [5], 
+     [3], 
+     [4], 
+     [3]].
+
+
+
+%% Nonogram problem from Gecode: Dragonfly
+%% http://www.gecode.org/gecode-doc-latest/classNonogram.html
+problem(dragonfly, RowRules,ColRules) => 
+% rows = 20;
+% row_rule_len = 5;
+RowRules = 
+ [
+  [7,1],
+  [1,1,2],
+  [2,1,2],
+  [1,2,2],
+  [4,2,3],
+  [3,1,4],
+  [3,1,3],
+  [2,1,4],
+  [2,9],
+  [2,1,5],
+  [2,7],
+  [14],
+  [8,2],
+  [6,2,2],
+  [2,8,1,3],
+  [1,5,5,2],
+  [1,3,2,4,1],
+  [3,1,2,4,1],
+  [1,1,3,1,3],
+  [2,1,1,2]
+  ],
+% cols = 20;
+% col_rule_len = 5;
+ColRules = 
+[
+ [1,1,1,2],
+ [3,1,2,1,1],
+ [1,4,2,1,1],
+ [1,3,2,4],
+ [1,4,6,1],
+ [1,11,1],
+ [5,1,6,2],
+ [14],
+ [7,2],
+ [7,2],
+ [6,1,1],
+ [9,2],
+ [3,1,1,1],
+ [3,1,3],
+ [2,1,3],
+ [2,1,5],
+ [3,2,2],
+ [3,3,2],
+ [2,3,2],
+ [2,6]
+ ].
+
+
+% lion
+% webpbn.com Puzzle #2712: The Lion and the Stone
+% Copyright 2008 by Marto Benwa
+problem(lion,RowRules,ColRules) =>
+% rows = 47;
+% row_rule_len = 8;
+RowRules = 
+  [ [10],
+    [4, 5],
+    [3, 3],
+    [2, 11, 2],
+    [3, 17, 2],
+    [2, 19, 1],
+    [1, 13, 7, 2],
+    [2, 10, 2, 9, 2],
+    [2, 9, 2, 1, 9, 2],
+    [2, 9, 1, 1, 8, 1],
+    [1, 8, 2, 10, 1],
+    [2, 7, 2, 9, 2],
+    [2, 6, 2, 8, 2],
+    [1, 8, 3, 1, 8, 1],
+    [1, 9, 3, 2, 9, 1],
+    [1, 14, 1, 8, 1],
+    [1, 14, 1, 2, 8, 1],
+    [1, 13, 2, 1, 8, 1],
+    [2, 13, 2, 2, 8, 1],
+    [1, 15, 2, 8, 2],
+    [1, 15, 1, 3, 7, 1],
+    [1, 14, 1, 2, 7, 1],
+    [1, 4, 2, 1, 1, 2, 6, 1],
+    [1, 3, 1, 1, 2, 2, 4, 1],
+    [1, 2, 1, 2, 3, 1, 7, 1],
+    [1, 2, 1, 1, 3, 4, 6, 1],
+    [1, 11, 1, 4, 5, 6, 2],
+    [1, 4, 4, 1, 3, 3, 2],
+    [2, 2, 3, 1],
+    [1, 2, 1],
+    [1, 1, 1],
+    [1, 2, 1],
+    [1, 2, 1],
+    [1, 3, 2],
+    [2, 2, 1, 1],
+    [2, 2, 3, 4, 1],
+    [1, 2, 11, 1],
+    [1, 2, 11, 1],
+    [2, 1, 11, 1],
+    [2, 5, 12, 1],
+    [2, 6, 11, 1],
+    [2, 1, 10, 2],
+    [2, 8, 2],
+    [3, 6, 2],
+    [3, 4],
+    [14],
+    [8]],
+% cols = 47;
+% col_rule_len = 8;
+ColRules = 
+  [ [11],
+    [4, 4],
+    [3, 3],
+    [2, 12, 2],
+    [3, 14, 2],
+    [2, 11, 2, 2],
+    [2, 12, 3, 2],
+    [2, 12, 1, 2],
+    [1, 13, 1, 1],
+    [2, 14, 1, 1],
+    [1, 15, 1, 2],
+    [2, 15, 1, 2],
+    [1, 6, 9, 2, 1],
+    [1, 5, 8, 2, 1, 1],
+    [1, 6, 8, 1, 2, 1],
+    [2, 6, 12, 2, 2, 1],
+    [1, 6, 4, 3, 1, 2, 2, 2],
+    [1, 5, 4, 2, 1, 4, 2, 1],
+    [2, 5, 1, 4, 3, 2, 1],
+    [1, 5, 1, 2, 4, 8, 2],
+    [1, 4, 1, 4, 2, 5, 2],
+    [1, 4, 1, 2, 1, 2],
+    [1, 4, 1, 2, 1, 2],
+    [1, 4, 1, 1, 1, 3, 2],
+    [1, 4, 1, 1, 3, 1, 5, 2],
+    [1, 3, 1, 3, 2, 5, 2],
+    [1, 3, 1, 1, 1, 2, 6, 2],
+    [2, 3, 1, 3, 10, 1],
+    [1, 5, 2, 2, 8, 1],
+    [1, 5, 3, 2, 8, 2],
+    [1, 5, 1, 3, 1, 7, 1],
+    [2, 8, 3, 1, 6, 1],
+    [1, 7, 2, 6, 1],
+    [1, 7, 1, 1, 6, 1],
+    [1, 10, 1, 6, 1],
+    [2, 11, 5, 1],
+    [1, 13, 4, 2],
+    [1, 14, 1, 2, 1],
+    [1, 14, 3, 1],
+    [2, 13, 3, 1],
+    [2, 15, 1],
+    [2, 15, 1],
+    [2, 12, 2],
+    [2, 10, 2],
+    [3, 3],
+    [5, 5],
+    [9]].
+
+
+% webpbn.com Puzzle #27: Party at the Right [Political]
+% Copyright 2004 by Jan Wolter
+%
+% Note: This instance has a 0 row (see below) but this
+%       model handles that as well.
+problem(bucks,RowRules,ColRules) =>
+% rows = 23;
+% row_rule_len = 8;
+RowRules = 
+  [ [11],
+    [17],
+    [3, 5, 5, 3],
+    [2, 2, 2, 1],
+    [2, 1, 3, 1, 3, 1, 4],
+    [3, 3, 3, 3],
+    [5, 1, 3, 1, 3, 1, 3],
+    [3, 2, 2, 4],
+    [5, 5, 5, 5],
+    [23],
+    [],  % <-- 0 row
+    [23],
+    [1, 1],
+    [1, 1],
+    [1, 2, 1],
+    [1, 1, 1, 1],
+    [1, 1, 1, 1],
+    [1, 10, 1, 2, 1],
+    [1, 1, 1, 1, 1, 1, 3],
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 2, 2],
+    [5, 5, 3]],
+% cols = 27;
+% col_rule_len = 6;
+ColRules = 
+  [ [4, 12],
+    [6, 1, 1],
+    [8, 1, 1],
+    [3, 2, 2, 1, 1],
+    [2, 1, 1, 2, 1, 6],
+    [1, 1, 1, 1],
+    [3, 1, 1, 2, 1, 1],
+    [3, 2, 3, 1, 1],
+    [10, 1, 1],
+    [4, 2, 2, 1, 1],
+    [3, 1, 1, 2, 1, 1],
+    [2, 1, 1, 1],
+    [3, 1, 1, 2, 1, 1],
+    [3, 2, 3, 1, 6],
+    [10, 1, 1],
+    [4, 2, 2, 1, 1],
+    [3, 1, 1, 2, 1, 1],
+    [1, 1, 1, 9],
+    [2, 1, 1, 2, 1, 1],
+    [2, 2, 3, 1, 3],
+    [8, 1, 5],
+    [6, 1, 1],
+    [4, 9, 1],
+    [1, 1],
+    [2, 1],
+    [1, 1],
+    [4]].
+
+
+% Converted from nonogram_p199.dzn
+%% Nonogram problem: P199, difficulty 8
+%% From http://87.230.22.228/examples/nono_regular.ecl.txt
+problem(p199,RowRules,ColRules) => 
+RowRules = 
+[[1,1,4],
+[1,6],
+[1,1,1,1,2,3],
+[1,1,2,3],
+[3,1,2,3],
+[4,5,2,2],
+[7,3,2],
+[3,5,1,2],
+[2,2,4,1],
+[2,2,3,4],
+[2,5,2],
+[2,1,5,1],
+[2,2,3,1],
+[6,2,2],
+[1,7],
+[2,2,2],
+[1,4],
+[3,1,1],
+[1,1],
+[1,1]
+],
+ColRules = 
+[[6,1],
+[8,3],
+[3,2,1],
+[1,1,2,2,1],
+[1,2,2,1,1],
+[1,1,1,1],
+[2,3],
+[4,1,2,2],
+[5,2,1],
+[8,1,1],
+[7,2],
+[3,5,2],
+[2,5],
+[2,1,4],
+[2,2,2,2],
+[2,2,1,1,1],
+[3,1,1,1,1],
+[5,4,2,1],
+[7,4,1,1],
+[4]
+].
+
+%
+% Converted from nonogram_pbn_tragic.dzn
+% webpbn.com Puzzle #1694: Tragic Love Story
+% Copyright 2007 by Nancy Snyder
+%
+problem(tragic,RowRules,ColRules) => 
+RowRules = 
+[[25,3,5],
+[25,4,5],
+[5,23,2,3],
+[8,28,1],
+[3,4,27,1],
+[8,3,28],
+[3,3,16,13],
+[2,4,1,1,1,12],
+[3,3,5,2,2,11],
+[3,1,2,2,3,3,10],
+[2,1,6,3,9],
+[2,1,1,1,1,3,5,1],
+[2,3,1,9,1],
+[2,5,5,2],
+[2,4,4,2],
+[2,4,4,1],
+[3,2,4,6,1],
+[3,2,2,6,2],
+[3,1,1,1,5,1],
+[3,2,6,1],
+[3,3,5,1],
+[3,1,12,1],
+[4,2,2,5,1],
+[5,12],
+[3,2,9],
+[3,3,9],
+[1,13],
+[1,13],
+[2,7,5,2,3],
+[3,5,2,3,2],
+[4,1,2,1],
+[4,1,3,4,2,4],
+[5,3,3,7,2],
+[1,4,1,2,4,2,2],
+[4,1,2,3,2,2],
+[4,2,5,2,4,1],
+[1,5,2,2,1,1,3,1],
+[2,5,2,3,3,2],
+[1,5,6],
+[2,1,6,2,3],
+[12,2,2],
+[13,2,2],
+[19],
+[18],
+[18,2],
+[18,2],
+[7,8,3,1],
+[7,3,2,1],
+[5,2,3,2],
+[4,3,3,3]
+],
+ColRules = 
+[[15,5,2,8],
+[21,5,13],
+[8,18,11],
+[5,3,4,5,10],
+[5,2,4,1,5,10],
+[4,1,1,6,2,5,8],
+[4,1,2,6,2,14],
+[2,1,2,7,11],
+[2,5,10],
+[2,2,11,9],
+[3,1,4,7,9],
+[3,2,2,1,6,8],
+[4,1,1,7,7],
+[4,2,3,2,6],
+[5,2,2,1,5],
+[7,2,1,5],
+[7,1,2,1,6,1],
+[8,3,1,5,8],
+[7,3,1,1,2,2,3],
+[7,3,2,2,2,2],
+[10,1,2,1,2,4,1],
+[7,1,1,1,2,2,2,1],
+[7,1,2,1,3,4,1],
+[7,2,2,2,7,2],
+[7,2,2,4,3,3,1],
+[7,2,2,1,5,2,2],
+[7,3,2,2,2,2],
+[7,3,1,2,1,2,1],
+[7,5,1,3,1,2],
+[1,4,4,1,1,1],
+[5,4,1,2,1],
+[7,3,5],
+[8,3,9],
+[2,6,9,1],
+[8,3,4,2],
+[1,9,2,3,3],
+[2,9,6,1,1,2],
+[2,9,7,1,1],
+[2,9,6,1,2],
+[12,11,2,1],
+[2,8,4,5,2],
+[2,6,2,5,2],
+[10,6,3,1],
+[5,7,2],
+[7,4]
+].
+
+
+
+% Converted from nonogram_pbn_flag.dzn
+% webpbn.com Puzzle #2556: who's flag # 40
+% Copyright 2008 by harris harris
+problem(flag,RowRules,ColRules) => 
+RowRules = 
+[[],
+[],
+[],
+[65],
+[65],
+[65],
+[65],
+[65],
+[65],
+[65],
+[],
+[],
+[1],
+[1,1],
+[1,1],
+[1,1],
+[1,1],
+[19],
+[1,1,1,1],
+[1,1,1,1],
+[1,1,1,1],
+[1,1],
+[1,1],
+[1,1],
+[1,1,1,1],
+[1,1,1,1],
+[1,1,1,1],
+[19],
+[1,1],
+[1,1],
+[1,1],
+[1,1],
+[1],
+[],
+[],
+[65],
+[65],
+[65],
+[65],
+[65],
+[65],
+[65],
+[],
+[],
+[]
+],
+ColRules = 
+[[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,1,1,7],
+[7,2,2,7],
+[7,1,1,1,1,7],
+[7,1,1,1,1,7],
+[7,1,3,1,7],
+[7,1,2,2,1,7],
+[7,2,2,7],
+[7,3,3,7],
+[7,2,1,1,2,7],
+[7,1,1,1,1,7],
+[7,2,1,1,2,7],
+[7,3,3,7],
+[7,2,2,7],
+[7,1,2,2,1,7],
+[7,1,3,1,7],
+[7,1,1,1,1,7],
+[7,1,1,1,1,7],
+[7,2,2,7],
+[7,1,1,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7],
+[7,7]
+].
+
+
+
+
+% Converted from nonogram_pbn_merka.dzn
+% webpbn.com Puzzle #1611: For  merilinnuke aka "Merka"
+% Copyright 2007 by Nancy Snyder
+problem(merka,RowRules,ColRules) => 
+RowRules = 
+[[],
+[17],
+[10,6],
+[10,3,4],
+[3,2,11,4],
+[4,4,1,3,7,3],
+[4,11,2,2,4,3],
+[4,2,2,2,3,6,3,6],
+[3,3,8,3,4,3,6],
+[3,3,9,2,1,4,2,6],
+[3,2,4,5,2,8,7],
+[2,2,3,2,1,9,4,3,2,2],
+[6,3,4,2,2,3,3,2,3],
+[6,2,6,2,1,1,3,1,2,2],
+[7,3,8,1,2,4,2,2,2],
+[2,4,6,2,1,3,3,2,1,2],
+[2,3,2,3,2,3,5,1,2],
+[1,3,1,3,2,4,3,1,1],
+[1,3,1,2,1,5,3,2,2],
+[1,3,2,2,2,6,3,1],
+[1,3,2,2,3,3,3,2,2],
+[1,3,2,2,6,2,2,2],
+[6,2,2,2,3,1,2,1,2],
+[2,6,2,3,4,2,2,2],
+[2,6,2,2,3,2,5],
+[2,3,5,7,6,5],
+[5,3,2,6,6,4,4],
+[5,3,4,3,5,2,1,3],
+[2,3,1,6,2,5,4,2,3,2],
+[2,2,1,12,2,4,2,3,2,3],
+[8,3,2,4,4,3,3,4],
+[7,3,5,2,2,4,4,3],
+[4,2,4,1,3,3,5,2,2],
+[4,2,7,3,1,4,6],
+[3,2,4,1,4,4],
+[3,3,3,1,1,4,2],
+[2,4,3,1,1,6,1],
+[2,4,3,2,3,2,1,6],
+[12,3,2,2,2,5],
+[2,4,4,3,1,3,3,4],
+[2,5,4,3,2,3,5,4],
+[1,2,2,3,2,2,2,1,3,3],
+[1,3,2,3,1,6,4,1,2,3,2],
+[2,1,4,3,2,6,1,3,3,2],
+[3,1,4,5,8,2,8,1],
+[3,1,5,2,3,2,7,2,1],
+[4,2,3,2,3,3,3,4,3],
+[3,1,3,3,8,4,2,2,2],
+[5,5,3,6,3,4,1,2],
+[7,3,2,4,4,4,1,1],
+[2,3,4,2,6,1,5,4,2,1],
+[3,4,2,7,3,3,4,2,1],
+[11,3,4,2,2,3,4,2,1],
+[1,3,4,4,2,2,3,4,2,1],
+[2,11,4,1,4,4,4,2,4],
+[2,3,5,1,6,3,2,4],
+[16,2,6,3],
+[1,5,5,3,6,2],
+[5,1,2,2,4,7,1],
+[8,13,8]
+],
+ColRules = 
+[[4,2],
+[3,2,2],
+[9,3,5,2,2],
+[32,1,3,1,2],
+[4,1,2,9,4,2,3,4],
+[5,11,6,1,3,7,1,1,1,1],
+[26,7,5,1,6],
+[4,14,4,6,8,1,4,1],
+[4,6,2,2,11,2,2,5],
+[2,5,30,3,1,3],
+[2,4,12,1,6,4,1,2,1],
+[2,3,3,1,13,3,4,2,1,1],
+[1,2,4,25,8,2,4],
+[2,2,32,4,8],
+[5,3,3,3,3,5,8,3,1],
+[2,1,4,4,3,1,4,5,4,1],
+[1,5,3,2,2,5,4,1],
+[1,6,3,1,1,1,1,11,1],
+[2,2,2,4,1,2,1,8,3],
+[2,5,4,1,3,2,6,4],
+[3,6,4,1,3,2,11],
+[4,1,3,2,1,1,1,2,2],
+[11,2,2,1,2,2,1],
+[3,2,2,2,3,4,2,2],
+[2,4,3,12,3,2],
+[2,2,2,1,2,1,4,2],
+[2,2,3,1,1,1,3,1],
+[2,1,1,1,1,1,2,1],
+[1,2,2,3,2,1,1,2,2],
+[1,2,2,2,4,1,2,1,2,1],
+[1,2,2,1,2,2,1,2,2,2,1],
+[1,2,3,2,2,1,2,1,1,3,1],
+[2,2,2,6,2,1,2,1,2,1],
+[2,3,3,2,1,3,1,1,2,2],
+[2,3,3,3,2,1,3,2,4,1],
+[2,2,1,2,3,1,2,3,2,3,1],
+[3,4,3,3,2,2,1,1,1,1,2],
+[2,4,5,3,2,1,2,2,2,2],
+[2,1,3,3,2,4,1,1,1,3],
+[2,2,3,3,2,6,2,1],
+[2,2,3,2,4,5,2,2],
+[5,2,2,5,4,2],
+[6,3,1,5,4,1,8],
+[6,6,11,12],
+[6,6,12,16],
+[3,3,10,18,6],
+[2,3,2,4,3,3,4,6,4],
+[4,4,15,2,16],
+[5,9,3,3,3,16],
+[5,3,3,4,4,7,6,3],
+[4,4,2,3,5,4,2,1,2],
+[3,4,3,2,5,3,10,1],
+[3,4,3,2,6,2,8,1],
+[8,6,7,3,4],
+[6,7,15,1]
+].

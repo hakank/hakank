@@ -1,0 +1,102 @@
+/* 
+
+  Enigma puzzle in Picat.
+
+  From Martin Chlond Integer Programming Puzzles:
+  http://www.chlond.demon.co.uk/puzzles/puzzles4.html, puzzle nr. 7
+  Description  : Enigma
+  Source       : Herald Tribune circa November 1979 - courtesy of Dr Tito A. Ciriani
+  """
+  7. Enigma
+  Assign all-different values to the letters in these words to make the equality true in English.
+  ONE + ONE + TWO + TWO + THREE + ELEVEN = TWENTY
+
+  (Unknown - Herald Tribune)
+  """
+ 
+  This model was inspired by the XPress Mosel model created by Martin Chlond.
+  http://www.chlond.demon.co.uk/puzzles/sol4s7.html
+
+  This is a MIP model.
+  Cf the CP version: http://hakank.org/picat/enigma2.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+% import mip. % much slower
+
+
+main => go.
+
+
+go =>
+  All = findall(Y,enigma(_X,Y)),
+  foreach(Row in All)
+     println(Row)
+  end,
+  nl.
+
+go2 =>
+  enigma(_X,Y),
+  println(Y),
+  nl.
+
+
+enigma(X,Y) =>
+
+  N = 10,
+
+  % x(i,j) = 1 if digit (i-1) represents letter j
+  % letter code 1 = O, 2 = N, 3 = E, 4 = T, 5 = W
+  %             6 = H, 7 = R, 8 = L, 9 = V,10 = Y
+  % example: x(10,10) = 1 means digit 9 is assigned to letter Y
+  X = new_array(N,N),
+  X :: 0..1,
+
+  % for presentation (not in Chlond's model)
+  Y = new_list(10),
+  Y :: 0..9, 
+
+
+  % for the presentation array y
+  foreach(I in 1..N) 
+    J :: 1..10,
+    % X[I,J] #= 1,
+    element(J,X[I],1),
+    Y[I] #= J-1
+  end,
+
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #= 1, % each digit assigned once
+     sum([X[J,I] : J in 1..N]) #= 1  % each letter assigned one digit
+  end,
+
+  % and the "equations"
+  % note: this is an integer programming model, that's why it's so darn complex.
+  % See enigma2.pi for a much neater - and faster - CP model.
+  %
+  sum([(100*(I-1)*X[I,1]) : I in 1..N])  + sum([(10*(I-1)*X[I,2]) : I in 1..N])  + sum([((I-1)*X[I,3]) : I in 1..N])  +
+  sum([(100*(I-1)*X[I,1]) : I in 1..N])  + sum([(10*(I-1)*X[I,2]) : I in 1..N])  + sum([((I-1)*X[I,3]) : I in 1..N])  +
+  sum([(100*(I-1)*X[I,4]) : I in 1..N])  + sum([(10*(I-1)*X[I,5]) : I in 1..N])  + sum([((I-1)*X[I,1]) : I in 1..N])  +
+  sum([(100*(I-1)*X[I,4]) : I in 1..N])  + sum([(10*(I-1)*X[I,5]) : I in 1..N])  + sum([((I-1)*X[I,1]) : I in 1..N])  +
+  sum([(10000*(I-1)*X[I,4]) : I in 1..N])  + sum([(1000*(I-1)*X[I,6]) : I in 1..N])  + sum([(100*(I-1)*X[I,7]) : I in 1..N])  +
+  sum([(10*(I-1)*X[I,3]) : I in 1..N])  + sum([((I-1)*X[I,3]) : I in 1..N])  +
+  sum([(100000*(I-1)*X[I,3]) : I in 1..N])  + sum([(10000*(I-1)*X[I,8]) : I in 1..N])  + sum([(1000*(I-1)*X[I,3]) : I in 1..N])  +
+  sum([(100*(I-1)*X[I,9]) : I in 1..N])  + sum([(10*(I-1)*X[I,3]) : I in 1..N])  + sum( [((I-1)*X[I,2]): I in 1..N])  
+
+  #= 
+
+  sum([(100000*(I-1)*X[I,4]) : I in 1..N])  + sum([(10000*(I-1)*X[I,5]) : I in 1..N])  + sum([(1000*(I-1)*X[I,3]) : I in 1..N])  + 
+  sum([(100*(I-1)*X[I,2]) : I in 1..N])  + sum( [(10*(I-1)*X[I,4]): I in 1..N])  + sum( [((I-1)*X[I,10]): I in 1..N]),
+
+  %
+  sum([((I-1)*X[I,1]) : I in 1..N]) #> 0, % O (in ONE) cannot be 0
+
+  Vars = X.vars() ++ Y,
+
+  solve([ffc,split], Vars).
+

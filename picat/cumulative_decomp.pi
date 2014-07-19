@@ -1,0 +1,160 @@
+/* 
+
+  Decomposition of cumulative in Picat.
+
+  Defines:
+   - my_cumulative/4: as built-in cumulative/4
+   - cumulative_used/5: as cumulative/4 with additional (boolean) Used list
+                        which task to use.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+%
+% Test of cumulative/4.
+% Cf http://hakank.org/picat/cumulative_test.pi
+%
+go =>
+   Len = 5,
+   LS = new_list(Len),
+   LD = new_list(Len),
+   LR = new_list(Len),
+   LE = new_list(Len),
+
+   LS = [1, 2, 3, 6, 7], % start times
+   LS :: 1..10,
+   LD = [3, 9,10, 6, 2],% duration times
+   LR = [1, 2, 1, 1, 3],% resource used by tasks
+   % LE = [4,11,13,12, 9],
+
+   Limit :: 1..8, % we can't use more than 8 resources at the
+                  % same time. In fact, we only use 7 in this
+                 % example 
+
+   % setup a list of end times LE
+   foreach({S,D,E} in zip(LS,LD,LE)) E #= S+D end,
+
+   End #= max(LE),% latest end time of all tasks
+
+   % cumulative(LS, LD, LR, Limit),
+   my_cumulative(LS, LD, LR, Limit),
+
+   % note: Limit must also be labeled.
+   Vars = LS ++ LE ++ [Limit],
+
+   solve($[min(Limit)], Vars),
+
+   println('Start   '=LS),
+   println('Duration'=LD),
+   println('Resource'=LR),
+   println('End     '=LE),
+   println('Limit   '=Limit),
+   println('Max End time'=End),
+   nl.
+
+
+%
+% This problem is from http://hakank.org/picat/sangraal.pi
+% using cumulative_used/5.
+% 
+go2 =>
+
+  % time to free each knight
+  Free = [1, 1, 2,2, 3, 4, 5,6],
+
+  % time to prepare each knight
+  Prep = [15,5,15,5,10,15,10,5],
+
+  Limit = 20, % time limit for rescuing
+
+  K = Free.length,
+
+  % start times
+  Start = new_list(K),
+  Start :: 0..20,
+
+  % finishing time
+  End = new_list(K),
+  % End :: 0..20,
+
+  % The knights that will be rescued.
+  % (Used parameter in cumulative2/5).
+  Rescued = new_list(K),
+  Rescued :: 0..1,
+
+  foreach(I in 1..K)
+    End[I] #= Start[I] + Free[I] + Prep[I],
+    % define criteria for rescuing (usage)
+    End[I] #<= Limit #<=> Rescued[I] #= 1
+  end,
+
+  Z #= sum(Rescued),
+
+  MaxEndUsed #= max([ End[I]*Rescued[I] : I in 1..K]),
+
+  cumulative_used(Start,Free,[1 :_ in 1..K], Rescued, 1),
+
+  % Note: We got the same result just using cumulative/4.
+  % cumulative(Start,Free,[1 :_ in 1..K], 1),
+
+  Vars = Start ++ End ++ Rescued,
+  solve($[ffc,split,max(Z)],Vars),
+
+  println(z=Z),
+  print_list('Free    ', Free),
+  print_list('Prep    ', Prep),
+  print_list('Start   ', Start),
+  print_list('End     ', End),
+  print_list('Rescued ', Rescued),
+  println('MaxEndUsed '=MaxEndUsed),
+
+  nl.
+  
+
+print_list(Name,List) =>
+  printf("%w: ", Name),
+  println([to_fstring("%2d", E) : E in List]).
+
+
+
+% 
+% decomposition of cumulative/4.
+% Inspired by the MiniZinc definition (cumulative.mzn):
+% """
+% -----------------------------------------------------------------------------%
+% Requires that a set of tasks given by start times 's', durations 'd', and
+% resource requirements 'r', never require more than a global resource bound
+% 'b' at any one time.
+% Assumptions:
+% - forall i, d[i] >= 0 and r[i] >= 0
+%-----------------------------------------------------------------------------%
+% """
+%
+my_cumulative(Starts,Durations,Resources,Limit) =>
+  Tasks = [I : I in 1..Starts.length, fd_max(Resources[I]) > 0, fd_max(Durations[I]) > 0].sort_remove_dups(),
+   Times = min([ fd_min(Starts[I]) : I in Tasks ])..max([ fd_max(Starts[I]) + fd_max(Durations[I]) : I in Tasks ]),
+   foreach(T in Times)
+      Limit #>= sum([(Starts[I] #<= T #/\ T #< Starts[I] + Durations[I]) * Resources[I] :  I in Tasks])
+  end.
+
+
+
+%
+% This variant of cumulative adds a Used list: 1 if this task is used, else 0.
+%
+cumulative_used(Starts,Durations,Resources,Used,Limit) =>
+  Len = Starts.length,
+  Tasks = [I : I in 1..Len, fd_max(Resources[I]) > 0, fd_max(Durations[I]) > 0].sort_remove_dups(),
+  Times = min([ fd_min(Starts[I]) : I in Tasks ])..max([ fd_max(Starts[I]) + fd_max(Durations[I]) : I in Tasks ]),
+  foreach(T in Times)
+     Limit #>= sum([(Starts[I] #<= T #/\ T #< Starts[I]+Durations[I])*Resources[I]*Used[I] :  I in Tasks])
+  end.

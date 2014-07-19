@@ -1,0 +1,179 @@
+/* 
+
+  Fantasy OR in Picat.
+
+  Problem and XPress Mosel model from
+  Martin J Chlond "Fantasy OR"
+  http://archive.ite.journal.informs.org/Vol4No3/Chlond/index.php
+  """
+  An interesting article by J.R. Partington investigating puzzles of a mathematical 
+  nature to be found embedded within computer fantasy games may be found at 
+  Mathematical Puzzles in Fantasy Games. 
+  [http://www1.maths.leeds.ac.uk/~pmt6jrp/personal/tms.html ]
+  The following is an example of the whimsical delights to be found therein. 
+
+     A Scheduling Problem from Sangraal
+
+     When the Sangraal (Holy Grail) is almost won you arrive at the castle 
+     where the Foul Fiend has imprisoned 8 knights. These are as follows:
+
+     Agravain - lightly bound - badly wounded
+     Bors - lightly bound - scratched
+     Caradoc - bound a bit more - badly wounded
+     Dagonet - bound as C - scratched
+     Ector - bound and gagged - somewhat wounded
+     Feirefiz - in chains - badly wounded
+     Gareth - in chains and gagged - somewhat wounded
+     Harry - bound really tight in chains (poor chap) - scratched
+
+     Here the state of binding means that it will take 1, 1, 2, 2, 3, 4, 5 and 6 minutes 
+     (respectively) to free them: a freed knight then goes away to wash and recover himself 
+     physically in time for the Sangraal's arrival. The time he takes for this second stage 
+     is 5, 10 or 15 minutes, according to injury. In twenty minutes' time the sun will 
+     set and the Sangraal will arrive. How many knights can you bring? We see, for example 
+     that if you want F, you must free him almost at once, as he can only be ready in 
+     19 minutes at the earliest. Freeing Harry, though it takes 6 minutes, is not urgent, 
+     as he only needs to be freed by the 15th minute. 
+
+  """  
+
+  Note in the original XPress Mosel model 
+  Filename    : sangraal.mos
+  Written by  : Martin J Chlond
+  Date written: 10-April-2002
+  Source      : http://www.amsta.leeds.ac.uk/~pmt6jrp/personal/tms.html
+
+
+  This model also contain a - slightly faster - CP version (go2/0).
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp. % 0.09s / 4761 backtracks  (go2: 0.0s / 0 backtracks)
+% import sat. % 1.62s (go2: 0.49s)
+% import mip. % 5.1s (go2: >1min )
+
+main => go.
+
+
+%
+% IP version, based on Chlond's XPress Mosel model
+%
+go =>
+
+  % time to free each knight
+  Free = [1, 1, 2,2, 3, 4, 5,6],
+
+  % time to prepare each knight
+  Prep = [15,5,15,5,10,15,10,5],
+
+  K = Free.length,
+
+  % x(i,j)=1 if knight i in position j, 0 otherwise
+  X = new_array(K,K),
+  X :: 0..1,
+
+  % d(j)=1 if position j finished within 20 minutes, 0 otherwise
+  D = new_list(K),     
+  D :: 0..1,
+
+  % finish time for each position 
+  T = new_list(K),
+
+  % maximise number of positions finished within 20 minutes
+  MaxK #= sum(D),
+
+
+  % each knight in one position
+  foreach(I in 1..K) 
+    sum([X[I,J] : J in 1..K]) #= 1     
+  end,
+
+  % each position has one knight
+  foreach(J in 1..K) 
+    sum([X[I,J] : I in 1..K]) #= 1 
+  end,
+
+  % compute finish time for each position
+  foreach(J in 1..K) 
+    sum([Free[I]*X[I,L] : I in 1..K, L in 1..J-1])  + 
+    sum([(Free[I]+Prep[I])*X[I,J] : I in 1..K])  #= T[J]
+  end,
+
+  % d(j) = 1 if knight in position j is freed and prepared within 20 minutes
+  foreach(J in 1..K) 
+    T[J] #>= 21-15*D[J],
+    T[J] #<= 53-33*D[J]
+  end,
+
+  Vars = X.vars() ++ D ++ T,
+  solve($[ffc,updown,max(MaxK)], Vars),
+
+  println('MaxK'=MaxK),
+  println("X:"),
+  foreach(Row in X) println(Row.to_list()) end,
+  println('T'=T),
+  println('D'=D),
+  
+  nl.
+
+%
+% CP version, using cumulative/4.
+% This is faster than go/0, and - in my view - simpler.
+% 
+go2 =>
+
+  % time to free each knight
+  Free = [1, 1, 2,2, 3, 4, 5,6],
+
+  % time to prepare each knight
+  Prep = [15,5,15,5,10,15,10,5],
+
+  Limit = 20, % time limit for rescuing
+
+  K = Free.length,
+
+  % start times
+  Start = new_list(K),
+  Start :: 0..20,
+
+  % finishing time
+  End = new_list(K),
+
+  % The knights that will be rescued.
+  Rescued = new_list(K),
+  Rescued :: 0..1,
+
+  foreach(I in 1..K)
+    End[I] #= Start[I] + Free[I] + Prep[I],
+    End[I] #<= Limit #<=> Rescued[I] #= 1
+  end,
+
+  Z #= sum(Rescued),
+
+  cumulative(Start,Free,[1 :_ in 1..K], 1),
+
+  % with 2 persons doing the rescue, we can rescue all knights
+  % cumulative(Start,Free,[1 :_ in 1..K], 2),
+
+  Vars = Start ++ End ++ Rescued,
+  solve($[ffc,split,max(Z)],Vars),
+
+  println(z=Z),
+  print_list('Free    ', Free),
+  print_list('Prep    ', Prep),
+  print_list('Start   ', Start),
+  print_list('End     ', End),
+  print_list('Rescued ', Rescued),
+
+  nl.
+  
+
+print_list(Name,List) =>
+  printf("%w: ", Name),
+  println([to_fstring("%2d", E) : E in List]).
+  
