@@ -14,17 +14,18 @@
 
 import util.
 import cp.
+import os.
 
 main => go.
 
 go =>
-   time2($sudoku(13)).
+   time2(sudoku(1)).
 
 % Using sudoku2/2
 go1 =>
    problem(13, Board),
    print_board(Board),
-   time2($sudoku2(3,Board)),
+   time2(sudoku2(3,Board)),
    print_board(Board).
 
 
@@ -34,7 +35,7 @@ go1 =>
 go2 =>
    foreach(P in 1..13)
       writeln(problem=P),
-      time2($sudoku(P)),
+      time2(sudoku(P)),
       nl
    end.
 
@@ -44,7 +45,7 @@ go2 =>
 go3 =>
    foreach(P in 1..13)
       writeln(problem=P),
-      L = findall(P,$sudoku2(P)),
+      L = findall(P,sudoku2(P)),
       Len = length(L),
       writeln(len=Len),
       if Len > 1 then
@@ -69,6 +70,167 @@ go5 ?=>
    fail.
 
 go5 => true.
+
+
+%
+% Solving Norvig's 95 Sudoku's
+% http://norvig.com/top95.txt
+% 
+go6 => 
+   File = "top95.txt",
+   if not exists(File) then
+      printf("The file %w don't exists. Please donwload from http://norvig.com/top95.txt\n", File),
+      halt
+   else 
+      Sudokus = read_file_lines(File)
+   end,
+   N = 1,
+   foreach(Line in Sudokus)
+       printf("Sudoku #%d\n", N),
+       Sudoku1 = [cond(C=='.',_,to_integer(C)) : C in Line], 
+       Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
+       print_board(Sudoku),
+       time2(All = findall(Sudoku, sudoku(3,Sudoku))),
+       if All.length != 1 then
+         printf("Sudoku #%d don't have a unique solution!", N),
+         halt
+       end,
+       foreach(S in All)
+         print_board(S)
+       end,
+       nl,
+       N := N + 1
+   end,
+   nl.
+  
+
+% 
+% Solving Gordon Royle's 17 hint Sudoku puzzles
+% The 49151 puzzles with 17 hints are available here:
+% http://staffhome.ecm.uwa.edu.au/~0001e3890/sudoku17
+% See
+% http://staffhome.ecm.uwa.edu.au/~00013890/sudokumin.php
+% 
+% Note: Some of the times are too large due to garbage collection
+%       interferes, see below for this
+%
+% ffd/split:
+% 13:54min total runtime
+% 825.4s solve time (13:45min)
+% 
+% ffd/down:
+% 12:00min total runtime
+% 711.21s solve time (11:51min)
+%
+% The following problem took more than 1s to solve:
+%
+% Sudoku #1977 Time: (1004 ms)  <- slow
+% Sudoku #14293 Time: (1172 ms) <- slow
+% Sudoku #14474 Time: (1956 ms) (<-- spurious, garbage collection)
+% Sudoku #16447 Time: (1084 ms) <- slow
+% Sudoku #30050 Time: (3821 ms) (<-- spurious, garbage collection)
+% Sudoku #41189 Time: (1008 ms) <- slow
+% Sudoku #42962 Time: (1224 ms) <- slow
+% 
+% Another run:
+% Sudoku #1977 Time: (1000 ms) <- slow
+% Sudoku #7266 Time: (1036 ms) (<- spurious)
+% Sudoku #14293 Time: (1172 ms) <- slow
+% Sudoku #15630 Time: (2048 ms) (<- spurious)
+% Sudoku #16447 Time: (1084 ms) <- slow
+% Sudoku #32364 Time: (4012 ms) (<-- spurious)
+% Sudoku #42962 Time: (1212 ms) <- slow
+% 
+%
+% When running each instance isolated (via an external program),
+% then we don't get the very large times (>= 2000ms), these instances
+% seems to be the stable slow (>= 1s) ones.
+%
+% #1977 time: 1048ms
+% #14293 time: 1184ms
+% #16447 time: 1088ms
+% #41189 time: 1008ms
+% #42962 time: 1224ms
+%
+go7 => 
+   File = "sudoku17",
+   if not exists(File) then
+      printf("The file %w don't exists.\nPlease donwload from http://staffhome.ecm.uwa.edu.au/~0001e3890/sudoku17\n", File),
+      halt
+   else 
+      Sudokus = read_file_lines(File)
+   end,
+
+   N = 1,
+   TotalTimes = 0,
+   foreach(Line in Sudokus)
+       Sudoku1 = [cond(C='0',_,to_integer(C)) : C in Line], 
+       Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
+       % print_board(Sudoku),
+       _ = statistics_all(),
+       statistics(runtime,_),
+       sudoku(3,Sudoku),
+       % time2(sudoku(3,Sudoku)),
+       statistics(runtime,[_,Time]),
+       TotalTimes := TotalTimes + Time,
+       Stat = statistics_all(),
+       printf("%% Sudoku #%d Time: (%d ms) Stat: %w\n", N, Time, Stat),
+       N := N + 1
+   end,
+   println(totalTimes=TotalTimes),
+   TotalSec = TotalTimes / 1000,
+   println(totalSec=TotalSec),
+   nl.
+
+%
+% Checking the reported slow instances
+%
+go7b => 
+         % instance# = reported millis in go7
+   Slow = new_map([1977=1004,
+                   14293=1172, 
+                   14474=1956, 
+                   16447=1084, 
+                   30049=0000, 
+                   30050=3821,     
+                   41189=1008,
+                   42962=1224
+                   ]),
+
+   SlowIds = Slow.keys().sort(),
+
+   File = "sudoku17",
+   if not exists(File) then
+      printf("The file %w don't exists.\nPlease donwload from http://staffhome.ecm.uwa.edu.au/~0001e3890/sudoku17\n", File),
+      halt
+   else 
+      Sudokus = read_file_lines(File)
+   end,
+   N = 1,
+   statistics(runtime,_),
+   TotalTimes = 0,
+   statistics(runtime,_),
+   foreach(Line in Sudokus)
+       % garbage_collect,
+       Sudoku1 = [cond(C='0',_,to_integer(C)) : C in Line], 
+       Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
+       if member(N,SlowIds) then
+         print_board(Sudoku),
+         sudoku(3,Sudoku),
+         print_board(Sudoku),
+         statistics(runtime,[_,Time]),
+         TotalTimes := TotalTimes + Time,
+         println(time=Time),
+         printf("%% Sudoku #%d Time: (%d ms) (cf reported: %d)\n", N, Time, Slow.get(N)),
+         nl
+       end,
+       N := N + 1
+   end,
+   println(totalTimes=TotalTimes),
+   TotalSec = TotalTimes / 1000,
+   println(totalSec=TotalSec),
+   nl.
+
 
 
 sudoku(ProblemName) =>
@@ -97,15 +259,24 @@ latin_square2(Board) =>
 sudoku(N, Board) =>
    N2 = N*N,
 
-   Vars = array_matrix_to_list(Board),
+   Vars = Board.vars(),
    Vars :: 1..N2,
 
-   latin_square2(Board),
+   % latin_square2(Board),
+   foreach(Row in Board) all_different(Row) end,
+   foreach(Column in transpose(Board)) all_different(Column) end,
    foreach(I in 1..N..N2, J in 1..N..N2)
       all_different([Board[I+K,J+L] : K in 0..N-1, L in 0..N-1])
    end,
 
-   solve([ff,down], Vars).
+   % println(vars=Vars),
+
+   solve([ffd,down], Vars). % faster overall
+
+   % solve([ffd,split], Vars). % faster on the slower instances
+
+   % solve([ff,updown], Vars). % faster on slower instances
+   % solve([constr,updown], Vars). % slower
 
 
 %
@@ -114,7 +285,7 @@ sudoku(N, Board) =>
 sudoku2(N, Board) =>
    N2 = N*N,
 
-   Vars = array_matrix_to_list(Board),
+   Vars = Board.vars(),
    Vars :: 1..N2,
 
    foreach(I in 1..N2)
@@ -340,4 +511,20 @@ Data =
 [_,_,2,6,_,9,5,_,_],
 [8,_,_,2,_,3,_,_,9],
 [_,_,5,_,1,_,3,_,_]
+].
+
+
+% http://blag.nullteilerfrei.de/2014/07/03/why-someone-thought-that-sudoku-might-not-be-boring-while-actually-you-should-learn-how-to-properly-implement-backtracking/
+problem(15, Data) =>
+  Data =
+ [
+  [_, _, _, _, 6, _, _, 8, _],
+  [_, 2, _, _, _, _, _, _, _],
+  [_, _, 1, _, _, _, _, _, _],
+  [_, 7, _, _, _, _, 1, _, 2],
+  [5, _, _, _, 3, _, _, _, _],
+  [_, _, _, _, _, _, 4, _, _],
+  [_, _, 4, 2, _, 1, _, _, _],
+  [3, _, _, 7, _, _, 6, _, _],
+  [_, _, _, _, _, _, _, 5, _] 
 ].

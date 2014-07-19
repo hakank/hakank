@@ -14,6 +14,85 @@ main => time(go).
 
 
 go =>
+     Skip1 = ["euler67.pi","euler.pi","euler_utils.pi","test_euler.pi",
+              "euler51.pi","euler66.pi","euler96.pi"],
+     Skip = new_map([(S=1) : S in Skip1]), 
+     println(skip=Skip1),
+     Timeout = 10000, % 10s timeout
+     % Programs = [PP : PP in listdir("."), 
+     %                    match(PP, "euler"), 
+     %                    match(PP, ".pi")].sort(),
+     Programs = [F : F in listdir("."), append("euler",What,".pi",F), 
+                 What != [], 
+                 W = What.parse_term(), 
+                 integer(W), 
+                 member(W, 1..50)].qsort(sort_euler),
+     println(program=Programs),
+     nl,
+     Fails = [],
+     Times = new_map(),
+     statistics(runtime,_),
+     foreach(P in Programs) 
+        if not Skip.has_key(P) then
+           printf("Testing %w\n", P),
+           cl(P),
+           time_out(time(go), Timeout, Status),
+           println(status=Status),
+           if status==Timeout then
+              Fails := Fails ++ [P]
+           end,
+           statistics(runtime,[_,Time]),
+           TimeF = Time / 1000,
+           Times.put(P,TimeF),
+           nl
+        end
+     end,
+     println(fails=Fails),
+     println(times=Times.sort_map(values_reverse)),
+     nl.
+
+match(String, Substring) => once(find(String,Substring,_,_)).
+
+qsort([],_F)    = [].
+qsort([H|T],F) = qsort([E : E in T, call(F,E,H)], F) 
+                 ++ [H] ++
+                 qsort([E : E in T, not call(F,E,H)],F).
+
+
+%
+% sort_map(Map,keys)  : sort Map on keys
+% sort_map(Map,values): sort Map on values
+%
+sort_map(Map,values) = [K=V:_=(K=V) in sort([V=(K=V): K=V in Map])].
+sort_map(Map,values_reverse) = [K=V:_=(K=V) in reverse(sort([V=(K=V): K=V in Map]))].
+sort_map(Map,keys)   = sort([K=V:K=V in Map]).
+sort_map(Map,keys_reverse)   = sort([K=V:K=V in Map]).reverse().
+sort_map(Map) = sort_map(Map,keys).
+
+sort_lt(F1,F2), integer(F1), integer(F2) => F1 < F2.
+sort_lt(F1,F2), not integer(F1) => F1 @< F2.
+
+sort_le(F1,F2), integer(F1), integer(F2) => F1 =< F2.
+sort_le(F1,F2), not integer(F1) => F1 @=< F2.
+
+sort_ge(F1,F2), integer(F1), integer(F2) => F1 >= F2.
+sort_ge(F1,F2), not integer(F1) => F1 @>= F2.
+
+sort_gt(F1,F2), integer(F1), integer(F2) => F1 > F2.
+sort_gt(F1,F2), not integer(F1) => F1 @> F2.
+
+
+sort_euler(F1,F2) => 
+  append("euler",What1,".pi",F1),
+  append("euler",What2,".pi",F2),
+  What1.to_integer() < What2.to_integer().
+
+
+
+%
+% Using bp.system/1 to run the Euler program.
+% 
+go2 =>
      Skip1 = ["euler67.pi","euler.pi","euler_utils.pi","test_euler.pi"],
      Skip = new_map([(S=1) : S in Skip1]), 
      println(Skip1),
@@ -25,10 +104,10 @@ go =>
      foreach(P in Programs) 
         if not Skip.has_key(P) then
            printf("Testing %w\n", P),
-           cl(P),
-           time_out(time(go), Timeout, Status),
-           println(status=Status),
-           if status==Timeout then
+           System = "picat " ++ P,
+           bp.atom_chars(SystemA,System), % bp.system requires an atom as argument
+           time_out(time(bp.system(SystemA)),Timeout,Status),
+           if Status == timeout then    
               Fails := Fails ++ [P]
            end,
            nl
@@ -36,6 +115,3 @@ go =>
      end,
      println(fails=Fails),
      nl.
-
-match(String, Substring) => once(find(String,Substring,_,_)).
-
