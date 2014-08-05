@@ -7,41 +7,144 @@
   These are all of the permutations of the symbols A, B, C and D, 
   except for one that's not listed. Find that missing permutation.
   """
-/
+
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
 
 import util.
+import ordset.
+import cp.
+
 main => go.
 
 go => 
 
    P1 = ["ABCD","CABD","ACDB","DACB","BCDA","ACBD",
-        "ADCB","CDAB","DABC","BCAD","CADB","CDBA",
-        "CBAD","ABDC","ADBC","BDCA","DCBA","BACD",
-        "BADC","BDAC","CBDA","DBCA","DCAB"],
+         "ADCB","CDAB","DABC","BCAD","CADB","CDBA",
+         "CBAD","ABDC","ADBC","BDCA","DCBA","BACD",
+         "BADC","BDAC","CBDA","DBCA","DCAB"],
    Perms = permutations("ABCD"),
-   foreach(P in Perms)
-      Found = 0,
+
+   % very imperative
+   Missing = _,
+   foreach(P in Perms, Missing = _)
+      Found = false,
       foreach(T in P1) 
          if P == T then
-            Found := 1
+            Found := true
           end
       end,
-      if Found == 0 then
-        println(missing1=P)
+      if not Found then
+        Missing := P
       end
    end,
+   println(missing1=Missing),
 
-   % another approach
-   difference(Perms,P1,Diff2),
-   println(missing2=Diff2),
+   % somewhat less imperative
+   Missing2 = _,
+   foreach(P in Perms, Missing2 = _)
+      if not member(P,P1) then
+        Missing2 := P
+      end
+   end,
+   println(missing2=Missing2),
+
+
+   % using findall (predicate)
+   println(missing3=difference(Perms,P1)),
+
+   % findall approach as a one-liner
+   println(missing4=findall(X,(member(X,Perms),not(member(X,P1))))),
+
+   % using ordsets
+   println(missing5=subtract(new_ordset(Perms),new_ordset(P1))),
+
+   % list comprehension (and member for the check)
+   println(missing6=[P:P in Perms,not member(P,P1)]),
+
+   % maps
+   Map = new_map(),
+   foreach(P in P1) Map.put(P,1) end,
+   println(missing7=[P:  P in Perms, not Map.has_key(P)]),
+
+
+   % "merge sort" variant, using sorted lists
+   % (zip/2 requires that the length of the two lists are the same, hence the dummy)
+   PermsSorted = Perms.sort(),
+   P1Sorted = P1.sort(),
+   Found2 = false,
+   foreach({P,PP} in zip(PermsSorted,P1Sorted ++ ["DUMMY"]), Found2 = false)
+     if P != PP then
+        println(missing8=P),
+        Found2 := true
+     end
+   end,
+
+   % variant with list comprehension
+   A = [cond(P == PP,1,0) : {P,PP} in zip(PermsSorted,P1Sorted ++ ["DUMMY"])],
+   println(missing9=[PermsSorted[I] : I in 1..PermsSorted.length, A[I] = 0].first()),
+
+   % shorter
+   println(missing10=[P:{P,PP} in zip(PermsSorted,P1Sorted ++ ["DUMMY"]), P != PP].first()),
+
+   
+   % CP variant
+   ABCD = new_map(['A'=1,'B'=2,'C'=3,'D'=4]),
+   % convert to integers (for the table constraint)
+   P1Table = [ [ABCD.get(C,0) : C in P].list_to_and() : P in P1],
+   Missing3 = new_list(4), Missing3 :: 1..4,
+   all_different(Missing3),
+   table_notin((Missing3[1],Missing3[2],Missing3[3],Missing3[4]),P1Table),
+   solve(Missing3),
+   ABCD2 = "ABCD",
+   println(missing11=[ABCD2[I] : I in Missing3]),
+   
+
+   % matrix approach
+   PermsLen = Perms.length,
+   P1Len = P1.length,
+   A2 = new_array(PermsLen,P1Len), bind_vars(A2,0),
+   foreach(I in 1..PermsLen, J in 1..P1Len, Perms[I] = P1[J])
+     A2[I,J] := 1
+   end,
+   println(missing12=[Perms[I] : I in 1..PermsLen, sum([A2[I,J] : J in 1..P1Len])=0]),
+
+
+   % inspired by the Perl 6 xor variant
+   println(missing13=to_fstring("%X",reduce(^,[parse_term("0x"++P):P in P1]))),
+
+   % count the character with the least occurrence (=5) for each positions (1..4)
+   % (based on my K version)
+   println(missing14=[[O:O=5 in Occ]:Occ in [occurrences([P[I]:P in P1]):I in 1..4]]),
+
+   % variant using sorting the occurrences
+   println(missing15a=[C:C=_ in [sort2(Occ).first():Occ in [occurrences([P[I]:P in P1]):I in 1..4]]]),
+   % transpose instead of array index
+   println(missing15b=[C:C=_ in [sort2(O).first():T in transpose(P1),O=occurrences(T)]]),
+   % extract the values with first
+   println(missing15c=[sort2(O).first():T in transpose(P1),O=occurrences(T)].map(first)),
+   println(missing15d=[sort2(O).first().first():T in transpose(P1),O=occurrences(T)]),
+   println(missing15e=[S[1,1]:T in transpose(P1),S=sort2(occurrences(T))]),
+
+   % delete/2
+   Perms2 = Perms,
+   foreach(P in P1) Perms2 := delete(Perms2,P) end,
+   println(missing16=Perms2),
+
 
    nl.
 
 
-difference(Xs,Ys,Diff) =>
-  Diff = findall(X,(member(X,Xs),not(member(X,Ys)))).
+difference(Xs,Ys) = findall(X,(member(X,Xs),not(member(X,Ys)))).
 
+% return a map with the elements and the number of occurrences
+occurrences(List) = Map =>
+  Map = new_map(),
+  foreach(E in List)
+     Map.put(E, cond(Map.has_key(E),Map.get(E)+1,1))
+  end.
+
+% sort a map according to values
+sort2(Map) = [K=V:_=(K=V) in sort([V=(K=V): K=V in Map])]

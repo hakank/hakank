@@ -1,0 +1,131 @@
+/* 
+
+  Find minimum number of adjacent coin moves in Picat.
+
+  http://stackoverflow.com/questions/24844828/find-minimum-number-of-adjacent-coin-moves
+  """
+  Piles of coins are given (ex. 5 piles : 9,0,5,1,5 ) total 20 coins.. 
+  The minimum no. of moves required so that all piles have equal no of coins 
+  (4,4,4,4,4) (ans for this is 9 moves) Rules: one coin can be moved to 
+  only adjacent piles..i.e. jth pile coin can be moved to j-1 or j+1 if they exist.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+import planner.
+
+main => go.
+
+% The instance from above
+go =>
+  Init = [9,0,5,1,5],
+  best_plan(Init,Path),
+  print_plan(Init,Path),
+  nl.
+
+
+%
+% Random instances
+%
+go2 => 
+   N = 10,
+   M = 1+random2() mod N, % the target
+   Init = new_list(N,M), % init with the target
+   foreach(_ in 1..N*N)
+      From = 1 +random2() mod N,
+      To   = 1 +random2() mod N,
+      if Init[From] > 0 then
+        Init[From] := Init[From] - 1,
+        Init[To] := Init[To] + 1
+      end
+   end,
+
+   %% Test cases
+   % Init :=[5,0,1,3,0,4,8],
+   % Init := [7,2,4,2,15,4,8,8,6,4],
+   % Init := [3,5,0,5,7],
+   % Init := [13,5,10,18,3,15,12,8,10,6],
+
+   println(init=Init),
+   println(sum=sum(Init)),
+
+   Tot = sum(Init) div Init.length,
+   get_global_map().put(tot,Tot),
+   println(tot=Tot),
+
+   best_plan(Init,Path),
+   print_plan(Init,Path),
+
+   nl.
+
+
+print_plan(Init,Path) =>
+   println(path=Path),
+   println(len=Path.length),  
+   println('start              '=Init),
+   foreach([From,To] in Path)
+     Init[From] := Init[From] - 1,
+     Init[To] := Init[To] + 1,
+     printf("From %2d (%2d) to %2d (%2d): %w\n", From,Init[From]+1,To,Init[To]-1,Init)
+   end,
+   nl.
+
+
+final(L) => 
+  % println(current_plan=current_plan()),
+  % Tot = get_global_map().get(tot),
+  %foreach(I in 1..L.length-1) L[I] == Tot end.
+  foreach(I in 2..L.length-1) L[I-1] == L[I] end.
+  % Len = L.length,
+  % T = sum(L) div Len,
+  % foreach(I in 1..Len-1) L[I] == T end.
+
+
+action(From,To,Move,Cost) =>
+  % println($action(from=From,To,Move,Cost)),
+  Len = From.length,
+  Sum = sum(From),
+  Target = Sum div Len,
+
+  %% some experiments
+  % sort available according to the size of heaps
+  Available1 =  [From[I]=I : I in 1..Len, From[I] > 0], % .sort_down(),
+  Available = [I : _=I in Available1],
+  % Available =  [I : I in 1..Len, From[I] > 0],
+  member(FromIx,Available),
+
+  % always pick from the largest heap. Fast, but it don't give optimal path.
+  % FromIx = argmax(From),
+
+  % ToIxes1 = [From[Ix]=Ix : I in [-1,1], Ix = FromIx+I, Ix>= 1, Ix<= Len].sort(),
+  % ToIxes = [I : _=I in Ixes1],
+  ToIxes = [Ix : I in [-1,1], Ix = FromIx+I, Ix >= 1, Ix <= Len],
+  member(ToIx, ToIxes),
+
+  From[ToIx] < Target,
+  From[FromIx] > From[ToIx], % always pick from some larger heap
+
+  Move = [FromIx,ToIx],
+  To1 = copy_term(From),
+  To1[FromIx] := To1[FromIx] - 1,
+  To1[ToIx]   := To1[ToIx] + 1,
+  To = To1,
+  Cost = 1.
+
+
+
+argmax(L) = MaxIxs =>
+  Max = max(L),
+  MaxIxs = [I : I in 1..L.length, L[I] == Max].first().
+
+
+argmin(L) = MinIxs =>
+  Min = min(L),
+  MinIxs = [I : I in 1..L.length, L[I] == Min].first().
