@@ -1,0 +1,157 @@
+/* 
+
+  Nearest sum of cubes of a number in Picat.
+
+  http://stackoverflow.com/questions/25262578/find-the-nearest-small-number-x-where-x-can-be-represented-by-sum-of-cubes
+  """
+  I recently came across a problem where a number x is given and i have to find y and 
+  below are the conditions
+
+    - y < x > 1
+    - y can be expressed as a^3 + b^3 (more than one combination)
+    - example if 4105 is x then 4104 is the answer, where 4104 can be expressed as 
+      16^3 + 2^3 and also 15^3 + 9^3
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+
+  X = 4105,  
+  check(X,Y1),
+  println(y1=Y1),
+  check2(X,Y2),
+  println(y2=Y2),
+
+  nl.
+
+go2 =>
+  L = [4105, 99998, 4104,1023,999,216,3],
+  foreach(X in L)
+    nl,
+    println(x=X),
+    (time3($check(X,Y1),T1),println(y1=Y1) ; true),
+    (time3($check2(X,Y2),T2), println(y2=Y2) ; true),
+    println(time=[T1,T2]),
+    nl
+  end,
+  nl.
+
+go3 => 
+  Total1 = 0,
+  Total2 = 0,
+  Diffs = [],
+  foreach(_ in 1..20)
+     X = 1+random2() mod 1000000,
+     println(x=X),
+     ( time3($check(X,Y1),T1), println(y1=Y1) ; true),
+     ( time3($check2(X,Y2),T2), println(y2=Y2) ; true),
+     println(time=[T1,T2]),
+     Total1 := Total1 + T1,
+     Total2 := Total2 + T2,
+     Diffs := Diffs ++ [Total1-Total2],
+     nl
+  end,
+  println([total1=Total1,total2=Total2]),
+  println("total1-total2"=Total1-Total2),
+  println(diffs=Diffs),
+  nl.
+
+go4 => 
+  foreach(X in 2..10000)
+    (check2(X,Y), println([x=X,y=Y]) ; true)
+    % (check2(X,Y) ; true)
+    % (check(X,Y) ; true)
+  end,
+  nl.
+
+go5 =>
+  L = [4105, 99998, 4104,1023,999,216,3],
+  foreach(X in L)
+    check2(X,Y),
+    println(y=Y)
+  end,
+  nl.
+
+go6 => 
+  X = 943579, % 609835,
+  time2(check(X,Y1)),
+  println(y1=Y1),
+  time(check2(X,Y2)),
+  println(y2=Y2),
+  nl.
+
+% check check2 on larger instances
+go7 => 
+  Times = [],
+  foreach(_ in 1..10)
+     X = 1+random2() mod 10000000,
+     println(x=X),
+     ( time3($check2(X,Y2),T2), println([y2=Y2,time2=T2]) ; true),
+     ( time3($check3(X,Y2),T3), println([y2=Y2,time3=T3]) ; true),
+     Times := Times ++ [[T2,T3,T2-T3]]
+  end,
+  println(times=Times),
+  Diffs = [Diff : [_,_,Diff] in Times],
+  println(diffs=Diffs),
+  println(diffsSum=sum(Diffs)),
+  nl.
+
+
+% special time which just returns T
+time3(Goal, T) =>
+   statistics(runtime,_),
+   (call(Goal); true),
+   statistics(runtime, [_,End]),
+   T = End / 1000.0.
+
+
+%
+% CP approach: This is in general slower than check2/2.
+%
+check(X,Y) =>
+
+  [Y,A,B] :: 1..X-1,
+  Y #= A**3 + B**3,
+  A #=< B,
+  A #< Y,
+  B #< Y,
+
+  % solve($[max(Y),degree,updown],[Y,A,B]).
+  % solve($[max(Y),backward],[Y,A,B]).
+  solve($[max(Y)],[B,A,Y]).
+
+  % println(x=X),
+  % Diff = X -Y,
+  % printf("%d**3 + %d**3 = %d (< %d  diff: %d)\n",A,B,Y,X,Diff),
+  % nl.
+
+
+%
+% Brute force + maxof: in general faster than check/2.
+%
+check2(X,Y) =>
+  maxof(check2b(X,Y),Y).
+  % maxof(check2b(X,Y),Y,$printf("\tytmp=%d\n", Y)).
+check2b(X,Y) =>
+  Cubes = [Cube  : I in 1..X, Cube = I**3, Cube <= X].reverse(),
+  member(I,Cubes), 
+  member(J,[K : K in Cubes, K >= I]),
+  I <= J,
+  Y = I + J,
+  Y < X.
+
+% maxof_inc/2 was introduced in Picat v0.6
+check3(X,Y) =>
+  maxof_inc(check2b(X,Y),Y).

@@ -1,0 +1,78 @@
+/* 
+
+  Text processing/1 (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Text_processing/1
+  """
+
+  """
+
+  Cf http://hakank.org/picat/text_processing_2.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+
+go =>
+  Readings = [ [Rec[1]] ++ [parse_term(Rec[I]) :  I in 2..49] : 
+                Rec in 
+                  [ split(Record) : Record in read_file_lines("readings.txt") ]
+             ],
+  Seen = new_map(),
+  NumDuplicates = 0,
+  TotalSum = 0,
+  TotalReadings = 0,
+  foreach({Rec,Id} in zip(Readings,1..Readings.length))
+    Date=Rec[1],
+    if Seen.has_key(Date) then
+      println(duplicate=Date),
+      NumDuplicates := NumDuplicates + 1
+    else
+      R = [Rec[I] :  I in 2..2..49, Rec[I] >= 1], % check the good readings
+      SumR = sum(R), Sum = to_fstring("%2.3f", SumR),
+      RLen = R.length, NumBad = 24 - RLen,
+      TotalSum := TotalSum + SumR,
+      TotalReadings := TotalReadings + RLen,
+      Avg1 = cond(RLen > 0, SumR/RLen, 0.0), Avg = to_fstring("%2.3f", Avg1),
+      if Id < 16 then
+         println([date=Date,len=RLen,sum=Sum,avg=Avg,numBad=NumBad])
+      end
+    end,
+    Seen.put(Date,1)
+  end,
+
+  println(numDuplicates=NumDuplicates),
+  println(totalSum=to_fstring("%3.3f", TotalSum)),
+  println(totalAvg=to_fstring("%3.3f", TotalSum/TotalReadings)),
+  nl,
+
+  % Identify the longest bad runs
+  Quality = [[cond(Rec[I] >= 1, 1, 0) : I in 3..2..49] : Rec in Readings].flatten().to_array(),
+
+  % identify/separate 0 runs and 1 runs
+  ZeroPos = [ P : P in 2..Quality.length, 
+                 (Quality[P] = 0, Quality[P-1] = 1
+                  ; 
+                  Quality[P] = 1, Quality[P-1] = 0)  
+            ].to_array(),
+  Diff = [ ZeroPos[I]-ZeroPos[I-1] : I in 3..2..ZeroPos.length],
+  MaxIx = argmax(Diff).first(), % get the position of the longest run
+  MaxPosStart = ZeroPos[MaxIx*2],
+  MaxPosEnd = ZeroPos[MaxIx*2+1],
+
+  println(maxBadLen=Diff[MaxIx]),
+  println(badRunStart=[Readings[1+MaxPosStart div 24], startHour=MaxPosStart mod 24]),
+  println(badRunEnd=[Readings[1+MaxPosEnd div 24], endHour=(MaxPosEnd mod 24)-1]),
+
+  nl.
+
+argmax(L) = MaxIxs =>
+  Max = max(L),
+  MaxIxs = [I : I in 1..L.length, L[I] == Max].

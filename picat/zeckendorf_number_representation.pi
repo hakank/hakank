@@ -1,0 +1,219 @@
+/* 
+
+  Zeckendorf number representation (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Zeckendorf_number_representation
+  """
+  Just as numbers can be represented in a positional notation as sums of multiples of 
+  the powers of ten (decimal) or two (binary); all the positive integers can be represented 
+  as the sum of one or zero times the distinct members of the Fibonacci series.
+
+  Recall that the first six distinct Fibonacci numbers are: 1, 2, 3, 5, 8, 13. The decimal number 
+  eleven can be written as 0*13 + 1*8 + 0*5 + 1*3 + 0*2 + 0*1 or 010100 in positional notation 
+  where the columns represent multiplication by a particular member of the sequence. Leading 
+  zeroes are dropped so that 11 decimal becomes 10100.
+
+  10100 is not the only way to make 11 from the Fibonacci numbers however; 
+  0*13 + 1*8 + 0*5 + 0*3 + 1*2 + 1*1 or 010011 would also represent decimal 11. For a true Zeckendorf 
+  number there is the added restriction that no two consecutive Fibonacci numbers can be used 
+  which leads to the former unique solution.
+
+  The task is to generate and show here a table of the Zeckendorf number representations of the 
+  decimal numbers zero to twenty, in order. See OEIS A014417 [http://oeis.org/A014417] for the the 
+  sequence of required results. Cf:
+
+    - Fibonacci sequence  
+      http://rosettacode.org/wiki/Fibonacci_sequence
+    - Brown's Criterion - Numberphile 
+      http://www.youtube.com/watch?v=kQZmZRE0cQY&list=UUoxcjq-8xIDTYp3uz647V5A&index=3&feature=plcp
+
+  The intention in this task to find the Zeckendorf form of an arbitrary integer. The Zeckendorf 
+  form can be iterated by some bit twiddling rather than calculating each value separately but 
+  leave that to another separate task. 
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+
+% CP approach
+go =>
+  foreach(Num in 0..20)
+    zeckendorf_cp(Num,X,F),
+    Nums = [F[I] : I in 1..X.length, X[I] = 1],
+    println([Num, rep(X), Nums])
+  end,
+  nl.
+
+% Non CP approach
+go2 =>
+  foreach(Num in 0..20)
+    zeckendorf2(Num,X,F),
+    Fs = [F[I] : I in 1..X.length, X[I]= 1],
+    println([Num, rep(X), Fs])
+  end,
+  nl.
+
+go3 =>
+  foreach(Num in 0..2000)
+    zeckendorf_cp(Num,X,F),
+    Nums = [F[I] : I in 1..X.length, X[I] = 1],
+    println([Num, rep(X), Nums])
+  end,
+  nl.
+
+
+% Checking the uniqueness of solutions
+go4 =>
+  Bad = 0,
+  foreach(Num in 0..20000)
+    All=findall(X,zeckendorf_cp(Num,X,_)),
+    if All.length > 1 then
+      printf("%d has %d solutions\n",Num, All.length),
+      Bad := Bad + 1
+    end
+  end,
+  println(bad=Bad),
+  nl.
+
+
+%
+% Number of different solutions for each number
+% (i.e. without the non-consecutive constraint)
+%
+go5 =>
+  Sols = [],
+  foreach(Num in 0..1000)
+    All=findall(X,zeckendorf_cp_no_unique(Num,X,_)),
+    Sols := Sols ++ [All.length]
+  end,
+  println(sols=Sols),
+  nl.
+
+
+% random number: comparison cp vs non_cp approach
+go6 =>
+  Num = random2() mod 268435455,
+  % Num = 96131,
+  println(num=Num),
+  println(cp),
+  time2(zeckendorf_cp(Num,X2,F2)),
+  Fs2 = [F2[I] : I in 1..X2.length, X2[I]= 1],
+  println([Num,rep(X2),Fs2]),
+
+  println(non_cp),
+  time(zeckendorf2(Num,X,F)),
+  Fs = [F[I] : I in 1..X.length, X[I]= 1],
+  println([Num,rep(X),Fs]),
+
+  nl.
+
+
+% CP approach
+zeckendorf_cp(Num, X,F) =>
+  F = get_fibs(Num).reverse(),
+  N = F.length,
+  X = new_list(N),
+  X :: 0..1,
+
+  % """
+  % For a true Zeckendorf number there is the added restriction that 
+  % no two consecutive Fibonacci numbers can be used which leads to 
+  % the former unique solution.
+  % """
+  foreach(I in 2..N)
+    X[I-1] #= 1 #=> X[I] #= 0
+  end,
+
+  scalar_product(F,X,Num),
+ 
+  solve([ff,split],X).
+
+
+
+%
+% CP approach without the consecutive constraint 
+% (for checking the number of solutions)
+%
+zeckendorf_cp_no_unique(Num, X,F) =>
+  F = get_fibs(Num).reverse(),
+  N = F.length,
+  X = new_list(N),
+  X :: 0..1,
+  scalar_product(F,X,Num),
+
+  solve(X).
+
+%
+% non cp approach
+%
+zeckendorf2(0, X,F) => X = [0], F=[0].
+zeckendorf2(Num, X,F) =>
+  Fibs = get_fibs(Num),
+  I = Fibs.length,
+  N = Num,
+  X1 = [],
+  while (I > 0)
+     Fib := Fibs[I],
+     X1 := X1 ++ [cond(Fib > N,0,1)],
+     if Fib <= N then 
+       N := N - Fib
+     end,
+     I := I - 1
+  end,
+  X = X1,
+  F = Fibs.reverse().
+
+
+
+%
+% scalar product Product = scalar array A * decision variables X
+%
+scalar_product(A, X, Product) => 
+   Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
+
+
+%
+% Fibonacci numbers (tabled)
+%
+table
+fib(0) = 0.
+fib(1) = 1.
+fib(N) = fib(N-1) + fib(N-2).
+
+%
+% remove leading 0's and stringify it
+%
+rep(X) = Str =>
+  First = 1,
+  if X.length > 1, X[First] = 0 then
+    while (X[First] == 0) 
+      First := First + 1
+    end
+  end,
+  Str = [X[I].to_string() : I in First..X.length].join('').
+
+
+%
+% Return a list of fibs <= N
+%
+get_fibs(N) = Fibs =>
+  I = 2,
+  Fib = fib(I),
+  Fibs1 = [Fib],
+  while (Fib < N)
+    I := I + 1,
+    Fib := fib(I),
+    Fibs1 := Fibs1 ++ [Fib]
+  end,
+  Fibs = Fibs1.

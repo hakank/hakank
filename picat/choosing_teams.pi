@@ -1,0 +1,233 @@
+/* 
+
+  Choosing teams in Picat.
+  
+  http://blogs.msdn.com/b/oldnewthing/archive/2014/08/04/10547079.aspx
+  """
+   Suppose you have a bunch of people, and you want to break them up into 
+  m teams of size n. (Therefore you have a total of nm people.) Today's Little 
+  Program will enumerate the ways this can be done.
+  
+  Formally, let's say that you have a collection of size nm, and you want to 
+  enumerate the ways of partitioning the collection into m subsets, each 
+  subset of size n. The order of elements within each subset does not 
+  matter, and the order of the subsets doesn't matter. That's saying that a 
+  team of Alice and Bob is the same as a team of Bob and Alice, and Alice-Bob 
+  versus Charlie-David is the same as Charlie-David versus Alice-Bob. 
+  
+  The number of ways of doing this is (nm)!/n!mm!. You can see this by first 
+  taking all permutations of the players, then dividing out by the things that 
+  cause us to overcount: The number of ways of ordering players within each team 
+  is n!, and there are m teams, and there are m! ways of ordering the teams 
+  themselves. (Note that this is a cute way of expressing the result, but you 
+  shouldn't use it for computation. A slightly better way for computation would 
+  be (prod 1 <= k <= n C(mk, m))/m!.
+  """
+
+  Cf the MiniZinc models:
+    http://hakank.org/minizinc/choosing_teams.mzn
+    http://hakank.org/minizinc/choosing_teams2.mzn
+
+  
+  Number of solutions: (N*M)! /(((N!)^M)*M!)
+  
+  M  N  #sol
+  -----------
+  1  1  1
+  1  2  1
+  1  3  1
+  1  4  1
+  2  1  1
+  2  2  3
+  2  3  10
+  2  4  35
+  3  1  1
+  3  2  15
+  3  3  280
+  3  4  5775
+  4  1  1
+  4  2  105
+  4  3  15400
+  4  4  2627625
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  GlobalMap = get_global_map(),
+  GlobalMap.put(sols,0),
+  M = 4, % number of teams
+  N = 4, % size of team
+  choosing_teams(M,N),
+  fail.
+  
+go =>
+  println("sols"=get_global_map().get(sols,0)),
+  nl.
+
+
+go2 ?=>
+  GlobalMap = get_global_map(),
+  GlobalMap.put(sols,0),
+  M = 4, % number of teams
+  N = 4, % size of team
+  choosing_teams2(M,N),
+  fail.
+
+go2 =>
+  println("sols"=get_global_map().get(sols,0)),
+  nl.
+
+% just counting with findall
+go3 =>
+  M=4,
+  N=4,
+  garbage_collect(90000000),
+  time2(All = findall(_,choosing_teams3(M,N,_))),
+  println(All.length),
+  nl.
+
+
+
+%
+% For 4x4: ~30.9s
+% Without printing the solutions: 13.9s
+%
+choosing_teams(M,N) =>
+  GlobalMap = get_global_map(),
+  P = M*N, % number of people
+  T = factorial(N*M) div ((factorial(N)**M)*factorial(M)),
+  println("theoretical="=T),
+
+  X = new_array(M,N),
+  X :: 1..P,
+
+  all_different(X.vars()),
+
+  % symmetry breaking
+  lex2(X),
+
+  foreach(I in 1..M) 
+    increasing([X[I,J] : J in 1..N])
+  end,
+
+
+  solve(X),
+  println(X),
+
+  GlobalMap.put(sols,GlobalMap.get(sols,0)+1),
+
+  fail,
+
+  nl.
+
+%
+% Alternative representation
+% This is faster than choosing_teams/2: For 4x4: ~25.6s
+% Without printing the solutions: 14.1s
+%
+choosing_teams2(M,N) =>
+
+  GlobalMap = get_global_map(),
+  P = M*N, % number of people
+  T = factorial(N*M) div ((factorial(N)**M)*factorial(M)),
+  println("theoretical="=T),
+
+  X = new_list(P),
+  X :: 1..M,
+
+  % symmetry breaking: 
+  % the first occurrences of the team numbers (1..m) must be in order
+  value_precede_chain(1..M, X),
+  
+  % ensure that there are exactly n members in each team
+  global_cardinality2(X, [N : _ in 1..M]),
+  % foreach(I in 1..M) count(I,X,#=,N) end, % slightly slower
+
+  solve(X),
+  println(X),
+  GlobalMap.put(sols,GlobalMap.get(sols,0)+1),
+
+  fail,
+
+  nl.
+
+
+%
+% as choosing_teams2/2 but without the counter and output variable X
+% findall, without printing or taking care of X: 11.2s
+% With findall and handling X: 16.s
+%
+choosing_teams3(M,N, X) =>
+
+  P = M*N, % number of people
+  T = factorial(N*M) div ((factorial(N)**M)*factorial(M)),
+  println("theoretical="=T),
+
+  X = new_list(P),
+  X :: 1..M,
+
+  % symmetry breaking: 
+  % the first occurrences of the team numbers (1..m) must be in order
+  value_precede_chain(1..M, X),
+  
+  % ensure that there are exactly n members in each team
+  global_cardinality2(X, [N : _ in 1..M]),
+  % global_cardinality3(X, M, N), % not faster than global_cardinality2/2
+  % global_cardinality(X, $[I-N : I in 1..M]), % using built-in gcc is slightly slower
+  % foreach(I in 1..M) count(I,X,#=,N) end, % slightly slower
+
+  solve(X).
+
+
+
+
+
+/*
+  Translations of MiniZinc's value_precede/3 and value_precede_chain
+*/
+value_precede(X,S, T) =>
+  IMin = 1,
+  IMax = X.length,
+  B = new_list(X.length+1), 
+  B :: 0..1, 
+  foreach(I in IMin..IMax)
+    XIS #= (X[I] #= S), 
+    (XIS #=> (B[I+1] #= 1)),
+    ((#~ XIS) #=> (B[I] #= B[I+1])),
+    ((#~ B[I]) #=> (X[I] #!= T))
+  end,
+  B[IMin] #= 0.
+
+value_precede_chain(Values,X) =>
+  foreach(I in 1+1..Values.length)
+    value_precede(X,Values[I-1], Values[I])
+  end.
+
+
+global_cardinality2(A, Gcc) =>
+   Len = length(A),
+   Max = length(Gcc),
+   Gcc :: 0..Len,
+   foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.
+
+global_cardinality3(A, Num, Const) =>
+   foreach(I in 1..Num) count(I,A,#=,Const) end.
+
+
+
+increasing(List) =>
+   foreach(I in 2..List.length) List[I-1] #< List[I] end.
+
+lex2(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_lt([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.

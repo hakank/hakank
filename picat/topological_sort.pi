@@ -2,7 +2,10 @@
 
   Topological sort in Picat.
 
-  It is inspired by a SETL program I saw. See below.
+  The implementation is inspired by a SETL program I saw. See below.
+
+  Also: cycle detection to be able to solve the Rosetta Code task
+  http://rosettacode.org/wiki/Topological_sort
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -18,7 +21,7 @@ main => go.
 
 
 go =>
-  Prec = findall([X,Y], $precedence(X,Y)).reverse(),
+  Prec = findall([X,Y], precedence(X,Y)), % .reverse(),
   println(prec=Prec),
   topological_sort(Prec,Sort),
   println(tsort=Sort),
@@ -97,6 +100,70 @@ go3 =>
   println(tsort=Sort),
   nl.
 
+% 
+% This example is from the Rosetta Code task Topological sort
+% http://rosettacode.org/wiki/Topological_sort
+%
+go4 =>
+
+  % LIBRARY = LIBRARY DEPENDENCIES
+  % (without cycle)
+  Deps = [
+    des_system_lib=[std,synopsys,std_cell_lib,des_system_lib,dw02,dw01,ramlib,ieee],
+    dw01=[ieee,dw01,dware,gtech],
+    dw02=[ieee,dw02,dware],
+    dw03=[std,synopsys,dware,dw03,dw02,dw01,ieee,gtech],
+    dw04=[dw04,ieee,dw01,dware,gtech],
+    dw05=[dw05,ieee,dware],
+    dw06=[dw06,ieee,dware],
+    dw07=[ieee,dware],
+    dware=[ieee,dware],
+    gtech=[ieee,gtech],
+    ramlib=[std,ieee],
+    std_cell_lib=[ieee,std_cell_lib],
+    synopsys=[]
+    ],
+  Prec=[],
+  foreach(Lib=Dep in Deps)
+     % println([Lib,Dep]),
+     Prec := Prec ++ [[D,Lib] : D in Dep, D != Lib]
+  end,
+  % println(prec=Prec),
+  topological_sort(Prec,Sort),
+  println(tsort=Sort),
+  nl.
+
+% Same as go4 but with a cycle in dw01 (adding dw04)
+go4b =>
+
+  % LIBRARY = LIBRARY DEPENDENCIES
+  Deps = [
+    des_system_lib=[std,synopsys,std_cell_lib,des_system_lib,dw02,dw01,ramlib,ieee],
+    % dw01=[ieee,dw01,dware,gtech],
+    dw01=[ieee,dw01,dware,gtech,dw04], % make a cycle
+    dw02=[ieee,dw02,dware],
+    dw03=[std,synopsys,dware,dw03,dw02,dw01,ieee,gtech],
+    dw04=[dw04,ieee,dw01,dware,gtech],
+    dw05=[dw05,ieee,dware],
+    dw06=[dw06,ieee,dware],
+    dw07=[ieee,dware],
+    dware=[ieee,dware],
+    gtech=[ieee,gtech],
+    ramlib=[std,ieee],
+    std_cell_lib=[ieee,std_cell_lib],
+    synopsys=[]
+    ],
+  Prec=[],
+  foreach(Lib=Dep in Deps)
+     % println([Lib,Dep]),
+     Prec := Prec ++ [[D,Lib] : D in Dep, D != Lib]
+  end,
+  % println(prec=Prec),
+  topological_sort(Prec,Sort),
+  println(tsort=Sort),
+  nl.
+
+
 % domain are the keys in L
 domain(L) = [K : K=_V in L].
 
@@ -112,12 +179,14 @@ delete_value(L,X) = [K=V : K=V in L, V!=X].
 delete_key(L,X) = [K=V : K=V in L, K!=X].
 
 
+%
 % Inspired by this SETL snippet:
 %   (while exists x in nodes | x notin range edges)
 %      print(x);
 %      nodes less:= x;
 %      edges lessf:= x;
 %   end;
+%
 topological_sort(Precedences, Sorted) =>
 
   % Note: Picat don't support multi-maps so we work with a 
@@ -130,13 +199,18 @@ topological_sort(Precedences, Sorted) =>
 
   Sorted1 = [],
   while (member(X,Nodes), not member(X,range(Edges))) 
-      println(X),
       Sorted1 := Sorted1 ++ [X],
       Nodes := Nodes.delete(X),
       Edges := Edges.delete_key(X)
   end,
-  Sorted = Sorted1,
-  
+  % detect a cycle
+  if Nodes.length > 0 then
+    println("\nThe graph is cyclic. Here's the detected cycle."),
+    println(nodes_in_cycle=Nodes),
+    println(edges_in_cycle=Edges),
+    Sorted = [without_cycle=Sorted1,cycle=Nodes]
+  else 
+    Sorted = Sorted1
+  end,
   nl.
 
-  

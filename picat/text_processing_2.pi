@@ -1,0 +1,140 @@
+/* 
+
+  Text processing/2 (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Text_processing/2
+  """
+  The following data shows a few lines from the file readings.txt 
+  [http://rosettacode.org/resources/readings.zip]
+  (as used in the Data Munging task).
+
+  The data comes from a pollution monitoring station with twenty four instruments 
+  monitoring twenty four aspects of pollution in the air. Periodically a record is 
+  added to the file constituting a line of 49 white-space separated fields, where 
+  white-space can be one or more space or tab characters.
+
+  The fields (from the left) are:
+
+      DATESTAMP [ VALUEn FLAGn ] * 24
+
+  i.e. a datestamp followed by twenty four repetitions of a floating point instrument 
+  value and that instruments associated integer flag. Flag values are >= 1 if the instrument 
+  is working and < 1 if there is some problem with that instrument, in which case that 
+  instrument's value should be ignored.
+
+  A sample from the full data file readings.txt is: 
+  ....
+
+
+  The task:
+
+    - Confirm the general field format of the file
+    - Identify any DATESTAMPs that are duplicated.
+    - What number of records have good readings for all instruments. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+
+go =>
+  Readings = [split(Record) : Record in read_file_lines("readings.txt")],
+  DateStamps = new_map(),
+  GoodReadings = 0,
+  foreach({Rec,Id} in zip(Readings,1..Readings.length))
+    if Rec.length != 49 then printf("Entry %d has bad_length %d\n", Id, Rec.length) end,
+    Date = Rec[1],
+    if DateStamps.has_key(Date) then
+      % duplicates are not GoodReadings
+      printf("Entry %d (date %w) is a duplicate of entry %w\n", Id, Date, DateStamps.get(Date))
+    else 
+      % This part is the slowest.
+
+      %% Alt I
+      % if sum([1: I in 3..2..49, parse_term(Rec[I]) < 1]) == 0 then
+      %     GoodReadings := GoodReadings + 1
+      % end
+
+      %% Alt IB: Faster
+      if sum([1: I in 3..2..49, check_field2(Rec[I])]) == 0 then
+      % if sum([1: I in 3..2..49, check_field3(Rec[I])]) == 24 then
+         GoodReadings := GoodReadings + 1
+      end
+
+
+      %% Alt II
+      %% this is slightly faster than using sum/1 in alt I (due to the early fail of test)
+      % if check_bad_readings([Rec[I]: I in 3..2..49]) then
+      %    GoodReadings := GoodReadings + 1
+      % end
+
+      %% Alt III
+      % This works but is significantly slower than I, II, and IV
+      % (Here we see how to do some kind of lambdas in Picat.)
+      % if forall($member(Field, [Rec[I]: I in 3..2..49]), $check_field3(Field)) then
+      %  GoodReadings := GoodReadings + 1
+      % end
+
+      %% Alt IV: As fast as alt II
+      % Good = true,
+      % foreach(I in 3..2..49, Good = true )
+      %   R = Rec[I],
+      %   if R == "-2"; R == "0" ; R == "-1" then
+      %      Good := false
+      %   end
+      % end,
+      % if Good then
+      %   GoodReadings := GoodReadings + 1
+      % end
+
+
+      %% Alt V: about as fast as alt IV
+      % Good = true,
+      % I = 3,
+      % while (I <= 49, Good == true)
+      %   R = Rec[I],
+      %   if R == "-2"; R == "0" ; R == "-1" then
+      %      Good := false
+      %   end,
+      %   I := I + 2
+      % end,
+      % if Good then
+      %   GoodReadings := GoodReadings + 1
+      % end
+
+    end,
+    DateStamps.put(Date, Id)
+  end,
+  println(goodReadings=GoodReadings),
+  nl.
+
+check_field(Field) => parse_term(Field) >= 1.
+check_field2(Field) => Field == "-2" ; Field == "-1" ; Field == "0".
+check_field3(Field) => Field == "1" ; Field == "2".
+
+forall(Generate, Test) => not (call(Generate), not call(Test)).
+
+
+
+check_bad_readings(Record) =>
+  check_bad_readings(Record, true, Check),
+  Check = true.
+
+check_bad_readings([],Check0,Check) => 
+  Check = Check0.
+check_bad_readings([H|T],Check0,Check) =>
+  % ( parse_term(H) < 1 -> 
+  % faster variant:
+  ( (H == "-2"; H == "0" ; H == "-1") ->
+     % quick ending of the test
+     check_bad_readings([],false,Check)
+   ; 
+     check_bad_readings(T,Check0,Check)
+  ).
