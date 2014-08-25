@@ -1,0 +1,230 @@
+/* 
+
+  Bridge and torch problem in Picat.
+
+  See 
+  http://en.wikipedia.org/wiki/Bridge_and_torch_problem
+  """
+  Four people come to a river in the night. There is a narrow bridge, but it can 
+  only hold two people at a time. They have one torch and, because it's night, 
+  the torch has to be used when crossing the bridge. Person A can cross the bridge 
+  in one minute, B in two minutes, C in five minutes, and D in eight minutes. When 
+  two people cross the bridge together, they must move at the slower person's pace. 
+  The question is, can they all get across the bridge in 15 minutes or less?
+  """
+
+  Also, see http://stackoverflow.com/questions/1144207/bridge-crossing-puzzle
+
+  This is a fairly general program using the planner module:
+     bridge_and_torch(People,MaxPick,Costs,MaxCost)
+     - People: list of the people (identifiers)
+     - Costs: list of costs for the I'th person in People
+     - MaxPick: max number of people that can cross the bridge at the same time
+     - MaxCost: the max cost, default sum(Costs)
+
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import planner.
+
+main => go.
+
+
+% Cost = 15
+go => 
+   People = [a,b,c,d],
+   Costs = [1,2,5,8],
+   MaxPick = 2,
+   MaxCost = 20,
+   bridge_and_torch(People,MaxPick,Costs,MaxCost),
+   % bridge_and_torch(People,MaxPick,Costs),
+   nl.
+
+
+go2 =>
+   L = [ 
+         [[a,b,c,d],[1,2,5,8]],
+         [[a,b,c,d],[1,2,5,10]],
+         [[a,b,c,d,e],[1,2,5,10,12]],
+         [[a,b,c,d,e,f],[5,10,20,25,30,35]]
+       ],
+   MaxPick = 2,
+   foreach([People,Costs] in L)
+      bridge_and_torch(People,MaxPick,Costs)
+   end,
+   nl.
+
+%
+% MaxPick=3
+% Cost 80 (plan length 5)
+% For MaxPick=2 (see above): Cost 120 (length 9)
+%
+go3 => 
+   People = [adam,boris,ceasar,david,eric,fredric],
+   Costs = [5,10,20,25,30,35],
+   MaxPick = 3,
+   bridge_and_torch(People,MaxPick,Costs),
+   nl.
+
+% random 
+go4 => 
+   N = 12,
+   People = [ I : I in 1..N],
+   Costs = [1+random2() mod 20 : _ in 1..N].sort(),
+   MaxPick = 2,
+   bridge_and_torch(People,MaxPick,Costs),
+   nl.
+
+
+go5 => 
+   N = 10,
+   People = [ I : I in 1..N],
+   Costs = [1,3,5,5,5,7,8,9,9,10],
+   MaxPick = 2,
+   bridge_and_torch(People,MaxPick,Costs),
+   nl.
+
+%
+% Cost 1 for all
+% Note: Here the sum(Costs) estimate don't work.
+% The Cost is 21, much larger than the sum (12) .
+%
+go6 => 
+   N = 12,
+   People = [ I : I in 1..N],
+   Costs = [ 1 : _ in 1..N],
+   MaxPick = 2,
+   bridge_and_torch(People,MaxPick,Costs,100),
+   nl.
+
+% Cost = 1..N
+go7 => 
+   N = 10,
+   People = [ I : I in 1..N],
+   Costs = [ I : I in 1..N],
+   MaxPick = 2,
+   bridge_and_torch(People,MaxPick,Costs),
+   nl.
+
+%
+% Cost: 45, Plan length: 21
+% ~11.7s
+%
+go8 => 
+   N = 12,
+   People = [ I : I in 1..N],
+   Costs = [1,1,1,2,2,3,3,6,7,9,9,9],
+   MaxPick = 2,
+   bridge_and_torch(People,MaxPick,Costs),
+   nl.
+
+%
+% MaxCost defaults to sum(Costs)
+%
+bridge_and_torch(People,MaxPick,Costs) =>
+  bridge_and_torch(People,MaxPick,Costs,sum(Costs)).
+
+%
+% If MaxCost is reasonable, then best_plan_upward
+% (searching from MaxCost downward) is faster than 
+% best_plan (searching from 0..).
+%
+% Using MaxCost as sum(Costs) seems to be a reasonable 
+% estimate.
+% 
+bridge_and_torch(People,MaxPick,Costs,MaxCost) =>
+   println(people=People),
+   println(costs=Costs),
+   println(maxCost=MaxCost),
+   CostsMap = new_map([P=C : {P,C} in zip(People,Costs)]),
+   Init=[People,left,[],CostsMap,MaxPick],
+   writeln(init=Init),
+   % best_plan(Init,MaxCost,Moves,Cost),
+   best_plan_upward(Init,MaxCost,Moves,Cost),
+   foreach(Move in Moves) writeln(Move) end,
+   nl,
+   writeln(plan_length=Moves.length),
+   writeln(cost=Cost),
+   nl.
+
+%
+% The goal is to get all people from the right
+%
+final(Goal) => 
+   % println($final(Goal)),
+   Goal = [Left,Direction,_Right,_Costs,_MaxPick],
+   Left = [],
+   Direction = right.
+   % , println(final=Goal).
+
+
+%
+% select_many(List, N NewL, Selected)
+%
+% Selects N elements from the list L:
+%  - Selected: the selected elements
+%  - NewL: The new L after Selected has been removed
+% 
+/*
+select_many(L,N, NewL, Selected) => 
+  select_many(L,N, 0, NewL, [], Selected).
+
+select_many(L,N, I, NewL,Selected0, Selected), I = N =>
+  Selected = Selected0,
+  NewL = L.
+
+select_many(L,N, I, NewL,Selected0, Selected) =>
+  select(E,L,Rest),
+  select_many(Rest,N,I+1,NewL,Selected0++[E], Selected).
+*/
+
+% Neng-Fa's improved version
+%
+% select_many(List, N NewL, Selected)
+%
+% Selects N elements from the list L:
+%  - Selected: the selected elements
+%  - NewL: The new L after Selected has been removed
+% 
+select_many(L,0, Unselected, Selected) => Unselected=L,Selected=[].
+select_many([X|L],N, Unselected, Selected) ?=> 
+    Unselected=[X|UnselectedR],
+    select_many(L,N, UnselectedR, Selected).
+select_many([X|L],N, Unselected, Selected) ?=> 
+    Selected=[X|SelectedR],
+    select_many(L,N-1, Unselected, SelectedR).
+
+
+%
+% it's faster with tabling
+% (though for larger problem it may eat the RAM)
+%
+table
+
+% take N persons from left -> right
+action([L1,left,L2,Costs,MaxPick],To,Move,Cost) ?=>
+   member(N,1..MaxPick),
+   L1.length >= N,
+   select_many(L1,N,NewLeft1,Selected),
+   NewLeft = NewLeft1.sort(),
+   NewRight = (L2 ++ Selected).sort(),
+   To = [NewLeft,right,NewRight, Costs,MaxPick],
+   Cost = max([Costs.get(E) : E in Selected]),
+   Move=$cross_bridge([move,Selected,to_the_right, left=NewLeft,right=NewRight,cost=Cost]).
+
+% take N persons from right -> left
+action([L1,right,L2,Costs,MaxPick],To,Move,Cost) ?=>
+   member(N,1..MaxPick),
+   L2.length >= N,
+   select_many(L2,N,NewRight1,Selected),
+   NewRight = NewRight1.sort(),
+   NewLeft = (L1 ++ Selected).sort(),
+   To = [NewLeft,left,NewRight, Costs,MaxPick],
+   Cost = max([Costs.get(E) : E in Selected ]),
+   Move=$cross_bridge([move,Selected,to_the_left,left=NewLeft,right=NewRight,cost=Cost]).

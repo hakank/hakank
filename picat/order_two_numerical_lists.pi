@@ -1,0 +1,138 @@
+/* 
+
+  Order two numerical lists (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Order_two_numerical_lists
+  """
+  Write a function that orders two lists or arrays filled with numbers. 
+  The function should accept two lists as arguments and return true if 
+  the first list should be before before the second, and false otherwise.
+
+  The order is determined by lexicographic order: Comparing the first element 
+  of each list. If the first elements are equal, then the second elements 
+  should be compared, and so on, until one of the list has no more 
+  elements. If the first list runs out of elements the result is true. 
+  if the second list or both run out of elements the result is false. 
+  """
+
+  Here we define before/2 in some various ways. Picat's built-in @< can
+  be used (as in before/2) but there are some alternative variants as 
+  well.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go =>
+  List1 = [
+     [[1,2,3], [1,2,3]  , false],
+     [[1,2,3], [1,2,3,4], true],
+     [[1,2,2], [1,2,3]  , true],
+     [[1,2,4], [1,2,3]  , false],
+     [1..10  , 1..8     , false],
+     [[]     , []       , false],
+     [[]     , [1]      , true],
+     [[1]    , []       , false],
+     [[-1,2,3,6,5],[-1,2,3,5,6],false],
+     [[-1,2,3,-5,6],[-1,2,3,-6,5],false]
+  ],
+  foreach(Checker in [before,before2,before3])
+     println(checker=Checker),
+     foreach([L1,L2,Check] in List1)
+        check(L1,L2,Check,Checker)
+     end,
+     nl
+  end,
+
+  % lists
+  List2 = [
+           [],
+           [1,2,3,4], 
+           [2,3,4],
+           [1,2,3,4,8],
+           [-1,-2,-3,4,5],
+           [1,2,3,4,5],
+           1..5,
+           1..10
+       ],
+  foreach(L1 in List2, L2 in List2)
+     if before(L1,L2) then
+       printf("%w < %w\n", L1,L2)
+     end
+  end,
+
+  nl,
+  println(sort=qsort(List2,@<)),
+
+
+  nl.
+
+
+
+check(L1,L2,Check,Checker) => 
+   println($check(L1,L2,Check)),
+   if (Check == true, call(Checker,L1,L2)) 
+      ; 
+      (Check == false, not call(Checker,L1,L2)) then
+     println(ok)
+   else
+     println(not_ok)
+   end.
+
+
+%
+% Using the built-in @<
+% From Picat User guide:
+% """
+% Term1 @< Term2: The term Term1 precedes the term Term2 in 
+% the standard order. For example, a @< b succeeds.
+% """
+%  
+before(L1,L2) => L1 @< L2.
+
+
+before2(L1,L2), L1 = L2 => false.
+before2([H1|T1],[H2|T2]) => 
+  H1 @< H2 -> true 
+  ;
+  H1 @> H2 -> false
+  ; 
+  before2(T1,T2).
+before2([],L2), L2.length > 0 => true.
+before2(L1,[]), L1.length > 0 => false.
+
+
+before3(L1,L2) => 
+  Len1 = L1.length,
+  Len2 = L2.length,
+  if L1 = L2 then 
+    false
+  elseif L1 = [], Len2 > 0 then
+    true
+  elseif Len1 > 0, L2 = [] then
+    false
+  else
+    Check = unknown,
+    foreach(I in 1..min(Len1,Len2), Check = unknown)
+       if L1[I] @< L2[I] then
+          Check := true
+       elseif L1[I] @> L2[I] then
+          Check := false
+       end
+    end,
+    (Check = true ; Check = unknown, Len1 < Len2)
+  end.
+
+
+
+%
+% qsort(List, SortFunction)
+% returns a sorted list according to the sort function SortFunction.
+%
+qsort([],_F)    = [].
+qsort([H|T],F) = qsort([E : E in T, call(F,E,H)], F) 
+                 ++ [H] ++
+                 qsort([E : E in T, not call(F,E,H)],F).

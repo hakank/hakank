@@ -1,0 +1,222 @@
+/* 
+
+  Monty Hall problem (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Monty_Hall_problem
+  """
+  Run random simulations of the Monty Hall game. Show the effects of a strategy of the 
+  contestant always keeping his first guess so it can be contrasted with the 
+  strategy of the contestant always switching his guess.
+
+   
+       Suppose you're on a game show and you're given the choice of three doors. 
+       Behind one door is a car; behind the others, goats. The car and the 
+       goats were placed randomly behind the doors before the show. The rules 
+       of the game show are as follows: After you have chosen a door, the door 
+       remains closed for the time being. The game show host, Monty Hall, who 
+       knows what is behind the doors, now has to open one of the two remaining 
+       doors, and the door he opens must have a goat behind it. If both 
+       remaining doors have goats behind them, he chooses one randomly. 
+       After Monty Hall opens a door with a goat, he will ask you to decide 
+       whether you want to stay with your first choice or to switch to the last 
+       remaining door. Imagine that you chose Door 1 and the host opens 
+       Door 3, which has a goat. He then asks you 
+       "Do you want to switch to Door Number 2?" Is it to your advantage to 
+       change your choice? (Krauss and Wang 2003:10) 
+
+  Note that the player may initially choose any of the three doors (not just Door 1), 
+  that the host opens a different door revealing a goat (not necessarily Door 3), 
+  and that he gives the player a second choice between the two remaining unopened doors.
+
+  Simulate at least a thousand games using three doors for each strategy and show 
+  the results in such a way as to make it easy to compare the effects of each strategy. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import ordset.
+
+
+main => go.
+
+
+% 2.65s on Rounds = 10000
+go =>
+  N = 3,
+  Doors = 1..N,
+  Rounds = 10000,
+  Switch = test_monty(Doors,Rounds,switch),
+  DontSwitch = test_monty(Doors,Rounds,dont_switch),
+
+  println([switch=Switch, dont_switch=DontSwitch]),
+  printf("Switch: %2.2f%% correct\n", 100*Switch / Rounds),
+  printf("Don't switch: %2.2f%% correct\n", 100*DontSwitch / Rounds),
+
+  println(ratio=Switch/DontSwitch),
+
+  nl.
+
+%
+% Slightly faster than go/0: 2.5s on Rounds=10000
+%
+go2 => 
+  Rounds = 10000,
+  SwitchWins = 0,
+  StayWins = 0,
+  N = 3,
+  foreach(_ in 1..Rounds)
+    Winner = choice(N),
+    Choice = choice(N),
+    Shown = choice(N),
+    % show a door that is not the winner of the choice
+    while (Shown == Winner ; Shown == Choice)
+       Shown := choice(N)
+    end,
+    if Choice == Winner then
+       StayWins := StayWins + 1
+    else 
+       SwitchWins := SwitchWins + 1
+    end
+  end,
+
+  printf("Switch win ratio %0.2f%%\n", 100.0 * SwitchWins/Rounds), 
+  printf("Stay win ratio %0.2f%%\n", 100.0 * StayWins/Rounds),
+
+  nl.
+
+
+%
+% Inspired by the Perl solution
+% 2.5s on 10000 rounds
+go3 =>
+  Rounds = 10000,
+  Stay = 0,
+  Switch = 0,
+  N = 3,
+  foreach(_ in 1..Rounds)
+     % let monty randomly choose a door where he puts the prize
+     Prize = choice0(N), % 0..N-1
+
+     % let us randomly choose a door...
+     Chosen = choice0(N),
+
+     % monty opens a door which is not the one with the
+     % prize, that he knows it is the one the player chosen
+     Show = _,
+     do Show := choice0(N) while (Show == Chosen ; Show == Prize),
+
+     % if player chose the correct door, player wins only if he stays
+     if Prize == Chosen then Stay := Stay + 1 end,
+
+     % if player switches, the door he picks is (3 - chosen - show),
+     % because 0+1+2=3, and he picks the only remaining door that is
+     % neither $chosen nor $show
+     if Prize == 3 - Chosen - Show then Switch := Switch + 1 end
+  end,
+
+  printf("Switch win ratio %0.2f%%\n", 100.0 * Switch/Rounds), 
+  printf("Stay win ratio %0.2f%%\n", 100.0 * Stay/Rounds),
+
+  nl.
+
+
+%
+% Enumerate the outcomes.
+%
+go4 ?=>
+  Total = get_global_map(),
+  Total.put(switch_wins,0),
+  Total.put(stay_wins,0),
+
+  N = 3,
+  Doors = 1..N,
+  % member(Strategy,[switch,stay]),
+  Strategy = switch,
+  member(Selected,Doors),
+  member(Car,Doors),
+  Left = delete(Doors,Selected),
+  if membchk(Car,Left) then
+    Opens = first(delete(Left,Car))
+  else 
+    % Note: Monty do one choice when opening "another" door. 
+    % We cannot let him open both...
+    % member(Opens,Left)
+    Opens = Left[choice(N-1)]
+  end,
+  LeftToSwitchTo = first(Left.delete(Opens)),
+  Final = cond(Strategy == switch, LeftToSwitchTo, Selected),
+  if Final == Car then
+     Total.put(switch_wins,Total.get(switch_wins)+1)
+  else
+     Total.put(stay_wins,Total.get(stay_wins)+1)
+  end,
+  Result = cond(Final == Car, 1, 0),
+
+  println([strategy=Strategy,selected=Selected,car=Car,opens=Opens,final=Final,result=Result]),
+  fail,
+
+  nl.
+
+go4 =>
+  Total = get_global_map(),
+  println(switch_wins=Total.switch_wins),
+  println(stay_wins=Total.stay_wins),
+  nl.
+
+
+%
+% Try different number of doors
+%
+go5 =>
+  Rounds = 1000,
+  Ratios = [],
+  foreach(NumDoors in 3..10) 
+    println(numDoors=NumDoors),
+    Doors = 1..NumDoors,
+    Switch = test_monty(Doors,Rounds,switch),
+    DontSwitch = test_monty(Doors,Rounds,dont_switch),
+
+    printf("Switch: %2.2f%% correct\n", 100*Switch / Rounds),
+    printf("Don't switch: %2.2f%% correct\n", 100*DontSwitch / Rounds),
+
+    Ratio = Switch/DontSwitch,
+    println(ratio=Ratio),
+    Ratios := Ratios ++ [Ratio],
+    nl
+  end,
+
+  println(avg=avg(Ratios)),
+
+  nl.
+
+
+%
+% pick a number from 1..N
+%
+choice(N) = 1 + random2() mod N.
+
+% pick a number from 0..N-1
+choice0(N) = random2() mod N.
+
+% test_monty(Doors,Rounds,Strategy) = Wins => 
+%   N = Doors.length,
+%   Wins = 0,
+%   foreach(_ in 1..Rounds) 
+%     Selected = choice(N),
+%     Car = choice(N),
+%     Wins := Wins + monty(Doors,Strategy,Selected,Car)
+%   end.
+test_monty(Doors,Rounds,Strategy) = Sum =>  
+   N = Doors.length,
+   Sum = sum([monty(Doors,Strategy,choice(N),choice(N)) : _ in 1..Rounds]).
+
+monty(Doors,Strategy,Selected,Car) = Result =>
+  Left = delete(Doors,Selected),
+  Opens = cond(membchk(Car,Left), first(delete(Left,Car)), Left[choice(Doors.length-1)]),
+  LeftToSwitchTo = first(Left.delete(Opens)),   
+  Final = cond(Strategy == switch, LeftToSwitchTo, Selected),
+  Result = cond(Final == Car, 1, 0).

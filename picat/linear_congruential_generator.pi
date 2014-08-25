@@ -1,0 +1,143 @@
+/* 
+
+  Linear congruential generator (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Linear_congruential_generator
+  """
+  The linear congruential generator is a very simple example of a random number 
+  generator. All linear congruential generators use this formula:
+
+    r_{n + 1} = a \times r_n + c \pmod m 
+
+  Where:
+
+    r0 is a seed.
+    r1, r2, r3, ..., are the random numbers.
+    a, c, m are constants. 
+
+  If one chooses the values of a, c and m with care, then the generator produces a 
+  uniform distribution of integers from 0 to m − 1.
+
+  LCG numbers have poor quality. rn and rn + 1 are not independent, as true random 
+  numbers would be. Anyone who knows rn can predict rn + 1, therefore LCG is not 
+  cryptographically secure. The LCG is still good enough for simple tasks like 
+  Miller-Rabin primality test, or FreeCell deals. Among the benefits of the LCG, 
+  one can easily reproduce a sequence of numbers, from the same r0. One can also 
+  reproduce such sequence with a different programming language, because the formula 
+  is so simple.
+
+  The task is to replicate two historic random number generators. One is the rand() 
+  function from BSD libc, and the other is the rand() function from the Microsoft 
+  C Runtime (MSCVRT.DLL). Each replica must yield the same sequence of integers 
+  as the original generator, when starting from the same seed.
+
+  In these formulas, the seed becomes state0. The random sequence is rand1, rand2 and so on.
+
+  BSD formula:
+
+    state{n + 1} = 1103515245 * state{n} + 12345 mod 2^31
+    rand{n} = state{n}
+    rand{n} is in range 0 to 2147483647. 
+
+  Microsoft formula:
+
+    state{n + 1} = 214013 * state{n} + 2531011xo mod 2^31
+    rand{n} = state{n} div 2^16
+    rand{n} is in range 0 to 32767. 
+
+  The BSD formula was so awful that FreeBSD switched to a different formula. More 
+  info is at Random number generator (included)#C. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go => 
+
+  % BSD
+  println(bsd=[bsd() : _ in 1..10]),
+  bsd_seed(1),
+  println(bsd2=[bsd() : _ in 1..10]),
+
+  % MS
+  println(ms=[ms() : _ in 1..10]),
+  ms_seed(1),
+  println(ms2=[ms() : _ in 1..10]),
+
+  nl.
+
+
+go2 => 
+
+  % BSD
+  lcg_init(bsd,1103515245,12345,2**31,1),
+  println([lcg(bsd) : _ in 1..10]),
+
+  lcg_init(bsd,1,1103515245,12345,2**31,1),
+  println([lcg(bsd) : _ in 1..10]),
+
+  % MS
+  lcg_init(ms,214013,2531011,2**31,2**16),
+  println([lcg(ms) : _ in 1..10]),
+
+  lcg_init(ms,1,214013,2531011,2**31,2**16),
+  println([lcg(ms) : _ in 1..10]),
+
+  % unknown
+  println([lcg(unknown) : _ in 1..10]),
+
+  nl.
+  
+
+
+% BSD
+bsd_seed(Seed) => 
+  get_global_map().put(bsd_state, Seed).
+bsd = Rand =>
+  M = get_global_map(),
+  Seed = cond(M.has_key(bsd_state), M.get(bsd_state),0),
+  Rand = (1103515245*Seed + 12345) mod 2**31,
+  M.put(bsd_state,Rand).
+  
+
+% Microsoft
+ms_seed(Seed) => 
+  get_global_map().put(ms_state, Seed).
+ms = Rand div 2**16 =>
+  M = get_global_map(),
+  Seed = cond(M.has_key(ms_state),M.get(ms_state),0),
+  Rand = ((214013*Seed + 2531011) mod 2**31),
+  M.put(ms_state,Rand).
+ 
+
+%
+% general version using global map
+%
+% default seed is 0
+lcg_init(Type,Multiplier,Adder,Mod,OutputDivisor) => 
+  lcg_init(Type,0,Multiplier,Adder,Mod,OutputDivisor).
+
+lcg_init(Type,Seed,Multiplier,Adder,Mod,OutputDivisor) => 
+  get_global_map().put(Type, 
+              new_map([seed=Seed,multiplier=Multiplier,adder=Adder,mod=Mod,outputDivisor=OutputDivisor])).
+
+lcg(Type) = Rand div M.outputDivisor =>
+  if not get_global_map().has_key(Type) then
+    throw $lcg(Type,unknown_LCG_type)
+  end,
+  M = get_global_map().get(Type),
+  Rand = ((M.multiplier*M.seed + M.adder) mod M.mod),
+  M.put(seed,Rand), 
+  get_global_map().put(Type,M).
+
+

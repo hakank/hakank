@@ -1,0 +1,190 @@
+/* 
+
+  Last Friday of each month (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Last_Friday_of_each_month
+  """
+  Write a program or a script that returns the last Fridays of each month of a 
+  given year. The year may be given through any simple input method in your language 
+  (command line, std in, etc.).
+
+  Example of an expected output:
+
+    ./last_fridays 2012
+    2012-01-27
+    2012-02-24
+    2012-03-30
+    2012-04-27
+    2012-05-25
+    2012-06-29
+    2012-07-27
+    2012-08-31
+    2012-09-28
+    2012-10-26
+    2012-11-30
+    2012-12-28
+  """
+
+
+  Syntax:
+
+  * Default year is 2012 (via go/0)
+
+    $ picat last_friday_of_each_month.pi
+    [2012,1,27]
+    [2012,2,24]
+    [2012,3,30]
+    [2012,4,27]
+    [2012,5,25]
+    [2012,6,29]
+    [2012,7,27]
+    [2012,8,31]
+    [2012,9,28]
+    [2012,10,26]
+    [2012,11,30]
+    [2012,12,28]
+
+  * With an argument (Year) to the program (via main/1)  
+
+    $ picat last_friday_of_each_month.pi 2014
+    [2014,1,31]
+    [2014,2,28]
+    [2014,3,28]
+    [2014,4,25]
+    [2014,5,30]
+    [2014,6,27]
+    [2014,7,25]
+    [2014,8,29]
+    [2014,9,26]
+    [2014,10,31]
+    [2014,11,28]
+    [2014,12,26
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main(ARGV) =>
+  if ARGV.length > 0 then
+    Year = ARGV[1].to_integer(),
+    foreach(Date in show_year(Year)) println(Date) end,
+    nl
+  end.
+
+main => go.
+
+go => 
+  Year = 2012,
+  foreach(Date in show_year(Year)) println(Date) end,
+  nl.
+
+
+% alternative method of calculating the last Fridays
+go2 =>
+  Year = 2012,
+  foreach(Date in show_year2(Year)) 
+    println(Date)
+  end,
+  nl.
+
+
+%
+% (Since I was curious...)
+% For which years between 1900..2030 was the last friday in Febrary the 29th?
+% 1924
+% 1952
+% 1980
+% 2008
+%
+go3 => 
+  foreach(Year in 1900..2030)
+    if leap_year(Year), dow(Year, 2, 29) == 5 then
+      println(Year)
+    end
+  end.
+
+
+
+%
+% Return the last Fridays of each month for year Year
+% 
+
+% using j2g and g2j
+show_year(Year) = [ [ [Y,M1,D] : [Y,M1,D] in L, M=M1].last() :  M in 1..12] =>
+  L = [[Y,M,D] : JD in g2j(Year,1,1)..g2j(Year,12,31), [Y,M,D] = j2g(JD), dow(Y,M,D) == 5].
+
+% alternative
+show_year2(Year) = 
+  [ [ [Year,Month,Day] : Day in 1..max_days_in_month(Year,Month), dow(Year, Month, Day) == 5].last() : Month in 1..12].
+
+
+
+%
+% Day of week, Sakamoto's method
+% http://en.wikipedia.org/wiki/Weekday_determination#Sakamoto.27s_Method
+%
+dow(Y, M, D) = R =>
+  T = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4],
+  if M < 3 then
+     Y := Y - 1
+  end,
+  R = (Y + Y // 4 - Y // 100 + Y // 400 + T[M] + D) mod 7.
+
+
+%
+% http://en.wikipedia.org/wiki/Julian_day
+% gregorian2julian
+g2j(Year,Month,Day) = JD =>
+  A = floor((14-Month) / 12), % 1 for Jan or Feb, 0 for other months
+  Y = Year + 4800 - A,
+  M = Month + 12*A - 3, % 0 for Mars, 11 for Feb
+  JD = Day + floor( (153*M + 2) / 5) + 365*Y + floor(Y/4) -
+       floor(Y / 100) + floor(Y / 400) - 32045.
+
+
+% julian2gregorian
+j2g(JD) = Date =>
+  Y=4716,
+  V=3,
+  J=1401,
+  U=5,
+  M=2,
+  S=153,
+  N=12,
+  W=2,
+  R=4,
+  B=274277,
+  P=1461,
+  C= -38,
+  F = JD + J + (((4 * JD + B) div 146097) * 3) div 4 + C,
+  E = R * F + V,
+  G = mod(E, P) div R,
+  H = U * G + W,
+  Day = (mod(H, S)) div U + 1,
+  Month = mod(H div S + M, N) + 1,
+  Year = (E div P) - Y + (N + M - Month) div N,
+  Date = [Year,Month,Day].
+
+
+% for the alternative approach
+max_days_in_month(Year,Month) = Days => 
+  if member(Month, [1,3,5,7,8,10,12]) then 
+    Days = 31
+  elseif member(Month,[4,6,9,11]) then
+    Days = 30
+  else
+    if leap_year(Year) then
+     Days = 29
+   else
+     Days = 28
+   end
+  end.
+
+leap_year(Year) => 
+  (Year mod 4 == 0, Year mod 100 != 0) 
+  ; 
+  Year mod 400 == 0. 
+
+
