@@ -1,0 +1,220 @@
+/* 
+
+  Equilibrium index (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Equilibrium_index
+  """
+  An equilibrium index of a sequence is an index into the sequence such that the sum 
+  of elements at lower indices is equal to the sum of elements at higher indices. 
+  For example, in a sequence A:
+
+    A0 = −7 
+    A1 = 1 
+    A2 = 5 
+    A3 = 2 
+    A4 = −4 
+    A5 = 3 
+    A6 = 0 
+
+  3 is an equilibrium index, because:
+
+    A0 + A1 + A2 = A4 + A5 + A6 
+
+  6 is also an equilibrium index, because:
+
+       A0 + A1 + A2 + A3 + A4 + A5 = 0 
+
+  (sum of zero elements is zero)
+
+  7 is not an equilibrium index, because it is not a valid index of 
+  sequence A.
+
+  Write a function that, given a sequence, returns its equilibrium indices (if any). 
+  Assume that the sequence may be very long. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+%
+% Note: Picat is 1-based
+%
+go =>
+
+  A = [-7, 1, 5, 2, -4, 3, 0],
+
+  All1 = findall(Ix1, equilibrium_index(A,Ix1)),
+  println(all1=All1),
+    
+  All2 = findall(Ix2, equilibrium_index_cp(A,Ix2)),
+  println(all2=All2),
+
+  equilibrium_index3(A,All3),
+  println(all3=All3),
+
+  All4 = findall(Ix4, equilibrium_index2(A,Ix4)),
+  println(all4=All4),
+
+  equilibrium_index3(A,All5),
+  println(all5=All5),
+
+  All6 = equilibrium_index4(A),
+  println(all6=All6),
+
+  equilibrium_index5(A,All7),
+  println(all7=All7),
+
+
+  nl.
+
+go2 => 
+  As = [
+       [-7,  1,  5,  2, -4,  3,  0], % 4 7
+       [2,  4,  6]            ,   % (no equilibrium point)
+       [0,  2,  4,  0,  6,  0]   ,   %  4
+       [2,  9,  2]            ,  %  2
+       [1, -1,  1, -1,  1, -1,  1]   %  1 2 3 4 5 6 7
+       ],
+  foreach(A in As)
+    println(a=A),
+    All1 = findall(Ix1, equilibrium_index(A,Ix1)),
+    println(all1=All1),
+    
+    All2 = findall(Ix2, equilibrium_index_cp(A,Ix2)),
+    println(all2=All2),
+
+    equilibrium_index3(A,All3),
+    println(all3=All3),
+
+    All4 = findall(Ix4, equilibrium_index2(A,Ix4)),
+    println(all4=All4),
+
+    equilibrium_index3(A,All5),
+    println(all5=All5),
+
+    All6 = equilibrium_index4(A),
+    println(all6=All6),
+
+
+    equilibrium_index5(A,All7),
+    println(all7=All7),
+
+
+    nl
+
+  end,
+  nl.
+  
+
+go3 => 
+
+  N = 5001,
+  A = [(random2() mod 20)-10 : _ in 1..N],
+  println(a=A),
+
+  time(All1 = findall(Ix1, equilibrium_index(A,Ix1))),
+  println(all1=All1),
+    
+  time2(All2 = findall(Ix2, equilibrium_index_cp(A,Ix2))),
+  println(all2=All2),
+
+  time(equilibrium_index3(A,All3)),
+  println(all3=All3),
+
+  time(All4 = findall(Ix4, equilibrium_index2(A,Ix4))),
+  println(all4=All4),
+
+  time(equilibrium_index3(A,All5)),
+  println(all5=All5),
+
+  time(All6 = equilibrium_index4(A)),
+  println(all6=All6),
+
+  time(equilibrium_index5(A,All7)),
+  println(all7=All7),
+
+
+  nl.
+
+%
+% non-det with between/3
+%
+equilibrium_index(A, Ix) => 
+  Len = A.length,
+  between(1,Len,Ix),
+  sum(slice(A,1,Ix-1)) == sum(slice(A,Ix+1,Len)).
+
+
+%
+% based on the Prolog version, using append/3.
+%
+% On of the fastest...
+%
+equilibrium_index2(A, Ix) => 
+  append(Front, [_|Back], A),
+  % append(Front, [_],Back, A), % variant append/4
+  sum(Front) = sum(Back),
+  Ix = length(Front)+1. % give 1 based index
+
+
+
+%
+% cp version (slower)
+%
+equilibrium_index_cp(A, Ix) => 
+  Len = A.length,
+  Ix :: 1..Len,
+  % sum([A[I]*(I #< Ix) : I in 1..Len]) #= sum([A[I]*(I #> Ix): I in 1..Len]),
+  S1 #= sum([A[I]*(I #< Ix) : I in 1..Len]),
+  S2 #= sum([A[I]*(I #> Ix) : I in 1..Len]),
+  S1 #= S2,
+
+  solve([ffd,split],[Ix]).
+
+
+% foreach loop
+equilibrium_index3(A, Ix) =>
+  Len = A.length,
+  Ix1 = [],
+  foreach(I in 1..Len)
+    if sum(slice(A,1,I-1)) == sum(slice(A,I+1,Len)) then 
+      Ix1 := Ix1 ++ [I]
+    end
+  end,
+  Ix = Ix1.
+
+
+% 
+% List comprehension
+%
+equilibrium_index4(A) = [ I : I in 1..Len, sum(slice(A,1,I-1)) == sum(slice(A,I+1,Len))] => 
+  Len = A.length.
+
+
+%
+% From the Java solution
+%
+% One of the fastest...
+%
+equilibrium_index5(A, Ix) =>
+  Len = A.length,
+  Ix1 = [],
+  TotalSum = sum(A),
+  RunningSum = 0,
+  foreach(I in 1..Len)
+    AI = A[I],
+    if TotalSum - RunningSum - AI == RunningSum then 
+      Ix1 := Ix1 ++ [I]
+    end,
+    RunningSum := RunningSum + AI
+  end,
+  Ix = Ix1.

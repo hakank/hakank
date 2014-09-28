@@ -1,0 +1,147 @@
+/* 
+
+  Longest common substring / sublist in Picat.
+
+  Find the longest common prefix for a list of strings (or list of lists).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  Dirs = [
+          "/home1/user/tmp/coverage/test",
+          "/home2/user/tmp/covert/operator",
+          "/home3/user/tmp/coven/members"
+          ],
+  longest_common_substring1(Dirs,Substr,Len),
+  println(substr=Substr),
+  println(len=Len),
+  nl.
+
+%
+% all common substrings
+%
+go2 =>
+  Dirs = [
+          "/home1/user/tmp/coverage/testending",
+          "/home2/user/tmp/covert/operatorending",
+          "/home3/user/tmp/coven/membersending"
+          ],
+  All = findall([Len,Substr], common_substring1(Dirs,Substr,Len)).remove_dups().sort().reverse(),
+  println(all=All),
+  println(len=All.length),
+  fail,
+  nl.
+
+
+%
+% list of lists
+%
+go3 =>
+  Ls = [
+       [1,2,3,4,5, 6,7,8,9,10, 31,62,23,54],
+       [9,3,5,7,1, 6,7,8,9,10, 32,62,23,54],
+       [9,4,5,7,4, 6,7,8,9,10, 33,62,23,54]
+       ],
+  longest_common_substring1(Ls,Substr,Len),
+  println(substr=Substr),
+  println(len=Len),
+  nl.
+
+go4 => 
+  N = 50,
+  M = 230,
+  println([numLists=N,lengthOfLists=M]),
+  LL = [random2() mod M : _ in 1..M],
+  Ls = [copy_term(LL) : _ in 1..N],
+  % Make some small changes in each list
+  foreach(I in 1..N)
+    RandIx = 1 + random2() mod M,
+    Ls[I,RandIx] := Ls[I,RandIx] + 1
+  end,
+  % foreach(L in Ls) println(L) end,
+
+  %
+  % Using table is slightly faster...
+  %
+
+  println("Using table:"),
+  time(longest_common_substring(Ls,Substr2,Len2,[From2,To2])),
+  println(substr2=Substr2),
+  println(len2=Len2),
+  println([from2=From2,to2=To2]),
+
+  println("\nUsing maxof"),
+  time(maxof(longest_common_substring_no_table(Ls,Substr,Len,[From,To]),Len)),
+  println(substr=Substr),
+  println(len=Len),
+  println([from=From,to=To]),
+
+  nl.
+
+%
+% Find (one of) the longest common substring/sublist.
+% 
+table(+,-,max)
+longest_common_substring1(Ls,Substr,Len) =>
+  foreach(L in Ls) 
+    append(_,Substr,_,L),
+    Substr != []
+  end,
+  Len = Substr.length.
+
+
+
+%
+% generate all substrings on backtrack
+%
+common_substring1(Ls,Substr,Len) =>
+  foreach(L in Ls) 
+    append(_,Substr,_,L),
+    Substr != []
+  end,
+  Len = Substr.length.
+
+
+%
+% Generate the longest common substring, 
+% and return the From and To indices as well.
+%
+% This is much faster than the append/4 variant (longest_common_substring/3).
+% It's slightly faster than the maxof variant.
+%
+table(+,+,max,+)
+longest_common_substring(Ls,Substr,Len,[From,To]) =>
+  LsLen = Ls.length,
+  MinLen = min([length(L) : L in Ls]),
+  between(1,MinLen,From),
+  between(From,MinLen,To),
+  foreach(I in 1..LsLen) 
+    Substr = [Ls[I,K] : K in From..To]
+  end,
+  Len = Substr.length.
+
+%
+% Same as longest_common_substring/4 but without the table directive.  
+% For use with maxof/2.
+%
+longest_common_substring_no_table(Ls,Substr,Len, [From,To]) =>
+  LsLen = Ls.length,
+  MinLen = min([length(L) : L in Ls]),
+  between(1,MinLen,From),
+  between(From,MinLen,To),
+  foreach(I in 1..LsLen) 
+    Substr = [Ls[I,K] : K in From..To]
+  end,
+  Len = Substr.length.
+
