@@ -101,9 +101,9 @@ euler10d :-
 
 % 26.42s (best so far)
 euler10f :-
-        numlist(1, 2000000, C),
+        C @= [I : I in 3..2..2000000],
         sublist(prime, C, R),
-        sumlist(R, N),
+        N is sum(R),
         writeln(N).
 
 composite(N) :- N<2.

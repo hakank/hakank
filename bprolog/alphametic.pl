@@ -74,8 +74,8 @@ alphametic(L,Base, Vars) :-
         alldifferent(Vars),
         Vals #= sum([Val : S in Sums,[Val],calc(S,Base,Val)]),
         calc(Last,Base,Vals),
-        foreach(S in Sums,S[1]#>0),
-
+        % foreach(S in Sums,S[1]#>0), % not allowed in v8
+        foreach(I in 1..Sums^length, Sums[I,1]#>0),
         labeling([ff,split], Vars).
 
 calc(X,Base,Y) :-

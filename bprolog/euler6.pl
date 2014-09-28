@@ -32,8 +32,8 @@ problem6 :-
                   List2^1 = [I|List2^0]
                 )
                ),
-        sumlist(List1, SumSquares), 
-        sumlist(List2, Sum), 
+        SumSquares is sum(List1), 
+        Sum is sum(List2), 
         SquaresSum is Sum**2, 
         Diff is SquaresSum - SumSquares,
         writeln(Diff).

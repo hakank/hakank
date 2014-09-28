@@ -21,7 +21,7 @@ go :-
              euler1d,
              euler1d2,
              euler1e,
-             euler1f,
+             % euler1f,
              euler1g,
              euler1h,
              euler1i,
@@ -37,7 +37,7 @@ proc(E) :-
 % Using list comprehension
 euler1a :-
        L @= [I:I in 1..999,(I mod 3=:=0;I mod 5=:=0)],
-       sumlist(L,Sum),
+       Sum is sum(L),
        writeln(Sum).
 
 % With sum/1 directly on the list comprehension.
@@ -85,7 +85,7 @@ p(_,0).
 % same principle as euler1 but using predicate p/2.
 euler1d :-
         L @= [C : N in 1..999, [C], p(N, C)],
-        sumlist(L,Sum),
+        Sum is sum(L),
         writeln(Sum).
 
 
@@ -105,14 +105,13 @@ euler1e :-
 
 
 % Using CLP(FD), though it's slower (0.152s instead of 0.004s)
-euler1f :-
-        euler1f_pred(1, 999, 0, Res),
-        writeln(Res).
-
-euler1f_pred(N, Limit, R, R) :- N #> Limit.
-euler1f_pred(N, Limit, R, R2) :-
-        ((N mod 3 #= 0 #\/ N mod 5 #= 0) -> R1 #= R + N ; R1 #= R),
-        euler1f_pred(N+1, Limit, R1,R2).
+% euler1f :-
+%         euler1f_pred(1, 999, 0, Res),
+%         writeln(Res).
+% euler1f_pred(N, Limit, R, R) :- N #> Limit.
+% euler1f_pred(N, Limit, R, R2) :-
+%         ((N mod 3 #= 0 #\/ N mod 5 #= 0) -> R1 #= R + N ; R1 #= R),
+%         euler1f_pred(N+1, Limit, R1,R2).
 
 
 % Purer CLP(FD), a little faster than euler1f (0.135s) but slower than
@@ -123,7 +122,7 @@ euler1g :-
         L in 0..Len, 
         foreach(N in 1..Len, L[N] #= N*((N mod 3 #= 0 #\/ N mod 5 #= 0))),
         labeling([ff], L),
-        sumlist(L, Sum),
+        Sum is sum(L),
         writeln(Sum).
 
 % slightly different from euler1g but faster (0.008s)
@@ -132,7 +131,7 @@ euler1h :-
         Len = 999,
         length(L, Len),
         L @= [R : N in 1..Len, [R], R #= N*((N mod 3 #= 0 #\/ N mod 5 #= 0))],
-        sumlist(L, Sum),
+        Sum is sum(L),
         writeln(Sum).
 
 
@@ -154,6 +153,6 @@ euler1j :-
 % euler1i :-
 %         Len = 999,
 %         L @= [N*((N mod 3 $= 0 $\/ N mod 5 $= 0)) : N in 1..Len],
-%         sumlist(L, Sum),
+%         Sum is sum(L),
 %         sat_solve(L),
 %         writeln(Sum).

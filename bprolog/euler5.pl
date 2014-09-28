@@ -40,7 +40,7 @@ foldr(Op, Init, [X|Xs], R) :-
 
 % 0.0s
 euler5a :-
-        numlist(2,20, List),
+        List @= [I : I in 2..20],
         foldr(lcm, 1, List, As),
         writeln(As).
 
