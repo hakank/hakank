@@ -61,6 +61,8 @@ var 2..3: DaveC;
 var 2..3: EddieC;
 var 2..3: FreddieC;
 
+array[1..6] of string: s = ["Alan", "Brian", "Charlie", "Dave", "Eddie", "Freddie"];
+
 solve satisfy;
 % solve :: int_search(x, "first_fail", "indomain", "complete") satisfy;
 
@@ -124,6 +126,17 @@ constraint
 
 output [
   show([Alan,Brian,Charlie,Dave, Eddie, Freddie]) ++ "\n" ++
-  show([AlanC,BrianC,CharlieC,DaveC,EddieC,FreddieC])
+  show([AlanC,BrianC,CharlieC,DaveC,EddieC,FreddieC]) ++ "\n"
+]
+++
+[
+  if fix(Alan) = true then "Alan" elseif 
+     fix(Brian) = true then "Brian" elseif
+     fix(Charlie) = true then "Charlie" elseif
+     fix(Dave) = true then "Dave" elseif
+     fix(Eddie) = true then "Eddie" elseif
+     fix(Freddie) = true then "Freddie" else
+     "Nobody"
+   endif ++ " committed the crime."
 ]
 ;

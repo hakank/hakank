@@ -72,25 +72,7 @@
 % """
 
 
-%
-% Here are two (of many) solutions from this MiniZinc model:
-% 
-%   HA H2 H3 H4 S5 S6 S7 C8 C9 CT DJ DQ DK 
-%   S2 S3 SK SA D4 D5 D6 H7 H8 H9 CT CJ CQ 
-%   C5 C4 CA C6 HK H3 HJ DQ D2 D7 S8 S9 ST 
-%   DT DQ DJ D9 C7 C8 C2 SA SK S3 H4 H5 H6 
-%   ----------
-%
-%   HA H2 H3 H4 S5 S6 S7 C8 C9 CT DJ DQ DK 
-%   S2 S3 SK SA D4 D5 D6 H7 H8 H9 CT CJ CQ 
-%   C5 C4 CA C6 HK H3 HJ DQ D2 D7 S8 S9 ST 
-%   DQ DT D7 D9 CJ C8 C2 S4 SK S5 HA H3 H6 
-%   ----------
-%   ....
 
-
-
-%
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
@@ -116,11 +98,11 @@ array[1..columns] of var set of 1..num_values: columns_set;
 
 % solve satisfy;
 solve :: int_search(
-        [values[i,j] | i in 1..rows, j in 1..columns] 
-        ++
         [suites[i,j] | i in 1..rows, j in 1..columns] 
+        ++
+        [values[i,j] | i in 1..rows, j in 1..columns] 
         ,
-        first_fail, % occurrence, 
+        occurrence, 
         indomain_min, 
         complete) 
     satisfy;
@@ -136,6 +118,20 @@ constraint
    forall(v in 1..num_suites) (
       count([suites[i,j] | i in 1..rows, j in 1..columns], v, num_values)
    ) 
+   
+   /\ % All 52 cards are distinct 
+   alldifferent([1+13*(suites[i,j]-1)+(values[i,j]-1) | i in 1..rows, j in 1..columns] ) % :: domain
+
+   % /\
+   % forall(k in 1..rows*columns) (
+   %    % exists(i in 1..rows, j in 1..columns) (
+   %    let {
+   %    var 1..rows: i,
+   %    var 1..columns: j
+   %     } in
+   %       k = 1+13*(suites[i,j]-1)+(values[i,j]-1)
+   %   % )
+   % )
 ;
 
 
@@ -190,7 +186,13 @@ constraint
 
 ;
 
-output [
+output 
+[
+   "suites:", show(suites), "\n",
+   "values:", show(values), "\n"
+]
+++
+[
     if j = 1 then "\n" else "" endif ++
       show(suites_s[fix(suites[i,j])]) ++ "" ++ show(values_s[fix(values[i,j])]) ++ " " 
    | i in 1..rows, j in 1..columns
