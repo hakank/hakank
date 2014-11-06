@@ -12,28 +12,21 @@
 % Model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
-
-int: m = 4; % Number of variables
-set of int: M = 1..m;
-
-array[M] of var 0..711: x;
+include "globals.mzn";
+array[1..4] of var 0..711: x;
 
 % solve satisfy;
 solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
 
 constraint
-  711 = sum(i in M) (x[i])
+  711 = sum(x) 
   /\
-  % 711000000 = x[1]*x[2]*x[3]*x[4]
-  711*100*100*100 = x[1]*x[2]*x[3]*x[4]
-
-  /\ % symmetry breaking
-  forall(i in 2..m) (
-    x[i-1] <= x[i]
-  )
+  711 * 100 * 100 * 100 = product(x) 
+  /\ 
+  % symmetry breaking
+  increasing(x)
 ;  
 
 output [
  "x: ", show(x), "\n"
-
 ];
