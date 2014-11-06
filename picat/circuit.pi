@@ -57,9 +57,10 @@ go =>
 go2 =>
    Print = 0,
    foreach(N in 4..11)
+      garbage_collect(100_000_000),
       writef("\nN: %d\n", N),
-      time2($test1(N, Print)),
-      time2($test2(N, Print))
+      time2(test1(N, Print)),
+      time2(test2(N, Print))
    end.
 
 
@@ -67,7 +68,7 @@ go2 =>
 test1(N,Print) =>
    X = new_list(N),
    X :: 1..N, 
-   L = findall(X, ($circuit_me(X),$solve([ff],X))),
+   L = findall(X, (circuit_me(X),solve([ff],X))),
    if Print == 1 then writeln(L) end,
    writeln(len=L.length).
 
@@ -77,7 +78,7 @@ test2(N,Print) =>
 
    X = new_list(N),
    X :: 1..N, 
-   L = findall(X, ($circuit(X),$solve([ff],X))),
+   L = findall(X, (circuit(X),solve([ff],X))),
    if Print == 1 then writeln(L) end,
    writeln(len=L.length).
 
@@ -99,6 +100,8 @@ circuit_me(X) =>
    %
    all_different(X),
    all_different(Z),
+   % all_distinct(X), % slower
+   % all_distinct(Z), % slower
 
    % put the orbit of x[1] in in z[1..n]
    X[1] #= Z[1],
@@ -106,32 +109,13 @@ circuit_me(X) =>
    % when I = N it must be 1
    Z[N] #= 1,
 
-   %
-   % Get the orbit for Z.
-   %
-   % The MiniZinc code for the following is:
-   %    forall(i in 2..n) (
-   %       z[i] = x[z[i-1]]
-   %    )
-   % 
-   % but since Picat don't support this syntax we have to 
-   % twiddle a little. 
-
-   % Using freeze/2 don't work (probably since I don't understand 
-   % how to use it).
-   foreach(I in 2..N)
-       % Z[I] #= X[Z[I-1]] % this is not supported
-       % freeze(Z,Z[I] #= Z[I-1]),
-
-       Z1 #= Z[I-1],
-       element(Z1,X,X2),
-       Z[I] #= X2
-   end,
-
    % Redundant constraint. It is covered by the constraints
    % X[N] = 1 and alldifferent.
    % foreach(I in 1..N-1) Z[I] #\= 1 end,
 
-   Z[N] #= 1.
-
-
+   %
+   % Get the orbit for Z.
+   %
+   foreach(I in 2..N)
+     element(Z[I-1],X,Z[I])
+   end.

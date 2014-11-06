@@ -1,0 +1,110 @@
+/* 
+
+  Caesar cipher (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Caesar_cipher
+  """
+  Implement a Caesar cipher, both encoding and decoding. The key is an integer from 1 to 25. 
+  This cipher rotates (either towards left or right) the letters of the alphabet (A to Z). 
+  The encoding replaces each letter with the 1st to 25th next letter in the alphabet 
+  (wrapping Z to A). So key 2 encrypts "HI" to "JK", but key 20 encrypts "HI" to "BC". 
+  This simple "monoalphabetic substitution cipher" provides almost no security, because an 
+  attacker who has the encoded message can either use frequency analysis to guess the key, 
+  or just try all 25 keys.
+
+  Caesar cipher is identical to Vigenère cipher with key of length 1. Also, Rot-13 is 
+  identical to Caesar cipher with key 13. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util. % for split/2
+
+main => go.
+
+go =>
+  S = "All human beings are born free and equal in dignity and rights.",
+  println(S),
+  println(caesar(S,5)),
+  println(caesar(caesar(S,5),-5)),
+
+  S2 = "IBM",
+  println(S2),
+  println(caesar(S2,25)), % -> HAL
+  println(caesar(S2,-1)), % -> HAL
+
+  nl.
+
+%
+% Cracking a cipher
+%
+go2 =>
+  S = "Vgg cphvi wzdibn vmz wjmi amzz viy zlpvg di ydbidot viy mdbcon.",
+  File = "unixdict.txt",
+  % File = "words_lower.txt",
+  [N,String,NumWordMatched] = crack_ceasar(S,File),
+  println(n=N),
+  println(string=String),
+  println(numMatchedWords=NumWordMatched),
+  nl.
+
+%
+% Rot-13
+%
+go3 =>
+  S = "Big fjords vex quick waltz nymph!",
+  println(caesar(S,13)),
+  println(caesar(caesar(S,13),13)),
+  nl.
+
+
+lower(Lower) => Lower = "abcdefghijklmnopqrstuvwxyz".
+upper(Upper) => Upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".
+
+caesar(String, N) = Cipher =>
+  lower(Lower),upper(Upper),
+  M = create_map(Lower, Upper, N),
+  % If a char is not in a..zA..z then show it as it is.
+  Cipher := [M.get(C,C) : C in String].
+
+%
+% create the map
+%
+create_map(Lower,Upper, N) = M =>
+  M = new_map(),
+  Len = Lower.length,
+  foreach(I in 1..Len)
+    II = (N+I) mod Len,
+    if II == 0 then II := Len end, % Adjust for 1 based
+    M.put(Upper[I],Upper[II]),
+    M.put(Lower[I],Lower[II])
+  end.
+
+
+%
+% Cracking a Caesar cipher using a dictionary.
+%
+crack_ceasar(S,File) = [MaxN,MaxString,MaxFound] =>
+  Map = new_map([W=1 : W in read_file_lines(File)]),
+  MaxN = 0,
+  MaxFound = 0,
+  MaxString = "",
+  foreach(N in 1..25)
+    C = caesar(S,N),
+    Found = 0,
+    foreach(W in C.split(" ")) 
+      if Map.has_key(W.to_lowercase()) then
+        Found := Found + 1
+      end
+    end,
+    printf("n=%2d c=%w found=%2d\n", N, C, Found),
+    if Found > 0, Found > MaxFound then
+      MaxN := N,
+      MaxString := C,
+      MaxFound := Found,
+      println("Best so far!\n")
+    end
+  end.
