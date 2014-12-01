@@ -1,0 +1,166 @@
+/* 
+
+  M queens on a NxN board in Picat.
+
+  From
+  "5 Queens Puzzle Algorithm and Possible Soultions"
+  http://stackoverflow.com/questions/27101367/5-queens-puzzle-algorithm-and-possible-soultions
+  """
+  How many possible solutions are there for a 5 queens puzzle on an 8x8 chessboard? 
+  Would also like to have a simple algorithm and C++ code for the execution of the same.
+  """
+
+  For N=1..11 and M = 1..N:
+         1         0         0         0         0         0         0         0         0         0         0
+         4         0         0         0         0         0         0         0         0         0         0
+         9         8         0         0         0         0         0         0         0         0         0
+        16        44        24         2         0         0         0         0         0         0         0
+        25       140       204        82        10         0         0         0         0         0         0
+        36       340      1024       982       248         4         0         0         0         0         0
+        49       700      3628      7002      4618       832        40         0         0         0         0
+        64      1288     10320     34568     46736     22708      3192        92         0         0         0
+        81      2184     25096    131248    310496    312956    119180     13848       352         0         0
+       100      3480     54400    412596   1535440   2716096   2119176    636524     56832       724         0
+       121      5280    107880   1123832   6110256  17117832  23636352  14803480   3634976    264544      2680
+
+   Columns (i.e. for a fixed J and 1..9)
+      [1,4,9,16,25,36,49,64,81]
+      [0,0,8,44,140,340,700,1288,2184]
+      [0,0,0,24,204,1024,3628,10320,25096]
+      [0,0,0,2,82,982,7002,34568,131248]
+      [0,0,0,0,10,248,4618,46736,310496]
+      [0,0,0,0,0,4,832,22708,312956]
+      [0,0,0,0,0,0,40,3192,119180]
+      [0,0,0,0,0,0,0,92,13848]
+      [0,0,0,0,0,0,0,0,352]
+
+  OEIS has these sequences:
+  The sequence for J=2 is https://oeis.org/A036464
+  "Number of ways to place two nonattacking queens on an n X n board."
+
+  https://oeis.org/A047659 for J=3 etc
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+
+go =>
+
+  Max = 10,
+  garbage_collect(200_000_000),
+  Solutions = new_array(Max,Max), bind_vars(Solutions,0),
+  foreach(N in 1..Max, M in 1..N)
+     time2(All=findall(Q,queens_n_m(N,M,Q))),
+     Len=All.length,
+     println([n=N,m=M]=Len),
+     Solutions[N,M] := Len
+  end,
+
+  MaxVal = max([Solutions[I,J] : I in 1..Max, J in 1..Max]),
+  MaxValLen = MaxVal.to_string().length + 2,
+  PrintFormat = "%" ++ MaxValLen.to_string() ++ "d",
+  foreach(I in 1..Max)
+    foreach(J in 1..Max)
+      printf(PrintFormat, Solutions[I,J])
+    end,
+    nl
+  end,
+  
+  println("\nColumns:"),
+  foreach(J in 1..Max)
+    println([Solutions[I,J] : I in 1..Max])
+  end,
+
+  nl.
+
+go2 =>
+  N = 10,
+  M = 5,
+  garbage_collect(200_000_000),
+  time2(All=findall(Q,queens_n_m(N,M,Q))),
+  Len=All.length,
+  println([n=N,m=M]=Len),
+  nl.
+  
+
+go3 =>
+
+  Max = 10,
+  garbage_collect(200_000_000),
+  Solutions = new_array(Max,Max), bind_vars(Solutions,0),
+  foreach(N in 1..Max, M in 1..N)
+     get_global_map().put(count,0),
+     (queens_n_m2(N,M,_Q) ; true),
+     Len=get_global_map().get(count),
+     println([n=N,m=M]=Len),
+     Solutions[N,M] := Len
+  end,
+
+  MaxVal = max([Solutions[I,J] : I in 1..Max, J in 1..Max]),
+  MaxValLen = MaxVal.to_string().length + 2,
+  PrintFormat = "%" ++ MaxValLen.to_string() ++ "d",
+  foreach(I in 1..Max)
+    foreach(J in 1..Max)
+      printf(PrintFormat, Solutions[I,J])
+    end,
+    nl
+  end,
+  
+  println("\nColumns:"),
+  foreach(J in 1..Max)
+    println([Solutions[I,J] : I in 1..Max])
+  end,
+
+  nl.
+
+
+%
+% place M queens on a N x N board
+%
+queens_n_m(N, M, Q) => 
+  Q = new_list(N),
+  Q :: 0..N,
+
+  sum([Q[I]#> 0 : I in 1..N]) #= M,
+
+  foreach(I in 1..N, J in 1..N, I < J) 
+    (Q[I] #!= 0 #/\ Q[J] #!= 0) #=>
+    (
+      Q[I] #!= Q[J] #/\
+      Q[I] + I #!= Q[J] + J #/\
+      Q[I] - I #!= Q[J] - J
+    )
+  end,
+
+  solve($[ff,split],Q).
+
+
+queens_n_m2(N, M, Q) => 
+  Q = new_list(N),
+  Q :: 0..N,
+
+  sum([Q[I]#> 0 : I in 1..N]) #= M,
+
+  foreach(I in 1..N, J in 1..N, I < J) 
+    (Q[I] #!= 0 #/\ Q[J] #!= 0) #=>
+    (
+      Q[I] #!= Q[J] #/\
+      Q[I] + I #!= Q[J] + J #/\
+      Q[I] - I #!= Q[J] - J
+    )
+  end,
+
+  solve($[ff,split],Q),
+  Map = get_global_map(),
+  Map.put(count,Map.get(count,0)+1),
+  fail.
+

@@ -1,0 +1,207 @@
+/* 
+
+  Bertrand Russell puzzle in Picat.
+
+  From http://stackoverflow.com/questions/26809266/bertrand-russell-puzzle
+  """
+  As a simple exercise in abstraction suppose that four meaningless
+  symbols a, b, c, and d correspond in one order or another to the
+  equally meaningless symbols w, x, y, and z, and suppose further that
+
+      If a is not x, then c is not y.
+      If b is either y or z, then a is x.
+      If c is not w, then b is z.
+      If d is y, then b is not x.
+      If d is not x, then b is x.
+
+  In what order do the two sets of symbols correspond?
+  """ 
+  (The problem is also in "101 puzzles in Thought and Logic", page 58)
+
+  Here we show three different version:
+   - "pure" CP
+   - logic programming version of the CP version
+   - "pure" LP
+
+
+  Solution: 
+   a<=>y
+   b<=>x
+   c<=>w
+   d<=>z
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  
+  All = findall([abcd=ABCD,wxyz=WXYZ,Connection],puzzle_cp(ABCD,WXYZ,Connection)),
+  foreach([ABCD,WXYZ,Connection] in All) 
+    println(abcd=ABCD),
+    println(wxyz=WXYZ),
+    foreach(C in Connection) println(C) end
+  end,
+
+  nl.
+
+
+
+go2 =>
+  
+  All = findall([abcd=ABCD,wxyz=WXYZ,Connection],puzzle_lp(ABCD,WXYZ,Connection)),
+  foreach([ABCD,WXYZ,Connection] in All) 
+    println(abcd=ABCD),
+    println(wxyz=WXYZ),
+    foreach(C in Connection) println(C) end
+  end,
+
+  nl.
+
+
+go3 =>
+  
+  All = findall(L,puzzle_lp2(L)),
+  foreach(L in All) 
+     foreach([AA,WW] in L)
+       printf("%w<=>%w\n", AA,WW)
+     end
+  end,
+
+  nl.
+
+
+%
+% CP approach
+%
+puzzle_cp(ABCD,WXYZ, Connection) =>
+
+  N = 4,
+
+  % Symmetry breaking: A..D are ordered
+  A = 1,
+  B = 2,
+  C = 3,
+  D = 4,
+
+  ABCD = [A,B,C,D],
+  ABCD_S = "abcd",
+
+  W :: 1..N,
+  X :: 1..N,
+  Y :: 1..N,
+  Z :: 1..N,
+  WXYZ = [W,X,Y,Z],
+  WXYZ_S = "wxyz",
+
+  all_different(WXYZ),   
+
+  % If a is not x, then c is not y.
+  (A #!= X #=> C #!= Y),
+
+  % If b is either y or z, then a is x.
+  ( ( (B #= Y) #\/ (B #= Z)) #=> A #= X),
+
+  % If c is not w, then b is z.
+  ( C #!= W #=> B #= Z),
+
+  % If d is y, then b is not x.
+  ( D #= Y #=> B #!= X),
+
+  % If d is not x, then b is x.
+  ( D #!= X #=> B #= X),
+
+  solve(WXYZ),
+
+  Connection = [ABCD_S[I].to_string() ++ "<=>" ++ WXYZ_S[J].to_string() : I in 1..N, J in 1..N, WXYZ[J] == I].
+
+
+%
+% Same approach as CP but in pure LP
+%
+puzzle_lp(ABCD,WXYZ,Connection) =>
+
+  N = 4,
+
+  A = 1,
+  B = 2,
+  C = 3,
+  D = 4,
+  ABCD = [A,B,C,D],
+  ABCD_S = "abcd",
+
+  member(W,1..4),
+  member(X,1..4),
+  member(Y,1..4),
+  member(Z,1..4),
+
+  WXYZ = [W,X,Y,Z],
+  WXYZ_S = "wxyz",
+
+  % If a is not x, then c is not y.
+  (A != X -> C != Y ; true),
+
+  % If b is either y or z, then a is x.
+  ( ( (B = Y) ; (B = Z)) -> A = X ; true),
+
+  % If c is not w, then b is z.
+  ( C != W -> B = Z ; true),
+
+  % If d is y, then b is not x.
+  ( D = Y -> B != X ; true),
+
+  % If d is not x, then b is x.
+  ( D != X -> B = X ; true),
+
+  % foreach(I in 1..N, J in 1..N, I < J) 
+  %   ABCD[I] != ABCD[J],
+  %   WXYZ[I] != WXYZ[J]
+  % end,
+  all_different(ABCD),
+  all_different(WXYZ),
+
+  Connection = [ABCD_S[I].to_string() ++ "<=>" ++ WXYZ_S[J].to_string() : I in 1..N, J in 1..N, WXYZ[J] == I].
+
+
+%
+% A "purer" LP approach
+%
+puzzle_lp2(L) =>
+
+    L=[[a,C1],[b,C2],[c,C3],[d,C4]],
+
+    member(C1,[w,x,y,z]),
+    member(C2,[w,x,y,z]),
+    member(C3,[w,x,y,z]),
+    member(C4,[w,x,y,z]),
+
+    % CC = [C1,C2,C3,C4],
+    % foreach(I in 1..4, J in 1..4, I < J) 
+    %   CC[I] != CC[J]
+    % end,
+    all_different([C1,C2,C3,C4]),
+
+    % If a is not x, then c is not y.
+    (C1 = x -> C3 != y ; true),
+ 
+    % If b is either y or z, then a is x.
+    ( (C2 = y ; C2 = z) -> C1 = x ; true),
+ 
+    % If c is not w, then b is z.
+    ( C3 != w -> C2 = z ; true ),
+ 
+    % If d is y, then b is not x.
+    ( C4 = y -> C2 != x ; true),
+
+    % If d is not x, then b is x.
+    ( C4 != x -> C2 = x ; true).
