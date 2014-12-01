@@ -88,7 +88,7 @@ array[1..num_products,1..num_cities,1..num_cities] of var 0.0..1000000.0: Trans;
 var 0.0..1000000.0: z;
 
 % solve minimize z;
-solve :: float_search([Trans[i,j,k] |i in 1..num_products,j,k in 1..num_cities],0.001,input_order,indomain_split,complete) minimize z;
+solve :: float_search([Trans[i,j,k] |i in 1..num_products,j,k in 1..num_cities],0.01,input_order,indomain_split,complete) minimize z;
 
 constraint
   z = sum( p in Products , o in Cities, d in Cities ) (
@@ -110,6 +110,13 @@ constraint
 
 
 output [
-"Trans: " ++ show(Trans) ++ "\n"++
 "z: " ++ show(z) ++ "\n"
+]
+++
+[
+  if c1 = 1 /\ c2 = 1 then "\n\nProduct " ++ show(p) else " " endif ++
+    if c2 = 1 then "\n" else " " endif ++
+       show_float(5,1,Trans[p,c1,c2])
+
+  | p in 1..num_products, c1 in 1..num_cities, c2 in 1..num_cities
 ];

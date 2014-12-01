@@ -38,6 +38,9 @@ constraint
 constraint all_different(FD);
 
 solve satisfy;
+% solve :: int_search(FD, first_fail, indomain_min, complete) satisfy;
+
+
 
 output [
    " D  O  N  A  L  G  E  R  B  T\n",

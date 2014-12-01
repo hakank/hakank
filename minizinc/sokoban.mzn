@@ -51,7 +51,7 @@ set of int: CRATEINDICES = 0..noCrates-1;
 set of int: POSITIONS = 0..n-1;
 
 array[WALLINDICES] of int: walls;
-array[GOALINDICES] of 0..1: goals;
+array[GOALINDICES] of int: goals;
 array[CRATEINDICES] of int: crates;
 
 
