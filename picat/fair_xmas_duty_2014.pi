@@ -1,0 +1,146 @@
+/* 
+
+  Fair Xmas duty (2014) in Picat.
+
+  In 2014/15 a (fictive) Swedish company have a special Xmas duty from 
+  Dec 24 to Jan 6. Here's a model for scheduling this as fair as possible.
+  
+  The related holidays for Swedish Xmas and New Year's are:
+   * Dec 24 Christmas Eve (this is the day we distribute Xmas gifts)
+   * Dec 25 Christmas Day
+   * Dec 26 Boxing Day
+   * Dec 31 New Year's Eve
+   * Jan 1 New Year's Day
+   * Jan 6 Thirteen's Day (Epiphany) 
+
+  The assumptions:
+  * all days have a point of at least 1, but some days are more valuable than 
+    others and thus have higher points:
+      Workday and Xmas Eve: 2 points
+      New Year's Eve: 3 points
+  * a person should not be on duty for more than two days in a row.
+  * there are some "forbidden" days, i.e. a day where a person
+    for some reason cannot be on duty
+  * optimization is on the total differences of the points
+  * the number of days on duty is not relevant, it's the points
+    that counts.
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  data(Days,People),
+  NumDays = Days.length,
+  NumPeople = People.length,
+
+  Dates = new_map([[Days[D,1],Days[D,2]]=D  : D in 1..NumDays]),
+  Points=[Days[D,5] : D in 1..NumDays],
+
+
+  %
+  % decision variables
+  %
+  OnDuty = new_list(NumDays),
+  OnDuty :: 1..NumPeople,
+
+  PeoplePoints = new_list(NumPeople),
+  PeoplePoints :: 1..3*NumDays,  
+
+  PeopleDays = new_list(NumPeople),
+  PeopleDays :: 1..NumDays,  
+
+  TotalDiffs #= sum([abs(PeoplePoints[I]-PeoplePoints[J]) : 
+                     I in 1..NumPeople, J in 1..NumPeople, I < J]),
+
+  
+  % calculate the points for all people
+  % Note: we don't punish if a person works two days in a row. Perhaps we should?
+  foreach(P in 1..NumPeople) 
+    PeoplePoints[P] #= sum([Points[D]*(OnDuty[D] #= P) : D in 1..NumDays]),
+    PeopleDays[P] #= sum([OnDuty[D] #= P : D in 1..NumDays])
+  end,
+  
+  % handle forbidden assignments
+  foreach(P in 1..NumPeople) 
+     foreach(D in People[P,2])
+       OnDuty[Dates.get(D)] #!= P
+     end
+  end,
+
+  % a person should not be on duty for more that two days in row
+  foreach(P in 1..NumPeople) 
+    foreach(D in 1..NumDays-2)
+      sum([OnDuty[D+I] #= P : I in 0..2]) #<= 2
+    end
+  end,
+
+  % The same person that is on duty on New Year's Eve should not
+  % be on duty on New Year's Day
+  OnDuty[Dates.get([dec,31])] #!= OnDuty[Dates.get([jan,1])],
+
+
+  %
+  % search
+  %
+  Vars = OnDuty ++ PeoplePoints ++ PeopleDays,
+  solve($[min(TotalDiffs),ffc,split],Vars),
+
+  println("TotalDiffs"=TotalDiffs),
+  % println(onDuty=OnDuty),
+  % println(peoplePoints=PeoplePoints),
+  % println(peopleDays=PeopleDays),
+
+  println("Schedule:"),
+  foreach(D in 1..NumDays)
+    printf("%-15w (%dp): %w\n", Days[D,4],Points[D], People[OnDuty[D],1], )
+  end,
+
+  println("\nPoints:"),
+  foreach(P in 1..NumPeople) 
+    printf("%-8w: %dp (%d days)\n", People[P,1], PeoplePoints[P],PeopleDays[P])
+  end,
+  
+  nl.
+
+data(Days,People) =>
+  Days = 
+  [
+  % month,day,weekday,name,points
+  [dec,24,wed, "Xmas Eve",2],
+  [dec,25,thu, "Xmas Day", 1], 
+  [dec,26,fri, "Boxing Day", 1],
+  [dec,27,sat, "Dec 27", 1],
+  [dec,28,sun, "Dec 28", 1],
+  [dec,29,mon, "Den 29", 2],
+  [dec,30,tue, "Dec 30", 2],
+  [dec,31,wed, "New Year's Eve", 3],
+  [jan, 1,thu, "New Year's Day", 1], 
+  [jan, 2,fri, "Jan 2", 2], 
+  [jan, 3,sat, "Jan 3", 1],
+  [jan, 4,sun, "Jan 4", 1],
+  [jan, 5,mon, "Jan 5", 2],
+  [jan, 6,tue, "Thirteenth Day", 1]
+  ],
+  People = 
+    % name, forbidden days
+   [
+   ["Adam", [[dec,24],[dec,31],[jan,1] ]],
+   ["Boris", [[dec,30],[jan,6]]],
+   ["Cecile", [[dec,24],[dec,25],[dec,31]]],
+   ["Danielle", [[dec,24],[dec,25],[dec,31],[jan,6]]]
+   ]
+  .
+
+ 

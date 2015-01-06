@@ -1,0 +1,86 @@
+/* 
+
+  Greater-than Sudoku in Picat.
+
+  This is a translation of Sergii Dymchenko's ECLiPSe model from
+  http://sdymchenko.com/blog/2015/01/04/greater-than-sudoku-clp/
+
+  Also see Sergii's GitHub repo:
+  https://github.com/kit1980/grid-puzzle-solver/blob/master/greater-than-sudoku.ecl
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+
+go =>
+  model(Sudoku),
+  solve(Sudoku),
+  foreach(Row in Sudoku) 
+     println(Row.to_list())
+  end,
+  nl.
+
+% http://ic.pics.livejournal.com/avva/111931/80092/80092_original.jpg
+problem(Problem) =>
+  Problem =  
+    $[
+        [>,<,>,<,<,>],
+        [^,v,^,v,v,^,^,^,^],
+        [>,<,<,<,>,>],
+        [v,^,^,^,^,v,^,v,^],
+        [<,>,<,>,>,<],
+        [>,<,>,<,<,<],
+        [v,^,^,v,^,v,^,v,v],
+        [<,<,<,>,>,<],
+        [v,v,v,^,v,^,v,^,^],
+        [>,>,>,<,<,>],
+        [>,>,<,>,>,<],
+        [v,^,v,^,^,^,v,^,v],
+        [<,>,<,>,<,>],
+        [^,^,^,v,v,^,v,v,v],
+        [<,>,>,<,<,>]
+    ].
+
+model(Sudoku) =>
+    % standard sudoku constraints
+    Sudoku = new_array(9,9),
+    Sudoku :: 1..9,
+    alldifferent_matrix(Sudoku),
+    foreach(I in 0..2, J in 0..2)
+      Square = [Sudoku[K,L] : K in 3*I+1..3*I+3, L in 3*J+1..3*J+3],
+      all_different(Square)
+    end,
+    problem(Problem),
+    % greater-than horizontal constraints
+    foreach(I in 1..9)
+      foreach(B in 1..6)
+        A = 5 * ((I-1) div 3) + 2 * ((I-1) mod 3) + 1,
+        J = 3 * ((B-1) div 2) + ((B-1) mod 2) + 1, 
+        call(cond(Problem[A,B]=='<',#<,#>), Sudoku[I,J], Sudoku[I,J+1])
+      end
+    end,
+    % greater-than vertical constraints
+    foreach(J in 1..9)
+      foreach(T in 1..6) 
+        A = 5 * ((T-1) div 2) + 2 * ((T-1) mod 2 + 1),
+        B = J,
+        I = 3 * ((T-1) div 2) + ((T-1) mod 2) + 1,
+        call(cond(Problem[A,B]=='^',#<,#>), Sudoku[I,J], Sudoku[I+1,J])
+      end
+    end.
+
+% latin square
+alldifferent_matrix(Matrix) =>
+  N = Matrix.length,
+  foreach(I in 1..N) 
+    all_different([Matrix[I,J] : J in 1..N]),
+    all_different([Matrix[J,I] : J in 1..N])
+  end.

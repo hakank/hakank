@@ -1,0 +1,272 @@
+/* 
+
+  Fair Xmas duty in Picat.
+
+  In 2014/15 a (fictive) Swedish company have a special Xmas duty from 
+  Dec 24 to Jan 6. Here's a model for scheduling this as fair as possible.
+  
+  The related holidays for Swedish Xmas and New Year's are:
+   * Dec 24 Christmas Eve (this is the day we distribute Xmas gifts)
+   * Dec 25 Christmas Day
+   * Dec 26 Boxing Day
+   * Dec 31 New Year's Eve
+   * Jan 1 New Year's Day
+   * Jan 6 Thirteen's Day (Epiphany) 
+
+  The assumptions:
+  * all days have a point of at least 1, but some days are more valuable than 
+    others and thus have higher points:
+      Workday and Xmas Eve: 2 points
+      New Year's Eve: 3 points
+  * a person should not be on duty for more than two days in a row.
+  * there are some "forbidden" days, i.e. a day where a person
+    for some reason cannot be on duty
+  * optimization is on the total differences of the points
+  * the number of days on duty is not relevant, it's the points
+    that counts.
+
+
+  This is a more general version than to fair_xmas_duty_2014.pi in that
+  the calendar is automatically generated for a year. It also includes
+  some intelligence to figure out the complete vacation, including 
+  weekends before Xmas and Epiphany.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import sat.
+% import mip.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  Year = 2014,
+  make_schedule(Year),
+  nl.
+
+%
+% Make the schedule for a year.
+%
+make_schedule(Year) => 
+  println(year=Year),
+  Days = get_calendar(Year),
+  println("Calendar:"),
+  foreach(D in Days) println(D) end,
+
+  people(People),
+  % people2(People), % no forbidden days
+  println("\nPeople and forbidden days:"),
+  foreach(P in People) println(P) end,
+  nl,
+
+  NumDays = Days.length,
+  NumPeople = People.length,
+
+  Dates = new_map([[Days[D,1],Days[D,2]]=D  : D in 1..NumDays]),
+  Points=[Days[D,5] : D in 1..NumDays],
+
+
+  %
+  % decision variables
+  %
+  OnDuty = new_list(NumDays),
+  OnDuty :: 1..NumPeople,
+
+  PeoplePoints = new_list(NumPeople),
+  PeoplePoints :: 1..max(Points)*NumDays,  
+
+  PeopleDays = new_list(NumPeople),
+  PeopleDays :: 1..NumDays,  
+
+  TotalDiffs #= sum([abs(PeoplePoints[I]-PeoplePoints[J]) : 
+                     I in 1..NumPeople, J in 1..NumPeople, I < J]),
+
+  sum(PeoplePoints) #= sum(Points),
+  
+  % calculate the points for all people
+  % Note: we don't punish if a person works two days in a row. Perhaps we should?
+  foreach(P in 1..NumPeople) 
+    PeoplePoints[P] #= sum([Points[D]*(OnDuty[D] #= P) : D in 1..NumDays]),
+    PeopleDays[P] #= sum([OnDuty[D] #= P : D in 1..NumDays])
+  end,
+  
+  % handle forbidden assignments
+  foreach(P in 1..NumPeople) 
+     foreach(D in People[P,2])
+       OnDuty[Dates.get(D)] #!= P
+     end
+  end,
+
+  % a person should not be on duty for more that two days in row
+  foreach(P in 1..NumPeople) 
+    foreach(D in 1..NumDays-2)
+      sum([OnDuty[D+I] #= P : I in 0..2]) #<= 2
+    end
+  end,
+
+  % The same person that is on duty on New Year's Eve should not
+  % be on duty on New Year's Day
+  OnDuty[Dates.get([dec,31])] #!= OnDuty[Dates.get([jan,1])],
+
+
+  % search
+  Vars = PeoplePoints ++ OnDuty ++ PeopleDays,
+  % Vars = OnDuty ++ PeopleDays ++ PeoplePoints,
+  solve($[min(TotalDiffs),constr,inout,report(printf("TotalDiffs: %d\n",TotalDiffs))],Vars),
+
+  println("\nTotalDiffs"=TotalDiffs),
+  println("Schedule:"),
+  foreach(D in 1..NumDays)
+    printf("%-15w (%w, %dp): %w\n", Days[D,4],Days[D,3], Points[D], People[OnDuty[D],1], )
+  end,
+
+  println("\nPoints:"),
+  foreach(P in 1..NumPeople) 
+    printf("%-8w: %dp (%d days)\n", People[P,1], PeoplePoints[P],PeopleDays[P])
+  end,
+  
+  nl.
+
+
+%
+% Calculate the Xmas calendar for a year.
+%
+get_calendar(Year) = Calendar =>
+
+  Holidays = new_map([[12,24]="Xmas Eve",
+                      [12,25]="Xmas Day",
+                      [12,26]="Boxing Day",
+                      [12,31]="New Year's Eve",
+                      [1,1]="New Year's Day",
+                      [1,6]="Thirteen's Day"]),
+
+  % Day points:
+  % The principle is that the holidays are normally given 1p
+  % (as Saturday and Sunday), with some exceptions:
+  %    - Xmas Eve: 2 points
+  %    - New Year's Eve: 3 points (party, party, party)
+  %
+  HolidayPoints = new_map([
+                           [12,24]=2,
+                           [12,25]=1,
+                           [12,26]=1,
+                           [12,31]=3,
+                           [1,1]=1,
+                           [1,6]=1]),
+
+  Days = new_map([0=sun,1=mon,2=tue,3=wed,4=thu,5=fri,6=sat]),
+  Months = new_map([1=jan,2=feb,3=mar,4=apr,5=may,6=jun,
+                     7=jul,8=aug,9=sep,10=oct,11=nov,12=dec]),
+
+  XmasJ = g2j(Year,12,24),
+  DowNum = dow(Year,12,24),
+  Dow = Days.get(DowNum),
+  printf("Xmas is on %w\n", Dow),
+
+  Back = (DowNum+1) mod 6, % check Back numbers back from Xmas
+
+  GotFirstSaturday = false,
+  Got13DayEnd = false,
+  Calendar = [],
+  foreach(J in XmasJ-Back..XmasJ-Back+30)
+    [Y,M,D] = j2g(J),
+    DowNum2 = dow(Y,M,D),
+    Dow2 = Days.get(DowNum2),
+    if Dow2 == sat ; (Y = Year, D >= 24) then
+      GotFirstSaturday := true
+    end,
+    if not Got13DayEnd, Y = Year + 1, D > 6, not member(Dow2,[sat,sun]) then
+      Got13DayEnd := true
+    end,
+    if GotFirstSaturday, not Got13DayEnd then
+      DayName = cond(Holidays.has_key([M,D]), to_fstring("%w", Holidays.get([M,D])), to_fstring("%w %02d",Months.get(M), D)),
+      Points = HolidayPoints.get([M,D], cond(member(Dow2,[sat,sun]), 1,2)),
+      Calendar := Calendar ++ [[Months.get(M),D,Dow2,DayName,Points]]
+    end
+  end.
+
+
+%
+% with some forbidden days
+%
+people(People) =>
+  People = 
+    % name, forbidden days
+   [
+   ["Adam",     [[dec,24],[dec,25],[dec,31],[jan,1] ]],
+   ["Boris",    [[dec,30],[jan,6]]],
+   ["Cecile",   [[dec,24],[dec,25],[dec,31]]],
+   ["Danielle", [[dec,24],[dec,25],[dec,31],[jan,6]]],
+   ["Erica",    [[dec,24],[dec,25],[dec,31],[jan,6]]],
+   ["Fredrick", [[dec,30]]]
+   ].
+
+% without any forbidden days
+people2(People) =>
+  People = 
+    % name, forbidden days
+   [
+   ["Adam",     []],
+   ["Boris",    []],
+   ["Cecile",   []],
+   ["Danielle", []]
+   ].
+
+
+ 
+%
+% http://en.wikipedia.org/wiki/Julian_day
+% gregorian2julian
+%
+g2j(Year,Month,Day) = JD =>
+  A = floor((14-Month) / 12), % 1 for Jan or Feb, 0 for other months
+  Y = Year + 4800 - A,
+  M = Month + 12*A - 3, % 0 for Mars, 11 for Feb
+  JD = Day + floor( (153*M + 2) / 5) + 365*Y + floor(Y/4) -
+       floor(Y / 100) + floor(Y / 400) - 32045.
+
+
+%
+% Day of week, Sakamoto's method
+% http://en.wikipedia.org/wiki/Weekday_determination#Sakamoto.27s_Method
+%
+dow(Y, M, D) = R =>
+  T = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4],
+  if M < 3 then
+     Y := Y - 1
+  end,
+  R = (Y + Y // 4 - Y // 100 + Y // 400 + T[M] + D) mod 7.
+
+
+%
+% julian2gregorian
+%
+j2g(JD) = Date =>
+  Y=4716,
+  V=3,
+  J=1401,
+  U=5,
+  M=2,
+  S=153,
+  N=12,
+  W=2,
+  R=4,
+  B=274277,
+  P=1461,
+  C= -38,
+  F = JD + J + (((4 * JD + B) div 146097) * 3) div 4 + C,
+  E = R * F + V,
+  G = mod(E, P) div R,
+  H = U * G + W,
+  Day = (mod(H, S)) div U + 1,
+  Month = mod(H div S + M, N) + 1,
+  Year = (E div P) - Y + (N + M - Month) div N,
+  Date = [Year,Month,Day].

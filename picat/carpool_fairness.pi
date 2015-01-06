@@ -1,0 +1,311 @@
+/* 
+
+  Carpool fairness in Picat.
+
+  From
+  "Applications of the maximum flow problem"
+  http://people.orie.cornell.edu/dpw/orie633/LectureNotes/lecture2.pdf
+  """
+  1.2
+  Carpool Fairness
+  Description: In this scenario, n people are sharing a carpool for m days. Each person
+  may choose whether to participate in the carpool on each day.
+  Example. The following table describes a carpool in which 4 people share a carpool 5
+  days. X’s indicate days when people participate in the carpool.
+   
+   Person   Days:  1  2  3  4  5
+      1            X  X  X
+      2            X     X
+      3            X  X  X  X  X
+      4               X  X  X  X
+
+  Our goal is to allocate the daily driving responsibilities 'fairly'. One possible approach
+  is to split the responsibilities based on how many people use the car. So, on a day when k
+  people use the carpool, each person incurs a responsibility of k . That is, for each person
+  i, we calculate his or her driving obligation Oi as shown below. We can then require that
+  person i drives no more than Oi times every m days. Table 1.2 shows the calculation of
+  these Oi and their ceilings.
+    
+  Table 1: Driver Responsibilities
+   Person   Days:  1    2    3    4    5    Oi    ceil(Oi)
+      1            1/3  1/3  1/4            1     1
+      2            1/3       1/4            7/12  1
+      3            1/3  1/3  1/4  1/2  1/2  7/4   2
+      4                 1/3  1/4  1/2  1/2  19/12 2
+      Sum          1    1    1    1    1    -     -
+  """
+
+
+  This model is a CP/SAT approach inspired the above, especially
+  "We can then require that person i drives no more than Oi times every m days"
+  Thus we minimize the differences between Oi and the actual value.
+
+  Here's a solution of the above problem instance:
+
+    z=1
+    pdiff=3
+
+    Days:
+    Day 01: driver: 1
+    Day 02: driver: 4
+    Day 03: driver: 2
+    Day 04: driver: 3
+    Day 05: driver: 3
+
+    People:
+    Person 01 (obl: 1 drives: 1) Days: [1]
+    Person 02 (obl: 1 drives: 1) Days: [3]
+    Person 03 (obl: 2 drives: 2) Days: [4,5]
+    Person 04 (obl: 2 drives: 1!) Days: [2]
+
+    Schedule ('X': drives, 'r': rides, '_': don't participates the day:
+    X r r _ _ 
+    r _ X _ _ 
+    r r r X X 
+    _ X r r r 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+import cp. % 0.03s for propblem 1..5
+% import sat. % 1.2s for problem 1..5
+% import mip. % very slow
+
+
+main => go.
+
+%
+% The 5 fixed problem instances.
+%
+go =>
+  foreach(P in 1..5)
+    printf("\nTesting %d\n", P),
+    participation(P,Participation),
+    time2(run_carpool(Participation))
+  end,
+  nl.
+
+%
+% Run random instances.
+%
+go2 => 
+  NumPeople = 12,
+  NumDays = 55,
+  Pct = 60, % Pct percent probability of participating each day
+  println("Generate the participation table..."),
+  time(Participation = generate_participation(NumPeople, NumDays,Pct)),
+  println("Participation:"),
+  foreach(P in Participation) println(P) end,
+  time2(run_carpool(Participation)),
+  nl.
+
+
+%
+% Generate a random participation table.
+%  NumPeople: Number of people
+%  NumDays: Number of days
+%  Pct: Pct percent probability of participating each day
+%       (integer between 1 and 100)
+%
+generate_participation(NumPeople,NumDays,Pct) = Participation =>
+  Found = false,
+  Participation = [],
+  while (Found == false) 
+     Participation := [
+                    [cond( (1+random2() mod 100) <= Pct, 1, 0) : _ in 1..NumDays]
+                     : _ in 1..NumPeople    
+                   ],
+     % require that at least one person per day participates and
+     % and all persons have to participate at least once
+     if length([1 :  P in Participation, sum(P) > 0])==NumPeople,
+        length([1 :  D in Participation.transpose(), sum(D) > 0])==NumDays
+         then
+       Found := true
+     end
+  end.
+
+  
+
+%
+% Print a solution.
+%
+run_carpool(Participation) =>
+  carpool(Participation, Obligation,Driver,NumDrives,Diffs,Z,PDiff),
+
+  NumPeople = Participation.length,
+  NumDays = Participation[1].length,
+  println(driver=Driver),
+  println(numDrives=NumDrives),
+  println(diffs=Diffs),
+  println(z=Z),
+  println(pdiff=PDiff),
+
+  println("\nDays:"),
+  foreach(D in 1..NumDays)
+    printf("Day %02d: driver: %d\n", D, Driver[D])
+  end,
+
+  println("\nPeople:"),
+  foreach(P in 1..NumPeople)
+    DiffMsg = cond(NumDrives[P] != Obligation[P], '!', ''),
+    printf("Person %02d (obl: %d drives: %d%w) Days: %w\n", 
+              P, 
+              Obligation[P], 
+              NumDrives[P], 
+              DiffMsg,
+              [D : D in 1..NumDays, Driver[D] == P])
+  end,
+
+  println("\nSchedule ('X': drives, 'r': rides, '_': don't participates the day:"),
+  foreach(P in 1..NumPeople)
+    foreach(D in 1..NumDays)
+       S = cond(Driver[D] == P, "X", cond(Participation[P,D] == 1, "r","_")),
+       printf("%w ",S)
+    end,
+    nl
+  end,
+
+  nl.
+
+
+%
+% carpool: Find the optimal schedule of a carpool given
+% the Participation table.
+%
+carpool(Participation, Obligation,Driver,NumDrives,Diffs,Z,PDiff) =>
+
+  NumPeople = Participation.length,
+  NumDays = Participation[1].length,
+  println([numDays=NumDays,numPeople=NumPeople]),
+  
+  DayPeople = [sum([Participation[P,D] : P in 1..NumPeople]) : D in 1..NumDays ],
+  println(dayPeople=DayPeople),
+
+  % the fair number of drives a person should do
+  Obligation =  
+    [ceiling(sum([1/DayPeople[D]*Participation[P,D] : D in 1..NumDays])) : P in 1..NumPeople],
+  println(obligation=Obligation),
+  println(sumObligation=sum(Obligation)),
+
+  ObligationDiff = sum(Obligation)-NumDays,
+
+  % decision variables
+
+  % who drives day D
+  Driver = new_list(NumDays),
+  Driver :: 1..NumPeople,
+
+  % Number of days a person drives
+  NumDrives = new_list(NumPeople),
+  NumDrives :: 0..NumDays,
+
+  % Number of differences between the scheduled and obligated number of
+  % days to drive.
+  Diffs = new_list(NumPeople),
+  Diffs :: 0..NumPeople div ObligationDiff,
+
+  Z #= sum(Diffs),
+  Z #= ObligationDiff,
+
+  % Total difference between all the differences between
+  % Obligation[P] and the actual number of drives.
+  % This is to be minimized to be as fair as possible.
+  PDiff #= sum([abs(Diffs[P1]-Diffs[P2]) : P1 in 1..NumPeople, P2 in P1+1..NumPeople]),
+
+  % a person can only drive a day when (s)he participates
+  foreach(D in 1..NumDays) 
+    Driver[D] :: [ P : P in 1..NumPeople, Participation[P,D] = 1]
+  end,
+
+  % person P drives no more than Obligation[P] times every NumDays days
+  foreach(P in 1..NumPeople) 
+    NumDrives[P] #= sum([Driver[D]#=P : D in 1..NumDays]),
+    NumDrives[P] #<= Obligation[P],
+    Diffs[P] #= abs(Obligation[P]-NumDrives[P])
+  end,
+
+  % Vars = Driver ++ NumDrives ++ Diffs,
+  Vars = Diffs ++ Driver ++ NumDrives,
+  solve($[min(PDiff),report(printf("PDiff: %d\n",PDiff)),constr,split], Vars).
+
+
+
+%
+% 1 week, 4 persons (original problem)
+% 
+participation(1, Participation) =>
+  Participation =
+  [
+     % days 1 2 3 4 5
+            [1,1,1,0,0], % p 1
+            [1,0,1,0,0], % p 2
+            [1,1,1,1,1], % p 3
+            [0,1,1,1,1]  % p 4
+  ].
+
+%
+% 2 weeks 4 persons
+%
+participation(2, Participation) =>
+  Participation =
+  [
+     % days 1 2 3 4 5
+            [1,1,1,0,0, 1,1,1,0,0], % p 1
+            [1,0,1,0,0, 1,0,1,0,0], % p 2
+            [1,1,1,1,1, 1,1,1,1,1], % p 3
+            [0,1,1,1,1, 0,1,1,1,1]  % p 4
+  ].
+
+%
+% 4 weeks 4 persons
+%
+participation(3, Participation) =>
+  Participation =
+  [
+     % days 1 2 3 4 5
+            [1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0], % p 1
+            [1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0], % p 2
+            [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1], % p 3
+            [0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1]  % p 4
+  ].
+
+%
+% 8 weeks 6 persons
+%
+participation(4, Participation) =>
+  Participation =
+  [
+     % days 1 2 3 4 5
+            [1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0], % p 1
+            [1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0], % p 2
+            [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1], % p 3
+            [0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1], % p 4
+
+            [1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0], % p 5
+            [1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0]  % p 6
+  ].
+
+
+%
+% 8 weeks 8 persons
+%
+participation(5, Participation) =>
+  Participation =
+  [
+     % days 1 2 3 4 5
+            [1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0], % p 1
+            [1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0], % p 2
+            [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1], % p 3
+            [0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1], % p 4
+
+            [1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0], % p 5
+            [1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0, 1,0,1,0,0], % p 6
+            [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1], % p 7
+            [0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1, 0,1,1,1,1]  % p 8
+  ].

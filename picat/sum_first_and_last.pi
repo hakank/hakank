@@ -1,0 +1,256 @@
+/* 
+
+  Sum first and last problem in Picat.
+
+  http://stackoverflow.com/questions/27434424/prolog-restrictions-solving-puzzle-grid
+  """
+  The goal of the puzzle is simple: I have a square grid with some numbers on 
+  top/below each column and on the right/left of each row. The domain of values 
+  goes from 0 to Gridsize -1, wich means, a grid 7x7 can have numbers from 0 to 6.
+  The constraints are as follow:
+  
+    - Each number can only apear once each row and once each column
+    - The number on top/right are the sum of the First and Last digits on the 
+      column/row respectively
+    - The number on bottom/left are the sum of the Second and SecondLast digits 
+      on the column/row respectively
+    - Zeros don't count as digits, are only on the program to represent blank 
+      spaces
+
+  For an example:
+
+  TopConstraint = [7, 6, 4, 7, 3] 
+  RightConstraint = [5, 5, 5, 5, 5] 
+  Bottom Constraint = [3, 4, 6, 3, 7] 
+  LeftConstraint = [5, 5, 5, 5, 5]
+  
+  This constraints can have a 0 too, wich make the program simple ignore 
+  (the sum can be any number, if it goes accordingly with the other restrictions).
+
+  One solution to the above lists would be the matrix:
+
+   3 | 4 | 1 |   | 2 
+   1 | 3 | 2 | 4 |   
+   2 |   | 4 | 1 | 3 
+     | 1 | 3 | 2 | 4 
+   4 | 2 |   | 3 | 1
+  """
+
+  with the original instances there are two (symmetric) solutions. 
+  The first is the same as the example above, the second is the same 
+  as the first but with the order of rows reversed.
+
+    3 4 1 0 2
+    1 3 2 4 0
+    2 0 4 1 3
+    0 1 3 2 4
+    4 2 0 3 1
+
+    4 2 0 3 1
+    0 1 3 2 4
+    2 0 4 1 3
+    1 3 2 4 0
+    3 4 1 0 2
+
+  However, we can skip plenty of the numbers and still get the same solutions,
+  e.g.
+    TopConstraint    = [0, 0, 0, 0, 0],  % all 0s
+    RightConstraint  = [0, 0, 0, 0, 0],  % all 0s
+    BottomConstraint = [3, 4, 6, 3, 7],
+    LeftConstraint   = [0, 5, 5, 5, 5].
+  This is tested in go2/0.
+
+
+  The predicate sum_first_and_last_gen/8 generates problem instances
+  (including the possibility of 0 constraints).
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go =>
+
+  problem(1, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint),
+  sum_first_and_last(TopConstraint, RightConstraint, BottomConstraint, LeftConstraint,X),
+  foreach(Row in X)
+    println(Row.to_list())
+  end,
+
+  nl.
+
+
+% With some 0s in *Constraints
+go2 =>
+
+  problem(2, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint),
+  sum_first_and_last(TopConstraint, RightConstraint, BottomConstraint, LeftConstraint,X),
+  foreach(Row in X)
+    println(Row.to_list())
+  end,
+
+  nl.
+
+
+go3 =>
+
+  N = 5,
+  Min = 1,
+  Max = 7,
+  sum_first_and_last_gen(N, Min, Max, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint,X),
+
+  println('topConstraint   '=TopConstraint), 
+  println('rightConstraint '=RightConstraint), 
+  println('bottomConstraint'=BottomConstraint), 
+  println('leftConstraint  '=LeftConstraint),
+  foreach(Row in X)
+    println(Row.to_list())
+  end,
+
+  nl.
+
+% with possibility of 0 hints
+go4 =>
+
+  N = 5,
+  Min = 0,
+  Max = 7,
+  sum_first_and_last_gen(N, Min, Max, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint,X),
+
+  println('topConstraint   '=TopConstraint), 
+  println('rightConstraint '=RightConstraint), 
+  println('bottomConstraint'=BottomConstraint), 
+  println('leftConstraint  '=LeftConstraint),
+  foreach(Row in X)
+    println(Row.to_list())
+  end,
+
+  nl.
+
+
+% larger example
+go5 =>
+  N = 43,
+  Min = 1,
+  Max = N*2,
+  sum_first_and_last_gen(N, Min, Max, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint,X),
+
+  println('topConstraint   '=TopConstraint), 
+  println('rightConstraint '=RightConstraint), 
+  println('bottomConstraint'=BottomConstraint), 
+  println('leftConstraint  '=LeftConstraint),
+  foreach(Row in X)
+    println(Row.to_list())
+  end,
+
+  println(max=max(TopConstraint ++ RightConstraint ++ BottomConstraint ++ LeftConstraint)),
+
+  nl.
+
+
+%
+% sum first and last (and second and second last)
+% according to the *Constraints
+%
+sum_first_and_last(TopConstraint, RightConstraint, BottomConstraint, LeftConstraint, X) =>
+  N = TopConstraint.length,
+
+  X = new_array(N,N),
+  X :: 0..N-1,
+
+  foreach(I in 1..N) 
+    ThisRow = [X[I,J] : J in 1..N],
+    ThisColumn = [X[J,I] : J in 1..N],
+    all_different(ThisRow),
+    all_different(ThisColumn),
+
+    sum_first(ThisColumn,  TopConstraint[I]),
+    sum_first(ThisRow,     RightConstraint[I]),
+
+    sum_second(ThisRow,    LeftConstraint[I]),
+    sum_second(ThisColumn, BottomConstraint[I])
+
+  end,  
+
+  solve($[ffd,split],X).
+
+
+%
+% generate problem instances
+%
+sum_first_and_last_gen(N, Min, Max, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint, X) =>
+
+  X = new_array(N,N),
+  X :: 0..N-1,
+
+  TopConstraint = new_list(N),    TopConstraint :: Min..Max,
+  RightConstraint = new_list(N),  RightConstraint :: Min..Max,
+  BottomConstraint = new_list(N), BottomConstraint :: Min..Max,
+  LeftConstraint = new_list(N),   LeftConstraint :: Min..Max,
+
+  foreach(I in 1..N) 
+    ThisRow = [X[I,J] : J in 1..N],
+    ThisColumn = [X[J,I] : J in 1..N],
+    all_different(ThisRow),
+    all_different(ThisColumn),
+
+    sum_first(ThisColumn,  TopConstraint[I]),
+    sum_first(ThisRow,     RightConstraint[I]),
+
+    sum_second(ThisRow,    LeftConstraint[I]),
+    sum_second(ThisColumn, BottomConstraint[I]) 
+
+  end,  
+
+  Vars = X.vars() ++ TopConstraint ++ RightConstraint ++ BottomConstraint ++ LeftConstraint,
+  solve($[ffc,inout],Vars).
+
+
+%
+% first + last  (except 0)
+% also handle the case when S #= 0
+%
+sum_first(A, S) =>
+  N = A.length,
+  First #= cond(A[1] #> 0, A[1], A[2]),
+  Last  #= cond(A[N] #> 0, A[N], A[N-1]),
+  S#>0 #=> S #= First + Last.
+
+%
+% second + second last (except 0)
+% also handle the case when S #= 0
+%
+sum_second(A, S) =>
+  N = A.length,
+  Second     #= cond(A[1] #> 0 #/\ A[2]   #> 0, A[2]  , A[3]),
+  SecondLast #= cond(A[N] #> 0 #/\ A[N-1] #> 0, A[N-1], A[N-2]),
+  S#>0 #=> S #= Second + SecondLast.
+
+
+%
+% original problem
+%
+problem(1, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint) =>
+  TopConstraint    = [7, 6, 4, 7, 3],
+  RightConstraint  = [5, 5, 5, 5, 5], 
+  BottomConstraint = [3, 4, 6, 3, 7],
+  LeftConstraint   = [5, 5, 5, 5, 5].
+
+
+%
+% With many 0s is the constraints we still 
+% get the same solution as the original.
+%
+problem(2, TopConstraint, RightConstraint, BottomConstraint, LeftConstraint) =>
+  TopConstraint    = [0, 0, 0, 0, 0],  % all 0s
+  RightConstraint  = [0, 0, 0, 0, 0],  % all 0s
+  BottomConstraint = [3, 4, 6, 3, 7],
+  LeftConstraint   = [0, 5, 5, 5, 5].
