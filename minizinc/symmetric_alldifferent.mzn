@@ -26,6 +26,8 @@
 %   * NODES[2].succ=4 <-> NODES[4].succ=2.
 % """
 
+% Note: In MiniZinc 2.0, symmetric_all_different is a built-in constraint.
+
 % 
 % MiniZinc model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
@@ -45,7 +47,7 @@ array[1..n] of var 1..n: x;
 % x: [2, 1, 3]
 % x: [3, 2, 1]
 %
-predicate symmetric_alldifferent(array[int] of var int: a) =
+predicate symmetric_alldifferent_me(array[int] of var int: a) =
    all_different(x)
    /\
    forall(i in index_set(a)) (
@@ -63,9 +65,10 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 solve satisfy;
 
 constraint 
-   cp1d(x, [3,4,1,2])
-   /\
-   symmetric_alldifferent(x)
+   %cp1d(x, [3,4,1,2])
+   %/\
+   symmetric_alldifferent_me(x)
+   % symmetric_all_different(x) % built-in
 ;
 
 

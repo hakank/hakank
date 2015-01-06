@@ -22,11 +22,11 @@ my $opt_var = $ARGV[1] || ""; # optimize on which word/variable?
 my $opt_dir = $ARGV[2] || ""; # direction of optimality (min|max)
 
 $eq =~  s/\s+//g;
-if ($opt_var and $eq !~ /$opt_var/) {
+if ($opt_var and $eq and $eq !~ /$opt_var/) {
   die "Something is wrong: The opt var $opt_var is not in the equation\n";
 }
 
-if ($opt_dir !~ /^(?:min|max)/) {
+if ($opt_dir and $opt_dir !~ /^(?:min|max)/) {
   die "Something is wrong: The opt direction ('$opt_dir') is not min(imize) or max(imize)\n";
 }
 

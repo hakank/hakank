@@ -80,23 +80,24 @@ int: num_slots = num_meetings; % maximum needed slots
 array[1..num_meetings] of var 0..num_slots: x; 
 var 0..num_slots: z = max(x); % max timeslot, to minimize
 
-solve minimize z;
-% solve satisfy;
+% solve minimize z;
+solve satisfy;
 % solve :: int_search(x, first_fail, indomain_min, complete) minimize z;
 
 constraint
   forall(p in 1..n) (
     % find different timeslots for a person's meetings
-    forall(m1, m2 in required[p] where m1 < m2) (
-       x[m1] != x[m2]
-    )
+    % forall(m1, m2 in required[p] where m1 < m2) (
+    %    x[m1] != x[m2]
+    % )
+    all_different([x[m] | m in required[p]])
   )
   % precedence constraints
   /\ x[sales]      < x[marketing] 
   /\ x[production] < x[timetables]
   /\ x[quality]    < x[timetables]
 
-  % /\ z = 5 % for solve satisfy
+  /\ z = 5 % for solve satisfy
 ;
 
 output [
