@@ -10,16 +10,6 @@
         B*C      E*F      H*I
   """
 
-  There are 8 solutions:
-    7, 2, 4, 5, 8, 9, 1, 3, 6
-    7, 2, 4, 5, 8, 9, 1, 6, 3
-    7, 2, 4, 5, 9, 8, 1, 3, 6
-    7, 2, 4, 5, 9, 8, 1, 6, 3
-    7, 4, 2, 5, 8, 9, 1, 3, 6
-    7, 4, 2, 5, 8, 9, 1, 6, 3
-    7, 4, 2, 5, 9, 8, 1, 3, 6
-    7, 4, 2, 5, 9, 8, 1, 6, 3
-
 
   This AMPL model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my AMPL page: http://www.hakank.org/ampl/
@@ -63,9 +53,9 @@ s.t. c1: alldiff{i in 1..n}  x[i];
 
 s.t. c2:
 
-   D1 = B*C and
-   D2 = E*F and
-   D3 = H*I and
+   D1 = 10*B+C and
+   D2 = 10*E+F and
+   D3 = 10*H+I and
    A*D2*D3 + D*D1*D3 + G*D1*D2 = D1*D2*D3 and
    # symmetry breaking
    A*D2 >= D*D1 and
