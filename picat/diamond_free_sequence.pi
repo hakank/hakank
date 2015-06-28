@@ -1,0 +1,185 @@
+/* 
+
+  Diamond free sequence (CSPLib #50) in Picat.
+
+  http://www.csplib.org/Problems/prob050/
+  """
+   Proposed by Alice Miller, Patrick Prosser
+
+  Given a simple undirected graph G=(V,E), where V is the set of vertices and E the set of 
+  undirected edges, the edge {u,v} is in E if and only if vertex u is adjacent to vertex v∈G. 
+  The graph is simple in that there are no loop edges, i.e. we have no edges of the form {v,v}. 
+  Each vertex v∈V has a degree dv i.e. the number of edges incident on that vertex. Consequently 
+  a graph has a degree sequence d1,…,dn, where di>=di+1. A diamond is a set of four vertices 
+  in V such that there are at least five edges between those vertices. Conversely, a graph is 
+  diamond-free if it has no diamond as an induced subgraph, i.e. for every set of four vertices 
+  the number of edges between those vertices is at most four.
+  
+  In our problem we have additional properties required of the degree sequences of the graphs, in particular 
+  that the degree of each vertex is greater than zero (i.e. isolated vertices are disallowed), the degree of 
+  each vertex is modulo 3, and the sum of the degrees is modulo 12 (i.e. |E| is modulo 6).
+
+  The problem is then for a given value of n, produce all unique degree sequences d1,…,dn such that
+
+   * di≥di+1
+   * each degree di>0 and di is modulo 3
+   * the sum of the degrees is modulo 12
+   * there exists a simple diamond-free graph with that degree sequence
+
+  Below, as an example, is the unique degree sequence forn=10 along with the adjacency matrix of a diamond-free 
+  graph with that degree sequence.
+
+    n = 10
+    6 6 3 3 3 3 3 3 3 3
+
+    0 0 0 0 1 1 1 1 1 1 
+    0 0 0 0 1 1 1 1 1 1 
+    0 0 0 0 0 0 0 1 1 1 
+    0 0 0 0 1 1 1 0 0 0 
+    1 1 0 1 0 0 0 0 0 0 
+    1 1 0 1 0 0 0 0 0 0 
+    1 1 0 1 0 0 0 0 0 0 
+    1 1 1 0 0 0 0 0 0 0 
+    1 1 1 0 0 0 0 0 0 0 
+    1 1 1 0 0 0 0 0 0 0
+  """
+
+  Result for go2/0:
+
+  8 = [[3,3,3,3,3,3,3,3]]
+  9 = [[6,6,6,3,3,3,3,3,3]]
+ 10 = [[6,6,3,3,3,3,3,3,3,3]]
+ 11 = [[6,3,3,3,3,3,3,3,3,3,3]]
+ 12 = [[3,3,3,3,3,3,3,3,3,3,3,3],[6,6,6,6,3,3,3,3,3,3,3,3],[6,6,6,6,6,6,6,6,6,6,6,6],[9,6,6,3,3,3,3,3,3,3,3,3]]
+ 13 = [[6,6,6,3,3,3,3,3,3,3,3,3,3]]
+ 14 = [[6,6,3,3,3,3,3,3,3,3,3,3,3,3],[6,6,6,6,6,6,6,6,6,6,6,6,6,6],[9,6,6,6,6,3,3,3,3,3,3,3,3,3],[9,9,6,6,3,3,3,3,3,3,3,3,3,3],[9,9,9,3,3,3,3,3,3,3,3,3,3,3]]
+ 15 = [[6,3,3,3,3,3,3,3,3,3,3,3,3,3,3],[6,6,6,6,6,3,3,3,3,3,3,3,3,3,3],[6,6,6,6,6,6,6,6,6,6,6,6,6,3,3],[9,6,6,6,3,3,3,3,3,3,3,3,3,3,3],[9,9,6,3,3,3,3,3,3,3,3,3,3,3,3],[9,9,9,9,9,9,6,6,6,6,6,6,6,6,6],[12,12,12,3,3,3,3,3,3,3,3,3,3,3,3]]
+ 16 = [[3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],[6,6,6,6,3,3,3,3,3,3,3,3,3,3,3,3],[6,6,6,6,6,6,6,6,6,6,6,6,3,3,3,3],[6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],[9,6,6,3,3,3,3,3,3,3,3,3,3,3,3,3],[9,6,6,6,6,6,6,3,3,3,3,3,3,3,3,3],[9,6,6,6,6,6,6,6,6,6,6,3,3,3,3,3],[9,9,3,3,3,3,3,3,3,3,3,3,3,3,3,3],[9,9,9,6,6,3,3,3,3,3,3,3,3,3,3,3],[9,9,9,9,3,3,3,3,3,3,3,3,3,3,3,3],[12,9,9,6,3,3,3,3,3,3,3,3,3,3,3,3]]
+
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go =>
+  garbage_collect(200_000_000),
+  N = 10,
+  All = findall(Degrees, diamond_free_sequence(N, _, Degrees)).sort_remove_dups(),
+  println(all=All),
+  println(len=All.len),
+  nl.
+
+%
+% the different degrees
+%
+go2 => 
+  garbage_collect(200_000_000),
+  Map = get_global_map(),
+  foreach(N in 1..15) 
+    println(n=N),
+    diamond_free_sequence(N, _, Degrees),
+    if not Map.has_key(Degrees) then
+      Map.put(Degrees,1)
+    end,
+    fail  ; true
+  end,
+  Lens = new_map(),
+  foreach(Degrees=_ in Map) 
+     Len = Degrees.len,
+     Lens.put(Len,Lens.get(Len,[]) ++ [Degrees])
+  end,
+  foreach(Key in keys(Lens).sort()) 
+    println(Key=Lens.get(Key))
+  end,
+  nl.
+
+%
+% This takes too much RAM for N >= 15
+%
+go2b => 
+  garbage_collect(200_000_000),
+  Num = [],
+  foreach(N in 1..16) 
+    println(n=N),
+    All = findall(Degrees, diamond_free_sequence(N, _, Degrees)).sort_remove_dups(),
+    println(all=All),
+    println(len=All.len),
+    Num := Num ++ [All.len],
+    nl
+  end,
+  println(num=Num),
+  nl.
+
+%
+% count the number of different graphs (X)
+%
+go3 ?=>
+  garbage_collect(200_000_000),
+  N = 15,
+  println(n=N),
+  M = get_global_map(),
+  M.put(count,0),
+  diamond_free_sequence(N, _X, _Degrees),
+  M.put(count,M.get(count)+1),
+  fail,
+  nl.
+
+go3 => 
+  println(num=get_global_map().get(count)).
+
+
+diamond_free_sequence(N, X, Degrees) =>
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  Degrees = new_list(N),
+  Degrees :: 1..N,
+
+  % diamond free
+  foreach(I in 1..N, J in 1..N, K in 1..N, L in 1..N, I < J, J < K, K < L)
+     X[I,J] + X[I,K] + X[I,L] + X[J,K] + X[J,L] + X[K,L] #<= 4
+  end,
+
+  % undirected graph
+  foreach(I in 1..N, J in 1..N) 
+    X[I,J] #= X[J,I]
+  end,
+
+  foreach(I in 1..N) 
+     % the degrees (rows = columns since it's an undirected graph)
+     Degrees[I] #= sum([X[I,J] : J in 1..N]),
+     % degrees modulo 3
+     Degrees[I] mod 3 #= 0,
+     % no loops
+     X[I,I] #= 0
+  end,
+
+  % sum degrees modulo 12
+  sum(Degrees) mod 12 #= 0,
+
+  % symmetry breaking
+  decreasing(Degrees),
+  lex2eq(X),
+
+  Vars = Degrees ++ X.vars(),
+  solve([split],Vars).
+   
+
+decreasing(List) =>
+  foreach(I in 2..List.length) List[I-1] #>= List[I] end.
+
+lex2eq(X) =>
+ Len = X[1].length,
+ foreach(I in 2..X.length) 
+   lex_le([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+ end.

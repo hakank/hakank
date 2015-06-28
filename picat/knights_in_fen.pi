@@ -1,0 +1,302 @@
+/* 
+
+  Knights in FEN (planning) in Picat.
+
+  http://webdocs.cs.ualberta.ca/~piotr/ProgContest/2001/01Oct20/Problems/H.html
+  """
+  There are black and white knights on a 5 by 5 chessboard. There are twelve of each color, 
+  and there is one square that is empty. At any time, a knight can move into an empty square 
+  as long as it moves like a knight in normal chess (what else did you expect?).
+
+  Given an initial position of the board, the question is: what is the minimum number 
+  of moves in which we can reach the final position which is:
+
+     [
+       Final state:
+         B  B  B  B  B
+         W  B  B  B  B
+         W  W     B  B
+         W  W  W  W  B 
+         W  W  W  W  W
+
+       Positions:
+         1  2  3  4  5
+         6  7  8  9 10
+        11 12 13 14 15
+        16 17 18 19 20
+        21 22 23 24 25
+
+     ]
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+import planner.
+
+main => go.
+
+
+go ?=>
+
+   % initial_state(1,Init),  % 18 moves, best_plan(20): 4min30sec,  best_plan_upward(20): 
+   % initial_state(2,Init), % 7 moves, 0.02s
+   initial_state(3,Init), % 10 moves, 0.85s
+
+   println('init '=Init),
+   final(Final),
+   println(final=Final),
+
+   MaxMoves = 20,
+   knights_in_fen(Init,MaxMoves,Plan),
+   writeln(Plan),
+   writeln(len=Plan.length),
+   print_plan(Init,Plan),
+   writeln(len=Plan.length),
+
+   % fail,
+
+   nl.
+
+go => true.
+
+%
+% Test case of the 2 instances from 
+% http://webdocs.cs.ualberta.ca/~piotr/ProgContest/2001/01Oct20/Problems/H.html
+% See the file "knights_in_fen1.txt"
+%
+go2 => 
+  File = "knights_in_fen1.txt",
+  Instances = read_file_lines(File),
+  println(Instances),
+  println(len=Instances.len),
+  NumInstances = Instances[1].to_integer(),
+  println(numInstances=NumInstances),
+  LineNo = 2,
+  foreach(N in 1..NumInstances)
+     println(problem=N),
+     Instance = [  [cond(L == '0', w, cond(L=='1', b, 0)) : L in Instances[LineNo+I]] : I in 0..4].flatten(),
+     nth(ZeroPos,Instance,0), % Find the position of the blank
+     Init = [ZeroPos,Instance],
+     println(init=Init),
+     if knights_in_fen(Init,10,Plan) then
+       printf("Solvable in %d move(s).\n", Plan.len),
+       println(len=Plan.length),
+       println(plan=Plan)
+     else 
+       println("Unsolvable in less than 11 move(s).")
+     end,
+     LineNo := LineNo + 5,
+     nl,nl
+  end,
+  nl.  
+
+
+%
+% generate and solve random problem instances
+%
+go3 =>
+
+   MaxMoves = 13,
+   Init = generate(MaxMoves),
+   println('init '=Init),
+   final(Final),
+   println(final=Final),
+
+   knights_in_fen(Init,MaxMoves,Plan),
+   writeln(plan=Plan),
+   writeln(len=Plan.length),
+   print_plan(Init,Plan),
+   nl,
+   println(init=Init),
+   println(planLength=Plan.length),
+
+   nl.
+
+
+
+%
+% Solve the Knights in FEN problem
+%
+knights_in_fen(Init,MaxMoves, Plan) =>
+   D = {-2,-1,1,2},
+   N = 5,
+   % The moves
+   Moves1 = [[(I-1)*N+J, (I+A-1)*N+J+B] : I in 1..N, J in 1..N,
+                           A in D, B in D, 
+                           I+A >= 1, I+A <= N,
+                           J+B >= 1, J+B <= N,
+                           abs(A)+abs(B) == 3],
+   Moves = $[knight_move(I,J) : [I,J] in Moves1],
+   % println(valid_moves=Moves),
+   cl_facts(Moves),
+   time(best_plan(Init,MaxMoves,Plan)).
+
+
+%
+% generate a random initial state
+%
+generate(NumMoves) = [ZeroPos,Init] =>
+   % start from the final position and pick moves
+   final([_,Init1]),
+   D = {-2,-1,1,2},
+   N = 5,
+   Moves = [[(I-1)*N+J, (I+A-1)*N+J+B] : I in 1..N, J in 1..N,
+                           A in D, B in D, 
+                           I+A >= 1, I+A <= N,
+                           J+B >= 1, J+B <= N,
+                           abs(A)+abs(B) == 3],
+   ValidMoves = new_map([I=[J : [I1,J] in Moves, I1 = I] : I in 1..N*N]),
+   nth(ZeroPos1,Init1,0),
+   TheMoves = [],
+   foreach(_Move in 1..NumMoves)
+      Valid = [To : ZeroPos2=To in ValidMoves, ZeroPos2==ZeroPos1].flatten(),
+      To = Valid[1+ random2() mod Valid.length],
+      TheMoves := TheMoves ++ [[Init1[To],ZeroPos1,To]],
+      Init1 := swap(Init1,ZeroPos1,To),
+      ZeroPos1 := To
+   end,
+   ZeroPos = ZeroPos1,
+   Init = Init1,
+   println(generatedMoves=TheMoves).
+
+
+%
+% Shuffle a list
+%
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  foreach(I in 1..Len) 
+    R2 = 1+(random2() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
+
+swap(L,I,J) = L2, list(L) =>
+  L2 = copy_term(L),
+  L2[I] := L2[J],
+  L2[J] := L[I].
+
+%
+% Print one state
+%
+print_state(State) =>
+  foreach(I in 1..State.length) 
+    S = State[I],
+    printf("%w ", cond(S!=0, S, "_")),
+    if I mod 5 == 0 then
+       nl
+    end
+  end,
+  nl.
+
+
+%
+% Print a plan.
+%
+print_plan(Init,Plan) =>
+   % Nicer output
+   [_,State] = Init,
+   println(init),
+   print_state(State),
+   foreach([K,From,To] in Plan)
+     println([K,From,To]),
+     printf("Move %w knight from pos %d to pos %d\n", K,From,To),
+     State := swap(State,From,To),
+     print_state(State)
+   end,
+   println(plan=Plan),
+   nl.
+
+
+
+%
+% First configuration from 
+% http://webdocs.cs.ualberta.ca/~piotr/ProgContest/2001/01Oct20/Problems/H.html
+% This is unsolvable in 10 moves.
+% However, it is solvable in 18 moves:
+%   [[b,9,12],[w,12,1],[w,1,8],[b,8,17],[w,17,24],[w,24,15],[b,15,4],[b,4,13],[w,13,20],[b,20,23],[w,23,12],[w,12,1],[b,1,8],[b,8,19],[w,19,12],[w,12,3],[b,3,6],[w,6,13]]
+%
+initial_state(1,S) =>
+   ZeroPos = 9,
+   State = [ 
+           w,b,w,b,b,
+           b,b,w,0,b,
+           w,b,b,b,w,
+           w,b,w,b,w,
+           w,w,b,w,w
+           ],
+   S = [ZeroPos,State].
+
+%
+% Second configuration from 
+% http://webdocs.cs.ualberta.ca/~piotr/ProgContest/2001/01Oct20/Problems/H.html
+% Solvable in 7 moves:
+% [[w,8,5],[b,5,14],[b,14,17],[w,17,8],[b,8,11],[w,11,2],[b,2,13]]
+%
+initial_state(2,S) =>
+   ZeroPos = 8,
+   State = [ 
+           b,w,b,b,w,
+           w,b,0,b,b,
+           b,w,b,b,b,
+           w,b,w,w,b,
+           w,w,w,w,w
+           ],
+   S = [ZeroPos,State].
+
+%
+% Found by go2/0
+% Solved in 10 moves:
+% [[b,11,22],[w,22,19],[w,19,8],[b,8,11],[w,11,22],[w,22,13],[w,13,4],[b,4,7],[b,7,16],[w,16,13]]
+%
+initial_state(3,S) => 
+  ZeroPos = 11,
+  State = [b,b,b,w,b,w,b,w,b,b,0,w,w,b,b,b,w,w,w,b,w,b,w,w,w],
+  S = [ZeroPos,State].
+
+% Found by go2/0
+% init = [13,[b,b,b,b,b,w,w,b,w,b,w,w,0,w,b,b,w,b,b,b,w,w,w,w,w]]
+% Plan found in 12 moves:  
+% [[w,13,6],[w,6,17],[w,17,14],[b,14,3],[b,3,10],[b,10,19],[w,19,12],[w,12,9],[b,9,18],[w,18,7],[b,7,16],[w,16,13]]
+%
+initial_state(4,S) => 
+  S = [13,[b,b,b,b,b,w,w,b,w,b,w,w,0,w,b,b,w,b,b,b,w,w,w,w,w]].
+
+
+
+%
+% The goal.
+%
+final(S) =>
+   ZeroPos = 13,
+   State = [ 
+             b,b,b,b,b,
+             w,b,b,b,b,
+             w,w,0,b,b,
+             w,w,w,w,b,
+             w,w,w,w,w
+           ],
+   S = [ZeroPos,State].
+
+
+%
+% Keep the ZeroPos as first argument
+%
+action([ZeroPos,From],To,Move,Cost) ?=>
+   % pick a valid move to ZeroPos
+   knight_move(T,ZeroPos), 
+   FromT = From[T],
+   To1 = copy_term(From),
+   To1[T] := 0,
+   To1[ZeroPos] := From[T],
+   To = [T,To1],
+   % println(current_plan=current_plan()),
+   Move=[FromT,T,ZeroPos],
+   Cost = 1.

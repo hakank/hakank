@@ -1,0 +1,385 @@
+/* 
+
+  Tetravex puzzle solver in Picat.
+
+  From http://en.wikipedia.org/wiki/TetraVex
+  """
+  TetraVex is an edge-matching puzzle. The player is presented with a grid (by default, 3x3) 
+  and nine square tiles, each with a number on each edge. The objective of the game is to 
+  place the tiles in the grid in the proper position as fast as possible. Two tiles can 
+  only be placed next to each other if the numbers on adjacent faces match.
+  """
+
+  This includes both a solver, tetravex/3 and a generator tetravex_generate/3.
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+%
+%  1 2 3
+%  4 5 6
+%  7 8 9
+%
+
+go ?=>
+  % game(1,Size,Pieces), % 3x3
+  game(2,Size,Pieces), % 6x6
+
+  time2(tetravex(Pieces,Size, Solution)),
+  if nonvar(Solution) then
+    foreach(Sol in Solution) println(Sol) end,
+    nl,
+    print_board(Pieces,Solution, Size)
+  end,
+
+  % ensure unicity
+  fail,
+
+  nl.
+
+go ?=> true.
+
+
+%
+% Generate a random problem and solve it.
+%
+% Generation of large instances is fast, e.g. 30x30 takes 0.15s
+% (solving it takes much longer).
+%
+go2 ?=>
+  Size = 6,
+  printf("Generate a random problem instance of size %dx%d\n", Size,Size),
+  time(once(tetravex_generate(Size,Pieces,Solution))),
+  println(pieces=Pieces),
+  print_board(Pieces,Solution, Size),
+
+  println("Shuffle pieces"),
+  Pieces2 = shuffle(Pieces),
+
+  println("New problem:"),
+  print_board(Pieces2,Solution, Size),
+
+  println("Solve problem"),
+  time2(tetravex(Pieces2,Size, Solution2)),
+  if nonvar(Solution2) then
+    foreach(Sol in Solution2) println(Sol) end,
+    nl,
+    print_board(Pieces2,Solution2, Size)
+  end,
+
+  % fail,
+  nl.
+
+go2 => true.
+
+
+% Shuffle a list
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  foreach(I in 1..Len) 
+    R2 = 1+(random2() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
+
+%
+% Swap position I <=> J in list L
+%
+swap(L,I,J) = L2 =>
+  L2 = L,
+  T = L2[I],
+  L2[I] := L2[J],
+  L2[J] := T.
+
+
+
+tetravex(Pieces,Size,Solution) =>
+
+  % Pieces = Pieces1.list_matrix_to_array_matrix(),
+
+  println(pieces=Pieces),
+
+  % decision variables
+  Solution = new_array(Size,Size),
+  Solution :: 1..Size*Size,
+
+  % constraints
+  foreach(I in 1..Size, J in 1..Size)
+     % println([I,J]),
+     Neighbors = [[I+A,J+B] : A in -1..1, B in -1..1, 
+                   I+A >= 1, I+A <= Size, J+B >= 1, J+B <= Size, 
+                   abs(A)+abs(B) == 1],
+
+     % We must use matrix_element3/4 since element/3 won't do 
+     % and neither does the built-in matrix_element/4.
+     matrix_element3(Pieces,Solution[I,J],1,This1),
+     matrix_element3(Pieces,Solution[I,J],2,This2),
+     matrix_element3(Pieces,Solution[I,J],3,This3),
+     matrix_element3(Pieces,Solution[I,J],4,This4),
+
+     foreach([NI, NJ] in Neighbors) 
+       % Ensure that the proper edges are the same
+       if I == NI then
+         matrix_element3(Pieces,Solution[NI,NJ],2,That2),
+         matrix_element3(Pieces,Solution[NI,NJ],3,That3),
+         % same row
+         if J < NJ then
+           This3 #= That2
+         else 
+           This2 #= That3
+         end
+       elseif J == NJ then
+         matrix_element3(Pieces,Solution[NI,NJ],1,That1),
+         matrix_element3(Pieces,Solution[NI,NJ],4,That4),
+         % same column
+         if I < NI then
+           This4 #= That1
+         else 
+           This1 #= That4       
+         end
+       end
+     end
+  end,
+
+  all_different(Solution.vars()),
+  % all_distinct(Solution.vars()), % slower
+
+  % solve
+  % solve([ffc,inout], Solution).
+  % solve([constr,reverse_split], Solution).
+  solve([ffc,split], Solution).
+
+
+%
+% Generate a TetraVex problem instance
+%
+tetravex_generate(Size,Pieces,Solution) =>
+
+  Pieces = new_array(Size*Size,4).array_matrix_to_list_matrix(),
+  Pieces :: 0..9,
+
+  % decision variables
+  Solution = new_array(Size,Size),
+  Solution :: 1..Size*Size,
+
+  % constraints
+  foreach(I in 1..Size, J in 1..Size)
+     Neighbors = [[I+A,J+B] : A in -1..1, B in -1..1, 
+                   I+A >= 1, I+A <= Size, J+B >= 1, J+B <= Size, 
+                   abs(A)+abs(B) == 1],
+
+     % We must use matrix_element3/4 since element/3 won't do 
+     % and neither does the built-in matrix_element/4.
+     matrix_element3(Pieces,Solution[I,J],1,This1),
+     matrix_element3(Pieces,Solution[I,J],2,This2),
+     matrix_element3(Pieces,Solution[I,J],3,This3),
+     matrix_element3(Pieces,Solution[I,J],4,This4),
+
+     foreach([NI, NJ] in Neighbors) 
+       % Ensure that the proper edges are the same
+       if I == NI then
+         % same row
+         matrix_element3(Pieces,Solution[NI,NJ],2,That2),
+         matrix_element3(Pieces,Solution[NI,NJ],3,That3),
+         if J < NJ then
+           This3 #= That2
+         else 
+           This2 #= That3
+         end
+       elseif J == NJ then
+         % same column
+         matrix_element3(Pieces,Solution[NI,NJ],1,That1),
+         matrix_element3(Pieces,Solution[NI,NJ],4,That4),
+         if I < NI then
+           This4 #= That1
+         else 
+           This1 #= That4       
+         end
+       end
+     end
+  end,
+
+  all_different(Solution.vars()),
+  % all_distinct(Solution.vars()), % slower
+
+  _ = random(random2()), % Change the seed for rand_val
+
+  % solve
+  Vars = Solution.vars() ++ Pieces.vars(),
+  % solve([ffc,split], Vars).
+  solve([constr,rand_val], Vars).
+
+
+
+
+print_board(Pieces,Solution,Size) =>
+  foreach(I in 1..Size)
+    foreach(J in 1..Size)
+      printf("   %d  ", Pieces[Solution[I,J],1])
+    end,
+    nl,
+    foreach(J in 1..Size)
+      printf(" %d  %d ", Pieces[Solution[I,J],2],Pieces[Solution[I,J],3])
+    end,
+    nl,
+    foreach(J in 1..Size)
+      printf("   %d  ", Pieces[Solution[I,J],4])
+    end,
+    nl,nl
+
+  end,
+  nl.
+  
+
+matrix_element1(X, I, J, Val) =>
+  element(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element2(X, I, J, Val) =>
+  nth(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element3(X, I, J, Val) =>
+  freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element4(X, I, J, Val) =>
+   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element5(X, I, J, Val) =>
+  nth(I, X, Row),
+  nth(J, Row, Val).
+
+
+to_num(I,J,Size) = (I-1)*Size + J.
+
+% Pieces are shown as
+%    1
+%  2   3
+%    4
+
+%
+% From the Linux game Tetravex
+%
+
+% [8,8,9,5][8,9,2,9][4,2,7,5]
+% [5,4,8,4][9,8,6,9][5,6,9,8]
+% [4,3,5,0][9,5,1,0][8,1,1,9]
+
+%
+%   8   8   4
+%  8 9 9 2 2 7
+%   5   9   5
+%   
+%   5   9   5
+%  4 8 8 6 6 9 
+%   4   9   8
+%
+%   4    9   8
+%  3 5  5 1 1 1
+%   0    0   9
+%
+game(1, Size, Pieces) =>
+  Size = 3,
+  Pieces = 
+  [
+    [5,6,9,8], % 1
+    [9,8,6,9], % 2
+    [8,1,1,9], % 3
+ 
+    [8,8,9,5], % 4
+    [8,9,2,9], % 5
+    [4,2,7,5], % 6
+
+    [4,3,5,0], % 7
+    [9,5,1,0], % 8
+    [5,4,8,4]  % 9
+  ].
+
+
+% Game from the Tetravex program
+%
+% Solution:
+% solution = [[32,10,20,19,33,30],[2,8,34,14,29,16],[22,12,25,28,6,17],[11,18,26,13,36,15],[35,27,5,23,21,7],[24,3,31,1,4,9]]
+%    0     6     3     4     8     9  
+%  3  3  3  7  7  9  9  8  8  6  6  4 
+%    2     7     3     6     8     6  
+%
+%    2     7     3     6     8     6  
+%  2  6  6  3  3  8  8  8  8  3  3  3 
+%    2     0     2     7     6     4  
+%
+%    2     0     2     7     6     4  
+%  2  8  8  0  0  2  2  1  1  3  3  6 
+%    3     7     8     2     5     9  
+%
+%    3     7     8     2     5     9  
+%  4  5  5  9  9  2  2  3  3  5  5  8 
+%    4     7     1     7     2     4  
+%
+%    4     7     1     7     2     4  
+%  0  0  0  2  2  5  5  7  7  1  1  5 
+%    5     1     5     5     3     6  
+%
+%    5     1     5     5     3     6  
+%  2  8  8  7  7  7  7  5  5  7  7  6 
+%    8     1     4     6     3     1  
+
+%
+% This instance is solved in 0.12s and proved unique in 0.6s
+% 
+game(2, Size, Pieces) => 
+  Size = 6,
+  Pieces = 
+  [
+    [5,7,5,6], % 1
+    [2,2,6,2], % 2
+    [1,8,7,1], % 3
+    [3,5,7,3], % 4
+    [1,2,5,5], % 5
+    [6,1,3,5], % 6
+
+    [4,1,5,6], % 7
+    [7,6,3,0], % 8
+    [6,7,6,1], % 9
+    [6,3,7,7], % 10
+    [3,4,5,4], % 11
+    [0,8,0,7], % 12
+
+    [2,2,3,7], % 13
+    [6,8,8,7], % 14
+    [9,5,8,4], % 15
+    [6,3,3,4], % 16
+    [4,3,6,9], % 17
+    [7,5,9,7], % 18
+
+    [4,9,8,6], % 19
+    [3,7,9,3], % 20
+    [2,7,1,3], % 21
+    [2,2,8,3], % 22 
+    [7,5,7,5], % 23
+    [5,2,8,8], % 24
+
+    [2,0,2,8], % 25
+    [8,9,2,1], % 26
+    [7,0,2,1], % 27
+    [7,2,1,2], % 28
+    [8,8,3,6], % 29
+    [9,6,4,6], % 30
+
+    [5,7,7,4], % 31
+    [0,3,3,2], % 32
+    [8,8,6,8], % 33
+    [3,3,8,2], % 34
+    [4,0,0,5], % 35
+    [5,3,5,2]  % 36
+  ].
