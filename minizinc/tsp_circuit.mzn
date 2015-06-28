@@ -54,21 +54,27 @@ array[1..n, 1..n] of int: distances;  % distance matrix
 int: min_val = min([distances[i,j] | i,j in 1..n where distances[i,j] > 0]);
 int: max_val = max([distances[i,j] | i,j in 1..n]);
 array[1..n] of var min_val..max_val: d;
-var int: distance;
+var int: distance = sum(d);
+
+% solve minimize distance;
+solve :: int_search(d, max_regret, indomain_split, complete) minimize distance;
 
 % solve :: int_search(x, first_fail, indomain_min, complete) minimize distance;
 % Chuffed like this:
 % solve :: int_search(d, max_regret, indomain_min, complete) minimize distance;
 
-% G12/cpx like this d on smallest/indomain_min
-solve :: int_search(d, smallest, indomain_min, complete) minimize distance;
+% G12/cpx like this: d on smallest/indomain_min
+% solve :: int_search(d, smallest, indomain_min, complete) minimize distance;
+% solve :: int_search(d, input_order, indomain_min, complete) minimize distance;
 
 
 constraint
+    all_different(x) :: domain /\ % this speeds up for some solvers
 
     circuit(x) % use this for solvers with built-in circuit predicate, e.g. JaCoP
                % or - lately - the built-in version in MiniZinc distribution
-    % circuit_me(x) % hakank: use this version for solvers without built-in cuircuit predicate
+
+    % circuit_me(x) % hakank: use this version for solvers without the built-in circuit predicate
 
     /\
     forall(i in 1..n) (
@@ -78,8 +84,7 @@ constraint
 	in
 	 l[x[i]] = d[i]
     )
-    /\ 
-   distance = sum(i in 1..n) (d[i])
+    % /\ distance = sum(i in 1..n) (d[i])
 
 ;
 
