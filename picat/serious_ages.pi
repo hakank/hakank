@@ -1,0 +1,219 @@
+/* 
+
+  Serious ages - Enigma #1 in Picat.
+
+  https://enigmaticcode.wordpress.com/2011/12/01/enigma-1-serious-ages/
+  """
+  From New Scientist #1143, 22nd February 1979
+
+  “If they hadn’t invented the Closed University,” said Radiotimes of Ilea, 
+  “I shouldn’t have learned about the serious function. Every birthday now I 
+  work out how serious my new ages is. For instance, I am 27 today, and I 
+  calculate the seriousness of 27 as 4; or, as we say at the CU, S(27) = 4. 
+
+  [
+    Blackboard:
+ 
+      27
+      13 + 14
+      8 + 9 + 10
+      2 + 3 + 4 + 5 + 6 + 7
+  ]
+  
+  That is because, as you see from the blackboard, there are 4 ways in which 
+  you can compose an arithmetical progression of one or more positive integers, 
+  in which each term is 1 greater than the previous one, with the sum of the 
+  terms totalling 27″.
+
+  “I see,” I said.
+
+  “Just to be sure you do see,” said Radiotimes, “tell me:
+
+  (a) if I live to be 100, what is/are the most serious birthday(s) I shall have had?
+
+  (b) How much over 100 should I have to live to reach a more serious birthday than that?”
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go => 
+  % a)
+  println("a):"),
+
+  Map = new_map([ 
+                 I = findall([From,To], serious4(I,From,To)).len : I in 1..100
+               ]),
+  MaxLen = max(values(Map)),
+  println(maxLen=MaxLen=[I : I=Len in Map, Len == MaxLen]),
+  
+  %% slower
+  % MaxLen := 0,
+  % MaxNum := [],
+  % foreach(N in 1..100) 
+  %   Len = findall([From,To], serious3(N,From,To)).len,
+  %   if Len > MaxLen then
+  %     MaxLen := Len,
+  %     MaxNum := [N]
+  %   elseif Len == MaxLen then
+  %     MaxNum := MaxNum ++ [N]      
+  %   end
+  % end,
+  % println(maxLen=MaxLen),
+  % println(maxNum=MaxNum),
+
+
+  %% slower
+  % serious_maxlen(100,0,MaxLen,[],MaxNum),
+  % println(maxLen=MaxLen),
+  % println(maxNum=MaxNum),
+
+  % b)
+  println("b):"),
+  Len = MaxLen,
+  Age = 100,
+  while (Len <= MaxLen) 
+    Age := Age + 1,
+    Len := findall([From,To], serious4(Age,From,To)).len
+  end,
+  println([age=Age,len=Len]),
+
+  All3 = findall([From3,To3], serious4(Age,From3,To3)),
+  println(all3=All3),
+  nl.
+
+%
+% using serious5/1 or serious6/1 (functions)
+%
+go1 => 
+  % a)
+  println("a):"),
+
+  Map = new_map([ 
+                 % I = serious5(I).len : I in 1..100
+                 I = serious6(I).len : I in 1..100
+               ]),
+  MaxLen = max(values(Map)),
+  println(maxLen=MaxLen=[I : I=Len in Map, Len = MaxLen]),
+  
+  % b)
+  println("b):"),
+  Len = MaxLen,
+  Age = 100,
+  while (Len <= MaxLen) 
+    Age := Age + 1,
+    % Len := serious5(Age).len
+    Len := serious6(Age).len
+  end,
+  println([age=Age,len=Len]),
+
+  % All3 = serious5(Age),
+  All3 = serious6(Age),
+  println(all3=All3),
+  nl.
+
+
+go2 =>
+
+  % N = 27
+  N = 27,
+  All1 = findall([From1,To1], serious2(N,From1,To1)), 
+  println(all1=All1),
+
+  All2 = findall([From2,To2], serious2(N,From2,To2)), 
+  println(all2=All2),
+
+  All3 = findall([From3,To3], serious3(N,From3,To3)), 
+  println(all3=All3),
+
+  All4 = findall([From4,To4], serious3(N,From4,To4)), 
+  println(all4=All4),
+
+  nl.
+
+
+
+go3 =>
+  garbage_collect(200_000_000),
+  M = 400,
+  Map = new_map(M),
+  foreach(N in 1..M)  
+     S = findall([From,To], serious4(N,From,To)),
+     % println(N=S),
+     Len = S.len,
+     Map.put(Len,Map.get(Len,[])++[N])
+  end,
+  foreach(Len=Ns in Map)
+    println([len=Len,Ns])
+  end,
+  
+  nl.
+
+%
+% find the most serious number from 1..N
+%
+serious_maxlen(0,MaxLen1,MaxLen,MaxNum1,MaxNum) ?=>
+  MaxLen = MaxLen1,
+  MaxNum = MaxNum1.reverse().
+
+serious_maxlen(N,MaxLen1,MaxLen,MaxNum1,MaxNum) =>
+  S = findall([From,To], serious2(N,From,To)),
+  Len = S.len,
+  if Len > MaxLen1 then
+    serious_maxlen(N-1,Len,MaxLen,[N],MaxNum)
+  elseif Len == MaxLen1 then
+    serious_maxlen(N-1,Len,MaxLen,MaxNum1 ++ [N],MaxNum)
+  else
+    serious_maxlen(N-1,MaxLen1,MaxLen,MaxNum1,MaxNum)
+  end.
+  
+
+% Time for go/0: 0.212s
+serious1(N,From,To) =>
+  between(1,N,From),
+  between(From,N,To),
+  N = sum([I : I in From..To]).
+
+% Time for go/0: 0.244s
+serious2(N,From,To) =>
+  From :: 1..N,
+  To :: 1..N,
+  From #<= To,
+  N #= sum([I*(I #>= From #/\ I #<= To) : I in 1..N]),
+  solve([degree,split],[From,To]).
+  
+% Time for go/0: 0.192s
+serious3(N,From,To) =>
+  member(From,1..N),
+  member(To,From..N),
+  N = sum([I : I in From..To]).
+
+% Time for go/0: 0.024s
+serious4(N,From,To) =>
+  between(1,N,From),
+  between(From,N,To),
+  N = ceiling( (From - From*From + To*To + To)/2).
+
+
+% Time for g1/0: 0.028s
+serious5(N) = All => 
+  All = [],
+  foreach(I in 1..N, J in I..N)
+    if N == ceiling( (I - I*I + J*J + J)/2) then
+      All := All ++ [[I,J]]
+    end
+  end.
+
+% same as serious5 but with list comprehension
+% Time for go1/0: 0.028s
+serious6(N) = [[I,J] : I in 1..N, J in I..N, N == ceiling( (I - I*I + J*J + J)/2)].

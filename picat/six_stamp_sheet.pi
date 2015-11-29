@@ -1,0 +1,109 @@
+/* 
+
+  Six-stamp sheet problem (Enigma #312) in Picat.
+
+  """
+  From New Scientist #1460, 13th June 1985 [link]
+  Enigma 312
+        [
+          1  2  2
+          4  5  8
+        ]
+
+  They are now printing stamp-books with stamps of different values on the same sheet. 
+  Let us take this a stage further, and design a sheet of 3 × 2 stamps, so that you can 
+  make up a postage of any whole number of pence from 1 up to N by tearing out 
+  a connected set of one or more stamps.
+
+  'Connected' means edge-connected, not just corner-touching, so that, for instance, the sheet 
+  illustrated achieves only N=5, since neither 4+2 nor 5+1 is a connected set, 
+  and so 6 is impossible.
+
+  Make a sketch showing how to make N as big as possible, and state what N is.
+  """
+
+  Optimal solutions:
+  {{1,2,15},{4,6,8}}
+  {{1,3,17},{8,2,5}}
+  {{5,2,8},{17,3,1}}
+  {{8,6,4},{15,2,1}}
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+main => go.
+
+go =>
+  Rows = 2,
+  Cols = 3,
+  N = Rows*Cols,
+  Graph=connected_cells(Rows,Cols),
+  cl_facts(Graph), % make p(From,To) available
+
+  All = [],
+  Table = [], % for table_in/2
+  foreach(I in 1..2**(N)-1)
+    Bin = [J.to_integer() : J in I.to_binary_string()].reverse(),
+    C = [J : J in 1..Bin.len, Bin[J]=1],
+    OK = sum([1: K in C, L in C, K != L, (p(K,L) ; member(T,C), p(K,T), p(T,L))]),
+    if OK >= (C.len*C.len-1) div 2 then
+      All := All ++ [C],
+      Bin2 = ([0:_ in 1..N-Bin.len] ++ Bin.reverse()).to_array(),
+      Table := Table ++ [Bin2]
+    end
+  end,
+  MaxM = _,
+  OK = true,
+  foreach(M in 5..100, OK == true) 
+     printf("m=%d ", M),
+     stamps(Rows,Cols,Table,M, X) ->
+        println(x=X), MaxM := M
+      ; 
+        printf("not found\n"),
+        OK := false
+  end,
+
+  println(maxM=MaxM),
+
+  % println("\nOptimal solutions:"),
+  % Sols = findall(X, stamps(Rows,Cols,Table,MaxM, X)).sort_remove_dups(),
+  % foreach(Sol in Sols) println(Sol) end,
+
+  nl.
+
+
+% CP approach using table_in/2 to handle the valid stamp combinations
+stamps(Rows,Cols,Table, M, X) =>
+
+  N = Rows*Cols,
+  X = new_array(Rows,Cols),
+  X :: 1..M div 2,
+  X1 = X.vars(),
+  Y = new_array(M,N),
+  Y :: 0..1,
+
+  foreach(Num in 1..M)
+    table_in(Y[Num],Table),
+    Num #= sum([Y[Num,I]*X1[I] : I in 1..N])
+  end,
+  lex2(X),
+  solve($[min,split],X++Y).
+
+% symmetry breaking
+lex2(X) =>
+  Len = X[1].length,
+  foreach(I in 2..X.length) 
+    lex_le([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+  end.
+
+% create the graph
+connected_cells(Rows,Cols) = Graph =>
+  V = -1..1,
+  Graph = [$p(From,To) : I in 1..Rows, J in 1..Cols, A in V, B in V,
+          I+A in 1..Rows,J+B in 1..Cols, abs(A+B)=1, From = (I-1)*Cols + J,
+          To = (I+A-1)*Cols + J+B].

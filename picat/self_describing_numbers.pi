@@ -1,0 +1,193 @@
+/* 
+
+  Self describing numbers (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Self-describing_numbers
+  """
+  There are several so-called "self-describing" or "self-descriptive" integers.
+
+  An integer is said to be "self-describing" if it has the property that, when 
+  digit positions are labeled 0 to N-1, the digit in each position is equal to the number of 
+  times that that digit appears in the number.
+
+  For example, 2020 is a four-digit self describing number:
+
+    position 0 has value 2 and there are two 0s in the number;
+    position 1 has value 0 and there are no 1s in the number;
+    position 2 has value 2 and there are two 2s;
+    position 3 has value 0 and there are zero 3s. 
+
+  Self-describing numbers < 100.000.000: 1210, 2020, 21200, 3211000, 42101000.
+
+  Task Description
+
+    Write a function/routine/method/... that will check whether a given positive integer is self-describing.
+    As an optional stretch goal - generate and display the set of self-describing numbers. 
+  """
+
+  Cf http://hakank.org/picat/magic_sequence.pi
+     http://hakank.org/picat/magic_sequence_double_list.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  Num = 2020,
+  magic_sequence2(Num, Sequence),
+  println(Sequence),
+  nl.
+
+go2 => 
+  List = [1210, 2020, 21200, 3211000, 42101000, 
+          123456,98,10,-121],
+  foreach(N in List)
+     magic_sequence(N,_S),
+     println(N)
+  end,
+  nl.
+
+% Non-CP variant: check all numbers of a range
+go3 => 
+  foreach(N in 1..10_000_000)
+    if magic_sequence2(N,_S) then
+      println(N)
+    end
+  end,
+  nl.
+
+%
+% Using CP. Fast, but the largest length is 8 (42101000) due to Picat's restriced CP domain.
+%
+go4 => 
+  Len :: 1..10,
+  println(findall(Num, (indomain(Len), magic_sequence_len(Len,Num)))),
+  nl.
+
+
+%
+% Fast. Perhaps cheating since it's not about the numbers but the list of digits.
+% It finds all self describing number 1210..9210000001000 in 0.004s.
+%
+go5 => 
+  Len :: 1..13,
+  println(findall(Seq, (indomain(Len), magic_sequence_len2(Len,Seq)))),
+  nl.
+
+
+% cp
+% cf http://hakank.org/picat/magic_sequence.pi
+magic_sequence(Num, Sequence) =>
+  N = length(Num.to_string()),
+
+  Sequence = new_list(N),
+  Sequence :: 0..N-1,
+
+  % extra constraints
+  N #= sum(Sequence),
+
+  to_num(Sequence,10,Num),
+
+  scalar_product({ I : I in 0..N-1}, Sequence, N),
+
+  % using global_cardinality/2: or N=400: 0.8s
+  % GC = $[ I-Sequence[I+1] : I in 0..N-1],
+  % global_cardinality(Sequence,GC),
+
+  % using count/4 for N=400: 0.22s
+  foreach(I in 0..N-1) count(I,Sequence,#=,Sequence[I+1]) end,
+
+  solve([ffc,inout], Sequence).
+  % solve(Sequence).
+
+%
+% cp, different approach: checks all solution of a specific length.
+% Note: This 
+%
+magic_sequence_len(Len, Num) =>
+
+  Sequence = new_list(Len),
+  Sequence :: 0..Len-1,
+
+  % extra constraints
+  Len #= sum(Sequence),
+  scalar_product({ I : I in 0..Len-1}, Sequence, Len),
+
+  to_num(Sequence,10,Num),
+
+  % using global_cardinality/2: or N=400: 0.8s
+  % GC = $[ I-Sequence[I+1] : I in 0..N-1],
+  % global_cardinality(Sequence,GC),
+
+  % using count/4 for N=400: 0.22s
+  foreach(I in 0..Len-1) count(I,Sequence,#=,Sequence[I+1]) end,
+
+  solve([ffc,inout], Sequence).
+  % solve(Sequence).
+
+
+%
+% cp, different approach: checks all solution of a specific length.
+% A variant of magic_sequence_len/2 where the list is used instead 
+% of the number
+%
+magic_sequence_len2(Len, Sequence) =>
+
+  Sequence = new_list(Len),
+  Sequence :: 0..Len-1,
+
+  % the digits must be <= 9
+  max(Sequence) #<= 9,
+
+  % extra constraints
+  Len #= sum(Sequence),
+  scalar_product([I : I in 0..Len-1], Sequence, Len),
+
+  % to_num(Sequence,10,Num),
+
+  % using global_cardinality/2: or N=400: 0.8s
+  % GC = $[ I-Sequence[I+1] : I in 0..Len-1],
+  % global_cardinality(Sequence,GC),
+
+  % using count/4 for N=400: 0.22s
+  foreach(I in 0..Len-1) count(I,Sequence,#=,Sequence[I+1]) end,
+
+  solve([ffc,inout], Sequence).
+  % solve(Sequence).
+
+
+
+%
+% no cp
+%
+magic_sequence2(Num,L) =>
+  L = [ I.to_integer() : I in Num.to_string()],
+  Len = L.len,
+  if sum(L) != Len then fail end,
+  foreach(J in L) 
+    % cannot be a digit larger than the length of Num
+    if J >= Len then fail end
+  end,
+  foreach(I in 0..Len-1) 
+   % if [1 : J in L, I==J].length != L[I+1] then
+   if sum([1 : J in L, I==J]) != L[I+1] then
+      fail
+   end
+  end.
+
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).

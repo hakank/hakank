@@ -1,0 +1,136 @@
+/* 
+
+  Adler-32 check sum in Picat.
+
+  https://en.wikipedia.org/wiki/Adler-32
+
+  Three variants are show where adler/1 is the fastest.
+ 
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go =>
+  W = "Wikipedia",
+
+  % slow version
+  Adler = adler1(W),
+  println(adler1=Adler),
+  println(Adler.to_hex_string()),
+
+  % a little faster
+  AdlerX = adler2(W),
+  println(adler2=AdlerX),
+  println(AdlerX.to_hex_string()),
+
+  AdlerY = adler(W),
+  println(adler=AdlerY),
+  println(AdlerY.to_hex_string()),
+
+  nl,
+
+  % change one char
+  W2 = "Wikipedib",
+  Adler2_1 = adler1(W2),
+  println(adler1=Adler2_1),
+  println(Adler2_1.to_hex_string()),
+  Adler2_2 = adler2(W2),
+  println(adler2=Adler2_2),
+  println(Adler2_2.to_hex_string()),
+
+  Adler2b = adler(W2),
+  println(adler=Adler2b),
+  println(Adler2b.to_hex_string()),
+
+  nl,
+  N = 1000,
+  printf("Testing on a %d length random string\n", N),
+  W3 = random_string(N),
+  % println(W3),
+  time(AdlerW3_1=adler1(W3)), % too slow
+  println(adler1=AdlerW3_1),
+  time(AdlerW3_2=adler2(W3)),
+  println(adler2=AdlerW3_2),
+
+  time(AdlerW3_3=adler(W3)),
+  println(adler=AdlerW3_3),
+  nl,
+
+  % checking this program
+  println(adler_file=adler_file("adler_checksum.pi")),
+
+  nl.
+
+% testing adler/1 on a 10Mb string
+go2 => 
+   println(generating_string),
+   time(W = random_string(10_000_000)),
+   println(adler),
+   time(Adler=adler(W)),
+   println(adler=Adler),
+   nl.
+
+go3 => 
+   foreach(K in 1..8) 
+     garbage_collect(200_000_000),
+     println(generating_string=[$10**K,10**K]),
+     time(W = random_string(10**K)),
+     println("Running adler/1"),
+     time(_Adler=adler(W)),
+     nl
+   end,
+   nl.
+   
+
+random_string(Len) = S =>
+  Alpha = "abcdefghijklmnopqrstuvwxyz    ",
+  _ = random2(),
+  S = [Alpha[1 + random() mod Alpha.len] : _ in 1..Len].
+
+
+% Variant of adler2/1, skipping the temporary list Data
+% Much faster.
+adler(S) = Adler =>
+  A = 1, B = 0, MOD_ADLER = 65521,
+  foreach(C in S)
+     A := (A + ord(C)) mod MOD_ADLER,
+     B := (B + A) mod MOD_ADLER
+  end,
+  Adler = (B << 16) \/ A.
+
+
+% slow
+adler1(S) = Adler =>
+  L = [ord(C) : C in S],
+  A = accum1(L),
+  B = accum(A),
+  Adler = (last(B) mod 65521) * 65536 + (last(A) mod 65521).
+
+accum(L) = [sum([L[J]:J in 1..I]) : I in 1..L.len].
+accum1(L) = [1+sum([L[J]:J in 1..I]) : I in 1..L.len].
+
+
+%
+% From the C code in "Example implementation" 
+% at https://en.wikipedia.org/wiki/Adler-32
+%
+% Much faster than adler/1
+adler2(S) = Adler =>
+  Data = [ord(C) : C in S],
+  A = 1,
+  B = 0,
+  MOD_ADLER = 65521,
+  Len = Data.len,
+  foreach(Index in 1..Len)
+     A := (A + Data[Index]) mod MOD_ADLER,
+     B := (B + A) mod MOD_ADLER
+  end,
+  Adler = (B << 16) \/ A.
+
+
+
+adler_file(File) = adler(read_file_chars(File)).

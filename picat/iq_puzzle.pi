@@ -1,0 +1,372 @@
+/* 
+
+  IQ puzzle (Solitaire, Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/I.Q._Puzzle
+  """
+  An IQ Puzzle is a triangle of 15 golf tee's. This is typically seen at 
+  Cracker Barrel where one tee is missing and the remaining tees jump each 
+  other until one tee is left. The fewer tees left the higher the IQ score. 
+  peg #1 is the top centre through to the bottom row which are pegs 11 through to 15.
+
+           ^
+          / \        
+         /   \
+        /     \
+       /   1   \     
+      /  2   3  \
+     / 4   5  6  \ 
+    / 7  8  9  10 \
+   /11 12 13 14  15\
+  /_________________\
+
+  Reference picture: http://www.joenord.com/puzzles/peggame/
+
+  Task description
+
+  Print a solution to solve the puzzle leaving one peg Not implemented 
+  variations Start with empty peg in X and solve with one peg in position Y. 
+  """
+
+  This program has three different solutions. 
+  The times are for getting the first solution for each start 
+  position (empty slot) 1..15
+
+  * go2/0 (puzzle/5, cp model): 10.8s
+  * go3/0 (puzzle2/5, same as cp but with member/3 etc): 1.8s
+  * go4/0 (puzzle3/2, Prolog inspired): 6.1s
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+%
+% Testing the original problem, i.e. empty slow at 1 
+% and show all steps.
+%
+go =>
+  puzzle(1,N,NumMoves,X,Y),
+  println("X:"),
+  foreach(Row in X) println(Row) end,
+
+  println("Y:"),
+  foreach(Row in Y) 
+    foreach(J in 1..15)
+      printf("%2d ", Row[J]) 
+    end,
+    nl
+  end,
+
+  foreach(Move in 1..NumMoves)
+    if Move > 1 then
+      printf("Move from %d over %d to %d\n",X[Move-1,1],X[Move-1,2],X[Move-1,3])
+    end,
+    nl,
+    print_board([Y[Move,J] : J in 1..N]),
+    nl
+  end,
+  
+  nl.
+
+%
+% checking all empty slots 1..15 with puzzle/5
+%
+go2 =>
+  N=15,
+  foreach(Start in 1..N)
+    println(start=Start),
+    time2(puzzle(Start,_N,_NumMoves,X,_Y)),
+    println(x=X),
+    nl
+  end,
+  nl.
+
+%
+% testing puzzle3/5: 1.88s
+%
+go3a => 
+  time2(puzzle2(1,N,NumMoves,X,Y)),
+  println(x=X),
+  foreach(Move in 1..NumMoves)
+    if Move > 1 then
+       printf("Move from %d over %d to %d\n",X[Move-1,1],X[Move-1,2],X[Move-1,3])
+    end,
+    nl,
+    print_board([Y[Move,J] : J in 1..N]),
+    nl
+  end,
+  nl.
+
+go3 =>
+  N=15,
+  foreach(Start in 1..N)
+    time(puzzle2(Start,N,_NumMoves,X,_Y)),
+    println(x=X),
+    nl
+  end,
+  nl.
+
+%
+% puzzle3/2 (Prolog inspired) Testing all empty slots 1..15
+%
+go4 =>
+  foreach(Start in 1..15)
+    time(puzzle3(Moves,Start)),
+    println(Moves)
+  end,
+  nl.
+
+
+%
+% count the number of solutions for each empty slot
+%
+% puzzle2(1):  count = 29760
+% puzzle2(2):  count = 14880
+% puzzle2(3):  count = 14880
+% puzzle2(4):  count = 85258
+% puzzle2(5):  count = 1550
+% puzzle2(6):  count = 85258
+% puzzle2(7):  count = 14880
+% puzzle2(8):  count = 1550
+% puzzle2(9):  count = 1550
+% puzzle2(10): count = 14880
+% puzzle2(11): count = 29760
+% puzzle2(12): count = 14880
+% puzzle2(13): count = 85258
+% puzzle2(14): count = 14880
+% puzzle2(15): count = 29760
+%
+go5 ?=> 
+  M = get_global_map(),
+  foreach(Start in 1..15),
+    M.put(count,0),
+    get_all(Start)
+  end,
+  nl.
+
+
+get_all(Start) ?=> 
+   M = get_global_map(),
+   puzzle2(Start,_N,_NumMoves,_X,_Y),
+   M.put(count,M.get(count)+1),   
+   fail.
+
+get_all(_) =>
+  println(count=get_global_map().get(count)).
+
+%
+% CP approach
+%
+puzzle(Empty,N,NumMoves,X,Y) =>
+  println($puzzle(Empty)),
+  N = 15,
+
+  % Peg 1 can move over 2 and end at 4, etc
+  % for table_in
+  moves(Moves),
+  ValidMoves = [],
+  foreach(From in 1..N) 
+    foreach([Over,To] in Moves[From])
+       ValidMoves := ValidMoves ++ [(From,Over,To)] % ++ [(To,Over,From)]
+    end
+  end,
+
+  % ValidMoves := ValidMoves.remove_dups(),
+
+  NumMoves = N-1,
+
+  % which move to make
+  X = new_array(NumMoves-1,3),
+  X :: 1..N,
+
+  % The board at move Move
+  Y = new_array(NumMoves,N),
+  Y :: 0..N,
+
+  % init
+  Y[1,Empty] #= 0,
+  foreach(J in 1..N)
+    if J != Empty then
+       Y[1,J] #= J
+    end
+  end,
+
+  % sum([Y[NumMoves,J]#>0 : J in 1..N]) #= 1,
+
+  foreach(Move in 2..NumMoves)
+     sum([Y[Move,J] #=0 : J in 1..N]) #= Move,
+     table_in((From,Over,To), ValidMoves),
+
+     element(To,Y[Move-1],0),
+     element(From,Y[Move-1],FromVal), FromVal #!= 0,
+     element(Over,Y[Move-1],OverVal), OverVal #!= 0,
+
+     element(From,Y[Move],0),
+     element(To,Y[Move],To),
+     element(Over,Y[Move],0),
+
+     foreach(J in 1..N) 
+       (J #!= From #/\ J #!= Over #/\ J #!= To) #=> 
+         Y[Move,J] #= Y[Move-1,J]
+     end,
+     X[Move-1,1] #= From,
+     X[Move-1,2] #= Over,
+     X[Move-1,3] #= To
+  end,
+
+  Vars = Y.vars() ++ X.vars(),
+  % Vars = X.vars() ++ Y.vars(),
+  solve([ffc,updown],Vars).
+
+
+%
+% The valid moves, for puzzle/5 and puzzle2/5
+% Peg 1 can move over 2 and end at 4, etc.
+%
+moves(Moves) =>
+  Moves = [
+   [[2,4],[3,6]], % 1
+   [[4,7],[5,9]], % 2
+   [[5,8],[6,10]], % 3
+   [[2,1],[5,6],[7,11],[8,13]], % 4
+   [[8,12],[9,14]], % 5
+   [[3,1],[5,4],[9,13],[10,15]], % 6
+   [[4,2],[8,9]], % 7
+   [[5,3],[9,10]], % 8
+   [[5,2],[8,7]], % 9
+   [[6,3],[9,8]], % 10
+   [[7,4],[12,13]], % 11
+   [[8,5],[13,14]], % 12
+   [[8,4],[9,6],[12,11],[14,15]], % 13
+   [[9,5],[13,12]], % 14
+   [[10,6],[14,13]] % 15
+  ].
+
+
+
+%
+% Same as CP but using LP
+%
+puzzle2(Empty,N,NumMoves,X,Y) =>
+  println($puzzle2(Empty)),
+  N = 15,
+
+  moves(Moves),
+
+  % for table_in
+  ValidMoves = [],
+  foreach(From in 1..N) 
+    foreach([Over,To] in Moves[From])
+       ValidMoves := ValidMoves ++ [(From,Over,To)] 
+    end
+  end,
+  NumMoves = N-1,
+
+  % which move to make
+  X = new_array(NumMoves-1,3),
+  % foreach(I in 1..NumMoves-1, J in 1..3)
+  %   member(X[I,J],1..N)
+  % end,
+
+  % The board at move Move
+  Y = new_array(NumMoves,N),
+  % foreach(I in 1..NumMoves, J in 1..N)
+  %   member(Y[I,J],0..N)
+  % end,
+
+  % init
+  Y[1,Empty] := 0,
+  foreach(J in 1..N)
+    if J != Empty then
+       Y[1,J] := J
+    end
+  end,
+  foreach(Move in 2..NumMoves)
+     member((From,Over,To), ValidMoves),
+
+     % from last move
+     Y[Move-1,To]   = 0,
+     Y[Move-1,From] != 0,
+     Y[Move-1,Over] != 0,
+
+     % this move
+     Y[Move,From] := 0,
+     Y[Move,To]   := To,
+     Y[Move,Over] := 0,
+
+     foreach(J in 1..N) 
+       if J != From, J != Over, J != To then
+         Y[Move,J] := Y[Move-1,J]
+       end
+     end,
+
+     X[Move-1] := [From,Over,To],
+  end.
+
+
+
+%
+%        1
+%      2   3
+%    4   5  6
+%   7  8  9  10
+% 11 12 13 14 15
+%
+print_board(B) =>
+  printf("       %2d\n", B[1]),
+  printf("     %2d %2d\n", B[2],B[3]),
+  printf("    %2d %2d %2d\n", B[4],B[5],B[6]),
+  printf("   %2d %2d %2d %2d\n",B[7],B[8],B[9],B[10]),
+  printf("  %2d %2d %2d %2d %2d\n",B[11],B[12],B[13],B[14],B[15]),
+  nl.
+
+%
+% Inspired by the Prolog approach
+%
+puzzle3(Moves,Start) =>
+  select(Start,1..15,Rest),
+  play([Start], Rest, [], Moves).
+
+ 
+play(_, [_], Lst, Moves) ?=>
+  Moves = reverse(Lst).
+ 
+play(Free, Occupied, Lst, Moves) =>
+  select(S, Occupied, Oc1),
+  select(O, Oc1, Oc2),
+  select(E, Free, F1),
+  move(S, O, E),
+  play([S, O | F1], [E | Oc2], [$move(S,O,E) | Lst], Moves).
+ 
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% allowed moves
+%
+move(S,2,E) ?=>  member([S,E], [[1,4], [4,1]]).
+move(S,3,E) ?=>  member([S,E], [[1,6], [6,1]]).
+move(S,4,E) ?=>  member([S,E], [[2,7], [7,2]]).
+move(S,5,E) ?=>  member([S,E], [[2,9], [9,2]]).
+move(S,5,E) ?=>  member([S,E], [[3,8], [8,3]]).
+move(S,6,E) ?=>  member([S,E], [[3,10], [10,3]]).
+move(S,5,E) ?=>  member([S,E], [[4,6], [6,4]]).
+move(S,7,E) ?=>  member([S,E], [[4,11], [11,4]]).
+move(S,8,E) ?=>  member([S,E], [[4,13], [13,4]]).
+move(S,8,E) ?=>  member([S,E], [[5,12], [12,5]]).
+move(S,9,E) ?=>  member([S,E], [[5,14], [14,5]]).
+move(S,9,E) ?=>  member([S,E], [[6,13], [13,6]]).
+move(S,10,E)?=> member([S,E], [[6,15], [15,6]]).
+move(S,8,E) ?=>  member([S,E], [[9,7], [7,9]]).
+move(S,9,E) ?=>  member([S,E], [[10,8], [8,10]]).
+move(S,12,E) ?=>  member([S,E], [[11,13], [13,11]]).
+move(S,13,E) ?=>  member([S,E], [[12,14], [14,12]]).
+move(S,14,E) ?=>  member([S,E], [[15,13], [13,15]]).

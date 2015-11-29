@@ -1,0 +1,132 @@
+/* 
+
+  Run-length encoding (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Run-length_encoding
+  """
+  Given a string containing uppercase characters (A-Z), compress repeated 'runs' of the same 
+  character by storing the length of that run, and provide a function to reverse the compression. 
+  The output can be anything, as long as you can recreate the input with it.
+
+  Example:
+
+    Input: WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWBWWWWWWWWWWWWWW 
+    Output: 12W1B12W3B24W1B14W 
+
+  Note: the encoding step in the above example is the same as a step of the Look-and-say sequence. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+go =>
+  S = "WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWBWWWWWWWWWWWWWW",
+  println(s=S),
+  println(rle1=rle(S)),
+  println(rle2=rle2(S)),
+  println(rle3=rle3(S)),
+
+  % benchmark on larger strings
+  Alpha = "AB",
+  Len2 = Alpha.len,
+  _ = random2(),
+  S2 = [Alpha[1 + random() mod Len2] : _ in 1..10000],
+  println(s2_generated),
+  if S2.len < 200 then println(s2=S2) end ,
+  time(_=rle(S2)),  % 8.3s on a random 30000 long 2 letter string
+  time(_=rle2(S2)), % 3.6s on a random 30000 long 2 letter string
+  time(_=rle3(S2)), % 2.5s on a random 30000 long 2 letter string
+  nl.
+
+% decode
+go2 => 
+  S = "WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWBWWWWWWWWWWWWWWA",
+  RLE = rle3(S),
+  println(rle=RLE),
+  D = rl_decode(RLE),
+  println(d=D),
+  if D == S then
+    println(ok)
+  else
+    println(not_ok)
+  end,
+  nl.
+
+% decode, longer string
+go3 => 
+  Alpha = "AB",
+  Len2 = Alpha.len,
+  _ = random2(),
+  S = [Alpha[1 + random() mod Len2] : _ in 1..30000],
+  println(s_generated),
+  if S.len < 200 then println(s=S) end ,
+  RLE=rle3(S),
+  println(rle_generated),
+  time(D=rl_decode(RLE)),
+  if D == S then
+    println(ok)
+  else 
+    println(not_ok)
+  end,
+  nl.
+
+
+
+%
+% "plain" while loop
+% 
+rle(S) = RLE => 
+  RLE = "",
+  Char = S[1],
+  I = 2,
+  Count = 1,
+  while (I <= S.len)
+    if Char == S[I] then
+      Count := Count + 1
+    else 
+      RLE := RLE ++ Count.to_string() ++ Char.to_string(),
+      Count := 1,
+      Char := S[I]
+    end,
+    I := I + 1
+  end,
+  RLE := RLE ++ Count.to_string() ++ Char.to_string().
+
+%
+% Using positions of different chars. Much faster than rle/1.
+%
+rle2(S) = RLE =>
+  Ix = [1] ++ [I : I in 2..S.len, S[I] != S[I-1]] ++ [S.len+1],
+  Diffs = diff(Ix),
+  RLE = [Diffs[I].to_string() ++ S[Ix[I]].to_string() : I in 1..Diffs.len].join('').
+  
+
+rle3(S) = RLE =>
+  rle3(S.tail(),S[1],1,[],RLE).
+
+rle3([],LastChar,Count,RLE1,RLE) =>
+  RLE = (RLE1 ++ [Count.to_string(),LastChar.to_string()]).join('').
+
+rle3([C|T],LastChar,Count,RLE1,RLE) =>
+  C == LastChar ->
+    rle3(T,C,Count+1,RLE1,RLE)
+  ;
+    rle3(T,C,1,RLE1++[Count.to_string()++LastChar.to_string()],RLE).
+
+
+rl_decode(L) = Decode =>
+  Len = L.len,
+  CharPos = [Pos : Pos in 1..Len, not digit(L[Pos])],
+  Chars = [L[Pos] : Pos in CharPos],
+  Digits = [1] ++ [ Pos : Pos in 2..Len, not membchk(Pos, CharPos), not digit(L[Pos-1])],
+  Decode = [ [Chars[I] : _ in 1..[L[J].to_string() : J in Digits[I]..CharPos[I]-1].join('').parse_term()] : I in 1..Digits.len].join('').
+  
+
+diff(L) = [L[I]-L[I-1] : I in 2..L.len].

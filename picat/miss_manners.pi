@@ -1,0 +1,392 @@
+/* 
+
+  Miss Manners seating problem in Picat.
+
+  From http://4c110.ucc.ie/cpstandards/index.php/en/standards/java/examples/27
+  """
+  The "Miss Manners" problem is a notorious benchmark for rule engines. 
+  The problem is to find an acceptable seating arrangement for guests at 
+  a dinner party.  It should match people with the same hobbies (at 
+  least one), and to seat everyone next to a member of the opposite sex. 
+  """
+
+  The data is presented in the Excel file: 
+  http://4c110.ucc.ie/cpstandards/files/Manners.xls
+  
+  Also, see 
+   - http://docs.codehaus.org/display/DROOLS/Miss+Manners+Example
+   - http://blog.athico.com/2009/05/miss-manners-2009-yet-another-drools.html
+   - http://it.toolbox.com/blogs/thinking-out-loud/industry-analysts-and-rules-engines-2349
+     Refers to OPS5 benchmark suite: 
+     ftp://ftp.cs.utexas.edu/pub/ops5-benchmark-suite/
+  
+ 
+  Notes: 
+  - This model assumes a circular table placement.
+  - It maximized the number of common hobbies. 
+  - It don't care about the preferences (order) of the hobbies.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go =>
+   miss_manners(1),
+   nl.
+
+go2 =>
+   miss_manners(2),
+   nl.
+
+go3 =>
+   miss_manners(3),
+   nl.
+
+
+miss_manners(P) =>
+   problem(P,Size, GenderList, NumHobbies, Hobbies),
+   println([p=P,size=Size, genderList=GenderList, numHobbies=NumHobbies, hobbies=Hobbies]),
+
+   printf("\nProblem %w (size %d)\n",P,Size),
+   nl,
+
+   Seating = new_list(Size),
+   Seating :: 1..Size,
+
+   all_different(Seating),
+
+   Gender = [male,female],
+
+   % mix genders
+   foreach(I in 2..Size)
+      element(Seating[I-1],GenderList,G1),
+      element(Seating[I],GenderList,G2),
+      G1 #!= G2
+   end,
+   % "around the corner"
+   element(Seating[1],GenderList,GenderFirst),
+   element(Seating[Size],GenderList,GenderLast),
+   GenderFirst #!= GenderLast,
+
+   %
+   % match hobbies: there should at least be one common
+   %      hobby (in the maximimzation phase
+   %      we may get more)
+   % Note: We use nth/3 here since element/3 don't work when
+   %       Hobbies is a list of integers.
+   CommonHobbies1 = new_list(Size),
+   CommonHobbies1 :: 1..NumHobbies,
+   foreach(I in 1..Size-1)
+      nth(Seating[I],Hobbies,H1), 
+      nth(Seating[I+1],Hobbies,H2),
+      match_hobbies(H1,H2,NumHobbies,NumMatched),
+      CommonHobbies1[I] #= NumMatched,
+      NumMatched #>= 1
+   end,
+   % "around the corner"
+   nth(Seating[1],Hobbies,HobbiesFirst),
+   nth(Seating[Size],Hobbies,HobbiesLast),
+   match_hobbies(HobbiesFirst,HobbiesLast,NumHobbies,NumMatchedAround),
+   CommonHobbies1[Size] #= NumMatchedAround,
+   NumMatchedAround #>= 1,
+
+   TotalCommonHobbies #= sum(CommonHobbies1),
+
+   % total number of common hobbies
+   NumCommonHobbies #= TotalCommonHobbies + NumMatchedAround,
+
+   % search
+   Vars = Seating ++ CommonHobbies1,
+   solve($[ff,split,max(NumCommonHobbies),report(printf("NumCommonHobbies: %d\n",NumCommonHobbies))], Vars),
+
+   % output
+   foreach(I in 1..Size)
+     printf("Place %3d person: %3d  gender: %-6w, hobbies: %-15w num common (with next): %w\n",I, Seating[I], Gender[GenderList[Seating[I]]], [H : H in Hobbies[Seating[I]], H > 0], CommonHobbies1[I])
+   end,
+
+   nl,
+   println(seating=Seating),
+   println(gender=[Gender[GenderList[Seating[I]]] : I in 1..Size]),
+   println(commonHobbies1=CommonHobbies1),
+   println(numCommonHobbies=NumCommonHobbies),
+
+   nl.
+
+
+
+match_hobbies(H1,H2,NumHobbies,NumMatched) =>
+   NumMatched #= sum([H1I #= H2J : I in 1..NumHobbies, J in 1..NumHobbies, 
+                      nth(I,H1,H1I), nth(J,H2,H2J),H1I #> 0, H2J #> 0]).
+
+
+%
+% data
+%
+
+%
+% Data Guest guests16					
+% Name	Gender	Hobbies			
+% 		Hobby 1	Hobby 2	Hobby 3	Hobby 4
+% 1	m	2	1	3	
+% 2	f	2	1	3	
+% 3	m	3	2		
+% 4	m	3	2	1	
+% 5	m	2	1	3	
+% 6	m	2	3	1	
+% 7	f	1	2	3	
+% 8	m	3	1		
+% 9	m	2	3	1	
+% 10	m	3	2	1	
+% 11	f	1	3	2	
+% 12	f	3	1	2	
+% 13	f	2	3		
+% 14	f	1	2		
+% 15	f	2	3	1	
+% 16	f	2	3		
+
+% Male = 1
+% Female = 2
+
+index(-,-,-,-,-)
+problem(1, 16, [1,2,1,1,1,1,2,1,1,1,2,2,2,2,2,2], 3, 
+   [
+       [2,1,3],
+       [2,1,3],
+       [0,3,2],
+       [3,2,1],
+       [2,1,3],
+       [2,3,1],
+       [1,2,3],
+       [3,1,0],
+       [2,3,1],
+       [3,2,1],
+       [1,3,2],
+       [3,1,2],
+       [2,3,0],
+       [1,2,0],
+       [2,3,1],
+       [2,3]]).
+
+
+% Male = 1
+% Female = 2
+problem(
+   2, 
+   64, 
+   [1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,2,2,1,2,2,1,1,2,2,2,1,2,
+   1,2,2,1,1,1,2,2,1,1,2,1,2,1,1,1,1,1,2,1,2,1,1,2,1,2,2,
+   2,2,2,2,2,2,2,2,2,2], 
+   3,
+   [[2,1,3],
+    [2,1,3],
+    [3,2,0],
+    [3,2,1],
+    [2,1,3],
+    [2,3,1],
+    [1,2,3],
+    [3,1,0],
+    [2,3,1],
+    [3,2,1],
+    [1,3,2],
+    [3,1,2],
+    [2,3,0],
+    [1,2,0],
+    [2,3,1],
+    [2,3,0],
+    [3,2,0],
+    [1,3,2],
+    [3,1,0],
+    [1,3,2],
+    [2,3,0],
+    [2,3,0],
+    [1,2,0],
+    [3,1,2],
+    [3,1,2],
+    [2,1,3],
+    [2,3,1],
+    [1,2,0],
+    [2,3,1],
+    [2,1,3],
+    [1,2,3],
+    [1,2,0],
+    [2,3,1],
+    [2,1,3],
+    [2,3,0],
+    [2,1,0],
+    [2,1,0],
+    [1,3,2],
+    [3,1,2],
+    [1,2,3],
+    [2,1,3],
+    [3,1,0],
+    [1,3,2],
+    [3,1,2],
+    [1,2,0],
+    [1,2,3],
+    [1,2,0],
+    [3,2,0],
+    [3,2,0],
+    [2,3,0],
+    [2,1,3],
+    [1,2,3],
+    [2,1,0],
+    [1,2,3],
+    [1,2,3],
+    [2,1,3],
+    [3,2,1],
+    [3,1,2],
+    [1,2,3],
+    [3,1,0],
+    [3,2,1],
+    [2,3,0],
+    [3,1,2],
+    [3,2,0]]).
+
+
+% Data Guest guests128						
+% Male = 1
+% Female = 2
+problem(3, 
+   128,
+   [1,2,2,1,1,2,2,1,1,1,1,2,2,1,1,1,1,2,1,1,1,1,2,2,1,1,1,2,2,1,
+    1,2,2,1,2,1,2,2,1,1,2,1,1,2,1,1,1,2,1,1,1,2,2,2,1,1,2,1,2,2,
+    1,2,2,2,1,2,2,1,1,2,1,1,2,2,2,2,1,1,2,1,1,1,2,1,2,1,1,1,2,1,
+    2,2,2,2,2,1,2,1,2,1,2,2,1,1,2,2,2,2,2,1,2,2,2,1,1,1,2,2,1,1,
+    2,1,1,2,2,2,2,2], 
+    5,   
+   [
+       [2,3,1,4,5],
+       [3,2,1,4,5],
+       [5,4,2,0,0],
+       [3,2,1,4,0],
+       [2,5,3,0,0],
+       [1,4,2,5,3],
+       [1,2,3,5,0],
+       [3,5,0,0,0],
+       [3,5,2,4,0],
+       [2,3,4,5,1],
+       [2,4,5,1,0],
+       [3,5,2,0,0],
+       [5,1,0,0,0],
+       [3,5,1,4,0],
+       [5,2,1,3,4],
+       [2,5,4,0,0],
+       [4,3,0,0,0],
+       [2,4,5,1,0],
+       [5,2,0,0,0],
+       [2,3,0,0,0],
+       [4,3,2,1,0],
+       [1,2,4,0,0],
+       [4,5,2,0,0],
+       [4,3,2,1,5],
+       [4,5,0,0,0],
+       [1,2,0,0,0],
+       [3,5,2,0,0],
+       [4,1,3,2,5],
+       [3,5,0,0,0],
+       [2,1,0,0,0],
+       [3,1,4,0,0],
+       [2,1,5,0,0],
+       [5,4,0,0,0],
+       [4,5,2,0,0],
+       [3,1,4,5,2],
+       [1,4,2,3,0],
+       [4,2,1,0,0],
+       [3,1,2,4,0],
+       [5,2,0,0,0],
+       [2,3,0,0,0],
+       [5,3,0,0,0],
+       [5,4,0,0,0],
+       [3,4,5,0,0],
+       [2,4,3,1,0],
+       [2,4,0,0,0],
+       [4,1,5,0,0],
+       [2,5,4,0,0],
+       [3,1,0,0,0],
+       [1,5,4,3,2],
+       [2,4,3,0,0],
+       [1,2,5,4,0],
+       [5,3,1,4,0],
+       [5,1,4,2,3],
+       [1,3,0,0,0],
+       [2,4,0,0,0],
+       [2,3,0,0,0],
+       [2,1,4,0,0],
+       [5,3,2,1,4],
+       [2,3,5,0,0],
+       [4,2,3,5,0],
+       [1,2,4,3,0],
+       [3,2,5,4,1],
+       [2,3,4,1,5],
+       [2,4,1,5,3],
+       [5,3,2,1,4],
+       [5,3,4,0,0],
+       [1,4,0,0,0],
+       [4,2,1,5,0],
+       [3,4,1,0,0],
+       [3,5,1,4,2],
+       [3,1,4,0,0],
+       [4,3,1,0,0],
+       [4,1,3,0,0],
+       [1,4,2,5,3],
+       [4,2,0,0,0],
+       [5,4,3,2,1],
+       [1,5,0,0,0],
+       [5,1,0,0,0],
+       [1,3,4,2,5],
+       [5,1,2,4,0],
+       [4,1,0,0,0],
+       [3,4,1,2,5],
+       [1,3,4,0,0],
+       [3,4,0,0,0],
+       [4,1,0,0,0],
+       [3,4,0,0,0],
+       [5,4,2,3,0],
+       [2,5,3,1,4],
+       [5,2,4,1,0],
+       [2,4,5,0,0],
+       [2,3,5,1,4],
+       [3,1,2,5,0],
+       [3,1,2,0,0],
+       [2,5,0,0,0],
+       [3,4,0,0,0],
+       [1,4,2,5,3],
+       [4,2,5,0,0],
+       [5,4,0,0,0],
+       [2,5,0,0,0],
+       [2,3,5,4,0],
+       [2,1,5,3,4],
+       [2,1,5,3,4],
+       [2,1,4,3,5],
+       [5,3,4,1,2],
+       [4,2,0,0,0],
+       [4,5,1,0,0],
+       [3,1,2,5,4],
+       [4,5,1,2,3],
+       [1,2,0,0,0],
+       [5,4,1,2,0],
+       [3,2,0,0,0],
+       [4,3,5,2,1],
+       [1,3,5,2,0],
+       [3,2,0,0,0],
+       [2,1,5,4,0],
+       [3,4,5,1,0],
+       [4,5,2,0,0],
+       [2,4,3,0,0],
+       [5,3,0,0,0],
+       [5,1,3,2,4],
+       [4,2,3,5,0],
+       [1,2,5,0,0],
+       [2,3,1,5,0],
+       [2,3,4,0,0],
+       [3,5,2,4,0],
+       [2,3,1,4,0],
+       [5,1,0,0,0],
+       [2,4,1,3,0]]).

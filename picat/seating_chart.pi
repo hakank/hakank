@@ -1,0 +1,228 @@
+/* 
+
+  Seating char in Picat.
+
+  From "Seating chart starts to output wrong permutations in Prolog"
+  http://stackoverflow.com/questions/33948437/seating-chart-starts-to-output-wrong-permutations-in-prolog#33948437
+  """
+  I have a homework assignment where I must write a predicate seatingChart(X):- 
+  which will have 8 seats. The rules are:
+
+   - Adjacent seating partners must be of the opposite gender.
+   - Adjacent seating partners must share at least one of the same hobby.
+  """
+
+  The are 16 solutions:
+
+  [jim,cami,joe,beth,tom,sue,bob,fay]
+  [jim,fay,bob,sue,tom,beth,joe,cami]
+  [fay,jim,cami,joe,beth,tom,sue,bob]
+  [cami,jim,fay,bob,sue,tom,beth,joe]
+  [joe,cami,jim,fay,bob,sue,tom,beth]
+  [bob,fay,jim,cami,joe,beth,tom,sue]
+  [beth,joe,cami,jim,fay,bob,sue,tom]
+  [sue,bob,fay,jim,cami,joe,beth,tom]
+  [tom,beth,joe,cami,jim,fay,bob,sue]
+  [tom,sue,bob,fay,jim,cami,joe,beth]
+  [sue,tom,beth,joe,cami,jim,fay,bob]
+  [beth,tom,sue,bob,fay,jim,cami,joe]
+  [joe,beth,tom,sue,bob,fay,jim,cami]
+  [bob,sue,tom,beth,joe,cami,jim,fay]
+  [cami,joe,beth,tom,sue,bob,fay,jim]
+  [fay,bob,sue,tom,beth,joe,cami,jim]
+
+
+  Removing symmetry breaking that jim sits at place 1, there are two solutions:
+   - [jim,cami,joe,beth,tom,sue,bob,fay]
+   - [jim,fay,bob,sue,tom,beth,joe,cami]
+
+  This is really the same solution since the first is a mirror 
+  version of the second. 
+
+  With the additional symmetry breaking rule that person in place 2 has a 
+  name alphabetically before the person in place 8 (last), i.e. cami @< fay:
+    - [jim,cami,joe,beth,tom,sue,bob,fay]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util. % for permutation/2
+
+
+main => go.
+
+% all solutions
+go ?=>
+  seatingChart(X),
+  println(X),
+  fail,
+  nl.
+go => true.
+
+
+%
+% With symmetry breaking: jim sits at place 1
+% and the name of the person in place 2 is alphabetically
+% before the name of the person at place 8 (last)
+%
+go2 ?=>
+  X = [jim|_],
+  seatingChart(X),
+  X[2] @< X[X.len],
+  println(X),
+  fail,
+  nl.
+go2 => true.
+
+
+% print more info
+go3 ?=>
+  seatingChart(X),
+  println(X),
+  foreach(I in 2..X.len)
+     printPairInfo(X[I-1],X[I])
+  end,
+  printPairInfo(X[X.len],X[1]),
+  nl,
+  fail,
+  nl.
+
+go3 => true.
+
+printPairInfo(P1,P2) => 
+     person(P1,Sex1),
+     person(P2,Sex2),
+     hobbies(P1,CommonHobby),
+     hobbies(P2,CommonHobby),
+     printf("%w (%w) and %w (%w) Common hobby: %w\n", P1,Sex1,P2,Sex2,CommonHobby).
+
+%
+% My own take on the problem, 
+% with the two symmetry breaking rules mentioned above.
+%
+go4 => 
+  All = findall(Seating, (seatingChart2(Seating), 
+                          Seating = [jim|_],
+                          Seating[2] @< Seating.last())
+                          ),
+  println(All),
+  nl.
+
+
+
+index(-,-)
+person(jim,m).
+person(tom,m).
+person(joe,m).
+person(bob,m).
+person(fay,f).
+person(beth,f).
+person(sue,f).
+person(cami,f).
+
+% Database of hobbies
+% hobbies(name,hobby). -> People can have multiple hobbies)
+index(-,-)
+hobbies(jim, sup).
+hobbies(jim, fish).
+hobbies(jim, kayak).
+hobbies(tom, hike).
+hobbies(tom, fish).
+hobbies(tom, ski).
+hobbies(joe, gamer).
+hobbies(joe, chess).
+hobbies(joe, climb).
+hobbies(bob, paint).
+hobbies(bob, yoga).
+hobbies(bob, run).
+hobbies(fay, sup).
+hobbies(fay, dance).
+hobbies(fay, run).
+hobbies(beth, climb).
+hobbies(beth, cycle).
+hobbies(beth, fish).
+hobbies(sue, yoga).
+hobbies(sue, skate).
+hobbies(sue, ski).
+hobbies(cami, run).
+hobbies(cami, kayak).
+hobbies(cami, gamer).
+
+% return a pair of opposite gender people
+gender(PersonX, PersonY) =>
+  person(PersonX,GenderX),
+  person(PersonY,GenderY),
+  PersonX != PersonY,
+  GenderX != GenderY.
+
+% return the pair of similar interests.
+similarHobbies(PersonX, PersonY) =>
+  hobbies(PersonX, HobbyX),
+  hobbies(PersonY, HobbyX). % fixed
+  % hobbies(PersonY, HobbyY),
+  % HobbyX == HobbyY.
+
+% Create the rules for our seating chart list
+seatingRules([P1,P2,P3,P4,P5,P6,P7,P8|_]) =>
+  % Have each adjacent person be of the opposite gender
+  gender(P1,P2),
+  gender(P2,P3), % added
+  gender(P3,P4),
+  gender(P4,P5), % added
+  gender(P5,P6),  
+  gender(P6,P7), % added
+  gender(P7,P8),
+  gender(P8,P1),
+  % Have each adjacent person have at least one of the same hobby
+  similarHobbies(P1,P2),
+  similarHobbies(P2,P3), % added
+  similarHobbies(P3,P4),
+  similarHobbies(P4,P5), % added
+  similarHobbies(P5,P6),
+  similarHobbies(P6,P7), % added
+  similarHobbies(P7,P8),
+  similarHobbies(P8,P1). % added
+
+% Generate a list of all the names from person(...)
+people(P) =>
+  P = findall(X, person(X,_)). % changed in Picat
+
+% Generate a list of permutations of people
+permPeople(People) =>
+  People=[P1,P2,P3,P4,P5,P6,P7,P8], % changed in Picat
+  permutation([P1,P2,P3,P4,P5,P6,P7,P8],
+                  [jim,tom,joe,bob,fay,beth,sue,cami]),
+  not error([P1,P2,P3,P4,P5,P6,P7,P8]).
+
+error([P1,P2,P3,P4,P5,P6,P7,P8]) =>
+  not seatingRules([P1,P2,P3,P4,P5,P6,P7,P8]).
+
+seatingChart(X) =>
+  permPeople(X).
+
+
+%
+% This is an - IMHO - simpler version, using maps etc.
+%
+seatingChart2(Seating) =>
+   Sex=new_map(findall(P=Sex,person(P,Sex))),
+   People = Sex.keys(),
+   Hobbies=new_map([P=findall(H,hobbies(P,H)) : P in People]),
+  
+   Len = People.len,
+   permutation(People,Seating),
+   foreach(I in 2..Len)
+     Sex.get(Seating[I-1]) != Sex.get(Seating[I]),
+     commonHobbies(Hobbies.get(Seating[I-1]),Hobbies.get(Seating[I]))
+   end,
+   % around the corner
+   Sex.get(Seating[1]) != Sex.get(Seating[Len]),
+   commonHobbies(Hobbies.get(Seating[1]),Hobbies.get(Seating[Len])).
+
+% person with Hobbies1 has at least one common hobby with person with Hobby2 
+commonHobbies(Hobbies1,Hobbies2) =>
+  member(H,Hobbies1),
+  member(H,Hobbies2).

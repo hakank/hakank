@@ -8,9 +8,9 @@
       a.*b.*c..., b.*c.*d.., c.*d.*e..., etc
 
   Since Picat currently don't support regular expressions I've
-  done a hack...
+  done some replacements...
 
-  The pattern with most words found is this pattern of length 6:
+  The pattern with most words found is this pattern of length 5:
       .*a.*b.*c.*d.*e.* 
   matching these 26 words:
 
@@ -42,6 +42,14 @@
     unabstractedness
 
 
+  Statistics on testing words_lower.txt (415834 words) on 5 length patterns.
+  check3/2 (using "plain" recursion) is by far the fastest:
+
+   * check/2 (tested in go/0): 17.5s
+   * check2/2 (tested in go2/0): 17.5s
+   * check3/2 (tested in go3/0): 3.8s
+   * check3/2 (using list comprehension in go3b/0): 3.6s
+
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
@@ -49,27 +57,27 @@
 
 
 import util.
-% import cp.
-
 
 main => go.
 
+%
+% using check/2: 17.5s
+% [[26,abcde],[23,rstuv],[23,lmnop],[6,efghi],[3,klmno],[1,defgh]]
+% CPU time 17.5s seconds.
+%
 go =>
    Words = read_file_lines("words_lower.txt"),
    % Words = read_file_lines("/usr/share/dict/words"),
    % Words = read_file_lines("/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt"),
-   Alpha = lower_swe(),
+   Alpha = lower(),
    Len = 5,
    AllMatch = [],
    Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
-   % println(patterns=Patterns),
    foreach(Pattern in Patterns) 
       println(pattern=Pattern),
       Match = [],
-      foreach(Word in Words)
-         if check(Word,Pattern.to_string()) then
-            Match := Match ++ [Word]
-         end
+      foreach(Word in Words,check(Word,Pattern))
+        Match := Match ++ [Word]
       end,
       println(Match),
       println(len=Match.length),
@@ -83,7 +91,11 @@ go =>
 
    nl.
 
-% using check2
+%
+% using check2: 17.5s
+% [26,abcde],[23,rstuv],[23,lmnop],[6,efghi],[3,klmno],[1,defgh]]
+% CPU time 17.5 seconds.
+%
 go2 =>
    Words = read_file_lines("words_lower.txt"),
    % Words = read_file_lines("/usr/share/dict/words"),
@@ -91,14 +103,49 @@ go2 =>
    Len = 5,
    AllMatch = [],
    Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
-   % println(patterns=Patterns),
    foreach(Pattern in Patterns) 
       println(pattern=Pattern),
       Match = [],
-      foreach(Word in Words)
-         if check2(Word,Pattern.to_string()) then
-            Match := Match ++ [Word]
-         end
+      foreach(Word in Words, check2(Word,Pattern))
+        Match := Match ++ [Word]
+      end,
+      println(Match),
+      println(len=Match.length),
+      if Match.length > 0 then
+         AllMatch := AllMatch ++ [[Match.length,Pattern]]
+      end,
+      nl        
+   end,
+
+   println(AllMatch.sort_down()),
+   nl.
+
+
+go2b =>
+   Pattern = "abcde",
+   Words = check_word_list("words_lower.txt",Pattern),
+   println(Words),
+   println(len=Words.length),
+   nl.
+
+
+%
+% using check3: 3.7s
+% [[26,abcde],[23,rstuv],[23,lmnop],[6,efghi],[3,klmno],[1,defgh]]
+% CPU time 3.7s seconds.
+%
+go3 =>
+   Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("/usr/share/dict/words"),
+   Alpha = lower(),
+   Len = 5,
+   AllMatch = [],
+   Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+   foreach(Pattern in Patterns) 
+      println(pattern=Pattern),
+      Match = [],
+      foreach(Word in Words, check3(Word,Pattern))
+         Match := Match ++ [Word]
       end,
       println(Match),
       println(len=Match.length),
@@ -112,23 +159,25 @@ go2 =>
 
    nl.
 
+%
+% Variant using list comprehension (and a slightly different presentation): 3.6s
+%
+go3b =>
+   Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("/usr/share/dict/words"),
+   Alpha = lower(),
+   Len = 5,
+   Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+   AllMatch = [[Matches.len,Pattern,Matches] :  Pattern in Patterns, Matches=[Word : Word in Words, check3(Word,Pattern)], Matches.len > 0].sort_down(),
+   println(AllMatch.join("\n")),
 
-go3 =>
-   Pattern = "abcde",
-   Words = check_word_list("words_lower.txt",Pattern),
-   println(Words),
-   println(len=Words.length),
    nl.
 
+
+% much slower due to the overhead of call/n
 go4 =>
-   Pattern = "abc",
-   S = "aasdasdbaasdasdcadasdasd",
-   if check(S,Pattern) then
-      writeln(ok)
-   else
-      writeln(not_ok)
-   end,
-   nl.
+  test_all("words_lower.txt",5,check3).
+
 
 lower() = [chr(I+96) : I in 1..26].
 upper() = [chr(I+64) : I in 1..26].
@@ -136,6 +185,7 @@ upper() = [chr(I+64) : I in 1..26].
 lower_swe() = [chr(I+96) : I in 1..26] ++ "åäö".
 
 
+%
 % Check if the pattern P match the string String. 
 % Pattern P corresponds to the regular expression
 %    /.*P[1].*P[2].*P[3].*...P[P.length].*/
@@ -156,7 +206,7 @@ check(String,Pattern) =>
 
 
 %
-% Another approach: slower than check/2
+% Another approach: about the same time as check/2.
 %
 check2(String,Pattern) =>
    PLen = Pattern.length,
@@ -172,7 +222,55 @@ check2(String,Pattern) =>
    end,
    Found == PLen.
 
-  
+
+%
+% Plain recursive version.
+% Much faster - and smaller - than check/2 and check2/2.
+%
+
+% check each character in the string against the pattern
+check3([SH|ST],P@[PH|PT]) => 
+  (SH == PH -> 
+    check3(ST,PT)
+   ; 
+    check3(ST,P)
+  ).
+
+% empty pattern (this is the goal)
+check3(_S,[]) => 
+  true.
+
+
+% General testing of the predicates. 
+% However the use of call/n slows it down considerably.
+% E.g. test_all("words_lower.txt",5,check3) takes 68s, compared to go3's 3.7s
+%
+test_all(Dict,Len,CheckPred) =>
+   Words = read_file_lines(Dict),
+   Alpha = lower(),
+   AllMatch = [],
+   Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+   foreach(Pattern in Patterns) 
+      println(pattern=Pattern),
+      Match = [],
+      foreach(Word in Words)
+         if call(CheckPred,Word,Pattern) then
+            Match := Match ++ [Word]
+         end
+      end,
+      println(Match),
+      println(len=Match.length),
+      if Match.length > 0 then
+         AllMatch := AllMatch ++ [[Match.length,Pattern]]
+      end,
+      nl        
+   end,
+
+   println(AllMatch.sort_down()),
+
+   nl.
+
+
 substr(S, From) = [S[I] : I in From..S.length].
 substr(S, From, To) = [S[I] : I in From..To].
 
