@@ -20,9 +20,9 @@
 :-use_module(library(clpfd)).
 :-use_module(library(lists)).
 
-go :- findall(X,solve(X,10000),L),write(L),nl.
+go :- findall(X,remainder(X,10000),L),write(L),nl.
 
-solve(X,Max) :-
+remainder(X,Max) :-
         domain([X,A,B,C,D],1,Max),
         X #> 0,
         X #= A*3 + 1,
