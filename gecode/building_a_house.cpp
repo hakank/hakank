@@ -130,6 +130,12 @@ public:
       painting,  moving
     };
 
+
+    // calculate the end times
+    for(int i = 0; i < n ; i++) {
+      rel(*this, end_times[i]== start_times[i]+durations[i], opt.icl());
+    }
+
     for(int i = 0; i < num_prec; i++) {
       rel(*this, end_times[precedence[i*2]], IRT_LQ, start_times[precedence[i*2+1]], opt.icl());
     }
