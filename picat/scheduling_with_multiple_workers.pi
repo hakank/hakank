@@ -1,0 +1,351 @@
+/* 
+
+  Scheduling with multiple workers in Picat.
+
+  Constraint Programming: Scheduling with multiple workers
+  http://stackoverflow.com/questions/34477453/constraint-programming-scheduling-with-multiple-workers
+  """
+  I'm new to constraint programming. I imagine this is an easy problem but I can't 
+  wrap my head around it. Here's the problem:
+  
+   - We have multiple machines (N), each with a limited resource (let's say 
+     memory, and it can be the same for all machines.)
+   - We have T tasks, each with a duration and each requiring some amount of the 
+     resource.
+   - A machine can work on multiple tasks at the same time as long as its 
+     resource isn't exceeded.
+   - A task cannot be split among machines and it has to be done in one shot 
+  (i.e. no pausing).
+  
+  How do we assign the tasks to the machines to minimize the end-time or the 
+  number of machines used?
+  
+  It seems like I should be able to achieve this with the cumulative predicate but 
+  it seems like it's limited to scheduling one set of tasks to one worker with a 
+  limited global resource rather than a variable number of workers.
+  
+  I'm just learning CP & MiniZinc. Any ideas on how to generalize cumulative? 
+  Alternatively, is there an existing MiniZinc model I can understand that does 
+  something like this (or close enough?)
+  
+  Thanks,
+  
+  PS: I don't have any concrete data since this is a hypothetical/learning exercise for 
+  the most part. Imagine you have 10 machines and 10 tasks with various durations 
+  (in hours): 2,4,6,5,2,1,4,6,3,2,12 with memory requirements (GBs): 
+  1,2,4,2,1,8,12,4,1,10. Each machine has 32 GBs of ram.
+  """
+
+  Note: The example of the durations are 11, so I skip the penultimate element (2).
+
+  This models two variants (modes):
+  * minimize the number machines, mode=min_machines
+  * minimize the timespan (LastTime), mode=min_time
+
+  For the original instance, the two variants are solved in 0.15s and are (slightly edited):
+
+
+Mode: min_machines
+startTime = [1,1,2,1,1,1,1,1,1,5]
+duration  = [2,4,6,5,2,1,4,6,3,12]
+endTime   = [2,4,7,5,2,1,4,6,3,16]
+machine   = [1,1,1,1,1,1,1,1,1,1]
+lastTime  = 16
+machinesUsed = 1
+
+Machine memory per time:
+       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
+M  1: 31 27 25 24 20 18 14 10 10 10 10 10 10 10 10 10  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  2:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  3:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  4:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  5:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  6:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  7:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  8:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  9:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M 10:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+
+
+Time / task: machine(task's memory)
+   Task       1      2      3      4      5      6      7      8      9     10
+Time  1:  1( 1)  1( 2)         1( 2)  1( 1)  1( 8)  1(12)  1( 4)  1( 1)        
+Time  2:  1( 1)  1( 2)  1( 4)  1( 2)  1( 1)         1(12)  1( 4)  1( 1)        
+Time  3:         1( 2)  1( 4)  1( 2)                1(12)  1( 4)  1( 1)        
+Time  4:         1( 2)  1( 4)  1( 2)                1(12)  1( 4)               
+Time  5:                1( 4)  1( 2)                       1( 4)         1(10) 
+Time  6:                1( 4)                              1( 4)         1(10) 
+Time  7:                1( 4)                                            1(10) 
+Time  8:                                                                 1(10) 
+Time  9:                                                                 1(10) 
+Time 10:                                                                 1(10) 
+Time 11:                                                                 1(10) 
+Time 12:                                                                 1(10) 
+Time 13:                                                                 1(10) 
+Time 14:                                                                 1(10) 
+Time 15:                                                                 1(10) 
+Time 16:                                                                 1(10) 
+
+
+Mode: min_time
+startTime = [1,1,1,1,1,1,2,1,1,1]
+duration  = [2,4,6,5,2,1,4,6,3,12]
+endTime   = [2,4,6,5,2,1,5,6,3,12]
+machine   = [1,2,2,1,1,1,1,1,1,1]
+lastTime  = 12
+machinesUsed = 2
+
+Machine memory per time:
+       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
+M  1: 27 31 29 28 28 14 10 10 10 10 10 10  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  2:  6  6  6  6  4  4  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  3:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  4:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  5:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  6:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  7:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  8:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M  9:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+M 10:  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 
+
+
+Time / task: machine(task's memory)
+   Task       1      2      3      4      5      6      7      8      9     10
+Time  1:  1( 1)  2( 2)  2( 4)  1( 2)  1( 1)  1( 8)         1( 4)  1( 1)  1(10) 
+Time  2:  1( 1)  2( 2)  2( 4)  1( 2)  1( 1)         1(12)  1( 4)  1( 1)  1(10) 
+Time  3:         2( 2)  2( 4)  1( 2)                1(12)  1( 4)  1( 1)  1(10) 
+Time  4:         2( 2)  2( 4)  1( 2)                1(12)  1( 4)         1(10) 
+Time  5:                2( 4)  1( 2)                1(12)  1( 4)         1(10) 
+Time  6:                2( 4)                              1( 4)         1(10) 
+Time  7:                                                                 1(10) 
+Time  8:                                                                 1(10) 
+Time  9:                                                                 1(10) 
+Time 10:                                                                 1(10) 
+Time 11:                                                                 1(10) 
+Time 12:                                                                 1(10) 
+
+
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go =>
+
+  % original problem:
+  % problem(1,Duration,TaskMemory,MachineMemory,MaxTime),
+
+  % harder problem:
+  % problem(2,Duration,TaskMemory,MachineMemory,MaxTime),
+
+  % using different RAM size on the machines:
+  % problem(3,Duration,TaskMemory,MachineMemory,MaxTime), 
+
+  % problem(4,Duration,TaskMemory,MachineMemory,MaxTime), 
+
+  foreach(Problem in 1..3, Mode in [min_machines,min_time])
+    solve_and_print(Problem,Mode)
+  end,
+
+  nl.
+
+%
+% Problem 4
+%
+go2 => 
+  foreach(Mode in [min_machines,min_time])
+  % foreach(Mode in [min_time])
+    solve_and_print(4,Mode)
+  end,
+  nl.
+
+solve_and_print(Problem,Mode) =>
+  printf("\n\nProblem: %d Mode: %w\n", Problem, Mode),
+  problem(Problem,Duration,TaskMemory,MachineMemory,MaxTime), 
+  time2(schedule(Duration,TaskMemory,MachineMemory,MaxTime,
+         Mode,
+         StartTime,EndTime,Machine,MachineUsedRam,
+         MachinesUsed,LastTime)),
+
+  print_solution(Duration,TaskMemory,MachineMemory,MaxTime,
+         Mode,
+         StartTime,EndTime,Machine,MachineUsedRam,
+         MachinesUsed,LastTime),
+  nl.
+
+%
+% Print the solution
+%
+print_solution(Duration,TaskMemory,MachineMemory,MaxTime,
+         Mode,
+         StartTime,EndTime,Machine,MachineUsedRam,
+         MachinesUsed,LastTime) =>
+
+  printf("\n\nMode: %w\n",Mode),
+
+  NumTasks = TaskMemory.len,
+  % NumMachines = MachineMemory.len,
+  println('numMachines'=MachineMemory.len),
+  println('numTasks   '=NumTasks),
+  println('maxTime    '=MaxTime),
+  println('startTime'=StartTime),
+  println('duration '=Duration),
+  println('endTime  '=EndTime),
+  println('machine  '=Machine),
+  println('lastTime '=LastTime),
+  println(machinesUsed=MachinesUsed),
+
+  println("\nMachine memory per time:"),
+  print(" Time "),
+  foreach(TT in 1..MaxTime)
+    printf("%2d ", TT)
+  end,
+  nl,
+  foreach(M in 1..MachinesUsed)
+    printf("M %2d: ", M),
+    foreach(TT in 1..MaxTime)
+      printf("%2d ", MachineUsedRam[M,TT])
+    end,
+    nl
+  end,
+
+  println("\n\nTime / task: machine(task's memory)"),
+  print("   Task "),
+  foreach(T in 1..NumTasks) printf("%7d",T) end,
+  nl,
+  foreach(TT in 1..LastTime)
+    printf("Time %2d: ", TT),
+    foreach(T in 1..NumTasks)
+      if TT >= StartTime[T], TT <= EndTime[T] then
+        printf("%2d(%2d) ", Machine[T], TaskMemory[T])
+      else
+        printf("       ")
+      end
+    end,
+    nl
+  end,
+  nl.
+
+%
+%
+%
+schedule(Duration,TaskMemory,MachineMemory,MaxTime,
+         Mode,
+         StartTime,EndTime,Machine,MachineUsedRam,
+         MachinesUsed,LastTime) =>
+
+  NumTasks = TaskMemory.len,
+  NumMachines = MachineMemory.len,
+
+  % decision variables
+  StartTime = new_list(NumTasks),
+  StartTime :: 1..MaxTime,
+
+  EndTime = new_list(NumTasks),
+  EndTime :: 1..MaxTime,
+  
+  Machine = new_list(NumTasks), % which machine to use for each machine
+  Machine :: 1..NumMachines,
+  MachineUsedRam = new_array(NumMachines,MaxTime),
+  MachineUsedRam :: 0..max(MachineMemory),
+
+  MachinesUsed #= max(Machine),
+  LastTime #= max(EndTime),
+
+  % constraints
+  foreach(T in 1..NumTasks)
+    EndTime[T] #= StartTime[T] + Duration[T] - 1
+  end, 
+
+  foreach(M in 1..NumMachines)
+    foreach(TT in 1..MaxTime)
+       MachineUsedRam[M,TT] #= sum([TaskMemory[T]*(Machine[T]#=M)*(TT #>= StartTime[T])*(TT #<= EndTime[T]) 
+                                    : T in 1..NumTasks]),
+       MachineUsedRam[M,TT] #<= MachineMemory[M]
+     end,
+     % Ensure that we pick machines in order (symmetry breaking)
+     value_precede_chain(1..NumMachines, Machine)
+
+     % Machines must start at time 1
+     % , (sum([MachineUsedRam[M,TT] : TT in 1..MaxTime]) #> 0) #=> MachineUsedRam[M,1] #>= 1
+
+  end,
+
+  println(solve),
+  if Mode == min_time then
+    Vars = StartTime ++ Machine ++ MachineUsedRam.vars() ++ EndTime,
+    solve($[min(LastTime),report(printf("LastTime: %d\n",LastTime))],Vars)
+  else 
+    Vars = Machine ++ MachineUsedRam.vars() ++ StartTime ++ EndTime,
+    % Vars = StartTime ++ Machine ++ MachineUsedRam.vars() ++ EndTime,
+    solve($[degree,split,min(MachinesUsed),report(printf("MachinesUsed: %d\n",MachinesUsed))],Vars)
+  end.
+
+
+%
+% Ensure that value C[I-1] is before the value C[I] in the list X.
+%
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+
+% This definition is inspired by 
+% MiniZinc definition value_precede_int.mzn
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+
+
+%
+% The original problem
+%
+problem(1,Duration,TaskMemory,MachineMemory,MaxTime) =>
+  Duration      = [2,4,6,5,2,1,4,6,3,12],  % duration of tasks
+  TaskMemory    = [1,2,4,2,1,8,12,4,1,10], % RAM requirements (GB)
+  MachineMemory = [32 : _ in 1..10], % RAM of each machine
+  MaxTime       = 30.
+
+% Harder problem
+problem(2,Duration,TaskMemory,MachineMemory,MaxTime) =>
+  Duration      = [12,13,14,15,16,17,18,19,20,21],  % duration of tasks
+  TaskMemory    = [11,12,13,14,15,16,17,18,19,20], % RAM requirements (GB)
+  MachineMemory = [32 : _ in 1..10], % RAM of each machine
+  MaxTime       = 30.
+
+
+% Using different RAMs on the machines
+problem(3,Duration,TaskMemory,MachineMemory,MaxTime) =>
+  Duration      = [12,13,14,15,16,17,18,19,20,21],  % duration of tasks
+  TaskMemory    = [11,32,23,14,15,16,17,50,60,20], % RAM requirements (GB)
+  MachineMemory = [64,64,64,64,32,32,32,32,32,32], % RAM of each machine
+  MaxTime       = 30.
+  
+  
+
+problem(4,Duration,TaskMemory,MachineMemory,MaxTime) =>
+  Duration      = [12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],  % duration of tasks
+  TaskMemory    = [11,32,23,14,15,16,17,50,50,20,11,12,22,23,24,25,26,28,30], % RAM requirements (GB)
+  MachineMemory = [128,64,64,64,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32], % RAM of each machine
+  MaxTime       = 40.
+  
+  

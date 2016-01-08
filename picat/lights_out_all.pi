@@ -1,0 +1,293 @@
+/* 
+
+  Lights Out variant in Picat.
+
+  Ported from 
+  Erwin Kalvelagen: "A variant of the Lights Out game "
+  http://yetanothermathprogrammingconsultant.blogspot.se/2016/01/a-variant-of-lights-out-game.html
+  """
+  The goal is to turn all lights off, but there is a catch. When flipping a light switch 
+  all lamps in the same row and in the same column also flip. 
+  """
+
+
+  Also see 
+  "Lights Out Variant: Flipping the whole row and column."
+  http://math.stackexchange.com/questions/441571/lights-out-variant-flipping-the-whole-row-and-column/441588
+  """
+  ...
+  Claim:
+  If nxn is even, there is always a solution given any starting configuration.
+
+  If nxn is odd, there is a solution iff the 'on' lights parities for each row 
+  and column are the same.
+
+  i.e. if the lights were 1 for on and 0 for off, then modulo 2, the sum of each individual 
+  row, and sum of each individual column must be the same.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import sat.
+% import mip.
+% import cp.
+
+import planner.
+
+main => go.
+
+%
+% Model from Erwin's blog post
+%
+go =>
+  nolog,
+
+  % Problem instance from Erwin's blog post
+  S0 = {
+       {1,0,0,0},
+       {0,0,0,0},
+       {0,1,0,0},
+       {0,0,1,0}       
+       },
+  
+  time2(lights_out(S0, Y,S,M)),
+  println(m=M),
+  println("S:"),
+  foreach(Row in S)
+     println(Row.to_list())
+  end,
+
+  println("Y:"),
+  foreach(Row in Y)
+     println(Row.to_list())
+  end,
+  print_grid(S0,S),
+  nl.
+
+go2 => 
+  nolog,
+
+  N = 20,
+  NumMoves=N*N,
+  [S0,EstMoves] = random_instance(N,NumMoves),
+  println("S0:"),
+  foreach(Row in S0)
+     println(Row.to_list())
+  end,
+  println(est_moves=EstMoves),
+  println(num_est_moves=EstMoves.len),
+  nl,
+
+  time2(lights_out(S0, Y,S,M)), 
+  println(m=M),
+  println("S:"),
+  foreach(Row in S)
+     println(Row.to_list())
+  end,
+
+  println("Y:"),
+  foreach(Row in Y)
+     println(Row.to_list())
+  end,
+  flush(stdout),
+  % print_grid(S0,S),
+
+  println(m=M),
+  println(moves=get_moves(S)),
+  nl.
+
+
+%
+% planner approach
+%
+go4 => 
+
+  % 4x4 problem 
+  % First variant 39.49 seconds.
+  % [[1,1],[1,4],[2,1],[2,2],[2,3],[3,2],[3,4],[4,3],[4,4]]
+
+  % using To1 = insert_ordered(...) and arrays: 1.99s
+  % [[1,1],[1,4],[2,1],[2,2],[2,3],[3,2],[3,4],[4,3],[4,4]]
+  % len = 9
+
+
+  % 5.6s
+  % Init = [
+  %        [1,0,0,0],
+  %        [0,0,0,0],
+  %        [0,1,0,0],
+  %        [0,0,1,0]       
+  %        ],
+
+  % much faster with arrays: 1.9s
+  Init = {
+          {1,0,0,0},
+          {0,0,0,0},
+          {0,1,0,0},
+          {0,0,1,0}       
+          },
+
+  % Init = [
+  %        [1,0],
+  %        [1,0]
+  %        ],
+
+  % 6x6
+  % Init = {
+  %      {1,0,0,0,1,0},
+  %      {0,0,0,0,0,0},
+  %      {0,0,1,0,0,0},
+  %      {1,1,0,0,0,1},
+  %      {0,0,1,0,1,1},
+  %      {1,0,0,0,0,0}
+  %     },
+
+  N = Init.len,
+  garbage_collect(300_000_000),
+  initialize_table,
+  time(best_plan([N,Init,[]], N*N, L)), % 1.92s for the 4x4 problem
+  % time(best_plan_unbounded([N,Init,[]], N*N, L)), % 2.63s
+  % time(best_plan_bb([N,Init,[]], N*N, L)),  % 2.2s
+  println(L),
+  println(len=L.len),
+  nl.
+
+
+%
+% Erwin Kalvelagen's model
+%
+lights_out(S0, Y,S,M) =>
+  N = S0.len,
+
+  S = new_array(N,N),
+  S :: 0..1,
+
+  % aux
+  Y = new_array(N,N),
+  Y :: 0..N,
+  % Y :: 0..8,
+
+  % objective
+  M #= sum(S.vars()),
+
+  % "final state should be even 0,2,4..."
+  foreach(I in 1..N, J in 1..N)
+    2*Y[I,J] #= S0[I,J] + sum([S[I2,J] : I2 in 1..N]) + sum([S[I,J2] : J2 in 1..N]) - S[I,J]
+  end,
+
+  println(m=M),
+
+  if var(S0) then
+     Vars = Y.vars() ++ S.vars() ++ S0.vars()
+  else 
+     Vars = S.vars() ++ Y.vars()
+  end,
+
+  solve($[split,min(M),report(printf("M: %d\n", M))],Vars).
+
+
+%
+% generate a random instance with (max) Moves moves
+%
+random_instance(N,NumMoves) = [T,Moves.sort_remove_dups()] =>
+  T = new_array(N,N),
+  bind_vars(T,0),
+  % _ = random2(),
+  
+  Moves = [],
+  foreach(_M in 1..NumMoves)
+     T2 = copy_term(T),  
+     I = 1+random() mod N,
+     J = 1+random() mod N,
+     foreach(I2 in 1..N) 
+       T2[I2,J] := cond(T[I2,J]==1,0,1)
+     end,
+     foreach(J2 in 1..N) 
+       T2[I,J2] := cond(T[I,J2]==1,0,1)
+     end,
+     Moves := Moves ++ [[I,J]],
+     T := T2
+  end.
+
+get_moves(S) = [[I,J] : I in 1..S.len, J in 1..S.len, S[I,J] = 1].
+
+print_grid(S0,S) =>
+  println("Grid\n"),
+  N = S0.len,
+  println("S:"),
+  print_grid(S),
+  nl,
+  T = S0,
+  println("S0:"),
+  print_grid(T),
+  Moves = [],
+  foreach(I in 1..N, J in 1..N)
+     if S[I,J] == 1 then
+       printf("Cell %w:\n",[I,J]),
+       T2 = copy_term(T),
+       foreach(I2 in 1..N) 
+         T2[I2,J] := cond(T[I2,J]==1,0,1)
+       end,
+       foreach(J2 in 1..N) 
+         T2[I,J2] := cond(T[I,J2]==1,0,1)
+       end,
+       T := T2,
+       print_grid(T),
+       Moves := Moves ++ [[I,J]]
+     end
+  end,
+  nl,
+  println(moves=Moves),
+  nl.
+
+print_grid(G) =>
+  foreach(Row in G)
+    println(Row.to_list())
+  end,
+  nl.
+
+
+%
+% planner variant
+%
+final([N,Grid,_Plan]) => 
+  foreach(I in 1..N, J in 1..N) Grid[I,J] == 0 end.
+
+table
+action([N,Grid,From],To,Move,Cost) => 
+
+  % member(R,1..N),
+  % member(C,1..N),
+  between(1,N,R), 
+  between(1,N,C),
+  not(member([R,C],From)),
+
+  % pick only (free) R,C if they are below the last entry
+  % (don't help much...)
+  if From != [] then
+    Last = last(From),
+    Last[1]*(N-1)+Last[2] > R*(N-1)+C
+  end,
+
+  % slightly slower variant
+  % Allowed = [[I,J] : I in 1..N, J in 1..N, not(member([I,J], From)) ],
+  % member([R,C], Allowed),
+
+  Grid1 = copy_term(Grid),
+  foreach(I in 1..N) 
+    Grid1[I,C] := cond(Grid[I,C]==1,0,1),
+    Grid1[R,I] := cond(Grid[R,I]==1,0,1)
+  end,
+
+  To1 = insert_ordered(From,[R,C]), % much faster: 1.94s
+  % To1 = From.sort() ++ [[R,C]], % 17,5s
+  % To1 = (From ++ [[R,C]]).sort(), % 2.48s
+
+  To = [N,Grid1,To1],
+
+  Move = [R,C],
+  Cost = 1.

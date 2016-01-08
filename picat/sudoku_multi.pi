@@ -1,0 +1,182 @@
+/* 
+
+  Multi-Sudoku in Picat.
+
+  http://stackoverflow.com/questions/34246972/multi-sudoku-ai-approach
+  """
+  I'm conceptualizing a solver for a variant of sudoku called multi-sudoku, where multiple boards 
+  overlap like so:
+
+  [image of a multi-sudoku]
+
+  If I understand the game correctly, you must solve each grid in such a way that the overlap between 
+  any two or more grids is part of the solution for each.
+  
+  I'm unsure as to how I should be thinking about this. Anybody got any hints/conceptual clues? 
+  Additionally, if any topics in artificial intelligence come to mind, I'd like to hear those too.
+  """
+
+  Note: There are 60 solutions.
+
+  * go/0: Using two separate grids
+  * go2/0: The two grids are connected in the data section.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+main => go.
+
+go ?=>
+  Map = get_global_map(),
+  Map.put(sol,0),
+
+  problem(1,S1,S2),
+
+  % Connect S1 and S2
+  N = S1.len,
+  Reg = ceiling(sqrt(N)),
+  foreach(I in 1..Reg, J in 1..Reg) 
+     S2[I,J] #= S1[N-Reg+I,N-Reg+J]
+  end,
+
+  sudoku(S1),  
+  sudoku(S2),
+
+  Map.put(sol, Map.get(sol)+1),
+
+  println(solution=Map.get(sol)),
+  println("S1:"),
+  print_board(S1),
+  println("S2:"),
+  print_board(S2),  
+  nl,
+
+  fail,
+  nl.
+
+go => 
+  printf("%d solutions\n", get_global_map().get(sol)),
+  true.
+
+
+%
+% Connect S1 and S2 in the data section.
+%
+go2 ?=>
+  Map = get_global_map(),
+  Map.put(sol,0),
+
+  problem(2,S1,S2),
+
+  sudoku(S1),  
+  sudoku(S2),
+
+  Map.put(sol, Map.get(sol)+1),
+
+  println(solution=Map.get(sol)),
+  println("S1:"),
+  print_board(S1),
+  println("S2:"),
+  print_board(S2),  
+  nl,
+
+  fail,
+
+  nl.
+
+go2 => 
+  printf("%d solutions\n", get_global_map().get(sol)),
+  true.
+
+
+print_board(Board) =>
+  N = Board.length,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      X = Board[I,J],
+      if var(X) then printf("  _") else printf("  %w", X) end
+    end,
+    nl
+  end,
+  nl.
+
+
+sudoku(Board) =>
+  N = ceiling(sqrt(Board.len)),
+  N2 = N*N,
+
+  Vars = Board.vars(),
+  Vars :: 1..N2,
+
+  foreach(Row in Board) all_different(Row) end,
+  foreach(Column in transpose(Board)) all_different(Column) end,
+  foreach(I in 1..N..N2, J in 1..N..N2)
+    all_different([Board[I+K,J+L] : K in 0..N-1, L in 0..N-1])
+  end,
+
+  solve([ff,split], Vars).
+
+
+%
+% Two separate grids.
+%
+problem(1, S1,S2) => 
+S1 = 
+  [
+    [_, _, _, _, 6, _, _, _, _],
+    [_, _, _, 4, _, 9, _, _, _],
+    [_, _, 9, 7, _, 5, 1, _, _],
+    [_, 5, 2, _, 7, _, 8, 9, _],
+    [9, _, _, 5, _, 2, _, _, 4],
+    [_, 8, 3, _, 4, _, 7, 2, _],
+    [_, _, _, 2, _, 8, _, _, _],
+    [_, _, _, 6, _, 4, _, _, _],
+    [_, _, _, _, 5, _, _, _, _]
+  ],
+S2 = 
+  [
+    [_, _, _, _, 3, _, _, _, _],
+    [_, _, _, 8, _, 7, _, _, _],
+    [_, _, _, 1, _, 6, 3, _, _],
+    [_, 9, 8, _, _, _, 1, 2, _],
+    [2, _, _, _, _, _, _, _, 3],
+    [_, 4, 3, _, _, _, 6, 5, _],
+    [_, _, 7, 3, _, 5, 9, _, _],
+    [_, _, _, 4, _, 2, _, _, _],
+    [_, _, _, _, 6, _, _, _, _]
+  ].
+
+%
+% Connect S1 and S2 directly.
+%
+problem(2, S1,S2) => 
+S1 = 
+  [
+    [_, _, _, _, 6, _, _, _, _],
+    [_, _, _, 4, _, 9, _, _, _],
+    [_, _, 9, 7, _, 5, 1, _, _],
+    [_, 5, 2, _, 7, _, 8, 9, _],
+    [9, _, _, 5, _, 2, _, _, 4],
+    [_, 8, 3, _, 4, _, 7, 2, _],
+    [_, _, _, 2, _, 8, _, _, _],
+    [_, _, _, 6, _, 4, _, _, _],
+    [_, _, _, _, 5, _, _, _, _]
+  ],
+S2 = 
+  [
+    [S1[7,7], S1[7,8], S1[7,9], _, 3, _, _, _, _],
+    [S1[8,7], S1[8,8], S1[8,9], 8, _, 7, _, _, _],
+    [S1[9,7], S1[9,8], S1[9,9], 1, _, 6, 3, _, _],
+    [_, 9, 8, _, _, _, 1, 2, _],
+    [2, _, _, _, _, _, _, _, 3],
+    [_, 4, 3, _, _, _, 6, 5, _],
+    [_, _, 7, 3, _, 5, 9, _, _],
+    [_, _, _, 4, _, 2, _, _, _],
+    [_, _, _, _, 6, _, _, _, _]
+  ].
+

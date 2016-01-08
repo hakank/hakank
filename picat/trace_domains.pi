@@ -1,0 +1,325 @@
+/* 
+
+  Print domains in Picat.
+
+  trace_domainsXd/[23] is a set if fairly general predicates which can be used to 
+  track the change in the domain, e.g. before a call to a global constraint or
+  a constraint.
+
+  Here are the predicates:
+    trace_domains_single(Board,Id,Msg)
+
+    trace_domains1d(Board,Msg)
+    trace_domains1d(Board,Id,Msg)
+
+    trace_domains2d(Board,Msg)
+    trace_domains2d(Board,Id,Msg)
+
+  And the helper predicate 
+    trace_domains(Board,Id,Msg)
+  which figures out which version to call...
+
+
+  Notes: 
+    - The keys 'old_board' (+ Id) and 'count' (+ Id) are placed in the global map.
+      There is no control if these are used in another way.
+
+    - If more than one variable are traced, then trace_domainsXd/3 must be used to separate
+      the two "old_board" entries in global_map.
+
+    - The variable Board must be the "pure" decision variable (array/matrix) and not a slice/list 
+      comprehension of the variable.
+
+    
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+module trace_domains.
+
+import ordset.
+import util.
+import cp.
+
+% main => go.
+
+
+go =>
+  
+  
+  nl.
+
+%
+% get the changes from domain From to domain To
+%
+get_change(From,To) = subtract(From,To).
+
+
+%
+% Reset the global map keys with id Id (old_board+Id and count+Id)
+%
+reset_trace_domains(Id) =>
+  println($reset_board(Id)),
+  Map = get_global_map(),
+  Map.reset_key(old_board, Id),
+  Map.reset_key(old_board, xxx), % for trace_domainsXd/2
+  Map.reset_key(count, Id),
+  Map.reset_key(count, xxx). % for trace_domainsXd/2
+
+
+reset_key(Map,Type,Id) => 
+  Key = to_atom(atom_chars(Type) ++ atom_chars(Id)),
+  if Map.has_key(Key) then
+     Map.put(Key,_) % there is no get_global_map().delete(Key) !?
+  end.
+
+
+trace_domains(Board,Id,Msg), (list(Board), list(Board[1]); array(Board), array(Board[1])) => 
+  trace_domains2d(Board,Id,Msg).
+
+trace_domains(Board,Id,Msg), (list(Board) ; array(Board))  => 
+  trace_domains1d(Board,Id,Msg).
+
+trace_domains(Var,Id,Msg)=> 
+  trace_domains_single(Var,Id,Msg).
+
+
+
+%
+% trace_domains2d/2:
+% 
+% Print the 2D board Board showing the values/domains as well
+% as the changes of the domains.
+%
+trace_domains2d(Board, Msg) =>
+  trace_domains2d(Board, xxx, Msg).
+
+trace_domains2d(Board, Id, Msg) =>
+  println(Id.to_string() ++ ": " ++ Msg),
+  GlobalMap = get_global_map(),
+  Key = to_atom(atom_chars(old_board) ++ atom_chars(Id)),
+  CountKey = to_atom(atom_chars(count) ++ atom_chars(Id)),
+  Rows = Board.length,
+  Cols = Board[1].length,
+  if not GlobalMap.has_key(Key) ; var(GlobalMap.get(Key))  then
+     println("Init"),
+     OldBoard = new_array(Rows,Cols),
+     foreach(I in 1..Rows, J in 1..Cols)
+        OldBoard[I,J] = fd_dom(Board[I,J])
+     end,
+     get_global_map().put(CountKey, 0)
+  else 
+     OldBoard = GlobalMap.get(Key)
+  end,
+  NumUnknowns = 0,
+  Changed = [],
+  PrintfLen = (Rows+4).to_string(),
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      X = Board[I,J],
+      Dom = fd_dom(X),
+      OldDom = OldBoard[I,J],
+      IsChangedStr = "",
+      if Dom != OldDom then
+        Changed := Changed ++ [[[I,J],old=make_ranges(OldDom),new=make_ranges(Dom),removed=make_ranges(get_change(OldDom,Dom))]],
+        OldBoard[I,J] := Dom,
+        IsChangedStr := "(!)"
+      end,
+      if length(Dom) == 1 then
+         printf("%" ++ PrintfLen ++ "d%-3s ", Dom[1], IsChangedStr)
+      else 
+         printf("%" ++ PrintfLen ++ "w%-3s ", make_ranges(Dom), IsChangedStr),
+         NumUnknowns := NumUnknowns + 1
+      end
+    end,
+    nl
+  end,
+  println(numUnknowns=NumUnknowns),
+  if Changed.length > 0 then
+    printf("Num Changes: %d\n", Changed.length),
+    foreach(C in Changed) println(C) end
+  end,
+  if NumUnknowns == 0 then
+     printf("Solved in %d steps\n", GlobalMap.get(CountKey))
+  else
+     GlobalMap.put(CountKey,GlobalMap.get(CountKey)+1)
+  end,
+  GlobalMap.put(Key,OldBoard),
+
+  % Printing domain stats
+  println("Degree stats:"),
+  foreach(I in 1..Rows) 
+    foreach(J in 1..Cols)
+      BIJ = Board[I,J],     
+      if var(BIJ) then
+        % stats(Board[I,J], Size,Degree,Min,Max),
+        Degree = fd_degree(BIJ),
+        % printf("[%d,%d]: (size:%w degree:%w min:%w max:%w)\n", I,J, Size,Degree,Min,Max)
+        printf("%-3d ", Degree)
+      else 
+        print("-   ")
+      end 
+    end,
+    nl
+  end,
+
+  nl.
+
+
+%
+% trace_domains1d/1:
+% 
+% Print the 2D board Board showing the values/domains as well
+% as the changes of the domains.
+%
+trace_domains1d(Board, Msg) =>
+  trace_domains1d(Board, xxx, Msg).
+
+trace_domains1d(Board, Id, Msg) =>
+  println(Id.to_string() ++ ": " ++ Msg),
+  Key = to_atom(atom_chars(old_board) ++ atom_chars(Id)),
+  CountKey = to_atom(atom_chars(count) ++ atom_chars(Id)),
+  GlobalMap = get_global_map(),
+  N = Board.length,
+  Init = false,
+  if not GlobalMap.has_key(Key) ; var(GlobalMap.get(Key)) then
+     Init := true,
+     println("Init"),
+     OldBoard = new_array(N),
+     foreach(I in 1..N)
+        OldBoard[I] = fd_dom(Board[I])
+     end,
+     get_global_map().put(CountKey, 0)
+  else 
+     OldBoard = GlobalMap.get(Key)
+  end,
+  NumUnknowns = 0,
+  Changed = [],
+  PrintfLen = (N+4).to_string(),
+  foreach(I in 1..N)
+    X = Board[I],
+    Dom = fd_dom(X),
+    OldDom = OldBoard[I],
+    IsChangedStr = "",
+    if Dom != OldDom then
+      Changed := Changed ++ [[I,old=make_ranges(OldDom),new=make_ranges(Dom),removed=make_ranges(get_change(OldDom,Dom))]],
+      OldBoard[I] := Dom,
+      IsChangedStr := "(!)"
+    end,
+    if length(Dom) == 1 then
+       printf("%" ++ PrintfLen ++ "d%-3s ", Dom[1], IsChangedStr)
+    else 
+       printf("%" ++ PrintfLen ++ "w%-3s ", make_ranges(Dom), IsChangedStr),
+       NumUnknowns := NumUnknowns + 1
+    end
+  end,
+  nl,
+  println(numUnknowns=NumUnknowns),
+  if Changed.length > 0 then
+    println("Changes:"),
+    foreach(C in Changed) println(C) end
+  end,
+  if NumUnknowns == 0 then
+     printf("Solved in %d steps\n", GlobalMap.get(CountKey))
+  else
+     GlobalMap.put(CountKey,GlobalMap.get(CountKey)+1)
+  end,
+  GlobalMap.put(Key,OldBoard),
+
+  % Printing domain stats
+  println("Degree stats:"),
+  foreach(I in 1..N) 
+    BI = Board[I],     
+    if var(BI) then
+      printf("%-3d ", fd_degree(BI))
+    else 
+      print("-   ")
+    end 
+  end,
+  nl,
+  nl.
+
+%
+% Trace a single variable
+%
+trace_domains_single(Var, Id, Msg) =>
+  println(Id.to_string() ++ ": " ++ Msg),
+  Key = to_atom(atom_chars(old_board) ++ atom_chars(Id)),
+  CountKey = to_atom(atom_chars(count) ++ atom_chars(Id)),
+  Init = false,
+  GlobalMap = get_global_map(),
+  if not GlobalMap.has_key(Key) ; var(GlobalMap.get(Key)) then
+     Init := true,
+     println("Init"),
+     OldDom = fd_dom(Var),
+     get_global_map().put(CountKey, 0)
+  else 
+     OldDom = GlobalMap.get(Key)
+  end,
+  PrintfLen = (4).to_string(),
+  Dom = fd_dom(Var),
+  Changed = [],
+  IsChangedStr = "",
+  if Dom != OldDom then
+     Changed := Changed ++ [[old=make_ranges(OldDom),new=make_ranges(Dom),removed=make_ranges(get_change(OldDom,Dom))]],
+     OldDom := Dom,
+     IsChangedStr := "(!)"
+  end,
+  NumUnknowns := length(Dom),
+  println(numUnknowns=NumUnknowns),
+  printf("%" ++ PrintfLen ++ "w%-3s ", make_ranges(Dom), IsChangedStr),
+  nl,
+  if Changed.length > 0 then
+    println("Changes:"),
+    foreach(C in Changed) println(C) end
+  end,
+  if NumUnknowns == 1 then
+     printf("Solved in %d steps\n", GlobalMap.get(CountKey))
+  else
+     GlobalMap.put(CountKey,GlobalMap.get(CountKey)+1)
+  end,
+  println(steps=GlobalMap.get(CountKey)),
+  GlobalMap.put(Key,Dom),
+  printf("Degree: %w\n", cond(var(Var), fd_degree(Var),"-")),
+  nl.
+
+
+get_range(R) = 
+   cond(R.length == 1, 
+      R.first().to_string(),
+      min(R).to_string() ++ ".." ++ max(R).to_string()).
+
+
+make_ranges(L) = Res =>
+  Ranges = [],
+  Range = [L[1]],
+  
+  foreach(I in 2..L.length)
+     Li1 = L[I-1],
+     Li  = L[I],
+     if Li == Li1+1 then
+        Range := Range ++ [Li]
+     else
+        if length(Range) > 0 then
+           Ranges := Ranges ++ [Range]
+        end,
+        Range := [],
+        Range := Range ++ [Li]
+     end
+  end,
+  % pickup the last range
+  if length(Range) > 0 then
+     Ranges := Ranges ++ [Range] 
+  end,
+  Res :=  join([get_range(R) : R in Ranges], ",").
+
+
+stats(Var, Size,Degree,Min,Max) =>
+    Size = fd_size(Var),
+    Degree = fd_degree(Var),
+    Min = fd_min(Var),
+    Max = fd_max(Var).
+

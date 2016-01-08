@@ -1,0 +1,110 @@
+/* 
+
+  Numeric puzzle in Picat.
+
+  From
+  What is the best programming language to solve numeric puzzle? 
+  http://stackoverflow.com/questions/34385291/what-is-the-best-programming-language-to-solve-numeric-puzzle
+  """
+  I have a numeric puzzle like this (just simplified, that puzzle doesn't make any sense):
+
+      - We have two (4 or less)-digits number A and B.
+      - A+B=4213.
+      - last digit of B is the same as the third digit of A.
+      - The first digit of A is the sum of the last three digits of A.
+      [% - The first digit of B is sum of all digits of A + (last digit of B%2) ]
+      - The first digit of B is sum of all digits of A + ((last digit of B -1)%2)
+
+  Real puzzle is far more complex. I want to find all the numbers, which can satisfy all the rules.
+
+  What is the best programming language for solving problems like that? I was thinking about 
+  prolog, but i don't even know how to write an assignment. Of course I can brute-force 
+  all the possible numbers and test the rules, but i was trying to find better solution 
+  which can exclude all impossible combinations first.
+
+  I think this language should be declarative?
+
+  """
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go =>
+  All = find_all([a=A,b=B],puzzle(A,B)),
+  println(all=All),
+
+  nl.
+
+
+puzzle(A,B) => 
+  %
+  % We don't know the exact length of A and B. But we know this.
+  % * Length <= 4 digits
+  % * A must be at least 3 digits ("..last 3 digits of A.")
+  % * I assume digits 0..9
+  % Here we test all combinations of the lengths.
+  %
+  member(AN,3..4), 
+  member(BN,1..4), % unknown length of B
+
+  AA = new_list(AN),
+  AA :: 0..9,
+
+  BB = new_list(BN),
+  BB :: 0..9,
+  
+  A :: 0..(10**AN)-1,
+  B :: 0..(10**BN)-1,
+
+  % connect number and list
+  to_num(AA,10,A),
+  to_num(BB,10,B),
+
+  %
+  % Constraints
+  %
+
+  % - A+B=4213.
+  A + B #= 4213 ,
+
+  % - last digit of B is the same as the third digit of A.
+  BB[BN] #= AA[3] ,
+
+  % - The first digit of A is the sum of the last three digits of A.
+  AA[1] #= sum([AA[I] : I in AN-3+1..AN]),
+
+  % % - The first digit of B is sum of all digits of A + (last digit of B%2)
+  % BB[1] #= sum(AA)  + (BB[BN] mod 2),
+  % - The first digit of B is sum of all digits of A + ((last digit of B -1)%2)
+  BB[1] #= sum(AA)  + ((BB[BN]-1) mod 2),
+
+  %
+  % Search  
+  %
+  Vars = AA ++ BB,
+  solve($[ff,split],Vars),
+
+  println(a=A),
+  println(aa=AA),
+  println(b=B),
+  println(bb=BB),
+
+  nl.
+
+
+% converts a number Num to/from a list of integer 
+% List given a base Base
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
