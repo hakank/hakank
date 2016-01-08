@@ -22,6 +22,7 @@
 :-lib(ic).
 :-lib(ic_global).
 :-lib(ic_global_gac).
+:-lib(propia).
 %:-lib(ic_search).
 %:-lib(branch_and_bound).
 %:-lib(listut).
@@ -52,9 +53,10 @@ fractions(Selection, Choice, Digits, Backtracks) :-
         DD = [D1,D2,D3],
         DD :: 1..81,
 
-        D1 #= B*C,
-        D2 #= E*F,
-        D3 #= H*I,
+        D1 #= 10*B+C,
+        D2 #= 10*E+F,
+        D3 #= 10*H+I,
+
         A*D2*D3 + D*D1*D3 + G*D1*D2 #= D1*D2*D3,
 
         % break the symmetry
@@ -65,8 +67,8 @@ fractions(Selection, Choice, Digits, Backtracks) :-
         3*A #>= D1,
         3*G #=< D2,
 
-
         % search
         term_variables([Digits],Vars),
-        search(Vars,0,Selection,Choice,complete, [backtrack(Backtracks)]).
+        search(Vars,0,Selection,Choice,complete,
+               [backtrack(Backtracks)]).
 
