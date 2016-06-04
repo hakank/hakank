@@ -204,10 +204,14 @@ output
 ]
 ++
 [
- if fix(ops[i]) = 1 then "+" else "-" endif ++ show(y[i]) % works with minizinc/flatzinc and ECLiPSe ic/fd
- % show_cond(ops[i] = 1, +y[i], -y[i] ) ++ " "  % for fz, but it don't give proper representation though
-%  show(ops[i]*y[i]) ++ " "
-  % show(y[i]) ++ " "
+ if fix(y[i]) > 0 then
+   if fix(ops[i]) = 1 then 
+     "+" else 
+     "-" endif 
+     ++ show(y[i])
+ else 
+   "" 
+ endif
   | i in 1..n
 ] ++ 
 ["\n"];

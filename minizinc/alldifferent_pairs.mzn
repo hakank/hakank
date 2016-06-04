@@ -3,7 +3,7 @@
 % 
 % Assumption: a is a k by 2 matrix. n is the number of nodes.
 %
-% This model implements thse decompositions:
+% This model implements these decompositions:
 %
 %  - pairs(x,n): function which returns the pairs of matrix x
 %    in "integer representation": a[k,1]*(n-1) + a[k,2]

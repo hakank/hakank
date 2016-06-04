@@ -11,7 +11,7 @@
  
 
 include "globals.mzn";
-int: n = 4;
+int: n = 5;
 
 array[1..n] of var 1..n: x;
 % the path to extract
@@ -54,11 +54,15 @@ predicate mycircuit(array[int] of var int: x) =
 
 predicate circuit_path(array[int] of var int: x, 
                        array[int] of var int: p) =
-
-   % we always starts the path at 1
-   p[1] = 1
-   /\
-  forall(i in 2..n) (
+  let {
+    int: len = length(x)
+  } in
+  % we always starts the path at 1
+  p[1] = x[1]
+  /\
+  p[len] = 1
+  /\
+  forall(i in 2..len) (
     p[i] = x[p[i-1]] 
   )
 

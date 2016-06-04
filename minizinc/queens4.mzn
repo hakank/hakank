@@ -16,7 +16,7 @@ array[1..n] of var 1..n: queens;
 solve :: int_search(
         queens, 
         first_fail,
-        indomain_middle,
+        indomain_median,
         complete
        ) 
      satisfy;
@@ -26,28 +26,21 @@ solve :: int_search(
 % Chuffed (with --free) seems to perform better without :: domain
 % on the first constraint.
 constraint all_different(queens); % :: domain;
-constraint all_different([queens[i]+i | i in 1..n]) :: domain;
-constraint all_different([queens[i]-i | i in 1..n]) :: domain;
+constraint all_different([queens[i]+i | i in 1..n]); % :: domain;
+constraint all_different([queens[i]-i | i in 1..n]); % :: domain;
 
-% constraint
-%     forall(i, j in 1..n where i < j) (
-%          queens[i] != queens[j] /\
-%          queens[i] + i != queens[j] + j /\
-%          queens[i] - i != queens[j] - j
-%     ) 
-%  ;
-
-
-output [
-  show(queens) ++ "\n"
-] ++ 
+output 
+[
+  show(queens)
+] 
+++ 
 [
   if j = 1 then "\n" else "" endif ++
-     
      if fix(queens[i]) = j then          
-        show_int(2,j)
+        % show_int(2,j)
+        "Q"
      else
-        "__"
+        "#"
      endif
   | i in 1..n, j in 1..n
 ] ++
@@ -55,9 +48,4 @@ output [
 ;
 
 % data
-n = 12;
-
-
-
-
-
+n = 8;
