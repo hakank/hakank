@@ -1,0 +1,167 @@
+/* 
+
+  Furniture offer optimization in Picat.
+
+  From
+  https://twitter.com/MrVaudrey/status/725510805471416320
+  via @iamreddave's tweet to me: https://twitter.com/iamreddave/status/725808714423361536
+ 
+  @MrVauder tweeted a picture of different offers for buying furnitures with the comment
+  "This furniture store just served me up a sytem of equations"
+  
+  The different offers are to buy a table plus these combinations:
+   - 2 arm chairs + 4 side chairs           for 1599.99
+   - 2 arm chairs + 2 side chairs + 1 bench for 1599.99
+   -                8 side chairs           for 1859.99
+   -                6 side chairs + 1 bench for 1859.99
+   - 2 arm chairs + 6 side chairs           for 1899.99
+   - 2 arm chairs + 8 side chairs           for 2099.99
+   - 2 arm chairs + 6 side chairs + 1 bench for 2099.99
+  
+ 
+  I interpret the problem as to create the best cominations of offers to buy 
+  at least some amount of each furnitures (A ArmChairs + S SideChairs + B Benches).
+ 
+  Note: I translated the float prices for the offers to integers since few
+  FlatZinc solvers support floats (but see below for a result with Gecode).
+ 
+ 
+  Example: We want (at least) 12 ArmChairs, 8 SideChairs and 1 Bench
+  and also minimize the total cost.
+  
+  The optimal solutions is a total of 9600
+  -> We should buy 5 of offer 1 and 1 of offer 2 for a total of 9600
+  (and for this we got 12 ArmChairs, 22 ArmChairs and 1 Bench)
+   
+    prefs: [12, 8, 1]
+    Total: 9600
+    to_buy: [5, 1, 0, 0, 0, 0, 0]
+ 
+    What we got:
+    ArmChairs: 12
+    SideChairs: 22
+    Benches: 1
+  
+  There are actually 6 optimal solutions:
+ 
+    to_buy: [5, 1, 0, 0, 0, 0, 0]
+    to_buy: [4, 2, 0, 0, 0, 0, 0]
+    to_buy: [3, 3, 0, 0, 0, 0, 0]
+    to_buy: [2, 4, 0, 0, 0, 0, 0]
+    to_buy: [1, 5, 0, 0, 0, 0, 0]
+    to_buy: [0, 6, 0, 0, 0, 0, 0]
+ 
+
+ 
+  Here's the result when using floats with Gecode (it's same result 
+  except for the total):
+ 
+    prefs: [12, 8, 1]
+    Total: 9599.940000000001
+    to_buy: [5, 1, 0, 0, 0, 0, 0]
+ 
+    What we got:
+    ArmChairs: 12
+    SideChairs: 22
+    Benches: 1
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp. % works
+% import mip. % works
+% import sat. % slow
+
+
+main => go.
+
+
+go =>
+  offers(1,Furnitures,Mat,OfferPriceFloat,OfferPriceInt),
+
+  % We want to buy (at least)
+  %   Prefs[1]*ArmChair
+  %   Prefs[2]*SideChair
+  %   Prefs[3]*Benches
+  %         A  S  B 
+  Prefs = [12, 8, 1],
+
+  % Randomize the prefences
+  % _ = random2(),
+  % Prefs = [ random2() mod 20 : _ in 1..Furnitures.len],
+
+  println(prefs=Prefs),
+
+  % Select MIP for the float problem
+  if member(mip,sys.loaded_modules()) then
+    furniture_offer(Mat,OfferPriceFloat,Prefs, ToBuy,Total)
+  else 
+    furniture_offer(Mat,OfferPriceInt,Prefs, ToBuy,Total)
+  end,
+
+  println(total=Total),
+  println(toBuy=ToBuy),
+
+  println("\nWhat we got:"),
+  foreach(J in 1..Furnitures.len)
+     printf("%3d %s\n", sum([ToBuy[I]*Mat[I,J] : I in 1..Mat.len]), Furnitures[J])
+  end,
+  
+  if not member(mip,sys.loaded_modules()) then
+    nl,
+    println("Search for all optimal solutions"),
+    furniture_offer(Mat,OfferPriceInt,Prefs, ToBuy2,Total),
+    println(toBuy=ToBuy2),
+    fail
+  end,
+
+  nl.
+
+furniture_offer(Mat,OfferPrice,Prefs, ToBuy,Total) =>
+
+  NumOffers = Mat.len,
+  NumProducts = Mat[1].len,
+  % Which offer to buy and how many
+  ToBuy = new_list(NumOffers),
+  ToBuy :: 0..999,
+
+  Total #= sum([OfferPrice[I]*ToBuy[I] : I in 1..NumOffers]),
+
+  % ensure that all prefered products are bought
+  foreach(J in 1..NumProducts) 
+    sum([ToBuy[I]*Mat[I,J] : I in 1..NumOffers]) #>= Prefs[J]
+  end,
+
+  if var(Total) then
+    if member(mip,sys.loaded_modules()) then
+      solve($[min(Total)],ToBuy)
+    else 
+      solve($[ff,split,min(Total)],ToBuy)
+    end
+  else 
+      solve($[ff,split],ToBuy)
+  end.
+
+
+
+
+offers(1,Furnitures,Mat,OfferPriceFloat,OfferPriceInt) =>
+Furnitures = ["Arm Chair","Side Chair", "Bench"],
+Mat = 
+[
+  % ArmChair  SideChair  Bench
+    [2, 4, 0],  % offer 1
+    [2, 2, 1],  % offer 2
+    [0, 8, 0],  % offer 3
+    [0, 6, 1],  % offer 4
+    [2, 6, 0],  % offer 5
+    [2, 8, 0],  % offer 6
+    [2, 6, 1]   % offer 7
+],
+OfferPriceFloat = [1599.99,1599.99,1859.99,1859.99,1899.99,2099.99,2099.99],
+OfferPriceInt   = [1600,1600,1860,1860,1900,2100,2100].

@@ -1,0 +1,109 @@
+/* 
+
+  Employee Scheduling in Picat.
+
+  From Siddharth Chitnis, Madhu Yennamani, Gopal Gupta:
+  "ExSched: Solving Constraint Satisfaction Problems with the Spreadsheet Paradigm"
+  page 10
+  """
+  Employee scheduling problem involves planning the schedule of five managers Bill,
+  Mary, John, Gary, Linda for a week [1]. Problem description:
+  1. There are three shifts, morning, midday and evening.
+  2. Each manager is supposed to work for 40 hours in a week.
+  3. At least one manager must be present at any point of time.
+  4. Each manager should get two days off.
+  5. Each manager works no more than 8.5 hours a day.
+  6. The manager who works in the evening shift cannot be scheduled for the
+     following day's morning shift.
+  7. The schedule should be fair to all managers.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+
+go =>
+  nolog,
+
+  % People = [Bill,  Mary, John, Gary, Linda],
+  PeopleS = [bill,mary,john,gary,linda],
+  NumPeople = PeopleS.len,
+
+  Shifts = [Morning,Midday,Evening,Off],
+  Shifts = 1..Shifts.len,
+  ShiftsS = [morning,midday,evening,off],
+
+  Days = [monday,tuesday,wednesday,thursday,friday,saturday,sunday],
+  NumDays = 7,
+
+  X = new_array(NumPeople,NumDays),
+  X :: 1..Shifts.len,
+
+  Points = new_list(NumPeople),
+  Points :: 0..NumDays * Evening,
+
+  % 7. The schedule should be fair to all managers.
+  %       Morning: 1 p, Midday: 2 p, Evening: 3 p
+  %    Try to make the differences of the point sums as small as possible
+  foreach(P in 1..NumPeople) 
+    Points[P] #= sum([S*(X[P,D] #= S) : D in 1..NumDays, S in [Morning,Midday,Evening]])
+  end,
+  Z #= sum([ abs(Points[P1]-Points[P2]) : P1 in 1..NumPeople, P2 in 1..NumPeople, P1 < P2]),
+
+
+  % 3. At least one manager must be present at any point of time.
+  foreach(D in 1..NumDays)
+    foreach(S in [Morning,Midday,Evening]) 
+      sum([X[P,D] #= S : P in 1..NumPeople]) #> 0
+    end
+  end,
+
+  % 4. Each manager should get two days off.
+  foreach(P in 1..NumPeople)
+    sum([X[P,D] #= Off : D in 1..NumDays]) #= 2
+  end,
+
+  % 6. The manager who works in the evening shift cannot be scheduled for the
+  %    following day’s morning shift.
+  foreach(P in 1..NumPeople)
+    foreach(D in 1..NumDays)
+      (X[P,D] #= Evening) #=> (X[P,1+(D mod NumDays)] #!= Morning)
+    end
+  end,
+
+
+
+  println(points=Points),
+  println(z=Z),
+
+  println(solve),
+  % Vars = X.vars() ++ Points,
+  Vars = Points ++ X.vars(),
+
+  solve($[degree,updown,min(Z),report(printf("Z: %d\n", Z))], Vars),
+
+  foreach(Row in X) println(Row) end,
+
+  print("            "),
+  foreach(D in Days) printf("%-10w ", D ) end,
+  nl,
+  foreach(P in 1..NumPeople) 
+    printf("%-10w: ", PeopleS[P]),
+    foreach(D in 1..NumDays)
+      printf("%-10w ", ShiftsS[X[P,D]])
+    end,
+    nl
+  end,
+  println(points=Points),
+  println(z=Z),
+
+  nl.
+

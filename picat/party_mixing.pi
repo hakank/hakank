@@ -1,0 +1,812 @@
+/* 
+
+  Party mixing in Picat.
+
+  Based on a real problem:
+
+  27 people sits at 4 tables and shall be mixed in some way.
+  What is the optimal mixing so a person will talk with as 
+  many different people as possible? (Thanks Simon!)
+
+
+  Here are three models with some common assumptions:
+
+  - There are NumTables tables and NumAtTables chairs at each table
+
+  - There is exactly one _empty chair_ which is the chair that is used in
+    each move: each person move to the empty chair, and thus
+    a new chair will be available (be a new empty chair).
+
+    The number of moves is thus NumTables*NumAtTables - 1.
+
+  - The main constraint is that a person must move from one table
+    to another table. After all people has moved, no one will sit at 
+    his/her original table.
+
+    However, we don't care about the exact position at the table, i.e. there
+    is no constraint that forbids that to former neighbours from
+    table 1 will sit together at table 4.
+
+    party_mixing/4 and party_mixing3/3 now requires that the new _immediate 
+    neighbours_ (to the left and right) is not from the same original 
+    table. This is only valid for > 2 tables.
+
+  - All models use random heuristics (in solve/1) to make the moves 
+    more random looking.
+
+
+ The three models are
+ * party_mixing/4: simple approach
+   Tested with go/0.
+   - generate a final setting and figure out the moves
+     This is quite fast, see below.
+
+ * party_mixing2/5: explicitly generate each step
+    Tested with go2/0.
+    The advantage of having each move explicit is that we can add detailed 
+    constraints such as:
+     * The first move should be from the first table, the second move from
+       the second table and so on. This will make the model faster 
+       (symmetry breaking).
+
+     * A move will not be from the same table as the previous table.
+       (This constraint is harder to state in party_mixing/4.)
+ 
+ * party_mixing/3: 
+   This is a simplification of party_mixing/4 where only the circuit 
+   (the list L) is used, i.e. the matrix (X) is not used.
+   For presentation, the moves (path) is extracted by circuit_path/2
+   and the matrix is just the 2D version of L.
+
+
+
+  Some timings:
+
+  Tables Chairs  Total Chairs   party_mixing/4 CP    party_mixing2/5 CP    party_mixing/4 SAT
+  -------------------------------------------------------------------------------------------------------------
+     4       7      28            0.0s                   0.02s             2.572s
+    10       7      70            0.008s                 0.024s            >3min
+    14      17     238            0.16s                 12.547s            -
+    24      10     240            0.156s                16.161s            -
+     2(*)  300     600            2.454s                > 1min             -
+   300       2     600            2.434s                > 1min             -
+    24      27     648            2.84s                 RAM exhausted      -
+    40      30    1200           17.609s                -                  -
+    40      40    1600           42.983s                -                  -
+   500       4    2000           94.025s                -                  -
+ 
+
+   (party_mixing3/3 has the same times as party_mixing/4.)
+
+   (*) For NumTables <= 2 we skip the constraint that the target table must be
+       different for the immediate neighbours (since it's impossible).
+
+
+  Exactly one free chair and possible decompositions
+  ---------------------------------------------------
+  A note regarding the assumption of one free chair.
+
+  Both models assumes that there is exactly one free chair at any move.
+  This mean that we will use N+1 chairs. However, the total number of people 
+  (N+1) may not be decomposed exactly in NumTables * NumAtTables. 
+
+  As shown in go4/0, all N > 2 where N+1 is not a prime number 
+  are decomposable in this manner, often in more than one ways. 
+
+  Examples:
+  - N = 27
+    2 tables x 14 chairs -1 = 27
+    4 tables x  7 chairs -1 = 27
+    7 tables x  4 chairs -1 = 27
+    14 tables x 2 chairs -1 = 27
+
+  - N = 35
+    Tables Chairs
+      2    18
+      3    12
+      4     9
+      6     6
+      9     4
+     12     3
+     18     2
+
+  For N+1 is a prime there is no decomposition. 
+  What we can do the  is to add one chair - using a dummy person - which is 
+  used in the same way as all the other people/chairs. The move for this person
+  will be an empty move which may be immediately followed by a real move.
+
+  N+1 is a prime:
+  - N = 28
+    28 is a prime - 1. Hence we use N = N+1 = 29 instead.
+    
+    Tables Chairs
+       2   15
+       3   10
+       5    6
+       6    5
+      10    3
+      15    2
+
+  Another way of fixing this is to let one person, e.g. the host,
+  be outside the moving and use N chairs (with one empty chairs) as planned.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+% import sat. % much slower
+
+
+main => go.
+
+
+%
+% party_mixing/4
+%
+% Here is a simple solution which satisfy the constraints
+% that each person at the end will sit at another table.
+% 
+% But it's quite silly since it's just moving most
+% people from one table to another.
+%
+%   8   9  10  11  12  13  14 
+%   2   3   4   5   6   7  15 
+%  22  23  24  25  26  27  28 
+%  16  17  18  19  20  21   1 
+%
+%
+% Using the "rand" (rand_var + rand_val) search heuristic
+% give a much better solution:
+% 
+% End result
+%  24  18  10  15  25  11  26 
+%  20  27   2  19  28  17   4 
+%   9  22  14   6   8  23   1 
+%  12  21   5  13   3  16   7 
+%
+% End result (original table)
+%   4   3   2   3   4   2   4 
+%   3   4   1   3   4   3   1 
+%   2   4   2   1   2   4   1 
+%   2   3   1   2   1   3   1 
+%
+% Move   1: person  24 move to pos   1, from table   4 to table   1
+% Move   2: person   5 move to pos  24, from table   1 to table   4
+% Move   3: person  25 move to pos   5, from table   4 to table   1
+% Move   4: person  13 move to pos  25, from table   2 to table   4
+% Move   5: person  17 move to pos  13, from table   3 to table   2
+% Move   6: person  14 move to pos  17, from table   2 to table   3
+% Move   7: person   4 move to pos  14, from table   1 to table   2
+% Move   8: person  15 move to pos   4, from table   3 to table   1
+% Move   9: person   9 move to pos  15, from table   2 to table   3
+% Move  10: person  27 move to pos   9, from table   4 to table   2
+% Move  11: person  16 move to pos  27, from table   3 to table   4
+% Move  12: person  22 move to pos  16, from table   4 to table   3
+% Move  13: person  12 move to pos  22, from table   2 to table   4
+% Move  14: person  28 move to pos  12, from table   4 to table   2
+% Move  15: person   7 move to pos  28, from table   1 to table   4
+% Move  16: person  26 move to pos   7, from table   4 to table   1
+% Move  17: person   3 move to pos  26, from table   1 to table   4
+% Move  18: person  10 move to pos   3, from table   2 to table   1
+% Move  19: person   2 move to pos  10, from table   1 to table   2
+% Move  20: person  18 move to pos   2, from table   3 to table   1
+% Move  21: person   6 move to pos  18, from table   1 to table   3
+% Move  22: person  11 move to pos   6, from table   2 to table   1
+% Move  23: person  19 move to pos  11, from table   3 to table   2
+% Move  24: person   8 move to pos  19, from table   2 to table   3
+% Move  25: person  20 move to pos   8, from table   3 to table   2
+% Move  26: person  23 move to pos  20, from table   4 to table   3
+% Move  27: person  21 move to pos  23, from table   3 to table   4
+%
+% (There are just 27 moves since there are only 27 people + 1 empty chair.)
+%
+go =>
+  garbage_collect(200_000_000),
+  NumTables = 4,
+  NumAtTables = 7,
+  NumPeople = NumTables*NumAtTables,
+  println([numTables=NumTables,numAtTables=NumAtTables,numPeople=NumPeople]),
+
+  party_mixing(NumTables,NumAtTables, X,L),
+
+  print_moves(NumTables,NumAtTables,X,L),
+
+  nl.
+
+
+%
+% Checking for a specific N with different
+% configuration of tables and chairs. 
+%
+% Different configurations of the same N 
+% will have different solve times.
+%
+% For N = 701:
+% [n = 701,numTables = 2,numAtTables = 351]
+% CPU time 7.456 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 3,numAtTables = 234]
+% CPU time 4.86 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 6,numAtTables = 117]
+% CPU time 4.517 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 9,numAtTables = 78]
+% CPU time 4.732 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 13,numAtTables = 54]
+% CPU time 4.516 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 18,numAtTables = 39]
+% CPU time 4.268 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 26,numAtTables = 27]
+% CPU time 4.373 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 27,numAtTables = 26]
+% CPU time 4.284 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 39,numAtTables = 18]
+% CPU time 4.44 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 54,numAtTables = 13]
+% CPU time 4.404 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 78,numAtTables = 9]
+% CPU time 4.421 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 117,numAtTables = 6]
+% CPU time 4.424 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 234,numAtTables = 3]
+% CPU time 4.54 seconds. Backtracks: 0
+%
+% [n = 701,numTables = 351,numAtTables = 2]
+% CPU time 4.609 seconds. Backtracks: 0
+%
+% Running some more tests, it seems that the first configuration, 
+% i.e. using the least amount of tables, is slowest and then the 
+% other configurations are about the same time. 
+% However, this needs to be checked more...
+%
+go1 => 
+  garbage_collect(200_000_000),
+
+  N = 500,
+  if prime(N+1) then
+    printf("N (%d) is a prime - 1. We use N+1 (%d) chairs instead.\n", N,N+1),
+    N := N + 1
+  end,
+  printf("N = %d. We will use N+1 (%d) chairs\n", N,N+1),
+  All= find_all([NumTables,NumAtTables],get_config(N, NumTables,NumAtTables)),
+  println(all=All),
+  foreach([NumTables,NumAtTables] in All)
+    println([n=N,numTables=NumTables,numAtTables=NumAtTables]),
+    time2(party_mixing(NumTables,NumAtTables, _X,_L)),
+    % print_moves(NumTables,NumAtTables,X,L),
+    nl
+  end,
+
+  nl.
+
+
+
+%
+% A more elaborate CP model: party_mixing2/5
+%
+% Here is the original problem with 4 tables and 7 people at 
+% each table. The free chair is the last chair at the last
+% table (position 28)
+%
+%     1  2  3  4    8  9 10 11
+%     5  6  7      12 13 14
+%
+%    15 16 17 18   22 23 24 25
+%    19 20 21      26 27 _
+%
+% The 28'th chair is empty, and it will be the target of the each move.
+%
+go2 =>
+  nolog,
+
+  garbage_collect(200_000_000),
+
+  NumTables = 14,
+  NumAtTables = 17,
+  NumPeople = NumTables*NumAtTables,
+
+  println([numTables,numAtTables,numPeople=NumPeople]),
+
+  party_mixing2(NumTables,NumAtTables, X,Moves,Z),
+
+  println("'-' marks the empty chair which indicates the next move"),
+  foreach(M in 2..Z) 
+    {Person,FromTable,ToTable} = Moves[M],
+    printf("Move %2d: person %2d move from table %2d to table %d\n",M-1,Person,FromTable,ToTable),
+    foreach(Row in X[M])
+      foreach(R in Row) 
+         if R == NumTables*NumAtTables then 
+            print("  - ") 
+         else 
+            printf("%3d ", R) 
+         end
+      end,
+      nl
+    end,
+    nl
+  end,
+
+  % println(moves=Moves),
+  println(z=Z),
+  nl.
+
+%
+% Benchmark the two versions
+%
+%
+go3 =>
+
+  Benchmark = 
+  [
+    [4,7],
+    [10,7],
+    [14,17],
+    [24,10],
+    [2,300],
+    [300,2],
+    [24,27],
+    [40,30],
+    [40,40]
+  ],
+
+  foreach([NumTables,NumAtTables] in Benchmark)
+    garbage_collect(250_000_000),
+    NumPeople = NumTables*NumAtTables,
+    println([numTables=NumTables,numAtTables=NumAtTables,numPeople=NumPeople]),
+
+    println("party_mixing/4"),
+    flush(stdout),
+    time2(party_mixing(NumTables,NumAtTables, _X,_L)),
+    flush(stdout),
+
+    % println("party_mixing2"),
+    % time2(party_mixing2(NumTables,NumAtTables, _X2,_Moves2,_Z2)),
+
+    % garbage_collect(250_000_000),
+
+    % println("party_mixing3/3"),
+    % flush(stdout),
+    % time2(party_mixing3(NumTables,NumAtTables, _L2)),
+    % flush(stdout),
+
+
+    nl,
+    flush(stdout)
+  end,
+
+  nl.
+
+
+%
+% Get all the possible configurations given the number of people at 
+% the party (N). This works for all N where N+1 is not a prime (of course
+% since there is no decomposition of a prime number).
+%
+% No solutions: [4,6,10,12,16,18,22,28,30,36,40,42,46,52,58,60,66,70,72,78,82,88,96,100]
+%
+% However, it seems that for all these NoSolution numbers there are 
+% solutions for N-1 and N+1.
+%
+% For N where N+1 is a prime, there is a trivial solution:
+%    NumTables = 1 and NumAtTables = N+1
+% However, is not appropriate for the party_mixing problem
+% since the requirement is that all must change table...
+%
+% As mentioned in the presentation above, it's easy to use N+1 chairs
+% instead and let one chair be a dummy chair.
+% Another way is to use N-1 chairs and let one person, e.g. the host, 
+% not to be moved at all. Note: This chair will not be in the 
+% configuration.
+%
+go4 => 
+
+  NoSolutions = [],
+  foreach(N in 3..100)
+    println(n=N),
+    All= find_all([NumTables,NumAtTables],get_config(N, NumTables,NumAtTables)),
+    if All != [] then
+      foreach(A in All)
+        println(A)
+      end
+    else 
+      NoSolutions := NoSolutions ++ [N],
+      printf("For N=%d there is no solution!\n", N),
+      if get_config(N-1,_,_) then
+        printf("However, there's a solution for N-1 (%d)\n", N-1)
+      else 
+        printf("There is NOT a solution for N-1 (%d)\n", N-1),
+        halt
+      end,
+      if get_config(N+1,_,_) then
+        printf("However, there's a solution for N+1 (%d)\n", N+1)
+      else
+        printf("There is NOT a solution for N+1 (%d)\n", N+1),
+        halt
+      end
+
+    end,
+    nl
+  end,
+  println(no_solutions=NoSolutions),
+  nl.
+
+%
+% Even simpler model.
+% Compared to party_mixing/4, party_mixing3/3 just use the list L, 
+% i.e. skipping the matrix X completely.
+%
+go5 => 
+  garbage_collect(200_000_000),
+  NumTables = 40,
+  NumAtTables = 30,
+  NumPeople = NumTables*NumAtTables,
+  println([numTables=NumTables,numAtTables=NumAtTables,numPeople=NumPeople]),
+
+  party_mixing3(NumTables,NumAtTables,L),
+
+  println(l=L),
+
+  % convert to the path
+  circuit_path(L,Path),
+  println(path=Path),
+
+  % convert to matrix
+  X = {  { L[(I-1)*NumAtTables + J] : J in 1..NumAtTables } : I in 1..NumTables},
+
+  % print_moves(NumTables,NumAtTables,X,L),
+
+  nl.
+
+
+%
+% Print the moves from party_mixing/5
+% 
+print_moves(NumTables,NumAtTables,X,L) =>
+  NumMoves = NumTables*NumAtTables,
+
+  println("Start:"),
+  foreach(I in 1..NumTables)
+    foreach(J in 1..NumAtTables)
+      printf("%3d ", (I-1)*NumAtTables + J)
+    end,
+    nl
+  end,
+  nl,
+
+  println("End result"),
+  foreach(Row in X)
+    foreach(R in Row)
+      printf("%3d ", R)
+    end,
+    nl
+  end,
+  nl,
+
+  println("End result (original table)"),
+  foreach(Row in X)
+    foreach(R in Row)
+      printf("%3d ", 1+((R-1) div NumAtTables))
+    end,
+    nl
+  end,
+  nl,
+
+  % The empty chair is at place 1 and then move from there...
+  Chair = 1,
+  foreach(M in 1..NumMoves-1)
+    element(Chair,L,Pos), 
+    TableTo = get_table(Chair,NumAtTables),
+    TableFrom = get_table(Pos, NumAtTables),
+    printf("Move %3d: person %3d move to pos %3d, from table %3d to table %3d\n",M,Pos,Chair,TableFrom,TableTo),
+    Chair := Pos
+  end,
+  nl,
+
+
+  % alternative variant using circuit_path/2
+  Path = new_array(NumMoves),
+  circuit_path(L,Path),
+  println("Summary (by Path):"),
+  println( to_string(Path[1]) ++ "->1, "  ++ [to_string(Path[I+1]) ++ "->" ++ to_string(Path[I]) : I in 1..NumMoves-2].join(", ")),
+
+  nl.
+
+
+%
+% Get table/chairs configurations for N people.
+%
+get_config(N, NumTables,NumAtTables) =>
+  NumTables :: 1..N,
+  NumAtTables :: 1..N,
+
+  NumTables * NumAtTables - 1 #= N,
+  % NumTables #<= NumAtTables,
+
+  solve($[],[NumTables,NumAtTables]).
+
+%
+% Return the table for position N
+%
+get_table(N,NumAtTables) = 1+(N-1) div NumAtTables.
+
+
+
+
+%
+% party_mixing/4
+%
+% A simple and fast approach.
+%
+% Generate the end result (i.e. after NumTables*NumAtTables moves)
+% and then figure out the moves.
+%
+% The constraints/assumptions:
+%
+%   - empty chair at position 1
+%
+%   - each person move exactly one time
+%
+%   - a person should not end at the same table he/she 
+%     was originally placed.
+%
+%   - there should be sub loops
+%     This is a very important thing: We must be sure
+%     that all peple can be moved in order.
+%
+%     The global constraint circuit/1 handle this and it is
+%     one of the main reason for the speed of this model.
+%     Compare with TSP problems where the circuit/1 constraint 
+%     is used.     
+%
+%   - if there is more than 2 tables:
+%     the end place for a person must not be immediate left or right
+%     of a person from the same original table.
+%  
+%   - the rand_val heuristic is used for a random looking result
+%
+party_mixing(NumTables,NumAtTables, X,L) => 
+
+  NumPeople = NumTables*NumAtTables,
+
+  X = new_array(NumTables,NumAtTables),
+  X :: 1..NumPeople,
+  L = X.vars(),
+
+  % all_different(L), % slightly faster without
+
+  foreach(I in 1..NumTables, J in 1..NumAtTables)
+
+    % ensure that people that starts at table T don't stays at the same table
+    (1+((X[I,J]-1)) div NumAtTables) #!= (1+(((I-1)*NumAtTables+J)-1) div NumAtTables),
+
+    % Ensure that two neighbours from the same table will not sit beside each other
+    % in the new configuration.
+    % Note that for N <= 2 this will give no solution, so the constraint is ignored.
+    if NumTables > 2 then
+      if J > 1 then
+        1+(X[I,J-1]-1) div NumAtTables #!= 1+(X[I,J]-1) div NumAtTables
+      end,
+      if J < NumAtTables then
+        1+(X[I,J+1]-1) div NumAtTables #!= 1+(X[I,J]-1) div NumAtTables
+      end
+    end
+
+  end,
+
+  % There should be no sub circuits (sub loops).
+  % (It also constrain the values to be different.)
+  circuit(L),
+
+  %
+  % Search
+  % _ = random2(), % indeterministic random 
+  println(solve),
+  solve([rand_var,rand_val],L).
+
+
+%
+% party_mixing2/5
+%
+party_mixing2(NumTables,NumAtTables, X,Moves,Z) => 
+
+  TotalPlaces = NumTables*NumAtTables,
+  NumMoves = TotalPlaces,
+
+  FreeChair = NumTables*NumAtTables, % the empty chair
+
+  %
+  % decision variables
+  %
+  
+  % places for each person at each move
+  X = new_array(NumMoves,NumTables,NumAtTables),
+  X :: 1..TotalPlaces,
+  XVars = X.vars(),
+
+  % the moves: [Person,TableFrom,TableTo]
+  % i.e. person Person move from table TableFrom to TableTo
+  Moves = new_array(NumMoves,3),
+  Moves :: 1..TotalPlaces,
+
+  % inits
+  % init first table configuration
+  foreach(I in 1..NumTables, J in 1..NumAtTables)
+    X[1,I,J] #= (I-1)*NumAtTables + J
+  end,
+
+  % first move (dummy move)
+  Moves[1,1] #= 1,
+  Moves[1,2] #= 1,
+  Moves[1,3] #= 1,
+
+  % restrict the domains of the Table entries in Moves
+  foreach(M in 1..NumMoves)
+     Moves[M,2] #<= NumTables,
+     Moves[M,3] #<= NumTables
+  end,
+
+  % objective: maximum the number of people at different table compared with the start position
+  %
+  % note: there is no real objective: we do NumTables*NumAtTables moves
+  %
+  % Number of different tables
+  Z #= sum([  (1+((X[NumMoves,I,J]-1)) div NumAtTables) #!= 
+                         (1+(((I-1)*NumAtTables+J)-1) div NumAtTables) : I in 1..NumTables, J in 1..NumAtTables]),
+  Z #= NumMoves, % all people have moved
+
+  % println(z_before=Z),
+
+  % all moves are just permutations
+  foreach(M in 1..NumMoves)
+    all_different($[X[M,I,J] : I in 1..NumTables, J in 1..NumAtTables])
+  end,
+
+  % must move different persons each time
+  all_different($[Moves[M,1] : M in 2..NumMoves]),
+
+  % the first table must be moved from first, then table 2, table 3, etc to NumTables
+  foreach(I in 2..min(NumTables+1,NumMoves))
+    Moves[I,2] #= I-1
+  end,
+
+  % do the moves...
+  foreach(M in 2..NumMoves)
+
+    % exactly two positions are changed each move:
+    %   FreeChair <-> the selected person's old chair
+    sum($[X[M-1,I,J] #!= X[M,I,J] : I in 1..NumTables,J in 1..NumAtTables]) #= 2,
+
+    % the previous and current move
+    XFrom = [X[M-1,I,J] : I in 1..NumTables,J in 1..NumAtTables],
+    XTo = [X[M,I,J] : I in 1..NumTables,J in 1..NumAtTables],
+
+    % get the position of the FreeChair (PosFrom) of the previous config
+    % and the position to move to (PosTo)
+    element(PosFrom,XFrom,FreeChair),
+    element(PosTo,  XFrom,Person),
+
+    % identify the tables 
+    % it should be a move between different tables
+    TableFrom #= 1+(PosFrom-1) div NumAtTables,
+    TableTo #= 1+(PosTo-1) div NumAtTables,
+    if M > 2 then
+      % M = 1 is a dummy move so we skip this
+      TableFrom #!= TableTo
+    end,
+    
+    % swap the positions to move from (to FreeChair)
+    element(PosFrom,XTo,Person),
+    element(PosTo,  XTo,FreeChair),
+
+    % don't move from the same table twice in a row, (for diversity)
+    % if M > 2 then
+    %   Moves[M,2] #!= Moves[M-1,2], % FromTable
+    %   Moves[M,3] #!= Moves[M-1,3] % ToTable
+    %   % , Moves[M,2] #!= Moves[M-1,3]
+    % end,
+
+    Moves[M,1] #= Person,    
+    Moves[M,2] #= TableTo,
+    Moves[M,3] #= TableFrom
+  end,
+
+  println(solve),
+  Vars = Moves.vars() ++ XVars,
+  % Vars = XVars ++ Moves.vars(),
+  % _ = random2(), 
+  solve($[rand_val],Vars). 
+
+%
+% A variant of party_mixing/4, where just the single list L
+% is used for the circuit.
+% The moves (path) must be revealed with circuit_path/2.
+%
+party_mixing3(NumTables,NumAtTables, L) => 
+
+  NumPeople = NumTables*NumAtTables,
+
+  L = new_array(NumPeople),
+  L :: 1..NumPeople,
+
+  % all_different(L), % slightly faster without
+
+  foreach(I in 1..NumTables, J in 1..NumAtTables)
+    K = (I-1)*NumAtTables + J,
+
+    % ensure that people that starts at table T don't stays at the same table
+    1+((L[K]-1) div NumAtTables) #!= 1+(((I-1)*NumAtTables+J)-1) div NumAtTables,
+
+    % Ensure that two neighbours from the same table will not sit beside each other
+    % in the new configuration.
+    % Note that for N <= 2 this will give no solution, so the constraint is ignored.
+    if NumTables > 2 then
+      if J > 1 then
+        1+((L[K-1]-1) div NumAtTables) #!= 1+(L[K]-1) div NumAtTables
+      end,
+      if J < NumAtTables then
+        1+((L[K+1]-1) div NumAtTables) #!= 1+(L[K]-1) div NumAtTables
+      end
+    end
+
+  end,
+
+  % There should be no sub circuits (sub loops).
+  % It also constrain the values to be different.
+  circuit(L),
+
+  %
+  % Search
+  % _ = random2(), % indeterministic random 
+  println(solve),
+  solve([rand_var,rand_val],L).
+
+
+
+
+%
+% In this model we used circuit_path/2 only
+% for presentation so the all_different/1
+% constraints can be skipped...
+%
+circuit_path(X,Z) =>
+   N = length(X),
+   Z = new_array(N),
+   Z :: 1..N,
+
+   %
+   % The main constraint is that Z[I] must not be 1 
+   % until I = N, and for I = N it must be 1.
+   %
+   all_different(X),
+   all_different(Z),
+
+   % put the orbit of x[1] in in z[1..n]
+   X[1] #= Z[1],
+   
+   % when I = N it must be 1
+   Z[N] #= 1,
+
+   % Redundant constraint. It is covered by the constraints
+   % X[N] = 1 and alldifferent.
+   % foreach(I in 1..N-1) Z[I] #!= 1 end,
+
+   %
+   % Get the orbit for Z.
+   %
+   foreach(I in 2..N)
+     element(Z[I-1],X,Z[I])
+   end.

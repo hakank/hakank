@@ -1,0 +1,87 @@
+/* 
+
+  Reified version of all_different, increasing and decreasing in Picat.
+
+  Inspired by
+  "Requiring at least one alldiff constraint to be satisfied converted to SAT"
+  http://cs.stackexchange.com/questions/42204/requiring-at-least-one-alldiff-constraint-to-be-satisfied-converted-to-sat
+  """
+  For generating certain hard puzzles, I am trying to model a problem (ultimately) in SAT. I don't know 
+  how to do that, so I am starting with CSP because it's more expressive. In CSP, there is a global 
+  alldiff constraint, which requires all variables to take on different values from their domains. 
+  I have a set of alldiff constraints. However, out of this set, I only require at least one of 
+  them to be true. That is, not all of them have to be satisfied.
+
+  For concreteness, suppose we have 8 variables x1,…,x8x1,…,x8. Each take values from the domain 
+  {0,1,2}{0,1,2}. We want to satisfy the following formula:
+
+  alldiff(x1,x2,x3) ∨ alldiff(x1,x6,x7) ∨ alldiff(x4,x5,x6) ∨ alldiff(x3,x4,x8).
+
+  We are happy if at least one of the 4 alldiff clauses is satisfied, e.g., 
+  if x1=0, x2=1, and x3=2, we are already happy.
+
+  But how is then modeled in SAT? Specifically, how do we write an alldiff constraint in SAT?
+  """
+
+  This model implements:
+  - all_different_reif/2
+  - increasing_reif/2
+  - decreasing_reif/2
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+go ?=>
+
+  N = 8,
+  M = [[1,2,3],
+       [1,6,7],
+       [4,5,6],
+       [3,4,8]
+      ],
+
+  L = new_list(N),
+  L :: 0..2,
+
+  B = new_list(M.len),
+  B :: 0..1,
+
+  foreach(I in 1..M.len)
+    LL = [L[J] : J in M[I]],
+    all_different_reif(LL,B[I]),
+    increasing_reif(LL,B[I]) 
+  end,
+  sum(B) #= 1,
+
+  Vars = L ++ B,
+  solve([], Vars),
+
+  println(l=L),
+  println(b=B),
+  foreach(I in 1..M.len)
+    println([L[J] : J in M[I]]=B[I])
+  end,
+
+  nl,
+  fail, 
+ 
+  nl.
+
+go => true.
+
+
+all_different_reif(L,B) =>
+  (B #= 1) #<=> (sum([L[I] #= L[J] : I in 2..L.len, J in 1..I-1]) #= 0).
+
+increasing_reif(L,B) =>
+  (B #= 1) #<=> (sum([L[I-1] #> L[I] : I in 2..L.len]) #= 0).
+
+decreasing_reif(L,B) =>
+  (B #= 1) #<=> (sum([L[I-1] #< L[I] : I in 2..L.len]) #= 0).

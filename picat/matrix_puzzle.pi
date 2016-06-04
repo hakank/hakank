@@ -1,0 +1,270 @@
+/* 
+
+  Matrix puzzle in Picat.
+
+  "How to solve this ILP/CP matrix puzzle"
+  http://stackoverflow.com/questions/34739607/how-to-solve-this-ilp-cp-matrix-puzzle
+  """
+  I'm studying about algorithms and recently found the interesting challenge.
+
+  It will give us some row/column, and our mission is to fill table with integer 
+  1~N which displays only once and their row and column sums are equal to given row/column.
+  
+  The challenge simple example:
+  
+      [ ]  [ ]  [ ]   13
+      [ ]  [ ]  [ ]    8
+      [ ]  [ ]  [ ]   24
+       14   14   17
+  
+  answer:
+  
+      [2]  [6]  [5]   13
+      [3]  [1]  [4]    8
+      [9]  [7]  [8]   24
+       14   14   17
+  
+  Thanks
+  """ 
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+%
+% Print all 10 solutions of problem #1
+%
+go ?=>
+  problem(1,RowSums,ColSums),
+  println(rowSums=RowSums),
+  println(colSums=ColSums),
+
+  puzzle(RowSums,ColSums, X),
+  foreach(Row in X) 
+    println(Row)
+  end,
+  nl,
+
+  fail,
+
+  nl.
+
+go => true.
+
+%
+% All these problems has unique solutions.
+%
+go2 ?=>
+  Ps = [2,3,4,5,6],
+
+  foreach(P in Ps)
+    println(problem=P),
+    problem(P,RowSums,ColSums),
+    println(rowSums=RowSums),
+    println(colSums=ColSums),
+
+    time2(All = find_all(X, puzzle(RowSums,ColSums, X))),
+    foreach(Sol in All)
+      foreach(Row in Sol) 
+        println(Row)
+      end
+    end,
+    nl
+  end,
+  nl.
+
+go2 => true.
+
+
+%
+% generate a random instance of size 30x30
+%
+go3 =>
+  Rows = 30,
+  Cols = 30,
+  RowSums = new_array(Rows),
+  ColSums = new_array(Cols),
+  puzzle(RowSums, ColSums, true, X),
+
+  foreach(I in 1..Rows) 
+    foreach(J in 1..Cols)
+      printf("%3d ", X[I,J])
+    end,
+    nl
+  end,
+  nl,
+  println(rowSums=RowSums.to_list()),
+  println(colSums=ColSums.to_list()),
+
+  nl.
+
+
+%
+% count all solutions on 3x3 puzzle
+%
+go4 => 
+  Rows = 3,
+  Cols = 3,
+  RowSums = new_array(Rows),
+  ColSums = new_array(Cols),
+  Count = count_all(puzzle(RowSums,ColSums,_X)),
+  println(count=Count),
+  nl.
+
+%
+% Find instances of RowSums and ColSums with unique solutions.
+%
+% There are 2736 instances with a unique solution for the 3x3 problem. 
+% Some examples:
+%
+% a = [[{6,15,24},{12,15,18},{{1,2,3},{4,5,6},{7,8,9}}]]
+% a = [[{9,13,23},{19,16,10},{{4,2,3},{7,5,1},{8,9,6}}]]
+% a = [[{10,15,20},{22,16,7},{{5,3,2},{8,6,1},{9,7,4}}]]
+% a = [[{24,15,6},{18,15,12},{{9,8,7},{6,5,4},{3,2,1}}]]
+% 
+% Here are some unique 4x4 instances:
+% a = [[{10,26,47,53},{25,31,38,42},{{1,2,3,4},{5,6,7,8},{9,11,13,14},{10,12,15,16}}]]
+% a = [[{10,26,48,52},{25,31,37,43},{{1,2,3,4},{5,6,7,8},{9,11,13,15},{10,12,14,16}}]]
+%
+go5 ?=> 
+  Map = get_global_map(),
+  Map.put(count,0),
+
+  Rows = 3,
+  Cols = 3,
+
+  % generate a random instance
+  RowSums =  new_array(Rows),
+  ColSums = new_array(Cols), 
+  puzzle(RowSums,ColSums,_X),
+
+  % check if it's a unique solution
+  All = find_all([RowSums,ColSums,X2], puzzle(RowSums,ColSums,X2)),
+
+  if All.len == 1 then
+    println(a=All),
+    Map.put(count,Map.get(count)+1)
+  end,
+
+  fail,
+  nl.
+
+go5 =>
+  println(num_solutions=get_global_map().get(count)),
+  nl.
+
+
+%
+% Brute force approach: 
+%
+% It takes 0.3s to show all 10 solutions.
+%
+% (Compare with the CP approach in go/0: 0.0s)
+%
+go6 ?=> 
+
+  problem(1,RowSums,ColSums),
+  println(rowSums=RowSums),
+  println(colSums=ColSums),
+  Rows=RowSums.len,
+  Cols=ColSums.len,
+  println(rows=Rows),
+  println(cols=Cols),
+
+  % generate all Rows*Cols permutations and test
+  permutation(1..Rows*Cols, Perm),
+  foreach(I in 0..Rows-1)
+    sum([Perm[1+I*(Cols)+J] : J in 0..Cols-1]) == RowSums[I+1]
+  end,
+  foreach(J in 0..Cols-1)
+    sum([Perm[1+I*(Cols)+J] : I in 0..Rows-1]) == ColSums[J+1]
+  end,
+  % print solution
+  foreach(I in 0..Rows-1)
+    println([Perm[1+I*(Cols)+J] : J in 0..Cols-1])
+  end,
+
+  nl,
+  % backtrack
+  fail,
+  nl.
+
+go6 => true. 
+
+
+
+% default
+puzzle(RowSums,ColSums,X) =>
+  puzzle(RowSums,ColSums,false, X).
+
+%
+% solve an instance
+%
+puzzle(RowSums,ColSums,Random, X) =>
+
+  Rows = RowSums.len,
+  Cols = ColSums.len,
+
+  % decision variables
+  X = new_array(Rows,Cols),
+  X :: 1..Rows*Cols,
+  Vars = X.vars(),
+
+  % constraints
+  all_different(Vars),
+
+  foreach(I in 1..Rows)
+    all_different($[X[I,J] : J in 1..Cols]),
+    sum($[X[I,J] : J in 1..Cols]) #= RowSums[I] 
+  end,
+
+  foreach(J in 1..Cols)
+    all_different($[X[I,J] : I in 1..Rows]),
+    sum($[X[I,J] : I in 1..Rows]) #= ColSums[J]
+  end,
+
+  if Random then
+    solve($[rand],Vars)
+  else 
+    solve($[ff,split],Vars)
+  end.
+
+
+%
+% The problem instance from
+% http://stackoverflow.com/questions/34739607/how-to-solve-this-ilp-cp-matrix-puzzle
+%
+problem(1,RowSums,ColSums) =>
+  RowSums = {13,8,24},
+  ColSums = {14,14,17}.
+
+% unique solution:
+problem(2,RowSums,ColSums) =>
+  RowSums = {10,16,19},
+  ColSums = {13,9,23}.
+
+% unique solution
+problem(3,RowSums,ColSums) =>
+  RowSums = {9,13,23},
+  ColSums = {19,16,10}.
+
+% unique solution
+problem(4,RowSums,ColSums) =>
+  RowSums = {10,15,20},
+  ColSums = {22,16,7}.
+
+% unique solution
+problem(5,RowSums,ColSums) =>
+  RowSums = {24,15,6},
+  ColSums = {18,15,12}.
+
+% unique solution 4x4
+problem(6,RowSums,ColSums) =>
+  RowSums = {10,26,42,58},
+  ColSums = {28,32,36,40}.

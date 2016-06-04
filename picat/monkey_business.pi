@@ -1,0 +1,180 @@
+/* 
+
+  Monkey Business in Picat.
+
+  https://dmcommunity.wordpress.com/challenge/challenge-nov-2015/
+  """
+  [This month challenge problem is borrowed from the PuzzlersParadise, 
+   http://www.puzzlersparadise.com/puzzles/monkeybusiness.html ]
+
+  Mrs. Robinson’s 4th grade class took a field trip to the local zoo. The day was sunny 
+  and warm – a perfect day to spend at the zoo. The kids had a great time and the monkeys 
+  were voted the class favorite animal. The zoo had four monkeys – two males and two 
+  females. It was lunchtime for the monkeys and as the kids watched, each one ate a 
+  different fruit in their favorite resting place:
+
+    - Sam, who doesn't like bananas, likes sitting on the grass
+    - The monkey who sat on the rock ate the apple. The monkey who ate the pear 
+      didn't sit on the tree branch
+    - Anna sat by the stream but she didn't eat the pear
+    - Harriet didn't sit on the tree branch. Mike doesn't like oranges.
+
+  Question: Can you determine the name of each monkey, what kind of fruit each 
+  monkey ate, and where their favorite resting place was?
+  """
+
+
+  Unique solution:  
+    sam: grass and pear
+    anna: stream and orange
+    harriet: rock and apple
+    mike: tree and banana
+
+  Two approaches:
+  - go/0: CP approach, 0.0s
+  - gp2/0: plain logic programming approach, 0.044s
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+%
+% CP
+%
+go ?=>
+   N = 4,
+   Range = 1..N,   
+
+   % constants
+   [Sam,Anna,Harriet,Mike]        = Range,
+   [Grass,Rock,Stream,TreeBranch] = Range,
+   [Apple,Banana,Orange,Pear]     = Range,
+
+   % decision variables
+   Fruit = new_list(N), Fruit :: Range,
+   Place = new_list(N), Place :: Range,
+
+   % constraints
+   all_different(Fruit),
+   all_different(Place),
+
+   % - Sam, who doesn't like bananas, likes sitting on the grass
+   Sam #= Place[Grass],
+   Sam #!= Fruit[Banana],
+
+   % - The monkey who sat on the rock ate the apple. 
+   %   The monkey who ate the pear didn't sit on the tree branch
+   Fruit[Apple] #= Place[Rock],
+   Fruit[Pear]  #!= Place[TreeBranch],
+
+   % - Anna sat by the stream but she didn't eat the pear
+   Anna #= Place[Stream],
+   Anna #!= Fruit[Pear],
+
+   % - Harriet didn't sit on the tree branch. Mike doesn't like oranges.
+   Harriet #!= Place[TreeBranch],
+   Mike    #!= Fruit[Orange],  
+
+   % search
+   solve(Fruit ++ Place),
+
+   % result: convert to proper order and print
+   NamesStr = [sam,anna,harriet,mike],
+   PlacesStr = [grass,rock,stream,tree],
+   FruitsStr = [apple,banana,orange,pear],
+   assignment(Place,PlaceA), % find the entry which has the value p
+   assignment(Fruit,FruitA),
+   foreach(I in 1..N)
+     printf("%w: %w and %w\n", NamesStr[I],PlacesStr[PlaceA[I]],FruitsStr[FruitA[I]])
+   end,
+
+   fail, % check for unique solutions
+
+   nl.
+
+go => true.
+
+
+%
+% Plain logic programming.
+%
+% Very similar to the CP approach.
+%
+go2 ?=>
+   N = 4,
+   Range = 1..N,   
+
+   % constants
+   [Sam,Anna,Harriet,Mike]        = Range,
+   [Grass,Rock,Stream,TreeBranch] = Range,
+   [Apple,Banana,Orange,Pear]     = Range,
+
+   % decision variables
+   Fruit = new_list(N), 
+   Place = new_list(N), 
+   foreach(I in Range) 
+      member(Fruit[I],Range), 
+      member(Place[I],Range) 
+   end,
+
+   % LP variant
+   all_different2(Fruit),
+   all_different2(Place),
+
+   % - Sam, who doesn't like bananas, likes sitting on the grass
+   Sam = Place[Grass],
+   Sam != Fruit[Banana],
+
+   % - The monkey who sat on the rock ate the apple. 
+   %   The monkey who ate the pear didn't sit on the tree branch
+   Fruit[Apple] = Place[Rock],
+   Fruit[Pear]  != Place[TreeBranch],
+
+   % - Anna sat by the stream but she didn't eat the pear
+   Anna = Place[Stream],
+   Anna != Fruit[Pear],
+
+   % - Harriet didn't sit on the tree branch. Mike doesn't like oranges.
+   Harriet != Place[TreeBranch],
+   Mike    != Fruit[Orange],  
+
+   % search
+   % result: convert to proper order and print
+   NamesStr = [sam,anna,harriet,mike],
+   PlacesStr = [grass,rock,stream,tree],
+   FruitsStr = [apple,banana,orange,pear],
+
+   % LP variants
+   assignment2(Place,PlaceA), % find the entry which has the value p
+   assignment2(Fruit,FruitA),
+
+   foreach(I in 1..N)
+     printf("%w: %w and %w\n", NamesStr[I],PlacesStr[PlaceA[I]],FruitsStr[FruitA[I]])
+   end,
+
+   fail, % check for unique solutions
+
+   nl.
+
+go2 => true.
+
+% for logic programming approach
+all_different2(L) =>
+  N = L.len,
+  foreach(I in 1..N, J in I+1..N)
+    L[I] != L[J]
+  end.
+
+assignment2(Xs,Ys) =>
+  N = Xs.len,
+  if var(Ys) then Ys = new_list(N) end,
+  foreach(I in 1..N, J in 1..N)
+     if Xs[I] = J then Ys[J] = I end
+   end.

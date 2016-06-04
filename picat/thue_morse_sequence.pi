@@ -1,0 +1,250 @@
+/* 
+
+  Thue-Morse sequence ("the fairest sharing sequence") in Picat.
+
+  https://en.wikipedia.org/wiki/Thue%E2%80%93Morse_sequence
+  """
+  In mathematics, the Thue–Morse sequence, or Prouhet–Thue–Morse sequence, 
+  is the binary sequence (an infinite sequence of 0s and 1s) obtained by 
+  starting with 0 and successively appending the Boolean complement of the 
+  sequence obtained thus far. The first few steps of this procedure yield 
+  the strings 0 then 01, 0110, 01101001, 0110100110010110, and so on, which 
+  are prefixes of the Thue–Morse sequence. The full sequence begins:
+
+    01101001100101101001011001101001.... (sequence A010060 in OEIS) 
+  """
+
+  Via "God plats dice":
+  http://gottwurfelt.com/2016/01/29/thue-morse-and-fair-sharing/
+  """
+  Matt Parker on "the fairest sharing sequence", the Thue-Morse sequence. 
+  The sequence is
+
+     0110 1001 1001 0110 1001 0110 0110 1001…
+
+  which is generated as follows:
+
+    - at the first step, start with 0
+    - invert the sequence, replacing all 0s with 1s and vice versa, and concatenate 
+      this to the original sequence
+
+  So this gives, in sequential steps: 0, 01, 0110, 01101001, 
+  """
+
+  Also see Matt Parker's (standupmaths) "The Fairest Sharing Sequence Ever":
+  https://www.youtube.com/watch?v=prh72BLNjIk
+
+
+  Here are some different implementations.
+
+  Also see Matt Parker's Share the Power Puzzle:
+  https://www.youtube.com/watch?v=E5-pgBnGyzw
+
+  The Share the Power Puzzle is explored in
+  http://hakank.org/picat/share_the_power_puzzle.pi
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+main => go.
+
+
+%
+% direct approach
+%
+go =>
+  S = [0],
+  println(S),
+  while (S.len < 200) 
+     S := S ++ [cond(SS=0,1,0) : SS in S],
+     println(S)
+  end,
+  nl.
+
+%
+% as string
+%
+go2 =>
+  S = "0",
+  println(S.len),
+  % while (true) 
+  while (S.len < 16777216) 
+     S := S ++ [cond(SS='0','1','0') : SS in S],
+     println(S.len)
+  end,
+  
+  nl.
+
+%
+% slightly faster than go2/0
+%
+go3 =>
+  S = [0],
+  println(S.len),
+  % while (true) 
+  while (S.len < 16777216) 
+     S := S ++ [cond(SS=0,1,0) : SS in S],
+     println(S.len)
+  end,
+  
+  nl.
+
+
+%
+% Using thue/2.
+%
+go4 => 
+  N=100,
+  S = [TM : I in 0..N, thue(I,TM)],
+  println(S),
+  nl.
+
+%
+% thue/2 single values
+%
+go5 => 
+  N = 0,
+  while (true)
+    thue(N,TM),
+    println(N=TM),
+    N := N + 1
+  end,
+  nl.
+
+
+%
+% using thue2/1
+%
+go6 => 
+  N = 0,
+  while (true)
+    println(N=thue2(N)),
+    N := N + 1
+  end,
+  nl.
+
+
+%
+% CP. Not very fast on large arrays...
+%
+go7 => 
+  Len = 1_000_000,
+  X = new_array(Len),
+  % X :: 0..1,
+  % note: X[I] -> thus(I-1)
+  X[1] #= 0, % X(0) = 0
+  foreach(I in 1..Len)
+    I1 = I-1,
+    I2 = 1+(I1 div 2),
+    if I1 mod 2 == 0 then
+      X[I] #= X[I2]
+    else 
+      X[I] #= 1-X[I2]
+    end
+  end,
+
+  solve([split],X),
+  println(X.len),
+  printf("%w .. %w\n", [X[I] : I in 1..min(10,X.len)], [X[I] : I in Len-10..Len]),
+  nl.
+  
+
+%
+% L-system:
+%   - Start: 0
+%   - Rules: [ 0->01, 1->10]
+%
+go8 =>
+  Start = 0,
+  Rules = new_map([0=[0,1], 1=[1,0]]),
+
+  L = [Start],
+  println(L),
+  while (L.len < 400)
+    L := [Rules.get(L[I]) : I in 1..L.len].flatten(),
+    println(L)
+  end,
+
+  println(L),
+  nl.
+
+
+%
+% binary version:
+%  - For all numbers (in binary representation) where there is
+%    an odd number of 1s, place a 0
+%  - For the others, place an 1.
+%
+go9 =>
+  N = 2**12,
+
+  S = [cond(sum(map(to_integer,I.to_binary_string())) mod 2 = 1, 1, 0) : I in 0..N-1],
+  println(S),
+  println(S.len),
+  nl.
+
+
+%
+% Random sequence:
+% Count the number of 1s between 0s, it's a random and "never-repeating" sequence
+%
+% From Matt Parker's (standupmaths) "The Fairest Sharing Sequence Ever":
+% https://www.youtube.com/watch?v=prh72BLNjIk
+% 
+% 2102012101...
+%
+go10 =>
+  N=100,
+  S = [TM : I in 0..N, thue(I,TM)],
+  println(S),
+  D = [],
+  Count = 0,
+  foreach(I in 2..S.len)
+    if S[I] == 1 then
+       Count := Count + 1
+    else
+       D := D ++ [Count],
+       Count := 0
+    end,
+  end,
+  println(d=D),
+  nl.
+
+
+
+
+
+%
+% Recurrence relation:
+%
+% t(0) = 0
+% t(2n) = t(n)
+% t(2n+1) = 1-t(n)
+%
+table
+thue(0,TM) => 
+  TM = 0.
+
+thue(N,TM), N mod 2 = 0 => 
+  thue(N div 2,TM).
+
+thue(N,TM), N mod 2 = 1 => 
+  NN = (N div 2),
+  thue(NN, TM2),
+  TM = 1-TM2.
+
+%
+% Recurrence relation as a function.
+%
+table
+thue2(0) = 0.
+thue2(N) = TM, N mod 2 = 0 => TM = thue2(N div 2).
+thue2(N) = TM, N mod 2 = 1 => TM = 1-thue2(N div 2).

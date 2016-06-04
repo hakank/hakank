@@ -1,0 +1,409 @@
+/* 
+
+  GridWorks puzzle in Picat.
+
+  From  Peter Bernschneider in picat-lang group:
+  https://groups.google.com/forum/#!topic/picat-lang/ZVPJpdSC8Qk
+  """
+  I try to solve the simple 3x3 Gridworld puzzle 226, see 
+  http://www.puzzles.com/projects/GridWorks/LogicPuzzles225-226/index.htm
+
+  The rules include that certain sub-matrices follow certain constraints. In the puzzle 
+  226 clue 3 requests for a certain 2x2 sub-matrix, that the upper left cell is a blue circle. 
+
+  I model the selection of the sub-matrix as variables for the row respective column offset 
+  D3R and D3C, both in [0,1], then using matrix_element to define the upper left 
+  cell to be a blue circle.  
+
+  No solution is found.
+
+  But when I restrict D3R to D3R :: [1] instead of D3R :: [0,1], a solution is found.
+
+  Is this a bug or a feature?
+
+  Is there another way to model the clues?
+  """
+
+  This model is an answer to the last question, i.e. another representation of the
+  hints (and the problem in general).
+
+  The problem instances #225 and #226 are defined here:
+  http://www.puzzles.com/projects/GridWorks/LogicPuzzles225-226/index.htm
+
+  For more on GridWorks puzzle, see 
+  - http://www.puzzles.com/projects/GridWorksHowToPlay.htm
+  - http://www.puzzles.com/projects/GridWorksCluesExamples.htm
+
+  This model don't (yet) implement negative clues.
+
+
+  The solution to the #225 puzzle is:
+
+    colors = {{3,1,1},{3,2,2},{2,1,3}}
+    shapes = {{10,10,30},{20,20,30},{10,20,30}}
+
+    blue-cross    green-cross     green-circle 
+    blue-triangle yellow-triangle yellow-circle 
+    yellow-cross  green-triangle  blue-circle 
+
+  It's coded as
+    b-x g-x g-c 
+    b-t y-t y-c 
+    y-x g-t b-c 
+
+
+  The solution to the 226 puzzle is 
+
+    colors = {{1,1,3},{1,3,3},{2,2,2}}
+    shapes = {{20,10,10},{30,30,20},{20,10,30}}
+
+    g-t g-x b-x 
+    g-c b-c b-t 
+    y-t y-x y-c 
+
+
+  Note: there are two slightly different predicates to solve the puzzle:
+  - gridworld/4: Using either matrix indices ("X[I,J]") for "full patterns" or
+    matrix_element5/4 for sub patterns
+  - gridworld2/4: Use matrix_element5/4 for all patterns.
+
+  My hypothesis was originally that gridworld/4 would be faster, but both variants
+  solves #225 and #226 in 0.0s
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+main => go.
+
+% 
+% #225
+%
+go ?=> 
+  run_instance(225),
+  fail, % test of unicity
+  nl.
+go => true.
+
+%
+% #226
+%
+go2 ?=> 
+  run_instance(226),
+  fail,
+  nl.
+go2 => true.
+
+
+%
+% Using gridworld2/4
+%
+go3 ?=> 
+
+  ColorsStr = [g,y,b],
+  ShapesStr = [x,t,c],
+
+  Problem = 226,
+  problem(Problem,N,Patterns1),
+  Patterns = translate_patterns(Patterns1),
+  gridworld2(N,Patterns, Colors,Shapes),
+
+  print_solution(N,Colors,Shapes,ColorsStr,ShapesStr),
+
+  fail, % test of unicity
+  nl.
+
+go3 => true.
+
+
+%
+% Run a specific problem instance
+%
+run_instance(Problem) => 
+
+  ColorsStr = [g,y,b],
+  ShapesStr = [x,t,c],
+
+  problem(Problem,N,Patterns1),
+  Patterns = translate_patterns(Patterns1),
+  gridworld(N,Patterns, Colors,Shapes),
+  print_solution(N,Colors,Shapes,ColorsStr,ShapesStr),
+  nl.
+
+
+%
+% Print the solution
+%
+print_solution(N,Colors,Shapes,ColorsStr,ShapesStr) =>
+  println(colors=Colors),
+  println(shapes=Shapes),
+  nl,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+       printf("%w-%w ", ColorsStr[Colors[I,J]], ShapesStr[Shapes[I,J] div 10])
+    end,
+    nl
+  end,
+  nl.
+
+
+
+%
+% Original model:
+% This separates "full hints", i.e. 3x3 pattern, and sub patterns by
+% using matrix index (X[I,J]) or matrix_element*/4.
+% 
+% The version gridworld2/4 just use matrix_element*/4. 
+%
+gridworld(N,Patterns, Colors,Shapes) =>
+
+  Colors = new_array(N,N),
+  Colors :: 1..N,
+  Shapes = new_array(N,N),
+  Shapes :: [10*I : I in 1..N],
+
+  all_different($[Colors[I,J]+Shapes[I,J] : I in 1..N, J in 1..N]),
+
+  % global_cardinality: exactly 3 of each color and shape
+  global_cardinality(Colors.vars(),$[I-N : I in 1..N]),
+  global_cardinality(Shapes.vars(),$[I-N : I in [10*I : I in 1..N]]),
+
+  Count = 0,
+  foreach(Pattern in Patterns)
+    Count := Count + 1,
+    Rows = Pattern.len,
+    Cols = Pattern[1].len,
+    if Rows == N, Cols == N then
+      % length 3 patterns: these are matched directly 
+      foreach(I in 1..N,J in 1..N)
+         if nonvar(Pattern[I,J]) then
+           if Pattern[I,J] < 10 then
+              Colors[I,J] #= Pattern[I,J] % plain color
+           else
+             if Pattern[I,J] mod 10 == 0 then
+                Shapes[I,J] #= Pattern[I,J] % plain shape
+             else 
+               % mixed
+               Color = Pattern[I,J] mod 10,
+               Colors[I,J] #= Color,
+               Shape = Pattern[I,J] - Color,
+               Shapes[I,J] #= Shape
+             end
+           end
+         end
+      end
+    else 
+      % sub patterns: there are some offsets which match this pattern
+      IOffset :: 0..N-Rows,
+      JOffset :: 0..N-Cols,
+      foreach(I in 1..Rows,J in 1..Cols)
+        if nonvar(Pattern[I,J]) then
+           Ix #= I + IOffset, Ix :: 1..N,
+           Jx #= J + JOffset, Jx :: 1..N,
+           if Pattern[I,J] < 10 then
+              matrix_element2(Colors,Ix,Jx,Pattern[I,J]) % plain color
+           else
+              if Pattern[I,J] mod 10 == 0 then 
+                matrix_element2(Shapes,Ix,Jx,Pattern[I,J]) % plain shape
+              else 
+                % mixed
+                Color = Pattern[I,J] mod 10,
+                Shape = Pattern[I,J] - Color,
+                matrix_element2(Colors,Ix,Jx,Color),
+                matrix_element2(Shapes,Ix,Jx,Shape)
+              end
+           end
+        end
+      end
+    end
+  end,
+
+  nl,
+  println(before_solve),
+  println(colors=Colors),
+  println(shapes=Shapes),
+
+  println(solve),
+  % Vars = Colors.vars() ++ Shapes.vars(),
+  Vars = Shapes.vars() ++ Colors.vars(),
+  solve($[split,ff],Vars).
+
+
+%
+% This version use just matrix_element*/4.
+% 
+gridworld2(N,Patterns, Colors,Shapes) =>
+
+  Colors = new_array(N,N),
+  Colors :: 1..N,
+  Shapes = new_array(N,N),
+  Shapes :: [10*I : I in 1..N],
+
+  all_different($[Colors[I,J]+Shapes[I,J] : I in 1..N, J in 1..N]),
+
+  % global_cardinality: exactly 3 of each color and shape
+  global_cardinality(Colors.vars(),$[I-N : I in 1..N]),
+  global_cardinality(Shapes.vars(),$[I-N : I in [10*I : I in 1..N]]),
+
+  Count = 0,
+  foreach(Pattern in Patterns)
+    Count := Count + 1,
+    Rows = Pattern.len,
+    Cols = Pattern[1].len,
+    % sub patterns: there are some offsets which match this pattern
+    IOffset :: 0..N-Rows,
+    JOffset :: 0..N-Cols,
+    foreach(I in 1..Rows,J in 1..Cols)
+      if nonvar(Pattern[I,J]) then
+         Ix #= I + IOffset, Ix :: 1..N,
+         Jx #= J + JOffset, Jx :: 1..N,
+         if Pattern[I,J] < 10 then
+            matrix_element2(Colors,Ix,Jx,Pattern[I,J]) % plain color
+         else
+            if Pattern[I,J] mod 10 == 0 then 
+              matrix_element2(Shapes,Ix,Jx,Pattern[I,J]) % plain shape
+            else 
+              % mixed
+              Color = Pattern[I,J] mod 10,
+              Shape = Pattern[I,J] - Color,
+              matrix_element2(Colors,Ix,Jx,Color),
+              matrix_element2(Shapes,Ix,Jx,Shape)
+            end
+         end
+      end
+    end
+  end,
+
+  nl,
+  println(before_solve),
+  println(colors=Colors),
+  println(shapes=Shapes),
+
+  println(solve),
+  % Vars = Colors.vars() ++ Shapes.vars(),
+  Vars = Shapes.vars() ++ Colors.vars(),
+  solve($[split,ff],Vars).
+
+
+
+%
+% Translate patterns from the problem/3 to
+% numeric representation.
+%
+translate_patterns(Patterns) = Translated =>
+  Patterns1 = copy_term(Patterns),
+  Map = new_map([g=1,y=2,b=3,x=10,t=20,c=30]),
+  foreach(P in 1..Patterns.len,I in 1..Patterns[P].len, 
+          J in 1..Patterns[P,1].len,nonvar(Patterns[P,I,J]))
+   if list(Patterns1[P,I,J]) then
+     Patterns1[P,I,J] := sum([Map.get(PP) : PP in Patterns1[P,I,J]])
+   else 
+     Patterns1[P,I,J] := Map.get(Patterns1[P,I,J])
+   end
+  end,
+  Translated = Patterns1.
+
+
+%
+% Colors:
+% g = Green  = 1
+% y = Yellow = 2
+% b = Blue   = 3
+%
+% Shapes:
+% x = X (Cross) = 10
+% t = Triangle  = 20
+% c = Circle    = 30
+%
+
+% Solution:
+%  blue-cross    green-cross     green-circle 
+%  blue-triangle yellow-triangle yellow-circle 
+%  yellow-cross  green-triangle  blue-circle 
+%
+%  b-x g-x g-c 
+%  b-t y-t y-c 
+%  y-x g-t b-c 
+%
+problem(225,N,Patterns) =>
+  N = 3,
+  Patterns = 
+     {
+       {{_,_,g}, % pattern 1
+        {_,_,_},
+        {y,_,_}},
+       {{x,g},   % pattern 2
+        {_,y},
+        {x,g}},
+       {{_,_,_}, % pattern 3
+        {t,_,c},
+        {_,_,_}},
+       {{x,g},   % pattern 4
+        {y,_},
+        {_,_}},
+       {{b,_,_}, % pattern 5
+        {_,_,y},
+        {_,g,_}},
+       {{_,_,c}, % pattern 6
+        {_,_,_},
+        {_,_,c}}
+     }.
+
+%
+% Solution:
+%   green-triangle  green-cross   blue-cross
+%   green-circle    blue-circle   blue-triangle
+%   yellow-triangle yellow-cross  yello-circle
+%
+%   g-t g-x b-x
+%   g-c b-c b-t
+%   y-t y-x y-c
+%
+% Colors = {{1,1,3},{1,3,3},{2,2,2}}
+% Shapes = {{20,10,10},{30,30,20},{20,10,30}}
+%
+problem(226,N,Patterns) =>
+  N = 3, 
+  Patterns = 
+     {
+       {{_,_,b}, % pattern 1
+        {_,_,_},
+        {y,_,_}},
+       {{_,x,_}, % pattern 2
+        {_,_,_},
+        {_,_,c}},
+       {{[b,c],b}, % pattern 3 mixed pattern: blue AND circle
+        {y,_}},
+       {{c,b},   % pattern 4
+        {t,_}},
+       {{t,_,_}, % pattern 5
+        {c,_,_},
+        {_,x,_}},
+       {{_,_,_}, % pattern 6
+        {_,b,t},
+        {_,_,y}}
+     }.
+
+
+matrix_element2(X, I, J, Val) =>
+  nth(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element5(X, I, J, Val) =>
+  nth(I, X, Row),
+  nth(J, Row, Val).
+
+% matrix_element6(X, I, J, Val) =>
+%    freeze(I, (nth(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+% matrix_element7(X, I, J, Val) =>
+%  foreach (Row in 1..len(X), Col in 1..len(X[1]))
+%     (I #= Row #/\ J #= Col) #=> (Val #= X[Row,Col])
+%  end.
+

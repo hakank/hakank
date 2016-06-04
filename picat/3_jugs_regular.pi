@@ -1,0 +1,171 @@
+/* 
+
+  3 jugs problem using regular constraint in Picat.
+
+  Using the regular constraint and DFS to solve the 3 jugs problem.
+
+  Compare with 
+    http://hakank.org/picat/3_jugs.pi
+    http://hakank.org/picat/3_jugs_mip.pi
+
+
+  Also see http://mathworld.wolfram.com/ThreeJugProblem.html
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go =>
+
+  % The DFA
+  Transition = 
+  [%1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0], % 1 Initial state
+   [ 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], % 2 
+   [ 0, 0, 0, 4, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0], % 3
+   [ 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], % 4
+   [ 0, 0, 0, 0, 0, 6, 0, 0, 9, 0, 0, 0, 0, 0, 0], % 5
+   [ 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0], % 6
+   [ 0, 0, 0, 0, 0, 0, 0, 8, 9, 0, 0, 0, 0, 0, 0], % 7
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15], % 8 
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0,10, 0, 0, 0, 0, 0], % 9
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 0, 0], %10
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,12, 0, 0, 0], %11 
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,13, 0, 0], %12
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,14, 0], %13 
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15], %14
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15]  %15 Accepting state
+  ],
+
+  NStates = 15,
+  InputMax = 15,
+  InitialState = 1,
+  AcceptingStates = [15],
+
+  Nodes = [
+        ["8,0,0"], % 1 start
+        ["5,0,3"], % 2
+        ["5,3,0"], % 3 
+        ["2,3,3"], % 4 
+        ["2,5,1"], % 5
+        ["7,0,1"], % 6
+        ["7,1,0"], % 7
+        ["4,1,3"], % 8
+        ["3,5,0"], % 9
+        ["3,2,3"], % 10
+        ["6,2,0"], % 11
+        ["6,0,2"], % 12
+        ["1,5,2"], % 13
+        ["1,4,3"], % 14
+        ["4,4,0"]  % 15 goal
+        ],
+
+  
+  X = new_list(InputMax),
+  X :: 0..InputMax,
+
+  % Find the shortest path
+  Cost #= 1+sum([ X[I-1] #!= X[I] : I in 2..InputMax]),
+   
+  regular(X, NStates, InputMax, Transition, InitialState, AcceptingStates),
+
+  % solve(X),
+  solve($[min(Cost)],X),
+
+  println(cost=Cost),
+  % println(X),
+
+  println("Steps:"),
+  State = InitialState,
+  printf("state: %2d move: %w\n", State,Nodes[State]),
+  Found = false,
+  while(not Found)
+    printf("state: %2d move: %w\n", X[State],Nodes[X[State]]),
+    if X[State] = InputMax then
+      Found := true
+    end,
+    State := State + 1
+  end,
+
+  nl.
+
+
+% using domain to get the shortest path
+go2 =>
+
+  % The DFA
+  Transition = 
+  [%1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0], % 1 Initial state
+   [ 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], % 2 
+   [ 0, 0, 0, 4, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0], % 3
+   [ 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], % 4
+   [ 0, 0, 0, 0, 0, 6, 0, 0, 9, 0, 0, 0, 0, 0, 0], % 5
+   [ 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0], % 6
+   [ 0, 0, 0, 0, 0, 0, 0, 8, 9, 0, 0, 0, 0, 0, 0], % 7
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15], % 8 
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0,10, 0, 0, 0, 0, 0], % 9
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 0, 0], %10
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,12, 0, 0, 0], %11 
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,13, 0, 0], %12
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,14, 0], %13 
+   [ 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15], %14
+   [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15]  %15 Accepting state
+  ],
+
+  NStates = 15,
+  InputMax = 15,
+  InitialState = 1,
+  AcceptingStates = [15],
+
+  Nodes = [
+        ["8,0,0"], % 1 start
+        ["5,0,3"], % 2
+        ["5,3,0"], % 3 
+        ["2,3,3"], % 4 
+        ["2,5,1"], % 5
+        ["7,0,1"], % 6
+        ["7,1,0"], % 7
+        ["4,1,3"], % 8
+        ["3,5,0"], % 9
+        ["3,2,3"], % 10
+        ["6,2,0"], % 11
+        ["6,0,2"], % 12
+        ["1,5,2"], % 13
+        ["1,4,3"], % 14
+        ["4,4,0"]  % 15 goal
+        ],
+
+  % get the minimum length by checking increasing length of X
+  Len :: 1..InputMax,
+  indomain(Len),
+  println(len=Len),
+
+  X = new_list(Len),
+  X :: 0..InputMax,
+
+  regular(X, NStates, InputMax, Transition, InitialState, AcceptingStates),
+
+  solve(X),
+
+  println("Steps:"),
+  State = InitialState,
+  printf("state: %2d move: %w\n", State,Nodes[State]),
+  Found = false,
+  while(not Found)
+    printf("state: %2d move: %w\n", X[State],Nodes[X[State]]),
+    if X[State] = InputMax then
+      Found := true
+    end,
+    State := State + 1
+  end,
+
+  nl.
+
+

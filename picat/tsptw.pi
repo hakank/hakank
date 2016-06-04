@@ -1,0 +1,243 @@
+/* 
+
+  TSPTW (TSP with Time Window) in Picat.
+
+  From or-tools User's Manual 
+  "The Travelling Salesman Problem with Time Windows (TSPTW)"
+  https://or-tools.googlecode.com/svn/trunk/documentation/user_manual/manual/tsp/tsptw.html
+  """
+  The Travelling Salesman Problem with Time Windows is similar to the TSP except that 
+  cities (or clients) must be visited within a given time window. This added time 
+  constraint - although it restricts the search tree[1] - renders the problem even 
+  more difficult in practice!
+  """
+
+  This model of tsptw are the dual view of:
+  - a traditional TSP approach
+    This handles the circuit part, see http://hakank.org/picat/tsp.pi
+  - and then the path view (via circuit_path/2) which makes
+    it possible to create the cumulative times in order to
+    enforce that the visiting times for a city is within the appropriate
+    time windows, perhaps via the help of a waiting time.
+
+  The model can handle both minimizing the distance of the tour, or the 
+  time it takes (including the waiting times).
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+% import sat.
+
+main => go.
+
+
+go =>
+  problem(1,DistanceMatrix,TimeWindows),
+  member(Type,[min_distance,min_time]),
+  % Type = min_time,
+  % Type = min_distance,
+  tsptw(DistanceMatrix,TimeWindows, Type,Cities, Costs,Path,CumTimes,WaitTimes,TravelDistance,TravelTime),
+
+  println(travelDistance=TravelDistance),
+  println(travelTime=TravelTime),
+  println(cities=Cities),
+  println(costs=Costs),
+  println(path=Path),
+  println(cumTimes=CumTimes),
+  println(waitTimes=WaitTimes),
+
+  fail,
+
+  nl.
+
+
+
+tsptw(DistanceMatrix,TimeWindows,Type, Cities, Costs,Path,CumTimes,WaitTimes,TravelDistance,TravelTime) =>
+
+   Len = DistanceMatrix.length,
+
+   MaxTimeWindows = max([TimeWindows[I,2] : I in 1..Len]),
+   MaxTimeWindowsDiff = max([TimeWindows[I,2]-TimeWindows[I,1] : I in 2..Len]),
+
+   % TSP 
+   % calculate upper and lower bounds of the Costs list
+   Dists = [DistanceMatrix[I,J] : I in 1..Len, J in 1..Len, DistanceMatrix[I,J] > 0],
+   MinDist = min(Dists),
+   MaxDist = max(Dists),
+
+   Cities = new_list(Len),
+   Cities :: 1..Len,
+
+   Costs = new_list(Len),
+   Costs :: MinDist..MaxDist,
+
+   % Time Windows
+   Path = new_list(Len),
+   Path :: 1..Len,
+
+   % cumulative times (from the path)
+   CumTimes = new_list(Len),
+   CumTimes :: 0..MaxTimeWindows,
+
+   % waiting times
+   WaitTimes = new_list(Len),
+   WaitTimes :: 0..MaxTimeWindowsDiff,
+
+   TravelTime #= CumTimes[Len],
+   % TravelTime #>= 0,
+
+   TravelDistance #= sum(Costs),
+   % TravelDistance #>= 0,
+
+   % Traditional TSP
+   all_different(Cities), % implied constraint
+   circuit(Cities),
+
+   % connect cities and costs 
+   foreach({Row,City,C} in zip(DistanceMatrix,Cities,Costs))
+     element(City,Row,C)
+   end,
+
+
+   %
+   % Time Windows constraints
+   %
+   all_distinct(Path),
+   circuit_path(Cities,Path),
+
+   % CumTimes[1] #= DistanceMatrix[Path[Len],Path[1]],
+   matrix_element(DistanceMatrix,Path[Len],Path[1],CumTimes[1]),
+
+   increasing(CumTimes),
+
+   % create the CumTimes list
+   foreach(I in 2..Len)
+     matrix_element(DistanceMatrix,Path[I-1],Path[I],DMPP),
+     % the waiting time
+     element(Path[I],WaitTimes,WTPI),
+     CumTimes[I] #= CumTimes[I-1] + DMPP + WTPI
+
+   end,
+
+   % ensure that this stop is within the appropriate time window,
+   % (perhaps including some waiting time)
+   foreach(I in 1..Len)
+      % CumTimes[I] #>= TimeWindows[Path[I],1],
+      matrix_element(TimeWindows,Path[I],1,LB),
+      CumTimes[I] #>= LB,
+
+      % CumTimes[I] #<= TimeWindows[Path[I],2]
+      matrix_element(TimeWindows,Path[I],2,UB),
+      CumTimes[I] #<= UB
+
+   end,
+
+   Vars = Path ++ Costs ++ Cities ++ CumTimes ++ WaitTimes ++ [TravelDistance,TravelTime],
+   % Vars = CumTimes ++ WaitTimes ++ Path ++ Costs ++ [TravelDistance,TravelTime],
+   println(solve),
+   if Type == min_distance then
+      % minimize the travel distance
+      println("\nMinimizing travel distance"),
+      solve($[degree,split,min(TravelDistance),report(println(travelDistance=TravelDistance))],Vars)
+   else 
+     % minimize the travel time
+      println("\nMinimizing travel time"),
+     solve($[degree,split,min(TravelTime),report(println(travelTime=TravelTime))],Vars)
+   end.
+
+
+
+%
+% extract the path from the circuit
+%
+circuit_path(X,Path) =>
+   N = length(X),
+
+   %
+   % The main constraint is that Z[I] must not be 1 
+   % until I = N, and for I = N it must be 1.
+   %
+
+   % all_different(X),
+   % all_different(Path),
+   % all_distinct(X), 
+   % all_distinct(Path), 
+
+   % put the orbit of x[1] in in z[1..n]
+   X[1] #= Path[1],
+   
+   % when I = N it must be 1
+   Path[N] #= 1,
+
+   % Redundant constraint. It is covered by the constraints
+   % X[N] = 1 and alldifferent.
+   % foreach(I in 1..N-1) Path[I] #!= 1 end,
+
+   %
+   % Get the orbit for Z.
+   %
+   foreach(I in 2..N)
+     element(Path[I-1],X,Path[I])
+   end.
+
+%
+% From https://or-tools.googlecode.com/svn/trunk/documentation/user_manual/manual/tsp/tsptw.html
+% n20w20.001.txt
+%
+problem(1,DistanceMatrix,TimeWindows) =>
+DistanceMatrix =
+[
+%1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21
+[ 0,19,17,34, 7,20,10,17,28,15,23,29,23,29,21,20, 9,16,21,13,12], % 1
+[19, 0,10,41,26, 3,27,25,15,17,17,14,18,48,17, 6,21,14,17,13,31], % 2
+[17,10, 0,47,23,13,26,15,25,22,26,24,27,44, 7, 5,23,21,25,18,29], % 3
+[34,41,47, 0,36,39,25,51,36,24,27,38,25,44,54,45,25,28,26,28,27], % 4
+[ 7,26,23,36, 0,27,11,17,35,22,30,36,30,22,25,26,14,23,28,20,10], % 5
+[20, 3,13,39,27, 0,26,27,12,15,14,11,15,49,20, 9,20,11,14,11,30], % 6
+[10,27,26,25,11,26, 0,26,31,14,23,32,22,25,31,28, 6,17,21,15, 4], % 7
+[17,25,15,51,17,27,26, 0,39,31,38,38,38,34,13,20,26,31,36,28,27], % 8
+[28,15,25,36,35,12,31,39, 0,17, 9, 2,11,56,32,21,24,13,11,15,35], % 9
+[15,17,22,24,22,15,14,31,17, 0, 9,18, 8,39,29,21, 8, 4, 7, 4,18], % 10
+[23,17,26,27,30,14,23,38, 9, 9, 0,11, 2,48,33,23,17, 7, 2,10,27], % 11
+[29,14,24,38,36,11,32,38, 2,18,11, 0,13,57,31,20,25,14,13,17,36], % 12
+[23,18,27,25,30,15,22,38,11, 8, 2,13, 0,47,34,24,16, 7, 2,10,26], % 13
+[29,48,44,44,22,49,25,34,56,39,48,57,47, 0,46,48,31,42,46,40,21], % 14
+[21,17, 7,54,25,20,31,13,32,29,33,31,34,46, 0,11,29,28,32,25,33], % 15
+[20, 6, 5,45,26, 9,28,20,21,21,23,20,24,48,11, 0,23,19,22,17,32], % 16
+[ 9,21,23,25,14,20, 6,26,24, 8,17,25,16,31,29,23, 0,11,15, 9,10], % 17
+[16,14,21,28,23,11,17,31,13, 4, 7,14, 7,42,28,19,11, 0, 5, 3,21], % 18
+[21,17,25,26,28,14,21,36,11, 7, 2,13, 2,46,32,22,15, 5, 0, 8,25], % 19
+[13,13,18,28,20,11,15,28,15, 4,10,17,10,40,25,17, 9, 3, 8, 0,19], % 20
+[12,31,29,27,10,30, 4,27,35,18,27,36,26,21,33,32,10,21,25,19, 0]  % 21
+],
+TimeWindows = 
+[
+[ 0,        408],  % 1
+[ 62,        68],  % 2
+[181,       205],  % 3
+[306,       324],  % 4
+[214,       217],  % 5
+[ 51,        61],  % 6
+[102,       129],  % 7
+[175,       186],  % 8
+[250,       263],  % 9
+[  3,        23],  % 10
+[ 21,        49],  % 11
+[ 79,        90],  % 12
+[ 78,        96],  % 13
+[140,       154],  % 14
+[354,       386],  % 15
+[ 42,        63],  % 16
+[  2,        13],  % 17
+[ 24,        42],  % 18
+[ 20,        33],  % 19
+[  9,        21],  % 20
+[275,       300]   % 21
+].
+

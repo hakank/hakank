@@ -1,0 +1,150 @@
+/* 
+
+  Nine to one equals 100 problem in Picat.
+
+  Martin Gardner (October 1962)
+
+  For the digits 9..1 (in this order), place a mathematical operator +/-
+  between the digits (or concatenate the digits) so the result is 100.
+  Minimize the number of operators (+/-) used.
+  
+  Digits may (should) be concatenated, e.g. the following solution is valid
+  for the 1..9 = 100 problem.
+     123 - 45 - 67 + 89 = 100
+
+  Solutions:
+  There are 15 solution for the 9..1 = 100 problem:
+
+    98 - 7 - 6 + 5 + 4 + 3 + 2 + 1 = 100
+    98 - 7 + 6 - 5 + 4 + 3 + 2 - 1 = 100
+    98 - 7 + 6 + 5 - 4 + 3 - 2 + 1 = 100
+    98 - 7 + 6 + 5 + 4 - 3 -2 - 1 = 100
+    98 + 7 - 6 - 5 +4 + 3 - 2 + 1 = 100
+    98 + 7 - 6 + 5 -4 -3 + 2 + 1 = 100
+    98 + 7 - 6 + 5 -4 + 3 - 2 - 1 = 100
+    98 + 7 + 6 - 5 -4 -3 + 2 -1 = 100
+    98 - 7 - 6 - 5 -4 + 3 + 21 = 100
+    9 - 8 + 7 +65 -4 + 32 - 1 = 100
+    9 + 8 + 76 + 5 -4 + 3 + 2 + 1 = 100
+    9 + 8 + 76 + 5 + 4 - 3 + 2 - 1 = 100
+    9 - 8 + 76 - 5 + 4 + 3 + 21 = 100
+    98 - 76 + 54 + 3 + 21 = 100
+    9 - 8 + 76 + 54 - 32 + 1 = 100
+  
+  Minimum number of operators is four for: 98 - 76 + 54 + 3 + 21
+
+
+  The following 11 solution was found for the 1..9 = 100 problem:
+
+    123 - 45 - 67 + 89 = 100
+    123 + 45 - 67 + 8 - 9 = 100
+    123 4 - 5 + 67 - 89 = 100
+    123 - 4 - 5 - 6 - 7 + 8 - 9 = 100
+    1 + 23 - 4 + 56 + 7 + 8 + 9 = 100
+    1 + 23 - 4 + 5 + 6 + 78 - 9 = 100
+    1 + 2 + 34 - 5 + 67 - 8 + 9 = 100
+    12 + 3 - 4 + 5 + 67 + 8 + 9 = 100
+    12 - 3 - 4 + 5 - 6 + 7 + 89 = 100
+    12 + 3 + 4 + 5 - 6 - 7 + 89 = 100
+    1 + 2 + 3 - 4 + 5 + 6 + 78 + 9 = 100
+  
+  Minimum number of operators is three for: 123 - 45 - 67 + 89
+  
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+%
+% Find all solutions to the 9..1 problem
+%
+go => 
+  clear(get_global_map(tt)),
+  Goal = 100,
+  L = 9..-1..1,
+  All = find_all(SS,find_goal(L,Goal,SS,_OpsLen)).sort_remove_dups(),
+  foreach(E in All) println(E) end,
+  println(len=All.len),
+
+  nl.
+
+%
+% Find all solutions to the 1..9 problem
+%
+go2 => 
+  clear(get_global_map(tt)),
+  Goal = 100,
+  L = 1..9,
+  All = find_all(SS,find_goal(L,Goal,SS,_OpsLen)).sort_remove_dups(),
+  foreach(E in All) println(E) end,
+  println(len=All.len),
+
+  nl.
+
+%
+% Find all optimal solutions to the 9..1 problem
+%
+go3 => 
+
+  Goal = 100,
+  L = 9..-1..1,
+
+  % find optimum, the smallest OpsLen,
+  minof_inc(find_goal(L,Goal,_SS,OpsLen),OpsLen),
+  println(optimalLen=OpsLen),
+  %  println(SS),
+
+  nl,
+  println("All optimal solutions:"),
+  % print all optimal solutions
+  clear(get_global_map(tt)),
+  All = find_all(SS2,find_goal(L,Goal,SS2,OpsLen)).sort_remove_dups(),
+  foreach(E in All) println(E) end,
+  println(len=All.len),
+  
+  nl.
+
+
+find_goal(L,Goal, SS1,OpsLen) =>
+
+  N = L.len,
+
+  % find all increasing segments
+  Segments = new_list(N),
+  Segments :: 1..N,
+  increasing(Segments),
+  solve([split],Segments),
+
+  % split into the segments and collect the digits into numbers (as strings)
+  S = [ [L[J].to_string() : J in 1..N, Segments[J] = I].join('') : I in Segments.remove_dups()],
+  % remove duplicates
+  Map = get_global_map(tt),
+  if Map.has_key(S) then
+    fail
+  end,
+  Map.put(S,1),
+  Len = S.len,
+
+  % we must have at least two segments
+  Len > 1,
+
+  % find the operators
+  Ops = ["+","-"],
+  OpsLen = Len - 1,
+  OpsSep = new_list(OpsLen),
+  foreach(I in 1..OpsLen)
+    member(Op,Ops),
+    OpsSep[I] := Op
+  end,
+
+  % create the complete string
+  SS = [S[I] ++ OpsSep[I] : I in 1..OpsLen].join('') ++ last(S),
+  Goal == parse_term(SS).apply(),
+  SS1 = SS.

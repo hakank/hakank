@@ -1,0 +1,375 @@
+/* 
+
+  Tennis tournament in Picat.
+
+  http://stackoverflow.com/questions/4747498/tennis-match-scheduling
+  """
+  Tennis match scheduling
+
+  There are a limited number of players and a limited number of tennis courts. At each 
+  round, there can be at most as many matches as there are courts. Nobody plays 2 rounds without a 
+  break. Everyone plays a match against everyone else. Produce the schedule that takes as few 
+  rounds as possible. (Because of the rule that there must a break between rounds for everyone, 
+  there can be a round without matches.) The output for 5 players and 2 courts could be:
+
+   |  1   2   3   4   5
+   -|------------------- 
+   2|  1   - 
+   3|  5   3   - 
+   4|  7   9   1   - 
+   5|  3   7   9   5   -
+
+  In this output the columns and rows are the player-numbers, and the numbers inside the matrix 
+  are the round numbers these two players compete.
+
+  The problem is to find an algorithm which can do this for larger instances in a feasible time. 
+  We were asked to do this in Prolog, but (pseudo-) code in any language would be useful.
+
+  My first try was a greedy algorithm, but that gives results with too many rounds. Then I 
+  suggested an iterative deepening depth-first search, which a friend of mine implemented, but 
+  that still took too much time on instances as small as 7 players.
+  """
+
+  The matches above are
+
+  Match   Player1  Player2
+  ------------------------
+  1       1        2         1
+  1       3        4         2
+  3       2        3         3
+  3       1        5         4
+  5       1        3         5
+  5       4        5         6
+  7       1        4         7
+  7       2        5         8
+  9       2        4         9
+  9       3        5        10
+
+  Player 1 = matches 1,3,5,7
+  Player 2 = matches 1,3,7,9
+  Player 3 = matches 1,3,5,9,
+  Player 4 = matches 1,5,7,9
+  Player 5 = matches 3,5,7,9
+  (Note the nice pattern of matches: all players have a unique odd number ordering)
+
+
+  mat's solution on 6 players and 2 courts (11 matches)
+     1  2  3  4  5  6
+     ----------------
+  1  -  1  3  5  7 10
+  2  -  -  6  9 11  3
+  3  -  -  - 11  9  1
+  4  -  -  -  -  2  7
+  5  -  -  -  -  -  5
+  6  -  -  -  -  -  -
+
+  Match   P1 P2
+   1      1  2     1
+   1      3  6     2
+   2      4  5     3
+   3      1  3     4
+   3      2  6     5
+   5      1  4     6
+   5      5  6     7
+   6      2  3     8
+   7      1  5     9
+   7      4  6    10
+   9      2  4    11
+   9      3  5    12
+  10      1  6    13
+  11      2  5    14
+  11      3  4    15
+
+  Player 1: 1 3 5 7 10
+  Player 2: 1 3 6 9 11 
+  Player 3: 1 3 6 9 11
+  Player 4: 2 5 7 9 11
+  Player 5: 2 5 7 9 11
+  Player 6: 1 3 5 7 10
+
+  mat's solution on 7 players on 5 courts  (13 matches)
+  [ -, 1, 3, 5, 7, 9,11]
+  [ 1, -, 5, 3,11,13, 9]
+  [ 3, 5, -, 9, 1, 7,13]
+  [ 5, 3, 9, -,13,11, 7]
+  [ 7,11, 1,13, -, 5, 3]
+  [ 9,13, 7,11, 5, -, 1]
+  [11, 9,13, 7, 3, 1, -]
+
+  which happens to be the same solution as this model (0.07s)
+  -  1  3  5  7  9 11
+  1  -  5  3 11 13  9
+  3  5  -  9  1  7 13
+  5  3  9  - 13 11  7
+  7 11  1 13  -  5  3
+  9 13  7 11  5  -  1
+ 11  9 13  7  3  1  -
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+% import sat.
+
+
+main => go.
+
+
+go =>
+  nolog,
+
+  N = 7,
+  NumCourts = 5,
+  tournament(N,NumCourts, X,Z),
+  print_games(N,NumCourts,X,Z),
+  nl.
+
+/*
+
+CP solver, N = 2..10 NumCourts = 1..N, timeout 60s
+
+N: 2 NumCourts:1 NumPairs:1 Z:1 Time:0ms Status:success
+N: 2 NumCourts:2 NumPairs:1 Z:1 Time:0ms Status:success
+N: 3 NumCourts:1 NumPairs:3 Z:_5170 Time:_5180ms Status:_53a0
+N: 3 NumCourts:2 NumPairs:3 Z:_5418 Time:_5428ms Status:_5648
+N: 3 NumCourts:3 NumPairs:3 Z:_56d0 Time:_56e0ms Status:_5900
+N: 4 NumCourts:1 NumPairs:6 Z:_5998 Time:_59a8ms Status:_5bc8
+N: 4 NumCourts:2 NumPairs:6 Z:5 Time:0ms Status:success
+N: 4 NumCourts:3 NumPairs:6 Z:5 Time:0ms Status:success
+N: 4 NumCourts:4 NumPairs:6 Z:5 Time:4ms Status:success
+N: 5 NumCourts:1 NumPairs:10 Z:10 Time:0ms Status:success
+N: 5 NumCourts:2 NumPairs:10 Z:9 Time:0ms Status:success
+N: 5 NumCourts:3 NumPairs:10 Z:9 Time:0ms Status:success
+N: 5 NumCourts:4 NumPairs:10 Z:9 Time:0ms Status:success
+N: 5 NumCourts:5 NumPairs:10 Z:9 Time:0ms Status:success
+N: 6 NumCourts:1 NumPairs:15 Z:12 Time:4ms Status:success
+N: 6 NumCourts:2 NumPairs:15 Z:11 Time:4ms Status:success
+N: 6 NumCourts:3 NumPairs:15 Z:9 Time:0ms Status:success
+N: 6 NumCourts:4 NumPairs:15 Z:9 Time:0ms Status:success
+N: 6 NumCourts:5 NumPairs:15 Z:9 Time:0ms Status:success
+N: 6 NumCourts:6 NumPairs:15 Z:9 Time:4ms Status:success
+N: 7 NumCourts:1 NumPairs:21 Z:16 Time:2752ms Status:success
+N: 7 NumCourts:2 NumPairs:21 Z:14 Time:448ms Status:success
+N: 7 NumCourts:3 NumPairs:21 Z:13 Time:40ms Status:success
+N: 7 NumCourts:4 NumPairs:21 Z:13 Time:36ms Status:success
+N: 7 NumCourts:5 NumPairs:21 Z:13 Time:36ms Status:success
+N: 7 NumCourts:6 NumPairs:21 Z:13 Time:36ms Status:success
+N: 7 NumCourts:7 NumPairs:21 Z:13 Time:32ms Status:success
+N: 8 NumCourts:1 NumPairs:28 Z:_167480 Time:59803ms Status:time_out
+N: 8 NumCourts:2 NumPairs:28 Z:15 Time:801ms Status:success
+N: 8 NumCourts:3 NumPairs:28 Z:14 Time:2036ms Status:success
+N: 8 NumCourts:4 NumPairs:28 Z:13 Time:4ms Status:success
+N: 8 NumCourts:5 NumPairs:28 Z:13 Time:4ms Status:success
+N: 8 NumCourts:6 NumPairs:28 Z:13 Time:0ms Status:success
+N: 8 NumCourts:7 NumPairs:28 Z:13 Time:4ms Status:success
+N: 8 NumCourts:8 NumPairs:28 Z:13 Time:4ms Status:success
+N: 9 NumCourts:1 NumPairs:36 Z:_2879b0 Time:59835ms Status:time_out
+N: 9 NumCourts:2 NumPairs:36 Z:_288030 Time:59828ms Status:time_out
+N: 9 NumCourts:3 NumPairs:36 Z:_2886c0 Time:59832ms Status:time_out
+N: 9 NumCourts:4 NumPairs:36 Z:_288d60 Time:59828ms Status:time_out
+N: 9 NumCourts:5 NumPairs:36 Z:_289410 Time:59831ms Status:time_out
+N: 9 NumCourts:6 NumPairs:36 Z:_289ad0 Time:59828ms Status:time_out
+N: 9 NumCourts:7 NumPairs:36 Z:_28a1a0 Time:59824ms Status:time_out
+N: 9 NumCourts:8 NumPairs:36 Z:_28a880 Time:59832ms Status:time_out
+N: 9 NumCourts:9 NumPairs:36 Z:_28af70 Time:59791ms Status:time_out
+N:10 NumCourts:1 NumPairs:45 Z:_28b670 Time:59792ms Status:time_out
+N:10 NumCourts:2 NumPairs:45 Z:_28bd90 Time:59776ms Status:time_out
+N:10 NumCourts:3 NumPairs:45 Z:_28c4c0 Time:59783ms Status:time_out
+N:10 NumCourts:4 NumPairs:45 Z:_28cc00 Time:59800ms Status:time_out
+N:10 NumCourts:5 NumPairs:45 Z:17 Time:8ms Status:success
+N:10 NumCourts:6 NumPairs:45 Z:17 Time:12ms Status:success
+N:10 NumCourts:7 NumPairs:45 Z:17 Time:12ms Status:success
+N:10 NumCourts:8 NumPairs:45 Z:17 Time:16ms Status:success
+N:10 NumCourts:9 NumPairs:45 Z:17 Time:16ms Status:success
+N:10 NumCourts:10 NumPairs:45 Z:17 Time:12ms Status:success
+
+
+*/
+go2 => 
+  nolog,
+  Timeout = 60_000, % s
+  printf("Timeout: %ds\n", Timeout div 1000),
+  Results = [],
+  foreach(N in 2..10) 
+    foreach(NumCourts in 1..N)
+      % garbage_collect(200_000_000),
+      nl,
+      M = num_pairs(N),
+      % println([n=N,numCourts=NumCourts]),
+      % ([Time,_Backtracks,Status] = time2f($tournament(N,NumCourts,_X,Z),Timeout) ; true),
+      % println([N,NumCourts,Z,Time,Status]),
+      if [Time,_Backtracks,Status] = time2f($tournament(N,NumCourts,_X,Z),Timeout) then
+         println([N,NumCourts,Z,Time,Status])
+      else 
+         println([N,NumCourts,Z,Time,time_out])
+      end,
+      Results := Results ++ [[N,NumCourts,M,Z,Time,Status]]
+    end
+  end,
+  printf("Result (Timeout: %ds)\n", Timeout div 1000),
+  foreach([N,NumCourts,M,Z,Time,Status] in Results)
+    printf("N:%2d NumCourts:%d NumPairs:%d Z:%w Time:%wms Status:%w\n", N,NumCourts,M,Z,Time,Status)
+  end,
+  nl.
+
+%
+% print all optimal solutions
+%
+% There are 37440 optimal solutions for N=7/NC=5 (Z=13)
+%
+go3 ?=> 
+  nolog,
+  N = 7,
+  NumCourts = 5,
+  Map = get_global_map(),
+  Map.put(count,0),
+  tournament(N,NumCourts, X,Z),
+  print_games(N,NumCourts,X,Z),
+
+  println("Finding all optimal solutions\n"),
+  % If we just want to count the solutions:
+  % Count = count_all(tournament(N,NumCourts, X2,Z)),
+  % println(count=Count),
+  tournament(N,NumCourts, X2,Z),
+  print_games(N,NumCourts,X2,Z),
+  Map.put(count,Map.get(count)+1),
+  fail,
+  nl.
+
+go3 => 
+  println(num_solutions=get_global_map().get(count)),
+  nl.
+
+%
+% for testing from the command line:
+%   $ picat -g "test(7,5)" tennis_tournament.pi
+%
+test(N,NumCourts) => 
+  nolog,
+  tournament(N,NumCourts,X,Z),
+  print_games(N,NumCourts,X,Z),
+  nl.
+
+%
+% Adding timeout (in seconds)
+%
+test(N,NumCourts,Timeout) => 
+  nolog,
+  println(timeout=Timeout),
+  tournament(N,NumCourts,X,Z),
+  (time_out($tournament(N,NumCourts,_X,Z),Timeout,Status) ; true),
+  if Status == success then
+    print_games(N,NumCourts,X,Z)
+  else
+    println(timeout)
+  end,
+  nl.
+
+
+tournament(N,NumCourts,X,Z) =>
+
+  M = num_pairs(N),
+
+  % From the answer from LarsV, but it's not correct (or I don't understand it).
+  % Est = min( 2*(N-1)-1, (N*(N-1))//2),
+  println([n=N,num_courts=NumCourts,num_matches=M]),
+
+  % decision variables
+
+  % which match does player P1 and P2 play?
+  X = new_array(N,N),
+  X :: 0..M,
+
+  Vars = X.vars(),
+
+  Z #= max(Vars),
+
+  % just work with the upper triangle
+  foreach(K in 1..N) 
+    % sum([ X[I,J]#=K : I in 1..N,J in 1..N, I<J]) #<= NumCourts
+    at_most(NumCourts,$[ X[I,J] : I in 1..N,J in 1..N, I<J],K)
+  end,
+
+  % symmetric matrix
+  foreach(I in 1..N) 
+    X[I,I] #= 0,
+    foreach(J in 1..N, I != J) 
+      X[I,J] #> 0,
+      X[I,J] #= X[J,I]
+    end
+  end,
+
+
+
+  % a player must rest at least one match after a match
+  foreach(P in 1..N)
+    foreach(P2 in 1..N, P3 in 1..N, P2 < P3, P2 != P, P3 != P)
+      abs(X[P,P2]-X[P,P3]) #>= 2
+    end
+  end,
+
+  % symmetry breaking: first player
+  X[1,2] #= 1,
+  increasing($[X[1,P] : P in 2..N]),
+
+  if var(Z) then
+    % minimize
+    % solve($[ff,split,min(Z),report(printf("Z: %d\n", Z))],Vars) % 0.032 on N=8/NC=4
+    solve($[ff,split,min(Z),report(printf("Z: %d\n", Z))],Vars)
+  else                                        
+    % solution with fixed Z
+    solve($[ff,split],Vars)
+  end.
+
+
+%
+% returns Time,Backtracks and Status (success|time_out)
+%
+time2f(Goal,Timeout) = [End,Backtracks,Status] =>
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    time_out(Goal,Timeout,Status),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,End]),
+    Backtracks = Backtracks2 - Backtracks1.
+
+
+
+print_games(N,NumCourts,X,Z) =>
+
+  M = num_pairs(N),
+  printf("%d players (%d matches) on %d courts\n", N, M, NumCourts),
+  printf("Minimum matches: %d\n", Z),
+
+  println(m=M),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if I == J then
+        printf("%3s", "-")
+      else 
+        printf("%3d",X[I,J])
+      end
+    end,
+    nl
+  end,
+
+  println("\nMatches:"),
+  foreach(K in 1..Z)
+    foreach(I in 1..N, J in 1..N, I < J)
+      if X[I,J] = K then
+        printf("Match %2d: %2d vs %2d\n", K, I,J)
+      end
+    end
+  end,
+  
+  nl.
+
+
+num_pairs(N) = N*(N-1) div 2.
+
+
