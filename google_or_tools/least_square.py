@@ -17,19 +17,21 @@
   Least square optimization problem in Google or-tools.
 
   Solving a fourth grade least square equation.
-  
+
   From the Swedish book 'Optimeringslara' [Optimization Theory],
   page 286f.
-  
+
   This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
-  Also see my other Google CP Solver models: http://www.hakank.org/google_or_tools/
+  Also see my other Google CP Solver models:
+  http://www.hakank.org/google_or_tools/
 """
 
 import sys
-from linear_solver import pywraplp
+from ortools.linear_solver import pywraplp
 
-def main(sol = 'GLPK'):
-  
+
+def main(sol='GLPK'):
+
   # Create the solver.
 
   # using GLPK
@@ -41,52 +43,53 @@ def main(sol = 'GLPK'):
     solver = pywraplp.Solver('CoinsGridCLP',
                              pywraplp.Solver.CLP_LINEAR_PROGRAMMING)
 
-
   # data
-  # number of points 
+  # number of points
   num = 14
 
   # temperature
-  t = [20, 30, 80,125,175,225,275,325,360,420,495,540,630,700]
+  t = [20, 30, 80, 125, 175, 225, 275, 325, 360, 420, 495, 540, 630, 700]
 
   # percentage gas
-  F = [0.0,5.8,14.7,31.6,43.2,58.3,78.4,89.4,96.4,99.1,99.5,99.9,100.0,100.0]
+  F = [
+      0.0, 5.8, 14.7, 31.6, 43.2, 58.3, 78.4, 89.4, 96.4, 99.1, 99.5, 99.9,
+      100.0, 100.0]
 
   p = 4
 
   #
   # declare variables
   #
-  a = [solver.NumVar(-100, 100, 'a[%i]' % i ) for i in range(p + 1)]
+  a = [solver.NumVar(-100, 100, 'a[%i]' % i) for i in range(p + 1)]
 
   # to minimize
   z = solver.Sum([(F[i] -
-                   (sum([a[j]*t[i]**j for j in range(p+1)])))
+                   (sum([a[j] * t[i] ** j for j in range(p + 1)])))
                   for i in range(num)])
 
   #
   # constraints
   #
-  solver.Add(solver.Sum([20**i*a[i] for i in range(p+1)]) == 0)
-  
-  solver.Add( (a[0] + sum([700.0**j*a[j]
-                           for j in range(1,p+1)])) == 100.0)
+  solver.Add(solver.Sum([20 ** i * a[i] for i in range(p + 1)]) == 0)
+
+  solver.Add((a[0] + sum([700.0 ** j * a[j]
+                          for j in range(1, p + 1)])) == 100.0)
 
   for i in range(num):
-    solver.Add(solver.Sum([j*a[j]*t[i]**(j-1)
-                           for j in range(p+1)])  >= 0)
+    solver.Add(solver.Sum([j * a[j] * t[i] ** (j - 1)
+                           for j in range(p + 1)]) >= 0)
 
   objective = solver.Minimize(z)
 
   solver.Solve()
 
   print
-  print 'z = ', solver.ObjectiveValue()
+  print 'z = ', solver.Objective().Value()
   for i in range(p + 1):
     print a[i].SolutionValue(),
   print
 
- 
+
 if __name__ == '__main__':
 
   sol = 'GLPK'
@@ -95,5 +98,5 @@ if __name__ == '__main__':
     if sol != 'GLPK' and sol != 'CBC':
       print 'Solver must be either GLPK or CBC'
       sys.exit(1)
-  
+
   main(sol)

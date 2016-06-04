@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Google
+# Copyright 2010-2014 Google
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,7 +17,7 @@
 
 from google.apputils import app
 import gflags
-from algorithms import pywrapknapsack_solver
+from ortools.algorithms import pywrapknapsack_solver
 
 FLAGS = gflags.FLAGS
 
