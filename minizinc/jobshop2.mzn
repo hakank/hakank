@@ -14,28 +14,29 @@ int: num_machines;
 int: num_jobs;
 
 
-array[1..num_machines, 1..num_jobs] of int: job_times;
-array[1..num_machines, 1..num_jobs] of int: job_order;
+array[1..num_jobs, 1..num_machines] of int: job_times;
+array[1..num_jobs, 1..num_machines] of int: job_order;
 
 % for cumulative
-array[1..num_machines] of int: one = [1 | i in 1..num_machines];
+array[1..num_jobs] of int: one = [1 | i in 1..num_jobs];
 
+% If the first order index starts with 1 then we have to compensate below
+int: order_add = if min([job_order[1,machine] | machine in 1..num_machines]) = 1 then 1 else 0 endif;
 
 % machines x jobs
 % Start/End times for each machine and jobs
 int: max_time;
-array[1..num_machines, 1..num_jobs] of var 0..max_time: job_start;
-array[1..num_machines, 1..num_jobs] of var 0..max_time: job_end;
+array[1..num_jobs, 1..num_machines] of var 0..max_time: job_start;
+array[1..num_jobs, 1..num_machines] of var 0..max_time: job_end;
 
-var 0..max_time: earliest_end_time = max([job_end[machine,job] | 
-                                              machine in 1..num_machines, job in 1..num_jobs]);
-
+var 0..max_time: earliest_end_time = max([job_end[job,machine] | 
+                                              job in 1..num_jobs, machine in 1..num_machines]);
 
 %
 % The timeline, for simplifying the presentation: 
 % Does machine m does something at time t?
 %
-% array[0..max_time, 1..num_machines] of var 0..1: timeline;
+% array[0..max_time, 1..num_jobs] of var 0..1: timeline;
 
 % t1 is before t2
 predicate before(var int: t1, var int: t2) = t1 <= t2;
@@ -43,61 +44,98 @@ predicate before(var int: t1, var int: t2) = t1 <= t2;
 % t1 is after t2
 predicate after(var int: t1, var int: t2) = t1 >= t2;
 
+%
+% permutation3(a,p,b) 
+%
+% get the permutation from a <-> b using the permutation p.
+%  
+predicate permutation3(array[int] of var int: a,
+                       array[int] of var int: p,
+                       array[int] of var int: b) =
+   forall(i in index_set(a)) (
+       b[i] = a[p[i]]
+   )
+;
+
+
 % solve satisfy;
 % solve minimize earliest_end_time;
+% ann: var_select;
+% ann: val_select;
 solve :: int_search(
-        [job_start[machine,job] | job in 1..num_jobs, machine in 1..num_machines]
+        [job_end[job,machine] | machine in 1..num_machines, job in 1..num_jobs] 
+        % ++
+        % [job_start[job,machine] | machine in 1..num_machines, job in 1..num_jobs] 
         ,
-        first_fail,
-        indomain_split,
+        smallest, % first_fail,
+        indomain_min, % indomain_split,
         complete
         )
      minimize earliest_end_time;
      % satisfy;
 
-
 constraint
     % end times
-    forall(machine in 1..num_machines, job in 1..num_jobs) (
-        job_end[machine,job] = job_start[machine,job] + job_times[machine,job]
+    forall(job in 1..num_jobs, machine in 1..num_machines) (
+        job_end[job,machine] = job_start[job,machine] + job_times[job,machine]
     ) 
 
     /\ % ensure non-overlaps of the jobs
-    forall(job in 1..num_jobs) (
-       cumulative([job_start[machine,job] | machine in 1..num_machines],
-                  [job_times[machine,job] | machine in 1..num_machines],
+    forall(machine in 1..num_machines) (
+       cumulative([job_start[job,machine] | job in 1..num_jobs],
+                  [job_times[job,machine] | job in 1..num_jobs],
                   one,
                   1) % :: domain
     )
 
     % /\ % testing (if we don't require ordering of jobs)
-    % forall(machine in 1..num_machines) (
-    %    cumulative([job_start[machine,job] | job in 1..num_jobs],
-    %               [job_times[machine,job] | job in 1..num_jobs],
+    % forall(job in 1..num_jobs) (
+    %    cumulative([job_start[job,machine] | machine in 1..num_machines],
+    %               [job_times[job,machine] | machine in 1..num_machines],
     %               one,
     %               1) :: domain
     % ) 
 
 
    /\ % ensure that the jobs are in order
-   forall(machine in 1..num_machines) (
-      forall(job1,job2 in 1..num_jobs where job1 < job2) (
-          if job_order[machine,job1] < job_order[machine,job2] then
-             before(job_end[machine,job1], job_start[machine,job2]) % :: domain
+   forall(job in 1..num_jobs) (
+      forall(machine1,machine2 in 1..num_machines where machine1 < machine2) (
+          if job_order[job,machine1] < job_order[job,machine2] then
+             before(job_end[job,machine1], job_start[job,machine2]) % :: domain
           else 
-             after(job_start[machine,job1], job_end[machine,job2]) % :: domain
+             after(job_start[job,machine1], job_end[job,machine2]) % :: domain
           endif
       )
    ) 
 
+   /\ % Experiment
+   forall(job in 1..num_jobs) ( 
+
+     % redundant constraints 
+     all_different([job_start[job,machine] | machine in 1..num_machines]) % :: domain
+     /\
+     all_different([job_end[job,machine] | machine in 1..num_machines])  % :: domain
+    
+
+     /\ % extra constraint to ensure the order of jobs for each machine
+     forall(machine in 1..num_machines) (
+       % also compensate if we have job_order indexed by 1
+       job_order[job,machine] = sum([bool2int(job_start[job,machine] > job_start[job,machine2]) | machine2 in 1..num_machines]) + order_add
+       /\
+       job_order[job,machine] = sum([bool2int(job_end[job,machine] > job_end[job,machine2]) | machine2 in 1..num_machines]) + order_add
+     )
+
+   )
+
+
    % /\ % For simplifying the presentation:
    %    % does machine m do anything at time t?
-   % forall(t in 0..max_time, machine in 1..num_machines) ( 
-   %       exists(job in 1..num_jobs) (           
-   %          t >= job_start[machine,job] 
+   % forall(t in 0..max_time, job in 1..num_jobs) ( 
+   %       exists(machine in 1..num_machines) (           
+   %          t >= job_start[job,machine] 
    %          /\
-   %          t <  job_end[machine,job]
-   %       )  <-> timeline[t,machine] = 1
+   %          t <  job_end[job,machine]
+   %       )  <-> timeline[machine,t] = 1
    % )
 ;
 
@@ -112,34 +150,34 @@ output
 ]
 ++
 [ 
-  if job = 1 then "\n" else " " endif ++
-    show(job_times[machine,job])
-  | machine in 1..num_machines, job in 1..num_jobs
+  if machine = 1 then "\n" else " " endif ++
+    show(job_times[job,machine])
+  | job in 1..num_jobs, machine in 1..num_machines
 ]
 ++ 
 ["\n\nJob order"] 
 ++
-[  if job = 1 then "\n" else " " endif ++
-     show(job_order[machine, job])
-   | machine in 1..num_machines, job in 1..num_jobs
+[  if machine = 1 then "\n" else " " endif ++
+     show(job_order[job,machine])
+   | job in 1..num_jobs, machine in 1..num_machines
 ]
 ++
-[ "\n\nMachines:\n"]
-++
-[
-  if job = 1 then "\n" ++ show(machine) ++ " : "  else " " endif ++
-     show(job_start[machine,job]) ++ ".." ++ 
-     show(job_end[machine,job]-1) ++ " "
-  | machine in 1..num_machines,job in 1..num_jobs
-]
-++
-[ "\n\nJobs:\n"]
+[ "\n\nMachines per job:\n"]
 ++
 [
   if machine = 1 then "\n" ++ show(job) ++ " : "  else " " endif ++
-     show(job_start[machine,job]) ++ ".." ++ 
-     show(job_end[machine,job]-1) ++ " "
-  | job in 1..num_jobs, machine in 1..num_machines
+     show(job_start[job,machine]) ++ ".." ++ 
+     show(job_end[job,machine]-1) ++ " "
+  | job in 1..num_jobs,machine in 1..num_machines
+]
+++
+[ "\n\nJobs per machine:\n"]
+++
+[
+  if job = 1 then "\n" ++ show(machine) ++ " : "  else " " endif ++
+     show(job_start[job,machine]) ++ ".." ++ 
+     show(job_end[job,machine]-1) ++ " "
+  | machine in 1..num_machines, job in 1..num_jobs
 ]
 % ++ ["\n\nSchedule:"] ++
 % [
@@ -165,31 +203,31 @@ output
 %     % endif ++
  
 %     % end the line with "|"
-%     if machine = num_machines /\ job = num_jobs then "|" else "" endif
+%     if machine = num_jobs /\ job = num_machines then "|" else "" endif
 
 %   else 
 %      ""
 %   endif
     
-%   | time in 0..max_time, machine in 1..num_machines, job in 1..num_jobs
+%   | time in 0..max_time, machine in 1..num_jobs, job in 1..num_machines
 % ]
 ++
-[ "\n\nMachine times:\n" ]
-++
-[  
-   "machine " ++ show(machine) ++ ": " ++ 
-    show(fix(min([job_start[machine, job] | job in 1..num_jobs])))  ++ ".." ++
-    show(fix(max([job_end[machine, job] | job in 1..num_jobs])))  ++ "\n"
-   | machine in 1..num_machines
-]
-++
-[ "\nJob times:\n" ]
+[ "\n\nJob times:\n" ]
 ++
 [  
    "job " ++ show(job) ++ ": " ++ 
-    show(fix(min([job_start[machine, job] | machine in 1..num_machines])))  ++ ".." ++
-    show(fix(max([job_end[machine, job] | machine in 1..num_machines])))  ++ "\n"
+    show(fix(min([job_start[job,machine] | machine in 1..num_machines])))  ++ ".." ++
+    show(fix(max([job_end[job,machine] | machine in 1..num_machines])))  ++ "\n"
    | job in 1..num_jobs
+]
+++
+[ "\nMachine times:\n" ]
+++
+[  
+   "machine " ++ show(machine) ++ ": " ++ 
+    show(fix(min([job_start[job,machine] | job in 1..num_jobs])))  ++ ".." ++
+    show(fix(max([job_end[job,machine] | job in 1..num_jobs])))  ++ "\n"
+   | machine in 1..num_machines
 ]
 ++
 ["\nEarliest end time: " ++ show(earliest_end_time) ++ "\n"]
