@@ -1,0 +1,161 @@
+/* 
+
+  Lychrel numbers (Rosetta code) in Picat.
+
+  https://rosettacode.org/wiki/Lychrel_numbers
+  """
+  1. Take an integer n, greater than zero.
+  2. Form the next n of its series by reversing the digits of the current n 
+     and adding the result to the current n.
+  3. Stop when n becomes palindromic - i.e. the digits of n 
+     in reverse order == n.
+
+
+  The above recurrence relation when applied to most starting numbers n = 1, 2, ... terminates in 
+  a palindrome quite quickly, for example if n0 = 12 we get
+
+  12
+  12 + 21 = 33, a palindrome!
+
+  And if n0 = 55 we get
+
+  55
+  55 + 55 = 110
+  110 + 011 = 121, a palindrome!
+
+  Notice that the check for a palindrome happens after an addition. 
+
+
+  Some starting numbers seem to go on forever; the recurrence relation for 196 has been calculated for millions of 
+  repetitions forming numbers with millions of digits, without forming a palindrome. These numbers that do not end in 
+  a palindrome are called Lychrel numbers.
+
+  For the purposes of this task a Lychrel number is any starting number that does not form a palindrome within 500 (or more) iterations.
+
+  Seed and related Lychrel numbers
+
+  Any integer produced in the sequence of a Lychrel number is also a Lychrel number.
+
+  In general, any sequence from one Lychrel number might converge to join the sequence from a prior 
+  Lychrel number candidate; for example the sequences for the numbers 196 and then 689 begin:
+
+  196
+  196 + 691 = 887
+  887 + 788 = 1675
+  1675 + 5761 = 7436
+  7436 + 6347 = 13783
+  13783 + 38731 = 52514
+  52514 + 41525 = 94039
+  ...
+
+
+  689
+  689 + 986 = 1675
+  1675 + 5761 = 7436
+  ...
+
+  So we see that the sequence starting with 689 converges to, and continues with the same 
+  numbers as that for 196. 
+  Because of this we can further split the Lychrel numbers into true Seed Lychrel number 
+  candidates, and Related numbers that produce no palindromes but have integers in their sequence 
+  seen as part of the sequence generated from a lower Lychrel number.
+
+
+  Task
+
+  1. Find the number of seed Lychrel number candidates and related numbers for n in the 
+     range 1..10000 inclusive.  (With that iteration limit of 500).
+  2. Print the number of seed Lychrels found; the actual seed Lychrels; and 
+     just the number of relateds found.
+  3. Print any seed Lychrel or related number that is itself a palindrome.
+
+
+  Show all output here. 
+  """
+
+  For N in 1..10_000 (0.9s):
+     seeds = [196,879,1997,7059,9999]
+     palindromes = [4994,8778,9999]
+     num_related = 244
+
+     num_lychrel_numbers = 5
+     seeds = [196,879,1997,7059,9999]
+     palindromes = [4994,8778,9999]
+     num_palindromes = 3
+     num_related = 244
+
+
+
+  For N in 1..100_000 (12.9s)
+    num_lychrel_numbers = 74
+    seeds = [196,879,1997,7059,9999,10553,10563,10577,10583,10585,10638,10663,10668,10697,10715,10728,10735,10746,10748,10783,10785,10787,10788,10877,10883,10963,10965,10969,10977,10983,10985,12797,12898,13097,13197,13694,14096,14698,15297,15597,18598,18798,20459,30389,30399,30929,30959,30979,40069,40429,50569,50579,59299,60289,60489,60659,60689,70379,70559,70949,80049,80059,80069,80269,80279,80289,80439,80489,80669,89099,89899,90379,90579,99999]
+    palindromes = [4994,8778,9999,11811,19591,22822,23532,23632,23932,24542,24742,24842,24942,26362,27372,29792,29892,33933,34543,34743,34943,39493,44744,46064,46164,46364,46564,46964,47274,47574,48284,48584,48684,48884,49394,49794,53935,61916,62826,64046,64346,64446,64846,66466,67976,68486,68986,73537,78587,79297,82928,83038,83638,83838,84448,87378,87578,88388,89198,92229,94449,94549,95359,95759,97479,98089,98289,98389,98589,98989,99999]
+    num_palindromes = 71
+    num_related = 6017
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  garbage_collect(300_000_000),
+  Limit=500,
+  Lychrel = [],
+  Cache = new_set(), % caching the found Lychrel numbers
+  Seeds = [],
+  Palindromes = [],
+  foreach(N in 1..10_000)
+    if lychrel(N,Cache,Limit,Seed) then
+      Lychrel := Lychrel ++ [N],
+      if Seed then Seeds := Seeds ++ [N] end,
+      if rev(N) == N then Palindromes := Palindromes ++ [N] end
+    end
+  end, 
+
+  % println(lychrel=Lychrel), 
+  println(num_lychrel_numbers=Seeds.len),
+  println(seeds=Seeds), 
+  println(palindromes=Palindromes),
+  println(num_palindromes=Palindromes.len),
+  println(num_related=(Lychrel.len-Seeds.len)),
+  nl.
+
+table
+rev(N) = N.to_string().reverse().to_int().
+
+
+lychrel(N,Cache,Limit,Seed) =>
+  Found = false, % true if we found a non Lychrel number
+  Seq = [N],
+  Seed1 = false,
+  OldHit = cond(Cache.has_key(N),true,false), % found a Lychrel number from cache
+  I = 0,
+  while (OldHit == false,Found==false,I <= Limit)
+    I := I+1,
+    N := N + rev(N),
+    if Cache.has_key(N) then 
+      OldHit := true 
+    else 
+      Seq := Seq ++ [N],
+      if N == rev(N) then Found := true end
+    end
+  end,
+  if Found == false, OldHit == false then
+    Seed1 := true, % this is a seed, so add all elements to the cache
+    foreach(S in Seq) Cache.put(S) end
+  end,
+  Seed = Seed1,
+  % The check: have we found a Lyncrel number
+  (OldHit == true ; Found == false).
+
