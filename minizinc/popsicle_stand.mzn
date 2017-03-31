@@ -63,8 +63,8 @@ solve :: int_search(
          input_order, 
          indomain_min, 
          complete) 
-     % minimize z;
-     satisfy;
+     minimize z;
+     % satisfy;
 
 constraint
     forall(i in 0..n-1) (

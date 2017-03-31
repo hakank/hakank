@@ -31,6 +31,7 @@
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
 
+/*
 int: Mon = 1;
 int: Tue = 2;
 int: Wed = 3;
@@ -41,12 +42,16 @@ int: Sun = 7;
 
 % sets
 set of 1..7: DAYS = 1..7; 
+*/
+
+enum DAYS = {Mon,Tue,Wed,Thu,Fri,Sat,Sun};
+
 % requirements number workers per day
 array[DAYS] of int: Need = [17, 13, 15, 19, 14, 16, 11];
 
 
 % Decision variables. x[i]: No. of workers starting at day i
-array[DAYS] of var int: x; 
+array[DAYS] of var 0..max(Need): x; 
 
 % Objective: sum of total workers (started on a day)
 var int: z = sum(i in DAYS) (x[i]);
