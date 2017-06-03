@@ -1,0 +1,222 @@
+/* 
+
+  1RM calculations in Picat.
+
+  Calculation of 1RM for weight training and age adjustment weights.
+  See below for the sources.
+
+  Example: 
+  We want to know how much a session of 6 reps of 87kg corresponds to
+  a session of 12 reps. 
+  Answer: 
+     age_coefficient = 1.514
+     OneRM: 101.033kg (age adj.: 152.963kg)
+     Weight1: 87.000kg (age adj.: 131.718kg)  Reps: 6
+     Weight2: 70.154kg (age adj.: 106.213kg)  Reps: 12
+
+  I.e. a session of 6 x 87kg corresponds to a session with 12 x 70.154kg.
+  1RM is 101.033kg; this is the value that binds the two sessions.
+  Also we see the adjusted weights for weight1, weight2, and 1RM.
+
+  We can also study - since this is a CP model - how much one have to
+  lift in order to have a 1RM of 100kg for 6 reps and 12 reps, respectively:
+
+    OneRM: 100.000kg (age adj.: 151.400kg)
+    Weight1: 86.109kg (age adj.: 130.369kg)  Reps: 6
+    Weight2: 69.437kg (age adj.: 105.127kg)  Reps: 12
+
+  [As of writing, I'm there for 6 reps, but not yet there for 12 reps. 
+   Next time, perhaps.]
+
+
+  Note: This don't give the same results as http://strengthlevel.com/ :
+  - Weight*Reps don't give the same OneRM, this model has higher values.
+    Though brzycki's seems to be nearer than epley's.
+  - Age adjustments are higher in this model.
+
+
+  Also, since Picat's CP module don't support floats, that we have to
+  multiply everything with 1000, otherwise we only get values in whole
+  kg's which is not so fun. This means that there are some uncertainty. 
+  Example: for 
+       Weight1 = 87
+       Reps1   = 6
+       Reps2   = 12
+  there are 74 solutions where Weight2 ranges between 70.154kg 
+  and 70.167kg
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+% import sat. % It works as well but it's a little slower
+
+
+main => go.
+
+
+go =>
+
+  % Weight1 = 87*1_000,
+  Reps1 = 6*1_000,
+
+  % Weight2 = 67*1_000,
+  Reps2 = 12*1_000,
+
+  OneRM1 = 100*1_000,
+
+  Age = 60_000,
+
+  oneRM(Weight1, Reps1, 
+        Weight2, Reps2, 
+        Age,
+        OneRM1,_OneRM2,
+        Weight1Age,Weight2Age,OneRMAge),
+
+  println("Note that there are probably some errors here..."),
+  printf("OneRM: %3.3fkg (age adj.: %3.3fkg)\n", OneRM1/1000, OneRMAge/1000),
+  printf("Weight1: %3.3fkg (age adj.: %3.3fkg)  Reps: %0.0f\n", 
+         Weight1/1000, Weight1Age/1000,Reps1/1000),
+  printf("Weight2: %3.3fkg (age adj.: %3.3fkg)  Reps: %0.0f\n", 
+         Weight2/1000, Weight2Age/1000,Reps2/1000),
+
+  nl,
+
+  % fail, % please don't!
+
+  nl.
+
+
+% Note: all values are *1000.
+oneRM(Weight1,Reps1,Weight2,Reps2,Age, OneRM1,OneRM2, Weight1Age,Weight2Age,OneRMAge) => 
+
+  age_coeffs_adjusted(AgeCoeffs),
+
+  Weight1 :: 1_000..200_000,
+  Weight2 :: 1_000..200_000,
+
+  Reps1   :: 1_000..30_000,
+  Reps2   :: 1_000..30_000,
+
+  OneRM1  :: 1_000..300_000,
+  OneRM2  :: 1_000..300_000,
+
+  Weight1Age :: 1_000..230_000,
+  Weight2Age :: 1_000..230_000,
+  OneRMAge   :: 1_000..300_000,
+
+  %% This don't work...
+  % OneRM1 #= Weight1*(1 + Reps1/30),
+  % OneRM2 #= Weight2*(1 + Reps2/30),
+
+  %% This work 
+  % epley(Weight1,Reps1,OneRM1),
+  % epley(Weight2,Reps2,OneRM2),
+
+  % This give a somewhat lower OneRM than epley/3
+  brzycki(Weight1,Reps1,OneRM1),
+  brzycki(Weight2,Reps2,OneRM2),
+
+
+  % Note: We cannot expect an exact value for the two OneRM's, hence the interval.
+  % This might have to be adjusted...
+  OneRM1 #= OneRM2,
+  % abs(OneRM1-OneRM2) #<= 0,
+
+  % Age adjustments
+  RealAge = Age//1000,
+  AgeCoeff = AgeCoeffs[RealAge-30+1,2],
+  println(age_coefficient=AgeCoeff/1000),
+  Weight1Age #= Weight1*AgeCoeff/1000,
+  Weight2Age #= Weight2*AgeCoeff/1000,
+  OneRMAge #= OneRM1*AgeCoeff/1000,
+
+
+  Vars = [Weight1,Weight2,Reps1,Reps2,OneRM1,OneRM2,Weight1Age,Weight2Age,OneRMAge],
+  solve($[ff,split],Vars).
+
+
+
+epley(Weight, Reps, OneRM) =>
+   % OneRM #= Weight*(1 + Reps/30). % Don't work
+   Reps*Weight #= 30_000 * (OneRM - Weight). % This works.
+
+brzycki(Weight, Reps,OneRM) => 
+  % OneRM = Weight * (36/(37 - Reps)). % Don't work
+  Reps #= (37_000*OneRM - 36_000*Weight)/OneRM. % This works
+
+
+age_coeffs_adjusted(AgeCoeffs) =>
+   % We don't need 2 dimensions, but the first dimension (age) is nice as
+   % documentation.
+   % Note: I'm not sure how one would handle age < 30. Are all < 30 same as
+   % for 30?
+   AgeCoeffs = 
+   [
+   [30, 1    ], [31, 1_016], [32, 1_031], [33, 1_046], [34, 1_059], 
+   [35, 1_072], [36, 1_083], [37, 1_096], [38, 1_109], [39, 1_122], 
+   [40, 1_135], [41, 1_149], [42, 1_162], [43, 1_176], [44, 1_189], 
+   [45, 1_203], [46, 1_218], [47, 1_233], [48, 1_248], [49, 1_263], 
+   [50, 1_279], [51, 1_297], [52, 1_316], [53, 1_338], [54, 1_361], 
+   [55, 1_385], [56, 1_411], [57, 1_437], [58, 1_462], [59, 1_488], 
+   [60, 1_514], [61, 1_541], [62, 1_568], [63, 1_598], [64, 1_629], 
+   [65, 1_663], [66, 1_699], [67, 1_738], [68, 1_779], [69, 1_823], 
+   [70, 1_867], [71, 1_910], [72, 1_953], [73, 2_004], [74, 2_060], 
+   [75, 2_117], [76, 2_181], [77, 2_255], [78, 2_336], [79, 2_419], 
+   [80, 2_540], [81, 2_597], [82, 2_702], [83, 2_831], [84, 2_981], 
+   [85, 3_153], [86, 3_352], [87, 3_580], [88, 3_843], [89, 4_145], 
+   [90, 4_493]
+   ].
+
+
+/*
+
+Calculations of 1 RM based on nRM;
+The formulas is from Maud & Foster  "Physiological Assessments of"
+" Human Fitneess" (2 nd ed), page 140.
+
+(I assume kg in the formulas, but not sure if that' s correct or if it would matter.)
+     
+Also see: https://en.wikipedia.org/wiki/One - repetition_maximum ;
+ 
+The age coefficient (1.514 for age 60) is e.g from Meltzer - Faber Age coeffcients:
+   http://www.mastersweightlifting.org/forms/meltzer.htm
+
+also:
+   http://dinosaurtraining.blogspot.se/2016/12/the-difference-between-age-30-and-age-60.html
+
+Age coefficients: http://www.mastersweightlifting.org/forms/meltzer.htm 
+
+coeffs = {
+   {30, 1}, {31, 1.016}, {32, 1.031}, {33, 1.046}, {34, 1.059}, 
+   {35, 1.072}, {36, 1.083}, {37, 1.096}, {38, 1.109}, {39, 1.122}, 
+   {40, 1.135}, {41, 1.149}, {42, 1.162}, {43, 1.176}, {44, 1.189}, 
+   {45, 1.203}, {46, 1.218}, {47, 1.233}, {48, 1.248}, {49, 1.263}, 
+   {50, 1.279}, {51, 1.297}, {52, 1.316}, {53, 1.338}, {54, 1.361}, 
+   {55, 1.385}, {56, 1.411}, {57, 1.437}, {58, 1.462}, {59, 1.488}, 
+   {60, 1.514}, {61, 1.541}, {62, 1.568}, {63, 1.598}, {64, 1.629}, 
+   {65, 1.663}, {66, 1.699}, {67, 1.738}, {68, 1.779}, {69, 1.823}, 
+   {70, 1.867}, {71, 1.91}, {72, 1.953}, {73, 2.004}, {74, 2.06}, 
+   {75, 2.117}, {76, 2.181}, {77, 2.255}, {78, 2.336}, {79, 2.419}, 
+   {80, 2.540}, {81, 2.597}, {82, 2.702}, {83, 2.831}, {84, 2.981}, 
+   {85, 3.153}, {86, 3.352}, {87, 3.58}, {88, 3.843}, {89, 4.145}, 
+   {90, 4.493}};
+
+
+Strangely brzycki's formula yield a lower 1Rm than 10RM!
+Changed to Wikipedia's version:
+brzycki[weight_, reps_] :=  
+  weight * (36./(37 - reps));(* weight/1.0278 - 0.0278*reps*)
+
+epley[weight_, reps_] := 0.033*weight *reps + weight;
+epley2[weight_, reps_] := weight (1 + reps/30.);
+oconner[weight_, reps_] := weight*(1 + 0.025*reps);
+lombardi[weight_, reps_] := weight * reps^0.10;
+mcglothin[weight_, reps_] := 100*weight/(101.3 - 2.67123*reps);
+wathan[weight_, reps_] := 100*weight/(48.8 + 53.8 Exp[-0.075 reps]); 
+
+*/

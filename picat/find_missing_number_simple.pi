@@ -1,0 +1,644 @@
+/* 
+
+  Find the missing number in Picat.
+
+  Inspired byt
+  "Find missing number from a given randomized concatenated string of numbers from 1-250"
+  https://stackoverflow.com/questions/44133742/find-missing-number-from-a-given-randomized-concatenated-string-of-numbers-from 
+  """
+  I have a string with numbers from 1-250 concatenated in random order, but its missing one number. 
+  How to find the missed number? 
+  ....
+  """ 
+
+  Check simple matching (no CP).
+  The algorithm:
+    * for each digits (position P) in the missing digits list
+      * for this position (P) and position P+1..P+MaxLen, assign this digit (as a number) and 
+        all valid numbers that's created by the digits in the positions P+0..P+MaxLen to the 
+        possible positions.
+    * Collect all the found numbers and check if there is some number in 1..N that's missing.
+      If so: it's the missing number.
+      If not: No missing number is found. 
+
+  Tests
+
+  N=50, 10000 rounds:
+  If this algorithm find the missing number (called M belopw) depends much on 
+  which number that's missing:
+     - If it's M mod 10 = 0, it's always found (since there can be no 0x)
+     - If M is 1..9 it's never found (since 1..9 is always somewhere)
+     - If the reverse of M is not possible (15,16,..25,... etc) it's often found
+     - If the reverse of M is possible, it's sometimes found but mostly not
+     
+  status = (map)[not_found = 4520,found = 5480]
+   1 found: 0 not found: 183    never
+   2 found: 0 not found: 198    never
+   3 found: 0 not found: 181    never
+   4 found: 0 not found: 201    never
+   5 found: 0 not found: 181    never
+   6 found: 0 not found: 210    never
+   7 found: 0 not found: 195    never
+   8 found: 0 not found: 244    never
+   9 found: 0 not found: 224    never
+  10 found: 196 not found: 0    always
+  11 found: 89 not found: 111   not often found (revere exists)
+  12 found: 49 not found: 144   not often found (revere exists)
+  13 found: 62 not found: 143   not often found (revere exists)
+  14 found: 67 not found: 140   not often found (revere exists)
+  15 found: 158 not found: 40   often (reverse 51 not possible)
+  16 found: 176 not found: 20   often (reverse not possible)
+  17 found: 162 not found: 21   often (reverse not possible)
+  18 found: 186 not found: 20   often (reverse not possible)
+  19 found: 180 not found: 16   often (reverse not possible)
+  20 found: 194 not found: 0    always (reverse 02 not possible)
+  21 found: 48 not found: 162   not often found (revere 12 exists)
+  22 found: 82 not found: 124   not often found (revere exists)
+  23 found: 42 not found: 140   not often found (revere exists)
+  24 found: 53 not found: 125   not often found (revere exists)
+  25 found: 168 not found: 49   often (reverse not possible)
+  26 found: 206 not found: 14   often (reverse not possible)
+  27 found: 169 not found: 22   often (reverse not possible)
+  28 found: 180 not found: 19   often (reverse not possible)
+  29 found: 186 not found: 17   often (reverse not possible)
+  30 found: 196 not found: 0    always
+  31 found: 49 not found: 144   not often found (revere exists)
+  32 found: 62 not found: 148   not often found (revere exists)
+  33 found: 83 not found: 123   not often found (revere exists)
+  34 found: 60 not found: 157   not often found (revere exists)
+  35 found: 163 not found: 38   often (reverse not possible)
+  36 found: 185 not found: 22   often (reverse not possible)
+  37 found: 182 not found: 34   often (reverse not possible)
+  38 found: 171 not found: 20   often (reverse not possible)
+  39 found: 187 not found: 18   often (reverse not possible)
+  40 found: 211 not found: 0    always
+  41 found: 53 not found: 168   not often found (revere exists)
+  42 found: 46 not found: 144   not often found (revere exists)
+  43 found: 49 not found: 130   not often found (revere exists)
+  44 found: 80 not found: 105   not often found (revere exists)
+  45 found: 148 not found: 39   often
+  46 found: 187 not found: 24   often
+  47 found: 172 not found: 20   often
+  48 found: 185 not found: 18   often
+  49 found: 178 not found: 24   often
+  50 found: 180 not found: 0    always (reverse 05 not possible)
+
+  N=100
+  status = (map)[not_found = 6647,found = 3353]
+  1 found: 0 not found: 98         never
+  2 found: 0 not found: 91         never
+  3 found: 0 not found: 103         never
+  4 found: 0 not found: 94         never
+  5 found: 0 not found: 90         never
+  6 found: 0 not found: 110         never
+  7 found: 0 not found: 113         never
+  8 found: 0 not found: 101         never
+  9 found: 0 not found: 101         never
+  10 found: 0 not found: 99       always
+  11 found: 35 not found: 70
+  12 found: 28 not found: 62
+  13 found: 35 not found: 77
+  14 found: 33 not found: 81
+  15 found: 24 not found: 79
+  16 found: 30 not found: 72
+  17 found: 28 not found: 67
+  18 found: 20 not found: 53
+  19 found: 22 not found: 60
+  20 found: 110 not found: 0     always
+  21 found: 39 not found: 79
+  22 found: 31 not found: 57
+  23 found: 37 not found: 69
+  24 found: 43 not found: 76
+  25 found: 32 not found: 85
+  26 found: 26 not found: 69
+  27 found: 30 not found: 65
+  28 found: 27 not found: 68
+  29 found: 23 not found: 74
+  30 found: 87 not found: 0     always
+  31 found: 33 not found: 75
+  32 found: 31 not found: 76
+  33 found: 42 not found: 65
+  34 found: 27 not found: 83
+  35 found: 33 not found: 68
+  36 found: 27 not found: 72
+  37 found: 29 not found: 70
+  38 found: 18 not found: 67
+  39 found: 28 not found: 76
+  40 found: 105 not found: 0     always
+  41 found: 20 not found: 73
+  42 found: 23 not found: 68
+  43 found: 31 not found: 63
+  44 found: 38 not found: 60
+  45 found: 25 not found: 67
+  46 found: 32 not found: 75
+  47 found: 32 not found: 75
+  48 found: 25 not found: 75
+  49 found: 23 not found: 54
+  50 found: 103 not found: 0     always
+  51 found: 24 not found: 64
+  52 found: 27 not found: 72
+  53 found: 30 not found: 68
+  54 found: 30 not found: 78
+  55 found: 30 not found: 64
+  56 found: 36 not found: 79
+  57 found: 39 not found: 67
+  58 found: 34 not found: 61
+  59 found: 23 not found: 81
+  60 found: 111 not found: 0     always
+  61 found: 25 not found: 73
+  62 found: 27 not found: 58
+  63 found: 30 not found: 76
+  64 found: 30 not found: 74
+  65 found: 25 not found: 75
+  66 found: 44 not found: 68
+  67 found: 36 not found: 72
+  68 found: 19 not found: 61
+  69 found: 33 not found: 82
+  70 found: 104 not found: 0     always
+  71 found: 30 not found: 56
+  72 found: 30 not found: 81
+  73 found: 24 not found: 80
+  74 found: 30 not found: 65
+  75 found: 28 not found: 89
+  76 found: 36 not found: 58
+  77 found: 40 not found: 61
+  78 found: 40 not found: 68
+  79 found: 30 not found: 71
+  80 found: 93 not found: 0     always
+  81 found: 27 not found: 85
+  82 found: 29 not found: 78
+  83 found: 37 not found: 67
+  84 found: 24 not found: 56
+  85 found: 35 not found: 59
+  86 found: 29 not found: 67
+  87 found: 31 not found: 62
+  88 found: 38 not found: 50
+  89 found: 30 not found: 62
+  90 found: 99 not found: 0     always
+  91 found: 30 not found: 89
+  92 found: 26 not found: 70
+  93 found: 30 not found: 64
+  94 found: 28 not found: 67
+  95 found: 31 not found: 78
+  96 found: 34 not found: 63
+  97 found: 29 not found: 81
+  98 found: 23 not found: 59
+  99 found: 37 not found: 63
+  100 found: 103 not found: 0     always
+
+  N=250 (10000 runs)
+1 found: 0 not found: 29  not found
+2 found: 0 not found: 39
+3 found: 0 not found: 57
+4 found: 0 not found: 34
+5 found: 0 not found: 33
+6 found: 0 not found: 40
+7 found: 0 not found: 46
+8 found: 0 not found: 32
+9 found: 0 not found: 38
+10 found: 0 not found: 40
+11 found: 0 not found: 40
+12 found: 0 not found: 39
+13 found: 0 not found: 47
+14 found: 0 not found: 51
+15 found: 0 not found: 39
+16 found: 0 not found: 37
+17 found: 0 not found: 44
+18 found: 0 not found: 43
+19 found: 0 not found: 40
+20 found: 0 not found: 34
+21 found: 0 not found: 35
+22 found: 0 not found: 48
+23 found: 0 not found: 50
+24 found: 0 not found: 37
+25 found: 0 not found: 35
+26 found: 0 not found: 36
+27 found: 0 not found: 43
+28 found: 0 not found: 43
+29 found: 0 not found: 34
+30 found: 0 not found: 35
+31 found: 0 not found: 42
+32 found: 0 not found: 42
+33 found: 0 not found: 38
+34 found: 0 not found: 45
+35 found: 0 not found: 52
+36 found: 0 not found: 51
+37 found: 0 not found: 37
+38 found: 0 not found: 43
+39 found: 0 not found: 41
+40 found: 0 not found: 41
+41 found: 0 not found: 28
+42 found: 0 not found: 50
+43 found: 0 not found: 45
+44 found: 0 not found: 47
+45 found: 0 not found: 36
+46 found: 0 not found: 29
+47 found: 0 not found: 43
+48 found: 0 not found: 35
+49 found: 0 not found: 34
+50 found: 0 not found: 30
+51 found: 0 not found: 38
+52 found: 0 not found: 36
+53 found: 0 not found: 37
+54 found: 0 not found: 47
+55 found: 0 not found: 29
+56 found: 0 not found: 42
+57 found: 0 not found: 42
+58 found: 0 not found: 43
+59 found: 0 not found: 36
+60 found: 0 not found: 27
+61 found: 0 not found: 27
+62 found: 0 not found: 36
+63 found: 0 not found: 35
+64 found: 0 not found: 41
+65 found: 0 not found: 36
+66 found: 0 not found: 38
+67 found: 0 not found: 36
+68 found: 0 not found: 49
+69 found: 0 not found: 43
+70 found: 0 not found: 29
+71 found: 0 not found: 44
+72 found: 0 not found: 42
+73 found: 0 not found: 36
+74 found: 0 not found: 34
+75 found: 0 not found: 42
+76 found: 0 not found: 42
+77 found: 0 not found: 34
+78 found: 0 not found: 44
+79 found: 0 not found: 38
+80 found: 0 not found: 44
+81 found: 0 not found: 36
+82 found: 0 not found: 49
+83 found: 0 not found: 53
+84 found: 0 not found: 40
+85 found: 0 not found: 35
+86 found: 0 not found: 45
+87 found: 0 not found: 40
+88 found: 0 not found: 44
+89 found: 0 not found: 38
+90 found: 0 not found: 33
+91 found: 0 not found: 32
+92 found: 0 not found: 40
+93 found: 0 not found: 43
+94 found: 0 not found: 43
+95 found: 0 not found: 45
+96 found: 0 not found: 51
+97 found: 0 not found: 43
+98 found: 0 not found: 48
+99 found: 0 not found: 34  not found 
+100 found: 38 not found: 0  always
+101 found: 3 not found: 36  sometimes found.
+102 found: 10 not found: 22
+103 found: 40 not found: 7
+104 found: 35 not found: 6
+105 found: 33 not found: 5
+106 found: 38 not found: 11
+107 found: 42 not found: 9
+108 found: 28 not found: 7
+109 found: 23 not found: 4
+110 found: 10 not found: 29
+111 found: 2 not found: 44
+112 found: 3 not found: 35
+113 found: 8 not found: 25
+114 found: 5 not found: 26
+115 found: 10 not found: 22
+116 found: 12 not found: 34
+117 found: 10 not found: 33
+118 found: 16 not found: 27
+119 found: 9 not found: 29
+120 found: 8 not found: 30
+121 found: 0 not found: 49
+122 found: 1 not found: 29
+123 found: 12 not found: 28
+124 found: 6 not found: 23
+125 found: 28 not found: 11
+126 found: 35 not found: 11
+127 found: 30 not found: 12
+128 found: 28 not found: 7
+129 found: 23 not found: 15
+130 found: 39 not found: 4
+131 found: 7 not found: 35
+132 found: 13 not found: 14
+133 found: 34 not found: 11
+134 found: 32 not found: 5
+135 found: 36 not found: 12
+136 found: 30 not found: 8
+137 found: 38 not found: 4
+138 found: 29 not found: 8
+139 found: 31 not found: 9
+140 found: 34 not found: 2
+141 found: 5 not found: 42
+142 found: 11 not found: 31
+143 found: 28 not found: 8
+144 found: 41 not found: 4
+145 found: 26 not found: 12
+146 found: 34 not found: 10
+147 found: 36 not found: 6
+148 found: 28 not found: 7
+149 found: 39 not found: 6
+150 found: 34 not found: 4
+151 found: 6 not found: 35
+152 found: 19 not found: 23
+153 found: 28 not found: 10
+154 found: 31 not found: 5
+155 found: 34 not found: 9
+156 found: 30 not found: 5
+157 found: 29 not found: 5
+158 found: 33 not found: 5
+159 found: 29 not found: 10
+160 found: 35 not found: 3
+161 found: 4 not found: 41
+162 found: 13 not found: 28
+163 found: 32 not found: 9
+164 found: 23 not found: 4
+165 found: 24 not found: 13
+166 found: 36 not found: 7
+167 found: 34 not found: 6
+168 found: 25 not found: 17
+169 found: 38 not found: 5
+170 found: 53 not found: 5
+171 found: 6 not found: 28
+172 found: 15 not found: 26
+173 found: 38 not found: 8
+174 found: 35 not found: 3
+175 found: 41 not found: 4
+176 found: 32 not found: 4
+177 found: 28 not found: 5
+178 found: 34 not found: 6
+179 found: 34 not found: 6
+180 found: 38 not found: 4
+181 found: 4 not found: 33
+182 found: 12 not found: 27
+183 found: 30 not found: 8
+184 found: 44 not found: 6
+185 found: 29 not found: 9
+186 found: 29 not found: 10
+187 found: 27 not found: 4
+188 found: 20 not found: 6
+189 found: 33 not found: 11
+190 found: 38 not found: 6
+191 found: 5 not found: 28
+192 found: 22 not found: 27
+193 found: 24 not found: 7
+194 found: 34 not found: 7
+195 found: 23 not found: 7
+196 found: 24 not found: 5
+197 found: 29 not found: 3
+198 found: 23 not found: 14
+199 found: 26 not found: 6
+200 found: 48 not found: 0
+201 found: 9 not found: 44
+202 found: 16 not found: 27
+203 found: 38 not found: 6
+204 found: 35 not found: 15
+205 found: 47 not found: 3
+206 found: 30 not found: 11
+207 found: 29 not found: 5
+208 found: 46 not found: 7
+209 found: 43 not found: 5
+210 found: 14 not found: 29
+211 found: 5 not found: 43
+212 found: 5 not found: 38
+213 found: 12 not found: 35
+214 found: 11 not found: 30
+215 found: 11 not found: 21
+216 found: 10 not found: 17
+217 found: 10 not found: 36
+218 found: 10 not found: 28
+219 found: 7 not found: 29
+220 found: 10 not found: 32
+221 found: 4 not found: 36
+222 found: 11 not found: 35
+223 found: 12 not found: 32
+224 found: 12 not found: 30
+225 found: 28 not found: 11
+226 found: 25 not found: 8
+227 found: 26 not found: 8
+228 found: 30 not found: 10
+229 found: 32 not found: 7
+230 found: 36 not found: 1
+231 found: 5 not found: 36
+232 found: 14 not found: 21
+233 found: 35 not found: 11
+234 found: 29 not found: 8
+235 found: 44 not found: 9
+236 found: 33 not found: 11
+237 found: 37 not found: 8
+238 found: 19 not found: 8
+239 found: 29 not found: 11
+240 found: 45 not found: 7
+241 found: 7 not found: 30
+242 found: 12 not found: 29
+243 found: 33 not found: 12
+244 found: 30 not found: 8
+245 found: 37 not found: 12
+246 found: 43 not found: 6
+247 found: 32 not found: 13
+248 found: 25 not found: 7
+249 found: 31 not found: 8
+250 found: 40 not found: 3
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  N = 50,
+  garbage_collect(300_000_000),
+  StatusMap = new_map(),
+  FoundMap = new_map(),
+  NotFoundMap = new_map(),
+  foreach(I in 1..N) 
+    FoundMap.put(I,0),
+    NotFoundMap.put(I,0)
+  end,
+  foreach(T in 1..10_000) 
+    if T mod 1000 == 0 then println(test=T) end,
+    garbage_collect(300_000_000),
+    generate_problem(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits),
+    [MissingNumber,Status] = check_simple(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits,_NumberCandidates, false),
+    StatusMap.put(Status,StatusMap.get(Status,0)+1),
+    % println(T=StatusMap),
+    if Status == found then 
+       FoundMap.put(MissingNumber,FoundMap.get(MissingNumber)+1)
+    else 
+       NotFoundMap.put(MissingNumber,NotFoundMap.get(MissingNumber)+1)
+    end
+  end,
+  println(status=StatusMap),
+  foreach(I in 1..N) 
+    printf("%d found: %w not found: %w\n", I, FoundMap.get(I,0), NotFoundMap.get(I,0))
+  end,
+  nl.
+ 
+%  
+% generate a problem and compare with result of the MiniZinc model http://hakank.org/minizinc/find_missing_number2.mzn
+%
+go2 =>
+  N = 1000,
+  generate_problem(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits),
+  println(missing=MissingNumber),
+  [MissingNumber2,Status] = check_simple(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits,NumberCandidates, false),
+  [MiniZinc,Filename] = minizinc(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits,NumberCandidates),
+  if Status == found, MissingNumber == MissingNumber2 then
+     println(found)
+  else
+     println(not_found)
+  end,
+  RunMiniZinc = true,
+  if RunMiniZinc then
+    % println(MiniZinc),
+    println(filename=Filename),
+    FD = open(Filename,write),
+    println(FD,MiniZinc),
+    close(FD),
+    println("\n\nMiniZinc model:"),
+    Mzn = to_fstring("/home/hakank/bin/mzx2.pl /home/hakank/g12/me/find_missing_number2.mzn %w", Filename),
+    _ = command(Mzn)
+  end,
+
+  println("\nPicat solution again: "=Status);
+  nl.
+   
+
+
+%
+% Check if we can solve the problem by just try to match each slot.
+%
+check_simple(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits,NumberCandidates, Print) = Result => 
+
+  MissingDigitsLen = MissingDigits.len,
+
+  SumNumbers = sum_numbers(SortedDigits),
+  if Print then println(sumNumbers=SumNumbers) end,
+
+  SumMissingNumbers = sum_numbers(MissingDigits),
+  if Print then println(sumMissingNumbers=SumMissingNumbers) end,
+
+  DiffSum = SumNumbers - SumMissingNumbers,
+  if Print then println(diffSum=DiffSum) end,
+
+  LenDiff = SortedDigits.len - MissingDigits.len,
+  if Print then println(lenDiff=LenDiff) end,
+
+  Len = SortedDigits.len,
+
+  %
+  % check possible positions of a number in X and start positions in StartPos
+  % (i.e. restrict the domains)
+  %
+  MaxLen = N.to_string().len,
+  if Print then println(maxLen=MaxLen) end,
+
+  PossibleX = new_list(Len),
+  foreach(I in 1..Len)  
+    PossibleX[I] := []
+  end,
+  PossibleStartPos = new_list(N),
+  foreach(I in 1..N)  
+    PossibleStartPos[I] := []
+  end,
+  % possible (not used since it's not correct)
+  foreach(I in 1..MissingDigitsLen)
+    % println([i=I,d=MissingDigits[I]]),
+    % Possible = [],
+    foreach(J in 0..MaxLen,I+J <= MissingDigitsLen) 
+      TS = [MissingDigits[I+K].to_string() : K in 0..J].join(''),
+      T = TS.to_int(),
+      if T > 0, T <= N then 
+         PossibleX[I] := PossibleX[I] ++ [T],
+         foreach(K in 0..TS.len-1) 
+           PossibleX[I+K] := PossibleX[I+K] ++ [T]
+           % , println("\t" ++ [k=K,i_k=I+K,t=T, possX=PossibleX[I+K]]),
+         end
+      end
+    end
+  end,
+  foreach(I in 1..MissingDigitsLen)
+     Possible = PossibleX[I].remove_dups(),
+     % println([i=I,d=MissingDigits[I],p=Possible]),
+     if Possible != [] then
+      foreach(P in Possible, P != 0)
+        PossibleStartPos[P] := PossibleStartPos[P] ++ [I]
+      end
+    end 
+  end,
+  NumberCandidates = new_list(MissingDigitsLen),
+  foreach(I in 1..MissingDigitsLen)
+    NumberCandidates[I] := PossibleX[I].remove_dups().to_array()
+  end,
+  AllPossible = PossibleX.flatten().sort_remove_dups() ,
+  if Print then println(allPossible=AllPossible) end,
+  CheckMissing=[ I : I in 1..N, not membchk(I,AllPossible)],
+  Result1 = [MissingNumber,not_found],
+  if CheckMissing != [] then 
+    % printf("Found simple missing: %d\n", CheckMissing.first()),
+    Result1 := [MissingNumber,found]
+  end,
+  Result = Result1.
+
+
+sum_numbers(S) = sum([I.to_int() : I in S]).
+
+random_perm(L,N) = Perm => 
+  Perm = L,
+  Len = L.length,
+  _ = random2(),
+  foreach(_I in 1..N) 
+     R1 = 1+(random() mod Len),
+     R2 = 1+(random() mod Len),
+     T = Perm[R1],
+     Perm[R1] := Perm[R2],
+     Perm[R2] := T
+  end.
+
+
+
+generate_problem(N,MissingNumber, SortedDigits,MissingNumbersPlain,MissingDigits) =>
+    % All numbers 1..N
+    AllNumbersOrdered = [I.to_string() : I in 1..N].join(''), % we don't know the complete string
+    SortedDigits = [I.to_int() : I in AllNumbersOrdered],
+
+    Random = random_perm(1..N,N*2),
+    % AllNumbers = [I.to_string() : I in Random].join(''), 
+
+    % missing
+    if var(MissingNumber) then
+      MissingNumber = 1+random2() mod N
+      % MissingNumber = 1+random() mod N
+    end,
+    MissingNumbersPlain = [I : I in Random, I != MissingNumber].flatten(),
+    MissingNumbers = [I.to_string() : I in MissingNumbersPlain].join(''),
+    MissingNumbersInt = [I.to_int() : I in MissingNumbers],
+    MissingDigits = MissingNumbersInt.
+
+
+minizinc(N,MissingNumber,SortedDigits,MissingNumbers,MissingDigits,NumberCandidates) = [Out2,Filename] =>
+  Out = "",
+  Out := Out ++ to_fstring("n=%d;\n", N),
+  Out := Out  ++ to_fstring("max_len=%w;\n", N.to_string().len),
+  Out := Out  ++ to_fstring("digits_all=%w;\n", SortedDigits),
+  Out := Out  ++ to_fstring("num_digits_all=%w;\n", SortedDigits.len),
+
+  Out := Out  ++ to_fstring("%% missing number: %d\n", MissingNumber),
+  Out := Out  ++ to_fstring("%% missing_numbers = %w\n", MissingNumbers),
+  Out := Out  ++ to_fstring("digits_missing=%w;\n", MissingDigits),
+  Out := Out  ++ to_fstring("num_digits_missing=%w;\n", MissingDigits.len),
+  Out := Out  ++ to_fstring("number_candidates=%w;\n", NumberCandidates),
+  Filename = to_fstring("find_missing_number2_%d_%d.dzn", N, MissingNumber),
+  Out := Out  ++ to_fstring("%% Save as %w\n", Filename),
+  Out2 = Out.
+
+
+
+number_len(N) = ceiling(log10(N+1)).
