@@ -88,6 +88,10 @@
 %   gap> Factorization(g,PermList([6,5,4,1,2,3]));
 %   x1*x2*x3
 %
+%
+% Chuffed seems to like these parameters:
+%    -mdd=true -vsids=true -alldiff_cheat=false
+
 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
@@ -95,24 +99,15 @@
 %
 
 include "globals.mzn"; 
-int: n = 6; % 8;
+int: n = 8;
 int: seq_length = 4; % 4; % length of each reverse sequence
-int: max_steps = 20;
+int: max_steps = 15;
 int: m = n-seq_length+1;
 
 array[1..n] of var 1..n: data; % input sequence
 array[1..max_steps, 1..n] of var 1..n: steps;
 array[1..max_steps] of var 0..m: ops;
 var 1..max_steps: min_step;
-
-%
-% copy an array
-%
-predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
-  assert(index_set(x) = index_set(y),
-           "cp1d: x and y have different sizes",
-     forall(i in index_set(x)) ( x[i] = y[i] ))
-; 
 
 %
 % reverse: y is x where positions from..to are reversed
@@ -165,25 +160,35 @@ solve :: int_search(
 % initial data
 constraint
   % 
-  % cp1d(data, [1,3,2,6,5,4])
-  % cp1d(data, [5,6,2,1,4,3])
-  % cp1d(data, [6,5,4,1,2,3])
+  % data = [1,3,2,6,5,4]
+  % data = [5,6,2,1,4,3]
+  % data =  [6,5,4,1,2,3]
 
   % the two hardest problems, take 11 moves 
   % (12 including the initial step).
-  % cp1d(data, [6,3,5,2,4,1])   % GAP: x3*x1*x2*x1*x3*x2*x1*x2*x1*x3*x1
-  cp1d(data, [6,4,2,5,3,1])   % GAP: x1*x3*x2*x3*x2*x1*x3*x2*x3*x2*x1
+  % data =  [6,3,5,2,4,1]   % GAP: x3*x1*x2*x1*x3*x2*x1*x2*x1*x3*x1
+  % data =  [6,4,2,5,3,1]   % GAP: x1*x3*x2*x3*x2*x1*x3*x2*x3*x2*x1
 
   % infeasible
-  % cp1d(data, [6,5,4,3,2,1]) % 
+  % data =  [6,5,4,3,2,1]
 
   % test with another length (8) with the same seq_length (4)
   % The hardest is 10 moves (there are 156 with 10 moves according to GAP)
-  % cp1d(data, [6,8,3,7,1,4,2,5]) % 8 steps
+  data =  [6,8,3,7,1,4,2,5] % 8 steps
 
   % These takes 10 steps
-  % cp1d(data, [2,4,1,7,5,3,8,6]) % GAP: x2*x3*x2*x4*x3*x5*x4*x1*x2*x1
-  % cp1d(data, [8,7,6,3,2,5,4,1])  % x3*x1*x2*x3*x1*x4*x5*x1*x3*x1
+  % data =  [2,4,1,7,5,3,8,6] % GAP: x2*x3*x2*x4*x3*x5*x4*x1*x2*x1
+  % data =  [8,7,6,3,2,5,4,1]  % x3*x1*x2*x3*x1*x4*x5*x1*x3*x1
+
+  % Size 12
+  % Chuffed took 1:24 minutes (min_step: 13)
+  % data =  [7, 5, 11, 8, 9, 1, 10, 3, 4, 2, 6, 12]
+
+  % Chuffed took 3:27 minutes to solve this (min_step: 13)
+  % data =  [ 12, 2, 7, 3, 4, 11, 1, 10, 8, 9, 6, 5 ]
+
+
+
 ;
 
 % general constraints
@@ -196,7 +201,7 @@ constraint
   /\
   ops[1] = 0
   /\ 
-  forall(i in 1..max_steps) (
+  forall(i in 2..max_steps) (
      alldifferent([steps[i,j] | j in 1..n])
      /\
      % don't repeat reverses (i.e. if ops > 0)
@@ -220,7 +225,7 @@ constraint
          ops[i] = 0
       )
       \/
-      % reverse from 1, 2 or 3
+      % reverse from 1, 2 or 3,...
       exists(k in 1..m) (
             reverse([steps[i,j] | j in 1..n], 
                     [steps[i-1,j] | j in 1..n], 
@@ -238,12 +243,13 @@ constraint
       )
       /\
       min_step = i
-      /\ % and all the further steps should be "same"
+      /\ % and all the further steps should be "same" 
+         % (symmetry breaking)
       forall(k in i+1..max_steps) (
         same([steps[k,j] | j in 1..n], [steps[k-1,j] | j in 1..n])
       )
    )
-   /\ % this seems to be a good booster
+   /\ % this seems to be a good booster (or perhaps not...)
    forall(i in 2..max_steps) (
       i < min_step -> ops[i] > 0
    )

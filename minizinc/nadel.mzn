@@ -1,7 +1,7 @@
 % 
 % Nadel's construction problem in MiniZinc.
 % 
-% From Rina Dichter "Constraint Processing", page 5.
+% From Rina Dechter "Constraint Processing", page 5.
 % Attributes the problem to
 % B.A. Nadel "Constraint satisfaction algorithms" (1989).
 % """
@@ -29,7 +29,7 @@
 % and minimizes to 1 broken constraint.
 % 
 % The model (which - of course - could be erroneous) generates 28 different 
-% models. The broken constraints are either
+% solutions. The broken constraints are either
 %   - steep_slopes constraints or
 %   - near_dump constraints.
 %

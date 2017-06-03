@@ -129,7 +129,7 @@ constraint
       exists(a,b in {-1,0,1} where
             i+a >= 1 /\ j+b >= 1 /\
             i+a <= r /\ j+b <= c
-            /\(abs(a) + abs(b) = 1)
+            % /\(abs(a) + abs(b) = 1)
             /\ 'xor'(abs(a)=1,abs(b)=1) 
            ) (
 
@@ -302,7 +302,7 @@ output
 [
   if m <= 28 then 
     if j = 1 then "\n" else "" endif ++
-       show(str[fix(x[i,j])])
+       str[fix(x[i,j])]
   else
     ""
   endif
