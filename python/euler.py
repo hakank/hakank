@@ -165,7 +165,7 @@ def bench(f):
       message = "!"
       bad.append([func,t])
    all_results[func] = t
-   print func, answer, t, "s", message
+   print "%-10s: %-20s%f%5s" % (func, str(answer), t, message)
    if got_answers[0]:
       a = answers[fnum]
       if str(answer) != a:
@@ -208,6 +208,16 @@ def euler2b():
         i += 1
         f = fib(i)
     return (s)
+
+#
+# using .append()
+#
+def euler2c():
+   f = [1,1]
+   while f[-1] < 4000000:
+      f.append(f[-1]+f[-2])
+   f.remove(f[-1]) # remove last since it's too high
+   return sum(filter(lambda i: i % 2 == 0, f))
     
 
 # @memoized
@@ -336,6 +346,21 @@ def is_prime2(num):
         div += 2
     return True
 
+# slower
+def is_prime3(num):
+   if num < 2:
+      return False
+   primes = {2,3,5,7,11,13}
+   if num in primes:
+      return True
+   for p in primes:
+      if num % p == 0:
+         return False
+   for i in xrange(17,1+int(sqrt(num)),2):
+      if num % i == 0:
+         return False
+   return True
+
 @memoized2
 def is_prime_cached(n):
    return is_prime(n)
@@ -370,6 +395,8 @@ def primes(limit):
 def primes2(limit):
    primes = [2] + [i for i in xrange(3, limit, 2) if is_prime(i)] 
    return primes
+
+ 
 
 # prime sieve below limit
 def sieve(limit):
@@ -485,8 +512,7 @@ def euler9():
 def euler9b():
    if not use_cp[0]:
       print "No ortools.constraint_solver supported, running euler9 instead"
-      euler9()
-      return
+      return euler9()
 
    solver = cp.Solver("euler9b")
    x = [solver.IntVar(1,500) for i in range(3)]
@@ -899,7 +925,7 @@ def euler14d():
       if this_len > max_len:
          max_len = this_len
          max_n = n
-         print max_len, max_n
+         # print max_len, max_n
    return max_n
 
 #
@@ -911,7 +937,7 @@ def euler14e():
    max_len = 0
    max_n = 1
    limit = 1000000
-   for n in xrange(1,limit,2):
+   for n in xrange(3,limit,2):
       m = n
       clen = 1
       while m != 1:
@@ -919,13 +945,10 @@ def euler14e():
             clen += lens[m] -1
             break
          else:
-            # if m % 2 == 1:
             if m & 1:
                m = 3*m+1
-               # m += (m<<1) + 1
             else:
                m >>= 1
-               # m //= 2
             clen += 1
       lens[n] = clen
       if clen > max_len:
@@ -933,10 +956,7 @@ def euler14e():
          max_n = n
          # print max_len, max_n
    return max_n
-
-
-
-   
+  
 
 def euler15():
    """
@@ -1657,8 +1677,7 @@ def scalar_product(solver, A,X,Product):
 def euler31b():
    if not use_cp[0]:
       print "No ortools.constraint_solver supported, running euler31 instead"
-      euler31()
-      return
+      return euler31()
 
    solver = cp.Solver("euler31b")
    coins = [200,100,50,20,10,5,2,1]
@@ -1776,8 +1795,7 @@ def pandigital(cp, base=10, start=1, len1=1, len2=4):
 def euler32b():
    if not use_cp[0]:
       print "No ortools.constraint_solver supported, using euler32 instead"
-      euler32()
-      return
+      return euler32()
 
    base = 10
    start = 1
@@ -2163,8 +2181,7 @@ def euler43():
    """
    if not use_cp[0]:
       print "No ortools.constraint_solver supported, running euler43b instead"
-      euler43b()
-      return
+      return euler43b()
 
 
    primes = [2,3,5,7,11,13,17]
@@ -2240,10 +2257,8 @@ def euler44b():
       for K in T:
          if J < K:
             A = J+K
-            # if S.has_key(A) and A < D:
             if A in S and A < D:               
                B = abs(J-K)
-               # if S.has_key(B) and B < D:
                if B in S and B < D:                  
                   D = B
    return D
@@ -2253,7 +2268,7 @@ def euler44c():
    # S = {pent(N) for N in xrange(1,2500+1)}
    S = {pent(N):1 for N in xrange(1,2500+1)}   
    D = 10000000
-   for (J,K) in itertools.product(S,S):
+   for (J,K) in itertools.product(S,repeat=2):
       if J < K:
          A = J+K
          if A in S and A < D:
@@ -2261,9 +2276,6 @@ def euler44c():
             if B in S and B < D:
                D = B
    return D
-
-
-
 
 
 def euler45():
@@ -2668,9 +2680,9 @@ def run_all():
    
    # bench(euler14) # 2.47s!
    ##bench(euler14b) # MUCH TOO SLOW
-   bench(euler14c) # 1.80s! TODO FIX
+   # bench(euler14c) # 1.80s! TODO FIX
    # bench(euler14d)
-   # bench(euler14e) # testing only odd numbers (1.6s)
+   bench(euler14e) # testing only odd numbers (1.6s)
    
    bench(euler15) # 0.00003s
    
