@@ -33,9 +33,9 @@ fractions(Digits) :-
         DD = [D1,D2,D3],
         DD :: 1..81,
 
-        D1 #= B*C,
-        D2 #= E*F,
-        D3 #= H*I,
+        D1 #= 10*B+C,
+        D2 #= 10*E+F,
+        D3 #= 10*H+I,
         A*D2*D3 + D*D1*D3 + G*D1*D2 #= D1*D2*D3,
 
         % break the symmetry
