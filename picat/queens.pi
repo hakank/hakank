@@ -1,4 +1,4 @@
-/*
+ /*
 
   N-Queens problem in Picat.
 
@@ -13,6 +13,18 @@ import cp.
 
 main => go.
 
+queens1(N, Q) => 
+  Q = new_list(N),
+  Q :: 1..N,
+  foreach(I in 1..N, J in 1..N, I < J) 
+    Q[I] #!= Q[J],
+    Q[I] + I #!= Q[J] + J,
+    Q[I] - I #!= Q[J] - J
+  end,
+
+  solve(Q).
+
+
 %
 % Note that $Q[I] is needed here.
 %
@@ -22,9 +34,11 @@ queens3(N, Q) =>
     all_different(Q),
     all_different([$Q[I]-I : I in 1..N]),
     all_different([$Q[I]+I : I in 1..N]),
+
     solve([ff],Q).
 
 queens3(N) =>
+    garbage_collect(200_000_000),
     queens3_all(N, Solutions),
     % writeln(Solutions),
     writeln(len=Solutions.length).
@@ -74,23 +88,62 @@ queens5(N, Q) =>
     all_different_me([$Q[I]+I : I in 1..N]),
     solve([ff],Q).
 
+queens3_count(N) = length(findall(_, queens3(N, _))).
+
+
+queens3_count2_temp(N) =>
+    Q=new_list(N),
+    Q :: 1..N,
+    all_different(Q),
+    all_different([$Q[I]-I : I in 1..N]),
+    all_different([$Q[I]+I : I in 1..N]),
+    solve([ff],Q),
+    M = get_global_map(),
+    M.put(count,M.get(count)+1).
+
+queens3_count2(N, _Count) ?=> 
+   get_global_map().put(count,0),
+   queens3_count2_temp(N),
+   fail.
+queens3_count2(_N, Count) => 
+   Count = get_global_map().get(count).
+
+% From Albert Dinero / albertmcchan@yahoo.com
+count(Goal) = Count =>
+  M = get_global_map(),
+  M.put(count, 0),
+  (call(Goal),
+   M.put(count, M.get(count) + 1),
+   fail;
+   Count = M.get(count)).
+
+queens3_count3(N) = count($queens3(N, _)).
+
 go => 
    queens3(8,Q),
    writeln(Q),
-   N2 = 12, 
-   queens3_all(8, Solutions),
+   N = 8, 
+   queens3_all(N, Solutions),
    % writeln(Solutions),
    Len=Solutions.length,
-   writef("N:%w %w solutions.\n%w\n", N2, Len, Solutions).
-  
+   writef("N:%w %w solutions.\n%w\n", N, Len, Solutions).
+
+
+go1 => 
+   All=findall(Q,queens1(8,Q)),
+   println(All),
+   println(len=All.length),
+   nl.
+
 
 go2 => 
-    garbage_collect(20000000),
-    foreach(N in 2..14) 
+    garbage_collect(200_000_000),
+    foreach(N in 2..15) 
        statistics(backtracks, Backtracks),
        statistics(runtime, [_, _Runtime1]),
-       queens3_all(N, Solutions),
-       Len=Solutions.length,
+       % queens3_all(N, Solutions),
+       % Len=Solutions.length,
+       Len = count_all(queens3(N,_)),
        statistics(backtracks, Backtracks2),
        B = Backtracks2 - Backtracks,
        Backtracks := Backtracks2,
@@ -104,10 +157,23 @@ go2 =>
 %   queens3b: 10.83s (0 backtracks)
 %   queens4 : 4.25s (2 backtracks)
 %   queens5 : 6.86s (2 backtracks)
+% 
+% Times per Picat v 1.6
+%   queens3 :  1.86s (2 backtracks) % standard version
+%   queens3b: 14.55s (0 backtracks) % all_distinct
+%   queens4 : 3.07s (2 backtracks)  % alternative
+%   queens5 : 5.53s (2 backtracks)  % using a decomposition of all_different/1.
+%
+% Times per Picat v 1.7
+%   queens3 :  1.78s (2 backtracks) % standard version
+%   queens3b: 13.5s (0 backtracks) % all_distinct
+%   queens4 : 2.71s (2 backtracks)  % alternative
+%   queens5 : 5.2s (2 backtracks)  % using a decomposition of all_different/1.
 %
 go3 => 
     Ps = [queens3=1000, queens3b=1000, queens4=1000,queens5=1000],
     foreach(P=N in Ps) 
+       garbage_collect(200_000_000),
        printf("%w(%d)\n", P, N),
        time2(once(call(P,N,Q))),
        writeln(Q),
@@ -134,20 +200,49 @@ go5 =>
     nl.
 
 % N=10000 probably exhaust the RAM...
-% go6 =>
-%     N = 10000,
-%     println("timing queens4(10000,Q)"),
-%     time2(queens4(N,_Q)),
-%     nl.
+go6 =>
+    N = 10000,
+    println("timing queens4(10000,Q)"),
+    time2(queens3(N,_Q)),
+    nl.
 
 go7 =>
     Ns = [8,10,50,100,400,500,700,1000,1500],
     foreach(N in Ns)
+       garbage_collect(200_000_000),
        println(n=N),
        time2(queens3(N,_)),
        nl
     end,
     nl.
+
+go8 =>
+   foreach(N in 8..15) 
+      garbage_collect(200_000_000),
+      time2(Count=queens3_count(N)),
+      println(N=Count),
+      nl
+   end,
+   nl.
+
+go9 =>
+   foreach(N in 8..15) 
+      time2(queens3_count2(N,Count)),
+      println(N=Count),
+      nl
+   end,
+   nl.
+
+
+go10 =>
+   foreach(N in 8..15) 
+      time2(Count=queens3_count3(N)),
+      println(N=Count),
+      nl
+   end,
+   nl.
+
+
 
 check4(P) =>
    N = length(P),
@@ -155,3 +250,5 @@ check4(P) =>
       P[I]-I != P[J]-J,
       P[I]+I != P[J]+J
    end.
+
+
