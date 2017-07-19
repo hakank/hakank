@@ -37,7 +37,7 @@
   Also see my other Google CP Solver models:
   http://www.hakank.org/google_cp_solver/
 """
-
+from __future__ import print_function
 from ortools.constraint_solver import pywrapcp
 
 
@@ -48,7 +48,7 @@ def main(unused_argv):
   #
   # declare variables
   #
-  digits = range(0, 10)
+  digits = list(range(0, 10))
   a = solver.IntVar(digits, "a")
   b = solver.IntVar(digits, "b")
   c = solver.IntVar(digits, "c")
@@ -63,16 +63,14 @@ def main(unused_argv):
 
   letters = [a, b, c, d, e, f, g, h, i, j]
 
-  x = solver.IntVar(range(0, 99999), "x")
-  y = solver.IntVar(range(0, 99999), "y")
-  diff = solver.IntVar(range(0, 99999), "y")
-
+  digit_vector = [10000,1000,100,10,1]
+  x = solver.ScalProd(letters[0:5],digit_vector)
+  y = solver.ScalProd(letters[5:],digit_vector)
+  diff = x - y
+  
   #
   # constraints
   #
-  solver.Add(x == 10000 * a + 1000 * b + 100 * c + 10 * d + e)
-  solver.Add(y == 10000 * f + 1000 * g + 100 * h + 10 * i + j)
-  solver.Add(diff == x - y)
   solver.Add(diff > 0)
   solver.Add(solver.AllDifferent(letters))
 
@@ -93,7 +91,7 @@ def main(unused_argv):
   search_log = solver.SearchLog(100, diff)
   # Note: I'm not sure what CHOOSE_PATH do, but it is fast:
   #       find the solution in just 4 steps
-  solver.Solve(solver.Phase(letters + [x, y, diff],
+  solver.Solve(solver.Phase(letters,
                             solver.CHOOSE_PATH,
                             solver.ASSIGN_MIN_VALUE),
                [objective, search_log, collector])
@@ -103,16 +101,16 @@ def main(unused_argv):
   xval = collector.Value(0, x)
   yval = collector.Value(0, y)
   diffval = collector.Value(0, diff)
-  print "x:", xval
-  print "y:", yval
-  print "diff:", diffval
-  print xval, "-", yval, "=", diffval
-  print [("abcdefghij"[i], collector.Value(0, letters[i])) for i in range(10)]
-  print
-  print "failures:", solver.Failures()
-  print "branches:", solver.Branches()
-  print "WallTime:", solver.WallTime()
-  print
+  print("x:", xval)
+  print("y:", yval)
+  print("diff:", diffval)
+  print(xval, "-", yval, "=", diffval)
+  print([("abcdefghij"[i], collector.Value(0, letters[i])) for i in range(10)])
+  print()
+  print("failures:", solver.Failures())
+  print("branches:", solver.Branches())
+  print("WallTime:", solver.WallTime())
+  print()
 
 if __name__ == "__main__":
   main("cp sample")
