@@ -518,8 +518,8 @@ def euler9b():
    x = [solver.IntVar(1,500) for i in range(3)]
 
    solver.Add(solver.Sum(x) == 1000)
-   # solver.Add(x[0]*x[0] + x[1]*x[1] == x[2]*x[2])
-   solver.Add(solver.Power(x[0],2) + solver.Power(x[1],2) == solver.Power(x[2],2))   
+   solver.Add(x[0]*x[0] + x[1]*x[1] == x[2]*x[2])
+   # solver.Add(solver.Power(x[0],2) + solver.Power(x[1],2) == solver.Power(x[2],2))   
 
    # symmetry breaking
    solver.Add(x[0] <= 1000//3)
