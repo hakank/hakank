@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class DivisibleBy9Through1 {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -40,7 +40,7 @@ public class DivisibleBy9Through1 {
    *
    */
   public static void my_mod(Solver solver, IntVar x, IntVar y, IntVar r) {
-        
+
     long lbx = x.min();
     long ubx = x.max();
     long ubx_neg = -ubx;
@@ -49,24 +49,24 @@ public class DivisibleBy9Through1 {
     int max_x = (int)Math.max(ubx, lbx_neg);
 
     IntVar d = solver.makeIntVar(min_x, max_x, "d");
-    
+
     // r >= 0
     solver.addConstraint(solver.makeGreaterOrEqual(r,0));
 
     // x*r >= 0
     solver.addConstraint(
         solver.makeGreaterOrEqual(
-            solver.makeProd(x,r).Var(), 0));
+            solver.makeProd(x,r).var(), 0));
 
     // -abs(y) < r
     solver.addConstraint(
         solver.makeLess(
-            solver.makeOpposite(solver.makeAbs(y).Var()).Var(), r));
+            solver.makeOpposite(solver.makeAbs(y).var()).var(), r));
 
     // r < abs(y)
     solver.addConstraint(
         solver.makeLess(r,
-            solver.makeAbs(y).Var().Var()));
+            solver.makeAbs(y).var().var()));
 
     // min_x <= d, i.e. d > min_x
     solver.addConstraint(solver.makeGreater(d, min_x));
@@ -78,7 +78,7 @@ public class DivisibleBy9Through1 {
     // x == y*d+r
     solver.addConstraint(solver.makeEquality(x,
         solver.makeSum(
-            solver.makeProd(y,d).Var(),r).Var()));
+            solver.makeProd(y,d).var(),r).var()));
 
   }
 
@@ -95,14 +95,14 @@ public class DivisibleBy9Through1 {
 
     IntVar[] tmp = new IntVar[len];
     for(int i = 0; i < len; i++) {
-      tmp[i] = solver.makeProd(a[i], (int)Math.pow(base,(len-i-1))).Var();
+      tmp[i] = solver.makeProd(a[i], (int)Math.pow(base,(len-i-1))).var();
     }
     solver.addConstraint(
-        solver.makeEquality(solver.makeSum(tmp).Var(), num));
+        solver.makeEquality(solver.makeSum(tmp).var(), num));
   }
 
   /**
-   * 
+   *
    * Solves the divisible by 9 through 1 problem.
    * See http://www.hakank.org/google_or_tools/divisible_by_9_through_1.py
    *
@@ -113,7 +113,7 @@ public class DivisibleBy9Through1 {
 
     //
     // data
-    // 
+    //
     int m = (int)Math.pow(base,(base-1)) - 1;
     int n = base - 1;
 
@@ -121,7 +121,7 @@ public class DivisibleBy9Through1 {
 
     System.out.println("base: " + base);
 
-    // 
+    //
     // variables
     //
 
@@ -130,12 +130,12 @@ public class DivisibleBy9Through1 {
 
     // the numbers. t[0] contains the answe
     IntVar[] t = solver.makeIntVarArray(n, 0, m, "t");
-          
+
 
     //
     // constraints
     //
-    solver.addConstraint(solver.makeAllDifferent(x, true));
+    solver.addConstraint(solver.makeAllDifferent(x));
 
     // Ensure the divisibility of base .. 1
     IntVar zero = solver.makeIntConst(0);
@@ -146,11 +146,11 @@ public class DivisibleBy9Through1 {
         tt[j] = x[j];
       }
       toNum(solver, tt, t[i], base);
-      IntVar mm_const = solver.makeIntConst(mm);      
+      IntVar mm_const = solver.makeIntConst(mm);
       my_mod(solver, t[i], mm_const, zero);
     }
 
-    
+
 
     //
     // search
@@ -191,7 +191,7 @@ public class DivisibleBy9Through1 {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 
@@ -202,7 +202,7 @@ public class DivisibleBy9Through1 {
     if (args.length > 0) {
       int new_base = Integer.parseInt(args[0]);
       if (new_base > 10) {
-        // Note: The next valid base after 10 is 14 and 
+        // Note: The next valid base after 10 is 14 and
         // the number 559922224824157, which is too large in this model.
         System.out.println("Sorry, max allowed base is 10. Setting base to 10.");
       } else if (new_base < 2) {

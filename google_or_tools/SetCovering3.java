@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.OptimizeVar;
 public class SetCovering3 {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -41,10 +41,11 @@ public class SetCovering3 {
 
     //
     // data
-    // 
+    //
 
     // Set covering problem from
-    // Katta G. Murty: 'Optimization Models for Decision Making', page 302f
+    // Katta G. Murty: 'Optimization Models for Decision Making',
+    // page 302f
     // http://ioe.engin.umich.edu/people/fac/books/murty/opti_model/junior-7.pdf
     int num_groups = 6;
     int num_senators = 10;
@@ -63,19 +64,19 @@ public class SetCovering3 {
     IntVar[] x = solver.makeIntVarArray(num_senators, 0, 1, "x");
 
     // number of assigned senators, to be minimize
-    IntVar z = solver.makeSum(x).Var();
+    IntVar z = solver.makeSum(x).var();
 
     //
     // constraints
     //
 
-    
+
     // ensure that each group is covered by at least
     // one senator
     for(int i = 0; i < num_groups; i++) {
       IntVar[] b = new IntVar[num_senators];
       for(int j = 0; j < num_senators; j++) {
-        b[j] = solver.makeProd(x[j], belongs[i][j]).Var();
+        b[j] = solver.makeProd(x[j], belongs[i][j]).var();
       }
       solver.addConstraint(
           solver.makeSumGreaterOrEqual(b, 1));
@@ -109,7 +110,8 @@ public class SetCovering3 {
       // More details
       for(int j = 0; j < num_senators; j++) {
         if (x[j].value() == 1) {
-          System.out.print("Senator " + (1 + j) + " belongs to these groups: ");
+          System.out.print("Senator " + (1 + j) +
+                           " belongs to these groups: ");
           for(int i = 0; i < num_groups; i++) {
             if (belongs[i][j] == 1) {
               System.out.print((1 + i) + " ");
@@ -118,7 +120,7 @@ public class SetCovering3 {
           System.out.println();
         }
       }
-      
+
 
     }
     solver.endSearch();
@@ -128,7 +130,7 @@ public class SetCovering3 {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

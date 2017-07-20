@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.OptimizeVar;
 public class SetCovering {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -41,8 +41,9 @@ public class SetCovering {
 
     //
     // data
-    // 
-    // Placing of firestations, from Winston 'Operations Research', page 486.
+    //
+    // Placing of firestations, from Winston 'Operations Research',
+    // page 486.
     int min_distance = 15;
     int num_cities = 6;
 
@@ -52,19 +53,19 @@ public class SetCovering {
                         {30,35,15, 0,15,25},
                         {30,20,30,15, 0,14},
                         {20,10,20,25,14, 0}};
-  
+
 
     //
     // variables
     //
     IntVar[] x = solver.makeIntVarArray(num_cities, 0, 1, "x");
-    IntVar z = solver.makeSum(x).Var();
+    IntVar z = solver.makeSum(x).var();
 
 
     //
     // constraints
     //
-    
+
     // ensure that all cities are covered
     for(int i = 0; i < num_cities; i++) {
       ArrayList<IntVar> b = new ArrayList<IntVar>();
@@ -110,7 +111,7 @@ public class SetCovering {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

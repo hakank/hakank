@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class Seseman {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -37,7 +37,7 @@ public class Seseman {
   private static void solve(int n) {
 
     Solver solver = new Solver("Seseman");
-      
+
     //
     // data
     //
@@ -55,13 +55,13 @@ public class Seseman {
       }
     }
 
-    IntVar total_sum = solver.makeSum(x_flat).Var();
+    IntVar total_sum = solver.makeSum(x_flat).var();
 
 
     //
     // constraints
     //
-        
+
     // zero in all middle cells
     for(int i = 1; i < n-1; i++) {
       for(int j = 1; j < n-1; j++) {
@@ -128,7 +128,7 @@ public class Seseman {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

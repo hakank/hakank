@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class DeBruijn {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -40,15 +40,15 @@ public class DeBruijn {
 
     IntVar[] tmp = new IntVar[len];
     for(int i = 0; i < len; i++) {
-      tmp[i] = solver.makeProd(a[i], (int)Math.pow(base,(len-i-1))).Var();
+      tmp[i] = solver.makeProd(a[i], (int)Math.pow(base,(len-i-1))).var();
     }
     solver.addConstraint(
-        solver.makeEquality(solver.makeSum(tmp).Var(), num));
+        solver.makeEquality(solver.makeSum(tmp).var(), num));
   }
 
 
   /**
-   * 
+   *
    * Implements "arbitrary" de Bruijn sequences.
    * See http://www.hakank.org/google_or_tools/debruijn_binary.py
    *
@@ -63,22 +63,22 @@ public class DeBruijn {
     // the same. Nice feature, but it can slow things down...
     boolean check_same_gcc = false; // true;
 
-    // 
+    //
     // variables
     //
-    IntVar[] x =  
+    IntVar[] x =
       solver.makeIntVarArray(m, 0, (int)Math.pow(base, n) - 1, "x");
 
     IntVar[][] binary = new IntVar[m][n];
     for(int i = 0; i < m; i++) {
       for(int j = 0; j < n; j++) {
-        binary[i][j] = 
+        binary[i][j] =
           solver.makeIntVar(0, base - 1, "binary[" + i + "," + j + "]");
       }
     }
 
     // this is the de Bruijn sequence
-    IntVar[] bin_code = 
+    IntVar[] bin_code =
       solver.makeIntVarArray(m, 0, base - 1, "bin_code");
 
     // occurences of each number in bin_code
@@ -97,7 +97,7 @@ public class DeBruijn {
     //
     // constraints
     //
-    solver.addConstraint(solver.makeAllDifferent(x, true));
+    solver.addConstraint(solver.makeAllDifferent(x));
 
     // converts x <-> binary
     for(int i = 0; i < m; i++) {
@@ -138,12 +138,12 @@ public class DeBruijn {
       for(int i = 1; i < base; i++) {
         solver.addConstraint(solver.makeEquality(gcc[i], gcc[i - 1]));
       }
-    } 
+    }
 
     // symmetry breaking:
     // the minimum value of x should be first
-    solver.addConstraint(solver.makeEquality(x[0], solver.makeMin(x).Var())); 
-    
+    solver.addConstraint(solver.makeEquality(x[0], solver.makeMin(x).var()));
+
 
     //
     // search
@@ -173,7 +173,7 @@ public class DeBruijn {
         System.out.print(gcc[i].value() + " ");
       }
       System.out.println("\n");
-      
+
 
       // for debugging etc: show the full binary table
       /*
@@ -196,7 +196,7 @@ public class DeBruijn {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 
@@ -205,7 +205,7 @@ public class DeBruijn {
     int base = 2;
     int n = 3;
     int m = 8;
-    
+
     if (args.length > 0) {
       base = Integer.parseInt(args[0]);
     }
@@ -219,7 +219,7 @@ public class DeBruijn {
       int m_max = (int) Math.pow(base, n);
       m = Integer.parseInt(args[2]);
       if (m > m_max) {
-        System.out.println("m(" + m + ") is too large. Set m to " + 
+        System.out.println("m(" + m + ") is too large. Set m to " +
                            m_max + ".");
         m = m_max;
       }

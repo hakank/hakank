@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.OptimizeVar;
 public class SetCovering2 {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -41,7 +41,7 @@ public class SetCovering2 {
 
     //
     // data
-    // 
+    //
 
     // Example 9.1-2 from
     // Taha "Operations Research - An Introduction",
@@ -65,14 +65,14 @@ public class SetCovering2 {
                       {2,4},
                       {5,8},
                       {3,5}};
-                            
+
     //
     // variables
     //
     IntVar[] x = solver.makeIntVarArray(n, 0, 1, "x");
 
     // number of telephones, to be minimize
-    IntVar z = solver.makeSum(x).Var();
+    IntVar z = solver.makeSum(x).var();
 
     //
     // constraints
@@ -119,7 +119,7 @@ public class SetCovering2 {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -26,12 +26,12 @@ import com.google.ortools.constraintsolver.OptimizeVar;
 public class CoinsGrid {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
   /**
-   * 
-   * Solves the Coins Grid problm. 
+   *
+   * Solves the Coins Grid problm.
    * See http://www.hakank.org/google_or_tools/coins_grid.py
    *
    */
@@ -41,11 +41,11 @@ public class CoinsGrid {
 
     //
     // data
-    // 
+    //
     int n = 31;
     int c = 14;
-        
-    // 
+
+    //
     // variables
     //
     IntVar[][] x = new IntVar[n][n];
@@ -61,7 +61,7 @@ public class CoinsGrid {
     //
     // constraints
     //
-        
+
     // sum row/columns == c
     for(int i = 0; i < n; i++) {
       IntVar[] row = new IntVar[n];
@@ -80,11 +80,11 @@ public class CoinsGrid {
     IntVar[] obj_tmp = new IntVar[n * n];
     for(int i = 0; i < n; i++) {
       for(int j = 0; j < n; j++) {
-        obj_tmp[i * n + j] = 
-          solver.makeProd(x[i][j],(i - j) * (i - j)).Var();
+        obj_tmp[i * n + j] =
+          solver.makeProd(x[i][j],(i - j) * (i - j)).var();
       }
     }
-    IntVar obj_var = solver.makeSum(obj_tmp).Var();
+    IntVar obj_var = solver.makeSum(obj_tmp).var();
 
     //
     // objective
@@ -120,7 +120,7 @@ public class CoinsGrid {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.*;
 public class Diet {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -43,7 +43,7 @@ public class Diet {
     int[] price  = { 50, 20, 30, 80}; // in cents
 
     // requirements for each nutrition type
-    int[] limits = {500,  6, 10,  8}; 
+    int[] limits = {500,  6, 10,  8};
 
     // nutritions for each product
     int[] calories  = {400, 200, 150, 500};
@@ -57,11 +57,11 @@ public class Diet {
     //
     IntVar[] x = solver.makeIntVarArray(n, 0, 100, "x");
 
-    IntVar cost = solver.makeScalProd(x, price).Var();
+    IntVar cost = solver.makeScalProd(x, price).var();
 
     //
     // Constraints
-    // 
+    //
     solver.addConstraint(
         solver.makeScalProdGreaterOrEqual(x, calories, limits[0]));
 
@@ -77,7 +77,7 @@ public class Diet {
 
     //
     // Objective
-    // 
+    //
     OptimizeVar obj = solver.makeMinimize(cost, 1);
 
     //
@@ -102,7 +102,7 @@ public class Diet {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

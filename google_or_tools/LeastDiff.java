@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -22,7 +22,7 @@ import com.google.ortools.constraintsolver.*;
 public class LeastDiff {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -58,10 +58,10 @@ public class LeastDiff {
     // Constraints
     //
     int[] coeffs = {10000, 1000, 100, 10, 1};
-    IntVar x = solver.makeScalProd(new IntVar[]{a,b,c,d,e}, coeffs).Var();
-    x.set_name("x");
-    IntVar y = solver.makeScalProd(new IntVar[]{f,g,h,i,j}, coeffs).Var();
-    y.set_name("y");
+    IntVar x = solver.makeScalProd(new IntVar[]{a,b,c,d,e}, coeffs).var();
+    x.setName("x");
+    IntVar y = solver.makeScalProd(new IntVar[]{f,g,h,i,j}, coeffs).var();
+    y.setName("y");
 
     // a > 0
     solver.addConstraint(solver.makeGreater(a, 0));
@@ -69,10 +69,10 @@ public class LeastDiff {
     solver.addConstraint(solver.makeGreater(f, 0));
 
     // diff = x - y
-    IntVar diff = solver.makeDifference(x, y).Var();
-    diff.set_name("diff");
+    IntVar diff = solver.makeDifference(x, y).var();
+    diff.setName("diff");
 
-    solver.addConstraint(solver.makeAllDifferent(all, true));
+    solver.addConstraint(solver.makeAllDifferent(all));
 
     //
     // Objective
@@ -97,7 +97,7 @@ public class LeastDiff {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

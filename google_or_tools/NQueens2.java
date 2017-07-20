@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class NQueens2 {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -48,16 +48,16 @@ public class NQueens2 {
     //
     // constraints
     //
-    solver.addConstraint(solver.makeAllDifferent(q, true));
+    solver.addConstraint(solver.makeAllDifferent(q));
 
     IntVar[] q1 = new IntVar[n];
     IntVar[] q2 = new IntVar[n];
     for(int i = 0; i < n; i++) {
-      q1[i] = solver.makeSum(q[i], i).Var();
-      q2[i] = solver.makeSum(q[i], -i).Var();
+      q1[i] = solver.makeSum(q[i], i).var();
+      q2[i] = solver.makeSum(q[i], -i).var();
     }
-    solver.addConstraint(solver.makeAllDifferent(q1, true));
-    solver.addConstraint(solver.makeAllDifferent(q2, true));
+    solver.addConstraint(solver.makeAllDifferent(q1));
+    solver.addConstraint(solver.makeAllDifferent(q2));
 
     //
     // Solve
@@ -86,7 +86,7 @@ public class NQueens2 {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
   }
 
   public static void main(String[] args) throws Exception {

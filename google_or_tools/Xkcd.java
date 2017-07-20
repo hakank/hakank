@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,14 +25,14 @@ import com.google.ortools.constraintsolver.*;
 public class Xkcd {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
   /**
    *
    * Solves the xkcd problem.
-   * See http://www.hakank.org/google_or_tools/xkcd.py 
+   * See http://www.hakank.org/google_or_tools/xkcd.py
    *
    */
   private static void solve() {
@@ -51,9 +51,9 @@ public class Xkcd {
 
     //
     // Constraints
-    // 
+    //
     solver.addConstraint(
-        solver.makeEquality(solver.makeScalProd(x, price).Var(), total));
+        solver.makeEquality(solver.makeScalProd(x, price).var(), total));
 
     //
     // Search
@@ -77,7 +77,7 @@ public class Xkcd {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

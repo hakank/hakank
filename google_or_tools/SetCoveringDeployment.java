@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.OptimizeVar;
 public class SetCoveringDeployment {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -41,7 +41,7 @@ public class SetCoveringDeployment {
 
     //
     // data
-    // 
+    //
 
     // From http://mathworld.wolfram.com/SetCoveringDeployment.html
     String[] countries = {"Alexandria",
@@ -77,7 +77,8 @@ public class SetCoveringDeployment {
     IntVar[] y = solver.makeIntVarArray(n, 0, 1, "y");
 
     // total number of armies
-    IntVar num_armies = solver.makeSum(solver.makeSum(x), solver.makeSum(y)).Var();
+    IntVar num_armies = solver.makeSum(solver.makeSum(x),
+                                       solver.makeSum(y)).var();
 
     //
     // constraints
@@ -94,7 +95,8 @@ public class SetCoveringDeployment {
     }
 
     //
-    // Constraint 2: There should always be an backup army near every city
+    // Constraint 2: There should always be an backup
+    //               army near every city
     //
     for(int i = 0; i < n; i++) {
       ArrayList<IntVar> count_neighbours = new ArrayList<IntVar>();
@@ -107,7 +109,7 @@ public class SetCoveringDeployment {
           solver.makeGreaterOrEqual(
               solver.makeSum(x[i],
                   solver.makeSum(
-                      count_neighbours.toArray(new IntVar[1])).Var()), 1));
+                      count_neighbours.toArray(new IntVar[1])).var()), 1));
     }
 
     //
@@ -146,7 +148,7 @@ public class SetCoveringDeployment {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

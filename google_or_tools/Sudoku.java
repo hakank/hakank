@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class Sudoku {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -64,9 +64,9 @@ public class Sudoku {
       }
     }
 
-    // 
+    //
     // constraints
-    // 
+    //
 
     // init and rows
     for(int i = 0; i < n; i++) {
@@ -78,7 +78,7 @@ public class Sudoku {
         }
         row[j] = grid[i][j];
       }
-      solver.addConstraint(solver.makeAllDifferent(row, true));
+      solver.addConstraint(solver.makeAllDifferent(row));
     }
 
     // columns
@@ -87,7 +87,7 @@ public class Sudoku {
       for(int i = 0; i < n; i++) {
         col[i] = grid[i][j];
       }
-      solver.addConstraint(solver.makeAllDifferent(col, true));
+      solver.addConstraint(solver.makeAllDifferent(col));
     }
 
     // cells
@@ -96,13 +96,13 @@ public class Sudoku {
         IntVar[] cell = new IntVar[n];
         for(int di = 0; di < cell_size; di++) {
           for(int dj = 0; dj < cell_size; dj++) {
-            cell[di * cell_size + dj] = 
+            cell[di * cell_size + dj] =
               grid[i * cell_size + di][j * cell_size + dj];
           }
         }
-        solver.addConstraint(solver.makeAllDifferent(cell, true));
+        solver.addConstraint(solver.makeAllDifferent(cell));
       }
-    }        
+    }
 
     //
     // Search
@@ -129,7 +129,7 @@ public class Sudoku {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

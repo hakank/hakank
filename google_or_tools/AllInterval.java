@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,12 +24,12 @@ import com.google.ortools.constraintsolver.Solver;
 public class AllInterval {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
   /**
-   * 
+   *
    * Implements the all interval problem.
    * See http://www.hakank.org/google_or_tools/all_interval.py
    *
@@ -38,8 +38,8 @@ public class AllInterval {
 
     Solver solver = new Solver("AllInterval");
 
-        
-    // 
+
+    //
     // variables
     //
     IntVar[] x = solver.makeIntVarArray(n, 0, n - 1, "x");
@@ -48,13 +48,13 @@ public class AllInterval {
     //
     // constraints
     //
-    solver.addConstraint(solver.makeAllDifferent(x, true));
-    solver.addConstraint(solver.makeAllDifferent(diffs, true));
+    solver.addConstraint(solver.makeAllDifferent(x));
+    solver.addConstraint(solver.makeAllDifferent(diffs));
 
     for(int k = 0; k < n - 1; k++) {
       solver.addConstraint(
-          solver.makeEquality(diffs[k], 
-              solver.makeAbs(solver.makeDifference(x[k + 1], x[k])).Var()));
+          solver.makeEquality(diffs[k],
+              solver.makeAbs(solver.makeDifference(x[k + 1], x[k])).var()));
     }
 
 
@@ -95,7 +95,7 @@ public class AllInterval {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

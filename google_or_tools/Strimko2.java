@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class Strimko2 {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -40,7 +40,7 @@ public class Strimko2 {
 
     //
     // data
-    // 
+    //
     int[][] streams = {{1,1,2,2,2,2,2},
                        {1,1,2,3,3,3,2},
                        {1,4,1,3,3,5,5},
@@ -48,7 +48,7 @@ public class Strimko2 {
                        {4,6,6,6,7,7,5},
                        {6,4,6,4,5,5,7},
                        {6,6,4,7,7,7,7}};
-    
+
     // Note: This is 1-based
     int[][] placed = {{2,1,1},
                       {2,3,7},
@@ -63,7 +63,7 @@ public class Strimko2 {
 
     int n = streams.length;
     int num_placed = placed.length;
-  
+
 
 
     //
@@ -93,10 +93,10 @@ public class Strimko2 {
         col[j] = x[j][i];
       }
 
-      solver.addConstraint(solver.makeAllDifferent(row, true));
-      solver.addConstraint(solver.makeAllDifferent(col, true));
+      solver.addConstraint(solver.makeAllDifferent(row));
+      solver.addConstraint(solver.makeAllDifferent(col));
     }
-      
+
 
     // streams
     for(int s = 1; s <= n; s++) {
@@ -109,7 +109,7 @@ public class Strimko2 {
         }
       }
       solver.addConstraint(
-          solver.makeAllDifferent(tmp.toArray(new IntVar[1]), true));
+          solver.makeAllDifferent(tmp.toArray(new IntVar[1])));
     }
 
 
@@ -149,7 +149,7 @@ public class Strimko2 {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

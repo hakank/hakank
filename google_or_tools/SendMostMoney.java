@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.*;
 public class SendMostMoney {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -68,7 +68,7 @@ public class SendMostMoney {
     solver.addConstraint(solver.makeScalProdEquality(eq, coeffs, 0));
 
     IntVar money = solver.makeScalProd(new IntVar[] {m, o, n, e, y},
-                                       new int[] {10000, 1000, 100, 10, 1}).Var();
+                                       new int[] {10000, 1000, 100, 10, 1}).var();
 
     //
     // constraints
@@ -79,7 +79,7 @@ public class SendMostMoney {
     // m > 0
     solver.addConstraint(solver.makeGreater(m, 0));
 
-    solver.addConstraint(solver.makeAllDifferent(x, true));
+    solver.addConstraint(solver.makeAllDifferent(x));
 
     if (MONEY > 0) {
       // Search for all solutions.
@@ -88,7 +88,7 @@ public class SendMostMoney {
 
     //
     // search
-    // 
+    //
     DecisionBuilder db = solver.makePhase(x,
                                           solver.CHOOSE_FIRST_UNBOUND,
                                           solver.ASSIGN_MAX_VALUE);
@@ -118,7 +118,7 @@ public class SendMostMoney {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
     return money_ret;
 

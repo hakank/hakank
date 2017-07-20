@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,12 +25,12 @@ import com.google.ortools.constraintsolver.*;
 public class SurvoPuzzle {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
   /*
    * default problem
-   */ 
+   */
   static int default_r = 3;
   static int default_c = 4;
   static int[] default_rowsums = {30, 18, 30};
@@ -85,7 +85,7 @@ public class SurvoPuzzle {
 
     //
     // Constraints
-    // 
+    //
     for(int i = 0; i < r; i++) {
       for(int j = 0; j < c; j++) {
         if (game[i][j] > 0) {
@@ -95,7 +95,7 @@ public class SurvoPuzzle {
       }
     }
 
-    solver.addConstraint(solver.makeAllDifferent(x_flat, true));
+    solver.addConstraint(solver.makeAllDifferent(x_flat));
 
     //
     // calculate rowsums and colsums
@@ -106,7 +106,7 @@ public class SurvoPuzzle {
         row[j] = x[i][j];
       }
       solver.addConstraint(
-          solver.makeEquality(solver.makeSum(row).Var(), rowsums[i]));
+          solver.makeEquality(solver.makeSum(row).var(), rowsums[i]));
     }
 
     for(int j = 0; j < c; j++) {
@@ -115,7 +115,7 @@ public class SurvoPuzzle {
         col[i] = x[i][j];
       }
       solver.addConstraint(
-          solver.makeEquality(solver.makeSum(col).Var(), colsums[j]));
+          solver.makeEquality(solver.makeSum(col).var(), colsums[j]));
     }
 
 
@@ -129,7 +129,7 @@ public class SurvoPuzzle {
 
     int sol = 0;
     while (solver.nextSolution()) {
-      sol++; 
+      sol++;
       System.out.println("Solution #" + sol + ":");
       for(int i = 0; i < r; i++) {
         for(int j = 0; j < c; j++) {
@@ -147,7 +147,7 @@ public class SurvoPuzzle {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 
@@ -218,19 +218,19 @@ public class SurvoPuzzle {
         for(int j = 0; j < this_row.length; j++) {
           game[line_count][j] = Integer.parseInt(this_row[j]);
         }
-                
+
         line_count++;
 
       } // end while
 
-      inr.close();           
-            
+      inr.close();
+
     } catch (IOException e) {
       System.out.println(e);
     }
-        
+
   } // end readFile
-   
+
 
   public static void main(String[] args) throws Exception {
 

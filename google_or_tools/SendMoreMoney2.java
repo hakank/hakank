@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ public class SendMoreMoney2 {
   static Solver sol;
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
   //
@@ -108,7 +108,7 @@ public class SendMoreMoney2 {
                               sol.makeSum(sol.makeProd(o, 100),
                                           sol.makeSum(sol.makeProd(r, 10),
                                                       sol.makeProd(e, 1))))
-                          ).Var(),
+                          ).var(),
               sol.makeSum(sol.makeProd(m, 10000),
                           sol.makeSum(
                               sol.makeProd(o, 1000),
@@ -116,7 +116,7 @@ public class SendMoreMoney2 {
                                   sol.makeProd(n, 100),
                                   sol.makeSum(
                                       sol.makeProd(e, 10),
-                                      sol.makeProd(y, 1))))).Var()));
+                                      sol.makeProd(y, 1))))).var()));
 
     } else if (alt == 1) {
 
@@ -129,8 +129,8 @@ public class SendMoreMoney2 {
       sol.addConstraint(
           sol.makeEquality(
               sol.makeSum(p(s, 1000, p(e, 100, p(n, 10, p(d, 1)))),
-                          p(m, 1000, p(o, 100, p(r, 10, p(e, 1))))).Var(),
-              p(m, 10000, p(o, 1000, p(n, 100, p(e, 10, p(y, 1))))).Var()));
+                          p(m, 1000, p(o, 100, p(r, 10, p(e, 1))))).var(),
+              p(m, 10000, p(o, 1000, p(n, 100, p(e, 10, p(y, 1))))).var()));
 
     } else if (alt == 2) {
 
@@ -143,9 +143,9 @@ public class SendMoreMoney2 {
                   sol.makeScalProd(new IntVar[] {s, e, n, d},
                                    new int[] {1000, 100, 10, 1}),
                   sol.makeScalProd(new IntVar[] {m, o, r, e},
-                                   new int[] {1000, 100, 10, 1})).Var(),
+                                   new int[] {1000, 100, 10, 1})).var(),
               sol.makeScalProd(new IntVar[] {m, o, n, e, y},
-                               new int[] {10000, 1000, 100, 10, 1}).Var()));
+                               new int[] {10000, 1000, 100, 10, 1}).var()));
 
     } else if (alt == 3) {
 
@@ -155,8 +155,8 @@ public class SendMoreMoney2 {
       //
       sol.addConstraint(
           sol.makeEquality(sol.makeSum(sp(new IntVar[] {s, e, n, d}),
-                                       sp(new IntVar[] {m, o, r, e})).Var(),
-                           sp(new IntVar[] {m, o, n, e, y}).Var()));
+                                       sp(new IntVar[] {m, o, r, e})).var(),
+                           sp(new IntVar[] {m, o, n, e, y}).var()));
 
     } else if (alt == 4) {
 
@@ -170,7 +170,7 @@ public class SendMoreMoney2 {
       IntExpr money = sol.makeScalProd(new IntVar[] {m, o, n, e, y},
                                        new int[] {10000, 1000, 100, 10, 1});
       sol.addConstraint(
-          sol.makeEquality(sol.makeSum(send, more).Var(), money.Var()));
+          sol.makeEquality(sol.makeSum(send, more).var(), money.var()));
 
     }
 
@@ -180,7 +180,7 @@ public class SendMoreMoney2 {
     // m > 0
     sol.addConstraint(sol.makeGreater(m, 0));
 
-    sol.addConstraint(sol.makeAllDifferent(x, true));
+    sol.addConstraint(sol.makeAllDifferent(x));
 
     //
     // Search
@@ -204,7 +204,7 @@ public class SendMoreMoney2 {
     System.out.println("Solutions: " + sol.solutions());
     System.out.println("Failures: " + sol.failures());
     System.out.println("Branches: " + sol.branches());
-    System.out.println("Wall time: " + sol.wall_time() + "ms");
+    System.out.println("Wall time: " + sol.wallTime() + "ms");
 
   }
 

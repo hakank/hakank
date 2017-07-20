@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -25,7 +25,7 @@ import com.google.ortools.constraintsolver.*;
 public class Map {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -59,24 +59,24 @@ public class Map {
 
     //
     // Constraints
-    // 
+    //
     solver.addConstraint(solver.makeNonEquality(color[France],
                                                 color[Belgium]));
-    solver.addConstraint(solver.makeNonEquality(color[France], 
+    solver.addConstraint(solver.makeNonEquality(color[France],
                                                 color[Luxembourg]));
-    solver.addConstraint(solver.makeNonEquality(color[France], 
+    solver.addConstraint(solver.makeNonEquality(color[France],
                                                 color[Germany]));
-    solver.addConstraint(solver.makeNonEquality(color[Luxembourg], 
+    solver.addConstraint(solver.makeNonEquality(color[Luxembourg],
                                                 color[Germany]));
-    solver.addConstraint(solver.makeNonEquality(color[Luxembourg], 
+    solver.addConstraint(solver.makeNonEquality(color[Luxembourg],
                                                 color[Belgium]));
-    solver.addConstraint(solver.makeNonEquality(color[Belgium], 
+    solver.addConstraint(solver.makeNonEquality(color[Belgium],
                                                 color[Netherlands]));
-    solver.addConstraint(solver.makeNonEquality(color[Belgium], 
+    solver.addConstraint(solver.makeNonEquality(color[Belgium],
                                                 color[Germany]));
-    solver.addConstraint(solver.makeNonEquality(color[Germany], 
+    solver.addConstraint(solver.makeNonEquality(color[Germany],
                                                 color[Netherlands]));
-    solver.addConstraint(solver.makeNonEquality(color[Germany], 
+    solver.addConstraint(solver.makeNonEquality(color[Germany],
                                                 color[Denmark]));
 
     // Symmetry breaking
@@ -104,7 +104,7 @@ public class Map {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

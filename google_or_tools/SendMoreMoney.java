@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import com.google.ortools.constraintsolver.Solver;
 public class SendMoreMoney {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
@@ -65,7 +65,7 @@ public class SendMoreMoney {
     // m > 0
     solver.addConstraint(solver.makeGreater(m, 0));
 
-    solver.addConstraint(solver.makeAllDifferent(x, true));
+    solver.addConstraint(solver.makeAllDifferent(x));
 
     DecisionBuilder db = solver.makePhase(x,
                                           solver.INT_VAR_DEFAULT,
@@ -84,7 +84,7 @@ public class SendMoreMoney {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 

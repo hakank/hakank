@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.ortools.constraintsolver.samples;
+package com.google.ortools.samples;
 
 import java.io.*;
 import java.util.*;
@@ -24,13 +24,13 @@ import com.google.ortools.constraintsolver.Solver;
 public class YoungTableaux {
 
   static {
-    System.loadLibrary("jniconstraintsolver");
+    System.loadLibrary("jniortools");
   }
 
 
 
   /**
-   * 
+   *
    * Implements Young tableaux and partitions.
    * See http://www.hakank.org/google_or_tools/young_tableuax.py
    *
@@ -41,7 +41,7 @@ public class YoungTableaux {
 
     System.out.println("n: " + n);
 
-    // 
+    //
     // variables
     //
     IntVar[][] x =  new IntVar[n][n];
@@ -56,7 +56,7 @@ public class YoungTableaux {
 
     // partition structure
     IntVar[] p = solver.makeIntVarArray(n, 0, n + 1, "p");
-    
+
     //
     // constraints
     //
@@ -65,7 +65,7 @@ public class YoungTableaux {
     for(int i = 1; i <= n; i++) {
       solver.addConstraint(solver.makeCount(x_flat, i, 1));
     }
-    
+
     solver.addConstraint(solver.makeEquality(x[0][0], 1));
 
     // row wise
@@ -91,11 +91,11 @@ public class YoungTableaux {
         b[j] = solver.makeIsLessOrEqualCstVar(x[i][j], n);
       }
       solver.addConstraint(
-          solver.makeEquality(p[i], solver.makeSum(b).Var()));
+          solver.makeEquality(p[i], solver.makeSum(b).var()));
     }
 
     solver.addConstraint(
-        solver.makeEquality(solver.makeSum(p).Var(), n));
+        solver.makeEquality(solver.makeSum(p).var(), n));
 
     for(int i = 1; i < n; i++) {
       solver.addConstraint(solver.makeGreaterOrEqual(p[i - 1], p[i]));
@@ -126,7 +126,7 @@ public class YoungTableaux {
           long val = x[i][j].value();
           if (val <= n) {
             System.out.print(val + " ");
-          } 
+          }
         }
         if (p[i].value() > 0) {
           System.out.println();
@@ -142,7 +142,7 @@ public class YoungTableaux {
     System.out.println("Solutions: " + solver.solutions());
     System.out.println("Failures: " + solver.failures());
     System.out.println("Branches: " + solver.branches());
-    System.out.println("Wall time: " + solver.wall_time() + "ms");
+    System.out.println("Wall time: " + solver.wallTime() + "ms");
 
   }
 
@@ -152,7 +152,7 @@ public class YoungTableaux {
     if (args.length > 0) {
       n = Integer.parseInt(args[0]);
     }
-    
+
     YoungTableaux.solve(n);
   }
 }
