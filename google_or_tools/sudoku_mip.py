@@ -23,9 +23,9 @@
       http://www.hakank.org/google_or_tools/
 """
 import sys
-from linear_solver import pywraplp
+from ortools.linear_solver import pywraplp
 
-def main(sol = 'GLPK'):
+def main(sol = 'CLP'):
   
   # Create the solver.
 
@@ -34,11 +34,11 @@ def main(sol = 'GLPK'):
   # using GLPK
   if sol == 'GLPK':
     solver = pywraplp.Solver('CoinsGridGLPK',
-                             pywraplp.Solver.GLPK_MIXED_INTEGER_PROGRAMMING)
+                             pywraplp.Solver.GLPK_LINEAR_PROGRAMMING)
   else:
   # Using CLP
       solver = pywraplp.Solver('CoinsGridCLP',
-                               pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+                               pywraplp.Solver.CLP_LINEAR_PROGRAMMING)
 
 
   #
@@ -135,11 +135,11 @@ def main(sol = 'GLPK'):
 
 if __name__ == '__main__':
 
-  sol = 'GLPK'
+  sol = 'CLP'
   if len(sys.argv) > 1:
     sol = sys.argv[1]
-    if sol != 'GLPK' and sol != 'CBC':
-      print 'Solver must be either GLPK or CBC'
+    if sol != 'GLPK' and sol != 'CLP':
+      print 'Solver must be either GLPK or CLP'
       sys.exit(1)
   
   main(sol)

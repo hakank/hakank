@@ -49,12 +49,12 @@
   * Gecode: http://www.hakank.org/gecode/3_jugs2.cpp
 
 
-  This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  This model was created by Hakan Kjellerstrand (hakank@gmail.com)
   Also see my other Google CP Solver models: http://www.hakank.org/google_or_tools/
   
 """
 
-from constraint_solver import pywrapcp
+from ortools.constraint_solver import pywrapcp
 from collections import defaultdict
 
 #
@@ -269,9 +269,9 @@ def main():
     
     print
     print 'num_solutions:', num_solutions
-    print 'failures:', solver.failures()
-    print 'branches:', solver.branches()
-    print 'wall_time:', solver.wall_time(), 'ms'
+    print 'failures:', solver.Failures()
+    print 'branches:', solver.Branches()
+    print 'wall_time:', solver.WallTime(), 'ms'
 
 
 

@@ -1,4 +1,4 @@
-# Copyright 2010 Hakan Kjellerstrand hakank@bonetmail.com
+# Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); 
 # you may not use this file except in compliance with the License. 
@@ -40,14 +40,14 @@
   Compare with the following model:
   * MiniZinc: http://www.hakank.org/minizinc/perfect_square_sequence.mzn
 
-  This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  This model was created by Hakan Kjellerstrand (hakank@gmail.com)
   Also see http://www.hakank.org/google_or_tools/
   
 """
 import sys
 import math
 
-from constraint_solver import pywrapcp
+from ortools.constraint_solver import pywrapcp
 
 def is_square(v):
     solver = v.solver()
@@ -120,13 +120,13 @@ def main(n=15, print_solutions=True, show_num_sols=0):
     print "num_solutions:", num_solutions
     print
     if print_solutions:
-        print "failures:", solver.failures()
-        print "branches:", solver.branches()
-        print "wall_time:", solver.wall_time()
+        print "failures:", solver.Failures()
+        print "branches:", solver.Branches()
+        print "wall_time:", solver.WallTime()
 
     return num_solutions
 
-n = 15
+n = 25
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         n = int(sys.argv[1])

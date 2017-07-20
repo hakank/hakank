@@ -44,7 +44,7 @@
 
 import sys
 import string
-from constraint_solver import pywrapcp
+from ortools.constraint_solver import pywrapcp
 
 def main(base=10):
 
@@ -96,16 +96,16 @@ def main(base=10):
                               solver.ASSIGN_MAX_VALUE),
                               [collector])
 
-    num_solutions = collector.solution_count()
+    num_solutions = collector.SolutionCount()
     money_val = 0
     for s in range(num_solutions):
         print "x:", [collector.Value(s, x[i]) for i in range(len(x))]
 
     print
     print "num_solutions:", num_solutions
-    print "failures:", solver.failures()
-    print "branches:", solver.branches()
-    print "wall_time:", solver.wall_time()
+    print "failures:", solver.Failures()
+    print "branches:", solver.Branches()
+    print "wall_time:", solver.WallTime()
     print
 
 

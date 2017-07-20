@@ -27,12 +27,12 @@
   Compare with the following model:
   * Gecode: http://www.hakank.org/gecode/all_regexp.cpp
 
-  This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
+  This model was created by Hakan Kjellerstrand (hakank@gmail.com)
   Also see my other Google CP Solver models: http://www.hakank.org/google_or_tools/
   
 """
 
-from constraint_solver import pywrapcp
+from ortools.constraint_solver import pywrapcp
 
 #
 # Global constraint regular
@@ -173,9 +173,9 @@ def main(n, res):
     solver.EndSearch()
 
     print 'num_solutions:', num_solutions
-    print 'failures:', solver.failures()
-    print 'branches:', solver.branches()
-    print 'wall_time:', solver.wall_time(), 'ms'
+    print 'failures:', solver.Failures()
+    print 'branches:', solver.Branches()
+    print 'wall_time:', solver.WallTime(), 'ms'
     print
 
 
