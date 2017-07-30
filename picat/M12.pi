@@ -24,9 +24,12 @@
   "Gruppteoretisk lösning av M12 puzzle i GAP" [Group theoretical solution of the M12 puzzle in GAP]
   http://www.hakank.org/webblogg/archives/001226.html
 
+  Note: Earlier this model used the old and experimental bplan module. Now it use the
+        official planner module.
 
   Here we have two different approaches:
-    - backtracking via bplan/2: go, go2, go3, and go4
+    %  - backtracking via bplan/2: go, go2, go3, and go4
+    - backtracking via bplan*: go, go2, go3, and go4
     - CP approach: go_cp
 
 
@@ -39,14 +42,15 @@
 % import util.
 import cp.
 
-import bplan.
+% import bplan
+import planner.
 
 main => go.
 
 
 go =>
 
-   Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
+   % Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
    % Init = [10,5,4,7,1,2,8,3,12,11,9,6], % this is random generated from M12proj.exe. 15 steps
    % Init = [10,8,6,12,5,2,1,4,11,7,9,3], % generated from M12proj.exe. harder  22 steps
    % Init = [11,7,3,8,5,2,12,1,9,10,4,6], % generated from M12proj.exe 22 steps
@@ -63,49 +67,54 @@ go =>
    % Init = [11,2,9,7,1,10,6,5,8,3,12,4], % 7 steps, mmmrmmm
    % Init = [12,11,10,9,8,7,6,5,4,3,2,1], % 1 step: r
 
-   % Init = [10,7,5,3,12,11,9,1,8,6,2,4],
+   Init = [10,7,5,3,12,11,9,1,8,6,2,4],
    % Init = [11,8,6,3,7,2,1,9,4,12,10,5],
 
    % Init = [4,2,7,12,1,5,10,9,3,8,11,6], % [r,m,m,m,r,m,r,m]
    % Init = [6,7,10,9,2,11,12,5,3,4,8,1],
    % Init=[10,9,7,4,6,5,11,1,8,3,2,12], % 15 steps m,r,m,r,m,r,m,r,m,m,m,r,m,m,m
 
-   % time(once(bplan(Init, L))),
-   time(bplan(Init, L)),
-   writeln(L.reverse()),
-   Len=length(L),
-   writeln(len=Len),
+   % Init = [1,4,9,3,11,6,8,5,10,2,7,12], % if there is a solution then it's > 600 steps...
+
+   % time(best_plan_bb(Init, 100,L)),
+   time(best_plan(Init, L)),
+   println(L),
+   println(len=L.len),
    nl.
 
-% completely random inits. Perhaps not a good thing to do...
+%
+% completely random inits. Perhaps quite silly...
+%
 go2 =>
   Timeout = 5000,
   Found = 0,
   while (Found == 0) 
     Init = rand_perm(1..12),
-    writeln(rand_init=Init),
-    time(time_out(bplan(Init, L), Timeout, Status)),
+    println(rand_init=Init),
+    time(time_out(best_plan(Init, L), Timeout, Status)),
     if Status == time_out then
-       writeln(nope)
+       println(nope)
       else 
-       writeln(L.reverse()),
+       println(L.reverse()),
        Found := 1
     end
   end,
   nl.
- 
+
+% 
 % Generate one problem of length TheLen.
-% Note that solution might not of be the same length.
+% Note that solution might not of be the same length as
+% TheLen.
+%
 go3 => 
    TheLen = 40,
    m12_generate(TheLen, Moves, Init),
-   writeln(gener_moves=Moves),
-   writeln(init=Init),
-   time(once(bplan(Init, L))),
-   % time(bplan(Init, L)),
-   writeln(L.reverse()),
+   println(gener_moves=Moves),
+   println(init=Init),
+   time(best_plan(Init, L)),
+   println(L),
    Len=length(L),
-   writeln(len=Len),
+   println(len=Len),
    nl.
 
 
@@ -114,94 +123,51 @@ go3 =>
 go4 => 
    Lens = [],
    TheLen = 40,
+   garbage_collect(200_000_000),
    foreach(_I in 1..10)
      % reset the table cache, otherwise
      % the generating takes (increasingly) long time
      initialize_table, 
 
      time(m12_generate(TheLen, Moves, Init)),
-     writeln(gener_moves=Moves),
-     writeln(init=Init),
-     time(once(bplan(Init, L))),
-     % time(bplan(Init, L)),
-     writeln(L.reverse()),
+     println(gener_moves=Moves),
+     println(init=Init),
+     time(once(best_plan(Init, L))),
+     println(L),
      Len=length(L),
-     writeln(len=Len),
+     println(len=Len),
      Lens := Lens ++ [Len],
      nl
    end,
-   writeln(lens=Lens),
+   println(lens=Lens),
    nl.
 
 
-% Testing bplan.plan2
 go5 =>
+  foreach(P in 1..21) 
+    problem(P,Init),
+    println(init=Init),
+    time(best_plan(Init,Plan)),
+    println(Plan),
+    println(len=Plan.len),
+    nl
+  end,
 
-   Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
-   % Init = [10,5,4,7,1,2,8,3,12,11,9,6], % this is random generated from M12proj.exe. 15 steps
-   % Init = [10,8,6,12,5,2,1,4,11,7,9,3], % generated from M12proj.exe. harder  22 steps
-   % Init = [11,7,3,8,5,2,12,1,9,10,4,6], % generated from M12proj.exe 22 steps
-   % Init = [7,5,8,3,1,11,2,9,4,12,6,10], % generated from M12proj.exe 19 steps
-   % Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
-   % Init = [3,8,6,12,4,7,5,11,1,10,9,2], % 19 steps
-   % Init = [4,1,10,7,9,12,3,6,5,2,11,8], % 4 steps, generated from the following moves:  M2I1M
-   % Init = [7,1,8,9,12,5,3,10,4,11,6,2], % 9 steps
-   % Init = [5,6,11,10,8,2,3,12,7,4,9,1], % 13 steps
-   % Init = [5,6,10,4,1,11,9,2,12,8,3,7], % 12 steps
-   % Init = [3,4,6,10,11,1,9,7,8,2,12,5], % 22 steps
-   % Init = [1,12,2,11,3,10,4,9,5,8,6,7], % 1 step: m
-   % Init = [1,4,7,10,12,9,6,3,2,5,8,11], % 3 steps: mmm
-   % Init = [11,2,9,7,1,10,6,5,8,3,12,4], % 7 steps, mmmrmmm
-   % Init = [12,11,10,9,8,7,6,5,4,3,2,1], % 1 step: r
+  nl.
 
-   % Init = [10,7,5,3,12,11,9,1,8,6,2,4],
-   % Init = [11,8,6,3,7,2,1,9,4,12,10,5],
+final(Goal) => Goal=[1,2,3,4,5,6,7,8,9,10,11,12].
 
-   % Init = [4,2,7,12,1,5,10,9,3,8,11,6], % [r,m,m,m,r,m,r,m]
-   % Init = [6,7,10,9,2,11,12,5,3,4,8,1],
-   % Init=[10,9,7,4,6,5,11,1,8,3,2,12], % 15 steps m,r,m,r,m,r,m,r,m,m,m,r,m,m,m
-
-   time(plan2(Init,L,Cost)),
-   writeln(L.reverse()),
-   writeln(len=length(L)),
-   writeln(cost=Cost),
-   nl.
-
-% Testing bplan.plan2
-go6 =>
-
-   Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
-
-   time(plan3(Init,L,Cost,[])),
-   writeln(L.reverse()),
-   writeln(len=length(L)),
-   writeln(cost=Cost),
-   nl.
-
-
-goal_state(Goal) => Goal=[1,2,3,4,5,6,7,8,9,10,11,12].
-
-
-table
-legal_move([M1,M12,M2,M11,M3,M10,M4,M9,M5,M8,M6,M7], M, To) ?=>
-           M=m,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12]. % merge
-
-legal_move([M12,M11,M10,M9,M8,M7,M6,M5,M4,M3,M2,M1], M, To) => 
-           M=r,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12]. % reverse
-
-% For bplan.plan2
-table
 % merge
-legal_move([M1,M12,M2,M11,M3,M10,M4,M9,M5,M8,M6,M7], M, To,Cost) ?=>
-           M=m,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12],Cost=1.
+action([M1,M12,M2,M11,M3,M10,M4,M9,M5,M8,M6,M7], To,Move,Cost) ?=>
+           Move=m,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12],Cost=1.
 % reverse
-legal_move([M12,M11,M10,M9,M8,M7,M6,M5,M4,M3,M2,M1], M, To,Cost) => 
-           M=r,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12],Cost=1.
+action([M12,M11,M10,M9,M8,M7,M6,M5,M4,M3,M2,M1], To, Move, Cost) => 
+           Move=r,To=[M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12],Cost=1.
 
 
 
 rand_perm(List) = List, List.length == 1 => true.
-rand_perm(List) = Perm => rand_perm(List, List.length, Perm).
+rand_perm(List) = Perm => _ = random2(), rand_perm(List, List.length, Perm).
 
 remove_at(X,L,1,R) => L=[X|Xs], R=Xs.
 remove_at(X,L,K,R) => L=[Y|Xs], R=[Y|Ys], K > 1, K1 = K - 1, remove_at(X,Xs,K1,Ys).
@@ -211,7 +177,7 @@ rand_perm(Xs,N,R) ?=>
     R = [X|Zs],
     N > 0,
     L = length(Xs),
-    I = 1+random2() mod L,
+    I = 1+random() mod L,
     remove_at(X,Xs,I,Ys),
     N1 = N - 1,
     rand_perm(Ys,N1,Zs).
@@ -228,12 +194,13 @@ legal_move_gen([M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12], M, To) =>
 
 % Generate a (random) problem of length Len
 m12_generate(Len, X, Res) => 
-   writeln(generate),
+   println(generate),
    Ops = [m,r],
    X = new_list(Len),
    Res1 = 1..12,
+   _ = random2(),
    foreach(I in 1..Len) 
-      Move = Ops[1+random2() mod 2],
+      Move = Ops[1+random() mod 2],
       % No repeating reverses
       if I > 1, Move == r, X[I-1] == r then
          Move := m
@@ -241,10 +208,10 @@ m12_generate(Len, X, Res) =>
       X[I] := Move,
       legal_move_gen(Res1, Move, Res2),
       Res1 := Res2 % ,
-      % writeln([res1=Res1,move=Move])
+      % println([res1=Res1,move=Move])
    end,
    Res = Res1,
-   % writeln(Res),
+   % println(Res),
    nl.
    
    
@@ -252,35 +219,34 @@ m12_generate(Len, X, Res) =>
 % CP approach
 %
 go_cp => 
-   % Note: The number of steps is 1+the steps since we have the init as the first.
+  % Note: The number of steps is 1+the steps since we have the init as the first.
 
-   % Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
-   % Init = [10,5,4,7,1,2,8,3,12,11,9,6], % this is random generated from M12proj.exe. 15 steps
-   % Init = [10,8,6,12,5,2,1,4,11,7,9,3], % generated from M12proj.exe. harder  22 steps
-   % Init = [11,7,3,8,5,2,12,1,9,10,4,6], % generated from M12proj.exe 22 steps
-   % Init = [7,5,8,3,1,11,2,9,4,12,6,10], % generated from M12proj.exe 19 steps
-   % Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
-   % Init = [1,4,9,3,11,6,8,5,10,2,7,12], % if there is a solution then it's 60 steps...
-   % Init = [3,8,6,12,4,7,5,11,1,10,9,2], % 19 steps
-   % Init = [4,1,10,7,9,12,3,6,5,2,11,8], % 4 steps, generated from the following moves:  M2I1M
-   % Init = [7,1,8,9,12,5,3,10,4,11,6,2], % 9 steps
-   % Init = [5,6,11,10,8,2,3,12,7,4,9,1], % 13 steps
-   % Init = [5,6,10,4,1,11,9,2,12,8,3,7], % 12 steps
-   % Init = [3,4,6,10,11,1,9,7,8,2,12,5], % 22 steps
-   % Init = [1,12,2,11,3,10,4,9,5,8,6,7], % 1 step: m
-   % Init = [1,4,7,10,12,9,6,3,2,5,8,11], % 3 steps: mmm
-   % Init = [11,2,9,7,1,10,6,5,8,3,12,4], % 7 steps, mmmrmmm
-   % Init = [12,11,10,9,8,7,6,5,4,3,2,1], % 1 step: r
+  % Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
+  % Init = [10,5,4,7,1,2,8,3,12,11,9,6], % this is random generated from M12proj.exe. 15 steps
+  % Init = [10,8,6,12,5,2,1,4,11,7,9,3], % generated from M12proj.exe. harder  22 steps
+  % Init = [11,7,3,8,5,2,12,1,9,10,4,6], % generated from M12proj.exe 22 steps
+  % Init = [7,5,8,3,1,11,2,9,4,12,6,10], % generated from M12proj.exe 19 steps
+  Init = [8,11,6,1,10,9,4,3,12,7,2,5], % 27 steps
+  % Init = [1,4,9,3,11,6,8,5,10,2,7,12], % if there is a solution then it's 60 steps...
+  % Init = [3,8,6,12,4,7,5,11,1,10,9,2], % 19 steps
+  % Init = [4,1,10,7,9,12,3,6,5,2,11,8], % 4 steps, generated from the following moves:  M2I1M
+  % Init = [7,1,8,9,12,5,3,10,4,11,6,2], % 9 steps
+  % Init = [5,6,11,10,8,2,3,12,7,4,9,1], % 13 steps
+  % Init = [5,6,10,4,1,11,9,2,12,8,3,7], % 12 steps
+  % Init = [3,4,6,10,11,1,9,7,8,2,12,5], % 22 steps
+  % Init = [1,12,2,11,3,10,4,9,5,8,6,7], % 1 step: m
+  % Init = [1,4,7,10,12,9,6,3,2,5,8,11], % 3 steps: mmm
+  % Init = [11,2,9,7,1,10,6,5,8,3,12,4], % 7 steps, mmmrmmm
+  % Init = [12,11,10,9,8,7,6,5,4,3,2,1], % 1 step: r
 
-   % Init = [10,7,5,3,12,11,9,1,8,6,2,4],
-   % Init = [11,8,6,3,7,2,1,9,4,12,10,5],
-
-   % Init = [4,2,7,12,1,5,10,9,3,8,11,6], % [r,m,m,m,r,m,r,m]
-   % Init = [6,7,10,9,2,11,12,5,3,4,8,1],
-   Init=[10,9,7,4,6,5,11,1,8,3,2,12], % 15 steps m,r,m,r,m,r,m,r,m,m,m,r,m,m,m
+  % Init = [10,7,5,3,12,11,9,1,8,6,2,4],
+  % Init = [11,8,6,3,7,2,1,9,4,12,10,5],
+  % Init = [4,2,7,12,1,5,10,9,3,8,11,6], % [r,m,m,m,r,m,r,m]
+  % Init = [6,7,10,9,2,11,12,5,3,4,8,1],
+  % Init=[10,9,7,4,6,5,11,1,8,3,2,12], % 15 steps m,r,m,r,m,r,m,r,m,m,m,r,m,m,m
 
   m12_cp(Init, Moves),
-  writeln(moves=Moves),
+  println(moves=Moves),
   nl.
 
 % The permutation from A <-> B using the permutation P
@@ -302,7 +268,7 @@ m12_cp(Init, Moves) =>
 
     Len :: 2..100,
     indomain(Len),
-    writeln(len=Len),
+    println(len=Len),
 
     Moves = new_list(Len-1),
     Moves :: 1..2,
@@ -318,6 +284,7 @@ m12_cp(Init, Moves) =>
     % the moves
     foreach(Move in 2..Len)
        all_different([X[Move,J] : J in 1..N]),
+       % all_distinct([X[Move,J] : J in 1..N]),
        permutation3([X[Move,J] : J in 1..N], 
                     [P : J in 1..N, matrix_element(Permutations, Moves[Move-1],J,P)],
                     [X[Move-1,J] : J in 1..N])
@@ -326,10 +293,10 @@ m12_cp(Init, Moves) =>
     foreach(J in 1..N) X[Len,J] #= J end,
 
     Vars = Moves,% ++ X.to_list(),
-    solve([ff,split], Vars),
+    solve([ffc,split], Vars),
 
-    foreach(Row in X) writeln(Row.to_list()) end,
-    writeln(moves=Moves),
+    foreach(Row in X) println(Row.to_list()) end,
+    println(moves=Moves),
     nl.
 
     
@@ -346,3 +313,28 @@ matrix_element(X, I, J, Val) =>
 
 %matrix_element(X, I, J, Val) =>
 %   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+
+problem(1, Problem) => Problem = [8,11,6,1,10,9,4,3,12,7,2,5]. % 27 steps
+problem(2, Problem) => Problem = [10,5,4,7,1,2,8,3,12,11,9,6]. % this is random generated from M12proj.exe. 15 steps
+problem(3, Problem) => Problem = [10,8,6,12,5,2,1,4,11,7,9,3]. % generated from M12proj.exe. harder  22 steps
+problem(4, Problem) => Problem = [11,7,3,8,5,2,12,1,9,10,4,6]. % generated from M12proj.exe 22 steps
+problem(5, Problem) => Problem = [7,5,8,3,1,11,2,9,4,12,6,10]. % generated from M12proj.exe 19 steps
+problem(6, Problem) => Problem = [8,11,6,1,10,9,4,3,12,7,2,5]. % 27 steps
+problem(7, Problem) => Problem = [3,8,6,12,4,7,5,11,1,10,9,2]. % 19 steps
+problem(8, Problem) => Problem = [4,1,10,7,9,12,3,6,5,2,11,8]. % 4 steps. generated from the following moves:  M2I1M
+problem(9, Problem) => Problem = [7,1,8,9,12,5,3,10,4,11,6,2]. % 9 steps
+problem(10, Problem) => Problem = [5,6,11,10,8,2,3,12,7,4,9,1]. % 13 steps
+problem(11, Problem) => Problem = [5,6,10,4,1,11,9,2,12,8,3,7]. % 12 steps
+problem(12, Problem) => Problem = [3,4,6,10,11,1,9,7,8,2,12,5]. % 22 steps
+problem(13, Problem) => Problem = [1,12,2,11,3,10,4,9,5,8,6,7]. % 1 step: m
+problem(14, Problem) => Problem = [1,4,7,10,12,9,6,3,2,5,8,11]. % 3 steps: mmm
+problem(15, Problem) => Problem = [11,2,9,7,1,10,6,5,8,3,12,4]. % 7 steps. mmmrmmm
+problem(16, Problem) => Problem = [12,11,10,9,8,7,6,5,4,3,2,1]. % 1 step: r
+
+problem(17, Problem) => Problem = [10,7,5,3,12,11,9,1,8,6,2,4].
+problem(18, Problem) => Problem = [11,8,6,3,7,2,1,9,4,12,10,5].
+
+problem(19, Problem) => Problem = [4,2,7,12,1,5,10,9,3,8,11,6]. % [r,m,m,m,r,m,r,m]
+problem(20, Problem) => Problem = [6,7,10,9,2,11,12,5,3,4,8,1].
+problem(21, Problem) => Problem = [10,9,7,4,6,5,11,1,8,3,2,12]. % 15 steps m,r,m,r,m,r,m,r,m,m,m,r,m,m,m

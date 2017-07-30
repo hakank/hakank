@@ -36,8 +36,9 @@ main => time(go).
 
 go =>  euler12.
 
-% 0.313s
+% Using a map: 0.26s
 euler12 => 
+  garbage_collect(300_000_000),
   println("Problem 12: "),
   Len = 0,
   I = 0,
@@ -45,13 +46,30 @@ euler12 =>
   while (Len <= 500)
      I := I + 1,
      TNum := TNum + I,
-     % Len := prod([E+1 : [_P,E] in collect2(factors(TNum))])
-     % skipping the P variable as well
+     Map = new_map(),
+     factorsMap(TNum,Map),
+     Len := prod([V+1 : _=V in Map])
+  end,
+  println([i=I, tnum=TNum, len=Len]),
+  nl.
+
+
+% 0.313s
+euler12a => 
+  println("Problem 12: "),
+  Len = 0,
+  I = 0,
+  TNum = 0,
+  while (Len <= 500)
+     I := I + 1,
+     TNum := TNum + I,
      Len := prod([E+1 : E in collect4(factors(TNum))])
   end,
   
-  println([tnum=TNum, len=Len]),
+  println([i=I, tnum=TNum, len=Len]),
   nl.
+
+
 
 % recursive version, slightly slower: 0.318s
 euler12b => 
@@ -76,7 +94,8 @@ e12b(N,Num0,Num,Len0,Len) =>
 collect2(A) = C => 
   C = [],
   foreach(I in A.remove_dups()) 
-    C := C ++ [[I, [J: J in A, J == I].length]  ]
+    % C := C ++ [[I, [J: J in A, J == I].length]  ]
+    C := C ++ [[J: J in A, J == I].length]
   end.
 
 % Variant (slightly slower)
@@ -93,19 +112,23 @@ collect3(A) = C =>
 % collect4(A) = [[I,[J: J in A, J == I].length] : I in A.remove_dups() ].
 % collect4(A) = [[I,length([1: J in A, J == I])] : I in A.remove_dups() ].
 collect4(A) = [sum([1: J in A, J == I]) : I in A.remove_dups() ].
+% collect4(A) = [[1: J in A, J == I].len : I in A.remove_dups() ].
+
+collect5(A) = [ [1 : V in A, V=UU ].len : UU in A.remove_dups()].
+
 
 
 alldivisorsM(N,Div) = [Divisors,NewN] =>
    M = N,
    Divisors1 = [],
    while (M mod Div == 0) 
-      Divisors1 := Divisors1 ++ [Div],
+      Divisors1 := [Div|Divisors1],
       M := M div Div
    end,
-   NewN := M,
+   NewN = M,
    Divisors = Divisors1.
 
-table
+% table
 factors(N) = Factors =>
      M = N,
      Factors1 = [],
@@ -114,16 +137,46 @@ factors(N) = Factors =>
          M := M div 2 
      end,
      T = 3,
-     
-     while (M > 1, T < 1+sqrt(M)) 
+     while (M > 1, T < ceiling(sqrt(M)))
         if M mod T == 0 then
            [Divisors, NewM] = alldivisorsM(M, T),
            Factors1 := Factors1 ++ Divisors,
            M := NewM
         end,
-        T := T + 2
-        % next_prime(T, T2),
-        % T := T2
+        T := T + 2 
      end,
-     if M > 1 then Factors1 := Factors1 ++ [M] end,
+     if M > 1 then Factors1 := [M|Factors1] end,
      Factors = Factors1.
+
+
+% factors as a map
+factorsMap(N,Map) =>
+     % Map = new_map(),
+     M = N,
+     while (M mod 2 == 0) 
+         Map.put(2,Map.get(2,0)+1),
+         M := M div 2 
+     end,
+     T = 3,
+     while (M > 1, T < ceiling(sqrt(M)))
+        while (M mod T == 0) 
+          Map.put(T,Map.get(T,0)+1),
+          M := M div T
+        end,
+        T := T + 2 
+     end,
+     if M > 1 then 
+        Map.put(M,Map.get(M,0)+1) 
+     end.
+
+
+
+next_prime(N) = P =>
+  M = N+2,
+  while(not prime_cached(M))
+    M := M+2
+  end,
+  P = M.
+
+table
+prime_cached(N) => prime(N).

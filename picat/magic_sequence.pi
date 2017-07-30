@@ -8,6 +8,11 @@
   0 and n-1, such that for all i in 0 to n-1, the number i occurs exactly xi 
   times in the sequence. For instance, 6,2,1,0,0,0,1,0,0,0 is a magic sequence 
   since 0 occurs 6 times in it, 1 occurs twice, ...
+  """
+
+  As a one-liner (without redundant constraints):
+
+    Picat> N=10,L=new_list(N),L::0..N,global_cardinality(L,$[I-L[I+1]:I in 0..N-1]),solve(L)
 
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
@@ -20,39 +25,71 @@ import cp.
 main => go.
 
 go =>
-        magic_sequence(400,Sequence),
-        writeln(Sequence).
+  magic_sequence(7,Sequence),
+  println(Sequence).
 
 
 go2 =>
-        foreach(N in 4..40)
-           if magic_sequence(N,Sequence) then
-              writeln(Sequence)
-           else 
-              writeln('No solution')
-           end
-        end.
+  foreach(N in 4..40)
+    if magic_sequence(N,Sequence) then
+      println(Sequence)
+    else 
+      println("No solution")
+    end
+  end.
+
+go3 =>
+  magic_sequence_no_cp(1400,Sequence),
+  println(Sequence).
 
 
-scalar_product(A, X) = Product => 
-   Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
-
+scalar_product(A, X,Product) => 
+  Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
 
 magic_sequence(N, Sequence) =>
 
-        writef("\n%d: ",N),
+  printf("\n%d:\n",N),
 
-        Sequence = new_list(N),
-        Sequence :: 0..N-1,
+  Sequence = new_list(N),
+  Sequence :: 0..N-1,
+
+  % println(sequence1=print_domains(Sequence)),
+
+  % extra constraints
+  N #= sum(Sequence),
+
+  % println(sequence2=print_domains(Sequence)),
+
+  Integers = [ I : I in 0..N-1],
+  scalar_product(Integers, Sequence, N),
+
+  % println(sequence3=print_domains(Sequence)),
+
+  % using global_cardinality/2: or N=400: 0.8s
+  % GC = [ $I-Sequence[I+1] : I in 0..N-1],
+  % global_cardinality(Sequence,GC),
+
+  % using count/4 for N=400: 0.22s
+  foreach(I in 0..N-1) count(I,Sequence,#=,Sequence[I+1]) end,
+
+  % println(sequence4=print_domains(Sequence)),
+
+  solve([ff], Sequence).
 
 
-        % Note: I would like to use global_cardinality/2 instead 
-        %       but didn't get it right.
-        foreach(I in 0..N-1) count(I,Sequence,#=,Sequence[I+1]) end,
+print_domains(Vars) = [print_domain(Var) : Var in Vars].
+
+print_domain(Var) = to_fstring("%2d..%2d", Min,Max) =>
+  fd_min_max(Var,Min,Max).
+  
 
 
-        N #= sum(Sequence),
-        Integers = [ I : I in 0..N-1],
-        N = scalar_product(Integers, Sequence),
-        solve([ff], Sequence).
+% Magic sequence, algorithmic approach
+magic_sequence_no_cp(N, Sequence) =>
+  Sequence = new_list(N,0),
+  Sequence[1] := N - 4,
+  Sequence[2] := 2,
+  Sequence[3] := 1,
+  Sequence[N-3] := 1.
 
+  

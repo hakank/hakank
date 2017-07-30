@@ -41,7 +41,7 @@ main => go.
 %
 go => 
     % collect all possible solutions
-    L = findall(Killer, $who_killed_agatha(Killer)),
+    L = findall(Killer, who_killed_agatha(Killer)),
     writeln(killer=L).
 
 
@@ -54,7 +54,7 @@ who_killed_agatha(Killer) =>
     Butler = 2,
     Charles = 3,
 
-    Killer :: 1..3,
+    Killer :: [Agatha,Butler,Charles],
 
     %
     % define the Hates and Richer matrices
@@ -85,16 +85,21 @@ who_killed_agatha(Killer) =>
     foreach(I in 1..N)
        Killer #= I #=> Hates[I, Agatha] #= 1,
        Killer #= I #=> Richer[I, Agatha] #= 0
+
+       % Killer #= I #=> (Hates[I, Agatha] #= 1 #/\ Richer[I, Agatha] #= 0)
+
     end,
 
     % * Define the concept of richer: no one is richer than him-/herself
     foreach(I in 1..N) Richer[I,I] #= 0 end,
+
     
     % (contd...) if i is richer than j then j is not richer than i
     foreach(I in 1..N, J in 1..N, I != J)
        Richer[I,J] #= 1 #=> Richer[J,I] #= 0,
        Richer[J,I] #= 0 #=> Richer[I,J] #= 1
     end,
+
 
     % * Charles hates no one that Agatha hates. 
     foreach(I in 1..N) Hates[Agatha, I] #= 1 #=> Hates[Charles, I] #= 0 end,
@@ -103,7 +108,6 @@ who_killed_agatha(Killer) =>
     Hates[Agatha, Butler]  #= 0,
     Hates[Agatha, Charles] #= 1,
     Hates[Agatha, Agatha]  #= 1,
-
 
     % * The butler hates everyone not richer than Aunt Agatha. 
     foreach(I in 1 ..N)
@@ -116,13 +120,44 @@ who_killed_agatha(Killer) =>
     % * No one hates every one.
     foreach(I in 1..N) sum([Hates[I,J] : J in 1..N]) #=< 2 end,
 
+    % * A killer always hates, and is no richer than his victim. 
+    % Note: When placed here matrix_element/4 works.
+    matrix_element(Hates,Killer,Agatha,1),
+    matrix_element(Richer,Killer,Agatha,0),
+
+
     % * Who killed Agatha?
 
 
-    Vars = [Killer] ++ Hates.to_list() ++ Richer.to_list(),
+    Vars = [Killer] ++ Hates ++ Richer,
     solve(Vars).
+
+    % println(hates),
+    % foreach(I in 1..N) println(Hates[I]) end,
+
+    % println(richer),
+    % foreach(I in 1..N) println(Richer[I]) end.
 
     %writeln(victim:Victim),
     %writeln(killer:Killer),
     %writeln(hates:Hates),
     %writeln(richer:Richer), fail.
+
+
+matrix_element1(X, I, J, Val) =>
+  element(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element2(X, I, J, Val) =>
+  nth(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element3(X, I, J, Val) =>
+  freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element4(X, I, J, Val) =>
+  freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element5(X, I, J, Val) =>
+  nth(I, X, Row),
+  nth(J, Row, Val).

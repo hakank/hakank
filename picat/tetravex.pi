@@ -20,6 +20,7 @@
 
 
 import util.
+% import common_sat_cp.
 import cp.
 
 
@@ -43,7 +44,7 @@ go ?=>
   end,
 
   % ensure unicity
-  fail,
+  % fail,
 
   nl.
 
@@ -57,17 +58,22 @@ go ?=> true.
 % (solving it takes much longer).
 %
 go2 ?=>
-  Size = 6,
+  Size = 8,
   printf("Generate a random problem instance of size %dx%d\n", Size,Size),
+
+  % _ = random2(), % "Real" random.
+
   time(once(tetravex_generate(Size,Pieces,Solution))),
-  println(pieces=Pieces),
+  % println(pieces=Pieces),
   print_board(Pieces,Solution, Size),
 
   println("Shuffle pieces"),
   Pieces2 = shuffle(Pieces),
 
   println("New problem:"),
-  print_board(Pieces2,Solution, Size),
+  % foreach(Piece in Pieces2) printf("%d,%d,%d,%d,\n", Piece[1],Piece[2],Piece[3],Piece[4]) end,
+  % print_dzn(Pieces2,Size),
+  % print_board(Pieces2,Solution, Size),
 
   println("Solve problem"),
   time2(tetravex(Pieces2,Size, Solution2)),
@@ -77,18 +83,27 @@ go2 ?=>
     print_board(Pieces2,Solution2, Size)
   end,
 
-  % fail,
+  fail,
   nl.
 
 go2 => true.
 
 
+print_dzn(Pieces,Size) =>
+  println("% Random instance via Picat's tetravex.pl model."),
+  printf("size = %d;\n", Size),
+  println("Pieces = array2d(1..num_pieces, 1..4,\n["),
+  foreach(Piece in Pieces) printf("%d,%d,%d,%d,\n", Piece[1],Piece[2],Piece[3],Piece[4]) end,
+  printf("]);\n"),
+  nl.
+
 % Shuffle a list
 shuffle(List) = List2 => 
   List2 = List,
   Len = List.length,
+  % _ = random2(),
   foreach(I in 1..Len) 
-    R2 = 1+(random2() mod Len),
+    R2 = 1+(random() mod Len),
     List2 := swap(List2,I,R2)
   end.
 
@@ -102,36 +117,41 @@ swap(L,I,J) = L2 =>
   L2[J] := T.
 
 
-
+%
+% TetraVex solver
+%
 tetravex(Pieces,Size,Solution) =>
-
-  % Pieces = Pieces1.list_matrix_to_array_matrix(),
 
   println(pieces=Pieces),
 
   % decision variables
   Solution = new_array(Size,Size),
   Solution :: 1..Size*Size,
+  Vars = Solution.vars(),
 
+  all_different(Vars),
   % constraints
+  These = [],
   foreach(I in 1..Size, J in 1..Size)
      % println([I,J]),
+     This = new_array(4),
+     This :: 0..9,
+     These := These ++ [This],
+
+     % The built-in matrix_element/4 works and is quite fast
+     matrix_element(Pieces,Solution[I,J],1,This1),
+     matrix_element(Pieces,Solution[I,J],2,This2),
+     matrix_element(Pieces,Solution[I,J],3,This3),
+     matrix_element(Pieces,Solution[I,J],4,This4),
+
      Neighbors = [[I+A,J+B] : A in -1..1, B in -1..1, 
                    I+A >= 1, I+A <= Size, J+B >= 1, J+B <= Size, 
                    abs(A)+abs(B) == 1],
-
-     % We must use matrix_element3/4 since element/3 won't do 
-     % and neither does the built-in matrix_element/4.
-     matrix_element3(Pieces,Solution[I,J],1,This1),
-     matrix_element3(Pieces,Solution[I,J],2,This2),
-     matrix_element3(Pieces,Solution[I,J],3,This3),
-     matrix_element3(Pieces,Solution[I,J],4,This4),
-
      foreach([NI, NJ] in Neighbors) 
        % Ensure that the proper edges are the same
        if I == NI then
-         matrix_element3(Pieces,Solution[NI,NJ],2,That2),
-         matrix_element3(Pieces,Solution[NI,NJ],3,That3),
+         matrix_element(Pieces,Solution[NI,NJ],2,That2),
+         matrix_element(Pieces,Solution[NI,NJ],3,That3),
          % same row
          if J < NJ then
            This3 #= That2
@@ -139,8 +159,8 @@ tetravex(Pieces,Size,Solution) =>
            This2 #= That3
          end
        elseif J == NJ then
-         matrix_element3(Pieces,Solution[NI,NJ],1,That1),
-         matrix_element3(Pieces,Solution[NI,NJ],4,That4),
+         matrix_element(Pieces,Solution[NI,NJ],1,That1),
+         matrix_element(Pieces,Solution[NI,NJ],4,That4),
          % same column
          if I < NI then
            This4 #= That1
@@ -149,15 +169,17 @@ tetravex(Pieces,Size,Solution) =>
          end
        end
      end
+
   end,
 
-  all_different(Solution.vars()),
-  % all_distinct(Solution.vars()), % slower
+  % all_different(Vars),
+  % all_distinct(Vars), % slower
 
   % solve
-  % solve([ffc,inout], Solution).
   % solve([constr,reverse_split], Solution).
-  solve([ffc,split], Solution).
+  solve([ffc,split], Vars ++ These). % faster
+  % solve_suspended([split]). %
+  % solve([constr,split], Solution).
 
 
 %
@@ -173,24 +195,28 @@ tetravex_generate(Size,Pieces,Solution) =>
   Solution :: 1..Size*Size,
 
   % constraints
+
+  all_different(Solution.vars()),
+  % all_distinct(Solution.vars()), % slower
+
   foreach(I in 1..Size, J in 1..Size)
      Neighbors = [[I+A,J+B] : A in -1..1, B in -1..1, 
                    I+A >= 1, I+A <= Size, J+B >= 1, J+B <= Size, 
                    abs(A)+abs(B) == 1],
 
-     % We must use matrix_element3/4 since element/3 won't do 
+     % We must use hand made matrix_element*/4 since element/3 won't do 
      % and neither does the built-in matrix_element/4.
-     matrix_element3(Pieces,Solution[I,J],1,This1),
-     matrix_element3(Pieces,Solution[I,J],2,This2),
-     matrix_element3(Pieces,Solution[I,J],3,This3),
-     matrix_element3(Pieces,Solution[I,J],4,This4),
+     matrix_element6(Pieces,Solution[I,J],1,This1),
+     matrix_element6(Pieces,Solution[I,J],2,This2),
+     matrix_element6(Pieces,Solution[I,J],3,This3),
+     matrix_element6(Pieces,Solution[I,J],4,This4),
 
      foreach([NI, NJ] in Neighbors) 
        % Ensure that the proper edges are the same
        if I == NI then
          % same row
-         matrix_element3(Pieces,Solution[NI,NJ],2,That2),
-         matrix_element3(Pieces,Solution[NI,NJ],3,That3),
+         matrix_element6(Pieces,Solution[NI,NJ],2,That2),
+         matrix_element6(Pieces,Solution[NI,NJ],3,That3),
          if J < NJ then
            This3 #= That2
          else 
@@ -198,8 +224,8 @@ tetravex_generate(Size,Pieces,Solution) =>
          end
        elseif J == NJ then
          % same column
-         matrix_element3(Pieces,Solution[NI,NJ],1,That1),
-         matrix_element3(Pieces,Solution[NI,NJ],4,That4),
+         matrix_element6(Pieces,Solution[NI,NJ],1,That1),
+         matrix_element6(Pieces,Solution[NI,NJ],4,That4),
          if I < NI then
            This4 #= That1
          else 
@@ -209,10 +235,7 @@ tetravex_generate(Size,Pieces,Solution) =>
      end
   end,
 
-  all_different(Solution.vars()),
-  % all_distinct(Solution.vars()), % slower
-
-  _ = random(random2()), % Change the seed for rand_val
+  _ = random2(), % Change the seed for rand_val
 
   % solve
   Vars = Solution.vars() ++ Pieces.vars(),
@@ -258,6 +281,15 @@ matrix_element4(X, I, J, Val) =>
 matrix_element5(X, I, J, Val) =>
   nth(I, X, Row),
   nth(J, Row, Val).
+
+matrix_element6(X, I, J, Val) =>
+   freeze(I, (nth(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element7(X, I, J, Val) =>
+ foreach (Row in fd_dom(I), Col in fd_dom(J))
+    (I #= Row #/\ J #= Col) #=> (Val #= X[Row,Col])
+ end.
+
 
 
 to_num(I,J,Size) = (I-1)*Size + J.

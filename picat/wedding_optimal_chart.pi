@@ -33,6 +33,7 @@ z: 271
 
 import util.
 import cp.
+% import sat.
 
 main => time2($go).
 
@@ -44,9 +45,18 @@ go =>
    % minimize the "friends index" at a table, i.e. disperse as much as possible
    % Maximize = 0, %
 
-   max_tables(A), % maximum number of guests a table can seat
-   min_tables(B), % minimum number of people each guest knows at their table
-   num_tables(N), % max number of tables
+   % max_tables(A), % maximum number of guests a table can seat
+   % min_tables(B), % minimum number of people each guest knows at their table
+   % num_tables(N), % max number of tables
+
+   % problem(1,MaxNumTables,MaxAtTable,MinKnowsAtTable),
+   problem(2,MaxNumTables,MaxAtTable,MinKnowsAtTable),
+   % problem(3,MaxNumTables,MaxAtTable,MinKnowsAtTable),
+
+   N = MaxNumTables,
+   A = MaxAtTable,
+   B = MinKnowsAtTable,
+
    % num_guests(M), % maximum number of quests
 
    % C[j,k]: Connection matrix, indicating relation of guest j to
@@ -55,7 +65,7 @@ go =>
 
    M = C.length,
 
-   writeln([a=A,b=B,n=N,m=M]),
+   println([a=A,b=B,n=N,m=M]),
 
    %
    % decision variables
@@ -70,7 +80,7 @@ go =>
    % TableCount :: 0..A,
 
    % to maximize (or minimize)
-   Z :: 0..sum([C[J,K] : J in 1..M, K in 1..M]),
+   % Z :: 0..sum([C[J,K] : J in 1..M, K in 1..M]),
 
    %
    % constraints
@@ -80,11 +90,14 @@ go =>
    Z #= sum([C[J,K]*(Tables[J]#=Tables[K]) : J in 1..M, K in 1..M, J < K]),
 
    foreach(I in 1..N)
-      % Max number of guests per table
-      sum([Tables[J] #= I : J in 1..M]) #<= A, 
 
       % Minimum number of friends at table I
-      sum([(C[J,K] #> 0)*(Tables[J] #= I)*(Tables[K] #= I): J in 1..M, K in 1..M]) #>= B
+      sum([(C[J,K] #> 0)*(Tables[J] #= I)*(Tables[K] #= I): J in 1..M, K in 1..M]) #>= B,
+
+
+
+      % Max number of guests per table
+      sum([Tables[J] #= I : J in 1..M]) #<= A
 
       % must be at least B guests per table
       % , sum([(Tables[J] #= I): J in 1..M]) #>= B
@@ -102,23 +115,31 @@ go =>
    Vars = Tables, % ++ [Z],
 
    if Maximize == 1 then
-      writeln(maximize),
-      solve($[max(Z),report(printf("Z: %d\n",Z))], Vars)
+      println(maximize),
+      if member(cp,sys.loaded_modules()) then
+        solve($[inout,up,max(Z),report(printf("Z: %d\n",Z))], Vars)
+      else 
+        solve($[seq,max(Z),report(printf("Z: %d\n",Z))], Vars)
+      end
    else
-      writeln(minimize),
-      solve($[min(Z)], Vars)
+      println(minimize),
+      if member(cp,sys.loaded_modules()) then
+         solve($[ff,down,min(Z),report(printf("Z: %d\n",Z))], Vars) % cp
+      else 
+         solve($[seq,min(Z),report(printf("Z: %d\n",Z))], Vars) % sat
+      end
    end,
 
-   writeln(z=Z),
-   writeln(tables=Tables),
-   % writeln(tableCount=TableCount),
+   println(z=Z),
+   println(tables=Tables),
+   % println(tableCount=TableCount),
 
    names(Names),
    foreach(T in 1..N)
      printf("At table %d\n", T),
      foreach(I in 1..M) 
         if Tables[I] == T then
-          printf("\t%d (%s)\n", I, Names[I])
+          printf("\t%2d (%s)\n", I, Names[I])
         end
      end,
      nl
@@ -159,6 +180,7 @@ increasing(List) =>
 %              Table 2: Guest List
 
 % The "friend matrix". Higher value mean stronger bonds.
+% Note the two clusters around the bride and groom.
 guests(M) => 
 M = 
 [[ 1,50, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -186,7 +208,7 @@ Names =
  "Deb        mother of the bride",
  "John       father of the bride",
  "Martha     sister of the bride",
- "Travis     boyfriend of Martha",
+ "Travis     boyfriend of Martha (sister of the bride)",
  "Allan      grandfather of the bride",
  "Lois       wife of Allan (the grandfather of the bride)",
  "Jayne      aunt of the bride",
@@ -224,13 +246,26 @@ Names =
  "Lori (G)"
 ].
 
-
-num_tables(N) => N = 5. % max number of tables
-max_tables(A) => A = 4. % maximum number of guests a table can seat
-min_tables(B) => B = 2. % minimum number of people each guest knows at their table
+% num_tables(N) => N = 5. % max number of tables
+% max_tables(A) => A = 4. % maximum number of guests a table can seat
+% min_tables(B) => B = 2. % minimum number of people each guest knows at their table
+problem(1,MaxNumTables,MaxAtTable,MinKnowsAtTable) => 
+  MaxNumTables = 5,
+  MaxAtTable = 4,
+  MinKnowsAtTable = 2.
 
 % Easier problem
 % num_tables(N) => N = 2. % max number of tables
 % max_tables(A) => A = 10. % maximum number of guests a table can seat
 % min_tables(B) => B = 1. % minimum number of people each guest knows at their table
+problem(2,MaxNumTables,MaxAtTable,MinKnowsAtTable) => 
+  MaxNumTables = 2,
+  MaxAtTable = 10,
+  MinKnowsAtTable = 1.
+
+problem(3,MaxNumTables,MaxAtTable,MinKnowsAtTable) => 
+  MaxNumTables = 6,
+  MaxAtTable = 10,
+  MinKnowsAtTable = 3.
+
 

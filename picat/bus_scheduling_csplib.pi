@@ -51,9 +51,9 @@
 import util.
 import os.
 
-% import cp.
+import cp.
 % import sat.
-import mip.
+% import mip.
 
 main => go.
 
@@ -74,7 +74,9 @@ go2 =>
   [NumWork, NumShifts,MinNumShifts,Shifts] = read_instance(File),
   println([numWork=NumWork, numShifts=NumShifts,minNumShifts=MinNumShifts]),
 
-  bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts),
+  % bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts),
+  bus_scheduling_csplib2(Shifts,NumWork,MinNumShifts, X,TotShifts),
+
   print_solution(Shifts,X,TotShifts),
   nl.
 
@@ -98,14 +100,15 @@ go2 =>
 %  - notSolved=[r3]
 
 go3 =>
+  garbage_collect(200_000_000),
   Timeout = 600000, 
   % Timeout = 2000, 
   D = "bus_scheduling_csplib",
   Solved = [],
   NotSolved = [],
   Ignore = [".","..", "README.txt"],
-  foreach(File in listdir(D).sort())
-    if not member(File,Ignore) then
+  foreach(File in listdir(D).sort(), not member(File,Ignore))
+    % if not member(File,Ignore) then
        Instance = D ++ "/" ++ File,
        println(instance=Instance),
        [NumWork, NumShifts,MinNumShifts,Shifts] = read_instance(Instance),
@@ -124,7 +127,7 @@ go3 =>
          nl
        end,
        nl
-    end
+    % end
   end,
   println(solved=Solved),
   println(notSolved=NotSolved),
@@ -148,8 +151,39 @@ bus_scheduling_csplib(Shifts,NumWork,MinNumShifts, X,TotShifts) =>
   TotShifts #>= MinNumShifts,
 
   println(totShifts=TotShifts),
-  % solve($[ffc,updown,min(TotShifts),report((printf("TotShifts: %d\n", TotShifts),flush(stdout)))], X). % for cp
-  solve($[min(TotShifts)], X).
+  solve($[ffd,updown,min(TotShifts),report((printf("TotShifts: %d\n", TotShifts),flush(stdout)))], X). % for cp
+  % solve($[min(TotShifts)], X).
+
+
+
+%
+% Using matrix A[Shift,Worker] to get the shifts for the workers.
+%
+bus_scheduling_csplib2(Shifts,NumWork,MinNumShifts, X,TotShifts) =>
+  NumShifts = Shifts.length,
+
+  % decision variables
+  X = new_list(NumShifts),
+  X :: 0..1,
+
+  A = new_array(NumShifts,NumWork), bind_vars(A,0),
+  foreach({S,Shift} in zip(1..NumShifts,Shifts))
+    println(S=Shift),  % very strange: with this println/1 then it's much faster than without!
+    foreach(W in Shift)
+       A[S,W+1] := 1
+    end
+  end,
+
+  foreach(J in 0..NumWork-1) 
+    sum([X[I]*A[I,J+1] : I in 1..NumShifts]) #= 1
+  end,
+
+  TotShifts #= sum(X),
+  TotShifts #>= MinNumShifts,
+
+  println(totShifts=TotShifts),
+  solve($[ffd,updown,min(TotShifts),report((printf("TotShifts: %d\n", TotShifts),flush(stdout)))], X). % for cp
+  % solve($[min(TotShifts)], X).
 
 
 %

@@ -87,6 +87,24 @@ go2 =>
   nl.
 
 
+% Target: 24
+% N  #sols
+% -------
+% 1  0
+% 2  4
+% 3  125
+% 4  4446
+% 5  148822 
+%
+% OEIS: 0,4,125,4446,148822 
+go3 => 
+  N = 4,
+  Target = 24,
+  All=findall(_, countdown2(N,Target)),
+  printf("\tTarget=%4d: %4d solutions\n", Target,All.length),
+  nl.
+
+
   
 %
 % check(Target, Print, S)
@@ -172,13 +190,94 @@ countdown(Numbers,Target) =>
      halt
    end.
 
+%
+% Here the input is a length of a list and 
+% then we check what solutions there are for = Target
+%
+countdown2(N,Target) =>
+   println([target=Target,n=N]),
+   
+   % Picat's integer operator is "//" and is used for the check below
+   OpsString = ["+","-","*","//"],
+   OpsString2 = ["+","-","*","/"], % "/" instead of "//" for nicer presentation
+   
+   % decision variables 
+   % The result, the numbers in correct positions
+   X = new_list(N),
+   X :: 1..9,
+
+   % permutations of Numbers
+   Perms = new_list(N),
+   Perms :: 1..N,
+
+   % array of the consecutive results (S[N] = Target)
+   S = new_list(N),
+   S :: 1..10000,
+
+   % Operators
+   % 1: +
+   % 2: -
+   % 3: *
+   % 4: // (integer division)
+   Ops = new_list(N-1),
+   Ops :: 1..OpsString.length,
+   
+   %
+   % constraints
+   % 
+   all_different(Perms),
+   foreach(I in 1..N)
+      % x[i] = numbers[perm[i]]
+      element(Perms[I],X,X[I])
+      % nth(Perms[I],Numbers,X[I])
+   end,
+
+   make_ops(X,Ops,Target,S),
+
+   % search
+   Vars = X ++ Ops ++ Perms ++ S ++ [Target],
+
+   solve([ff,split], Vars),
+
+   %
+   % solution
+   % 
+   % println(numbers=Numbers),
+   % println(target=Target),
+   println(x=X),
+   % println(s=S),
+   % println(perms=Perms),
+   % println(ops=Ops),
+
+   % The solution as a string
+   Str = ['(' : _ in 1..N-1] ++ X[1].to_string(),
+   Str2 = Str,
+   foreach(I in 1..N-1)
+     Str := Str ++ " " ++ OpsString[Ops[I]] ++ " " ++ X[I+1].to_string() ++ ")",
+     Str2 := Str2 ++ " " ++ OpsString2[Ops[I]] ++ " " ++ X[I+1].to_string() ++ ")"
+   end,
+
+   % check it
+   S2 = apply(Str.parse_term()),
+   if S2 = Target then
+     println(str=Str2),
+     foreach(I in 1..N-1)
+       printf("%d %w %d = %d\n", S[I],OpsString2[Ops[I]],X[I+1],S[I+1])
+     end,
+     nl
+   else
+     println([not_correct_parsed,target=Target,s2=S2]),
+     halt
+   end.
+
+
 % The (basic) operations
 make_op(A,B, Op,Res) =>
   (Op #= 1) #<=> (Res #= A + B),
   (Op #= 2) #<=> (Res #= A - B),
   (Op #= 3) #<=> (Res #= A * B),
-  % (Op #= 4) #<=> (A #= Res * B). % division 
-  (Op #= 4) #<=> (Res #= A // B). % division 
+  (Op #= 4) #<=> (A #= Res * B). % division 
+  % (Op #= 4) #<=> (Res #= A // B). % division 
 
 make_ops(Y, Ops, Res, S) =>
   N = Y.length,

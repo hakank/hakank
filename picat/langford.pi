@@ -1,6 +1,6 @@
 /*
 
-  Langford's number problem in Picat.
+  Langford's number problem L(2,N) in Picat.
 
   Langford's number problem (CSP lib problem 24)
   http://www.csplib.org/prob/prob024/
@@ -34,6 +34,8 @@
 
   Note: There are only solutions when K mod 4 == 0 or K mod 4 == 3.
 
+  - For a generalized version L(k,n) where k >= 2, see http://hakank.org/langford_generalized.pi
+  - For Nickerson's variant, see http://hakank.org/langford_nickerson.pi
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -46,62 +48,68 @@ import cp.
 main => go.
 
 go =>
-    K = 12,
-    writef("K: %d\n", K),
+    K = 4,
+    printf("K: %d\n", K),
     time2($langford(K, Solution, Position)),
-    writef("Solution: %w\n", Solution),
-    writef("Position: %w\n", Position).
+    printf("Solution: %w\n", Solution),
+    printf("Position: %w\n", Position).
 
 %
 % Get the first (if any) solutions for K in 2..40
 %
 go2 => 
-    foreach(K in 2..40) 
-       writef("K: %d\n", K),
-       if time2(langford(K, Solution, Position)) then
-           if nonvar(Solution) then 
-             writef("Solution: %w\n", Solution),
-             writef("Position: %w\n", Position)
-           else 
-             writef("No solution\n")
-           end,
-          writef("\n")
-       end
-    end.
+  foreach(K in 2..60) 
+     printf("K: %d\n", K),
+     if time2(langford(K, Solution, Position)) then
+         if nonvar(Solution) then 
+           printf("Solution: %w\n", Solution)
+           % printf("Position: %w\n", Position)
+         else 
+           printf("No solution\n")
+         end,
+        printf("\n"),
+        flush(stdout)
+     end
+  end.
+
+% Count the number of solutions
+go3 => 
+  Map = get_global_map(),
+  foreach(K in 2..40) 
+    println(k=K),
+    Map.put(count,0),
+    ((langford(K, Solution, Position), Map.put(count, Map.get(count)+1), fail) ; true),
+    printf("K: %d = %d solutions\n", K, Map.get(count)),
+    flush(stdout)
+  end.
+
 
  
 langford(K, Solution, Position) =>
 
-        if not ((K mod 4 == 0; K mod 4 == 3)) then
-           println("There is no solution for K unless K mod 4 == 0 or K mod 4 == 3"),
-           fail
-        end,
+  if not ((K mod 4 == 0; K mod 4 == 3)) then
+     println("There is no solution for K unless K mod 4 == 0 or K mod 4 == 3"),
+     fail
+  end,
 
-        K2 = 2*K,
-        Position = new_list(K2),
-        Position :: 1..K2,
+  K2 = 2*K,
+  Position = new_list(K2),
+  Position :: 1..K2,
 
-        Solution = new_list(K2),
-        Solution :: 1..K,
+  Solution = new_list(K2),
+  Solution :: 1..K,
 
-        % all_different(Position),
-        all_distinct(Position),
+  % all_different(Position),
+  all_distinct(Position),
 
-        % symmetry breaking:
-        Solution[1] #< Solution[K2],
+  % symmetry breaking:
+  Solution[1] #< Solution[K2],
 
-        foreach(I in 1..K)
-            % This 'advanced' usage of element don't work
-            /*
-              Position[K+I] #= Position[I] + I+1,
-              Solution[Position[I]] = I,
-              Solution[Position[K+I]] = I
-            */
+  foreach(I in 1..K)
+      Position[K+I] #= Position[I] + I+1,
+      element(Position[I],Solution,I),  
+      element(Position[K+I],Solution,I)
+  end,
 
-            Position[K+I] #= Position[I] + I+1,
-            element(Position[I],Solution,I),  
-            element(Position[K+I],Solution,I)
-        end,
-
-        Vars = Solution ++ Position,
-        solve([ffd,updown], Vars).
+  Vars = Solution ++ Position,
+  solve([ffc,updown], Vars).

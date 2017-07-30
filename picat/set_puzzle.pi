@@ -105,7 +105,7 @@ go => true.
 %
 go2 => 
   NumCards = 9,
-  NumSets = 4,
+  NumSets = 5,
   SetLen = 3,
   generate_instance(NumCards,NumSets,SetLen, Cards),
   set_puzzle(Cards,SetLen,NumSets,X), % solve it
@@ -118,17 +118,84 @@ go2 =>
 
 go3 => 
   NumCards = 12,
-  NumSets = 6,
+  NumSets = 3,
   SetLen = 3,
   generate_instance(NumCards,NumSets,SetLen, Cards),
+  println(generated),
   set_puzzle(Cards,SetLen,NumSets,X), % solve it
   println("Cards:"),
   foreach({Card,I} in zip(Cards,1..NumCards)) println([I,Card]) end,
   println("Solution:"),        
   print_sol(Cards,X),
+
+  fail,
+
   nl.
 
 
+%
+% cp version
+%
+go4 => 
+   % Colors = [1=red, 2=green, 3=purple],
+   % Numbers = [1=one, 2=two, 3=three],
+   % Symbols = [1=oval, 2=squiggle, 3=diamond],
+   % Shadings = [1=solid, 2=open, 3=striped],
+
+  % sets(3,Sets,SetLen,NumWanted),
+
+  NumCards = 18,
+  NumWanted = 5,
+  SetLen = 3,
+  time(generate_instance2(NumCards,NumWanted, SetLen,Sets)),
+  println(generated),
+
+  println(sets=Sets),
+  println(setLen=SetLen),
+  println(numWanted=NumWanted),
+  SetsConv = convert_sets_to_num(Sets),
+
+  set_puzzle_cp(SetsConv,SetLen,NumWanted, X),
+
+  println(x=X),
+  foreach(Row in X)
+    % println(Row),
+    println([Sets[I] : I in Row])
+  end,
+  nl,
+
+  fail,
+
+  nl.
+
+lex2(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_lt([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.
+
+all_equal(X) =>
+  foreach(I in 2..X.len) X[I] #= X[I-1] end.
+
+%
+% convert sets of "verbose" instances to integer
+% representations
+%
+convert_sets_to_num(Sets) = NewSets =>
+   Maps = new_map([
+            red=1,green=2,purple=3,
+            1=1,2=2,3=3,
+            one=1,two=2,three=3,
+            oval=1,squiggle=2,squiggles=2,diamond=3,
+            solid=1,open=2,striped=3
+         ]),
+   NewSets1 = [],
+   foreach(S in Sets)
+     NewSets1 := NewSets1 ++ [[Maps.get(T) : T in S]]
+   end,
+   NewSets = NewSets1.
+
+    
 %
 % Solve a Set Puzzle.
 %
@@ -138,7 +205,7 @@ set_puzzle(Cards,SetLen,NumWanted, X) =>
 
   X = new_list(NumWanted),
   foreach(I in 1..NumWanted)
-    Y = new_list(SetLen),
+    Y = new_array(SetLen),
     foreach(J in 1..SetLen)
       member(Y[J], 1..Len)
     end,
@@ -154,6 +221,40 @@ set_puzzle(Cards,SetLen,NumWanted, X) =>
     end,
     X[I] = Y
   end.
+
+
+%
+% CP Approach 
+% (same general idea as set_puzzle/4)
+%
+set_puzzle_cp(Cards,SetLen,NumWanted, X) =>
+  NumFeatures = Cards[1].len,
+  NumSets = Cards.len,
+  println(numFeatures=NumFeatures),
+  X = new_array(NumWanted,SetLen),
+  X :: 1..NumSets,
+
+  foreach(I in 1..NumWanted)
+    % ensure unicity of the selected sets
+    all_different(X[I]),
+    increasing_strict(X[I]), % unicity and symmetry breaking of Y
+
+    foreach(F in 1..NumFeatures)
+      Z = $[ S : J in 1..SetLen, matrix_element(Cards, X[I,J],F, S) ],
+      % all features are different or all equal
+      % can't use all_different(Z) #\/ all_equal(Z) since they are not refiable
+      % (all_equal(Z) ; all_different(Z)) % slow and not pure CP
+      (
+        (sum([ Z[J] #!= Z[K] : J in 1..SetLen, K in 1..SetLen, J != K ]) #= SetLen*SetLen - SetLen)
+        #\/
+        (sum([ Z[J-1] #= Z[J] : J in 2..SetLen]) #= SetLen-1)
+      )
+    end
+  end,
+
+  lex2(X),
+
+  solve($[ff,split],X).
 
 
 % print a solution
@@ -195,13 +296,32 @@ generate_instance(NumCards,NumSets,SetLen, Cards) =>
   while(Found = false) 
       N := N + 1,
       if Cards = random_deal(NumCards), 
-         findall(X,set_puzzle(Cards,SetLen,NumSets,X)).length = 1
-         then
+         % findall(X,set_puzzle(Cards,SetLen,NumSets,X)).length = 1
+         count_all(set_puzzle(Cards,SetLen,NumSets,_X)) = 1
+      then
         Found := true
       end
   end,
+
   println(num_tests=N),
   nl.
+
+%
+% plain random, no check of solvability or number of sets
+%
+generate_instance2(NumCards,_NumSets,_SetLen, Cards) =>
+  Cards = random_deal(NumCards).
+
+
+get_n_solutions(Goal, N) =>
+  Map = get_global_map(),
+  Map.put(solcount,1), 
+  call(Goal),
+  C = Map.get(solcount),
+  if C < N then 
+     Map.put(solcount,C+1), 
+     fail 
+  end.
 
 
 %
@@ -301,15 +421,16 @@ sets(3,Sets,SetLen,Wanted) =>
 %
 % deal a random problem instance of N cards
 %
-random_deal(N) = Deal =>
+random_deal(N) = Deal.sort() =>
   all_combinations(Combinations),
   Deal = [], 
   _ = random2(),
   foreach(_I in 1..N)
-    Len = Combinations.length,
+    Len = Combinations.len,
     Rand = 1 + random() mod Len,
-    Deal := Deal ++ [Combinations[Rand]],
-    Combinations := delete(Combinations, Rand)
+    Comb = Combinations[Rand],
+    Deal := Deal ++ [Comb],
+    Combinations := delete_all(Combinations, Comb)
   end.
 
 
@@ -328,3 +449,31 @@ all_combinations(All) =>
                    member(Symbol,Symbols),
                    member(Number,Numbers),
                    member(Shading,Shadings))).
+
+
+
+matrix_element1(X, I, J, Val) =>
+  element(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element2(X, I, J, Val) =>
+  nth(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element3(X, I, J, Val) =>
+     freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element4(X, I, J, Val) =>
+   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element5(X, I, J, Val) =>
+  nth(I, X, Row),
+  nth(J, Row, Val).
+
+matrix_element6(X, I, J, Val) =>
+   freeze(I, (nth(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element7(X, I, J, Val) =>
+ foreach (Row in 1..len(X), Col in 1..len(X[1]))
+    (I #= Row #/\ J #= Col) #=> (Val #= X[Row,Col])
+ end.

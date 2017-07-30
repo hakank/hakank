@@ -33,9 +33,20 @@ go2 =>
 go3 =>
     time2(color2(5)).
 
+% random instances
+go4 =>
+  N = 100,
+  Pct = 7,
+  Graph = generate(N,Pct),
+  println(generated),
+  time2(color3(Graph,A)),
+  println(A),
+  nl.
+
 
 % CP: using labeling
 color_cp(NV,NC) =>
+    println((nv=NV,nc=NC)),
     A = new_list(NV),
     A :: 1..NC,
     foreach(I in 1..NV-1, J in I+1..NV)
@@ -43,8 +54,16 @@ color_cp(NV,NC) =>
           A[I] #!= A[J]
        end
     end,
-    solve([ffc,split], A), % 0.748s
-    writeln(A).
+
+    % symmetry breaking
+    % foreach(I in 1..NC) 
+    %   A[I] #<= I
+    % end, 
+
+    % solve([ffc,split], A), % 0.748s (0 backtracks)
+    solve([ffc,updown], A), % 0.17s (29952 backtracks)
+    println(A).
+
 
 % for sat (no labeling)
 color(NV,NC) =>
@@ -56,7 +75,7 @@ color(NV,NC) =>
        end
     end,
     solve(A),
-    writeln(A).
+    println(A).
 
 %
 % This is a slightly different (and easier) problem instance, using
@@ -74,7 +93,86 @@ color2(NC) =>
        end
     end,
     solve(A),
-    writeln(A).
+    println(A).
+
+
+% for random generated instances (go4/0)
+color3(Graph, A) =>
+  N = Graph.len,
+  MaxDegree = max([len(Neighbours) : [_,Neighbours] in Graph]),
+
+  A = new_list(N),
+  A :: 1..MaxDegree+1,
+
+  println(maxDegree=MaxDegree),
+
+  MaxColor #= max(A),
+
+  % symmetry breaking
+  % foreach(I in 1..MaxDegree)
+  %   A[I] #<= I
+  % end,
+  % value_precede_chain(1..MaxDegree+1, A),
+
+  % Neqs = [],
+  foreach([I,Neighbors] in Graph)
+    foreach(J in Neighbors)
+      A[I] #!= A[J]
+      % , Neqs := Neqs ++ [A[I] #!= A[J]]
+    end
+  end,
+  % value_precede_chain(1..MaxDegree+1, A),
+  % neqs(Neqs),
+  println(maxColor=MaxColor),
+
+  solve($[constr,ff,split,min(MaxColor),report(printf("MaxColor: %d\n",MaxColor))], A).
+
+
+%
+% generate a list of neighbours
+%
+generate(NumNodes,Pct) = Graph =>
+   Graph1 = new_array(NumNodes),
+   foreach(I in 1..NumNodes)
+      Neighbours = [],
+      foreach(J in 1..NumNodes, I != J)
+        Rand = (1+random() mod 100),
+        if Rand <= Pct then
+           Neighbours := Neighbours ++ [J]
+        end
+      end,
+      if Neighbours == [] then
+        Rand = 1 + random() mod NumNodes,
+        while (Rand == I) Rand := 1 + random() mod NumNodes end,
+        Neighbours := [Rand]
+      end,
+      Graph1[I] := [I,Neighbours]
+   end,
+   Graph = Graph1.to_list().
+
+
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+
+% This definition is inspired by 
+% MiniZinc definition value_precede_int.mzn
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+
+
 
 
 %

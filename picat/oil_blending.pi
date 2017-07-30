@@ -1,0 +1,94 @@
+/* 
+
+  Oil blending in Picat.
+
+  Porting of the B-Prolog model http://www.picat-lang.org/bprolog/cp_sat_lp/oil_blending.pl
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import mip.
+
+main =>
+  go.
+
+go =>
+  maxProduction(MaxProd),
+  prodCost(ProdCost),
+  go(MaxProd, ProdCost).
+  
+go(MaxProd, ProdCost) =>
+  gas(Gas),
+  NGas = Gas.length,  
+  oil(Oil),
+  NOil = Oil.length,
+  
+  Adv = new_list(NGas),   %advertising the gasoline 
+  Blend = new_array(NOil, NGas),
+  Blend :: 0..10000,
+  Vars = vars(Blend),
+  foreach(Var in Vars)
+     Var #>= 0
+  end,
+  %domain is 0 to infinite.  Don't need to specify for lp
+  
+  %constraint
+  foreach(G in 1..NGas) 
+    sum([Blend[O,G] : O in 1..NOil]) #= Gas[G,1] + 10*Adv[G]    %demain constraint
+  end,
+
+  foreach(O in 1..NOil)
+    sum([Blend[O,G]:G in 1..NGas]) #=< Oil[O,1],         %ct capacity
+  end,
+
+  sum([Blend[O,G]:O in 1..NOil, G in 1..NGas]) #=< MaxProd,     %ct max production
+
+  foreach(G in 1..NGas)
+    sum([Oil[O,3]*Blend[O,G]: O in 1..NOil]) 
+     - sum([Gas[G,3]*Blend[O,G]: O in 1..NOil]) #>= 0    %ct octane
+  end,
+
+  foreach(G in 1..NGas) 
+    sum([Oil[O,4]*Blend[O,G]: O in 1..NOil])
+      -sum([Gas[G,4]*Blend[O,G]: O in 1..NOil]) #=< 0    %ct lead
+  end,
+
+  %objective
+  BlendTotal #= sum([Gas[G,2]*Blend[O,G]: O in 1..NOil, G in 1..NGas])
+          -sum([Oil[O,2]*Blend[O,G]: O in 1..NOil, G in 1..NGas])
+          -sum([ProdCost * Blend[O,G]: O in 1..NOil, G in 1..NGas])
+          -sum([Adv[G]: G in 1..NGas]),
+
+  % append(Adv, Vars, AllVars),
+  AllVars = Adv ++ Vars,
+
+  solve($[max(BlendTotal)],AllVars),
+
+  writeln($blend_total(BlendTotal)),
+  writeln($blend(Blend)),
+  writeln($advertise(Adv)).
+
+%gasolines([super, regular, diesel]).
+%oils([crudel, crudel2, crude3]).
+
+maxProduction(MaxProduction) => 
+ MaxProduction = 14000.
+
+prodCost(ProdCost) => ProdCost = 4.
+
+gas(Gas) => 
+  Gas = [[3000, 70, 10, 1],   %(demand, price, octane, lead)
+   [2000, 60,  8, 2],
+   [1000, 50,  6, 1]].
+     
+oil(Oil) => 
+  Oil = [[5000, 45, 12, 0.5],  %(capacity, price, octane, lead)
+   [5000, 35, 6,  2],
+   [5000, 25, 8,  3]].
+
+     

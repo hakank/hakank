@@ -1,0 +1,294 @@
+/* 
+
+  Trace domains via Action Rules in Picat.
+
+  Cf with trace_domains.pi.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module trace_domains_ar.
+
+import util.
+import cp.
+import trace_domains.
+
+%
+% trace domain for matrices
+%
+trace_domain_ar(List,Name), (array(List) ; list(List)), (list(List[1]) ; array(List[1])) => 
+  % println($trace_domain_ar_matrix(List,Name)),
+  trace_domain_ar_trace_start_stat,
+  Rows = List.length,
+  Cols = List[1].length,
+  foreach(I in 1..Rows) 
+     foreach(J in 1..Cols)
+       Tag = parse_tag(List[I,J]),
+       put_tag(Tag,Name++"["++I.to_string() ++ "," ++ J.to_string() ++ "]"),
+       trace_domain_ar(List[I,J])
+     end
+  end,
+  add_variable_2d(List,Name).
+
+
+%
+% trace domain for lists
+%
+trace_domain_ar(List,Name), (list(List) ; array(List)) => 
+  println($trace_domain_ar_list(List,Name)),
+  trace_domain_ar_trace_start_stat,
+  foreach({X,I} in zip(List,1..List.length)) 
+     Tag = parse_tag(X),
+     put_tag(Tag,Name++"[" ++ I.to_string() ++ "]"),
+     trace_domain_ar(X)
+  end,
+  add_variable_1d(List,Name).
+
+trace_domain_ar(Var,Name) =>
+  trace_domain_ar_trace_start_stat,
+  Tag = parse_tag(Var),
+  put_tag(Tag,Name),
+  trace_domain_ar(Var),
+  add_variable_single(Var,Name).
+
+trace_domain_ar_reset() => 
+  reset_trace_domains_all(), % reset in trace_domains module
+  M = get_global_map(),
+  M.put(trace_domains_ar_backtracks,new_map()),
+  M.put(trace_domains_ar_trace_stat,new_map()),
+  H = get_heap_map(),
+  H.put(trace_domains_ar,new_map()),
+  H.put(trace_domains_ar_variables, []).
+
+  
+
+
+%
+% Add statistics 
+%
+trace_domain_ar_trace_start_stat =>
+  get_global_map().put(trace_domains_ar_trace_stat,true).
+
+%
+% Don't add statistics (default)
+%
+trace_domain_ar_trace_stop_stat =>
+  get_global_map().put(trace_domains_ar_trace_stat,false).
+
+%
+% trace domain for a single DV
+%
+trace_domain_ar(X) =>
+  Tag=parse_tag(X),
+  trace_domain_ar_generated(X,Tag),
+  trace_domain_ar_dom(X,Tag),
+  trace_domain_ar_bound(X,Tag),
+  trace_domain_ar_ins(X,Tag).
+  % trace_domain_ar_dom_any(X,Tag),
+  % trace_domain_ar_event(X,Tag).
+
+trace_domain_ar_generated(X,Tag), {generated} =>
+  Tag2 = get_tag2(Tag),
+  add_stat(generated,Tag2),
+  println([generated,Tag2,show_dom(X)]).
+
+trace_domain_ar_dom(X,Tag), {dom(X,Dom)} =>
+  Tag2 = get_tag2(Tag),
+  add_stat(dom,Tag2),
+  println([dom=Dom,Tag2,show_dom(X)]).
+
+trace_domain_ar_bound(X,Tag), {bound(X)} =>
+  Tag2 = get_tag2(Tag),
+  add_stat(bound,Tag2),
+  println([bound,Tag2,show_dom(X)]).
+
+trace_domain_ar_ins(X,Tag), {ins(X)} =>
+  Tag2 = get_tag2(Tag),
+  add_stat(ins,Tag2),
+  Map = get_global_map(),
+  % Trace backtracks
+  if not get_global_map().has_key(trace_domains_ar_backtracks) then
+     Map.put(trace_domains_ar_backtracks, new_map())
+  end,
+  BacktrackMap = Map.get(trace_domains_ar_backtracks),
+  % println(backtrackMap=BacktrackMap),
+  if BacktrackMap.has_key(Tag2), BacktrackMap.get(Tag2) != X then
+    BacktrackCount = Map.get(trace_domains_count_backtracks,1),
+    printf("\nins %w (old: %w, new: %w) alread_defined. Backtrack (#%d).\n\n", Tag2, BacktrackMap.get(Tag2), X,BacktrackCount),
+    Map.put(trace_domains_count_backtracks,BacktrackCount+1),
+    add_stat(backtrack,backtrack),
+    % start the backtrack tracing from a fresh
+    BacktrackMap := new_map(),
+    print_variables("After backtrack")
+  end,
+  BacktrackMap.put(Tag2,X),
+  Map.put(trace_domains_ar_backtracks, BacktrackMap),
+
+  % Also trace new created variables:
+  % When a variable X is bound to another variable Y, an ins(X) event is also posted.
+  if dvar(X), not get_heap_map().get(trace_domains_ar).has_key(parse_tag(X)) then
+    TmpCounter = get_heap_map().get(trace_domains_ar_tmpvar_counter),
+    get_heap_map().put(trace_domains_ar_tmpvar_counter,TmpCounter+1),
+    TmpCounterStr = "TmpVar" ++ TmpCounter.to_string(),
+    trace_domain_ar(X,TmpCounterStr),
+    add_variable_single(X,TmpCounterStr)
+  end,
+  println([ins,Tag2,X]).
+
+% trace_domain_ar_dom_any(X,Tag), {dom_any(X)} =>
+%   add_stat(dom_any, get_tag2(Tag)),
+%   println([dom_any,t=T,get_tag2(Tag),show_dom(X)]).
+
+% trace_domain_ar_event(X,Tag), {event(X,T)} =>
+%   add_stat(event,get_tag2(Tag)),
+%   println([event,t=T,get_tag2(Tag),show_dom(X)]).
+
+
+
+%
+% show a nicer presentation of a DV domain
+%
+show_dom(X) = [make_ranges(fd_dom(X))].
+ 
+
+add_stat(Type,Tag) =>
+  Map = get_global_map(),
+  if Map.has_key(trace_domains_ar_trace_stat), Map.get(trace_domains_ar_trace_stat) == true  then
+    Map.put(trace_domains_ar_stat, Map.get(trace_domains_ar_stat,[])++[[Type,Tag]])
+  end.
+
+trace_domains_stat => 
+  print_variables("Before stat"),
+  println("\nTrace domains AR statistics:"),
+  L = get_global_map().get(trace_domains_ar_stat),
+  % println(l=L),
+  M = new_map(),
+  foreach(T in L) 
+    M.put(T,M.get(T,0)+1)
+  end,
+  NumEvents = sum([Count : [_,_]=Count in M]),
+  printf("Num events: %d\n", NumEvents),
+
+  % "Cost": try to show the efficiency of the propagation/labeling
+  Costs = new_map([dom=1,ins=1,generated=0,bound=2,backtrack=0]),
+  Cost = sum([Count*Costs.get(Type) : [Type,_]=Count in M]),
+  printf("'Cost': %d\n", Cost),
+
+  % println("\nDetails:"),
+  % foreach(Type in M.keys().sort())
+  %   println(Type=M.get(Type))
+  % end,
+  println("\nSummary:"),
+  Types = new_map(),
+  foreach([Type,_Var]=Count in M)
+     Types.put(Type,Types.get(Type,0)+Count)
+  end,
+  foreach(Type in Types.keys().sort())
+    println(Type=Types.get(Type))
+  end,
+
+  nl.
+
+%
+% Parse the <tag> (variable id) from the variable (DV_<tag>_<domain>)
+%
+parse_tag(X) = Tag =>
+   Split=split(X.to_string(),"_"),
+   Tag = Split[2].
+
+%
+% Get the variable name from the variable
+%
+get_tag(X) = get_tag2(parse_tag(X)).
+
+% 
+get_tag2(X) = Tag =>
+   Tag = get_heap_map().get(trace_domains_ar).get(X,"UNKNOWN").
+
+%
+% Insert the tag in the global (or rather heap) map.
+%
+put_tag(Tag,Name) => 
+   Map = get_heap_map(),
+   if not Map.has_key(trace_domains_ar) then
+     Map.put(trace_domains_ar,new_map()),
+     % Counter for TmpVar
+     Map.put(trace_domains_ar_tmpvar_counter,1)
+   end,
+   Map.get(trace_domains_ar).put(Tag,Name).
+
+
+get_range(R) = 
+   cond(R.length == 1, 
+      R.first().to_string(),
+      min(R).to_string() ++ ".." ++ max(R).to_string()).
+
+make_ranges(L) = Res =>
+  Ranges = [],
+  Range = [L[1]],
+  
+  foreach(I in 2..L.length)
+     Li1 = L[I-1],
+     Li  = L[I],
+     if Li == Li1+1 then
+        Range := Range ++ [Li]
+     else
+        if length(Range) > 0 then
+           Ranges := Ranges ++ [Range]
+        end,
+        Range := [],
+        Range := Range ++ [Li]
+     end
+  end,
+  % pickup the last range
+  if length(Range) > 0 then
+     Ranges := Ranges ++ [Range] 
+  end,
+  Res :=  join([get_range(R) : R in Ranges], ",").
+
+%
+% Add and print variables, mainly after backtracks.
+%
+add_variable_2d(Var,Name) => 
+  Map = get_heap_map(),
+  if not Map.has_key(trace_domains_ar_variables) then
+    Map.put(trace_domains_ar_variables,[])
+  end,
+  Map.put(trace_domains_ar_variables,Map.get(trace_domains_ar_variables) ++ [[Var,Name,d2]]),
+  print_variables("Init").
+
+add_variable_1d(Var,Name) => 
+  Map = get_heap_map(),
+  if not Map.has_key(trace_domains_ar_variables) then
+    Map.put(trace_domains_ar_variables,[])
+  end,
+  Map.put(trace_domains_ar_variables,Map.get(trace_domains_ar_variables) ++ [[Var,Name,d1]]),
+  print_variables("Init").
+
+add_variable_single(Var,Name) => 
+  Map = get_heap_map(),
+  if not Map.has_key(trace_domains_ar_variables) then
+    Map.put(trace_domains_ar_variables,[])
+  end,
+  Map.put(trace_domains_ar_variables,Map.get(trace_domains_ar_variables) ++ [[Var,Name,single]]),
+  print_variables("Init").
+
+%
+% print all registered variables
+%
+print_variables(Msg) =>
+  Map = get_heap_map(),
+  println("\nVariables:"),
+  foreach([Var,Name,Type] in Map.get(trace_domains_ar_variables,[]))
+    println([Var,Name,Type]),
+    if Type == d2 then
+       trace_domains2d(Var,Name.to_atom(),Msg)
+    elseif Type == d1 then
+       trace_domains1d(Var,Name.to_atom(),Msg)
+    elseif Type == single then
+       trace_domains_single(Var,Name.to_atom(),Msg)
+    end
+  end,
+  nl.
