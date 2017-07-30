@@ -1,6 +1,8 @@
 % 
 % "It's a tie" problem (Dell Logic Puzzles, October 1999) in MiniZinc.
 % 
+% From 
+% http://socrates.bmcc.cuny.edu/jsamuels/text/mhh-discrete-03ext.pdf
 % """
 % Four colleagues recently got into a discussion about some of the 
 % flamboyant patterns showing up on neckties these days. As a 

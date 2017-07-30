@@ -48,8 +48,8 @@ array[0..n-1] of int: demand = array1d(0..n-1, [5,7,7,10,16,18,12]);
 array[0..n-1] of var 0..120: full_time;
 array[0..n-1] of var 0..120: part_time;
 
-array[0..n-1] of var 0..30: all_f;
-array[0..n-1] of var 0..30: all_p;
+array[0..n-1] of var 0..30: all_f; % full time employees
+array[0..n-1] of var 0..30: all_p; % part time employees
 array[0..n-1] of var 0..130: all;
 
 % cost

@@ -20,20 +20,20 @@
 
 include "globals.mzn";
 
-int: n = 4;
+int: n; %  = 4;
 % var 1..n*n*n: total;
 int: total = ( n * (n*n + 1)) div 2;
 
 array[1..n,1..n] of var 1..n*n: magic;
 
 
-solve satisfy;
-% solve :: int_search(
-%         [magic[i,j] | i, j in 1..n], 
-%         input_order,
-%         indomain_min,
-%         complete) 
-%     satisfy;
+% solve satisfy;
+solve :: int_search(
+        [magic[i,j] | i, j in 1..n], 
+        first_fail, % smallest,
+        indomain_min, % indomain_median,
+        complete) 
+    satisfy;
 
 constraint
         all_different([magic[i,j] | i in 1..n, j in 1..n]) :: domain
@@ -78,6 +78,6 @@ output [
 ] ++
 [
     %   show(magic)
-      show(magic[i,j]) ++ " " ++ if j mod n == 0 then "\n" else "" endif 
+      show_int(3, magic[i,j]) ++ " " ++ if j mod n == 0 then "\n" else "" endif 
       | i,j in 1..n
 ];

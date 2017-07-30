@@ -63,7 +63,8 @@ constraint
 
 output 
 [
-  "y: ", show(y)
+  "y: ", show(y), "\n",
+  "d: ", show(d)
 ]
 ++
 [

@@ -154,6 +154,11 @@ solve :: int_search(y ++ x, largest, indomain_min, complete) minimize z;
 
 % Constraints
 constraint
+  % reduce the domains in y[i]
+  % forall(i in STATES) (
+  %   y[i] in {0, Votes[i]}
+  % )
+  % /\
   % sum(i in STATES) (x[i]*Votes[i]) >= Need
   sum(i in STATES) (y[i]) >= Need % :: domain
   % /\ z = 135936335 % for checking unicity of the solution

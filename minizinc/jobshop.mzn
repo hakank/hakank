@@ -38,8 +38,9 @@ predicate after(var int: t1, var int: t2) = t1 >= t2;
 % solve satisfy;
 solve :: int_search(
         % [job_start[machine,job] | machine in 1..num_jobs, job in 1..num_machines], 
-        [job_start[machine,job] | machine in 1..num_machines, job in 1..num_jobs], 
-        first_fail, % smallest,
+        % [job_start[machine,job] | machine in 1..num_machines, job in 1..num_jobs],
+        array1d(job_start),
+        first_fail,
         indomain_split,
         complete
         )
@@ -61,7 +62,7 @@ constraint
                   1) % :: domain
     )
 
-    % /\ % testing
+    % /\ % testing: non-overlaps of the machines
     % forall(job in 1..num_jobs) (
     %    cumulative([job_start[job,machine] | machine in 1..num_machines],
     %               [job_times[job,machine] | machine in 1..num_machines],
@@ -105,13 +106,17 @@ output
    | job in 1..num_jobs, machine in 1..num_machines
 ]
 ++
+[ "\njob_start:\n", show2d(job_start), "\n",
+  "\njob_end:\n", show2d(job_end), "\n" 
+] 
+++
 [ "\n\nSchedule\n"]
 ++
 [
   if machine = 1 then "\n" ++ show(job) ++ " : "  else " " endif ++
        show(job_start[job,machine]) ++ ".." ++ 
-       show(job_end[job,machine]-1) ++ " "
-  | job in 1..num_jobs,machine in 1..num_machines
+       show(job_end[job,machine]) ++ " "
+  | job in 1..num_jobs, machine in 1..num_machines
 ]
 ++
 [ "\n\nEarliest end time: " ++ show(earliest_end_time) ++ "\n" ]

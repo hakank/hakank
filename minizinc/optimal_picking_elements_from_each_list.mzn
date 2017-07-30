@@ -53,7 +53,7 @@ var 0..max_val*n: sum_diffs; % to minimize
 solve minimize sum_diffs;
 % solve :: int_search(
 %         x, 
-%         first_fail, 
+%        first_fail, 
 %         indomain_split, 
 %         complete) 
 %     minimize sum_diffs;

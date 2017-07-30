@@ -75,7 +75,7 @@ solve ::
         occurrence, % largest, % occurrence, 
         indomain_min, 
         complete) 
-     minimize total
+     minimize total_steps
      % satisfy
     ;
 
@@ -149,7 +149,8 @@ constraint
 
 output
 [
-   "total_steps: " ++ show(total_steps)
+   "total_steps: " ++ show(total_steps) ++ "\n" ++
+   "total: " ++ show(total)
 ]
 ++
 [

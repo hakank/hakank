@@ -42,7 +42,7 @@ array[1..n] of float: value;
 array[1..n] of float: weight;
 array[1..n] of float: volume;
 
-array[1..n] of var int: x;
+array[1..n] of var 0..10000: x;
 
 var float: z = sum(i in 1..n) (int2float(x[i])*value[i]);
 
@@ -69,6 +69,7 @@ solve maximize z;
 % solve :: int_search(x, input_order, indomain_split, complete) maximize z;
 
 constraint
+   z >= 0.0 /\
    forall(i in 1..n) ( x[i] >= 0 ) 
    /\
    knapsack(volume, x, 0.25) 

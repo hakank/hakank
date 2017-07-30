@@ -23,10 +23,17 @@
 include "globals.mzn"; 
 
 
-int: base =  13;  % the base to use, i.e. the alphabet 0..base-1
-int: n    =  4;  % number of bits to use (n = 4 -> 0..base^n-1 = 0..2^4 -1, i.e. 0..15)
-int: m    = 52;  % the length of the sequence. For "arbitrary" de Bruijn sequences
+% int: base = 13;  % the base to use, i.e. the alphabet 0..base-1
+% int: n    = 4;  % number of bits to use (n = 4 -> 0..base^n-1 = 0..2^4 -1, i.e. 0..15)
+% int: m    = 52;  % the length of the sequence. For "arbitrary" de Bruijn sequences
+
+int: base = 2;  % the base to use, i.e. the alphabet 0..base-1
+int: n    = 5;  % number of bits to use (n = 4 -> 0..base^n-1 = 0..2^4 -1, i.e. 0..15)
+int: m    = 27;  % the length of the sequence. For "arbitrary" de Bruijn sequences
+
+
 % int: m = ceil(pow(int2float(base), int2float(n)));  % the length of the sequence k^n. Use this for "classic" de Bruijn sequences
+
 array[1..m] of var 0..ceil(pow(int2float(base), int2float(n)))-1: x; 
 array[1..m, 1..n] of var 0..base-1: binary;              % binary representation of the numbers
 array[1..m] of var 0..base-1: bin_code;                  % the sequence in base-representation
@@ -45,17 +52,18 @@ array[0..base-1] of var int: gcc;                        % number of occurrences
 %   m   : 52
 % Change the parameters in credit and bbs for more results
 % solve :: int_search(x, first_fail, indomain_split, credit(5,bbs(1))) satisfy;
-solve :: int_search(x, first_fail, indomain_split, complete) satisfy;
+% solve :: int_search(x, first_fail, indomain_random, complete) satisfy;
+solve satisfy;
 
 
 %
 % converts a number (s) <-> an array of numbers (t) in the specific base.
 %
-predicate toNum(array[int] of var 0..base-1: t, var 0..ceil(pow(int2float(base), int2float(n))): s,  float: base) =
+predicate toNum(array[int] of var 0..base-1: t, var int: s,  int: base) =
           let { int: len = length(t) }
           in
           s = sum(i in 1..len) (
-            ceil(pow(base, int2float(len-i))) * t[i]
+            pow(base, len-i) * t[i]
           )
           % /\ forall(i in 1..len) (t[i] >= 0)
 ;
@@ -79,7 +87,7 @@ constraint
           array[1..n] of var 0..base-1: t
        }
        in
-       toNum(t, x[i], int2float(base)) /\
+       toNum(t, x[i], base) /\
        forall(j in 1..n) (
          binary[i,j] = t[j]
         )

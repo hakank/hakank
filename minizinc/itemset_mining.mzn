@@ -23,7 +23,6 @@
 % include "globals.mzn"; 
 int: NrT;
 int: NrI;
-% int: Freq;
 
 % Transaction database (binary matrix)
 % array[1..NrT, 1..NrI] of int: TDB;
@@ -59,12 +58,15 @@ var 0..100: Support = (100*Coverage) div (NrT);
 % solve maximize Support;
 % solve minimize Freq;
 solve :: int_search(
-        Items ++ Trans, 
+        Items ++ Trans,
         first_fail, 
-        indomain_min, 
+        indomain_split, 
         complete) 
-    % satisfy;
-    maximize Support;
+    satisfy;
+    % maximize Support;
+    % minimize Support;    
+    % maximize Coverage;
+    % maximize ItemsetSize;
 
 %
 % Binary matrix approach
@@ -121,18 +123,16 @@ constraint
      Items[i] = 1 <-> sum(t in 1..NrT) ( Trans[t]*bool2int(i in S[t])) >= Freq
    )
 
-
 ;
 
-% constraint Support = 20;
-
-% These two constraints seems to be reasonable
 constraint 
-   sum(Items) > 0 /\
-   sum(Trans) > 0
-   /\
-   Coverage = sum(Trans) /\
-   ItemsetSize = sum(Items)
+   Coverage = sum(Trans)    /\
+   ItemsetSize = sum(Items) /\
+
+   Coverage    > 0 /\
+   ItemsetSize > 0 /\
+   Freq        > 0 
+
 ;
 
 output 
@@ -312,6 +312,7 @@ output
 % {Beer,Milk}
 % ];
 
+
 % From the presentation
 % "Association Rules"
 % http://www.cse.ohio-state.edu/~srini/674/assoc1.ppt
@@ -328,7 +329,7 @@ output
 % NrI = 6;
 % Freq = 2;
 % % Coverage = 3;
-% ItemsetSize = 3;
+% % ItemsetSize = 3;
 % int: Blouse = 1;
 % int: Jeans = 2;
 % int: Shoes = 3;
@@ -360,13 +361,119 @@ output
 % ];
 
 
+% From 
+% Christian Borgelt presentation
+% Frequent Pattern Mining
+% http://www.borgelt.net/slides/fpm4.pdf
+% page 3.
+% NrI = 5;
+% NrT = 10;
+% Freq = 2;
+% % ItemsetSize = 3;
+% ItemStr = ["a","b","c","d","e"];
+% int: a = 1;
+% int: b = 2;
+% int: c = 3;
+% int: d = 4;
+% int: e = 5;
+% S = [
+% {a,d,e},
+% {b,c,d},
+% {a,c,e},
+% {a,c,d,e},
+% {a,e},
+% {a,c,d},
+% {b,c},
+% {a,c,d,e},
+% {b,c,e},
+% {a,d,e}
+% ];
+
+
+% From 
+% Frequence Item Mining
+% http://www.cs.kent.edu/~jin/DM08/FIM.pdf
+% page 4
+% NrT = 10;
+% NrI = 5;
+% Freq = 2;
+% ItemStr = ["a","b","c","d","e"];
+% int: a = 1;
+% int: b = 2;
+% int: c = 3;
+% int: d = 4;
+% int: e = 5;
+% S = 
+% [
+% {a,b,e},
+% {b,d},
+% {a,b,e},
+% {a,c},
+% {b,c},
+% {a,c},
+% {a,c},
+% {a,b},
+% {a,b,c,e},
+% {a,c,e}
+% ];
+
+% Frequence Item Mining
+% http://www.cs.kent.edu/~jin/DM08/FIM.pdf
+% page 15f
+% NrT = 5;
+% NrI = 6;
+% % Freq = 2;
+% % ItemsetSize = 3 ;
+% ItemStr = ["Beer","Bread","Coke","Diaper","Eggs","Milk"];
+% int: Beer = 1;
+% int: Bread = 2;
+% int: Coke = 3;
+% int: Diaper = 4;
+% int: Eggs = 5;
+% int: Milk = 6;
+% S = [
+% {Bread, Milk},
+% {Bread,Diaper,Beer,Eggs},
+% {Milk,Diaper,Beer,Coke},
+% {Bread,Milk,Diaper,Beer},
+% {Bread,Milk,Diaper,Coke}
+% ]
+
+% 
+% From
+% Tan, Steinbach, Kumar: "Introduction to datamining"
+%
+% NrT = 10;
+% NrI = 5;
+% Freq = 2;
+% int: a = 1;
+% int: b = 2;
+% int: c = 3;
+% int: d = 4;
+% int: e = 5;
+% ItemStr = ["a","b","c","d","e"];
+% S = [
+% {a,b},      % 1
+% {b,c,d},    % 2
+% {a,c,d,e},  % 3
+% {a,d,e},    % 4
+% {a,b,c},    % 5
+% {a,b,c,d},  % 6
+% {a},        % 7
+% {a,b,c},    % 8
+% {a,b,d},    % 9
+% {b,c,e}     % 10
+% ];
+
+
+
 %
 % Simulation of 10 items 1000 transactions.
 %
 % perl -e 'my $T = 1000; my $n = 10; print "NrT = $T;\nNrI = $n;\nS = [\n";  for(1..$T) { my @t =(); for(1..$n) { push @t, $_ if rand(1) >= 0.5}; print "{" . join(",",@t) . "},\n";}; print "];\n"'
 %
 ItemStr = ["i" ++ show(i) | i in 1..NrI];
-Freq = 30;
+Freq = 10;
 NrT = 1000;
 NrI = 10;
 S = [

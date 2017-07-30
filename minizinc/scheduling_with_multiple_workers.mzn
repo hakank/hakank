@@ -83,6 +83,7 @@ var 1..max_time: last_time = max(end_time);
 solve :: int_search(start_time ++ machine ++ array1d(machine_used_ram), first_fail, indomain_split, complete)  minimize last_time;
 % solve :: int_search(start_time ++ machine ++ array1d(machine_used_ram), first_fail, indomain_split, complete) minimize machines_used;
 
+
 constraint
   forall(t in 1..num_tasks) (
     end_time[t] = start_time[t] + duration[t] -1

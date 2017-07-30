@@ -90,7 +90,8 @@ function var int: last(array[int] of var int: a) = a[length(a)];
 
 %
 % Returns an array of the elements that are > 0.
-% The num_zeros indicates the number of 0s in the array.
+% The "num_zeros" parameter indicates the number of 0s in the array
+% (needed since we have to fix the dimension of t).
 %
 function array[int] of var int: except_0(array[int] of var int: a, int: num_zeros) =
     let {

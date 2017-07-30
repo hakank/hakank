@@ -45,7 +45,8 @@ constraint
 ;
 
 output 
-[
+[ 
+  "x: ", show(x), "\n",
   "d_x: ", show(d_x), "\n",
 ] ++
 [

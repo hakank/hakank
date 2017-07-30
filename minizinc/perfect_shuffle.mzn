@@ -39,7 +39,7 @@
 % core dump. Maybe a too large matrix?)
 % this is happening also for for some other n 
 %
-int: n = 14; % we will use 2*n below
+int: n = 26; % we will use 2*n below
 int: t = 2*n; % t for twice
 
 % From 
@@ -88,22 +88,18 @@ array[1..t, 1..t] of var 1..t: x;
 %
 predicate perfect_shuffle(array[int] of var int: x, array[int] of var int: y, int: n) = 
 
-   % 0-based. version < 0.8
-%   forall(i in 0..n-1) (
-%     % place the odd indices
-%     y[2*i] = x[i] 
-%
-%     /\ % place the even indices
-%     y[2*i+1] = x[n+i]
-%   )
 
-    % version 0.8
     forall(i in 1..n) (
+      trace("2*i: " ++ show(2*i-1) ++ " 2*i-1:" ++ show(2*i-1-1) ++ " n: " ++ show(n) ++
+            " i: " ++ show(i-1) ++ " n+i:" ++ show(n+i-1) ++ "\n", 1=1)
+      /\
       % place the odd indices
-      x[2*i-1] = y[i]
+      y[2*i-1] = x[i]
       /\ % place the even indices
-      x[2*i] = y[n+i]
+      y[2*i] = x[n+i]
    )
+
+
 ;
 
 solve satisfy;

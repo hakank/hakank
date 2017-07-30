@@ -65,13 +65,13 @@ solve satisfy;
 
 
 constraint
-  cp2d(x, array2d(1..r, 1..c, 
-     [
-       5,2,3,9,
-       5,2,6,2,
-       5,2,6,3
-     ]))
-  /\
+  % cp2d(x, array2d(1..r, 1..c, 
+  %    [
+  %      5,2,3,9,
+  %      5,2,6,2,
+  %      5,2,6,3
+  %    ]))
+  % /\
   lex_chain_less(x)
 ;
 

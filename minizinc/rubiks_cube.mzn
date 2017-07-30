@@ -97,18 +97,20 @@
 %
 include "globals.mzn";
 
-int: n = 48; % the elements
+int: n = 48; % number of elements
 
-% The number of possible rows
+% The number of possible moves (rows)
 % "God's Number" is 20, i.e. the maximal number of moves 
 % that is needed. (See http://cube20.org/ for more about this.)
+% int: rows = 41; 
 int: rows = 21; 
 
 
 % 
 % Here are the 12 permutations (6 moves + their inverses + 1 no op).
 % 
-int: num_moves = 12;
+% int: num_moves = 12;
+int: num_moves = 18; % added the 6 Move^2
 array[0..num_moves, 1..n] of int: moves = array2d(0..num_moves, 1..n,
   [
 
@@ -154,27 +156,40 @@ array[0..num_moves, 1..n] of int: moves = array2d(0..num_moves, 1..n,
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 17, 18, 19, 20, 21, 30, 31, 32, 25, 26, 27, 28, 29, 38, 39, 40, 33, 34, 35, 36, 37, 14, 15, 16, 43, 45, 48, 42, 47, 41, 44, 46,
 
   % B inverse (Bi)
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 38, 39, 40, 17, 18, 19, 20, 21, 14, 15, 16, 25, 26, 27, 28, 29, 22, 23, 24, 33, 34, 35, 36, 37, 30, 31, 32, 46, 44, 41, 47, 42, 48, 45, 43
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 38, 39, 40, 17, 18, 19, 20, 21, 14, 15, 16, 25, 26, 27, 28, 29, 22, 23, 24, 33, 34, 35, 36, 37, 30, 31, 32, 46, 44, 41, 47, 42, 48, 45, 43,
+
+
+  % The 6 Move^2
+  % Move top^2
+  8,7,6,5,4,3,2,1,25,26,27,12,13,14,15,16,33,34,35,20,21,22,23,24,9,10,11,28,29,30,31,32,17,18,19,36,37,38,39,40,41,42,43,44,45,46,47,48,
+
+  % Move left^2
+  41,2,3,44,5,46,7,8,16,15,14,13,12,11,10,9,40,18,19,37,21,35,23,24,25,26,27,28,29,30,31,32,33,34,22,36,20,38,39,17,1,42,43,4,45,6,47,48,
+
+  % Move front^2
+  1,2,3,4,5,43,42,41,9,10,30,12,28,14,15,25,24,23,22,21,20,19,18,17,16,26,27,13,29,11,31,32,33,34,35,36,37,38,39,40,8,7,6,44,45,46,47,48,
+
+  % Move right^2
+  1,2,43,4,45,6,7,48,9,10,11,12,13,14,15,16,17,18,38,20,36,22,23,33,32,31,30,29,28,27,26,25,24,34,35,21,37,19,39,40,41,42,3,44,5,46,47,8,
+
+  % Move rear^2
+  48,47,46,4,5,6,7,8,32,10,11,29,13,27,15,16,17,18,19,20,21,22,23,24,25,26,14,28,12,30,31,9,40,39,38,37,36,35,34,33,41,42,43,44,45,3,2,1,
+
+  % Move bottom^2
+  1,2,3,4,5,6,7,8,9,10,11,12,13,30,31,32,17,18,19,20,21,38,39,40,25,26,27,28,29,14,15,16,33,34,35,36,37,22,23,24,48,47,46,45,44,43,42,41,
+
 
   ]);
 
 % Using GAP's notation (and ".i" for the inverse moves)
 array[0..num_moves] of string: moves_str = array1d(0..num_moves, 
-       ["-", "T", "Ti", "L", "Li", "F", "Fi", "R", "Ri","E", "Ei", "B", "Bi"]);
+  % ["-", "T", "Ti", "L", "Li", "F", "Fi", "R", "Ri","E", "Ei", "B", "Bi"]);
+  % 0   1    2     3    4     5    6     7    8    9    10    11   12      13   14   15   16   17   18
+  ["-", "T", "Ti", "L", "Li", "F", "Fi", "R", "Ri","E", "Ei", "B", "Bi",   "T2","L2","F2","R2","E2","B2"]);
 
-% int: num_colors = 6;
-% array[1..num_colors] of set of int: colors = 
-% [
-%   1..8,   % top
-%   9..16,  % left
-%   17..24, % front
-%   25..32, % right
-%   33..40, % rear
-%   41..48, % bottom
-% ];
-
-
+%
 % decision variables
+%
 
 % The results of the operations, starting with the init as first row
 array[1..rows, 1..n] of var 1..n: x;
@@ -204,7 +219,7 @@ predicate permutation3(array[int] of var int: a,
 % Copy an array to a decision variable array
 predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
   assert(index_set(x) = index_set(y),
-           "cp1d: x and y have different sizes",
+    "cp1d: arrays x and y must have different sizes",
      forall(i in index_set(x)) ( x[i] = y[i] ))
 ; 
 
@@ -213,12 +228,28 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 % solve satisfy;
 % ann: var_select;
 % ann: val_select;
+% solve :: int_search(
+%         operations
+%         % [x[i,j] | i in 1..rows, j in 1..n]
+%         % ++ operations
+%         % [x[rows-i+1,j] | i in 1..rows, j in 1..n]
+%         % ++[operations[rows-i+1] | i in 1..rows]
+%         , 
+%         smallest, % max_regret, 
+%         indomain_min,
+%         complete) 
+%     minimize check_ix;
+%     % satisfy;
+
 solve :: int_search(
-        [x[i,j] | i in 1..rows, j in 1..n]
-        ++ operations
+        operations
+        % [x[i,j] | i in 1..rows, j in 1..n]
+        % ++ operations
+        % [x[rows-i+1,j] | i in 1..rows, j in 1..n]
+        % ++[operations[rows-i+1] | i in 1..rows]
         , 
-        smallest, % max_regret, 
-        indomain_min, 
+        anti_first_fail, % smallest,
+        indomain_min, % indomain_min,
         complete) 
     minimize check_ix;
     % satisfy;
@@ -231,6 +262,8 @@ constraint
    % initialize the first row of matrix.
    forall(j in 1..n) (
       x[1, j] = init[j]
+      /\
+      x[rows,j] = j
    )
 
    /\ 
@@ -251,34 +284,23 @@ constraint
    )
 
    /\ % there must be some sequence where we find the goal sequence
-   exists(i in 1..rows) (
-      forall(j in 1..n) ( x[i,j] = j )
+   forall(j in 1..n) ( x[check_ix,j] = j )
 
-      % /\
-      % forall(c in 1..num_colors) (
-      %    forall(j in colors[c]) (
-      %      x[i,j] in colors[c]
-      %   )
-      % )
+   /\ % Symmetry breaking: 
+      % all the further entries after check_ix steps must also be the solution.
+   forall(k in 2..rows) (
+     k > check_ix -> forall(j in 1..n) (x[k,j] = j) 
+                     /\ operations[k] = 0
+     )
 
-      /\
-      check_ix = i
-
-      /\ % Symmetry breaking: 
-         % all the further entries after check_ix steps must also be the solution.
-      forall(k in i+1..rows) (
-        forall(j in 1..n) (x[k,j] = j) 
-        % forall(j in 1..n) (x[k,j] = x[k-1,j]) 
-        /\ operations[k] = 0
-      )
-   )
-   /\ % Symmetry breaking: this seems to be a good booster
-      % (checking for real moves)
+   /\
+   % Symmetry breaking: this seems to be a good booster
+   % (checking for real moves)
    forall(i in 2..rows) (
-      i < check_ix -> operations[i] > 0
+      i < check_ix <-> operations[i] > 0
    )
-;
 
+;
 
 
 %
@@ -292,6 +314,15 @@ constraint
 constraint
    % Skeleton
    % cp1d(init, [ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _])
+
+  % Skeleton
+  % 
+  %            1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+  % cp1d(init, [ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+
+  %            % 25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48    
+  %              _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _])
+
 
 
   % From: http://www.gap-system.org/Doc/Examples/rubik.html
@@ -350,20 +381,26 @@ constraint
 
   % (TLFREB)^-1
   % Found: BiEiRiFiLiTi (only solution with 6 moves)
-  % cp1d(init, [ 11, 34, 35, 37, 26, 19, 18, 27, 6, 12, 25, 4, 42, 41, 44, 46, 8, 7, 33, 23, 45, 40, 13, 43, 3, 5, 9, 31, 47, 24, 21, 48, 1, 2, 17, 39, 10, 32, 29, 22, 14, 20, 30, 15, 28, 16, 36, 38 ])
+  %    Gecode: 2.7s (451 failures)   Gecode + free: 2.1s (451 failures)
+  %    Chuffed: 9.1s
+  %    or-tools: 9.4s (3492 fauilures)
+  cp1d(init, [ 11, 34, 35, 37, 26, 19, 18, 27, 6, 12, 25, 4, 42, 41, 44, 46, 8, 7, 33, 23, 45, 40, 13, 43, 3, 5, 9, 31, 47, 24, 21, 48, 1, 2, 17, 39, 10, 32, 29, 22, 14, 20, 30, 15, 28, 16, 36, 38 ])
   % /\ check_ix = 7
 
   % T^2*L^2*F^2*R^2*E^2*B^2
   % operations: [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 0, 0, 0, 0, 0, 0, 0]
   % ["-", "T", "T", "L", "L", "F", "F", "R", "R", "E", "E", "B", "B", "-", "-", "-", "-", "-", "-", "-"]
+  %    Gecode: 28.9s (47876): Moves: T2L2F2R2E2B2
   % cp1d(init, [ 48, 47, 3, 44, 45, 46, 42, 1, 32, 15, 14, 12, 29, 30, 10, 16, 40, 23, 35, 36, 20, 22, 18, 17, 9, 31, 27, 13, 28, 11, 26, 25, 33, 39, 38, 21, 37, 19, 34, 24, 41, 7, 6, 4, 5, 43, 2, 8 ])
 
   % gap> ListPerm(t*t*t*l*l*l,48);
   % Found moves: TiLi
+  %    Gecode: 1.8s (3 failures)
   % cp1d(init, [ 35, 37, 40, 7, 2, 8, 5, 3, 1, 18, 19, 15, 10, 16, 13, 11, 25, 26, 27, 4, 21, 6, 23, 24, 33, 34, 46, 28, 29, 30, 31, 32, 14, 12, 9, 36, 44, 38, 39, 41, 17, 42, 43, 20, 45, 22, 47, 48 ])
 
   % gap> ListPerm(b*b*b*r*r*r*b,48);
   % Found moves: BiRiB
+  %     Gecode: 1.8s  (23 failures)
   % cp1d(init, [ 1, 2, 19, 4, 21, 6, 7, 32, 9, 10, 11, 12, 13, 3, 15, 16, 17, 18, 48, 20, 47, 22, 23, 24, 38, 28, 25, 39, 26, 30, 31, 46, 8, 34, 35, 5, 37, 40, 29, 27, 41, 42, 43, 44, 45, 33, 36, 14 ])
 
 
@@ -375,6 +412,8 @@ constraint
   %  BiRiBFTLLR
   %  BiRiBFTLRL
   %  BiRiBFTRLiLi
+  %     Gecode: 16.8s (17764 failures)  BiRiBFTRL2 (with the 6 move^2 moves)
+  %             14.5s  (16391 failures) with move^2 moves and rows = 21
   % cp1d(init, [ 38, 36, 8, 2, 23, 40, 26, 30, 48, 34, 46, 13, 44, 33, 10, 41, 14, 5, 24, 15, 47, 16, 37, 35, 43, 42, 19, 39, 18, 1, 28, 6, 25, 29, 32, 7, 20, 17, 31, 3, 22, 12, 9, 4, 21, 27, 45, 11 ])
   % % /\ check_ix = 9 % for solve satisfy
 
@@ -388,12 +427,64 @@ constraint
   % U*L*D*R*F*B^-1*U^-1L^-1 (ie. Uclk, Lclk, Dclk, Rclk, Fclk, Bcnt, Ucnt, Lcnt).
   % """
   % 
-  % This model found two solutions with optimal 8 moves:
+  % There are two solutions with optimal 8 moves:
   %  - LTEFiRiBiLiTi
   %  - LTFiERiBiLiTi
-  % 
-  cp1d(init, [48,21,17,13,18,43,37,41,32,20,30,44,39,46,45,9,24,12,22,47,26,35,42,25,16,7,6,5,4,19,29,27,11,28,38,10,15,3,2,14, 1,23,8,31,36,40,34,33])
+  %     Gecode: 1:01min (71190 failures) Found LTFiERiBiLiTi
+  % cp1d(init, [48,21,17,13,18,43,37,41,32,20,30,44,39,46,45,9,24,12,22,47,26,35,42,25,16,7,6,5,4,19,29,27,11,28,38,10,15,3,2,14, 1,23,8,31,36,40,34,33])
   %   %  /\ check_ix = 9
+
+  % 
+  % change 18 <-> 23 (front) and 26 <-> 31 (right) and let other positions be whatever.
+  % 
+  % Here are the different 4 moves (with different inits)
+  % - FiFiRR
+  % - FiFiRiRi
+  % - FFRR
+  % - FFRiRi
+  % - RRFF
+  % - RRFiFi
+  % - RiRiFF
+  % 
+  %            1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+  % cp1d(init, [ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,23, _, _, _, _,18, _,
+  %
+  %            %25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48    
+  %              _,31, _, _, _, _,26, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _])
+  % % /\ check_ix = 5
+
+  % 
+  % change 18 <-> 23 (front) and keep the other positions intact.
+  % This is NOT possible.
+  %          
+  % cp1d(init, [1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,23,19,20,21,22,18,24,
+  %            25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]) 
+
+  % 
+  % change 18 <-> 23 (front) and 26 <-> 31 (right) and keep the other positions intact.
+  % This is NOT possible.
+  % 
+  %         
+  % cp1d(init, [1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,23,19,20,21,22,18,24,
+  %            25,31,27,28,29,30,26,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]) 
+
+
+  % Make these 12 moves: TLEiLiRRiRiFEBTiBi
+  % cp1d(operations, [0,1,3,10,4,7,8,8,5,9,11,2,12,0,0,0,0,0,0,0,0])
+  % which generated this init:
+  %   Gecode found these optimal moves TLEiLiRiFETi in 51.2s (61504 failures)
+  % cp1d(init, [6, 23, 22, 34, 28, 14, 7, 33, 17, 2, 40, 47, 5, 24, 12, 38, 46, 18, 3, 26, 45, 48, 20, 35, 27, 21, 16, 31, 29, 1, 4, 25, 41, 42, 11, 36, 39, 19, 44, 43, 32, 13, 9, 37, 10, 30, 15, 8])
+
+  % Make these 3 moves: T2B2F2
+  % cp1d(operations, [0,13,18,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+  %   Gecode found T2B2F2 in 0.81s (40 failures)
+  % cp1d(init, [41, 42, 43, 5, 4, 3, 2, 1, 16, 26, 27, 12, 28, 11, 31, 32, 33, 34, 35, 21, 20, 38, 39, 40, 9, 10, 30, 13, 29, 14, 15, 25, 24, 23, 22, 36, 37, 19, 18, 17, 48, 47, 46, 45, 44, 6, 7, 8])
+
+  %                   13 18 15 3 7 17 2  11  
+  % make these moves: T2 B2 F2 L R E2 Ti B
+  % cp1d(operations, [0,13,18,15,3,7,17,2,11,0,0,0,0,0,0,0,0,0,0,0,0])
+  %    Gecode found T2B2F2LRE2TiB in 12:40min (1168058 failures)
+  % cp1d(init, [9, 45, 27, 37, 20, 11, 44, 25, 35, 12, 17, 18, 34, 24, 28, 38, 6, 15, 8, 2, 42, 48, 10, 46, 19, 13, 33, 23, 39, 40, 29, 22, 3, 31, 1, 47, 7, 41, 26, 43, 32, 4, 14, 21, 36, 30, 5, 16])
 
 ;
 
@@ -401,8 +492,8 @@ output
 [
   "\ninit: ", show(init), "\n",
   "check_ix: ", show(check_ix), "\n", 
-  "operations: ", show(operations), "\n",
-  show([moves_str[fix(operations[i])] | i in 1..rows]),
+  % "operations: ", show(operations), "\n",
+  % show([moves_str[fix(operations[i])] | i in 1..rows]),
   "\nMoves: ",
 ] ++
 [
@@ -419,10 +510,14 @@ output
 ]
 ++
 [
-  if j = 1 then "\n" ++  
-     show(operations[i]) ++ "(" ++ show(moves_str[fix(operations[i])]) ++ "): "  
-   else " " endif ++
-  show(x[i,j])
+  if i > 1 /\ fix(operations[i]) > 0 then
+    if j = 1 then "\n" ++  
+       show(operations[i]) ++ "(" ++ show(moves_str[fix(operations[i])]) ++ "): "  
+     else " " endif ++
+    show(x[i,j])
+  else 
+     ""
+  endif
   | i in 1..rows, j in 1..n
 ] ++ ["\n"]
 ;

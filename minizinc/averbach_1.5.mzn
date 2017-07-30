@@ -40,6 +40,7 @@ array[1..n] of var 0..n: z_cumsum; % cumulative sum of moves
 solve :: int_search(x, first_fail, indomain_min, complete)  satisfy;
 % solve satisfy;
 % solve :: int_search(x, first_fail, indomain_min, complete)  maximize sum(i in 1..n) (bool2int(winner[i] = 1));
+% solve :: int_search(x, first_fail, indomain_min, complete)  maximize sum(i in 1..n) (bool2int(x[i] = 0));
 
 constraint
  forall(i in 1..n) (
@@ -79,5 +80,5 @@ output [
 % data
 %
 num_players = 2;
-n = 6;
-max_num_to_take = 2;
+n = 15;
+max_num_to_take = 3;

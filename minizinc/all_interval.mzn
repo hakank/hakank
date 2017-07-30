@@ -35,18 +35,20 @@
 % (Very old note: For n = 12, all 1328 solution (no symmetry breaking) took about 25 
 %       seconds.
 %       With symmetry breaking: 463 solutions in 15 seconds.)
-%
+% (Now Gecode/fz takes about 2 seconds for generating all solutions withoutsymmetry breaking,
+%  and 0.8s with symmetry breaking.)
 
 include "globals.mzn";
 
-int: n = 12;
+% int: n = 12;
+int: n; 
 % array[1..n] of var 1..n: x;
 array[1..n] of var 1..n: x;
 array[1..n-1] of var 1..n-1: diffs;
 int: sum_distinct = ((n+1)*n) div 2;
 
 % max_regret seems to be quite good....
-solve :: int_search(x, max_regret, indomain_split, complete) satisfy;
+solve :: int_search(x ++diffs, max_regret, indomain_split, complete) satisfy;
 
 constraint      
   all_different(diffs) :: domain
@@ -60,9 +62,10 @@ constraint
   x[1] < x[n-1]
   /\
   diffs[1] < diffs[2]
+  % /\ increasing(diffs) % for just one solution
 ;
 
 
 output [
-       show(x) ++ "," % , " ", show(sum_distinct), " diffs: ", show(diffs)
+       show(x) ++ "," , " ", show(sum_distinct), " diffs: ", show(diffs)
 ]

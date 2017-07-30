@@ -250,15 +250,15 @@
 include "globals.mzn"; 
 
 % the dimension of the matrix (row x cols)
-int: rows = 2;
-int: cols = 4;
+int: rows; % = 2;
+int: cols; % = 4;
 
 % the base to use, i.e. the alphabet 0..base-1
-int: base = 2;
+int: base; % = 2;
 
 % dimensions of the sub squares (m1 x m2)
-int: m1 = 2; % rows
-int: m2 = 2; % cols
+int: m1; % = 2; % rows
+int: m2; % = 2; % cols
 
 % decision variables 
 % 
@@ -391,7 +391,7 @@ constraint
 % require that all values > 0
 % constraint forall(i,j in 0..dim-1) ( x[i,j] > 0 );
 
-% require that all rows/columns (0..dim-1) are distinct
+%% require that all rows/columns (0..dim-1) are distinct
 % (and - perhaps - diagonals)
 % int: reg = ceil(sqrt(int2float(rows))); % size of the Sudoku regions
 % constraint
@@ -420,6 +420,8 @@ constraint
 
 %     /\
 %     if rows = 9 /\ cols = 9 then
+%       %%forall(i in 1..rows, j in 1..cols) ( x[i,j] > 0) /\
+    
 %       % Require Sudoku sub grids
 %       forall(i in 0..reg-1,j in 0..reg-1) (
 %         % trace(show([1+r*cols+c | r in i*reg..(i*reg)+reg-1, c in j*reg..(j*reg)+reg-1]) ++ "\n", 1=1)
@@ -482,4 +484,55 @@ output
 ++
 ["\n"]
 ;
+
+
+
+%
+% 
+%
+
+% % dimension of the matrix
+% rows = 2;
+% cols = 4;
+
+% base = 2;
+
+% % dimension of the subgrid
+% m1 = 2; % rows
+% m2 = 2 % cols
+
+
+
+% % dimension of the matrix
+% rows = 10;
+% cols = 10;
+
+% base = 10;
+
+% % dimension of the subgrid
+% m1 = 4; % rows
+% m2 = 4 % cols
+
+
+
+% Sudoku approach (see above for extra constraints)
+% dimension of the matrix
+% rows = 9;
+% cols = 9;
+
+% base = 9;
+
+% % dimension of the subgrid
+% m1 = 3; % rows
+% m2 = 3 % cols
+
+
+% Larger matrix
+rows = 20;
+cols = 20;
+base = 10;
+% dimension of the subgrid
+m1 = 10; % rows
+m2 = 10 % cols
+
 

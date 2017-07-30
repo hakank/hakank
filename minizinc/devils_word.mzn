@@ -1,4 +1,4 @@
-%
+% 
 % A Minizinc implementation of "Devil's Word"
 %
 % i.e. addition/subtraction of an array of numbers to give a specific total (e.g. 666)

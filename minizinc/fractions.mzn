@@ -58,4 +58,12 @@ constraint
 output [
   show(Vars), "\n"
 ]
+++
+[
+  "\n" ++ 
+  show(A) ++ "/(" ++ show(B) ++ show(C) ++") + " ++
+  show(D) ++ "/(" ++ show(E) ++ show(F) ++") + " ++
+  show(G) ++ "/(" ++ show(H) ++ show(I) ++") = 1\n "
+
+]
 ;

@@ -161,11 +161,18 @@ constraint
       )
    )
 
-   % % Symmtery breaking: ordered rows.
-   % % Note: If using the static problem instances, this should be commented.
+   % Symmetry breaking: ordered rows.
+   % Note: If using the static problem instances, this should be commented.
    % /\
    % forall(i in 2..m) (
    %   lex_less([nuts[i-1,j] | j in 1..n], [nuts[i,j] | j in 1..n] )
+   % )
+
+
+   % TEST
+   % /\
+   % forall(i in 1..m) (
+   %   start_ix[i] = 0
    % )
 ;
 

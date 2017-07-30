@@ -115,10 +115,12 @@ array[1..n] of int: a;
 array[1..n] of var 0..n: x;
 var 0..n: c = sum([bool2int(x[i] > 0) | i in 1..n]);
 
-solve satisfy;
+% solve satisfy;
 % solve :: int_search(x, max_regret, indomain_random, complete) satisfy; % for generating problems
 % solve :: int_search(x, max_regret, indomain_split, complete) satisfy;
 % solve :: int_search(x, anti_first_fail, indomain_split, complete) satisfy;
+solve minimize c;
+% solve :: int_search(x, input_order, indomain_split, complete) minimize c;
 
 
 
@@ -236,9 +238,9 @@ output
 
 %  3 solutions for start = 1
 % Total 15 solutions for start = 0
-n = 10;
-a = [3,6,4,1,3,4,2,5,3,0];
-start = 0;
+% n = 10;
+% a = [3,6,4,1,3,4,2,5,3,0];
+% start = 0;
 
 % This problem is unsat for any start
 % n = 5;
@@ -276,9 +278,9 @@ start = 0;
 % start = 0;
 
 % a lot of solutions
-% n = 40;
-% a = [8, 28, 22, 27, 28, 2, 29, 9, 30, 7, 5, 10, 8, 21, 13, 3, 10, 13, 1, 6, 11, 16, 17, 17, 15, 8, 2, 5, 5, 8, 3, 31, 14, 3, 23, 32, 27, 27, 24, 0];
-% start = 1;
+n = 40;
+a = [8, 28, 22, 27, 28, 2, 29, 9, 30, 7, 5, 10, 8, 21, 13, 3, 10, 13, 1, 6, 11, 16, 17, 17, 15, 8, 2, 5, 5, 8, 3, 31, 14, 3, 23, 32, 27, 27, 24, 0];
+start = 1;
 
 
 % n = 50;

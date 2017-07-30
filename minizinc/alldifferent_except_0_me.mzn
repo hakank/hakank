@@ -18,10 +18,10 @@
 % Model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 
-% include "globals.mzn"; 
+include "globals.mzn"; 
 
 int: n;
-array[1..n] of var 0..9: x;
+array[1..n] of var 0..n: x;
 
 solve satisfy;
 
@@ -46,6 +46,10 @@ predicate cp1d(array[int] of int: x, array[int] of var int: y) =
 constraint
   % cp1d([5,0,1,9,0,3], x) /\
   all_different_except_0(x)
+  /\ increasing(x)
+
+  % /\ 
+  % count(x,0,2)
 ;
 
 %

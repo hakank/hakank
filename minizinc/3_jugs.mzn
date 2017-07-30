@@ -23,30 +23,24 @@ array[1..n] of var 0..1: outFlow;
 array[1..n] of var 0..1: inFlow;
 
 % solve minimize z;
-% alternative solve statements which may give faster solution
-solve :: int_search([ x[i,j] | i,j in 1..n], first_fail, indomain_min, complete) minimize z;
-% solve minimize z;
+solve :: int_search(inFlow ++ outFlow ++ rhs ++ [ x[i,j] | i,j in 1..n], first_fail, indomain_split, complete) minimize z;
 
 
 constraint 
-     forall(i in 1..n) ( 
-       if i = start then 
-         rhs[i] = 1
-       elseif i = end then 
-         rhs[i] = -1
-       else  
-         rhs[i] = 0
-       endif
-    )
-
-   /\ % must be larger than 0
-   forall(i in 1..n, j in 1..n where d[i,j] < M) (
-         x[i,j] >= 0
-   ) 
-   /\ % outflow constraint
-   forall(i in 1..n) (
-      outFlow[i] = sum(j in 1..n where d[i,j]<M) (x[i,j])
-   )
+  % start or end ?
+  forall(i in 1..n) ( 
+    if i = start then 
+      rhs[i] = 1
+    elseif i = end then 
+      rhs[i] = -1
+    else  
+      rhs[i] = 0
+    endif
+  )
+  /\ % outflow constraint
+  forall(i in 1..n) (
+    outFlow[i] = sum(j in 1..n where d[i,j]<M) (x[i,j])
+  )
   /\ % inflow constraint
   forall(j in 1..n) (
     inFlow[j]  = sum(i in 1..n where d[i,j]<M) (x[i,j])
@@ -82,11 +76,21 @@ array2d(1..n, 1..n,
 % shows the result matrix
 output [
        if i = 1 /\ j = 1 then 
-         "z: " ++ show(z) ++ "\n" ++
-         "inFlow:  " ++ show(inFlow) ++ "\n" ++ "outFlow: " ++ show(outFlow) ++ "\n" ++
-         "    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5\n" 
+         "z      : " ++ show(z) ++ "\n" ++
+         "rhs    : " ++ show(rhs) ++ "\n" ++ 
+         "inFlow : " ++ show(inFlow) ++ "\n" ++ 
+         "outFlow: " ++ show(outFlow) ++ "\n" ++
+         "     1 2 3 4 5 6 7 8 9 0 1 2 3 4 5\n" 
        else "" endif ++
-       if j = 1 then show(i) ++ " : " else "" endif ++
+       if j = 1 then show_int(2,i) ++ " : " else "" endif ++
        show(x[i,j]) ++ if j = n then "\n" else " " endif
        | i in 1..n, j in 1..n
-];
+]
+
+++ ["\norder:\n"] ++
+[
+
+ show("x")
+
+]
+;

@@ -18,27 +18,39 @@ include "globals.mzn";
 int: n = 7;
 
 % decision variables
-array[1..n] of var 1..20: vars;
-% var 0..100: now          = sum(vars);  % number of candles this year
-var 0..100: now;  % number of candles this year
-var 0..100: twoyearsago  =  now - 2*n; % number of candles two years ago
+array[1..n] of var 0..20: varsnow;
+array[1..n] of var 0..20: varsthen;
+var 0..100: now;      % number of candles this year
+var 0..100: lastyear; % number of candles last year
+
+
 
 solve satisfy;
 % solve :: int_search(vars ++ [now, twoyearsago], first_fail, indomain_min, complete) satisfy;
 
 constraint
    forall(i in 2..n) (
-      vars[i-1] = vars[i]+1 
+     (varsnow[i-1] = varsnow[i]+1)
+     \/ 
+     (varsnow[i-1] = varsnow[i])
    )
    /\
-   twoyearsago*2 = now
-   /\ 
-   now = sum(vars)
+   forall(i in 1..n) (
+     varsnow[i] = varsthen[i]+1
+   )
+
+   /\ nvalue(6,varsnow)  % 6 consecutive years
+   /\ nvalue(6,varsthen) % 6 consecutive years
+   /\ lastyear + 2 = now
+
+   /\ now = sum(varsnow)
+   /\ lastyear = sum(varsthen)
 ;
 
 output
 [
-  "vars: " ++ show(vars) ++ "\n" ++
-  "twoyearsago: " ++ show(twoyearsago) ++ "\n" ++
-  "now:" ++ show(now) 
+  "varsnow: ", show(varsnow), "\n",
+  "lastyear: ", show(lastyear), "\n",
+  "now:", show(now), "\n",
+
 ];

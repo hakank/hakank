@@ -53,14 +53,14 @@ array[Racks, Cards] of var 0..nbCard: counters;
 var 0..maxCost: cost;
 
 
-solve minimize cost;
+% solve minimize cost;
 % solve satisfy;
-% solve :: int_search(
-%         rack ++ [counters[r,c] | r in Racks, c in Cards], 
-%         first_fail, 
-%         indomain_max, 
-%         complete) 
-%     minimize cost;
+solve :: int_search(
+        rack ++ [counters[r,c] | r in Racks, c in Cards], 
+        first_fail, 
+        indomain_max, 
+        complete) 
+    minimize cost;
 
 constraint
 

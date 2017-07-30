@@ -450,7 +450,7 @@
 include "globals.mzn";
 % include "gecode.mzn"; % For Gecode!
 
-int: n; %  = 5; 
+int: n = 5; 
 int: total = (n*(n*n+1)) div 2;
 
 % var 0..n*n*n: total;
@@ -505,8 +505,8 @@ var 0..n*n*n: z = sum(water) - (n*n*(n*n+1) div 2) ;
 %      ) 
 %      maximize z;
 
-solve satisfy;
-% solve maximize z;
+% solve satisfy;
+solve maximize z;
 
 
 % constraint

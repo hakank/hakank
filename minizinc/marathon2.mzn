@@ -42,12 +42,15 @@ var 1..n: Olivier;
 var 1..n: Philippe;
 var 1..n: Pascal;
 
+% decision variables
 array[1..n] of var 1..n: runners = [Dominique, Ignace, Naren, Olivier, Philippe, Pascal];
+array[1..n] of var 1..n: runners_pres; % for presentation
 
 solve satisfy;
 
 constraint 
   all_different(runners) /\
+  inverse(runners, runners_pres) /\
   
   % a: Olivier not last
   Olivier    != n /\
@@ -80,5 +83,6 @@ constraint
 
 output
 [
-  show(runners)
+  show(runners) ++ "\n" ++
+  show(runners_pres) ++ "\n" 
 ];

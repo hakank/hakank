@@ -5,14 +5,16 @@
 %
 % Data from figure 1.5 (where I have estimated the times).
 % 
-% Tarjan of the Jungle        4..13
+% Movie                      Interval
+% -----------------------------------
+% Tarjan of the Jungle         4..13
 % The Four Volume Problem     17..27
-% The President's Algorist    1..10
+% The President's Algorist     1..10
 % Steiner's Tree              12..18
 % Process Terminated          23..30
-% Halting State               9..16
+% Halting State                9..16
 % Programming Challenges      19..25
-% "Discrete" Mathematics      2..7
+% "Discrete" Mathematics       2..7
 % Calculated Bets             26..31
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
@@ -34,9 +36,9 @@ var 0..num_movies: z = sum(x);
 solve :: int_search(x, first_fail, indomain_min, complete) maximize z;
 
 predicate no_overlap(int: start1, int: end1, int: start2, int: end2) =
-   start1 >= end2 
+   start1 > end2 
    \/
-   start2 >= end1
+   start2 > end1
 ;
 
 
@@ -54,7 +56,6 @@ output
 ]
 ++
 [
-
   if fix(x[i]) = 1 then
     show(movies[i]) ++ ": " ++ show(data[i,1]) ++ ".." ++ show(data[i,2]) ++ "\n"
   else 
@@ -69,14 +70,14 @@ output
 num_movies = 9;
 data = array2d(1..num_movies, 1..2,
 [
-4,13,  % "Tarjan of the Jungle",
+ 4,13, % "Tarjan of the Jungle",
 17,27, % "The Four Volume Problem",
-1,10,  % "The President's Algorist",
+ 1,10, % "The President's Algorist",
 12,18, % "Steiner's Tree",
 23,30, % "Process Terminated",
-9,16,  % "Halting State",
+ 9,16, % "Halting State",
 19,25, % "Programming Challenges",
-2,7,   % "'Discrete' Mathematics",
+ 2, 7, % "'Discrete' Mathematics",
 26,31  % "Calculated Bets"
 ]);
 

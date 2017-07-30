@@ -19,7 +19,7 @@ int: n = 19;
 array[1..n] of var 1..300: x;
 array[1..n-1] of var 1..2: ops; % array of operations
 
-var int: total;
+var 0..1000: total;
 
 solve satisfy;
 % solve :: int_search(x, "first_fail", "indomain_min", "complete") satisfy;

@@ -103,8 +103,8 @@ constraint
    /\
    tot_shifts >= min_num_shifts
 
-   % /\ % for solve satisfy (t1)
-   % tot_shifts = 7
+   %/\ % for solve satisfy (t1)
+   %tot_shifts = 7
 ;
 
 

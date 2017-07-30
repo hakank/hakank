@@ -50,7 +50,7 @@ solve satisfy;
 constraint
   alldifferent(x) /\
   argmax_gt(pos,x) /\
-  pos = 1 /\
+  % pos = 1 /\
   argmin_lt(2,x) 
 ;
 

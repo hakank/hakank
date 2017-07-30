@@ -27,7 +27,8 @@ constraint
   x[n+1] = 1 % apples left
   /\ % 1..n guards
   forall(i in 1..n) (
-     x[i] = (1+x[i+1])*2
+    %  x[i] = (1+x[i+1])*2
+    x[i+1] = (x[i] div 2) - 1
   )
 ;
 

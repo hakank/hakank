@@ -63,17 +63,17 @@ var 0..(n+1)*num_hobbies: common_hobbies =
 % solve satisfy;
 solve :: int_search(
         seating,
-        largest, 
-        indomain_max,
+        most_constrained, % first_fail, % largest, 
+        indomain_split, % indomain_max,
         complete) 
     maximize common_hobbies;
     % satisfy;
 
 constraint
-  all_different(seating) :: domain
+  all_different(seating) % :: domain
 
-  /\ % symmetry breaking
-  seating[1] = n
+  % /\ % symmetry breaking
+  % seating[1] = n
 ;
 
 %
@@ -104,11 +104,14 @@ constraint
 ;
 
 output 
+[show(seating) ++ "\n"] ++
 [ "common_hobbies: ", show(common_hobbies), "\n" ] ++
 [
    show(seating[i]) ++ ": " ++ show(gender[seating[i]]) ++ " " ++ show(hobbies[seating[i]]) ++ "\n"
   | i in 1..n
 ] 
 ++ 
+[ "common_hobbies: ", show(common_hobbies), "\n" ] 
+++
 ["\n"]
 ;

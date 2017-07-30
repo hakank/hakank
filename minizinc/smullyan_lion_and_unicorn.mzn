@@ -38,9 +38,9 @@ constraint
    %% Lion: Yesterday was one of my lying days.
    %% Unicorn: Yesterday was one of my lying days too.
    %% Solution: Today is Thursday (day 3)
-   %says(lion[1+today], lion[1+ ((today-1) mod 7)] = false)
-   %/\
-   %says(unicorn[1+today], unicorn[1+((today-1) mod 7)] = false)
+   % says(lion[1+today], lion[1+ ((today-1) mod 7)] = false)
+   % /\
+   % says(unicorn[1+today], unicorn[1+((today-1) mod 7)] = false)
 
 
 

@@ -80,7 +80,7 @@ constraint
    % 
    % the clues
    % 
-   cp1d(x, [       151,
+   cp1d(x, [  151,
               _, _,
             40, _, _,
           _, _,_ , _ ,

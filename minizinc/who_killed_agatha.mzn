@@ -118,5 +118,10 @@ output [
   | i, j in r
 ] ++
 [ "\n" ]
+++
+[
+  "hates: " ++ show(hates) ++ "\n" ++
+  "richer: " ++ show(richer) ++ "\n"
+]
 ;
 

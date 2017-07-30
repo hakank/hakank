@@ -86,8 +86,8 @@ var missing_domain: missing;
 
 % missing number as an array
 % array[1..max_len] of var 0..9: missing_a;
-% have add 0 to comply to MiniZinc's oddness...
-array[1..max_len] of var digits_in_missing_number : missing_a;
+% have add 0 since the number array might have leading 0's
+array[1..max_len] of var digits_in_missing_number union {0} : missing_a;
 
 %
 % functions
@@ -210,7 +210,7 @@ constraint
 output [
   "missing_domain: \(missing_domain)\n",
   "missing: \(missing)\n",
-  "digits_missing: \(digits_missing)\n",
+  % "digits_missing: \(digits_missing)\n",
   % "x: \(x)\n",
   % "start_pos: \(start_pos)\n",
 ]

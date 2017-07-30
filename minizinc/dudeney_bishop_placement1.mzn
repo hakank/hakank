@@ -23,7 +23,7 @@ int: size = 8;
 array[1..size, 1..size] of var 0..1: x; % x(i,j) = 1 if square (I,J) occupied, 0 otherwise
 array[1..size, 1..size] of var 0..1: a; % a(i,j) = 1 if square (I,J) attacked, 0 otherwise
 
-array[1..size, 1..size] of var 0..1: check;
+% array[1..size, 1..size] of var 0..1: check;
 
 var int: sumx = sum(i in 1..size,j in 1..size) (x[i,j]);
 
@@ -49,9 +49,10 @@ constraint
   /\
   % each square is either attacked or occupied
   forall(i in 1..size,j in 1..size) (
-     check[i,j] = a[i,j]+x[i,j] 
-     /\ 
-     check[i,j] = 1
+     % check[i,j] = a[i,j]+x[i,j] 
+     % /\ 
+     % check[i,j] = 1
+     a[i,j]+x[i,j] = 1
   )
 ;
 
@@ -71,12 +72,12 @@ output
   if j = 1 then "\n" else " " endif ++
     show(a[i,j])
   | i,j in 1..size
-] ++ 
-["\ncheck:"] ++
-[
-  if j = 1 then "\n" else " " endif ++
-    show(check[i,j])
-  | i,j in 1..size
-] ++ ["\n"]
-
+]
+%  ++ 
+% ["\ncheck:"] ++
+% [
+%   if j = 1 then "\n" else " " endif ++
+%     show(check[i,j])
+%   | i,j in 1..size
+% ] ++ ["\n"]
 ;

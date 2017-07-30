@@ -18,7 +18,7 @@ array[DAYS] of int: Need;
 array[DAYS] of int: Cost;
 
 % decision variables. x[i]: No. of workers starting at day i
-array[DAYS] of var 0..100: x;
+array[DAYS] of var 0..6: x;
 
 % objective function: total cost
 var 0..20000: z = sum(i in DAYS) (x[i] * Cost[i]); 

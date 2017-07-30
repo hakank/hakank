@@ -40,7 +40,7 @@ var 1..max_val*n: z;
 
 
 % solve satisfy;
-solve :: int_search(x, first_fail, indomain_middle, complete) satisfy;
+solve :: int_search(x, max_regret, indomain_min, complete) satisfy;
 
 constraint
   alldifferent(x) /\

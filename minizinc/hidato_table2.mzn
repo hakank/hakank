@@ -40,8 +40,8 @@ array[1..r, 1..c] of var mmin..mmax: x;
 % solve satisfy;
 solve :: int_search(
          [x[i,j] | i in 1..r, j in 1..c], 
-         most_constrained, % if mmax = r*c then max_regret else most_constrained endif, 
-         indomain_median, % if mmax = r*c then indomain_min else indomain_median endif,
+         if mmax = r*c then max_regret else most_constrained endif, 
+         if mmax = r*c then indomain_min else indomain_median endif,
          complete) satisfy;
 
 % The number of valid connections (on a non-torus More grid) are:

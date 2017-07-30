@@ -59,8 +59,8 @@ constraint
    inverse(Drinks, [coffee, tea, milk, orange_juice, water]) /\
    inverse(Brand, [old_gold, kool, chesterfield, lucky_strike, parliament]) /\
 
-   englishman = red            /\ %  (the Englishman lives in the red house).
-   spaniard = dog              /\   % (the Spaniard owns the dog).
+   englishman = red            /\ % (the Englishman lives in the red house).
+   spaniard = dog              /\ % (the Spaniard owns the dog).
    coffee = green              /\ % (coffee is drunk in the green house).
    ukrainian = tea             /\ % (the Ukrainian drinks tea).
    green = ivory+1             /\ % (the green house is immediately to the right of the ivory house).

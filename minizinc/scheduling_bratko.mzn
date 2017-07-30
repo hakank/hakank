@@ -40,7 +40,3 @@ constraint
   % Tf <= 9 
 ;
 
-output
-[
-  show([Ta,Tb,Tc,Td,Tf])
-];

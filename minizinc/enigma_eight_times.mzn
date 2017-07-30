@@ -60,7 +60,7 @@ var 10000..99999: y = y1*10000 + y2*1000 + y3*100 + y4*10 + y5;
 % ;
 
 % solve satisfy;
-solve :: int_search([x1,x2,x3,x4,x5,y1,y2,y3,y4,y5], first_fail, indomain, complete) satisfy;
+solve :: int_search([x1,x2,x3,x4,x5,y1,y2,y3,y4,y5], first_fail, indomain_min, complete) satisfy;
 
 constraint
 

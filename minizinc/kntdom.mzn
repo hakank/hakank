@@ -15,11 +15,11 @@
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
 
-int: rows = 8;
-int: cols = 8;
+int: rows; %  = 10;
+int: cols = rows;
   
 array[1..rows+4,1..cols+4] of var 0..1: x;
-var int: minnum = sum(i in 3..rows+2,j in 3..cols+2) (x[i,j]);
+var 0..rows*cols: minnum = sum(i in 3..rows+2,j in 3..cols+2) (x[i,j]);
 
 solve :: int_search([x[i,j] | i in 1..rows+4,j in 1..cols+4], 
         first_fail, indomain_min, complete) minimize minnum;

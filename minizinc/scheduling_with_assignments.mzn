@@ -114,13 +114,23 @@ var 0..max_time: earliest_end_time = max([ end_time[j] | j in 1..num_jobs]);
 % solve minimize earliest_end_time; 
 % ann: var_select;
 % ann: val_select;
-solve :: int_search(
-        start_time,
-        first_fail, % smallest, % first_fail,
-        indomain_split, % indomain_split,
-        complete)
-    minimize earliest_end_time; 
-    % satisfy;
+% solve :: int_search(
+%         start_time,
+%         smallest, % first_fail,
+%         indomain_split, % indomain_min, % indomain_split,
+%         complete)
+%     minimize earliest_end_time; 
+%     % satisfy;
+
+solve :: seq_search(
+       [int_search(start_time, first_fail, indomain_split, complete),
+        % Note: SICStus want this extra for the "fancy" output
+        % int_search([assignment[i,j] | i in 1..num_jobs, j in 1..num_workers],
+        %        input_order, indomain_min, complete)
+       ]
+       )
+      minimize earliest_end_time;
+
 
 %
 % Check/ensure that there are no overlaps between two jobs.
@@ -138,6 +148,47 @@ predicate prec(int:job1 , int: job2, array[int] of var int: start, array[int] of
    start[job1] + dur[job1] <= start[job2]
 ;
 
+
+% %
+% % See http://www.hakank.org/minizinc/disjunctive.mzn
+% %
+% predicate disjunctive(array[int] of var int: v_origin, 
+%                       array[int] of var int: v_duration, 
+%                       array[int] of var int: v_end_time, 
+%                       array[int] of var int: v_used 
+%                       ) =
+%   assert(
+%         length(v_origin) == length(v_duration) /\
+%         length(v_duration) == length(v_end_time) /\
+%         length(v_end_time) == length(v_used),
+%         "All arrays must be of same length!")
+%   /\
+%   forall(i in index_set(v_origin)) (
+%      ( 
+%        v_duration[i] > 0 <-> (
+%           v_used[i] = 1 
+%           /\
+%           v_end_time[i] = v_origin[i] + v_duration[i]
+%           /\
+%           forall(j in index_set(v_origin) where i < j) (
+%             v_end_time[i] <= v_origin[j] % i left of j
+%             \/
+%             v_origin[i] >= v_end_time[j] % i right of j
+%           )     
+%        )
+%      )
+%      /\ % zero duration -> not used
+%      ( 
+%       v_duration[i] = 0 <-> (v_used[i] = 0 /\ v_end_time[i] = 0)
+%      )        
+%   )
+% ;
+
+% predicate disjunctive2(array[int] of var int: start, array[int] of var int: dur) =
+%       assert(index_set(start) == index_set(dur), "disjunctive: " ++
+%            "first and second arguments must have the same index set",
+%         cumulative(start, dur, [ 1 | i in index_set(start) ], 1)) :: domain
+% ;
 
 
 constraint
@@ -190,6 +241,34 @@ constraint
        )
 
    )
+
+
+   % /\  
+   % forall(w in 1..num_workers) (
+   %    sum([duration[j]*assignment[j,w] | j in 1..num_jobs]) <= earliest_end_time
+   % )
+
+
+   % using disjunctive/4
+   % /\ forall(w in 1..num_workers) (
+   %       disjunctive([start_time[j]*assignment[j,w] | j in 1..num_jobs ],
+   %                   [duration[j]*assignment[j,w] | j in 1..num_jobs ],
+   %                   [end_time[j]*assignment[j,w] | j in 1..num_jobs ],
+   %                   [assignment[j,w] | j in 1..num_jobs ]
+   %                   )
+   % )
+
+   % /\ 
+   % forall(w in 1..num_workers) ( 
+   %    disjunctive2([start_time[j]*assignment[j,w] | j in 1..num_jobs ],
+   %                  [duration[j]*assignment[j,w] | j in 1..num_jobs ]) 
+   %    % /\
+   %    % diffn([start_time[j]*assignment[j,w] | j in 1..num_jobs ], 
+   %    %       [end_time[j]*assignment[j,w] | j in 1..num_jobs ], 
+   %    %       [duration[j]*assignment[j,w] | j in 1..num_jobs ],
+   %    %       [1 | j in 1..num_jobs] 
+   %    %      ) :: domain            
+   % )
 
 ;   
 
@@ -265,12 +344,41 @@ predicate global_contiguity(array[int] of var 0..1: x) =
   /\ xend >= xstart
 ;
 
+
+%
+% Global contiguity via regular
+% (Cf http://www.hakank.org/minizinc/contiguity_regular.mzn )
+% 
+predicate global_contiguity_regular(array[int] of var int: x) =
+    let {
+        int: n_states = 3,
+        int: input_max = 2,
+        int: initial_state = 1,
+        set of int: accepting_states = {1,2,3},
+        array[1..n_states, 1..input_max] of int: transition_fn =
+             array2d(1..n_states, 1..input_max,
+           [ 
+              % note:all states are accepting states for
+              % the regular expression 0*1*0*
+              1,2, % state 1 (start): input 0 -> state 1, input 1 -> state 2 i.e. 0*
+              3,2, % state 2: 1* 
+              3,0, % state 3: 0* 
+            ])
+    }
+    in 
+
+    regular([x[i]+1|i in index_set(x)], n_states, input_max, transition_fn,
+            initial_state, accepting_states) :: domain
+
+;
+
 constraint
 
    if collect_workers then
        forall(j in 1..num_jobs) (
           if resource[j] > 1 then
-             global_contiguity([assignment[j,w] | w in 1..num_workers])
+             % global_contiguity([assignment[j,w] | w in 1..num_workers])
+             global_contiguity_regular([assignment[j,w] | w in 1..num_workers])
           else 
              true
           endif
@@ -419,9 +527,9 @@ output
       }
       in 
       if card(job) > 0 then
-         if job[1] < 10 then " " else "" endif ++ % alignment of columns
+         if set2array(job)[1] < 10 then " " else "" endif ++ % alignment of columns
          % This is cleaner (just the matrix of the job for each worker)
-         show(job[1]) ++ " "
+         show(set2array(job)[1]) ++ " "
       else 
          " - "
       endif
@@ -453,9 +561,9 @@ output
       }
       in 
       if card(job) > 0 then
-         if job[1] < 10 then " " else "" endif ++ % alignment of columns
+         if set2array(job)[1] < 10 then " " else "" endif ++ % alignment of columns
          % This is cleaner (just the matrix of the job for each worker)
-         show(job[1]) ++ " "
+         show(set2array(job)[1]) ++ " "
 
          % show(worker) ++ "(" ++ show(job[1]) ++ ") " 
       else 

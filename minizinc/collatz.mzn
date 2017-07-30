@@ -29,7 +29,8 @@ int: max_len = 3*n;
 % decision variables
 % Note: after 1 is reached the first time (at length len) then the
 %       values toggles between 1 and 2.
-array[1..max_len] of var int: x;
+% array[1..max_len] of var int: x;
+array[1..max_len] of var 0..100000: x;
 var 0..max_len: len; % the length of the sequence until (first) reaching 1
 
 

@@ -87,23 +87,21 @@ solve satisfy;
 constraint 
   forall(i in 1..n) (
     % all_different([x[i,j] | j in 1..n]) /\
-    global_cardinality([x[i,j] | j in 1..n], set2array(index_set(occ)), occ)
+    global_cardinality_old([x[i,j] | j in 1..n], occ)
   )
 ;
 
 constraint
   forall(j in 1..n) (
     % all_different([x[i,j] | i in 1..n]) /\
-    global_cardinality([x[i,j] | i in 1..n], set2array(index_set(occ)), occ)
+    global_cardinality_old([x[i,j] | i in 1..n], occ)
   ) 
 ;
 
 constraint
   forall(i in 0..2,j in 0..2) (
     % all_different([x[r,c] | r in i*3+1..i*3+3, c in j*3+1..j*3+3] ) /\
-    global_cardinality([x[r,c] | r in i*3+1..i*3+3, c in j*3+1..j*3+3], 
-        set2array(index_set(occ)),
-        occ)
+    global_cardinality_old([x[r,c] | r in i*3+1..i*3+3, c in j*3+1..j*3+3] , occ)
   )
 
 ;

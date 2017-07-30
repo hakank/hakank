@@ -19,10 +19,11 @@ solve :: float_search([V,R1,R2,VD,ID,I], 0.00001, input_order, indomain_split, c
 %%
 %% Rules for voltage divider program page 138
 %%
-predicate voltage_divider(var -100.0..100.0: V, var -100.0..100.0: I, var -100.0..100.0: R1, var -100.0..100.0: R2, var -100.0..100.0: VD, var -100.0..100.0: ID) =
+% predicate voltage_divider(var -100.0..100.0: V, var -100.0..100.0: I, var -100.0..100.0: R1, var -100.0..100.0: R2, var -100.0..100.0: VD, var -100.0..100.0: ID) =
+predicate voltage_divider(var float: V, var float: I, var float: R1, var float: R2, var float: VD, var float: ID) =
      let {
-       var -100.0..100.0: V1,
-       var -100.0..100.0: I2 
+       var float: V1,
+       var float: I2 
      }
      in
      V1 = I * R1

@@ -99,8 +99,8 @@ predicate precedence_me(array[int] of var int: x) =
 % With the precedence symmetry breaking: 6 solutions.
 constraint 
     coloring(connections, country, n)
-    /\
-    precedence_me(country)
+    %/\
+    %precedence_me(country)
 ;
 
 

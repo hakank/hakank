@@ -13,7 +13,7 @@ include "globals.mzn";
 % n -> powerset of 0..n-1 (translated to 1..n)
 % Note: n=17 makes mzn2fzn segfault!
 % n=16 is OK.
-int: n = 16;
+int: n = 5;
 
 set of int: s = 0..n-1;
 set of int: ss = 0..pow(2,n)-1;

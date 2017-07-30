@@ -16,7 +16,9 @@
 % The first 10 digits are divisible by 10. 
 % """"
 
-% Solution: [3,8,1,6,5,4,7,2,9,0])
+%
+% Solution: 3816547290
+%
 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@gmail.com

@@ -59,10 +59,10 @@ constraint
 %
 % These following three examples are from the ECLiPSe program cited above.
 % 
-r = 11;
-c = 12;
-row_sums = [0,0,8,2,6,4,5,3,7,0,0];
-col_sums = [0,0,7,1,6,3,4,5,2,7,0,0];
+% r = 11;
+% c = 12;
+% row_sums = [0,0,8,2,6,4,5,3,7,0,0];
+% col_sums = [0,0,7,1,6,3,4,5,2,7,0,0];
  
 % r = 5;
 % c = 13;
@@ -76,15 +76,14 @@ col_sums = [0,0,7,1,6,3,4,5,2,7,0,0];
 % row_sums = [11,5,4];
 % col_sums = [3,2,3,1,1,1,1,2,3,2,1];
 
-
 output [ 
-    if j = 1 then  "   " else "" endif ++
+    if j = 1 then  ",   " else "," endif ++
     show(col_sums[j]) ++ " "
     | j in 1..c
 ]  
 ++
 [
-   if j = 1 then "\n" ++ show(row_sums[i]) ++ "  "  else " " endif ++
+   if j = 1 then ",\n" ++ show(row_sums[i]) ++ ",  "  else ", " endif ++
      show(x[i,j])
    | i in 1..r, j in 1..c
 ]

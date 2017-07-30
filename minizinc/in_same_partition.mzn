@@ -43,7 +43,8 @@ var 1..n: var2;
 predicate in_same_partition(var int: v1, var int: v2, array[int] of var set of int: partitions) =
   exists(i in index_set(partitions)) (
       v1 in partitions[i] /\
-      v2 in partitions[i] 
+      v2 in partitions[i] /\
+      v1 != v2
   )
 ;
 

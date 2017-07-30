@@ -101,12 +101,12 @@
 %
 
 include "globals.mzn"; 
-int: max_steps = 15;
+int: max_steps = 25;
 
 int: n;
 int: num_moves;
 array[0..num_moves, 1..n] of int: moves;
-array[1..n] of 1..n: data; % input sequence
+array[1..n] of var 1..n: data; % input sequence
 
 % decision variables
 % array[1..n] of var 1..n: data; % input sequence
@@ -136,11 +136,14 @@ solve :: int_search(
         % [steps[i,j] | i in 1..max_steps, j in 1..n] 
         % [steps[max_steps-i+1,n-j+1] | i in 1..max_steps, j in 1..n] 
         ops
+        % [ops[max_steps-i+1] | i in 1..max_steps]
+        % ++[steps[i,j] | i in 1..max_steps, j in 1..n] 
         , 
         smallest, % first_fail, 
         indomain_min, % indomain_min, 
         complete) 
     minimize min_step;
+    % maximize min_step;
     % satisfy;
 
 
@@ -155,7 +158,7 @@ constraint
   ops[1] = 0
 
   /\
-  forall(i in 1..max_steps) (
+  forall(i in 2..max_steps) (
      alldifferent([steps[i,j] | j in 1..n]) % :: domain
      /\
      % don't repeat moves if ops > 0 (the nop move)
@@ -226,7 +229,7 @@ output [
  "ops: " ++ show(ops) ++ "\n" 
 ] ++
 [
-  if i > 1 /\ fix(ops[i]) > 0 then
+  if i = 1 \/ fix(ops[i]) > 0 then
     if j = 1 then "\nstep(" ++ show_int(2, i) ++ "): " else " " endif ++
      show_int(2, steps[i,j])  
      ++ % show the op
@@ -247,8 +250,8 @@ output [
 
 % n = 6;
 % num_moves = 3;
-% % the legal moves: 1,2,3,4,5,6 -> <the move>
-% % Note the 0 move (nop)
+%% the legal moves: 1,2,3,4,5,6 -> <the move>
+%% Note the 0 move (nop)
 % moves = 
 %  array2d(0..num_moves, 1..n,
 %   [
@@ -273,6 +276,9 @@ output [
 % infeasible
 % data = [6,5,4,3,2,1];
 
+% constraint min_step = 19;
+% data = [6,_,_,_,2,1];
+
 
 % n = 8;
 % num_moves = 5;
@@ -293,10 +299,10 @@ output [
 % The hardest is 10 moves (there are 156 with 10 moves according to GAP)
 % data = [6,8,3,7,1,4,2,5]; % 8 steps
 
-% These takes 10 steps
-% cp1d(data, [2,4,1,7,5,3,8,6]) % GAP: x2*x3*x2*x4*x3*x5*x4*x1*x2*x1
+%% These takes 10 steps
+% data = [2,4,1,7,5,3,8,6]; % GAP: x2*x3*x2*x4*x3*x5*x4*x1*x2*x1
 % data = [8,7,6,3,2,5,4,1];  % x3*x1*x2*x3*x1*x4*x5*x1*x3*x1
-
+% min_step = 11;
 
 
 
@@ -339,11 +345,11 @@ moves =
 % Size 12
 % Chuffed: smallest/indomain_min: 21.5s (59810 conflicts)  (using permutation3/3 and -toggle_vsids=true)
 % Gecode/fz: smallest/indomain_min: 9.5s (62384 failures) (using permutation3/3)
-% data = [7, 5, 11, 8, 9, 1, 10, 3, 4, 2, 6, 12];
+data = [7, 5, 11, 8, 9, 1, 10, 3, 4, 2, 6, 12];
 
 % Size 12
 % Chuffed: smallest/indomain_min: 11.3s (32059 conflicts)  (using permutation3/3 and -toggle_vsids=true)
 % Gecode/fz: smallest/indomain_min: 4.9s (33524 failures)  (using permutation3/3)
-data = [ 12, 2, 7, 3, 4, 11, 1, 10, 8, 9, 6, 5 ];
+% data = [ 12, 2, 7, 3, 4, 11, 1, 10, 8, 9, 6, 5 ];
 
 

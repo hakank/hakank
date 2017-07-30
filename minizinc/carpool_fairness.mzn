@@ -105,6 +105,8 @@ var 0..obligation_diff: z = sum(diffs);
 
 var 0..num_people*num_days: pdiff;
 
+var int: mean = sum(diffs) div num_people;
+
 % solve minimize z;
 solve :: int_search(diffs ++ driver ++ num_drives, occurrence, indomain_median, complete) minimize pdiff;
 
@@ -145,6 +147,7 @@ output [
   "driver: ", show(driver), "\n",
   "num_drives: ", show(num_drives), "\n",
   "diffs: ", show(diffs), "\n",
+  "mean: ", show(mean), "\n",
   "z: ", show(z), "\n",
   "pdiff: ", show(pdiff), "\n"
 ]

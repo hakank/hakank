@@ -20,7 +20,7 @@ var 0.0..1000.0: tot_cost;
 
 
 % solve satisfy;
-solve :: float_search(p++mean_first_return_time, 0.0001, input_order, indomain_split, complete) satisfy;
+solve :: float_search(p++mean_first_return_time, 0.00001, input_order, indomain_split, complete) satisfy;
 
 %
 % Calculates the steady state probablity of a transition matrix m

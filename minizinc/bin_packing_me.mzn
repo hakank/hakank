@@ -121,6 +121,8 @@ output [
 % LazyFD solves this in 1:44 minutes (i.e. with result 17) 
 % when num_bins is hardcoded to 19 (as in Erwin's model)
 % 
+% Later: Opturion CPX solves this in 21.7s (using the free parameter)
+% 
 num_stuff = 45;
 num_bins = 19;
 stuff = [

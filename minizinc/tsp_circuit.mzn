@@ -60,7 +60,7 @@ var int: distance = sum(d);
 solve :: int_search(d, max_regret, indomain_split, complete) minimize distance;
 
 constraint
-    all_different(x) :: domain /\ % this speeds up for some solvers
+    all_different(x) /\ % this speeds up for some solvers
 
     circuit(x) % use this for solvers with built-in circuit predicate, e.g. JaCoP
                % or - lately - the built-in version in MiniZinc distribution

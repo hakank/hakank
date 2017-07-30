@@ -67,7 +67,7 @@ constraint
      % "Each goodie you buy must cost a different exact number of half-pennies."
      % (the != and <= construct is needed for some float solvers)
      forall(j in 2..m) (
-       t[j-1] != t[j] /\
+       t[j-1] != t[j] /\ 
        t[j-1] <= t[j] 
      )
   )

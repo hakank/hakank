@@ -51,10 +51,13 @@ predicate coloring(array[int,int] of int: conn, array[int] of var int: countries
 ;
 
 %
-% 144 solutions.
+% Using the predicate
 %
 constraint 
     coloring(connections, country, n)
+
+    % /\ % with the precedence symmetry breaking: 6 solutions
+    % precedence(country)
 ;
 
 

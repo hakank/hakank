@@ -24,12 +24,12 @@ array[streets] of set of streets: corner;
 array[1..n] of var 0..1: x;
 var int: z= sum(j in 1..n) (x[j]);
 
-% solve :: int_search(x, first_fail, indomain_min, complete) minimize z;
-solve satisfy;
+solve :: int_search(x, first_fail, indomain_min, complete) minimize z;
+% solve satisfy;
 
 constraint
- z <= 4 % for solve satisfy
- /\
+ % z <= 4 % for solve satisfy
+ % /\
  forall(i in streets) (
      sum(j in corner[i]) (x[j])>=1
  )

@@ -74,6 +74,7 @@ solve :: int_search(
    complete
    )
    minimize unsat;
+   % satisfy;
 
 
 constraint
@@ -84,6 +85,7 @@ constraint
        (if j > 0 then x[j] else (1 - x[-j]) endif) + y[i]
      ) >= 1
   )
+  % /\ unsat = 1 % for solve satisfy
 ;
 
 output [

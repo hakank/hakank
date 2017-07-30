@@ -99,6 +99,11 @@ constraint
 
   % symmetry breaking (first word is placed)
   % /\ dice[B] = 1 /\ dice[A] = 2 /\ dice[K] = 3 /\ dice[E] = 4
+  /\
+  % symmetry breaking
+  dice[ 1] <= dice[ 7] /\
+  dice[ 7] <= dice[13] % /\
+  % dice[13] <= dice[19]
 
 ;
 

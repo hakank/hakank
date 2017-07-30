@@ -44,7 +44,7 @@ array[1..n] of float: value;
 array[1..n] of float: weight;
 array[1..n] of float: volume;
 
-array[1..n] of var int: x;
+array[1..n] of var 0..100000: x;
 
 var float: total_value = sum(i in 1..n) (int2float(x[i])*value[i]);
 var float: total_weight = sum(i in 1..n) (int2float(x[i])*weight[i]);

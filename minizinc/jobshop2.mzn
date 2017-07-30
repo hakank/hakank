@@ -44,19 +44,6 @@ predicate before(var int: t1, var int: t2) = t1 <= t2;
 % t1 is after t2
 predicate after(var int: t1, var int: t2) = t1 >= t2;
 
-%
-% permutation3(a,p,b) 
-%
-% get the permutation from a <-> b using the permutation p.
-%  
-predicate permutation3(array[int] of var int: a,
-                       array[int] of var int: p,
-                       array[int] of var int: b) =
-   forall(i in index_set(a)) (
-       b[i] = a[p[i]]
-   )
-;
-
 
 % solve satisfy;
 % solve minimize earliest_end_time;

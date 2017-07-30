@@ -51,6 +51,7 @@ int: knight = 2;
 % decision variables
 array[1..n,1..n] of var 0..2: x; 
 
+% there can only be n queens so it's the upper limits of knights as well
 var 1..n: queens  = sum([x[i,j] = queen  | i,j in 1..n]);
 var 1..n: knights = sum([x[i,j] = knight | i,j in 1..n]);
 var 2..n*2: z = queens + knights;
@@ -84,7 +85,7 @@ constraint
     endif
   )
   /\ queens = knights
-  /\ z = 10 % optimal number of pieces (i.e. 5+5)
+  /\ z = 10 % for n=8, optimal number of pieces (i.e. 5+5)
 ;
 
 output 

@@ -25,20 +25,21 @@ array[1..n, 1..n] of float: coeff =
    -0.05,-0.02, 0.06, 0.35
   ]);
 
-array[1..n] of var 0.0..B: x;
+array[1..n] of var 0..B*B: x;
 var float: f;
 
-% solve satisfy;
-solve :: float_search(x, 0.01, first_fail, indomain_split, complete) satisfy;
+% solve minimize f;
+solve :: float_search(x, 0.00001, input_order, indomain_split, complete) minimize f;
 
 constraint
-   %forall(i in 1..n) (
-   %   x[i] >= 0.0 
-   %)
-   %/\
+   % forall(i in 1..n) (
+   %    x[i] >= 0.0
+   % )
+   % /\
+   f >= 0.0
+   /\
    f = sum(i, j in 1..n) (
-            % here is the problem! (nonlinear)
-            coeff[i,j]*x[i]*x[j]
+            coeff[i,j]*x[i]*x[j] % nonlinear (traditional MIP solvers don't handle this)
        )  
    /\
    sum(i in 1..n) (x[i]) <= B /\

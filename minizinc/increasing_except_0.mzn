@@ -12,8 +12,8 @@
 
 include "globals.mzn"; 
 
-int: n = 7;
-array[1..n] of var 0..5: x;
+int: n = 5;
+array[1..n] of var 0..n: x;
 
 
 % 
@@ -36,13 +36,9 @@ predicate strictly_increasing_except_0(array[int] of var int: a) =
 solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
 
 constraint
-  % increasing_except_0(x)
-  strictly_increasing_except_0(x)
+  increasing_except_0(x)
+  % strictly_increasing_except_0(x)
 ;
 
-output [
- show(x)
-]
- ++ ["\n"]
-;
+output ["x: ", show(x), "\n"];
 

@@ -38,7 +38,7 @@ constraint
    )
 
    % if we can assume that at least one statement must be true:
-   % /\ sum(x) > 0
+   /\ sum(x) > 0
 ;
 
 output [

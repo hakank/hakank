@@ -153,7 +153,6 @@ solve :: int_search(
          minimize z;
 
 constraint
-
   % All id's are assigned to a room
   alldifferent_except_0([s[i,j] | i in 1..num_slots, j in 1..num_rooms]) 
   /\

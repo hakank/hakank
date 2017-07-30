@@ -63,7 +63,7 @@ var 0.0..1000.0: z =
 % solve :: float_search(p++r++s++metal,0.0001,input_order, indomain_split, complete) minimize z;
 solve :: seq_search(
    [
-     float_search(metal++p++s++r,0.00001,input_order, indomain_split, complete),
+     float_search(metal++p++s++r,0.001,input_order, indomain_split, complete),
      int_search(i,first_fail, indomain_median, complete),
    ]) minimize z;
 

@@ -34,7 +34,7 @@ int: t = 2*n; % t for twice
 
 % The number of rows
 % Note: One have to change this for every problem
-int: rows = 23; % t; 
+int: rows = 30; % t; 
 
 % The results of the operations, starting with the init as first row
 array[1..rows, 1..t] of var 1..t: x;
@@ -108,12 +108,12 @@ solve :: int_search([
 
 constraint
    % cp1d(init, [10,5,4,7,1,2,8,3,12,11,9,6]) % this is random generated from M12proj.exe. rows = 16  1:10 minutes
-   cp1d(init, [10,8,6,12,5,2,1,4,11,7,9,3]) % another generated from M12proj.exe. harder  rows = 23   54 sec
+   % cp1d(init, [10,8,6,12,5,2,1,4,11,7,9,3]) % another generated from M12proj.exe. harder  rows = 23   54 sec
    % cp1d(init, [11,7,3,8,5,2,12,1,9,10,4,6]) % another generated from M12proj.exe rows=23  1:15 min (Chuffed: 4 seconds)
    % cp1d(init, [7,5,8,3,1,11,2,9,4,12,6,10]) % generated from M12proj.exe rows=20  32 sec
    % cp1d(init, [8,11,6,1,10,9,4,3,12,7,2,5]) % rows=28 (11:50 minutes). Chuffed: 35.9 sec (with rows=30)
    % cp1d(init, [1,4,9,3,11,6,8,5,10,2,7,12]) % rows > 24
-   % cp1d(init, [3,8,6,12,4,7,5,11,1,10,9,2]) % 21 rows (Chuffed: 24 seconds)
+   cp1d(init, [3,8,6,12,4,7,5,11,1,10,9,2]) % 21 rows (Chuffed: 24 seconds)
 
    % This is generated from the following moves  M2I1M
    % cp1d(init, [4,1,10,7,9,12,3,6,5,2,11,8])  % rows = 5  < 1 sec
@@ -126,6 +126,13 @@ constraint
    % cp1d(init, [11,2,9,7,1,10,6,5,8,3,12,4]) % sssrsss
    % cp1d(init, [12,11,10,9,8,7,6,5,4,3,2,1])
    /\
+
+   % TESTING:
+   % check_ix = 2
+   % /\
+   % operations[2] = 1
+   % /\
+
 
    check[1] = 0
    /\

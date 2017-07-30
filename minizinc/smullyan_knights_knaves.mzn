@@ -59,9 +59,9 @@ constraint
     %% C: B is a knave      
     %% What are B and C
     %% Solution: B: knave, C: knight
-    says(p[2], says(p[1], 1 = sum(i in 1..3) (bool2int(p[i] = 1))))
-    /\
-    says(p[3], p[2] = knave)
+    % says(p[2], says(p[1], 1 = sum(i in 1..3) (bool2int(p[i] = 1))))
+    % /\
+    % says(p[3], p[2] = knave)
 
     %% Problem 28
     %% Just a and b (sets c = 1)

@@ -59,7 +59,6 @@ predicate same(array[int] of var int: x, array[int] of var int: y) =
 
 % solve satisfy;
 % solve minimize check_ix;
-% as usual, fz don't like this
 solve :: int_search(
         [x[i,j] | i in 1..num_sols, j in 1..t]
         ++ [moves[i,j] | i in 1..num_sols, j in 1..2] 
@@ -68,7 +67,7 @@ solve :: int_search(
         ,
         largest, % first_fail, 
         indomain_split, 
-        complete ) 
+        complete) 
 minimize check_ix;
 
 constraint
@@ -98,7 +97,7 @@ constraint
     /\ % select the operations
    forall(i in 2..num_sols) (
 
-     all_different([x[i, j] | j in 1..t]) :: domain
+     all_different([x[i, j] | j in 1..t]) % :: domain
      /\
      % at most 2 changes of each move
      changes[i] = sum(j in 1..t) (bool2int(x[i,j] != x[i-1,j]))
@@ -118,7 +117,7 @@ constraint
             /\ 
             operations[i] = 0
             /\
-            moves[i,1] = 2 % dummy move
+            moves[i,1] = 0 % dummy move
             /\
             moves[i,2] = 0
           )
@@ -137,6 +136,8 @@ constraint
            moves[i,1] > 0 
            /\
            moves[i,2] > 0 
+           /\
+           moves[i,1] != moves[i,2]
          )
      )
    )
@@ -155,7 +156,7 @@ output
 ["\npuzzle:"] ++
 [
   if i mod (ceil(sqrt(int2float(t)))) = 1 then "\n" else " " endif ++
-    show(puzzle[i])
+    show_int(2,puzzle[i])
 
   | i in 1..t
 ] ++ 
@@ -166,15 +167,16 @@ output
   "changes: ", show(changes),
 ] ++
 [
-  if j = 1 then "\n" ++ show(check[i]) ++ ": "  else " " endif ++
-    show(x[i,j])
+  if j = 1 then "\n\n" ++ show(check[i]) ++ " (move: " ++ show([moves[i,k] | k in 1..2]) ++ "):\n"  else " " endif ++
+    if (j-1) mod ceil(sqrt(t)) = 0 then "\n" else "" endif ++
+    show_int(2, x[i,j])
   | i in 1..num_sols, j in 1..t
 ] ++
 ["\nmoves:"]
 ++
 [
  if j = 1 then "\n" else " " endif ++
-   show(moves[i,j])
+   show_int(2, moves[i,j])
  | i in 1..num_sols, j in 1..2
 ]
 ++ ["\n"]
@@ -188,11 +190,23 @@ output
 %  5 10 11 12
 %  9 13 14 15
 %
-num_sols = 15;
-puzzle = [16, 2, 3, 4,
-          1, 6, 7, 8,
-          5,10,11,12,
-          9,13,14,15];
+% num_sols = 15;
+% puzzle = [16, 2, 3, 4,
+%           1, 6, 7, 8,
+%           5,10,11,12,
+%           9,13,14,15];
+
+
+% From a Picat program
+num_sols = 20;
+puzzle = [ 
+           1, 2, 3, 4,
+           5, 6, 8,12,
+          11,16, 7,15,
+          10, 9,13,14
+          ];
+
+
 
 % from http://www.javaonthebrain.com/java/puzz15/ (Java applet)
 % num_sols = 80;

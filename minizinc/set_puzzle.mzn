@@ -104,9 +104,9 @@ constraint
 
    ) % end forall 1..num_sets
 
-   %/\ % Symmetry breaking: order the sets
-   %   % Don't works with Gecode/fz 3.3.1 or ECLiPSE/ic (version 6.0 #146)
-   % increasing(x)    
+   /\ % Symmetry breaking: order the sets
+      % Don't works with Gecode/fz 3.3.1 or ECLiPSE/ic (version 6.0 #146)
+   decreasing(x)    
 ;
 
 output [
@@ -126,20 +126,20 @@ output [
 % http://www.nytimes.com/ref/crosswords/setpuzzle.html#howtoplay
 %
 % Number of items: 9. Sets to find: 4
-n = 9;
-num_sets = 4;
-puzzle = 
-array2d(1..n, 1..num_attributes, [
-         1,2,3,1, % 1 oval       green  3 solid
-         2,2,3,2, % 2 squiggles  green  3 striped
-         3,2,3,3, % 3 diamond    green  3 open
-         1,2,3,3, % 4 oval       green  3 open
-         3,2,3,1, % 5 diamond    green  3 solid
-         2,3,3,3, % 6 squiggles  purple 3 open
-         3,3,3,1, % 7 diamond    purple 3 solid
-         3,2,3,2, % 8 diamond    green  3 striped
-         1,1,3,1  % 9 oval       red    3 solid
-]);
+% n = 9;
+% num_sets = 4;
+% puzzle = 
+% array2d(1..n, 1..num_attributes, [
+%          1,2,3,1, % 1 oval       green  3 solid
+%          2,2,3,2, % 2 squiggles  green  3 striped
+%          3,2,3,3, % 3 diamond    green  3 open
+%          1,2,3,3, % 4 oval       green  3 open
+%          3,2,3,1, % 5 diamond    green  3 solid
+%          2,3,3,3, % 6 squiggles  purple 3 open
+%          3,3,3,1, % 7 diamond    purple 3 solid
+%          3,2,3,2, % 8 diamond    green  3 striped
+%          1,1,3,1  % 9 oval       red    3 solid
+% ]);
 
 % Basic 2 puzzle from
 % http://www.nytimes.com/ref/crosswords/setpuzzle.html#howtoplay
@@ -212,21 +212,21 @@ array2d(1..n, 1..num_attributes, [
 % 11   squiggles  green   3 striped
 % 12   diamond    green   3 solid
 % note: change n to 12, and num_sets to 5;
-% n = 12;
-% num_sets = 5;
-% puzzle = 
-% array2d(1..n, 1..num_attributes, 
-% [
-% 1,1,1,1,
-% 2,2,2,2,
-% 3,3,3,3,
-% 1,3,1,2,
-% 2,1,1,1,
-% 3,3,2,2,
-% 1,1,3,1,
-% 2,1,2,3,
-% 3,1,1,1,
-% 1,1,2,2,
-% 2,2,3,2,
-% 3,2,3,1,
-% ]);
+n = 12;
+num_sets = 5;
+puzzle = 
+array2d(1..n, 1..num_attributes, 
+[
+1,1,1,1,
+2,2,2,2,
+3,3,3,3,
+1,3,1,2,
+2,1,1,1,
+3,3,2,2,
+1,1,3,1,
+2,1,2,3,
+3,1,1,1,
+1,1,2,2,
+2,2,3,2,
+3,2,3,1,
+]);

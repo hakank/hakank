@@ -2,9 +2,9 @@
 % Pool-ball triangles problem in MiniZinc.
 % 
 % Martin Gardner:
-% Given n*(n+1) div 2 numbered pool balls in a triangle, is it possible to place them so
-% that the number of each ball below two balls is the difference of (the number of) those 
-% two balls?
+% Given n*(n+1) div 2 numbered pool balls in a triangle, is it 
+% possible to place them so that the number of each ball below 
+% two balls is the difference of (the number of) those two balls?
 % (In the problem, n=5, i.e. the numbers 1..15)
 % 
 % Index of balls for n=5:
@@ -18,6 +18,7 @@
 %
 % Note:
 % - This model don't handle mirror symmetries of the triangle.
+%   Later addendum (see below): Yes, it does.
 % - There are no solutions for n=6,7
 %  
 
@@ -28,7 +29,9 @@
 
 include "globals.mzn"; 
 
-int: n = 4; % n'th triangle number 1,3,6,10,15,...
+% int: n = 4; % n'th triangle number 1,3,6,10,15,...
+% int: n = 5; 
+int: n = 3; 
 int: len = (n*(n + 1)) div 2;
 array[1..len] of var 1..len: x;
 
@@ -67,6 +70,9 @@ constraint
    )
    /\
    all_different(x)
+
+   /\ % symmetry breaking
+   x[2] < x[3] 
 ;
 
 output [

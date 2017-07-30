@@ -78,11 +78,11 @@ predicate cp1d(array[int] of int: x, array[int] of var int: y) =
 
 
 constraint
-    cp1d([5,1,9,3],x)
-    /\
-    all_different_cst(x, cst)
-%   /\
-%   all_different_cst_mult(x, cst)
+   % cp1d([5,1,9,3],x)
+   % /\
+   all_different_cst(x, cst)
+   %/\
+   % all_different_cst_mult(x, cst)
 
 ;
 
@@ -91,11 +91,11 @@ constraint
 %
 n = 4;
 cst = [0,1,0,4];
-% cst = [1,2,1,4];
+% cst = [1,2,1,4]; % for test of alldifferent_cst_mult
 
 
 output [
-  "x: " ++ show(x) ++ "\n" ++
+  "x  : " ++ show(x) ++ "\n" ++
   "cst: " ++ show(cst) ++ "\n"
 
 ] ++ ["\n"];

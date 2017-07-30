@@ -222,7 +222,8 @@ output [
   else
     ""
   endif
-  | s in 1..n
+  % | s in 1..n
+  | s in 1..ssize
 ]
 ;
 

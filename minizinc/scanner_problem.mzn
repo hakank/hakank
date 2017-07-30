@@ -71,7 +71,7 @@ constraint
      % sum([x[i,j] | i in 1..num_rows, j in 1..num_cols where i+(num_cols-j+1)=k+1]) = diagonal2[k]
      exactly(diagonal2[k], [x[i,j] | i in 1..num_rows, j in 1..num_cols where i+(num_cols-j+1)=k+1], 1)
   )
-  
+
 ;
 
 output [

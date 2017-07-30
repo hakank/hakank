@@ -56,6 +56,7 @@ var 0..4: Dyer;
 var 0..4: Farmer;
 var 0..4: Glover;
 var 0..4: Hosier;
+array[1..5] of var 0..4: names = [Baker, Dyer, Farmer, Glover, Hosier];
 
 % Profession
 var 0..4: baker;
@@ -63,14 +64,15 @@ var 0..4: dyer;
 var 0..4: farmer;
 var 0..4: glover;
 var 0..4: hosier;
+array[1..5] of var 0..4: profession = [baker, dyer, farmer, glover, hosier];
 
 
 solve satisfy;
 
 constraint
-  all_different([baker, dyer, farmer, glover, hosier])
+  all_different(names)
   /\
-  all_different([Baker, Dyer, Farmer, Glover, Hosier])
+  all_different(profession)
   /\ % Symmetry breaking
   Baker = 1
   /\

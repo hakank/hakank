@@ -21,8 +21,8 @@
  
 %
 % Cf subsequence_sum.mzn, which uses a fixed length of the subsequence.
-%
-
+% Cf minsum.mzn which use a simpler approach for a similar problem.
+ 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc

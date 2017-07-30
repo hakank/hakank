@@ -74,9 +74,12 @@ predicate cp2d(array[int,int] of var int: x, array[int,int] of var int: y) =
   
 
 solve :: int_search( 
-        [x[i,j] | i,j in N], % [d[i,j] | i,j in N], % 
-        most_constrained, 
-        indomain_min, 
+        [x[i,j] | i,j in N]
+        %++ 
+        % [d[i,j] | i,j in N]
+        ,
+        first_fail, % most_constrained, 
+        indomain_min, % indomain_min, 
         complete) 
     % minimize sum(i in N, j in N) (x[i,j]);
     satisfy;

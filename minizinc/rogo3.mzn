@@ -49,12 +49,6 @@ array[1..rows, 1..cols] of int: problem;
 int: best; % best known value
 
 
-% array[1..rows*cols*3*3] of int: valid_path = 
-%    [ 
-%      if i+a > 0  /\ j+b > 0 /\ i+a <= rows /\ j+b <= cols then 1+(i+a-1)*cols+(j+b-1) else -1 endif 
-%      | i in 1..rows, j in 1..cols, a, b in {-1,0,1} 
-%    ];
-
 % var 0..rows*cols*rows*cols: valid_connections1_counted;
 
 %%

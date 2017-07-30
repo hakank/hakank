@@ -73,7 +73,7 @@ int: the_case; % the index of the test case
 array[1..num_r] of var 1..5: x;
 
 % The distances between Evan and the others
-array[1..num_p] of var int: dists;
+array[1..num_p] of var 0..1000: dists;
 % the minimum distance
 var int: min_dist = min(dists);
 % index of the minimum in min_dist

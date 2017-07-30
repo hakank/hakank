@@ -160,7 +160,7 @@
 
 include "globals.mzn"; 
 
-int: NumTables = 4;
+int: NumTables = 10;
 int: NumAtTables = 7; % number of chairs at each table
 int: Total = NumTables*NumAtTables;
 
@@ -173,7 +173,7 @@ array[1..Total] of var 1..Total: L = array1d(X);
 
 % solve satisfy;
 % solve :: int_search(L, occurrence, indomain_random, complete) satisfy;
-solve :: int_search(L, occurrence, indomain_random, complete) satisfy;
+solve :: int_search(L, input_order, indomain_random, complete) satisfy;
 
 
 %

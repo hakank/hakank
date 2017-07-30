@@ -37,7 +37,8 @@ constraint
        % instead we must also explicitly state that i is not in any 
        % other set than x[n mod i].
        let {
-           int: z = n `mod` i
+           % int: z = n `mod` i
+           int: z = n mod i
            % int: z = n `div` i
            % int: z = bool2int( i > 3)
        }

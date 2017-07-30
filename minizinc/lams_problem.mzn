@@ -48,8 +48,7 @@ array[1..n, 1..n] of var 0..1: x;
 solve :: int_search([x[i,j] | i,j in 1..n] ++ [m], input_order, indomain_max, complete) satisfy;
 
 constraint
-%  m <= 4
-%  /\
+
   % rows 
   forall(i in 1..n) (
     sum(j in 1..n) (bool2int(x[i,j] = 0)) = m

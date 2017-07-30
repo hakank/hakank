@@ -80,8 +80,8 @@ constraint
   %cp1d([3,1,7,1,1],x)
   %/\
   balance(bal, x)
-  %/\
-  %bal = 3
+  /\
+  bal = 3
 ;
 
 constraint global_cardinality(x, [i|i in 1..7], gcc);

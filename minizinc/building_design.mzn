@@ -51,8 +51,8 @@ var float: w; % >=0;# := 21; # width of building in plan
 
 var float: z = d*l*w;
 
-% solve minimize z;
-solve :: float_search([d,h,w,l], 0.001, input_order,indomain_split,complete) minimize z;
+solve minimize z;
+% solve :: float_search([d,h,w,l], 0.001, input_order,indomain_split,complete) minimize z;
 
 constraint
         n >= 0 /\
@@ -66,7 +66,8 @@ constraint
         /\
         l = 1.618*w
         /\
-        int2float(n)*l*w >= 20000.0
+        % int2float(n)*l*w >= 20000.0
+        n*l*w >= 20000.0
         /\
         l <= 50.0
         /\

@@ -16,8 +16,8 @@ array[1..n] of var 1..n: queens :: viz([
                                               % viztype("vector_waterfall"),
                                               viztype("vector"),
                                               vizpos(0,2),
-                                              % vizdisplay("compact"),
-                                              vizdisplay("expanded"),
+                                              vizdisplay("compact"),
+                                              % vizdisplay("expanded"),
                                               vizwidth(n),
                                               vizheight(n),
                                               vizrange(1,n)
@@ -44,7 +44,7 @@ output [
 ];
 
 % data
-n = 8;
+n = 18;
 
 
 

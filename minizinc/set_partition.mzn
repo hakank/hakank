@@ -15,6 +15,9 @@
 %  </ul>
 % """
 %
+% Also see CSPLib:
+% http://ianm.host.cs.st-andrews.ac.uk/CSPLib/prob/prob049/index.html
+% 
 % Model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
@@ -22,7 +25,7 @@
 % 
 include "globals.mzn"; 
 
-int: n = 16;
+int: n = 20;
 set of 1..n: S = 1..n;
 int: num_sets = 2;
 array[1..num_sets] of var set of S: a;
@@ -42,7 +45,7 @@ predicate set_sum_squared(var set of int: s, var int: the_sum) =
    the_sum = sum(i in ub(s)) (bool2int(i in s)*i*i)
 ;
 
-
+% solve satisfy;
 solve :: set_search(a, first_fail, indomain_min, complete) satisfy;
 % solve maximize sums[1];
 
@@ -50,11 +53,6 @@ constraint
   assert(n mod 4 == 0, "n must be a multiple of 4")
 ;
 
-% (
-%  20080419: 
-%  eclipse gives the following error
-%  instantiation fault in dvar_remove_smaller(_18602{0 .. 20}, 1)
-% )
 constraint
    % use all the elements in S and it should be disjoint sets
    partition_set(a, S)

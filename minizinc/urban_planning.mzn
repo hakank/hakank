@@ -65,14 +65,21 @@ var 0..50: z = sum(row_scores) + sum(col_scores);
 
 
 % scores for this row/column. Note we just count the
+% residential score
 predicate scores(array[int] of var int: rc, var int: score) =
    let {
      var 0..n: cc
    } in 
-   count(rc,1, cc)
+   count(rc,1, cc) 
    /\
    score = score_table[cc]
 ;
+
+% slower
+predicate scores2(array[int] of var int: rc, var int: score) =
+   score = score_table[sum([bool2int(rc[i]=1) | i in 1..n ])]
+;
+
 
 % solve maximize z;
 solve :: int_search(
@@ -95,6 +102,9 @@ constraint
    /\
    % 12 residential
    count([x[i,j] | i,j in 1..n], residential,12) 
+ 
+   % symmetry breaking
+   /\ x[1,1] = residential
 ;
 
 output [

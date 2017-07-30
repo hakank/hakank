@@ -39,8 +39,8 @@ array[F] of var 0.0..1.0: x;
 %  total food bill (dollars) 
 var float: cost = sum(f in F) (x[f]);
 
-solve minimize cost;
-% solve :: float_search(x++[a[i,j] |i in F, j in N]++b, 0.000001, input_order,indomain_split, complete) minimize cost;
+% solve minimize cost;
+solve :: float_search(x++[a[i,j] |i in F, j in N]++b, 0.01, input_order,indomain_split, complete) minimize cost;
 
 constraint
   cost >= 0.0 /\

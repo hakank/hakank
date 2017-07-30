@@ -150,11 +150,12 @@ array[C] of var 0.0..1000.0: quant;
 var float: total_cost = days * sum(c in C) (x[c]);
 var float: cost = sum(c in C) (x[c]); % cost per day
 
-solve minimize cost;
-% solve :: float_search(x_cost ++ quant ++ x, 0.01, input_order, indomain_split,complete) minimize cost;
+% solve minimize cost;
+solve :: float_search(x ++ x_cost ++ quant, 0.00001, input_order, indomain_split,complete) minimize cost;
 
 constraint
   cost >= 0.0 /\
+  total_cost >= 0.0 /\
 
   % nutrient balance 
   forall(n in 3..num_nutrients+2) (

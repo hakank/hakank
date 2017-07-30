@@ -119,4 +119,9 @@ output [
 ++
 [
   "\njudges_where: " ++ show(judges_where)
-];
+]
+++
+[ 
+  "\nx: " ++ show(x)
+]
+;

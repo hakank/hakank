@@ -20,6 +20,7 @@
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
+include "globals.mzn";
 
 % For minimizing total_cost
 % include "shortest_path_model.mzn";
@@ -59,9 +60,10 @@ output [
        if i = 1 /\ j = 1 then 
          "total_cost: " ++ show(total_cost) ++ "\n" ++
          "inFlow:  " ++ show(inFlow) ++ "\n" ++ "outFlow: " ++ show(outFlow) ++ "\n" ++
-         "    1 2 3 4 5 6 7 8 9 0\n" 
+         "      1  2  3  4  5  6  7  8  9  0\n" 
        else "" endif ++
-       if j = 1 then show(i) ++ " : " else "" endif ++
-       show(x[i,j]) ++ if j = n then "\n" else " " endif
+       if j = 1 then show_int(2, i) ++ " : " else "" endif ++
+       show_int(2, x[i,j]) ++ if j = n then "\n" else " " endif
        | i in 1..n, j in 1..n
-];
+]
+;

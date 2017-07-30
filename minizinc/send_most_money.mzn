@@ -38,6 +38,8 @@ constraint
   M > 0
 ;  
 
+% constraint z = 10876;
+
 
 solve maximize z;
 % solve satisfy;

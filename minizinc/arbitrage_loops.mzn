@@ -107,7 +107,7 @@ array[1..m+1] of var 0.0..max(array1d(currencies)): profit;
 var float: z;
 
 solve maximize z;
-% solve :: float_search(y ++ profit,0.001, input_order, indomain_split, complete) maximize z;
+% solve :: float_search(y ++ profit,0.1, input_order, indomain_split, complete) maximize z;
 
 constraint
   z >= 0.0 /\

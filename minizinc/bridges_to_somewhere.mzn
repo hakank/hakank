@@ -224,9 +224,13 @@ output [
 %   | p in 1..num_p
 % ]
 [
-   let {
-      array[1..num_bridges_to_build] of var int: bb = [dist1[p,x[b]] + 1 + dist2[p,x[b]] | b in 1..num_bridges_to_build],
-      var int: min_b = min(bb)
+   % let {
+   %    array[1..num_bridges_to_build] of var int: bb = [dist1[p,x[b]] + 1 + dist2[p,x[b]] | b in 1..num_bridges_to_build],
+   %    var int: min_b = min(bb)
+   % }
+  let {
+      array[1..num_bridges_to_build] of int: bb = [fix(dist1[p,fix(x[b])]) + 1 + fix(dist2[p,x[b]]) | b in 1..num_bridges_to_build],
+      int: min_b = min(bb)
    }
    in
    show(str[p]) ++ ": " ++

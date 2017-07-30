@@ -211,4 +211,10 @@ c = [
   {4,5,6}  % 19
 ];
 
-output [ show(x)];
+output 
+[ 
+  "x: ", show(x), "\n",
+  "preference_points: ", show(preference_points), "\n",
+  "sum_pref_points: ", show(sum_pref_points), "\n"
+
+];

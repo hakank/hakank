@@ -27,7 +27,8 @@
 
 include "globals.mzn"; 
 
-% Remove the comment is using Gecode/fz.
+% Remove the comment is using Gecode/fz. Also use the
+% int_search with size_afc_min (see below).
 % include "gecode.mzn";
 
 int: n;
@@ -47,20 +48,20 @@ solve :: int_search([x[i,j] | i, j in 1..n], first_fail, indomain_min, complete)
 constraint 
 
   % Show the size of the problem.
-  trace("n: " ++ show(n) ++ "\n", 1=1) /\
+  % trace("n: " ++ show(n) ++ "\n", 1=1) /\
 
   % global cardinality
   forall(i in 1..n) (
-    alldifferent([x[i,j] | j in 1..n]) :: domain
+    alldifferent([x[i,j] | j in 1..n]) % :: domain
   )
   /\
   forall(j in 1..n) (
     alldifferent([x[i,j] | i in 1..n])  :: domain
-  ) 
-  /\
+  )   /\
   forall(i in 0..reg-1,j in 0..reg-1) (
-    alldifferent([x[r,c] | r in i*reg+1..i*reg+reg, c in j*reg+1..j*reg+reg])  :: domain
+    alldifferent([x[r,c] | r in i*reg+1..i*reg+reg, c in j*reg+1..j*reg+reg])  % :: domain
   )
+
 ;
 
 output 

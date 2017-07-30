@@ -68,7 +68,7 @@ output [
    "\ntotal: " ++ show(total) 
   else "" endif ++
   if j = 1 then "\n" else " " endif ++
-  show(x[i,j])
+  show_int(2,x[i,j])
   | i, j in 1..n
 ] ++ ["\n"];
 

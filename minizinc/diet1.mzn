@@ -37,7 +37,7 @@ constraint
        /\ sum(i in 1..n) (x[i]*chocolate[i]) >= limits[2]
        /\ sum(i in 1..n) (x[i]*sugar[i])     >= limits[3]
        /\ sum(i in 1..n) (x[i]*fat[i])       >= limits[4]
-%        /\ cost <= 90 % for solve satisfy
+       /\ cost <= 90 % for solve satisfy
 ;
 
 

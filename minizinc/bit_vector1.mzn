@@ -106,7 +106,6 @@ constraint
    toNum(num3_x, num3, 2.0)
    /\
    forall(i in bits-3..bits) (
-      trace("i: " ++ show(i) ++ "\n", 1=1) /\
       num3_x[i] = 1 <-> num2_x[i] = 0
    )
    /\

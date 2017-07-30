@@ -77,7 +77,7 @@
 %
 
 % include "globals.mzn"; 
-int: n = 4;
+int: n = 6;
 int: m = ceil(pow(2.0, int2float(n)/2.0+1.0))-2;
 
 % 0's are used as dummy values and must be placed last
@@ -108,6 +108,10 @@ constraint
      x[i] = 0 -> x[i+1] = 0
   )
 ;
+
+% test
+constraint len = m;
+
 
 % Experimental: constraint the length of the sequence
 % constraint len = m;

@@ -35,7 +35,7 @@ array[Products] of float: Profit =  [30.0, 40.0];
 array[Components] of float: Stock = [50.0, 180.0, 40.0];
 
 % decision variables
-array[Products] of var float: Production;
+array[Products] of var 0.0..10000.0: Production;
 
 var 0.0..100000.0: z = sum(p in Products) (Profit[p]*Production[p]);
 

@@ -105,10 +105,6 @@ array[1..num_speakers] of 1..max_talk_duration: app_durations; % the duration of
 array[1..num_speakers] of var 1..num_slots: starting_slot; % the allocated starting slot
 array[1..num_speakers] of var 1..num_slots: ending_slot; % the allocated ending slot
 
-% matrix for presentation of when speaker talks etc
-% (skipped for this version)
-% array[1..num_slots, 1..num_speakers] of var -1..1: m;
-
 var 0..num_slots: z = max(i in 1..num_speakers) (ending_slot[i]);
 
 % no overlapping slots function
@@ -116,40 +112,28 @@ var 0..num_slots: z = max(i in 1..num_speakers) (ending_slot[i]);
 
 % ensure allocated slots don't overlap and the allocated slot is free for the speaker
 constraint 
-	forall(i in 1..num_speakers) (
-		ending_slot[i] = starting_slot[i] + app_durations[i] - 1
-	) 
-        % /\ % use cumulative instead (see below)
-	% forall(i,j in 1..num_speakers where i < j) (
-	%  	no_overlap(starting_slot[i], app_durations[i], starting_slot[j], app_durations[j])
-	% ) 
-        /\ % note: if using the matrix "m" this is not really needed...
-	forall(i in 1..num_speakers) (
-		forall(j in 1..app_durations[i]) (
-			starting_slot[i]+j-1 in speaker_availability[i]
-		)
-	) 
-
-        /\ cumulative(starting_slot, app_durations, [1 | i in 1..num_speakers], 1)
+  forall(i in 1..num_speakers) (
+    ending_slot[i] = starting_slot[i] + app_durations[i] - 1
+  ) 
+  % /\ % use cumulative instead (see below)
+  %  forall(i,j in 1..num_speakers where i < j) (
+  %   	no_overlap(starting_slot[i], app_durations[i], starting_slot[j], app_durations[j])
+  % ) 
+  /\ % note: if using the matrix "m" this is not really needed...
+  forall(i in 1..num_speakers) (
+    forall(j in 1..app_durations[i]) (
+      starting_slot[i]+j-1 in speaker_availability[i]
+    )
+  ) 
+  /\ cumulative(starting_slot, app_durations, [1 | i in 1..num_speakers], 1)  % :: domain
 
 ;
 
 
-% connect to matrix m (skipped in this version)
-% constraint
-%   forall(t in 1..num_slots) (
-%      forall(s in 1..num_speakers) (
-%         (not(t in speaker_availability[s]) <-> m[t,s] = -1) 
-%         /\
-%         ((t >= starting_slot[s] /\ t <= ending_slot[s]) <-> m[t,s] = 1)
-%      )
-%   )
-% ;
-
 % objective is to finish the talks as early as possible
 % solve minimize max(i in 1..num_speakers) (ending_slot[i]);
 % solve minimize z;
-solve :: int_search(ending_slot ++ starting_slot, first_fail, indomain_min, complete) minimize z;
+solve :: int_search(starting_slot ++ ending_slot, first_fail, indomain_min, complete) minimize z;
 % solve satisfy;
 
 
@@ -160,15 +144,6 @@ output
    "Ends:      ", show(ending_slot), "\n",
    "z:         ", show(z), "\n",  
 ]
-% ++
-% [ 
-%   if s = 1 then "\n" else " " endif ++
-%     if fix(m[t,s]) = -1 then "Busy    " elseif
-%        fix(m[t,s]) =  1 then "SELECTED" else
-%                              "        "
-%     endif  
-%   | t in 1..num_slots, s in 1..num_speakers
-% ]
 ++
 [ 
   if s = 1 then "\n" else " " endif ++
@@ -267,7 +242,7 @@ output
 
 %
 % Gecode/fz, Google or-tools, Choco3 solves this problem in < 0.1s,
-% Most other FlatZinc solvers: < 1s
+% Many other FlatZinc solvers: < 1s
 %
 num_speakers = 50;
 num_slots = 60;

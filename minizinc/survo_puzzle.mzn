@@ -30,7 +30,7 @@
 
 %
 % Compare with
-%  * magic_square*.mzn, which has the sane row/sum sum and diagonal constraints
+%  * magic_square*.mzn, which has the same row/sum sum and diagonal constraints
 %    magic squares can be seen as a special case of survo puzzles.  
 %  * puzzle1.mzn, which also requires constraints on diagonals, but 
 %    no there is no all_different constraint.
@@ -74,10 +74,28 @@ constraint
 ;
 
 output [
-  if j = 1 then "\n" else " " endif ++
-    show(x[i,j])
+  "["
+]
+++
+[
+  if j = 1 then "\n" else "," endif ++
+    if fix(x[i,j]) < 10 then "  " else " "  endif ++
+    show(x[i,j]) ++
+  if j = c then 
+    ", f(" ++ show(rowsums[i]) ++ "),"
+  else 
+    ""
+  endif
   | i in 1..r, j in 1..c
-] ++ ["\n"]
+] 
+++
+["\n"]++
+[
+  "f(" ++ show(colsums[j]) ++ "),"
+  | j in 1..c
+]
+
+++ ["]\n"]
 ;
 
 
@@ -159,13 +177,33 @@ output [
 % 2  *  * 18  *  *  * 86
 % 3  *  *  *  *  *  * 55
 %   22 11 42 32 27 37
-r = 3;
-c = 6;
-rowsums = [30, 86, 55];
-colsums = [22, 11, 42, 32, 27, 37];
-matrix = array2d(1..r, 1..c, 
-  [
-    0, 0,  0, 0, 0, 0,
-    0, 0, 18, 0, 0, 0,
-    0, 0,  0, 0, 0, 0
-  ]);
+% r = 3;
+% c = 6;
+% rowsums = [30, 86, 55];
+% colsums = [22, 11, 42, 32, 27, 37];
+% matrix = array2d(1..r, 1..c, 
+%   [
+%     0, 0,  0, 0, 0, 0,
+%     0, 0, 18, 0, 0, 0,
+%     0, 0,  0, 0, 0, 0
+%   ]);
+
+% Survo puzzle 269/2012 (920) #443-74130
+%    A  B  C  D
+% 1  *  *  *  * 16
+% 2  *  *  *  * 40
+% 3  *  *  *  * 53
+% 4  *  *  *  * 27
+%   16 32 40 48
+%
+% r = 4;
+% c = 4;
+% rowsums = [16, 40, 53, 27];
+% colsums = [16, 32, 40, 48];
+% matrix = array2d(1..r, 1..c, 
+%   [
+%     0, 0, 0, 0,
+%     0, 0, 0, 0,
+%     0, 0, 0, 0,
+%     0, 0, 0, 0,
+%   ]);

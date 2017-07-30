@@ -23,13 +23,11 @@ solve minimize z;
 % solve satisfy;
 
 constraint 
-     forall(i in 1..numCities) 
-     (
-        forall(j in 1..numCities) 
-        (
-          sum([x[i] | i in 1..numCities where distance[i,j] <= min_distance] ) >= 1
-        )
-     ) 
+   forall(j in 1..numCities) 
+   (
+       sum([x[i] | i in 1..numCities where distance[i,j] <= min_distance] ) >= 1
+   )
+
 
 ;
 
@@ -52,5 +50,5 @@ array2d(1..numCities, 1..numCities,
 
 output
 [
-  show(x)
+  "x: " ++ show(x) ++ "\nz: " ++ show(z)
 ];

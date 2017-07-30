@@ -66,5 +66,6 @@ belongsx =
 output
 [
   "x: " ++ show(x) ++ "\n" ++
-  "z: " ++ show(z)
+  "z: " ++ show(z) ++ "\n" ++
+  "tot_elements: " ++ show(tot_elements) ++ "\n"
 ];

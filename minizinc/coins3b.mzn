@@ -41,17 +41,13 @@ solve :: int_search(variables ++ x, first_fail, indomain_min, complete) minimize
 constraint
         % symmetry breaking for the elaborate case when variables is not initiated
         forall(i in 2..n) (
-          variables[i-1] < variables[i] 
+           variables[i-1] < variables[i] 
         )
         /\ 
-        all_different(variables) 
+        all_different(variables)
         /\
-        sum(i in 1..n) (variables[i]) <= 99 
-        /\
-        % must be at least 0 coins
-        forall(i in 1..n) (
-          x[i] >= 0
-        )
+        sum(variables) <= 99 
+
         /\ % This is the "main loop"        
            % Checks that all changes from 1 to 99 can be made
            %
@@ -59,13 +55,16 @@ constraint
           let {
               array[1..n] of var 0..99: tmp} 
           in
-          sum(i in 1..n) (tmp[i]*variables[i]) = j /\
-            forall(i in 1..n) (
+          sum(i in 1..n) (tmp[i]*variables[i]) = j 
+          /\  forall(i in 1..n) (
               tmp[i] <= x[i]
           )
         )
 
         % /\ num_coins = 8
+
+        /\ sum([x[i]*variables[i] | i in 1..n]) = 99 % implied constraint
+
 ;
 
 

@@ -14,7 +14,7 @@
 
 include "globals.mzn"; 
 
-array[1..4] of var 1..10: x;
+array[1..40] of var 1..1000: x;
 var int: p;
 
 solve satisfy;
@@ -46,7 +46,7 @@ constraint
 
         p > 0
         /\
-        prod(x, p) 
+        p = product(x) 
         /\
         increasing(x) % symmetry breaking
 

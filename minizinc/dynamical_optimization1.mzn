@@ -33,7 +33,7 @@ int: Ng; % number of grid points
 float: Dt; % time step
 
 % Variables
-array[1..Ng] of var -10.00..10.00: x;
+array[1..Ng] of var 0.00..10.00: x;
 array[1..Ng] of var 0.00..10.00: u;
 
 var float: cost = sum(j in 1..Ng) (x[j]);

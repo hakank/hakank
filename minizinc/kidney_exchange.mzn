@@ -58,39 +58,39 @@ output [
 % (from Pascal's introduction lecture)
 % who can give a kidney to person p
 % This is a directed graph
-% num_people = 8;
-% compatible = 
-%   [
-%     {2,3}, % 1
-%     {1,6}, % 2
-%     {1,4,7}, % 3
-%     {2}, % 4  
-%     {2}, % 5
-%     {5}, % 6
-%     {8}, % 7
-%     {3}, % 8
-%   ];
+num_people = 8;
+compatible = 
+  [
+    {2,3}, % 1
+    {1,6}, % 2
+    {1,4,7}, % 3
+    {2}, % 4  
+    {2}, % 5
+    {5}, % 6
+    {8}, % 7
+    {3}, % 8
+  ];
   
 
 
 % Example from Al Roth's "CRCS Lunch Seminar" (YouTube)
 % about 23 min into the lecture.
 %
-num_people = 13;
-% who can give a kidney to person p
-compatible = 
-  [
-    {}, % 1
-    {1,4,5}, % 2
-    {2}, % 3
-    {3,9}, % 4  
-    {6,8}, % 5
-    {7}, % 6
-    {}, % 7
-    {}, % 8
-    {10}, % 9
-    {}, % 10
-    {13}, % 11
-    {11}, % 12
-    {12}, % 13
-  ];
+% num_people = 13;
+% % who can give a kidney to person p
+% compatible = 
+%   [
+%     {}, % 1
+%     {1,4,5}, % 2
+%     {2}, % 3
+%     {3,9}, % 4  
+%     {6,8}, % 5
+%     {7}, % 6
+%     {}, % 7
+%     {}, % 8
+%     {10}, % 9
+%     {}, % 10
+%     {13}, % 11
+%     {11}, % 12
+%     {12}, % 13
+%   ];

@@ -122,8 +122,8 @@ function var int: to_num_base(array[int] of var int: a, int: base) =
 function var int: to_num(array[int] of var int: a) = to_num_base(a, 10);
 
 
-solve satisfy;
-% solve :: int_search(start_pos ++ x, most_constrained, indomain_split, complete) satisfy;
+% solve satisfy;
+solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
 
 constraint
  % just to show the complexity of the problem 
@@ -201,7 +201,7 @@ output [
     ""
   endif ++
   if i = num_digits_all then
-    show(missing)
+    " (," ++ show(missing) ++ ")"
   else "" endif
   | i in 1..num_digits_all
 ]

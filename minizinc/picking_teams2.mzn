@@ -47,9 +47,9 @@
 
 include "globals.mzn"; 
 
-% data from data file
+% % data from data file
 int: n;
-% Each person's "strength"
+% % Each person's "strength"
 array[1..n] of int: s;
 
 %% This is no problem
@@ -62,7 +62,8 @@ array[1..n] of int: s;
 array[1..n] of var 1..2: x;
 
 % The difference in strength between the teams
-var 0..sum(s) div 2: d;
+var 0..sum(s): d;
+% var 0..max(s)*2: d;
 
 % solve minimize d;
 solve :: int_search(
@@ -83,13 +84,26 @@ constraint
           sum([s[i]*bool2int(x[i] == 2) | i in 1..n]))
 
   /\ % same size of team
-  count(x, 1, n div 2) :: domain
+  count(x, 1, n div 2) % :: domain
 
   /\ % symmetry breaking: assign first person to team 1
   x[1] = 1
 
+  % /\ d <= max(s)
+
+  % /\ % symmetry breaking: team 1 is not worse than team2
+  % sum([s[i]*bool2int(x[i] == 1) | i in 1..n]) >= 
+  %         sum([s[i]*bool2int(x[i] == 2) | i in 1..n])
+
+
   % divisibility of the sum
   /\ d mod 2 = sum(s) mod 2 
+  %  /\
+  %   if sum(s) mod 2 = 1 then
+  %     d >= 1
+  %   else 
+  %     true
+  %   endif
 ;
 
 output 
@@ -113,5 +127,7 @@ output
    "  sum: " ++ show(sum([s[i] | i in 1..n where fix(x[i]) == j])) ++ "\n"
   | j in 1..2
 ]
+++
+[  "diff: " ++ show(d) ++ "\n" ]
 ;
 

@@ -102,8 +102,8 @@ array[1..num_people] of int: attending_budget;
 % decision variables
 
 % which concert to buy ticket for (if any) and how many
-array[1..num_people] of var 0..num_concerts: buy_concert; % what concert (if any) does p buy?
-array[1..num_people] of var 0..max_tickets_per_person: buy_num_tickets; % how many tickets?
+array[1..num_people] of var 1..num_concerts: buy_concert; % what concert (if any) does p buy?
+array[1..num_people] of var 1..max_tickets_per_person: buy_num_tickets; % how many tickets?
 
 % which concert to attend (if any)
 % 
@@ -118,10 +118,11 @@ var 0..num_people*num_concerts*num_concerts: z = sum([prefs[p,c]*attending[p,c] 
 % solve maximize z;
 solve :: int_search(
    buy_num_tickets ++ buy_concert
-   % ++ [attending[p,c] | p in 1..num_people, c in 1..num_concerts] 
+   ++ 
+   [attending[p,c] | p in 1..num_people, c in 1..num_concerts] 
    , 
-   max_regret, % first_fail, 
-   indomain_max, 
+   largest, % max_regret, % first_fail, 
+   indomain_min, % indomain_max, 
    complete) 
   maximize z;
   % satisfy;
@@ -130,7 +131,8 @@ solve :: int_search(
 
 constraint
 
-  alldifferent_except_0(buy_concert) 
+  % alldifferent_except_0(buy_concert) 
+  alldifferent(buy_concert)
 
   /\ % maximum number of tickets to buy (the budget constraint)
   forall(p in 1..num_people) (
@@ -144,12 +146,12 @@ constraint
   forall(c in 1..num_concerts) (
     sum([attending[p,c] | p in 1..num_people]) = 
          sum([ buy_num_tickets[p]*bool2int(buy_concert[p] == c) | p in 1..num_people])
-       
   )
-  /\ % If a person don't buy a ticket the (s)he don't go to any concert, and vice versa.
-  forall(p in 1..num_people) (
-      buy_concert[p] = 0 <-> buy_num_tickets[p] = 0
-  )
+
+  % /\ % If a person don't buy a ticket the (s)he don't go to any concert, and vice versa.
+  % forall(p in 1..num_people) (
+  %     buy_concert[p] = 0 <-> buy_num_tickets[p] = 0
+  % )
 
   % /\ 
   % forall(p in 1..num_people) (
@@ -161,10 +163,10 @@ constraint
      buy_num_tickets[p] = sum([attending[p,c] | c in 1..num_concerts])
   )
 
-  /\ % a 0 preference on a concert disallow attendance on that concert
-  forall(p in 1..num_people, c in 1..num_concerts) (
-     if prefs[p,c] = 0 then attending[p,c] = 0 else true endif
-  )
+  % /\ % a 0 preference on a concert disallow attendance on that concert
+  % forall(p in 1..num_people, c in 1..num_concerts) (
+  %    if prefs[p,c] = 0 then attending[p,c] = 0 else true endif
+  % )
 
 ;
 

@@ -12,7 +12,8 @@
 int: num_prices;
 array[1..num_prices] of int: price;
 int: total;
-array[1..num_prices] of var 0..total: x; % how many items of each dish
+% array[1..num_prices] of var int: x; % how many items of each dish
+array[1..num_prices] of var 0..100000: x; % how many items of each dish
 
 var int: z = sum(i in 1..num_prices) (x[i]);
 
@@ -21,10 +22,8 @@ solve satisfy;
 
 constraint
   total = sum(i in 1..num_prices) (x[i]*price[i])
-  /\
-  forall(i in 1..num_prices) (
-      x[i] >= 0
-  )
+  % /\ forall(i in 1..num_prices) (x[i] >= 0) % when x don't have an explicit domain.
+  % /\ z >= 0
 ;
 
 %

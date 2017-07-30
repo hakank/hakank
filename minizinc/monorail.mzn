@@ -108,49 +108,15 @@ array[1..num_steps] of var 1..cols: y;
 % the path as integers
 array[1..num_steps] of var 1..num_steps: path;
 
+% For diffn/4.
+array[1..num_steps] of int: a = [1 | i in 1..num_steps];
 
 
 % solve satisfy;
-% solve :: labelling_ff satisfy;
-% solve :: int_search(path, afc_max, indomain_min, complete) satisfy; % Gecode
-% solve :: int_search(path, afc_min, indomain_min, complete) satisfy; % Gecode
-% solve :: int_search(path, first_fail, indomain_min, complete) satisfy;
-% solve :: int_search(path, occurrence, indomain_min, complete) satisfy;
-% solve :: int_search(path, smallest, indomain_min, complete) satisfy; 
-% solve :: int_search(path, smallest, indomain_min, complete) satisfy;
-
 % input_order/indomain_min is much faster for Gecode/fz, and slighly faster for Chuffed
+% solve :: int_search(path, input_order, indomain_min, complete) satisfy;
 solve :: int_search(path, input_order, indomain_min, complete) satisfy;
 
-
-
-% solve :: seq_search(
-%                     [ 
-%                      int_search(path, input_order, indomain_min, complete),
-%                      int_search(x ++ y, smallest, indomain_min, complete)
-%                     ]
-%                    )
-%                    satisfy;
-
-
-% assign the given (coordinate version)
-% constraint
-%    forall(k in 1..num_given) (
-%        let {
-%           var 1..num_steps: a,
-%           var 1..num_steps: b
-%        } in 
-%        x[a] = given[k,1] /\ y[a] = given[k,2] 
-%        /\
-%        x[b] = given[k,3] /\ y[b] = given[k,4] 
-%        /\
-%        (abs(a-b) = 1 \/ abs(a-b) = num_steps-1)
-%        %/\
-%        %(x[a]-1)*cols+y[a] < (x[b]-1)*cols+y[b]
-%        %/\
-%        %table([(x[a]-1)*cols+y[a], (x[b]-1)*cols+y[b]], valid_connections) :: domain
-%    )
-% ;
 
 %
 % populate the given hints
@@ -164,64 +130,34 @@ constraint
        path[a] = given[k,1] /\ path[b] = given[k,2]
        /\
        (abs(a-b) = 1 \/ abs(a-b) = num_steps-1)
-   
-       % /\
-       % (path[a] < path[b] \/ path[a] = num_steps)
-       % /\
-       % (x[a]-1)*cols+y[a] < (x[b]-1)*cols+y[b]
-       %/\
-       %table([path[a], path[b]], valid_connections) :: domain
-       % /\
-       % table([(x[a]-1)*cols+y[a], (x[b]-1)*cols+y[b]], valid_connections) :: domain
    )
 ;
-
-
-
 
 
 % all coordinates must be unique (first approach)
 % Note: Sometimes it's faster if this is also active.
 % constraint
-%    forall(s in 1..num_steps, t in s+1..num_steps) (
-%          x[s] != x[t] \/ y[s] != y[t]
-%          % /\
-%          %path[s] != path[t]
+%   forall(s in 1..num_steps, t in s+1..num_steps) (
+%          (x[s] != x[t]) \/ (y[s] != y[t])
 %   )
+%   % /\ diffn(x,y,a,a) % experiment
 % ;
 
 %
 % All coordinates must be unique, 
 %
 constraint
-   % alldifferent([(x[i]-1)*num_steps + y[i] | i in 1..num_steps]) /\ % :: domain /\
    alldifferent(path) :: domain
 ;
-
-%
-% Ensure that the path is connecting.
-%
-% Sometimes it's faster if this is also active.
-%
-% constraint 
-%   forall(s in 1..num_steps-1) (
-%      abs(x[s] - x[s+1]) + abs(y[s] - y[s+1]) = 1
-%   )
-%   /\ % close the path around the corner
-%   abs(x[num_steps] - x[1]) + abs(y[num_steps] - y[1]) = 1
-% ;
-
 
 %
 % Only valid connections, using table.
 %
 constraint
   forall(s in 1..num_steps-1) (
-    % table([(x[s]-1)*cols+y[s], (x[s+1]-1)*cols+y[s+1]], valid_connections) :: domain /\
     table([path[s], path[s+1]], valid_connections) :: domain
   )
   /\ % "around the corner
-  % table([(x[num_steps]-1)*cols+y[num_steps], (x[1]-1)*cols+y[1]], valid_connections) :: domain /\
   table([path[num_steps], path[1]], valid_connections) :: domain
 ;
 
@@ -237,26 +173,12 @@ constraint
    )
 ;
 
+% symmetry breaking
+% Start with the two steps: 1,1  and 1,2.
 %
-% Symmetry breaking 1: 
-%
-% the cell with lowest coordinates should be in the first step.
-% 
 constraint
-   forall(i in 2..num_steps) (
-     % (x[1]-1)*cols+y[1] < (x[i]-1)*cols+y[i] /\
-     path[1] < path[i]
-   )
-;
-
-% % symmetry breaking 2 and 3:
-% % Start with the two steps: 1,1  and 1,2.
-% %
-constraint
-  % x[1] = 1 /\ y[1] = 1 /\
   path[1] = 1
   /\
-  % x[2] = 1 /\ y[2] = 2 /\
   path[2] = 2
 ;
 

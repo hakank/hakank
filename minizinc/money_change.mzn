@@ -19,10 +19,10 @@ var int: num_used_coins = sum(x);
 % Some different solve options.
 %
 
-% solve satisfy;
+solve satisfy;
 
 % Minimize the number of coins
-solve minimize num_used_coins;
+% solve minimize num_used_coins;
 
 % Use the prio array to optimize
 % solve maximize sum(i in 1..n) (x[i]*prio[i]);
@@ -40,10 +40,15 @@ constraint
 %
 % data
 %
+% n = 6;
+% coins = [50,25,10,5,2,1];
+% prio = [1,2,3,4,5,6];
+% value = 100;
+
 n = 6;
-coins = [50,25,10,5,2,1];
+coins = [100,50,25,10,5,1];
 prio = [1,2,3,4,5,6];
-value = 29;
+value = 100;
 
 
 

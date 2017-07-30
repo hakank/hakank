@@ -52,7 +52,6 @@ constraint
    )
 ;
 
-
 % symmetry breaking
 constraint
    x[1] = 1

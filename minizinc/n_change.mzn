@@ -96,7 +96,8 @@ n = 5;
 
 output
 [
-  "x: " ++ show(x) ++ "\n" ++
-  "c_pos: " ++ show(c_pos) ++ "\n" ++
-  "num_changes: " ++ show(num_changes) ++ "\n"
+ "x: " ++ show(x) ++ "\n" ++
+ "c_pos: " ++ show(c_pos) ++ "\n" ++
+ "num_changes: " ++ show(num_changes) 
+
 ];

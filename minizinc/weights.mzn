@@ -58,20 +58,20 @@ array[1..num_weights] of var 0..9: x;
 var float: total = bell_weight + sum([x[i]*2*weights[i] | i in 1..num_weights]);
 var int: num_selected_weights = sum([x[i] | i in 1..num_weights]);
 
-% solve satisfy;
-solve minimize num_selected_weights; % for minimizing the number of selected plates
+solve satisfy;
+% solve minimize num_selected_weights; % for minimizing the number of selected plates
 % solve maximize total; % what't the largest total weight
 % solve :: int_search(x, input_order, indomain_min, complete) satisfy;
 
 constraint
-  % ensure that we have enough couple of weight plates
+  % ensure that we have enough couples of weight plates
   forall(w in 1..num_weights) (
      x[w] <= weight_avail[w]
   )
 ;
 
 % Calculate the total weight (including weight of barbell/dumbbell)
-constraint total = 24;
+constraint total = 52;
 
 output [
   "\ntotal: \(total)kg\nnum_selected_weights: \(num_selected_weights)\n" ++
@@ -106,10 +106,10 @@ output [
 % num_weights = 10; % total number of weights
 % req_weights = 2; % 2 weight plates in total (one of each side)
 %% the weights (in kg)
-% weights =      [0.50,1.0,1.25,2.0,2.5,5.0,10.0,20.0,25.0,50.0];
+%weights =      [0.50,1.0,1.25,2.0,2.5,5.0,10.0,20.0,25.0,50.0];
 % % number of weight plates available
 % % E.g. I have 4 plates of 0.5kg -> 2 in weight_avail, and 2 weights of 10kg -> 1.
-% weight_avail = [   2,  2,  2,   2,  1,  2,   1,   0,   0,   0];  
+%weight_avail = [   2,  2,  2,   2,  1,  2,   1,   0,   0,   0];  
 % bell_weight = 7.0;
 
 

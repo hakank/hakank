@@ -116,7 +116,7 @@ constraint
   % ) 
 
   /\ % place the coins properly, general approach
-  exists(i,j in 1..n2) (
+  exists(i,j in n div 2..n2-(n div 2)) (
      forall(a in 1..k) (
        forall(b in 2..a*2 where b mod 2 = 0) (
           x[i-a,j+a-b] = 1

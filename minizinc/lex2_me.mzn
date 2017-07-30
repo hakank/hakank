@@ -69,7 +69,8 @@ predicate cp2d(array[int,int] of var int: x, array[int,int] of var int: y) =
   )
 ; 
 
-solve satisfy;
+% solve satisfy;
+solve :: int_search([x[i,j] | i in 1..r, j in 1..c], first_fail, indomain_min, complete) satisfy;
 
 constraint
   cp2d(x, array2d(1..r, 1..c, 

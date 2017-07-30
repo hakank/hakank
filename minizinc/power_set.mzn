@@ -16,7 +16,7 @@ include "globals.mzn";
 %
 predicate powerset(int: n, array[int] of var set of int: x) =
   let {
-     int: p = ceil(pow(2.0, int2float(n))), % p = 2^n
+     int: p = pow(2, n), % p = 2^n
      array[1..p] of var set of 1..n: z 
   }
   in
@@ -32,14 +32,14 @@ predicate cp1d(array[int] of var set of int: x, array[int] of var set of int: y)
 solve satisfy;
 
 int: n = 3;
-int: size = ceil(pow(2.0, int2float(n))); % 2^n;
-array[1..8] of var set of 1..8: a;
+int: size = pow(2, n); % 2^n;
+array[1..size] of var set of 1..size: a;
 
 % This gives a power set of 1..n
 constraint 
     powerset(n, a)
     % symmetry breaking: order the sets
-    % /\ increasing(a) % don't work in minizinc/flatzinc 0.7.1
+    /\ increasing(a) % don't work for all solvers
 ;
 
 output [

@@ -39,6 +39,20 @@
 % the target or a number as close to the target as possible.
 % """
 
+% Note: This model is more restricted in how the operators works: It only solve
+% solutions of this form:
+%
+%  Numbers =  [3,5,9,9,10,100]
+%  Target  = 564
+%  Solution:
+%    (((((100/5)*10)-9)*3)-9) = 564
+%   100/5 = 20
+%   20*10 = 200
+%   200-9 = 191
+%   191*3 = 573
+%   573-9 = 564
+
+
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
@@ -116,6 +130,7 @@ constraint
    %/\ total >= 522 
    %/\ total < 600
    % /\ total = 666
+   /\ total = 564
 ;
 
 
@@ -124,7 +139,8 @@ constraint
 %
 n = 6;
 % numbers = [100, 5, 5, 2, 6, 8]; % same number twice
-numbers = [100, 5, 3, 2, 6, 8];
+% numbers = [100, 5, 3, 2, 6, 8];
+numbers = [3,5,9,9,10,100];
 % n = 4;
 % numbers = [4,4,4,4];
 
@@ -132,7 +148,7 @@ output
 [
   "x      : " ++ show(x) ++ "\n" ++
   % "perm   : " ++ show(perm) ++ "\n" ++
-  % "s      : " ++ show(s) ++ "\n" ++
+  "s      : " ++ show(s) ++ "\n" ++
   % "numbers: " ++ show(numbers) ++ "\n" ++
   "total  : " ++ show(total) ++ "\n" ++
   "ops    : " ++ show(ops) ++ "\n" ++ 

@@ -30,7 +30,6 @@ array[1..cols, 1..col_rule_len] of int: col_rules;
 
 
 array[1..rows, 1..cols] of var 1..2: x;
-
 solve :: int_search(
      [x[i,j] | j in 1..cols, i in 1..rows], 
      first_fail, 
@@ -106,7 +105,7 @@ predicate make_automaton(array[int] of var int: x, array[int] of int: pattern) =
        2, 
        array2d(1..len, 1..2, states),
        1, 
-       {len}) % :: domain
+       {len}) :: domain
 ;
 
 constraint

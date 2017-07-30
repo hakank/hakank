@@ -155,8 +155,9 @@ constraint
 
 % just for the minizinc solver
 output [
-  "max_total: " ++ show(max_total) ++ "\n" ++
+  % "max_total: " ++ show(max_total) ++ "\n" ++
   "total: " ++ show(total) ++ "\n" ++
+  "punish: " ++ show(punish) ++ "\n" ++
   "x: " ++ show(x) ++ "\n" 
 
 ];

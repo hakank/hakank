@@ -1,5 +1,5 @@
 %
-% Assignmen problem in Minizinc
+% Assignment problem in Minizinc
 % 
 % Winston "Operations Research", Assignment Problems, page 393f
 %

@@ -67,7 +67,7 @@
 
 include "globals.mzn"; 
 
-int: n; % = 8;
+int: n = 8;
 
 % decision variables
 array[1..n] of var 0..n: x;

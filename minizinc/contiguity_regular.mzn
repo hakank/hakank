@@ -22,7 +22,7 @@
 
 include "globals.mzn"; 
 
-int: n = 10;
+int: n = 151;
 array[1..n] of var 0..1: arr;
 
 

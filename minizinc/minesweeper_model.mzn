@@ -71,10 +71,20 @@ solve :: int_search([mines[i,j] | i in 1..r, j in 1..c], first_fail, indomain_mi
 
 output 
 [ "\nmines:" ] ++
+% [
+%   if j = 1 then "\n" else " " endif ++
+%     show(mines[i,j])
+%   | i in 1..r,j in 1..c
+% ] ++ ["\n"]
 [
-  if j = 1 then "\n" else " " endif ++
-    show(mines[i,j])
+  if j = 1 then "\n" else "" endif ++
+    if fix(mines[i,j]) = 1 then
+      "*"
+    else 
+      "."
+    endif
   | i in 1..r,j in 1..c
 ] ++ ["\n"]
+
 ;
 

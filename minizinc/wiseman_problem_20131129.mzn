@@ -8,12 +8,20 @@
 % What number am I thinking of?
 % """
 
+% Here's a much easier model:
+%  var 10000..99999: x;
+%  constraint 3*(100000+x) = 10*x + 1; 
+%  output [ show(x) ];
+%  solve satisfy;
+
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@gmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc/
 %
 
-include "globals.mzn"; 
+% include "globals.mzn"; 
+
+
 
 int: n = 5;
 

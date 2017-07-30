@@ -12,8 +12,10 @@ int: n = 100;
 
 var 1..n: a;
 var 1..n: b;
-% var 1..n: gg;
+var 1..n: gg;
 var 1..n*n: ll;
+
+
 
 %
 % gcd(x,y,g)
@@ -48,20 +50,40 @@ predicate lcm(var int: x, var int: y, var int: cm) =
     cm = x*y div g
 ;
 
+predicate lcm_array(array[int] of var int: a, var int: b) =
+    let {
+      int: lba = min(index_set(a)),
+      int: uba = max(index_set(a)),
+      array[1..length(a)] of var lb_array(a)..ub_array(a): tmp
+    } in
+    tmp[1] = a[1] 
+    /\
+    forall(i in lba+1..uba) (
+       tmp[i] = lcm(tmp[i-1], a[i], tmp[i])
+    )
+    /\
+    b = tmp[uba]
+;
+
 solve satisfy;
 
 constraint
-   % a = 121 /\ % /\  b = 7 /\
+   % a = 10 /\ b = 7 /\
    % /\ 
    % gg = 17 /\
-   ll = 12 /\
-   % gcd(a,b,gg)
-   % /\
+   % ll = 12 /\ 
+
+   % ll mod 111 = 0 /\
+   
+   a < b /\
+   gg > 1 /\
+   gcd(a,b,gg)
+   /\
    lcm(a,b,ll)
 ;
 
 output 
 [
-  % "gcd: " ++ show([a,b,gg]) ++ "\n" ++
+  "gcd: " ++ show([a,b,gg]) ++ "\n" ++
   "lcm: " ++ show([a,b,ll]) ++ "\n" 
 ];

@@ -112,23 +112,23 @@ var 0..1000: z = sum(dists); % objective to be maximized
 predicate make_drop(array[int] of var int: a, int: n, int: t, var int: dist, int: start, int: end, int: hours) =
    let {
         array[1..n] of var start..end: Y,
-        array[1..n-1] of var lb(dist)..ub(dist): YDist
+        array[1..n-1] of var lb(dist)..hours: YDist
    } in
+
    alldifferent(Y) 
    /\
    increasing(Y)
-   /\
-   count(a, t, n)  
+   %/\
+   %count(a, t, n)  
 
    /\ forall(i in 1..n-1) ( YDist[i] = Y[i+1]-Y[i])
-
    % Connect the time table (a) with the times of this drop
    /\ forall(i in start..end) ( a[i] = t <-> exists(j in 1..n) ( Y[j] = i) )
    %% another approach
    % /\ forall(j in 1..length(Y)) ( exists(i in start..end) (Y[j] = i /\ a[i] = t) )
 
    /\ % Heuristic to maximize the dispersion
-   dist = sum(i,j in 1..n-1 where i < j) (YDist[j] * bool2int(YDist[j] = YDist[i])) 
+   dist = sum(i,j in 1..n-1 where i < j) (YDist[j]*bool2int(YDist[j] = YDist[i])) 
 
    %% If we want to put some weight on the different type of drops for larger 
    %% dispersion, we can multiply the sum with - say - t (the type).
@@ -137,23 +137,25 @@ predicate make_drop(array[int] of var int: a, int: n, int: t, var int: dist, int
 
 ;
 
-solve maximize z;
+% solve maximize z;
 % solve satisfy;
-% solve :: int_search(
-%         x ++ dists 
-%         ,
-%         first_fail, 
-%         indomain_min,
-%         complete) 
-%     maximize z;
-%     % satisfy;
+solve :: int_search(
+        dists ++ x
+        ,
+        first_fail, % anti_first_fail, 
+        indomain_split,
+        complete) 
+    maximize z;
+    % satisfy;
 
 constraint
-
   assert(sum(occ) <= hours, "Total number of drops [sum(occ)] must be <= hours.")
 ;
 
 constraint
+
+   global_cardinality(x, [i | i in 1..num_types], occ) % :: domain
+   /\
 
    forall(t in 1..num_types) (
       make_drop(x, occ[t], t, dists[t], start, end, hours)
@@ -181,8 +183,6 @@ constraint
    % /\ z = 21 % Test of the later ordination
 
 ;
-
-
 
 
 

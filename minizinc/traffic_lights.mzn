@@ -62,6 +62,7 @@ solve :: int_search(V ++ P, first_fail, indomain_min, complete) satisfy;
 
 constraint
  forall(i in 1..n, j in 1..n where j = (1+i) mod 4)  (
+   trace("i: " ++ show(i) ++ " j: " ++ show(j) ++ "\n",1=1) /\
    exists(a in 1..4) (
       cp1d([V[i], P[i], V[j], P[j]], [allowed[a,k] | k in 1..4])
    )
@@ -81,4 +82,10 @@ allowed = array2d(1..4, 1..4,
 output [
   show(V[i]) ++ " " ++ show(P[i]) ++ " "
   | i in 1..n
-] ++ ["\n"];
+] ++ ["\n"]
+++
+[
+  "V: " ++ show(V) ++ "\n" ++
+  "P: " ++ show(P) ++ "\n"
+]
+;

@@ -36,8 +36,9 @@ array[1..num_people] of set of int:
 
 % which kidney does person p get (or p if he/she gets no kidney)
 array[1..num_people] of var 1..num_people: x;
-
 var 0..num_people: z = sum([bool2int(x[i] != i) | i in 1..num_people]);
+
+
 
 % solve satisfy;
 % solve maximize z;
@@ -57,10 +58,12 @@ constraint
   /\
   alldifferent(x)
 
-  % experimental: first test if all are donors (-> circuit)
-  % 
-  % works in MiniZinc v2.0, at least for some solvers.
-  /\ (circuit(x) \/ true)
+  % /\ subcircuit(x)
+
+  % first test if all are donors (-> circuit)
+  % don't work
+  % /\ (circuit(x) \/ subcircuit(x))
+
 ;
 
 output [

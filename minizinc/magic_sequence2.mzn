@@ -11,7 +11,7 @@
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
 
-int: n =  20;
+int: n =  100;
 array[0..n-1] of var 0..n-1: s;
 
 solve satisfy;

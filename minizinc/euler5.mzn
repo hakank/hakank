@@ -65,5 +65,5 @@ constraint
 output 
 [
   show(x) ++ "\n" ++ 
-  "x[n]: " ++ show(x[n])
+  "x[n]: " ++ show(x[n]) ++ "\n",
 ];

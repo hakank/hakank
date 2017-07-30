@@ -81,6 +81,7 @@ var int: total;
 
 % solve maximize total;
 solve :: int_search(x, first_fail, indomain_min, complete) maximize total;
+% solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
 
 constraint
    total = sum(i in 1..num_bids) ( x[i]*bids[i] )
@@ -89,6 +90,9 @@ constraint
    forall(j in 1..num_items) (
        sum(i in 1..num_bids) (x[i]*bool2int(j in packages[i])) <= 1
    )
+   % test
+   % /\ total = 11
+
 ;
 
 %

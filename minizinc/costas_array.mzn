@@ -55,7 +55,7 @@
 
 include "globals.mzn"; 
 
-int: n = 8;
+int: n = 18;
 array[1..n] of var 1..n: costas;
 array[1..n,1..n] of var -n+1..n-1: differences;
 

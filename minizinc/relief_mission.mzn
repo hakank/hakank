@@ -100,13 +100,14 @@ solve :: int_search(
 % 
 % Calculate the distance between two cells.
 % 
-% Note: d is the squared distance since I want to use var int.
-% (and this doesn't matter here).
+% Note: d is the _squared_ distance since I want to use 
+% var int (and there is no support sqrt for var float).
+% This doesn't matter here anyway.
 % 
 predicate dist(var int: i1, var int: j1, 
                int: i2, int: j2, var int: d) =
       d = abs(i1-i2)*abs(i1-i2) +
-            abs(j1-j2)*abs(j1-j2)
+          abs(j1-j2)*abs(j1-j2)
 ;
 
 % for solve satisfy

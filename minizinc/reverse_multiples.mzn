@@ -80,7 +80,7 @@
 
 include "globals.mzn"; 
 
-int: n = 4;
+int: n = 7;
 int: base = 10;
 
 int: lower = pow(base,n-1);
@@ -110,12 +110,13 @@ predicate reverse(array[int] of var int: a,
 ;
 
 solve satisfy;
-% solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
+% solve :: int_search([num1,num2] ++ a1 ++ a2, first_fail, indomain_split, complete) satisfy;
 
 constraint
 
    % num1 = 2178 /\
    num2 * m = num1 /\
+   num2 < num1 /\
    to_num(a1,num1, base) /\
    to_num(a2,num2, base) /\   
    reverse(a1,a2)
@@ -123,6 +124,7 @@ constraint
 
 output [
   % show([n,base,num1,num2,m]) ++ "\n" % ++
+  "n: " ++ show(n) ++ "\n" ++
   "base: " ++ show(base) ++ "\n" ++
   "num1: " ++ show(num1) ++ "\n" ++
   "num2: " ++ show(num2) ++ "\n" ++

@@ -96,15 +96,19 @@ constraint
 %
 % data
 %
-int: max_length = 6;
-int: num_segments = 5;
+int: max_length = 8;
+int: num_segments = 6;
 array[1..num_segments, 1..max_length] of int: segments = array2d(1..num_segments, 1..max_length, 
 [
-   1, 2, 3, 4, 5, 0,
+   1, 2, 3, 4, 5, 0, % row segments
+   6, 0, 7, 0, 8, 0,
    9,10,11,12,13,14,
-   1, 6, 9,15, 0, 0,
+   15,0, 0, 0,16, 0,
+
+   1, 6, 9,15, 0, 0, % column segments
    3, 7,11, 0, 0, 0,
-   5, 8,13,16, 0, 0
+   5, 8,13,16, 0, 0,
+   0, 0,14, 0, 0, 0
 ]);
 
 

@@ -32,6 +32,16 @@ predicate toNum(array[int] of var int: a, var int: n) =
           )
 ;
 
+predicate digit_sum(array[int] of var int: a, var int: v) =
+   let {
+     array[1..2] of var 0..99: t
+   }
+   in  
+   toNum(t, sum(a)) /\
+   v = sum(t)
+;
+
+
 % This is perhaps the most natural interpretation.
 predicate interpretation1(var int: x) =
     (1+1) * (1+1) = 4 /\
@@ -80,8 +90,6 @@ predicate interpretation4(var int: x) =
     s4(2, 16) /\
     s4(3, x)
 ;
-
-
 
 constraint
    interpretation1(x1) /\

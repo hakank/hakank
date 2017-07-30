@@ -10,20 +10,15 @@
 %
 
 include "globals.mzn"; 
-int: n = 3;
+int: n = 7;
 array[1..n, 1..n] of var 1..n*n: x;
 
-% solve satisfy;
-solve :: int_search([x[i,j] | i,j in 1..n], first_fail, indomain_max, complete) satisfy;
+predicate next(array[int,int] of var int: a, 
+               var int: k1,
+               var int: k2) =
 
-
-
-constraint
-  all_different([x[i,j] | i,j in 1..n])
-  /\ % the rook moves
-  forall(k in 1..n*n-1) (
      exists(i, j in 1..n) (
-        k = x[i, j] % fix this k
+        k1 = x[i, j] % fix this k
         /\
         exists(a, b in {-1, 0, 1}
           where 
@@ -35,16 +30,38 @@ constraint
         ) 
         (
           % find the next k
-          k + 1 = x[i+a, j+b]  
+          k2 = x[i+a, j+b]  
         )
      )
-  )
 
 ;
 
+% solve satisfy;
+solve :: int_search(
+        [x[i,j] | i,j in 1..n], 
+        max_regret, % first_fail, 
+        indomain_split, 
+        complete) satisfy;
+
+
+
+constraint
+  all_different([x[i,j] | i,j in 1..n]) :: domain
+  /\ % the rook moves
+  forall(k in 1..n*n-1) (
+     next(x, k, k+1) 
+  )
+  /\ next(x, 1, n*n) % make it a tour
+;
+
 output[
-  if j = 1 then "\n" else " " endif ++
+ "["
+]
+++
+[
+  if j = 1 then ",\n" else "," endif ++
+    if fix(x[i,j]) < 10 then " " else "" endif ++
     show(x[i,j])
   | i, j in 1..n
-] ++ ["\n"]
+] ++ ["],\n"]
 ;

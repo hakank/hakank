@@ -32,9 +32,11 @@ array[1..n] of var 0..upperLimit: Durations;
 array[1..n] of var 0..upperLimit: Resources;
 array[1..n] of var 0..upperLimit*2: EndTimes;
 var 0..100: numPersons; 
+var 0..100: end_time;
 
 % solve satisfy;             % just give a solution (combined with the extra constraints)
-solve minimize numPersons;    % minimize the number of persons
+% solve minimize numPersons;    % minimize the number of persons
+solve minimize end_time;
 
 constraint
     % defined in globals.mzn
@@ -42,6 +44,9 @@ constraint
 
    % setting EndTimes
    /\ forall(i in 1..n) (EndTimes[i] = Starts[i] + Durations[i])
+
+   /\
+   end_time = max(EndTimes)
 
    %
    % Some extra constraint to play with:
@@ -53,7 +58,7 @@ constraint
    % /\ forall(i in 1..n) (Starts[i] + Durations[i] <= 60) 
 
    % limitation of the number of people
-   % /\ numPersons <= 3
+   /\ numPersons <= 4
 
    % must start on an even 10 minutes 
    % (works with fz)
@@ -75,7 +80,8 @@ output [
        "Resources: ", show(Resources), "\n",
        "Starts:    ", show(Starts), "\n",
        "Durations: ", show(Durations),"\n",
-       "EndTimes:  ", show(EndTimes),"\n"
+       "EndTimes:  ", show(EndTimes),"\n",
+       "end_time:  ", show(end_time),"\n"
 ]
 
 

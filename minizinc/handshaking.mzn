@@ -25,8 +25,9 @@
 % except p0 and p8, everyone gives an answer one smaller than they did before, giving 0..6.
 % The argument now applies recursively. So Hilary is left alone, having shaken 4 hands. 
 % """
-
-% Also, see the following that discusses Halmos Handshake problem
+% Alloy is here: http://alloy.mit.edu/alloy
+% 
+% Also, see the following that discuss Halmos' Handshake problem
 % http://docs.law.gwu.edu/facweb/jsiegel/Personal/math/mathhome.htm#halmos
 %     http://docs.law.gwu.edu/facweb/jsiegel/Personal/math/shakeanswer.htm
 % 
@@ -42,7 +43,7 @@
 
 include "globals.mzn"; 
 
-int: n = 10; % 5 pairs
+int: n = 100; % 5 pairs
 
 % decision variables
 %   coded Pair1a,Pair1b, Pair2a,Pair2b

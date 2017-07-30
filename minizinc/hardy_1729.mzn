@@ -24,19 +24,25 @@
 
 % include "globals.mzn"; 
 
-var int: X1;
-var int: X2;
-var int: Y1;
-var int: Y2;
-var int: Z;
+% var int: X1;
+% var int: X2;
+% var int: Y1;
+% var int: Y2;
+% var int: Z;
+
+var 0..100000: X1;
+var 0..100000: X2;
+var 0..100000: Y1;
+var 0..100000: Y2;
+var 0..100000: Z;
 
 
 solve satisfy;
 % solve minimize Z;
 
 constraint
-  X1 > 0 /\ X2 > 0 /\  Y1 > 0 /\ Y2 > 0 /\ Z > 0
-  /\
+  % X1 > 0 /\ X2 > 0 /\  Y1 > 0 /\ Y2 > 0 /\ Z > 0
+  % /\
   X1 <= X2 /\ Y1 <= Y2  % symmetry breaking
   /\
   X1 != Y1 /\ X1 != Y2
@@ -44,14 +50,21 @@ constraint
   X1*X1*X1 + X2*X2*X2 = Z
   /\
   Y1*Y1*Y1 + Y2*Y2*Y2 = Z
+
+  /\ % symmetry breaking
+  X1 <= Y1
+ 
 ;
 
 
-output [
-  "X1: ", show(X1), "\n",
-  "X2: ", show(X2), "\n",
-  "Y1: ", show(Y1), "\n",
-  "Y2: ", show(Y2), "\n",
-  "Z : ", show(Z), "\n",
+% output [
+%   "X1: ", show(X1), "\n",
+%   "X2: ", show(X2), "\n",
+%   "Y1: ", show(Y1), "\n",
+%   "Y2: ", show(Y2), "\n",
+%   "Z : ", show(Z), "\n",
+% ];
 
+output [
+  show([X1,X2,Y1,Y2]) ++ ", % " ++ show(Z)
 ];

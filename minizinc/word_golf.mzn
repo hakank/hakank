@@ -22,21 +22,26 @@
 
 include "globals.mzn"; 
 % include "word_golf_n3.mzn"; % the words
+% include "word_golf_n4.mzn"; % the words
 
 
 int: num_words;
 int: word_len;
 array[1..word_len] of 1..26: start; % start word
 array[1..word_len] of 1..26: end;   % end word
-array[1..num_words, 1..word_len] of var 1..29: words;
+array[1..num_words, 1..word_len] of var 1..26: words;
 
 int: ladder_len; % length of ladder
 array[1..ladder_len, 1..word_len] of var 1..26: x;
 array[1..ladder_len] of var 1..num_words: ladder_num;
 
 % solve satisfy;
-solve :: int_search([x[i,j] | i in 1..ladder_len, j in 1..word_len], 
-        first_fail, indomain, complete) satisfy;
+solve :: int_search(
+        [x[i,j] | i in 1..ladder_len, j in 1..word_len], 
+        first_fail, 
+        indomain_min, 
+        complete) 
+    satisfy;
 
 constraint
 
@@ -67,7 +72,7 @@ constraint
       )
    )
    /\
-   all_different(ladder_num)
+   all_different(ladder_num) :: domain
 
    /\ % just one difference is allowed between the words
    forall(i in 2..ladder_len) (

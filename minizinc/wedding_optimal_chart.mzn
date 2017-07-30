@@ -80,10 +80,11 @@ var 0..sum([C[j,k] | j,k in 1..m]): z; % to maximize
 % ann: val_select;
 solve :: int_search(
         tables,
-        first_fail, 
-        indomain_split, % indomain_min, 
+        max_regret, % first_fail, 
+        indomain_split, 
         complete) 
     maximize z;
+    % minimize z;
     % satisfy;
 
 % constraint z = 276; % for solve satisfy
@@ -140,10 +141,8 @@ output [
 m = 17; % maximum number of quests
 
 
-
-
-
 %  j   Guest         Relation
+%  -------------------------------------
 %  1   Deb           mother of the bride
 %  2   John          father of the bride
 %  3   Martha        sister of the bride
@@ -229,7 +228,7 @@ array[1..m] of string: names2 = [
 
 n = 5; % max number of tables
 a = 4; % maximum number of guests a table can seat
-b = 1; % minimum number of people each guest knows at their table
+b = 2; % minimum number of people each guest knows at their table
 
 % Easier problem
 % n = 2; % max number of tables

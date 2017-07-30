@@ -40,7 +40,7 @@
 include "globals.mzn"; 
 
 int: m = 4; % number of teams
-int: n = 3; % size of team
+int: n = 4; % size of team
 
 int: p = m*n; % number of people: m*n
 
@@ -71,7 +71,7 @@ int: p = m*n; % number of people: m*n
 array[1..p] of var 1..m: x; % assign each person to a team number
 
 % solve satisfy;
-solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
+solve :: int_search(x, input_order, indomain_min, complete) satisfy;
 
 function int: factorial(int: n) =  product([i | i in 1..n]);
 

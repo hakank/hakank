@@ -97,4 +97,9 @@ output [
    if j mod n == 0 then "\n" 
    else " " endif 
    | i in  1..n, j in 1..n
-] ++ ["\n"];
+] ++ 
+[
+  "mat: " ++ show(mat)
+]
+++
+["\n"];

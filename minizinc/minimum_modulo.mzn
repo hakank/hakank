@@ -47,7 +47,8 @@ predicate minimum_modulo(var int: t_min,
        var 0..u: mod_min
    } in
    forall(i in index_set(variables)) (
-      mod_array[i] = variables[i] `mod` m 
+      % mod_array[i] = variables[i] `mod` m 
+      mod_array[i] = variables[i] mod m 
    )
    /\
    minimum(mod_min, mod_array)

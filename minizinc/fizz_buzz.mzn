@@ -67,6 +67,8 @@ predicate contains(var int: e, array[int] of var int: a) =
    )
 ;
 
+array[0..3] of string: fizz_buzz = array1d(0..3, ["", "fizz", "buzz", "fizzbuzz"]);
+
 %solve satisfy;
 solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
 
@@ -123,7 +125,18 @@ constraint
    )
 ;
 
-output [
-  show(i) ++ ": " ++ show(x[i]) ++ "\n"
+output 
+% [
+%   show(i) ++ ": " ++ show(x[i]) ++ "\n"
+%   | i in 1..n
+% ] ++ 
+[
+  let {
+    int: t = fix(x[i])
+  } in
+    show(i) ++ ": " ++
+    if t = 0 then show(i) else show(fizz_buzz[t]) endif ++
+    "\n"
   | i in 1..n
-] ++ ["\n"];
+] ++
+["\n"];

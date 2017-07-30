@@ -1,5 +1,5 @@
 %
-% Remarkable sequence in Minizinc.
+% Remarkable sequence (a.k.a. Langford's number problem) in Minizinc.
 % 
 % Problem statement in the Alma-0 example program remarkable.a0
 % """
@@ -23,33 +23,52 @@
 % is remarkable.  Write a program that generates all
 % remarkable sequences.
 % """
+% 
+% Note: This is a generalized version of Langford's Number problem (CSPLib #24)
 %
-% Model created by Hakan Kjellerstrand, hakank@bonetmail.com
-% See also my MiniZinc page: http://www.hakank.org/minizinc
+% Model created by Hakan Kjellerstrand, hakank@gmail.com
+% See also my MiniZinc page: http://www.hakank.org/minizinc/
 %
 
 include "globals.mzn";
 
-int: n = 9; % the digits
+int: n = 15; % the digits
 int: m = 3; % number of occurrences of each number
 array[1..n*m] of var 1..n: a;
 
-solve :: int_search(a, first_fail, indomain, complete) satisfy;
+array[1..n] of var m..m: gcc;
+
+solve :: int_search(a, max_regret, indomain_split, complete) satisfy;
 
 constraint
+  assert(n mod m == 0, "n (" ++ show(n) ++ ") must be a multiple of m (" ++ show(m) ++ ")")
+  
+;
+
+constraint
+  %% for n=9, m=3
+  % forall(i in 1..n) (
+  %    exists(j in 1..25-(2*i)) (
+  %      a[j] = i /\
+  %      a[j+i+1] = i /\
+  %      a[j+2*i+2] = i
+  %    )
+  % )
+
   forall(i in 1..n) (
-     exists(j in 1..25-(2*i)) (
-       a[j] = i /\
-       a[j+i+1] = i /\
-       a[j+2*i+2] = i
-     )
+    let {
+       var 1..n*m - ((m-1)*i): j;
+    } in 
+    % exists(j in 1..n*m - ((m-1)*i)) (
+       forall(k in 0..m-1) (
+         a[j+(i*k)+k] = i 
+       )
+    % )
   )
-  /\ 
-  % exact 3 occurrences of each digit
-  forall(i in 1..n) (
-    count(a, i, m)
-  )
-  /\ % Symmetry breaking: First element is less than the last
+
+  /\
+  global_cardinality(a, [i | i in 1..n], gcc) % :: domain
+  /\ % Symmetry breaking
   a[1] <= a[n*m]
     
 ;

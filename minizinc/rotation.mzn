@@ -128,13 +128,13 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 
 
 % solve satisfy;
-solve minimize check_ix;
-% solve :: int_search([
-%         x[k, i] | k in 1..rows, i in 1..n*n] ++ operations, 
-%         max_regret, 
-%         indomain_min, 
-%         complete) 
-%     minimize check_ix;
+% solve minimize check_ix;
+solve :: int_search([
+        x[k, i] | k in 1..rows, i in 1..n*n] ++ operations, 
+        max_regret, 
+        indomain_min, 
+        complete) 
+    minimize check_ix;
     % satisfy;
 
 constraint
@@ -149,7 +149,7 @@ constraint
    % cp1d(init, array1d(1..n*n, [2, 3, 7, 4, 1, 6, 11, 8, 5,  9, 10, 12, 13, 14, 15, 16]))
 
    % 2,1
-   cp1d(init, array1d(1..n*n, [2, 7, 4, 8, 1, 3, 11, 12, 5, 6, 9, 10, 13, 14, 15, 16]))
+   % cp1d(init, array1d(1..n*n, [2, 7, 4, 8, 1, 3, 11, 12, 5, 6, 9, 10, 13, 14, 15, 16]))
 
    % 1,2,1
    % cp1d(init, array1d(1..n*n, [7,4,11,8,2,3,9,12,1,5,6,10,13,14,15,16]))
@@ -161,7 +161,7 @@ constraint
    % cp1d(init, array1d(1..n*n, [ 8, 12, 7, 15, 1, 4, 2, 10, 3, 6, 11, 14, 5, 9, 13, 16 ]))
    
    % 4,4,4,1,2,3,2,2,3
-   % cp1d(init, array1d(1..n*n, [  8, 12, 7, 15, 1, 14, 16, 13, 3, 10, 11, 9, 5, 2, 4, 6 ]))
+   cp1d(init, array1d(1..n*n, [  8, 12, 7, 15, 1, 14, 16, 13, 3, 10, 11, 9, 5, 2, 4, 6 ]))
 
    % Random puzzle
    % cp1d(init, array1d(1..n*n, [  2,  4, 16, 11, 15,  7, 12,  1, 8,  9, 14,  3,  10,  5, 13,  6 ]))
@@ -184,7 +184,7 @@ constraint
 
    /\ % ensure that we just all 1..n*n each row
    forall(k in 1..rows) (
-      alldifferent([x[k, i] | i in 1..n*n]) :: domain
+      alldifferent([x[k, i] | i in 1..n*n]) % :: domain
    )
 ;
 

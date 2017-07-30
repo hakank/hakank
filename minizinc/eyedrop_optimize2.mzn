@@ -100,7 +100,7 @@ int: max_times = max(occ);
 
 % decision variables
 
- % The time table. 0 means that there is no drop to be taken this hour.
+% The time table. 0 means that there is no drop to be taken this hour.
 array[start..end] of var 0..num_types: x;
 % dispersion per drop type
 var 0..1000: z;
@@ -199,6 +199,7 @@ constraint
    % Test of original problem (for generating all solutions with optimal z)
    % /\ z = 36
    % /\ z = 21 % Test of the later ordination
+   % /\ z = 15
 
 ;
 
@@ -208,10 +209,10 @@ constraint
 %
 
 % Original problem
-start = 7;
-end = 23;
-num_types = 3;
-occ = [6,3,1];
+% start = 7;
+% end = 23;
+% num_types = 3;
+% occ = [6,3,1];
 
 % This is a later ordination:
 % start = 7;
@@ -219,17 +220,30 @@ occ = [6,3,1];
 % num_types = 3;
 % occ = [4,3,1];
 
+% Still later ordinations
+% start = 7;
+% end = 23;
+% num_types = 2;
+% occ = [4,1];
+
+% Even later ordination
+% start = 7;
+% end = 23;
+% num_types = 4;
+% occ = [4,2,1,1];
+
+
 % Test
-%start = 7;
-%end = 23;
-%num_types = 5;
-%occ = [6,5,3,2,1];
+% start = 7;
+% end = 23;
+% num_types = 5;
+% occ = [6,5,3,2,1];
 
 % Test 2
-% start = 1;
-% end = 30;
-% num_types = 6;
-% occ = [8,5,4,3,2,1];
+start = 1;
+end = 30;
+num_types = 6;
+occ = [8,5,4,3,2,1];
 
 
 output [

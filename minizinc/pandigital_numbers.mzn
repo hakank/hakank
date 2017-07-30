@@ -81,6 +81,8 @@ var 1..x_len: len1; % length of first number
 var 1..x_len: len2; % length of second number
 var 1..2: vop; % the operator: 1 = "*", 2 = "+"
 
+array[1..2] of string: vop_s = ["*","+"];
+
 %
 % Convert array <-> number in some base
 %
@@ -159,7 +161,7 @@ constraint
 output 
 [
  "x: ", show(x), "\n",
- show(num1), " <op", show(vop), "> ", show(num2), " = ", show(res), " (base ", show(base), ")", "\n",
+ show(num1), " ", vop_s[fix(vop)], " ", show(num2), " = ", show(res), " (base ", show(base), ")", "\n",
 ];
 
 

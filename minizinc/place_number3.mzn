@@ -56,9 +56,10 @@ array[1..n] of var 1..n: x;
 
 solve satisfy;
 % solve :: int_search(x, input_order, indomain_min, complete) satisfy;
+% solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
 
 constraint
-  all_different(x)
+  all_different(x) % :: domain
   /\
   forall(i in 1..rows, j in 1..cols where mat[i,j] > 0) (
      forall(a,b in {-1,0,1} where 

@@ -18,11 +18,11 @@
 %
 
 include "globals.mzn"; 
-int: m = 4; % number of dice
+int: m = 6; % number of dice
 int: n = 6; % number of sides of each die
 
 % the dice
-array[1..m, 1..n] of var 0..n*2: dice;
+array[1..m, 1..n] of var 1..n*2: dice;
 
 % the competitions: 
 % (die 1 vs die 2, die 2 vs die 1), ... (die m vs die 1, die 1 vs die m)
@@ -39,6 +39,9 @@ var 0..n*n: max_win;
 array[0..m-1] of var 0..n*n: gap;
 var 0..n*n*m: gap_sum = sum(gap);
 
+% sums of the dice (experimental)
+% array[1..m] of var 0..m*n: sums;
+
 % arrays of 1d where both arguments are var int
 predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
   assert(index_set(x) = index_set(y),
@@ -53,16 +56,17 @@ solve :: int_search(
         [dice[i,j] | i in 1..m, j in 1..n] ++ [comp[i,j] | i in 0..m-1, j in 1..2] 
         % ++ [max_win, max_val]
         , 
-        occurrence, 
-        indomain_median, 
+        first_fail, % occurrence, 
+        indomain_median,
         complete) 
     % satisfy;
-    % minimize max_val; % minimize the largest value of the dice
+    minimize max_val; % minimize the largest value of the dice
     % maximize max_win; % maximize the largest winning
     % maximize gap_sum; % maximize the sum of the gaps
     % maximize sum([comp[i,j] | i in 0..m-1, j in 1..2]);
     % maximize sum([comp[i,1] | i in 0..m-1]); % maximize the sum of the winnings
-    maximize min([comp[i,1] | i in 0..m-1]); % maximize the smallest winning
+    % maximize min([comp[i,1] | i in 0..m-1]); % maximize the smallest winning
+    % maximize min(gap); % maximize the smallest winning
 
 
 constraint
@@ -95,7 +99,16 @@ constraint
       gap[d] = comp[d,1] - comp[d,2]
    )
 
-
+   % /\ % Experimental: All dice has the same sums
+   % forall(d in 1..m) (
+   %    sums[d] = sum([dice[d,i] | i in 1..n])
+   %    /\
+   %    if d > 1 then
+   %      sums[d] = sums[d-1]
+   %    else 
+   %      true
+   %    endif
+   % )
 
 
    %/\ % from the Wikipedia page
@@ -140,10 +153,11 @@ constraint
    % /\ % symmetry breaking (be careful if you use one of the examples above)
    % lex2(dice)
 
-   %/\ % extra: all wins are the same
-   %forall(d in 1..m-1) (
-   %    comp[d,1] = comp[d-1,1]
-   %)
+   % /\ % extra: all wins are the same
+   % forall(d in 1..m-1) (
+   %     comp[d,1] = comp[d-1,1]
+   %     % comp[d,1] - comp[d,2] = comp[d-1,1] - comp[d-1,2]
+   % )
 
 ;
 
@@ -171,4 +185,12 @@ output
    if j = 1 then "\n" else " " endif ++
    show_int(2, dice[i,j])
   | i in 1..m, j in 1..n
-];
+]
+% ++
+% ["\nSums:\n" ]
+% ++
+% [
+%   show(d) ++ ": " ++ show(sums[d])++"\n"
+%   | d in 1..m
+% ]
+;

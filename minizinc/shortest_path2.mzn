@@ -31,6 +31,6 @@ output [
          "    1 2 3 4 5 6\n" 
        else "" endif ++
        if j = 1 then show(i) ++ " : " else "" endif ++
-       show(x[i,j]) ++ if j = n then "\n" else " " endif
+       show_int(4,x[i,j]) ++ if j = n then "\n" else " " endif
        | i in 1..n, j in 1..n
 ];

@@ -3,6 +3,19 @@
 % 
 % From GLPK:s example plan.mod
 %
+% G12/mip: 
+%   bin1: 0.0
+%   bin2: 665.3429602888102
+%   bin3: 490.2527075812215
+%   bin4: 424.1877256317688
+%   bin5: 0.0
+%   alum: 299.63898916967923
+%   silicon: 120.57761732852025
+%   value: 296.21660649819506
+% 
+% JaCoP: takes for ever to find minimum value
+
+
 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
@@ -15,15 +28,15 @@ var 0.0..2500.0: bin2;
 var 400.0..800.0: bin3;
 var 100.0..700.0: bin4;
 var 0.0..1500.0: bin5;
-var float: alum; % , >= 0;
-var float: silicon; % , >= 0;
+var 0.0..1000.0: alum; % , >= 0;
+var 0.0..1000.0: silicon; % , >= 0;
 
 var float: value = 0.03 * bin1 + 0.08 * bin2 + 0.17 * bin3 + 0.12 * bin4 + 0.15 * bin5 + 0.21 * alum + 0.38 * silicon;
 
 % solve minimize value;
 solve :: float_search(
-         [bin1,bin2,bin3,bin4,bin5,alum,silicon], 0.0001, 
-         input_order, indomain_split,complete) 
+         [bin1,bin2,bin3,bin4,bin5,alum,silicon], 0.000000001, 
+         input_order, indomain_split, complete) 
      minimize value;
 
 constraint

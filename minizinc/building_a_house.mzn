@@ -98,11 +98,11 @@ var 1..3: limitx;
 var 1..total_duration: makespan;
 
 % the extra objective (cf the Comet model cited above)
-% var 0..10000: z = 400 * max(end[moving]- 100, 0)      +
-%                                200 * max(25 - start[masonry], 0)   +
-%                                300 * max(75 - start[carpentry], 0) +
-%                                100 * max(75 - start[ceiling], 0);
-var 0..10000: z = makespan;
+var 0..10000: z = 400 * max(end[moving]- 100, 0)      +
+                               200 * max(25 - start[masonry], 0)   +
+                               300 * max(75 - start[carpentry], 0) +
+                               100 * max(75 - start[ceiling], 0);
+% var 0..10000: z = makespan;
 
 
 % handle the precedences

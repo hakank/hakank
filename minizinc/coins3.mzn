@@ -62,9 +62,11 @@ constraint
           )
         )
 
+        % /\ num_coins = 8
 ;
 
 
 output [
-  show(x), "\n",
+  "x: " ++ show(x) ++ "\n" ++
+  "num_coins: " ++ show(num_coins) 
 ];

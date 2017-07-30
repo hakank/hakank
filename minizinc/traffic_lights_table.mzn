@@ -77,10 +77,11 @@ allowed = array2d(1..4, 1..4,
 ]);
 
 
-% output [
-%  "V: ", show(V), "\nP: ", show(P), "\n"
-% ];
 output [
+ "V: ", show(V), "\nP: ", show(P), "\n"
+]
+++
+[
  show(V[i]) ++ " " ++ show(P[i]) ++ " "
   | i in 1..n
 ] ++ ["\n"];

@@ -42,7 +42,7 @@ predicate toNum10(array[int] of var int: tal, var int: summa) =
     /\ forall(i in 1..len) (tal[i] >= 0)
 ;
 
-solve :: int_search(x_a ++ y_a, first_fail, indomain, complete) satisfy;
+solve :: int_search(x_a ++ y_a, first_fail, indomain_min, complete) satisfy;
 
 constraint
   all_different(x_a ++ y_a) 

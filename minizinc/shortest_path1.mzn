@@ -85,12 +85,12 @@ output [
     "\nz: " ++ show(z) ++     
     "\nx:" else "" endif ++
    if j = 1 then "\n" else " " endif ++
-   show(x[i,j])
+   show_int(4,x[i,j])
    | i in 1..timex, j in 1..timex+1
 ] ++ [
    if i = 1 /\ j = 1 then 
      "\n\nCost:" else "" endif ++
    if j = 1 then "\n" else " " endif ++
-   show(cost[i,j])
+   show_int(4,cost[i,j])
    | i in 1..timex, j in 1..timex+1
 ];

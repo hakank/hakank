@@ -166,6 +166,8 @@ constraint
 
 
 %% some redundant constraints
+%% Neither of these (single or combined) seems
+%% to speed things up, rather they makes it slower.
 % constraint 
 %    sum(s) = n 
 %    /\ alldifferent(x) 
@@ -174,10 +176,10 @@ constraint
 
 output [
     "gsize: " ++ show(gsize) ++ "\n" ++
-     "nval: " ++ show(nval) ++ "\n"  ++
-    "z: " ++ show(z) ++ "\n" ++
-    "x: " ++ show(x) ++ "\n" ++
-    "s: " ++ show(s) ++ "\n"
+    "nval : " ++ show(nval) ++ "\n"  ++
+    "z    : " ++ show(z) ++ "\n" ++
+    "x    : " ++ show(x) ++ "\n" ++
+    "s    : " ++ show(s) ++ "\n"
 ]
 ++
 [

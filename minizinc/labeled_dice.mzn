@@ -93,11 +93,11 @@ constraint
     sum(j in 1..24) (bool2int(dice[j] = i)) = 6
   )
 
-  % /\
-  % % symmetry breaking
-  % dice[ 1] <= dice[ 7] /\
-  % dice[ 7] <= dice[13] /\
-  % dice[13] <= dice[19]
+  /\
+  % symmetry breaking
+  dice[ 1] <= dice[ 7] /\
+  dice[ 7] <= dice[13] /\
+  dice[13] <= dice[19]
 
 ;
 

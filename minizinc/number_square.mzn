@@ -33,6 +33,7 @@ constraint
 
 output
 [
+  "n: " ++ show(n) ++ "\n" ++
   "x: " ++ show(x) ++ "\n" ++
   "y: " ++ show(y) ++ "\n"
 ];

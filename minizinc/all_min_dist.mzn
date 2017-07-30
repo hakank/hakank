@@ -52,8 +52,8 @@ predicate cp1d(array[int] of int: x, array[int] of var int: y) =
 solve satisfy;
 
 constraint
-  cp1d([5,1,9,3], x)
-  /\
+  %cp1d([5,1,9,3], x)
+  %/\
   all_min_dist(c, x)
   /\
   c = 2

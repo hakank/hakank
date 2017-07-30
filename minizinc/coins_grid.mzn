@@ -42,7 +42,8 @@ solve :: int_search(
         most_constrained, % first_fail, 
         indomain_max, 
         complete) 
-    minimize z;
+   minimize z;
+   % satisfy;
 
 
 constraint
@@ -63,18 +64,19 @@ constraint
 %
 % data
 %
-n = 31; % 10;
-c = 14; % 4
+% n = 31;
+% c = 14;
 
 
 output 
 [ 
   "z: ", show(z)
 ] ++
+["\n["] ++
 [
-   if j = 1 then "\n" else " " endif ++
-     show(x[i,j])
+   if j = 1 then "\n" else "" endif ++
+     show(x[i,j]) ++ ","
    | i,j in 1..n
 ] ++
-[ "\n"];
+[ "]\n"];
 

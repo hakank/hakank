@@ -56,10 +56,8 @@ constraint
        else
           true
        endif
-      /\
-      (game[i,j] > X -> mines[i,j] = 0) 
-      %/\
-      %(game[i,j] = X <- mines[i,j] = 1) 
+      /\ (game[i,j] > X -> mines[i,j] = 0) 
+      % /\ (game[i,j] = X <- mines[i,j] = 1) 
     )
 ;
 
@@ -78,16 +76,16 @@ solve :: int_search([mines[i,j] | i in 1..r, j in 1..c], first_fail, indomain_mi
 % """
 
 % Problem from Gecode/examples/minesweeper.cc  problem 0
-% r = 6;
-% c = 6;
-% game = array2d(1..r, 1..c, [
-%     X,X,2,X,3,X,
-%     2,X,X,X,X,X,
-%     X,X,2,4,X,3,
-%     1,X,3,4,X,X,
-%     X,X,X,X,X,3,
-%     X,3,X,3,X,X,
-%     ]);
+r = 6;
+c = 6;
+game = array2d(1..r, 1..c, [
+    X,X,2,X,3,X,
+    2,X,X,X,X,X,
+    X,X,2,4,X,3,
+    1,X,3,4,X,X,
+    X,X,X,X,X,3,
+    X,3,X,3,X,X,
+    ]);
 
 
 % Problem from Gecode/examples/minesweeper.cc  problem 1
@@ -255,18 +253,18 @@ solve :: int_search([mines[i,j] | i in 1..r, j in 1..c], first_fail, indomain_mi
 
 % From "Some Minesweeper Configurations",page 3
 % 4 solutions
-r=8;
-c=8;
-game = array2d(1..r,1..c,[
-   2,3,X,2,2,X,2,1,
-   X,X,4,X,X,4,X,2,
-   X,X,X,X,X,X,4,X,
-   X,5,X,6,X,X,X,2,
-   2,X,X,X,5,5,X,2,
-   1,3,4,X,X,X,4,X,
-   0,1,X,4,X,X,X,3,
-   0,1,2,X,2,3,X,2 
-]);
+% r=8;
+% c=8;
+% game = array2d(1..r,1..c,[
+%    2,3,X,2,2,X,2,1,
+%    X,X,4,X,X,4,X,2,
+%    X,X,X,X,X,X,4,X,
+%    X,5,X,6,X,X,X,2,
+%    2,X,X,X,5,5,X,2,
+%    1,3,4,X,X,X,4,X,
+%    0,1,X,4,X,X,X,3,
+%    0,1,2,X,2,3,X,2 
+% ]);
 
 
 % Richard Kaye: How Complicated is Minesweeper?
@@ -321,8 +319,8 @@ game = array2d(1..r,1..c,[
 output 
 ["\ngame:"] ++
 [
-  if j = 1 then "\n" else "," endif ++
-    if game[i,j] = -1 then "-" else show(game[i,j]) endif
+  if j = 1 then "\n" else " " endif ++
+    if game[i,j] = -1 then "." else show(game[i,j]) endif
   | i in 1..r ,j in 1..c
 ] ++ 
 [ "\nmines:" ] ++

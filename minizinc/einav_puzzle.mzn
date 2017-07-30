@@ -40,6 +40,7 @@
 %
 
 % include "globals.mzn"; 
+% include "gecode.mzn";
 int: rows;
 int: cols;
 array[1..rows, 1..cols] of -100..100: data;
@@ -66,6 +67,8 @@ solve :: int_search(
         complete) 
      minimize total_sum;
      % satisfy;
+
+% solve :: relax_and_reconstruct(col_sums ++ row_sums ++ row_signs ++ col_signs,90) minimize total_sum;
 
 constraint
 

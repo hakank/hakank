@@ -1,7 +1,6 @@
 % 
 % Killer Sudoku in MiniZinc.
 % 
-%   Killer sudoku in Comet.
 
 %   http://en.wikipedia.org/wiki/Killer_Sudoku
 %   """

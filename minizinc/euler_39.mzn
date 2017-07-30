@@ -22,12 +22,13 @@ array[1..n_sols, 1..4] of var 0..1000: s;
 
 var 1..n_sols: num_solutions = sum(i in 1..n_sols) (bool2int(s[i,1] > 0));
 
+solve maximize num_solutions;
 % solve satisfy;
-solve :: int_search(
-        [s[i,j] | i in 1..n_sols, j in 1..4], %  ++ [num_solutions], 
-        first_fail, indomain_split, complete) 
-        maximize num_solutions;
-        % satisfy;
+% solve :: int_search(
+%         [s[i,j] | i in 1..n_sols, j in 1..4], %  ++ [num_solutions], 
+%         first_fail, indomain_split, complete) 
+%         maximize num_solutions;
+%         % satisfy;
 
 constraint
 
