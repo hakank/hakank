@@ -76,3 +76,4 @@ c = 14
 # for c in range(1,n):
 # SCIP is fast, though.
 coins_grid(['SCIP'],n, c)
+# coins_grid(['Toulbar2'],n, c)

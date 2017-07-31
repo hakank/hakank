@@ -80,7 +80,7 @@ def a_model(libs, n):
      # Just for fun: adds a constraint that there should be
      # less than 3 zeros.
      model = Model(
-          z <= 3,       
+          # z <= 3,       
           z == Sum([x[i] == 0 for i in range(0,n)]),
           AllDiffExcept0(x),
           # These two versions works well:
