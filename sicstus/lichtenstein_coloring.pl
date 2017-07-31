@@ -236,7 +236,7 @@ go :-
         % search
         append(Color,ColorCommunes,Vars1),
         append(Vars1,ColorUsed,Vars),
-        labeling([ff,enum,up,minimize(NColors)], Vars),
+        labeling([ff,enum,up,minimize(NColors)], Vars), % original
 
         % output
         write(color:Color),nl,

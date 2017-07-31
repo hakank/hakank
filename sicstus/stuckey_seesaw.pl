@@ -16,9 +16,11 @@
 
 :-use_module(library(clpfd)).
 :-use_module(library(lists)).
+:-use_module(library(fdbg)).
 
 % direct modeling
 go :-
+        fdbg_on,
         Liz  in -5..5,
         Fi   in -5..5,
         Sara in -5..5,

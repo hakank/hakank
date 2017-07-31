@@ -29,19 +29,28 @@
 %
 % just a silly decomposition of alldifferent
 %
-alldifferent_decomp(Xs) :-
-        ( foreach(XI, Xs), count(I,1,_),
-          param(Xs) do
-              ( foreach(XJ,Xs), count(J,1,_),
-                param(XI,I) do
-                    I < J
-              ->
-                XI #\= XJ
-              ; 
-                true
-              )
+% alldifferent_decomp1(Xs) :-
+%         ( foreach(XI, Xs), count(I,1,_),
+%           param(Xs) do
+%               ( foreach(XJ,Xs), count(J,1,_),
+%                 param(XI,I) do
+%                     I < J
+%               ->
+%                 XI #\= XJ
+%               ; 
+%                 true
+%               )
+%         ),
+%         labeling([],Xs).
+
+
+alldifferent_decomp([_]).
+alldifferent_decomp([H|T]) :-
+        ( foreach(TT,T),
+          param(H) do
+              H #\= TT
         ),
-        labeling([],Xs).
+        alldifferent_decomp2(T).
 
 
 
@@ -50,9 +59,9 @@ alldifferent_decomp(Xs) :-
 %
 % All elements in Xs != 0 must be pairwise different.
 %
-% Note: The drawback of this version is that labeling
-%       must be done before the loops, otherwise
-%       it just rejects all lists containing 0. 
+% Note: The drawback of this version is that 
+%       we have to use indomain before the loops, 
+%       otherwise it just rejects all lists containing 0. 
 %       I'm not sure how usable it is...
 %
 alldifferent_except_0(Xs) :-
@@ -69,6 +78,28 @@ alldifferent_except_0(Xs) :-
             true
           )
         ).
+
+%
+% another approach, using recursion
+% where we don't use index I and J.
+%
+alldifferent_except_0_2(Xs) :-
+        % still need to use indomain
+        ( foreach(X,Xs) do indomain(X)),        
+        alldifferent_except_0_2_aux(Xs).
+
+alldifferent_except_0_2_aux([]) :- !.
+alldifferent_except_0_2_aux([_]) :- !.
+alldifferent_except_0_2_aux([H|T]) :-
+        ( foreach(TT,T),
+          param(H) do
+              (H #\= 0, TT #\= 0) 
+        ->
+          H #\= TT
+        ;
+          true
+        ),
+        alldifferent_except_0_2_aux(T).
 
 
 % This is an earlier version, with excessive use of element/3.
@@ -94,7 +125,7 @@ go :-
         Len = 3,
         length(Ys, Len),
         domain(Ys, 0,4),
-        findall(Ys,  alldifferent_except_0(Ys), L),
+        findall(Ys,  alldifferent_except_0_2(Ys), L),
         length(L, LLen),
         (foreach(X, L) do
              write(X),nl
@@ -107,3 +138,14 @@ go2 :-
         Xs = [5, 0, 1, 9, 0, 3],
         alldifferent_except_0(Xs),
         write(Xs), nl.
+
+go3 :-
+        Len = 3,
+        length(X, Len),
+        domain(X, 0,4),
+        alldifferent_except_0(X),
+
+        % labeling([], X),
+        write(X),nl,nl,
+        fd_statistics.
+        

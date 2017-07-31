@@ -36,6 +36,8 @@
 
 :-use_module(library(clpfd)).
 :-use_module(library(lists)).
+:-load_files(library(detcheck),
+              [when(compile_time), if(changed)]).
 
 go :-
         Women = [American,_English,French],
@@ -64,13 +66,11 @@ go :-
         write(placing:Placing),nl,
         fd_statistics.
 
-
-
+:- nondet user:rightTo/2.
 % x is right to y
 rightTo(X, Y) :-
     X #= Y + 1 ;
     X #= Y - 2. % around the corner
-
-
+:- nondet user:leftTo/2.
 leftTo(X, Y) :- 
     rightTo(Y,X).

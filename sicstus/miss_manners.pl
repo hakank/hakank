@@ -94,8 +94,10 @@ miss_manners(P) :-
               Out #= In + NumMatched
         ),
         % "around the corner"
-        nth1(1,Hobbies,Hobbies1),
-        nth1(Size,Hobbies,HobbiesLast),
+        element(1,Seating,FirstSeat),
+        nth1(FirstSeat,Hobbies,Hobbies1),
+        element(Size,Seating,LastSeat),
+        nth1(LastSeat,Hobbies,HobbiesLast),
         match_hobbies(Hobbies1,HobbiesLast,NumMatchedAround),
 
         % total number of common hobbies

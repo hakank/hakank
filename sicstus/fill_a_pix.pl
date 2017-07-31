@@ -79,6 +79,7 @@ fill_a_pix(Problem) :-
               ( for(J,1,N), 
                 param(Problem,X,I,N) do
                     matrix_element(Problem,I,J,ProblemIJ),
+
                     ground(ProblemIJ)
               ->                    
                 (
@@ -92,15 +93,20 @@ fill_a_pix(Problem) :-
                                 I+A #>  0, J+B #>  0,
                                 I+A #=< N, J+B #=< N
                           -> 
-                            ( IA #= I+A, JB #= J+B,
-                              matrix_element(X,IA,JB,XIAJB),
-                              OutB #= InB + XIAJB  )
+                            (
+                                IA #= I+A,
+                                JB #= J+B,
+                                matrix_element(X,IA,JB,XIAJB),
+                                OutB #= InB + XIAJB
+                            )
                           ; 
                             OutB = InB
                           ),
                           Out #= In + BSum
                     ),
-                    Sum #= ProblemIJ % all sums must sum up to Problem[I,J]
+                    
+                    % all sums must sum up to Game[I,J]
+                    Sum #= ProblemIJ
                 )
               ;
                 true

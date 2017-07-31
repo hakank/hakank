@@ -103,7 +103,7 @@ go2 :-
         my_ordered(#=<, Variables),
 
         length(Xs,N),
-        domain(Xs,0,8),
+        domain(Xs,1,2),
 
         % total number of the coins used
         % in the exchange

@@ -25,7 +25,7 @@
 
 go :-   
         % find all circuits of order 8
-        N = 8,
+        N = 5,
         length(X,N),
         domain(X, 1,N), 
 
@@ -37,7 +37,7 @@ go :-
 
 go_b :-   
         % using SICStus' circuit/1
-        N = 8,
+        N = 5,
         length(X,N),
         domain(X, 1,N), 
 

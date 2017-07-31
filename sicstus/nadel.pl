@@ -2,7 +2,7 @@
 
   Nadel's construction problem in SICStus Prolog.
 
-  From Rina Dichter "Constraint Processing", page 5.
+  From Rina Dechter "Constraint Processing", page 5.
   Attributes the problem to
   B.A. Nadel "Constraint satisfaction algorithms" (1989).
   """

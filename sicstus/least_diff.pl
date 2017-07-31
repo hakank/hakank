@@ -31,6 +31,7 @@
 
 go  :-  
         findall( [L2 - L1 = Diff], least_diff(L1, L2, Diff), L),
+        findall( [L2 - L1 = Diff], least_diff2(L1, L2, Diff), L),
         write(L), nl.
 
 

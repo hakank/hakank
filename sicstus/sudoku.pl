@@ -41,7 +41,8 @@ go :-
 % Solve all Gecode problems, with a time out.
 %
 go2 :- 
-        TimeoutSeconds = 2,
+        TimeoutSeconds = 20,
+        write(timeout:TimeoutSeconds),nl,
         TimeoutTime is TimeoutSeconds * 1000, % milliseconds
         ( for(P,0,90),
           param(TimeoutTime) do
@@ -73,6 +74,8 @@ go4 :-
 go_hardest :-
         solve(hardest_ever).
 
+go_glpk_test :-
+        solve(glpk_test).
 
 solve(P) :-
         problem(P,Problem,CellSize),
@@ -128,6 +131,7 @@ sudoku(Problem,CellSize) :-
         ),
 
         labeling([ffc,enum,down], Vars).
+        % labeling([occurrence,median], Vars).
 
 
 %
@@ -2841,3 +2845,35 @@ problem(hardest_ever,P,3) :-
 [3,_,_, _,_,_, _,1,_],
 [_,4,_, _,_,_, _,_,7],
 [_,_,7, _,_,_, 3,_,_]].
+
+
+% From GLPK mailing list:
+% """ 
+% To: help-glpk@gnu.org
+% From: Andrew Makhorin <mao@gnu.org>
+% Date: Sun, 7 Feb 2010 06:14:12 +0300
+% Subject: [Help-glpk] extremely difficult sudoku puzzle
+% 
+% Just for fun:
+% 
+% /* sudoku.dat, "extremely difficult" Sudoku puzzle */
+% 
+% /* This Sudoku puzzle is taken from the book:
+%    Wei-Meng Lee, "Programming Sudoku", Apress, 2006, p.169,
+%    where it is rated as Extremely Difficult. Nevertheless glpsol solves
+%    it for less than a second with default settings. (It is interesting
+%    to note that the book mentioned above has more than 200 pages and is
+%    entirely dedicated to heuristics for solving Sudoku puzzles.) */
+% """
+problem(glpk_test, P, 3) :-
+ P = [
+      [_,_,_,_,_,8,_,_,9],
+      [_,5,_,_,9,_,_,_,_],
+      [_,_,9,_,_,4,8,_,_],
+      [_,_,2,1,4,_,_,_,3],
+      [_,_,6,_,_,_,9,_,_],
+      [4,_,_,_,6,7,1,_,_],
+      [_,_,5,9,_,_,3,_,_],
+      [_,_,_,_,3,_,_,7,_],
+      [8,_,_,4,_,_,_,_,_]
+     ].
