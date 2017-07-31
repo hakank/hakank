@@ -52,8 +52,8 @@ import cotfd;
 int t0 = System.getCPUTime();
 Solver<CP> cp();
 // cp.setSearchController(DFSController(cp));
-// cp.setSearchController(BDSController(cp,1));
-cp.setSearchController(BoundedDiscrepancyDFSController(cp, 10));
+// cp.setSearchController(BDSController(cp));
+// cp.setSearchController(BoundedDiscrepancyDFSController(cp,10));
 
 /*
 int NbColumns = 14;
@@ -61,12 +61,11 @@ int NbRows = 15;
 int NbColors = 4;
 */
 
-int NbRows = 13;
-int NbColumns = 13;
+int NbRows = 5;
+int NbColumns = 5;
 int NbColors = 4;
 cout << "NbRows   : " << NbRows << endl;
 cout << "NbColumns: " << NbColumns << endl;
-cout << "argc: " << System.argc() << endl;
 
 range Columns = 1..NbColumns;
 range Rows = 1..NbRows;
@@ -84,7 +83,6 @@ forall(i in Colors) {
   forbidden[i,4] = i;
 }
 */
-// much easier:
 int forbidden[i in Colors, j in 1..4] = i;
 cout << "forbidden:" << endl;
 forall(i in Colors) {
@@ -102,19 +100,27 @@ cout << occur_max << endl;
 
 Integer num_solutions(0);
 // cp.restartOnFailureLimit(1000);
+// cp.lnsOnFailure(100);
+// cp.restartOnCompletion();
+// cp.startWithRestart();
 
-// minimize 0;
+UniformDistribution dist(1..100);
+
 // exploreall<cp> {
 explore<cp> {
 
-  // cp.post(space[1,1] == 1);
+  cp.post(space[1,1] == 1);
   // cp.post(space[NbRows,NbColumns] == 2);
    
+  int rc = 0;
   forall(r in Rows, r2 in 1..r-1, c in Columns, c2 in 1..c-1) {
-
+    rc++;
     var<CP>{int} tmp[1..4] = [space[r,c],space[r2,c],space[r,c2],space[r2,c2]];
-    cp.post(cardinality(occur_min,tmp,occur_max), Auto);
+    cout << "tmp:"<< tmp << endl;
+    // cp.post(cardinality(occur_min,tmp,occur_max), Auto);
+
     // cp.post(atmost(occur_max,tmp), onDomains);
+    cp.post(atmost(occur_max,tmp));
 
 
     // forbiddenAssignments(tmp, forbidden);
@@ -128,7 +134,7 @@ explore<cp> {
     }
     */
   }
-
+  cout << "rc:" << rc << endl;
 
 } using {
 
@@ -150,18 +156,29 @@ explore<cp> {
 
   // random version using select
   while (!bound(space)) {
-    select(i in Rows, j in Columns: !space[i,j].bound()) {
+    // select(i in Rows, j in Columns: !space[i,j].bound()) {
       // cout << "i: " << i << " j: " << j << endl;
-      int mid = (space[i,j].getMin() + space[i,j].getMax()) / 2;
+      // int mid = (space[i,j].getMin() + space[i,j].getMax()) / 2;
       // tryall<cp>(v in space[i,j].getMin()..space[i,j].getMax() : space[i,j].memberOf(v)) by (abs(v-mid))
       // tryall<cp>(v in space[i,j].getMin()..space[i,j].getMax() : space[i,j].memberOf(v))
-      tryall<cp>(v in space[i,j].getMin()..space[i,j].getMax() : !space[i,j].bound() && space[i,j].memberOf(v))
+      // tryall<cp>(v in space[i,j].getMin()..space[i,j].getMax() : !space[i,j].bound() && space[i,j].memberOf(v))
       // tryall<cp>(v in Colors : space[i,j].memberOf(v)) by (abs(v-mid))
+      /*
         cp.label(space[i,j],v);
       onFailure
         // cp.post(space[i,j] != v);
         cp.diff(space[i,j], v);
-    }
+      */
+     //}
+
+    // selectMin(i in Rows, j in Columns: !space[i,j].bound()) (space[i,j].getMinRegret()) {
+    selectMin(i in Rows, j in Columns: !space[i,j].bound()) (space[i,j].getSize()) {
+      // select(i in Rows, j in Columns: !space[i,j].bound()) {
+        int mid = (space[i,j].getMin() + space[i,j].getMax()) / 2;
+        try<cp> cp.post(space[i,j] <= mid); 
+                | 
+                cp.post(space[i,j] > mid);
+      }
   }
 
   forall(i in Rows) {
@@ -174,11 +191,21 @@ explore<cp> {
 }
 onRestart {
   int numFailureLimit = cp.getRestartFailureLimit();
-   cout << "too many failures => restart! " << numFailureLimit  << " ";
-   int t1 = System.getCPUTime();
-   int diff = (t1-t0);
-   cout << " time from start: " << diff/1000 << " seconds" << "  " << diff/(1000*60) << " minutes " << endl;
-   cp.setRestartFailureLimit(numFailureLimit + 1000);
+  cout << "too many failures => restart! " << numFailureLimit  << " ";
+  int t1 = System.getCPUTime();
+  int diff = (t1-t0);
+  cout << " time from start: " << diff/1000 << " seconds" << "  " << diff/(1000*60) << " minutes " << endl;
+  /*
+  Solution s = cp.getSolution();
+  if (s != null) {
+    cout << "Solution: " << s << endl;
+    forall(i in Rows, j in Columns: dist.get() <= 90) {
+      cp.post(space[i,j] == space[i,j].getSnapshot(s));
+    }
+  }
+  */
+
+  cp.setRestartFailureLimit(numFailureLimit + 1000);
 }
 
 

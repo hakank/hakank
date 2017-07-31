@@ -38,7 +38,7 @@
   #propag  = 1794582
 
 
-  Order 7 (using a bigger dictionary)
+  Order 7
   Square:
   aalborg
   abaiser
@@ -54,18 +54,41 @@
   #fail    = 4
   #propag  = 6315788
 
+
+  With restarts:, order 7
+  Square:
+  aaronic
+  acerate
+  revisal
+  orifice
+  nasitis
+  itacist
+  celesta
+  
+  
+  num_solutions: 1
+  time:      107970
+  #choices = 368
+  #fail    = 80
+  #propag  = 35253485
+
+
+
  */
 
 
 import cotfd;
 
-int word_len = 5;
+int word_len = 7;
+cout << "word length: " << word_len << endl;
 
 int t0 = System.getCPUTime();
 string fileName = "/usr/dict/words";
+// string fileName = "./allwords2.txt";
 cout << "Using problem file: " << fileName << endl;
   
 ifstream f(fileName);
+cout << f << endl;
 //
 // we just use lower case words
 string lower[1..26] = ["a","b","c","d","e","f","g","h","i","j","k","l","m",
@@ -98,11 +121,12 @@ set{string} _words();
 int _loaded_words = 0;
 while (true) {
   line = f.getLine();
+  // cout << line << endl;
   if (line.length() == 0) {
     break;
   }
+
   // line = line.substring(0, line.length()-1); // EXPERIMENTAL
-  // cout << line << " " << line.length() << endl;
   if (line.length() == word_len) {
     bool isLower = true;
     forall(i in 0..word_len-1) {
@@ -139,6 +163,8 @@ forall(w in _words) {
 // This is the model
 //
 Solver<CP> cp();
+// testing
+// cp.setSearchController(BDSController(cp));
 
 //
 // E contains which word (position in words) to select for the overlappings.
@@ -149,9 +175,14 @@ var<CP>{int} E[1..n](cp, 1..num_words);
 
 Integer num_solutions(0);
 
+cp.restartOnFailureLimit(100);
+// cannot use exploreall with restarts
 explore<cp> {
 
   cout << "start explore" << endl;
+
+  // Ensure that the words are distinct
+  cp.post(alldifferent(E), onDomains);
 
   forall(i in 1..word_len) {
     forall(j in 1..word_len) {    
@@ -159,23 +190,55 @@ explore<cp> {
     }
   }
 
-  // Ensure that the words are distinct
-  cp.post(alldifferent(E), onDomains);
-
-  // Sorted
-  // forall(i in 1..word_len-1) {
-  //  cp.post(E[i] < E[i+1]);
-  // }
-
 
 } using {
       
   cout << "labeling" << endl;
-  labelFF(E);
+  // labelFF(E);
   // labelFF(cp);
 
-  num_solutions++;
 
+  // middle
+  while (!bound(E)) {
+
+    // This is quite fast for n=7
+    selectMin[1](i in 1..n: !E[i].bound()) (-E[i].getSize()) {
+      int mid = (E[i].getMin()+E[i].getMax())/2;
+      cout << "mid: " << mid << endl;
+      try<cp> cp.post(E[i]<=mid); | cp.post(E[i]>mid);
+    }
+
+
+    /*
+    selectMin[num_words](i in 1..n: !E[i].bound()) (-E[i].getSize()) {
+      range dom = E[i].getMin()..E[i].getMax();
+      RandomPermutation perm(dom);
+      int rand[dom] = perm.get();
+      tryall <cp>(v in dom: E[i].memberOf(v)) by(rand[v])
+        cp.post(E[i]==v);
+    }
+    */
+
+    /*
+    forall(i in 1..n: !E[i].bound()) by (-E[i].getSize()) {
+     int mid = (E[i].getMin()+E[i].getMax())/2;
+      cout << "mid: " << mid << endl;
+      try<cp> cp.post(E[i]<=mid); | cp.post(E[i]>mid);
+    }
+    */
+    // much slower
+    /* forall(i in 1..n: !E[i].bound()) by (E[i].getSize()) {
+     int mid=(E[i].getMin()+E[i].getMax())/2;
+      cout << "mid: " << mid << endl;
+      tryall <cp>(v in E[i].getMin()..E[i].getMax(): E[i].memberOf(v)) by(abs(v-mid))
+        cp.post(E[i]==v);
+    }
+    */
+  }
+
+
+  num_solutions++;
+  
   cout << "E: " << E << endl;
   cout << "\nSquare: " << endl;
   forall(I in 1..word_len) {
@@ -188,6 +251,11 @@ explore<cp> {
   cout << endl;
 
 
+}
+onRestart {
+  int numFailureLimit = cp.getRestartFailureLimit();
+   cout << "too many failures => restart! " << numFailureLimit  << endl;
+   cp.setRestartFailureLimit(numFailureLimit + 10);
 }
 
 cout << "\nnum_solutions: " << num_solutions << endl;

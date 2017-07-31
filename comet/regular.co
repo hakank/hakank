@@ -5,7 +5,7 @@
   See Gilles Pesant: 
   "A Regular Language Membership Constraint for Finite Sequences of Variables" 
   (2004)
-
+  http://www.crt.umontreal.ca/~quosseca/pdf/10-reglang.pdf
 
   This implementation was inspired by the MiniZinc builtin regular predicate.
 
@@ -46,15 +46,19 @@ int transition_fn[1..n_states, 1..input_max] =
 int len = 10;
 int pp[1..3] = [3,2,1];
 int[,] transition_fn = make_transition_matrix(pp);
+cout << "transition_fn:" << transition_fn << endl;
+
 int n_states = transition_fn.getRange(0).getSize(); // create the transition matrix
+cout << "n_states: " << n_states << endl;
+
 int input_max = 2;
 // Note: we use "1" and "2" (rather than 0 and 1) since 0 represents the failing state.
 int initial_state = 1;
 set{int} accepting_states = {n_states}; // This is the last state
-
+cout << "accepting_states:" << accepting_states << endl;
 
 Solver<CP> m();
-var<CP>{int} reg_input[1..len](m, 0..input_max);
+var<CP>{int} reg_input[1..len](m, 1..input_max);
 
 
 
@@ -80,6 +84,12 @@ function void regular(var<CP>{int}[] x,
                       ) {
   Solver<CP> cp = x[1].getSolver();
 
+  cout << "Q:" << Q << endl;
+  cout << "S:" << S << endl;
+  cout << "d:" << d << endl;
+  cout << "q0:" << q0 << endl;
+  cout << "F:" << F << endl;
+
   assert(Q > 0); // "regular: 'Q' must be greater than zero",
   assert(S > 0); // "regular: 'S' must be greater than zero",
 
@@ -96,25 +106,38 @@ function void regular(var<CP>{int}[] x,
         d2[i,j] = d[i, j];
     }
   }
-
+  cout << d2 << endl;
 
   // If x has index set m..n, then a[m-1] holds the initial state
   // (q0), and a[i+1] holds the state we're in after processing
   // x[i].  If a[n] is in F, then we succeed (ie. accept the
   // string).
   range x_range = x.rng();
+  cout << x_range << endl;
   int m = min(i in x_range) i;
   int n = 1+max(i in x_range) i;
+  cout << "m:" << m << " n:" << n << endl;
   var<CP>{int} a[m..n](cp, 0..Q);
 
+  cp.inside(a[n], F); // Check the final state is in F.
   cp.post(a[m] == q0);     // Set a[0].
   forall(i in x_range) {
-    cp.inside(x[i], 1..S); // Do this in case it's a var.
+    //cp.inside(x[i], 1..S); // Do this in case it's a var.
+    cout << i << " x[i]:" << x[i] << " a[i]: " << a[i] << endl;
+    cp.post(x[i] >= 1); // hakank: Pascal's improvement
+    cp.post(x[i] <= S); // hakank: Pascal's improvement
+
     cp.post(a[i+1] == d2[a[i], x[i]]); // Determine a[i+1].
   } 
 
-  cp.inside(a[n], F); // Check the final state is in F.
-
+  Integer num_solutions_a(0);
+  exploreall<cp> {
+  } using {
+    label(cp);
+    num_solutions_a++;
+    cout << a << endl;
+  }
+  cout << "a num_solutions: " << num_solutions_a << endl;
 
 }
 
@@ -173,6 +196,7 @@ function int[,] make_transition_matrix(int[] pattern) {
     if (c < num_states) 
       tmp[++c] = 0;
   }
+  cout << tmp << endl;
   
   t_matrix[num_states,1] = num_states;
   t_matrix[num_states,2] = 0;

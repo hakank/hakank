@@ -217,8 +217,35 @@ int col_rules[1..cols, 1..col_rule_len] =
 // http://www.gecode.org/gecode-doc-latest/classNonogram.html
 // include "nonogram_crocodile";
 
+// Gondola
+// include "nonogram_gondola";
+
+
 // This has a "zero clue" which wasn't handled before
-include "nonogram_t2";
+// include "nonogram_t2";
+
+//                                 // These are Unix' running time
+// include "nonogram_pbn_dancer";  // 0.691s  0 failures
+// include "nonogram_pbn_cat";     // 0.600s  0 failures
+// include "nonogram_pbn_skid";    // 0.586s 0 failures
+// include "nonogram_pbn_bucks";   // 1.366s 5 failures
+// include "nonogram_pbn_edge";    // 0.521s 43 failures
+// include "nonogram_pbn_smoke";   // 0.616s 14 failures
+// include "nonogram_pbn_knot";    // 1.307s 0 failures
+// include "nonogram_pbn_swing";   // 1.782s  0 failures
+// include "nonogram_pbn_mum";     // 1.268s 39 failures
+// include "nonogram_pbn_tragic";  // 7:57,39 702525 failures
+// include "nonogram_pbn_merka";   // 1.654s 46 failures
+// include "nonogram_pbn_petro";   // 3.103s 3183 failures
+// include "nonogram_pbn_m_and_m"; // 2.215s 162 failures
+// include "nonogram_pbn_signed";  // 20.369s 12231 failures
+// include "nonogram_pbn_light"; // no solution in 15 minutes
+// include "nonogram_pbn_forever"; // 7.5s 27199 failures
+// include "nonogram_pbn_hot";     // no result in 15 min
+// include "nonogram_pbn_karate"; // 2:02min 272706 failures
+// include "nonogram_pbn_flag";       // 2 first sol: 7.28s 24678 failures
+include "nonogram_pbn_lion";    // no solution in 20 minutes
+
 
 Solver<CP> m();
 
@@ -274,6 +301,7 @@ exploreall<m> {
 
   // Slightly different labelings depending on the size of the problem.
   // We start with the smaller dimension.
+  /*
   if (rows * row_rule_len < cols * col_rule_len ) {
 
     forall(i in 1..rows, j in 1..cols: !board[i,j].bound()) {
@@ -288,8 +316,30 @@ exploreall<m> {
         m.label(board[i,j],v);
     }
   }
-   
+  */
+
+  if (rows * row_rule_len < cols * col_rule_len ) {
+
+    forall(i in 1..rows, j in 1..cols: !board[i,j].bound()) {
+      tryall<m>(v in 1..2) by (-v)
+        m.label(board[i,j], v);
+      onFailure
+        m.post(board[i,j] != v);        
+    }
+
+  } else {
+
+    forall(j in 1..cols, i in 1..rows: !board[i,j].bound()) {
+      tryall<m>(v in 1..2) by (-v)
+        m.label(board[i,j], v);
+      onFailure
+        m.post(board[i,j] != v);
+    }
+  }
+
+
   num_solutions++;
+  cout << "#fails  = " << m.getNFail() << endl;
   cout << "#propag  = " << m.getNPropag() << endl;
       
   forall(i in 1..rows) {
@@ -304,6 +354,22 @@ exploreall<m> {
   }
   cout << endl;
   cout << flush;
+
+  if (num_solutions >= 2) {
+    cout << "For the PBN survey example: exit after 2 solutions" << endl;
+
+
+    cout << "\nnum_solutions: " << num_solutions << endl;
+    
+    int t1 = System.getCPUTime();
+    cout << "time:      " << (t1-t0) << endl;
+    cout << "#choices = " << m.getNChoice() << endl;
+    cout << "#fail    = " << m.getNFail() << endl;
+    cout << "#propag  = " << m.getNPropag() << endl;
+
+    System.exit(0);
+
+  }
 
 }
 
@@ -344,7 +410,6 @@ function int[,] make_transition_matrix(int[] pattern) {
     if (c < num_states) 
       tmp[++c] = 0;
   }
-  
   // create the transition matrix
   t_matrix[num_states,1] = num_states;
   t_matrix[num_states,2] = 0;
@@ -364,17 +429,7 @@ function int[,] make_transition_matrix(int[] pattern) {
       }
     }
   }
-  
-  /*
-  cout << "The states:" << endl; 
-  forall(i in 1..num_states) {
-    forall(j in 1..2) {
-      cout << t_matrix[i,j] << " ";
-    }
-    cout << endl;
-  }
-  cout << endl;
-  */
+
 
   return t_matrix;
 
@@ -434,6 +489,7 @@ function void regular(var<CP>{int}[] x,
     cp.post(x[i] >= 1); // hakank: Pascal's improvement
     cp.post(x[i] <= S); // hakank: Pascal's improvement
     cp.post(a[i+1] == d2[a[i], x[i]], onDomains); // Determine a[i+1].
+
   } 
 
 }
