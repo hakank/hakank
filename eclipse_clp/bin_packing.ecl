@@ -10,45 +10,37 @@
 */
 
 :-lib(ic).
-%:-lib(ic_global).
+:-lib(ic_global).
 :-lib(ic_search).
 :-lib(branch_and_bound).
-%:-lib(propia).
+:-lib(propia).
 
 
-%
-% pretty prints the Bin matrix
-%
-pretty_print(X) :-
-        dim(X, [N,M]),
-        ( for(I, 1, N), param(X, M) do
-              RowSum #= sum(X[I,1..M]),
-            ( for(J, 1, M), param(X, I) do
-                XX is X[I,J],
-                printf("%2d", XX),
-                write(" ")
-            ),
-             printf(" = %d", [RowSum]),
-            nl
-        ),nl.        
 
 go :-
-
-        bin_packing(0),
-        bin_packing(1),
-        bin_packing(2),
-        bin_packing(3),
-        bin_packing(4),
-        bin_packing(5),
-        bin_packing(6).
-        % bin_packing(7). % larger problem
+        % Problems = [0,1,2,3,4,5,6,7,8,9],
+        Problems = [0,1,2,3,4,5,6, 8,9], % 7 is hard
+        ( foreach(P,Problems) do
+              bin_packing(P)
+        ). 
 
 
 bin_packing(Problem) :-
 
-        problem(Problem, Stuff, BinCapacity),
+        problem(Problem, StuffUnsorted, BinCapacity),
 
+        % sort works only on lists so we convert to 
+        % a list, and then back again
+        collection_to_list(StuffUnsorted,StuffUnsortedList),
+        sort(0,>=,StuffUnsortedList,StuffSorted),
+        length(StuffUnsortedList,SLen),
+        dim(Stuff,[SLen]),
+        ( foreach(S,StuffSorted),
+          foreachelem(S,Stuff) do
+              true
+        ),
         printf("\nProblem %w\n",[Problem]),
+        writeln(stuff:Stuff),
 
         % BinCapacity: the (common) capacity for each bin
         writeln(bin_capacity:BinCapacity),
@@ -66,15 +58,11 @@ bin_packing(Problem) :-
         dim(Bins,[NumBins,NumStuff]),
         Bins :: 0..1,        
 
-        %
         % BinLoads: contains how many things (the summed weights of) a bin takes
-        %
         dim(BinLoads,[NumBins]),
         
-        %
         % sanity clause: No thing can be larger than capacity.
         %                This is needed since we must pack everything.
-        %
         ( for(S,1,NumStuff),
           param(Stuff, BinCapacity) do
               Stuff[S] > BinCapacity 
@@ -84,9 +72,7 @@ bin_packing(Problem) :-
           true
         ),
 
-        %
         % the total load in a bin cannot exceed BinCapacity
-        %
         (for(B,1,NumBins),
          param(BinLoads,Stuff,Bins,BinCapacity,NumStuff) do
              ( for(S,1,NumStuff),
@@ -106,34 +92,26 @@ bin_packing(Problem) :-
         collection_to_list(BinLoads,BinLoadsList),
         sum(StuffList) #= sum(BinLoadsList),
         
-        %
         % a thing is packed just once 
-        %
         (for(S,1,NumStuff),
          param(Bins,NumBins) do
              sum(Bins[1..NumBins,S]) #= 1
         ),
 
-        %
         % symmetry breaking: first bin must be loaded
-        %
         BinLoads[1] #> 0,
 
 
-        %
         % symmetry breaking: 
-        %
         %    if bin_loads[i+1] is > 0 then bin_loads[i] must be > 0
-        %
+
         ( for(B,1,NumBins-1), param(BinLoads) do
               (BinLoads[B+1] #> 0) => (BinLoads[B] #> 0),
               BinLoads[B] #>= BinLoads[B+1]
         ),
 
 
-        %
         % calculate num_loaded_bins (which we will minimize)
-        %
         ( for(B,1,NumBins),
           foreach(Bin,BinSum),
           param(BinLoads) do
@@ -141,15 +119,13 @@ bin_packing(Problem) :-
         ),
         NumLoadedBins #= sum(BinSum),
 
-        % 
         % search
-        % 
         term_variables([Bins,BinLoads,NumLoadedBins], Vars),
         % search(Vars,0,first_fail,indomain_min,complete,[backtrack(Backtracks)]),
-        % minimize(search(Vars,0,occurrence,indomain_min,complete,
-        %                [backtrack(Backtracks)]), NumLoadedBins),
-        bb_min(search(Vars,0,occurrence,indomain_min,complete,
-                      [backtrack(Backtracks)]), NumLoadedBins, bb_options{strategy:restart}),
+        minimize(search(Vars,0,occurrence,indomain_min,complete,
+                       [backtrack(Backtracks)]), NumLoadedBins),
+        % bb_min(search(Vars,0,occurrence,indomain_min,complete,
+        %              [backtrack(Backtracks)]), NumLoadedBins, bb_options{strategy:restart}),
 
         writeln(bin_loads:BinLoads),
 
@@ -163,6 +139,21 @@ bin_packing(Problem) :-
         writeln(num_loaded_bins:NumLoadedBins),
         writeln(backtracks:Backtracks).
 
+%
+% pretty prints the Bin matrix
+%
+pretty_print(X) :-
+        dim(X, [N,M]),
+        ( for(I, 1, N), param(X, M) do
+              RowSum #= sum(X[I,1..M]),
+            ( for(J, 1, M), param(X, I) do
+                XX is X[I,J],
+                printf("%2d", XX)%,
+                % write(" ")
+            ),
+             printf(" = %d", [RowSum]),
+            nl
+        ),nl.        
 
 
 %
@@ -247,3 +238,19 @@ problem(7,
            39),
         500).
 
+% From 
+% Graham Kendall: Bin Packing made Easier 
+% http://research-reflections.blogspot.com/2009/07/bin-packing-made-easier.html
+problem(8,
+        [](442, 252, 127, 106, 37, 10, 10, 252, 252, 127, 106, 37, 10, 9,
+        252, 252, 127, 85, 12, 10, 9, 252, 127, 106, 84, 12, 10, 252,
+        127, 106, 46, 12, 10),
+        524).
+
+
+% Variant: remove 46 from the problem above
+problem(9,
+        [](442, 252, 127, 106, 37, 10, 10, 252, 252, 127, 106, 37, 10, 9,
+        252, 252, 127, 85, 12, 10, 9, 252, 127, 106, 84, 12, 10, 252,
+        127, 106, 12, 10),
+        524).

@@ -74,6 +74,10 @@ go :-
         term_variables([First,Last,Age], Vars),
         labeling(Vars),
 
+        write(First),nl,
+        write(Last),nl,
+        write(Age),nl,
+
         % print solution
         FirstS = ["Keith", "Libby", "Margo", "Nora", "Otto"],
         LastS  = ["Fell", "Gant", "Hall", "Ivey", "Jule"],

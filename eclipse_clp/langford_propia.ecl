@@ -35,7 +35,6 @@
 :-lib(ic).
 :-lib(ic_global).
 :-lib(ic_search).
-%:-lib(branch_and_bound).
 :-lib(listut).
 :-lib(util). % for time
 :-lib(propia).

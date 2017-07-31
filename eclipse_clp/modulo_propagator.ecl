@@ -3,7 +3,7 @@
   Propagator (bounds consistency) for modulo in ECLiPSe.
 
   ECLiPSe don't have a built-in support for the modulo operator 
-  for in ic. So I have to roll my own. 
+  in ic. So I have to roll my own. 
 
   This is inspired by MiniZinc's bounds consistency predicate in
   http://www.g12.cs.mu.oz.au/mzn/div_mod/div_mod.mzn    
@@ -33,18 +33,33 @@ go :-
         fail.
 
 go1 :-
-        %X :: 1..100,
-        %M :: 1..100,
-        % :: 0..100,
-        M = 4,
+        % X :: 1..100,
+        % M :: 1..100,
+        % Y :: 0..100,
         X = 10,
-        Y = 2,
+        M = 4,
+        % Y = 2,
         modulo(X,M,Y),
         term_variables([X,Y,M], Vars),
         labeling(Vars),
         writeln([x:X,m:M, y:Y]),
         fail.
 
+%
+% just relying on propia seems also work, at least
+% in this case
+%
+go2 :-
+        X :: 1..100,
+        M :: 1..100,
+        Y :: 0..100,
+        X #>= M,
+        mod(X,M,Y),
+        % term_variables([X,Y,M], Vars),
+        labeling([X,Y,M]),
+        writeln([x:X,m:M, y:Y]),
+        fail.
+        
 
 
 %

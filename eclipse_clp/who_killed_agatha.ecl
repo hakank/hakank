@@ -44,9 +44,9 @@
 */
 
 :-lib(ic).
-%  :-lib(ic_global).
+:-lib(ic_global).
 %  :-lib(ic_search).
-%  :-lib(propia).
+:-lib(propia).
 
 
 %
@@ -54,7 +54,8 @@
 %
 go :- 
         % collect all possible solutions, and collect them
-        setof([killer:Killer,victim:Victim], who_killed_agatha(Killer,Victim), L),
+        % setof([killer:Killer,victim:Victim], who_killed_agatha(Killer,Victim), L),
+        findall([killer:Killer,victim:Victim], who_killed_agatha(Killer,Victim), L),
         writeln(L).
 
 
@@ -69,22 +70,17 @@ who_killed_agatha(Killer, Victim) :-
         Butler = 2,
         Charles = 3,
 
-        Killer :: 1..3,
+        Killer #:: 1..3,
+        Victim #:: 1..3,
 
-        Victim :: 1..3,
-
-        % Who killed Agatha?
-        Victim #= Agatha,
-         
         %
         % define the Hates and Richer matrices
         %
         dim(Hates, [N,N]),
-        Hates[1..N,1..N] :: 0..1,
+        Hates :: 0..1,
 
         dim(Richer, [N,N]),
-        Richer[1..N,1..N] :: 0..1,
-
+        Richer :: 0..1,
 
         %
         % The constraints
@@ -102,7 +98,7 @@ who_killed_agatha(Killer, Victim) :-
         %   Hates[Killer,Victim] #= 1,
         %   Richer[Killer, Victim] #= 0,
         %
-
+        %
         % This works, though.
         % ( for(I,1,N), param(Killer,Victim,Hates,Richer) do
         %      Killer #= I => Hates[I, Victim] #= 1,
@@ -110,8 +106,12 @@ who_killed_agatha(Killer, Victim) :-
         % ),
 
         % Using suspend is better, and probably faster.
-        suspend(Hates[Killer,Victim] #= 1, 2, Killer->inst),
-        suspend(Richer[Killer, Victim] #= 0, 2, Killer->inst),
+        % suspend(Hates[Killer,Victim] #= 1, 2, Killer->inst),
+        % suspend(Richer[Killer, Victim] #= 0, 2, Killer->inst),
+
+        % This works in ECLiPSe 6.0 #96
+        Hates[Killer,Victim] #= 1,
+        Richer[Killer, Victim] #= 0,
 
 
         % define the concept of richer: no one is richer than him-/herself
@@ -151,12 +151,16 @@ who_killed_agatha(Killer, Victim) :-
         % Noone hates every one.
         ( for(I,1,N), param(Hates,N) do
               HatesSum #= sum(Hates[I,1..N]),
-              HatesSum#=< 2
+              HatesSum #=< 2
         ),
-        
 
-        term_variables([Killer,Hates,Richer], Vars),
-        labeling(Vars).
+        % Who killed Agatha?
+        Victim #= Agatha,
+         
+
+        term_variables([Killer,Victim,Hates,Richer], Vars),
+        % labeling(Vars).
+        search(Vars,0,first_fail,indomain,complete,[]).
 
         %writeln(victim:Victim),
         %writeln(killer:Killer),

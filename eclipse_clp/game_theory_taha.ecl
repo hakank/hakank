@@ -36,7 +36,7 @@ go :-
         X1 :: 0.0..1.0,
 
         length(X2,Cols),
-        X1 :: 0.0..1.0,
+        X2 :: 0.0..1.0,
 
 
         % value to maximize
@@ -46,7 +46,6 @@ go :-
         % Row player
         %
         ( for(I,1,Rows), 
-          fromto(0,X1_In,X1_Out,X1Sum),
           param(X1,Game,Cols,V) do
               ( for(J,1,Cols), 
                 fromto(0,In,Out,Sum),
@@ -54,13 +53,11 @@ go :-
                     nth1(J,X1,X1J),
                     Out = In + (X1J*Game[J,I])
               ),
-              V - eval(Sum) $=< 0,
-              nth1(I,X1,X1I),
-              X1_Out = X1_In + X1I
+              V - eval(Sum) $=< 0
         ),
 
         % sum X1 to 1
-        1.0 $= eval(X1Sum),
+        1.0 $= sum(X1),
 
         
         % 
@@ -70,7 +67,6 @@ go :-
         % * Game[I,J] instead of Game[J,I]
         %
         ( for(I,1,Cols), 
-          fromto(0,X2_In,X2_Out,X2Sum),
           param(X2,Game,Rows,V) do
               ( for(J,1,Rows), 
                 fromto(0,In,Out,Sum),
@@ -78,13 +74,11 @@ go :-
                     nth1(J,X2,X2J),
                     Out = In + (X2J*Game[I,J])
               ),
-              V - eval(Sum) $>= 0,
-              nth1(I,X2,X2I),
-              X2_Out = X2_In + X2I
+              V - eval(Sum) $>= 0
         ),
 
         % sum X2 to 1
-        1.0 $= eval(X2Sum),
+        1.0 $= sum(X2),
 
        
         eplex_solve(V),

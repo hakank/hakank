@@ -47,6 +47,10 @@ go :-
         length(A, NM),
         A :: 1..N, 
         ( for(I,1,N), param(A) do
+              % a[j] = i
+              % a[j+i+1] = i
+              % a[j+2*i+2] = i
+
               MaxVal is 25-(2*I),
               J :: 1..MaxVal,
               listut:nth1(J,A,I),

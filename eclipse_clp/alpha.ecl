@@ -55,7 +55,8 @@ alpha(LD, Backtracks) :-
 	p([V,I,O,L,I,N],       100),
 	p([W,A,L,T,Z],          34),
         
-        search(LD,0,first_fail,indomain_min,complete,[backtrack(Backtracks)]).
+        search(LD,0,first_fail,indomain_min,complete,
+               [backtrack(Backtracks)]).
 
 p(Xs, Sum) :-
         Sum #= sum(Xs).

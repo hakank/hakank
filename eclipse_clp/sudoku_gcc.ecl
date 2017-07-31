@@ -20,6 +20,7 @@
 :- lib(ic_global).
 :- lib(ic_search).
 :- lib(listut).
+% :- lib(propia).
 
 
 %

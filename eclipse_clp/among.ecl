@@ -59,7 +59,8 @@ go :-
         ic: (N :: 1..Len),
         N #= 3,
 
-        among(N, X, V),
+        % among(N, X, V),
+        among2(N, X, V),
 
         % search
         term_variables([X,N], Vars),
@@ -86,3 +87,12 @@ among(N,X,V) :-
               true
         ),
         N #= eval(Sum).
+
+
+among2(N,X,V) :-
+        ( foreach(El,X), 
+          fromto(0,In,Out,Sum), 
+          param(V) do
+              Out #= In + (El in V)
+        ),
+        N #= Sum.

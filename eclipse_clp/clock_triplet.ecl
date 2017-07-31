@@ -78,6 +78,7 @@ clock_triplet(N, P, Sum, Xs) :-
                     nth1(I1,Xs,XI1),
                     Out = [XI1|In]
                     ),
+              writeln(list:List),
               sum(List) #=< Sum
         ),
 

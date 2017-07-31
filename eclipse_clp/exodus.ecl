@@ -104,6 +104,9 @@ go :-
         labeling(Vars),
 
         % print solution
+        writeln(story:Story),
+        writeln(country:Country),
+        writeln(age:Age),
         calc_size([ChildrenS,StoryS,CountryS], Size, 2),
         print_all(Children,ChildrenS,Size),
         print_all(Story,StoryS,Size),
@@ -136,5 +139,3 @@ calc_size(A, Size, Add) :-
               string_length(String,Len)
         ),
         Size is maxlist(Lengths) + Add.
-
-        

@@ -85,13 +85,16 @@ pandigital([X1,X2,X3]) :-
         %
         % length of numbers
         %
-        Len1 #>= 1,
-        Len1 #=< 4,
-        Len2 #>= 1,
-        Len2 #=< 4,
+        % Len1 #>= 1,
+        % Len1 #=< 4,
+        % Len2 #>= 1,
+        % Len2 #=< 4,
+        % Len3 #= 4,
+        Len1 :: 1..2,
+        Len2 :: 3..4,
         Len3 #= 4,
 
-        Len1 #=< Len2, % symmetry breaking
+        % Len1 #=< Len2, % symmetry breaking
         Len1 + Len2 + Len3 #= 9,
         
         indomain(Len1),

@@ -156,10 +156,13 @@ go :-
 
         term_variables([LastName,Job,Score], Vars),
 
-        labeling(Vars),
+        % labeling(Vars),
+        search(Vars,0,first_fail,indomain_max,complete,[backtrack(Backtracks)]),
         
         writeln(first_name:FirstName),
         writeln(last_name:LastName),
         writeln(job:Job),
-        writeln(score:ScoreList),fail.
+        writeln(score:ScoreList),
+        writeln(backtracks:Backtracks), 
+        fail.
    

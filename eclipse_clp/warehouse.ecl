@@ -100,6 +100,11 @@ go :-
         term_variables([Open,Supply,TotalCosts], Vars),
         minimize(search(Vars,0,first_fail,indomain_middle,complete,[backtrack(Backtracks)]),TotalCosts),
 
+        write('supply:'),nl,
+        ( foreacharg(S,Supply) do
+              writeln(S)
+        ),
+
         %
         % print the warehouses and stores
         %

@@ -21,7 +21,9 @@
 */
 
 :-lib(ic).
+:-lib(matrix_util).
 % :-lib(ic_global).
+:-lib(ic_global_gac). % for gcc
 :-lib(ic_search).
 :-lib(branch_and_bound).
 %:-lib(propia).
@@ -39,13 +41,12 @@ pretty_print(X) :-
             nl
         ).        
 
-go :-
-        assignment(1),
-        assignment(2),
-        assignment(3),
-        assignment(4),
-        assignment(5),
-        assignment(6).
+go :-        
+        N = 6,
+        ( for(I,1,N) do
+              assignment(I)
+        ).
+
 
 %
 % assignment(ProblemNumber)
@@ -62,33 +63,23 @@ assignment(Problem) :-
         dim(X,[Rows,Cols]),
         X :: 0..1,
 
-        %
         % exacly one assignment per row, all rows must be assigned
-        %
-        ( for(I,1,Rows), param(X,Cols) do
-              sum(X[I,1..Cols]) #= 1
+        ( for(I,1,Rows), param(X,Cols) do sum(X[I,1..Cols]) #= 1
         ),
 
-        %
         % zero or one assignments per column
-        %
-        ( for(J,1,Cols), param(X,Rows) do
-              sum(X[1..Rows,J]) #=< 1
+        ( for(J,1,Cols), param(X,Rows) do sum(X[1..Rows,J]) #=< 1
         ),
 
-        %
         % calculate TotalCost
-        % 
-        (for(I,1,Rows) * for(J,1,Cols), 
-         fromto(0,In,Out,TotalCost),
-         param(X,Cost) do 
-             Out #= In + X[I,J]*Cost[I,J]
+        ( for(I,1,Rows) * for(J,1,Cols), 
+          fromto(0,In,Out,TotalCost),
+          param(X,Cost) do Out #= In + X[I,J]*Cost[I,J]
         ),
 
         % prepare for maximization (if needed)
         TotalCostNeg #= -TotalCost,
 
-       
         %
         % get the optimization mode
         %
@@ -104,10 +95,9 @@ assignment(Problem) :-
         %
         % search
         % 
-        flatten_array(X,XList),        
-        minimize(search(XList,0,first_fail,indomain,complete,[]), OptValue),
+        term_variables(X,Vars),        
+        minimize(search(Vars,0,first_fail,indomain,complete,[]), OptValue),
 
-        % search(XList,0,first_fail,indomain,complete,[]),
 
         %
         % get the assignments 
@@ -117,7 +107,7 @@ assignment(Problem) :-
         length(Assignments, Rows),
         (for(I,1,Rows), 
          fromto(Assignments, Out, In, []),
-         param(X,Assignments,Cols) do
+         param(X,Cols) do
              ThisRow is X[I,1..Cols],
              element(K, ThisRow, 1),
              Out = [K|In]

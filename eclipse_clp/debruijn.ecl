@@ -129,4 +129,4 @@ go :-
         writeln(x:X),
         writeln(binary:Binary),
         writeln(debruijn:BinCode),
-        writeln(backtracks:Backtracks).
+        writeln(backtracks:Backtracks),fail.

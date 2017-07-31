@@ -68,7 +68,7 @@ pretty_print(X) :-
         ).        
 
 go :-
-        N = 10, % 31 the grid size
+        N = 5, % 31 the grid size
         C = 3,  % 14, number of coins per row/column
         
         dim(X, [N,N]),

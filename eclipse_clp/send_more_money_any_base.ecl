@@ -2,8 +2,8 @@
 
   SEND + MORE = MONEY (any base) in ECLiPSe.
  
+  SEND + MORE = MONEY puzzle in any base.
 
-  
   The number of solutions for base 10 to 30 is:
   
    [eclipse]: for(I,10,30) do findall(Digits,sendmore(Digits, I), L), length(L, Len), writeln(Len).
@@ -75,7 +75,15 @@ sendmore(Digits, Base) :-
         #= Base^4*M + Base^3*O + Base^2*N + Base*E + Y,
         
         % Search
-        labeling(Digits).
+        writeln("before search"),
+        writeln(Digits),
+        search(Digits,0,first_fail,indomain,complete,[]).
+
+
+my_indomain(Vars) :-
+        writeln(Vars),
+        indomain(Vars,min).
+        
 
 
 %

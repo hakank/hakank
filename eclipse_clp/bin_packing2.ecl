@@ -64,36 +64,35 @@
 */
 
 
-%% version 1, straightforward.
-%% Note: This version is not correct! 
-%% See Joachim Schimpf's comment from the ECLiPSe mailing list
-%% http://sourceforge.net/mailarchive/forum.php?thread_name=4C50E9FC.9020709%40monash.edu&forum_name=eclipse-clp-users
-%% """
-%% The intention of this code is to set up the capacity constraint for
-%% a bin, by adding up the weigths of all objects J that are being
-%% put into bin B - that's what Bins[J] #= B means.
-%% 
-%% This code is actually wrong, because you cannot use a constraint
-%% inside the condition of an if-then-else.
-%% """
-%% However, it gives the correct answer... 
-% bin_packing1(Bins, Weights, Capacity) :-
-%         dim(Bins,[N]),
-%         dim(Weights,[N]),
-%
-%         (for(B,1,N),
-%          param(Weights,Bins,N,Capacity) do
-%              (for(J,1,N),
-%              fromto(0,In,Out,Sum),
-%              param(Weights,Bins,B) do
-%                   Bins[J] #= B 
-%              -> 
-%               Out #= In + Weights[J] 
-%              ; 
-%               Out = In
-%              ),
-%              Sum #=< Capacity
-%         ).
+% version 1, straightforward
+% Note: This version is not correct! 
+% See Joachim Schimpf's comment from the ECLiPSe mailing list
+% http://sourceforge.net/mailarchive/forum.php?thread_name=4C50E9FC.9020709%40monash.edu&forum_name=eclipse-clp-users
+% """
+% The intention of this code is to set up the capacity constraint for
+% a bin, by adding up the weigths of all objects J that are being
+% put into bin B - that's what Bins[J] #= B means.
+% This code is actually wrong, because you cannot use a constraint 
+% inside the condition of an if-then-else.
+% """
+% (However, it gives the correct answer.)
+bin_packing1(Bins, Weights, Capacity) :-
+        dim(Bins,[N]),
+        dim(Weights,[N]),
+
+        (for(B,1,N),
+         param(Weights,Bins,N,Capacity) do
+             (for(J,1,N),
+             fromto(0,In,Out,Sum),
+             param(Weights,Bins,B) do
+                  Bins[J] #= B 
+             -> 
+              Out #= In + Weights[J] 
+             ; 
+              Out = In
+             ),
+             Sum #=< Capacity
+        ).
 
 %
 % version 2, using reification like bool2int.
@@ -137,7 +136,7 @@ bin_packing3(Bins, Weights, Capacity) :-
 %
 % version 4: Use eval and a foreach(S, Sum)
 %            
-% July 2009: This version was suggested by Joachim Schimpf             
+% July 2009: This version was suggested by Joachim Schimpf           
 %
 bin_packing4(Bins, Weights, Capacity) :-
         dim(Bins,[N]),
@@ -169,7 +168,7 @@ go :-
         Capacity :: 1..20,
 
         % bin_packing3(Bins,Weights,Capacity),
-        bin_packing4(Bins,Weights,Capacity),
+        bin_packing3(Bins,Weights,Capacity),
         
         term_variables([Capacity,Weights,Bins],Vars),
         % search(Vars,0,first_fail,indomain,complete,[backtrack(Backtrack)]),

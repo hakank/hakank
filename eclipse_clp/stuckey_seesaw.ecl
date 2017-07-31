@@ -43,8 +43,7 @@ go :-
 
         labeling([Liz,Fi,Sara]),
 
-        write([liz:Liz,fi:Fi,sara:Sara]),nl,
-        fail.
+        write([liz:Liz,fi:Fi,sara:Sara]),nl,fail.
 
 % Page 258 suggests cumulative instead of apart.
 go2 :-

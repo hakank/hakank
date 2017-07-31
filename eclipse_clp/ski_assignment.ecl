@@ -1,6 +1,6 @@
 /*
 
-  Ski assignment problem in Comet.
+  Ski assignment problem in ECLiPSe.
 
   From  
   Jeffrey Lee Hellrung, Jr.: PIC 60, Fall 2008, Final Review, December 12, 2008
@@ -37,7 +37,7 @@
 :-lib(ic_global).
 :-lib(ic_search).
 :-lib(branch_and_bound).
-%:-lib(propia).
+:-lib(propia).
 
 
 go :-
@@ -60,8 +60,8 @@ go :-
           fromto(0,In,Out,Z),
           param(SkiHeights,SkierHeights,X) do
               XI #= X[I],
-              suspend(Out #= In + abs(SkiHeights[XI] -
-                                      SkierHeights[I]),2, XI->inst)
+              Out #= In + abs(SkiHeights[XI] -
+                                      SkierHeights[I])
         ),
           
         term_variables([X],Vars),

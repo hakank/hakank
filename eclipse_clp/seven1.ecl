@@ -38,6 +38,9 @@
 go :-   findall([A+B+C+D=S,A*B*C*D/10000],seven_eleven([A,B,C,D,S]),LL),
         writeln(LL).
 
+go2 :-  seven_eleven(L),
+        writeln(L).
+
 seven_eleven([A,B,C,D,S]) :-
      S = 711,
      L = [A,B,C,D],

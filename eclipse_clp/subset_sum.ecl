@@ -1,6 +1,6 @@
 /*
 
-  Subset sum problem in Comet.
+  Subset sum problem in ECLiPSe.
 
   From Katta G. Murty: "Optimization Models for Decision Making", page 340
   http://ioe.engin.umich.edu/people/fac/books/murty/opti_model/junior-7.pdf

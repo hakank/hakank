@@ -97,6 +97,7 @@ greatest_subsequential_sum(Vector, Begin,End,X,TotalSum) :-
        ((Begin #=< I) * (End #>= I) #= (XI #= 1)) % this works
   ),
 
+
   TotalSumNeg #= -TotalSum,
   minimize(search(X,0,occurrence,indomain_min,complete,[]), TotalSumNeg).
   

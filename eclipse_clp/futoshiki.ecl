@@ -27,6 +27,7 @@
 */
 
 :-lib(ic).
+:-lib(ic_kernel).
 %:-lib(ic_global).
 %:-lib(ic_search).
 %:-lib(branch_and_bound).
@@ -40,7 +41,7 @@ go :-
         findall(_,futoshiki(3),_).
 
 futoshiki(P) :-
-        
+        ic_stat(on),
         printf('\nProblem %w\n',[P]),
         problem(P,Problem,LessThans),
 
@@ -80,7 +81,8 @@ futoshiki(P) :-
         % output
         ( foreach(Row,X) do
               write(Row),nl
-        ).
+        ),
+        ic_stat(print).
 
 
 latin_square(X) :-

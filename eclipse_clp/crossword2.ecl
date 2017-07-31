@@ -1,6 +1,5 @@
 /*
 
- 
   Cross word in ECLiPSe.
  
   This is a standard example for constraint logic programming. See e.g.

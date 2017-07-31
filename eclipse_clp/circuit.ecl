@@ -20,7 +20,7 @@
 :-lib(ic_global).
 :-lib(ic_search).
 :-lib(listut).
-
+:-lib(propia).
 
 go :-   
         % find all circuits of order 5
@@ -29,11 +29,14 @@ go :-
         X :: 1..N, 
 
         term_variables(X,Vars),
-        findall(X, (circuit(X),search(Vars,0,first_fail,indomain_min,
-                                      complete,[])),L),
+        findall([X,backtracks:Backtracks], (circuit(X),search(Vars,0,first_fail,indomain_min,
+                                      complete,[backtrack(Backtracks)])),L),
         length(L,Len),
         writeln(L),
-        writeln(len:Len).
+        writeln(len:Len),
+        ( foreach(LL, L) do
+              writeln(LL)
+        ).
 
 %
 % show all circuits of order 8
@@ -45,8 +48,9 @@ go2 :-
         circuit(X),
 
         term_variables(X,Vars),
-        search(Vars,0,first_fail,indomain_min,complete,[]),
-        writeln(X),fail.
+        search(Vars,0,first_fail,indomain_min,complete,[backtrack(Backtracks)]),
+        writeln(X),
+        writeln(backtracks:Backtracks),fail.
         
        
 %
@@ -109,9 +113,8 @@ circuit(X) :-
         % Using suspend is much nicer.
         (for(I,2,N), param(X,Z) do
              ZI1 #= Z[I-1],
-             suspend(Z[I] #= X[Z[I-1]], 2, ZI1->inst)
-             % Just this don't work, though.
-             % suspend(Z[I] #= X[Z[I-1]], 2, Z[I-1]->inst)
+             % suspend(Z[I] #= X[Z[I-1]], 2, ZI1->inst)
+             Z[I] #= X[Z[I-1]]
         ),
 
 

@@ -45,11 +45,17 @@
 
 :-lib(ic).
 :-lib(ic_global).
+:-lib(ic_global_gac).
 :-lib(ic_search).
 :-lib(branch_and_bound).
 :-lib(propia).
+:-lib(viewable).
 
-go :- photo(1), fail.
+go :- 
+        photo(1).
+
+go2 :-
+        photo(2).
 
 photo(Problem) :-
 
@@ -64,7 +70,11 @@ photo(Problem) :-
         dim(Positions, [N]),
         Positions :: 1..N,
 
+        viewable_create(photo, Positions),
+
         ic:alldifferent(Positions),
+        % ic_global:alldifferent(Positions),
+        % ic_global_gac:alldifferent(Positions),
 
         length(Diffs, NumPreferences),
         (for(I,1,NumPreferences), 
@@ -108,10 +118,13 @@ photo(Problem) :-
         flatten_array(Positions, Vars),
         % search(Vars,0,first_fail,indomain,complete,[]),
         ZNeg #= -Z,
-        minimize(search(Vars,0,occurrence,indomain_max,complete,[]),ZNeg),
+        % minimize(search(Vars,0,occurrence,indomain_min,complete,[backtrack(Backtracks)]),ZNeg),
+        minimize(search(Vars,0,first_fail,indomain_max,credit(N,bbs(5)),[backtrack(Backtracks)]),ZNeg),
         writeln("positions":Positions),
+        writeln(backtracks:Backtracks),
         % writeln("diffs     ":Diffs),
-        writeln(z:Z).
+        writeln(z:Z)
+        ,viewable_expand(photo, 1, Positions, "positions").
 
 
 % Problem 1 (see above):

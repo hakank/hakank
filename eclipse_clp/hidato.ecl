@@ -98,7 +98,7 @@ hidato(X) :-
         ),
 
         term_variables(X,Vars),
-        search(Vars,0,smallest,indomain_maxn,complete,[backtrack(Backtracks)]),
+        search(Vars,0,smallest,indomain_max,complete,[backtrack(Backtracks)]),
 
         pretty_print(X), 
         writeln(backtracks:Backtracks).

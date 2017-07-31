@@ -1,6 +1,6 @@
 /*
 
-  Quasigroup completion problem in in ECLiPSe.
+  Quasigroup completion problem in ECLiPSe.
 
   See 
   Carla P. Gomes and David Shmoys:

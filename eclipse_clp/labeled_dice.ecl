@@ -1,6 +1,6 @@
 /*
 
-  Labeled dice in Comet.
+  Labeled dice in ECLiPSe.
 
   From Jim Orlin "Colored letters, labeled dice: a logic puzzle"
   http://jimorlin.wordpress.com/2009/02/17/colored-letters-labeled-dice-a-logic-puzzle/
@@ -108,6 +108,8 @@ solve(Problem,Res,Backtracks) :-
              double_index(Cube,Letters, I,D,L),
              R = [L,D]
         ),
+
+        writeln(cube:Cube),
 
         % print this solution
         getval(count,Count),

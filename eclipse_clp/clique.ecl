@@ -76,8 +76,9 @@ go :-
         find_all_largest_cliques(4),
 
         % now try a random problem
-        writeln("\nTry a random problem of size 100"),
-        generate_problem(40,G),
+        N = 100,
+        printf("\nTry a random problem of size %d",[N]),
+        generate_problem(N,G),
         clique(G,Clique,Card,_,Backtracks),
         writeln(clique:Clique),
         writeln(cardinality:Card),
@@ -129,6 +130,8 @@ go3 :-
         labeling(G2),
         pretty_print(G2).
 
+go4 :-
+        find_all_largest_cliques(4).
 
 
 %
@@ -157,17 +160,6 @@ find_all_cliques(Problem) :-
         writeln(L),
         writeln(length:Len).
         
-
-
-% 
-% Find one cliques for a problem
-%
-find_one_clique(Problem) :-
-        printf('\nProblem %d\n', [Problem]),
-        problem(Problem, G),
-        clique(G,Clique,_Card,_,_),
-        write(Clique),nl,nl.
-
 
 
 %
