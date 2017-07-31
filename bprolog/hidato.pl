@@ -31,11 +31,12 @@ time2(Goal):-
 
 
 go :-
-        time2(solve(8)).
+        time2(solve(6)).
+
 
 go2 :-
-        NumProblems = 6,
-        foreach(P in 1..NumProblems, time2(solve(P))).
+        % NumProblems = 8,
+        foreach(P in [1,2,3,4,5,6,8], time2(solve(P))).
 
 
 solve(Problem) :-
@@ -51,20 +52,31 @@ hidato(X) :-
         array_to_list(X,XList),
         XList :: 1..N*N,
 
+        % Valid connections, used by the table constraint
+        Connections @= [(I1,J1,I2,J2) :
+                       I1 in 1..N, J1 in 1..N, 
+                        I2 in 1..N, J2 in 1..N,
+                        (abs(I1-I2) =< 1,
+                         abs(J1-J2) =< 1,
+                         (I1 \=I2; J1 \= J2)
+                        )
+                       ],
         % place all integers from 1..r*c
         alldifferent(XList),
-       
         % propagations)
         NN1 is (N*N)-1,
-        foreach(K in 1..NN1,[I,J,IJ,IA_JB,K1,A,B,IA,JB,K],
+
+        foreach(K in 1..NN1,[I,J,IJ,IA_JB,K1,A,B,IA,JB],
+                [ac(Extras,[]),ac(Connect,[])],
+                
                 (% define temporary variables for finding
                  % the index of this and the next number (K)
                  I :: 1..N, % index I
                  J :: 1..N, % index J
                  A :: -1..1, % offset from K's position
                  B :: -1..1, % ibid
-                 
-                 % needed for nth1
+
+                 % needed for element
                  IA #= I+A,
                  JB #= J+B,
                  
@@ -76,22 +88,26 @@ hidato(X) :-
                                       % 1. First: fix this k, i.e.
                                       % K #= X[I,J], % don't work (instantiation fault)
                  IJ #= (I-1)*N + J,
-                 nth1(IJ, XList, K),
+                 element(IJ, XList, K),
                  
-                 
+
                  % 2. Then, find the position of the next value, i.e.
                  % K+1 #= X[I+A,J+B], % don't work
                  IA_JB #= (I-1+A)*N + J+B,
                  K1 is K+1,
-                 nth1(IA_JB, XList, K1)
+                 element(IA_JB, XList, K1),
+
+                 Extras^1 = [[IJ,IA_JB,A,B]|Extras^0],
+                 Connect^1 = [(I,J,IA,JB)|Connect^0]
                 )
                ),
+        Connect in Connections,
 
-        term_variables(X,Vars),
+        term_variables([X,Extras,Connect],Vars),
         labeling([inout,down],Vars),
+        % labeling([ff],Vars),
 
         pretty_print(X).
-
 
 
 pretty_print(X) :-
@@ -206,46 +222,9 @@ problem(8, []([](  _,  _,134,  2,  4,  _,  _,  _,  _,  _,  _,  _),
               []( 36,  _, 45,  _,  _, 52, 51,  _,  _,  _,  _, 88))).
 
 
-% Non-rectangular problem from
-% http://en.wikipedia.org/wiki/Hidato
-% -1 is non-accessable cells.
-% r = 8;
-% c = 8;
-% mmax = 40;
-% puzzle = array2d(1..r, 1..c, 
-% [
-%   0,33,35, 0, 0,-1,-1,-1,
-%   0, 0,24,22, 0,-1,-1,-1,
-%   0, 0, 0,21, 0, 0,-1,-1,
-%   0,26, 0,13,40,11,-1,-1,
-%  27, 0, 0, 0, 9, 0, 1,-1,
-%  -1,-1, 0, 0,18, 0, 0,-1,
-%  -1,-1,-1,-1, 0, 7, 0, 0,
-%  -1,-1,-1,-1,-1,-1, 5, 0
-% ]);
 
+% Variable selection
+selection([backward,constr,degree,ff,ffc,forward,inout,leftmost,max,min]).
 
-% Other non-rectangular problems
-% From http://rosettacode.org/wiki/Solve_a_Hidato_puzzle
-
-% "Evil case 1"
-% r = 3;
-% c = 3;
-% mmax = 7;
-% puzzle = array2d(1..r, 1..c, 
-% [
-%  -1, 4,-1,
-%   0, 7, 0,
-%   1, 0, 0
-% ]);
-
-% % "Evil case 2 - - The Snake in the Grass"
-% r = 3;
-% c = 50;
-% mmax = 74;
-% puzzle = array2d(1..r, 1..c,
-% [
-% 1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,74,
-% -1,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,
-% -1,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1,-1,0,0,-1
-% ]);
+% Value selection
+choice([down,updown,split,reverse_split]).

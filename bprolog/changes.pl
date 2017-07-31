@@ -24,7 +24,7 @@
 
 
 %
-% changes is in oere (100 oere in 1 kr)
+% changes is in oere (100 oere is 1 kr)
 % 
 go:-
         Change = 123,

@@ -90,7 +90,7 @@
 
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com  
-  See also my ECLiPSe page: http://www.hakank.org/eclipse/
+  See also my B-Prolog page: http://www.hakank.org/bprolog/
 
 */
 

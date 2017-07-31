@@ -148,14 +148,39 @@ go9 :-
         time2(queens6(100,Q2)),
         writeln(Q2).
 
-
 %
 % Using IP solver (ip_solve)
 %
-go9 :-
+go10 :-
         time2(queens7(8,Q)),
         writeln(Q).
 
+go11 :-
+   foreach(N in 8..15, 
+         [Count],
+         (
+          writeln(n=N),
+          count(queens3(N,X),Count),
+          writeln(N=Count)
+         )
+   ),
+   nl.
+
+
+
+
+% From Albert Dinero <albertmcchan@yahoo.com
+count(Goal, N) :-
+  global_set(count, 0),
+  (
+  Goal,
+  global_get(count, N),
+  N1 is N + 1,
+  writeln(n1=N1),
+  global_set(count, N1),
+  fail;
+  global_get(count, N)
+  ).
 
 
 

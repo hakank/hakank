@@ -82,6 +82,8 @@ go :-
                            [TT,RS,CS], 
                            (element(I,RowSigns,RS),
                             element(J,ColSigns,CS),
+                            % This works but is slower.:
+                            % TT #= RowSigns[I]*ColSigns[J]*Data[I,J]
                             TT #= RS*CS*Data[I,J]
                            )
                           ]),

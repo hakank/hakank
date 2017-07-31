@@ -54,6 +54,7 @@ solve(Problem) :-
 hidato(X) :-
 
         N @= X^length,
+
         % decision variables
         % array_to_list(X,XVar),
         XVar @= [X[I,J] : I in 1..N, J in 1..N],

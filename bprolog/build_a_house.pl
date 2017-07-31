@@ -2,7 +2,7 @@
 
   Simple scheduling problem in B-Prolog.
 
-  From  Marriott & Stucker, "Programming in Constraints", page 17f. 
+  From  Marriott & Stuckey, "Programming in Constraints", page 17f. 
   How to build a house, simple project management.
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
