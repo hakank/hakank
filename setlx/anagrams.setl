@@ -18,8 +18,9 @@
 -- Also see my SETL page: http://www.hakank.org/setl/
 --
 
-word_list := command_line(1) ? '/usr/dict/words';
-h := open(word_list, "r");
+--word_list := command_line(1) ? '/usr/share/dict/words';
+--h := open(word_list, "r");
+h := open('unixdict.txt', "r");
 
 anagrams := {};
 while not eof(h) loop
@@ -27,11 +28,14 @@ while not eof(h) loop
   if word = om or word = "" then
     continue;
   end if;
-  -- sorted := qsort(word); -- 1:10 minutes 
-  sorted := insertion_sort(word); -- 30 seconds
-  -- sorted := merge_sort(word); -- 2:10 minutes
+  -- sorted := qsort(word); -- 1:10 minutes  (6.5 seconds on my 64-bit machine)
+  sorted := insertion_sort(word); -- 30 seconds (2.7 seconds on my 64-bit machine)
+  -- sorted := merge_sort(word); -- Old version 2:10 minutes  (8.3 seconds on my 64-bit machine)
+  -- sorted := merge_sort(word); -- New version: 1:19 minutes (8.1 seconds on my 64-bit machine)
   anagrams{sorted} with:= word;
-
+  -- if #anagrams{sorted} > 1 then 
+  --   print(word,sorted, anagrams{sorted});
+  -- end if;
 end loop;
 
 print("Finished reading the dictionary");
@@ -43,12 +47,17 @@ for words = anagrams{sorted} loop
   if size > max_size then
     max_size := size;
     max_words := {words};
+    ---print("new max_size:",max_size, " max_words:", max_words, " #max_words:",#max_words);
   elseif size = max_size then
-    max_words with:= {words};
+    max_words with:= words;
+    ---print("same max_size:",max_size, " max_words:", max_words, " #max_words:",#max_words);
   end if;
 end loop;
 
-print("max_size:",max_size, " max_words:", max_words, " #max_words:",#max_words);
+-- print("max_size:",max_size, " max_words:", max_words, " #max_words:",#max_words);
+for w in max_words loop
+  print(w);
+end loop;
 
 
 --
@@ -91,60 +100,97 @@ end procedure;
 
 --
 -- Merge sort
+--
+-- iterative variant
+-- From http://www.settheory.com/Chapters/Chapter_5_procedures.html
+--
+procedure merge_sort(t); -- recursive merge_sort procedure
+	return if #t < 2 then t
+			-- since a tuple of length 0 or 1 is ipso facto sorted
+	else merge_it(merge_sort(t(1..#t div 2)), merge_sort(t(#t div 2 + 1..))) end if;
+
+end procedure;
+
+--
+-- iterative merge
+--
+procedure merge_it(t1,t2);   -- iterative variant of merge procedure
+   t := [];		-- merged tuple to be built up
+   i1 := i2 := 1;		-- indices of first components not yet moved
+
+   while i1 <= #t1 and i2 <= #t2 loop   
+   	if t1(i1) < t2(i2) then -- move t1(i1) to t
+   		t with := t1(i1);
+   		i1 +:=1;
+   	else                -- move t2(i2) to t
+   		t with:= t2(i2);
+   		i2 +:= 1;
+   	end if;
+   end loop;
+   tt := join([i : i in t],"") + t1(i1..) + t2(i2..);
+   -- return t + t1(i1..) + t2(i2..);
+   return tt;
+   	-- note that at most one of t1(i1..) and t2(i2..) is non-null
+
+end procedure;
+
+
+--
+-- Merge sort
 -- Inspired by
 -- http://en.wikipedia.org/wiki/Merge_sort
 -- About 2:10 minutes
 --
-procedure merge_sort(m);
-    if #m <= 1 then
-        return m;
-    end if;
+-- procedure merge_sort(m);
+--     if #m <= 1 then
+--         return m;
+--     end if;
 
-    --var list left, right, result;
-    left := [];
-    right := [];
-    result := [];
+--     --var list left, right, result;
+--     left := [];
+--     right := [];
+--     result := [];
 
-    middle := #m div 2;
-    for x in m(1..middle) loop
-         left with:= x;
-    end loop;
-    for x in m(middle+1..) loop
-         right with:= x;
-    end loop;
+--     middle := #m div 2;
+--     for x in m(1..middle) loop
+--          left with:= x;
+--     end loop;
+--     for x in m(middle+1..) loop
+--          right with:= x;
+--     end loop;
 
-    left := merge_sort(left);
-    right := merge_sort(right);
+--     left := merge_sort(left);
+--     right := merge_sort(right);
 
-    if left(#left) > right(1) then
-         result := merge(left, right);
-    else
-         result := left + right;
-    end if;
+--     if left(#left) > right(1) then
+--          result := merge(left, right);
+--     else
+--          result := left + right;
+--     end if;
 
-    return result;
+--     return result;
 
-end procedure;
+-- end procedure;
 
-procedure merge(left,right);
-    result := [];
-    while #left > 0 and #right > 0 loop
-        if left(1) <= right(1) then
-            result with:= left(1);
-            left := left(2..#left);
-        else
-            result with:= right(1);
-            right := right(2..#right);
-        end if;
-    end loop;
+-- procedure merge(left,right);
+--     result := [];
+--     while #left > 0 and #right > 0 loop
+--         if left(1) <= right(1) then
+--             result with:= left(1);
+--             left := left(2..#left);
+--         else
+--             result with:= right(1);
+--             right := right(2..#right);
+--         end if;
+--     end loop;
 
-    if #left > 0 then
-        result +:= left;
-    else  
-        result +:= right;
-    end if;
+--     if #left > 0 then
+--         result +:= left;
+--     else  
+--         result +:= right;
+--     end if;
 
-    return result;
+--     return result;
 
-end procedure;
+-- end procedure;
 
