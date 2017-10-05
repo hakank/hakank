@@ -75,8 +75,8 @@ predicate all_paths(array[int] of var int: x,
 
 
 % solve satisfy;
-solve :: int_search(x, first_fail, indomain,complete) satisfy;
-% solve :: int_search(x, first_fail, indomain, complete) minimize path_length;
+% solve :: int_search(x, first_fail, indomain,complete) satisfy;
+solve :: int_search(x, first_fail, indomain, complete) minimize path_length;
 
 
 constraint
