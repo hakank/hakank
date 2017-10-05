@@ -1,0 +1,147 @@
+/* 
+
+  Analogy in Picat.
+
+  Evans' Analogy program.
+
+  This Picat version is based on the Prolog code from
+  http://www.ee.pdx.edu/~mperkows/ANALOGY/009.moreProlog-reasoning-by-analogy.ppt
+  """
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%% analogy.pro          Dave Reed          1/23/02
+  %%%
+  %%% A program based on Evans' analogy reasoner.
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+import util.
+
+main => go.
+
+go ?=>
+  member(Q,[q1,q2,q3,q4]),
+  nl,
+  println(q=Q),
+  analogy(Q, _Answer),
+  % write(Answer), nl,
+  fail,
+  nl.
+
+go => true.
+
+% A small square inside a large triangle (A)
+% is to
+% A small triangle inside a large square (B)
+% as
+% A small circle inside a large square   (C)
+% is to
+% A ....  (the solution)
+%
+question(q1,A,B,C,L) =>
+  A = $inside((small,square), (large, triangle)),
+  B = $inside((small, triangle), (large, square)),
+  C = $inside((small, circle), (large, square)),
+  L = $[inside((small, circle), (large, triangle)),
+       inside((small, square), (large, circle)),
+       inside((small, triangle), (large, square))].
+
+question(q2, A,B,C,L) =>
+  A = $inside((small, circle), (large, square)),
+  B = $inside((small, square), (large, circle)),
+  C = $above((small, triangle), (large, triangle)),
+  L = $[above((small, circle), (large, circle)),
+        inside((small, triangle), (large, triangle)),
+        above((large, triangle), (small, triangle))].
+
+question(q3,A,B,C,L) =>
+  A = $above((small, square), (large, circle)),
+  B = $above((large, square), (small, circle)),
+  C = $above((small, circle), (large, triangle)),
+  L = $[above((large, circle), (small, triangle)),
+        inside((small, circle), (large, triangle)),
+        above((large, triangle), (small, square))].
+
+% This has an ambiguity: see comment below.
+question(q4,A,B,C,L) =>
+  A = $above((small, square), (large, square)),
+  B = $above((large, square), (small, square)),
+  C = $above((large, circle), (small, triangle)),
+  L = $[above((small, circle), (large, triangle)),
+        inside((small, circle), (large, triangle)),
+        above((small, triangle), (large, circle))].
+
+analogy(Question, Solution) => 
+  question(Question, F1, F2, F3, Answers),
+  transform(Rule, F1, F2), % F1 is to F2
+  transform(Rule, F3, Solution), % as F3 is to Solution
+  member(Solution, Answers),
+  print_solution(F1,F2,F3,Solution).
+
+print_solution(F1,F2,F3,Solution) => 
+  printf("%w\nis to\n%w\nas\n%w\nis to\n%w\n",convert(F1),convert(F2),convert(F3),convert(Solution)),
+  nl.
+
+convert(S) = to_fstring("a %w %w a %w", S[1].sc(),S.name,S[2].sc()).
+
+% replace comma with space
+sc(S) = S.to_string().replace(',',' ').
+
+transform(Type,A,B) ?=>
+  Type = invertPosition,
+  A = $inside((small,Figure1), (large, Figure2)),
+  B = $inside((small,Figure2), (large, Figure1)).
+
+transform(Type,A,B) ?=>
+  Type = invertPosition,
+  A = $above((Size1, Figure1), (Size2, Figure2)),
+  B = $above((Size2, Figure2), (Size1, Figure1)).
+
+transform(Type,A,B) ?=>
+  Type = invertSizes,
+  A = $inside((small, Figure1), (large, Figure2)),
+  B = $inside((small, Figure2), (large, Figure1)).
+
+transform(Type,A,B) => 
+  Type = invertSizes,
+  A = $above((Size1, Figure1), (Size2, Figure2)),
+  B = $above((Size2, Figure1), (Size1, Figure2)).
+   
+   
+
+/*
+?- analogy(q1, Answer).
+
+Answer = inside(small sized square, large sized circle) ; 
+Answer = inside(small sized square, large sized circle) ; 
+
+No
+
+?- analogy(q2, Answer).
+
+Answer = above(large sized triangle, small sized triangle) ;
+Answer = above(large sized triangle, small sized triangle) ;
+
+No
+
+?- analogy(q3, Answer).
+
+Answer = above(large sized circle, small sized triangle) ;
+
+No
+
+It is possible for 2 different transformations to produce different 
+answers must either refine the transformations (difficult)
+use heuristics to pick most likely answer (approach taken by Green)
+?- analogy(q4, Answer).
+
+Answer = above(small sized triangle, large sized circle) ;
+Answer = above(small sized circle, large sized triangle) ;
+
+No
+
+
+*/

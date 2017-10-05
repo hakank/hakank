@@ -1,0 +1,391 @@
+/* 
+
+  1RM calculations (MIP version) in Picat.
+
+  Calculation of 1RM for weight training and age adjustment weights.
+  (See below for the sources.)
+
+  Note: This is a MIP model and don't generate exactly the same solution
+  as the CP model http://hakank.org/picat/1rm.pi 
+  (though the differences are quite small).
+
+  Example: 
+  We want to know how much a session of 6 reps of 87kg corresponds to
+  a session of 12 reps. 
+  Answer: 
+     OneRM: 101.032kg (age adj.: 152.963kg)
+     Weight1: 87.000kg (age adj.: 131.718kg)  Reps: 6
+     Weight2: 70.161kg (age adj.: 106.224kg)  Reps: 12
+
+  I.e. a session of 6 x 87kg corresponds to a session with 12 x 70.151kg.
+  1RM is 101.032kg; this is the value that binds the two sessions.
+  Also we see the adjusted weights for weight1, weight2, and 1RM.
+
+  We can also study - since this is a constraint model - how much one have to
+  lift in order to have a 1RM of 100kg for 6 reps and 12 reps, respectively:
+
+     OneRM: 100.000kg (age adj.: 151.400kg)
+     Weight1: 86.111kg (age adj.: 130.372kg)  Reps: 6
+     Weight2: 69.444kg (age adj.: 105.139kg)  Reps: 12
+
+  Note: This don't give the same results as http://strengthlevel.com/ :
+  - Weight*Reps don't give the same OneRM, this model has higher values.
+    Though brzycki's seems to be nearer than epley's.
+  - Age adjustments are higher in this model.
+
+  Addition: Weight also in Lb.
+ 
+  Addition: Sinclair coefficient for body weight:
+  For details: http://www.mastersweightlifting.org/formulas.html
+  
+  Here's the calculation of a lift of 6*72kg for a 60 year old man with a  
+  adjusted for the body weight of 77.5kg using the Sinclair coefficient (1.1728..).
+
+    sinclair_coeff = 1.172804424443875
+    In kg:
+    OneRM: 118.491kg (age adj.: 179.396kg)
+    Weight1: 102.034kg (age adj.: 154.479kg)  Reps: 6
+    Weight2: 82.285kg (age adj.: 124.580kg)  Reps: 12
+
+  
+
+
+  
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+% import cp. % don't work on a MIP model with floats
+% import sat. % don't work on a MIP model with floats
+
+main => go.
+
+main(ARGS) =>
+  println("Syntax: 1rm_mip.pl Weight1 Reps1 Weight2 Reps2 OneRM1 Age (0 means undef) "),
+  ARGS2 = [A.to_float() : A in ARGS],
+  println(args2=ARGS2),
+  Len = ARGS2.len,
+  % L = [Weight1,Reps1,Weight2,Reps2,OneRM1,Age],
+  if Len >= 1, ARGS2[1] > 0 then Weight1 := ARGS2[1] end,
+  if Len >= 2, ARGS2[2] > 0 then Reps1   := ARGS2[2].to_integer() end,
+  if Len >= 3, ARGS2[3] > 0 then Weight2 := ARGS2[3] end,
+  if Len >= 4, ARGS2[4] > 0 then Reps2   := ARGS2[4].to_integer() else Reps2 := Reps1 end,
+  if Len >= 5, ARGS2[5] > 0 then OneRM1  := ARGS2[5] end,
+  if Len >= 6, ARGS2[6] > 0 then Age     := ARGS2[6].to_integer() else Age := 60 end,
+  if Len >= 7, ARGS2[7] > 0 then BodyWeight := ARGS2[7].to_float() else BodyWeight := 77.5 end,
+  println([weight1=Weight1,reps1=Reps1,weight2=Weight2,reps2=Reps2,oneRM1=OneRM1,age=Age,bodyWeight=BodyWeight]),
+  nl,
+  if var(Weight1), var(Reps1), var(Weight2), var(Reps2) then
+    println("Some of the weights and reps must be > 0!"),
+    halt
+  end,
+
+  if nonvar(Weight1), nonvar(Reps1), nonvar(OneRM1) then
+     println("Both Weight1 and Reps1 and OneRM1 is set. This is probably not correct...")
+  end,
+  if nonvar(Age), not(member(Age,30..90)) then
+    printf("Age %w is not between 30 and 90 year.", Age),
+    halt
+  end,
+  nl,
+  oneRM(Weight1, Reps1, 
+        Weight2, Reps2, 
+        Age,
+        OneRM1,_OneRM2,
+        Weight1Age,Weight2Age,OneRMAge),
+  nl,
+  age_coeffs_adjusted(AgeCoeffs),
+  AgeCoeff = AgeCoeffs[Age-30+1,2],
+  printf("Age coefficient for age %w: %w x weight\n", Age,AgeCoeff),
+
+  printf("OneRM: %6.3fkg (age adj.: %6.3fkg)\n", OneRM1, OneRMAge),
+  printf("Weight1: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         Weight1, Weight1Age,Reps1),
+  printf("Weight2: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         Weight2, Weight2Age,Reps2),
+
+  nl,
+  println("In lb:"),
+  printf("OneRM: %6.3flb (age adj.: %6.3flb)\n", to_lb(OneRM1), to_lb(OneRMAge)),
+  printf("Weight1: %6.3flb (age adj.: %6.3flb)  Reps: %0.0f\n", 
+         to_lb(Weight1), to_lb(Weight1Age),Reps1),
+  printf("Weight2: %6.3flb (age adj.: %6.3flb)  Reps: %0.0f\n", 
+         to_lb(Weight2), to_lb(Weight2Age),Reps2),
+
+  Sex = male,
+  nl,
+  println("Sinclair coefficient (adjusted for body weight):"),
+  SinclairCoeff = sinclair_coeff(BodyWeight,Sex),
+  println(sinclair_coeff=SinclairCoeff),
+  println("In kg:"),
+  printf("OneRM: %6.3fkg (age adj.: %6.3fkg)\n", OneRM1*SinclairCoeff, OneRMAge*SinclairCoeff),
+  printf("Weight1: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         Weight1*SinclairCoeff, Weight1Age*SinclairCoeff,Reps1),
+  printf("Weight2: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         Weight2*SinclairCoeff, Weight2Age*SinclairCoeff,Reps2),
+  nl,
+  println("In lb:"),
+  printf("OneRM: %6.3flb (age adj.: %6.3flb)\n", to_lb(OneRM1)*SinclairCoeff, to_lb(OneRMAge)*SinclairCoeff),
+  printf("Weight1: %6.3flb (age adj.: %6.3flb)  Reps: %0.0f\n", 
+         to_lb(Weight1)*SinclairCoeff, to_lb(Weight1Age)*SinclairCoeff,Reps1),
+  printf("Weight2: %6.3flb (age adj.: %6.3flb)  Reps: %0.0f\n", 
+         to_lb(Weight2)*SinclairCoeff, to_lb(Weight2Age)*SinclairCoeff,Reps2),
+
+
+  nl.
+
+go =>
+  nolog,
+  % Weight1 = 87,
+  Reps1 = 6,
+
+  % Weight2 = 67.0,
+  Reps2 = 12,
+
+  OneRM1 = 100.0,
+
+  Age = 60,
+
+  oneRM(Weight1, Reps1, 
+        Weight2, Reps2, 
+        Age,
+        OneRM1,_OneRM2,
+        Weight1Age,Weight2Age,OneRMAge),
+
+  printf("OneRM: %6.3fkg (age adj.: %6.3fkg)\n", OneRM1, OneRMAge),
+  printf("Weight1: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         Weight1, Weight1Age,Reps1),
+  printf("Weight2: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         Weight2, Weight2Age,Reps2),
+
+  nl,
+  println("In lb:"),
+  printf("OneRM: %6.3fkg (age adj.: %6.3fkg)\n", to_lb(OneRM1), to_lb(OneRMAge)),
+  printf("Weight1: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         to_lb(Weight1), to_lb(Weight1Age),Reps1),
+  printf("Weight2: %6.3fkg (age adj.: %6.3fkg)  Reps: %0.0f\n", 
+         to_lb(Weight2), to_lb(Weight2Age),Reps2),
+
+  nl,
+
+  % fail, % don't genereate more solutions...
+
+  nl.
+
+% Show all 1RN conversions (see below)
+go2 => 
+  % Reps = 6,
+  Weight = 87,
+  println(weight=Weight),
+  foreach(Reps in 1..30)
+     all_conversions(Weight, Reps)
+  end,
+
+  nl.
+
+% Sinclair coefficients (adjusted for body weight)
+go3 => 
+  WeightLifted = 72,
+  Reps = 12,
+  println(weightLifted=$(Reps * WeightLifted)),
+  % brzycki(WeightLifted,Reps,OneRM),
+  OneRM=WeightLifted * (36.0/(37 - Reps)),
+  println(oneRM=OneRM),
+  Age = 60,
+  age_coeffs_adjusted(AgeCoeffs),
+  AgeCoeff = AgeCoeffs[Age-30+1,2],
+  println(ageCoeff=AgeCoeff),
+  OneRMAgeAdjusted = OneRM*AgeCoeff,
+  println(oneRMAgeAdjusted=OneRMAgeAdjusted),
+  BodyWeight = 77.5,
+  Sex = male,
+  Sinclair = sinclair_coeff(BodyWeight,Sex),
+  println(sinclair_coeff=Sinclair),
+  OneRMAgeAgeWeightAdjusted = OneRMAgeAdjusted*Sinclair,
+  println(oneRMAgeAgeWeightAdjusted=OneRMAgeAgeWeightAdjusted),
+  nl.
+  
+
+
+to_lb(Kg) = 2.20462262*Kg.
+
+oneRM(Weight1,Reps1,Weight2,Reps2,Age, OneRM1,OneRM2, Weight1Age,Weight2Age,OneRMAge) =>
+  age_coeffs_adjusted(AgeCoeffs),
+  if var(Weight1) then Weight1 :: 1.0..200.0 end,
+  if var(Weight2) then Weight2 :: 1.0..200.0 end,
+
+  if var(Reps1) then Reps1 :: 1.0..30.0 end,
+  if var(Reps2) then Reps2 :: 1.0..30.0 end,
+
+  if var(OneRM1) then OneRM1 :: 1.0..300.0 end,
+  if var(OneRM2) then OneRM2 :: 1.0..300.0 end,
+
+  Weight1Age :: 1.0..230.0,
+  Weight2Age :: 1.0..230.0,
+  OneRMAge   :: 1.0..300.0,
+
+  %% This don't work...
+  % OneRM1 #= Weight1*(1 + Reps1/30),
+  % OneRM2 #= Weight2*(1 + Reps2/30),
+
+  %% This works
+  % epley(Weight1,Reps1,OneRM1),
+  % epley(Weight2,Reps2,OneRM2),
+
+  % This give a somewhat lower OneRM than epley/3 
+  % (and closer to strengthlevel.com)
+  brzycki(Weight1,Reps1,OneRM1),
+  brzycki(Weight2,Reps2,OneRM2),
+
+  % Note: We cannot expect an exact value for the two OneRM's, hence the interval.
+  % This might have to be adjusted...
+  % abs(OneRM1-OneRM2) #<= 0,
+  % Hmm, this actually works
+  OneRM1 #= OneRM2,
+
+  % Age adjustments
+  RealAge = round(Age),
+  AgeCoeff = AgeCoeffs[RealAge-30+1,2],
+  Weight1Age #= Weight1*AgeCoeff,
+  Weight2Age #= Weight2*AgeCoeff,
+  OneRMAge #= OneRM1*AgeCoeff,
+
+  Vars = [Weight1,Weight2,Reps1,Reps2,OneRM1,OneRM2,Weight1Age,Weight2Age,OneRMAge],
+  solve($[],Vars).
+
+
+
+epley(Weight, Reps, OneRM) =>
+   % OneRM #= Weight*(1 + Reps/30). % Don't work
+   Reps*Weight #= 30 * (OneRM - Weight). % This works.
+
+brzycki(Weight, Reps,OneRM) => 
+  % OneRM = Weight * (36/(37 - Reps)). % Don't work
+  % Reps #= (37*OneRM - 36*Weight)/OneRM. % Don't work
+  OneRM*Reps #= (37*OneRM - 36*Weight). % This work
+
+
+all_conversions(Weight, Reps) =>
+  println([weight=Weight, reps=Reps]),
+  println(brzycki=(Weight * (36.0 /(37 - Reps)))),
+  println(epley=(0.033*Weight*Reps + Weight)),
+  println(epley2=(Weight*(1 + Reps/30))),
+  println(oconner=(Weight*(1 + 0.025*Reps))),
+  println(lombardi=(Weight * Reps**0.10)),
+  println(mcglothin=(100*Weight/(101.3 - 2.67123*Reps))),
+  println(wathan=(100*Weight/(48.8 + 53.8*exp(-0.075*Reps)))), 
+  nl.
+
+%
+% Sinclair's Bodyweight Correction formula
+% "The Sinclair Coefficients for the Olympiad January 1, 2017 to December 31, 2020 
+% For Men's and Women's Olympic Weightlifting"
+% """
+% The details about the formula http://www.iwf.net/downloads/?did=993
+%                                   http://www.iwf.net/downloads/?did=994
+% """
+%  The Answer to the question "What would be the total of an athlete weighing x kg if
+%  he/she were an athlete in the heaviest category of the same level of ability?" is 
+%  given by the formula:
+%      Actual Total x Sinclair Coefficient = Sinclair Total
+% """
+%  via http://www.iwf.net/downloads/?category=68 
+%  
+%  via http://www.mastersweightlifting.org/formulas.html
+%
+sinclair_coeff(BodyWeight,Sex) = SinclairCoeff =>
+  % http://www.iwf.net/downloads/?did=993
+  if Sex == man then
+    A = 0.751945030,
+    B = 175.508 % kg
+  else 
+    A = 0.783497476,
+    B = 153.655 % kg
+  end,
+  X = log10(BodyWeight/B),
+  SinclairCoeff = cond(BodyWeight <= B, 
+                       10**(A*X**2),
+                       1
+                  ).
+
+sinclair_total(WeightLifted,BodyWeight,Sex) = WeightLifted*sinclair_coeff(BodyWeight,Sex).
+
+
+age_coeffs_adjusted(AgeCoeffs) =>
+   % We don't need 2 dimensions, but the first dimension (age) is nice as
+   % documentation.
+   % Note: I'm not sure how one would handle age < 30. Are all < 30 same as
+   % for 30?
+   AgeCoeffs = 
+   [
+   [30, 1    ], [31, 1.016], [32, 1.031], [33, 1.046], [34, 1.059], 
+   [35, 1.072], [36, 1.083], [37, 1.096], [38, 1.109], [39, 1.122], 
+   [40, 1.135], [41, 1.149], [42, 1.162], [43, 1.176], [44, 1.189], 
+   [45, 1.203], [46, 1.218], [47, 1.233], [48, 1.248], [49, 1.263], 
+   [50, 1.279], [51, 1.297], [52, 1.316], [53, 1.338], [54, 1.361], 
+   [55, 1.385], [56, 1.411], [57, 1.437], [58, 1.462], [59, 1.488], 
+   [60, 1.514], [61, 1.541], [62, 1.568], [63, 1.598], [64, 1.629], 
+   [65, 1.663], [66, 1.699], [67, 1.738], [68, 1.779], [69, 1.823], 
+   [70, 1.867], [71, 1.910], [72, 1.953], [73, 2.004], [74, 2.060], 
+   [75, 2.117], [76, 2.181], [77, 2.255], [78, 2.336], [79, 2.419], 
+   [80, 2.540], [81, 2.597], [82, 2.702], [83, 2.831], [84, 2.981], 
+   [85, 3.153], [86, 3.352], [87, 3.580], [88, 3.843], [89, 4.145], 
+   [90, 4.493]
+   ].
+
+
+/*
+
+Calculations of 1 RM based on nRM;
+The formulas is from Maud & Foster  "Physiological Assessments of"
+" Human Fitneess" (2 nd ed), page 140.
+
+(I assume kg in the formulas, but not sure if that' s correct or if it would matter.)
+     
+Also see: https://en.wikipedia.org/wiki/One - repetition_maximum ;
+ 
+The age coefficient (1.514 for age 60) is e.g from Meltzer - Faber Age coeffcients:
+   http://www.mastersweightlifting.org/forms/meltzer.htm
+
+also:
+   http://dinosaurtraining.blogspot.se/2016/12/the-difference-between-age-30-and-age-60.html
+
+Age coefficients: http://www.mastersweightlifting.org/forms/meltzer.htm 
+
+coeffs = {
+   {30, 1.000}, {31, 1.016}, {32, 1.031}, {33, 1.046}, {34, 1.059}, 
+   {35, 1.072}, {36, 1.083}, {37, 1.096}, {38, 1.109}, {39, 1.122}, 
+   {40, 1.135}, {41, 1.149}, {42, 1.162}, {43, 1.176}, {44, 1.189}, 
+   {45, 1.203}, {46, 1.218}, {47, 1.233}, {48, 1.248}, {49, 1.263}, 
+   {50, 1.279}, {51, 1.297}, {52, 1.316}, {53, 1.338}, {54, 1.361}, 
+   {55, 1.385}, {56, 1.411}, {57, 1.437}, {58, 1.462}, {59, 1.488}, 
+   {60, 1.514}, {61, 1.541}, {62, 1.568}, {63, 1.598}, {64, 1.629}, 
+   {65, 1.663}, {66, 1.699}, {67, 1.738}, {68, 1.779}, {69, 1.823}, 
+   {70, 1.867}, {71, 1.910}, {72, 1.953}, {73, 2.004}, {74, 2.06}, 
+   {75, 2.117}, {76, 2.181}, {77, 2.255}, {78, 2.336}, {79, 2.419}, 
+   {80, 2.540}, {81, 2.597}, {82, 2.702}, {83, 2.831}, {84, 2.981}, 
+   {85, 3.153}, {86, 3.352}, {87, 3.580}, {88, 3.843}, {89, 4.145}, 
+   {90, 4.493}};
+
+Note: There is a different list of coefficients (but it's not very different
+      from Meltzer-Faber's)
+http://www.mastersweightlifting.org/forms/malone.htm
+
+
+Strangely brzycki's formula yield a lower 1Rm than 10RM!
+Changed to Wikipedia's version:
+brzycki[weight_, reps_] :=  
+  weight * (36./(37 - reps));(* weight/1.0278 - 0.0278*reps*)
+
+epley[weight_, reps_] := 0.033*weight *reps + weight;
+epley2[weight_, reps_] := weight (1 + reps/30.);
+oconner[weight_, reps_] := weight*(1 + 0.025*reps);
+lombardi[weight_, reps_] := weight * reps^0.10;
+mcglothin[weight_, reps_] := 100*weight/(101.3 - 2.67123*reps);
+wathan[weight_, reps_] := 100*weight/(48.8 + 53.8 Exp[-0.075 reps]); 
+
+*/
