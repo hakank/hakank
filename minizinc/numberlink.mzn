@@ -54,7 +54,7 @@ constraint
    % "each end node has one connected neighbor and each interior node has two connected neighbors"
    forall(J in 1..NR, K in 1..NC) (
      let {
-        var 1..2: the_sum = sum([SubM[J1,K1]=SubM[J,K] | J1 in {J-1,J,J+1}, K1 in {K-1,K,K+1} where 
+        var 1..2: the_sum = sum([SubM[J1,K1]=SubM[J,K] | J1 in {J-1,J,J+1}, K1 in {K-1,K,K+1} where J1 in 1..NR /\ K1 in 1..NC /\
                                           % ((J1 = J) + (K1 = K)) = 1
                                           % /\
                                           ((J1 = J-1 /\ K1 = K) \/
