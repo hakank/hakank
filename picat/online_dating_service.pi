@@ -1,0 +1,272 @@
+/* 
+
+  Online Dating Service in Picat.
+
+  From https://dmcommunity.org/challenge/challenge-march-2017/
+  """
+  Consider the following situation. You have been approached by an online dating 
+  service that wants to use a rules engine to improve its process for matching 
+  people. Below is a brief explanation of "business logic" behind their online 
+  dating services:
+
+      - Each person creates a profile defining their preferences
+      - The rules check the profiles to determine all the possible matches for 
+        a person
+      - The matches are scored. Higher scores indicate a better match
+      - Scoring (once the matching criteria are met) is based on the age 
+        difference and the number of matching interests
+
+  Each profile includes:
+
+      - Name
+      - Gender
+      - City
+      - Age
+      - List of interests
+      - Minimum and Maximum acceptable age
+      - Acceptable genders
+      - Minimum number of matching interests.
+
+  And here are the rules (applied to both persons):
+
+      - Gender of the other person must be one of the acceptable genders
+      - Age of the other person must be within the acceptable range
+      - City must match exactly
+      - Matching interests of the other person must match at least the 
+        number specified
+
+  They even provided an example of a compatible match:
+
+      Jane (age 26, lives in Seattle, interests are skydiving, knitting, reading) 
+          is looking for a male age 28-32 with at least one of those interests
+      Jim (age 29, lives in Seattle, interests are skydiving, soccer, knitting) 
+          is looking for a female age 24-29 with at least two of those interests
+
+  Now, you need to build a working prototype to win their business. Can you do it? 
+  If yes, send your solution to decisionmanagementcommunity@gmail.com.
+  """
+
+  Note: the data is inspired (and adjusted) from page 3 of
+  https://dmcommunity.files.wordpress.com/2017/05/online-dating-decision-intelliops.pdf
+  """
+   name     age gender minMatches  acceptableSex city        minAge maxAge minInterests interests              
+   ---------------------------------------------------------------------------------------------------------------------
+   Jane     26    F      1           M           Seattle     28     32        1   sky diving,knitting,reading
+   Jim      29    M      2           F           Seattle     24     29        2   sky diving,soccer,knitting
+   Natalie  31    F      2           M           Aliso Viejo 35     45        3   soccer,paddle boarding,kayaking
+   Ashley   29    F      1           M           Aliso Viejo 29     40        2   soccer,paddle boarding,hiking
+   Nathan   34    M      2           F           Aliso Viejo 24     29        2   paddle boarding,kayaking,skiing
+   Lisa     23    F      1           M           Aliso Viejo 25     30        3   soccer,skiing,reading,kayaking
+   Ken      29    M      1           F           Aliso Viejo 21     25        1   soccer,kayaking,skiing,reading
+   Flavio   41    M      1           F           Aliso Viejo 21     40        1   soccer,skiing,reading
+   Andrew   43    M      1           F           Aliso Viejo 21     35        1   soccer,kayaking,paddle boarding,reading
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import sat.
+
+
+main => go.
+
+
+go ?=>
+  data(1,People,Interests,Data),
+  matching(People,Interests,Data),
+  nl.
+
+go => true.
+
+%
+% Using random data
+% 
+go2 ?=> 
+ nolog,
+ N = 50,
+ NumInterests = 20,
+ NumCities = 5,
+ _ = random2(),
+ Names = 1..N, 
+ Ages = [18 + random() mod 30 : _ in 1..N],
+ println(ages=Ages),
+ Sex = [1 + random() mod 2 : _ in 1..N],
+ println(sex=Sex),
+ OtherSex = [1+abs(Sex[I]-2) : I in 1..N], % Opposite sex
+ println(otherSex=OtherSex),
+ City = [1+ random() mod NumCities : _ in 1..N],
+ println(city=City),
+ MinAge = [ max(18,Ages[I] - random() mod 15) : I in 1..N], 
+ println(minAge=MinAge),
+ MaxAge = [ Ages[I] + random() mod 15 : I in 1..N], 
+ println(maxAge=MaxAge),
+ MinInterests = [1 + random() mod 2 : _ in 1..N],
+ % MinInterests = [1 : _ in 1..N],
+ println(minInterests=MinInterests),
+ Interests = [[ I : I in 1..NumInterests, 7 <= 1+random() mod 10  ] :  _ in 1..N],
+ NumInterests = max(Interests.flatten()),
+ println(interests=Interests),
+
+ Data = [Names,Ages,Sex,OtherSex,City,MinAge,MaxAge,MinInterests,Interests].transpose(),
+ matching(Names,1..NumInterests,Data),
+
+ nl.
+
+go2 => true.
+
+matching(People,Interests,Data) => 
+  println(people=People),
+  println(interests=Interests),
+  NumPeople = People.len,
+  NumInterests = Interests.len,
+  println(numPeople=NumPeople),
+  println(numInterests=NumInterests),
+
+  _NameIx = 1,
+  Age = 2,
+  Sex = 3,
+  SexOther = 4,
+  City = 5,
+  MinAge = 6,
+  MaxAge = 7,
+  MinInterests = 8,
+  TheInterests = 9,
+
+  PeoplesInterests = [Data[P,TheInterests] : P in 1..NumPeople],
+  % println(interestsInt=PeoplesInterests),
+  InterestsMatrix = new_list(NumPeople,NumInterests),
+  % println(interestsMatrix),
+  foreach(P in 1..NumPeople)
+    T = [cond(member(I, PeoplesInterests[P].sort()),1,0) : I in 1..NumInterests],
+    % println(P=T),
+    InterestsMatrix[P] := T
+  end,  
+  nl,
+
+  Ages = [Data[P,Age] : P in 1..NumPeople],
+  AgeDomain = min(Ages)..max(Ages),
+  println(ageDomain=AgeDomain),
+  SexDomain = [Data[P,Sex] : P in 1..NumPeople].sort_remove_dups(),
+  println(sexDomain=SexDomain),
+  CityDomain = [Data[P,City] : P in 1..NumPeople].sort_remove_dups(),
+  println(cityDomain=CityDomain),
+
+  Reciprocal = false,
+  
+  %  
+  % decision variables
+  % 
+  X = new_list(NumPeople),
+  X :: 1..NumPeople,   
+  
+  AgeDiff = new_list(NumPeople),
+  AgeDiff :: 0..max(Ages)-min(Ages)+1,
+
+  CompleteMatch = new_list(NumPeople),
+  CompleteMatch :: 0..1,
+
+  CommonInterests = new_list(NumPeople),
+  CommonInterests :: 0..NumInterests,
+
+  Z #= sum(CompleteMatch),
+
+  % constraints
+  % all_different(X), % not possible
+  foreach(P in 1..NumPeople)
+     % println(p=P),
+     X[P] #!= P, % cannot be assigned to itself
+
+     % gender of the other persion must be one of the 
+     % acceptable genders
+     SexXP :: SexDomain,
+     matrix_element(Data,X[P],SexOther,SexXP),
+     SexXP #= Data[P,Sex],
+
+     % age must be acceptable
+     AgeXP :: AgeDomain,
+     matrix_element(Data,X[P],Age,AgeXP),
+     AgeXP #>= Data[P,MinAge],
+     AgeXP #<= Data[P,MaxAge], 
+
+     % Reciprocal: Acceptable ages of X[P] must match the age of P as well, i.e. vice versa.
+     if Reciprocal then 
+       matrix_element(Data,X[P],MinAge,MinAgeXP),
+       matrix_element(Data,X[P],MaxAge,MaxAgeXP),
+       Data[P,Age] #>= MinAgeXP,
+       Data[P,Age] #=< MaxAgeXP
+     end, 
+
+     % city must match exactly
+     CityXP :: CityDomain,
+     matrix_element(Data,X[P],City,CityXP),
+     CityXP #= Data[P,City],
+
+     % Matching interests of the other person must match at least the 
+     % number specified
+     CommonInterests[P] #= sum([(PI #= 1 #/\ XPI #= 1): 
+                         I in 1..NumInterests, 
+                         matrix_element(InterestsMatrix,P,I,PI), 
+                         matrix_element(InterestsMatrix,X[P],I,XPI)]),
+     CommonInterests[P] #>= Data[P,MinInterests],
+
+     % age difference (for the score)
+     AgeDiff[P] #= abs(Data[P,Age]-AgeXP),
+
+     % CompleteMatch[P] = if P = X[X[P]] then 1 else 0 endif
+     element(X[P],X,XXP),
+     CompleteMatch[P] #= cond(P #= XXP,1,0)
+
+  end,
+
+  Vars = X ++ CompleteMatch ++ CommonInterests ++ AgeDiff,
+  println(solve),
+  % println(vars=Vars),
+  solve($[max(Z),ffd,updown,seq,report(println(z=Z))],Vars),
+  % solve($[degree],Vars),
+  % solve($[min(sum(AgeDiff)),degree],Vars),
+
+  println(x=X),
+  foreach(I in 1..NumPeople) 
+    Marker = cond(CompleteMatch[I]==1,"<->","->"),
+    printf("%10w %3w %-10w %d\n", People[I], Marker,People[X[I]], CompleteMatch[I])
+  end,
+  println(ageDiff=AgeDiff),
+  println(completeMatch=CompleteMatch),
+  println(z=Z),
+  println(commonInterests=CommonInterests),
+  nl,
+
+  fail,
+
+  nl.
+
+
+data(1,PeopleNames,InterestsNames,Data) =>
+  People = [Jane,Jim,Natalie,Ashley,Nathan,Lisa,Ken,Flavio,Andrew],
+  People = 1..People.len,
+  PeopleNames = [jane,jim,natalie,ashley,nathan,lisa,ken,flavio,andrew],
+  Seattle = 1,
+  AlisoViejo = 2,
+  F = 1,
+  M = 2,
+  Interests = [SkyDiving,Knitting,Reading,Soccer,PaddleBoarding,Kayaking,Hiking,Skiing],
+  Interests = 1..Interests.len,
+  InterestsNames = [skydiving,knitting,reading,soccer,paddleboarding,kayaking,hiking,skiing],
+  Data =
+[
+%Name   Age  Sex OthSex  City  MinAge MaxAge #MinInterests
+[Jane     ,26 ,F ,M ,Seattle    ,28 ,32 ,    2 ,[SkyDiving,Knitting,Reading]],
+[Jim      ,29 ,M ,F ,Seattle    ,24 ,29 ,    2 ,[SkyDiving,Soccer,Knitting]],
+[Natalie  ,31 ,F ,M ,AlisoViejo ,35 ,45 ,    3 ,[Soccer,PaddleBoarding,Kayaking]],
+[Ashley   ,29 ,F ,M ,AlisoViejo ,29 ,40 ,    1 ,[Soccer,PaddleBoarding,Hiking,Reading]],
+[Nathan   ,34 ,M ,F ,AlisoViejo ,24 ,29 ,    2 ,[PaddleBoarding,Kayaking,Skiing,Reading]],
+[Lisa     ,23 ,F ,M ,AlisoViejo ,25 ,30 ,    2 ,[Soccer,Skiing,Reading,Kayaking,PaddleBoarding]],
+[Ken      ,29 ,M ,F ,AlisoViejo ,21 ,25 ,    2 ,[Soccer,Kayaking,Skiing,Reading]],
+[Flavio   ,41 ,M ,F ,AlisoViejo ,21 ,40 ,    2 ,[Soccer,Skiing,Reading,PaddleBoarding]],
+[Andrew   ,43 ,M ,F ,AlisoViejo ,21 ,35 ,    1 ,[Soccer,Kayaking,PaddleBoarding,Reading,Skiing]]
+].
+

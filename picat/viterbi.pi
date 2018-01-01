@@ -1,0 +1,214 @@
+/* 
+
+  Viterbi algorithm in Picat.
+
+  http://en.wikipedia.org/wiki/Viterbi_algorithm
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+/*
+
+  Example from the Wikipedia article
+
+  """
+  Consider a primitive clinic in a village. People in the village have a 
+  very nice property that they are either healthy or have a fever. They can only 
+  tell if they have a fever by asking a doctor in the clinic. The wise doctor 
+  makes a diagnosis of fever by asking patients how they feel. Villagers 
+  only answer that they feel normal, dizzy, or cold.
+
+  Suppose a patient comes to the clinic each day and tells the doctor how 
+  she feels. The doctor believes that the health condition of this patient 
+  operates as a discrete Markov chain. There are two states, "Healthy" and "Fever", 
+  but the doctor cannot observe them directly, that is, they are hidden 
+  from him. On each day, there is a certain chance that the patient will 
+  tell the doctor she has one of the following feelings, depending on her 
+  health condition: "normal", "cold", or "dizzy". Those are the observations. 
+  The entire system is that of a hidden Markov model (HMM).
+
+  The doctor knows the villager's general health condition, and what symptoms 
+  patients complain of with or without fever on average. In other words, 
+  the parameters of the HMM are known. 
+  """
+*/
+go =>
+  
+  States = ['Healthy', 'Fever'],
+  Observations = ['normal', 'cold', 'dizzy'], % original example
+  % Observations = ['dizzy'],
+  % Observations = ['normal', 'cold', 'dizzy','dizzy','cold','normal'],
+  % Observations = ['normal', 'normal', 'dizzy','normal','cold','normal'],
+
+  StartProbability = new_map(['Healthy'=0.6, 'Fever'=0.4]),
+  TransitionProbability = new_map([
+   'Healthy'=new_map(['Healthy'= 0.7, 'Fever'=0.3]),
+   'Fever'= new_map(['Healthy'=0.4, 'Fever'=0.6])
+  ]),
+ 
+  EmissionProbability = new_map([
+   'Healthy'=new_map(['normal'=0.5, 'cold'=0.4, 'dizzy'=0.1]),
+   'Fever' = new_map(['normal'=0.1, 'cold'= 0.3, 'dizzy'=0.6])
+  ]),
+
+  println(observations=Observations),
+  (Prob,Path) = viterbi(Observations, States, StartProbability, TransitionProbability, EmissionProbability),
+  println(prob=Prob),
+  println(most_probable_path=Path),
+  nl.
+
+
+/*
+  From http://en.wikipedia.org/wiki/Hidden_Markov_model
+  """
+  Consider two friends, Alice and Bob, who live far apart from each other and 
+  who talk together daily over the telephone about what they did that day. 
+  Bob is only interested in three activities: walking in the park, shopping, 
+  and cleaning his apartment. The choice of what to do is determined exclusively 
+  by the weather on a given day. Alice has no definite information about the 
+  weather where Bob lives, but she knows general trends. Based on what Bob 
+  tells her he did each day, Alice tries to guess what the weather must have 
+  been like.
+
+  Alice believes that the weather operates as a discrete Markov chain. There are 
+  two states, "Rainy" and "Sunny", but she cannot observe them directly, that 
+  is, they are hidden from her. On each day, there is a certain chance that 
+  Bob will perform one of the following activities, depending on the 
+  weather: "walk", "shop", or "clean". Since Bob tells Alice about his 
+  activities, those are the observations. The entire system is that of a hidden 
+  Markov model (HMM).
+
+  Alice knows the general weather trends in the area, and what Bob likes to do 
+  on average. In other words, the parameters of the HMM are known.
+  """
+
+*/
+go2 =>
+
+  States = ['Rainy', 'Sunny'],
+  % Observations = ['walk', 'shop', 'clean'],
+  Observations = ['walk', 'shop', 'clean','walk','walk','shop'],
+  StartProbability = new_map(['Rainy'=0.6, 'Sunny'=0.4]),
+  TransitionProbability =  new_map([
+   'Rainy'=new_map(['Rainy'=0.7, 'Sunny'=0.3]),
+   'Sunny'=new_map(['Rainy'=0.4, 'Sunny'=0.6])
+   ]),
+ 
+  EmissionProbability = new_map([
+   'Rainy'=new_map(['walk'=0.1, 'shop'=0.4, 'clean'=0.5]),
+   'Sunny'=new_map(['walk'=0.6, 'shop'=0.3, 'clean'=0.1])
+  ]),
+
+  println(observations=Observations),
+  (Prob,Path) = viterbi(Observations, States, StartProbability, TransitionProbability, EmissionProbability),
+  println(prob=Prob),
+  println(most_probable_path=Path),
+  nl.
+
+%
+% From http://reference.wolfram.com/language/ref/FindHiddenMarkovStates.html
+%
+go3 =>
+  % hmm = HiddenMarkovProcess[{0.8, 0.2},  % initial  
+  %                           {{0.8, 0.2}, {0.3, 0.7}}, % transition matrix
+  %                          {{0.5, 0.5}, {0.1, 0.9}}   % emission matrix
+  %  ];
+  States = [a,b],
+  Observations = [y,y,x,y,y,y,y,x],
+  StartProbability = new_map([a=0.8, b=0.2]),
+  TransitionProbability = new_map([
+                          % a=new_map([a=0.8, b=0.2]), 
+                          a=new_map([a=0.6, b=0.4]), 
+                          b=new_map([a=0.3, b=0.7])
+                           ]),
+  EmissionProbability = new_map([
+                          a=new_map([x=0.5, y=0.5]), 
+                          b=new_map([x=0.1, y=0.9])
+                          ]),
+
+  println(observations=Observations),
+  (Prob,Path) = viterbi(Observations, States, StartProbability, TransitionProbability, EmissionProbability),
+  println(prob=Prob),
+  println(most_probable_path=Path),
+  nl.
+  
+
+
+%
+% Given probabilities etc, figure out the most probable states given
+% the observation(s) Obs.
+%
+viterbi(Obs, States, StartP, TransP, EmitP) = (Prob,Path.get(State)) =>
+  V = [new_map()],
+  Path = new_map(),
+ 
+  % Initialize base cases (t == 1)
+  foreach(Y in States)
+     S = StartP.get(Y),
+     E = EmitP.get(Y).get(Obs[1]),
+     V[1].put(Y,S*E),
+     Path.put(Y,[Y])
+  end,
+ 
+  % Run Viterbi for t > 1
+  TVal = 2,
+  foreach(T in 2..length(Obs))
+     V := V ++ [new_map()],
+     NewPath = new_map(),
+     foreach(Y in States)
+        L = [ (V[T-1].get(Y0) * TransP.get(Y0).get(Y) * EmitP.get(Y).get(Obs[T]), Y0) : Y0 in States],
+        (Prob, State) = L[argmax(L,1)],
+        V[T].put(Y,Prob),
+        NewPath.put(Y, Path.get(State,[]) ++ [Y])
+    end,
+    % Don't need to remember the old paths
+    Path := NewPath,
+    TVal := T
+  end,
+  N = Obs.length,
+  State = argmax_map(V[N]),
+  Prob = V[N].get(State),
+  print_dptable(V),
+  nl.
+
+
+%
+% Print the probability table of the steps.
+%
+print_dptable(V) =>
+    Len = V.length,
+    States = V[1].keys(),
+    Best = [argmax_map(V[T]) : T in 1..Len],
+    % println(best=Best),
+    println("     " ++ [to_fstring("%11d",T) : T in 1..Len].join(" ")),
+    foreach(State in States.sort())
+      printf("%10w: ", State), 
+      foreach(T in 1..Len)
+        % IsBest = cond(Best[T] == State, "*", " "),
+        % printf("%10.5f%s ", V[T].get(State), IsBest)
+        printf("%10.5f ", V[T].get(State))
+      end,
+      nl
+    end.
+
+
+%
+% argmax:
+% find the index/indices for the max value(s) of L
+%
+argmax(L) = MaxIxs =>
+  Max = max(L),
+  MaxIxs = [I : I in 1..L.length, L[I] == Max].first().
+
+argmax(L,Ix) = argmax([ X[Ix] : X in L]).
+
+argmax_map(L) = MaxIx =>
+   States = L.keys(),
+   MaxIx = States[argmax([ L.get(State) : State in States])].

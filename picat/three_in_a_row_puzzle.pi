@@ -1,0 +1,164 @@
+/* 
+
+  3-in-a-row puzzle in Picat.
+
+  From https://stackoverflow.com/questions/36202351/3-in-a-row-logic-puzzle-optimisation-for-sequence-constraints-in-lists-arrays
+  """
+  In the following puzzle we try and fill the grid with blue and white squares in such a way that:
+
+      A 3-in-a-row (or column) of the same colour is not allowed.
+      Each row and column has an equal number of blue and white squares.
+  
+  [example_puzzle: (W: White, B: Blue)
+      W _ _ _ B _
+      _ W _ _ _ _
+      _ _ _ _ _ W
+      B _ _ W _ _
+      _ _ B B _ _
+      _ W _ _ B _
+ ]
+
+  If we now represent white with a 0 and blue with a 1, we get:
+
+  0 _ _ _ 1 _
+  _ 0 _ _ _ _
+  _ _ _ _ _ 0
+  1 _ _ 0 _ _
+  _ _ 1 1 _ _
+  _ 0 _ _ 1 _
+
+  And we can pretty quickly verify that
+
+  0 1 0 0 1 1 
+  0 0 1 1 0 1 
+  1 1 0 1 0 0 
+  1 1 0 0 1 0 
+  0 0 1 1 0 1 
+  1 0 1 0 1 0 
+  """
+
+  The question has another instance in list representation (see below) which is converted to 
+  matrix representation.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import sat.
+
+
+main => go.
+
+
+go ?=>
+  problem(1,X),
+  three_in_a_row(X),
+  print_matrix(X),
+  fail,
+  nl.
+
+go => true.
+
+
+%
+% This instance has a huge number of solutions.
+% Finding first solution: cp 0.072s sat 0.083s
+% Prove unique solution: cp 0.161s sat 0.132s
+%
+go2 ?=>
+  nolog,
+  problem(2,X),
+  print_matrix(X),
+  three_in_a_row(X),
+  print_matrix(X),
+  fail, % proving unique solution
+  nl.
+
+go2 => true.
+
+% empty instances
+go3 ?=>
+  nolog,
+  N = 50,
+  X = new_array(N,N).array_matrix_to_list_matrix(),
+  X :: 0..1,
+  print_matrix(X),
+  three_in_a_row(X),
+  print_matrix(X),
+  % fail, 
+  nl.
+
+go3 => true.
+
+
+
+print_matrix(X) =>
+  foreach(Row in X) 
+     foreach(R in Row)
+       printf("%w,", cond(nonvar(R),R,"_"))
+     end,
+     nl
+     % println(Row) 
+  end,
+  nl.
+
+
+three_in_a_row(X) =>
+  X :: 0..1,
+  N = X.len,
+  N2 = N div 2,
+  
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..N]) #= N2,
+    sum([X[J,I] : J in 1..N]) #= N2,
+
+    % not 3 in a row
+    sliding_count(0,1,2,3,[X[I,J] : J in 1..N]),
+    sliding_count(1,1,2,3,[X[I,J] : J in 1..N]),
+    sliding_count(0,1,2,3,[X[J,I] : J in 1..N]) ,
+    sliding_count(1,1,2,3,[X[J,I] : J in 1..N]) 
+  end,
+
+  solve($[ff,split],X).
+
+%
+% The number of X's in a sequence of Seq numbers must be between Low and Up.
+% Note: Seq must be instantiated, but neither Low or Up has
+% to be (the result may be weird unless they are, though).
+% (Cf sliding_sum in http://hakank.org/picat/sliding_sum.pi )
+%
+sliding_count(X,Low, Up, Seq, Variables) =>
+   foreach(I in 1..Variables.length-Seq+1)
+      Sum #= sum([Variables[J] #= X : J in I..I+Seq-1]),
+      Sum #>= Low,
+      Sum #=< Up
+   end.
+
+% convert the list represenation to matrix representation
+convert(ProblemIn,Size) = ProblemOut =>
+  M = new_array(Size,Size),
+  foreach((I,J,R) in ProblemIn) 
+    M[I,J] := R
+  end,
+  ProblemOut = M.array_matrix_to_list_matrix().
+
+% problem(1,Problem) =>
+% Problem = 
+% [[0,_,_,_,1,_],
+%  [_,0,_,_,_,_],
+%  [_,_,_,_,_,0],
+%  [1,_,_,0,_,_],
+%  [_,_,1,1,_,_],
+%  [_,0,_,_,1,_]].
+
+problem(1,Problem) =>
+ Size = 6,
+ Problem = convert([(1,1,0),(1,5,1),(2,2,0),(3,6,0),(4,1,1),(4,4,0),(5,3,1),(5,4,1),(6,2,0),(6,5,1)],Size).
+
+problem(2,Problem) => 
+ Size = 18,
+ Problem = convert([(1,3,0),(1,9,0),(1,10,0),(1,12,0),(1,14,0),(1,18,1),(2,4,0),(2,7,1),(2,8,1),(3,2,1),(3,6,0),(3,16,0),(3,17,0),(4,2,1),(4,4,1),(4,10,1),(4,13,1),(4,18,1),(5,8,1),(5,10,1),(5,15,0),(5,16,1),(6,12,1),(7,3,0),(7,4,0),(7,6,1),(7,9,0),(7,12,1),(7,17,0),(8,1,1),(8,4,0),(8,8,1),(8,15,1),(8,16,1),(9,7,0),(9,10,0),(9,14,0),(10,2,1),(10,4,1),(10,6,1),(10,13,1),(11,7,0),(11,10,1),(12,1,1),(12,4,1),(12,7,1),(12,15,1),(12,16,1),(13,1,1),(13,6,0),(13,8,1),(13,10,0),(13,16,1),(14,5,1),(14,10,0),(14,13,1),(15,1,1),(15,3,1),(15,12,0),(15,13,1),(15,15,0),(16,2,1),(16,4,0),(16,12,0),(16,18,0),(17,9,0),(17,15,0),(17,18,0),(18,2,1),(18,8,1),(18,11,1),(18,15,1),(18,16,1)],Size).
