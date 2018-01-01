@@ -3,9 +3,11 @@
 % 
 % From https://dmcommunity.org/challenge/challenge-dec-2017/
 % """
-% Santa always leaves plans for his elves to determine the order in which the reindeer 
-% will pull his sleigh. This year, for the European leg of his journey, his elves are 
-% working to the following schedule, which will form a single line of nine reindeer. 
+% Santa always leaves plans for his elves to determine the order in which the 
+% reindeer will pull his sleigh. This year, for the European leg of his 
+% journey, his elves are working to the following schedule, which will form a 
+% single line of nine reindeer. 
+%
 % Here are the rules:
 %
 %     Comet behind Rudolph, Prancer and Cupid
@@ -24,19 +26,26 @@
 %     Cupid in front of Rudolph and Dancer
 %     Vixen behind Rudolph, Prancer and Dasher.
 %
-% Create a decision model that determines the order of the reindeer and send your 
-% solution to DecisionManagementCommunity@gmail.com.
+% Create a decision model that determines the order of the reindeer and send 
+% your solution to DecisionManagementCommunity@gmail.com.
 % """
 
 % Answer: prancer, cupid, rudolph, dasher, blitzen, vixen, comet, donder, dancer
+
+
+% Note
+% * All 15 constraints are not needed. In fact only 9 constraints are needed in order
+%   to solve the problem without search.
+%   Below I've comment out the one that's not needed.
+% * I'm not sure if this is the only combination of 9 constraints that is needed.
+%   Perhaps there is some other combination of 9 constraints that will suffice.
+
 
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@gmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc/
 %
 include "globals.mzn"; 
-
-int: n = 9;
 
 enum reindeer = {blitzen,comet,cupid,dancer,dasher,donder,prancer,rudolph,vixen};
 
@@ -52,7 +61,8 @@ var reindeer: Rudolph;
 var reindeer: Vixen;   
 
 % places of each of the reindeer
-array[reindeer] of var reindeer: x = [Blitzen,Comet,Cupid,Dancer,Dasher,Donder,Prancer,Rudolph,Vixen];
+array[reindeer] of var reindeer: x = 
+       [Blitzen,Comet,Cupid,Dancer,Dasher,Donder,Prancer,Rudolph,Vixen];
 % the order of the reindeer (the solution)
 array[reindeer] of var reindeer: order;
 
@@ -68,21 +78,21 @@ constraint
   all_different(x) /\
   inverse(x,order) /\
 
-  Comet `behind` {Rudolph,Prancer, Cupid} /\
-  Blitzen `behind` {Cupid} /\
+  % Comet `behind` {Rudolph,Prancer, Cupid} /\
+  % Blitzen `behind` {Cupid} /\
   Blitzen `in_front_of` {Donder,Vixen,Dancer} /\
-  Cupid `in_front_of` {Comet, Blitzen,Vixen} /\
+  % Cupid `in_front_of` {Comet, Blitzen,Vixen} /\
   Donder `behind` {Vixen, Dasher, Prancer} /\
-  Rudolph `behind` {Prancer} /\
+  % Rudolph `behind` {Prancer} /\
   Rudolph `in_front_of` {Donder, Dancer, Dasher} /\
   Vixen `in_front_of` {Dancer,Comet} /\
   Dancer `behind` {Donder, Rudolph,Blitzen} /\
   Prancer `in_front_of` {Cupid, Donder, Blitzen} /\
-  Dasher `behind` {Prancer} /\
+  % Dasher `behind` {Prancer} /\
   Dasher `in_front_of` {Vixen, Dancer, Blitzen} /\
   Donder `behind` {Comet,Cupid} /\
-  Cupid `in_front_of` {Rudolph,Dancer} /\
-  Vixen `behind` {Rudolph, Prancer, Dasher}
+  Cupid `in_front_of` {Rudolph,Dancer} % /\
+  % Vixen `behind` {Rudolph, Prancer, Dasher}
 ;
 
 output ["\(order)\n"];
