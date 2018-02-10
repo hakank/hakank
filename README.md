@@ -42,6 +42,7 @@ Here's a summary of the directories so far:
 * sicstus: SICStus Prolog, constraint programming, logic programming, loops. etc
 * unicon: Unicon/Icon, high level programming language
 * weka: Weka, data mining/machine learning, Java files, HTML, and data files (ARFF and CSV)
+* z3: Z3/Z3Py theorem prover / SMT solver
 
 I'll try to keep this repository as updated as possible.
 
