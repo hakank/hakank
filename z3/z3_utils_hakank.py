@@ -7,7 +7,10 @@
 # These where added mostly for simplifying the porting of my "traditional"
 # constraint programming models.
 #
-# Convenience wrappers for creating variables and their domains etc
+#
+#####################################################################
+# Convenience wrappers for creating variables and their domains etc #
+#####################################################################
 #
 # - makeIntVar(sol,name,min_val, max_val)
 # - makeIntVarVals(sol,name,vals)
@@ -26,9 +29,14 @@
 #
 # - evalArray(mod,a)
 # - print_grid(sol,mod,x,num_rows,num_cols)
+# - copyArray(sol,a1,name, min_val, max_val)
+# - copyArrayMatrix(sol,a1,name, rows, cols, min_val, max_val)
+#
 
 #
-# Global constraints (decompositions) in Z3
+############################################# 
+# Global constraints (decompositions) in Z3 #
+#############################################
 #
 # - all_different(sol,x)
 # - all_different_except_0(sol,x)
@@ -43,7 +51,9 @@
 # - circuit(sol,z,path,n)  See circuit.py
 # - inverse(sol,f,invf,n)
 # - maximum(sol,max,x)
+# - v == maximum2(sol,x)
 # - minimum(sol,min,x)
+# - v == minimum2(sol,x)
 # - abs(x)
 # - toNum
 # - subset_sum(sol, values, total)
@@ -52,16 +62,16 @@
 # - no_overlap(sol, s1, d1, s2, d2)
 # - sliding_sum(sol, low, up, seq, x)
 # - bin_packing(sol,capacity, bins, weights)
-#
+# - cumulative(sol, s, d, r, b,times_min,times_max1)
+# - global_contiguity(sol, x,start,end)
+# - regular(sol, x, Q, S, d, q0, F, x_len)
 # 
 # TODO
-# element not needed! z = x[y] works for Array/3 (but not for Int or IntVector)
+# element: it's not needed! z = x[y] works for Array/3 (but not for Int or IntVector)
 # lex_(le|lt|ge|gt)(sol,x,y)  : array x is lexicographic (equal or) less/greater than array y
 # nvalue
 # matrix_element: stable_marriage.py needs that!
-# cumulative See furniture_moving.py for a start..
 # diffn?
-# regular???
 # subcircuit???
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
@@ -69,12 +79,16 @@
 # 
 # 
 from z3 import *
+import uuid
+
+
+def getNewId():
+  return uuid.uuid4().int
 
 #
 # Utils to create Int, IntVector, Array etc
 # as well as the fiddling of evaluation and ensuring new solutions.
 #
-
 # creates Int() with a domain
 def makeIntVar(sol,name,min_val, max_val):
     v = Int(name)
@@ -175,6 +189,27 @@ def print_grid(mod,x,rows,cols):
             print mod.eval(x[(i,j)]),
         print
     print
+
+#
+# Copy the (integer) array into an Array()
+#
+def copyArray(sol,a1,name, min_val, max_val):
+  n = len(a1)
+  a = makeIntArray(sol,name,n,min_val,max_val)
+  for i in range(n):
+    sol.add(a[i] == a1[i])
+  return a
+
+
+#
+# Copy the (integer) matrix into an Array()
+#
+def copyArrayMatrix(sol,a1,name, rows, cols, min_val, max_val):
+  a = makeIntArray(sol,name,rows*cols,min_val,max_val)
+  for i in range(rows):
+    for j in range(cols):        
+      sol.add(a[i*cols+j] == a1[i][j])
+  return a
 
 
 #
@@ -300,18 +335,35 @@ def inverse(sol, f, invf, n):
         for j in range(n):
             sol.add((j == f[i]) == (i == invf[j]))
 
-# max is the maximum value of x
-def maximum(sol, max, x):
-  sol.add(Or([max == x[i] for i in range(len(x))])) # max is an element in x)
+# v is the maximum value of x
+def maximum(sol, v, x):
+  sol.add(Or([v == x[i] for i in range(len(x))])) # max is an element in x)
   for i in range(len(x)):
-    sol.add(max >= x[i]) # and it's the greatest
+    sol.add(v >= x[i]) # and it's the greatest
+
+# v == maximum2(sol,x): v is the maximum value of x
+def maximum2(sol, x):
+  v = Int("v_%i"% uuid.uuid4().int)
+  sol.add(Or([v == x[i] for i in range(len(x))])) # v is an element in x)
+  for i in range(len(x)):
+    sol.add(v >= x[i]) # and it's the greatest
+  return v
 
 
 # min is the minimum value of x
-def minimum(sol, min, x):
-  sol.add(Or([min == x[i] for i in range(len(x))])) # min is an element in x)
+def minimum(sol, v, x):
+  sol.add(Or([v == x[i] for i in range(len(x))])) # v is an element in x)
   for i in range(len(x)):
-    sol.add(min <= x[i]) # and it's the smallest
+    sol.add(v <= x[i]) # and it's the smallest
+
+# v == minimum2(sol,x): v is the minimum value of x
+def minimum2(sol, x):
+  v = Int("v_%i"% uuid.uuid4().int)
+  sol.add(Or([v == x[i] for i in range(len(x))])) # min is an element in x)
+  for i in range(len(x)):
+    sol.add(v <= x[i]) # and it's the smallest
+  return v
+
 
 # absolute value of x
 def Abs(x):
@@ -369,8 +421,6 @@ def sliding_sum(sol, low, up, seq, x):
     s = makeIntVar(sol, "s_%i"%i,low,up)    
     sol.add(s == Sum([x[j] for j in range(i,i+seq)]))
 
-
-#
 # bin_packing
 #
 # Note: capacity (and bins) might be IntVar but weights must be an int vector
@@ -380,6 +430,131 @@ def bin_packing(sol,capacity, bins, weights):
   for b in range(n):
     sol.add(Sum([ weights[j]*If(bins[j] == b,1,0) for j in range(n)] ) <= capacity)
 
+#
+# Decompositon of cumulative.
+#
+# Inspired by the MiniZinc implementation:
+# http://www.g12.csse.unimelb.edu.au/wiki/doku.php?id=g12:zinc:lib:minizinc:std:cumulative.mzn&s[]=cumulative
+# The MiniZinc decomposition is discussed in the paper:
+# A. Schutt, T. Feydy, P.J. Stuckey, and M. G. Wallace.
+# 'Why cumulative decomposition is not as bad as it sounds.'
+# Download:
+# http://www.cs.mu.oz.au/%7Epjs/rcpsp/papers/cp09-cu.pdf
+# http://www.cs.mu.oz.au/%7Epjs/rcpsp/cumu_lazyfd.pdf
+#
+#
+# Parameters:
+#
+# s: start_times    assumption: array of IntVar
+# d: durations      assumption: array of int
+# r: resources      assumption: array of int
+# b: resource limit assumption: IntVar or int
+#
+# Note: since I don't know how to extract the bounds of the
+#       domains, both times_min and times_max1 are required
+#       which is the lower/upper limits of s (the start_times).
+#       Which makes it slower...
+#
+def cumulative(sol, s, d, r, b,times_min,times_max1):
+
+  tasks = [i for i in range(len(s)) if r[i] > 0 and d[i] > 0]
+  
+  # how do I get the upper/lower value of a decision variable?
+  # times_min = min([s[i].Min() for i in tasks])
+  # times_max = max([s[i].Max() + max(d) for i in tasks])
+  times_max = times_max1 + max(d)
+  for t in range(times_min, times_max + 1):
+    for i in tasks:
+      sol.add(Sum([(If(s[i] <= t,1,0) * If(t < s[i] + d[i],1,0))*r[i] for i in tasks])  <= b)
+
+  # Somewhat experimental:
+  # This constraint is needed to contrain the upper limit of b.
+  if not isinstance(b, int):
+    sol.add(b <= sum(r))
+
+
+#
+# Global_contiguity:
+# Enforce that all 1s must be in a contiguous group.
+# Assumption: There must be at least one 1.
+#
+def global_contiguity(sol, x,start,end):
+  n = len(x)
+  sol.add(start<=end)
+  for i in range(n):
+    sol.add(And(i >= start, i <= end) == x[i] == 1)
+
+
+#
+# Global constraint regular
+#
+# This is a translation of MiniZinc's regular constraint (defined in
+# lib/zinc/globals.mzn), via the Comet code refered above.
+# All comments are from the MiniZinc code.
+# '''
+# The sequence of values in array 'x' (which must all be in the range 1..S)
+# is accepted by the DFA of 'Q' states with input 1..S and transition
+# function 'd' (which maps (1..Q, 1..S) -> 0..Q)) and initial state 'q0'
+# (which must be in 1..Q) and accepting states 'F' (which all must be in
+# 1..Q).  We reserve state 0 to be an always failing state.
+# '''
+#
+# x : IntVar array
+# Q : number of states
+# S : input_max
+# d : transition matrix
+# q0: initial state
+# F : accepting states
+# x_len: length of x [when using Array we cannot extract the length]
+#
+def regular(sol, x, Q, S, d, q0, F, x_len):
+
+  assert Q > 0, 'regular: "Q" must be greater than zero'
+  assert S > 0, 'regular: "S" must be greater than zero'
+
+  # d2 is the same as d, except we add one extra transition for
+  # each possible input;  each extra transition is from state zero
+  # to state zero.  This allows us to continue even if we hit a
+  # non-accepted input.
+
+  # Comet: int d2[0..Q, 1..S]
+  d2 = []
+  for i in range(Q + 1):
+    row = []
+    for j in range(S):
+      if i == 0:
+        row.append(0)
+      else:
+        row.append(d[i - 1][j])
+    d2.append(row)
+
+  d2_flatten = [d2[i][j] for i in range(Q + 1) for j in range(S)]
+  d2_flatten_a = makeIntArray(sol,"d2_flatten_a_%i"%uuid.uuid4().int,len(d2_flatten),min(d2_flatten),max(d2_flatten))
+  for i in range(len(d2_flatten)):
+     sol.add(d2_flatten[i] == d2_flatten_a[i])
+
+  # If x has index set m..n, then a[m-1] holds the initial state
+  # (q0), and a[i+1] holds the state we're in after processing
+  # x[i].  If a[n] is in F, then we succeed (ie. accept the
+  # string).
+  x_range = list(range(0, x_len))
+  m = 0
+  # n = len(x)
+  n = x_len
+
+  a = [makeIntVar(sol,'a[%i]_%i' % (i,uuid.uuid4().int), 0, Q + 1) for i in range(m, n + 1)]
+
+  # Check that the final state is in F
+  member_of(sol,a[-1],F)
+  
+  # First state is q0
+  sol.add(a[m] == q0)
+  for i in x_range:
+    sol.add(x[i] >= 1)
+    sol.add(x[i] <= S)
+
+    # Determine a[i+1]: a[i+1] == d2[a[i], x[i]]
+    sol.add(a[i + 1] == d2_flatten_a[(a[i] * S) + (x[i] - 1)])
 
 
 # Some experiments
