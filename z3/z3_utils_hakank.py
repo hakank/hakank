@@ -16,6 +16,7 @@
 # - makeIntVarVals(sol,name,vals)
 # - makeIntVars(sol,name,size, min_val, max_val)
 # - makeIntVector(sol,name,min_val, max_val)
+# - makeIntVectorMatrix(sol,name,rows,cols,min_value,max_value)
 # - makeIntArray(sol,name,min_val, max_val)
 # - makeIntArrayVector(sol,name,min_val, max_val)
 #
@@ -40,6 +41,8 @@
 #
 # - all_different(sol,x)
 # - all_different_except_0(sol,x)
+# - element(sol,ix,x,v,n)
+# - element_matrix(sol,ix,jx,x,v,rows,cols)
 # - increasing(sol,x)
 # - decreasing(sol,x)
 # - count(sol, value, x, n)
@@ -65,12 +68,13 @@
 # - cumulative(sol, s, d, r, b,times_min,times_max1)
 # - global_contiguity(sol, x,start,end)
 # - regular(sol, x, Q, S, d, q0, F, x_len)
+# - all_different_modulo(sol, x, m)
+# - among(sol,m,x,v)
+# - nvalue(sol, m, x, min_val,max_val)
+#
 # 
 # TODO
-# element: it's not needed! z = x[y] works for Array/3 (but not for Int or IntVector)
 # lex_(le|lt|ge|gt)(sol,x,y)  : array x is lexicographic (equal or) less/greater than array y
-# nvalue
-# matrix_element: stable_marriage.py needs that!
 # diffn?
 # subcircuit???
 # 
@@ -80,7 +84,7 @@
 # 
 from z3 import *
 import uuid
-
+import time
 
 def getNewId():
   return uuid.uuid4().int
@@ -112,6 +116,13 @@ def makeIntVector(sol,name, size, min_val, max_val):
     [sol.add(v[i] >= min_val, v[i] <= max_val) for i in range(size)]
     return v
 
+def makeIntVectorMatrix(sol,name,rows,cols,min_value,max_value):
+  x = {}
+  for i in range(rows):
+    for j in range(cols):
+      x[(i,j)] = makeIntVar(sol,name + "%i_%i"%(i,j),min_value,max_value)
+  return x
+
 # creates an Array with a domain
 def makeIntArray(sol,name, size, min_val, max_val):
     a = Array(name,IntSort(),IntSort())
@@ -142,8 +153,6 @@ def makeRealVector(sol,name, size, min_val, max_val):
     [sol.add(v[i] >= min_val, v[i] <= max_val) for i in range(size)]
     return v
 
-
-
 #
 # When using
 #    while sol.check() == sat:
@@ -161,8 +170,8 @@ def makeRealVector(sol,name, size, min_val, max_val):
 # for maximization problems.
 #
 def getDifferentSolution(sol,mod, *params):
-    for t in params:
-        sol.add(Or([t[i] != mod.eval(t[i]) for i in range(len(t))]))
+  for t in params:
+    sol.add(Or([t[i] != mod.eval(t[i]) for i in range(len(t))]))
 
 # special case for a matrix; requires number of rows and columns
 def getDifferentSolutionMatrix(sol,mod, x, rows, cols):
@@ -228,6 +237,32 @@ def all_different(sol,x):
     for i in range(len(x)):
         for j in range(i):
             sol.add( x[i] != x[j])
+
+#
+# element(sol,ix,x,v,n)
+#  v = x[ix]
+# n = length of x
+#
+# Experimental!
+#
+def element(sol,ix,x,v,n):
+  for i in range(n):
+    sol.add(Implies(i==ix, v == x[i]))
+
+
+#
+# element_matrix(sol,ix,jx,x,v,rows,cols)
+#   v = x[(ix,jx)]
+# where x is an matrix of rows x cols
+#
+# Experimental!
+#
+def element_matrix(sol,ix,jx,x,v,rows,cols):
+  for i in range(rows):
+    for j in range(cols):
+      sol.add(Implies(And(i == ix, j == jx), v == x[(i,j)]))
+
+
 
 # increasing_strict/2
 def increasing_strict(sol,x):
@@ -555,6 +590,38 @@ def regular(sol, x, Q, S, d, q0, F, x_len):
 
     # Determine a[i+1]: a[i+1] == d2[a[i], x[i]]
     sol.add(a[i + 1] == d2_flatten_a[(a[i] * S) + (x[i] - 1)])
+
+#
+# all_different_modulo(sol, x, m)
+#
+# Ensure that all elements in x (modulo m) are distinct
+# 
+def all_different_modulo(sol, x, m):
+  n = len(x)
+  mods = makeIntVector(sol,"mods",n, 0,m-1)
+  for i in range(n):
+     sol.add(mods[i] == x[i] % m)
+  sol.add(Distinct(mods))
+
+
+# among(sol,m,x,v)
+#
+# Requires exactly m variables in x to take one of the values in v.
+# 
+def among(sol,m,x,v):
+  sol.add(m == Sum([If(x[i] == j,1,0) for i in range(len(x)) for j in v]))
+
+
+# nvalue(sol, m, x, min_val,max_val)
+# 
+# Requires that there is exactly m distinct values in x
+# (min_val and max_val are the minimum and maximum value
+# in x, respectively)
+#
+def nvalue(sol, m, x, min_val,max_val):
+  n = len(x)
+  sol.add(m == Sum([ If(Sum([ If(x[j] == i,1,0) for j in range(n)]) > 0,1,0) for i in range(min_val, max_val+1)]))
+
 
 
 # Some experiments
