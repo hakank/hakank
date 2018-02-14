@@ -71,6 +71,8 @@
 # - all_different_modulo(sol, x, m)
 # - among(sol,m,x,v)
 # - nvalue(sol, m, x, min_val,max_val)
+# - clique(sol, g, clique, card)
+# - all_min_dist(sol,min_dist, x, n)
 #
 # 
 # TODO
@@ -621,6 +623,38 @@ def among(sol,m,x,v):
 def nvalue(sol, m, x, min_val,max_val):
   n = len(x)
   sol.add(m == Sum([ If(Sum([ If(x[j] == i,1,0) for j in range(n)]) > 0,1,0) for i in range(min_val, max_val+1)]))
+
+
+
+#
+# clique(sol, g, clique, card)
+#
+# Ensure that the boolean array "clique" (of Integer Array type) 
+# represents a clique in the graph g with the cardinality card.
+# 
+# Note: This is kind of backward, but it is the whole thing:
+# If there is a connection between nodes I and J (I \= J) then
+# there should be a node from I to J in G. If it's not then
+# both c1 and c2 is not in the clique.
+#
+def clique(sol, g, clique, card):
+  n = len(g)
+  sol.add(card == Sum([clique[i] for i in range(n)]))
+  for (c1,i) in zip(clique, range(n)):
+    for (c2,j) in zip(clique, range(n)):
+      sol.add(Implies(And(i != j, g[i][j] == 0), Or(c1 == 0, c2 == 0)))
+
+
+#
+# all_min_dist(sol,min_dist, x, n)
+#
+# Ensures that the differences of all pairs (i !=j) are
+# >= min_dist.
+#
+def all_min_dist(sol,min_dist, x, n):
+  for i in range(n):
+    for j in range(i):
+      sol.add(Abs(x[i]-x[j]) >= min_dist)
 
 
 
