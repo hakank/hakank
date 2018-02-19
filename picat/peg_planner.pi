@@ -1,0 +1,277 @@
+/* 
+
+  Peg solitaire puzzle in Picat.
+
+  This is a general peg puzzle solver for Picat. It can solve both the classical
+  one hole problems (see below) as well as multi hole problems (see go/0 and go1/0).
+
+  Much of this code where inspired by a model by Claudio Cesar de Sá
+  (some of this code it still intact).
+
+  It has been simplified and expanded, for example to handle 
+  and extra constraints in which position the final '1' should 
+  be placed.
+
+  Here is an example of the original peg's puzzle
+  """
+   # # 1 1 1 # # 
+   # # 1 1 1 # # 
+   1 1 1 1 1 1 1 
+   1 1 1 0 1 1 1 
+   1 1 1 1 1 1 1 
+   # # 1 1 1 # # 
+   # # 1 1 1 # # 
+
+   End state:
+
+   # # 0 0 0 # # 
+   # # 0 0 0 # # 
+   0 0 0 0 0 0 0 
+   0 0 0 1 0 0 0 
+   0 0 0 0 0 0 0 
+   # # 0 0 0 # # 
+   # # 0 0 0 # # 
+
+   CPU time 0.499 seconds.
+
+   [[jump_down,2,4],[jump_right,3,2],[jump_down,1,3],[jump_left,1,5],[jump_left,3,4],[jump_right,3,1],[jump_up,3,5],[jump_left,3,7],[jump_up,4,3],[jump_down,1,3],[jump_right,4,1],[jump_up,4,3],[jump_up,4,5],[jump_down,1,5],[jump_left,4,7],[jump_up,4,5],[jump_up,6,3],[jump_right,5,1],[jump_up,5,3],[jump_down,2,3],[jump_right,4,3],[jump_up,5,5],[jump_down,2,5],[jump_left,5,7],[jump_right,5,4],[jump_up,7,5],[jump_down,4,5],[jump_right,7,3],[jump_up,7,5],[jump_left,5,6],[jump_up,6,4]]
+   len = 31
+  """
+
+  Also see 
+  - https://en.wikipedia.org/wiki/Peg_solitaire
+  - http://recmath.org/pegsolitaire/index.html
+  - https://ece.uwaterloo.ca/~dwharder/aads/Algorithms/Backtracking/Peg_solitaire/
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+
+*/
+
+import util.
+import planner.
+
+main => go.
+
+go ?=>
+   % Format of the file:
+   % """
+   % 1##100
+   % 1##1##
+   % 0010##
+   % """
+   % http://hakank.org/picat/peg_planner_map.txt
+   Map = read_file_lines("peg_planner_map.txt").list_matrix_to_array_matrix(),
+
+   println("Init:"),
+   print_map(Map), nl,
+   puzzle(Map,Plan),
+   println(Plan), 
+   Len = Plan.len,
+   println(len=Len),
+   show_solution(Map, Plan),
+   nl.
+   
+go =>  
+  printf("\nSomething is wrong!").
+
+
+% This is the same problem as in g0/0.
+go2 =>
+   Map = {
+     "1##100",
+     "1##1##",
+     "0010##"
+   },
+   print_map(Map), nl,
+   time(best_plan_nondet(Map, Plan)),
+   println(Plan), 
+   Len = Plan.len,
+   println(len=Len),
+   show_solution(Map, Plan),
+   fail,
+   nl.
+
+go3 =>
+   %
+   % This is the traditional peg's puzzle: http://recmath.org/pegsolitaire/index.html
+   % with the extra constraint that the mid piece ([4,4]) must be the last peg.
+   Map = {
+     "##111##",
+     "##111##",
+     "1111111",
+     "1110111",
+     "1111111",
+     "##111##",
+     "##111##"
+   },
+   % set constraint that Map[4,4] must be the last '1'
+   % identify the '0'
+   Pos = [[I,J] : I in 1..Map.len, J in 1..Map[1].len, Map[I,J] == '0'].flatten(),
+   get_global_map().put(last,Pos),
+   println(pos=Pos),
+   Bound = get_bound(Map),
+   print_map(Map), nl,
+   time(plan(Map,Bound,Plan)),
+   println(Plan), 
+   Len = Plan.len,
+   println(len=Len),
+   show_solution(Map, Plan),
+   println(len=Len),
+   nl.
+
+
+go4 =>
+   % Variant, the 6x6 puzzle: http://recmath.org/pegsolitaire/index.html
+   % with the extra constraint that the piece ([3,4]) must be the last peg.
+   Map = {
+     "111111",
+     "111111",
+     "111011",
+     "111111",
+     "111111",
+     "111111"
+   },
+   % identify the '0'
+   Pos = [[I,J] : I in 1..Map.len, J in 1..Map[1].len, Map[I,J] == '0'].flatten(),
+   get_global_map().put(last,Pos),
+   Bound = get_bound(Map),
+   print_map(Map), nl,
+   time(plan_unbounded(Map, Bound, Plan)),
+   println(Plan), 
+   Len = Plan.len,
+   println(len=Len),
+   show_solution(Map, Plan),
+   println(len=Len),
+   nl.
+
+%
+% Random instances
+% Note: There's a - not small - probability that the instance is not solvable.
+%
+go5 => 
+  Rows = 5,
+  Cols = 8,
+  Map = new_array(Rows,Cols),
+  bind_vars(Map,'1'),
+  _ = random2(),
+  foreach(I in 1..Rows, J in 1..Cols)
+    R = 1 + random() mod 100,
+    if R >= 70 then Map[I,J] := '0' end,
+    if R >= 90 then Map[I,J] := '#' end
+  end,
+  println("Init:"),
+  print_map(Map), 
+  nl,
+  Bound = get_bound(Map),
+  time(plan_unbounded(Map, Bound, Plan)),
+  println(Plan), 
+  Len = Plan.len,
+  println(len=Len),
+  show_solution(Map, Plan), 
+  nl.
+
+
+puzzle(Map, Plan) => 
+   time(best_plan_bb( Map , Plan)).
+
+
+get_bound(Grid) = sum([1 : I in array_matrix_to_list(Grid), I=='1'])-1.   
+
+final(Grid) =>
+   length([1 : I in array_matrix_to_list(Grid), I=='1']) == 1,
+   % println(found_1),
+   % Position of the last peg. Used for certain problems, 
+   % e.g. the original peg's puzzle
+   if (get_global_map().has_key(last)) then
+      [X,Y] = get_global_map().get(last),
+      Grid[X, Y] == '1'
+   end,
+   println("End state:"),
+   print_map(Grid). 
+
+
+action(Grid,New_Grid, Action, Action_Cost) ?=>
+  Grid_TEMP = copy_term(Grid),
+  Action_Cost = 1,
+  L_all_mov =  f_feasible_moves( Grid ),
+  member( (Action1, X, Y) , L_all_mov),
+  if (Action1 == jump_right) then
+     Grid_TEMP[X, Y]   := '0',
+     Grid_TEMP[X ,Y+1] := '0',     
+     Grid_TEMP[X, Y+2] := '1'
+  elseif (Action1 == jump_left) then
+     Grid_TEMP[X, Y]   := '0',
+     Grid_TEMP[X, Y-1] := '0',     
+     Grid_TEMP[X, Y-2] := '1'
+  elseif (Action1 == jump_up) then
+     Grid_TEMP[X,   Y] := '0',      
+     Grid_TEMP[X-1, Y] := '0',     
+     Grid_TEMP[X-2, Y] := '1'
+  elseif (Action1 == jump_down) then
+     Grid_TEMP[X,   Y] := '0',      
+     Grid_TEMP[X+1, Y] := '0',     
+     Grid_TEMP[X+2, Y] := '1'
+  end,
+  Action = [Action1,X,Y],
+  New_Grid = Grid_TEMP.
+
+
+/* Get all feasible_movement in XY  grid from a cell with  VALID MOVEMENT */
+f_feasible_moves(Map) = L_mov  =>
+  L = Map.length,
+  C = Map[1].length,
+  Aux := [],
+  foreach(I in 1 .. L , J in 1 .. C)
+    if (I+2 =<L , Map[I,J] == '1' , Map[I+1,J] == '1' ,  Map[I+2,J] == '0' ) then  %110
+      Aux := Aux ++ [(jump_down,I,J)] 
+    elseif (I-2 >= 1 , Map[I,J] == '1' , Map[I-1,J] == '1',  Map[I-2,J] == '0' ) then  %011
+      Aux := Aux ++ [(jump_up,I,J)] 
+    elseif (J+2 =<C , Map[I,J] == '1', Map[I,J+1] == '1',  Map[I,J+2] == '0' ) then  %down
+      Aux := Aux ++ [(jump_right,I,J)] 
+    elseif (J-2 >= 1 , Map[I,J] == '1' , Map[I,J-1] == '1' ,  Map[I,J-2] == '0') then  %down
+      Aux := Aux ++ [(jump_left,I,J)] 
+    end
+  end,
+  L_mov = Aux.
+
+
+%% printing the GRID ....
+print_map( M ) =>
+ foreach(I in 1..M.len)
+   foreach(J in 1..M[1].len)
+     printf("%w " , M[I,J] )
+   end,
+   nl
+ end,
+ nl.   
+
+
+show_solution(InitGrid, Plan) => 
+  Grid = copy_term(InitGrid),
+  println("\nInit:"),                        
+  print_map(Grid),
+  foreach([Action,X,Y] in Plan)
+    println([Action,X,Y]),
+    if (Action == jump_right) then
+       Grid[X, Y]   := '0',
+       Grid[X ,Y+1] := '0',     
+       Grid[X, Y+2] := '1'
+    elseif (Action == jump_left) then
+       Grid[X, Y]   := '0',
+       Grid[X, Y-1] := '0',     
+       Grid[X, Y-2] := '1'
+    elseif (Action == jump_up) then
+       Grid[X,   Y] := '0',      
+       Grid[X-1, Y] := '0',     
+       Grid[X-2, Y] := '1'
+    elseif (Action == jump_down) then
+       Grid[X,   Y] := '0',      
+       Grid[X+1, Y] := '0',     
+       Grid[X+2, Y] := '1'
+    end,
+    print_map(Grid)
+  end,
+  nl.
+
