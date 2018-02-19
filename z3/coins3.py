@@ -26,7 +26,8 @@ def main(type="optimize"):
   if type == "optimize":
       sol = Optimize()
   else:
-      sol = Solver()
+      # sol = Solver()
+      sol = SolverFor("QF_LIA")
 
   # data
   n = 6  # number of different coins
@@ -63,6 +64,7 @@ def main(type="optimize"):
   else:
       num_solutions = 0
       while sol.check() == sat:
+        num_solutions += 1
         mod = sol.model()    
         print("x: ", [mod.eval(x[i]) for i in range(n)])
         print("num_coins:", mod.eval(num_coins))
