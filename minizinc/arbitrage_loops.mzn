@@ -124,12 +124,12 @@ output [
   "z: \(z)\n",
   "profit: \([profit[i] | i in 1..m])\n",
   "y: \(y)\n",
-  "starts with \(start) \(currencies_s[y[1]]) -> \(start*z) \(currencies_s[y[1]])\n",
-  "real profit: \(start*z) - \(start) = \(start*z - start) \(currencies_s[y[1]])\n\n",
+  "starts with \(start) \(currencies_s[fix(y[1])]) -> \(start*z) \(currencies_s[fix(y[1])])\n",
+  "real profit: \(start*z) - \(start) = \(start*z - start) \(currencies_s[fix(y[1])])\n\n",
 ]
 ++
 [
-  "\(currencies_s[y[i]]) -> \(currencies_s[y[i+1]]) \(profit[i])\n"
+  "\(currencies_s[fix(y[i])]) -> \(currencies_s[fix(y[i+1])]) \(profit[i])\n"
   | i in 1..m
 ]
 ;
