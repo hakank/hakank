@@ -73,6 +73,18 @@
 # - nvalue(sol, m, x, min_val,max_val)
 # - clique(sol, g, clique, card)
 # - all_min_dist(sol,min_dist, x, n)
+# - all_different_cst(sol, xs, cst)
+# - all_different_on_intersection(sol, x, y)
+# - all_different_pairs(sol, a, s)
+# - increasing_pairs(sol,a, s)
+# - decreasing_pairs(sol,a, s)
+# - pairs(sol, a, s)
+# - all_differ_from_at_least_k_pos(sol, k, x)
+# - all_differ_from_exact_k_pos(sol, k, vectors)
+# - all_differ_from_at_most_k_pos(sol, k, x)
+# - all_equal(sol,x)
+# - arith(sol, x, relop, val)
+# - arith_relop(sol, a, t, b)
 #
 # 
 # TODO
@@ -155,6 +167,13 @@ def makeRealVector(sol,name, size, min_val, max_val):
     [sol.add(v[i] >= min_val, v[i] <= max_val) for i in range(size)]
     return v
 
+# creates an Array with a domain
+def makeRealArray(sol,name, size, min_val, max_val):
+    a = Array(name,RealSort(),RealSort())
+    [sol.add(a[i] >= min_val, a[i] <= max_val) for i in range(size)]
+    return a
+
+
 #
 # When using
 #    while sol.check() == sat:
@@ -207,6 +226,16 @@ def print_grid(mod,x,rows,cols):
 def copyArray(sol,a1,name, min_val, max_val):
   n = len(a1)
   a = makeIntArray(sol,name,n,min_val,max_val)
+  for i in range(n):
+    sol.add(a[i] == a1[i])
+  return a
+
+#
+# Copy the (integer) array into an Array()
+#
+def copyRealArray(sol,a1,name, min_val, max_val):
+  n = len(a1)
+  a = makeRealArray(sol,name,n,min_val,max_val)
   for i in range(n):
     sol.add(a[i] == a1[i])
   return a
@@ -655,6 +684,107 @@ def all_min_dist(sol,min_dist, x, n):
   for i in range(n):
     for j in range(i):
       sol.add(Abs(x[i]-x[j]) >= min_dist)
+
+#
+# Ensure that all elements in xs + cst are distinct
+#
+def all_different_cst(sol, xs, cst):
+    sol.add(Distinct([(x + c) for (x,c) in zip(xs,cst)]))
+
+#
+# Ensure that the values that are common in x and y are distinct (in each array)
+#
+def all_different_on_intersection(sol, x, y):
+    _count_a_in_b(sol,x,y)
+    _count_a_in_b(sol,y,x)
+
+# helper for all_different_on_intersection
+def _count_a_in_b(sol,ass,bss):
+    for a in ass:
+        sol.add(Sum([If(a == b,1,0) for b in bss]) <= 1)
+
+
+# all pairs must be different
+def all_different_pairs(sol, a, s):
+    sol.add(Distinct([p for p in pairs(sol,a,s)]))
+
+# the pairs are in increasing order
+def increasing_pairs(sol,a, s):
+    increasing(sol,pairs(sol,a,s)) 
+  
+# the pairs are in decreasing order
+def decreasing_pairs(sol,a, s):
+    decreasing(sol,pairs(sol,a,s)) 
+
+# return the pairs of a in the "integer representation": a[k,0]*(n-1) + a[k,1]
+# s is the size of max value of n
+def pairs(sol, a, s):
+    n = len(a)/2
+    return [ a[(k,0)]*(s-1) + a[(k,1)] for k in range(n)]
+
+
+#
+# all_differ_from_at_least_k_pos(sol, k, x)
+#
+# Ensure that all pairs of vectors has >= k different values
+#
+def all_differ_from_at_least_k_pos(sol, k, vectors):
+    n = len(vectors)
+    m = len(vectors[0])
+    for i in range(n):
+        for j in range(i+1,n):
+            sol.add(Sum([If(vectors[i][kk] != vectors[j][kk],1,0) for kk in range(m)]) >= k)
+
+#
+# all_differ_from_exact_k_pos(sol, k, vectors)
+#
+# Ensure that all pairs of vectors has exactly k different values
+#
+def all_differ_from_exact_k_pos(sol, k, vectors):
+    n = len(vectors)
+    m = len(vectors[0])
+    for i in range(n):
+        for j in range(i+1,n):
+            sol.add(Sum([If(vectors[i][kk] != vectors[j][kk],1,0) for kk in range(m)]) == k)
+
+#
+# all_differ_from_at_most_k_pos(sol, k, x)
+#
+# Ensure that all pairs of vectors has <= k different values
+#
+def all_differ_from_at_most_k_pos(sol, k, vectors):
+    n = len(vectors)
+    m = len(vectors[0])
+    for i in range(n):
+        for j in range(i+1,n):
+            sol.add(Sum([If(vectors[i][kk] != vectors[j][kk],1,0) for kk in range(m)]) <= k)
+
+#
+# all values in x must be equal
+#
+def all_equal(sol,x):
+    sol.add(And([x[i] == x[i-1] for i in range(len(x))]))
+
+
+#
+# Ensure that all elements in x are <relop> then val.
+#
+def arith(sol, x, relop, val):
+    for i in range(len(x)):
+        arith_relop(sol,x[i],relop, val)
+
+
+#
+# This is (arguably) a hack.
+# Represents each function as an integer 0..5.
+# 
+def arith_relop(sol, a, t, b):
+    sol.add(Implies(t == 0,a  < b))
+    sol.add(Implies(t == 1,a <= b))
+    sol.add(Implies(t == 2,a == b))
+    sol.add(Implies(t == 3,a >= b))
+    sol.add(Implies(t == 4,a  > b))
+    sol.add(Implies(t == 5,a  != b))
 
 
 
