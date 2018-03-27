@@ -62,7 +62,7 @@ function var int: to_num(array[int] of var int: a) =
 
 %
 % Ensure that t is a palindromic number.
-% (We assume that the are no leasing 0's.)
+% (We assume that the are no leading 0's.)
 %
 predicate is_palindromic(array[int] of var int: t) = 
    let {
