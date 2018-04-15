@@ -1,0 +1,266 @@
+/* 
+
+  A^nB^nC^n in Picat.
+
+  Recognizing the string "a" x n ++ "b" x n ++ "c" x n, 
+  e.g. "abc", "aabbcc", "aaabbbccc".
+
+  This program includes two different approaches:
+  - abc/1: Standard logic programming (perhaps not the most optimal)
+    Tested om go/0 and go2/0.
+
+  - abc2/1: Using find_first_of/2 and find_last_of/2 and some calculations.
+    Tested in go3/0.
+ 
+ - abc_general(N, Chars) is a generalization of abc2/1 which checks
+    an arbitrary sequence of a^Nb^Nc^Nd^Ne^N.... (or whatever are in Chars).
+    This is tested in go5/0.
+
+  Of these two, abc2/1 (and abc_general/2) are the fastest, see go4/0 and go5/0. 
+
+
+  Comparing abc/1, abc2/1, and abc_general/2 on strings a^Nb^Nc^N:
+
+     10**N1 abc/1  abc2/1       abc_general/2  N
+     ---------------------------------------------
+     1       0.000s    0.000s    0.000s        10
+     2       0.000s    0.000s    0.000s        100
+     3       0.000s    0.000s    0.000s        100
+     4       0.002s    0.006s    0.007s        10000
+     5       0.075s    0.057s    0.059s        100000
+     6       3.353s    0.571s    0.615s        1000000
+     7       >120s     5.671s    5.522s        10000000
+     8       -         RAM       RAM           100000000
+ 
+ 
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+
+go =>
+  Str = "aaabbbccc",
+  println(Str),
+  if abc(Str) then
+    println(ok)
+  else
+    println(not_ok)
+  end,
+  nl.
+
+% checking abc/1
+go2 => 
+  L = [
+        "abc",
+        "aabbcc",
+        "aaabbbccc",
+        "abbccc",
+        "hakank"
+      ],
+  foreach(S in L)
+     println(S=check(S))
+  end,
+  nl,
+  N=100000,
+  time(SS = gen(N)),
+  % println(SS),
+  time(printf("a^%db^%dc^%d = %w\n", N, N, N, check(SS))),
+  nl.
+
+
+% checking abc2/1
+go3 => 
+  L = [
+        "abc",
+        "aabbcc",
+        "aaabbbccc",
+        "abbccc",
+        "hakank"
+      ],
+  foreach(S in L)
+     println(S=check2(S))
+  end,
+  nl,
+  N=1000000,
+  time(SS = gen(N)),
+  println(len=SS.len),
+  % time(SS := gen_bad1(N)), % generates a bad string
+  % time(SS := gen_bad2(N)), % generates another bad string
+  % time(SS := gen_bad3(N)), % and a third bad string. 
+  % println(SS),
+  time(printf("a^%db^%dc^%d = %w\n", N, N, N, check2(SS))),
+  nl.
+
+%
+% comparing abc/1 and abc2/1 on strings a^Nb^Nc^N
+%
+% 10**N1 abc/1  abc2/1       abc_general/2  N
+% ---------------------------------------------
+% 1       0.000s    0.000s    0.000s        10
+% 2       0.000s    0.000s    0.000s        100
+% 3       0.000s    0.000s    0.000s        100
+% 4       0.002s    0.006s    0.007s        10000
+% 5       0.075s    0.057s    0.059s        100000
+% 6       3.353s    0.571s    0.615s        1000000
+% 7       >120s     5.671s    5.522s        10000000
+% 8       -         RAM       RAM           100000000
+% 
+go4 => 
+  garbage_collect(300_000_000),
+  foreach(N in 1..7)
+    N1 = 10**N,
+    println(N=N1),
+    S = gen(N1),
+    if N <= 6 then
+       time(print(abc=check(S)))
+    end,
+    time(print(abc2=check2(S))),
+    time(print(abc_general=check3(S,"abc"))),
+    nl
+  end,
+  nl.
+
+
+%
+% general version a^Nb^Nc^Nd^Ne^N...
+%
+go5 => 
+  garbage_collect(300_000_000),
+
+  % testing on a*b*c*d*
+  L = [
+        "abc",
+        "abcd",
+        "aabbccdd",
+        "aaabbbccc",
+        "abbccc",
+        "hakank"
+      ],
+  foreach(S in L)
+     println(S=check3(S,"abcd"))
+  end,
+  nl,
+
+  % a*b*c*d*e*f
+  N=100000,
+  println(n=N),
+  Chars = "abcdefghijkl",
+  % Chars = "dermatoglyphics", % the longest word with unique characters (from a certain word list)
+  println(chars=Chars),
+  SS = gen_general(N,Chars),
+  println(len=SS.len),
+  PStr = [to_fstring("%w^N",C) : C in Chars].join(''),
+  time(printf("%w = %w\n", PStr, check3(SS,Chars))),
+  nl.
+
+
+abc(Str) ?=>
+  abc(Str,[],[],[], As,Bs,Cs),
+  As.len == Bs.len,
+  Bs.len == Cs.len.
+
+abc([],As1,Bs1,Cs1, As,Bs,Cs) ?=> 
+  As1 = As, Bs1 = Bs,Cs1 = Cs.
+
+abc(['a',H|T],As1,Bs1,Cs1, As,Bs,Cs) ?=>
+  abc([H|T],['a'|As1],Bs1,Cs1, As,Bs,Cs).
+
+abc(['b',H|T],As1,Bs1,Cs1, As,Bs,Cs) ?=>
+  abc([H|T],As1,['b'|Bs1],Cs1, As,Bs,Cs).
+
+abc(['c'|T],As1,Bs1,Cs1, As,Bs,Cs) ?=>
+  abc(T,As1,Bs1,['c'|Cs1], As,Bs,Cs).
+
+
+%
+% This is much faster than abc/1.
+%
+% aaaaa bbbbb ccccc
+% ^   ^ ^   ^ ^   ^ 
+% A1 A2 B1 B2 C1 C2
+%
+abc2(S) => 
+  A1 = find_first_of(S,'a'), A1 > 0, A2 = find_last_of(S,'a'),
+  B1 = find_first_of(S,'b'), B1 > 0, B2 = find_last_of(S,'b'),
+  C1 = find_first_of(S,'c'), C1 > 0, C2 = find_last_of(S,'c'),
+  1 == A1, B1 == A2 + 1, C1 == B2 + 1, C2 == S.len,
+  B1 - A1 = C1 - B1.
+  
+
+%
+% A generalized version of abc2/1
+% where Chars contains the characters that should be checked/recognized (in order).
+% 
+abc_general(S,Chars) => 
+  SLen = S.len,
+  CharsLen = Chars.len,
+  First = new_list(CharsLen), % first positions
+  Last = new_list(CharsLen), % last posistion
+  foreach({I,C} in zip(1..CharsLen, Chars)) 
+    First[I] := find_first_of(S,C),
+    First[I] > 0,
+    % First char in S must be Chars[1]
+    if I == 1 then
+      S[1] == C
+    end,
+    Last[I] := find_last_of(S,C)
+  end,
+  % Last char in S must be Chars[CharsLen]
+  Last[CharsLen] == SLen,
+  % The differences must be the same
+  Diffs = [First[I] - First[I-1] : I in 2..CharsLen],
+  foreach(I in 2..Diffs.len)
+    Diffs[I] == Diffs[I-1]
+  end.
+  
+  
+
+% using abc/1
+check(Str) = Status => 
+  if abc(Str) then
+    Status = ok
+  else 
+    Status = not_ok
+  end.
+  
+% using abc2/1
+check2(Str) = Status => 
+  if abc2(Str) then
+    Status = ok
+  else 
+    Status = not_ok
+  end.
+
+
+% using abc_general/1
+check3(Str,Chars) = Status => 
+  if abc_general(Str,Chars) then
+    Status = ok
+  else 
+    Status = not_ok
+  end.
+  
+
+gen(N) = ['a' : _ in 1..N] ++ ['b' : _ in 1..N] ++ ['c' : _ in 1..N].
+
+
+gen_general(N,Chars) = Gen =>
+   Gen = [ [Chars[I] : _ in 1..N] : I in 1..Chars.len ].join('').
+
+
+% generate some bad strings
+
+% adding a last 'x'
+gen_bad1(N) = ['a' : _ in 1..N] ++ ['b' : _ in 1..N] ++ ['c' : _ in 1..N] ++ "x".
+
+% not the same length
+gen_bad2(N) = ['a' : _ in 1..N+1] ++ ['b' : _ in 1..N] ++ ['c' : _ in 1..N-1].
+
+% adding a mid 'x'
+gen_bad3(N) = ['a' : _ in 1..N+1] ++ "x" ++ ['b' : _ in 1..N] ++ "x" ++ ['c' : _ in 1..N-1].

@@ -1,0 +1,838 @@
+/* 
+
+  Word search puzzle generate in Picat.
+
+  http://en.wikipedia.org/wiki/Word_search
+
+  Generate a word search puzzle matrix with some given words.
+
+  Cf http://hakank.org/picat/word_search_puzzle.pi (for solving a word search puzzle).
+
+  Note: You have to provide your own wordlist.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+% import sat.
+
+
+main => go.
+
+
+% Looking for most compact matrix (maximum number of free cells)
+% (for the original Wikipedia matrix)
+%
+% 35 free cells
+% W O R D S E A R C H 
+% D I A G O N A L L O 
+% _ _ K F I N D A _ R 
+% _ H _ I D _ C _ _ I 
+% _ _ T O P I K _ _ Z 
+% _ _ M U T E _ _ _ O 
+% _ _ _ R E _ D _ _ N 
+% _ _ E W _ L _ I _ T 
+% _ V _ _ _ _ S _ A A 
+% _ B A C K W A R D L 
+
+
+
+% For the extended:
+% 29 free cells:
+% P R O G R A M M I N G 
+% W O R D S E A R C H V 
+% W I K I P E D I A O E 
+% M E _ _ _ _ I K _ R R 
+% S O E P I C A T _ I T 
+% _ L D K _ N G _ _ Z I 
+% _ _ E N K _ O _ _ O C 
+% _ _ _ U A _ N F _ N A 
+% C O N S T R A I N T L 
+% _ _ _ _ _ H L N _ A _ 
+% B A C K W A R D _ L _ 
+
+% Looking for least compact matrix (minimum number of free cells)
+%
+% 16 free cells (extended matrix)
+% P C O N S T R A I N T 
+% R W H W V B S R H F _ 
+% O O O I E A L A A I _ 
+% G R R K R C E N K N _ 
+% R D I I T K U D A D _ 
+% A S Z P I W T O N _ _ 
+% M E O E C A H M K _ _ 
+% M A N D A R W E E K _ 
+% I R T I L D _ _ _ _ _ 
+% N C A A P I C A T _ _ 
+% G H L D I A G O N A L 
+
+
+
+go =>
+
+   % http://en.wikipedia.org/wiki/Word_search
+   Words1 = ["week",
+             "find" ,
+             "random",
+             "sleuth",
+             "backward",
+             "vertical",
+             "diagonal",
+             "wikipedia",
+             "horizontal",
+             "wordsearch" % ,
+
+             % additional words
+             % "hakank",
+             % "picat",
+             % "programming",
+             % "constraint"
+             ],
+
+  Words = sort_length(Words1).reverse(),
+
+  % intersections
+  % Intersections = get_intersections(Words),
+  % foreach(Intersection in Intersections)
+  %   println(Intersection)
+  % end,
+
+  MaxLen = max([W.length : W in Words]),
+  N :: MaxLen..MaxLen+2,
+  indomain(N),
+  println(n=N),
+            
+  % generate(Words,N,Prefixes, _X,NumEmpty),
+  Timeout = 5000,
+  % NumEmpty = 37,
+  Prefixes = [],
+  restart(Words,N,Prefixes,Timeout, _X, _NumEmpty),
+  println(n=N),
+
+  nl.
+
+
+%
+% Generating a word square of colleque's names (a while ago).
+% 
+% Example:
+% 
+% free_cells = 5
+% placements = [[anders,n,11,11],[elin,n,6,7],[fredrik,w,10,8],[henrik,e,12,7],[håkan,s,7,12],[jeanette,w,8,9],[jessica,w,9,8],[johan,s,8,9],[josefin,n,8,10],[karin,nw,6,5],[linn,s,2,2],[lisa,e,2,2],[magnus,e,12,1],[marc,sw,3,5],[marcos,s,1,12],[maria,s,7,1],[markus,s,1,11],[martin,n,7,1],[mattias,s,1,9],[micael,s,1,8],[michael,se,1,2],[michaela,ne,1,8],[mikael,w,7,7],[mikaela,nw,7,7],[ola,se,9,9],[peter,e,1,3],[pierre,s,1,3],[robert,w,11,7],[sara,e,11,8]]
+% A M P E T E R M M _ M M 
+% N L I S A _ I I A N A A 
+% I I E C M C N C T I R R 
+% T N R A H _ I A T F K C 
+% R N R A K A L E I E U O 
+% A C E _ K I E L A S S S 
+% M L E A K I M L S O R H 
+% A E T T E N A E J J E Å 
+% R A C I S S E J O _ D K 
+% I K I R D E R F H L N A 
+% A T R E B O R S A R A N 
+% M A G N U S H E N R I K 
+%
+% numEmptyFinal = 5
+%
+% fill = [gnaso,len = 5]
+% A M P E T E R M M G M M 
+% N L I S A N I I A N A A 
+% I I E C M C N C T I R R 
+% T N R A H A I A T F K C 
+% R N R A K A L E I E U O 
+% A C E S K I E L A S S S 
+% M L E A K I M L S O R H 
+% A E T T E N A E J J E Å 
+% R A C I S S E J O O D K 
+% I K I R D E R F H L N A 
+% A T R E B O R S A R A N 
+% M A G N U S H E N R I K 
+%
+% numEmptyFinal = 5
+% usedDirectionsDist = [e = 5,n = 4,ne = 1,nw = 2,s = 9,se = 2,sw = 1,w = 5]
+% 
+%
+go2 =>
+   % word search puzzle on the names of collegues (a while ago)
+   Words1 = ["håkan",
+             "markus" ,
+             "anders",
+             "ola",
+             "johan",
+             "robert",
+             "michael",
+             "mikael",
+             "henrik",
+             % "henrik", % We have two Henrik. Skip duplicates.
+             "fredrik",
+             "mikaela",
+             "michaela",
+             "magnus",
+             "lisa",
+             "jeanette",
+             "martin",
+             "marcos",
+             "peter",
+             "pierre",
+             "maria",
+             % "maria", % We have two Maria, but we skips duplicates
+             "jessica",
+             "elin",
+             "sara",
+             "karin",
+             "micael",
+             "linn",
+             "josefin",
+             "marc",
+             "mattias"
+
+             ],
+
+  % identify prefixes/suffixes
+  % Ixes = [ [W1,W2] : W1 in Words1, W2 in Words1, W1 != W2, (append(W1,X,W2); append(X,W1,W2); append(X,W1,Y,W2))],
+  Prefixes = [ [W1,W2] : W1 in Words1, W2 in Words1, W1 != W2, append(W1,_X,W2)],
+  println(prefixes=Prefixes),
+
+  Words = sort_length(Words1).reverse(),
+  % Words = sort_length(Words1),
+  % Words = shuffle(Words1),
+
+  NumWords = Words.length,
+  println(numWords=NumWords),
+  % N = Words.length-5,
+  % N = max([W.length : W in Words])+4,
+
+  NumChars = Words.flatten().length, 
+  NumCharsSqrt = ceiling(sqrt(NumChars)),
+  println([numChars=NumChars,numCharsSqrt=NumCharsSqrt]),
+  % MaxLen = max([length(W) : W in Words]),
+
+  % N = max(MaxLen,ceiling(sqrt(Words.flatten().length))),
+  % N = NumWords,
+  % N = MaxLen,
+  % N :: max(NumCharsSqrt,MaxLen)-1..NumWords,
+  % N :: MaxLen..MaxLen+2,
+  % indomain(N),
+
+  N = 12,
+
+  NN = N*N,
+  NumChars = length(Words.flatten()),
+  println([nn=NN,numChars=NumChars,maxDiff=abs(NN-NumChars)]),
+  flush(stdout),
+
+  println('N'=N),
+  % NumEmpty = 26,
+  % generate(Words,N, Prefixes,X,NumEmpty),
+  % println('N'=N),
+
+  Timeout = 4000,
+  % we want at least/at most NumEmpty non assigned cells (see code for the optimality direction...
+  % NumEmpty = 0, 
+  % NumEmpty = 18, 
+  restart(Words,N,Prefixes,swe,Timeout, _X ,_NumEmpty),
+
+  nl.
+
+
+% 
+%
+%
+go3 => 
+  File = "unixdict.txt",
+  AllWords = [  Word : Word in read_file_lines(File), length(Word) >= 4, not membchk('''', Word),not membchk('.', Word)],
+  AllWordsLen = AllWords.length,
+
+  NumWords = 18,
+
+  Words1 = [],
+  foreach(_ in 1..NumWords) 
+    Words1 := Words1 ++ [AllWords[1 + random2() mod AllWordsLen]]
+  end,
+
+  Words = sort_length(Words1).reverse(),
+  println(Words),
+
+  MaxLen = max([length(W) : W in Words]),
+  % N = max(MaxLen,ceiling(sqrt(Words.flatten().length)))+2,
+  % N = NumWords,
+  % N = MaxLen,
+
+  N :: min(MaxLen,NumWords)..max(MaxLen,NumWords),
+  % N :: 1..max(MaxLen,NumWords),
+  indomain(N),
+
+  println('N'=N),
+  % minof(generate(Words,N, X,NumEmpty),_NumEmpty),
+  % generate(Words,N, X,NumEmpty),
+  Timeout = 3000,
+  Prefixes = [],
+  restart(Words,N,Prefixes,Timeout, _X,_NumEmpty),
+
+  println('N'=N),
+
+  nl.
+
+% Testing a "pure" word square (generated by the MiniZinc model crossword3_0.mzn)
+% 
+% Finds a matrix in about 0.1s, e.g.
+%
+%   B A S E L 
+%   A R O S E 
+%   H A U S A 
+%   I B L I S 
+%   A S S E T 
+%
+go4 => 
+
+  Words = [
+           "bahia", % East 1,1
+           "arabs", % East 2,1
+           "souls", % East 3,1
+           "essie", % East 4,1
+           "least", % East 5,1
+
+           "basel", % South 1,1
+           "arose", % South 1,2
+           "hausa", % South 1,3
+           "iblis", % South 1,4
+           "asset"  % Souhh 1,5
+           ],
+
+  N :: 1..20,
+  indomain(N),
+
+  println('N'=N),
+  Prefixes = [],
+  % minof(generate(Words,N,Prefixes, X,NumEmpty),NumEmpty),
+  generate(Words,N,Prefixes, _X,NumEmpty),
+  println('N'=N),
+  println(numEmpty=NumEmpty),
+
+  nl.
+
+
+%
+% Swedish words
+%
+go5 => 
+  File = "/home/hakank/public_html/combograms/sv_spelling_org.txt",
+  MaxWordLen = 10,
+  MinWordLen = 5,
+  AllWords = [  Word : Word in read_file_chars(File).split("\n"), 
+                % length(Word) == MaxWordLen, 
+                length(Word) >= MinWordLen, 
+                length(Word) <= MaxWordLen, 
+                not membchk('''', Word),
+                not membchk('.', Word),
+                not membchk('-', Word),
+                not membchk('é', Word),
+                not membchk(' ', Word)],
+  AllWordsLen = AllWords.length,
+
+  NumWords = 40,
+  Words1 = [],
+  while (Words1.length < NumWords) 
+     R = AllWords[1 + random2() mod AllWordsLen],
+     if not membchk(R,Words1) then
+       Words1 := Words1 ++ [R]
+     end
+  end,
+
+  Words = sort_length(Words1).reverse(),
+  println(Words),
+  println(numWords=Words.length),
+
+  Prefixes = [ [W1,W2] : W1 in Words1, W2 in Words1, W1 != W2, append(W1,_X,W2)],
+  println(prefixes=Prefixes),
+
+  MaxLen = max([length(W) : W in Words]),
+  % N = max(MaxLen,ceiling(sqrt(Words.flatten().length)))+2,
+  % N = NumWords,
+  % N = MaxLen,
+
+  % minof(generate(Words,N, X,NumEmpty),_NumEmpty),
+  % generate(Words,N, X,NumEmpty),
+  Timeout = 10000, % millis
+  N = MaxLen,
+  % restart(Words,N,Prefixes,Timeout, _X,_NumEmpty),
+  % Increase the size of the grid until we find a solution.
+  Found = false,
+  while (Found = false) 
+     println('N'=N),
+     time_out(generate(Words,N,Prefixes,swe, _X,_NumEmpty),Timeout,Status),
+     println(status=Status),
+     if Status == success then
+       Found := true
+     else
+       N := N + 1
+     end
+  end,
+  println('N'=N),
+
+  nl.
+
+
+% experimental
+get_intersections(Words) = Intersections => 
+  Intersections = [],
+  foreach(W1 in Words) 
+    IS = [],
+    foreach(W2 in Words, W1 != W2)
+       foreach({C1,I1} in zip(W1,1..W1.length),{C2,I2} in zip(W2,1..W2.length))
+         if C1 == C2 then
+            IS := IS ++ [[i1=I1,w2=W2,c=C1,i2=I2]]
+         end
+       end
+    end,
+    Intersections := Intersections ++ [W1=IS]
+  end.
+
+
+%
+% restart version
+%
+restart(Words,N,Prefixes,Timeout, X,NumEmpty) =>
+  restart(Words,N,Prefixes,eng,Timeout, X,NumEmpty).
+
+restart(Words,N,Prefixes,Lang,Timeout, X,NumEmpty) =>
+  time_out(generate(Words,N,Prefixes,Lang,X,NumEmpty),Timeout,Result),
+  println(result=Result),
+  while (Result == time_out)
+    print(restart),
+    time_out(generate(Words,N,Prefixes,Lang, X,NumEmpty),Timeout,Result1),
+    Result := Result1
+  end.
+  
+  
+%
+%
+%
+sort_length(List) = Sorted =>
+  S = sort([W.length=W : W in List]),
+  Sorted = [W : _=W in S].
+
+
+%
+%
+%
+
+generate(Words1,N,Prefixes,X, NumEmpty) =>
+  generate(Words1,N,Prefixes,eng,X, NumEmpty).
+
+%
+% This is the main predicate to generate a word search puzzle.
+%
+generate(Words1,N,Prefixes,Lang,X, NumEmpty) =>
+
+  % Words = Words1.shuffle(),             
+  Words = Words1,
+
+  WordsLen = Words.length,
+  if Lang == swe then
+     Alpha = "abcdefghijklmnopqrstuvwxyzåäö" % Swedish
+  else
+     Alpha = "abcdefghijklmnopqrstuvwxyz" % English
+  end,
+  AlphaLen = Alpha.length,
+  % println(alphaLen=AlphaLen),
+
+  nl,
+
+  CharIntMap = new_map([C=I : {C,I} in zip(Alpha,1..Alpha.length)]), % Char -> Int
+  IntCharMap = new_map([I=C : {C,I} in zip(Alpha,1..Alpha.length)]), % Int -> Char
+
+  WordsInt = [ [CharIntMap.get(W) : W in Word ] : Word in Words ],
+  % println(wordsInt=WordsInt),
+
+  % N = Words.length-1,
+  % N = max([W.length : W in Words])+1,
+
+  foreach(Word in Words)
+    if Word.length > N then
+      printf("Word %w is too long (%d chars)\n", Word, Word.length),
+      fail
+    end
+  end,
+
+  Directions = [s,n,w,e,se,nw,sw,ne],
+  % Unboost "e" since it's too easy to identify...
+  % Directions = [s,s,n,n,e,w,w,se,se,nw,nw,sw,sw,ne,ne],
+
+  X = new_array(N,N),
+  X :: 1..AlphaLen,
+
+  % Place the words
+  Ns = 1..N,
+  Placements = [],
+  foreach({Word,Ix} in zip(WordsInt,1..WordsLen))
+     % println(word=[Word,Words[Ix]]),
+     Len = Word.length,
+
+     % Directions1 = Directions[1 + random2() mod Directions.length],
+     % shuffle the direction so we can backtrack with member...
+     Directions1 = Directions.shuffle(),
+     % Directions1 = Directions,
+     member(Dir, Directions1),
+
+     % println([Word,Words[Ix],dir=Dir,len=Len]),
+
+     if Dir == s then
+       member(StartI,1..N-Len+1),
+       member(StartJ,Ns),
+       EndI = StartI+Len-1,
+       foreach({I,C} in zip(StartI..EndI,1..Len))
+          X[I,StartJ] = Word[C]
+       end,
+       Place = [Words[Ix],Dir,StartI,StartJ]
+
+     elseif Dir == n then
+       member(StartI,Len+1..N),
+       member(StartJ,Ns),
+       EndI = StartI-Len+1,
+       foreach({I,C} in zip(StartI..-1..EndI,1..Len))
+          X[I,StartJ] = Word[C]
+       end,
+       Place = [Words[Ix],Dir,StartI,StartJ]
+
+     elseif Dir == e then
+       member(StartJ,1..N-Len+1),
+       member(StartI,Ns),
+       EndJ = StartJ+Len-1,
+       foreach({J,C} in zip(StartJ..EndJ,1..Len))
+          X[StartI,J] = Word[C]
+       end,
+       Place = [Words[Ix],Dir,StartI,StartJ]
+
+     elseif Dir == w then
+       member(StartJ,Len+1..N),
+       member(StartI,Ns),
+       EndJ = StartJ-Len+1,
+       foreach({J,C} in zip(StartJ..-1..EndJ,1..Len))
+          X[StartI,J] = Word[C]
+       end,
+       Place = [Words[Ix],Dir,StartI,StartJ]
+
+     elseif Dir == se then
+       member(StartI,1..N-Len),
+       member(StartJ,1..N-Len),
+       EndI = StartI+Len-1,
+       foreach({I,C} in zip(StartI..EndI,0..Len-1))
+          X[I,StartJ+C] = Word[C+1]
+       end,
+       Place = [Words[Ix],Dir,StartI,StartJ]
+
+     elseif Dir == sw then
+       member(StartI,1..N-Len),
+       member(StartJ,1..N-Len),
+       EndJ = StartJ+Len-1,
+       foreach({J,C} in zip(EndJ..-1..StartJ,0..Len-1))
+          X[StartI+C,J] = Word[C+1]
+       end,
+       Place=[Words[Ix],Dir,StartI,EndJ]
+
+     elseif Dir == ne then
+       member(StartI,1..N-Len),
+       member(StartJ,1..N-Len),
+       EndI = StartI+Len-1,
+       EndJ = StartJ+Len-1,
+       foreach({J,C} in zip(EndJ..-1..StartJ,0..Len-1))
+          X[StartI+C,J] = Word[C+1]
+       end,
+       Place=[Words[Ix],Dir,StartI,EndJ]
+
+     else % nw
+       member(StartI,1..N-Len),
+       member(StartJ,1..N-Len),
+       EndI = StartI+Len-1,
+       EndJ = StartJ+Len-1,
+       foreach({I,C} in zip(EndI..-1..StartI,0..Len-1))
+          X[I,EndJ-C] = Word[C+1]
+       end,
+       Place = [Words[Ix],Dir,EndI,EndJ]
+     end,
+
+     Placements := Placements ++ [Place]
+
+     % , println(place=Place),
+     % println([numEmptyNotFinal=length(X.vars()),left=WordsLen-Ix,n=N]),
+     % print_matrix(X,IntCharMap)
+  end,
+
+  % ensure that interlacing words don't overlaps (same start coordinate + same direction)
+  if Prefixes != [] then
+    foreach([Word1,Word2] in Prefixes)
+      foreach([W1,Dir1,S1I,S1J] in Placements, [W2,Dir2,S2I,S2J] in Placements, W1 == Word1, W2 == Word2)
+        if S1I == S2I, S1J == S2J, Dir1 == Dir2 then
+          % printf("%w and %w overlaps (%d,%d,%w)\n",W1,W2,S1I,S1J,Dir1),
+          fail
+        end
+      end
+    end
+  end,
+
+  ThisNumEmpty = length(X.vars()),
+  println(free_cells=ThisNumEmpty),
+  println(placements=Placements.sort()),
+  
+  % Minimize the number of empty cells
+  if nonvar(NumEmpty), ThisNumEmpty > NumEmpty then
+  % Maximize the number of empty cells
+  % if nonvar(NumEmpty), ThisNumEmpty < NumEmpty then
+     println(bad_num_length=[wanted=NumEmpty,thisNumEmpty=ThisNumEmpty]),
+     fail
+  end,
+
+  print_matrix1(Words,X,IntCharMap),
+
+  % println(solve),
+  % solve($[min(Z),rand,report(printf("Z: %d\n", Z))],X),
+  % solve($[rand],X),
+
+  % println(z=Z),
+
+  % println(after_solve),  
+  NumEmpty2 = length(X.vars()),
+  println(numEmptyFinal=NumEmpty2),
+
+  fill_empty(X,CharIntMap,Lang,Mat),
+  print_matrix1(Words,Mat,IntCharMap),
+ 
+  println(numEmptyFinal=NumEmpty2),
+
+  UsedDirectionsDist = [ Dir=[D : [_,D,_,_] in Placements,D=Dir].length : Dir in Directions.sort()],
+  println(usedDirectionsDist=UsedDirectionsDist),
+
+  % print_matrix2(Words,Mat,IntCharMap),
+
+  nl.
+
+fill_empty(X,CharIntMap,Mat) => 
+  fill_empty(X,CharIntMap,eng,Mat).
+
+
+fill_empty(X,CharIntMap,Lang,Mat) => 
+  if Lang == swe then
+    S = letter_freq_swe()
+  else 
+    S = letter_freq()
+  end,
+  Len = S.length,
+  N = X.length,
+  M = X[1].length,
+  Mat = new_array(N, M),
+  Fill = [],
+  foreach(I in 1..N, J in 1..M)
+    if var(X[I,J]) then
+       R = S[1+ random2() mod Len],
+       Fill := Fill ++ [R],
+       Mat[I,J] := CharIntMap.get(R)
+    else 
+       Mat[I,J] := X[I,J]
+    end
+  end,
+  println(fill=[Fill,len=Fill.length]).
+
+
+
+print_matrix(X,IntCharMap) =>
+  N = X.length,
+  M = X[1].length,
+  foreach(I in 1..N)
+    foreach(J in 1..M)
+      if nonvar(X[I,J]) then
+         printf("%w ", to_uppercase_swe(IntCharMap.get(X[I,J])))
+      else
+         printf("_ ")
+      end 
+    end,
+    nl
+  end,
+  nl.    
+
+print_matrix1(Words,X,IntCharMap) =>
+  N = X.length,
+  M = X[1].length,
+  foreach(I in 1..N)
+    foreach(J in 1..M)
+      if nonvar(X[I,J]) then
+         printf("%w ", to_uppercase_swe(IntCharMap.get(X[I,J])))
+      else
+         printf("_ ")
+      end 
+    end,
+    nl
+  end,
+  println("\nWords:"),
+  foreach(Word in Words.sort())
+   println(Word)
+  end,
+
+  nl.    
+
+%
+% Presentation of the result for use with word_search_puzzle.pi
+%
+print_matrix2(Words,X,IntCharMap) =>
+  N = X.length,
+  M = X[1].length,
+  nl,
+  println("\n%\n% generated by word_search_puzzle_generate.pi"),
+  println("%"),
+  println("matrix(generated,Matrix,Words) =>"),
+  println("Matrix = ["),
+  foreach(I in 1..N)
+    print("["),
+    foreach(J in 1..M)
+      if nonvar(X[I,J]) then
+         C = IntCharMap.get(X[I,J]),
+         % printf("%w ", to_uppercase_swe(C))
+         if C == 'å' then 
+           C := "'å'" 
+         elseif C == 'ä' then 
+            C := "'ä'" 
+         elseif C == 'ö' then
+            C := "'ö'" 
+         end,
+         printf("%w", C)
+      else
+         printf("_ ")
+      end,
+      if J < N then print(",") end
+    end,
+    if I < N then
+      print("],")
+    else 
+      print("]")
+    end,
+    nl
+  end,
+  print("],"),
+
+  println("\nWords = ["),
+  foreach(Word in Words)
+    printf("\"%w\",\n",Word)
+  end,
+  println("]."),
+
+  nl.    
+
+
+to_uppercase_swe(C) = U =>
+  if membchk(C,"åäö") then
+     if C == 'å' then 
+        U = 'Å' 
+     elseif C == 'ä' then 
+        U = 'Ä' 
+     else 
+        U = 'Ö' 
+     end
+  else 
+    U = to_uppercase(C)
+  end.
+
+
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  foreach(I in 1..Len) 
+    R2 = 1+(random2() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
+
+swap(L,I,J) = L2, list(L) =>
+  L2 = L,
+  T = L2[I],
+  L2[I] := L2[J],
+  L2[J] := T.
+
+
+/* 
+  Letter frequencies in English
+  From http://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
+*/
+
+
+letter_freq = Chars => 
+  Freq =
+[ 
+[e,12.02],
+[t,9.10],
+[a,8.12],
+[o,7.68],
+[i,7.31],
+[n,6.95],
+[s,6.28],
+[r,6.02],
+[h,5.92],
+[d,4.32],
+[l,3.98],
+[u,2.88],
+[c,2.71],
+[m,2.61],
+[f,2.30],
+[y,2.11],
+[w,2.09],
+[g,2.03],
+[p,1.82],
+[b,1.49],
+[v,1.11],
+[k,0.69],
+[x,0.17],
+[q,0.11],
+[j,0.10],
+[z,0.07]
+],
+  Chars = [],
+  foreach([C,F] in Freq)
+     % we 
+     Chars := Chars ++ [C : _ in 1..ceiling(10*F)]
+  end,
+  nl.
+
+
+% 
+% Swedish frequencies. 
+% 
+letter_freq_swe = Chars => 
+  Freq =
+[ 
+[a,9.3],
+[b,1.3],
+[c,1.3],
+[d,4.5],
+[e,9.9],
+[f,2.0],
+[g,3.3],
+[h,2.1],
+[i,5.5],
+[j,0.7],
+[k,3.2],
+[l,5.2],
+[m,3.5],
+[n,8.8],
+[o,4.1],
+[p,1.7],
+[q,0.01],
+[r,8.3],
+[s,6.3],
+[t,8.7],
+[u,1.8],
+[v,2.4],
+[w,0.03],
+[x,0.1],
+[y,0.6],
+[z,0.02],
+['å',1.6],
+['ä',2.1],
+['ö',1.5]
+],
+  Chars = [],
+  foreach([C,F] in Freq)
+     Chars := Chars ++ [C : _ in 1..ceiling(10*F)]
+  end,
+  nl.
+

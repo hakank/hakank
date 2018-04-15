@@ -1,0 +1,239 @@
+/* 
+
+  Maximal unsorted list in Picat.
+
+  What is the maximal unsorted list? 
+
+  Here I defined "maximal unsorted list" as the list of integers 1..N (all distinct) 
+  where the sum of the difference between each adjacent number is maximized.
+
+
+  Theorem:
+  The maximum distance (sum([ abs(Y[I]-Y[I-1]) : I in 2..N])) of an unsorted list of 1..N numbers is
+  
+  https://oeis.org/search?q=1%2C3%2C7%2C11%2C17%2C23%2C31%2C39%2C49%2C59&sort=&language=english&go=Search
+  """  
+    a(n) = floor(n^2/2) - 1
+
+   1, 3, 7, 11, 17, 23, 31, 39, 49, 59, 71, 
+   83, 97, 111, 
+   127, 143, 161, 179, 199, 219, 241, 
+   263, 287, 311, 337, 363, 391, 419, 449, 479, 511, 543, 
+   577, 611, 647, 683, 721, 759, 799, 839, 881, 923, 967, 1011, 
+   1057, 1103, 1151, 1199, 1249, 1299, 1351, 1403
+
+   Define the organization number of a permutation pi_1, pi_2, ..., pi_n to be the following. 
+   Start at 1, count the steps to reach 2, then the steps to reach 3, etc. Add them up. Then the 
+   maximal value of the organization number of any permutation of [1..n] for n = 0, 1, 2, 3, ... 
+   is given by 0, 1, 3, 7, 11, 17, 23, ... (this sequence). This was established by Graham Cormode 
+   (graham(AT)research.att.com), Aug 17 2006, see link below, answering a question raised by Tom Young 
+   (mcgreg265(AT)msn.com) and Barry Cipra, Aug 15 2006
+
+   From Dmitry Kamenetsky, Nov 29 2006: (Start)
+
+   This is the length of the longest non-self-intersecting spiral drawn on an n X n grid. E.g., 
+   for n=5 the spiral has length 17:
+   10111
+   10101
+   10101
+   10001
+   11111 (End)
+
+   It appears that a(n+1) is the maximum number of consecutive integers (beginning with 1) that 
+   can be placed, one after another, on an n-peg Towers of Hanoi, such that the sum of any two 
+   consecutive integers on any peg is a square. See the problem: 
+   http://online-judge.uva.es/p/v102/10276.html. - Ashutosh Mehra, Dec 06 2008
+
+   a(n) = number of (w,x,y) with all terms in {0,...,n} and w = |x+y-w|. - Clark Kimberling, Jun 11 2012
+
+   The same sequence represents also the solution to the "pigeons problem": maximal value of the sum 
+   of the lengths of n-1 line segments (connected at their end-points) required to pass through n 
+   trail dots, with unit distance between adjacent points, visiting all of them without overlap 
+   two or more segments. In this case, a(0)=0, a(1)=1, a(2)=3, and so on. - Marco Ripà, Jan 28 2014
+
+   Also the longest path length in the n X n white bishop graph. - Eric W. Weisstein, Mar 27 2018 
+  """
+
+  The number of optimal solutions for a given N is (Z is the optimal sum):
+  N    Z   #num optimal solutions
+  ------------------------
+   1   0        1
+   2   1        1
+   3   3        2
+   4   7        1
+   5  11        4
+   6  17        4
+   7  23       24
+   8  31       36
+   9  39      288
+  10  49      576
+  11  59     5760
+  12  71    14400
+  13  83   172800
+  14  97   518400
+  15 111  7257600
+
+
+  Alas, this sequence is not in OEIS:
+  1,1,2,1,4,4,24,36,288,576,5760,14400,172800,518400,7257600
+
+
+  Variant
+  -------
+  If we just restrict the list to a specific domain (e.g. 1..N) and skip the all_different/1 constraint
+  as well as the symmetry breaking (Y[1] #< Y[N]), then the optimal value are much higher. 
+  Maximum unordered value for N=1..10: 0,1,4,9,16,25,36,49,64,81, i.e. (N-1)**2.
+  The optimal list is constructed as [1,N,1,N,1,N,1,....], e.g. for N=10: [1,10,1,10,1,10,1,10,1,10].
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import sat.
+% import mip.
+import cp.
+
+
+main => go.
+
+
+go =>
+  Zs = [],
+  Counts = [],
+  foreach(N in 1..10)
+    max_unsort_cp(N, Y, Z),
+    Count = count_all(max_unsort_cp(N,_,Z)),
+    println([n=N,z=Z,y=Y,count=Count]),
+    println(diffs=[ abs(Y[I]-Y[I-1]) : I in 2..N  ]),
+    nl,
+    Counts := Counts ++ [Count],
+    Zs := Zs ++ [Z]
+  end,
+  printf("Zs: %w\n", Zs),
+  printf("Counts: %w\n", Counts),
+  nl.
+
+go2 => 
+  foreach(N in 1..10)
+    max_unsort_cp(N, _Y, Z),
+    All = find_all(Y2, max_unsort_cp(N, Y2, Z)),
+    Len = All.len,
+    println([n=N,z=Z,len=Len]),
+    foreach(A in All)
+      println(A)
+    end,
+    nl
+  end,
+  nl.
+
+
+max_unsort_cp(N, Y,Z) =>
+  nolog,
+
+  Y = new_list(N),
+  Y :: 1..N,
+
+  all_different(Y),
+  
+  if N > 1 then
+    Y[1] #< Y[N] % symmetry breaking
+  end,
+
+  Z #= sum([ abs(Y[I]-Y[I-1]) : I in 2..N]),
+
+  if var(Z) then
+     solve($[ffc,split,max(Z)],Y)
+  else 
+     solve($[ffc,split],Y)
+  end.
+  % solve($[ff,inout,max(Z),report(printf("Z: %d\nY:%w\n\n",Z,Y))],Y).
+  % solve($[ffd,split,max(Z),report(printf("Z: %d\nY:%w\n\n",Z,Y))],X++Y).
+  % solve($[ffd,split,report(printf("Z: %d\nY:%w\n\n",Z,Y))],X++Y).
+
+
+
+% 
+% 0/1 version
+%
+go3 => 
+
+  nolog,
+  N = 10,
+  % _ = random2(),
+
+  % L = [ 1 + random() mod N : _ in 1..N ].sort(),
+  L = 1..N,
+  println(l=L),
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  Z #= sum([ abs(sum([L[J]*X[I,J] : J in 1..N])-sum([L[J]*X[I-1,J] : J in 1..N])) : I in 2..N]),
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..N]) #= 1,
+    sum([X[J,I] : J in 1..N]) #= 1
+  end,
+
+  println(solve),
+  % solve($[degree,updown,max(Z),report(printf("Z: %d\n",Z))],X.vars()),
+  solve($[degree,updown,report(printf("Z: %d\n",Z))],X.vars()),
+
+  println(z=Z),
+  foreach(I in 1..N) 
+     print(X[I]),
+     foreach(J in 1..N)
+       if X[I,J] = 1 then 
+          printf(" : %3d\n", L[J])
+       end
+     end
+  end,
+  nl,
+
+  fail,
+  
+  nl.
+
+% 
+% special case: 1..N
+% This is all_interval (see all_interval.pi for a better model)
+% But this is _not_ the optimal case!
+% 
+go4 =>
+  nolog,
+  N = 10,
+
+  _ = random2(),
+
+  L = 1..N,
+  println(l=L),
+
+  X = new_list(N),
+  X :: 1..N,
+  Diff = new_list(N-1),
+  Diff :: 1..N,
+
+  Z #= (N*(N-1)) div 2,
+  Z #= sum([ abs(X[I]-X[I-1]) : I in 2..N]),
+
+
+  all_distinct(X),
+  all_distinct(Diff),
+
+  foreach(I in 1..N-1)
+    Diff[I] #= abs(X[I]-X[I+1])
+  end,
+
+  println(z=Z),
+
+  println(solve),
+  Vars = Diff ++ X,
+  solve($[ffd,updown,max(Z),report(printf("Z: %d\nDiff:%w\nX:%w\n\n",Z,Diff,X))],Vars),
+
+  println(z=Z),
+  println('   x'=[to_fstring("%3d",X[I]) : I in 1..N]),
+  println(diff=[to_fstring("%3d",Diff[I]) : I in 1..N-1]),
+  
+
+  nl.

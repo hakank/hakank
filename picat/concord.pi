@@ -1,0 +1,122 @@
+/* 
+
+  Concordance of a file in Picat.
+
+  The program read a text file and shows the line number for all words.
+
+  (Inspired by the Icon/Unicon program concord.icn)
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go =>
+  MaxCol = 72,
+  File = "concord.data",
+  % PreLen is a constant in the Unicon program and give some strange results,
+  % e.g. entry of "straightforwardness" which is truncated to 15 characters, 
+  % i.e "straightforward".
+  % This is a good solution if one want to have the numbers in a fixed column.
+  % 
+  % PreLen = 15, 
+  PreLen = _,
+  make_concordance(File, MaxCol,PreLen),
+  nl.
+
+
+make_concordance(File, MaxCol,PreLen) =>
+
+  Lines = read_file_lines(File),
+  Concord = new_map(),
+  foreach({LineNum,Line} in zip(1..Lines.len,Lines))
+    printf("%4d: %s\n", LineNum, Line),
+    Words = [to_lowercase(W) : W in Line.split(" \t,;.\"\'*)(-#?!$:[]\\/#01234567890%"), W != ""],
+    if Words != [] then
+       foreach(Word in Words)
+          Concord.put(Word,Concord.get(Word,[]) ++ [LineNum])
+       end
+    end
+  end,
+
+  Words = Concord.keys().sort(),
+  if var(PreLen) then
+     PreLen = max([Word.len : Word in Words]) + 1,
+     % println(largestWord=[W : W in Words, W.len == PreLen ])
+  end,
+ 
+  TabStart = PreLen + 1, % where to start the line number list
+  Format = "%-" ++ PreLen.to_string() ++ "s%s\n",
+  foreach(Word in Words)
+    LineNums = [C.to_string() : C in Concord.get(Word)],
+    Formatted = format_lines(compress_occurrences(LineNums),PreLen,MaxCol),
+    printf(Format, Word.strip_word(PreLen),Formatted[1].join('')),
+    foreach(I in 2..Formatted.len)
+      printf(Format, "", Formatted[I].join(''))
+    end
+  end,
+  nl.
+
+
+%
+% compress occurrences of the same item to "item(n)" where n is the number of occurrences > 1
+%
+compress_occurrences(L) = Compressed =>
+   % println($compress_occurrences(L)),
+   Compressed1 = [],
+   Len = L.len,
+   S = L[1],
+   C = 1,
+   I = 2,
+   while(I <= Len)
+     while (I <= Len, L[I] == S)
+       C := C+1,
+       I := I + 1
+     end,
+     Compressed1 := Compressed1 ++ [cond(C == 1, S, to_fstring("%s(%d)",S,C))],
+     if I <= Len then
+       S := L[I]
+     end,
+     C :=0 
+   end,
+   if C > 0 then
+     Compressed1 := Compressed1 ++ [cond(C == 1, S, to_fstring("%s(%d)",S,C))]
+   end,
+   Compressed = Compressed1.
+
+
+%
+% format a list of strings to lines that fit into MaxCol - PreLen + 1 characters
+%
+format_lines(L,PreLen,MaxCol) = LinesReturn =>
+   Len = MaxCol - PreLen + 1,
+   LLen = L.len,
+   Lines = [] ,
+   Line = "",
+   foreach(I in 1..L.len)
+     A = L[I],
+     if Line.len + A.len > Len + 2 then
+       Lines := Lines ++ [[Line]],
+       Line := A ++ cond(I < LLen,", ","")
+     else
+       Line := Line ++ A ++ cond(I < LLen, ", ", "")
+     end
+   end,   
+   Lines := Lines ++ [[Line]],
+   LinesReturn = Lines.
+
+
+%
+% strip a word to max Len characters
+%
+strip_word(Word, Len) = Stripped => 
+   if Word.len > Len then
+     Stripped = [Word[I] : I in 1..Len]
+   else 
+     Stripped = Word
+   end.
