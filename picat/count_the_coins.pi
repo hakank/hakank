@@ -36,35 +36,102 @@ import cp.
 
 main => go.
 
+% 
 go =>
-  printf("changes($100,[25,10,5,1]): %d\n", changes(100,[25,10,5,1])),
-  printf("changes($1000,[100,50,25,10,5,1]): %d\n", changes(1000,[100,50,25,10,5,1])).
+  Problems = [[1*100, [25,10,5,1]],            % 1 dollar: 0.0s
+              [100*100, [100,50,25,10,5,1]],   % 100 dollars: 0.007s
+              [1000*100, [100,50,25,10,5,1]],  % 1000 dollars: 0.067s
+              [10000*100, [100,50,25,10,5,1]], % 10000 dollars: 0.723s
+              [100000*100, [100,50,25,10,5,1]] % 100000 dollars: 5.44s
+              ],
+  foreach([N,L] in Problems)
+     initialize_table, % clear the tabling from previous run
+     println([n=N,l=L]),
+     time(println(coins(L, N, 1)))
+  end.
+
+
+
+go2 =>
+  time(printf("changes($100,[25,10,5,1]): %w\n", coins_array(1*100,[25,10,5,1]))), % 0.0s
+  time(printf("changes($1000,[100,50,25,10,5,1]): %w\n", coins_array(10*100,[100,50,25,10,5,1]))), % 0.017s
+  time(printf("changes($10000,[100,50,25,10,5,1]): %w\n",  coins_array(100*100,[100,50,25,10,5,1]))), % 1.495s
+  time(printf("changes($100000,[100,50,25,10,5,1]): %w\n", coins_array(1000*100,[1000,50,25,10,5,1]))). % 163.686s
+
 
 % CP approach
-go2 => 
-  Problems = [[100, [1,5,10,25]],
-              [1000, [1,5,10,25,50,100]]],
+% slower than go/0 and go2/0.
+go3 => 
+  garbage_collect(300_000_000),
+  Problems = [[100, [1,5,10,25]], % 0.0s
+              [1000, [1,5,10,25,50,100]]], % 0.96s
   foreach([N,L] in Problems)
      println([n=N,l=L]),
-     changes_cp(L,N,Len),
+     time(changes_cp(L,N,Len)),
      println(Len),
      nl
   end.
 
 
-changes(Amount, Coins) = Ret =>
+% CP approach: using count_all/1
+% Slightly faster than go3/0
+go4 => 
+  garbage_collect(300_000_000),
+  Problems = [[1*100, [1,5,10,25]], % 0.0s
+              [1000*100, [1,5,10,25,50,100]]], % 0.854s
+  foreach([N,L] in Problems)
+     println([n=N,l=L]),
+     time(Count = count_all(changes_cp2(L,N))),
+     println(Count),
+     nl
+  end.
+
+
+% recursive approach using tabling
+% (much faster with table)
+table
+coins(Coins, Money, M) = Sum =>
+    Sum1 = 0,
+    Len = Coins.length,
+    if M == Len then
+      Sum1 := 1
+    else 
+       foreach(I in M..Len)
+         if Money - Coins[I] == 0 then
+            Sum1 := Sum1 + 1
+         end,
+         if Money - Coins[I] > 0 then
+            Sum1 := Sum1 + coins(Coins, Money-Coins[I], I)
+         end
+       end
+    end,
+    Sum = Sum1.
+
+%
+% array approach
+%
+coins_array(Amount, Coins) = Ret =>
   Ways = [0 : _I in 1..Amount+1],
   Ways[1] := 1,
   foreach(Coin in Coins, J in Coin..Amount)
      Ways[J+1] := Ways[J+1] + Ways[1+J-Coin]
   end,
-
   Ret = Ways[Amount+1].
+
 
 
 changes_cp(L,N,NSols) => 
   Len = L.length,
   X = new_list(Len),
   X :: 0..N,
-  sum([L[I]*X[I] : I in 1..Len]) #= N,
-  NSols=solve_all([constr,min],X).length.
+  % sum([L[I]*X[I] : I in 1..Len]) #= N,
+  scalar_product(L,X,N),
+  NSols=solve_all([degree,min],X).length.
+
+changes_cp2(L,N) => 
+  Len = L.length,
+  X = new_list(Len),
+  X :: 0..N,
+  % sum([L[I]*X[I] : I in 1..Len]) #= N,
+  scalar_product(L,X,N),
+  solve([degree,min],X).

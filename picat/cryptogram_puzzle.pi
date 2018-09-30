@@ -1,0 +1,133 @@
+/* 
+
+  Cryptogram puzzle in Picat.
+
+  https://stackoverflow.com/questions/49838393/cryptogram-puzzle-with-prolog-clpfd
+  "Cryptogram Puzzle with Prolog CLPFD"
+  """
+  I recently found a small game on the Google Play app store called Cryptogram. 
+  [http://play.google.com/store/apps/details?id=de.aschulz.cryptogram ]
+  There are dozens of apps similar to this one. The idea is to match the number 
+  to the colors such that all of the equations sound true.
+
+  I was able to get through problems 1-8 and problem 10 fairly quickly by hand, but problem 
+  9 has proven to be more difficult for me.
+
+  Problem 9 Problem 9
+
+  After some time tinkering and guessing, I gave up and decided to program a solution. 
+  I have used Prolog/Datalog for some small tasks as an undergrad as well as some Project Euler 
+  problems. Previously I had seen the 15 line Sudoku solver that uses Prolog's Constraint Logic 
+  Programming over Finite Domains (clpfd) library, and I decided to give it a go myself. 
+  I'm using SWI-Prolog.
+  """
+
+  Ported from the Prolog code in the question (added after some answers).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+% Port of the Prolog (CLPFD) code
+go ?=>
+  Colors = [Pink, Cyan, Yellow, Green, Purple, Red, Brown, White, Lime],
+  Colors :: 0..9,
+  all_distinct(Colors),
+
+  Numbers = [Number1_1,Number1_2,Number1_3,Number2_1,Number2_2,Number2_3,Number3_1,Number3_2,Number3_3],
+  Numbers :: 0..9999,
+  Number1_1 div Number1_2 #= Number1_3,
+  Number1_1 mod Number1_2 #= 0,
+  Number2_1 + Number2_2 #= Number2_3,
+  Number3_1 - Number3_2 #= Number3_3,
+  Number1_1 - Number2_1 #= Number3_1,
+  Number1_2 * Number2_2 #= Number3_2,
+  Number1_3 + Number2_3 #= Number3_3,
+
+  digit_number(Number1_1, [Pink, Cyan, Pink, Yellow]),
+  digit_number(Number1_2, [Green, Purple]),
+  digit_number(Number1_3, [Cyan, Red, Purple]),
+  digit_number(Number2_1, [Red, Brown, White, Red]),
+  digit_number(Number2_2, [Lime, Yellow]),
+  digit_number(Number2_3, [Red, Lime, Purple, Pink]),
+  digit_number(Number3_1, [White, Purple, Cyan, White]),
+  digit_number(Number3_2, [Green, Cyan, Yellow, Purple]),
+  digit_number(Number3_3, [Cyan, Red, Yellow, Red]),
+  solve([ffc,split],Colors ++ Numbers),
+
+  println(Colors),
+  fail, % ensure unicity
+  nl.
+
+go => true.
+
+
+% Slightly different approach (using a loop)
+go2 ?=> 
+    Colors = [Pink, Cyan, Yellow, Green, Purple, Red, Brown, White, Lime],
+    N = Colors.len,
+    Colors :: 0..9,
+    ColorLists = [
+      [Pink, Cyan, Pink, Yellow],
+      [Green, Purple],
+      [Cyan, Red, Purple],
+      [Red, Brown, White, Red],
+      [Lime, Yellow],
+      [Red, Lime, Purple, Pink],
+      [White, Purple, Cyan, White],
+      [Green, Cyan, Yellow, Purple],
+      [Cyan, Red, Yellow, Red]
+    ],
+
+    Numbers = new_list(N),
+    Numbers :: 0..9999,
+
+    % constraints
+
+    all_distinct(Colors),
+
+    Numbers[1] div Numbers[2] #= Numbers[3],
+    Numbers[1] mod Numbers[2] #= 0,
+    Numbers[4] + Numbers[5] #= Numbers[6],
+    Numbers[7] - Numbers[8] #= Numbers[9],
+    Numbers[1] - Numbers[4] #= Numbers[7],
+    Numbers[2] * Numbers[5] #= Numbers[8],
+    Numbers[3] + Numbers[6] #= Numbers[9],
+
+    foreach(I in 1..N)
+       CLen = ColorLists[I].len,
+       Numbers[I] #= sum([ColorLists[I,J]*10**(CLen-J) : J in 1..CLen]),
+       % restrict the domain of this number (not really needed)
+       Numbers[I] :: 0..10**CLen-1
+    end,
+
+    Vars = Colors ++ Numbers,
+    solve([ffc,split], Vars),
+
+    println(colors=Colors),
+    println(numbers=Numbers),
+
+    fail, % ensure unicity
+
+    nl.
+
+go2 => true.
+
+
+% digit_number(0, [], 1) => true. % don't work
+digit_number(Number, [], DigitPlace) => Number #= 0, DigitPlace #= 1. 
+digit_number(Number, [Digit|Tail], DigitPlace) =>
+    digit_number(NextNumber, Tail, NextDigitPlace),
+    DigitPlace #= NextDigitPlace * 10,
+    PlaceNumber #= Digit * (NextDigitPlace),
+    Number #= PlaceNumber + NextNumber.
+
+digit_number(Number, ColorList) =>
+    digit_number(Number, ColorList, _).
+

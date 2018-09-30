@@ -1,0 +1,214 @@
+/* 
+
+  Magic sequence special in Picat.
+
+  From Puzzles that Solve Themselves — Peter Winkler
+  https://www.youtube.com/watch?v=RQtCRpWvVuw&t=6s
+  @7:05 
+  """
+  N is an 8-digit number with the following properties:
+   - The first digit of N is the number of 0's in N.
+   - The second digit of N is the number of 1's in N.
+   - The third digit of N is the number of 2's in N.
+   - The fourth digit of N is the number of 3's in N.
+   - The fifth digit of N is the number of 4's in N.
+   - The sixth digit of N is the number of 5's in N.
+   - The sevents digit of N is the number of 6's in N.
+  The eight digit of N is the number of different digits in N.
+  """
+
+  So it's a special "magic sequence"...
+
+  The unique solution is:
+    x: [2, 3, 1, 1, 0, 1, 0, 5]
+
+  For N in 1..20, there are solutions for all numbers except 2, 3, 4, and 11.
+  Question: Why don't N=11 give any solutions?
+
+  For N >= 8, X[N] is always 5 (i.e. 5 distinct numbers). Also, from N > 8,
+  there are always 2 solutions.
+
+1 = [{1}],1
+2 = [],0
+3 = [],0
+4 = [],0
+5 = [{1,2,1,0,4}],1
+6 = [{1,2,2,0,1,4},{1,3,0,1,1,4}],2
+7 = [{3,0,2,2,0,0,3},{3,1,0,3,0,0,3}],2
+8 = [{2,3,1,1,0,1,0,5}],1
+9 = [{4,1,2,0,2,0,0,0,4},{3,2,2,1,0,1,0,0,5}],2
+10 = [{4,2,2,0,1,1,0,0,0,5},{4,3,0,1,1,1,0,0,0,5}],2
+11 = [],0
+12 = [{6,2,2,0,0,1,1,0,0,0,0,5},{6,3,0,1,0,1,1,0,0,0,0,5}],2
+13 = [{7,2,2,0,0,1,0,1,0,0,0,0,5},{7,3,0,1,0,1,0,1,0,0,0,0,5}],2
+14 = [{8,2,2,0,0,1,0,0,1,0,0,0,0,5},{8,3,0,1,0,1,0,0,1,0,0,0,0,5}],2
+15 = [{9,2,2,0,0,1,0,0,0,1,0,0,0,0,5},{9,3,0,1,0,1,0,0,0,1,0,0,0,0,5}],2
+16 = [{10,2,2,0,0,1,0,0,0,0,1,0,0,0,0,5},{10,3,0,1,0,1,0,0,0,0,1,0,0,0,0,5}],2
+17 = [{11,2,2,0,0,1,0,0,0,0,0,1,0,0,0,0,5},{11,3,0,1,0,1,0,0,0,0,0,1,0,0,0,0,5}],2
+18 = [{12,2,2,0,0,1,0,0,0,0,0,0,1,0,0,0,0,5},{12,3,0,1,0,1,0,0,0,0,0,0,1,0,0,0,0,5}],2
+19 = [{13,2,2,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,5},{13,3,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,0,5}],2
+20 = [{14,2,2,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,5},{14,3,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,5}],2
+
+   For N = 10 or >= 12, the "formula" is
+     X[1] = N-5-1
+     X[2] = a) 2 or b) 3
+     X[3] = a) 2 or b) 0
+     X[4] = a) 0 or b) 1
+     X[5] = a) 1 or b) 0
+     X[6] = 1
+     X[N-5+1] = 1
+     X[N] = 5
+     else X[..] is 0
+
+  Peter Winker said (when in a hurry at the end of the talk):
+   - pick any 8 digit number
+   - write down the new number you get from this algorithm
+   - repeat
+   - in 13 iterations you have it
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+% Finds the unique solution for N = 8: 2,3,1,1,0,1,0,5
+go ?=>
+  N = 8,
+  magic_sequence_special(N, X),
+  println(X),
+  fail,
+  nl.
+
+go => true.
+
+
+go2 => 
+  nolog,
+  NumSols = [],
+  foreach(N in 1..20)
+    All = find_all(X, magic_sequence_special(N, X)),
+    println((N=All,All.len)),
+    NumSols := NumSols ++ [All.len]
+  end,
+  println(NumSols),
+  nl.
+
+% Just one solution
+go2b => 
+  nolog,
+  foreach(N in 1..40)
+    (magic_sequence_special(N, X), println(N=X)) ; println(N=no_solution)
+  end,
+  nl.
+
+
+%
+% Manual algorithm.
+%
+go3 =>
+  N = 1118,
+  magic_sequence_special2(N, X, Count),
+  println(x=X),
+  println(count=Count),
+
+  nl.
+
+%
+% Manual, many numbers.
+% This is much faster than the CP version. For 1..200 it takes about 2 seconds.
+% Note: Compared to magic_sequence_special/2, it don't find any solution for N = 7 and 10.
+%
+% Number of iterations for the one without loops:
+%   counts = (map)[1 = 1,4 = 1,6 = 2,7 = 190]
+% i.e. mostly 7 iterations are needed.
+go4 => 
+  Counts = new_map(),
+  NotFound = [],
+  foreach(N in 1..12)
+    println(n=N),
+    magic_sequence_special2(N, X, Count),
+    println(x=X),
+    println(count=Count),
+    if X == [] then 
+       NotFound := NotFound ++ [N]
+    else 
+       Counts.put(Count,Counts.get(Count,0)+1)
+    end,
+    nl
+  end,
+  println(counts=Counts),
+  println(notFound=NotFound),
+  nl.
+
+
+% Using CP
+magic_sequence_special(N, X) =>
+   X = new_array(N),
+   X :: 0..N,
+   foreach(I in 1..N-1)
+     count(I-1,X,#=,X[I])
+   end,
+   nvalue(X[N],X), % number of different values
+   
+   solve($[ffd,split],X).
+
+
+% "Algorithmic" approach.
+% It seems that it takes atmost 7 iterations (when starting from all 0s).
+% 
+% Note: Compared to magic_sequence_special/2, it don't find any solution for N = 7 and 10.q
+%
+magic_sequence_special2(N, Xs, CountS) =>
+  % _ = random2(),
+  % X = [1+random() mod N : I in 0..N-1],
+  % It's faster to start with just 0s since most of the numbers in the sequence are 0.
+  X = {0 : I in 0..N-1},
+  println(x=X),
+  Found = false,
+  Count = 0,
+  Map = new_map(),
+  while(Found == false)
+    % Y := copy_term(X),
+    Y := {0 : I in 0..N-1},% new_array(N), % slightly faster
+    foreach(I in 1..N-1)
+       Y[I] := sum([1 : K in 1..N, X[K] == I-1])
+    end,
+    Y[N] := Y.remove_dups().len,
+    if X == Y then
+      Found := true
+    elseif Map.has_key(Y) then
+      println("We found a loop!"=Y),
+      X := [],
+      Found := true
+    else
+      println(Y),
+      Map.put(Y,1),
+      Count := Count + 1,
+      X := Y
+    end
+  end, 
+  println(foundIn=Count),
+  Xs = X,
+  CountS = Count,
+  nl.
+
+
+
+% nvalue(?N,?X)
+%
+% Requires that the number of distinct values in X is N.
+%
+nvalue(N, X) =>
+   Len = length(X),
+   LB = min([fd_min(X[I]) : I in 1..Len]),
+   UB = max([fd_max(X[I]) : I in 1..Len]),
+   N #= sum([ (sum([ (X[J] #= I) : J in 1..Len]) #> 0) : I in LB..UB]).
+
+
+

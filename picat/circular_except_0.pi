@@ -1,0 +1,77 @@
+/* 
+
+  Circular except 0 in Picat.
+
+  Ensure that all the numbers 1..n in array x of length m 
+  are ordered and circular. However, we also allow 0 which
+  can be placed everywhere.
+
+  Cf http://hakank.org/picat/circular.pi 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go ?=>
+  N = 10,
+  X = new_list(N),
+  X :: 0..5,
+  circular_except_0(X),  
+
+  solve(X),
+  println(x=X),
+  fail,
+  nl.
+
+go => true.
+
+% Note this is hardcoded for 1..5 (and 0)
+circular_except_0(X) =>
+
+   N = X.length,
+
+   % Transition function (MiniZinc style)  
+   % 
+   Transition = [
+      % 0 1 2 3 4 5
+       [1,3,4,5,6,2],   % 1    init
+       [2,3,0,0,0,0],   % 2    1->0*->2 
+       [3,0,4,0,0,0],   % 3    2->0*->3
+       [4,0,0,5,0,0],   % 4    3->0*->4
+       [5,0,0,0,6,0],   % 5    4->0*->5
+       [6,0,0,0,0,2]   % 6    5->0*->1
+      ],
+   NStates = 6,
+   InputMax = 6,
+   InitialState = 1,
+   AcceptingStates = [I : I in 1..6],
+
+   MaxVal = InputMax -1,
+
+   RegInput = new_list(N),
+   RegInput :: 1..InputMax,  % 1..6
+
+   % Translate X's 0..1 to RegInput's 1..2
+   foreach(I in 1..N) 
+      RegInput[I] #= X[I]+1  
+   end,
+
+   regular(RegInput,NStates,InputMax,Transition,InitialState, AcceptingStates),
+
+   % fix the number of 0s (we must have some M number of 1..MaxSequences, the rest is 0s)
+   sum([X[I] #= 0 : I in 1..N]) mod MaxVal #= (N mod MaxVal),
+
+   % All numbers 1..MaxVal must be in the list
+   sum([X[I] #= MaxVal : I in 1..N]) #> 0.
+
+
+next_val(A, B, V) =>
+   B #= cond( (1+(A mod V)) #= 0, V, 1+(A mod V)).
+
