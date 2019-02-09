@@ -9,8 +9,10 @@
 # 
 from z3_utils_hakank import *
 
-def sudoku(init):
-    sol = Solver()
+def sudoku(init,prove_unicity=True):
+    # sol = Solver()
+    # sol = SolverFor("QF_LIA")
+    sol = SolverFor("LIA")  # faster
     m = 3
     n = m ** 2
     line = list(range(0, n))
@@ -45,17 +47,26 @@ def sudoku(init):
 
     # Check for unicity
     # (for just the first solution: change "while" to "if")
-    while sol.check() == sat:
-        mod = sol.model()
-        print_grid(mod,x,n,n)
-        getDifferentSolutionMatrix(sol,mod,x, n,n)
-    
+    # - Prove unicity: 0.725
+    # - Just a solution: 0.503
+    if prove_unicity:
+        while sol.check() == sat:
+            mod = sol.model()
+            print_grid(mod,x,n,n)
+            print
+            getDifferentSolutionMatrix(sol,mod,x, n,n)
+    else:
+        if sol.check() == sat:        
+            mod = sol.model()
+            print_grid(mod,x,n,n)
+
 # Problem from
 # "World's hardest sudoku: can you crack it?"
 # http://www.telegraph.co.uk/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html
 #
-# Tims to first solution: 0.86s
-# Time to ensure unicity: 1.03s
+# Tims to first solution: 0.37s
+# Time to ensure unicity: 0.54s
+# Note: Null time (i.e. just reading this model w/o any goal): 0.204s
 world_hardest = [[8,0,0, 0,0,0, 0,0,0],
                  [0,0,3, 6,0,0, 0,0,0],
                  [0,7,0, 0,9,0, 2,0,0],
@@ -70,6 +81,8 @@ world_hardest = [[8,0,0, 0,0,0, 0,0,0],
 
 # From https://ericpony.github.io/z3py-tutorial/guide-examples.htm
 # (another Z3 Sudoku model)
+# That z3 model solves this problem in 0.29s
+# This model: 0,27s (0.31s to prove uniciy)
 another = [[0,0,0,0,9,4,0,3,0],
            [0,0,0,5,1,0,0,0,7],
            [0,8,9,0,0,0,0,4,0],
@@ -80,9 +93,8 @@ another = [[0,0,0,0,9,4,0,3,0],
            [9,0,0,0,6,5,0,0,0],
            [0,4,0,9,7,0,0,0,0]]
 
-
-sudoku(world_hardest)
-print
-sudoku(another)
+# sudoku(world_hardest, False)
+# print
+sudoku(another,True)
 
 
