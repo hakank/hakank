@@ -62,7 +62,7 @@ rogo(PNr) =>
    println([rows=Rows,cols=Cols,maxSteps=MaxSteps,best=Best]),
    
    % The valid connections (for table_in/2)
-   Connections = [ ((I1-1)*Cols+J1,(I2-1)*Cols+J2) :
+   Connections = [ {(I1-1)*Cols+J1,(I2-1)*Cols+J2} :
                     I1 in 1..Rows, J1 in 1..Cols, I2 in 1..Rows, J2 in 1..Cols,
                       ((abs(J1-J2) == 1, I1 == I2); 
                        (abs(I1-I2) == 1, J1 mod Cols == J2 mod Cols)
@@ -144,10 +144,10 @@ rogo(PNr) =>
    % Only valid connections, using table_in/2.
    %
    foreach(S in 1..MaxSteps-1) 
-     table_in((Path[S], Path[S+1]), Connections)
+     table_in({Path[S], Path[S+1]}, Connections)
    end,
    % "around the corner"
-   table_in((Path[1], Path[MaxSteps]), Connections),
+   table_in({Path[1], Path[MaxSteps]}, Connections),
 
    %
    % Symmetry breaking 1: 
@@ -180,65 +180,6 @@ rogo(PNr) =>
    println(sumPoints=SumPoints),
 
    nl.
-
-
-%
-% Different implementations of matrix_element(Matrix,I,J,Val)
-% to handle
-%    Val = Matrix[I,J]
-% which is not available when I or J are decision variables.
-% 
-matrix_element1(X, I, J, Val) =>
-  element(I, X, Row),
-  element(J, Row, Val).
-
-matrix_element2(X, I, J, Val) =>
-  nth(I, X, Row),
-  element(J, Row, Val).
-
-matrix_element3(X, I, J, Val) =>
-  freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
-
-matrix_element4(X, I, J, Val) =>
-  freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
-
-%%
-%% matrix_element/4
-%% by Neng-Fa Zhou and Hakan Kjellerstrand
-%%
-matrix_element(M,I,J,Val) => 
-   matrix_element_cp(M,I,J,Val).
-
-matrix_element_cp(M,I,J,Val),list(M) =>
-    list_matrix_to_array_matrix(M) = M1,
-    matrix_element_aux(M1,I,J,Val).
-matrix_element_cp(M,I,J,Val),array(M) =>
-    matrix_element_aux(M,I,J,Val).
-
-matrix_element_aux(M,I,J,Val) =>
-    NRows = M.length,
-    NCols = M[1].length,
-    if not valid_matrix(M,NRows,NCols) then
-       handle_exception($invalid_matrix(M),matrix_element)
-    end,
-    I :: 1..NRows,
-    J :: 1..NCols,
-    if ground(M) then
-       Table = [(R,C,M[R,C]) : R in 1..NRows, C in 1..NCols],
-       table_in((I,J,Val),Table)
-    else
-       wait_until_ij(M,I,J,Val)
-    end.
-
-valid_matrix(M,NRows,NCols) =>
-   foreach(R in 2..NRows) 
-      M[R].length==NCols 
-   end.
-
-% wait until I and J becomes non-var
-wait_until_ij(_M,I,J,_Val),var(I),{ins(I),ins(J)} => true.
-wait_until_ij(_M,_I,J,_Val),var(J),{ins(J)} => true.
-wait_until_ij(M,I,J,Val) => Val=M[I,J].
 
 
 % Data from
