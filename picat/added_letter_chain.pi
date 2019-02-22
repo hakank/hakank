@@ -1,0 +1,93 @@
+/* 
+
+  Progressive word chain adding a letter (front/back) to words in Picat.
+
+  Start from a word and then continue to add a character either at front or back
+  to create another word.
+
+  Examples:
+
+  3 letter word .. 10 letter word:
+
+  wordChain = [abi,rabi,arabi,arabin,arabine,carabine,carabiner,carabinero]
+  wordChain = [abi,rabi,arabi,arabin,carabin,carabine,carabiner,carabinero]
+  wordChain = [abi,rabi,rabin,arabin,arabine,carabine,carabiner,carabinero]
+  wordChain = [abi,rabi,rabin,arabin,carabin,carabine,carabiner,carabinero]
+
+  Swedish:
+
+  wordChain = [ack,tack,tacka,tackar,stackar,stackare,stackaren,stackarens]
+  wordChain = [aga,agar,lagar,klagar,åklagar,åklagare,åklagaren,åklagarens]
+  wordChain = [all,alla,kalla,åkalla,åkallad,åkallade,åkallades,påkallades]
+  wordChain = [and,anda,andar,landar,blandar,blandare,blandaren,blandarens]
+  wordChain = [and,vand,vande,övande,rövande,prövande,prövandet,prövandets]
+  wordChain = [apa,apan,apans,japans,japansk,japanska,japanskan,japanskans]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+go =>
+  File = "unixdict.txt",
+
+  Len = 3,
+  % EndLen = 6,
+  member(EndLen,10..12),
+  println([startLen=Len,endLen=EndLen]),
+
+  % Words = [to_lowercase(W) : W in read_file_lines(File), once(between(Len,EndLen,length(W))), not member('\'', W)],
+  Words = [to_lowercase(W) : W in read_file_lines(File), length(W) >= Len, length(W) <= EndLen, not member('\'', W)],
+  println(after_dict),
+  println(numWords=Words.length),
+  flush(stdout),
+
+  These = [W: W in Words, length(W) == Len],
+  member(Word,These), % nondet
+  WordChain = [Word],
+  while (Len < EndLen) 
+    % println([len=Len,word=Word]),
+    A = adding_letter_chain2([W : W in Words, length(W) == Len + 1],Word),
+    A != [],
+    member(Word2, A), % nondet
+    Word := Word2,
+    Len := Len + 1,
+    WordChain := WordChain ++ [Word2]
+    % , println(WordChain)
+  end,
+
+  println(wordChain=WordChain),
+
+  flush(stdout),
+
+  fail, % nondet
+
+  nl.
+
+
+%
+% Find a progressive anagram of the word Word
+%
+adding_letter_chain(NextLength,Word) = Next => 
+  Next = [],
+  foreach(Word2 in NextLength)
+    if once(append([_], Word,Word2)) 
+       ; 
+       once(append(Word,[_], Word2)) then
+      Next := Next ++ [Word2]
+    end
+  end.
+
+% This seems to be the fastest
+adding_letter_chain2(NextLength,Word) = 
+  [Word2 : Word2 in NextLength, (once(append([_], Word,Word2) ; append(Word,[_], Word2)))].
+
+
+adding_letter_chain3(NextLength,Word) = 
+  [Word2 : Word2 in NextLength, once(find(Word2,Word,_,_))].

@@ -1,0 +1,126 @@
+/* 
+
+  (Decomposition of) global constraint assigned_except_0 in Picat.
+
+  The global constraint assignment (also called inverse) is a constraint which require that
+    if X[I] = J <=> X[J] = I
+ 
+  (See http://hakank.org/picat/inverse.pi for two decompositions of this.)
+
+
+  The global constraint assigned_except_0/1 requires that there are only assignments 
+  for the elements where X[I] > 0, i.e.
+     - X[I] #= J #<=>  X[J] #= I, where both I and J must be > 0
+     - If X[I] #= 0 this mean that there are no assignments to I in X.
+
+
+  Example:       
+     X = [0, 8, 6, 0, 5, 3, 0, 2]
+
+  - X[2] = 8 <-> X[8] = 2
+  - X[3] = 6 <-> X[6] = 3
+  - X[5] = 5 <-> X[5] = 5 ("self-assignments" are allowed. See below for this.)
+  - Since X[1] = 0 there is no value 1 in X
+  - Since X[4] = 0 there is no value 4 in X
+  - Since X[7] = 0 there is no value 7 in X
+
+
+
+  Variant: has_assignment_except_0_no_self_assignments/1 is a variant where X[I] #> 0 just mean that I must be in X.
+
+  Example:
+    X  = [0, 4, 5, 2, 3, 0, 8, 7]
+  - X[2] = 4 <-> X[4] = 2
+  - X[3] = 5 <-> X[5] = 3
+  - X[7] = 8 <-> X[8] = 7
+  - 1 and 6 are not assigned
+  - There is no self-assignments.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go ?=>
+  N = 8,
+  X = new_list(N),
+  X :: 0..N,
+
+  assigned_except_0(X),
+
+  % Require exactly 3 non assignments
+  sum([X[I]#=0 : I in 1..N]) #= 3,
+
+  solve(X),
+
+  println(x=X),
+  fail,
+  nl.
+
+go => true.
+
+
+% Don't allow self-assignments
+go2 ?=>
+  N = 8,
+  X = new_list(N),
+  X :: 0..N,
+
+  assigned_except_0_no_self_assignments(X),
+
+  % Require exactly 4 non assignments
+  sum([X[I]#=0 : I in 1..N]) #= 2,
+
+  solve(X),
+
+  println(x=X),
+  fail,
+  nl.
+
+go2 => true.
+
+
+% 
+% Assigned except_0
+%
+% If X[I] = J (J > 0) then  X[J] #= I (I > 0)
+%
+assigned_except_0(X) =>
+  Len = X.len,
+  foreach(I in 1..Len, J in 1..Len)
+     X[I] #> 0 #/\ X[J] #> 0 #/\ J #= X[I] #<=> I #= X[J]
+  end.
+
+
+assigned_except_0_no_self_assignments(X) =>
+  Len = X.len,
+  foreach(I in 1..Len)
+     X[I] #!= I,
+     foreach(J in 1..Len)
+        X[I] #> 0 #/\ X[J] #> 0 #/\ J #= X[I] #<=> I #= X[J]
+     end
+  end.
+
+
+
+% This is a variant which only states that if X[I] is > 0 then
+% there must be some element with value I but we don't care
+% in what position.
+%
+%    X[I] #> 0 #<=> X[X[I]] #> 0
+%
+has_assignment_except_0(X) =>
+  all_different_except_0(X),
+  foreach(I in 1..X.length) 
+    (X[I] #> 0) #<=> (sum([X[J] #= I : J in 1..X.length]) #> 0)
+  end.
+
+
