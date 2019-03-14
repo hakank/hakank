@@ -1,0 +1,135 @@
+/* 
+
+  Scheduling with table_in in Picat.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+
+go =>
+  nolog,
+  Day = 1, % day shift
+  Night = 2, % night shift
+  Off = 3, % off
+
+  % 7 day schedule
+  Valid1 = [
+            [Day,Day,Day,Day,Day,Off,Off],
+            [Night,Off,Night,Off,Day,Day,Off],
+            [Night,Night,Off,Off,Day,Day,Off]
+          ],
+
+  % create all variants,
+  Valid = [],
+  foreach(V in Valid1)
+    foreach(R in 0..V.len-1)
+      Rot = rotate_left(V,R).to_array(),
+      Valid := Valid ++ [Rot]
+    end
+  end,
+  println(Valid),
+  println(len=Valid.len),
+  
+
+  NumNurses = 14,
+  NumDays = Valid1[1].len,
+  println(numDays=NumDays),
+
+  X = new_array(NumNurses,NumDays),
+  X :: Day..Off,
+
+  foreach(Nurse in 1..NumNurses)
+    table_in([X[Nurse,D] : D in 1..NumDays].to_array(),Valid)
+  end,
+
+  foreach(D in 1..NumDays)
+    sum([X[Nurse,D] #= Day : Nurse in 1..NumNurses]) #>= 3,
+    sum([X[Nurse,D] #= Night : Nurse in 1..NumNurses]) #>= 2,
+    sum([X[Nurse,D] #= Off : Nurse in 1..NumNurses]) #>= 2
+  end,
+
+  Vars = X.vars(),
+  solve([degree,inout],Vars),
+
+  println("Schedule:"),
+  foreach({I,Nurse} in zip(1..NumNurses,X.to_list()))
+    printf("Nurse %2d: %w\n", I, Nurse)
+  end,
+  nl.
+
+
+go2 =>
+  nolog,
+  NumDays = 7,
+
+  Day = 1, % day shift
+  Night = 2, % night shift
+  Off = 3, % off
+  
+  Points = [4,2,1], % night, day, off
+  % 18 is the sum of the schedule [n,n,d,d,o,o,o]
+  % and we want all the combinations with the same total
+  Basic = [4,4,2,2,1,1,1], % points
+  TotalPoints = sum(Basic), 
+  println(totalPoints=TotalPoints),
+  make_valid_schedules(NumDays,Points,TotalPoints,Valid,Schedule),
+  println(validLen=Valid.len),
+
+
+  NumNurses = 7,
+  NumDays = Schedule[1].len,
+  println([numNurses=NumNurses,numDays=NumDays]),
+
+  % decision variables
+
+  X = new_array(NumNurses,NumDays),
+  X :: Day..Off,
+
+  foreach(D in 1..NumDays)
+    sum([X[Nurse,D] #= Day : Nurse in 1..NumNurses]) #>= 3,
+    sum([X[Nurse,D] #= Night : Nurse in 1..NumNurses]) #>= 2,
+    sum([X[Nurse,D] #= Off : Nurse in 1..NumNurses]) #>= 2
+  end,
+
+  foreach(Nurse in 1..NumNurses)
+    table_in([X[Nurse,D] : D in 1..NumDays].to_array(),Valid)
+  end,
+
+
+  Vars = X.vars(),
+  solve([ff,updown],Vars),
+
+  println("Schedule:"),
+  foreach({I,Nurse} in zip(1..NumNurses,X.to_list()))
+    printf("Nurse %2d: %w\n", I, Nurse)
+  end,
+  nl.
+
+
+
+rotate_left(L) = rotate_left(L,1).
+rotate_left(L,N) = slice(L,N+1,L.length) ++ slice(L,1,N).
+
+
+make_valid_schedules(NumDays, Points,TotalPoints, Valid, Schedule) =>
+  X = new_list(NumDays),
+  X :: 1..Points.len,
+  % Sum #= sum([P : Day in 1..NumDays, element(X[Day],Points, P)]),
+  Sum #= sum([Points[P]*(X[Day]#=P) : Day in 1..NumDays, P in 1..Points.len]),
+  println(sum=Sum),
+  TotalPoints #= Sum,
+  count(3,X,#>=,2), % at least 3 day off
+  count(1,X,#>=,2), % at least 2 night
+  count(2,X,#>=,2), % at least 2 day
+  Valid = [T.to_array() : T in solve_all(X.vars())],
+  println(valid=Valid),
+  S = [night,day,off],
+  Schedule = [ [S[R] : R in Row] :  Row in Valid].

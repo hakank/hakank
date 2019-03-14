@@ -1,0 +1,122 @@
+/* 
+
+  Minimal subset of columns in Picat.
+
+  Finding minimal subset of columns that make rows in a matrix unique
+  http://stackoverflow.com/questions/36449631/finding-minimal-subset-of-columns-that-make-rows-in-a-matrix-unique
+  """
+  What is a generic, efficient algorithm to find the minimal subset of columns in 
+  a discrete-valued matrix that makes that rows unique.
+   
+  For example, consider this matrix (with named columns):
+ 
+   a  b  c  d
+   2  1  0  0
+   2  0  0  0
+   2  1  2  2
+   1  2  2  2
+   2  1  1  0
+
+  Each row in the matrix is unique. However, if we remove columns a and d we 
+  maintain that same property.
+ 
+  I could enumerate all possible combinations of the columns, however, that will 
+  quickly become intractable as my matrix grows. Is there a faster, 
+  optimal algorithm for doing this?
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+import utils.
+
+% import smt.
+import cp.
+% import sat.
+
+main => go.
+
+
+go =>
+  % problem(1,M),
+  problem(2,M),
+
+  minimal_subsets(M, X,Z),
+  println(z=Z),
+  println(x=X),
+  
+  nl.
+
+% random
+go2 => 
+  Rows = 50,
+  Cols = 50,
+  MaxValue = 1000,
+  % _ = random2(),
+  random_matrix(Rows, Cols, MaxValue, M),
+  foreach(Row in M) println(Row.to_list()) end,
+
+  minimal_subsets(M, X,Z),
+  println(z=Z),
+  println(x=X),
+  SelectedCols = [Col : Col in 1..Cols, X[Col] = 1],
+  println(selectedCols=SelectedCols),
+  foreach(Row in 1..Rows)
+    println([M[Row,Col] : Col in SelectedCols])
+  end,
+  nl.
+
+%
+% generate a random matrix
+%
+random_matrix(Rows, Cols, MaxValue, M) => 
+  M1 = new_array(Rows,Cols),
+  foreach(I in 1..Rows, J in 1..Cols)
+    M1[I,J] := 1 + random() mod MaxValue
+  end,
+  M = M1.
+
+
+minimal_subsets(M, X,Z) => 
+  Rows = M.len,
+  Cols = M[1].len,
+  
+  X = new_array(Cols),
+  X :: 0..1,
+
+  Z #= sum(X),
+  % Z :: 1..Cols,
+
+  % ensure that each pair of rows are different for at least
+  % one of the selected columns
+  foreach(R1 in 1..Rows, R2 in 1..Rows, R1 < R2)
+    sum([ (X[J] #= 1) * (M[R1,J] #!= M[R2,J]) : J in 1..Cols]) #> 0
+  end,
+
+  solve($[ff,split,min(Z),report(printf("Z: %d\n",Z))], X).
+
+
+problem(1,M) =>
+M = 
+{{2,1,0,0},
+ {2,0,0,0},
+ {2,1,2,2},
+ {1,2,2,2},
+ {2,1,1,0}}.
+
+% From a comment
+problem(2,M) =>
+M = 
+[
+[0,1,0,1,0,1,1],
+[0,1,1,2,0,0,2],
+[1,0,1,1,1,0,0],
+[1,2,2,1,1,2,2],
+[2,0,0,0,0,1,1],
+[2,0,2,2,1,1,0],
+[2,1,2,1,1,0,1],
+[2,2,1,2,1,0,1],
+[2,2,2,1,1,2,1]
+].

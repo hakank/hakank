@@ -1,0 +1,1792 @@
+/* 
+
+  MCDP in Picat.
+
+  Manufacturing Cell Design Problem (MCDP).
+
+  See for example my blog post  
+  "Manufacturing Cell Design Problem (MCDP): My first Constraint Programming related academic papers"
+  http://www.hakank.org/constraint_programming_blog/2012/05/manufacturing_cell_design_problem_mcdp_my_first_constraint_programming_1.html
+  """
+  Abstract:
+  Cell formation consists in organizing a plant as a set of cells, each of them containing machines that process similar types or 
+  families of parts. The idea is to minimize the part flow among cells in order to reduce costs and increase productivity. The 
+  literature presents different approaches devoted to solve this problem, which are mainly based on mathematical programming and on 
+  evolutionary computing. Mathematical programming can guarantee a global optimal solution, however at a higher computational cost than 
+  an evolutionary algorithm, which can assure a good enough optimum in a fixed amount of time. In this paper, we model and solve this 
+  problem by using state-of-the-art constraint programming (CP) techniques and Boolean satisfiability (SAT) technology. We present different 
+  experimental results that demonstrate the efficiency of the proposed optimization models. Indeed, CP and SAT implementations are able to 
+  reach the global optima in all tested instances and in competitive runtime. 
+  """
+
+  There are different predicates and test sets in this program.
+
+  Predicates (see the definitions for a description of the approach):
+   - mcdp1: Original approach, fairly following the traditional MIP approach.
+   - mcdp3b: The objective is to minimize TotalCost
+   - mcdp4: Combine mcdp1 and mcdp3b
+
+  Test sets:
+  - test_boris/0: The Boris test set
+  - test_boctor/0: The Boctor test set
+  - test_boctor2/0: The Boctor test set that I ran for the 2011 paper
+
+  For more about MCDP, see my MCDP page: http://hakank.org/minizinc/MCDP/index_mcdp.html
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+/*
+
+Boris' problems:
+
+Problem source                  M	P	Cells	Mmax	Optimum	Solutions	Time (ms)	Nodes	Backtracks  Restart Optimum
+---------------------------------------------------------------------------------------------------------------------------------------------
+King and Nakornchai	        5	7	2	3	0	7	        306	        107	145	    0	    0	
+			                        2	4	0	9	        105	        65	46	    0	    0	
+			                        3	2	2	9	        1646	        3057	6034	    0	    2	
+			                        3	3	0	8	        722	        771	1428	    0	    0	
+Waghodekar and Sahu, Figure 4.a	5	7	2	3	5	5	        209	        208	380	    0	    5	
+			                        2	4	3	5	        1	        29	26	    0	    3	
+			                        3	2	8	6	        815	        1841	3622	    0	    8	
+Seifoddini	                5	18	2	3	5	14	        2058	        4664	9247	    0	    5	
+			                        2	4	4	13	        2254	        2838	5555	    0	    4	
+			                        3	2	11	19	        952955	        2844928	5689717	    0	    11	
+Kusiak and Cho	                6	8	2	3	2	10	        308	        179	290	    0	    2	
+			                        2	4	2	6	        107	        112	146	    0	    2	
+			                        2	5	2	8	        102	        69	83	    0	    2	
+			                        3	2	7	9	        1835	        2619	5170	    0	    7	
+			                        3	3	2	11	        2044	        3655	7193	    0	    2	
+			                        3	4	2	10	        1535	        3346	6574	    0	    2	
+			                        3	5	2	8	        2346	        3591	7073	    0	    2	
+			                        5	2	7	11	        34644	        119303	238463	    0	    7	
+Boctor, Figure 1.b	        7	11	2	4	2	10	        207	        91	78	    0	    2	
+			                        2	5	1	9	        204	        104	87	    0	    1	
+			                        2	6	1	10	        311	        100	83	    0	    1	
+			                        3	3	2	13	        11145	        45374	90611	    0	    2	
+Seifoddini and Wolfe	        8	12	2	4	6	9	        728	        494	862	    0	    6	
+			                        2	5	3	9	        716	        440	735	    0	    3	
+			                        2	6	1	13	        616	        251	362	    0	    1	 [Note: Optimum should be 6. See Excel]
+			                        2	7	1	11	        609	        226	300	    0	    1	
+			                        3	3	7	18	        180404	        460010	919896	    0	    7	
+			                        3	4	13	13	        173367	        538954	1077782	    0	    13	
+Chandrasekharan and Rajagopalan	8	20	2	4	7	18	        6282	        25092	36261	    0	    7	
+			                        2	5	7	13	        6972	        29408	40008	    0	    7	
+			                        3	3	14	22	        1325004	        2850381	3775291	    0	    14	
+			                        3	4	7	18	        630271	        1320175	1714994	    0	    7	
+*/
+
+% import util.
+% import cp.
+import sat.
+% import mip. % for mcdp1: (nonlinear_constraint, *), very slow on mcdp3b
+
+
+main => go.
+
+% another approach
+% cf MiniZinc model MCDP3b.mzn
+go => 
+  nolog,
+  problem(boris7, MatrixMachinePart,Cells,Mmax),
+  % Find optimum
+  % CP approach
+  mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost),
+
+  % MIP approach
+  % mcdp1(MatrixMachinePart,Cells,Mmax, MatrixMachineCell,MatrixPartCell,TotalCost),
+
+  % Combined approach
+  % mcdp4(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,_MatrixMachineCell,_MatrixPartCell,TotalCost),
+
+  println(optimum=TotalCost),
+
+  %% Find all solutions with optimal values.
+  % NumSol=count_all(mcdp3b(MatrixMachinePart,Cells,Mmax, AssignedMachines2,AssignedParts2,TotalCost)),
+  % println(numSol=NumSol),
+
+  nl.
+
+go_random =>
+  %
+  % generate and solve a random instance
+  %  - Machines: number of machines
+  %  - Parts: number of parts
+  %  - Pct: probability of 1s (0..100)
+  %  - Cells: (max) number of cells
+  %  - Mmax: max number of machines in a cell
+  % Note: Cells*Mmax >= Machines
+  Machines = 10,
+  Parts = 30,
+  Pct = 25,
+  Cells = 6,
+  Mmax = 8,
+  test_random(Machines,Parts,Pct,Cells,Mmax),
+  nl.
+
+
+/* 
+
+Results. 
+Note: The times are slightly lower since we use Picat's timing. 
+
+* SAT Solver, 1min timeout total running time: 18.7s
+
+[instance = boris1,cells = 2,mmax = 3,totalCost = 0,time = 0.024s,status = success]
+[instance = boris1,cells = 2,mmax = 4,totalCost = 0,time = 0.024s,status = success]
+[instance = boris1,cells = 3,mmax = 2,totalCost = 2,time = 0.100s,status = success]
+[instance = boris1,cells = 3,mmax = 3,totalCost = 0,time = 0.044s,status = success]
+[instance = boris2,cells = 2,mmax = 3,totalCost = 5,time = 0.104s,status = success]
+[instance = boris2,cells = 2,mmax = 4,totalCost = 3,time = 0.064s,status = success]
+[instance = boris2,cells = 3,mmax = 2,totalCost = 8,time = 0.068s,status = success]
+[instance = boris3,cells = 2,mmax = 3,totalCost = 5,time = 0.376s,status = success]
+[instance = boris3,cells = 2,mmax = 4,totalCost = 4,time = 0.292s,status = success]
+[instance = boris3,cells = 3,mmax = 2,totalCost = 11,time = 0.552s,status = success]
+[instance = boris4,cells = 2,mmax = 3,totalCost = 2,time = 0.072s,status = success]
+[instance = boris4,cells = 2,mmax = 4,totalCost = 2,time = 0.088s,status = success]
+[instance = boris4,cells = 2,mmax = 5,totalCost = 2,time = 0.140s,status = success]
+[instance = boris4,cells = 3,mmax = 2,totalCost = 7,time = 0.164s,status = success]
+[instance = boris4,cells = 3,mmax = 3,totalCost = 2,time = 0.100s,status = success]
+[instance = boris4,cells = 3,mmax = 4,totalCost = 2,time = 0.140s,status = success]
+[instance = boris4,cells = 3,mmax = 5,totalCost = 2,time = 0.120s,status = success]
+[instance = boris4,cells = 5,mmax = 2,totalCost = 7,time = 0.204s,status = success]
+[instance = boris5,cells = 2,mmax = 4,totalCost = 2,time = 0.076s,status = success]
+[instance = boris5,cells = 2,mmax = 5,totalCost = 1,time = 0.052s,status = success]
+[instance = boris5,cells = 2,mmax = 6,totalCost = 1,time = 0.036s,status = success]
+[instance = boris5,cells = 3,mmax = 3,totalCost = 2,time = 0.092s,status = success]
+[instance = boris6,cells = 2,mmax = 4,totalCost = 6,time = 0.404s,status = success]
+[instance = boris6,cells = 2,mmax = 5,totalCost = 3,time = 0.388s,status = success]
+[instance = boris6,cells = 2,mmax = 6,totalCost = 1,time = 0.436s,status = success]
+[instance = boris6,cells = 2,mmax = 7,totalCost = 1,time = 0.360s,status = success]
+[instance = boris6,cells = 3,mmax = 3,totalCost = 7,time = 0.368s,status = success]
+[instance = boris6,cells = 3,mmax = 4,totalCost = 6,time = 0.528s,status = success]
+[instance = boris7,cells = 2,mmax = 4,totalCost = 28,time = 1.388s,status = success]
+[instance = boris7,cells = 2,mmax = 5,totalCost = 25,time = 1.464s,status = success]
+[instance = boris7,cells = 3,mmax = 3,totalCost = 39,time = 3.428s,status = success]
+[instance = boris7,cells = 3,mmax = 4,totalCost = 28,time = 4.216s,status = success]
+
+* SAT solver with Vars = AssignedParts.vars() ++ AssignedMachines.vars()  total running time: 16.10s
+
+[instance = boris1,cells = 2,mmax = 3,totalCost = 0,time = 0.016s,status = success]
+[instance = boris1,cells = 2,mmax = 4,totalCost = 0,time = 0.032s,status = success]
+[instance = boris1,cells = 3,mmax = 2,totalCost = 2,time = 0.060s,status = success]
+[instance = boris1,cells = 3,mmax = 3,totalCost = 0,time = 0.076s,status = success]
+[instance = boris2,cells = 2,mmax = 3,totalCost = 5,time = 0.096s,status = success]
+[instance = boris2,cells = 2,mmax = 4,totalCost = 3,time = 0.080s,status = success]
+[instance = boris2,cells = 3,mmax = 2,totalCost = 8,time = 0.108s,status = success]
+[instance = boris3,cells = 2,mmax = 3,totalCost = 5,time = 0.400s,status = success]
+[instance = boris3,cells = 2,mmax = 4,totalCost = 4,time = 0.564s,status = success]
+[instance = boris3,cells = 3,mmax = 2,totalCost = 11,time = 0.568s,status = success]
+[instance = boris4,cells = 2,mmax = 3,totalCost = 2,time = 0.076s,status = success]
+[instance = boris4,cells = 2,mmax = 4,totalCost = 2,time = 0.064s,status = success]
+[instance = boris4,cells = 2,mmax = 5,totalCost = 2,time = 0.080s,status = success]
+[instance = boris4,cells = 3,mmax = 2,totalCost = 7,time = 0.164s,status = success]
+[instance = boris4,cells = 3,mmax = 3,totalCost = 2,time = 0.096s,status = success]
+[instance = boris4,cells = 3,mmax = 4,totalCost = 2,time = 0.192s,status = success]
+[instance = boris4,cells = 3,mmax = 5,totalCost = 2,time = 0.128s,status = success]
+[instance = boris4,cells = 5,mmax = 2,totalCost = 7,time = 0.288s,status = success]
+[instance = boris5,cells = 2,mmax = 4,totalCost = 2,time = 0.132s,status = success]
+[instance = boris5,cells = 2,mmax = 5,totalCost = 1,time = 0.056s,status = success]
+[instance = boris5,cells = 2,mmax = 6,totalCost = 1,time = 0.076s,status = success]
+[instance = boris5,cells = 3,mmax = 3,totalCost = 2,time = 0.220s,status = success]
+[instance = boris6,cells = 2,mmax = 4,totalCost = 6,time = 0.272s,status = success]
+[instance = boris6,cells = 2,mmax = 5,totalCost = 3,time = 0.284s,status = success]
+[instance = boris6,cells = 2,mmax = 6,totalCost = 1,time = 0.232s,status = success]
+[instance = boris6,cells = 2,mmax = 7,totalCost = 1,time = 0.192s,status = success]
+[instance = boris6,cells = 3,mmax = 3,totalCost = 7,time = 0.316s,status = success]
+[instance = boris6,cells = 3,mmax = 4,totalCost = 6,time = 0.456s,status = success]
+[instance = boris7,cells = 2,mmax = 4,totalCost = 28,time = 1.392s,status = success]
+[instance = boris7,cells = 2,mmax = 5,totalCost = 25,time = 1.692s,status = success]
+[instance = boris7,cells = 3,mmax = 3,totalCost = 39,time = 3.836s,status = success]
+[instance = boris7,cells = 3,mmax = 4,totalCost = 28,time = 3.809s,status = success]
+
+
+* CP solver, 1 minute timeout Total running time: 150.80s
+[instance = boris1,cells = 2,mmax = 3,totalCost = 0,time = 0.004s,status = success]
+[instance = boris1,cells = 2,mmax = 4,totalCost = 0,time = 0.000s,status = success]
+[instance = boris1,cells = 3,mmax = 2,totalCost = 2,time = 0.000s,status = success]
+[instance = boris1,cells = 3,mmax = 3,totalCost = 0,time = 0.000s,status = success]
+[instance = boris2,cells = 2,mmax = 3,totalCost = 5,time = 0.004s,status = success]
+[instance = boris2,cells = 2,mmax = 4,totalCost = 3,time = 0.000s,status = success]
+[instance = boris2,cells = 3,mmax = 2,totalCost = 8,time = 0.008s,status = success]
+[instance = boris3,cells = 2,mmax = 3,totalCost = 5,time = 0.004s,status = success]
+[instance = boris3,cells = 2,mmax = 4,totalCost = 4,time = 0.004s,status = success]
+[instance = boris3,cells = 3,mmax = 2,totalCost = 11,time = 5.964s,status = success]
+[instance = boris4,cells = 2,mmax = 3,totalCost = 2,time = 0.000s,status = success]
+[instance = boris4,cells = 2,mmax = 4,totalCost = 2,time = 0.000s,status = success]
+[instance = boris4,cells = 2,mmax = 5,totalCost = 2,time = 0.000s,status = success]
+[instance = boris4,cells = 3,mmax = 2,totalCost = 7,time = 0.008s,status = success]
+[instance = boris4,cells = 3,mmax = 3,totalCost = 2,time = 0.004s,status = success]
+[instance = boris4,cells = 3,mmax = 4,totalCost = 2,time = 0.004s,status = success]
+[instance = boris4,cells = 3,mmax = 5,totalCost = 2,time = 0.004s,status = success]
+[instance = boris4,cells = 5,mmax = 2,totalCost = 7,time = 0.836s,status = success]
+[instance = boris5,cells = 2,mmax = 4,totalCost = 2,time = 0.004s,status = success]
+[instance = boris5,cells = 2,mmax = 5,totalCost = 1,time = 0.000s,status = success]
+[instance = boris5,cells = 2,mmax = 6,totalCost = 1,time = 0.004s,status = success]
+[instance = boris5,cells = 3,mmax = 3,totalCost = 2,time = 0.020s,status = success]
+[instance = boris6,cells = 2,mmax = 4,totalCost = 6,time = 0.004s,status = success]
+[instance = boris6,cells = 2,mmax = 5,totalCost = 3,time = 0.004s,status = success]
+[instance = boris6,cells = 2,mmax = 6,totalCost = 1,time = 0.000s,status = success]
+[instance = boris6,cells = 2,mmax = 7,totalCost = 1,time = 0.000s,status = success]
+[instance = boris6,cells = 3,mmax = 3,totalCost = 7,time = 0.136s,status = success]
+[instance = boris6,cells = 3,mmax = 4,totalCost = 6,time = 0.172s,status = success]
+[instance = boris7,cells = 2,mmax = 4,totalCost = 28,time = 16.237s,status = success]
+[instance = boris7,cells = 2,mmax = 5,totalCost = 25,time = 7.680s,status = success]
+[instance = boris7,cells = 3,mmax = 3,totalCost = _9be0,time = 59.832s,status = time_out]
+[instance = boris7,cells = 3,mmax = 4,totalCost = _2780,time = 59.836s,status = time_out]
+
+* CP solver with Vars = AssignedParts.vars() ++ AssignedMachines.vars()  total running time: 150.76s (almost identical)
+
+[instance = boris1,cells = 2,mmax = 3,totalCost = 0,time = 0.000s,status = success]
+[instance = boris1,cells = 2,mmax = 4,totalCost = 0,time = 0.004s,status = success]
+[instance = boris1,cells = 3,mmax = 2,totalCost = 2,time = 0.000s,status = success]
+[instance = boris1,cells = 3,mmax = 3,totalCost = 0,time = 0.000s,status = success]
+[instance = boris2,cells = 2,mmax = 3,totalCost = 5,time = 0.004s,status = success]
+[instance = boris2,cells = 2,mmax = 4,totalCost = 3,time = 0.000s,status = success]
+[instance = boris2,cells = 3,mmax = 2,totalCost = 8,time = 0.012s,status = success]
+[instance = boris3,cells = 2,mmax = 3,totalCost = 5,time = 0.004s,status = success]
+[instance = boris3,cells = 2,mmax = 4,totalCost = 4,time = 0.004s,status = success]
+[instance = boris3,cells = 3,mmax = 2,totalCost = 11,time = 6.148s,status = success]
+[instance = boris4,cells = 2,mmax = 3,totalCost = 2,time = 0.000s,status = success]
+[instance = boris4,cells = 2,mmax = 4,totalCost = 2,time = 0.004s,status = success]
+[instance = boris4,cells = 2,mmax = 5,totalCost = 2,time = 0.000s,status = success]
+[instance = boris4,cells = 3,mmax = 2,totalCost = 7,time = 0.008s,status = success]
+[instance = boris4,cells = 3,mmax = 3,totalCost = 2,time = 0.004s,status = success]
+[instance = boris4,cells = 3,mmax = 4,totalCost = 2,time = 0.000s,status = success]
+[instance = boris4,cells = 3,mmax = 5,totalCost = 2,time = 0.004s,status = success]
+[instance = boris4,cells = 5,mmax = 2,totalCost = 7,time = 1.300s,status = success]
+[instance = boris5,cells = 2,mmax = 4,totalCost = 2,time = 0.004s,status = success]
+[instance = boris5,cells = 2,mmax = 5,totalCost = 1,time = 0.000s,status = success]
+[instance = boris5,cells = 2,mmax = 6,totalCost = 1,time = 0.000s,status = success]
+[instance = boris5,cells = 3,mmax = 3,totalCost = 2,time = 0.028s,status = success]
+[instance = boris6,cells = 2,mmax = 4,totalCost = 6,time = 0.004s,status = success]
+[instance = boris6,cells = 2,mmax = 5,totalCost = 3,time = 0.000s,status = success]
+[instance = boris6,cells = 2,mmax = 6,totalCost = 1,time = 0.000s,status = success]
+[instance = boris6,cells = 2,mmax = 7,totalCost = 1,time = 0.000s,status = success]
+[instance = boris6,cells = 3,mmax = 3,totalCost = 7,time = 0.084s,status = success]
+[instance = boris6,cells = 3,mmax = 4,totalCost = 6,time = 0.072s,status = success]
+[instance = boris7,cells = 2,mmax = 4,totalCost = 28,time = 15.757s,status = success]
+[instance = boris7,cells = 2,mmax = 5,totalCost = 25,time = 7.580s,status = success]
+[instance = boris7,cells = 3,mmax = 3,totalCost = _9d20,time = 59.836s,status = time_out]
+[instance = boris7,cells = 3,mmax = 4,totalCost = _2780,time = 59.840s,status = time_out]
+
+
+*/
+test_boris =>
+  nolog,
+  M = [
+        boris1=[[2,3],[2,4],[3,2],[3,3]],
+        boris2=[[2,3],[2,4],[3,2]],
+        boris3=[[2,3],[2,4],[3,2]],
+        boris4=[[2,3],[2,4],[2,5],[3,2],[3,3],[3,4],[3,5],[5,2]],
+        boris5=[[2,4],[2,5],[2,6],[3,3]],
+        boris6=[[2,4],[2,5],[2,6],[2,7],[3,3],[3,4]],
+        boris7=[[2,4],[2,5],[3,3],[3,4]]
+      ],
+
+  Results = [],
+  Timeout = 60000, % 1 min timeout
+  foreach(Instance=Cases in M) 
+    println(instance=Instance),
+    foreach([Cells,Mmax] in Cases)
+      println([instance=Instance,cell=Cells,mmax=Mmax]),
+      garbage_collect(200_000_000),
+      problem(Instance, MatrixMachinePart,_Cells,_Mmax),
+      % time2(mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+      % [Time,_Backtracks] = time2f($mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+      [Time,_Backtracks,Status] = time2f($mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost),Timeout),
+      Time2 = to_fstring("%0.3fs", Time / 1000),
+      printf("Time: %ws\n", Time2),
+      Results := Results ++ [[instance=Instance,cells=Cells,mmax=Mmax,totalCost=TotalCost,time=Time2,status=Status]],
+      nl
+    end,
+    nl
+  end,
+  foreach(Result in Results) 
+    println(Result)
+  end,
+  nl.
+
+/*
+ Results 
+
+SAT solver 1 minute timeout total time 86.2s
+
+[instance = boctor1,cells = 2,mmax = 8,totalCost = 11,time = 3.872s,status = success]
+[instance = boctor1,cells = 2,mmax = 9,totalCost = 11,time = 4.056s,status = success]
+[instance = boctor1,cells = 2,mmax = 10,totalCost = 11,time = 3.572s,status = success]
+[instance = boctor1,cells = 2,mmax = 11,totalCost = 11,time = 4.797s,status = success]
+[instance = boctor1,cells = 2,mmax = 12,totalCost = 11,time = 3.152s,status = success]
+[instance = boctor1,cells = 3,mmax = 6,totalCost = 27,time = 31.338s,status = success]
+[instance = boctor1,cells = 3,mmax = 7,totalCost = 18,time = 14.709s,status = success]
+[instance = boctor1,cells = 3,mmax = 8,totalCost = 11,time = 10.876s,status = success]
+[instance = boctor1,cells = 3,mmax = 9,totalCost = 11,time = 9.817s,status = success]
+
+Another run (SAT solver): total time 81.38s
+[instance = boctor1,cells = 2,mmax = 8,totalCost = 11,time = 4.736s,status = success]
+[instance = boctor1,cells = 2,mmax = 9,totalCost = 11,time = 2.696s,status = success]
+[instance = boctor1,cells = 2,mmax = 10,totalCost = 11,time = 5.636s,status = success]
+[instance = boctor1,cells = 2,mmax = 11,totalCost = 11,time = 3.557s,status = success]
+[instance = boctor1,cells = 2,mmax = 12,totalCost = 11,time = 4.384s,status = success]
+[instance = boctor1,cells = 3,mmax = 6,totalCost = 27,time = 25.217s,status = success]
+[instance = boctor1,cells = 3,mmax = 7,totalCost = 18,time = 17.385s,status = success]
+[instance = boctor1,cells = 3,mmax = 8,totalCost = 11,time = 9.925s,status = success]
+[instance = boctor1,cells = 3,mmax = 9,totalCost = 11,time = 7.801s,status = success]
+
+With Vars = AssignedParts.vars() ++ AssignedMachines.vars()  total time: 75.28s
+
+[instance = boctor1,cells = 2,mmax = 8,totalCost = 11,time = 4.584s,status = success]
+[instance = boctor1,cells = 2,mmax = 9,totalCost = 11,time = 4.508s,status = success]
+[instance = boctor1,cells = 2,mmax = 10,totalCost = 11,time = 5.152s,status = success]
+[instance = boctor1,cells = 2,mmax = 11,totalCost = 11,time = 4.309s,status = success]
+[instance = boctor1,cells = 2,mmax = 12,totalCost = 11,time = 4.080s,status = success]
+[instance = boctor1,cells = 3,mmax = 6,totalCost = 27,time = 23.013s,status = success]
+[instance = boctor1,cells = 3,mmax = 7,totalCost = 18,time = 8.837s,status = success]
+[instance = boctor1,cells = 3,mmax = 8,totalCost = 11,time = 12.921s,status = success]
+[instance = boctor1,cells = 3,mmax = 9,totalCost = 11,time = 7.828s,status = success]
+
+*/
+
+test_boctor =>
+  nolog,
+  Cases = [[2,8],[2,9],[2,10],[2,11],[2,12],
+                 [3,6],[3,7],[3,8],[3,9]],
+  M = [
+        boctor1,
+        boctor2,
+        boctor3,
+        boctor4,
+        boctor5,
+        boctor6,
+        boctor7,
+        boctor8,
+        boctor9,
+        boctor10
+      ],
+  Results = [],
+  Timeout = 60000, % 1 min timeout
+  foreach(Instance in M) 
+    println(instance=Instance),
+    foreach([Cells,Mmax] in Cases)
+      println([instance=Instance,cell=Cells,mmax=Mmax]),
+      garbage_collect(200_000_000),
+      problem(Instance, MatrixMachinePart,_Cells,_Mmax),
+      % time2(mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+      % [Time,_Backtracks] = time2f($mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+      [Time,_Backtracks,Status] = time2f($mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost),Timeout),
+      Time2 = to_fstring("%0.3fs", Time / 1000),
+      printf("Time: %w\n", Time2),
+      flush(stdout),
+      Results := Results ++ [[instance=Instance,cells=Cells,mmax=Mmax,totalCost=TotalCost,time=Time2,status=Status]],
+      nl
+    end,
+    nl
+  end,
+  foreach(Result in Results) 
+    println(Result)
+  end,
+  nl.
+
+%
+% These are the tests I ran for the paper in 2011
+%
+test_boctor2 =>
+  nolog,
+  M = [
+        boctor1=[[2,8],[2,9],[2,10],[2,11],[2,12],
+                 [3,6],[3,8],[3,9]],
+        boctor2=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor3=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor4=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor5=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor6=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor7=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor8=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor9=[[2,8],[2,9],[2,10],[2,11],[2,12]],
+        boctor10=[[2,8],[2,9],[2,10],[2,11],[2,12]]
+      ],
+  Results = [],
+  Timeout = 60000, % 1 min timeout
+  TotalTimes = 0,
+  foreach(Instance=Cases in M) 
+    println(instance=Instance),
+    foreach([Cells,Mmax] in Cases)
+      println([instance=Instance,cell=Cells,mmax=Mmax]),
+      garbage_collect(200_000_000),
+      problem(Instance, MatrixMachinePart,_Cells,_Mmax),
+      % time2(mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+      % [Time,_Backtracks] = time2f($mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+      [Time,_Backtracks,Status] = time2f($mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost),Timeout),
+      Time2 = to_fstring("%0.3fs", Time / 1000),
+      TotalTimes := TotalTimes + Time / 1000,
+      printf("Time: %w\n", Time2),
+      flush(stdout),
+      Results := Results ++ [[instance=Instance,cells=Cells,mmax=Mmax,totalCost=TotalCost,time=Time2,status=Status]],
+      nl
+    end,
+    nl
+  end,
+  foreach(Result in Results) 
+    println(Result)
+  end,
+  println(totalTimes=TotalTimes),
+  nl.
+
+
+% time2 as a function
+time2f(Goal) = [End,Backtracks] =>
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    call(Goal),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,End]),
+    Backtracks = Backtracks2 - Backtracks1.
+
+% with a timeout
+time2f(Goal,Timeout) = [End,Backtracks,Status] =>
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    time_out(Goal,Timeout,Status),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,End]),
+    Backtracks = Backtracks2 - Backtracks1.
+
+
+test(Instance,Cells,Mmax) =>
+  nolog,
+  problem(Instance, MatrixMachinePart,_Cells,_Mmax),
+  time2(mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+  println(totalCost=TotalCost),
+  nl.
+
+%
+% generate and solve a random instance
+%  - Machines: number of machines
+%  - Parts: number of parts
+%  - Pct: probability of 1s (0..100)
+%  - Cells: (max) number of cells
+%  - Mmax: max number of machines in a cell
+%
+test_random(Machines,Parts,Pct,Cells,Mmax) =>
+  nolog,
+  % if Cells*Mmax < Parts then
+  %   printf("Cells(%d)*Mmax(%d) < Machines (%d) which is impossible to solve\n",Cells,Mmax,Machines),
+  %   halt
+  % end,
+  println([machines=Machines,parts=Parts,pct=Pct,cells=Cells,mmax=Mmax]),
+  _ = random2(),
+  MatrixMachinePart = [ [ cond(1+random2() mod 100 <= Pct, 1, 0) : _ in 1..Parts] : _ in 1..Machines],
+  
+  Flatten = MatrixMachinePart.flatten(),
+  NumOnes = sum(Flatten),
+  println(numOnes=NumOnes),
+  NumZeros = Machines*Parts - NumOnes,
+  println(numZeros=NumZeros),
+  println(realPct=NumOnes/(Machines*Parts)),
+  foreach(Row in MatrixMachinePart)
+    println(Row)
+  end,
+  time2(mcdp3b(MatrixMachinePart,Cells,Mmax, _AssignedMachines,_AssignedParts,TotalCost)),
+  println(totalCost=TotalCost),
+  nl.
+
+
+%
+% Another approach.
+%
+% The basic principle is the following.
+%  Input variables
+%  - MatrixMachinePart is the 0/1 matrix
+%  - Cells: (max) number of cells used
+%  - Mmax: Maximum machines to use in one cell
+%  - Machines = number of machines, MatrixMachinePart.len
+%  - Parts = number of parts, MatrixMachinePart[1].len
+%  
+%  Decision variables:
+%  - AssignedMachines: A list of length Machines which assignes the cell to a machine
+%  - AssignedParts: A list of length Parts which assignes the cell to a machine
+%  - TotalCost: the number of 1s outside of the diagonal blocks, i.e. the number of "exceptional elements".
+% 
+% Constraints
+%  - The number of machines in a cell must be <= Mmax
+% 
+%
+% Objective 
+% - The objective is to minimize TotalCost
+% 
+% That's it. The rest is either presentation or experiments.
+% 
+mcdp3b(MatrixMachinePart,Cells,Mmax, AssignedMachines,AssignedParts,TotalCost) =>
+
+  Machines=MatrixMachinePart.len,
+  Parts = MatrixMachinePart[1].len,
+
+  println(machines=Machines),
+  println(parts=Parts),
+  println(cells=Cells),
+  println(mmax=Mmax),
+  % println(MatrixMachinePart),
+
+  % Convert the given MatrixMachinePart to an array of
+  % sets of Machines for each Part
+  GivenPartMachines = [ [ M  : M in 1..Machines, MatrixMachinePart[M,P] > 0] : P in 1..Parts],
+
+  % variables
+
+  AssignedMachines = new_list(Machines),
+  AssignedMachines :: 1..Cells,
+
+  AssignedParts = new_list(Parts),
+  AssignedParts :: 1..Cells,
+
+  %% Using these is not faster
+  % AssignedMachinesOrder = new_list(Machines),
+  % AssignedMachinesOrder :: 1..Machines,
+
+  % AssignedPartsOrder = new_list(Parts),
+  % AssignedPartsOrder :: 1..Parts,
+
+
+  %% For symmetry breaking.
+  %% However, the TotalCost may not be optimal.
+  % CellCountMachines = new_list(Cells),
+  % CellCountMachines :: 0..Machines,
+
+  % CellCountParts = new_list(Cells),
+  % CellCountParts :: 0..Parts,
+
+  % TotalCost :: 0..Machines*Parts,
+  TotalCost :: 0..sum(MatrixMachinePart.flatten()), % Machines*Parts,
+
+  % constraints
+
+  % TotalOnes #= sum(MatrixMachinePart.flatten()),
+  % A1Out #= TotalCost, 
+  % A0In #= sum([1-MatrixMachinePart[I,J] : K in 1..Cells, I in 1..Machines, J in 1..Parts,AssignedMachines[I]==K,AssignedParts[J]==K]),
+  % (TotalOnes+A0In) * Efficiency #= 1000*(TotalOnes- A1Out), 
+  % % (TotalOnes-A0In) * Efficiency #= 10000*(TotalOnes- A1Out), % this is strange definition (see below)!
+
+  % Note:
+  % This formulation
+  %     MatrixMachinePart[M,P]*(AssignedParts[P] #!= AssignedMachines[M])
+  % is much faster (often about a factor of 2) than
+  %     (MatrixMachinePart[M,P] #= 1) * (AssignedParts[P] #!= AssignedMachines[M])
+  % at least for the SAT solver.
+  % Also, this means that it can be solved by the MIP solver (however, it's very slow on most instances)
+  TotalCost #= sum([
+                    sum([
+                        % (MatrixMachinePart[M,P] #= 1) * (AssignedParts[P] #!= AssignedMachines[M])
+                        MatrixMachinePart[M,P]*(AssignedParts[P] #!= AssignedMachines[M])
+                        : M in GivenPartMachines[P]
+                        ])  
+                    : P in 1..Parts
+                   ]),
+
+  % all_different(AssignedMachinesOrder),
+  % list_order(AssignedMachines,Machines,AssignedMachinesOrder),
+
+  % all_different(AssignedPartsOrder),
+  % list_order(AssignedParts,Parts,AssignedPartsOrder),
+
+
+  foreach(K in 1..Cells)
+     % At most Mmax machines in a cell
+
+     if member(mip,sys.loaded_modules()) then
+        % The MIP solver don't support built-in global constraints such as at_most/3
+        sum([AssignedMachines[M]#=K : M in 1..Machines]) #<= Mmax
+     else 
+        at_most(Mmax, AssignedMachines, K) % faster
+     end
+  end,
+
+
+
+  %% symmetry breaking
+  %% Note that TotalCost might not be optimal.
+  %% And it's slower than without (at least for the SAT solver).
+  % foreach(K in 1..Cells)
+  %    CellCountMachines[K] #= sum([AssignedMachines[M]#=K : M in 1..Machines]),
+  %    CellCountParts[K] #= sum([AssignedParts[P]#=K : P in 1..Parts])
+  % 
+  %    % ensure that there is no singleton cells. Note: This might change the optimum value!
+  %    % , CellCountMachines[K]*CellCountParts[K] #= 0 #\/ CellCountMachines[K]*CellCountParts[K] #> 2
+  %    % CellCountMachines[K] #!= 1,
+  %    % CellCountParts[K] #!= 1
+  % end,
+  % decreasing(CellCountMachines),
+  % decreasing(CellCountParts),
+  
+  %% ensure there are Cell number of cells in both Machines and Parts
+  %% Warning: TotalCost might not be optimal.
+  % nvalue(Cells,AssignedMachines),
+  % nvalue(Cells,AssignedParts),
+
+  % symmetry breaking
+  % AssignedMachines[1] #= 1,
+  % AssignedParts[1] #= 1,
+
+  println(totalCost=TotalCost),
+
+  % Vars = AssignedMachines ++ AssignedParts, %  ++ CellCountMachines ++ CellCountParts,
+  Vars = AssignedParts.vars() ++ AssignedMachines.vars(), %  ++ CellCountMachines ++ CellCountParts,
+  if var(TotalCost) then
+     if member(cp,sys.loaded_modules()) then
+        % solve($[constr,split,min(TotalCost),report(printf("TotalCost: %d\n",TotalCost))],Vars)
+        solve($[degree,updown,min(TotalCost),report(printf("TotalCost: %d\n",TotalCost))],Vars)
+     else 
+        solve($[min(TotalCost),report(printf("TotalCost: %d\n",TotalCost))],Vars)
+        % solve($[min(TotalCost)],Vars)
+     end
+     % solve($[degree,split,min(TotalCost),report(printf("TotalCost: %d\n",TotalCost))],Vars)
+     % solve($[constr,split,max(Efficiency),report(printf("Efficiency: %d\n",Efficiency))],Vars)
+  else 
+     solve($[constr,updown,report(printf("TotalCost: %d\n",TotalCost))],Vars)
+  end,
+  flush(stdout),
+
+  %
+  % output
+  %
+  println(totalCost=TotalCost),
+  % println("AssignedMachines:"),
+  println(assignedMachines=AssignedMachines),
+  % println(assignedMachinesOrder=AssignedMachinesOrder),
+  AssignedMachines2 = [],
+  foreach(K in 1..Cells)
+    printf("Cell %d: %w\n", K, [J : J in 1..Machines, AssignedMachines[J] == K]),
+    AssignedMachines2 := AssignedMachines2 ++ [J : J in 1..Machines, AssignedMachines[J] == K]
+  end,
+  % println(assignedMachines2=AssignedMachines2),
+
+  % println("AssignedParts:"),
+  println(assignedParts=AssignedParts),
+  % println(assignedPartsOrder=AssignedPartsOrder),
+  AssignedParts2 = [],
+  foreach(K in 1..Cells)
+    printf("Cell %d: %w\n", K, [J : J in 1..Parts, AssignedParts[J] == K]),
+    AssignedParts2 := AssignedParts2 ++ [J : J in 1..Parts, AssignedParts[J] == K]
+  end,
+  % println(assignedParts2=AssignedParts2),
+  nl,
+
+  printf("Part "),
+  LastPart = 0,
+  foreach(P in 1..Parts) 
+    if LastPart > 0, LastPart != AssignedParts[AssignedParts2[P]] then
+      printf("|")
+    end,
+    LastPart := AssignedParts[AssignedParts2[P]],
+    printf("%2d ", AssignedParts2[P]) 
+  end,
+  nl,
+  LastMachine = 0,
+  foreach(M in 1..Machines)
+    if LastMachine != AssignedMachines[AssignedMachines2[M]] then
+       println("-----")
+     end,
+    LastMachine := AssignedMachines[AssignedMachines2[M]],
+    printf("M%2d: ", AssignedMachines2[M]),
+    LastPart := 0,
+    foreach(P in 1..Parts)
+       LastMachine := AssignedMachines[AssignedMachines2[M]],
+       Error = " ", 
+       if MatrixMachinePart[AssignedMachines2[M],AssignedParts2[P]] > 0,
+          AssignedMachines[AssignedMachines2[M]] != AssignedParts[AssignedParts2[P]] then
+          Error := "!"
+       end,
+       if LastPart > 0, LastPart != AssignedParts[AssignedParts2[P]] then
+         printf("|")
+       end,
+       LastPart := AssignedParts[AssignedParts2[P]],
+       printf("%2d%w", MatrixMachinePart[AssignedMachines2[M],AssignedParts2[P]],Error)
+    end,
+    Cell = AssignedMachines[AssignedMachines2[M]],
+    printf("  Cell %d\n", Cell)
+  end,
+  println("-----"),
+  printf("Cell "),
+  LastPart := 0,
+  foreach(P in 1..Parts) 
+    if LastPart > 0, LastPart != AssignedParts[AssignedParts2[P]] then
+      printf("|")
+    end,
+    LastPart := AssignedParts[AssignedParts2[P]],
+    printf("%2d ", AssignedParts[AssignedParts2[P]]) 
+  end,
+  % nl,nl,
+  % println(cellCountMachines=CellCountMachines),
+  % println(cellCountParts=CellCountParts),
+
+  % Efficiency, from 
+  % Bouazza Elbenani & Jacques A. Ferland
+  % "Cell Formation Problem Solved Exactly with the Dinkelbach Algorithm"
+  % February 2012
+  % CIRRELT-2012-07
+  % https://www.cirrelt.c/DocumentsTravail/CIRRELT-2012-07.pdf
+  % page 4 (page 6 in the PDF)
+  %   Eff = (a- a1Out) / (a+A0In) = 1 - (( a0In + a1Out) / (a+a0In)
+  nl,
+  TotalOnes = sum(MatrixMachinePart.flatten()),
+  println(totalOnes=TotalOnes),  
+  TotalZeros = sum([1 : I in MatrixMachinePart.flatten(), I = 0]),
+  println(totalZeros=TotalZeros),
+  println(pct=to_fstring("%0.3f",TotalOnes/(TotalOnes+TotalZeros))),
+  A1Out = TotalCost, % TotalOnes - sum([MatrixMachinePart[I,J] : K in 1..Cells, I in 1..Machines, J in 1..Parts,AssignedMachines[I]==K,AssignedParts[J]==K]),
+  A0In = sum([1-MatrixMachinePart[I,J] : K in 1..Cells, I in 1..Machines, J in 1..Parts,AssignedMachines[I]==K,AssignedParts[J]==K]),
+  println(a1Out=A1Out),
+  println(a0In=A0In),
+  Eff1 = (TotalOnes- A1Out) / (TotalOnes+A0In),
+  % Eff1b = 1-((A0In + A1Out) / (TotalOnes+A0In)),
+  println(effeciency1=Eff1),
+
+  % This definition is from 
+  % Tribikram Pradhan and 2Satya Ranjan Mishra:
+  % "Implementation of Machine Part Cell Formation Algorithm in 
+  % Cellular Manufacturing Technology Using Neural Networks"
+  % page 178
+  %   mu = (N1 - N1Out) / (N1 - N0In)
+  % where 
+  %   N1 = total number of 1's in matrix
+  %   N1Out = total number of 1s outside the diagonal block
+  %   N0In  = total number of 0s inside the diagonal block 
+  % Note: This give strange values, e.g. -9.09 for Boctor 1 problem, and 1.27 for boris1 problem
+  if abs(TotalOnes - A0In) != 0 then
+    Eff2 = (TotalOnes - A1Out) / (TotalOnes - A0In),
+    println(efficiency2=Eff2)
+  else 
+    println("efficiency2: TotalOnes - A0In is zero!")
+  end,
+
+  % simpler efficiency: how many 1's are out of diagonal in relation to all 1's
+  Eff3 = (1-(A1Out/TotalOnes)),
+  println(efficiency3=Eff3),
+
+  % foreach(K in 1..Cells)
+  %   println(xxx=[(AssignedMachines[M]*(Cells-1))*cond(AssignedMachines[M]=K,1,0) : M in 1..Machines]),
+  % end,
+
+  nl.
+
+
+%
+% Original approach, fairly following the traditional MIP approach.o
+% Note: This is a nonlinear (quadratic) model so Picat's MIP solver cannot
+%       be used.
+%
+mcdp1(MatrixMachinePart,Cells,Mmax, _MatrixMachineCell,_MatrixPartCell,TotalCost) =>
+
+  Machines = MatrixMachinePart.len,
+  Parts = MatrixMachinePart[1].len,
+
+  println(machines=Machines),
+  println(parts=Parts),
+  println(cells=Cells),
+  println(mmax=Mmax),
+
+  MatrixMachineCell = new_array(Machines,Cells),
+  MatrixMachineCell :: 0..1,
+
+  MatrixPartCell = new_array(Parts,Cells),
+  MatrixPartCell :: 0..1,
+
+  TotalCost :: 0..Machines*Parts,
+
+  % Placing TotalCost before the constraints seems to be faster...
+  TotalCost #= sum([MatrixMachinePart[I,J]*MatrixPartCell[J,K]*(1-MatrixMachineCell[I,K]) :
+                    K in 1..Cells, 
+                    I in 1..Machines, 
+                    J in 1..Parts]),
+
+  foreach(I in 1..Machines)
+    sum([MatrixMachineCell[I,K] : K in 1..Cells])  #= 1
+  end,
+
+  foreach(J in 1..Parts) 
+    sum([MatrixPartCell[J,K] : K in 1..Cells]) #= 1
+  end,
+
+  foreach(K in 1..Cells) 
+    sum([MatrixMachineCell[I,K] : I in 1..Machines]) #<= Mmax
+  end,
+
+
+  println(totalCost=TotalCost),
+
+  %
+  % solve
+  % 
+  Vars = MatrixMachineCell ++ MatrixPartCell,
+  % Vars = MatrixPartCell ++ MatrixMachineCell,
+  solve($[constr,updown,min(TotalCost),report(printf("totalCost=%d\n", TotalCost))], Vars),
+  % solve($[ffd,updown,min(TotalCost),report(printf("totalCost=%d\n", TotalCost))], Vars),
+
+  println("MatrixMachineCell"),
+  foreach(Row in MatrixMachineCell)
+    println(Row.to_list())
+  end,
+  println("\nMatrixPartCell"),
+  foreach(Row in MatrixPartCell)
+    println(Row.to_list())
+  end,
+
+  nl.
+
+
+%
+% Combine mcdp1 and mcdp3b.
+%
+mcdp4(MatrixMachinePart,Cells,Mmax, 
+      AssignedMachines,AssignedParts,MatrixMachineCell,MatrixPartCell,TotalCost) =>
+
+  Machines = MatrixMachinePart.len,
+  Parts = MatrixMachinePart[1].len,
+
+  println(machines=Machines),
+  println(parts=Parts),
+  println(cells=Cells),
+  println(mmax=Mmax),
+
+  GivenPartMachines = [ [ M  : M in 1..Machines, MatrixMachinePart[M,P] > 0] : P in 1..Parts],
+
+  AssignedMachines = new_list(Machines),
+  AssignedMachines :: 1..Cells,
+
+  AssignedParts = new_list(Parts),
+  AssignedParts :: 1..Cells,
+
+  MatrixMachineCell = new_array(Machines,Cells),
+  MatrixMachineCell :: 0..1,
+
+  MatrixPartCell = new_array(Parts,Cells),
+  MatrixPartCell :: 0..1,
+
+  % AssignedMachinesOrder = new_list(Machines),
+  % AssignedMachinesOrder :: 1..Machines,
+
+  % AssignedPartsOrder = new_list(Parts),
+  % AssignedPartsOrder :: 1..Parts,
+
+  % TotalCost :: 0..Machines*Parts,
+  TotalCost :: 0..sum(MatrixMachinePart.flatten()),
+
+
+  % all_distinct(AssignedPartsOrder),
+  % all_distinct(AssignedMachinesOrder),
+  % matrix_order(MatrixPartCell,AssignedPartsOrder),
+  % matrix_order(MatrixMachineCell,AssignedMachinesOrder),
+
+  TotalCost #= sum([
+                    sum([
+                        MatrixMachinePart[M,P]*(AssignedParts[P] #!= AssignedMachines[M])
+                        : M in GivenPartMachines[P]
+                        ])  
+                    : P in 1..Parts
+                   ]),
+
+  TotalCost #= sum([MatrixMachinePart[I,J]*MatrixPartCell[J,K]*(1-MatrixMachineCell[I,K]) :
+                    K in 1..Cells, 
+                    I in 1..Machines, 
+                    J in 1..Parts]),
+
+  foreach(K in 1..Cells)
+     % At most Mmax machines in a cell
+     sum([MatrixMachineCell[I,K] : I in 1..Machines]) #<= Mmax,
+     if member(mip,sys.loaded_modules()) then
+        % The MIP solver don't support built-in global constraints such as at_most/3
+        sum([AssignedMachines[M]#=K : M in 1..Machines]) #<= Mmax
+     else 
+        at_most(Mmax, AssignedMachines, K)
+     end
+  end,
+  foreach(I in 1..Machines)
+    sum([MatrixMachineCell[I,K] : K in 1..Cells])  #= 1,
+    foreach(K in 1..Cells)
+       MatrixMachineCell[I,K] #= 1 #<=> AssignedMachines[I] #= K
+    end
+  end,
+
+  foreach(J in 1..Parts) 
+    sum([MatrixPartCell[J,K] : K in 1..Cells]) #= 1,
+    foreach(K in 1..Cells)
+       MatrixPartCell[J,K] #= 1 #<=> AssignedParts[J] #= K
+    end
+  end,
+
+
+  println(totalCost=TotalCost),
+
+  Vars = AssignedMachines ++ AssignedParts ++ AssignedMachinesOrder ++ AssignedPartsOrder ++ MatrixMachineCell.vars() ++ MatrixPartCell.vars(),
+  % Vars = MatrixMachineCell.vars() ++ MatrixPartCell.vars() ++ AssignedMachines ++ AssignedParts,
+
+  % solve($[degree,updown,min(TotalCost),report(printf("TotalCost: %d\n",TotalCost))],Vars),
+  solve($[constr,min(TotalCost),report(printf("TotalCost: %d\n",TotalCost))],Vars),
+
+  println(totalCost=TotalCost),
+  println(assignedMachines=AssignedMachines),
+  println(assignedMachinesOrder=AssignedMachinesOrder),
+  println(assignedParts=AssignedParts),
+  println(assignedPartsOrder=AssignedPartsOrder),
+  println(matrixMachineCell=MatrixMachineCell),
+  println(matrixPartCell=MatrixPartCell),
+
+  nl. % end mcdp4
+
+%
+% figure out the order of the matrix M
+%
+matrix_order(M,Order) => 
+  Rows = M.len,
+  Cols = M[1].len,
+
+  % convert row to an integer
+  P = new_list(Rows),
+  P :: 0..Rows*Cols,
+
+  % figure out the sorted index of P
+  Ix = new_list(Rows),
+  Ix :: 0..Rows,
+
+  Order = new_list(Rows),
+  Order :: 1..Rows,
+  
+  all_distinct(Ix),
+  all_distinct(Order),
+  foreach(I in 1..Rows)
+    P[I] #= sum([(M[I,J]#=1)*(J-1)*(Rows)+(M[I,J]#=1)*I: J in 1..Cols])
+  end,
+
+  foreach(I in 1..Rows)
+    Ix[I] #= 1+sum([ P[J] #< P[I] : J in 1..Rows ])
+  end,
+
+  % Sort indices to order
+  assignment(Ix,Order).
+
+list_order(L,C,Order) => 
+  println($list_order(L,Order)),
+  Len = L.len,
+
+  % figure out the sorted index of P
+  Ix = new_list(Len),
+  Ix :: 0..Len,
+
+  Order = new_list(Len),
+  Order :: 1..Len,
+
+  P = new_list(Len),
+  P :: 0..C*Len,
+
+  foreach(I in 1..Len)
+    P[I] #= L[I]*(Len)+I
+  end,
+  all_different(Ix),
+  all_different(Order),
+  foreach(I in 1..Len)
+    Ix[I] #= 1+sum([ P[J] #< P[I] : J in 1..Len])
+  end,
+  % Sort indices to order
+  assignment(Ix,Order).
+
+
+
+
+% Don't know where this is from...
+problem(1, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 5,
+ % Parts    = 7,
+ Cells    = 2,
+ Mmax     = 4,
+ MatrixMachinePart = 
+  [[1, 0, 0, 0, 1, 1, 1],
+   [0, 1, 1, 1, 1, 0, 0],
+   [0, 0, 1, 1, 1, 1, 0],
+   [1, 1, 1, 1, 0, 0, 0],
+   [0, 1, 0, 1, 1, 1, 0]].
+
+%
+% From 
+% Tribikram Pradhan, Satya Ranjan Mishra:
+% "Implementation of Machine Part Cell Formation Algorithm in 
+% Cellular Manufacturing Technology Using Neural Networks"
+% page 5
+%
+problem(3, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30,
+ Cells = 2,
+ Mmax = 8,
+ MatrixMachinePart =  
+[
+[0,0,1,0,0,0,1,0,0,0],
+[1,0,0,1,0,1,0,1,0,1],
+[0,1,0,0,1,0,0,0,1,1],
+[0,1,0,0,1,0,0,0,1,0],
+[1,0,0,1,0,1,0,1,0,0],
+[0,0,1,0,0,0,1,0,0,0],
+[1,0,0,1,0,1,0,1,0,1],
+[0,1,0,0,1,0,0,0,1,1]
+].
+
+
+% Experimental
+% From https://www.youtube.com/watch?v=Xt3SRLSXwuI
+% Mod-01 Lec-14 Algorithm considering sequence of visit of machines 
+% 
+% The numbers in the parts columns are the parts that must
+% be visited _in order_ for the machine, i.e. the order of the numbers.
+% I have adjusted the model so it can handle values > 1.
+% Note: The Efficience coefficients don't work for these matrices.
+%
+problem(4, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 6,
+ % Parts = 8,
+ Cells = 3,
+ Mmax = 3,
+ MatrixMachinePart =  
+[
+[1,0,0,2,1,1,0,0],
+[0,1,0,0,0,4,1,1],
+[3,0,0,3,0,2,0,0],
+[4,0,0,0,3,3,0,0],
+[0,2,2,0,2,0,2,3],
+[2,3,1,1,0,0,3,2]
+].
+
+ 
+
+%
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% Slide 14ff
+%
+%                                                       Part
+%                                1      2      3     4     5     6       7         8         9   
+% Machine Description            WaterA WaterB FoodA FoodB FoodC Clothes MedicineA MedicineB Tools  
+% 1 Packing, bags                0,     0,     1,    0,    1,    0,      0,        0,        0,
+% 2 Packing, cardboard boxes     0,     0,     1,    1,    0,    1,      0,        0,        0,
+% 3 Packing, wooden boxes        1,     0,     0,    0,    1,    0,      0,        0,        1,
+% 4 Packing medical supplies     0,     0,     0,    0,    0,    0,      1,        1,        0,
+% 5 Packing water bottles        1,     0,     0,    0,    0,    0,      0,        0,        0,
+% 6 Refrigeration                0,     0,     0,    0,    0,    0,      0,        1,        0,
+% 7 Water pump                   0,     1,     0,    0,    0,    0,      0,        0,        0,
+% 8 Packers gallons of water     0,     1,     0,    0,    0,    0,      0,        0,        0,
+%
+% Result: 
+% Note that the cells are reversed from Boris' example
+% Total cost = 0
+%       2  7  8  1  3  4  5  6  9 
+% M 1:  0  1  1  0  0  0  0  0  0   Cell 1
+% M 2:  0  0  1  0  0  0  0  0  0   Cell 1
+% M 3:  1  0  0  0  0  0  0  0  0   Cell 1
+% M 4:  1  0  0  0  0  0  0  0  0   Cell 1
+% M 5:  0  0  0  0  1  0  1  0  0   Cell 2
+% M 6:  0  0  0  0  1  1  0  1  0   Cell 2
+% M 7:  0  0  0  1  0  0  1  0  1   Cell 2
+% M 8:  0  0  0  1  0  0  0  0  0   Cell 2
+% Cell  1  1  1  2  2  2  2  2  2 
+% 
+problem(boris0, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 8,
+ % Parts    = 9,
+ Cells    = 2,
+ Mmax     = 4,
+ MatrixMachinePart = 
+ [[0,0,1,0,1,0,0,0,0],
+  [0,0,1,1,0,1,0,0,0],
+  [1,0,0,0,1,0,0,0,1],
+  [0,0,0,0,0,0,1,1,0],
+  [1,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,1,0],
+  [0,1,0,0,0,0,0,0,0],
+  [0,1,0,0,0,0,0,0,0]].
+
+
+% BORIS 1
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% MPCFP_King-Nakornchai_Problem01_5x7.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=J. R. KING and V. NAKORNCHAI Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=May 24, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info= J. R.   KING  and  V.   NAKORNCHAI
+% References=
+% BibTeX=\
+% @article{doi:10.1080/00207548208947754, author = { J. R.   KING  and  V.   NAKORNCHAI }, title = {Machine-component group formation in group technology: review and extension}, journal = {International Journal of Production Research}, volume = {20}, number = {2}, pages = {117-133}, year = {1982}, doi = {10.1080/00207548208947754}, URL = { http://dx.doi.org/10.1080/00207548208947754}, eprint = { http://dx.doi.org/10.1080/00207548208947754}}
+% Best Solution=0
+% #-----MCDP-VALUES-------------------------------------
+% Machines=5
+% Parts=7
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=1
+% """
+% Cells  Mmax Optimum  Boris's time Boris' BT My Opt    CP Time CP BT   SAT Time    SAT+mcdp1  MIP time
+% 2      3    0        0.306s       145       0         0.022s  0       0.060s      0.100s     0.065s
+% 2      4    0        0.105s       46        0         0.022s  0       0.057s      0.075s     0.068s
+% 3      2    2        1.646s       3057      2         0.023s  0       0.134s      0.219s     1.543s
+% 3      3    0        0.722s       1428      0         0.024s  0       0.078s      0.150s     0.071s
+problem(boris1, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 5,
+ % Parts    = 7,
+ Cells    = 3,
+ Mmax     = 3,
+ MatrixMachinePart = 
+[
+[0,1,0,1,1,1,0],
+[1,0,1,0,0,0,0],
+[1,0,1,0,0,0,1],
+[0,1,0,1,0,1,0],
+[1,0,0,0,0,0,1]
+].
+
+% BORIS 2
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% MPCFP_Waghodekar-Sahu_Problem01_5x7.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=P. H.   WAGHODEKAR  and  S.   SAHU  Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=May 24, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info=P. H.   WAGHODEKAR  and  S.   SAHU 
+% References=
+% BibTeX=\
+% @article{doi:10.1080/00207548408942513, author = { P. H.   WAGHODEKAR  and  S.   SAHU }, title = {Machine-component cell formation in group technology: MACE}, journal = {International Journal of Production Research}, volume = {22}, number = {6}, pages = {937-948}, year = {1984}, doi = {10.1080/00207548408942513}, URL = { http://dx.doi.org/10.1080/00207548408942513}, eprint = { http://dx.doi.org/10.1080/00207548408942513}}
+% Best Solution=5
+% #-----MCDP-VALUES-------------------------------------
+% Machines=5
+% Parts=7
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=0
+% """
+% Cells Mmax Optimum   Boris's time  Boris' BT  My Opt CP time  CP BT  SAT Time   SAT+mcdp1   MIP time
+%  2     3    5        0.209s        380        5      0.028s   0      0.142s     0.200s      10.013s
+%  2     4    3        0.001s        26         3      0.029s   0      0.097s     0.168s       0.484s
+%  3     2    8        0.815s        3622       8      0.040s   0      0.095s     0.521s       
+problem(boris2, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 5,
+ % Parts    = 7,
+ Cells    = 3,
+ Mmax     = 2,
+ MatrixMachinePart = 
+[
+[1,0,0,0,1,1,1],
+[0,1,1,1,1,0,0],
+[0,0,1,1,1,1,0],
+[1,1,1,1,0,0,0],
+[0,1,0,1,1,1,0]
+].
+
+
+
+% BORIS 3
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% MPCFP_Seifoddini_Problem01_5x18.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=HAMID SEIFODDINI Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=May 26, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info=HAMID   SEIFODDINI
+% References=
+% BibTeX=\
+% @article{doi:10.1080/00207548908942614, author = { HAMID   SEIFODDINI }, title = {A note on the similarity coefficient method and the problem of improper machine assignment in group technology applications}, journal = {International Journal of Production Research}, volume = {27}, number = {7}, pages = {1161-1165}, year = {1989}, doi = {10.1080/00207548908942614}, URL = { http://dx.doi.org/10.1080/00207548908942614}, eprint = { http://dx.doi.org/10.1080/00207548908942614}}
+% Best Solution=5
+% #-----MCDP-VALUES-------------------------------------
+% Machines=5
+% Parts=18
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=0
+% """
+%
+% Cells Mmax Optimum  Boris time  Boris BT   My Opt   CP time CP BT   SAT time    SAT+mcdp1   MIP time
+% --------------------------------------------------------------------
+% 2     3    5        2.048s      4664       5        0.030s  0       0.433s      0.987s      >1min
+% 2     4    4        2.254s      2838       4        0.036s  0       0.331s      0.980s      4.229s
+% 3     2    11     952.955s   2844928       11       6.077s  0       0.597s      6.113s
+problem(boris3, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 5,
+ % Parts    = 18,
+ Cells    = 3,
+ Mmax     = 2,
+ MatrixMachinePart = 
+[
+[1,1,1,0,1,1,0,1,0,0,1,1,1,1,0,1,1,0],
+[1,0,1,1,0,1,1,1,0,1,1,1,1,0,1,0,0,1],
+[0,0,0,1,0,0,1,0,0,1,0,0,0,0,1,0,0,1],
+[1,1,1,0,1,1,0,1,0,0,1,1,1,1,0,1,1,0],
+[0,0,0,1,0,0,0,0,1,1,0,0,0,0,1,0,0,1]
+].
+
+
+% BORIS 4
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% MPCFP_Kusiak-Cho_Problem01_6x8.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=A. KUSIAK and M. CHO Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=May 24, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info=A.   KUSIAK  and  M.   CHO 
+% References=
+% BibTeX=\
+% @article{doi:10.1080/00207549208948181, author = { A.   KUSIAK  and  M.   CHO }, title = {Similarity coefficient algorithms for solving the group technology problem}, journal = {International Journal of Production Research}, volume = {30}, number = {11}, pages = {2633-2646}, year = {1992}, doi = {10.1080/00207549208948181}, URL = { http://dx.doi.org/10.1080/00207549208948181}, eprint = { http://dx.doi.org/10.1080/00207549208948181}}
+% Best Solution=0
+% #-----MCDP-VALUES-------------------------------------
+% Machines=6
+% Parts=8
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=0
+% """
+% Cells Mmax Optimum  Boris' time  Boris' BT  My Opt  CP Time CP BT  SAT time   SAT+mcdp1
+% 2     3    2          0.308s     290            2   0.031s  0      0.113s     0.214s
+% 2     4    2          0.107s     146            2   0.035s  0      0.124s     0.331s     
+% 2     5    2          0.102s      83            2   0.029s  0      0.179s     0.236s
+% 3     2    7          1.835s    5170            7   0.039s  0      0.207s     0.587s
+% 3     3    2          2.044s    7193            2   0.029s  0      0.134s     0.509s
+% 3     4    2          1.535s    6574            2   0.033s  0      0.183s     0.616s
+% 3     5    2          2.346s    7073            2   0.042s  0      0.152s     0.423s
+% 5     2    7         34.644s  238463            7   0.977s  0      0.227s     1.707s
+problem(boris4, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 6,
+ % Parts    = 8,
+ Cells    = 5,
+ Mmax     = 2,
+ MatrixMachinePart = 
+[
+[0,1,0,1,0,0,1,0],
+[1,1,1,0,1,1,1,1],
+[0,0,1,0,0,1,0,1],
+[0,0,0,1,0,0,1,0],
+[1,0,1,0,1,1,0,1],
+[0,0,0,1,0,0,1,0]
+].
+
+
+
+% BORIS 5
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% MPCFP_Boctor_Problem11_7x11.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=Standard Boctor Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=Apr 16, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info= Boctor Problems
+% References=Boctor, F. F. (1991). A Jinear formulation of the machine-part cell formation problem. THE INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH, 29(2), 343-356.
+% BibTeX=\
+% @article{boctor1991jinear, \
+%   title={A Jinear formulation of the machine-part cell formation problem}, \
+%   author={Boctor, Fayez F}, \
+%   journal={THE INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH}, \
+%   volume={29}, \
+%   number={2}, \
+%   pages={343--356}, \
+%   year={1991}, \
+%   publisher={Taylor \& Francis} \
+% }
+% Best Solution=2
+% #-----MCDP-VALUES-------------------------------------
+% Machines=7
+% Parts=11
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=0
+% """
+% Cells Mmax Optimum  Boris' time Boris' BT  My Opt  CP Time CP BT  SAT time   SAT+mcdp1
+% 2     4    2        0.207s         78      2       0.030s  0      0.110s     0.271s
+% 2     5    1        0.204s         87      1       0.028s  0      0.094s     0.204s
+% 2     6    1        0.311s         83      1       0.033s  0      0.069s     0.200s
+% 3     3    2       11.145s      90611      2       0.052s  0      0.130s     0.146s
+problem(boris5, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 7,
+ % Parts    = 11,
+ Cells    = 3,
+ Mmax     = 3,
+ MatrixMachinePart = 
+[
+[1,0,1,0,0,0,1,0,0,0,1],
+[1,1,0,0,0,1,0,0,0,0,0],
+[0,1,0,0,0,1,0,0,1,0,0],
+[0,0,0,1,1,0,0,0,0,1,0],
+[0,0,1,0,0,0,1,0,0,0,0],
+[0,0,1,1,0,0,0,0,0,0,1],
+[0,0,0,0,1,0,0,1,0,1,0]
+].
+
+
+% BORIS 6
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% MPCFP_Seifoddini-Wolfe_Problem01_8x12.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=Hamid   Seifoddini  and  Philip M.   Wolfe Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=May 24, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info=Hamid Seifoddini  and  Philip M.   Wolfe
+% References=
+% BibTeX=\
+% @article{doi:10.1080/07408178608974704, author = { Hamid   Seifoddini  and  Philip M.   Wolfe }, title = {Application of the Similarity Coefficient Method in Group Technology}, journal = {IIE Transactions}, volume = {18}, number = {3}, pages = {271-277}, year = {1986}, doi = {10.1080/07408178608974704}, URL = { http://dx.doi.org/10.1080/07408178608974704}, eprint = { http://dx.doi.org/10.1080/07408178608974704}}
+% Best Solution=
+% #-----MCDP-VALUES-------------------------------------
+% Machines=8
+% Parts=12
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=0
+% """
+% Cells Mmax Optimum  Boris' time Boris' BT  My Opt  CP time CP BT  SAT time   SAT+mcdp1
+% 2     4    6         0.728s        862     6       0.035s  0      0.442s     0.749s
+% 2     5    3         0.716s        735     3       0.031s  0      0.413s     0.599s
+% 2     6    1         0.616s        362     1       0.030s  0      0.475s     0.497s
+% 2     7    1         0.609s        300     1       0.027s  0      0.402s     0.378s
+% 3     3    7       180.404s     919896     7       0.175s  0      0.400s     1.794s 
+% 3     4    6 (13?) 173.367s    1077782     6       0.209s  0      0.573s     1.295s  % In Boris Excel file, the optimum is both 6 and 13
+problem(boris6, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 8,
+ % Parts    = 12,
+ Cells    = 3,
+ Mmax     = 4,
+ MatrixMachinePart = 
+[
+[1,1,1,1,0,0,0,0,0,0,0,0],
+[1,0,1,1,1,1,1,0,0,1,0,0],
+[0,0,1,1,1,1,1,1,1,0,0,0],
+[0,0,0,0,0,1,1,1,1,1,0,0],
+[0,0,0,0,0,0,1,1,1,1,0,0],
+[0,0,0,0,0,0,1,1,0,1,1,0],
+[0,0,0,0,0,0,0,0,0,0,1,1],
+[0,0,0,0,0,0,0,0,0,0,1,1]
+].
+
+
+% BORIS 7
+% Problem from 
+% Boris L. Almonacid
+% Presentation:
+% "Machine-Part Cell Formation Problems with Constraint Programming : MPCFP + CP"
+% http://www.inf.ucv.cl/~balmonacid/MPCFP/JCC2015/dataset
+% P_Chandrasekharan-Rajagopalan_Problem02_8x20.txt
+% """
+% #-----FILE-DETAILS------------------------------------
+% File details=M. P.   CHANDRASEKHARAN  and  R.   RAJAGOPALAN Problems.
+% Version=1.0
+% Created by=Boris L. Almonacid, {boris.almonacid.g@mail.pucv.cl}
+% Date created=May 24, 2015
+% Modified by=
+% Date modified=
+% #-----BECHMARK-INFO-----------------------------------
+% Benchmark info=M. P.   CHANDRASEKHARAN  and  R.   RAJAGOPALAN
+% References=
+% BibTeX=\
+% @article{doi:10.1080/00207548608919798,
+% author = { M. P.   CHANDRASEKHARAN  and  R.   RAJAGOPALAN },
+% title = {MODROC: an extension of rank order clustering for group technology},
+% journal = {International Journal of Production Research},
+% volume = {24},
+% number = {5},
+% pages = {1221-1233},
+% year = {1986},
+% doi = {10.1080/00207548608919798},
+% URL = {http://dx.doi.org/10.1080/00207548608919798},
+% eprint = { http://dx.doi.org/10.1080/00207548608919798}}
+% Best Solution=
+% #-----MCDP-VALUES-------------------------------------
+% Machines=8
+% Parts=20
+% Cells=0
+% Mmax=0
+% Mmin=0
+% Sum=0
+% """
+% Note: Here my optimum != Boris' optimum.
+%
+% Note: "SAT Time 2" is with the faster "MatrixMachinePart[M,P]*(AssignedParts[P] #!= AssignedMachines[M])"
+%       I kept the old one (using "(MatrixMachinePart[M,P] #= 1) * (AssignedParts[P] #!= AssignedMachines[M])")
+%       for comparison.
+%
+% Cells Mmax Optimum  Boris' time  Boris' BT    My Opt  CP time  CP BT SAT time SAT Time2  SAT+mcdp1  num optimal solutions
+% 2     4    7        6.282s           36261    28!      16.877s  0      3.155s  1.488s    74.896s      8
+% 2     5    7        6.972            40008    25!      8.073s   0      4.055s  1.501s    65.928s      8
+% 3     3    14       132.5004s      3775291    39!      >15min          6.336s  3.566s    >15min      39
+% 3     4    7        630.271s       1714994    28!      >15min          7.035s  4.341s    >15min       8
+%
+% For comparison, here's the times for Picat SAT and the corresponding MiniZinc model (MCDP3b.mzn).
+% As we can see, they are about the same as the "SAT Time2".
+% Cells Mmax Optimum  MCDP3b.mzn + picat_sat
+% 2     4    28         1.641s
+% 2     5    25         1.736s
+% 3     3    39         3.743s
+% 3     4    28         4.130s
+%
+problem(boris7, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 8,
+ % Parts    = 20,
+ Cells    = 2,
+ Mmax     = 4,
+ MatrixMachinePart = 
+[
+[1,0,1,1,0,0,0,0,1,1,0,0,0,1,1,1,0,1,1,0],
+[0,1,1,1,0,1,1,0,1,0,1,0,0,0,0,0,0,1,0,1],
+[0,0,0,0,1,1,1,1,0,0,1,1,1,0,0,1,1,0,1,1],
+[0,0,1,1,0,0,1,1,1,1,0,0,1,1,1,0,1,1,1,1],
+[1,1,1,0,0,1,0,0,0,1,0,1,1,0,1,1,1,0,1,1],
+[1,1,0,0,1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,0],
+[0,0,0,0,1,1,1,1,0,0,1,1,1,0,0,1,1,0,1,1],
+[1,1,1,1,1,0,0,1,1,1,0,0,1,1,0,1,1,0,0,0]
+].
+
+
+
+
+%
+% Boctor problems
+%
+%
+% Note: "SAT Time 2" is with the faster "MatrixMachinePart[M,P]*(AssignedParts[P] #!= AssignedMachines[M])"
+%       I kept the old one (using "(MatrixMachinePart[M,P] #= 1) * (AssignedParts[P] #!= AssignedMachines[M])")
+%       for comparison. Most of the times this means a reduction of about 2.
+% Cells  Mmax Optimum  CP Time CP BT   SAT Time   SAT Time 2 
+%  2      8   11                       11.354s    4.126s
+%  2      9   11                        5.732s    4.143s
+%  2     10   11                       11.338s    3.718s
+%  2     11   11                       13.679s    4.921s
+%  2     12   11                       12.042s    3.317s
+%  3      6   27                       38.213s   31.633s
+%  3      7   18                       25.367s   14.652s
+%  3      8   11                       21.076s   10.772s
+%  3      9   11                       17.429s    9.712s
+problem(boctor1, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30,
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[0,0,0,0,1,0,0,1,0,1,0,1,0,0,0,0,0,0,0,1,0,1,1,0,0,1,0,0,1,0],
+[0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,1,1,0,0,1,1,1,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0],
+[0,0,1,0,0,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1],
+[0,0,1,1,0,0,0,0,0,0,1,1,1,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,1,1,1,1],
+[0,0,0,0,0,0,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,1,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,1,0,1,1,0,0,1,0,1],
+[1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+[1,0,1,1,0,0,1,0,0,0,1,0,1,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,1,0,1,1,1,0,1,0],
+[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,0,0,0,0,0],
+[1,0,1,1,0,0,1,0,0,0,1,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,1,1,1,1,1,1,1,1]
+].
+
+
+problem(boctor2, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[  0,0,0,0,1,1,0,1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+[  0,0,0,1,1,0,0,0,1,1,1,1,1,0,1,1,0,1,0,0,0,0,0,0,0,1,0,0,0,0],
+[  1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,1,1,0,1,1,0,0],
+[  0,1,0,0,1,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0],
+[  0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,1,0,1,1],
+[  0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,0,1,1,1,0],
+[  0,0,0,1,1,0,0,0,1,1,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,0,0,1,1,0,1,1,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0],
+[  0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,1,0,0,0,0,1,1,1],
+[  0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,0,1,0,0,1,0,0,1],
+[  0,0,0,0,1,0,1,0,0,1,1,1,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+[  1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+].
+
+problem(boctor3, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0],
+[  0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+[  1,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,1,0,0,0,0,0,0,0,0],
+[  1,0,1,0,0,1,1,0,1,1,0,0,1,1,1,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0],
+[  0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,0,0],
+[  0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,0,0],
+[  1,0,1,0,0,0,1,0,1,1,0,0,1,0,1,1,1,0,0,0,1,1,0,0,0,0,1,0,0,0],
+[  0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,1,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,0,1,0],
+[  0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+[  0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+[  0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0],
+[  1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,1,1,0],
+[  0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,1,0]
+
+].
+
+problem(boctor4, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,1,1,1,0],
+[0,1,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,1,0,0,1,1,0,0,0,1,1,0,0,0],
+[1,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,1,1,0],
+[0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+[1,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,0,1,0,0,0,1,1,0,0,0,0,1,0],
+[1,0,0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0],
+[0,1,1,0,0,1,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,1,0,1,1],
+[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+[1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,1],
+[0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,1,0],
+[1,1,0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0],
+[0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,0,1],
+[0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0,0,0,0,1],
+[0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,1,0,1,0,1,0,1,0,0,1,1,0,0,0,0],
+[0,0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0]
+
+].
+
+
+problem(boctor5, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,1,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,1,1,0,1,0,0],
+[  0,0,1,0,1,0,1,0,1,0,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,0,0,1,0,1,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  1,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1],
+[  0,1,0,0,0,0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,1,1,0,0,0,0,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,0,1,0,0],
+[  0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+[  0,0,1,0,1,0,1,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0],
+[  1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+[  0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+[  1,0,1,0,1,0,1,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,1,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,0,1,1,1,0,1,0,0,0,1,0,0,1],
+[  0,1,0,0,0,0,1,0,0,1,0,1,0,0,1,0,0,0,1,1,1,1,0,0,0,0,0,0,1,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,1,0,0],
+[  0,0,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,0,0,1,1,1,1,0,0,0,1,0,1,0]
+
+].
+
+
+problem(boctor6, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[0,0,0,1,1,0,0,0,0,0,1,0,1,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,1],
+[0,0,0,0,1,1,0,1,1,0,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0],
+[1,0,1,0,1,1,0,1,1,1,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0],
+[0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0],
+[0,0,0,0,1,1,0,1,1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0],
+[1,0,1,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0],
+[1,0,1,0,1,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],
+[0,0,0,1,0,0,1,0,0,0,1,1,1,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,1],
+[0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0],
+[0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0],
+[0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0],
+[0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0]
+
+].
+
+
+problem(boctor7, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[  1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,1,0,1,1],
+[  1,0,0,0,0,0,0,1,1,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,1,0,0],
+[  1,1,0,0,0,1,1,1,1,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  1,1,0,0,0,0,1,0,1,0,0,0,1,1,0,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0],
+[  0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0],
+[  1,1,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,1,0,0],
+[  1,0,0,0,0,1,1,0,1,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0],
+[  0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
+[  1,0,0,0,0,1,1,1,1,0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[  0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1],
+[  0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0],
+[  0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,1]
+
+].
+
+
+problem(boctor8, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[ 0,1,0,0,0,0,0,1,0,0,0,0,1,1,1,1,1,0,1,1,0,0,0,0,0,0,0,1,1,1],
+[ 0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,0,0,0],
+[ 0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1],
+[ 1,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[ 0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,0,1,0],
+[ 1,0,0,0,1,0,1,1,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0],
+[ 0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,0,1,0,1,1,0,0,0],
+[ 1,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[ 1,0,0,0,0,0,0,1,0,0,1,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,1],
+[ 0,0,0,1,1,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[ 0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,1,0,0],
+[ 0,0,1,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,1,1,1,0,0,0,0],
+[ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,1,0],
+[ 0,0,1,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,1,0,1,0,1,0,0,0],
+[ 0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0],
+[ 0,0,0,0,1,0,0,1,0,0,0,0,0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1]
+
+].
+
+
+problem(boctor9, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0],
+[0,1,1,1,1,0,1,1,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
+[0,0,0,0,1,1,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,1,1,0,1,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,1,0,0,0,0,0],
+[1,0,1,1,0,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
+[0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0,0,1,0],
+[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,0],
+[1,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,1,0,0,1,1,1,0,1,0,0,0,0,0],
+[1,0,1,1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,1,1],
+[0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,1,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,1,0,1,0,0,0,0,0],
+[1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,1,1,0,1,0,0,0,0,1,0,0,0,0,0,1],
+[1,0,1,1,0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
+[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,1,0]
+
+].
+
+
+problem(boctor10, MatrixMachinePart,Cells,Mmax) =>
+ % Machines = 16,
+ % Parts = 30],
+ Cells = 2,
+ Mmax =  8,
+ MatrixMachinePart =  
+[
+[1,0,1,1,0,0,1,0,1,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0],
+[0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0],
+[0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+[0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1,0,1,0,0,0],
+[0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1],
+[1,0,1,1,1,1,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1],
+[1,1,1,1,1,1,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+[1,1,1,1,0,1,1,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[1,1,1,0,1,1,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,1],
+[1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,1,1],
+[0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,0,0,1,0,1,0,0,0],
+[0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0]
+
+].
+
+

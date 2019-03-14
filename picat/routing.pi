@@ -1,0 +1,182 @@
+/* 
+
+  Routing problem in Picat.
+
+  From https://www.satalia.com/solve/
+  """
+  Five possible deliveries, each worth a different amount. Travel time between them varies.
+
+  What’s the maximum you can earn in two hours?
+  """
+
+
+  With a time limit of 2 hours (120 minutes) there are 2 different solutions 
+  (without any symmetry breaking) with the optimal profit of 63 and a time of 114 minutes.
+
+  totalProfit = 63
+  totalTime = 114
+  1 ->  2 (profit: 15 time: 21)
+  2 ->  4 (profit: 16 time: 27)
+  4 ->  6 (profit: 19 time: 13)
+  6 ->  3 (profit: 13 time: 28)
+  3 ->  1 (profit:  0 time: 25)
+  notUsed = [5]
+  timeLeft = 6
+  Number of solutions with TotalProfit = 63: 2
+  [[3,1,6,2,5,4],114,63]
+  [[2,4,1,6,5,3],114,63]
+
+  The second solution is the reverse of the first. 
+  Note: this model use the symmetry breaking that x[2] > x[n] so the shown solution
+  is [2,4,1,6,5,3].
+
+  One can note that node 5 - the one with a profit of 12 - is not used, as can be seen as 
+  the 5th element is always 5 in the list X.
+
+  Without any timelimit there are 120 solutions that make the optimal profit of 75 in 126 minutes.
+
+  Note: the cp solver is faster than the sat solver for small instances, say <= 10 deliveries.
+  Above that, the sat solver is faster.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import sat.
+
+main => go.
+
+
+go =>
+  nolog,
+  data(1,Distance,Profit,TimeLimit),
+  N = Distance.len,
+  % sanity check
+  foreach(I in 1..N, J in 1..N)
+    if Distance[I,J] != Distance[J,I] then
+      printf("%w != %w\n",[I,J],[J,I])
+    end
+  end,
+  routing(Distance,Profit,TimeLimit, X, TotalTime,TotalProfit),
+  flush(stdout),
+  ShowAll = false,
+  show_solution(Distance,Profit,TimeLimit, X, TotalTime,TotalProfit, ShowAll),
+  nl.
+
+
+% random instance
+go2 => 
+  nolog,
+  _ = random2(),
+  N = 20,
+  println(n=N),
+  TimeLimit = 60*N div 5, % minutes
+  random_problem(N, Distance,Profit),
+  println(timeLimit=TimeLimit),
+  println(profit=Profit),
+  println("Distance:"),
+  if N <= 30 then
+    foreach(I in 1..N) 
+      println(Distance[I])
+    end
+  end,
+  routing(Distance,Profit,TimeLimit, X,TotalTime,TotalProfit),
+  ShowAll = false,
+  show_solution(Distance,Profit,TimeLimit, X, TotalTime,TotalProfit, ShowAll),
+  nl.
+
+
+show_solution(Distance,Profit,TimeLimit, X, TotalTime,TotalProfit, ShowAll) =>
+  println(x=X),
+  println(totalProfit=TotalProfit),
+  println(totalTime=TotalTime),
+
+  W = X[1],
+  printf("%2w -> %2w (profit: %2d time: %2d)\n", 1,W,Profit[W], Distance[1,W]),
+  while (W != 1) 
+    printf("%2w -> %2w (profit: %2d time: %2d)\n", W,X[W],Profit[X[W]], Distance[W,X[W]]),
+    W := X[W]
+  end,
+  NotUsed = [I : I in 1..X.len, X[I] == I],
+  println(notUsed=NotUsed),
+  println(timeLeft=(TimeLimit-TotalTime)),
+  if ShowAll == true then
+    Solutions = findall([X2,TotalTime2,TotalProfit],routing(Distance,Profit,TimeLimit, X2, TotalTime2,TotalProfit)),
+    printf("\nNumber of solutions with TotalProfit = %d: %d\n", TotalProfit, Solutions.len),
+    foreach(S in Solutions) println(S) end
+  end,
+  nl.
+
+
+
+%
+% Routing problem
+%
+routing(Distance,Profit,TimeLimit, X,TotalTime,TotalProfit) =>
+  N = Distance.len,
+  X = new_list(N),
+  X :: 1..N,
+  
+  Total = new_list(N),
+
+  all_distinct(X),
+  subcircuit(X),
+  X[1] #!= 1, % the first step must be from 1 to a place != 1
+
+  TotalProfit #= sum([(X[I] #!= I)*Profit[I] : I in 1..N]),
+  
+  foreach(I in 1..N) 
+     element(I,X,XI),
+     matrix_element(Distance,I,XI,D),
+     Total[I] #= (X[I]#!=I)*D
+  end,
+  TotalTime #= sum(Total),
+  TotalTime #<= TimeLimit,
+  
+  % symmetry breaking
+  X[2] #> X[N],
+ 
+  Vars = X ++ Total ++ [TotalTime],
+  if var(TotalProfit) then
+    solve($[max(TotalProfit),ffd,up,report(printf("TotalProfit: %d\n", TotalProfit))],Vars)
+  else
+    solve($[ff,split],Vars)
+  end.
+
+
+random_problem(N, Distance,Profit) =>
+   Distance = new_array(N,N),
+   Profit = new_list(N),
+   Profit[1] := 0,
+   foreach(I in 1..N)
+      if I > 1 then
+        Profit[I] := N+I
+      end,
+      foreach(J in 1..I)
+         if I == J then 
+           Distance[I,J] := 0
+         else 
+           Distance[I,J] := 10+random() mod 60,
+           Distance[J,I] := Distance[I,J]
+         end
+      end
+   end.
+   
+
+data(1,Distance,Profit,TimeLimit) =>
+Distance = 
+[
+  % s  15  13  16  12  19
+  [ 0, 21, 25, 35, 32, 43], % start/end
+  [21,  0, 24, 27, 36, 34], % Profit 15
+  [25, 24,  0, 41, 23, 28], % Profit 13
+  [35, 27, 41,  0, 24, 13], % Profit 16
+  [32, 36, 23, 24,  0, 16], % Profit 12 
+  [43, 34, 28, 13, 16,  0]  % Profit 19
+],
+Profit = [0,15,13,16,12,19], % GBP
+TimeLimit = 120. % 2 hours
+
+

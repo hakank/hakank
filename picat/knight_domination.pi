@@ -1,0 +1,107 @@
+/* 
+
+  Knight domination problem in Picat.
+
+  Find the minimum number of knights needed to cover all squares in
+  a N x N board.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import mip. % N=4..10:  knight_dom/3: 0.4s   knight_dom2/3: 1.8s
+% import sat. % N=4..10: knight_dom/3: 18.92s  knight_dom2/3: 20.51s
+% import cp. % N=4..10: too slow
+% import smt. % z3  N=4..10:  knight_dom/3: >120s   knight_dom2/3: >120s
+% import smt. % cvc4  N=4..10:  knight_dom/3: 150s   knight_dom2/3: too slow
+
+main => go.
+
+
+go =>
+  N = 8,
+  knight_dom(N, X, Z),
+  println(z=Z),
+  foreach(Row in X)
+   println(Row.to_list())
+  end,
+
+  nl.
+
+go2 =>
+  nolog,
+  Zs = [],
+  foreach(N in 4..10) 
+     println(n=N),
+     time(knight_dom(N, _X, Z)),
+     println(z=Z),
+     Zs := Zs ++ [N=Z],
+     nl
+
+  end,
+  println(Zs),
+  nl.
+
+% using covers approach
+go3 =>
+  nolog,
+  Zs = [],
+  foreach(N in 4..10) 
+     println(n=N),
+     time(knight_dom2(N, _X, Z)),
+     println(z=Z),
+     Zs := Zs ++ [N=Z],
+     nl
+
+  end,
+  println(Zs),
+  nl.
+
+
+% plain 0/1 model
+knight_dom(N, X, Z) =>
+  % 1 = knight in this square
+  X = new_array(N,N),
+  X :: 0..1,
+
+  foreach(I in 1..N, J in 1..N) 
+     sum([X[I+A,J+B] : A in [-2,-1,1,2], B in [-2,-1,1,2],
+                       A+I > 0, A+I <= N,
+                       B+J > 0, B+J <= N,
+                       abs(A)+abs(B) = 3]) #> 0
+  end,
+
+  Z #= sum(X.vars()),
+
+  solve($[min(Z),ff,inout,cvc4], X).
+
+
+%
+% Using a covers matrix as well.
+%
+% This is slower for all solvers.
+%
+knight_dom2(N, X, Z) =>
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  % how many knights covers this square
+  Covers = new_array(N,N),
+  Covers :: 1..8,
+
+  foreach(I in 1..N, J in 1..N) 
+     S #= sum([X[I+A,J+B] : A in [-2,-1,1,2], B in [-2,-1,1,2],
+                       A+I > 0, A+I <= N,
+                       B+J > 0, B+J <= N,
+                       abs(A)+abs(B) = 3]),
+     S #> 0,
+     Covers[I,J] #= S
+
+  end,
+  Z #= sum(X.vars()),
+
+  Vars = X.vars() ++ Covers.vars(),
+  solve($[min(Z),degree,split,cvc4], Vars).

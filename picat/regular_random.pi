@@ -1,0 +1,172 @@
+/* 
+
+  Testing random DFA:s for regular in Picat.
+
+  It seems that most DFA for size > 100 can be solved in about 5 steps
+  even if the Pct is as small as 1%. 
+  For DFA < 100 it may take about 8 steps with a Pct of 1%.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp,util.
+
+
+main => go.
+
+
+go =>
+  garbage_collect(300_000_000),
+
+  NStates = 3000,
+  InputMax = NStates,
+
+  Pct = 25,
+
+  InitialState = 1,
+  % AcceptingStates = [I : I in 1..InputMax],
+  AcceptingStates = [InputMax],
+
+
+  Randomize = true,
+  % time(Transition = generate_transition(NStates,Pct,Randomize)),
+  % faster by a factor of 2 or so
+  time(Transition = generate_transition2(NStates,Pct,Randomize)),
+
+  % foreach(Row in Transition) println(Row) end,
+  
+  time2(solve_dfa(Transition,InputMax,NStates,InitialState,AcceptingStates, X)),
+  % This is much slower, by a factor of about 2-5
+  % time2(solve_dfa2(Transition,InputMax,NStates,InitialState,AcceptingStates, X,States)),
+
+  println(x=X),
+  % println(states=States),
+
+  State = 1,
+  States2 = [State],
+  foreach(I in 1..X.len)
+    State := Transition[State,X[I]],
+    States2 := States2 ++ [State]
+  end,
+  println(states2=States2),
+  nl.
+
+%
+% using regular/6 (without states)
+%
+solve_dfa(Transition,InputMax,NStates,InitialState,AcceptingStates, X) =>
+
+  Len :: 1..InputMax, % length of X
+  indomain(Len),
+  println(len=Len),
+
+  X = new_list(Len),
+  X :: 1..InputMax,
+
+  % use regular2/7 to get the states as well
+  regular(X, NStates, InputMax, Transition, InitialState, AcceptingStates),
+  println("\nSolve:"),
+  solve([degree,split], X).
+
+
+% using regular2/7 with states
+solve_dfa2(Transition,InputMax,NStates,InitialState,AcceptingStates, X,States) =>
+
+  Len :: 1..InputMax, % length of X
+  indomain(Len),
+  println(len=Len),
+
+  X = new_list(Len),
+  X :: 1..InputMax,
+
+  % use regular2/7 to get the states as well
+  regular2(X, NStates, InputMax, Transition, InitialState, AcceptingStates,States),
+  println("\nSolve:"),
+  solve([degree,split], X).
+
+
+% 
+% Generate a random transition matrix of size N x N 
+% with a probability of a transition of Pct %.
+%
+generate_transition(N,Pct,Randomize) = Transition =>
+  println($generate_transition(N,Pct)),
+  Transition1 = new_array(N,N),
+  bind_vars(Transition1,0),
+  if Randomize then
+     _ = random2()
+  end,
+  foreach(I in 1..N-1, J in 1..N) 
+     Rand = 1+random() mod 100,
+     if  Rand <= Pct then
+       Transition1[I,J] := 1 + random() mod (N-1)
+     end
+  end,
+
+  foreach(I in 1..N-1) Transition1[I,I] := I+1 end,
+  Transition1[N,N] := N,
+
+  Transition = Transition1.array_matrix_to_list_matrix().
+
+
+% 
+% Generate a random transition matrix of size N x N 
+% with a probability of a transition of Pct %.
+%
+generate_transition2(N,Pct,Randomize) = Transition =>
+  println($generate_transition(N,Pct)),
+  Transition1 = new_array(N,N),
+  bind_vars(Transition1,0),
+  Gen = N div Pct,
+  if Randomize then
+     _ = random2()
+  end,
+  foreach(I in 1..N-1) 
+     Rand = [[1 + random() mod (N-1), 1 + random() mod (N-1)] :  _ in 1..Gen],
+     % println(rand=Rand),
+     foreach([J,Num] in Rand)
+        Transition1[I,J] := Num
+     end
+  end,
+
+  foreach(I in 1..N-1) Transition1[I,I] := I+1 end,
+  Transition1[N,N] := N,
+
+  Transition = Transition1.array_matrix_to_list_matrix().
+
+
+
+%
+% regular2/7 is the same as regular/6 but it also returns A, 
+% the state list. This might be handy for debugging or
+% explorations.
+%
+regular2(X, Q, S, D, Q0, F,A) =>
+
+    % """
+    % If x has index set m..n-1, then a[m] holds the initial state
+    % (q0), and a[i+1] holds the state we're in after  processing
+    % x[i].  If a[n] is in F, then we succeed (ie. accept the string).
+    % """
+
+    M = 1,
+    N2 = X.length+1,
+    A = new_array(N2),
+    A :: 1..Q,
+
+    X :: 1..S, % """Do this in case it's a var."""
+
+    A[M] #= Q0, % Set a[0], initial state
+    foreach(I in 1..X.length)  
+       % X[I] :: 1..S,      % """Do this in case it's a var."""
+
+       % This is MiniZinc's infamous matrix element which I try to 
+       % translate to Picat:
+       %     a[i+1] = d[a[i], x[i]]
+       matrix_element(D,A[I], X[I], A[I+1])
+    end,
+    member(A[N2], F). % """Check the final state is in F."""
+    % A[N2] :: F. % """Check the final state is in F."""

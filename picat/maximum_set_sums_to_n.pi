@@ -1,0 +1,114 @@
+/* 
+
+  Maximum set sums to n in Picat.
+
+  http://stackoverflow.com/questions/27803332/prolog-how-to-find-the-maximum-set-of-elements-that-their-sum-is-equal-to-n
+  """
+  my game is about picking the max set of elements from a given list that their sum is N
+
+  example : L=[1,1,2,2,3,2,4,5,6], N = 6 , Sub List would be equal to [1,1,2,2]
+
+  I need a hint using constraint logic programming
+  """
+
+  Note: It's not clear if it should be a sublist or just any elements from the list.
+  Later comment: "yes here I want a subsequence of my list witch their sum is equal to N ( N is given )"
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+% import sat.
+% import smt.
+% import mip.
+
+
+main => go.
+
+
+go =>
+  nolog,
+  L=[1,1,2,2,3,2,4,5,6], 
+  Sum = 6,
+  max_set_sublist(L, Sum, Start,End,Z),
+  println(z=Z),
+  println(start=Start),
+  println(end=End),
+  println(l2=[L[I] : I in 1..L.length, I >= Start, I <= End]),
+  nl.
+
+%
+% max_set_sublist/5
+%
+% Best solver: cp
+go2 =>
+  nolog,
+  N = 301,
+  % _ = random2(),
+  L=[1+random() mod N : _ in 1..N], 
+  println(l=L),
+  Sum = 1+random() mod N*(N+1),
+  println(sum=Sum),
+  max_set_sublist(L, Sum, Start,End,Z),
+  println(start=Start),
+  println(end=End),
+  println(l2=[L[I] : I in 1..L.length, I >= Start, I <= End]),
+  println(z=Z),
+  nl.
+
+%
+% max_set_any/5
+%
+% The best solvers for this problem seems to be smt.
+go3 =>
+  nolog,
+  N = 1000,
+  % _ = random2(),
+  L=[1+random() mod N : _ in 1..N], 
+  
+  println(l=L),
+  % ensure that we can get the sum...
+  T1 =[random() mod 10: I in 1..N], 
+  T = [L[I] : I in 1..N, T1[I] == 0],
+  println(t=T),
+  Sum = sum(T),
+  println(sum=Sum),
+  max_set_any(L, Sum, X,L2,Z),
+  % println(x=X),
+  println(ix=[I : I in 1..L.length, X[I] = 1]),
+  println(l2=L2),
+  println(z=Z),
+  nl.
+
+
+% sublist version
+max_set_sublist(L,Sum, Start,End,Z) =>
+  N = L.length,
+
+  Start :: 1..N,
+  End :: 1..N,
+
+  Start #<= End,
+  Z #= End - Start + 1,
+  sum([(I#>=Start)*(I#<=End)*L[I] : I in 1..N]) #= Sum,
+
+  Vars = [Start,End],
+  solve($[max(Z),ff,split, report($printf("Z: %d\n",Z))],Vars).
+
+%
+% any elements
+%
+max_set_any(L,Sum, X,L2,Z) =>
+  N = L.length,
+  X = new_list(N),
+  X :: 0..1,
+  Z #= sum(X), % length of list
+  sum([X[I]*L[I] : I in 1..N]) #= Sum,
+
+  solve($[ffd,split,max(Z),report($printf("Z: %d\n",Z))],X),
+  L2 = [L[I] : I in 1..L.length, X[I] = 1].
+
+

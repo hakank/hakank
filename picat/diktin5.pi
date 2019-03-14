@@ -1,0 +1,498 @@
+/* 
+
+  Swedish Poem generator in Picat.
+
+  This is a translation - and complete rewrite - of my Turbo Prolog 
+  program (diktin5.pro) created 1989-11-05 [(c) 1989 Boring Inc, Int (R)].
+
+  The name "diktin5" is a short for "Diktinspiration #5", i.e. "Poem Inspiration #5".
+  I was quite into writing poems those days, and also trying to understand AI 
+  as well.
+
+  The poems generated is quite fixed in its structure, it has just 6 different
+  sentence structues, and a poem is a collection of all these structures (in order).
+  Some of the generated elements are actually phrases (some more poetical than others), 
+  this is mostly for the verbs and the rest part.
+
+  Note: Compared with the original Turbo Prolog code, this is a refactored and Picatified
+        version.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+main(Argv) =>
+  Num = Argv[1].to_int(),
+  if Num < 0 ; Num > 6 then
+    println("Please enter a number between 0 and 5."),
+    halt
+  end,
+  _ =random2(), 
+  sentence(Num).
+
+% Generate N random 0..6 poems (i.e. with the sentence structures 0 to 5 in order)
+go =>
+  _ = random2(),
+  generate_poem(3),
+  nl.
+
+
+%
+% Generate 20 sentence types and then generate random sentences. 
+% This generates more unstructured than 0..5 poems.
+%
+go2 => 
+  _ = random2(),
+  N = 20,
+  STypes = [random() mod 6 : _ in 1..N],
+  foreach(Type in STypes)
+    sentence(Type),
+    if random() mod 10 < 2 then nl end
+  end,
+   
+  nl.
+
+% Generate (and count) all variants of Type 3 sentences: 82944 sentences.
+go3 ?=> 
+   type(3,Types3),
+   Map = get_global_map(),
+   Map.put(count,0),
+   print_sentence2(Types3),
+   Map.put(count,Map.get(count)+1),
+   fail,
+   P = 1,
+   foreach(Type in Types3)
+      L= findall(W,call(Type,_,W)),
+      println(Type=L),
+      P := P * L.len
+   end,
+   println(p=P),
+
+   nl. 
+
+
+go3 => 
+   println(count=get_global_map().get(count)),
+   println("\nTheoretical:\n"),
+   Types3 = [subst_n, rest,stop,subst,rest],
+   P = 1,
+   foreach(Type in Types3)
+      L= findall(W,call(Type,_,W)),
+      println(Type=L),
+      P := P * L.len
+   end,
+   println(p=P),
+   nl.
+
+%
+% There are 6176778368440591094340648960000000000000000000000000 (about 4.98e+42) possible poems.
+% If we could generate 1_000_000 poems per second. To generate all would take about
+%    1.643×10^39 average Gregorian years ≈ 1.2×10^29 × universe age (≈ 14 Gyr )
+% [Source: Wolfram|Alpa 
+%   http://www.wolframalpha.com/input/?i=6176778368440591094340648960000000000000000000000000+%2F+1000000+seconds 
+% ]
+% 
+go4 =>
+  PP = 1,
+  foreach(I in 0..6)
+    type(I,Type),
+    P = 1,
+    foreach(T in Type)
+      L = findall(W,call(T,_,W)),
+      P := P * L.len
+    end,
+    println("Type"=I=P),
+    PP := PP * P
+  end,
+  printf("There are in total %w possible poems\n",PP),
+  printf("http://www.wolframalpha.com/input/?i=%w+%%2F+1000000+seconds\n",PP),
+  nl.
+
+%
+% Generate all possible 0..6-poems. There are quite a few of them (see above).
+%
+go5 ?=> 
+  All = [S : T in 0..6, type(T,S)].flatten().replace_string(" .","."),
+  % println(All),
+  print_sentence2(All),
+  nl,
+  fail.
+
+go5 => true.
+
+
+
+% generate a sentence of type Type
+sentence(Type) => 
+   type(Type,Types),
+   print_sentence(Types).
+
+% generate a full poem, i.e. sentences 0 to 5
+generate_poem(N) =>
+  foreach(_ in 1..N) 
+     foreach(T in 0..6)
+       type(T,Type),
+       print_sentence(Type)
+     end,
+     nl
+   end.
+
+generate_poem2(N) =>
+  foreach(_ in 1..N) 
+     foreach(T in 0..6)
+       type(T,Type),
+       print_sentence2(Type)
+     end,
+     nl
+   end,
+   nl.
+
+
+% Print a random sentence given the types.
+print_sentence(Types) => 
+  S = [Word : Type in Types, find_type(Type,Word)].join(" "),
+  S2 = replace_string(S," .","."),
+  print(S2).
+
+
+% Print using member/2 in find_type2/2 to generate all sentences
+% of a type.
+print_sentence2(Types) => 
+  S = "",
+  foreach(Type in Types)
+    find_type2(Type,Word),
+    S := S ++ Word ++ " "
+  end,
+  S2 = replace_string(S," .","."),
+  print(S2).
+
+
+%
+% Picat's replace/3 don't work on general substrings 
+% (just on elements, i.e. atoms including characters, not strings)
+% Here's a replacement.
+%
+replace_string(S,Old,New) = Res => 
+   Res1 = copy_term(S),
+   while (once(append(Before,Old,After,Res1)))
+      Res1 := Before ++ New ++ After
+   end,
+   Res = Res1.
+
+% variant: slightly slower
+replace_string1(S,Old,New) = Res => 
+   Res1 = copy_term(S),
+   while (find(Res1,Old,_,_))
+      once(append(Before,Old,After,Res1)),
+      Res1 := Before ++ New ++ After
+   end,
+   Res = Res1.
+
+
+
+
+% Generate a random element from the list L
+rand_word(L, W) =>
+  W = L[1+random() mod L.len].
+
+%
+% generate a random word of type Type
+%
+find_type(Type,Word) => 
+  L = findall(S,call(Type,_,S)),
+  Word = L[1+random() mod L.len].
+
+%
+% generate all possible solutions: use backtracking with 
+% member/2 instead of random picking a word.
+%
+find_type2(Type,Word) => 
+  L = findall(S,call(Type,_,S)),
+  member(Word,L).
+
+
+%
+% Data
+% 
+
+%
+% The sentence types
+%
+% index(-,-)
+type(0,[subst_n,verb,rest,aux,subst,verb,rest,stop,subst_de,rest,stop,newline]).
+type(1,[det,adj,subst_t,verb, aux,subst_t,subst_n,verb,stop,newline]).
+type(2,[den,adj,subst_n,verb,rest,stop,subst,rest,stop,newline]).
+type(3,[subst_n, rest,stop,subst,rest,stop,newline]).
+type(4,[rest,stop,rest,stop,aux,stop,newline]).
+type(5,[den,adj,subst_n,verb,rest,stop,subst_n, rest,stop,newline]).
+type(6,[det,adj,subst_t,spoke, colon, quote,den, subst_n,verb,rest,quote,stop,newline]).
+
+
+
+% the specific words for each word typ
+
+% adjective
+% index(-,-)
+adj(0,"vackra").
+adj(1,"rädda").
+adj(2,"lilla").
+adj(3,"underbara").
+adj(4,"självklara").
+adj(5,"förälskade").
+adj(6,"bekymmerslösa").
+adj(7,"insiktfulla").
+adj(8,"spröda").
+adj(9,"anonyma").
+adj(10,"ansvarsfulla").
+adj(11,"vördnadsfulla").
+
+% n-noun (nouns ending with -n)
+% index(-,-)
+subst_n(0,"mjölken").
+subst_n(1,"pennan").
+subst_n(2,"kulramen").
+subst_n(3,"spegeln").
+subst_n(4,"fågeln").
+subst_n(5,"lärkan").
+subst_n(6,"boken").
+subst_n(7,"kvinnan").
+subst_n(8,"staven").
+subst_n(9,"gränsen").
+subst_n(10,"dikten").
+subst_n(11,"stenen").
+subst_n(12,"virveln").
+subst_n(13,"ögonvrån").
+subst_n(14,"dalen").
+subst_n(15,"staden").
+subst_n(16,"känslan").
+subst_n(17,"någon").
+subst_n(18,"tekoppen").
+subst_n(19,"spekulationen").
+subst_n(20,"tonen").
+subst_n(21,"jorden").
+subst_n(22,"solen").
+subst_n(23,"planeten").
+subst_n(24,"busken").
+subst_n(25,"snigeln").
+subst_n(26,"asfalten").
+subst_n(27,"handen").
+subst_n(28,"kinden").
+
+% t-noun (nouns ending with -t)
+% index(-,-)
+subst_t(0,"språket").
+subst_t(1,"ansiktet").
+subst_t(2,"lövet").
+subst_t(3,"trädet").
+subst_t(4,"håret").
+subst_t(5,"berget").
+subst_t(6,"ordet").
+subst_t(7,"molnet").
+subst_t(8,"livet").
+subst_t(9,"vinet").
+subst_t(10,"ögat").
+subst_t(11,"något").
+subst_t(12,"havet").
+subst_t(13,"buskaget").
+subst_t(14,"örat").
+
+
+% general nouns
+% index(-,-)
+subst(0,"din hand").
+subst(1,"du").
+subst(2,"jag").
+subst(3,"den andre").
+subst(4,"hon").
+subst(5,"eviga").
+
+% nouns with "de"
+% index(-,-)
+subst_de(0,"vågorna").
+subst_de(1,"haven").
+subst_de(2,"fåglarna").
+subst_de(3,"löven").
+subst_de(4,"ögonen").
+
+% verb
+% index(-,-)
+verb(0,"svarar").
+verb(1,"ramlar").
+verb(2,"faller").
+verb(3,"förälskar sig").
+verb(4,"blir funnen").
+verb(5,"saknar").
+verb(6,"finns").
+verb(7,"ligger").
+verb(8,"sitter").
+verb(9,"flyter").
+verb(10,"simmar").
+verb(11,"vågar").
+verb(12,"älskar").
+verb(13,"vill").
+verb(14,"strävar").
+verb(15,"strider").
+verb(16,"lovar").
+verb(17,"ljuger").
+verb(18,"talar sanning").
+verb(19,"diktar").
+verb(20,"talar").
+verb(21,"förvandlar sig").
+verb(22,"förvarar").
+verb(23,"döljer").
+verb(24,"liknar").
+verb(25,"rymmer").
+verb(26,"böjer sig").
+verb(27,"stannar kvar").
+verb(28,"blir fångad").
+verb(29,"döljer det").
+verb(30,"döljer sig").
+verb(31,"förvandlar det").
+verb(32,"saknar det").
+verb(33,"vårdar").
+verb(34,"önskar").
+verb(35,"sårar").
+verb(36,"blir en symbol").
+verb(37,"överraskar").
+
+% the "rest" (misc words or phrases)
+% index(-,-)
+rest(0,"vid brunnen").
+rest(1,"i skogen").
+rest(2,"plötsligt").
+rest(3,"men inte idag").
+rest(4,"kanske").
+rest(5,"på Venus").
+rest(6,"vid sidan om det").
+rest(7,"om krönet").
+rest(8,"kraftigt").
+rest(9,"svagt").
+rest(10,"ovanpå").
+rest(11,"anonymt").
+rest(12,"trasigt").
+rest(13,"sprucket").
+rest(14,"nära din hand").
+rest(15,"vid din hud").
+rest(16,"genom språket").
+rest(17,"under tiden").
+rest(18,"meningslöst").
+rest(19,"fast").
+rest(20,"under min hud").
+rest(21,"bredvid min kudde").
+rest(22,"vid stearinljuset").
+rest(23,"på ett riktigt sätt").
+rest(24,"på ett näraliggande vis").
+
+
+% aux words/phrases
+% index(-,-)
+aux(0,"istället för att").
+aux(1,"därför att").
+aux(2,"om").
+aux(3,"när").
+aux(4,"men").
+aux(5,"eller").
+aux(6,"varför").
+aux(7,"såsom").
+aux(8,"som").
+
+% spoke and its synomyms/variants
+% index(-,-)
+spoke(0,"sade").
+spoke(1,"talade med djup röst").
+spoke(2,"berättade").
+spoke(3,"tycktes säga").
+spoke(4,"viskade").
+spoke(5,"reste sig därför långsamt och svarade").
+spoke(6,"tyckte sig höra").
+spoke(7,"antydde").
+
+
+% Full stop after a sentence
+% index(-,-)
+stop(0,".").
+
+% Newline after sentence
+% index(-,-)
+newline(0,"\n").
+
+% "den"
+% index(-,-)
+den(0,"den").
+
+% "det"
+% index(-,-)
+det(0,"det").
+
+% ":"
+% index(-,-)
+colon(0,":").
+
+% Quote: '"'
+% index(-,-)
+quote(0,"\"").
+
+    
+/*
+
+En Genererad Dikt / A Generated Poem
+------------------------------------
+kinden älskar genom språket såsom du ljuger i skogen. fåglarna vid stearinljuset. 
+det ansvarsfulla molnet finns eller håret mjölken sitter. 
+den vackra pennan liknar svagt. den andre genom språket. 
+staven kraftigt. den andre vid stearinljuset. 
+bredvid min kudde. plötsligt. varför. 
+den vackra tekoppen förvarar anonymt. pennan på Venus. 
+det insiktfulla livet reste sig därför långsamt och svarade: "den spekulationen talar sanning vid brunnen". 
+
+staden ramlar om krönet när du liknar vid brunnen. vågorna plötsligt. 
+det lilla ansiktet saknar varför molnet någon sårar. 
+den lilla ögonvrån flyter på Venus. du plötsligt. 
+mjölken men inte idag. eviga kraftigt. 
+på Venus. vid sidan om det. såsom. 
+den vördnadsfulla staden önskar genom språket. någon på Venus. 
+det lilla örat berättade: "den spekulationen förvandlar det kraftigt". 
+
+mjölken ljuger vid brunnen såsom du flyter trasigt. vågorna på ett riktigt sätt. 
+det ansvarsfulla molnet saknar men lövet staden blir funnen. 
+den självklara virveln vårdar sprucket. den andre genom språket. 
+stenen svagt. jag anonymt. 
+kraftigt. nära din hand. istället för att. 
+den vördnadsfulla dalen flyter vid din hud. lärkan vid din hud. 
+det spröda örat tycktes säga : "den kulramen vårdar på Venus". 
+
+
+Google translation (slightly edited):
+
+The cheek loves through the language as you lie in the woods. The birds at the candle.
+The responsible cloud exists or the hair the milk is sitting.
+The beautiful pen resembles weakly. The other through the language.
+The rod strongly. The other at the candle.
+Next to my pillow. suddenly. why.
+The beautiful [teacup] keeps anonymous. The pen on Venus
+The insightful life therefore rose slowly and replied: "That speculation speaks truth at the well".
+
+The city is falling when you resemble at the well. The waves suddenly.
+The little face lacks why the cloud somebody hurts.
+The little eyebrow floats on Venus. You suddenly
+Milk but not today. Forever powerful.
+On venus. Beside it. as.
+The venerable city wishes through the language. Someone on Venus
+The little ear told: "The speculation change it a lot".
+
+The milk lies at the well as you float broken. The waves in a proper way.
+The responsible cloud is missing but the leaves the city is found.
+The obvious whirl nourishes the crackle. The other through the language.
+The stone weak. I anonymously.
+Sharply. Close to your hand. Instead of.
+The revered valley flows at your skin. The lark at your skin.
+The brittle ear seemed to say, "The abacus nurses on Venus."
+
+*/

@@ -1,0 +1,224 @@
+/* 
+
+  Independent vertex set in Picat.
+
+  Inspired by Mathematica's FindIndependentVertexSet
+  """
+  Here, an independent vertex set is a set of vertices such that no two vertices 
+  in the set are connected by an edge. Independent vertex sets have found 
+  applications in finance, coding theory, map labeling, pattern recognition, social networks, 
+  molecular biology, and scheduling.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+import ordset.
+
+
+main => go.
+
+
+go ?=>
+  % test(1,M),
+  test(2,M),
+  independent_set(M,X,Set),
+  println(x=X),
+  println(Set),
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+go2 =>
+  % test(1,M),
+  test(2,M),
+  maximal_independent_sets(M, Max),
+  println(max=Max),
+
+  nl.
+
+% 
+% random matrix
+%
+go3 =>
+  garbage_collect(300_000_000),
+  N = 30,
+  M = new_array(N,N),
+  _ = random2(),
+  foreach(I in 1..N, J in 1..N)
+    R = random() mod 2,
+    M[I,J] := R
+  end,
+  % independent_set(M,X,Set),
+  % println(x=X),
+  % println(set=Set),
+  nl,
+  maximal_independent_sets(M, Max),
+  println(maximal_independent_sets=Max),
+
+  nl.
+
+
+independent_set(M, X,Set) =>
+  N = M.len,
+
+  X = new_array(N),
+  X :: 0..1,
+
+  % """
+  % [A]n independent vertex set is a set of vertices such that no two vertices 
+  % in the set are connected by an edge.
+  % """
+  foreach(I in 1..N, J in 1..N, I < J)
+    (X[I] #= 1 #/\ X[J] #= 1) #=> M[I,J] #= 0
+  end,
+
+  sum(X) #> 1,
+
+  solve([ffd,split],X),
+  % convert to a proper set
+  Set = new_ordset([I : I in 1..N, X[I] = 1]).
+
+%
+% finds all the maximal independent sets
+%
+maximal_independent_sets(M, Maximal) =>  
+  AllSets = findall(Set,independent_set(M,_X,Set)),
+  Maximal1 = [],
+  foreach(S1 in AllSets)
+    NotFound = true,
+    foreach(S2 in AllSets, S1 != S2, S1.len < S2.len, NotFound=true)
+      % if all elements in S1 are in some other set S2,
+      % i.e. S1 is a subset of S2,
+      % then S1 is not a maximal independent set
+      if subset(S1,S2) then
+        NotFound := false
+      end 
+    end,
+    if NotFound then
+      Maximal1 := Maximal1 ++ [S1]
+    end
+  end,
+  Maximal = Maximal1.
+
+
+
+%
+% 1-2
+% 1-5
+% 2-1
+% 2-3
+% 3-2
+% 3-4
+% 3-6
+% 3-7
+% 4-3
+% 4-5
+% 4-6
+% 4-7
+% 5-1
+% 5-4
+% 6-3
+% 6-4
+% 7-3
+% 7-4
+% 
+% The (maximal) independent sets:
+% {{2, 5, 6, 7}, {1, 6, 7}, {5, 3}, {2, 4}, {1, 4}, {1, 3}}
+%
+% go/0 finds the following _non-maximal_ independent sets:
+% x: {1,3}       <- maximal
+% ----------
+% x: {1,4}       <- maximal
+% ----------
+% x: {1,6,7}     <- maximal
+% ----------
+% x: {1,6}
+% ----------
+% x: {1,7}
+% ----------
+% x: {2,4}       <- maximal
+% ----------
+% x: {2,5,6,7}   <- maximal
+% ----------
+% x: {2,5,6}
+% ----------
+% x: {2,5,7}
+% ----------
+% x: {2,5}
+% ----------
+% x: {2,6,7}
+% ----------
+% x: {2,6}
+% ----------
+% x: {2,7}
+% ----------
+% x: {3,5}       <- maximal
+% ----------
+% x: 5..7
+% ----------
+% x: 5..6
+% ----------
+% x: {5,7}
+% ----------
+% x: 6..7
+%
+% go2/0 finds the maximal independent sets:
+%   [[3,5],[2,5,6,7],[2,4],[1,6,7],[1,4],[1,3]]
+%
+
+test(1,M) =>
+  M = 
+{
+ % 1  2  3  4  5  6  7
+  {0, 1, 0, 0, 1, 0, 0}, % 1
+  {1, 0, 1, 0, 0, 0, 0}, % 2 
+  {0, 1, 0, 1, 0, 1, 1}, % 3
+  {0, 0, 0, 0, 1, 1, 1}, % 4
+  {1, 0, 0, 1, 0, 0, 0}, % 5
+  {0, 0, 1, 1, 0, 0, 0}, % 6
+  {0, 0, 1, 1, 0, 0, 0}  % 7
+}.
+
+
+% Graph from
+% From http://en.wikipedia.org/wiki/Maximal_independent_set
+%    
+%    1 ------- 2
+%    | \     / |
+%    |  3 - 4  |
+%    |  |   |  |
+%    |  5 - 6  |
+%    | /     \ |
+%    7 ------- 8
+% 
+% There are 6 maximal independent sets on this graph:
+% 
+%   1,6
+%   1,4,5,8
+%   3,8
+%   2,5
+%   2,3,6,7
+%   4,7
+%
+test(2,M) =>
+ M = 
+{
+  % 1 2 3 4 5 6 7 8
+   {0,1,1,0,0,0,1,0}, % 1
+   {1,0,0,1,0,0,0,1}, % 2
+   {1,0,0,1,1,0,0,0}, % 3
+   {0,1,1,0,0,1,0,0}, % 4
+   {0,0,1,0,0,1,1,0}, % 5
+   {0,0,0,1,1,0,0,1}, % 6
+   {1,0,0,0,1,0,0,1}, % 7
+   {0,1,0,0,0,1,1,0}  % 8
+}.

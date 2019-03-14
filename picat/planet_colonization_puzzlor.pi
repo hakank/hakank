@@ -1,0 +1,194 @@
+/* 
+
+  Planet Colonization (PuzzlOR) in Picat.
+
+  http://puzzlor.com/2010-02_PlanetColonization.html
+  [Note: the link don't work in all solvers, if any.]
+  """
+  Planet Colonization
+  
+  By John Toczek
+  Colonizing a new planet where conditions are unpredictable and harsh 
+  is never easy. The primary concern when selecting a landing site for 
+  the first colony is the proximity to natural resources. Access to these 
+  valuable resources determines whether or not a new colony thrives or dies.
+  
+  Figure 1 shows the front and rear views of a newly discovered planet. 
+  The planet has been divided into 20 areas, and each area is a potential 
+  site to establish a new colony. Some areas contain value resources 
+  (represented by colored icons) that are needed in order for the new colony 
+  to survive. 
+
+  Food is represented by the green ear of corn, 
+  oxygen by the red O2, 
+  water by the blue drop and 
+  energy by the orange lightning bolt.
+  
+  When choosing a landing site, it is best to minimize the distance between 
+  that site and the four needed resources. Distance is calculated by the 
+  number of units it takes to get to the resource. For example, if area 
+  9 was selected as the landing site, the total travel distance required 
+  to reach all four resources would be six units (two for energy, one for good, 
+  one for water and two for oxygen).
+
+  Question:
+  Which of the 20 areas is the best landing site to minimize the total distance 
+  you should have to travel to all four resources
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+go =>
+
+  edges(Edges),
+  N = max(Edges.flatten()),
+
+  Distance = distance_matrix(Edges),
+
+  resources(Resources,ResourceTypes),
+  EnergySites = [S : S in 1..N, Resources[S] == energy], % [2,12],
+  FoodSites   = [S : S in 1..N, Resources[S] == food],   % [7,20],
+  WaterSites  = [S : S in 1..N, Resources[S] == water],  % [8,16],
+  OxygenSites = [S : S in 1..N, Resources[S] == oxygen], % [14,19],
+
+  % decision variables
+  LandingSite :: 1..N,
+
+  % Cost :: 0..N*N,
+
+  EnergySelected :: EnergySites,
+  FoodSelected   :: FoodSites,
+  WaterSelected  :: WaterSites,
+  OxygenSelected :: OxygenSites,
+  Selected = [EnergySelected,FoodSelected,WaterSelected,OxygenSelected],
+
+  matrix_element(Distance,LandingSite,EnergySelected,EnergyVal),
+  matrix_element(Distance,LandingSite,FoodSelected,FoodVal),
+  matrix_element(Distance,LandingSite,WaterSelected,WaterVal),
+  matrix_element(Distance,LandingSite,OxygenSelected,OxygenVal),
+  Vals=[EnergyVal,FoodVal,WaterVal,OxygenVal],
+
+  Cost #= sum(Vals),
+
+  Vars = Selected ++ Vals ++ [LandingSite],
+  solve($[min(Cost),split], Vars),
+
+  println(cost=Cost),
+  println(selected=Selected),
+  println(vals=Vals),
+  println(landingSite=LandingSite),
+  foreach(I in 1..Selected.length) 
+     printf("%-6w: site=%w cost=%d\n", ResourceTypes[I], Selected[I], Vals[I])
+  end,
+
+  nl.
+
+
+%
+% Get a distance matrix from an edge list.
+% 
+distance_matrix(Edges) = Dist =>
+  Nodes = [ [I,J] : [I,J,_] in Edges].flatten().sort_remove_dups(),
+  Inf=1000,
+  floydWarshall(Nodes,Edges,Inf, Dist,_Next).
+
+
+%
+% Floyd-Warshall with path reconstruction
+% (From floyd_warshall.pi.)
+%
+% let dist be a |V| × |V| array of minimum distances initialized to ∞ (infinity)
+% let next be a |V| × |V| array of vertex indices initialized to null
+floydWarshall(Nodes,Edges,Inf, Dist,Next) =>
+  % println($floydWarshall(nodes=Nodes,edges=Edges, Dist,Next)),
+  Len = Nodes.length,
+  Dist = new_array(Len,Len), bind_vars(Dist,Inf),
+  % note: cannot use bind_vars(Dist,_) since then all share the same
+  %       variable
+  Next = new_array(Len,Len), 
+  foreach(I in 1..Len, J in 1..Len)
+    Next[I,J] := _
+  end,
+  foreach([U,V,Weight] in Edges)
+    Dist[U,V] := Weight,  % the weight of the edge (u,v)
+    Next[U,V] := V
+  end,
+  % for cycle detection
+  foreach(I in Nodes)
+    Dist[I,I] := 0,
+    Next[I,I] := I
+  end,
+  foreach(K in 1..Len) % standard Floyd-Warshall implementation
+     foreach(I in 1..Len)
+       foreach(J in 1..Len)
+          if Dist[K,J] != Inf, Dist[I,K] != Inf,
+             Dist[I,K] + Dist[K,J] < Dist[I,J] 
+           then
+             Dist[I,J] := Dist[I,K] + Dist[K,J],
+             Next[I,J] := Next[I,K]
+          end
+       end
+     end
+  end.
+
+resources(Resources, ResourceTypes) =>
+  Resources = [
+  0,      % 1
+  energy, % 2 
+  0,      % 3
+  0,      % 4
+  0,      % 5
+  0,      % 6
+  food,   % 7
+  water,  % 8
+  0,      % 9
+  0,      % 10
+  0,      % 11
+  energy, % 12
+  0,      % 13
+  oxygen, % 14
+  0,      % 15
+  water,  % 16
+  0,      % 17
+  0,      % 18
+  oxygen, % 19
+  food    % 20
+  ],
+  ResourceTypes = [energy,food,water,oxygen].
+
+
+edges(Edges) =>
+  Edges = [ 
+            % from, to, weight
+            % From http://www.puzzlor.com/2010-02_PlanetColonization.html
+            [1,2,1],      [1,8,1],     [1,5,1],
+            [2,1,1],      [2,10,1],    [2,3,1],
+            [3,4,1],      [3,12,1],    [3,2,1],
+            [4,3,1],      [4,14,1],    [4,5,1],
+            [5,4,1],      [5,1,1],     [5,6,1],
+            [6,7,1],      [6,5,1],     [6,15,1],
+            [7,6,1],      [7,8,1],     [7,17,1],
+            [8,7,1],      [8,1,1],     [8,9,1],
+            [9,8,1],      [9,10,1],    [9,20,1],
+            [10,9,1],     [10,2,1],    [10,11,1],
+            [11,10,1],    [11,19,1],   [11,12,1],
+            [12,11,1],    [12,3,1],    [12,13,1],
+            [13,12,1],    [13,14,1],   [13,18,1],
+            [14,13,1],    [14,4,1],    [14,15,1],
+            [15,14,1],    [15,16,1],   [15,6,1],
+            [16,15,1],    [16,18,1],   [16,17,1],
+            [17,16,1],    [17,20,1],   [17,7,1],
+            [18,16,1],    [18,19,1],   [18,13,1],
+            [19,18,1],    [19,11,1],   [19,20,1],
+            [20,19,1],    [20,17,1],   [20,9,1]
+          ].

@@ -1,0 +1,128 @@
+/* 
+
+  Phone code problem in Picat.
+
+  From Lutz Prechelt 
+  "An empirical comparison of C, C++, Java, Perl, Python, Rexx, and Tcl for a search/string-processing program"
+  """
+  The programming task was a program (called phonecode) that maps telephone numbers into strings of 
+  words according to a given dictionary and a fixed digit-to-character encoding.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+
+
+main => go.
+
+
+go =>
+  Map = new_map(["0"="e", "1"="jnq", "2"="rwx", "3"="dsy", "4"="ft", 
+                  "5"="am", "6"="civ", "7"="bku", "8"="lop", "9"="ghz"]),
+  println(map=Map),
+
+  PhoneNumbers = [
+      5746663573,
+      5710954619,
+      5786078523,
+      5096495883,
+      5446865780,
+      5310892610,
+      5880290166,
+      5734029619,
+      5873854619,
+      5440239560
+                 ],
+
+  Words = read_file_lines("words_lower.txt"),
+  println(numWords=Words.length),
+
+  foreach(PhoneNumber in PhoneNumbers)
+      println(PhoneNumber),
+      println(found=check_words(PhoneNumber,Words))
+  end,
+
+  nl.
+
+%
+% Generate some numbers from words and check them
+%
+go2 =>
+  Map1 = new_map(["e"=0, "jnq"=1, "rwx"=2, "dsy"=3, "ft"=4, 
+                  "am"=5, "civ"=6, "bku"=7, "lop"=8, "ghz"=9]),
+  Map = new_map([SS=N : S=N in Map1, SS in S]),
+
+  Words = read_file_lines("words_lower.txt"),
+  println(numWords=Words.length),
+
+  _ = random2(),
+  Words2 = [[W,W.convert_word(Map)] : _I in 1..10, W=Words[1+(random() mod Words.length)]],
+  foreach([Word,PhoneNumber] in Words2) 
+     println(from=[Word,PhoneNumber]),
+     println(found=check_words(PhoneNumber,Words))
+  end,
+
+  nl.  
+
+%
+% Which phone number is the most common?
+% Words.length > ...
+%
+go3 => 
+  Map1 = new_map(["e"=0, "jnq"=1, "rwx"=2, "dsy"=3, "ft"=4, 
+                  "am"=5, "civ"=6, "bku"=7, "lop"=8, "ghz"=9]),
+  Map = new_map([SS=N : S=N in Map1, SS in S]),
+
+  Words = read_file_lines("words_lower.txt"),
+  println(numWords=Words.length),
+
+  MaxLen = 0,
+  MaxWords = [],
+  C = 0,
+  Seen = new_map(),
+  foreach(Word in Words, Word.length > 5, not Seen.has_key(Word))
+     PhoneNumber=convert_word(Word,Map),
+     Found=check_words(PhoneNumber,Words),
+     Len = Found.length,
+     if Len > MaxLen then
+        println([PhoneNumber,Word,Found,Len]),
+        MaxLen := Len,
+        MaxWords := [PhoneNumber=Found]
+     elseif Len == MaxLen then
+        println([PhoneNumber,Word,Found,Len]),
+        MaxWords := MaxWords ++ [PhoneNumber=Found]
+     end,
+     C := C + 1,
+     Seen.put(Word,1),
+     foreach(W in Found) Seen.put(W,1) end
+  end,
+  println([maxLen=MaxLen, maxWords=MaxWords]),
+  nl.
+
+convert_word(Word,Map) = to_num([Map.get(W) : W in Word]).
+
+check_words(PhoneNumber, Words) = Found =>
+  Map = new_map(["0"="e", "1"="jnq", "2"="rwx", "3"="dsy", "4"="ft", 
+                  "5"="am", "6"="civ", "7"="bku", "8"="lop", "9"="ghz"]),
+  P = [ Map.get(I.to_string()) : I in PhoneNumber.to_string()],
+  Len = PhoneNumber.to_string().length,
+  Found = [],
+  foreach(Word in Words, Word.length = Len)
+    if check_word(Word,P) then
+       Found := Found ++ [Word]
+    end
+  end.
+
+check_word(Word,Map) =>
+  Len = Word.length,
+  [1 : I in 1..Len, member(Word[I],Map[I])].length = Len.
+
+to_num(List) = Num =>
+   Len = length(List),
+   Num = sum([List[I]*10**(Len-I) : I in 1..Len]).

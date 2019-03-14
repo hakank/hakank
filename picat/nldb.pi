@@ -1,0 +1,179 @@
+/* 
+
+  Natural language: World of people, parks, trees, hats in Picat.
+
+  From "Thinking as Computation", page 160ff
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => go.
+
+
+go =>
+  printit([a,big,tree]), % tree01
+  printit([woman,beside,mary]), % linda
+  printit([a,woman,beside,mary]), % linda
+  printit([a,man,with,a,big,hat]), % george
+  printit([the,hat,on,george]), % hat04
+  % note: we have to use 'inx' instead of 'in'
+  printit([a,man,inx,a,park,with,a,big,tree]), % <no solutio>
+  printit([a,man,inx,a,park,with,a,small,tree]), % john, george
+  printit([a,woman,inx,a,park,with,a,big,tree]), % mary ; linda
+  printit([a,woman,inx,a,park,with,a,big,red,hat]), % linda
+  printit([a,woman,beside,a,woman,with,a,blue,hat]), % mary ; linda
+  printit([a,woman,with,a,blue,hat,beside,a,woman]), % mary
+  printit([the,hat,on,a,small,woman,inx,a,park]), % 
+  
+  nl.
+
+
+
+printit(P) => 
+  println(P),
+  All = findall(X, np(P,X)),
+  println(All),
+
+  nl.
+
+person(john). 
+person(george). 
+person(mary). 
+person(linda).
+
+park(kew_beach). 
+park(queens_park).
+
+tree(tree01). 
+tree(tree02). 
+tree(tree03).
+
+hat(hat01).
+hat(hat02). 
+hat(hat03). 
+hat(hat04).
+
+sex(john,male).
+sex(george,male).
+sex(mary,female).
+sex(linda,female).
+
+color(hat01,red).
+color(hat02,blue).
+color(hat03,red).
+color(hat04,blue).
+
+inx(john,kew_beach).
+inx(george,kew_beach).
+inx(linda,queens_park). 
+inx(mary,queens_park).
+inx(tree01,queens_park). 
+inx(tree02,queens_park).
+inx(tree03,kew_beach).
+
+beside(mary,linda). 
+beside(linda,mary).
+
+on(hat01,john). 
+on(hat02,mary). 
+on(hat03,linda). 
+on(hat04,george).
+
+size(john,small).
+size(mary,small).
+size(george,big).
+size(linda,small).
+size(hat01,small).
+size(hat02,small).
+size(hat03,big).
+size(hat04,big).
+size(tree01,big).
+size(tree02,small).
+size(tree03,small).
+
+% From page 161, "A lexicon in Prolog"
+article(a).
+article(the).
+
+common_noun(park,X)  ?=> 
+  park(X).
+common_noun(tree,X)  ?=> 
+  tree(X).
+common_noun(hat,X)   ?=> 
+  hat(X).
+common_noun(man,X)   ?=> 
+  person(X), 
+  sex(X,male).
+common_noun(woman,X) ?=>  
+  person(X), 
+  sex(X,female).
+
+adjective(big,X)   ?=> 
+  size(X,big).
+adjective(small,X) ?=> 
+  size(X,small).
+adjective(red,X)   ?=> 
+  color(X,red).
+adjective(blue,X)  ?=> 
+  color(X,blue).
+
+preposition(on,X,Y)     ?=> 
+  on(X,Y).
+preposition(inx,X,Y)    ?=> 
+  inx(X,Y). % Can't use 'in'!
+preposition(beside,X,Y) ?=> 
+  beside(X,Y).
+% The preposition 'with' is flexible in how it is used.
+preposition(with,X,Y)   ?=> 
+  on(Y,X).     % Y can be on X
+preposition(with,X,Y)   ?=> 
+  inx(Y,X).    % Y can be in X
+preposition(with,X,Y)   ?=> 
+  beside(Y,X). % Y can be beside X
+
+
+% Any word that is not in one of the four categories above.
+proper_noun(X,X1) ?=> 
+  X = X1,
+  not article(X), not adjective(X,_),
+  not common_noun(X,_), not preposition(X,_,_).
+
+
+
+% From page 163 "A parser of noun phrases in Prolog"
+
+np([Name],X) ?=> 
+  proper_noun(Name,X).
+np(ArtRest,X) ?=> 
+  [Art|Rest] = ArtRest, 
+  article(Art), 
+  np2(Rest,X).
+np(L,X) ?=> 
+  np2(L,X).
+
+np2(AdjRest,X) ?=> 
+  AdjRest = [Adj|Rest],
+  adjective(Adj,X), 
+  np2(Rest,X).
+np2(NounRest,X) ?=> 
+  NounRest = [Noun|Rest], 
+  common_noun(Noun,X), 
+  mods(Rest,X).
+
+mods([],_) ?=> 
+  true.
+mods(Words,X) ?=>
+   append(Start,End,Words),
+   pp(Start,X),
+   mods(End,X).
+
+% Break the words into two pieces.
+% The first part is a PP.
+% The last part is a Mods again.
+pp(PrepRest,X) ?=> 
+  PrepRest=[Prep|Rest],
+  preposition(Prep,X,Y), 
+  np(Rest,Y).

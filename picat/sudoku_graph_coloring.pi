@@ -1,0 +1,347 @@
+/* 
+
+  Sudoku as a graph coloring problem in Picat.
+
+  Well, this is just a model that don't use all_different but single #!= to 
+  state the inequalities.
+
+  The cp module solves problem 1..13 in total 0.14s (0 backtracks) including ensuring unicity.
+  The sat module solves 1..13 in 3.9s. The mip module is too slow.
+
+  For these 13 instances, there is no significant difference between this model and 
+  the version using all_different/1 for the cp solver. However, the sat module solves
+  the all_different version in 1s (instead of 3.9s).
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import cp.
+% import sat.
+% import smt.
+import mip.
+
+
+main => go.
+
+
+go ?=>
+  nolog,
+  problem(1,Data),
+  sudoku(Data),
+  println(Data),
+  fail,
+  nl.
+
+go => true.
+
+go2 =>
+  nolog,
+  time2(run_all),
+  nl.
+
+
+run_all =>
+  nolog,
+  foreach(P in 1..13)
+    printf("\nProblem %d\n", P),
+    problem(P,Data),
+    All=findall(Data,sudoku(Data)),
+    println(all=All),
+    Len = All.length,
+    if Len != 1 then 
+       println("More than one solution!"),
+       halt
+    end,
+    nl
+  end,
+  nl.
+
+run_all2 =>
+  nolog,
+  foreach(P in 1..13)
+    printf("\nProblem %d\n", P),
+    problem(P,Data),
+    sudoku(Data),
+    println(Data),
+    nl
+  end,
+  nl.
+
+
+run_all_all_different =>
+  nolog,
+  foreach(P in 1..13)
+    printf("\nProblem %d\n", P),
+    problem(P,Data),
+    All=findall(Data,sudoku_all_different(Data)),
+    println(all=All),
+    Len = All.length,
+    if Len != 1 then 
+       println("More than one solution!"),
+       halt
+    end,
+    nl
+  end,
+  nl.
+
+run_all_all_different2 =>
+  nolog,
+  foreach(P in 1..13)
+    printf("\nProblem %d\n", P),
+    problem(P,Data),
+    sudoku_all_different(Data),
+    println(Data),
+    nl
+  end,
+  nl.
+
+%
+% Just using #!= (instead of all_different/1)
+%
+sudoku(Data) =>
+
+  N = length(Data),
+  N2 = ceiling(sqrt(N)),
+  Data :: 1..N,
+  
+  % rows and columns
+  foreach(I in 1..N) 
+    foreach(J1 in 1..N, J2 in 1..N, J1 < J2) 
+      Data[I,J1] #!= Data[I,J2],
+      Data[J1,I] #!= Data[J2,I]
+    end
+  end,  
+
+  % blocks
+  foreach(I in 1..N2..N, J in 1..N2..N)
+    Block = [Data[I+K,J+L] : K in 0..N2-1, L in 0..N2-1],
+    foreach(K1 in 1..N, K2 in 1..N, K1 < K2)
+      Block[K1] #!= Block[K2]
+    end
+  end,
+
+  solve([ff,split],Data).
+
+% 
+% Using all_different/1 (for comparison).
+%
+sudoku_all_different(Data) =>
+   N = length(Data),
+   N2 = ceiling(sqrt(N)),
+   Data :: 1..N,
+
+   foreach(I in 1..N)
+      all_different($[Data[I,J] : J in 1..N]),
+      all_different($[Data[J,I] : J in 1..N])
+   end,
+   foreach(I in 1..N2..N, J in 1..N2..N)
+      all_different([Data[I+K,J+L] : K in 0..N2-1, L in 0..N2-1])
+   end,
+
+   solve([ff,split], Data).
+
+
+problem(1, Data) => 
+Data = [
+    [_, _, 2, _, _, 5, _, 7, 9],
+    [1, _, 5, _, _, 3, _, _, _],
+    [_, _, _, _, _, _, 6, _, _],
+    [_, 1, _, 4, _, _, 9, _, _],
+    [_, 9, _, _, _, _, _, 8, _],
+    [_, _, 4, _, _, 9, _, 1, _],
+    [_, _, 9, _, _, _, _, _, _],
+    [_, _, _, 1, _, _, 3, _, 6],
+    [6, 8, _, 3, _, _, 4, _, _]].
+
+problem(2, Data) => 
+ Data = [
+    [_, _, 3, _, _, 8, _, _, 6],
+    [_, _, _, 4, 6, _, _, _, _],
+    [_, _, _, 1, _, _, 5, 9, _],
+    [_, 9, 8, _, _, _, 6, 4, _],
+    [_, _, _, _, 7, _, _, _, _],
+    [_, 1, 7, _, _, _, 9, 5, _],
+    [_, 2, 4, _, _, 1, _, _, _],
+    [_, _, _, _, 4, 6, _, _, _],
+    [6, _, _, 5, _, _, 8, _, _]].
+
+problem(3, Data) => 
+Data = [
+    [_, _, _, 9, _, _, _, _, _],
+    [_, _, 7, _, 6, _, 5, _, _],
+    [_, _, 3, 5, _, _, _, 7, 9],
+    [4, _, 5, _, _, 9, _, _, 1],
+    [8, _, _, _, _, _, _, _, 7],
+    [1, _, _, 6, _, _, 9, _, 8],
+    [6, 4, _, _, _, 8, 7, _, _],
+    [_, _, 9, _, 1, _, 2, _, _],
+    [_, _, _, _, _, 7, _, _, _]].
+
+problem(4, Data) => 
+Data = [
+    [_, 5, _, _, _, 1, 4, _, _], 
+    [2, _, 3, _, _, _, 7, _, _], 
+    [_, 7, _, 3, _, _, 1, 8, 2], 
+    [_, _, 4, _, 5, _, _, _, 7], 
+    [_, _, _, 1, _, 3, _, _, _], 
+    [8, _, _, _, 2, _, 6, _, _], 
+    [1, 8, 5, _, _, 6, _, 9, _], 
+    [_, _, 2, _, _, _, 8, _, 3], 
+    [_, _, 6, 4, _, _, _, 7, _]].
+
+% Problems 5-8 are harder, taken from
+% http://www2.ic-net.or.jp/~takaken/auto/guest/bbs46.html
+problem(5, Data) => Data = [
+    [_, 9, 8, _, _, _, _, _, _],
+    [_, _, _, _, 7, _, _, _, _],
+    [_, _, _, _, 1, 5, _, _, _],
+    [1, _, _, _, _, _, _, _, _],
+    [_, _, _, 2, _, _, _, _, 9],
+    [_, _, _, 9, _, 6, _, 8, 2],
+    [_, _, _, _, _, _, _, 3, _],
+    [5, _, 1, _, _, _, _, _, _],
+    [_, _, _, 4, _, _, _, 2, _]].
+
+problem(6, Data) => 
+Data = [
+    [_, _, 1, _, 2, _, 7, _, _],
+    [_, 5, _, _, _, _, _, 9, _],
+    [_, _, _, 4, _, _, _, _, _],
+    [_, 8, _, _, _, 5, _, _, _],
+    [_, 9, _, _, _, _, _, _, _],
+    [_, _, _, _, 6, _, _, _, 2],
+    [_, _, 2, _, _, _, _, _, _],
+    [_, _, 6, _, _, _, _, _, 5],
+    [_, _, _, _, _, 9, _, 8, 3]].
+
+problem(7, Data) => 
+Data = [
+    [1, _, _, _, _, _, _, _, _],
+    [_, _, 2, 7, 4, _, _, _, _],
+    [_, _, _, 5, _, _, _, _, 4],
+    [_, 3, _, _, _, _, _, _, _],
+    [7, 5, _, _, _, _, _, _, _],
+    [_, _, _, _, _, 9, 6, _, _],
+    [_, 4, _, _, _, 6, _, _, _],
+    [_, _, _, _, _, _, _, 7, 1],
+    [_, _, _, _, _, 1, _, 3, _]].
+
+problem(8, Data) => 
+Data = [
+    [1, _, 4, _, _, _, _, _, _],
+    [_, _, 2, 7, 4, _, _, _, _],
+    [_, _, _, 5, _, _, _, _, _],
+    [_, 3, _, _, _, _, _, _, _],
+    [7, 5, _, _, _, _, _, _, _],
+    [_, _, _, _, _, 9, 6, _, _],
+    [_, 4, _, _, _, 6, _, _, _],
+    [_, _, _, _, _, _, _, 7, 1],
+    [_, _, _, _, _, 1, _, 3, _]].
+
+
+% BBC Focus magazine October 2005
+problem(9, Data) => 
+Data = [
+    [_, 6, _, 3, 2, _, _, 7, _],
+    [4, 7, _, _, _, _, _, 3, 2],
+    [_, _, _, 9, _, _, 1, 4, 6],
+    [2, 4, _, 8, _, _, _, _, _],
+    [_, _, 8, _, _, _, 2, _, 1],
+    [1, _, _, _, _, 2, _, _, _],
+    [_, _, 2, 4, 7, 6, 8, _, _],
+    [6, 8, 9, _, _, _, _, 5, 4],
+    [_, _, _, _, 8, _, _, _, _]].
+
+problem(10, Data) => 
+Data = [
+    [1, 8, 2, 7, 5, _, 3, _, 9],
+    [9, 5, 6, _, 3, _, _, 8, _],
+    [3, 4, 7, _, _, 9, _, 5, _],
+    [2, _, 3, _, 4, _, _, 9, 8],
+    [4, _, 8, 9, _, 2, 5, _, 3],
+    [5, 7, 9, 3, 6, 8, 1, 2, 4],
+    [_, 2, _, 4, 9, _, 8, 3, _],
+    [_, 3, _, _, 2, _, 9, _, 5],
+    [_, 9, _, _, _, 3, _, 1, _]].
+
+/*
+  These are from J:s sudoku.ijs
+*/ 
+% Roger Huis example
+problem(11,Data) => 
+Data = [
+       [2,_,_,6,7,_,_,_,_],
+       [_,_,6,_,_,_,2,_,1],
+       [4,_,_,_,_,_,8,_,_],
+       [5,_,_,_,_,9,3,_,_],
+       [_,3,_,_,_,_,_,5,_],
+       [_,_,2,8,_,_,_,_,7],
+       [_,_,1,_,_,_,_,_,4],
+       [7,_,8,_,_,_,6,_,_],
+       [_,_,_,_,5,3,_,_,8]].
+
+
+% This puzzle is the evil puzzle from
+% Perl's Games::Sudoku examples
+problem(12, Data) => 
+Data = [
+       [_,7,6,4,_,_,5,_,_],
+       [_,_,_,_,_,5,_,_,4],
+       [_,_,_,_,7,_,_,6,9],
+       [5,_,_,_,_,2,_,9,_],
+       [_,3,1,_,_,_,2,5,_],
+       [_,6,_,5,_,_,_,_,1],
+       [6,2,_,_,4,_,_,_,_],
+       [8,_,_,3,_,_,_,_,_],
+       [_,_,5,_,_,7,4,3,_]].
+
+
+
+% From https://groups.google.com/d/topic/comp.lang.prolog/sTSzJMflBDw/discussion
+problem(13, Data) => 
+Data = [
+       [_,_,_,_,_,_,_,1,2],
+       [_,_,_,_,_,_,_,_,3],   
+       [_,_,2,3,_,_,4,_,_],
+       [_,_,1,8,_,_,_,_,5],
+       [_,6,_,_,7,_,8,_,_],
+       [_,_,_,_,_,9,_,_,_],
+       [_,_,8,5,_,_,_,_,_],
+       [9,_,_,_,4,_,5,_,_],
+       [4,7,_,_,_,6,_,_,_]].
+
+% First problem from Project Euler #96:
+% http://projecteuler.net/problem=96
+problem(14,Data) => 
+Data = 
+[
+[_,_,3,_,2,_,6,_,_],
+[9,_,_,3,_,5,_,_,1],
+[_,_,1,8,_,6,4,_,_],
+[_,_,8,1,_,2,9,_,_],
+[7,_,_,_,_,_,_,_,8],
+[_,_,6,7,_,8,2,_,_],
+[_,_,2,6,_,9,5,_,_],
+[8,_,_,2,_,3,_,_,9],
+[_,_,5,_,1,_,3,_,_]
+].
+
+
+% http://blag.nullteilerfrei.de/2014/07/03/why-someone-thought-that-sudoku-might-not-be-boring-while-actually-you-should-learn-how-to-properly-implement-backtracking/
+problem(15, Data) =>
+  Data =
+ [
+  [_, _, _, _, 6, _, _, 8, _],
+  [_, 2, _, _, _, _, _, _, _],
+  [_, _, 1, _, _, _, _, _, _],
+  [_, 7, _, _, _, _, 1, _, 2],
+  [5, _, _, _, 3, _, _, _, _],
+  [_, _, _, _, _, _, 4, _, _],
+  [_, _, 4, 2, _, 1, _, _, _],
+  [3, _, _, 7, _, _, 6, _, _],
+  [_, _, _, _, _, _, _, 5, _] 
+].

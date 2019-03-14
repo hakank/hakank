@@ -1,0 +1,758 @@
+/* 
+
+  Network flow constraints in Picat.
+
+  This model defines two related constraints (with a lot of examples):
+   - network_flow(Arc, Balance, Flow)
+   - network_flow_cost(Arc, Balance, Weight, Flow, Cost)
+  
+  Both implementations where inspired by MiniZinc's definitions.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import mip. % fastest
+% import cp. % slightly slower than mip
+% import sat. % much slower
+
+main => go.
+
+% Sunco Oil
+go =>
+  problem_arc(1,Arcs,Capacity),
+  MinFlow = 0,
+  MaxFlow = 100,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+  nl.
+
+go2 =>
+  problem_matrix(3,Matrix,Source,Sink),
+  [Arcs,Capacity] = matrix2arcs(Matrix),
+  MinFlow = 0,
+  MaxFlow = 100,
+  if Source != Sink then
+    Arcs := Arcs ++ [[Sink,Source]],
+    Capacity := Capacity ++ [MaxFlow]
+  end,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+
+  nl.
+
+% Airline Maximum-Flow
+go3 =>
+  problem_arc(4,Arcs,Capacity),
+  MinFlow = 0,
+  MaxFlow = 10000,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+
+  nl.
+
+% Matchmaker problem
+go4 =>
+  problem_arc(5,Arcs,Capacity),
+  MinFlow = 0,
+  MaxFlow = 100,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+  Nodes = ["Source",
+           "Kevin Costner","Burt Reynolds","Tom Selleck","Michael Jackson","Tom Cruise",
+           "Loni Anderson","Meryl Streep","Katherine Hepburn","Linda Evans","Victoria Principal",
+           "Sink"],
+  foreach(A in 1..Arcs.length)
+    Arc = Arcs[A],
+    A1 = Nodes[Arc[1]],
+    A2 = Nodes[Arc[2]],
+    if Flow[A] > 0, A1 != "Source", A2 != "Sink" then
+       println([Arcs[A],flow=Flow[A],A1,A2])
+    end
+  end,
+
+  nl.
+
+
+%
+% matchmaker, matrix version
+%
+go5 => 
+  problem_matrix(6,Matrix,Source,Sink),
+  [Arcs,Capacity] = matrix2arcs(Matrix),
+  MinFlow = 0,
+  MaxFlow = 100,
+  if Source != Sink, Matrix[Sink,Source] == 0 then
+    Arcs := Arcs ++ [[Sink,Source]],
+    Capacity := Capacity ++ [MaxFlow]
+  end,
+
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+  Nodes = ["Source",
+           "Kevin Costner","Burt Reynolds","Tom Selleck","Michael Jackson","Tom Cruise",
+           "Loni Anderson","Meryl Streep","Katherine Hepburn","Linda Evans","Victoria Principal",
+           "Sink"],
+  foreach(A in 1..Arcs.length)
+    Arc = Arcs[A],
+    A1 = Nodes[Arc[1]],
+    A2 = Nodes[Arc[2]],
+    if Flow[A] > 0, A1 != "Source", A2 != "Sink" then
+       println([Arcs[A],flow=Flow[A],A1,A2])
+    end
+  end,
+
+  nl.
+
+
+% carpool fairness
+go6 =>
+  problem_matrix(7,Matrix,Source,Sink),
+  [Arcs,Capacity] = matrix2arcs(Matrix),
+  MinFlow = 0,
+  MaxFlow = 100,
+  if Source != Sink, Matrix[Sink,Source] == 0 then
+    Arcs := Arcs ++ [[Sink,Source]],
+    Capacity := Capacity ++ [MaxFlow]
+  end,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+
+  Driver = [], % who will drive at day D
+  foreach(A in 1..Arcs.length)
+    [From,To] = Arcs[A],
+    if From != Source, From != Sink, To != Sink, Flow[A] > 0 then
+      Day = From - 1,
+      Person = To-6,
+      println([day=Day,person=Person,flow=Flow[A],capacity=Capacity[A]]),
+      Driver := Driver ++ [Person]
+    end
+  end,
+  println(driver=Driver),
+  nl.
+
+
+% transportation problem
+go7 =>
+  problem_matrix(8,Matrix,Source,Sink),
+  [Arcs,Capacity] = matrix2arcs(Matrix),
+  MinFlow = 0,
+  MaxFlow = 100,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+  nl.
+
+
+% transportation problem using matrix2network/3
+% See problem_matrix(8) below
+go8 =>
+ Matrix = 
+  [
+    [3,1,0], % A
+    [4,0,4], % B
+    [0,3,3]  % C
+  ],
+  Supply = [5,3,3],
+  Demand = [3,3,3],
+  Network = matrix2network(Matrix,Supply,Demand),
+  println(network=Network),
+  [Arcs,Capacity] = matrix2arcs(Network),
+  foreach(Row in Network) println(Row) end,
+  MinFlow = 0,
+  MaxFlow = 100,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+  nl.
+
+% carpool fairness
+go9 =>
+ Matrix = 
+ [
+    [1,1,1,0], % Day 1
+    [1,0,1,1], % Day 2
+    [1,0,1,1], % Day 3
+    [0,0,1,1], % Day 4
+    [0,0,1,1]  % Day 5
+  ],
+  Supply = [1,1,1,1,1],
+  Demand = [1,1,2,2],
+  Network = matrix2network(Matrix,Supply,Demand),
+  println(network=Network),
+  [Arcs,Capacity] = matrix2arcs(Network),
+  foreach(Row in Network) println(Row) end,
+  MinFlow = 0,
+  MaxFlow = 100,
+  time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+  nl.
+
+% Sunco Oil revisited
+go10 => 
+  % This is a full network model.
+  Matrix = 
+  [ 
+   [0,2,3,0,0],
+   [0,0,3,4,0],
+   [0,0,0,0,2],
+   [0,0,0,0,1],
+   [9,0,0,0,0]
+  ], 
+ time2(solve_network_matrix(Matrix, Z, Solution)),
+ println(z=Z),
+ foreach(Row in Solution) println(Row) end,
+ nl. 
+
+% matchmaker
+go11 =>
+  Matrix = 
+  [
+   [0,    1,    0,     0,   0],
+   [1,    0,    0,     0,   0],
+   [1,    1,    0,     0,   0],
+   [1,    1,    0,     0,   1],
+   [0,    0,    1,     1,   1]
+  ],
+  Supply = [1,1,1,1,1],
+  Demand = [1,1,1,1,1],
+ Network = matrix2network(Matrix,Supply,Demand),
+ println(network=Network),
+ [Arcs,Capacity] = matrix2arcs(Network),
+ foreach(Row in Network) println(Row) end,
+ MinFlow = 0,
+ MaxFlow = 100,
+ time2(solve_network(Arcs, Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat)),
+ nl. 
+
+
+%
+% transportation problem (revisited) where we 
+%
+%  - use capacity matrix + supply and demand arrays
+%  - convert to a network model (inclusing dummy nodes)
+%  - use solve_network_matrix instead of solve_network
+%
+go12 =>
+ Matrix = 
+  [
+    [3,1,0], % A
+    [4,0,4], % B
+    [0,3,3]  % C
+  ],
+  Supply = [5,3,3],
+  Demand = [3,3,3],
+  Network = matrix2network(Matrix,Supply,Demand),
+
+  solve_network_matrix(Network, Z, Matrix2),
+  println(z=Z),
+  foreach(Row in Matrix2) println(Row.to_list()) end,
+  nl.
+
+
+%
+% Max flow example from
+% Taha "Introduction to Operations Research", Example 6.4-2)
+% (see max_flow_taha.pi)
+%
+go13 => 
+   Matrix = 
+    [[0, 20, 30, 10,  0],
+     [0,  0, 40,  0, 30],
+     [0,  0,  0, 10, 20],
+     [0,  0,  5,  0, 20],
+     [100,  0,  0,  0,  0]],
+  solve_network_matrix(Matrix, Z, Matrix2),
+  println(z=Z),
+  foreach(Row in Matrix2) println([to_fstring("%2d",T) : T in Row.to_list()].join(" ")) end,
+  nl.  
+
+
+
+
+%
+% solve a network problem
+%
+solve_network(Arcs,Capacity,MinFlow,MaxFlow, Flow,Z,Cost,Mat) =>
+
+  NumArcs = Arcs.length,
+  % foreach({A,C} in zip(Arcs,Capacity)) println(A=C) end,
+  % println(capacity=Capacity),
+
+  % Balance should be 0 for all!
+  Balance = [0 : _ in 1..NumArcs],
+  % Weight is 1
+  Weight = [1 : _ in 1..NumArcs],
+
+  % decision variables
+  Flow = new_list(NumArcs),
+  Flow :: MinFlow..MaxFlow,
+  Cost #>= 0,
+
+  % Assumption: last arc is the sink -> source arc
+  Z #= Flow[NumArcs],
+
+  % Capacity: Note: One have to ensure this outside of
+  % the network_flow constraint.
+  foreach(A in 1..NumArcs)
+    Flow[A] #<= Capacity[A]
+  end,
+
+  % network_flow(Arcs,Balance,Flow),
+  network_flow_cost(Arcs,Balance,Weight,Flow,Cost),
+
+  solve($[max(Z),ff,split],Flow),
+
+  println(flow=Flow),
+  println(cost=Cost),
+  println(z=Z),
+
+  foreach({A,W,F} in zip(Arcs,Weight,Flow))
+    printf("%w (w:%d): flow: %d\n", A, W,F)
+  end,
+
+  N = max(Arcs.flatten()),
+  Mat = new_array(N,N),
+  bind_vars(Mat,0),
+  foreach(A in 1..NumArcs) 
+    Mat[Arcs[A,1],Arcs[A,2]] := Flow[A]
+  end,
+  foreach(I in 1..N) 
+    foreach(J in 1..N)
+      printf("%2d ", Mat[I,J])
+    end,
+    nl
+  end,
+
+  nl.
+
+
+% Solve a network model given a (network) matrix.
+% Assumptions: 
+%   source is first row/column
+%   sink is last row/column
+% This does NOT use the network_flow/3 or network_flow_cost/5
+% constraints. Instead it's a simple MIP approach.
+%
+solve_network_matrix(Matrix, Z,Matrix2) =>
+
+  N = Matrix.length,
+  Source = 1,
+  Sink = N,
+
+  Flatten = cond(array(Matrix),
+                   Matrix.array_matrix_to_list_matrix().flatten(),
+                   Matrix.flatten()),
+  Matrix2 = new_array(N,N),
+  Matrix2 :: 0..max(Flatten),
+
+  foreach(I in 1..N, J in 1..N)
+    if Matrix[I,J] > 0 then
+      Matrix2[I,J] #<= Matrix[I,J]
+    else 
+      Matrix2[I,J] #= 0
+    end
+  end,
+
+  foreach(I in 1..N)
+     sum([Matrix2[I,J] : J in 1..N]) #= sum([Matrix2[J,I] : J in 1..N])
+  end,
+
+  Z #= Matrix2[Sink,Source],
+
+  solve($[max(Z)],Matrix2),
+  
+  nl.
+
+
+
+
+%
+% convert a matrix with capacities to arcs + capacities
+%
+matrix2arcs(Matrix) = [Arcs,Capacity] =>
+  Arcs = [],
+  Capacity = [],
+  N = Matrix.length,
+  foreach(I in 1..N, J in 1..N)
+    if Matrix[I,J] > 0 then
+      Arcs := Arcs ++ [[I,J]],
+      Capacity := Capacity ++ [Matrix[I,J]]
+    end
+  end.
+
+%
+% Convert a plain (capacity) matrix into a network with source and sinks.
+% Adds a dummy supply/demand node if required.
+%
+matrix2network(Matrix,Supply,Demand) = Network =>
+  N = Matrix.length, % rows
+  M = Matrix[1].length, % columns
+
+  SumSupply = sum(Supply),
+  SumDemand = sum(Demand),
+  println([sumSupply=SumSupply,sumDemand=SumDemand]),
+  Diff = abs(SumSupply-SumDemand),
+  if SumSupply > SumDemand then
+    println("Add a dummy demand node"),
+    Demand := Demand ++ [Diff],
+    foreach(I in 1..N) 
+      Matrix[I] := Matrix[I] ++ [Diff]
+    end,
+    M := M+1
+
+  elseif SumDemand > SumSupply  then
+    println("Add a dummy supply node"),
+    Supply := Supply ++ [Diff],
+    Matrix := Matrix ++ [[Diff : _ in 1..M]],
+    N := N+1
+  end,
+
+  println(newN=Matrix.length),
+  println(newM=Matrix[1].length),
+  println([n=N,m=M]),
+  println(supply=Supply),
+  println(demand=Demand),
+
+  println("matrix:"),
+  foreach(Row in Matrix) println(Row) end,
+
+  Dim = N+M+2,
+  Network = new_array(Dim,Dim),
+  bind_vars(Network,0),
+
+  % source 
+  println(source),
+  foreach(J in 1..N)
+    Network[1,J+1] := Supply[J]
+  end,
+
+  % capacities
+  println(capacities),
+  foreach(I in 1..N, J in 1..M) 
+    Network[I+1,J+N+1] := Matrix[I,J]
+  end, 
+
+  % sink
+  println(sink),
+  foreach(I in 1..M)
+    println(i=I),
+    Network[N+I+1,Dim] := Demand[I]
+  end,
+  % Sink -> Source
+  println(sink_source),
+  Network[Dim,1] := sum([Matrix[I,J] : I in 1..N, J in 1..M])*M.
+  
+
+% 
+% Defines a network flow constraint.
+%  
+% - arc: a directed arc of the flow network. 
+%   Arc p[i] connects node arc[p[i,1]] to node arc[p[i,2]].
+% - balance: the difference between input and output flow for each node.
+% - flow: the flow going through each arc.
+%
+network_flow(Arc, Balance, Flow) =>
+  SourceNode = 1,
+  SinkNode = 2,
+  ARCS = 1..Arc.length,
+  NODES = 1..Balance.length,
+  foreach(I in NODES) 
+     Balance[I] #= sum([Flow[J] : J in ARCS, I == Arc[J,SourceNode]]) - 
+                   sum([Flow[J] : J in ARCS, I == Arc[J,SinkNode]]) 
+  end.
+
+
+%  Defines a network flow constraint with cost.
+%   
+% Arc: a directed arc of the flow network. Arc p[i] connects node arc[p[i,1]] to node arc[[p[i,2]].
+% Balance: the difference between input and output flow for each node.
+% Weight: the unit cost of the flow through the arc.
+% Flow: the flow going through each arc.
+% Cost: the overall cost of the flow.
+%
+network_flow_cost(Arc, Balance, Weight, Flow, Cost) =>
+  SourceNode = 1,
+  SinkNode = 2,
+  ARCS = 1..Arc.length,
+  NODES = 1..Balance.length,
+  Cost #= sum([Weight[I]*Flow[I] : I in ARCS]),
+  foreach(I in NODES) 
+     Balance[I] #= sum([Flow[J] : J in ARCS, I == Arc[J,SourceNode]]) - 
+                   sum([Flow[J] : J in ARCS, I == Arc[J,SinkNode]]) 
+  end.
+ 
+
+%
+% Problem from Winston "Operations Research", page 420f, 423f
+% Sunco Oil example.
+%
+problem_arc(1,Arcs,Capacity) =>
+   Arcs = [[1, 2],
+           [1, 3],
+           [2, 3],
+           [2, 4],
+           [3, 5],
+           [4, 5],
+           [5, 1]],
+   Capacity = [2,3,3,4,2,1,100].
+
+%
+% Airline Maximum-Flow
+% from Winston page 421ff
+%  Cities      Maximum numbers of daily flights 
+%  Juneau -> Seattle   3    1->2
+%  Seattle -> LA      2     2->3
+%  Seattle -> Denver  3     2->4
+%  LA -> Dallas       1     3->5
+%  Denver -> Dallas   2     4->5
+%  Dallas -> Juneau   ?     5->1
+% 
+% 1. Juneau: Source
+% 2. Seattle
+% 3. LA
+% 4. Denver
+% 5. Dallas: Sink
+%
+problem_arc(4,Arcs,Capacity) =>
+  Arcs = 
+[
+  [1,2], 
+  [2,3],  
+  [2,4],
+  [3,5],
+  [4,5],
+  [5,1]
+],
+  Capacity = [3,2,3,1,2,100].
+
+% 
+% Matchmaker problem, Winston, page 422
+%  
+% Compatibilities for Matching
+%                   Loni       Meryl    Katherine   Linda   Victoria
+%                   Anderson   Streep   Hepburn     Evans   Principal
+% Kevin Costner       -         C         -          -        -
+% Burt Reynolds       C         -         -          -        -
+% Tom Selleck         C         C         -          -        -
+% Michael Jackson     C         C         -          -        C
+% Tom Cruise          -         -         C          C        C
+%
+% 1: Source
+% 2: KC
+% 3: BR
+% 4: TS
+% 5: MJ
+% 6: TC
+% 
+% 7: LA
+% 8: MS
+% 9: KH
+% 10: LE
+% 11: VP
+% 
+% 12: Sink
+% 
+problem_arc(5, Arcs, Capacity) =>
+  Source = 1,
+  KC = 2,
+  BR = 3,
+  TS = 4,
+  MJ = 5,
+  TC = 6,
+
+  LA = 7,
+  MS = 8,
+  KH = 9,
+  LE = 10,
+  VP = 11,
+
+  Sink = 12,
+
+  Arcs = 
+[
+  % source to men
+  [Source,KC],
+  [Source,BR],
+  [Source,TS],
+  [Source,MJ],
+  [Source,TC],
+ 
+  % Men->Women
+  [KC,MS],
+  [BR,LA],
+  [TS,LA],
+  [TS,MS],
+  [MJ,LA],
+  [MJ,MS],
+  [MJ,VP],
+  [TC,KH],
+  [TC,LE],
+  [TC,VP],
+
+  % Women->Sink
+  [LA,Sink],
+  [MS,Sink],
+  [KH,Sink],
+  [LE,Sink],
+  [VP,Sink],
+
+  % Sink->Source
+  [Sink,Source]
+],
+  Capacity = [1,1,1,1,1, 
+              1,1,1,1,1,1,1,1,1,1,
+              1,1,1,1,1,
+              100].
+  
+
+
+%
+% Example from Picat Guide, page 79
+%
+% Note the additional arc from 8 -> 1 with capacity 100
+problem_matrix(2,Matrix,Source,Sink) =>
+   Source = 1,
+   Sink = 8,
+   Matrix = 
+     [[0,3,2,3,0,0,0,0],
+      [0,0,0,0,0,0,5,0],
+      [0,1,0,0,0,1,0,0],
+      [0,0,2,0,2,0,0,0],
+      [0,0,0,0,0,0,0,5],
+      [0,4,0,0,2,0,0,1],
+      [0,0,0,0,0,2,0,3],
+      [0,0,0,0,0,0,0,0]].
+
+
+% Example from http://www.probp.com/cp_sat_lp/maxflow.pl
+% (and hakank.org/picat/max_flow.pi)
+problem_matrix(3, Matrix,Source,Sink) =>
+  Source = 1,
+  Sink = 60,
+  Matrix = 
+{{0,0,0,7,8,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,0,0,0,0,0,0,6,8,0,0,0,5,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,5,0},{0,9,5,0,0,0,0,0,8,1,0,0,0,0,9,4,5,0,0,0,6,4,8,2,0,3,7,0,0,0,2,0,0,0,6,4,0,0,5,1,0,0,0,0,0,0,0,0,8,0,0,4,0,0,0,5,0,0,0,0},{0,8,0,0,0,4,0,0,0,0,0,0,0,8,5,1,1,0,2,0,0,5,0,0,0,0,0,0,7,0,5,0,0,0,0,8,0,0,4,0,5,3,0,0,0,0,0,0,0,0,0,0,8,0,0,0,1,0,6,0},{0,0,0,9,0,0,0,0,1,4,7,4,0,7,0,0,4,0,8,0,0,5,0,0,2,0,0,0,0,4,3,0,0,0,0,2,0,0,0,7,1,5,9,0,0,0,0,0,6,0,0,0,3,0,0,4,8,1,0,8},{0,0,0,3,9,0,0,7,7,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,8,0,4,2,0,0,8,8,1,9,9,4,0,0,9,1,0,0,0,0,0,0,0,0,7,0,0,0,0},{8,0,3,0,0,0,0,0,8,7,0,7,0,0,7,0,0,0,9,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,6,0,0,0,0,0,0,6,7,0,4,0,0,2,4,0,0},{3,9,0,0,9,0,0,4,0,0,9,2,0,0,0,0,0,0,0,0,0,0,0,0,9,0,7,0,6,1,7,0,6,0,8,1,0,0,0,0,3,0,0,0,0,8,0,0,0,7,7,2,0,7,0,9,0,0,0,0},{0,0,8,6,0,0,0,0,0,0,0,6,0,0,0,0,0,2,7,0,3,1,0,9,4,9,3,0,2,0,0,0,0,8,0,0,0,2,9,0,0,0,0,0,0,0,1,9,0,0,0,0,0,0,0,7,5,0,0,0},{0,0,0,5,7,0,4,7,0,0,5,0,0,8,4,0,0,4,0,0,0,0,0,0,0,4,0,0,0,0,5,0,5,0,0,0,0,5,0,0,0,2,0,0,0,0,5,0,0,0,0,0,0,0,6,5,0,0,0,3},{0,0,0,6,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,0,0,0,0,0,0,0,0,3,0,0,0,6,0,0,7,9,0,0,0,0,3,0,1,0,0,0,0,0,0,5,0,0,0,0,0},{8,0,0,0,0,0,6,0,0,0,4,0,7,7,3,0,0,9,0,0,0,0,0,3,0,0,8,0,0,4,0,7,0,0,0,3,0,0,0,0,0,0,6,3,0,0,0,0,2,0,0,0,0,0,0,0,0,7,0,0},{0,0,3,5,3,0,0,0,2,0,0,0,7,0,0,0,0,0,0,0,4,5,0,0,9,0,0,0,0,0,0,2,6,0,0,0,0,0,9,0,0,0,0,0,0,0,3,0,0,0,0,0,0,2,6,0,0,8,0,0},{0,0,0,4,0,0,0,5,7,6,0,6,0,0,0,0,0,0,0,0,7,0,0,0,2,0,4,0,1,0,0,8,7,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,5,0,0,0,5,0,0,0,8,9,5,9},{0,0,0,0,6,5,0,0,0,0,8,0,1,0,4,6,0,0,0,5,0,0,0,0,8,0,0,0,0,1,0,5,0,0,0,0,0,6,0,0,0,0,0,0,1,0,4,2,0,4,0,0,0,2,0,0,3,0,8,0},{0,9,2,0,0,0,0,0,9,6,0,0,3,0,0,4,0,0,0,0,3,0,0,5,1,0,0,0,0,3,0,0,0,0,9,0,4,0,0,9,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,5,4},{0,7,0,0,0,1,9,1,0,4,0,4,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,2,6,8,0,0,0,0,1,0,0,0,0,0,0,9,7,7,9,0,0,0,6,3,4,0,5},{0,0,0,7,0,0,6,9,0,0,2,0,6,7,0,0,0,0,3,2,0,2,0,0,0,8,0,0,0,0,8,0,0,7,0,0,0,6,1,0,8,6,0,0,0,3,0,0,0,0,0,0,2,0,0,0,0,9,0,0},{6,8,0,0,0,0,0,3,0,0,0,0,0,0,5,1,2,2,2,2,0,0,9,0,4,0,2,0,5,8,0,0,0,0,0,1,0,0,5,0,0,0,0,8,0,0,0,0,0,5,0,0,0,3,5,5,0,0,0,0},{2,0,8,7,0,0,0,0,0,5,0,0,0,0,0,0,7,0,0,0,0,0,9,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,8,6,0,9,9,0,0,6,0,6,6,0,0,1,3,9,0,0,0,9,0,0},{3,7,0,0,0,0,0,0,0,0,0,8,0,9,0,0,0,0,0,0,8,5,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,1,4,0,0,0,0,0,0,0,7,6,8,0,5,2,9,0,0,0,0,0,0},{0,0,0,7,0,0,0,0,0,6,0,7,3,0,1,8,7,0,0,0,0,6,0,0,0,0,0,0,0,7,0,0,0,0,2,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},{0,0,0,0,0,0,0,0,8,3,3,3,3,0,0,3,5,2,9,9,0,0,0,5,1,3,1,0,0,0,4,1,4,7,5,0,0,0,0,8,0,1,8,5,0,0,0,0,0,0,0,0,8,0,1,2,8,0,0,3},{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,3,0,0,0,8,0,3,2,1,0,0,0,0,0,0,0,0,0,0,3,8,0,0,0,0,0,0,0,3,9,2,0,0,1,0,6,0},{0,0,0,0,0,4,0,9,0,4,8,6,8,6,0,2,0,1,1,0,0,0,0,0,0,0,6,0,0,0,0,1,0,0,0,0,8,0,4,4,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0},{0,0,6,9,0,0,9,2,0,5,0,0,6,4,0,5,5,0,6,0,0,0,0,8,0,5,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,6,0,0,1,8,0,0,0,0,0,0,8,0,0,0,0,5},{8,3,0,0,0,0,0,0,0,4,2,5,0,5,9,4,0,0,0,4,7,3,1,0,0,0,0,5,0,0,1,0,0,0,0,0,0,0,9,6,0,0,0,0,0,0,2,0,7,1,2,6,0,0,8,1,0,0,0,0},{1,4,3,4,0,0,0,0,1,8,0,3,5,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,4,0,9,4,0,0,0,0,0,0,0,0,0,8,0,0,0,0,9,0,6,4,0,0,0,0,0,0},{0,0,0,0,8,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,6,6,7,0,0,7,0,0,0,0,0,0,9,6,0,0,0,4,0,0,7,0,5,0,0,0,0,0,0,0,0,2,0,8,0,0},{0,0,0,7,0,7,9,0,0,0,0,6,0,0,0,0,0,0,0,0,3,6,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,9,0,5,0,0,0,6,0,0,2,4,8,0,0,0,0,0,0,0,0,0},{0,0,1,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,9,0,0,3,0,0,2,2,9,2,6,3,2,0,4,0,0,0,0,6,4,0,1,0,0,0,7,0,2,4,0,0,4,0,0,0,7,0,0,9},{4,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,9,2,0,0,3,0,7,6,0,0,0,0,0,0,8,0,0,8,0,6,0,0,0,2,0,0,0,0,0,0,0,8,0,0,0,0,0,9,4,7,3,5,6,8},{4,9,0,0,0,0,2,0,1,4,9,0,0,8,0,0,0,5,0,0,0,0,0,1,4,0,8,0,0,0,0,0,0,0,4,0,0,0,0,0,1,0,2,4,0,7,5,0,0,5,0,0,0,2,6,4,0,0,9,0},{8,0,2,0,0,0,0,9,0,0,0,0,6,0,0,0,0,9,0,0,2,0,0,0,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,2,0,7,8,3,0,1,0,0,0,0,2,0,0},{5,0,0,9,1,3,3,4,0,0,0,0,8,0,0,0,0,0,4,0,9,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,6,0,2,0,0,9,9},{9,0,3,0,0,0,0,0,0,0,3,0,2,0,9,0,6,4,1,0,0,0,2,8,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,9,0,0,0,0,0,1,1,9,0,5,0,0,0,0,4,4},{4,5,8,2,1,5,0,0,0,0,4,0,0,3,0,8,0,0,6,0,0,2,0,0,0,0,0,0,0,0,5,9,0,0,0,0,0,3,2,0,0,0,0,0,0,5,7,6,8,0,0,0,7,0,0,0,3,5,0,0},{0,0,0,0,0,1,7,1,4,0,0,0,0,2,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,4,0,0,3,0,0,0,0,6,0,0,0,5,0,0,6,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7},{0,0,1,0,2,0,5,0,0,0,6,6,0,0,0,0,0,0,0,0,0,0,0,4,0,3,5,0,0,0,0,0,0,0,0,0,5,6,4,0,6,7,8,0,0,0,0,0,0,0,0,1,1,0,0,4,7,0,0,0},{0,0,0,0,0,0,7,0,0,2,9,0,0,0,0,0,0,0,0,0,0,0,0,1,0,2,0,0,1,8,0,0,0,0,8,2,0,0,0,0,0,5,3,1,0,0,0,6,0,6,0,0,0,0,0,3,0,0,0,2},{0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,0,2,7,0,4,2,0,0,0,0,0,0,0,0,0,3,7,0,0,1,7,4,0,3,0,0,0,0,0,0,0,0,0,0,1,5,2,0,8,0,7,0,3,7,9},{4,0,0,0,0,0,0,0,0,0,8,0,0,0,0,7,0,0,0,0,0,9,2,9,0,0,0,0,0,0,0,1,0,2,0,0,6,0,0,0,0,0,5,0,3,0,0,0,0,0,8,7,0,9,8,0,0,0,0,0},{7,9,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,5,6,0,1,0,0,4,0,8,0,1,0,0,4,0,0,7,3,0,5,0,0,0,9,0,0,0,5,4,0,0,7,0,0,0,0,0},{5,5,4,0,0,0,0,0,0,0,0,0,9,0,0,0,0,0,3,7,0,0,0,0,9,7,7,1,0,0,0,8,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,7,2,0,0,1,4,4,0,9,0,0,0,9},{3,0,0,0,2,0,0,0,0,0,2,0,0,0,6,0,0,0,0,0,0,2,7,5,0,8,0,9,0,0,0,9,0,0,4,0,1,6,0,7,0,0,0,5,3,0,6,0,0,4,2,0,0,6,0,0,0,0,0,0},{0,0,0,0,0,0,4,0,0,1,3,0,0,0,0,0,0,1,0,7,8,2,0,0,0,0,0,0,0,7,0,8,0,0,0,1,0,0,4,3,0,0,0,0,2,0,0,4,0,0,2,0,3,1,0,0,0,0,0,5},{0,0,0,6,0,0,2,0,0,0,0,0,0,0,3,4,0,0,0,0,0,7,9,6,2,0,1,0,3,3,0,2,0,0,6,4,0,0,0,0,0,6,5,0,2,0,5,0,0,0,7,1,0,0,4,0,0,0,0,0},{0,0,0,3,6,4,0,8,0,1,6,0,0,1,0,7,0,0,0,0,0,0,9,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,4,3,0,0,3,0,0,1,1,4,0,8,5,0,0,0,0,0,0,0,4,0},{0,0,0,0,7,0,4,0,0,8,0,6,2,0,0,0,2,0,3,0,1,6,0,0,0,0,0,0,0,0,5,6,0,7,0,0,8,0,0,3,0,6,0,0,0,0,0,0,7,0,0,4,0,0,0,0,0,0,7,0},{0,0,0,0,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,8,6,3,7,0,0,0,0,1,0,0,0,8,7,1,0,0,0,8,0,0,2,0,0,0,0,1,0,5,1,0,0,5,0},{0,0,0,0,0,0,0,0,0,7,7,4,7,0,5,4,0,4,5,0,0,0,0,0,0,0,1,0,0,8,8,0,0,5,0,2,0,8,7,0,8,8,7,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,3,0,0,3,0,3,5,7,0,0,0,0,0,0,2,0,0,3,0,0,0,0,0,0,0,0,0,5,3,0,9,0,4,9,0,8,2,0,0,9,0,7,0,5,0,0,0,9,2,0,0,0,0,0,3},{0,1,0,0,8,0,8,0,0,2,0,4,8,0,0,7,0,9,9,7,0,0,0,0,0,0,5,0,3,0,0,0,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,0,0,4,0,0,0,0,0,0},{2,0,7,1,3,0,2,6,8,0,0,0,1,0,0,4,0,4,0,9,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,6,5,6,0,1,0,0,1,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0},{8,7,3,0,6,4,0,9,0,8,0,9,6,0,0,5,0,0,0,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,5,0,5,0,0,2,0,0,1,7,4,3,0,5,0,0,0,0,8,7,8,1,2,0,0},{0,1,0,0,3,0,5,0,0,9,0,0,9,0,0,8,0,4,9,9,8,6,0,0,0,0,0,9,1,0,8,0,0,0,0,0,0,0,4,0,0,0,4,0,0,0,0,0,2,0,2,0,4,0,0,6,8,9,0,0},{0,0,0,0,0,0,0,0,0,1,0,0,4,0,1,8,2,0,0,2,0,0,0,0,0,0,0,0,0,0,3,6,6,0,4,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,4},{0,0,0,0,6,0,0,0,0,5,2,0,0,0,0,0,0,0,0,0,6,7,0,0,0,0,0,0,0,0,0,3,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,8},{0,0,0,0,0,5,0,0,9,0,0,9,0,0,0,2,9,4,0,0,0,0,1,9,8,0,5,5,7,0,0,7,3,0,8,7,5,9,0,5,0,0,0,0,0,0,7,0,0,5,0,0,3,2,0,0,0,0,0,0},{8,0,0,1,0,3,5,0,0,0,0,0,0,0,9,0,7,0,0,0,0,4,9,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,9,0,6,0,3,0,7,9,7,0,0,0,0,0,8,1},{6,0,4,0,0,0,0,0,0,6,0,4,0,0,0,0,0,0,0,0,0,2,1,0,0,3,2,0,0,0,0,0,1,0,0,6,4,1,0,8,9,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0}}.
+
+
+% 
+% Matchmaker problem, Winston, page 422
+%
+% Matrix version
+% 
+% Compatibilities for Matching
+%                   Loni       Meryl    Katherine   Linda   Victoria
+%                   Anderson   Streep   Hepburn     Evans   Principal
+% Kevin Costner       -         C         -          -        -
+% Burt Reynolds       C         -         -          -        -
+% Tom Selleck         C         C         -          -        -
+% Michael Jackson     C         C         -          -        C
+% Tom Cruise          -         -         C          C        C
+%
+% 1: Source
+% 2: KC
+% 3: BR
+% 4: TS
+% 5: MJ
+% 6: TC
+% 
+% 7: LA
+% 8: MS
+% 9: KH
+% 10: LE
+% 11: VP
+% 
+% 12: Sink
+%
+%  
+problem_matrix(6,Matrix,Source,Sink) =>
+  % Note: in go5 we add Sink->Source as a high value if Matrix[Sink,Source] > 0
+  Matrix =
+[
+% S  K B T M T  L M K L V  S
+ [0, 1,1,1,1,1, 0,0,0,0,0, 0], % Source
+
+ [0, 0,0,0,0,0, 0,1,0,0,0, 0], % KC
+ [0, 0,0,0,0,0, 1,0,0,0,0, 0], % BR
+ [0, 0,0,0,0,0, 1,1,0,0,0, 0], % TS
+ [0, 0,0,0,0,0, 1,1,0,0,1, 0], % MJ
+ [0, 0,0,0,0,0, 0,0,1,1,1, 0], % TC
+
+ [0, 0,0,0,0,0, 0,0,0,0,0, 1], % LA
+ [0, 0,0,0,0,0, 0,0,0,0,0, 1], % MS
+ [0, 0,0,0,0,0, 0,0,0,0,0, 1], % KH
+ [0, 0,0,0,0,0, 0,0,0,0,0, 1], % LE
+ [0, 0,0,0,0,0, 0,0,0,0,0, 1], % VP
+[16, 0,0,0,0,0, 0,0,0,0,0, 0]  % Sink
+],
+
+  Source = 1,
+  Sink = 12.
+
+
+%
+% carpool fairness
+% see carpool_fairness.pi
+%
+problem_matrix(7,Matrix,Source,Sink) =>
+  Matrix = 
+  [
+   % So Days       People   Si
+    [0, 1,1,1,1,1, 0,0,0,0, 0], % Source
+
+    [0, 0,0,0,0,0, 1,1,1,0, 0], % Day 1
+    [0, 0,0,0,0,0, 1,0,1,1, 0], % Day 2
+    [0, 0,0,0,0,0, 1,0,1,1, 0], % Day 3
+    [0, 0,0,0,0,0, 0,0,1,1, 0], % Day 4
+    [0, 0,0,0,0,0, 0,0,1,1, 0], % Day 5
+
+    [0, 0,0,0,0,0, 0,0,0,0, 1], % Person 1 (obligations 1 day)
+    [0, 0,0,0,0,0, 0,0,0,0, 1], % Person 2 (obligations 1 day)
+    [0, 0,0,0,0,0, 0,0,0,0, 2], % Person 3 (obligations 2 days)
+    [0, 0,0,0,0,0, 0,0,0,0, 2], % Person 4 (obligations 2 days)
+
+    [100, 0,0,0,0,0, 0,0,0,0, 0] % Sink
+  ],
+  Source = 1,
+  Sink = 11.
+
+
+
+%
+% transportation problem
+% Note: Adding a dummy market to be able to use "=" instead of "<=".
+% Though in this case it is not really needed...
+% 
+%  Factories: A,B,C
+%  Markets: D,E,F Z (dummy)
+% 
+%  A: supply 5
+%  B: supply 3
+%  C: supply 3
+% 
+%  D: demand 3
+%  E: demand 3
+%  F: demand 3
+%  Z: demand 11-9 (dummy)
+%  
+%  A -> D: cap 3 
+%  A -> E: cap 1
+%  A -> F: cap 0
+%
+%  B -> D: cap 4 
+%  B -> E: cap 0
+%  B -> F: cap 4
+%
+%  C -> D: cap 0 
+%  C -> E: cap 3
+%  C -> F: cap 3
+%  
+problem_matrix(8,Matrix,Source,Sink) =>
+  Matrix = 
+[
+  %So A B C  D E F Z  Si
+  [0, 5,3,3, 0,0,0,0, 0], % Source
+
+  [0, 0,0,0, 3,1,0,2, 0], % A
+  [0, 0,0,0, 4,0,4,2, 0], % B
+  [0, 0,0,0, 0,3,3,2, 0], % C
+
+  [0, 0,0,0, 0,0,0,0, 3], % D
+  [0, 0,0,0, 0,0,0,0, 3], % E
+  [0, 0,0,0, 0,0,0,0, 3], % F
+  [0, 0,0,0, 0,0,0,0, 2], % Z (dummy
+
+  [100, 0,0,0, 0,0,0,0, 0] % Sink
+],
+  Source = 1,
+  Sink = 8.

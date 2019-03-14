@@ -1,0 +1,236 @@
+/* 
+
+  Touching number product sequence in Picat.
+
+  From the seqfan mailing list:
+  """
+  To: Sequence Fanatics Discussion list <seqfan@list.seqfan.eu>
+  From: jsk <jskcmg@gmail.com>
+  Date: Wed, 4 Jan 2012 01:43:34 +1100
+  Subject: [seqfan] Re: 10 different digits, 9 products
+
+  Hello Seqfans,
+
+  On Tue, Jan 3, 2012 at 11:08 PM, Eric Angelini <Eric.Angelini@kntv.be> wrote:
+  >
+  > Hello SeqFans, 
+  > I'm looking for all D numbers with 10 digits (digits must be
+  > different one from another) having this property :
+  > when you multiply two touching digits of D, the result is
+  > visible in D (as a character string).
+
+  Here are my 58 solutions (found by brute force over 10!):
+
+  3207154869
+  3205486917
+  4063297185
+  4063792185
+  4230567819
+  4230915678
+  4297630518
+  4297631805
+  5042976318
+  5063297184
+  5079246318
+  5093271486
+  5094236718
+  5148609327
+  5180429763
+  5180792463
+  5180942367
+  5184063297
+  5420796318
+  5420976318
+  5486913207
+  5630187924
+  5630241879
+  5630418792
+  5630421879
+  5630429718
+  5630792418
+  5630924187
+  5678142309
+  6320184597
+  6320459718
+  6320718459
+  6320791845
+  6320971845
+  6324079185
+  6324097185
+  6329705184
+  6329718405
+  7091532486
+  7132054869
+  7153248609
+  7183092465
+  7924063185
+  7924630518
+  7924631805
+  7963205418
+  9071532486
+  9142305678
+  9153248607
+  9246518307
+  9305614278
+  9308142765
+  9327051486
+  9327148605
+  9423670518
+  9423671805
+  9872305614
+
+  Thanks,
+  Jason.
+  """ 
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+%
+% using permutations/1
+%
+go =>
+  garbage_collect(200_000_000),
+  N = 10,
+  Count = 0,
+  Permutations = permutations("0123456789"),
+  foreach(Perm in Permutations) 
+    Good = true,
+    foreach(I in 2..N, Good == true)
+      P = (Perm[I].to_integer()*Perm[I-1].to_integer()),
+      if P > 9, not(find(Perm,P.to_string(),_,_)) then
+        Good := false
+      end
+    end,
+    if Good == true then 
+      println(found=Perm),
+      Count := Count + 1
+    end
+  end,  
+  println(count=Count),
+  nl.
+
+%
+% Using next_permutation/2
+%
+go2 =>
+  garbage_collect(200_000_000),
+  N = 10,
+  Count = 0,
+  Perm = 0..N-1,
+  Rev = Perm.reverse(),
+  while (Perm != Rev) 
+    Good = true,
+    S = [I.to_string() : I in Perm].flatten().to_string(), 
+    foreach(I in 2..N, Good = true)
+      P = (Perm[I]*Perm[I-1]),
+      if P > 9 then
+         if not(once(find(S,P.to_string(),_,_))) then
+           Good := false
+         end
+      end
+    end,
+    if Good = true then 
+       println(found=Perm),
+       Count := Count + 1
+    end,
+    Perm := next_permutation(Perm)
+  end,  
+  println(count=Count),
+  nl.
+
+
+next_permutation(P) = Perm =>
+   Perm1 = P,
+   N = Perm1.length,
+   K = N - 1,
+   while (Perm1[K] > Perm1[K+1], K >= 0) 
+      K := K - 1
+   end,
+   if K > 0 then
+      J = N,
+      while (Perm1[K] > Perm1[J])  J := J - 1 end,      
+      Tmp := Perm1[K],
+      Perm1[K] := Perm1[J],
+      Perm1[J] := Tmp,
+      R = N, 
+      S = K + 1,
+      while (R > S) 
+         Tmp := Perm1[R],
+         Perm1[R] := Perm1[S],
+         Perm1[S] := Tmp,
+         R := R - 1, 
+         S := S + 1
+      end
+   end,
+   Perm = Perm1.
+
+
+%
+% CP: 
+%
+go3 ?=>
+   Map = get_global_map(),
+   Map.put(count,0),
+   N = 10,
+
+   X = new_list(N),
+   X :: 0..N-1,
+
+   all_different(X),
+   % all_distinct(X),
+   foreach(I in 1..N-1) 
+      Y #= X[I]*X[I+1],
+      sum([Y #>9 #=> X[J]*10 + X[J+1] #= Y : J in 1..N-1]) #> 0
+   end,
+
+   Vars = X,
+   solve($[], Vars),
+   println(x=X),
+   Map.put(count,Map.get(count)+1),
+   fail,
+   nl.
+
+go3 => 
+  println(count=get_global_map().get(count)).
+
+
+%
+% same approach as go3 but with logic programming only (+ all_distinct/1)
+% 
+go4 ?=>
+   Map = get_global_map(),
+   Map.put(count,0),
+   N = 10,
+
+   X = new_list(N),
+   % all_different(X),
+   all_distinct(X), % faster
+   foreach(I in 1..N) member(X[I], 0..N-1) end,
+   foreach(I in 1..N-1) 
+      Y = X[I]*X[I+1],
+      if Y > 9 then
+        % between(1,N-1,J),
+        member(J,1..N-1),
+        X[J]*10 + X[J+1] == Y
+      end
+   end,
+
+   println(x=X),
+   Map.put(count,Map.get(count)+1),
+   fail,
+   nl.
+
+go4 => 
+  println(count=get_global_map().get(count)).
+
+

@@ -1,0 +1,102 @@
+/* 
+
+  Sum of consecutive prime in Picat.
+
+  Inspired by
+  https://twitter.com/stewd_io/status/27764716113756160
+  """
+  2011 is the sum of 11 consecutive #primes. 157+163+167+173+179+181+191+193+197+199+211. http://bit.ly/3v1oez
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import smt. % go/0: 0.3s (z3)
+% import sat. % go/0: 14.1s
+import cp. % go/0: 0.3s
+% import mip. % go/0: ??
+
+
+main => go.
+
+
+go =>
+  
+  N = 2011,
+  Opt = max,
+  % member(Opt,[max,min,nope]),
+  sum_primes(N,Opt,Primes),
+  println(Primes),
+  println(sumCheck=sum(Primes)),
+  println(numPrimes=Primes.length),
+  nl.
+
+%
+% Seek the next (from 2011) consecutive prime year.
+% It's 2015 = sum([389,397,401,409,419])
+%
+go2 => 
+  member(N,2012..2025),
+  member(Opt,[max,min,nope]),
+  sum_primes(N,Opt,Primes),
+  println(Primes),
+  println(sumCheck=sum(Primes)),
+  println(numPrimes=Primes.length),
+  nl.
+
+go3 => 
+  foreach(N in 2000..2020)
+    println(n=N),
+    All=findall(Primes,sum_primes(N,nope,Primes)),
+    if All.len > 0 then
+      println(All),
+      nl
+    end
+  end,
+  nl.
+
+sum_primes(N, Opt, Primes) =>
+  println([n=N, opt=Opt]),
+  Max = N div 2,
+  P = primes(Max),
+  PLen = P.length,
+
+  X = new_list(PLen),
+  X :: 0..1,
+
+  MinPos :: 1..PLen,
+  MaxPos :: 1..PLen,
+
+  MinPos #<= MaxPos,
+
+  % ensure consecutiveness
+  foreach(I in 1..PLen)
+     ((I #>= MinPos #/\ I #<= MaxPos) #<=> (X[I] #= 1))
+     #/\
+     ((I #< MinPos #\/ I #> MaxPos) #<=> (X[I] #= 0))
+  end,
+
+  sum([P[I]*X[I] : I in 1..PLen]) #= N,
+
+  Z #= sum(X),
+
+  Vars = X ++ [MinPos,MaxPos],
+  % Report = $report(printf("%d: %w \n",Z,X)),
+  Report = $report(printf("")),
+  if Opt = max then
+    solve($[max(Z),ffc,split,Report],Vars)
+  elseif Opt = min then
+    solve($[min(Z),ffc,split,Report],Vars)
+  else
+    solve($[ffc,split,Report],Vars)
+  end,
+
+  println(x=X),
+  Primes = [P[I] : I in 1..PLen, X[I] == 1],
+  println([minPos=MinPos,maxPos=MaxPos]),
+  println(primes=Primes),
+  nl.
+

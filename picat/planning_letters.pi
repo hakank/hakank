@@ -1,0 +1,320 @@
+/* 
+
+  Planning problem in Picat.
+
+  http://stackoverflow.com/questions/42590967/puzzle-solving-algorithm-advice-needed
+  """
+  Puzzle Solving Algorithm - Advice Needed
+
+  Given the following letters arranged in a circular pattern.
+
+        A
+    B       E 
+      C   D
+
+  Each letter can merge with any of its opposite letters to form an adjacent letter. e.g.
+
+  A + C = B + B
+  A + D = E + E
+
+  B + E = A + A
+  B + D = C + C
+
+  C + A = B + B
+  C + E = D + D
+
+  D + B = C + C
+  D + A = E + E
+
+  E + B = A + A
+  E + C = D + D
+
+  Now given the following grid of characters:
+
+    D A C
+    B E A
+    A B E
+
+  With the following coordinates:
+
+    {0,2} {1,2} {2,2}
+    {0,1} {1,1} {2,1}
+    {0,0} {1,0} {2,0}
+
+  The aim is to merge adjacent characters until all the characters become A.
+
+  Possible solution would be:
+ 
+  1. D{0,2} + A{1,2} = E
+
+  E E C
+  B E A
+  A B E
+
+  2. C{2,2} + A{2,1} = B
+
+  E E B
+  B E B
+  A B E
+
+  3. E{0,2} + B{0,1} = A
+
+  A E B
+  A E B
+  A B E
+
+  4. E{1,2} + B{2,2} = A
+
+  A A A
+  A E B
+  A B E
+
+  5. E{1,1} + B{2,1} = A
+
+  A A A
+  A A A
+  A B E
+
+  6. E{1,0} + B{2,0} = A
+
+  A A A
+  A A A
+  A A A
+
+  I am working on an algorithm that can programmatically solve these types of problems, 
+  from 3x3 all the way to 10x10 grids. The number of letters or the rules governing how 
+  they merge will not be changed.
+
+  I currently have an algorithm which works well but is far from perfect. Here are the steps 
+  with each iteration:
+
+       - Find all instances of the letters C or D. Build a set of moves which will convert 
+         C or D into B or E.
+       - Score and sort the list of moves based on the following criteria:
+            a. Add score for each E have at least 1 adjacent B
+            b. Minus score for each E which does not have at least 1 adjacent B and vise versa
+       - Select the top move, perform it then repeat until condition in step 4 is met.
+       - If all letters are composed of A, or E with 1 matching adjacent B then merge all 
+         E with B and complete the puzzle
+
+  I am a programmer and game designer, but I have no background at all in algorithms, 
+  mathematics or AI. I have approached it from a "What would a smart human player do" 
+  point of view.
+
+  Any ideas at all would be really be appreciated!
+  """
+
+  Also asked here
+  http://puzzling.stackexchange.com/questions/49714/algorithm-to-solve-puzzle-advice-needed
+
+
+  Note: This model finds an optimal solution, i.e. with the minimum number of steps.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import planner.
+import util.
+
+main => go.
+
+go =>
+  garbage_collect(400_000_000),
+
+  % The different problem instances
+  init1(Init), % 6 steps, 0.026s
+  % init2(Init), % 8 steps, 2.3s
+  % init3(Init), % 10 steps, 0.3s
+  % init4(Init), % 10 steps, 12.3s
+  % init5(Init), % 15 steps, 2.46s
+  % init6(Init), % 15 steps, 134.9s
+  % init7(Init), % 25 steps, ???s
+
+  N = max(Init.flatten()),
+
+  % Replacement rules:
+  L1=[[1+((I-1) mod N),1+((I+1) mod N),1+I mod N] 
+     : I in 1..N],
+  L2 = [[X[2],X[1],X[3]] : X in L1], 
+  L = L1 ++ L2,
+  println(l=L),
+  LSorted = sort_by(L,1),
+  % println(lSorted=LSorted),
+  Replacement = [$replacex(M[1],M[2],M[3]) : M in LSorted],
+  println('replacements:'),
+  foreach(R in Replacement)
+    println(R)
+  end,
+  % cl_facts(Replacement,$[replacex(+,+,-),replacex(-,-,+)]),
+  % cl_facts(Replacement),
+  cl_facts_table(Replacement),
+
+  nl,
+
+  println(initial),
+  print_matrix(Init),
+
+  % Find the optimal plan
+  best_plan(Init,Plan,Cost),
+
+  foreach([First,Second,Rep,S] in Plan)
+    println([first=First,second=Second,replace_with=(Rep,Rep)]),
+    print_matrix(S),
+    nl
+  end,
+  println(cost=Cost),
+  nl.
+
+
+%
+% Generate a random problem with path length PathLen and N as max value.
+% Note that in some cases this will fail (and then prints a lot of "nope").
+%
+go2 => 
+  println(generate_problem),
+  N = 5, % max value
+  Len = 5, % dimension
+  PathLen=20,
+
+
+  % Replacement rules:
+  L1=[[1+((I-1) mod N),1+((I+1) mod N),1+I mod N] 
+     : I in 1..N],
+  L2 = [[X[2],X[1],X[3]] : X in L1], 
+  L = L1 ++ L2,
+  % LLen = L.len,
+  Replacement = [$replace(M[1],M[2],M[3]) : M in L1 ++ L2],
+  println(replacements),
+  foreach(R in Replacement)
+    println(R)
+  end,
+  cl_facts(Replacement),
+  AllIndices = all_indices(Len),
+  
+  X = new_array(Len,Len),
+  bind_vars(X,1),
+  _ = random2(),
+  foreach(_P in 1..PathLen)
+    % Get two positions which have the same numbers
+    RelevantIxes = [[I1,J1,I2,J2] : [I1,J1,I2,J2] in AllIndices, X[I1,J1] == X[I2,J2] ],
+    (RelevantIxes.len > 0 ; println(nope1), fail),
+    LIx = 1 + random() mod RelevantIxes.len,
+    [I1,J1,I2,J2]=RelevantIxes[LIx],
+    % Now get the replacement rules which are relevant
+    RelevantReplacements = [[First,Second,Replace] : [First,Second,Replace] in L, Replace == X[I1,J1] ],
+    (RelevantReplacements.len > 0 ; println(nope2),fail),
+    Ix = 1 + random() mod RelevantReplacements.len,
+    [First,Second,Replace] = RelevantReplacements[Ix],
+    % and replace with the two values
+    X[I1,J1] := First,
+    X[I2,J2] := Second,
+    println([1=[I1,J1],2=[I2,J2]]),
+    print_matrix(X),
+    nl
+  end,
+  println(X.array_matrix_to_list_matrix()),
+
+
+  nl.
+
+sort_by(L,Pos) = [L[I] : _=I in sort(Perm)] =>
+  Perm = [L[I,Pos]=I : I in 1..L.length].
+
+
+print_matrix(Matrix) =>
+  foreach(Row in Matrix)
+    if array(Row) then
+      Row := Row.to_list()
+    end,
+    println(Row)
+  end,
+  nl.
+
+
+% all relevant indices
+all_indices(N) = [ [I1,J1,I2,J2] : I1 in 1..N, J1 in 1..N,
+                                     I2 in [I1-1,I1,I1+1], I2 >= 1, I2 <= N,
+                                     J2 in [J1-1,J1,J1+1], J2 >= 1, J2 <= N,
+                                     (I1 == I2 ; J1 == J2),
+                                     (I1 != I2 ; J1 != J2)
+                            ].
+
+% All are 1's
+final(L) =>
+  Len = L.len,
+  foreach(I in 1..Len, J in 1..Len) 
+     L[I,J] == 1
+  end.
+
+action(S1,S2,Action,Cost) =>
+   Len = S1.len,
+   AllIndices = [ [I1,J1,I2,J2,I,J,K] : 
+                  I1 in 1..Len, 
+                  I2 in [I1-1,I1,I1+1], I2 >= 1, I2 <= Len,
+                  J1 in 1..Len,
+                  J2 in [J1-1,J1,J1+1], J2 >= 1, J2 <= Len,
+                  (I1 == I2 ; J1 == J2),
+                  (I1 != I2 ; J1 != J2),
+                  I = S1[I1,J1],J=S1[I2,J2],
+                  replacex(I,J,K)
+                ],
+
+   AllIndices != [],
+
+   member([I1,J1,I2,J2,I,J,K], AllIndices),
+
+   % Next state
+   S2 = copy_term(S1),
+   S2[I1,J1] := K,
+   S2[I2,J2] := K,
+
+   Action=[(I1,J1)=I,(I2,J2)=J,K,S2],
+   Cost = 1.
+
+
+%
+% Problems
+%
+
+% From the stack overflow problem above: 6 steps
+init1(M) => 
+ M = [[4,1,3],
+      [2,5,1],
+      [1,2,5]].
+
+% generated: 8 steps
+init2(M) => 
+ M = [[1,1,2,1],
+      [1,4,1,2],
+      [1,2,4,4],
+      [4,1,2,1]].
+
+% generated: 10 steps
+init3(M) =>
+ M = [[5,3,4],
+      [2,4,1],
+      [3,5,2]].
+
+% 10 steps
+init4(M) =>
+ M = [[1,4,1,5],
+      [1,3,5,1],
+      [2,5,2,3],
+      [5,2,1,5]].
+
+% 15 steps
+init5(M) =>
+ M = [[4,5,2],[1,3,2],[3,5,4]].
+
+% 15 steps
+init6(M) =>
+ M = [[5,1,1,5,3,1,2],[2,1,1,1,1,5,5],[1,5,2,1,5,2,1],[1,1,1,1,2,1,2],[1,5,1,1,5,5,5],[1,2,1,1,1,2,5],[5,2,2,5,5,2,2]].
+
+
+% 25 steps
+init7(M) =>
+  M = [[2,4,1,3,5],[1,3,4,1,2],[5,2,1,3,5],[2,4,2,3,1],[1,2,4,1,3]].

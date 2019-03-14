@@ -1,0 +1,211 @@
+/* 
+
+  Optimal grouping in Picat.
+
+  From http://cs.stackexchange.com/questions/48510/help-wrapping-my-head-around-a-combinatorial-optimization-problem/50179
+  """
+  Here's the problem I'm trying to solve:
+
+  I have a bunch of widgets, whose weights vary over a small range. I would like 
+  to find the optimal grouping of them such that each group meets a minimum weight requirement, 
+  while maximizing the total number of groups I can form.
+  
+  Knowing a specific name for this class of problem would be a good start. Help formalizing 
+  it would be even better. I did this stuff so long ago in school, I need my memory jogged 
+  good and hard. Thanks!
+
+  """
+
+  From a comments:
+    """ 
+    Let's say we have 1000 widgets, weights ranging from 2-4 oz in .05 oz increments, and 
+    the minimum weight requirement for all groups is 8 oz
+    """
+
+  This model was - at first - inspired by Erwin Kalvelagen's MIP model at
+  http://yetanothermathprogrammingconsultant.blogspot.se/2015/12/bin-packing-but-different.html
+  but was later re-written using more CP related features.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+go =>
+  % Problem = 1,
+  % Problem = 2,
+  Problem = 3,
+  % Problem = 4,
+  problem(Problem,NumWidgets,NumBins,MinWeight,Mod,Weights,SortMode),
+
+  % _ = random2(),
+  if var(Weights) then
+    Weights := [1+random() mod Mod : _ in 1..NumWidgets]
+  end,
+
+  % sorting (reversed) the weights might makes it a bit faster
+  if SortMode then Weights := sort(Weights) end,
+
+
+  println(weights=Weights),
+  println(sumWeights=sum(Weights)),
+  println(minWeight=MinWeight),
+  println(numWidgets=NumWidgets),
+  println(numBins=NumBins),
+
+  println(avg=avg(Weights)),
+  printf("sum(Weights)/NumBins: %f\n",sum(Weights)/NumBins),
+
+  % where to place each widget
+  X = new_list(NumWidgets),
+  X :: 1..NumBins,
+
+  % if a bin is used
+  Y = new_list(NumBins),
+  Y :: 0..1, 
+
+  println(sumdivbins=(sum(Weights) div NumBins)),
+
+  % BinLoads: contains the summed weights of a bin
+  BinLoads = new_list(NumBins),
+  % BinLoads :: [0] ++ MinWeight..NumWidgets*max(Weights),
+  % BinLoads :: [0] ++ MinWeight..NumWidgets*round(avg(Weights)) , % Experimental
+  BinLoads :: [0] ++ MinWeight..1+MinWeight + (sum(Weights) div NumBins), % Experimental
+  % BinLoads :: [0] ++ MinWeight..MinWeight**2, % EXPERIMENTAL: tighter upper bound
+
+  println(fd_max=fd_max(BinLoads[1])),
+  println(numWidgetsTimesMaxWeights=NumWidgets*max(Weights)),
+
+  nl,
+
+  foreach(Bin in 1..NumBins)
+    BinLoads[Bin] #= 0 #\/ BinLoads[Bin] #>= MinWeight,
+    BinLoads[Bin] #= sum([(X[I]#=Bin)*Weights[I] : I in 1..NumWidgets]),
+    Y[Bin] #= 1 #<=> BinLoads[Bin] #>= MinWeight,
+    % can we fill all bins?
+    if sum(Weights) / NumBins >= MinWeight then
+       BinLoads[Bin] #>= MinWeight
+    end
+  end,
+
+  sum(Weights) #= sum(BinLoads),
+  decreasing(BinLoads),
+  decreasing(Y),
+
+  % minimize the number of loaded bins
+  Z #= sum(Y),
+  
+  % minimize the differences of the weights in the bins
+  Z2 #= sum([BinLoads[I-1]-BinLoads[I] : I in 2..NumBins]),
+
+  if sum(Weights) / NumBins >= MinWeight, ((sum(Weights) mod NumBins) mod 2) == 1 then
+    printf("(sum(Weights) mod NumBins) mod 2: %d\n",(sum(Weights) mod NumBins) mod 2),
+    Z2 #>= 1
+  end,
+
+  println(solve),
+
+  Vars = X ++ BinLoads ++ Y,
+
+  %% Maximize Z
+  %% Note: This is not necessary a fair split of the weights
+  % solve($[ffd,updown,max(Z),report(printf("Z: %d\nBinLoads: %w\n",Z,BinLoads))], Vars),
+
+  %% Minimize Z2
+  %% Much more fair split of the weights
+  solve($[ffc,reverse_split,min(Z2),report(printf("Z2: %d\nBinLoads: %w\n",Z2,BinLoads))], Vars),
+
+  nl,
+  println(x=X),
+  println(z=Z),
+  println(z=Z2),
+  println(y=Y),
+  println(binLoads=BinLoads),
+
+  foreach(Bin in 1..NumBins, BinLoads[Bin] > 0)
+    printf("bin %-3d: %w (total %d)\n",Bin,[(I,Weights[I]) : I in 1..NumWidgets, X[I] == Bin],BinLoads[Bin])
+  end,  
+
+  println(binLoads=BinLoads),
+  println(z=Z),
+  println(z2=Z2),
+
+  nl.
+
+%
+%
+%
+problem(1,NumWidgets,NumBins,MinWeight,Mod,Weights,SortMode) =>
+  NumWidgets = 100,
+  NumBins = 50,
+  MinWeight = 25,
+  Mod = 10,
+  %% for NumWeights = 100
+  Weights = [1,2,8,5,6,3,1,7,7,10,4,6,9,1,1,6,7,1,4,1,5,7,6,10,9,6,1,7,5,8,10,8,3,1,8,4,7,8,10,4,3,10,8,8,7,1,7,9,3,5,8,5,3,3,4,2,5,9,10,1,10,6,6,4,10,5,3,1,10,1,6,4,3,10,6,5,10,1,8,8,9,2,1,7,9,7,8,8,10,9,3,4,4,6,6,9,5,9,3,5],
+  SortMode = true.
+
+%
+%
+%
+problem(2,NumWidgets,NumBins,MinWeight,Mod,Weights,SortMode) =>
+  NumWidgets = 200,
+  NumBins = 100,
+  MinWeight = 50,
+  Mod = 20,
+  Weights = [1,3,16,10,11,5,1,14,14,19,8,11,17,1,2,11,14,1,8,2,9,14,12,19,17,11,2,14,9,15,19,16,6,1,15,7,13,16,20,8,5,20,15,16,14,2,13,18,6,9,16,10,5,6,8,4,10,18,19,2,19,11,11,7,20,10,6,2,19,2,11,8,6,19,11,10,19,2,16,16,17,3,1,14,18,13,15,15,20,18,5,7,8,11,12,17,9,17,6,9,11,10,6,4,4,12,17,1,11,10,20,15,12,18,13,17,4,5,15,3,2,6,1,9,1,15,19,5,4,7,18,14,4,14,8,8,10,3,12,17,12,20,12,3,20,9,3,12,6,10,10,20,3,4,7,13,3,14,13,17,5,10,8,5,1,19,9,3,19,9,3,18,2,4,2,8,6,3,16,10,7,10,17,19,14,5,14,19,6,18,10,11,13,17,16,10,20,13,9,17],
+  SortMode = true.
+
+
+%
+%
+%
+problem(3,NumWidgets,NumBins,MinWeight,Mod,Weights,SortMode) =>
+  NumWidgets = 1000,
+  NumBins = 100,
+  MinWeight = 50,
+  Mod = 20,
+  % W =[round(I*10) : I in 2..0.05..4],
+  % WLen = W.len,
+  % Weights = [W[1+random() mod WLen] : _ in 1..NumWidgets],
+  SortMode = true.
+
+
+% From a comments:
+% """
+% Let's say we have 1000 widgets, weights ranging from 2-4 oz in .05 oz increments, and 
+% the minimum weight requirement for all groups is 8 oz
+% """
+% This means 2..0.05..4 = 
+% W=[round(I*100)/100 : I in 2..0.05..4]  
+% W = [2.0,2.05,2.1,2.15,2.2,2.25,2.3,2.35,2.4,2.45,2.5,2.55,2.6,2.65,2.7,2.75,2.8,2.85,2.9,2.95,3.0,3.05,3.1,3.15,3.2,3.25,3.3,3.35,3.4,3.45,3.5,3.55,3.6,3.65,3.7,3.75,3.8,3.85,3.9,3.95,4.0]
+%
+% And since we are using integers:
+% W=[round(I*100) : I in 2..0.05..4] 
+% W = [200,205,210,215,220,225,230,235,240,245,250,255,260,265,270,275,280,285,290,295,300,305,310,315,320,325,330,335,340,345,350,355,360,365,370,375,380,385,390,395,400]
+% 
+problem(4,NumWidgets,NumBins,MinWeight,Mod,Weights,SortMode) =>
+  NumWidgets = 1000,
+  NumBins = 200,
+  MinWeight1 = 800,
+  Mod = _,
+  W=[round(I*100) : I in 2..0.05..4],
+  % W=[round(I) : I in 2..0.05..4],
+  WLen = W.len,
+  % divide by the gcd of the possible weights
+  Gcd = gcd(W),
+  println(gcd=Gcd),
+  % W=[I : I in 2..4],
+  MinWeight = MinWeight1 div Gcd,
+  Weights = [W[1+random() mod WLen] div Gcd : _ in 1..NumWidgets],
+  SortMode = true.
+
+
+gcd(List) = fold(gcd,List.first(),List.tail()).
+lcm(List) = fold(lcm,1,List).
+lcm(X,Y)= abs(X*Y)//gcd(X,Y).

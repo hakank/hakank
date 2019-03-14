@@ -1,0 +1,181 @@
+/* 
+
+  Nurse rostering (using regular) in Picat.
+
+  This is from the MiniZinc example nurse_rostering.
+  The DFA is from MiniZinc Tutorial, Nurse Rostering:
+
+
+              d     d,n    d,n
+       --> 1 ---> 2 ----> 4 ---> 6
+             \          ^       ^
+            n \      d /       /
+               \      /       /
+                v    /  n    /
+                  3  -----> 5  
+
+      Start state is 1.
+      All states also points back to state 1.
+
+
+  The schedule is:
+  One day off every 4 days, no 3 nights in a row.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+
+go =>
+  nolog,
+  % problem(1,NumNurses,NumDays,MinDayShift,MinNightShift),
+  problem(2,NumNurses,NumDays,MinDayShift,MinNightShift),
+  % problem(3,NumNurses,NumDays,MinDayShift,MinNightShift),
+  % problem(4,NumNurses,NumDays,MinDayShift,MinNightShift),
+
+  println(numNurses=NumNurses),
+  println(numDays=NumDays),
+  println(minDayShift=MinDayShift),
+  println(minNightShift=MinNightShift),
+
+  nurse_rostering(NumNurses,NumDays,MinDayShift,MinNightShift, X, Stat),
+
+  println("Nurses per day:"),
+  foreach(J in 1..NumDays)
+    printf("Day %2d: %w\n", J, [X[I,J] : I in 1..NumNurses])
+  end,
+
+  println("Stat:"),
+  foreach(J in 1..NumDays)
+    printf("Day %2d: Day:%2d, Night:%2d, Off:%2d\n", J, Stat[J,1],Stat[J,2],Stat[J,3])
+  end,
+  nl,
+
+  % Note: The "points" for the nurses are not evenly distributed.
+  Points = [1,2,0], % points per type of work
+  NursePoints = new_list(NumNurses),
+  foreach(Nurse in 1..NumNurses)
+    % NursePoints[Nurse] = sum([P : Day in 1..NumDays, nth(X[Nurse,Day], Points,P)])
+    NursePoints[Nurse] = sum([Points[X[Nurse,Day]] : Day in 1..NumDays])
+  end,
+  println(nursePoints=NursePoints),
+
+  nl.
+
+
+nurse_rostering(NumNurses,NumDays,MinDayShift,MinNightShift, X,Stat) =>
+
+  if MinDayShift + MinNightShift > NumNurses then
+    printf("Number of minimum nurses for the day shift (%d) and the night shift (%d) are larger than number of nurses (%d)\n", MinDayShift, MinNightShift, NumNurses),
+    halt
+  end,
+
+  % The DFA for the regular constraint.
+  % This handle the scheduling requirement for each nurse:
+  % """
+  % In each four day period a nurse must have at least one day off, and
+  % no nurse can be scheduled for 3 night shifts in a row.
+  % """
+  % 
+  % d: day shift, n: night shift, o:off
+  % State 0 is an error state, e.g. it's not possible to come to state 6 
+  % with d or n as input.
+  % 
+  % 
+  % States:
+  % 
+  Transition = [ 
+      % d n o
+       [2,3,1], % state 1: start/off
+       [4,4,1], % state 2: day 2 in day shift: go to day 3 (state 4)
+       [4,5,1], % state 3: day 2 in night shift: go to state 4
+       [6,6,1], % state 4:
+       [6,0,1], % state 5: 
+       [0,0,1]  % state 6: go to off (day or night is not accepted as input)
+  ],
+  NStates = Transition.length, % number of states
+  InputMax = 3,  % 3 states
+  InitialState = 1, % start at state 1
+  AcceptingStates = 1..6, % all states are accepting states
+
+  DayShift   = 1,
+  NightShift = 2,
+  OffShift   = 3,
+
+  % decision variables
+
+  X = new_array(NumNurses,NumDays),
+  X :: DayShift..OffShift,
+
+  % summary of the shifts:
+  %   [day,night,off]
+  Stat = new_array(NumDays,3),
+  Stat :: 0..NumNurses,
+
+  % 
+  % constraints
+  %
+  foreach(I in 1..NumNurses) 
+    This = [X[I,J] : J in 1..NumDays],
+    regular(This,NStates,InputMax,Transition,InitialState,AcceptingStates),
+    % experimental: minimum shifts per nurse per NumDays
+    count(DayShift,This,#>=,3),
+    count(NightShift,This,#>=,2),
+    count(OffShift,This,#>=,2)
+  end,
+
+  % statistics for each day
+  foreach(Day in 1..NumDays)
+    foreach(Type in 1..3)
+      Stat[Day,Type] #= sum([X[Nurse,Day] #= Type : Nurse in 1..NumNurses])
+    end,
+    sum([Stat[Day,Type] : Type in 1..3]) #= NumNurses, % implied constraint
+
+    % For each day the must be at least 3 nurses with day shift,
+    % and 2 nurses with night shift
+    Stat[Day,DayShift] #>= MinDayShift, 
+    Stat[Day,NightShift] #>= MinNightShift
+
+  end,
+
+  Vars = X.vars() ++ Stat.vars(),
+  % Vars =  Stat.vars() ++ X.vars(),
+  if member(cp,sys.loaded_modules()) then
+    % cp module
+    solve($[degree,split],Vars)
+  else 
+    % sat module
+    solve($[],Vars)
+  end.
+
+
+problem(1,NumNurses,NumDays,MinDayShift,MinNightShift) =>
+  NumNurses     = 7,
+  NumDays       = 14,
+  MinDayShift   = 3, % minimum number in day shift
+  MinNightShift = 2. % minimum number in night shift
+
+problem(2,NumNurses,NumDays,MinDayShift,MinNightShift) =>
+  NumNurses     = 12,
+  NumDays       = 14,
+  MinDayShift   = 6, % minimum number in day shift
+  MinNightShift = 3. % minimum number in night shift
+
+problem(3,NumNurses,NumDays,MinDayShift,MinNightShift) =>
+  NumNurses     = 14,
+  NumDays       = 21,
+  MinDayShift   = 6, % minimum number in day shift
+  MinNightShift = 3. % minimum number in night shift
+
+
+problem(4,NumNurses,NumDays,MinDayShift,MinNightShift) =>
+  NumNurses     = 1, % just one nurse. For testing.
+  NumDays       = 7,
+  MinDayShift   = 0, % minimum number in day shift
+  MinNightShift = 0. % minimum number in night shift

@@ -1,0 +1,113 @@
+/* 
+
+  Serial crack in Picat.
+
+  From https://rolandsako.wordpress.com/2016/02/17/playing-with-z3-hacking-the-serial-check/
+  """
+  First, let's break out the algorithm into simple constraints.
+  The serial must :
+
+   -  Be in the format XXXX-XXXX-XXXX-XXXX (to make thing easier to follow,
+      let's call them groups of numbers, there are 4 groups right?)
+   -   Where X is an int between [0..9]
+          except for fourth_group where it must be in [3..8]
+   -   fourth_group will be used as a cheksum
+          its sum must be equal to the average of the first 3 groups
+          its average must be equal to the sum of first_group
+   -   sum of first_group must be different to sum of second_group
+   -   first_group and fourth_group can't have a similar value at the same index
+   -   second_group and third_group can't have a similar int at the same index
+
+  [
+      0 1 2 3  - 0 1 2 3 - 0 1 2 3 - 0 1 2 3
+      X X X X    X X X X   X X X X   X X X X
+      first      second    third     fourth
+      group      group     group     group
+  ]
+  You could brute-force it, but you want to be sure you make it
+  before 4:00am and brute-forcing is cheating.
+
+
+  The output should be as follow :
+  [a__1 = 0,
+  a__0 = 4,
+  c__1 = 8,
+  b__3 = 0,
+  a__2 = 0,
+  a__3 = 0,
+  d__3 = 7,
+  b__0 = 7,
+  d__1 = 3,
+  d__0 = 3,
+  c__2 = 7,
+  b__2 = 6,
+  c__0 = 8,
+  c__3 = 1,
+  b__1 = 7,
+  d__2 = 3]
+  """
+
+  However, this is NOT a unique solution! It has a huge number of solutions,
+  something that the author don't address. However, it actually is
+  a nice feature of a serial number generator.
+  
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main ?=> go.
+
+
+go ?=>
+  serial(First,Second,Third,Fourth),
+  printf("%w - %w - %w - %w\n",First,Second,Third,Fourth),
+  fail,
+  nl.
+go => true.
+
+
+go2 => 
+  Count = count_all($serial(_First,_Second,_Third,_Fourth)),
+  println(count=Count),
+  nl.
+
+serial(First,Second,Third,Fourth) =>
+  N = 4,
+  First = new_list(N),
+  First :: 0..9,
+  Second = new_list(N),
+  Second :: 0..9,
+  Third = new_list(N),
+  Third :: 0..9,
+  Fourth = new_list(N),
+  Fourth :: 3..8,
+
+  % the sums
+  SumFirst #= sum(First),
+  SumSecond #= sum(Second),
+  SumThird #= sum(Third),
+  SumFourth #= sum(Fourth),
+
+  % average of groups, excluding the 4th (checksum)
+  AvgSums #= (SumFirst+SumSecond+SumThird) div 3,
+
+
+  SumFourth #= AvgSums,        % constraint #3.1
+  SumFirst #= SumFourth div 4, % constraint #3.2
+  SumFirst #!= SumSecond ,     % constaint #4
+
+  foreach(I in 1..N)
+    First[I] #!= Fourth[I], % constraint #5
+    Second[I] #!= Third[I]  % constraint #6
+  end,
+
+  Vars = [First,Second,Third,Fourth],
+  
+  solve(Vars).
+
+

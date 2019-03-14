@@ -1,0 +1,516 @@
+/* 
+
+  Kidney exchange in Picat.
+
+  A simple model of kidney exchange, inspired by Pascal Van Hentenryck's
+  introduction of Discrete Optimization.
+
+  The objective is to maximize the number of exchanges.
+
+  Note that we are looking for cycles, or at least that anyone
+  that give a kidney also receive a kidney.
+
+  Note: Some of the cycles are very large, so it would be better to have
+        many smaller cycles. This is a future extension...
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+% import sat. % slower
+
+
+main => go.
+
+
+go =>
+  kidney_exchange(1).
+
+go1 =>
+  foreach(P in 1..5) 
+    printf("Testing problem %d\n", P),
+    kidney_exchange(P)
+  end,
+  nl.
+
+go2 => 
+  kidney_exchange(2).
+
+go3 => 
+  kidney_exchange(3).
+
+go4 => 
+  kidney_exchange(4).
+
+go5 => 
+  kidney_exchange(5).
+
+% 1000 people
+go6=>
+  cl("kidney_exchange_1000_0.1_1.pi"),
+  compatible(Compatible),
+  time2(kidney_exchange(Compatible, X, Z)),
+  println(z=Z),
+  println(x=X),  
+  % print_components(X),
+  nl.
+
+% random 1500,4.7%: solved in 4.7s (total with generating: 6.7s)
+go_rand => 
+  N = 1500,
+  println(start_generate),
+  _ = random2(),
+  time(Compatible = random_instance(N,3)), % too slow to generate
+  % time(Compatible = random_instance2(N,10*(N//100))),
+  println(compatible=Compatible),
+  println(after_generate),
+  foreach({C,I} in zip(Compatible, 1..N))
+    println(I=C)
+  end,
+  % average number of compatible person (before pruning)
+  Avg = avg([length(C) : C in Compatible]),
+  AvgPct = 100*Avg / N,
+  % printf("Avg: %d Avg Pct: %w\n", Avg,AvgPct),
+  println(avg=Avg),
+  println(avgPct=AvgPct),
+
+  time2(kidney_exchange(Compatible, X2, Z2)),
+  % println(z2=Z2),
+  % println(x2=X2),  
+
+  println(solved),
+
+  nl.
+
+%
+% Random with some defined non-donors
+%
+go_rand2 => 
+  N = 200,
+  println(start_generate),
+  % time(Compatible = random_instance(N,3)), % too slow to generate
+  time(Compatible = random_instance2(N,3*(N//100))),
+  _ = random2(),
+  NumNonDonors = 1+random() mod min(30,N),
+  foreach(_ in 1..NumNonDonors)
+     Compatible[1+random() mod N] := []
+  end,
+  % println(compatible=Compatible),
+  println(after_generate),
+  % foreach({C,I} in zip(Compatible, 1..N))
+  %  println(I=C)
+  % end,
+  % average number of compatible person (before pruning)
+  Avg = avg([length(C) : C in Compatible]),
+  AvgPct = 100*Avg / N,
+  % printf("Avg: %d Avg Pct: %w\n", Avg,AvgPct),
+  println(avg=Avg),
+  println(avgPct=AvgPct),
+
+  time2(kidney_exchange(Compatible, X2, Z2)),
+  println(z2=Z2),
+  println(x2=X2),  
+
+  nl.
+
+
+
+kidney_exchange(P) =>
+  problem(P,Compatible),
+  kidney_exchange(Compatible, X, Z),
+  writeln(z=Z),
+  writeln(x=X),
+  print_components(X),
+  nl.
+
+
+%
+% Slightly different - and faster - representation: 
+% Instead of 0 as dummy value for X[P] we take P, 
+% i.e. for people that are not in the exchange X[P] = P
+% And we can now use all_different / all_distinct properly
+%
+kidney_exchange(Compatible, X, Z) =>
+   println(kidney_exchange),
+   NumPeople = Compatible.length,
+
+   % prune away the people not suitable for kidney exchange
+   Compatible2 = get_suitable(Compatible),
+
+   % average number of compatible person (after pruning)
+   % println(avg_compatibility=avg([length(C) : C in Compatible2])),
+
+   %
+   % decision variables
+   % 
+   X = new_list(NumPeople),
+   X :: 1..NumPeople,
+
+   % Assign the compatible
+   NonDonors = [],
+   foreach({C,P} in zip(Compatible2,1..NumPeople))
+     if C.length > 0 then
+        % Can be a donor
+        X[P] :: C ++ [P]
+     else
+        % Can not be a donor
+        X[P] #= P,
+        NonDonors := NonDonors ++ [P]
+     end
+   end,
+
+   println(non_donors=NonDonors),
+   println(num_non_donors=NonDonors.length),
+
+   Z #= sum([X[P] #!= P : P in 1..NumPeople]),
+
+   %
+   % constraints
+   % 
+
+   % We first try with circtui/1, and if that don't work with subcircuit/1)
+   (circuit(X) ; subcircuit(X)),
+
+   % Redundant constraint (since circuit/subcircuit enfore distinct values).
+   % Might be faster on some cases.
+   % all_distinct(X),
+   all_different(X),
+
+   %
+   % search
+   %
+   Vars = X,
+   solve($[max(Z),constr,report(printf("Z: %d\nX: %w\n", Z, X))], Vars).
+
+
+
+print_components(X) =>
+  println("\nComponents:"),
+  N = X.length,
+  Nodes = 1..N,
+  AllCycles = new_list(N),
+  Components = new_list(N,[]),
+  foreach(Node in Nodes)
+     Next = X[Node],   
+     Cycles = [Node],
+     while (Next != Node)
+        Cycles := Cycles ++ [Next],
+        Next := X[Next]
+     end,
+     % Cycles := Cycles.sort(), % nope, we want to see the cycle order
+     AllCycles[Node] := Node=Cycles,
+     % get the components (union-find)
+     if Cycles != [] then
+       MinCycle = min(Cycles),
+       if Components[MinCycle] = [] then
+          Components[MinCycle] := Cycles
+       end
+     end
+  end,
+  % println(allCycles=AllCycles),
+  println(components=Components),
+  Sizes = [C.length : C in Components, C != []],
+  println(sizes=Sizes),
+  println(numComponents=Sizes.length),
+  nl.  
+
+%
+% Get the "real" compatible people, i.e. weed out persons
+% that are not compatible (and don't have any possible compatible)
+%
+get_suitable(Compatible) = Compat2 =>
+   NumPeople = Compatible.length,
+   None = new_map(),
+   foreach({C,I} in zip(Compatible,1..NumPeople))
+      if C.length == 0 then
+        None.put(I,ignore)
+      end
+   end,
+   Compat2 = copy_term(Compatible),
+   Changed = true,
+   while (Changed)
+     Compat3 = copy_term(Compat2),
+     foreach({C,I} in zip(Compat2,1..NumPeople))
+       if C.length = 0 then
+         None.put(I,ignore),
+         foreach(J in 1..NumPeople)
+            if member(I,Compat2[J]) then
+              Compat2[J] := delete(Compat2[J], I)
+            end
+         end
+       end
+     end,
+     if Compat2 == Compat3 then
+        Changed := false
+     end
+   end,
+   nl.
+
+
+
+% random instance where the chance of connection is Pct percent (0..100)
+random_instance(N,Pct100) = Compatible =>
+  println($random_instance(N,Pct100)),
+  Compatible = [],
+  _ = random2(),
+  foreach(I in 1..N)
+     C = [],
+     foreach(J in 1..N, I != J)
+       R = 1+random() mod 100,
+       if R =< Pct100 then
+          C := C ++ [J]
+       end
+     end,
+     % C2 = [1+random() mod 100 : JJ in 1..N, JJ != I],
+     % C = [J : J in 1..C2.length, C2[J] <= Pct100],
+     % C = [J : J in 1..N, J != I, 1+random() mod 100 <= Pct100], % don't work (but is not faster)
+     % println(c=C),
+     Compatible := Compatible ++ [C]
+  end.
+
+
+random_instance2(N,MMax) = 
+  % [[1 + random2() mod N: _ in 0..random2() mod MMax].sort_remove_dups() : _ in 1..N].  % uses random2()
+  % [[1 + random2() mod N: _ in 0..random() mod MMax].sort_remove_dups() : _ in 1..N].  % uses random()
+  [[1 + random2() mod N: _ in 0..random() mod MMax] : _ in 1..N].  % uses random()
+  
+
+
+
+
+%
+% The compatibility matrix 
+% (from Pascal's introduction lecture)
+% who can give a kidney to person p
+% This is a directed graph.
+% 
+problem(1,  Compatible) => 
+ Compatible = 
+   [
+    [2,3], % 1
+    [1,6], % 2
+    [1,4,7], % 3
+    [2], % 4  
+    [2], % 5
+    [5], % 6
+    [8], % 7
+    [3]  % 8
+   ].
+
+%
+% Example from Al Roth's "CRCS Lunch Seminar" (YouTube)
+% about 23 min into the lecture.
+% z=6
+% x=[0, 4, 2, 3, 0, 0, 0, 0, 0, 0, 13, 11, 12]
+problem(2, Compatible) =>
+  % who can give a kidney to person p
+  Compatible = 
+  [
+    [],      % 1
+    [1,4,5], % 2
+    [2],     % 3
+    [3,9],   % 4  
+    [6,8],   % 5
+    [7],     % 6
+    [],      % 7
+    [],      % 8
+    [10],    % 9
+    [],      % 10
+    [13],    % 11
+    [11],    % 12
+    [12]     % 13
+  ].
+
+
+%
+% Random generated problem (20 people) with 0.05% probability of compatibility
+%
+problem(3, Compatible) => 
+ Compatible = 
+[ 
+[2,3,6,7,13,14,17],
+[1,4,13,17,19],
+[2,9,10,13,15,19],
+[6,8,9,12,15,18,20],
+[1,2,4,10,15,19,20],
+[1,3,5,8,18],
+[1,2,3,8,9,14,15,19,20],
+[2,3,5,7,10,11,12,13,17,20],
+[1,4,6,7,10,11,13,14,16,18,19,20],
+[4,6,8,11,14,16,18,19],
+[4,5,6,8,9,10,13,15,17,19,20],
+[6,11,13,16,18],
+[3,4,8,11,12,14,15,16],
+[1,8,10,11,12,13,16,20],
+[3,4,6,8,9,10,11,13,14,16,20],
+[2,12,13,15,17,20],
+[1,7,9,10,11,12,13,14,18,19],
+[4,8,12,14,15,17],
+[2,3,4,7,8,11,16,18],
+[2,5,12,14,15,19]
+].
+
+%
+% Random generated problem (40 people) with 0.05% probability of compatibility
+% z=40
+% x=[34,6,18,13,29,39,20,24,23,4,22,37,27,2,5,14,25,30,28,38,1,8,31,19,17,33,9,7,11,3,35,12,40,26,21,10,36,16,15,32]
+problem(4, Compatible) => 
+ Compatible = 
+[ 
+[5,9,22,30,34,35], % 1
+[6,35], % 2
+[18,29,30,36], % 3
+[13,30], % 4
+[12,14,18,24,25,28,29], % 5
+[24,36,38,39], % 6
+[20,22,27,31,38], % 7
+[14,24,25,36], % 8
+[1,7,12,15,18,23], % 9
+[4,6,16], % 10
+[13,18,22,27], % 11
+[11,21,22,23,37,40], % 12
+[24,25,27,28,36,40], % 13
+[2,5,13,23,27,28,31,34], % 14
+[5,10,16], % 15
+[14,30,33], % 16
+[7,9,13,25,29,36], % 17
+[30], % 18
+[28,36,37], % 19
+[1,2,11,12,19,26,32,35,38], % 20
+[1,15,18], % 21
+[8,15,16,35], % 22
+[4,10,17,28,31], % 23
+[19,21,27,28,29], % 24
+[17], % 25
+[7,12,19,25,32,33,39], % 26
+[9,22], % 27
+[7,12,16], % 28
+[11,20,39], % 29
+[3,17,19,22,25,31], % 30
+[1,8,9,15,25,35], % 31
+[1,10,12,20], % 32
+[22,24,25,30,40], % 33
+[4,5,7,9,13,20,25,26,40], % 34
+[9,13,17,21,29], % 35
+[10,24], % 36
+[36], % 37
+[2,7,16,34,35], % 38
+[6,14,15,27], % 39
+[32,35] % 40
+].
+
+
+
+% Random generated problem (100 people)  with 0.05 probability of compatibility
+% z = 100
+% x=[20,83,63,26,70,51,93,4,6,16,19,2,14,92,56,17,40,57,48,54,90,88,69,27,64,65,62,10,49,41,85,34,25,78,12,31,30,67,13,74,3,94,75,84,46,47,24,66,82,72,15,33,79,61,7,42,37,96,43,22,23,11,97,76,18,68,98,35,73,86,21,80,50,28,44,45,59,81,9,55,5,89,58,71,91,29,60,77,39,87,52,8,32,99,100,38,1,36,53,95]
+problem(5, Compatible) => 
+ Compatible = 
+[ 
+[20,38,85,91], % 1
+[83,90], % 2
+[5,8,53,57,63,67], % 3
+[6,19,22,26], % 4
+[70,100], % 5
+[29,45,51,53,68], % 6
+[2,19,22,23,24,42,93], % 7
+[4,11,32], % 8
+[6,66], % 9
+[16,20,21,53], % 10
+[19,91], % 11
+[2,10,11,13,19,33,54], % 12
+[14,16,60,95], % 13
+[4,13,23,57,92], % 14
+[56,68], % 15
+[17,25,29,94], % 16
+[6,40,69,88,92], % 17
+[27,33,57,83], % 18
+[48,55,58,82,91], % 19
+[25,54,72,82,97], % 20
+[56,57,81,83,86,90,95], % 21
+[14,18,63,84,88,96], % 22
+[20,21,24,40,69,99,100], % 23
+[27,70,89], % 24
+[38,51,56,64,80,97,100], % 25
+[15,65,81,99], % 26
+[62,68,88,97,98], % 27
+[7,10,14,50,62,92], % 28
+[49,62,70,91], % 29
+[24,26,41,43,56,60], % 30
+[17,35,37,55,70,80,85], % 31
+[8,9,12,24,34,79], % 32
+[25,42], % 33
+[15,18,31,47,63,78,79,98], % 34
+[12,17,69,80,81], % 35
+[25,31,100], % 36
+[30,96], % 37
+[67,76,78], % 38
+[1,9,13,80], % 39
+[74,95], % 40
+[3,71,74,97], % 41
+[2,17,38,48,76,94], % 42
+[25,75], % 43
+[11,23,24,28,31,35,43,59,84], % 44
+[2,27,43,46,60,84,96], % 45
+[10,31,47,51,60,67,91], % 46
+[24,95], % 47
+[21,23,66,93], % 48
+[6,12,20,45,71,79,80,82], % 49
+[11,18,41,72,76,92], % 50
+[15,41,84], % 51
+[15,24,26,28,33,70], % 52
+[35,36,56,66,79,83,97], % 53
+[20,23,48,58,61,70,87,100], % 54
+[7,20,76,78], % 55
+[42,55], % 56
+[23,37,96], % 57
+[1,6,17,37,62,92,96], % 58
+[3,6,43,50,53,97], % 59
+[4,22,62], % 60
+[19,23,70,75], % 61
+[11,22,41], % 62
+[3,12,54,95,97], % 63
+[19,20,21,35,40,41,59,76,80], % 64
+[18,35,42], % 65
+[10,24,49,53,68], % 66
+[16,29,42,70,74,87,98], % 67
+[14,24,35,49,56], % 68
+[5,13,21,73,79,93], % 69
+[26,60,67,79,86,96,97,100], % 70
+[21,72,96], % 71
+[15,28,55,67,80,83,92], % 72
+[49,50,59,60], % 73
+[28,47,53], % 74
+[44,46,58,73], % 75
+[22,27,45,73], % 76
+[5,10,27,55,59,73,81,98], % 77
+[16,25,37,45,81,100], % 78
+[9,37,81], % 79
+[37,55,86], % 80
+[5,6,12,13,42,66,75], % 81
+[5,9,16,26,35,89], % 82
+[57,58,72,73,74], % 83
+[32,33,59,61,68,71,96], % 84
+[5,9,19,25,30,81,91], % 85
+[29,77,82,85], % 86
+[15,22,25,60,66], % 87
+[3,9,25,30,40,77], % 88
+[18,39,50,80], % 89
+[22,33,40,42,45,54,55,69,87,99], % 90
+[27,52,77,83], % 91
+[8,16,27,45,50,62,70,79], % 92
+[32,33,47,54], % 93
+[12,51,64,81,89,99], % 94
+[12,15,89,91,96,100], % 95
+[1,38,39,49,81,93], % 96
+[1,62], % 97
+[25,33,36,50,54,55,56,57,58], % 98
+[1,53], % 99
+[23,33,66,95] % 100
+].
+
+
+

@@ -1,0 +1,200 @@
+/* 
+
+  Scheuling with contiguity in Picat.
+
+  Inspired by
+  http://stackoverflow.com/questions/30643401/minizinc-how-to-apply-this-constraint-for-scheduling-model
+
+  And especially my model using contiguity constraint.
+
+  The constraints are:
+  * There are NumHours time slots, which might contain a task (if Demand[J] == 1)
+  
+  * Each person/point has a cost for doing a task.
+    Note that the cost array is sorted and reversed for efficiency reasons.
+
+  * The total time (1..NumHours) are divided in "NumSlices" time slices.
+
+  * In each time slice, a point (person) can only take one section of this slice
+    and must take all tasks (including where Demand[J] == 0) between the first
+    and last entry in this slice.
+
+    Note: This constraint is handled by the global contiguity constraint (a decomposition
+    is included), hence the name of the model.
+
+  * The objective is to minimize the total cost.
+
+  * There is nothing that rules out that a person is assigned to just a single time slot
+    in a slice. This may or may not be realistic...
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+
+main => go.
+
+
+go =>
+  nolog,
+  % original problem
+  problem(1,Demand,Cost),
+  println(demand=Demand),
+  println(cost=Cost),
+
+  NumSlices = 1,
+  schedule(Demand,Cost,NumSlices, Table,Z),
+  println(z=Z),
+  % println(assigned=Assigned),
+  foreach(Row in Table)
+    println(Row)
+  end,
+
+  nl.
+
+go2 =>
+  nolog,
+  NumHour = 48,
+  NumPoints = 4,
+  NumSlices = 4,
+
+  Demand = [random() mod 2 : _ in 1..NumHour], % 0..1
+  % reverse cost for efficiency
+  Cost = [1+random() mod 10 : _ in 1..NumPoints].sort().reverse(), 
+
+  println(demand=Demand),
+  println(cost=Cost),
+
+  schedule(Demand,Cost,NumSlices, Table,Z),
+  println(z=Z),
+  % println(assigned=Assigned),
+  foreach(Row in Table)
+    println(Row)
+  end,
+
+  nl.
+
+
+schedule(Demand,Cost,NumSlices, Table,Z) => 
+  NumHours = Demand.len,
+  NumPoints = Cost.len,
+
+  if NumHours mod NumSlices != 0 then
+     printf("NumHours (%d) must be divisible by NumSlices (%d)!\n", NumHours,NumSlices),
+     halt
+  end,
+
+
+  % decision variables
+  Table = new_array(NumPoints,NumHours),
+  Table :: 0..1,
+
+  Z #= sum([Table[I,J]*Cost[I] : I in 1..NumPoints, J in 1..NumHours]),
+  println(z=Z),
+
+  % constraints 
+
+  % separate 1..NumHours in M slices
+  C = NumHours div NumSlices,
+  Slices=[[1+J+C*K : J in 0..C-1] : K in 0..NumSlices-1],
+  println(slices=Slices),
+  foreach(I in 1..NumPoints)
+    % global (NumSlices=1)
+    % global_contiguity([Table[I,J] : J in 1..NumHours])
+
+    % using slices:
+    foreach(Slice in Slices)
+       global_contiguity([Table[I,J] : J in Slice]) % using regular
+    end
+  end,
+
+  foreach(J in 1..NumHours) 
+    % since a segment must be from the first and last entry in a
+    % slice it can cover a task that has 0 in demand
+    sum([Table[I,J] : I in 1..NumPoints]) #>= Demand[J],
+    
+    % just one person can be assigned to a task
+    sum([Table[I,J] : I in 1..NumPoints]) #<= 1
+  end,
+
+  % assignments
+  % foreach(J in 1..NumHours)
+  %   Demand[J] #= 0 #=> Assigned[J] #= 0,
+  %   Demand[J] #= 1 #=> Assigned[J] #= sum([I*(Table[I,J] #= 1) : I in 1..NumPoints])
+  % end,
+
+  % Vars = Table.vars() ++ Assigned,
+  Vars = Table.vars(),
+  if member(cp,sys.loaded_modules()) then
+     % cp
+     solve($[ff,up,min(Z),report(printf("Z: %d\n",Z))], Vars)
+  else 
+     % sat
+     solve($[min(Z),report(printf("Z: %d\n",Z))], Vars)
+  end.
+
+
+
+
+%
+% This is inspired by the definition in the MiniZinc distribution 
+%
+global_contiguity(X) =>
+
+   N = X.length,
+
+   % Transition function (MiniZinc style)  
+   % This use the regular expression "0*1*0*" to 
+   % require that all 1's (if any) in an array appear contiguously.
+   Transition = [
+                 [1,2], % state 1 (start) input 0 -> state 1, input 1 -> state 2 i.e. 0*
+                 [3,2], % state 2: 1*
+                 [3,0]  % state 3: 0*
+                ],
+   NStates = 3,
+   InputMax = 2,
+   InitialState = 1,
+   AcceptingStates = [1,2,3],
+
+   RegInput = new_list(N),
+   RegInput :: 1..InputMax,  % 1..2
+
+   % Translate X's 0..1 to RegInput's 1..2
+   foreach(I in 1..N) 
+      RegInput[I] #= X[I]+1  
+   end,
+
+   regular(RegInput,NStates,InputMax,Transition,InitialState, AcceptingStates).
+
+%
+% contiguity: all variables assigned to value 1 appear contiguously.
+%
+% The implementation of global contiguity below was inspired by 
+% Toby Walsh's presentation "Sliding Constraints"
+%    http://www.cse.unsw.edu.au/~tw/samos/slide.ppt
+% where he defines it in terms of the global constraint slide.
+%
+global_contiguity2(X) =>
+
+   Len = length(X),
+   Y = new_list(Len),
+   Y :: 0..2,
+   increasing(Y),
+   foreach({XVal,YVal} in zip(X,Y))
+      BX :: 0..1,
+      BY :: 0..1,
+      (XVal #= 1) #<=> BX #= 1,
+      (YVal #= 1) #<=> BY #= 1,
+      BX #= BY
+   end.
+
+
+% Demand per hour
+% Cost per point
+problem(1, Demand,Cost) => 
+  Demand = [0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  Cost = [5,3]. % sort and reversed

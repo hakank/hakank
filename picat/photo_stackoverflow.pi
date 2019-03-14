@@ -1,0 +1,125 @@
+/* 
+
+  Photo problem in Picat.
+
+  From https://stackoverflow.com/questions/47078402/understanding-minizinc
+  """
+  The exercise is:
+
+  A group of n people wants to take a group photo. Each person can give preferences next 
+  to whom he or she wants to be placed on the photo. The problem to be solved is to find a placement 
+  that satisfies maximum number of preferences.
+  
+  [MiniZinc code]
+
+  The main idea is to have a an array containing the persons 1 to n, and a cost variable that 
+  we want to maximize. How can I change the cost variable depending on the preferences?
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import smt.
+
+main => go.
+
+
+go =>
+  N = 9,
+  Prefs = [
+             [ 1,3 ],[ 1,5 ],[ 1,8 ],[ 2,5 ],[ 2,9 ],[ 3,4 ],[ 3,5 ],
+             [ 4,1 ],[ 4,5 ],[ 5,6 ],[ 5,1 ],[ 6,1 ],[ 6,9 ],[ 7,3 ],
+             [ 7,8 ],[ 8,9 ],[ 8,7 ]],
+  photo(photo1,N,Prefs),
+  photo(photo2,N,Prefs),
+  nl.
+
+
+%
+% random preferences
+%
+go2 => 
+  nolog,
+  N = 19,
+  NPrefs1 = 37,
+  PrefsMap = new_map(),
+  % _ = random2(),
+  foreach(_ in 1..NPrefs1)
+    P1 = 1 + random() mod N,
+    P2 = 1 + random() mod N,
+    if P1 != P2 then
+       PrefsMap.put([P1,P2],1)
+    end
+  end,
+  Prefs = PrefsMap.keys().sort(),
+  println(nprefs=Prefs.len),
+  println(prefs=Prefs),
+  photo(photo2,N,Prefs),
+  nl.
+
+
+photo(Predicate,N,Prefs) => 
+  call(Predicate,N,Prefs, PhotoArrangements,PrefsSat,Z),
+  println(z=Z),
+  println(photoArrangement=PhotoArrangements),
+  foreach(P in 1..Prefs.len)
+    printf("%w: %w\n", Prefs[P],PrefsSat[P])
+  end,
+  nl.
+
+
+%
+% Using element/3
+%
+photo1(N,Prefs, PhotoArrangements,PrefsSat,Z) =>
+  NPrefs = Prefs.len,
+
+  % decision variables
+  PhotoArrangements = new_list(N),
+  PhotoArrangements :: 1..N,
+
+  PrefsSat = new_list(NPrefs),
+  PrefsSat :: 0..1,
+  Z #= sum(PrefsSat),
+
+  all_different(PhotoArrangements),
+  foreach(P in 1..NPrefs)
+     element(P1,PhotoArrangements,Prefs[P,1]),
+     element(P2,PhotoArrangements,Prefs[P,2]),
+     PrefsSat[P] #<=> abs(P1-P2) #= 1
+  end,
+
+  Vars = PhotoArrangements ++ PrefsSat,
+  solve($[split,max(Z)],Vars).
+
+%
+% Using assignment/2 (aka inverse).
+% Faster for SAT.
+%
+photo2(N,Prefs, PhotoArrangements,PrefsSat,Z) =>
+  NPrefs = Prefs.len,
+
+  % decision variables
+  PhotoArrangements = new_list(N),
+  PhotoArrangements :: 1..N,
+  PAInverse = new_list(N),
+  PAInverse :: 1..N,
+
+  PrefsSat = new_list(NPrefs),
+  PrefsSat :: 0..1,
+
+  Z #= sum(PrefsSat),
+
+  assignment(PhotoArrangements,PAInverse),
+
+  all_different(PhotoArrangements),
+  foreach(P in 1..NPrefs)
+     PrefsSat[P] #<=> abs(PAInverse[Prefs[P,1]]-PAInverse[Prefs[P,2]]) #= 1
+  end,
+
+  Vars = PhotoArrangements ++ PrefsSat,
+  solve($[ff,split,max(Z)],Vars).
+

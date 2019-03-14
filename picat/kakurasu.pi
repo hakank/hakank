@@ -1,0 +1,205 @@
+/* 
+
+  Kakurasu puzzle in Picat.
+
+  From http://stackoverflow.com/questions/37389949/custom-heuristic-in-eclipse-clp
+  """
+  
+  Consider the following puzzle:
+  
+      1  2  3  4  5
+      --------------
+  1 | _  _  x  x  _ | 8
+  2 | x  x  _  x  _ | 8
+  3 | x  x  x  _  _ | 9
+  4 | _  x  x  x  x | 1
+  5 | _  _  _  _  _ | 15
+    -----------------
+     10  6  7  8  11  
+
+  A cell is either marked or unmarked. Numbers along the right and bottom side of 
+  the puzzle denote the total sum for a certain row or column. Cells contribute 
+  (if marked) to the sum in its row and column: a cell in position (i,j) contributes 
+  i to the column sum and j to the row sum. For example, in the first row in the 
+  picture above, the 1st, 2nd and 5th cell are marked. These contribute 
+  1 + 2 + 5 to the row sum (thus totalling 8), and 1 each to their column sum. 
+  """
+
+
+  Note: The objective is to figure out which cells are to be used and which
+  are to be blocked.
+
+
+  Also see:
+  - https://www.brainbashers.com/kakurasuhelp.asp
+  - http://susansmathgamesca.ipage.com/kakurasu/
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+% import sat.
+% import mip. % only go2/0.
+
+
+main => go.
+
+%
+% for cp and sat: ensure unicity
+%
+% cp : 0.000s
+% sat: 0.096s
+% mip: -
+%
+go =>
+  if member(mip,sys.loaded_modules()) then
+     println("MIP don't work with forall/2. Please use go2/0 instead."),
+     halt
+  end,
+  nolog,
+  foreach(Problem in 1..4) 
+    println(problem=Problem),
+    problem(4,RowSums,ColSums),
+    All = findall([RowSums,ColSums,X], kakurasu(RowSums,ColSums, X)),
+    if All.len != 1 then
+      printf("This instance has %d solutions! Should be a unique.\n", All.len),
+      halt
+    end,
+    foreach([RowSums2,ColSums2,X2] in All)
+      print_grid(RowSums2,ColSums2,X2)
+    end,
+    nl
+  end,
+ 
+  nl.
+
+%
+% For the mip solver, which is not happy with forall/2,
+% so we just solve for the first solution.
+%
+% mip : 0.028s
+% cp  : 0.000s
+% sat : 0.056s
+%
+go2 =>
+  nolog,
+  foreach(Problem in 1..4) 
+    println(problem=Problem),
+    problem(4,RowSums,ColSums),
+    kakurasu(RowSums,ColSums, X),
+    print_grid(RowSums,ColSums,X),
+    nl
+  end,
+ 
+  nl.
+
+
+%
+% generate random instances that 
+% give unique solutions
+%
+go3 =>
+  nolog,
+  _ = random2(), % indeterministic random...
+  Rows = 9,
+  Cols = 9,
+  RowSums = new_list(Rows),
+  ColSums = new_list(Cols),
+  all_distinct(RowSums ++ ColSums),
+  kakurasu(RowSums,ColSums, X),
+
+  % count the number of solutions
+  Count = count_all(kakurasu(RowSums,ColSums, _X2)),
+  println(count=Count),
+  Count == 1, % must be unique
+
+  println(rowSums=RowSums),
+  println(colSums=ColSums),
+  print_grid(RowSums,ColSums,X),
+  nl.
+
+print_grid(RowSums,ColSums,X) =>
+  print("   "),
+  foreach(J in 1..X[1].len)
+    printf("%3d", J)
+  end,
+  nl,
+  print("    "),
+  foreach(J in 1..X[1].len)
+    print("---")
+  end,
+  nl,
+  foreach(I in 1..X.len)   
+     printf("%2d |",I),
+     foreach(J in 1..X[1].len)   
+       if X[I,J] == 1 then
+         print(" _ ")
+       else
+         print(" x ")
+       end
+     end,
+     printf("| %3d\n", RowSums[I])
+  end,
+  print("   "),
+  foreach(J in 1..X[1].len)
+    print("---")
+  end,
+  nl,
+  print("   "),
+  foreach(J in 1..X[1].len)
+    printf("%3d", ColSums[J])
+  end,
+  nl,
+
+  nl.
+
+kakurasu(RowSums,ColSums, X) =>
+  Rows = RowSums.len,
+  Cols = ColSums.len,
+
+  % If we have unknown hints...
+  RowSums :: 1..Rows*(Rows+1) div 2,
+  ColSums :: 1..Cols*(Cols+1) div 2,
+
+  % Show we use X[I,J] or not? (1 if used)
+  X = new_array(Rows,Cols),
+  X :: 0..1,
+
+  foreach(I in 1..Rows) 
+    sum([X[I,J]*J : J in 1..Cols]) #= RowSums[I]
+  end,
+  foreach(J in 1..Cols) 
+    sum([X[I,J]*I : I in 1..Rows]) #= ColSums[J]
+  end,
+  Vars = X.vars() ++ RowSums ++ ColSums,
+  % Vars = RowSums ++ ColSums ++ X.vars(),
+  solve([rand_var,split],Vars).
+
+  
+problem(1,RowSums,ColSums) =>
+  RowSums = [8,8,9,1,15],
+  ColSums = [10,6,7,8,11].
+
+problem(2,RowSums,ColSums) =>
+  RowSums = [8,15,7,5,14,9],
+  ColSums = [15,19,_,_,_,_]. % note the unkwnowns
+
+% From http://yoshipuzzles.com/kakurasu-2/
+problem(3,RowSums,ColSums) =>
+  RowSums = [10,17,16,_,11,_,20,27,7],
+  ColSums = [19,27,32,10,25,21,7,10,17].
+
+% https://www.brainbashers.com/showkakurasu.asp?date=0520&diff=3&size=9
+problem(4,RowSums,ColSums) =>
+  RowSums = [21,35,30,17,29,7,44,10,6],
+  ColSums = [_,39,_,27,_,25,9,24,_].
+
+
+
+
+
+

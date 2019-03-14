@@ -1,0 +1,753 @@
+/* 
+
+  Knight tour problem on a N x N matrix in Picat.
+
+  Using circuit/1.
+
+  N    Time ff/split (s)     ffc
+  ---------------------------------- 
+   6    0.0s
+  10    0.0s
+  20    0.038
+  30    0.18
+  38    >18h
+  40    0.584
+  50    1.531
+  60    >1min
+  70    6.206
+  80    >1min
+  90    >1min
+  94    20.512
+  96    21.898
+  98    34.574
+ 100    25.987
+
+ 104    31.175
+ 106    33.535
+ 110    38.907
+ 114    44.414
+ ...    
+ 192    out of memory: stack_heap
+
+
+  Note: N must be even to be able to use circuit/1 since every move must alternate 
+  between a black and white square. When N is odd (and thus N*N is odd) then 
+  there is one more black (or white) square which makes this impossible.
+
+  This model also handles odd matrices which use subcircuit/1 and one hole.
+  It also handle non square matrices.
+
+
+  Timeout ("to") 10 minutes
+  N    ffc       ff,split
+  -----------------------
+    2    -       -
+    4    -       -
+    6  0.000     0.000
+    8  0.000     0.001
+   10  0.003     0.004
+   12  0.007     0.005
+   14  0.010     0.011
+   16  0.019     0.018
+   18  0.029     0.028
+   20  0.195     0.040
+   22  0.053     0.054
+   24  to        0.079
+   26  to        0.107
+   28  0.141     0.142
+   30  to        0.180
+   32  37.270    34.494
+   34  0.337     0.320
+   36  0.408     0.406
+   38  0.518     to
+   40  0.641     0.611
+   42  to        0.768
+   44  to        to
+   46  1.152     1.097
+   48  to        1.337
+   50  1.555     1.598
+   52  to        to
+   54  to        to
+   56  to        2.547
+   58  3.045     2.942
+   60  3.447     to
+   62  to        3.830
+   64  to        to
+   66  to        4.988
+   68  to        to
+   70  to        6.307
+   72  6.979     7.065
+   74  to        7.959
+   76  to        to
+   78  to        to
+   80  to        to
+   82  to        to
+   84  to        to
+   86  to        14.448
+   88  to        to
+   90  to        to
+   92  19.006    19.172
+   94  to        20.932
+   96  21.690    22.198
+   98  to        32.423
+  100  26.567    26.881
+  102  to        to
+  104  to        30.834
+  106  33.451    33.867
+  108  to        to
+  110  38.604    38.401      
+  112  to        to
+  114  to        33.271
+  116  to        to
+  118  to        to
+  120  to        to
+  122  to        to
+  124  to        65.971
+  126  to        to
+  128  to        68.991
+  130  to        to
+  132  to        80.230
+  134  to        84.457
+  136  to        to
+  138  to        93.885
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+main => go.
+
+
+go =>
+  N = 6,
+  knight(N,X),
+  println(x=X),
+  println("X:"),
+  print_matrix(X),
+  extract_tour(X,Tour),
+  println("Tour:"),
+  print_matrix(Tour),
+  nl.
+
+go2 => 
+  Timeout = 60000, % 1min
+  Times = [],
+  foreach(N in 2..2..200)
+     % garbage_collect(200_000_000),
+     garbage_collect,
+     println(n=N),
+     if [Time,Backtracks,Status] = time2f($test_knight(N,N,false),Timeout) then
+       TimeF = Time / 1000,
+       if Status == success then
+         printf("N: %d Time: %0.3f Backtracks: %d\n", N,TimeF, Backtracks),
+         Times := Times ++ [[N,TimeF]]
+       else 
+         printf("Timeout. Time: %0.3f\n", TimeF),
+         Times := Times ++ [[N,-1]]
+       end
+     else 
+       println("No solution.")
+     end,
+     nl,
+     flush(stdout)
+  end,
+  println(times=Times),
+  nl.
+
+%
+% Variant with labeling list
+%
+go2b => 
+  Timeout = 10*60000, % 10min
+  foreach(N in 2..2..200)
+     % garbage_collect(200_000_000),
+     % garbage_collect,
+     println(n=N),
+     flush(stdout),
+     % Strange: This don't work when using time2f or time2p on both.
+     if [Time,Backtracks,Status] = time2f($test_knight_ff_split(N,N,false),Timeout) then
+       TimeF = Time / 1000,
+       if Status == success then
+          printf("N (%w): %d Time: %0.3f  Backtracks: %d\n", ff_split, N, TimeF, Backtracks)
+       else 
+         % garbage_collect,
+         if time2p($test_knight_ffc(N,N,false),Timeout, Time2,Backtracks2,Status2) then
+           TimeF2 = Time2 / 1000,
+           if Status2 == success then              
+              printf("N (%w): %d Time: %0.3f  Backtracks: %d\n", ffc, N, TimeF2, Backtracks2)
+           else 
+            printf("Timeout %0.3f.\n", TimeF2)
+           end
+         else 
+            printf("Timeout2 %0.3f.\n", TimeF2)
+         end,
+         flush(stdout)
+       end
+     else
+       println("No solution.")
+     end,
+     nl,
+     flush(stdout)
+  end,
+  nl.
+
+
+go2c => 
+  Timeout = 10*60000, % 10min
+  printf("Timeout %ds\n", Timeout div 1000),
+  foreach(N in 2..2..200)
+     % garbage_collect(200_000_000),
+     % garbage_collect,
+     println(n=N),
+     flush(stdout),
+     % Strange: This don't work when using time2f or time2p on both.
+     if [Time,Backtracks,Status] = time2f($test_knight_ff_split(N,N,false),Timeout) then
+     % if [Time,Backtracks,Status] = time2f($test_knight_ffc(N,N,false),Timeout) then
+       TimeF = Time / 1000,
+       if Status == success then
+          printf("N (%w): %d Time: %0.3f  Backtracks: %d\n", ff_split, N, TimeF, Backtracks)
+          % printf("N (%w): %d Time: %0.3f  Backtracks: %d\n", ffc, N, TimeF, Backtracks)
+       else 
+          printf("Timeout2 %0.3f.\n", TimeF)
+       end,
+       flush(stdout)
+     else
+       println("No solution.")
+     end,
+     nl,
+     flush(stdout)
+  end,
+  nl.
+
+
+%
+% Checking: for N=6 it should be 19724 solutions
+%
+go3 ?=> 
+  Map = get_global_map(),
+  Map.put(sols,0),
+  N = 6,
+  knight(N,_X),
+  Map.put(sols,Map.get(sols) + 1),
+  fail.
+
+go3 => 
+  println(sols=get_global_map().get(sols)).
+
+
+go3b ?=> 
+  Map = get_global_map(),
+  Map.put(sols,0),
+  N = 5,
+  if N mod 2 == 0 then
+    knight(N,N,X)
+  else 
+    knight_odd(N,N,X)
+  end,
+  if N <= 6 then
+    println("X:"),
+    print_matrix(X),
+    extract_tour(X,Tour),
+    println("Tour:"),
+    print_matrix(Tour)
+  end,
+  Map.put(sols,Map.get(sols) + 1),
+  fail.
+
+go3b => 
+  println(sols=get_global_map().get(sols)).
+
+
+% 
+% Unsquare matrix
+%
+go4 =>
+  Rows = 15,
+  Cols = 6,
+  knight(Rows,Cols, X),
+  print_matrix(X),
+  extract_tour(X,Tour),
+  print_matrix(Tour),
+  nl.
+
+%
+% odd size
+%
+go5 =>
+  N = 10,
+  Rows = 2+random2() mod N,
+  Cols = 2+random2() mod N,
+  while (Rows mod 2 == 0 ; Cols mod 2 == 0)
+    Rows := 2+random2() mod N,
+    Cols := 2+random2() mod N
+  end,
+  println([rows=Rows,cols=Cols]),
+  println([rows=Rows,cols=Cols]),
+  knight_odd(Rows,Cols, X),
+  % println("X:"),
+  % print_matrix(X),
+  extract_tour(X,Tour),
+  println("Tour:"),
+  print_matrix(Tour),
+  % fail,
+  nl.
+
+% even sizes
+go5b =>
+  N = 100,
+  Rows = 2+random2() mod N,
+  Cols = 2+random2() mod N,
+  println(testing=[rows=Rows,cols=Cols]),
+  while (Rows mod 2 == 1 ; Cols mod 2 == 1)
+    Rows := 2+random2() mod N,
+    Cols := 2+random2() mod N
+  end,
+  println([rows=Rows,cols=Cols]),
+  knight(Rows,Cols, X),
+  % println("X:"),
+  % print_matrix(X),
+  extract_tour(X,Tour),
+  println("Tour:"),
+  print_matrix(Tour),
+  % fail,
+  nl.
+
+
+%
+% N=38 is the first timeout for <= 10min
+% (It has a timeout of 3h as well.)
+% Check this further...
+%
+go6 =>
+  N = 38,
+  % Timeout = 3*60*60000, % 3h
+  % println(n=N),
+  % println(timeout=Timeout div 1000),
+  % [Time,Backtracks,Status] = time2f($test_knight(N,N),Timeout),
+  % println(status=Status),
+  % println(time=Time),
+  % println(backtracks=Backtracks),
+  test_knight(N,N),
+  nl.
+
+
+go7 => 
+  Rows = 17,
+  Cols = 11,
+  println([rows=Rows,cols=Cols]),
+  knight_odd(Rows,Cols, X),
+  println("X:"),
+  print_matrix(X),
+  extract_tour(X,Tour),
+  println("Tour:"),
+  print_matrix(Tour),
+  nl.
+
+go7b => 
+  Rows = 5,
+  Cols = 5,
+  println([rows=Rows,cols=Cols]),
+  knight_odd2(Rows,Cols, X),
+  println("X:"),
+  println(x=X),
+  extract_tour(X,Tour),
+  println("Tour:"),
+  print_matrix(Tour),
+  nl.
+
+
+go8 =>
+  % garbage_collect(200_000_000), % much slower
+  % garbage_collect,
+  N=38,
+  test_knight_ffc(N,N,true),
+  nl.
+
+%
+% Testing with output
+%
+test_knight(N) => 
+  test_knight(N,N,true).
+
+test_knight(Rows,Cols) => 
+  test_knight(Rows,Cols,true).
+
+
+test_knight(Rows,Cols,Print) =>
+  printf("Testing %d x %d\n", Rows, Cols),
+  if Rows*Cols mod 2 == 1 then
+    knight_odd(Rows,Cols,X)
+  else 
+    knight(Rows,Cols,X)
+  end,
+
+  if Print then
+    println("X: "),
+    print_matrix(X),
+    nl,
+    extract_tour(X,Tour),
+    println("Tour:"),
+    print_matrix(Tour)
+
+  end,
+  nl,
+  flush(stdout).
+
+
+test_knight_ff_split(Rows,Cols,Print) =>
+  printf("Testing %d x %d with ff,split\n", Rows, Cols),
+  knight_ff_split(Rows,Cols,X),
+  if Print then
+    println("X: "),
+    print_matrix(X),
+    nl,
+    extract_tour(X,Tour),
+    println("Tour:"),
+    print_matrix(Tour)
+
+  end,
+  nl,
+  flush(stdout).
+
+test_knight_ffc(Rows,Cols,Print) =>
+  printf("Testing %d x %d with ffc\n", Rows, Cols),
+  knight_ffc(Rows,Cols,X),
+  if Print then
+    println("X: "),
+    print_matrix(X),
+    nl,
+    extract_tour(X,Tour),
+    println("Tour:"),
+    print_matrix(Tour)
+
+  end,
+  nl,
+  flush(stdout).
+
+
+%
+% Extract the tour from X.
+%
+extract_tour(X,Tour) =>
+  Rows = X.len,
+  Cols = X[1].len,
+  Tour = new_array(Rows,Cols),
+  K = 1,
+  Tour[1,1] := K,
+  Next = X[1,1],
+  % For odd sizes we only have Rows*Cols - 1 jumps
+  % since the mid square is a no-jump.
+  Adjust = 0,
+  if Rows*Cols mod 2 = 1 then
+    Adjust := 1
+  end,
+  while (K < Rows*Cols - Adjust) 
+    K := K + 1,
+    if Rows == Cols then
+      I = 1+((Next-1) div Rows),
+      J = 1+((Next-1) mod Cols)
+    else 
+      member(I, 1..Rows),
+      member(J, 1..Cols),
+      (I-1)*Cols + J == Next
+    end,
+    Tour[I,J] := K,
+    Next := X[I,J]
+  end.
+  
+
+% TODO!
+tour2dot(Tour) =>
+  println("digraph Knight's Tour\n"),
+  println("rankdir=LR"),
+  println("size=20,20").
+  
+
+
+%
+% Print matrix
+%
+print_matrix(M) =>
+  Rows = M.len,
+  Cols = M[1].len,
+  V = (Rows*Cols).to_string().len,
+  Format1 = "% " ++ (V+1).to_string() ++ "d",
+  Format2 = "% " ++ (V+1).to_string() ++ "w",
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      % for odd sizes
+      if var(M[I,J]) then
+        printf(Format2,'_')
+      else
+        printf(Format1,M[I,J])
+      end
+    end,
+    nl
+  end,
+  nl.
+
+
+%
+% knight(Rows,Cols) where Rows*Cols is even.
+%
+knight(Rows, Cols, X) =>
+  if (Rows * Cols) mod 2 == 1 then
+   printf("%d * %d is odd, not possible. Use knight_odd/3 instead.\n", Rows, Cols),
+   false
+  end,
+
+  X = new_array(Rows,Cols),
+  X :: 1..Rows*Cols,
+  XVars = X.vars(),
+
+  foreach(I in 1..Rows, J in 1..Cols)
+     D = [-1,-2,1,2],
+     Dom = [ (I+A-1)*Cols + J+B : A in D, B in D, 
+              abs(A) + abs(B) == 3, member(I+A,1..Rows), member(J+B,1..Cols)],
+     Dom.len > 0,
+     X[I,J] :: Dom
+  end,
+
+  circuit(XVars),
+
+  % solve([ff,updown],XVars).
+  solve([ff,split],XVars). % The best so far. N=74: 11.4s (on the slower machine)
+  % solve([ffc],XVars). % Testing. Solves N=38 in 0.756s (where ff,split takes > 3h) but slower on other instances...
+
+
+%
+% variant with labeling
+%
+knight_ff_split(Rows, Cols, X) =>
+  if (Rows * Cols) mod 2 == 1 then
+   printf("%d * %d is odd, not possible. Use knight_odd/3 instead.\n", Rows, Cols),
+   false
+  end,
+
+  X = new_array(Rows,Cols),
+  X :: 1..Rows*Cols,
+  XVars = X.vars(),
+
+  foreach(I in 1..Rows, J in 1..Cols)
+     D = [-1,-2,1,2],
+     Dom = [ (I+A-1)*Cols + J+B : A in D, B in D, 
+              abs(A) + abs(B) == 3, member(I+A,1..Rows), member(J+B,1..Cols)],
+     Dom.len > 0,
+     X[I,J] :: Dom
+  end,
+
+  circuit(XVars),
+
+  solve([ff,split],XVars).
+
+
+knight_ffc(Rows, Cols, X) =>
+  if (Rows * Cols) mod 2 == 1 then
+   printf("%d * %d is odd, not possible. Use knight_odd/3 instead.\n", Rows, Cols),
+   false
+  end,
+
+  X = new_array(Rows,Cols),
+  X :: 1..Rows*Cols,
+  XVars = X.vars(),
+
+  foreach(I in 1..Rows, J in 1..Cols)
+     D = [-1,-2,1,2],
+     Dom = [ (I+A-1)*Cols + J+B : A in D, B in D, 
+              abs(A) + abs(B) == 3, member(I+A,1..Rows), member(J+B,1..Cols)],
+     Dom.len > 0,
+     X[I,J] :: Dom
+  end,
+
+  circuit(XVars),
+
+  solve([ffc],XVars).
+
+
+knight(N, X) =>
+  knight(N,N,X).
+
+
+/*
+knight(N, X) =>
+
+  N mod 2 == 0, % square must be even
+
+  X = new_array(N,N),
+  X :: 1..N*N,
+  XVars = X.vars(),
+
+  foreach(I in 1..N, J in 1..N)
+     D = [-1,-2,1,2],
+     Dom = [ (I+A-1)*N + J+B : A in D, B in D, 
+              abs(A) + abs(B) == 3, member(I+A,1..N), member(J+B,1..N)],
+     Dom.len > 0, % N=2 give empty domains
+     X[I,J] :: Dom
+  end,
+
+  circuit(XVars),
+
+  % solve([ff,updown],XVars).
+  solve([ff,split],XVars).
+*/
+
+%
+% Odd size (Rows*Cols mod 2 == 1).
+% Solve it with exactly one hole.
+%
+knight_odd(N, X) =>
+  knight_odd(N,N,X).
+
+knight_odd(Rows, Cols, X) =>
+  if Rows*Cols mod 2 == 0 then
+    printf("The size is not odd, use knight(%d,%d, X) instead.\n", Rows, Cols),
+    false
+  end, 
+
+  X = new_array(Rows,Cols),
+  X :: 1..Rows*Cols,
+  XVars = X.vars(),
+
+  % Find the hole
+
+  %
+  % Note: There is no hole position that works for all odd sizes.
+  % E.g. for 7x3 here is no solutions with (HoleI=MidI, HoleJ=MidJ)
+  %
+  MidI = (Rows+1) div 2,
+  MidJ = (Cols+1) div 2,
+  (
+   ( HoleI = MidI, HoleJ = MidJ )
+   ;
+   ( HoleI =    1, HoleJ = Cols)
+   ;
+   ( HoleI = Rows, HoleJ = Cols)
+   ;
+   ( HoleI = Rows, HoleJ =    1)
+
+   % ; HoleI = 1, HoleJ = 2)
+   % ;( HoleI = 2, HoleJ = 1)
+   ; 
+   ( 
+     println("Testing member"),
+     member(HoleI, 1..Rows),member(HoleJ, 1..Cols), 
+     not(HoleI ==    1, HoleJ ==    1),
+     not(HoleI == MidI, HoleJ == MidJ),
+     not(HoleI ==    1, HoleJ == Cols),
+     not(HoleI == Rows, HoleJ == Cols),
+     not(HoleI == Rows, HoleJ ==    1)
+   )
+  ),
+
+  % member(HoleI, 1..Rows),
+  % member(HoleJ, 1..Cols),
+  % not(HoleI == 1, HoleJ == 1), 
+
+  HoleVal = (HoleI-1)*Cols + HoleJ, % Cols,
+
+  println([holeI=HoleI,holeJ=HoleJ,holeVal=HoleVal]),
+
+  foreach(I in 1..Rows, J in 1..Cols)
+     if I == HoleI, J == HoleJ then
+       X[I,J] #= HoleVal % The hole
+     else
+       X[I,J] #!= HoleVal,
+       D = [-1,-2,1,2],
+       Dom = [ (I+A-1)*Cols + J+B : A in D, B in D, 
+              abs(A) + abs(B) == 3, member(I+A,1..Rows), member(J+B,1..Cols)],
+       Dom.len > 0,
+       X[I,J] :: Dom
+     end
+  end,
+
+  subcircuit(XVars),
+  % ensure that only one square is  off the circuit
+  sum([XVars[I] #= I : I in 1..Rows*Cols]) #= 1, % only one is off the circuit
+
+  % solve([ff,updown],XVars).
+  % solve([ff,split],XVars). 
+  solve([ffc,split],XVars).   
+
+%
+% Another approach suggested by NFZ: remove the center square 
+% and use circuit instead.
+%
+knight_odd2(Rows, Cols, X2) =>
+  if Rows*Cols mod 2 == 0 then
+    printf("The size is not odd, use knight(%d,%d, X) instead.\n", Rows, Cols),
+    false
+  end, 
+
+  % A plain list
+  Size = Rows*Cols,
+  X = new_array(Rows,Cols),
+  X :: 1..Size,
+
+  % The center (hole) square which will be ignored in the circuit
+  HoleI = (Rows+1) div 2,
+  HoleJ = (Cols+1) div 2,
+  HoleVal = (HoleI-1)*Cols + HoleJ,
+  println([holeI=HoleI,holeJ=HoleJ,holeVal=HoleVal]),
+
+  % pick all the element from X which is not the hole
+  XVar = [X[I,J] : I in 1..Rows, J in 1..Cols, (I-1)*Cols + J != HoleVal].vars(),
+
+  foreach(I in 1..Rows, J in 1..Cols) 
+    T = (I-1)*Cols + J, 
+    if  T == HoleVal then
+      X[HoleI,HoleJ] #= HoleVal
+    else
+      D = [-1,-2,1,2],
+      Dom1 = [ (I+A-1)*Cols + J+B : A in D, B in D, 
+              abs(A) + abs(B) == 3, member(I+A,1..Rows), member(J+B,1..Cols)],
+      % Dom1 != [],
+      % adjust for the missing piece
+      Dom = [DK : K in 1..Dom1.len, DK = cond(Dom1[K] > HoleVal, Dom1[K]-1, Dom1[K])],
+      X[I,J] :: Dom
+    end
+  end,
+
+  circuit(XVar),
+
+  % println(xvar=XVar),
+  println(solve),
+  Vars = XVar,
+  solve([],Vars),
+
+  % println(xvar=XVar),
+  X2 = new_array(Rows,Cols),
+  % adjust the values back for presentation
+  foreach(I in 1..Rows, J in 1..Cols)
+     X2[I,J] := cond(X[I,J] >= HoleVal, X[I,J] + 1, X[I,J])
+  end.   
+
+
+
+%
+% time2 + time_out 
+%
+time2f(Goal,Timeout) = [Time, Backtracks,Status]  =>
+    garbage_collect,
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    time_out(Goal,Timeout,Status),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,Time]),
+    Backtracks = Backtracks2 - Backtracks1.
+
+
+
+time2p(Goal,Timeout, Time, Backtracks,Status)  =>
+    garbage_collect,
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    time_out(Goal,Timeout,Status),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,Time]),
+    Backtracks = Backtracks2 - Backtracks1.
+
+

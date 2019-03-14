@@ -1,0 +1,360 @@
+/* 
+
+  Instant insanity puzzle in Picat.
+
+  http://en.wikipedia.org/wiki/Instant_Insanity
+  """
+  The "Instant Insanity" puzzle consists of four cubes with faces colored 
+  with four colors (red, blue, green, and white commonly). The object of the puzzle 
+  is to stack these cubes in a column so that each side (front, back, left, and right) 
+  of the stack shows each of the four colors. The distribution of colors on 
+  each cube is unique.
+  """
+
+  Also see:
+    * Rob's Puzzle Page - Pattern Puzzles
+       http://home.comcast.net/~stegmann/pattern.htm#insanity 
+    * Ivars Petersen: "Averting Instant Insanity" 
+      http://archive.is/3Pp93#selection-877.0-877.30
+
+  This is a pure logic programming implementation, using member/2 to
+  generate the different permutation candidates.
+
+  A cube is represented like this.
+
+     1         back
+   2 3 4   left top right
+     5         front
+     6         bottom
+ 
+
+  The four sides which we consider to be different are:
+      top, back, front, and bottom
+      3    1     5          6
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+import utils_me. % for subsets
+
+main => go.
+
+
+go =>
+  problem(1,C1,C2,C3,C4),
+  insanity(C1,C2,C3,C4,[3,1,5,6]),
+  nl.
+
+go2 =>
+  problem(2,C1,C2,C3,C4),
+  insanity(C1,C2,C3,C4,[1,2,3,4]),
+  nl.
+
+go3 =>
+  problem(3,C1,C2,C3,C4),
+  insanity(C1,C2,C3,C4,[1,2,3,4]),
+  nl.
+
+go4 =>
+  problem(4,C1,C2,C3,C4),
+  insanity(C1,C2,C3,C4,[1,2,3,4]),
+  nl.
+
+go5 =>
+  Subsets = [S:S in all_subsets(4,1..6), distinct(S),sorted(S)],
+  Lens = [],
+  foreach(FrontSide in Subsets)
+     println(frontSide=FrontSide),
+     problem(4,C1,C2,C3,C4),
+     All=findall(_,insanity(C1,C2,C3,C4,FrontSide)),
+     println(num_solutions=All.length),
+     Lens := Lens ++ [[FrontSide,All.length]],
+     nl
+  end,
+  println(lens=Lens),
+  nl.
+
+
+insanity(C1,C2,C3,C4,FrontSides) => 
+
+  N = 6,
+  println(start=[C1,C2,C3,C4]),
+
+  rotation(C1,R1),
+  rotation(C2,R2),
+  rotation(C3,R3),
+  rotation(C4,R4),
+
+  % The front sides that should be different
+  % FrontSides = [3,1,5,6],
+  foreach(I in FrontSides) 
+     different([R1[I],R2[I],R3[I],R4[I]])
+  end,
+
+  Solution = [R1,R2,R3,R4],
+  %% print the different sides
+  foreach(I in 1..N) 
+     println(side=[R1[I],R2[I],R3[I],R4[I]])
+  end,
+
+  println(solution=Solution),
+  foreach(R in Solution)
+     println(r=R),
+     print_cube(R)
+  end,
+  nl,
+
+  % fail, % check for uniqueness
+
+  nl.
+
+
+print_cube(Cube) =>
+  print("   "), println(Cube[1]),
+  printf(" %w %w %w\n", Cube[2],Cube[3],Cube[4]),
+  print("   "), println(Cube[5]),
+  print("   "), println(Cube[6]),
+  nl.
+
+
+%
+% Ensure that all elements in L are different
+%
+different2(L) => 
+  Len = L.length,
+  foreach(I in 1..Len, J in I+1..Len)
+     L[I] != L[J]
+  end.
+
+different(L) => not(select(X,L,R), membchk(X,R)).
+
+%
+% Pick a permutation candidate.
+% Retries via member upon backtracking.
+%
+% Note: Since this is not a planning problem,
+%       we really don't care exactly what permutation
+%       that is used.
+%
+rotation(C,R) =>
+  N = C.length,
+  cube_permutations(Permutations),
+  R = new_list(N),
+  member(Perm, Permutations),
+  foreach(I in 1..N) 
+     R[I] := C[Perm[I]]
+  end.
+
+
+%
+% Generating the 24 different rotations via GAP.
+%
+%     1         back
+%   2 3 4   left top right
+%     5         front
+%     6         bottom
+% 
+% The two main rotations (the generators)
+%     3->1->6->5->3    ("up")
+%     3->2->6->4->3    ("left")
+% 
+% GAP code: 
+% 
+% gap> g := SymmetricGroup(6);
+% Sym( [ 1 .. 6 ] )
+% gap> Size(g);
+% 720
+% gap> f := (1,6,5,3);
+% gap> h := (2,6,4,3);
+% gap> cube := Group([f,h]);
+% gap> Size(cube); 
+% 24
+% gap> List(Elements(cube), x->ListPerm(x,6));
+%
+cube_permutations(Permutations) =>
+ Permutations =
+ [[ 1,2,3,4,5,6 ],[ 1,3,4,6,5,2 ],[ 1,4,6,2,5,3 ],[ 1,6,2,3,5,4 ],[ 2,1,6,5,4,3 ],
+  [ 2,3,1,6,4,5 ],[ 2,5,3,1,4,6 ],[ 2,6,5,3,4,1 ],[ 3,1,2,5,6,4 ],[ 3,2,5,4,6,1 ],
+  [ 3,4,1,2,6,5 ],[ 3,5,4,1,6,2 ],[ 4,1,3,5,2,6 ],[ 4,3,5,6,2,1 ],[ 4,5,6,1,2,3 ],
+  [ 4,6,1,3,2,5 ],[ 5,2,6,4,1,3 ],[ 5,3,2,6,1,4 ],[ 5,4,3,2,1,6 ],[ 5,6,4,3,1,2 ],
+  [ 6,1,4,5,3,2 ],[ 6,2,1,4,3,5 ],[ 6,4,5,2,3,1 ],[ 6,5,2,1,3,4 ]].
+
+
+
+%
+% Cube:
+%      back
+% left top  right
+%      front
+%      bottom
+% 
+%      1
+%    2 3 4
+%      5
+%      6
+% From
+% http://archive.is/3Pp93#selection-877.0-877.30
+% 
+problem(1,C1,C2,C3,C4) =>
+   C1 = [
+           g,
+         r,b,r,
+           y,
+           g
+        ],
+   C2 = [ 
+           r,
+         y,b,y,
+           y,
+           g 
+        ],
+   C3 = [
+           g,
+         y,b,b,
+           y,
+           r
+        ],
+   C4 = [
+           r,
+         b,b,g,
+           y,
+           r 
+        ].
+
+
+% Problem from 
+% https://groups.google.com/forum/#!search/%22instant$20insanity%22/rec.puzzles/m0GQOZqbzj0/zivbss1HOJ4J
+% """
+%             Top  Bottom   Front   Back   Left   Right
+
+% cube #1:    Red   White    Red    Blue   Green  White
+% cube #2:   Green   Red    White   Blue   Green  White
+% cube #3:    Blue  White    Blue   Red    Green  Green
+% cube #4:    Blue   Red    White  Green    Red   White 
+% """
+%      back
+% left top  right
+%      front
+%      bottom
+% 
+%      1
+%    2 3 4
+%      5
+%      6
+%
+problem(2,C1,C2,C3,C4) =>
+   C1 = [
+            b,
+          g,r,w,
+            r,
+            w
+        ],
+   C2 = [ 
+            b,
+          g,g,w,
+            w,
+            r
+        ],
+   C3 = [
+            r,
+          g,b,g,
+            b,
+            w
+        ],
+   C4 = [
+            g,
+          r,b,w,
+            w,
+            r
+        ].
+
+
+% From
+% http://home.comcast.net/~stegmann/pattern.htm#insanity
+% """
+% This vintage 1967 Instant Insanity clone by
+% "A to Z Ideas Inc." of California is called Psykonosis:
+% """
+%      back
+% left top  right
+%      front
+%      bottom
+% 
+%      1
+%    2 3 4
+%      5
+%      6
+%
+problem(3,C1,C2,C3,C4) =>
+   C1 = [
+            g,
+          r,b,g,
+            g,
+            w
+        ],
+   C2 = [ 
+            r,
+          b,g,w,
+            b,
+            r
+        ],
+   C3 = [
+            w,
+          w,r,r,
+            b,
+            g
+        ],
+   C4 = [
+            g,
+          g,w,b,
+            w,
+            r
+        ].
+
+
+
+% Another problem instance from 
+% http://home.comcast.net/~stegmann/pattern.htm#insanity
+% where the cubes are in the order of the solution 
+% of the original(?) Instant Insanity problem.
+% 
+%      back
+% left top  right
+%      front
+%      bottom
+% 
+%      1
+%    2 3 4
+%      5
+%      6
+%
+problem(4,C1,C2,C3,C4) =>
+   C1 = [
+            b,
+          g,b,g,
+            r,
+            w
+        ],
+   C2 = [ 
+            r,
+          b,w,w,
+            g,
+            g
+        ],
+   C3 = [
+            g,
+          w,r,r,
+            w,
+            b        ],
+   C4 = [
+            w,
+          r,g,r,
+            b,
+            r
+        ].

@@ -1,0 +1,72 @@
+/* 
+
+  Weekend scheduling problem in Picat.
+
+  From Erwin Kalvelagen
+  "Back to basics: a very simple scheduling problem "
+  http://yetanothermathprogrammingconsultant.blogspot.se/2016/08/back-to-basics-very-simple-scheduling.html
+  """
+  In this post an extremely simple scheduling problem is proposed. But as we shall see, there 
+  are still a few interesting things to say about this. There are n=9 persons, two of which need 
+  to be available on-call each weekend. We need to design a schedule such that:
+  
+  If a pair (i,j) covers a weekend, then this same pair can not cover another weekend during 
+  the planning horizon. Persons i and j can form other pairs and in that configuration cover 
+  other weekends.
+  
+  If a person i covers a weekend t he/she is off the next two weekends.
+
+  With n=9 persons we have N=36 possible pairs. The number is the same as the number of 
+  strictly sub-diagonal elements in a n×n matrix. This can be derived as 
+  N=(n−1)+(n−2)+…+1+0=12n(n−1). The number N=36 also dictates our planning window: if we have 
+  more than 36 weeks we need to recycle pairs.
+  """
+  
+  Note: This model just assign the n*(n-1) div 2 pairs, i.e. don't handle recycling. 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  nolog,
+  garbage_collect(200_000_000),
+  N = 18, % number of peope
+  M = N*(N-1) div 2, % number of pairs
+  
+  % decision variables
+  X = new_array(M,2), % selected pair for the T'th weekend
+  X :: 1..N,
+
+  % if a pair (i,j) convers a weekend, then this same pair can 
+  % not cover another weekend during the planning horizon
+  all_different($[X[T,1]*(N-1) + X[T,2] : T in 1..M]),
+
+  foreach(T in 1..M) 
+
+    % symmetry breaking
+    X[T,1] #< X[T,2],
+
+    % if a person covers time T then he/she is off the next two weekends
+    foreach(I in 1..2, J in 1..2) 
+      if T < M   then X[T+1,I] #!= X[T,J] end,
+      if T < M-1 then X[T+2,I] #!= X[T,J] end
+    end
+
+  end,
+  
+  println(solve),
+  solve($[ffc,split],X),
+
+  foreach(T in 1..M)
+    printf("weekend %2d: (%2d,%2d)\n",T, X[T,1],X[T,2])
+  end,
+
+  nl.
+

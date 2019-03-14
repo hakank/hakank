@@ -1,0 +1,99 @@
+/* 
+
+  Lazy bureaucrat problem in Picat.
+
+  This problem is mentioned in 
+  "Minimizing Makespan for the Lazy Bureaucrat Problem"
+
+  From the first page (Dilbert is referred in the Arkin article)
+  """
+  Arkin et al. motivate the study of this problem with two examples. One
+  supposes an office worker who wants to do as little work as possible 
+  while maintaining a busy appearance. For example, suppose he is allowed 
+  to go home at 5:00 p.m. At 3:00 p.m., he has two jobs available, which 
+  will take 15 minutes and one hour, respectively, to complete. He may 
+  work on either, but he must work on one. At 3:15 p.m. he has a personnel 
+  meeting which he can skip if he is otherwise busy. He could do the 
+  15-minute job, go to the meeting, then finish the hour-long job by 
+  5:00. However, he can do less work by doing the hour-long
+  job first, which will excuse him from the meeting, followed by the 15-minute
+  job which he completes at 4:15 p.m. The other is the real-life example 
+  shown in the movie Schindler's List[3], in which the factory workers 
+  needed to stay busy without making any real contribution to the German 
+  war effort.
+  """
+
+  Note: The object in this model is to find a schedule
+  that is sum(Ds) long, the sum of the durations.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import sat.
+
+
+main => go.
+
+
+go =>
+  nolog,
+  Ds = [16, 6,13, 7, 5,18, 4], % duration of the tasks
+  println(sumDs=sum(Ds)),
+  N = Ds.len,
+
+  % resources
+  % Rs = [ 2, 9, 3, 7,10, 1,11], % resources
+  % Rs = [1 : _ in 1..N], % resources
+  Rs = [ I : I in 1..N], % more interesting
+
+  MaxTime = 150,
+  
+  % decision variables
+  Capacity :: 0..100,
+  
+  Ss = new_list(N), % start times
+  Ss :: 1..MaxTime,
+  Es = new_list(N), % end times
+  Es :: 1..MaxTime,
+
+  End #= max(Es),
+  % End #= sum(Ds),
+  println(end=End),
+
+  % constraints
+  cumulative(Ss, Ds, Rs, Capacity),
+
+  foreach(T in 1..N) 
+    Es[T] #= Ss[T] + Ds[T] -1
+  end,
+
+
+
+  % ensure that all time slots from 1..End are busy
+  % there is a task at time 1
+  min(Ss) #= 1,
+  foreach(T in 1..MaxTime)
+     T #<= End #=> sum([T #>= Ss[T2] #/\ T #<= Es[T2] : T2 in 1..N]) #> 0  
+  end,
+
+  Vars = Es ++ Ss ++ [Capacity],
+  solve($[ffc,split,max(End),report(printf("End: %d Capacity: %d\n", End, Capacity))], Vars),
+  % solve($[ffd,split,minimize(Capacity),report(printf("End: %d Capacity: %d\n", End, Capacity))], Vars),
+
+  println(ss=Ss),
+  println(ds=Ds),
+  println(es=Es),
+  println(rs=Rs),
+  println(end=End),
+  println(capacity=Capacity),
+  
+  foreach(T in 1..N)
+    printf("%2d (%2d) %2d\n", Ss[T], Ds[T], Es[T])
+  end,
+
+  nl.
+

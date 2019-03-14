@@ -1,0 +1,150 @@
+/* 
+
+  Ramsey's theorem (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Ramsey%27s_theorem
+  """
+  The task is to find a graph with 17 Nodes such that any 4 Nodes are neither 
+  totally connected nor totally unconnected, so demonstrating Ramsey's theorem. 
+  A specially-nominated solution may be used, but if so it _must_ be checked to 
+  see if if there are any sub-graphs that are totally connected or totally 
+  unconnected. 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+
+import sat. % 2.0s (first solution), checking existing solution (go3/0): 0.08s
+% import cp. % > 25s (first solution), checking existing solution (go3/0): 0.08s
+% import mip.
+
+main => go.
+
+
+go ?=>
+  nolog,
+  Map = get_global_map(),
+  Map.put(count,0),
+  Nodes=17,
+  ramsey(Nodes,_, _,_Arc),
+  Map.put(count, Map.get(count)+1),
+  println(count=Map.get(count)),
+  % fail, % generate all solutions (with symmetry breaking using lex2/1)
+
+  nl.
+
+go => 
+  println(count=get_global_map().get(count)).
+
+
+% For the CP solver, check different strategies.
+go2 =>
+
+  Variable = [backward,constr,degree,ff,ffc,forward,inout,leftmost,max,min],
+  Value    = [down,updown,split,reverse_split],
+  Nodes=17,
+  Timeout = 10000,
+  foreach(Var in Variable, Val in Value) 
+    println([var=Var,val=Val]),
+    time_out(ramsey(Nodes,Var,Val,_Arc),Timeout,Status),
+    println(status=Status),
+    nl
+  end,
+
+  nl.
+
+
+go3 => 
+  Arc = 
+{
+{0,1,1,0,1,0,0,0,1,1,0,0,0,1,0,1,1},
+{1,0,1,1,0,1,0,0,0,1,1,0,0,0,1,0,1},
+{1,1,0,1,1,0,1,0,0,0,1,1,0,0,0,1,0},
+{0,1,1,0,1,1,0,1,0,0,0,1,1,0,0,0,1},
+{1,0,1,1,0,1,1,0,1,0,0,0,1,1,0,0,0},
+{0,1,0,1,1,0,1,1,0,1,0,0,0,1,1,0,0},
+{0,0,1,0,1,1,0,1,1,0,1,0,0,0,1,1,0},
+{0,0,0,1,0,1,1,0,1,1,0,1,0,0,0,1,1},
+{1,0,0,0,1,0,1,1,0,1,1,0,1,0,0,0,1},
+{1,1,0,0,0,1,0,1,1,0,1,1,0,1,0,0,0},
+{0,1,1,0,0,0,1,0,1,1,0,1,1,0,1,0,0},
+{0,0,1,1,0,0,0,1,0,1,1,0,1,1,0,1,0},
+{0,0,0,1,1,0,0,0,1,0,1,1,0,1,1,0,1},
+{1,0,0,0,1,1,0,0,0,1,0,1,1,0,1,1,0},
+{0,1,0,0,0,1,1,0,0,0,1,0,1,1,0,1,1},
+{1,0,1,0,0,0,1,1,0,0,0,1,0,1,1,0,1},
+{1,1,0,1,0,0,0,1,1,0,0,0,1,0,1,1,0}
+},
+  Nodes=17,
+  ramsey(Nodes,_, _,Arc),
+  println(ok),
+  nl.
+
+
+
+
+
+% From the MathProg solution
+% """
+% /*Ramsey 4 4 17
+% 
+%   This model finds a graph with 17 Nodes such that no clique of 4 Nodes is either fully
+%   connected, nor fully disconnected
+% 
+%   Nigel_Galloway
+%   January 18th., 2012
+% */
+% param Nodes := 17;
+% var Arc{1..Nodes, 1..Nodes}, binary;
+%
+% clique{a in 1..(Nodes-3), b in (a+1)..(Nodes-2), c in (b+1)..(Nodes-1), d in (c+1)..Nodes} : 
+%          1 <= Arc[a,b] + Arc[a,c] + Arc[a,d] + Arc[b,c] + Arc[b,d] + Arc[c,d] <= 5;
+%
+% end;
+% """
+ramsey(Nodes, Var, Val, Arc) =>
+
+  % If Arc is not a prefilled matrix
+  if var(Arc) then
+     Arc = new_array(Nodes,Nodes),
+     Arc :: 0..1
+  end,
+  ArcVars = Arc.vars,
+
+  Ts = [],
+  foreach(A in 1..Nodes-3, B in A+1..Nodes-2, C in B+1..Nodes-1, D in C+1..Nodes)
+    T :: 1..5,
+    T #= Arc[A,B] + Arc[A,C] + Arc[A,D] + Arc[B,C] + Arc[B,D] + Arc[C,D],
+    Ts := Ts ++ [T]
+  end,
+
+  % Z #= sum(ArcVars),
+  % println(z=Z),
+
+  % Symmetry breaking
+  lex2(Arc),
+
+  Vars = Ts ++ ArcVars,
+  println(solve),
+  if var(Var) ; var(Val) then
+    solve($[min,up],Vars)
+  else 
+    solve($[Var,Val],Vars)
+  end,
+
+  foreach(Row in Arc)
+    println(Row.to_list())
+  end,
+
+  nl.
+
+
+lex2(X) =>
+   Len = X[1].length,
+   foreach(I in 2..X.length) 
+      lex_lt([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   end.

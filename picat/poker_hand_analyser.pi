@@ -1,0 +1,271 @@
+/* 
+
+  Poker Hand Analyser (Rosetta Code) in Picat.
+
+  http://rosettacode.org/wiki/Poker_hand_analyser
+  """
+  Create a program to parse a single 5 card poker hand and rank it 
+  according to this list of poker hands.
+
+  A poker hand is specified as a space separated list of 5 playing cards. 
+  Each input card has two characters indicating face and suit. For example 2d (two of diamonds).
+
+   - Faces are: a, 2, 3, 4, 5, 6, 7, 8, 9, 10, j, q, k 
+
+   -  Suits are: h (hearts), d (diamonds), c (clubs), and s (spades), 
+      or alternatively the unicode card-suit characters: ♥ ♦ ♣ ♠ 
+
+  Duplicate cards are illegal.
+
+  The program should analyse a single hand and produce one of the following outputs:
+
+    straight-flush
+    four-of-a-kind
+    full-house
+    flush
+    straight
+    three-of-a-kind
+    two-pair
+    one-pair
+    high-card
+    invalid
+
+   Examples:
+
+   2♥ 2♦ 2♣ k♣ q♦: three-of-a-kind
+   2♥ 5♥ 7♦ 8♣ 9♠: high-card
+   a♥ 2♦ 3♣ 4♣ 5♦: straight
+   2♥ 3♥ 2♦ 3♣ 3♦: full-house
+   2♥ 7♥ 2♦ 3♣ 3♦: two-pair
+   2♥ 7♥ 7♦ 7♣ 7♠: four-of-a-kind 
+   10♥ j♥ q♥ k♥ a♥: straight-flush
+   4♥ 4♠ k♠ 5♦ 10♠: one-pair
+   q♣ 10♣ 7♣ 6♣ 4♣: flush
+
+  The programs output for the above examples should be displayed here on this page.
+
+  For extra credit:
+
+   * use the playing card characters introduced with Unicode 6.0 (U+1F0A1 - U+1F0DE).
+    allow two jokers 
+
+    - use the symbol joker
+    - duplicates would be allowed (for jokers only)
+    - five-of-a-kind would then be the highest hand 
+
+  Extra Credit 2. Examples:
+
+   joker  2♦  2♠  k♠  q♦: three-of-a-kind
+   joker  5♥  7♦  8♠  9♦: straight
+   joker  2♦  3♠  4♠  5♠: straight
+   joker  3♥  2♦  3♠  3♦: four-of-a-kind
+   joker  7♥  2♦  3♠  3♦: three-of-a-kind
+   joker  7♥  7♦  7♠  7♣: five-of-a-kind
+   joker  j♥  q♥  k♥  A♥: straight-flush
+   joker  4♣  k♣  5♦ 10♠: one-pair
+   joker  k♣  7♣  6♣  4♣: flush
+   joker  2♦  joker  4♠  5♠: straight
+   joker  Q♦  joker  A♠ 10♠: straight
+   joker  Q♦  joker  A♦ 10♦: straight-flush
+   joker  2♦  2♠  joker  q♦: four-of-a-kind
+
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go =>
+  Hands = [
+            [[2,h], [7,h], [2,d], [3,c], [3,d]],  % two-pair
+            [[2,h], [5,h], [7,d], [8,c], [9,s]],  % high-card
+            [[a,h], [2,d], [3,c], [4,c], [5,d]],  % straight
+            [[2,h], [3,h], [2,d], [3,c], [3,d]],  % full-house
+            [[2,h], [7,h], [2,d], [3,c], [3,d]],  % two-pair
+            [[2,h], [7,h], [7,d], [7,c], [7,s]],  % four-of-a-kind
+            [[10,h],[j,h], [q,h], [k,h], [a,h]],  % straight-flush
+            [[4,h], [4,s], [k,s], [5,d], [10,s]], % one-pair
+            [[q,c], [10,c],[7,c], [6,c], [4,c]],  % flush
+            [[q,c], [q,d], [q,s], [6,c], [4,c]],  % three-of-a-kind
+
+            [[q,c], [10,c], [7,c], [7,c], [4,c]], % invalid (duplicates)
+            [[q,c], [10,c], [7,c], [7,d]]         % invalid (too short)
+
+          ],
+  foreach(Hand in Hands) 
+    print_hand(Hand),
+    analyse(Hand, H),
+    println(hand=H),
+    nl
+  end,
+  nl.
+
+go2 =>
+  _ = random2(),
+  Hand = random_hand(5),
+  print_hand(Hand),
+  analyse(Hand, H),
+  println(hand=H),
+  nl.
+
+% Check a lot of hands:
+% 10000 hands (20.3s)
+%    [full_house=15,straight=30,three_of_a_kind=208,two_pair=502,flush=19,one_pair=4148,high_card=5081,four_of_a_kind=5]
+% 
+go3 => 
+  Values = new_map(),
+  _ = random2(),
+  foreach(_I in 1..10000) 
+    Hand = random_hand(5),
+    analyse(Hand, H),
+    Values.put(H,Values.get(H,1)+1)
+  end,
+  hand_order(HandOrder),
+  println([K=Values.get(K,0) :  K in HandOrder]),
+  nl.
+
+go4 => 
+  println("{"),
+  _ = random2(),
+  foreach(_I in 1..10000) 
+    Hand = random_hand(5),
+    analyse(Hand, H),
+    Hand2 = {[to_fstring("%w",HHH) : HHH in HH].join('') : HH in Hand},
+    HH = to_fstring("%w",H).delete_all('_'),
+    printf("%w->%w,\n",Hand2,HH)
+  end,
+  println("}\n"),
+  nl.
+
+  
+print_hand(Hand) =>
+  println([ F.to_string() ++ S.to_string() : [F,S] in Hand]).
+
+
+% Get one element of list L
+oneof(L) = L[1+random() mod L.length].
+
+
+random_hand(N) = Hand =>
+   faces(Faces),
+   suites(Suites),
+   M = new_map(),
+   while (M.keys().length < N) 
+      M.put([oneof(Faces),oneof(Suites)],1)
+   end,
+   Hand = [C : C=_ in M].sort().
+
+faces(Faces) => Faces = [a, 2, 3, 4, 5, 6, 7, 8, 9, 10, j, q, k].
+faces_order1(Order1) => 
+   Order1 = new_map([a=1, 2=2, 3=3, 4=4, 5=5, 6=6, 7=7, 8=8, 9=9, 10=10, j=11, q=12, k=13]).
+faces_order2(Order2) => 
+   Order2 = new_map([2=2, 3=3, 4=4, 5=5, 6=6, 7=7, 8=8, 9=9, 10=10, j=11, q=12, k=13, a=14]).
+
+suites(Suites) => Suites = [h,d,c,s].
+
+hand_order(HandOrder) => 
+  HandOrder = [straight_flush,
+               four_of_a_kind,
+               full_house,
+               flush,
+               straight,
+               three_of_a_kind,
+               two_pair,
+               one_pair,
+               high_card,
+               invalid].
+
+
+% for the straight
+in_order(List) =>
+  foreach(I in 2..List.length)
+    List[I] = List[I-1] + 1
+  end.
+
+% check for validity first
+analyse(Hand,Value) ?=> 
+  (
+    Hand.length == 5,
+    faces(Faces),
+    foreach([F,_] in Hand) 
+      member(F,Faces)
+    end,
+    suites(Suites),
+    foreach([_,S] in Hand) 
+      member(S,Suites)
+    end,
+    Hand == Hand.remove_dups(),
+    analyse1(Hand,Value)
+   ;
+    Value = invalid
+  ).
+
+analyse1(Hand,Value) ?=>
+  permutation(Hand,Hand1),
+  Hand1 = [ [_F1,S], [_F2,S], [_F3,S], [_F4,S], [_F5,S] ],
+  (
+    faces_order1(Order1),
+    in_order([Order1.get(F) : [F,S1] in  Hand1])
+    ; 
+    faces_order2(Order2),
+    in_order([Order2.get(F) : [F,S1] in  Hand1]),
+    println("Royal Straight Flush!")
+  ),
+  Value=straight_flush.
+
+
+analyse1(Hand,Value) ?=> 
+  faces(Faces),
+  member(A,Faces),
+  [1 : [F,_S] in Hand, F = A].length == 4,
+  Value=four_of_a_kind.
+
+analyse1(Hand,Value) ?=> 
+  permutation(Hand,Hand1),
+  Hand1 = [ [F1,_S1], [F1,_S2], [F2,_S3], [F2,_S4], [F2,_S5] ],
+  Value = full_house.
+
+analyse1(Hand,Value) ?=> 
+  permutation(Hand,Hand1),
+  Hand1 = [ [_,S], [_,S], [_,S], [_,S], [_,S] ],
+  Value = flush.
+
+analyse1(Hand,Value) ?=> 
+  permutation(Hand,Hand1),
+  (
+    faces_order1(Order1),
+    in_order([Order1.get(F) : [F,_S] in  Hand1])
+    ; 
+    faces_order2(Order2),
+    in_order([Order2.get(F) : [F,_S] in  Hand1])
+
+  ),
+  Value = straight.
+
+analyse1(Hand,Value) ?=>
+  faces(Faces),
+  member(A,Faces),
+  [1 : [F,_S] in Hand, F = A].length == 3,
+  Value = three_of_a_kind.
+
+analyse1(Hand,Value) ?=> 
+  permutation(Hand,Hand1),
+  Hand1 = [ [F1,_S1], [F1,_S2], [F2,_S3], [F2,_S4], [_F3,_S5] ],
+  % F3 != F1, F3 != F2,
+  Value = two_pair.
+
+analyse1(Hand,Value) ?=> 
+  faces(Faces),
+  member(A,Faces),
+  [1 : [F,_S] in Hand, F = A].length == 2,
+  Value = one_pair.
+
+analyse1(_Hand,Value) => 
+  Value = high_card.

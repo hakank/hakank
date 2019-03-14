@@ -1,0 +1,113 @@
+/* 
+
+  Planning problem in Picat.
+
+  From Ivan Bratko, Prolog Programming for Artifical Intelligence, 4th edition,
+  Page 90ff (the Prolog code is on page 94) 
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => 
+  go.
+
+
+% depth-first
+go =>
+  plan($state(door,corner2,floor(middle)), $state(_,_,in_basket), Plan),
+  println(plan=Plan),
+  nl.
+
+% breadth-first
+% go(door,middle),pickup,go(middle,corner2),drop]
+% [go(door,corner2),push(corner2,middle),pickup,drop]
+% [go(door,middle),pickup,go(middle,corner2),drop,push(corner2,_2898)]
+% [go(door,middle),pickup,go(middle,corner2),drop,go(corner2,_2898)]
+% [go(door,middle),pickup,go(middle,corner2),push(corner2,_2898),drop]
+% [go(door,middle),pickup,go(middle,_2918),go(_2918,corner2),drop]
+% [go(door,corner2),push(corner2,middle),pickup,drop,push(middle,_2898)]
+% ....
+go2 => 
+  S0 = $state(door,corner2,floor(middle)),
+  append(Plan,_,_),  
+  plan(S0, $state(_,_,in_basket), Plan),
+  println(Plan),
+  fail,
+  nl.
+
+% ensure that drop is the last action
+% [go(door,middle),pickup,go(middle,corner2),drop]
+% [go(door,corner2),push(corner2,middle),pickup,drop]
+% [go(door,middle),pickup,go(middle,corner2),push(corner2,_28e8),drop]
+% [go(door,middle),pickup,go(middle,_2968),go(_2968,corner2),drop]
+% [go(door,corner2),push(corner2,middle),pickup,push(middle,_28e8),drop]
+% [go(door,corner2),push(corner2,middle),pickup,go(middle,middle),drop]
+% [go(door,corner2),push(corner2,_2948),push(_2948,middle),pickup,drop]
+% [go(door,corner2),push(corner2,middle),go(middle,middle),pickup,drop]
+% [go(door,_2910),go(_2910,middle),pickup,go(middle,corner2),drop]
+% [go(door,_2910),go(_2910,corner2),push(corner2,middle),pickup,drop]
+% [go(door,middle),pickup,go(middle,corner2),push(corner2,_29d0),push(_29d0,_2918),drop]
+% [go(door,middle),pickup,go(middle,corner2),push(corner2,_2918),go(_2918,_2918),drop]
+% [go(door,middle),pickup,go(middle,_2998),go(_2998,corner2),push(corner2,_2918),drop]
+% [go(door,middle),pickup,go(middle,_2998),go(_2998,_29d0),go(_29d0,corner2),drop]
+% ....
+go3 => 
+  S0 = $state(door,corner2,floor(middle)),
+  append(Plan,_,_),
+  append(_,[drop],Plan),
+  plan(S0, $state(_,_,in_basket), Plan),
+  println(Plan),
+  fail,
+  nl.
+  
+
+
+% """
+% State of the robot'2s world = state( RobotLocation, BasketLocation, RubbishLocation)
+% action( State, Action, NewState): Action in State produces NewState
+% We assume robot never drops rubbish to floor, and never pushes rubbish around
+% """
+
+action( State1,               % Robot and rubbish both at Pos1
+        Action,               % Pick up rubbish from floor
+        State2) ?=>           % Rubbish now held by robot
+        State1 = $state( Pos1, Pos2, floor(Pos1)),
+        Action = pickup,
+        State2 = $state( Pos1, Pos2, held).
+
+action( State1,                 % Robot and basket both at Pos
+        Action,                                   % Drop rubbish to basket
+        State2) ?=>        % Rubbish now in basket                               
+        State1 = $state( Pos, Pos, held),
+        Action = drop,
+        State2 = $state( Pos, Pos, in_basket).
+        
+
+action( State1,                  % Robot and basket both at Pos
+        Action,                     % Push basket from Pos to NewPos
+        State2) ?=>        % Robot and basket now at NewPos
+        State1 = $state( Pos, Pos, Loc),
+        Action = $push( Pos, NewPos),
+        State2 = $state(NewPos, NewPos, Loc).
+        
+action( State1,
+        Action,                     % Go from Pos1 to NewPos1
+        State2) => 
+        State1 = $state( Pos1, Pos2, Loc),
+        Action = $go( Pos1, NewPos1),
+        State2 = $state( NewPos1, Pos2, Loc).
+       
+
+% plan( StartState, FinalState, Plan)
+plan(State1, State2, Plan) ?=> 
+  State1 = State2, Plan = []. % To achieve State from State itself, do nothing
+
+plan( State1, GoalState, Rest)  =>
+  Rest = [Action1|RestOfPlan],
+  action( State1, Action1, State2),             % Make first action resulting in State2
+  plan( State2, GoalState, RestOfPlan).         % Find rest of plan
+
+

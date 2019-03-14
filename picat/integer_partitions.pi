@@ -1,0 +1,139 @@
+/* 
+
+  Integer partitions in Picat.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+go =>
+  garbage_collect(200_000_000),
+  N = 50,
+  All = integer_partition(N),
+  foreach(A in All) println(A) end,
+  println(len=All.len),
+  nl.
+
+go1 =>
+  garbage_collect(200_000_000),
+  N = 50,
+  All = sums2(N),
+  % println(N=All),
+  println(len=All.len),
+  nl.
+
+go2 ?=>
+  member(N,1..40),
+
+  All = integer_partition(N),
+  % println(N=All),
+  printf("%d,%d\n",N,All.len),
+
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+go3 =>
+  N = 40,
+  All = sums2(N),
+  println(all=All),
+  println(len=All.len),
+  nl.
+
+go4 =>
+  N = 40,
+  All = sums3(N),
+  println(all=All),
+  println(len=All.len),
+  nl.
+
+go5 => 
+  foreach(N in 500..500)
+    time2(C = integer_partition_count(N)),
+    println(N=C)
+  end,
+  nl.
+
+go6 => 
+  N = 50,
+  time2(C = integer_partition_count(N)),
+  println(N=C),
+  nl.
+
+go7 ?=>
+  Map = get_global_map(),
+  Map.put(count,0),
+  N=50,
+  integer_partition(N,X),
+  Map.put(count,Map.get(count)+1),
+  % println(X),
+  fail,
+  nl.
+
+go7 => 
+  println(get_global_map().get(count)),
+  nl.
+
+
+integer_partition(N) = find_all(X,integer_partition(N,X)).
+integer_partition(N,X) =>
+  member(Len,1..N),
+  X = new_list(Len),
+  X :: 1..N,
+  increasing(X),
+  sum(X) #= N,
+  solve($[split],X).
+
+% integer_partition_count(N) = count_all(integer_partition(N,_X)).
+integer_partition_count(N) = pc(N).
+
+%
+% From http://oeis.org/A000041
+% (origina Haskell code):
+% a000041 = p 1 where
+%    p _ 0 = 1
+%    p k m = if m < k then 0 else p k (m - k) + p (k + 1) m 
+%
+table
+pc(_,0) = 1.
+pc(1,1) = 1.
+pc(K,M) = cond(M < K, 0, pc(K, M-K) + pc(K + 1,M)).
+
+pc(N) = pc(1,N).
+
+
+% Solution from Neng-Fa:
+% https://groups.google.com/forum/#!topic/picat-lang/A2Yhk3qUgYI
+sums2(N) = Res =>
+    Lists = [List : I in 1..N, List = new_list(I), List :: 1..N, decreasing(List), sum(List) #= N],
+    Sols = [solve_all([ffd],List) : List in Lists],
+    % println(sols=Sols.sort()),
+    R = [],
+    foreach (Sol in Sols)
+        R := Sol++R
+    end,
+    Res = R.
+
+sums3(N) = [solve_all(List) : I in 1..N, List = new_list(I), List :: 1..N, decreasing(List), sum(List) #= N].flatten1().
+
+flatten1(L) = Flatten =>
+   Flatten1 = [],
+   foreach(LL in L) 
+      Flatten1 := Flatten1 ++ LL
+   end,
+   Flatten2 = remove_dups(Flatten1),
+   Flatten = Flatten2.
+
+

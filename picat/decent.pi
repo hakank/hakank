@@ -1,0 +1,89 @@
+/* 
+
+  Decentralization problem in Picat.
+
+  From H. Paul Williams "Model Building in Mathematical Programming", 4th edition
+  Decentralization, sections 12.10, 13.10 and 14.10.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+main => go.
+
+
+go =>
+  NDepts = 5, % departments
+  NCities = 3, % cities: Bristol, Brighton, London
+  NCitiesm1 = 2, % cities: Bristol, Brighton
+
+  % benefits (£k)
+  Benefit = [[10,10, 0],
+             [15,20, 0],
+             [10,15, 0],
+             [20,15, 0], 
+             [ 5,15, 0]],
+
+  % communication costs/unit(£)
+  Dist = [[5,14,13], 
+          [14,5, 9], 
+          [13,9,10]],
+
+  % quantities of communication (k units)
+  Comm = 
+        [[0.0,0.0,1.0,1.5,0.0],
+         [0.0,0.0,1.4,1.2,0.0],
+         [0.0,0.0,0.0,0.0,2.0],
+         [0.0,0.0,0.0,0.0,0.7],
+         [0.0,0.0,0.0,0.0,0.0]
+       ],
+
+       
+  D = new_array(NDepts,NCities),
+  D :: 0..1,
+
+  G = new_array(NDepts,NCities,NDepts,NCities),
+  G :: 0..1,
+
+  TCost :: 0.0..1000.0,
+  TCost #=  sum([Benefit[I,J]*D[I,J] : I in 1..NDepts, J in 1..NCitiesm1]) -
+            sum([Comm[I,K]*Dist[J,L]*G[I,J,K,L] : 
+                      I in 1..NDepts, J in 1..NCities, K in 1..NDepts, L in 1..NCities, K > I]),
+
+
+  % TCost #>= 0.0,
+
+  % each dept i located somewhere  	  	
+  foreach(I in 1..NDepts) 
+      sum([D[I,J] : J in 1..NCities]) #= 1
+  end,
+
+  % at most 3 depts in each city
+  foreach(J in 1..NCities) 
+    sum([D[I,J] : I in 1..NDepts]) #<= 3
+  end,
+
+  % logical relations
+  foreach(I in 1..NDepts, J in 1..NCities, K in 1..NDepts, L in 1..NCities, K > I)
+     G[I,J,K,L] - D[I,J] #<= 0,
+     G[I,J,K,L] - D[K,L] #<= 0,
+     D[I,J] + D[K,L] - G[I,J,K,L] #<= 1,
+     G[I,J,K,L] #<= 1
+  end,
+
+  foreach(I in 1..NDepts, J in 1..NCities) 
+     D[I,J] #<= 1
+  end,
+
+  solve($[max(TCost)], D ++ G),   
+
+  println(tcost=TCost),
+  println("D:"),
+  foreach(R in D) println(R) end,
+
+  nl.
+

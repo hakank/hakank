@@ -1,0 +1,296 @@
+/* 
+
+  Pentagonal solitaire puzzle in Picat.
+
+  Imre Polik (SAS): "How to solve puzzles? - Peg solitaire with optimization"
+  http://blogs.sas.com/content/operations/2015/03/11/how-to-solve-puzzles-peg-solitaire-with-optimization/
+  """
+  A friend of mine developed a different version, played on the following pentagonal board (see his blog 
+  post in Hungarian here):
+
+
+  The goal is the same: initially the board is full and only the middle cell is empty. You can jump over one 
+  peg, land on the immediately following cell, and remove the peg you jumped over. The goal is to eliminate 
+  all but one peg, with the last peg ending up in the middle.
+
+  """
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+% CP version
+go =>
+  puzzle(1,_N,NumMoves,X,Y),
+  foreach(Row in X) println(Row) end,
+
+  println("Y:"),
+    foreach(Row in Y) 
+     foreach(J in 1..15)
+       printf("%2d ", Row[J]) 
+     end,
+     nl
+  end,
+
+  foreach(Move in 1..NumMoves)
+    if Move > 1 then
+      printf("Move from %d over %d to %d\n",X[Move-1,1],X[Move-1,2],X[Move-1,3])
+    end
+    % print_board([Y[Move,J] : J in 1..N]),
+    % nl
+  end,
+  
+  % fail,
+  nl.
+
+
+% Logic programming version
+go2 =>
+  puzzle(1,_N,NumMoves,X,Y),
+  
+  println("X:"),
+  foreach(Row in X) println(Row) end,
+
+  println("Y:"),
+    foreach(Row in Y) 
+     foreach(J in 1..15)
+       printf("%2d ", Row[J]) 
+     end,
+     nl
+  end,
+
+  foreach(Move in 1..NumMoves)
+    if Move > 1 then
+      printf("Move from %d over %d to %d\n",X[Move-1,1],X[Move-1,2],X[Move-1,3])
+    end
+    % print_board([Y[Move,J] : J in 1..N]),
+    % nl
+  end,
+  
+  % fail,
+  nl.
+
+
+
+% All possible moves
+go3 => 
+  Moves1 = findall([[From,Over,To],[To,Over,From]],move(From,Over,To)).flatten1().sort_remove_dups(),
+  println(moves1=Moves1),
+  M = Moves1.flatten().remove_dups(),
+  println(m=M),
+  Map = new_map([E=I : {E,I} in zip(M,1..M.len)]),
+  println(map=Map),
+  Moves = [[Map.get(From),Map.get(Over),Map.get(To)] :  [From,Over,To] in Moves1],
+  println('Possible moves:'=Moves),
+  println('Moves from position I:'),
+  foreach(I in sort(Map.values()))
+    println(I=sort([[Over,To ] : [From,Over,To] in Moves, From=I]) )
+  end,
+  nl.   
+
+
+print_board(Board) =>
+   println(Board).
+
+
+get_all(Start) ?=> 
+   M = get_global_map(),
+   puzzle2(Start,_N,_NumMoves,_X,_Y),
+   M.put(count,M.get(count)+1),   
+   fail.
+
+get_all(_) =>
+  println(count=get_global_map().get(count)).
+
+flatten1(L) = Flatten =>
+   Flatten1 = [],
+   foreach(LL in L) 
+      Flatten1 := Flatten1 ++ LL
+   end,
+   Flatten2 = remove_dups(Flatten1),
+   Flatten = Flatten2.
+
+
+
+
+%
+% CP approach
+%
+puzzle(Empty,N, NumMoves,X,Y) =>
+  println($puzzle(Empty)),
+  N = 15,
+
+  % Peg 1 can move over 2 and end at 4, etc
+  % for table_in
+  moves(Moves),
+  ValidMoves = [],
+  foreach(From in 1..N) 
+    foreach([Over,To] in Moves[From])
+       ValidMoves := ValidMoves ++ [{From,Over,To}] % ++ [{To,Over,From}]
+    end
+  end,
+
+  % ValidMoves := ValidMoves.remove_dups(),
+
+  NumMoves = N-1,
+
+  % which move to make
+  X = new_array(NumMoves-1,3),
+  X :: 1..N,
+
+  % The board at move Move
+  Y = new_array(NumMoves,N),
+  Y :: 0..N,
+
+  % init
+  Y[1,Empty] #= 0,
+  foreach(J in 1..N)
+    if J != Empty then
+       Y[1,J] #= J
+    end
+  end,
+
+  sum([Y[NumMoves,J]#>0 : J in 1..N]) #= 1,
+
+
+
+  foreach(Move in 2..NumMoves)
+     sum([Y[Move,J] #=0 : J in 1..N]) #= Move,
+     table_in({From,Over,To}, ValidMoves), % must be a valid table
+
+     element(To,Y[Move-1],0),
+     element(From,Y[Move-1],FromVal), FromVal #!= 0,
+     element(Over,Y[Move-1],OverVal), OverVal #!= 0,
+
+     element(From,Y[Move],0),
+     element(To,Y[Move],To),
+     element(Over,Y[Move],0),
+
+     foreach(J in 1..N) 
+       (J #!= From #/\ J #!= Over #/\ J #!= To) #=> 
+         Y[Move,J] #= Y[Move-1,J]
+     end,
+     X[Move-1,1] #= From,
+     X[Move-1,2] #= Over,
+     X[Move-1,3] #= To
+  end,
+
+  Vars = Y.vars() ++ X.vars(),
+  % Vars = X.vars() ++ Y.vars(),
+  solve($[split],Vars).
+
+
+
+%
+% Same as CP but using LP
+%
+puzzle2(Empty,N,NumMoves,X,Y) =>
+  println($puzzle2(Empty)),
+  N = 15,
+
+  moves(Moves),
+
+  % for table_in
+  ValidMoves = [],
+  foreach(From in 1..N) 
+    foreach([Over,To] in Moves[From])
+       ValidMoves := ValidMoves ++ [(From,Over,To)] 
+    end
+  end,
+  NumMoves = N-1,
+
+  % which move to make
+  X = new_array(NumMoves-1,3),
+  % foreach(I in 1..NumMoves-1, J in 1..3)
+  %   member(X[I,J],1..N)
+  % end,
+
+  % The board at move Move
+  Y = new_array(NumMoves,N),
+  % foreach(I in 1..NumMoves, J in 1..N)
+  %   member(Y[I,J],0..N)
+  % end,
+
+  % init
+  Y[1,Empty] := 0,
+  foreach(J in 1..N)
+    if J != Empty then
+       Y[1,J] := J
+    end
+  end,
+  foreach(Move in 2..NumMoves)
+     member((From,Over,To), ValidMoves),
+
+     % from last move
+     Y[Move-1,To]   = 0,
+     Y[Move-1,From] != 0,
+     Y[Move-1,Over] != 0,
+
+     % this move
+     Y[Move,From] := 0,
+     Y[Move,To]   := To,
+     Y[Move,Over] := 0,
+
+     foreach(J in 1..N) 
+       if J != From, J != Over, J != To then
+         Y[Move,J] := Y[Move-1,J]
+       end
+     end,
+
+     X[Move-1] := [From,Over,To]
+  end.
+
+
+%
+% The valid moves, for puzzle/5 and puzzle2/5
+% Peg 1 can move over 2 and end at 4 (if peg 4 is empty and peg 1 and 2 is nonempy), etc.
+%
+moves(Moves) =>
+  Moves = [
+   [[2,4],[3,6]], % 1
+   [[4,7],[5,9]], % 2
+   [[5,8],[6,10]], % 3
+   [[2,1],[5,6],[7,11],[8,13]], % 4
+   [[8,12],[9,14]], % 5
+   [[3,1],[5,4],[9,13],[10,15]], % 6
+   [[4,2],[8,9]], % 7
+   [[5,3],[9,10]], % 8
+   [[5,2],[8,7]], % 9
+   [[6,3],[9,8]], % 10
+   [[7,4],[12,13]], % 11
+   [[8,5],[13,14]], % 12
+   [[8,4],[9,6],[12,11],[14,15]], % 13
+   [[9,5],[13,12]], % 14
+   [[10,6],[14,13]] % 15
+  ].
+
+
+move(a, c, g).  
+move(d, b, a).
+move(e, f, g).
+move(e, i, n).
+move(f, e, d).
+move(f, j, p).
+move(g, l, p).
+move(h, e, b).
+move(h, f, c).
+move(h, i, k).
+move(h, j, l).
+move(h, m, o).  
+move(i, e, a).
+move(i, m, p).
+move(j, f, a).
+move(j, m, n).
+move(m, i, d).
+move(m, j, g).
+move(n, k, d).
+move(n, o, p).
