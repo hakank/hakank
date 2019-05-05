@@ -27,14 +27,9 @@ The 12th term, F12, is the first term to contain three digits.
 What is the first term in the Fibonacci sequence to contain 1000 digits?
 };
 
-
-# Note: Rakudo don't yet support arbitrary precision so let's fake it.
-my $limit = 1000 | 15;
-
-my $n = 0;
-for (1,1,*+*...*) -> $f {
-    $n++;
-    my $len = $f.Str.bytes;
-    say "$n: $f ($len)";
-    last if $len >= $limit;
+my $limit = 1000;
+# Note: $n starts at 0 so we must + 1
+for (1,1,*+*...*).kv -> $n, $f {
+    say($n+1) && last if $f.chars >= $limit;
 }
+

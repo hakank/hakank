@@ -37,7 +37,7 @@ my $max_len = 500;
 my $c = 1;
 for [\+] 1...* -> $n {
     my $num_divisors = num_divisors($n);
-    say "n:$n: num_divisors:$num_divisors";# if $c++ % 1000 == 0;
+    # say "n:$n: num_divisors:$num_divisors";# if $c++ % 1000 == 0;
     if $num_divisors > $max_len {
        say "Found $n: num_divisors: $num_divisors (> $max_len))";
        last;

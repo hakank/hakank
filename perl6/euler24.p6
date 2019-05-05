@@ -14,7 +14,16 @@ What is the millionth lexicographic permutation of the digits
 0, 1, 2, 3, 4, 5, 6, 7, 8 and 9?
 };
 
+# 0.16s
 say ithperm(10, 999999);
+
+# This is much slower: 7.9s
+# my @perm = (0..9).permutations;
+# say @perm[999_999];
+
+# Though this is faster; 1.5s
+# say (0..9).permutations[999_999];
+
 
 #
 # Masak wrote the Perl 5 version of this after a discussion how

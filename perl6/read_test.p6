@@ -9,23 +9,31 @@ use v6;
 #   z .* y .* z
 #
 
-# my @words = open("words").lines; 
-my @words = <anna erica peter hakank abcdef dijkstra misconceptions xenophobia>;
-my $n = 3;
-for ((0..22).map: {("a".."z")[($^a...*)[^$n]].join(".*")}) {
-                                                         say "$^r: "; 
-                                                        .say for @words.grep(/<$^r>/);
+my $n = 6; # number of chars to use
+say "N: $n";
+
+# my $file = "unixdict.txt";
+my $file = "/usr/share/dict/words";
+
+my @words = open($file).lines;
+say "{+@words} words\n";
+
+for ((0..26-$n).map: {("a".."z")[($^a...*)[^$n]].join(".*")}) {
+  say "$^r: "; 
+  .say for @words.grep(/<$^r>/);
+  say();
 }
 
 # masak's take. Nice!
-say "\nmasaks's take";
-sub letter-regex($n) { 
-         my $r = "(.)"; 
-         for 1 ..^ $n { 
-            my  $l = $_ - 1; 
-            $r ~= " .* (.) <?\{ \${$_} eq \${$l}.Str.succ \}>" 
-         };
-         return eval "rx/$r/" 
-}; 
-.say for @words.grep(letter-regex(3));
+# say "\nmasaks's take";
+# sub letter-regex($n) { 
+#   my $r = "(.)"; 
+#   for 1 ..^ $n { 
+#       my  $l = $_ - 1; 
+#       $r ~= " .* (.) <?\{ \${$_} eq \${$l}.Str.succ \}>" 
+#   };
+#   return rx/$r/;
+# };
+
+# .say for @words.grep(letter-regex(3));
 

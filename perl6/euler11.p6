@@ -41,82 +41,30 @@ for $matrix.lines() {
    @mm.push([$^line.split(" ")]) 
 }
 
-.say for @mm;
+# .say for @mm;
 
+my %all = ();
+for 0..16 X 0..19 {
+  my ($a, $row) = @^x;
+  %all{ [*] @mm[$row][$a..$a+3] }++; 
+};
 
-# using gather/take: 11.7s
-# euler11(@mm); 
+for 0..16 X 0..19  {
+  my ($a, $col) = @^x;
+  %all{ [*] (@mm[$_][$col] for $a..$a+3) }++;  
+};
 
-# using list comprehension, 11.1s
-euler11b(@mm); 
-
-
-#
-# Using gather/take: 11.7s
-#
-sub euler11(@mm) { 
-
-  my %all = ();
-
-  for 0..16 X 0..19 -> $a, $row { 
-      %all{ [*] @mm[$row][$a..$a+3] }++; 
-  };
-
-  for 0..16 X 0..19 -> $a, $col { 
-     my @tmp = gather for $a..$a+3 -> $t { 
-         take @mm[$t][$col] 
-     };
-     %all{ [*] @tmp }++;  
-  };
-
-  for 0..16 X 0..16 -> $i, $j { 
-     my @tmp = gather for 0..3 -> $a { 
-         take @mm[$a+$i][$a+$j] 
-     };
-     %all{ [*] @tmp }++;
-  }
-
-  for 3..19 X 0..16 -> $i, $j { 
-     my @tmp = gather for 0..3 -> $a { 
-         take @mm[($i-$a)][($j+$a)] 
-     };
-     %all{ [*] @tmp }++;
-  }
-
-  # must convert to Int
-  say [max] %all.keys>>.Int;
-
+for 0..16 X 0..16 {
+  my ($i,$j) = @^x;
+  %all{[*] (@mm[$_+$i][$_+$j] for 0..3) }++;
 }
 
-
-
-#
-# Version 2: Using list comprehensions 
-# instead of gather/take
-# This took 11.1s 
-#
-sub euler11b(@mm) { 
-
-  my %all = ();
-
-  for 0..16 X 0..19 -> $a, $row { 
-      %all{ [*] @mm[$row][$a..$a+3] }++; 
-  };
-
-  for 0..16 X 0..19 -> $a, $col { 
-     %all{ [*] (@mm[$_][$col] for $a..$a+3) }++;  
-  };
-
-  for 0..16 X 0..16 -> $i, $j { 
-     %all{[*] (@mm[$_+$i][$_+$j] for 0..3) }++;
-  }
-
-  for 3..19 X 0..16 -> $i, $j { 
-     %all{ [*] (@mm[($i-$_)][($j+$_)] for 0..3) }++;
-  }
-
-  # must convert to Int
-  say [max] %all.keys>>.Int;
-
+for 3..19 X 0..16 {
+  my ($i,$j) = @^x;
+  %all{ [*] (@mm[($i-$_)][($j+$_)] for 0..3) }++;
 }
+
+# must convert to Int
+say [max] %all.keys>>.Int;
+
 

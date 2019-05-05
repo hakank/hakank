@@ -17,4 +17,4 @@ hundred natural numbers and the square of the sum.
 /;
 
 my @a = 1..100;
-say ([+]@a)**2 - [+]@a.map: {$_**2};
+say ([+] @a)**2 - [+] @a.map: {$_**2};

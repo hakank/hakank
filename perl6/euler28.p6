@@ -18,7 +18,10 @@ What is the sum of the numbers on the diagonals in a 1001 by 1001 spiral
 formed in the same way?
 };
 
-say euler28();
+# 0.16s
+# say euler28();
+
+# 0.16s;
 say euler28b();
 
 
@@ -27,11 +30,8 @@ sub euler28 {
   for 3,5...1001 -> $n {
      $s += 4*($n-2)**2 + 10*($n-1);
   }
-
   return $s+1;
-
 }
-
 
 sub euler28b {
 

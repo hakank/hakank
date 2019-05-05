@@ -21,37 +21,36 @@ twentieth century (1 Jan 1901 to 31 Dec 2000)?
 
 /;
 
-
 euler19();
 
-
+# 0.3s
 sub euler19() {
   my $count = 0; 
-  
-  for 1901..2000 X 1..12 -> $year, $month { 
-      # my $month2.sprintf("%02d", $month);
+  for 1901..2000 X 1..12  {
+      my ($year, $month) = @^x;
       my $month2 =  $month < 10 ?? "0$month" !! $month;
-      my $t = DateTime.new("$year-$month2-01T00:00:00"); 
+      my $t = Date.new("$year-$month2-01");       
       if $t.day-of-week() == 7 { 
           $count++; 
-          say "$t $count" 
+          # say "$t $count" 
       }
   }
   say "count: $count";
 }
 
 
-# More brutal...
+# More brutal: 10.2s
 sub euler19b() {
-  my $count = 0; 
+  my $date_20001231 = DateTime.new("2000-12-31T00:00:00");
+  my $count = 0;  
   for 1...* { 
-      my $t = DateTime.new(DateTime.new("1901-01-01T00:00:00").Instant()+24*60*60*$_); 
+      my $t = DateTime.new(DateTime.new("1901-01-01T00:00:00").Instant()+24*60*60*$_);       
       # say "T: $t t.day:{$t.day()} t.day-of.week(); {$t.day-of-week()} ";
       if $t.day() == 1 and $t.day-of-week() == 7 { 
           $count++; 
-          say "$t $count" 
+          # say "$t $count" 
       }
-      last if $t ~~ DateTime.new("2000-12-31T00:00:00") 
+      last if $t >= $date_20001231
   }
   say "count: $count";
 }

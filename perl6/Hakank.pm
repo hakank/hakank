@@ -1,5 +1,13 @@
 use v6;
 
+# 2019-04-29:
+# I wrote most of this in 2011 and quite a few things still works after
+# quite a few years.
+
+# Note: To use the module one have to do:
+#  use lib ".";
+#  use Hakank
+
 # 
 # Note: If the APL chars (such as ⊥) is messed up,
 # please see the HTML version of this file:
@@ -13,12 +21,11 @@ use v6;
 # APL, K, and some R.
 #
 #
-# Hakan Kjellerstrand (hakank@bonetmail.com)
+# Hakan Kjellerstrand (hakank@gmail.com)
 # My Perl 6 page: http://www.hakank.org/perl6/
 # 
 #
-
-module Hakank;
+module Hakank {
 
 #
 # diff(@a)
@@ -284,10 +291,10 @@ sub compress(@a, @b) is export {
 # Example:
 # > my @a = "ABCDEF".split("")
 # > my @b = <1 0 1 1 0 1>
-# > @b /// @a
+# > @a /// @b
 # ABDF
 #
-our sub infix:<///>(@b, @a) is export {
+our sub infix:<///>(@a, @b) is export {
     return compress(@a, @b)
 };
 
@@ -380,7 +387,9 @@ sub butlast(@a) is export { @a[0...@a.elems-2] };
 #   # (simulate 100 runs)
 #   > .say for repeat({my @c=();((1..6).roll(*)).&take_while({@c.uniq.elems < 6 and @c.push($_) }).elems; @c.elems}, 100).&table.sort({-.value})
 #
-sub take_while(@a, &cond) is export { ($_ if cond($_)) or last for @a  };
+## ORIG: don't work
+## sub take_while(@a, &cond) is export { ($_ if cond($_)) or last for @a  };
+sub take_while(@a, &cond) is export { @a.grep({ cond($_) or last }) };
 
 #
 # drop_if(@a, &cond)
@@ -392,7 +401,9 @@ sub take_while(@a, &cond) is export { ($_ if cond($_)) or last for @a  };
 #   > @a.&drop_if(* < 5)
 #   5 6 7 8 9 10
 #
-sub drop_if(@a, &cond) is export { $_ if !cond($_) for @a };
+# ORIG: Don't work
+# sub drop_if(@a, &cond) is export { $_ if !cond($_) for @a };
+sub drop_if(@a, &cond) is export {@a.grep({ !cond($_) } )};
 
 # 
 # if_do_else(@a, &cond, &do, &else)
@@ -417,10 +428,14 @@ sub drop_if(@a, &cond) is export { $_ if !cond($_) for @a };
 #   no
 #   9
 #   no
-#   > if_do_else(@a, {$_ %% 2}, {$_ / 2 }, { 1  + ($_ * 3) })
-#   4 1 10 2 16 3 22 4 28 5
+#   Note: The following don't work
+#   # > if_do_else(@a, {$_ %% 2}, {$_ / 2 }, { 1  + ($_ * 3) })
+#   # 4 1 10 2 16 3 22 4 28 5
+#   This works, however:
+#   > > gather if_do_else(@a, {$_ %% 2}, {take $_ / 2 }, {take 1  + ($_ * 3) })
+#   (4 1 10 2 16 3 22 4 28 5)
 #
-sub if_do_else(@a, &cond, &do, &else) is export { for @a { cond($_) ?? do($_) !! else($_) }  };
+sub if_do_else(@a, &cond, &do, &else) is export { for @a { &cond($_) ?? &do($_) !! &else($_) }  };
 
 
 # 
@@ -491,7 +506,7 @@ sub is_prime($n) is export {
 #   > next_prime(11)
 #   13
 #   > 2,{next_prime($_)}...*>30
-#   2 5 7 11 13 17 19 23 29 31
+#   2 3 5 7 11 13 17 19 23 29 31
 #
 sub next_prime($n) is export {
         my $s=$n+($n%%2 ?? 1 !! 2); 
@@ -533,16 +548,12 @@ sub primes_slow($n) is export {
 #   > reduced_digit_sum(777)
 #   3
 #   > my %alpha = "a".."z" Z=> (1..26)
-#   > %alpha{"bach".split("")}
+#   > %alpha{"bach".comb}
 #   2 1 3 8
-#   > reduced_digit_sum(%alpha{"bach".split("")})
+#   > reduced_digit_sum(%alpha{"bach".comb})
 #   5
 #
-# TO CHECK: Got the following error on this:
-#    Unable to parse blockoid, couldn't find final '}' at line 282
-# (Which is strange, since it works in the Rakudo REPL...)
-#
-# sub reduced_digit_sum($x) is export { (([+] $x.comb),{[+] .comb}...*<10)[*-1] };
+sub reduced_digit_sum($x) is export { (([+]($x.comb)),{[+] .comb}...* <10)[*-1] };
 
 
 #
@@ -578,6 +589,8 @@ sub collatz($n) is export { return ($n,{collatz1($^x)}...1) };
 #   4
 #
 sub timeit(&code) is export { my $t0 = time; code(); my $t1 = time; $t1 - $t0 };
+# Hi-res version
+sub timeit2(&code) is export { my $t0 = now; code(); my $t1 = now; $t1 - $t0 };
 
 
 sub even($n) is export { $n %% 2 };
@@ -622,7 +635,7 @@ sub odd($n) is export { !even($n) };
 sub tc(@a, $start) is export { 
     my $a_len = +@a; 
     my @c=(my $c=$start); 
-    while @c.push($c = @a[$c]) and @c[*-1] != @c[0] and +@c < $a_len {}; 
+    while @c.push($c = @a[$c]) and @c[*-1] != @c[0] and +@c <= $a_len {}; 
     pop @c; 
 
     return @c;
@@ -651,8 +664,7 @@ sub tc2(@a, $start) is export {
 # > @x[sort_perm(@x)]
 # 0 1 2 4 13
 #
-# Without .Int we can sort strings
-# my @hk = "hakank kjellerstrand".split("")
+# my @hk = "hakank kjellerstrand".comb
 # @hk[@hk.pairs.sort({.value}).map: {.key}]
 # 6 1 3 17 19 9 12 0 8 2 5 7 10 11 4 18 13 16 14 15
 #
@@ -660,9 +672,7 @@ sub tc2(@a, $start) is export {
 #
 sub sort_perm(@a) is export {
 
-    # why don't .keys work, i.e.
-    #    @a.pairs.sort({.value}).keys 
-    return @a.pairs.sort({.value.Int}).map: {.key}
+    return @a.pairs.sort({.value}).map: {.key}
 };
 
 #
@@ -692,8 +702,8 @@ our sub prefix:<⍋> (@a) is export { sort_perm(@a) };
 # > {2*$^x+1 if $^x %% 2}¨(1..10)
 # (5, 9, 13, 17, 21) 
 #
-# sub each(&f, @a) is export { gather for @a { take &f($_) } };
-sub each(&f, @a) is export { &f($_) for @a };
+sub each(&f, @a) is export { gather for @a { take &f($_) } };
+# sub each(&f, @a) is export { &f($_) for @a };
 sub infix:<¨>(&f,@a) is export { each(&f, @a) };
 
 
@@ -705,24 +715,32 @@ sub infix:<¨>(&f,@a) is export { each(&f, @a) };
 #
 # >  base([10, 10, 10, 10], <4 1 2 3>)
 # 4123
-# 3 >  base([0, 3, 12], <3 0 1>)
+# >  base([0, 3, 12], <3 0 1>)
 # 109
 #
 # APL: 
-#    1736 3 12 ⊥ 3 0 1
-#  109
 #    0 3 12 ⊥ 3 0 1
+#  109
+#    1736 3 12 ⊥ 3 0 1
 #  109
 #    10 10 10 10 ⊥ 4 1 2 3
 #  4123
 #
-sub base(@radix, @a) is export {[+]([\*](1,@radix.splice(1,+@radix))).reverse <<*>> @a };
+sub base(@radix, @a) is export {
+  # [+]([\*](1,@radix.splice(1,+@radix))).reverse <<*>> @a
+  [+] ([\*] (1,@radix[1..+@radix-1]).flat).reverse <<*>> @a
+  };
+
+# sub  base($radix, @a) is export {
+#   my @radix = $radix xx +@a;
+#   return base(@radix,@a);
+# }
 
 #
 # More APL like version of base (⊥)
 # 
 # Example:
-# > [0,3,12]⊥<3 0 1>
+# > [0,3,12] ⊥ <3 0 1>
 # 109
 # [10,10,10,10]⊥<4 1 3 2>
 # 4132
@@ -785,3 +803,6 @@ sub unbase(@radix, $val) is export {
 # 1 10 17 36
 #
 sub infix:<⊤>(@radix, $val) is export { unbase(@radix, $val) };
+
+
+}

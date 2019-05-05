@@ -16,17 +16,13 @@ the list. So, COLIN would obtain a score of 938 53 = 49714.
 What is the total of all the name scores in the file?")
 };
 
-
-my @names = open("/home/hakank/perl6/euler22_names.txt").lines().split(",");
+my @names = open("euler22_names.txt").lines().split(",");
 @names = (@names.map: { .trans('"' => '')}).sort();
-
 my %alpha = ("A".."Z") Z=> (1...*);
 my $total = 0;
 my $c = 1; 
 for @names -> $name {
-    $total += ([+] %alpha{$name.split("")}) * $c;
-    # say "$name: $total";
+    $total += ([+] %alpha{$name.comb}) * $c;
     $c++;
 }
-
 say "total: $total";

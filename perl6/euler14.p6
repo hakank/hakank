@@ -22,54 +22,42 @@ NOTE: Once the chain starts the terms are allowed to go above one million.
 
 /;
 
+# Now it's down to 6min 33.09seconds... To be continued....
+
+
 # Principal approach is using sequences, e.g.
 #
 # > 11,{($^x %% 2) ?? ($^x / 2) !! (1+ $^x * 3)}...1
 # 11 34 17 52 26 13 40 20 10 5 16 8 4 2 1
 #
 
-#
-# Testing (with output of each sequence):
-#   $limit:    100: 20s     (answer: 97, len 119)
-#             1000: 6:59min (answer: 871, len 179)
-#            10000: -       (answer: 6171 len: 262)
-# 
-#  With memoizing (and no output of each sequence)
-#             100:   10.6s
-#            1000: 3:14min
-#           10000: 52:58min 
-#
-
-my %h = (); # memoize
-
 my $max_n = 0;
 my $max_len = 0;
-my $limit = 1000000;
-for 2...*>$limit -> $n {
-
-  say if $n %% 100;
+my $limit = 1_000_000;
+my %h = Hash.new; # memoize
+for 2 .. $limit -> int $n {
 
   # if we seen this number before then it's not interesting
   # (since it can't possible be longer than any earlier 
   # sequence).
-  print "X" and next if %h{$n};
-  print ".";
+  next if %h{$n};
 
-  # my $len = (my @c = ($n,{($^x %% 2) ?? ($^x / 2) !! (1 + $^x * 3)}...1)).elems;
-  # little nicer:
-  my $len = (my @c = ($n,{collatz($^x)}...1)).elems;
-  # say "$n: @c[] len: $len";
+  say $n if $n %% 10000;
 
-  # Now loop through all the numbers in the sequence and memoize them
-  for @c Z (0...*) -> $k, $i {
-    last if %h{$k}; # we have seen this sequence already
-    %h{ $k } = $len - $i;
-  }
+  my $len = 0;
+  for ($n,{collatz($^x)}...1) -> $c {
+    $len++;  
+    if %h{$c} {
+      $len = %h{$c} + $len - 1;
+      last;
+    }
+  }  
+  %h{$n} = $len;
 
-  last if $n > $limit;
   if $len > $max_len {
      $max_len = $len;
      $max_n = $n;
+     # say "so far: $max_n len: $max_len";
   }
 }
 
@@ -77,5 +65,5 @@ say "\n$max_n len: $max_len";
 
 
 sub collatz($n) {
-   return ($n %% 2) ?? ($n / 2) !! (1 + $n * 3);
+  return ($n %% 2) ?? ($n / 2) !! (1 + $n * 3);
 }
