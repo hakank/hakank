@@ -1,0 +1,176 @@
+/* 
+
+  Superpermutations in Picat.
+
+  https://en.wikipedia.org/wiki/Superpermutation
+  """
+  In combinatorial mathematics, a superpermutation on n symbols is a string that contains each permutation 
+  of n symbols as a substring. While trivial superpermutations can simply be made up of every permutation 
+  listed together, superpermutations can also be shorter (except for the trivial case of n = 1) because overlap 
+  is allowed. For instance, in the case of n = 2, the superpermutation 1221 contains all possible permutations 
+  (12 and 21), but the shorter string 121 also contains both permutations.
+
+  It has been shown that for 1 ≤ n ≤ 5, the smallest superpermutation on n symbols has length 1! + 2! + … + n! 
+  (sequence A180632 in the OEIS). The first four smallest superpermutations have respective 
+  lengths 1, 3, 9, and 33, forming the strings 1, 121, 123121321, and 123412314231243121342132413214321. 
+  However, for n = 5, there are several smallest superpermutations having the length 153. One such 
+  superpermutation is shown below, while another of the same length can be obtained by switching all of 
+  the fours and fives in the second half of the string (after the bold 2):[1]
+
+  12345123415234125341235412314523142531423514231542312453124351243152431254312 
+  1345213425134215342135421324513241532413524132541321453214352143251432154321 
+  """
+
+  See also:
+
+  - http://www.gregegan.net/SCIENCE/Superpermutations/Superpermutations.html
+  
+
+
+  Results
+  -------
+
+  N:3
+  ---
+  SAT (0.213s):
+  totLen = 9
+  superpermutation = 123121321
+
+  CP (0.003s):
+  totLen = 9
+  superpermutation = 123121321
+
+
+  N:4 
+  ----
+  SAT (59.8s) (palindrome: 10.21s) palindrome+sort(Permutations)+threads(8): 1.139s
+  totLen = 33
+  superpermutation = 123412314231243121342132413214321
+
+  SAT using seq (1min 33s) (palindrome: 8.4s) palindrome+sort(Permutations)+threads(8):  0.55s
+  totLen = 33
+  superpermutation = 123412314231243121342132413214321
+
+  CP (2min 18.50s): (palindrome 0.104s)
+  totLen = 33
+  superpermutation = 123412314231243121342132413214321
+
+  SMT (3min 27.81s) (palindrome: 3.2s)
+  totLen = 33
+  superpermutation = 123412314231243121342132413214321
+
+
+  N:5
+  ---
+  SAT 
+
+  crash after 12min 51s:
+  """
+  c *** internal error in 'lingeling/lglib.c': out of memory reallocating 134217728 to 268435456 bytes
+  picat_run superpermutations.pi  6160,63s user 2,17s system 798% cpu 12:51,34 total
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+import util.
+
+
+main => go.
+
+main(N1) => 
+  nolog,
+  garbage_collect(300_000_000),
+  N = N1.to_int,
+  superpermutation(N, X, Ps, Z),
+  print_superpermutation(N,X,Ps,Z),
+
+  nl.
+  
+
+go =>
+  garbage_collect(300_000_000),
+  nolog,
+  N = 4,
+
+  superpermutation(N, X, Ps, Z),
+  print_superpermutation(N,X,Ps,Z),
+
+  nl.
+
+%
+% The upperbound is N! 
+%
+upper_bound(N) = sum([factorial(I) : I in 1..N]).
+
+%
+% Print the solution
+%
+print_superpermutation(N,X,Ps,Z) =>
+  println(X),
+  println(ps=Ps),
+  println(z=Z),
+  println(totLen=Z+N-1),
+  Superpermutation = [X[I].to_string() : I in 1..Z+N-1].join(''),
+  println(superpermutation=Superpermutation),
+  foreach(I in 1..Superpermutation.len-N+1)
+    println([Superpermutation[J] : J in I..I+N-1])
+  end,
+  nl.
+
+
+superpermutation(N, X, Ps, Z) =>
+
+  UpperBound = upper_bound(N),
+  println(upper_bound=UpperBound),
+
+  % Get all the permutations (sorted)
+  Permutations = permutations(1..N).sort,
+  PermLen = Permutations.len,
+  println(permLen=PermLen),
+
+  % decision variables
+  X = new_list(UpperBound),
+  X :: 1..N,
+
+  % Ps[Perm] is the start position in X for the permutation Permutations[Perm]
+  Ps = new_list(PermLen),
+  Ps :: 1..UpperBound-N+1,
+
+  all_distinct(Ps), % the permutations must start in different positions (of course!)
+
+  % Now we cover all permutations.
+  foreach(Perm in 1..Permutations.len)
+    println([Perm,Permutations[Perm]]),
+    foreach(J in 0..N-1)
+      PJ #= Ps[Perm]+J,
+      element(PJ,X,XPJ), % X[P+J] #= XPJ
+      Permutations[Perm,J+1] #= XPJ
+    end
+  end,
+
+  % symmetry breaking: first N positions are 1..N (i.e. Permutation[1])
+  Ps[1] #= 1,
+  foreach(I in 1..N)
+    X[I] #= I
+  end, 
+
+  % Symmetry breaking: X is a palindrome (experimental)
+  foreach(I in 1..UpperBound)
+    X[I] #= X[UpperBound-I+1]
+  end,
+
+  Z #= max(Ps), % minimal superpermutation. we want to minimize the maximum position
+
+  % Vars = Ps ++ X,
+  Vars = X ++ Ps ++ [Z],
+
+  println(solve),
+  % solve($[seq, threads, min(Z),report(printf("Z=%d\nX: %w\nPs: %w\n\n", Z, X, Ps))], Vars). % SAT
+  % solve($[ff,split,min(Z),report(printf("Z=%d\nX: %w\nPs: %w\n\n", Z, X, Ps))], Vars). % CP
+  solve($[], Vars). % CP, skipping min(Z)
+
