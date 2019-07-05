@@ -1,0 +1,251 @@
+/* 
+
+  "Sum Sudoku" a.ka. Sandwich Sudoku in Picat.
+
+  From https://swi-prolog.discourse.group/t/new-to-prolog-jumped-in-the-deep-end-trying-to-solve-this-weird-version-of-sudoku/522
+  """
+  Hey guys! Brand new to prolog. I’ve been reading about it for months and finally came across a 
+  good problem to put it to the test. I’m a linguistics student and don’t run in many programming 
+  circles particularly not logic programming circles so I’d love to talk about what I learned 
+  maybe get some feedback. It’s my first bit of practical prolog.
+
+  I’d read most of the sudoku examples in my past few months of reading and research then came 
+  across this weird sudoku puzzle (I can’t find or remember the origin, I’ve tried). It basically 
+  gives you the sum of all the numbers that occur between 1 and 9 in any given column or row, and 
+  only 3 number clues to start with, this is the puzzle grid:
+
+[ [_,_,_,_,_,_,_,_,_,4]
+, [_,_,_,_,_,_,_,_,_,33]
+, [_,_,1,_,_,_,_,_,_,20]
+, [_,_,_,_,_,_,_,_,_,17] 
+, [_,_,_,_,5,_,_,_,_,26] 
+, [_,_,_,_,_,_,_,_,_,10] 
+, [_,_,_,_,_,_,9,_,_,16]
+, [_,_,_,_,_,_,_,_,_,24]
+, [_,_,_,_,_,_,_,_,_,0] 
+, [8,4,17,35,14,13,3,10,25,0] ],
+
+  The last row/column is the sum. (The last entry in the last row is useless, it’s only 
+  there because it was easier with a square.)
+
+  [Later comment about the sum numbers:]
+  [The numbers] represent the sum of all the numbers _physically_ between 1 and 9
+  in the given row/column, rather than between 1 and 9 in value. So
+  123456789 = 35, 129345678 = 2, 123945678 = 5, etc.
+  """
+
+
+  From the SwI-Prolog model at https://swish.swi-prolog.org/p/Sudoku%20Constraint%20Solver.pl
+  the (unique) solutions is
+  
+  Puzzle = 
+  [
+    |1  2  3  4  5  6  7  8  9 
+  -----------------------------
+  1 [2, 3, 6, 9, 4, 1, 8, 7, 5,    4], 
+  2 [9, 5, 4, 3, 7, 8, 6, 1, 2,   33], 
+  3 [8, 7, 1, 6, 2, 5, 4, 3, 9,   20], 
+  4 [1, 8, 2, 4, 3, 9, 7, 5, 6,   17], 
+  5 [3, 9, 7, 8, 5, 6, 1, 2, 4,   26], 
+  6 [6, 4, 5, 2, 1, 7, 3, 9, 8,   10], 
+  7 [4, 1, 3, 5, 6, 2, 9, 8, 7,   16], 
+  8 [5, 6, 9, 7, 8, 3, 2, 4, 1,   24], 
+  9 [7, 2, 8, 1, 9, 4, 5, 6, 3,    0],
+    [8, 4, 17, 35, 14, 13, 3, 10, 25, 0]
+  ]
+
+  And this is the same solution this Picat model yields.
+
+
+  Some notes on the hints
+  -----------------------
+  The grid hint constraints are overdetermined and we can remove these grid hints (separately):
+     * 1
+     * 5 
+     * 9
+     * 1 and 5
+     * 5 and 9
+  and still got a distinct solutions.
+  However, we cannot remove both 1 and 9 since this give two solutions.
+
+  Similarily, we can remove several of the rowsum/column sums and still get a unique solution,
+  For example, we can remove the first 5 row hints [4,33,20,17,26] or the first
+  two column hints [8,4] and still get a unique solution.
+
+  However, removing some of the hints might makes the problem harder (i.e. slower).
+  For example: removing the 9 in the grid hints increases the solve time 
+  from 0.038s to 0.545s.
+
+
+  Statistics of the solvers
+  -------------------------
+  The times for solution (and proving that it's unique):
+  - CP: 0.036s
+  - SAT: 0.876s
+  - MIP: > 135min
+  - SMT (cvc4): > 15min
+  - SMT (z3): > 15min
+
+  Later: This problem type is apparently also called Sandwich Sudoku.
+         See https://amp.theguardian.com/science/2019/may/06/can-you-solve-it-sandwich-sudoku-a-new-puzzle-goes-viral
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp, util.
+
+
+main => go.
+
+
+go ?=>
+  nolog,
+  puzzle(Puzzle),
+
+  sum_sudoku(Puzzle, X),
+  
+  print_matrix(X),
+  
+  fail, % prove uniqueness
+  nl.
+
+go => true.
+
+
+go2 ?=>
+  nolog,
+  puzzle2(Puzzle),
+
+  sum_sudoku(Puzzle, X),
+  
+  print_matrix(X),
+  
+  fail, % prove uniqueness
+  nl.
+
+go2 => true.
+
+
+sum_sudoku(Puzzle, X) =>
+  PLen = Puzzle.len,
+  N = PLen - 1,
+  println(n=N),
+
+  RowSums = [Puzzle[I,PLen] : I in 1..N],
+  ColSums = [Puzzle[PLen,J] : J in 1..N],
+  println(rowSums=RowSums),
+  println(colSums=ColSums),
+
+  X = new_array(N,N),
+  X :: 1..N,
+
+  % Transpose X for easier handling below
+  T = X.transpose,
+
+  % Without these constraints there are two different solutions, See above for a detailed comment.
+  foreach(I in 1..N, J in 1..N)
+    X[I,J] #= Puzzle[I,J]
+  end,
+
+  % RowSum and ColSum:
+  % "sum of all the numbers _physically_ between 1 and 9 in the given row/column"
+  Pos = [],
+  foreach(I in 1..N)    
+    % Identify the positions of 1 and 9 in this row/column
+    element(RowPos1,X[I],1),
+    element(RowPos9,X[I],9),
+    element(ColPos1,T[I],1),
+    element(ColPos9,T[I],9),
+
+    % We have to check if Pos1 is less or greater than Pos9 
+    % (that's the cond/3 stuff).
+    RowSums[I] #= sum([X[I,J]*cond(RowPos1 #< RowPos9, 
+                                    J #> RowPos1 #/\ J #< RowPos9,
+                                    J #< RowPos1 #/\ J #> RowPos9
+                               ) : J in 1..N]),
+    ColSums[I] #= sum([T[I,J]*cond(ColPos1 #< ColPos9, 
+                                    J #> ColPos1 #/\ J #< ColPos9,
+                                    J #< ColPos1 #/\ J #> ColPos9
+                               )
+                             : J in 1..N]),
+    Pos := Pos ++ [RowPos1,RowPos9,ColPos1,ColPos9]
+  end,
+
+  % Standard Sudoku constraints
+  foreach(I in 1..N) 
+    all_different(X[I]),
+    all_different(T[I])
+  end,
+  foreach(I in 1..3..N, J in 1..3..N)
+    all_different([X[I+K,J+L] : K in 0..2, L in 0..2])
+  end,
+
+  Vars = X.vars ++ Pos, 
+
+  println(solve),
+  solve($[constr,split],Vars).
+
+
+print_matrix(X) =>
+  foreach(Row in X) println(Row) end,
+  nl.
+
+
+puzzle(Puzzle) =>
+Puzzle =
+[ 
+  [_,_,_,_,_,_,_,_,_, 4] % we can remove this
+, [_,_,_,_,_,_,_,_,_,33]
+, [_,_,1,_,_,_,_,_,_,20]
+, [_,_,_,_,_,_,_,_,_,17]
+, [_,_,_,_,5,_,_,_,_,26]
+, [_,_,_,_,_,_,_,_,_,10] 
+, [_,_,_,_,_,_,9,_,_,16]
+, [_,_,_,_,_,_,_,_,_,24]
+, [_,_,_,_,_,_,_,_,_, 0]
+, [8,4,17,35,14,13,3,10,25,0] ].
+
+
+% The solutions (see above)
+puzzle_sol(Puzzle) =>
+Puzzle = 
+[
+[2, 3, 6, 9, 4, 1, 8, 7, 5,    4], 
+[9, 5, 4, 3, 7, 8, 6, 1, 2,   33], 
+[8, 7, 1, 6, 2, 5, 4, 3, 9,   20], 
+[1, 8, 2, 4, 3, 9, 7, 5, 6,   17], 
+[3, 9, 7, 8, 5, 6, 1, 2, 4,   26], 
+[6, 4, 5, 2, 1, 7, 3, 9, 8,   10], 
+[4, 1, 3, 5, 6, 2, 9, 8, 7,   16], 
+[5, 6, 9, 7, 8, 3, 2, 4, 1,   24], 
+[7, 2, 8, 1, 9, 4, 5, 6, 3,    0],
+[8, 4, 17, 35, 14, 13, 3, 10, 25, 0]
+].
+
+% From https://amp.theguardian.com/science/2019/may/06/can-you-solve-it-sandwich-sudoku-a-new-puzzle-goes-viral
+% "Can you solve it? Sandwich sudoku - a new puzzle goes viral"
+% Where this kind of Sudoku is called Sandwich Sudoku.
+%
+% These can be removed alone:
+%   1,3,5,6,7,8
+% These can be removed as a group:
+%   1,3,5
+% etc.
+% 
+puzzle2(Puzzle) =>
+Puzzle =
+[ 
+  [_,_,_,_,_,_,_,_,_, 2] % can be removed (by itself)
+, [_,_,_,_,_,_,_,_,_, 8] % cannot be removed
+, [_,_,9,_,_,_,_,_,_,26] % can be removed (by itself)
+, [_,_,_,6,_,_,_,_,_,29] % cannot be removed
+, [_,_,_,_,1,_,_,_,_, 0] % can be removed (by itself)
+, [_,_,_,_,_,2,_,_,_,23] % can be removed  (by itself)
+, [_,_,_,_,_,_,7,_,_,15] % can be removed (by itself)
+, [_,_,_,_,_,_,_,_,_, 2] % can be removed (by itself)
+, [_,_,_,_,_,_,_,_,_, 4] % cannot be removed
+, [10,23,23,23,14,12,21,0,0,0] ].
+

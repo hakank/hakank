@@ -1,0 +1,253 @@
+/* 
+
+  OneToMany in Picat.
+
+  "Constraint programming suitable for extracting OneToMany relationships from records"
+  https://stackoverflow.com/questions/56843065/constraint-programming-suitable-for-extracting-onetomany-relationships-from-reco
+  """
+  I don’t have much experience with constraint programming but I’m trying to figure 
+  whether it is suitable for a certain kind of problem I am currently facing. I will 
+  explain the problem type with an easy fictive example, maybe someone has an idea.
+  
+  Imagine a table of projects (e.g. school projects where kids do something). Each project has 
+  one or more children participating. For each child we store its name and the name of its mother. 
+  But for each project there is only one cell that contains all mothers and one cell that 
+  contains all children. Both cells are not necessarily ordered in the same way.
+
+  Example:
+
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   Project |   Parents |   Children |
+  |           |           |            |
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   1       |   Jane;   |   Brian;   |
+  |           |   Claire  |   Stephen  |
+  |           |           |            |
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   2       |   Claire; |   Emma;    |
+  |           |   Jane    |   William  |
+  |           |           |            |
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   3       |   Jane;   |   William; |
+  |           |   Claire  |   James    |
+  |           |           |            |
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   4       |   Jane;   |   Brian;   |
+  |           |   Sophia; |   James;   |
+  |           |   Claire  |   Isabella |
+  |           |           |            |
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   4       |   Claire  |   Brian    |
+  |           |           |            |
+  +-----------+-----------+------------+
+  |           |           |            |
+  |   5       |   Jane    |   Emma     |
+  |           |           |            |
+  +-----------+-----------+------------+
+
+  I hope this example visualizes the problem. As I said both cells only contain the names 
+  separated by a delimiter, but are not necessarily ordered in a similar way. So for 
+  technical applications you would transform the data into this:
+
+  +-------------+-----------+----------+
+  |   Project   |   Name    |   Role   |
+  +-------------+-----------+----------+
+  |   1         |   Jane    |   Mother |
+  +-------------+-----------+----------+
+  |   1         |   Claire  |   Mother |
+  +-------------+-----------+----------+
+  |   1         |   Brian   |   Child  |
+  +-------------+-----------+----------+
+  |   1         |   Stephen |   Child  |
+  +-------------+-----------+----------+
+  |   2         |   Jane    |   Mother |
+  +-------------+-----------+----------+
+  |   2         |   Claire  |   Mother |
+  +-------------+-----------+----------+
+  |   2         |   Emma    |   Child  |
+  +-------------+-----------+----------+
+  |   2         |   William |   Child  |
+  +-------------+-----------+----------+
+  |             |           |          |
+  |                                    |
+  |              And so on             |
+
+  The number of parents and children is equal for each project, so it is given
+  that within the context of a certain project each child belongs to exactly
+  one mother. Knowing that it is possible to assign each mother to all of her
+  children by logical inference starting with the projects that involve
+  only one child (i.e. 4 and 5).
+
+  Results:
+
+  Jane has Emma, Stephen and James;
+
+  Claire has Brian and William;
+
+  Sophia has Isabella
+
+  The real dataset I am working with is very large and traversing it with loops,
+  that try to capture information about mother-child relations iteratively, is very 
+  cumbersome. I am wondering if it is possible to solve such a problem with constraint programming.
+  Additionally, the real data set might be underdetermined and I am wondering if it is possible
+  to isolate records that, when solved manually (i.e. when the mother-child assignments are
+  done manually), would break the underdetermination.
+  
+  Can someone tell me if I am on the right path?
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  
+  Mothers = [Jane,Claire,Sophia],
+  Mothers_S = [jane,claire,sophia],
+  MLen = Mothers.len,
+  Mothers = 1..MLen,
+  
+  Children = [Brian,Stephen,Emma,William,James,Isabella],
+  Children_S = [brian,stephen,emma,william,james,isabella],
+  CLen =   Children.len,
+  Children = 1..CLen,
+
+  X = new_list(Children.len),
+  X :: 1..MLen,
+
+  %  Project 1
+  check_project(X,[Jane,Claire], [Brian,Stephen]),
+
+  %  project 2
+  check_project(X,[Claire,Jane],[Emma,William]),
+
+  %  project 3
+  check_project(X,[Claire,Jane],[William,James]),
+
+  %  project 4
+  check_project(X,[Claire,Sophia,Jane],[Brian,James,Isabella]),
+
+  %  project 4(sic!)
+  check_project(X,[Claire],[Brian]),
+
+  %  project 5
+  check_project(X,[Jane],[Emma]),
+
+  solve(X),
+
+  %  println(X),
+  foreach(I in 1..CLen)
+    printf("%w: %w\n", Children_S[I], Mothers_S[X[I]])
+  end,
+
+
+  fail,
+
+  nl.
+
+go => true.
+
+
+%
+% Without loops or indexing, i.e. traditional Prolog style
+%
+go2 =>
+  Mothers = [Jane,Claire,Sophia],
+  Mothers_S = [jane,claire,sophia],
+  MLen = Mothers.len,
+  Mothers = 1..MLen,
+  
+  Children = [Brian,Stephen,Emma,William,James,Isabella],
+  Children_S = [brian,stephen,emma,william,james,isabella],
+  CLen =   Children.len,
+  Children = 1..CLen,
+
+  X = new_list(Children.len),
+  X :: 1..MLen,
+
+  %  Project 1
+  check_project2(X,[Jane,Claire], [Brian,Stephen]),
+
+  %  project 2
+  check_project2(X,[Claire,Jane],[Emma,William]),
+
+  %  project 3
+  check_project2(X,[Claire,Jane],[William,James]),
+
+  %  project 4
+  check_project2(X,[Claire,Sophia,Jane],[Brian,James,Isabella]),
+
+  %  project 4(sic!)
+  check_project2(X,[Claire],[Brian]),
+
+  %  project 5
+  check_project2(X,[Jane],[Emma]),
+
+  solve(X),
+
+  print_solution(X,Children_S, Mothers_S),
+
+  fail,
+  
+  nl.
+
+go2 => true.
+
+
+
+% Ensure that exactly one mother pairs with one childen
+% in this project.
+check_project(X, Mothers,Children) =>
+  N = Mothers.len,
+  Y = new_list(N),
+  Y :: 1..N,
+  all_different(Y),
+  foreach(I in 1..N)
+     %  X[Children[I]] #= Mothers[Y[I]]
+     element(Children[I], X, V),
+     element(Y[I], Mothers, V)
+  end.
+
+
+% Ensure that exactly one mother pairs with one childen
+% in this project.
+% Another approach, plain recursion and no indexing
+check_project2(_X, [], _,_) ?=> true.
+check_project2(X, Mothers,Children) ?=>
+  N = Mothers.len,
+  Y = new_list(N),
+  Y :: 1..N,
+  all_different(Y),
+  check_mc(X, Y, Mothers, Children).
+
+
+check_mc(_X,[], _Mothers,_Children) ?=> true.
+check_mc(X,[Y|YRest], Mothers,CCRest) ?=>
+  CCRest = [C|CRest],
+  element(C,X,V),
+  element(Y,Mothers,V),
+  check_mc(X,YRest, Mothers,CRest).
+
+
+print_solution([], _Children, _Mothers) ?=> true.
+print_solution([H|T], CCRest, Mothers) =>
+  CCRest = [C|CRest],
+  nth(H,Mothers,V),
+  printf("%w: %w\n", C, V),
+  print_solution(T,CRest,Mothers).
+  
+  
