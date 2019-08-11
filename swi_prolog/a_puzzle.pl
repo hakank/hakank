@@ -1,0 +1,174 @@
+/*
+
+  "A puzzle" in SWI Prolog
+
+  From "God plays dice"
+  "A puzzle"
+  http://gottwurfelt.wordpress.com/2012/02/22/a-puzzle/
+
+  And the sequel "Answer to a puzzle"
+  http://gottwurfelt.wordpress.com/2012/02/24/an-answer-to-a-puzzle/
+
+  This problem instance was taken from the latter blog post.
+
+  """
+  8809 = 6
+  7111 = 0
+  2172 = 0
+  6666 = 4
+  1111 = 0
+  3213 = 0
+  7662 = 2
+  9312 = 1
+  0000 = 4
+  2222 = 0
+  3333 = 0
+  5555 = 0
+  8193 = 3
+  8096 = 5
+  7777 = 0
+  9999 = 4
+  7756 = 1
+  6855 = 3
+  9881 = 5
+  5531 = 0
+
+  2581 = ?
+  """
+
+  Note: 
+  This model yields 10 solutions, since x4 is not 
+  restricted in the constraints. 
+  All solutions has x assigned to the correct result. 
+  
+
+  The problem stated in "A puzzle"
+  http://gottwurfelt.wordpress.com/2012/02/22/a-puzzle/
+  is
+  """
+  8809 = 6
+  7662 = 2
+  9312 = 1
+  8193 = 3
+  8096 = 5
+  7756 = 1
+  6855 = 3
+  9881 = 5
+
+  2581 = ?
+  """
+  
+  This problem instance - using the same principle - yields 
+  two different solutions of x, one is the same (correct) as 
+  for the above problem instance, and one is not.
+  This is because here both x4 and x1 are underdefined.
+  
+  Note: 
+  This problem has another non-algebraic and - let's say - topological
+  approach which yield the same solution as the first problem and one
+  of the two solutions of the second problem.
+
+  
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my SWI Prolog page: http://www.hakank.org/swi_prolog/
+
+*/
+
+:- use_module(library(clpfd)).
+:- use_module(hakank_utils).
+
+go :-
+        puzzle(puzzle1).
+
+
+go2 :-
+        puzzle(puzzle2).
+
+%% wrapper
+puzzle(Puzzle) :-
+        findall([X,All],call(Puzzle,All,X),L),
+        transpose(L,LT),
+        length(L,Len),
+        [Xs|Ls] = LT,
+        writeln(ls=Ls),
+        writeln(xs=Xs),        
+        format("~d solutions~n", [Len]),
+        nl.
+
+puzzle1(All,X) :-
+        %% decision variables
+        X0 in 0..9,
+        X1 in 0..9,
+        X2 in 0..9,
+        X3 in 0..9,
+        X4 in 0..9,
+        X5 in 0..9,
+        X6 in 0..9,
+        X7 in 0..9,
+        X8 in 0..9,
+        X9 in 0..9,
+        
+        All = [X0,X1,X2,X3,X4,X5,X6,X7,X8,X9],
+        X in 0..9, %% the unknown
+        
+        %% This yields 10 solutions, all with the same values for X
+        X8+X8+X0+X9 #= 6,
+        X7+X1+X1+X1 #= 0,
+        X2+X1+X7+X2 #= 0,
+        X6+X6+X6+X6 #= 4,
+        X1+X1+X1+X1 #= 0,
+        X3+X2+X1+X3 #= 0,
+        X7+X6+X6+X2 #= 2,
+        X9+X3+X1+X2 #= 1,
+        X0+X0+X0+X0 #= 4,
+        X2+X2+X2+X2 #= 0,
+        X3+X3+X3+X3 #= 0,
+        X5+X5+X5+X5 #= 0,
+        X8+X1+X9+X3 #= 3,
+        X8+X0+X9+X6 #= 5,
+        X7+X7+X7+X7 #= 0,
+        X9+X9+X9+X9 #= 4,
+        X7+X7+X5+X6 #= 1,
+        X6+X8+X5+X5 #= 3,
+        X9+X8+X8+X1 #= 5,
+        X5+X5+X3+X1 #= 0,
+        
+        X2+X5+X8+X1 #= X,
+        
+        flatten([X,All],Vars),
+        labeling([],Vars).
+
+%%
+%% This version has fewer hints, but give two different values of X.
+%% 
+puzzle2(All,X) :-
+        
+
+        %% decision variables
+        X0 in 0..9,
+        X1 in 0..9,
+        X2 in 0..9,
+        X3 in 0..9,
+        X4 in 0..9,
+        X5 in 0..9,
+        X6 in 0..9,
+        X7 in 0..9,
+        X8 in 0..9,
+        X9 in 0..9,
+        
+        All = [X0,X1,X2,X3,X4,X5,X6,X7,X8,X9],
+        X in 0..9, %% the unknown
+        
+        X8+X8+X0+X9 #= 6,
+        X7+X6+X6+X2 #= 2,
+        X9+X3+X1+X2 #= 1,
+        X8+X1+X9+X3 #= 3,
+        X8+X0+X9+X6 #= 5,
+        X7+X7+X5+X6 #= 1,
+        X6+X8+X5+X5 #= 3,
+        X9+X8+X8+X1 #= 5,
+        
+        X2+X5+X8+X1 #= X,
+        
+        flatten([All,X],Vars),
+        labeling([],Vars).
