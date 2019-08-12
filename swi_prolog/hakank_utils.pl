@@ -63,8 +63,11 @@
            value_selection/1,
            strategy_selection/1,
            labelings/3,
+           atleast/3,
+           atmost/3,
+           list_domain_conjunction/2,
 
-           
+
            print_attrs_list/1
           ]).
 
@@ -155,7 +158,7 @@ list_domains([H|T],D0,[Dom|D]) :-
 %% Matrix[I,J] = Val
 %%
 matrix_element(X, I, J, Val) :-
-        matrix_element5(X,I,J,Val).
+        matrix_element2(X,I,J,Val).
 
 %%
 %% Different approaches.
@@ -237,12 +240,10 @@ count_occurrences(L,Element,Count) :-
 
 count_occurrences_([],_Element,Count, Count).
 count_occurrences_([H|T],Element,Count0, Count) :-
-        H #= Element,
-        Count1 #= Count0 + 1,
+        B in 0..1,
+        H #= Element #<==> B #= 1,
+        Count1 #= Count0 + B,
         count_occurrences_(T,Element,Count1, Count).
-count_occurrences_([H|T],Element,Count0, Count) :-
-        H #\= Element,
-        count_occurrences_(T,Element,Count0, Count).
 
 
 %%
@@ -622,7 +623,33 @@ labelings(VariableSelection,ValueSelection,StrategySelection) :-
         variable_selection(VariableSelection),
         value_selection(ValueSelection),
         strategy_selection(StrategySelection).
-          
+
+
+%%
+%% The value V in list L can have at most N occurrences.
+%%
+atmost(N,L,V) :-
+        count_occurrences(L,V,C),
+        C #=< N.
+
+%%
+%% The value V in list L must have at least N occurrences.
+%%
+atleast(N,L,V) :-
+        count_occurrences(L,V,C),
+        C #>= N.
+
+
+%%
+%% Convert a list of integers to a disjunction of domain.
+%%
+%% ?- write_canonical(1\/2\/3\/4\/5\/6).
+%% \/(\/(\/(\/(\/(1,2),3),4),5),6)
+%%
+disj(A,B,C) :-C = \/(A,B).
+list_domain_conjunction([D|Ds],Conj) :-
+        foldl(disj,Ds,D,Conj).
+
 
 
 %%% EXPERIMENTAL %%%
