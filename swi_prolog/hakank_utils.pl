@@ -66,8 +66,11 @@
            atleast/3,
            atmost/3,
            list_domain_conjunction/2,
-
-
+           create_task/5,
+           distribute/3,
+           sliding_sum/4,
+           sliding_sum/3,
+           
            print_attrs_list/1
           ]).
 
@@ -649,6 +652,107 @@ atleast(N,L,V) :-
 disj(A,B,C) :-C = \/(A,B).
 list_domain_conjunction([D|Ds],Conj) :-
         foldl(disj,Ds,D,Conj).
+
+%%
+%% create_tasks(StartTime,Duration,Resource,Task,EndTime)
+%%
+%% Create a task/5 structure and Endtime given 
+%%   Start
+%%   Duration
+%%   Resource
+%%
+%% Output:
+%%   Task
+%%   EndTime
+%%
+%% Normal usage is with maplist
+%%   maplist(task(StarTimes,Durations,Resources, Tasks, EndTimes)
+%%
+create_task(StartTime,Duration,Resource,Task,EndTime) :-
+        EndTime #= StartTime+Duration,
+        Task = task(StartTime,Duration,EndTime,Resource,_).
+
+
+%%
+%% Global constraint distribute(Card, Values, X)
+%% 
+%% Requires that Card[I] is the number of occurences of Value[I] in the list X.
+%%
+%% Assumption:
+%% The values in Value should be distinct, but
+%% - they don't have to be ordered,
+%% - they don't have to be in a complete range of values.
+%%
+%% Picat code:
+%% foreach(I in 1..CardLen)
+%%    Sum #= sum([(ValueI #= X) : J in 1..XLen,
+%%                   element(I,Value,ValueI),
+%%                   element(J,X,XJ)]),
+%%    element(I,Card,Sum)
+%% end,
+%%
+distribute(Card, Value, X) :-
+        length(Card,CardLen),
+        length(Value,CardLen), 
+        
+        all_different(Value),      
+        numlist(1,CardLen,Is),
+        maplist(distribute_(Card,Value,X),Is),
+        nl.
+
+distribute_(Card,Value,X,I) :-
+        element(I,Value,ValueI),
+        length(X,XLen),
+        numlist(1,XLen,Js),
+        element(I,Card,Sum),
+        distribute1_sum(Js,ValueI,X,0,Sum).
+        
+distribute1_sum([],_ValueI,_X,Sum,Sum).
+distribute1_sum([J|Js],ValueI,X,Sum0,Sum) :-
+        B in 0..1,
+        element(J,X,XJ),
+        ValueI #= XJ #<==> B #= 1,
+        Sum1 #= Sum0 + B,
+        distribute1_sum(Js,ValueI,X,Sum1,Sum).
+
+
+
+%%
+%% sliding_sum(Low, Up, Seq, Variables)
+%%
+%% Ensure that the sum of all subsequences of Seq values in Variables,
+%% is between Low and Up.
+%%
+%% Note: Seq must be instantiated, but neither Low or Up has
+%% to be (the result may be weird unless they are, though).
+%%
+sliding_sum(Low, Up, Seq, Variables) :-
+        length(Variables,Len),
+        U #= Len-Seq+1,
+        numlist(1,U,Is),
+        Low #=< Up,
+        maplist(sliding_sum_(Variables,Low,Up,Seq),Is).
+sliding_sum_(Variables,Low,Up,Seq,I) :-
+        ISeq1 #= I+Seq-1,
+        numlist(I,ISeq1,Js),
+        sliding_sum_sum(Js,Variables,0,Sum),
+        Sum #>= Low,
+        Sum #=< Up.
+
+sliding_sum_sum([],_Variables,Sum,Sum).
+sliding_sum_sum([J|Js],Variables,Sum0,Sum) :-
+        element(J,Variables,VJ),
+        Sum1 #= Sum0 + VJ,
+        sliding_sum_sum(Js,Variables,Sum1,Sum).
+        
+%%
+%% sliding_sum(Sum, Seq, Variables)
+%%
+%% Ensure that the sum of all subsequences of length Seq in Variables is Sum.
+%%
+sliding_sum(Sum, Seq, Variables) :-
+        sliding_sum(Sum, Sum, Seq, Variables).
+        
 
 
 
