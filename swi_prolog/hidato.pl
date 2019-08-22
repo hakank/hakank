@@ -271,17 +271,3 @@ problem(8, P) :-
          [  _, 39,  _,  _,  _,  _, 78, 73, 71, 85, 69,  _],
          [ 35,  _,  _, 46, 53,  _,  _,  _, 80, 84,  _,  _],
          [ 36,  _, 45,  _,  _, 52, 51,  _,  _,  _,  _, 88]].
-
-
-
-% Variable selection
-variable_selection(Var) :- 
-  Var = [leftmost,ff,ffc, min,max].
-
-% Value selection
-value_selection(Val) :- Val = [up,down].
-
-% Branching strategy
-strategy_selection(Strategy) :-Strategy = [step,enum,bisect].
-        
-        

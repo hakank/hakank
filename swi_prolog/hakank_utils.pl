@@ -2,11 +2,10 @@
 
   Utils in SWI Prolog
 
-  Mostly for clpfd.
-
-  TODO: Make it a package.
-
-  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  These are mostly for clpfd, e.g. global constraints that's missing in
+  SWI-Prolog, but also some wrapper/convenience utils.
+  
+  Module created by Hakan Kjellerstrand, hakank@gmail.com
   See also my SWI Prolog page: http://www.hakank.org/swi_prolog/
 
 */
@@ -21,10 +20,10 @@
            latin_square/1,        
            list_domains/2,
            matrix_element/4,
-           matrix_element1/4,
+           %% matrix_element1/4,
            matrix_element2/4,
-           matrix_element3/4,
-           matrix_element4/4,
+           %% matrix_element3/4,
+           %% matrix_element4/4,
            matrix_element5/4,
            element2/3,
            alldifferent_except_0/1,
@@ -70,6 +69,10 @@
            distribute/3,
            sliding_sum/4,
            sliding_sum/3,
+           circuit_path/2,
+           nvalue/2,
+           nvalues/3,           
+           exactly/3,
            
            print_attrs_list/1
           ]).
@@ -77,6 +80,8 @@
 :- use_module(library(clpfd)).
 
 
+%%
+%% time2(Goal, Time)
 %%
 %% Returns the time of a goal.
 %%
@@ -87,6 +92,8 @@ time2(Goal, Time) :-
         Time is Time2 - Time1.
 
 %%
+%% new_matrix(NumRows, NumCols, Matrix)
+%%
 %% Create a new matrix, but without any domain
 %%
 new_matrix(NumRows, NumCols, Matrix) :-
@@ -94,6 +101,8 @@ new_matrix(NumRows, NumCols, Matrix) :-
         length(Matrix,NumRows),
         maplist(same_length(Cols),Matrix).
 
+%%
+%% new_matrix(NumRows, NumCols, Domain, Matrix)
 %%
 %% Create a matrix of dimension NumRows x NumCols and with domain Domain.
 %%
@@ -105,6 +114,8 @@ new_matrix(NumRows, NumCols, Domain, Matrix) :-
 
 
 %%
+%% domain_matrix([],_)
+%%
 %% Ensure the domain of Domain
 %%
 domain_matrix([],_).
@@ -113,12 +124,16 @@ domain_matrix([L1|LRest],Domain) :-
         domain_matrix(LRest, Domain).
 
 %%
+%% print_matrix(Matrix)
+%%
 %% Nice print of a matrix.
 %%
 print_matrix(Matrix) :-
         maplist(writeln,Matrix),
         nl.
 
+%%
+%% matrix_dimensions(Matrix, Rows, Cols)
 %%
 %% Dimensions of a matrix.
 %%
@@ -139,6 +154,8 @@ latin_square(X) :-
 
 
 %%
+%% list_domains(L,Domains)
+%%
 %% Create a list of the domains in the
 %% list of decision variables in list L.
 %% (not reversible).
@@ -158,6 +175,8 @@ list_domains([H|T],D0,[Dom|D]) :-
 
 
 %%
+%% matrix_element(X, I, J, Val)
+%%
 %% Matrix[I,J] = Val
 %%
 matrix_element(X, I, J, Val) :-
@@ -167,24 +186,26 @@ matrix_element(X, I, J, Val) :-
 %% Different approaches.
 %% matrix_element2/4 and matrix_element5/4 seems to work best.
 %%
-matrix_element1(X, I, J, Val) :-
-        element(I, X, Row),
-        element(J, Row, Val).
+% matrix_element1(X, I, J, Val) :-
+%         element(I, X, Row),
+%         element(J, Row, Val).
 
 matrix_element2(X, I, J, Val) :-
         nth1(I, X, Row),
         element(J, Row, Val).
 
-matrix_element3(X, I, J, Val) :-
-        freeze(I, (nth1(I, X, Row),freeze(J,nth1(J,Row,Val)))).
+% matrix_element3(X, I, J, Val) :-
+%         freeze(I, (nth1(I, X, Row),freeze(J,nth1(J,Row,Val)))).
 
-matrix_element4(X, I, J, Val) :-
-        freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+% matrix_element4(X, I, J, Val) :-
+%         freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
 
 matrix_element5(X, I, J, Val) :-
         nth1(I, X, Row),
         nth1(J, Row, Val).
 
+%%
+%% element2(I,X,Y)
 %%
 %% Y[X[I]] #= I (symmetry between two lists),
 %% cf. inverse/2.
@@ -205,6 +226,8 @@ alldifferent_except_0(X) :-
         alldifferent_except_n(X,0).
 
 %%
+%% alldifferent_except_n(X,N)
+%%
 %% alldifferent except N.
 %%
 alldifferent_except_n(X,N) :-
@@ -221,6 +244,11 @@ alldifferent_except_n_([[I,J]|L],X,N) :-
 
 
 %%
+%% increasing(X)
+%% increasing_strict(X)
+%% decreasing(X)
+%% decreasing_strict(X)
+%%
 %% X must be a (strictly/not strictly) increasing/descreasing list
 %%
 increasing(X) :-
@@ -236,6 +264,8 @@ decreasing_strict(X) :-
         chain(X, #>).
 
 %%
+%% count_occurrences(L,Element,Count)
+%%
 %% In the list L, there must be exactly Count occurrences of Element
 %%
 count_occurrences(L,Element,Count) :-
@@ -249,6 +279,8 @@ count_occurrences_([H|T],Element,Count0, Count) :-
         count_occurrences_(T,Element,Count1, Count).
 
 
+%%
+%% extract_from_indices(Is,X,Xs)
 %%
 %% Extract from indices in a list.
 %% extract_from_indices2d([I1,I2,I3,...], X, ExtractedFromX)
@@ -264,6 +296,8 @@ extract_from_indices([I|Is], X, Xs0, [XI|Xs]) :-
 
 
 %%
+%% extract_from_indices2d(Is,X,Xs)
+%%
 %% Extract from indices in a matrix (2d list).
 %% extract_from_indices2d([[I1,J1],[I2,J2],...], X,[], ExtractedFromXs)
 %%
@@ -274,6 +308,8 @@ extract_from_indices2d([[I,J]|IJs], X, Xs0, [XIJ|Xs]) :-
         matrix_element(X,I,J,XIJ),
         extract_from_indices2d(IJs, X, Xs0, Xs).
 
+%%
+%% scalar_product2(Xs,Ys,Sum)
 %%
 %% The built-in scalar_product/4 don't accept two lists of decision variables
 %%
@@ -288,6 +324,8 @@ scalar_product2_([X|Xs],[Y|Ys],Sum0,Sum) :-
 %%
 %% min_list_clp(List,MinElement)
 %%
+%% SWI-Prolog's min_list/2 don't handle decision variables.
+%%
 min_list_clp([H|T], Min) :-
     min_list_clp(T, H, Min).
 
@@ -298,6 +336,8 @@ min_list_clp([H|T], Min0, Min) :-
 
 %%
 %% max_list_clp(List,MinElement)
+%%
+%% SWI-Prolog's max_list/2 don't handle decision variables.
 %%
 max_list_clp([H|T], Min) :-
     max_list_clp(T, H, Min).
@@ -325,7 +365,7 @@ slice([_|Xs],I,K,Ys):- I > 0, I1 is I - 1, K1 is K - 1, slice(Xs,I1,K1,Ys).
 %%
 %% to_num(List, Base, Num)
 %%
-%% sum(List) #= Num
+%% sum(List) #= Num  (using base Base)
 %%
 to_num(List,Num) :-
         to_num(List,10,Num).
@@ -372,7 +412,9 @@ zip2([H1|T1],[H2|T2], L0,[L1|L]) :-
         L1 = [H1,H2],
         zip2(T1,T2, L0,L).
 
-
+%%
+%% zip3(L1,L2,L3,L)
+%%
 zip3(L1,L2,L3,L) :-
         zip3(L1,L2,L3,[],L).
 zip3([],[],[],L,L).
@@ -383,13 +425,16 @@ zip3([H1|T1],[H2|T2], [H3|T3], L0,[L1|L]) :-
 
 
 %%
+%% inverse(L)
+%%
 %% inverse/1, a.k.a. "self-assignment"
 %%
 inverse(L) :-
         inverse(L,L).
 
 %%
-%% inverse(L1,L2), a.k.a. assignment
+%% inverse(L1,L2)
+%% a.k.a. assignment
 %%
 %% For each element in L1 and L2
 %%     - L1[I] = I
@@ -412,8 +457,9 @@ inverse_([[I,J]|IJs],L1,L2) :-
         inverse_(IJs,L1,L2).
 
 %%
-%% between/4
-%% As between/3 but with a step parameter
+%% between(From,Step,To,N)
+%%
+%% As between/3 but with a step parameter.
 %%
 between(From,Step,To,N) :-
         Div #= To div Step,
@@ -421,6 +467,8 @@ between(From,Step,To,N) :-
         TmpFrom #= Tmp-From,
         N #= TmpFrom*Step+From.
 
+%%
+%% same(Xs)
 %%
 %% All elements in the list must be the same.
 %%
@@ -432,11 +480,15 @@ same(X,X2) :-
         X2 #= X.
 
 %%
+%% lex_lte(X1,X2)
+%%
 %% X1 is lexicographic less or equal than X2
 %%
 lex_lte(X1,X2) :-
         X1 #=< X2.
 
+%%
+%% lex_lt(X1,X2)
 %%
 %% X1 is lexicographic less than X2
 %%
@@ -444,6 +496,8 @@ lex_lt(X1,X2) :-
         X1 #=< X2.
 
 
+%%
+%% numlist_cross2(N1,N2,IJs)
 %%
 %% All combinations of 1..N1 x 1..N2 -> [[I1,J1],[I2,J2],....]
 %%
@@ -462,6 +516,8 @@ numlist_cross3(N1,N2,N3,IJKs) :-
 
 
 %%
+%% diagonal1_slice(M,Slice)
+%%
 %% Diagonal 1 slice.
 %%
 diagonal1_slice(M,Slice) :-
@@ -473,6 +529,8 @@ diagonal1_slice(M,Slice) :-
         extract_from_indices2d(Ixs,M,Slice).
 
 
+%%
+%% diagonal2_slice(M,Slice)
 %%
 %% Diagonal 2 slice.
 %%
@@ -557,13 +615,13 @@ regular(X, Q, S, D, Q0, F) :-
 
 /*
 
-  regular2/7 is the same as regular/6 but it also returns A, 
-  the state list. This might be handy for debugging or
-  explorations.
-
+  regular2(X, Q, S, D, Q0, F, A)
+  
+  regular2/7 is the same as regular/6 but it also has the
+  output parameter A (last), the state list.
+  This might be handy for debugging or explorations.
 
 */
-
 regular2(X, Q, S, D, Q0, F, A) :-
 
         %% """
@@ -605,6 +663,8 @@ regular_loop(A,X,D,I) :-
         matrix_element(D,AI,XI,AI1).
 
 %%
+%% rotate(L,L2)
+%%
 %% rotate a list (put first element -> last)
 %%
 rotate(L,L2) :-
@@ -613,6 +673,12 @@ rotate(L,L2) :-
 
 
 %% For benchmarking different labelings
+%%
+%% variable_selection([leftmost,ff,ffc, min,max]).
+%% value_selection([up,down]).
+%% strategy_selection([step,enum,bisect]).
+%% labelings(VariableSelection,ValueSelection,StrategySelection)
+%%
 % Variable selection
 variable_selection([leftmost,ff,ffc, min,max]).
 
@@ -629,12 +695,16 @@ labelings(VariableSelection,ValueSelection,StrategySelection) :-
 
 
 %%
+%% atmost(N,L,V)
+%%
 %% The value V in list L can have at most N occurrences.
 %%
 atmost(N,L,V) :-
         count_occurrences(L,V,C),
         C #=< N.
 
+%%
+%% atleast(N,L,V)
 %%
 %% The value V in list L must have at least N occurrences.
 %%
@@ -644,14 +714,16 @@ atleast(N,L,V) :-
 
 
 %%
+%% list_domain_conjunction([D|Ds],Conj)
+%%
 %% Convert a list of integers to a disjunction of domain.
 %%
 %% ?- write_canonical(1\/2\/3\/4\/5\/6).
 %% \/(\/(\/(\/(\/(1,2),3),4),5),6)
 %%
-disj(A,B,C) :-C = \/(A,B).
 list_domain_conjunction([D|Ds],Conj) :-
         foldl(disj,Ds,D,Conj).
+disj(A,B,C) :-C = \/(A,B).
 
 %%
 %% create_tasks(StartTime,Duration,Resource,Task,EndTime)
@@ -666,13 +738,18 @@ list_domain_conjunction([D|Ds],Conj) :-
 %%   EndTime
 %%
 %% Normal usage is with maplist
-%%   maplist(task(StarTimes,Durations,Resources, Tasks, EndTimes)
+%%   % ...
+%%   maplist(create_task,StarTimes,Durations,Resources, Tasks, EndTimes),
+%%   cumulative(Tasks,[limit(Capacity)]),
+%%   % ...
 %%
 create_task(StartTime,Duration,Resource,Task,EndTime) :-
         EndTime #= StartTime+Duration,
         Task = task(StartTime,Duration,EndTime,Resource,_).
 
 
+%%
+%% distribute(Card, Value, X)
 %%
 %% Global constraint distribute(Card, Values, X)
 %% 
@@ -715,8 +792,6 @@ distribute1_sum([J|Js],ValueI,X,Sum0,Sum) :-
         Sum1 #= Sum0 + B,
         distribute1_sum(Js,ValueI,X,Sum1,Sum).
 
-
-
 %%
 %% sliding_sum(Low, Up, Seq, Variables)
 %%
@@ -752,11 +827,137 @@ sliding_sum_sum([J|Js],Variables,Sum0,Sum) :-
 %%
 sliding_sum(Sum, Seq, Variables) :-
         sliding_sum(Sum, Sum, Seq, Variables).
-        
+
+
+%%
+%% circuit_path(Circuit,Path)
+%%
+%% As circuit/1 but with the path as second parameter.
+%%
+circuit_path(X,Z) :-
+   length(X,N),
+   length(Z,N),
+   Z ins 1..N,
+
+   %
+   % The main constraint is that Z[I] must not be 1 
+   % until I = N, and for I = N it must be 1.
+   %
+   all_different(X),
+   all_different(Z),
+   % all_distinct(X), % slower
+   % all_distinct(Z), % slower
+
+   % put the orbit of x[1] in in z[1..n]
+   element(1,X,X1),
+   element(1,Z,Z1),
+   X1 #= Z1,
+   
+   % when I = N it must be 1
+   element(N,Z,ZN),
+   ZN #= 1,
+
+   %
+   % Get the orbit for Z.
+   %
+   numlist(2,N,Is),
+   maplist(orbit(X,Z),Is).
+
+
+%%
+%% orbit(Z,X,I)
+%%
+%% helper predicate for circuit_path/2.
+%%
+%% foreach(I in 2..N)
+%%   element(Z[I-1],X,Z[I])
+%% end.
+%%
+orbit(X,Z,I) :-
+        I1 #= I-1,
+        element(I1,Z,ZI1),
+        element(I,Z,ZI),
+        element(ZI1,X,ZI).
+
+
+%
+% nvalue(?N,?X)
+%
+% Requires that the number of distinct values in X is N.
+%
+nvalue(N, X) :-
+        get_min_domain(X,LB),
+        get_max_domain(X,UB),
+        numlist(LB,UB,Is),
+        maplist(nvalue_(X),Is,Sums),
+        sum(Sums,#=,N).
+
+%%
+%% Is there _any_ occurrence of I in X? (Boolean 0..1)
+%%
+nvalue_(X,I,B) :-
+        count_occurrences(X,I,ISum),
+        B in 0..1,
+        ISum #> 0 #<==> B #= 1,
+        nl.
+
+%%
+%% Get the lower domain limit in X
+%%
+get_min_domain(X,Min) :-
+        maplist(fd_inf,X,Inf),
+        min_list(Inf,Min).
+
+%%
+%% Get the upper domain limit in X
+%%
+get_max_domain(X,Max) :-
+        maplist(fd_sup,X,Sup),
+        min_list(Sup,Max).
+
+%
+% nvalues(X,Op,N)
+%
+% Requires that the number of distinct values in the array X is 
+%    Op N 
+% where
+% Op is either one of 
+%   #=, #<, #=<, #>=, or #>
+% (this is not checked though)    
+%
+nvalues(X, Op, N) :-
+   nvalue(M,X),
+   call(Op, M, N).
+
+
+%%
+%% exactly(?N,?X,?N)
+%%
+%% Requires exactly N variables in X to take the value V.
+%%
+exactly(N, Xs, V) :-
+   length(Xs,Len),
+   length(Bs,Len),
+   Bs ins 0..1,
+   maplist(exactly_(V),Xs,Bs),
+   sum(Bs,#=,N).
+
+exactly_(V,X,B) :-
+        X #= V #<==> B #= 1.
+
+%%
+%% Alternative implementation of exactly/3 is
+%%
+%%   exactly(N,Xs,V) :-
+%%      count_occurrences(Xs,V,N).
+%%
 
 
 
 %%% EXPERIMENTAL %%%
+%%%
+%%
+%% print_attrs_list(Vs)
 %%
 %% Prints the get_attrs/2 value (attributed variables info)
 %%

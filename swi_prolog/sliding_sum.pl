@@ -24,6 +24,9 @@
   0 0 3 4 are respectively 7, 6, 5 and 7.
   """
 
+  Note:
+  sliding_sum/[3,4] are defined in http://hakank.org/swi_prolog/hakank_utils.pl
+  
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my SWI Prolog page: http://www.hakank.org/swi_prolog/
@@ -33,6 +36,9 @@
 :- use_module(library(clpfd)).
 :- use_module(hakank_utils).
 
+%%
+%% Testing sliding_sum/4.
+%%
 go :-
 
         N = 7,
