@@ -39,7 +39,7 @@ to_num(List, Base, Num) =>
 %   N: length of each element (row)
 %   M: length of sequence
 %
-deBruijn(Base, N, M, X, Binary, BinCode) =>
+deBruijn(Base, N, M, X, Binary, BinCode, GCC) =>
 
         %
         % X: list of the integers to use which are converted to
@@ -61,6 +61,10 @@ deBruijn(Base, N, M, X, Binary, BinCode) =>
               to_num([Binary[I,J] : J in 1..N], Base, X[I])
         end,
 
+        %% number of occurrences for each number
+        GCC = new_array(Base), % index: 0..Base-1
+        GCC :: 0..M,
+
         %
         % The de Bruijn criterion: Connect one element to the next...
         %
@@ -80,25 +84,43 @@ deBruijn(Base, N, M, X, Binary, BinCode) =>
         %          Note: this is just a slice.
         BinCode = [Binary[I,1] : I in 1..M],
 
+        % GCC: Count the number of different elements in the bin code
+        % (poor man's global cardinarlity count...)
+        foreach(I in 1..Base)
+          count(I-1, BinCode, GCC[I])
+        end,
+
+        % If possible, we require that the occurrences of number are the same.
+        if M mod Base #= 0 then
+           foreach(I in 2..Base)
+             GCC[I] #= GCC[I-1],
+             GCC[I] #= M div Base
+           end
+        end,
+
         % symmetry breaking
         X[1] #= min(X),
+        println(gcc=GCC),
 
-        Flattened = X ++ Binary,
-        solve([ff,split],Flattened).
+
+        Flattened = X ++ Binary ++ GCC,
+        solve([ff,split],Flattened),
+        println(gcc=GCC).
         
 
 % wrapper
 do_it(Base, N, M, Tmp) =>
         println([base=Base, n=N, m=M, '(Base**N)-1)'=(Tmp)]),
-        deBruijn(Base, N, M, X, Binary, BinCode),
+        deBruijn(Base, N, M, X, Binary, BinCode, GCC),
         println(x=X),
         % println(binary=Binary),
         foreach(B in Binary) println(B.to_list()) end,
         println(debruijn=[I.to_string() : I in BinCode].join('')),
+        println(gcc=GCC),
         printf("\n").
 
 do_it2(Base, N, M, Tmp) =>
-        deBruijn(Base, N, M, X, Binary, BinCode),
+        deBruijn(Base, N, M, X, Binary, BinCode,GCC),
         println([to_string(B) : B in BinCode].join('')).
 
 
@@ -109,8 +131,14 @@ go ?=>
         Base = 2,
         N = 3,
         M = Base**N,
-        Tmp = Base**N-1,
-        do_it2(Base, N, M, Tmp),
+        % Tmp = Base**N-1,
+        % do_it2(Base, N, M, Tmp),
+        deBruijn(Base, N, M, X, Binary, BinCode, GCC),
+        println(x=X),
+        println(binary=Binary),
+        println(binCode=BinCode),
+        println(gcc=GCC),        
+        nl,
         fail.
 
 go => true.

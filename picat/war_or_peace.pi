@@ -1,0 +1,108 @@
+/* 
+
+  War or Peace problem in Picat.
+
+
+  From the Alma0 model war_or_peace.a0  
+  http://www.cwi.nl/en/alma
+  """
+  There are N countries.
+  Each pair of two countries is either at war or has a peace treaty.
+  Each pair of two countries that has a common enemy has a peace treaty.
+  What is the minimum no of peace treaties?
+  """
+  
+  Note: 
+  For 8 countries there are 35 solutions with the minimum number of peace treaties 12.
+
+  The minimum number of peace treaties for N=2.12. seems to be 
+  https://oeis.org/A002620
+  Quarter-squares: floor(n/2)*ceiling(n/2). Equivalently, floor(n^2/4). 
+
+  0, 1, 2, 4, 6, 9, 12, 16, 20, 25, 30, 36, 42, 49, 56, 64, 72, 81,..
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import sat,util.
+
+main => go.
+
+%
+% 8 countries.
+%
+% Note: cp is faster than sat for this.
+%
+go ?=>
+  nolog,
+  println("Find the minimum for 8 countries:"),
+  N = 8,
+  war_and_peace(N,_X, CountPeaces),
+  writeln(minumum=CountPeaces),
+
+  println("\nFind all solution with minimal peace treaties"),
+  All = findall(X2,war_and_peace(N,X2, CountPeaces)),
+  Len = All.len,
+  writeln(len=Len),
+  foreach(Sol in All) print_matrix(Sol) end,
+  writeln(len=Len),
+  nl.
+
+%
+% General solution: Check 2..n countries.
+%
+% N  2 3 4 5 6 7  8  9 10 11 12 13 14 15 16
+%   [0,1,2,4,6,9,12,16,20,25,30,36,42,49,56]
+%
+% Note: For this the sat module is much faster than cp.
+%
+go2 =>
+   nolog,
+   L = [],
+   foreach(N in 2..15)
+     println(n=N),
+     time(war_and_peace(N,_X, CountPeaces)),
+     println(minimum=CountPeaces),
+     L := L ++ [CountPeaces],
+     nl
+   end,
+   println(L),
+   nl.
+
+
+war_and_peace(N, X, CountPeaces) =>
+  War = 0,
+  Peace = 1,
+  X = new_array(N,N),
+  X :: War..Peace,
+  vars(X) = Vars,
+
+  CountPeaces :: 0..N*N,
+  CountPeaces #= sum(Vars),
+  
+  foreach(I in 1..N-1) 
+    foreach(J in I+1..N)
+        (
+          X[I,J] #= War
+          #/\
+          sum([(X[K,I] #= Peace) #\/ (X[K,J] #= Peace) : K in 1..I-1]) #= I-1
+        )
+        #\/
+        (X[I,J] #= Peace)
+    end
+  end,
+
+  if var(CountPeaces) then
+    solve($[ffc,split,min(CountPeaces)],Vars)
+  else
+    solve($[ffc,split],Vars)
+  end.
+
+print_matrix(X) =>
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl.
