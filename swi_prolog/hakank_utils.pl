@@ -73,6 +73,15 @@
            nvalue/2,
            nvalues/3,           
            exactly/3,
+           alldifferent_modulo/2,
+           all_differ_from_at_least_k_pos/2,
+           alldifferent_cst/2,
+           all_equal/1,
+           all_min_dist/2,
+           alldiffer_on_intersection/2,
+           among/3,
+           among_seq/5,
+           among_range/4,
            
            print_attrs_list/1
           ]).
@@ -306,7 +315,7 @@ extract_from_indices2d(Is,X,Xs) :-
 extract_from_indices2d([], _X, Xs, Xs).
 extract_from_indices2d([[I,J]|IJs], X, Xs0, [XIJ|Xs]) :-
         matrix_element(X,I,J,XIJ),
-        extract_from_indices2d(IJs, X, Xs0, Xs).
+         extract_from_indices2d(IJs, X, Xs0, Xs).
 
 %%
 %% scalar_product2(Xs,Ys,Sum)
@@ -472,8 +481,7 @@ between(From,Step,To,N) :-
 %%
 %% All elements in the list must be the same.
 %%
-same(Xs) :-
-        element(1,Xs,X),
+same([X|Xs]) :-
         maplist(same(X),Xs).
 
 same(X,X2) :-
@@ -774,8 +782,7 @@ distribute(Card, Value, X) :-
         
         all_different(Value),      
         numlist(1,CardLen,Is),
-        maplist(distribute_(Card,Value,X),Is),
-        nl.
+        maplist(distribute_(Card,Value,X),Is).
 
 distribute_(Card,Value,X,I) :-
         element(I,Value,ValueI),
@@ -898,8 +905,7 @@ nvalue(N, X) :-
 nvalue_(X,I,B) :-
         count_occurrences(X,I,ISum),
         B in 0..1,
-        ISum #> 0 #<==> B #= 1,
-        nl.
+        ISum #> 0 #<==> B #= 1.
 
 %%
 %% Get the lower domain limit in X
@@ -951,6 +957,163 @@ exactly_(V,X,B) :-
 %%   exactly(N,Xs,V) :-
 %%      count_occurrences(Xs,V,N).
 %%
+
+
+
+
+%%
+%% alldifferent_modulo(Xs,M)
+%%
+%% Enforce all variables of the collection Xs to have a distinct 
+%% rest when divided by M.
+%%
+alldifferent_modulo(Xs,M) :-
+        maplist(modulo_m(M),Xs,Ms),
+        all_different(Ms).
+
+modulo_m(Mod,X,M) :-
+        M #= X mod Mod.
+
+
+
+%%
+%% all_differ_from_at_least_k_pos(K,X)
+%%
+%% Enforce all pairs of distinct vectors of the X collection to differ 
+%% from at least K positions.
+%%
+all_differ_from_at_least_k_pos(K,X) :-
+        length(X,Len),
+        findall([I,J],
+                (between(1,Len,I),
+                 between(1,Len,J),
+                 I #\= J
+                ),
+                IJs),
+        maplist(differ_by_k(K,X),IJs).
+
+differ_by_k(K,X,[I,J]) :-
+        nth1(I,X,XIs),
+        nth1(J,X,XJs),
+        differ_by_k_(XIs,XJs,0,DiffSum),
+        DiffSum #>= K.
+
+differ_by_k_([],_XJs,Sum,Sum).
+differ_by_k_([XI|XIs],[XJ|XJs],Sum0,Sum) :-
+        B in 0..1,
+        XI #\= XJ #<==> B #= 1,
+        Sum1 #= Sum0 + B,
+        differ_by_k_(XIs,XJs,Sum1,Sum).
+        
+
+%%
+%% alldifferent_cst(Xs, Cst)
+%%
+%%  For all pairs of items (X[i], X[j]) (i!=j) of the 
+%%  collection X enforce 
+%%  X[i].var+X[i].cst != X[j].var+X[j].cst.
+%%
+alldifferent_cst(Xs, Cst) :-
+        %% Res = [$(X + C) :  {X,C} in zip(Xs,Cst)],
+        maplist(plus,Xs,Cst,Res),
+        all_different(Res).
+plus(A,B,C) :- C #= A + B.
+
+
+%%
+%% all_equal(X)
+%% 
+%% Enforce all variables of the collection X to take the same value.
+%%
+all_equal([X|Xs]) :-
+        maplist(eq(X),Xs).
+eq(X,Y) :- X #= Y.
+
+
+
+%%
+%% all_min_dist(C,X)
+%% 
+%% Enforce for each pair (vari, varj), i < j of distinct variables of the 
+%% collection X that
+%%
+%%   |X[i] - X[j]| >= C.
+%%
+all_min_dist(_C,[]).
+all_min_dist(C, [H|Ts]) :-
+        all_min_dist_(C,H,Ts),
+        all_min_dist(C,Ts).
+
+all_min_dist_(_C,_H,[]).
+all_min_dist_(C,H,[T|Ts]) :-
+        abs(H-T) #>= C,
+        all_min_dist_(C,H,Ts).
+
+
+%%
+%% alldiffer_on_intersection(Xs,Ys) 
+%%
+%% The values that both occur in the Xs and Ys collections 
+%% have only one occurrence.
+%%
+alldiffer_on_intersection(Xs,Ys) :-
+   count_A_in_B(Xs,Ys),
+   count_A_in_B(Ys,Xs).
+
+count_A_in_B([],_Bs).
+count_A_in_B([A|As],Bs) :-
+        count_occurrences(Bs,A,Count),
+        Count #=< 1,
+        count_A_in_B(As,Bs).
+
+
+%%
+%% among(N, X, V)
+%%
+%% Requires exactly N variables in X to take one of the values in V.
+%%
+among(N,X,V) :-
+        among_(V,X,0,S),
+        S #= N.
+
+among_([],_X,Sum,Sum).
+among_([V|Vs],X,Sum0,Sum) :-
+        count_occurrences(X,V,VSum),
+        Sum1 #= Sum0 + VSum,
+        among_(Vs,X,Sum1,Sum).
+
+
+%%
+%%  among_seq(Low, High, SeqLen, X, V)
+%%
+%%  Ensures that all sequences of length SeqLen in the list X 
+%%  contains at least Low and at most High occurrences of V.
+%%
+among_seq(Low,High,SeqLen,X,V) :-
+   length(X,Len),
+   Size #= Len-SeqLen+1,
+   numlist(1,Size,Is),
+   maplist(among_seq_(Low,High,SeqLen,X,V),Is).
+
+among_seq_(Low,High,SeqLen,X,V,I) :-
+        Len #= I+SeqLen-1,
+        numlist(I,Len,Js),
+        extract_from_indices(Js,X,Seq),
+        among_range(Low,High,Seq,V).
+        
+
+
+%%
+%%  among_range(Low, High, X, V)
+%%
+%%  Ensures that the list X contains at least Low and at most High
+%%  occurrences of the elements in V.
+%%
+among_range(Low, High,X,V) :-
+        among(N,X,V),
+        N #>= Low,
+        N #=< High.
+
 
 
 

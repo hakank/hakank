@@ -69,7 +69,7 @@ go4 :-
         Timeout #= 3,          % timeout (seconds)
         problem(6,X),
         catch(call_with_time_limit(Timeout,
-                                   time(hidato(X,[Var,Val,Strategy]))
+                                   time(once(hidato(X,[Var,Val,Strategy])))
                                    ),
               time_limit_exceeded,
               Result = timeout),
@@ -87,7 +87,8 @@ go4.
 solveit(Problem) :-
         format("\nProblem ~d\n", [Problem]),
         problem(Problem,X),
-        hidato(X).
+        once(hidato(X)),
+        pretty_print(X).
 
 %%
 %% Place all integers from 1..Rows*Cols
@@ -121,8 +122,7 @@ hidato(X, Label) :-
    
    %% search
    flatten([Connect,XList,Extra],Vars),
-   labeling(Label,Vars),
-   pretty_print(X).
+   labeling(Label,Vars).
 
 
 %%
