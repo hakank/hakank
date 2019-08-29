@@ -1,0 +1,206 @@
+/* 
+
+  Calvin puzzle in Picat.
+
+  From "An Exercise for the Mind: A 10 by 10 Math Puzzle: 
+        A Pattern Recognition Game: Meditation on an Open Maze" 
+  http://www.chycho.com/?q=Puzzle
+  """
+  The Purpose of the Game
+
+  To take a 10 by 10 grid, representing 100 squares, and completely fill every square 
+  based on two types of movements. 
+  ...
+
+  Movement Type I)  If the next number in the sequence is going to be placed vertically 
+  or horizontally, then it must be placed exactly three squares away from the previous 
+  number (there must be a two square gap between the numbers).
+
+  Movement Type II) If the next number in the sequence is going to be placed diagonally, 
+  then it must be placed exactly two squares away from the previous number (there must 
+  be a one square gap between the numbers). 
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+% import cp.
+import sat.
+
+
+main => go.
+
+
+
+go ?=>
+   nolog,
+   N = 6,
+   println(n=N),
+   calvin_puzzle(N,X),
+   print_grid(X),
+   nl.
+
+go => true.
+
+
+/*
+ Using SAT solver:
+
+n = 5
+
+CPU time 0.405 seconds. Backtracks: 0
+
+ 15 21 11 14 22
+  4 18  8  5  2
+ 10 13 23 20 12
+ 16  6  3 17  7
+ 24 19  9 25  1
+
+
+n = 6
+
+CPU time 4.033 seconds. Backtracks: 0
+
+  4 18 29  5 19 30
+ 15 36  2 16 35  1
+ 28 12 22 25 11  6
+  3 17 34  8 20 31
+ 14 24 27 13 23 26
+ 33  9 21 32 10  7
+
+
+n = 7
+
+CPU time 25.922 seconds. Backtracks: 0
+
+  8 11 35 44 10 28 45
+ 23 42  2 22 41  3 21
+ 34 37  9 29 36 16 30
+  7 12 40 43 13 27 46
+ 24 49  1 17 48  4 20
+ 33 38 14 32 39 15 31
+  6 18 25  5 19 26 47
+
+
+n = 8
+
+CPU time 151.539 seconds. Backtracks: 0
+
+ 13 25  6 47 26  5  8 20
+ 57 45 17 62 44 18 63 43
+ 36 48 12 35  7 21 27  4
+ 14 24 58 46 29 61  9 19
+ 56 34 16 22 11 32 64 42
+ 37 49 54 38 50 53 28  3
+ 15 23 59 33 30 60 10 31
+ 55 39  1 52 40  2 51 41
+
+
+n = 9
+
+CPU time 423.22 seconds. Backtracks: 0
+
+ 75 32 27 24 73 64 25 10 63
+ 59 43 79 60 42 80 61 56 81
+ 28 23 74 33 26  9 72 65  8
+ 76 31 58 49 12 57 41 11 62
+ 15 44 78 20 54 34  7 55  1
+ 29 22 13 30  5 48 71 66 40
+ 77 19 16 50 36 68 53 35 69
+ 14 45  4 21 46  3  6 47  2
+ 17 51 37 18 52 38 70 67 39
+
+
+n = 10
+
+CPU time 1171.9 seconds. Backtracks: 0
+
+ 83 86 77100 85 68 99 26 69 92
+ 20 51 46 88 50 47 96 90 48 95
+ 76 79 84 67 78 27 60 93 98 59
+ 82 87 19 81 24 89 49 25 70 91
+ 21 52 45 28 53 66 97 54 61 94
+ 75 80 23 74 18 12 71  2  9 58
+ 15 37 34  6 44 29  7 41 30 55
+ 22 73 17 11 72 65 10 57 62  1
+ 35  5 14 36  4 13 43  3  8 42
+ 16 38 33 64 39 32 63 40 31 56
+
+
+
+*/
+go2 =>
+   nolog,
+   foreach(N in 5..10)
+     println(n=N),
+     time2(calvin_puzzle(N,X)),
+     print_grid(X),
+     nl
+   end,
+   nl.
+
+calvin_puzzle(N,X) =>
+
+   X = new_array(N,N),
+   X :: 1..N*N,
+   XVars = X.vars(),
+
+   II = new_list(N*N), II :: 1..N,
+   JJ = new_list(N*N), JJ :: 1..N,
+   AA = new_list(N*N), AA :: [-3,-2,0,2,3],
+   BB = new_list(N*N), BB :: [-3,-2,0,2,3],
+
+   all_different(XVars),
+   
+   IAJBs = [],
+   foreach(K in 1..N*N-1)
+     % K #= X[I, J], % fix this k
+     matrix_element(X,II[K],JJ[K],K),
+
+     % find the next k
+     % K + 1 #= X[I+A, J+B],
+     IA #= II[K]+AA[K],
+     JB #= JJ[K]+BB[K],
+     IA :: 1..N,
+     % JB #>= 1,
+     IA :: 1..N,
+     % JB #=< N,
+     IAJBs := IAJBs ++ [IA,JB],
+     abs(AA[K]) + abs(BB[K]) #>= 3, 
+     abs(AA[K]) + abs(BB[K]) #=< 5, 
+     (  % The legal moves
+        (abs(AA[K]) #= 2 #/\ abs(BB[K]) #= 2)
+        #\/
+        (abs(AA[K]) #= 3 #/\ BB[K] #= 0)
+        #\/
+        (abs(BB[K]) #= 3 #/\ AA[K] #= 0)
+     ),
+     matrix_element(X,IA,JB,K+1)
+   end,
+
+   % matrix_element(X,1,1,1), % don't help...
+
+   Vars = XVars ++II++JJ ++ AA ++ BB ++ IAJBs,
+   println(solve),
+   if member(cp,sys.loaded_modules()) then
+      solve_suspended($[ff,split])
+      % solve($[ff,split],Vars)
+   else
+      solve(Vars)
+   end.
+
+
+print_grid(X) =>
+   foreach(Row in X)
+     foreach(R in Row)
+       printf("%4d",R)
+     end,
+     nl
+   end,
+   nl.
+
+
