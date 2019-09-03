@@ -84,6 +84,17 @@ go =>
    N = 10, % 5 pairs
    time2($handshake(N,symmetrybreaking,print)).
 
+%
+% Test the symmetry breaking "exploit" (see below).
+%
+go1 =>
+   N = 100,
+   X = new_list(N),
+   X :: 0..N-2,
+   calculate_x(N,X),
+   println(x=X),
+   nl.
+
 go2 =>
    N = 10,
    L=findall(_,$handshake(N,nosymmetrybreaking,print)),
@@ -91,10 +102,14 @@ go2 =>
    nl.
 
 go3 =>
+   N = 30,
+   time2($handshake(N,symmetrybreaking,print)). 
+
+go4 =>
    N = 300,
    time2($handshake(N,symmetrybreaking,noprint)).
 
-go4 =>
+go5 =>
    N = 350,
    time2($handshake(N,symmetrybreaking,print)).
 
@@ -114,10 +129,11 @@ handshake(N,Symmetry,Print) =>
    Y = new_array(N,N),
    Y :: 0..1,
 
-   
+   %   
    % We assume that Hilary is in position x[1]
    % (and Hilary's spouse - Jocelyn - in x[2])
    % All except Hilary's counts are different
+   %
    X2 = [X[I] : I in 2..N],
    all_different(X2),
    % all_distinct(X2),
@@ -139,7 +155,7 @@ handshake(N,Symmetry,Print) =>
    foreach(I in 1..N, J in 1..N)
       % symmetry of handshaking:
       %    a shake hands with b <-> b shake hands with a
-      Y[I,J] #= 1 #<=> Y[J,I] #= 1
+      Y[I,J] #= Y[J,I]
    end,
 
    % symmetry breaking which orders the other couples (besides the hosts)
@@ -150,9 +166,12 @@ handshake(N,Symmetry,Print) =>
    % Note that all number of handshaking of the pairs sums to 8, 
    % i.e. 4+4, 0+8, 1+7, 2+6, 3+5
    % More general: The number of handshaking per pair sums to n-2.
-   % 
+   %
+   % This "formula" is exploited if we are using symmetry breaking
+   %
    % use symmetry breaking?
    if Symmetry = symmetrybreaking then
+      calculate_x(N,X),
       X3 = [X[3+2*I] : I in 0..(N div 2)-2],
       increasing(X3),
       foreach(I in 0..(N / 2)-2) X[3+2*I] #< X[3+2*I+1] end
@@ -161,7 +180,7 @@ handshake(N,Symmetry,Print) =>
    %
    % search
    %
-   Vars = X,
+   Vars = X, % ++ Y.vars(),
    solve([ff,split],Vars),
 
    if Print = print then
@@ -176,7 +195,28 @@ handshake(N,Symmetry,Print) =>
         end,
         nl
   end.
-   
 
-increasing(List) =>
-   foreach(I in 2..List.length) List[I-1] #=< List[I] end.
+%
+% The formula for calulating the distinct solution of X
+% (the number of shaken hands) for a certain N and with symmetry breaking:
+%
+%   N2 #= N-2
+%   [N div 2, N div 2, 0, N2-2, 1, N2-3, 2, N2-4, 3, ...,  1+ (N div 2)]
+%
+%                1  2  3  4  5  6  7  8  9 10
+% For N=10, X = [4, 4, 0, 8, 1, 7, 2, 6, 3, 5] 
+%
+calculate_x(N, X) =>
+   Ndiv2 #= N div 2,
+   N2 #= N-2,
+   X[1] #= Ndiv2-1,
+   X[2] #= Ndiv2-1,
+   X[3] #= 0,
+   X[4] #= N2,
+   foreach(I in 5..N)
+      if I mod 2 == 1 then
+         X[I] #= (I div 2)-1
+      else
+         X[I] #= N-(I div 2)
+      end
+   end.
