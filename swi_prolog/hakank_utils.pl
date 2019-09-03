@@ -47,6 +47,8 @@
            inverse/1,
            inverse/2,
            between/4,
+           between_down/3,           
+           numlist_step/4,           
            same/1,
            lex_lte/2,
            lex_lt/2,
@@ -64,8 +66,10 @@
            labelings/3,
            atleast/3,
            atmost/3,
-           list_domain_conjunction/2,
+           list_domain_disjunction/2,
+           make_disj_domain/2,
            create_task/5,
+           my_cumulative/4,
            distribute/3,
            sliding_sum/4,
            sliding_sum/3,
@@ -87,7 +91,6 @@
           ]).
 
 :- use_module(library(clpfd)).
-
 
 %%
 %% time2(Goal, Time)
@@ -189,7 +192,7 @@ list_domains([H|T],D0,[Dom|D]) :-
 %% Matrix[I,J] = Val
 %%
 matrix_element(X, I, J, Val) :-
-        matrix_element2(X,I,J,Val).
+        matrix_element(X,I,J,Val).
 
 %%
 %% Different approaches.
@@ -292,7 +295,7 @@ count_occurrences_([H|T],Element,Count0, Count) :-
 %% extract_from_indices(Is,X,Xs)
 %%
 %% Extract from indices in a list.
-%% extract_from_indices2d([I1,I2,I3,...], X, ExtractedFromX)
+%% extract_from_indices([I1,I2,I3,...], X, ExtractedFromX)
 %%
 %% It seems to be reversible.
 %%
@@ -315,7 +318,7 @@ extract_from_indices2d(Is,X,Xs) :-
 extract_from_indices2d([], _X, Xs, Xs).
 extract_from_indices2d([[I,J]|IJs], X, Xs0, [XIJ|Xs]) :-
         matrix_element(X,I,J,XIJ),
-         extract_from_indices2d(IJs, X, Xs0, Xs).
+        extract_from_indices2d(IJs, X, Xs0, Xs).
 
 %%
 %% scalar_product2(Xs,Ys,Sum)
@@ -471,10 +474,52 @@ inverse_([[I,J]|IJs],L1,L2) :-
 %% As between/3 but with a step parameter.
 %%
 between(From,Step,To,N) :-
-        Div #= To div Step,
+        Div is To div Step,
         between(From,Div,Tmp),
-        TmpFrom #= Tmp-From,
-        N #= TmpFrom*Step+From.
+        TmpFrom is Tmp-From,
+        N is TmpFrom*Step+From.
+
+%%
+%% between_down(From, To, N)
+%%
+%% Count down from From to To (From >= N).
+%%
+between_down(N, M, K) :-
+        N #>= M,
+        K #= N.
+between_down(N, M, K) :-
+        N #> M,
+        N1 #= N-1,
+        between_down(N1, M, K).
+
+
+%%
+%% numlist_step(L,Step,U,Ls)
+%%
+%% Ls is a list of L..Step..U.
+%%
+%% As numlist/3 but with step Step.
+%%
+%% Examples:
+%%   ?- numlist_step(1,2,10,L).
+%%   [1,3,5,7,9]
+%%%  ?- numlist_step(1,2,11,L)
+%%   [1,3,5,7,9,11]
+%%
+numlist_step(L, Step, U, Ns) :-
+        numlist_step_(L, Step, U, Ns).
+
+numlist_step_(L, Step, U, [L]) :-
+        L + Step > U,
+        !.
+numlist_step_(L, Step, U, [U]) :-
+        L + Step =:= U,
+        !.
+numlist_step_(L, Step, U, [L|Ns]) :-
+        L+Step =< U,        
+        L2 is L+Step,
+        numlist_step_(L2, Step, U, Ns).
+
 
 %%
 %% same(Xs)
@@ -722,16 +767,31 @@ atleast(N,L,V) :-
 
 
 %%
-%% list_domain_conjunction([D|Ds],Conj)
+%% list_domain_disjunction([D|Ds],Conj)
 %%
 %% Convert a list of integers to a disjunction of domain.
 %%
 %% ?- write_canonical(1\/2\/3\/4\/5\/6).
 %% \/(\/(\/(\/(\/(1,2),3),4),5),6)
 %%
-list_domain_conjunction([D|Ds],Conj) :-
-        foldl(disj,Ds,D,Conj).
+list_domain_disjunction([D|Ds],Disj) :-
+        foldl(disj,Ds,D,Disj).
 disj(A,B,C) :-C = \/(A,B).
+
+
+%%
+%%  make_disj_domain(V, Domain)
+%% 
+%%  Converts a list domain Domain to a disjunction domain
+%%  and make the domain assignment.
+%%
+%% Example:
+%%   make_disj_domain(V, [1,3,5,7,9,11])
+%%
+make_disj_domain(V, Domains) :-
+        list_domain_disjunction(Domains,Disj),
+        V in Disj.
+
 
 %%
 %% create_tasks(StartTime,Duration,Resource,Task,EndTime)
@@ -752,6 +812,28 @@ disj(A,B,C) :-C = \/(A,B).
 %%   % ...
 %%
 create_task(StartTime,Duration,Resource,Task,EndTime) :-
+        EndTime #= StartTime+Duration,
+        Task = task(StartTime,Duration,EndTime,Resource,_).
+
+
+%%
+%% The other representation of cumulative constraint
+%% (this is the one I'm more customed to).
+%%
+%%    my_cumulative(Starts,Durations,Resources,Limit)
+%%
+%% Converts to clpfd's
+%%     cumulative(Tasks,[limit(Limit)])
+%%
+my_cumulative(Starts,Durations,Resources,Limit) :-
+        maplist(create_task2,Starts,Durations,Resources, Tasks),
+        cumulative(Tasks,[limit(Limit)]).
+
+%%
+%% Create a cumulative task.
+%% (not exported)
+%%
+create_task2(StartTime,Duration,Resource,Task) :-
         EndTime #= StartTime+Duration,
         Task = task(StartTime,Duration,EndTime,Resource,_).
 

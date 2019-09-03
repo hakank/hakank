@@ -57,7 +57,7 @@ perfect_square_sequence(N) :-
         N1 #= N-1,
         length(Tmp,N1),
         %% Convert [1,4,9,...] to a domain 1\/4\/9...
-        list_domain_conjunction(Squares,SquaresDomain),
+        list_domain_disjunction(Squares,SquaresDomain),
         Tmp ins SquaresDomain,
         
         %% constraints

@@ -133,7 +133,7 @@ print_row(Row) :-
      Dom.len > 0,
      X[I,J] :: Dom
   end,
-        */
+*/
 restrict_domains(X,Rows,Cols,[I,J]) :-
         D = [-1,-2,1,2],
 
@@ -151,6 +151,6 @@ restrict_domains(X,Rows,Cols,[I,J]) :-
                 ),
                 Dom),
         matrix_element(X,I,J,XIJ),
-        list_domain_conjunction(Dom,DomConj),
-        XIJ in DomConj.
+        list_domain_disjunction(Dom,DomDisj),
+        XIJ in DomDisj.
 

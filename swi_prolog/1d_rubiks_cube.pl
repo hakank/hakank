@@ -109,7 +109,6 @@
 :- dynamic goal_state/1.
 :- dynamic legal_move/3.
 
-
 %%
 %% Shortest plan for a length 6 and length 8 problem instance.
 %%
@@ -255,7 +254,6 @@ legal_move8([M1,M2,M3,M4,M8,M7,M6,M5],5,[M1,M2,M3,M4,M5,M6,M7,M8]). % move 5
 %% Wrapper for running a problem once, finding an/the optimal/shortest plan.
 %%
 run_problem_once(Initial) :-
-
         writeln(initial_state=Initial),
         retractall(initial_state(_)),
         assertz(initial_state(Initial)),
@@ -281,7 +279,6 @@ run_problem_findall(Initial,Len) :-
         run_problem_findall(Initial,Len,true).
 
 run_problem_findall(Initial,Len,ShowSolutions) :-
-
         writeln(initial_state=Initial),
         retractall(initial_state(_)),        
         assertz(initial_state(Initial)),
@@ -310,6 +307,7 @@ run_problem_findall(Initial,Len,ShowSolutions) :-
 
 %% Length 6
 assert_legal_moves(6) :-
+        abolish_all_tables,
         retractall(goal_state(_)),
         numlist(1,6,Goal),
         writeln(goal=Goal),
@@ -322,6 +320,7 @@ assert_legal_moves(6).
 
 %% Length 8
 assert_legal_moves(8) :-
+        abolish_all_tables,
         retractall(goal_state(_)),
         numlist(1,8,Goal),
         assertz(goal_state(Goal)),
