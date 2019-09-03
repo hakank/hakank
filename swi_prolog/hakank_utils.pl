@@ -192,7 +192,7 @@ list_domains([H|T],D0,[Dom|D]) :-
 %% Matrix[I,J] = Val
 %%
 matrix_element(X, I, J, Val) :-
-        matrix_element(X,I,J,Val).
+        matrix_element2(X,I,J,Val).
 
 %%
 %% Different approaches.
