@@ -67,6 +67,7 @@ go2 :-
 %%
 %% sum(List) #= Num
 %%
+/*
 to_num(List, Base, Num) :-
         length(List,Len),
         to_num_(List,1,Len,Base,0, Num).
@@ -78,4 +79,4 @@ to_num_([H|T],I,Len,Base,Num0,Num) :-
         Num1 #= Num0 + H*(Base^Len1),
         I1 #= I+1,
         to_num_(T,I1,Len,Base,Num1,Num).
-
+*/

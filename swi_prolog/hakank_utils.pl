@@ -25,6 +25,7 @@
            %% matrix_element3/4,
            %% matrix_element4/4,
            matrix_element5/4,
+           matrix_nth1/4,           
            element2/3,
            alldifferent_except_0/1,
            alldifferent_except_n/2,
@@ -213,6 +214,15 @@ matrix_element2(X, I, J, Val) :-
 %         freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
 
 matrix_element5(X, I, J, Val) :-
+        nth1(I, X, Row),
+        nth1(J, Row, Val).
+
+%%
+%% matrix_nth1(X, I, J, Val)
+%%
+%% A better name for matrix_element5/3.
+%%
+matrix_nth1(X, I, J, Val) :-
         nth1(I, X, Row),
         nth1(J, Row, Val).
 
