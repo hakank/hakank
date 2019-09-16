@@ -30,7 +30,7 @@ go :-
         run_problems(L).
 
 %%
-%% Using clpfd: 0.11s
+%% Using clpfd: 0.10s
 %%
 euler49a :-
         N = 4,
@@ -76,24 +76,3 @@ euler49a :-
         flatten(Ls,Sol1),
         digit_list_to_num(Sol1,Sol),
         writeln(Sol).
-
-
-permutation_cp(A,B,Js) :-
-        length(A,Len),
-        numlist(1,Len,Is),
-        maplist(permutation_cp2(A,B),Is,Js).
-
-permutation_cp2(A,B,I,J) :-
-        element(I,A,AI),
-        element(J,B,AI).
-
-prime_cp(N) :-
-        N mod 2 #> 0,
-        fd_sup(N,Max1),
-        Max is round(sqrt(Max1)),
-        numlist_step(3,2,Max,Is),
-        maplist(not_div(N),Is).
-
-not_div(N,Mod) :-
-        N mod Mod #> 0.
-

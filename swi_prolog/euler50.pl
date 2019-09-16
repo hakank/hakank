@@ -34,7 +34,7 @@ go :-
 
 
 %%
-%% 24.8s
+%% 21s
 %%
 euler50a :-
         N = 10_000,
@@ -50,9 +50,11 @@ euler50a :-
 
 e50a(found,_LimitLen,_Primes,P,P).
 e50a(Len,LimitLen,Primes,P0,P) :-
+        nb_setval(found,false),
         (
          findall(PP,
                  (between(1,549,Offset),
+                  nb_getval(found,false),
                   OffsetFrom is Offset+1,
                   OffsetTo is Offset+Len,
                   findall(P,
@@ -62,7 +64,9 @@ e50a(Len,LimitLen,Primes,P0,P) :-
                           Ps),
                   sum_list(Ps,PP),
                   PP < 1_000_000,
-                  is_prime(PP)
+                  is_prime(PP),
+                  writeln(pp=PP),                  
+                  nb_setval(found,true)
                  ),
                  PPs
                 ),
@@ -77,7 +81,7 @@ e50a(Len,LimitLen,Primes,P0,P) :-
         ).
 
 %%
-%% 25s (using nb_setval/nb_getval)
+%% 21s (using nb_setval/nb_getval)
 %%
 euler50b :-
         N = 10_000,
@@ -92,6 +96,7 @@ euler50b :-
                  nb_getval(found,false),
                  findall(PP,
                          (between(1,549,Offset),
+                          nb_getval(found,false),                          
                           OffsetFrom is Offset+1,
                           OffsetTo is Offset+Len,
                           findall(P,

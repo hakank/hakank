@@ -37,15 +37,9 @@ euler48a :-
                ),
         sum_list(L,Sum1),
         atom_chars(Sum1,Sum2),
-        reverse(Sum2,Sum),
-        findall(S,
-                (
-                 between(1,10,I),
-                 nth1(I,Sum,S)
-                ),
-                L2),
-        reverse(L2,L3),
-        atom_chars(Sol,L3),
+        length(L10,10),
+        append(_,L10,Sum2),
+        atom_chars(Sol,L10),
         writeln(Sol).
 
         

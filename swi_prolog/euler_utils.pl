@@ -26,6 +26,7 @@
            is_prime/1,
            is_prime_clp/1,
            is_prime2/1,
+           prime_cp/1,
            is_prime_divisors/1,
            prime_tabled/1,
            prime_tabled_clp/1,
@@ -63,7 +64,8 @@
            running_prod/3,
            maplist_rev_args/3,
            concat_string_list/2,
-           digits_sum/2
+           digits_sum/2,
+           permutation_cp/3
           ]).
 
 :- use_module(library(clpfd)).
@@ -217,6 +219,22 @@ is_prime2_(X, N) :-
           M is N + 2,
           is_prime2_(X, M)
         ).
+
+%%
+%% prime_cp(N)
+%%
+%% N is a prime, using clpfd
+%%
+prime_cp(N) :-
+        N mod 2 #> 0,
+        fd_sup(N,Max1),
+        Max is round(sqrt(Max1)),
+        numlist_step(3,2,Max,Is),
+        maplist(not_div(N),Is).
+
+not_div(N,Mod) :-
+        N mod Mod #> 0.
+
 
 
 is_prime_divisors(N) :-
@@ -691,3 +709,19 @@ digits_sum(N,Sum) :-
         maplist(atom_number,Chars,Digits),
         sum_list(Digits,Sum).
         
+
+%%
+%% permutation_cp(A,B,Js)
+%%
+%% List B is a permutaion of list A with the permutation
+%% indices Js (restricted to 1..length(A)).
+%%
+permutation_cp(A,B,Js) :-
+        length(A,Len),
+        numlist(1,Len,Is),
+        maplist(permutation_cp2(A,B),Is,Js).
+
+permutation_cp2(A,B,I,J) :-
+        element(I,A,AI),
+        element(J,B,AI).
+

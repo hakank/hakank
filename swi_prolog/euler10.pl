@@ -143,3 +143,32 @@ euler10g :-
         primes(2_000_000,L),
         sum_list(L,Sum),
         writeln(Sum).
+
+
+%%
+%% Using clp: 11.4s
+%%
+euler10h :-
+        %% We must increase the stack for this...
+        set_prolog_stack(global, limit(10_000_000_000)),
+        primes2(2_000_000,L),
+        sum_list(L,Sum),
+        writeln(Sum).
+
+
+
+primes2(N,L) :-
+        N2 #= 1+(N div 2),
+        findall(J2,(between(2,N2,I),
+                    II #= I*I,
+                    II #=< N,
+                    NDivI #= 1+(N div I),
+                    between(0,NDivI,J),
+                    J2 #= II+I*J,
+                    J2 #=< N
+                   ),
+                Js),
+        sort(Js,Deletes),        
+        numlist(2,N,All),
+        delete_all(All,Deletes,L).
+
