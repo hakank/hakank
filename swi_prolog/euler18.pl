@@ -50,7 +50,8 @@
 
 go :-
         L = [
-             euler18a
+             %% euler18a,
+             euler18b
             ],
         run_problems(L).
 
@@ -125,18 +126,16 @@ pp(Row, Column, Sum, Tri) :-
 %% true ;
 %% 852
 %%
-euler18xxx :-
+euler18b :-
         abolish_all_tables,
         p18(Tri),
         pp2(1,1,Tri,Sum),
         writeln(Sum).
 
-% :- table pp2/4.
-:- table pp2(+,+,+,min).
+:- table pp2(+,+,+,max).
 pp2(Row,_Column,Tri,Sum) :-
         length(Tri,Len),
         Row > Len,
-        % !,
         Sum = 0.
 pp2(Row,Column,Tri,Sum) :-
         length(Tri,Len),

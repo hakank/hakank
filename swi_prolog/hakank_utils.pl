@@ -901,10 +901,10 @@ distribute1_sum([J|Js],ValueI,X,Sum0,Sum) :-
 %% to be (the result may be weird unless they are, though).
 %%
 sliding_sum(Low, Up, Seq, Variables) :-
+        Low #=< Up,        
         length(Variables,Len),
         U #= Len-Seq+1,
         numlist(1,U,Is),
-        Low #=< Up,
         maplist(sliding_sum_(Variables,Low,Up,Seq),Is).
 sliding_sum_(Variables,Low,Up,Seq,I) :-
         ISeq1 #= I+Seq-1,

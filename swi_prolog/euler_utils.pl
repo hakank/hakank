@@ -496,21 +496,21 @@ sum_all_divisors(N,Sum) :-
 % Prime divisors of N
 prime_divisors(N, Div) :-
         % N2 is 1+round(sqrt(N)),
-        N2 is 1+round(N),        
+        N2 is 1+round(N div 2),        
         numlist(2,N2,Is),
         include(divisor(N),Is,Div1),
         include(is_prime,Div1,Div).
 
 prime_factors(N,L) :-
-        N #> 0,  prime_factors(N,L,2), !.
+        N > 0,  prime_factors(N,L,2), !.
 
 prime_factors(N,L) :-
-        N #> 0,
+        N > 0,
         prime_factors(N,L,2).
 prime_factors(1,[],_) :- !.
 prime_factors(N,[F|L],F) :-     % N is multiple of F
-        R #= N // F,
-        N #= R * F, !,
+        R is N // F,
+        N is R * F, !,
         prime_factors(R,L,F).
 prime_factors(N,L,F) :- 
         next_factor(N,F,NF),
@@ -523,9 +523,46 @@ prime_factors(N,L,F) :-
 %%  candidate to be a factor of N.
 next_factor(_,2,3) :- !.
 next_factor(N,F,NF) :-
+        F * F < N, % !,
+        NF is F + 2.
+next_factor(N,_,N).
+
+
+%% clpfd version
+% Prime divisors of N
+prime_divisors_clp(N, Div) :-
+        % N2 is 1+round(sqrt(N)),
+        N2 is 1+round(N),        
+        numlist(2,N2,Is),
+        include(divisor(N),Is,Div1),
+        include(is_prime,Div1,Div).
+
+prime_factors_clp(N,L) :-
+        N #> 0,  prime_factors_clp(N,L,2), !.
+
+prime_factors_clp(N,L) :-
+        N #> 0,
+        prime_factors_clp(N,L,2).
+prime_factors_clp(1,[],_) :- !.
+prime_factors_clp(N,[F|L],F) :-     % N is multiple of F
+        R #= N // F,
+        N #= R * F, !,
+        prime_factors_clp(R,L,F).
+prime_factors_clp(N,L,F) :- 
+        next_factor_clp(N,F,NF),
+        prime_factors_clp(N,L,NF).  % N is not multiple of F
+
+
+%% next_factor(N,F,NF)
+%%  when calculating the prime factors of N
+%%  and if F does not divide N then NF is the next larger
+%%  candidate to be a factor of N.
+next_factor_clp(_,2,3) :- !.
+next_factor_clp(N,F,NF) :-
         F * F #< N, % !,
         NF #= F + 2.
-next_factor(N,_,N).
+next_factor_clp(N,_,N).
+
 
 %%
 %% n_factorial(N, F)
@@ -677,7 +714,7 @@ running_prod(RLen, L1, L2) :-
 
 
 %%
-%% maplist_rev_args(Pres,Arg1,Arg2)
+%% maplist_rev_args(Pred,Arg1,Arg2)
 %%
 %% Call maplist with reversed order of arguments.
 %%   -> maplist(Pred,Arg2,Arg1).

@@ -45,7 +45,7 @@ go :-
 
 
 %%
-%% 1.2s
+%% 0.95s
 %%
 euler12a :- 
         e12a(0,0,Num,0,Len),
@@ -53,7 +53,7 @@ euler12a :-
 
 e12a(_N,Num,Num,Len,Len) :- Len > 500.
 e12a(N,Num0,Num,Len0,Len) :-
-        Len0 =< 500,
+        Len0 < 500,
         Num1 is Num0+N+1, % the N'th triangle number
         num_divisors(Num1,Len1),
         N1 is N+1,
