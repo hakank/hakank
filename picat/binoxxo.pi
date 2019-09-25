@@ -1,0 +1,142 @@
+/* 
+
+  Binoxxo grid puzzle in Picat.
+
+  From https://github.com/AdrianKauz/HSLU_FS19_AISO_Exercises/blob/62088b7b67477cadc936354ebb48c89dd33dc49b/Constraint_Programming/BinoxxoGenerator.ipynb
+  """
+  Module: HSLU - Artificial Intelligence - Search & Optimization (AISO)
+  Source: Slides "Constraint programming 1 - Modelling with OR-Tools"
+  Author: Adrian Kauz
+  
+  Place X or O in the empty cells so that there are no more than
+  two consecutive X's or O's in a row or a colum. The number of X's
+  is the same as the number of O's in each row and column. All
+  rows and columns are unique.
+  More precisely, the rows must be different from each other and
+  separately, the columns must be differ from each other.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+% Unique solution
+go ?=>
+  nolog,
+  problem(1,Grid),
+  N = Grid.len,
+  binoxxo(N,Grid, X),
+  print_grid(X),
+  fail,
+  nl.
+  
+go => true.
+
+
+%% No hints
+go2 ?=>
+  N = 14,
+  binoxxo(N,_, X),
+  print_grid(X),
+  fail,
+  nl.
+
+go2 => true.
+
+
+print_grid(X) =>
+  foreach(Row in X)
+    foreach(C in Row)
+      print(cond(C == 1,"X", "0"))
+    end,
+    nl
+  end,
+
+  nl.
+  
+
+
+binoxxo(N, Grid, X) =>
+
+  % """
+  % Size of the board should be an even number. Read the rules then you know why.
+  % """
+  if N mod 2 == 1 then
+    println("Size of the board should be an even number. Read the rules then you know why."),
+    fail
+  end,
+
+  M = N div 2,  % number of X's in each row/column
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  if nonvar(Grid) then
+     foreach(I in 1..N, J in 1..N)
+       if nonvar(Grid[I,J]) then
+         X[I,J] #= Grid[I,J]
+       end
+     end
+  end,
+
+  % The number of X's is the same as the number of O's in each row and column.
+  % (I.e. the sum of each row/column is n / 2.
+  foreach(I in 1..N)
+      sum([X[I,J] : J in 1..N]) #= M,
+      sum([X[J,I] : J in 1..N]) #= M
+  end,
+
+  % All rows and columns are unique.
+  foreach(I in 1..N, J in 1..N, I < J)
+      sum([X[I,K] #!= X[J,K] : K in 1..N]) #> 0,
+      sum([X[K,I] #!= X[K,J] : K in 1..N]) #> 0
+  end,
+
+  % Place X or O in the empty cells so that there are no more
+  % than two consecutive X's or O's in a row or a colum.
+  % (I.e. for each seqment of 3 there can be max two 1's (sum is 0..2).
+  foreach(I in 1..N)
+      % Max 2 1s in a row
+      sliding_sum(0,2,3,[X[I,J] : J in 1..N]),
+      sliding_sum(0,2,3,[X[J,I] : J in 1..N]),
+      
+      % Max 2 0s in a row
+      foreach(J in 1..N-2)
+        sum([X[I,J+K] #= 0 : K in 0..2]) #<= 2,
+        sum([X[J+K,I] #= 0 : K in 0..2]) #<= 2      
+      end 
+
+  end,
+
+  solve($[ff,split],X).
+
+%
+% Note: Seq must be instantiated, but neither Low or Up has
+% to be (the result may be weird unless they are, though).
+%
+sliding_sum(Low, Up, Seq, Variables) =>
+   foreach(I in 1..Variables.length-Seq+1)
+      Sum #= sum([Variables[J] : J in I..I+Seq-1]),
+      Sum #>= Low,
+      Sum #=< Up
+   end.
+
+%
+% data
+%
+problem(1,Grid) =>
+Grid = [
+    [_, _, _, _, _, _, _, _],
+    [0, _, _, _, _, _, _, _],
+    [_, 1, 1, _, _, 0, _, _],
+    [_, _, _, _, _, _, 1, 1],
+    [_, _, _, 1, _, _, _, _],
+    [_, _, _, _, _, _, _, _],
+    [_, _, _, _, 0, _, _, 0],
+    [_, _, _, 1, _, _, 1, _]
+]
