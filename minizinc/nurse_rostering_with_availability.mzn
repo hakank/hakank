@@ -16,7 +16,7 @@
 % (I'm using Gecode.)
 % """
 
-% Here I just the Nurse rostering model (from the MiniZinc examples) and 
+% Here I just use the Nurse rostering model (from the MiniZinc examples) and 
 % add a (random) availability matrix.
 % 
 % My answer to the question: http://stackoverflow.com/a/22267889/195636
@@ -100,8 +100,8 @@ constraint
 ;
 
 
-% for each day the must be at least 3 nurses with day shift,
-% and 2 nurses with night shifht
+% for each day there must be at least 3 nurses with day shift,
+% and 2 nurses with night shift
 constraint
    forall(j in 1..num_days) (
       % add the availabile matrix
