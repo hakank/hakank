@@ -1,0 +1,128 @@
+/* 
+
+  Vacation Days Calculation in Picat.
+
+  From 
+  Decicion Management Community:
+  "Decision Table for Vacation Days Calculation"
+  https://dmcommunity.wordpress.com/challenge/challenge-jan-2016/
+  """
+  This month we want to ask DM vendors or their consultants to submit decision 
+  tables that represent the following business logic:
+
+  The number of vacation days depends on age and years of service:
+  
+  Every employee receives at least 22 days.
+  Additional days are provided according to the following criteria:
+
+  1) Only employees younger than 18 or at least 60 years, or employees
+     with at least 30 years of service will receive 5 extra days.
+  2) Employees with at least 30 years of of service and also employees
+     of age 60 or more, receive 3 extra days, on top of additional
+     days already given.
+  3) If an employee has at least 15 but less than 30 years of service,
+     2 extra days are given. These 2 days are also provided for employees
+     of age 45 or more. These 2 extra days can not be combined with
+     the 5 extra days.
+
+
+  This problem was offered by Prof. Jan Vanthienen who is one of the best known experts in 
+  decision tables and a member of the DMN Task Force. Send your best possible design of 
+  the proper decision table with a few comments if necessary.  Then we will ask 
+  Prof. Vanthienen to provide his comparative analysis of different submitted representations 
+  along with his explanations of what constitutes a good decision table.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+%
+% Plain logic programming, using member/2 and cond/3.
+%
+go ?=>
+
+  member(Age,16..65),
+  member(Service,1..50),
+
+  % Every employee receives at least 22 days.
+  BaseDays = 22,
+
+  % Additional days are provided according to the following criteria:
+  %
+  % 1) Only employees younger than 18 or at least 60 years, or employees
+  %    with at least 30 years of service will receive 5 extra days.
+  Days5 = cond( (Age < 18 ; Age >= 60 ; Service >= 30), 5, 0),
+
+  % 2) Employees with at least 30 years of of service and also employees
+  %    of age 60 or more, receive 3 extra days, on top of additional
+  %    days already given.
+  Days3 = cond( (Service >= 30 ; Age >= 60), 3, 0),
+
+
+  % 3) If an employee has at least 15 but less than 30 years of service,
+  %    2 extra days are given. These 2 days are also provided for employees
+  %    of age 45 or more. These 2 extra days can not be combined with
+  %    the 5 extra days.
+  Days2 = cond(( (Service >= 15, Service < 30) ; Age >= 45), 2,0),
+
+
+  Days = BaseDays + cond(Days5 > 0, 5, 0) + cond(Days3 > 0, 3, 0) +
+               cond((Days2 > 0, Days5 == 0), 2, 0),
+  println([age=Age,service=Service,days5=Days5,days3=Days3,days2=Days2,days=Days]),
+       
+  fail,
+  
+  nl.
+
+go => true.
+
+
+%
+% Using cp.
+%
+go2 ?=>
+
+  Age :: 16..65,
+  Service :: 1..50,
+
+  % Every employee receives at least 22 days.
+  BaseDays = 22,
+
+  % Additional days are provided according to the following criteria:
+  %
+  % 1) Only employees younger than 18 or at least 60 years, or employees
+  %    with at least 30 years of service will receive 5 extra days.
+  Days5 #= cond( (Age #< 18 #\/ Age #>= 60 #\/ Service #>= 30), 5, 0),
+
+  % 2) Employees with at least 30 years of of service and also employees
+  %    of age 60 or more, receive 3 extra days, on top of additional
+  %    days already given.
+  Days3 #= cond( (Service #>= 30 #\/ Age #>= 60), 3, 0),
+
+
+  % 3) If an employee has at least 15 but less than 30 years of service,
+  %    2 extra days are given. These 2 days are also provided for employees
+  %    of age 45 or more. These 2 extra days can not be combined with
+  %    the 5 extra days.
+  Days2 #= cond(( (Service #>= 15 #/\ Service #< 30) #\/ Age #>= 45), 2,0),
+
+  Days #= BaseDays + cond(Days5 #> 0, 5, 0) + cond(Days3 #> 0, 3, 0) +
+                    cond((Days2 #> 0 #/\ Days5 #= 0), 2, 0),
+
+  % Show the inferred domains of the variables
+  println([age=Age,service=Service,days5=Days5,days3=Days3,days2=Days2,days=Days]),
+  Vars = [Age, Service],
+  solve($[],Vars),
+  println([age=Age,service=Service,days5=Days5,days3=Days3,days2=Days2,days=Days]),
+  fail,
+  
+  nl.
+
+go2 => true.

@@ -1,0 +1,419 @@
+/* 
+
+  Utils for the nn module in Picat.
+
+  The basis for this is to use ARFF files (se parse_arff.pi for more info):
+
+  - Right now, the focus is on classification problems. 
+
+  - The ARFF parser don't handle NAs (i.e. '?') in the dataset. 
+
+  - parsing the ARFF file and create two files
+    * base.arff_train.data
+    * base.arff_test.data
+    * base.arff.net
+
+    See parse_arff.pi for more details.
+
+  - For each dataset one must write a specific program with the following:
+    * go/0 (or main/0)
+      This must include the following (from train_iris.pi)
+       Base = "iris.arff",
+       Map = new_map([1='Iris-setosa',2='Iris-versicolor',3='Iris-virginica']),
+       train_and_test(Base, Map),
+       nl.
+    * train_net(TrainFile, NetFile,NumInputs,NumOutputs)
+      which includes all the parameters to train the dataset.
+      This is then called in train_and_test/2 from this module.
+
+      See train_*.pi for examples.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module nn_hakank.
+
+import nn.
+import util.
+
+% For numeric predictions
+train_and_test(Base) =>
+  Map = new_map(),
+  train_and_test(Base,Map).
+
+train_and_test(Base, Map) =>
+  TrainFile = Base ++ "_train.data",
+  [NumInputs,NumOutputs] = read_format_line(TrainFile),
+  println([numInputs=NumInputs,numOutputs=NumOutputs]),
+  
+  TestFile = Base ++ "_test.data", 
+  NetFile = Base ++ ".net",
+  
+  time(train_net(TrainFile, NetFile,NumInputs,NumOutputs)),
+  if NumOutputs > 1 then
+    time(test_net(TestFile,NetFile,Map))
+  else
+    time(test_net_numeric(TestFile,NetFile))
+  end,
+  nl.
+
+%
+% test_net(TestFile, NetFile,CategoryMap)
+%
+% for classification problems (# outputs > 1)
+%
+test_net(TestFile, NetFile,CategoryMap) =>
+  NN = nn_load(NetFile),
+  TestData = nn_train_data_load(TestFile),
+  println(testData=TestData),
+  NumCorrect = 0,
+  NumTests = 0,
+  Len = CategoryMap.keys.len,
+  ConfusionMatrix = new_array(Len,Len),
+  bind_vars(ConfusionMatrix,0),
+  foreach(D in TestData)
+    NumTests := NumTests + 1,  
+    Output=D[2],
+    % println([input=D[1],output=D[2]]),
+    Predict = nn_run(NN,D[1]),
+    % println(predict=Predict),
+    SelOutput = max_arg(Output),    
+    SelPredict = max_arg(Predict),
+    if SelOutput == SelPredict then
+      NumCorrect := NumCorrect + 1
+    end,
+    println([output=Output,predict=Predict]),
+    println([output=SelOutput,predict=SelPredict,num_correct=NumCorrect,num_tests=NumTests, pct=(NumCorrect/NumTests)]),
+    nl,
+    ConfusionMatrix[SelOutput,SelPredict] := ConfusionMatrix[SelOutput,SelPredict] + 1
+  end,
+  println(result=[num_correct=NumCorrect,num_tests=NumTests, pct=(NumCorrect/NumTests)]),
+  nl,
+  println("Confusion matrix:"),
+  foreach(Row in ConfusionMatrix)
+    println(Row)
+  end,
+  nl,
+  nn_destroy_all.
+
+%
+% test_net_numeric(TestFile, NetFile)
+%
+% for numeric prediction
+% 
+test_net_numeric(TestFile, NetFile) =>
+  NN = nn_load(NetFile),
+  TestData = nn_train_data_load(TestFile),
+  NumTests = 0,
+  TotDiff = 0,
+  foreach(D in TestData)
+    NumTests := NumTests + 1,
+    Input = D[1],
+    Output=D[2,1],
+    println([input=D[1],output=Output]),
+    Predict1 = nn_run(NN,Input,$[scaleIn(1),scaleOut(-1),resetMSE]),
+    Predict = Predict1[1],
+    Diff = abs(Predict-Output),
+    TotDiff := TotDiff + Diff,
+    println([output=Output,predict=Predict,num_tests=NumTests, diff=Diff, totDiff=TotDiff]),
+    nl
+  end,
+  println(result=[num_correct=NumCorrect,num_tests=NumTests, totDiff=TotDiff]),
+  println(totDiff=TotDiff),
+  nl,
+  nn_destroy_all.
+
+
+max_arg(L) = Val =>
+   max(L.to_list) = MaxVal,
+   Val = first([I : I in 1..L.len, L[I] == MaxVal]).
+
+
+read_format_line(File) = [NumInputs,NumOutputs] =>
+   FH = open(File),
+   Line = read_line(FH),
+   close(FH),
+   [NumInstances,NumInputs,NumOutputs] = [I.to_int() : I in Line.split()].
+
+
+%%
+%% For parsing an ARFF file.
+%%
+parse_and_split_file(File) =>
+   parse_and_split_file(File, -1, 0.8, 0).
+
+parse_and_split_file(File,ClassIx) =>
+   parse_and_split_file(File, ClassIx, 0.8, 0).
+
+parse_and_split_file(File,ClassIx,Pct) =>
+   parse_and_split_file(File, ClassIx, Pct, 0).
+
+
+parse_and_split_file(File, ClassIx, Pct, NoShuffle) =>
+   [Data,Format,Info] = parse_arff(File,ClassIx),
+   println(format=Format),
+   %%
+   %% Info: TODO
+   %% The idea is to use this information to
+   %% simplify training and testing.
+   %% But right now I'm not sure how to represent it (and read it back).
+   %%   
+   println("Info:"),
+   Info.put(pct,Pct),
+   Info.put(no_shuffle,NoShuffle),
+   println(info=Info),
+   
+   /*
+   foreach(Key=Value in Info)
+     if Key == attributes then
+       print_attribute_info(Value)
+     elseif map(Value) then
+       foreach(Key2=Value2 in Value)
+         if map(Value2) then
+           foreach(Key3=Value3 in Value2)
+              printf("%w: %w\n", Key3,Value3)
+           end
+         else
+           printf("%w: %w\n", Key2,Value2)
+         end
+       end
+     else
+       printf("%w: %w\n", Key,Value)
+     end
+   end,
+   println("end_info"),
+   */
+   if NoShuffle == 1 then
+     DataShuffled = Data
+   else
+     DataShuffled = shuffle(Data)
+   end,
+   if Pct < 1 then
+     [DataTrain,DataTest] = split_dataset(DataShuffled,Pct),
+     TrainFormat := copy_term(Format),
+     TrainFormat[1] := DataTrain.len,
+     TestFormat := copy_term(Format),
+     TestFormat[1] := DataTest.len,
+     println(train_len=DataTrain.len),
+     println(test_len=DataTest.len)
+   else
+     DataTrain = DataShuffled,
+     println(train_len=DataTrain.len),
+     TrainFormat := copy_term(Format),
+     TrainFormat[1] := DataTrain.len
+   end,
+   TrainFile = File ++ "_train.data",
+   println(train_file=TrainFile),
+   TrainHandle = open(TrainFile,write),
+   if Pct < 1 then 
+     TestFile = File ++ "_test.data",
+     TestHandle = open(TestFile,write),
+     println(test_file=TestFile)
+   end,
+   
+   println("Generating training set"),
+   println(TrainHandle,[TrainFormat[I].to_string : I in 1..3].join(' ')),
+   foreach([In,Out] in DataTrain)
+     println(TrainHandle,In),
+     println(TrainHandle,Out)
+   end,
+   close(TrainHandle),   
+   if Pct < 1 then
+     println("Generating Test set"),
+     println(TestHandle,[TestFormat[I].to_string : I in 1..3].join(' ')),   
+     foreach([In,Out] in DataTest)
+       println(TestHandle,In),
+       println(TestHandle,Out)
+     end
+   end,
+   if Pct < 1 then 
+     close(TestHandle)
+   end,
+   nl.
+
+%%
+%% parse_arff(File, ClassIx) = Data
+%%
+%% Parse an ARFF file and returns the data as a list of [Input, Output] pairs
+%%
+%% ClassIx = -1, % -1 last attribute in data is the class
+%%
+parse_arff(File) = parse_arff(File,-1).
+
+parse_arff(File,ClassIx) = [Data,Format,Info] =>
+   println($parse_arff(File,ClassIx)),
+   Lines = read_file_lines(File),
+   GotData = false,
+   AttributesMap = new_map(),
+   AttributesList = [],
+   AttributeIx = 1,
+   ClassName = _,
+   NumAttributes = 0,
+   Data = [],
+   Encodings = new_map(),
+   NumInputValues = _,
+   NumOutputValues = _,
+   Info = new_map(),
+   Info.put(class_index,ClassIx),
+   Info.put(attributes,new_map()),
+   Classification = false,
+   foreach(Line in Lines, Line.len > 0, Line[1] != '%')
+      % println(line=Line),
+      if Line[1] == '@' then
+         Header  = split(Line),
+         Key = Header[1].to_lowercase,
+
+         %% @Data
+         if Key == "@data" then
+           GotData := true,
+           if ClassIx == -1 then
+              ClassIx := AttributesList.len,
+              Info.put(class_index,AttributesList.len)
+           end,
+           ClassName := AttributesList[ClassIx],
+           NumAttributes := AttributesList.len % ,
+           % NumInputValues = NumAttributes-1
+           
+         %% @Attribute
+         elseif Key == "@attribute" then
+            Name = Header[2],
+            Type = Header[3],
+            P1 = find_first_of(Line,'{'),
+            P2 = find_first_of(Line,'}'),
+            IsCategory = false,
+            if P1 > 0, P2 > 0 then
+              Name := Header[2],
+              Type := [Line[P] : P in P1+1..P2-1],
+              Type := delete_all(Type,' '),
+              IsCategory := true,
+              Classification := true
+            end,
+            AttributesList := AttributesList ++ [Name],
+            AttributesMap.put(Name,AttributeIx),
+            AttributeIx := AttributeIx + 1,
+            %% Categorical?
+            if IsCategory then
+              TypeList = split(Type,","),
+              HotEncoding = hot_encode(TypeList),
+              Encodings.put(Name,HotEncoding),
+              Info.get(attributes).put(Name,HotEncoding)
+            else
+               Info.get(attributes).put(Name,Type.to_lowercase)
+            end
+
+         %% @Relation
+         elseif Key == "@relation" then
+            true
+         end
+      else
+         %%
+         %% Data lines
+         %%
+         if GotData then
+            DataLine = split(Line,","),
+            if find_first_of(Line,'?') >= 0 then
+               println("Sorry, the file includes NAs (?) which is not handled."),
+               println("Here's the offending line:"),
+               println(Line),
+               halt
+            end,
+            foreach({A,I} in zip(AttributesList,1..NumAttributes))
+               if Encodings.has_key(A) then
+                 DataLine[I] := [E.to_string() : E in Encodings.get(A).get(DataLine[I])].join(' ')
+               end
+            end,
+            if var(NumOutputValues) then
+               NumOutputValues := split(DataLine[ClassIx]).len
+               %% NumOutputValues := DataLine[ClassIx].len
+            end,
+            Input = [DataLine[I].to_string() : I in 1..NumAttributes, I != ClassIx].join(' '),
+            NumInputValues := Input.split().len,
+            if Classification then
+               Output = [T.to_string() :  T in DataLine[ClassIx]].join(' ')
+            else
+               Output = [T :  T in DataLine[ClassIx]]
+            end,
+            println(output=Output),
+            
+            Data := Data ++ [[Input,Output]]
+         end
+      end
+   end,
+   NumInstances = Data.len,
+   Info.put(num_instances,NumInstances),
+   Info.put(num_input_values,NumInputValues),
+   Info.put(num_output_values,NumOutputValues),      
+   Format = [NumInstances,NumInputValues,NumOutputValues].
+
+
+
+%%
+%% Encode the nominal values in list L as
+%% hot_encode:
+%%    0,0,...1,...,0,0
+%% OR optional
+%%    -1,-1,...1,..,1,-1
+%%
+hot_encode(L) = hot_encode(L, 0).
+hot_encode(L, Zero) = HotEncoding =>
+  Len = L.len,
+  HotEncoding = new_map(),
+  foreach(I in 1..Len)
+    E = [Zero : _ in 1..Len],
+    E[I] := 1,
+    HotEncoding.put(L[I], E)
+  end.
+
+%
+% shuffle(List) = ShuffledList
+%
+% ShuffledList is a random shuffled List
+% 
+shuffle(List) = List2 => 
+  List2 = List,
+  Len = List.length,
+  _ = random2(), 
+  foreach(I in 1..Len) 
+    R2 = 1+(random() mod Len),
+    List2 := swap(List2,I,R2)
+  end.
+
+
+%
+% Swap position I <=> J in list L
+%
+swap(L,I,J) = L2, list(L) =>
+  L2 = L,
+  T = L2[I],
+  L2[I] := L2[J],
+  L2[J] := T.
+
+%
+% split_dataset(Dataset, Pct) = [Data1,Data2]
+%
+% Split the dataset Dataset in two datasets
+% with a split of Pct percent.
+%
+split_dataset(Dataset, Pct) = [Data1,Data2] =>
+  Len = length(Dataset),
+  First = round(Len*Pct),
+  Data1 = [Dataset[I] : I in 1..First],
+  Data2 = [Dataset[I] : I in First+1..Len].
+
+
+print_attribute_info(Info) =>
+  println("attributes_start"),
+  foreach(Key=Value in Info)
+     printf("attribute: %w\n", Key),
+     if map(Value) then
+        foreach(Key2=Value2 in Value)
+           printf("%w: %w\n", Key2,[V.to_string : V in Value2].join(' '))
+        end
+     else
+       printf("%w\n",Value)
+    end,
+    println("attribute_end")
+  end,
+  println("attributes_end").

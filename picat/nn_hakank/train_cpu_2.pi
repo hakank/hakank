@@ -1,0 +1,52 @@
+/* 
+
+  Train the CPU data set in Picat.
+
+  Why does these errors occur?
+  """
+  FANN Error 18: Scaling parameters not present.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import nn.
+
+main => go.
+
+go =>
+  TrainFile = "cpu.arff_train.data",
+  TestFile = "cpu.arff_test.data",  
+  NetFile = "cpu.arff.net",
+
+  NN = new_nn({6,150,1}),
+  nn_set_activation_function_layer(NN,sym_sigmoid,2),
+  nn_set_activation_function_output(NN,linear),
+  nn_train(NN,TrainFile,$[maxep(15000), report(1000), derror(0.01), train_func(rprop),
+                          scale(-1,1,-1,1)]),
+  nn_save(NN,NetFile),
+  % nn_print(NN),
+
+  % NN = nn_load(NetFile),
+  TestData = nn_train_data_load(TestFile),
+  NumTests = 0,
+  TotDiff = 0,
+  foreach(D in TestData)
+    NumTests := NumTests + 1,
+    Input = D[1],
+    Output=D[2,1],
+    println([input=D[1],output=Output]),
+    Predict1 = nn_run(NN,Input,$[scaleIn(1),scaleOut(-1),resetMSE]),
+    Predict = Predict1[1],
+    Diff = abs(Predict-Output),
+    TotDiff := TotDiff + Diff,
+    println([output=Output,predict=Predict,diff=Diff, totDiff=TotDiff]),
+    nl
+  end,
+  println(result=[num_tests=NumTests, totDiff=TotDiff]),
+  println(totDiff=TotDiff),
+  nl,
+  nn_destroy_all.
+  nl.
