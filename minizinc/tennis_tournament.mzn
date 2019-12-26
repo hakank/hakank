@@ -141,7 +141,8 @@ constraint
   % upper triangle
   forall(k in 1..n) (
     % sum([x[i,j]=k | i,j in 1..n where i < j]) <= num_courts
-    at_most(num_courts, [x[i,j]=k | i,j in 1..n where i < j], k)
+    % at_most(num_courts, [x[i,j]=k | i,j in 1..n where i < j], k)
+    count(t in [x[i,j]=k | i,j in 1..n where i < j])(t=k) <= num_courts
   )
 
   /\
@@ -199,5 +200,5 @@ output
 %
 % data
 %
-n = 7;
-num_courts = 5;
+n = 9;
+num_courts = 3;

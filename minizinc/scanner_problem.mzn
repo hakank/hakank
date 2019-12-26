@@ -51,25 +51,25 @@ solve satisfy;
 constraint
   % rows
   forall(i in 1..num_rows) (
-     % sum([x[i,j] | j in 1..num_cols]) = rows[i]
-     exactly(rows[i],[x[i,j] | j in 1..num_cols],1)
+     sum([x[i,j] | j in 1..num_cols]) = rows[i]
+     % exactly(rows[i],[x[i,j] | j in 1..num_cols],1)
   )
   /\ % columns
   forall(j in 1..num_cols) (
-     % sum([x[i,j] | i in 1..num_rows]) = columns[j]
-     exactly(columns[j],[x[i,j] | i in 1..num_rows],1)
+     sum([x[i,j] | i in 1..num_rows]) = columns[j]
+     % exactly(columns[j],[x[i,j] | i in 1..num_rows],1)
   )
 
   /\ % diagonal1: Upper-left to lower-right diagonals
   forall(k in 1..num_diagonal1) (
-     % sum([x[i,j] | i in 1..num_rows, j in 1..num_cols where i+j=k+1]) = diagonal1[k]
-     exactly(diagonal1[k], [x[i,j] | i in 1..num_rows, j in 1..num_cols where i+j=k+1], 1)
+     sum([x[i,j] | i in 1..num_rows, j in 1..num_cols where i+j=k+1]) = diagonal1[k]
+     % exactly(diagonal1[k], [x[i,j] | i in 1..num_rows, j in 1..num_cols where i+j=k+1], 1)
   )
 
   /\ % diagonal2: Upper-left to lower-right diagonals
   forall(k in 1..num_diagonal2) (
-     % sum([x[i,j] | i in 1..num_rows, j in 1..num_cols where i+(num_cols-j+1)=k+1]) = diagonal2[k]
-     exactly(diagonal2[k], [x[i,j] | i in 1..num_rows, j in 1..num_cols where i+(num_cols-j+1)=k+1], 1)
+     sum([x[i,j] | i in 1..num_rows, j in 1..num_cols where i+(num_cols-j+1)=k+1]) = diagonal2[k]
+     % exactly(diagonal2[k], [x[i,j] | i in 1..num_rows, j in 1..num_cols where i+(num_cols-j+1)=k+1], 1)
   )
 
 ;

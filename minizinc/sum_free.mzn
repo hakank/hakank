@@ -46,7 +46,8 @@ constraint
    product_free(x) 
    /\ 
    forall(i in 1..100) (
-     at_most(3, x, i)
+     % at_most(3, x, i)
+     count(t in x)(t=i) <= 3
    )
    /\ sum(i in index_set(x)) (x[i]) = 100
     % /\ all_different(x)

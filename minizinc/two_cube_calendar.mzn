@@ -100,7 +100,8 @@ constraint
   all_different(cube2) /\ increasing(cube2)
   /\
   forall(i in 0..8) (
-    at_least(1, cube1 ++ cube2, i)
+    % at_least(1, cube1 ++ cube2, i)
+    count(t in cube1 ++ cube2)(t = i) >= 1
   )
 ;
 

@@ -19,15 +19,16 @@ int: n = 3;
 array[1..n, 1..n] of var 1..13: x;
 var 0..13*4: s;
 
-% solve satisfy;
+solve satisfy;
 % solve maximize s;
-solve :: int_search([x[r,c] | r,c in 1..n], first_fail, indomain_min, complete) maximize s;
+% solve :: int_search([x[r,c] | r,c in 1..n], first_fail, indomain_min, complete) maximize s;
 
 constraint
 
   % there are 4 cards of each value in a deck
   forall(i in 1..13) (
-     at_most(4, [x[r,c] | r,c in 1..n], i)
+     % at_most(4, [x[r,c] | r,c in 1..n], i)
+     count(t in [x[r,c] | r,c in 1..n]) (t = i) <= 4
   )
 
   % the standard magic square constraints (sans all_different)

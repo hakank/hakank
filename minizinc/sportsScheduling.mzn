@@ -63,8 +63,8 @@ constraint
    
    % Every team plays at most twice in the same period
    forall(p in periods) (
-      at_most(2, [schedule[w,p,h] | w in weeks, h in homeaway] , p)
-
+      % at_most(2, [schedule[w,p,h] | w in weeks, h in homeaway] , p)
+      count(t in [schedule[w,p,h] | w in weeks, h in homeaway])(t=p) <= 2
    )
    /\
    % Distinct games via alldiff on game array
