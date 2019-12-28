@@ -41,6 +41,7 @@
 # http://www.hakank.org/
 #
 #
+from __future__ import print_function
 import sys, string, re, os, re
 import time, signal
 import collections, functools, itertools
@@ -57,7 +58,7 @@ use_cp = [1]
 try:
    from ortools.constraint_solver import pywrapcp as cp
 except:
-   print "No ortools.constraint_solver supported (no substitution given)"
+   print("No ortools.constraint_solver supported (no substitution given)")
    use_cp = [0]
 
 
@@ -134,7 +135,7 @@ def bench1(f):
       func = m.group(1)
    else:
       func = f
-   print func, ": ",
+   print(func, ": ")
    # exec(func + "()")
    eval(func+"()")
    sys.stdout.flush()   
@@ -165,11 +166,11 @@ def bench(f):
       message = "!"
       bad.append([func,t])
    all_results[func] = t
-   print "%-10s: %-20s%f%5s" % (func, str(answer), t, message)
+   print("%-10s: %-20s%f%5s" % (func, str(answer), t, message))
    if got_answers[0]:
       a = answers[fnum]
       if str(answer) != a:
-         print "\t!!!answer was %s. should be %s" % (str(answer), str(a))
+         print("\t!!!answer was %s. should be %s" % (str(answer), str(a)))
          errors.append(func)  
    sys.stdout.flush()
 
@@ -194,8 +195,8 @@ def euler2():
     Find the sum of all the even-valued terms in the sequence which do not 
     exceed four million.
     """
-    # print sum([fib(n) for n in xrange(1,100) if fib(n) < 4000000 and fib(n) & 1 == 0])
-    return sum(fib(n) for n in xrange(1,100) if fib(n) < 4000000 and fib(n) & 1 == 0)    
+    # print sum([fib(n) for n in range(1,100) if fib(n) < 4000000 and fib(n) & 1 == 0])
+    return sum(fib(n) for n in range(1,100) if fib(n) < 4000000 and fib(n) & 1 == 0)    
 
 # (no cheating with the hardcoded range)
 def euler2b():
@@ -270,8 +271,8 @@ def euler4():
     m = 0
     f = 100
     t = 999
-    for i in xrange(f,t):
-        for j in xrange(i,t):
+    for i in range(f,t):
+        for j in range(i,t):
             ij = i*j
             if ij > m and palindromic(ij):
                 m = ij
@@ -279,7 +280,7 @@ def euler4():
 
 # using comprehension, slower
 def euler4b():
-    return max([i*j for i in xrange(100,999) for j in xrange(i,999) if palindromic(i*j)])
+    return max([i*j for i in range(100,999) for j in range(i,999) if palindromic(i*j)])
 
 
 
@@ -327,7 +328,7 @@ def is_prime(n):
     # if n % 2 == 0:
     if not n & 1:       
         return False
-    for i in xrange(3, 1+int(sqrt(n)), 2):
+    for i in range(3, 1+int(sqrt(n)), 2):
         if n % i == 0:
           return False
     return True
@@ -356,7 +357,7 @@ def is_prime3(num):
    for p in primes:
       if num % p == 0:
          return False
-   for i in xrange(17,1+int(sqrt(num)),2):
+   for i in range(17,1+int(sqrt(num)),2):
       if num % i == 0:
          return False
    return True
@@ -386,14 +387,14 @@ def nprimes(n):
 def primes(limit):
    primes = [2]
    i = 3
-   for i in xrange(3, limit, 2):
+   for i in range(3, limit, 2):
       if is_prime(i):
          primes.append(i)
    return primes
 
 # slower than primes(limit)
 def primes2(limit):
-   primes = [2] + [i for i in xrange(3, limit, 2) if is_prime(i)] 
+   primes = [2] + [i for i in range(3, limit, 2) if is_prime(i)] 
    return primes
 
  
@@ -404,9 +405,9 @@ def sieve(limit):
     a[0] = a[1] = 0
     for (i, isprime) in enumerate(a):
         if isprime:
-            for n in xrange(i*i, limit, i):
+            for n in range(i*i, limit, i):
                 a[n] = 0
-    return [i for i in xrange(limit) if a[i]]
+    return [i for i in range(limit) if a[i]]
 
 
 
@@ -419,8 +420,8 @@ def primeseq(limit):
     numbers = range(3, limit+1, 2)
     half = (limit)//2
     initial = 4
-    for step in xrange(3, limit+1, 2):
-        for i in xrange(initial, half, step):
+    for step in range(3, limit+1, 2):
+        for i in range(initial, half, step):
             numbers[i-1] = 0
         initial += 2*(step+1)
 
@@ -431,10 +432,10 @@ def primeseq(limit):
 # (inspired by something on the net)
 def sieve2(n):
     sieve = [True] * n
-    for i in xrange(3,int(n**0.5)+1,2):
+    for i in range(3,int(n**0.5)+1,2):
         if sieve[i]:
-            sieve[i*i::2*i]=[False]*((n-i*i-1)/(2*i)+1)
-    return [2] + [i for i in xrange(3,n,2) if sieve[i]]
+            sieve[i*i::2*i]=[False]*((n-i*i-1)//(2*i)+1)
+    return [2] + [i for i in range(3,n,2) if sieve[i]]
 
 
 
@@ -499,9 +500,9 @@ def euler9():
    Find the product abc.
    """
    P = 0
-   for C in xrange(1,501):
-      for B in xrange(1,C+1):
-         for A in xrange(1,B+1): 
+   for C in range(1,501):
+      for B in range(1,C+1):
+         for A in range(1,B+1): 
              if A + B + C == 1000 and A**2 + B**2 - C**2 == 0:
                 P = A*B*C
                 break
@@ -511,11 +512,12 @@ def euler9():
 # using CP: 0.065s
 def euler9b():
    if not use_cp[0]:
-      print "No ortools.constraint_solver supported, running euler9 instead"
+      print("No ortools.constraint_solver supported, running euler9 instead")
       return euler9()
 
-   solver = cp.Solver("euler9b")
-   x = [solver.IntVar(1,500) for i in range(3)]
+   solver = cp.Solver("Euler9b")
+
+   x = [solver.IntVar(1,500,"x") for i in range(3)]
 
    solver.Add(solver.Sum(x) == 1000)
    solver.Add(x[0]*x[0] + x[1]*x[1] == x[2]*x[2])
@@ -539,7 +541,7 @@ def euler9b():
 
 # comprehension variant of euler9
 def euler9c():
-   return [A*B*C for C in xrange(1,501) for B in xrange(1,C+1) for A in xrange(1,B+1) if A + B + C == 1000 and A**2 + B**2 - C**2 == 0]
+   return [A*B*C for C in range(1,501) for B in range(1,C+1) for A in range(1,B+1) if A + B + C == 1000 and A**2 + B**2 - C**2 == 0]
 
 
 
@@ -776,7 +778,7 @@ def longest_seq(limit):
    # s = set() # add set for faster lookup (test)
    max_len = 0
    max_n = 1
-   for n in xrange(2,limit+1):
+   for n in range(2,limit+1):
       m = n
       clen = 1
       while m > 1:
@@ -859,7 +861,7 @@ def euler14b():
    terms = 0
    i = 2
    j = 0
-   # for i in xrange(1,1000000):
+   # for i in range(1,1000000):
    while i < 1000000:
       j = i
       this_terms = 1
@@ -886,7 +888,7 @@ def euler14c():
    max_len = 0
    max_n = 1
    limit = 1000000
-   for n in xrange(2,limit):
+   for n in range(2,limit):
       m = n
       clen = 1
       while m != 1:
@@ -915,7 +917,7 @@ def euler14d():
    limit = 1000000
    max_len = 0
    max_n = 0
-   for n in xrange(2,limit):
+   for n in range(2,limit):
       m = n
       this_len = 1
       while m > 1:
@@ -937,7 +939,7 @@ def euler14e():
    max_len = 0
    max_n = 1
    limit = 1000000
-   for n in xrange(3,limit,2):
+   for n in range(3,limit,2):
       m = n
       clen = 1
       while m != 1:
@@ -1031,8 +1033,8 @@ def euler17():
    contains 23 letters and 115 (one hundred and fifteen) contains 20 letters. The use of 
    "and" when writing out numbers is in compliance with British usage.
    """
-   # return sum([len(english(i)) for i in xrange(1,1000+1)])
-   return sum(len(english(i)) for i in xrange(1,1000+1))   
+   # return sum([len(english(i)) for i in range(1,1000+1)])
+   return sum(len(english(i)) for i in range(1,1000+1))   
 
 
 
@@ -1187,7 +1189,7 @@ def euler20():
 def sum_divisors(N):
     D = int(sqrt(N))
     Sum = 1
-    for I in xrange(2,D+1):
+    for I in range(2,D+1):
        if N % I == 0:
           Sum += I
           M = N // I
@@ -1210,7 +1212,7 @@ def euler21():
    Evaluate the sum of all the amicable numbers under 10000.
    """
    S = {}
-   for A in xrange(1,9999+1):
+   for A in range(1,9999+1):
       B = sum_divisors(A)
       if A != B:
          C = sum_divisors(B)
@@ -1224,7 +1226,7 @@ def euler21():
 # (no discernible difference to euler21/1)
 def euler21b():
    S = set()
-   for A in xrange(1,9999+1):
+   for A in range(1,9999+1):
       B = sum_divisors(A)
       if A != B:
          C = sum_divisors(B)
@@ -1291,13 +1293,13 @@ def euler23():
    """
    Limit = 20161
    Arr = [1] * (Limit + 1)
-   for I in xrange(2,Limit+1):
-      for J in xrange(I*2,Limit,I):
+   for I in range(2,Limit+1):
+      for J in range(I*2,Limit,I):
          Arr[J] += I
 
-   # Abundant = [I for I in xrange(12,Limit+1) if Arr[I] > I] # 1.395s
-   Abundant = filter(lambda I: Arr[I] > I, xrange(12,Limit+1)) # 1.31s
-   # Abundant = list(itertools.ifilter(lambda I: Arr[I] > I, xrange(12,Limit+1)))
+   Abundant = [I for I in range(12,Limit+1) if Arr[I] > I] # 1.395s
+   # Abundant = filter(lambda I: Arr[I] > I, range(12,Limit+1)) # 1.31s
+   # Abundant = list(itertools.ifilter(lambda I: Arr[I] > I, range(12,Limit+1)))
    for A in Abundant:
       for B in Abundant:
          if A+B > Limit:
@@ -1530,8 +1532,8 @@ def euler27():
    BestLen = 0
    BestA = 0
    BestB = 0
-   for A in xrange(-T,T+1,2):
-      for B in xrange(-T,T+1,2):
+   for A in range(-T,T+1,2):
+      for B in range(-T,T+1,2):
             Len = p27(A,B)
             if Len > BestLen:
                BestLen = Len
@@ -1591,8 +1593,8 @@ def euler29():
   Min = 2
   Max = 100
   Hash = {}
-  for A in xrange(Min,Max+1):
-     for B in xrange(Min,Max+1):
+  for A in range(Min,Max+1):
+     for B in range(Min,Max+1):
         Hash[A**B] = 1
   return len(Hash.keys())
 
@@ -1600,7 +1602,7 @@ def euler29():
 def euler29b():
    Min = 2
    Max = 100
-   return len(set([A**B for A in xrange(Min,Max+1) for B in xrange(Min,Max+1)]))
+   return len(set([A**B for A in range(Min,Max+1) for B in range(Min,Max+1)]))
 
 
   
@@ -1621,17 +1623,17 @@ def euler30():
   Find the sum of all the numbers that can be written as the sum of 
   fifth powers of their digits.
   """
-  return (sum([N for N in xrange(10,6*9**5) if
+  return (sum([N for N in range(10,6*9**5) if
               N == sum([int(I)**5 for I in str(N)])]))
 
 
-  # return (sum(N for N in xrange(10,6*9**5) if
+  # return (sum(N for N in range(10,6*9**5) if
   #               N == sum(int(I)**5 for I in str(N))))
 
 
 def euler30b():
   s = 0
-  for N in xrange(10,6*9**5):
+  for N in range(10,6*9**5):
      # if sum([int(I)**5 for I in str(N)]) == N:
      if sum(int(I)**5 for I in str(N)) == N:                
         s += N
@@ -1676,10 +1678,10 @@ def scalar_product(solver, A,X,Product):
 # CP approach (slower)
 def euler31b():
    if not use_cp[0]:
-      print "No ortools.constraint_solver supported, running euler31 instead"
+      print("No ortools.constraint_solver supported, running euler31 instead")
       return euler31()
 
-   solver = cp.Solver("euler31b")
+   solver = cp.Solver("Euler9b")
    coins = [200,100,50,20,10,5,2,1]
    Max = max(coins)
    n = len(coins)
@@ -1744,7 +1746,7 @@ def to_num(solver, t, s, base):
 
 def pandigital(cp, base=10, start=1, len1=1, len2=4):
     
-    solver = cp.Solver('Pandigital')
+    solver = cp.Solver("pandigital")
 
     # data
     max_d   = base-1
@@ -1794,7 +1796,7 @@ def pandigital(cp, base=10, start=1, len1=1, len2=4):
 #    http://www.hakank.org/or-tools/pandigital_numbers.py
 def euler32b():
    if not use_cp[0]:
-      print "No ortools.constraint_solver supported, using euler32 instead"
+      print("No ortools.constraint_solver supported, using euler32 instead")
       return euler32()
 
    base = 10
@@ -1851,7 +1853,7 @@ def euler34():
   Note: as 1! = 1 and 2! = 2 are not sums they are not included.
   """
   Sum = 0
-  for N in xrange(10,100000+1):
+  for N in range(10,100000+1):
      # if N == sum([fact_int(I) for I in str(N)]): # slower
      # if N == sum([factorial(int(I)) for I in str(N)]):
      if N == sum(factorial(int(I)) for I in str(N)):
@@ -1859,8 +1861,8 @@ def euler34():
   return Sum
 
 def euler34b():
-  # return sum([N for N in xrange(10,100000+1) if N == sum([factorial(int(I)) for I in str(N)])])
-  return sum(N for N in xrange(10,100000+1) if N == sum(factorial(int(I)) for I in str(N)))  
+  # return sum([N for N in range(10,100000+1) if N == sum([factorial(int(I)) for I in str(N)])])
+  return sum(N for N in range(10,100000+1) if N == sum(factorial(int(I)) for I in str(N)))  
    
 def rotate(l,n):
     return l[-n:] + l[:-n]
@@ -1938,7 +1940,7 @@ def euler36():
    include leading zeros.)
    """
    Res = 0
-   for N in xrange(1,999999+1):
+   for N in range(1,999999+1):
       if palindromic(N):
          Bin = dec_to_base(N, 2)
          if Bin == reverse(Bin):
@@ -1948,8 +1950,8 @@ def euler36():
 
 # as a comprehension
 def euler36b():
-   # return sum([N for N in xrange(1,999999+1) if palindromic(N) and dec_to_base(N, 2) == reverse(dec_to_base(N, 2)) ])
-   return sum(N for N in xrange(1,999999+1) if palindromic(N) and dec_to_base(N, 2) == reverse(dec_to_base(N, 2)) )   
+   # return sum([N for N in range(1,999999+1) if palindromic(N) and dec_to_base(N, 2) == reverse(dec_to_base(N, 2)) ])
+   return sum(N for N in range(1,999999+1) if palindromic(N) and dec_to_base(N, 2) == reverse(dec_to_base(N, 2)) )   
    
 
 
@@ -2180,7 +2182,7 @@ def euler43():
    Find the sum of all 0 to 9 pandigital numbers with this property.
    """
    if not use_cp[0]:
-      print "No ortools.constraint_solver supported, running euler43b instead"
+      print("No ortools.constraint_solver supported, running euler43b instead")
       return euler43b()
 
 
@@ -2236,7 +2238,7 @@ def euler44():
    and difference is pentagonal and D = |P(k) - P(j)| is minimised; what 
    is the value of D?  
    """
-   S = {pent(N) for N in xrange(1,2500+1)}
+   S = {pent(N) for N in range(1,2500+1)}
    D = 10000000
    for J in S:
       for K in S:
@@ -2250,7 +2252,7 @@ def euler44():
 
 # using map instead of set
 def euler44b():
-   S = {pent(N):1 for N in xrange(1,2500+1)}
+   S = {pent(N):1 for N in range(1,2500+1)}
    T = S.keys()
    D = 10000000
    for J in T:
@@ -2265,8 +2267,8 @@ def euler44b():
 
 
 def euler44c():
-   # S = {pent(N) for N in xrange(1,2500+1)}
-   S = {pent(N):1 for N in xrange(1,2500+1)}   
+   # S = {pent(N) for N in range(1,2500+1)}
+   S = {pent(N):1 for N in range(1,2500+1)}   
    D = 10000000
    for (J,K) in itertools.product(S,repeat=2):
       if J < K:
@@ -2371,13 +2373,13 @@ def euler47():
    """
    MaxN = 1000000
    F = [0] * MaxN
-   for I in xrange(2,MaxN): 
+   for I in range(2,MaxN): 
       if F[I] == 0:
-         for J in xrange(2*I,MaxN,I):
+         for J in range(2*I,MaxN,I):
             F[J] += 1
    Goal = [4,4,4,4]
-   for I in xrange(MaxN-3):
-      if [F[J] for J in xrange(I,I+4)] == Goal:
+   for I in range(MaxN-3):
+      if [F[J] for J in range(I,I+4)] == Goal:
          return I
          break
 
@@ -2394,9 +2396,9 @@ def euler48():
    """
    Sum = 0
    T = 10000000000
-   for I in xrange(1,1000):
+   for I in range(1,1000):
       N = I
-      for J in xrange(2,I+1):
+      for J in range(2,I+1):
          N = (N * I) % T
       Sum = (Sum + N) % T
    return Sum
@@ -2407,12 +2409,12 @@ def euler48b():
       S += I**I
    SS = str(S)
    Len = len(SS)
-   return "".join([SS[J] for J in xrange(Len-10,Len)])
+   return "".join([SS[J] for J in range(Len-10,Len)])
 
 def euler48c():
-   S = str(sum(I**I for I in xrange(1,1000+1)))
+   S = str(sum(I**I for I in range(1,1000+1)))
    Len = len(S)
-   return "".join([S[J] for J in xrange(Len-10,Len)])
+   return "".join([S[J] for J in range(Len-10,Len)])
 
 
 
@@ -2454,7 +2456,7 @@ def euler49():
    Diff = 3330
    Primes = sieve2(10000)
    Res = 0
-   for N in xrange(1001,9999+1,2):
+   for N in range(1001,9999+1,2):
       C = check_perms49(N, Diff)
       # if C != [] and N != 1487 and is_prime(N):
       if C != [] and N != 1487 and N in Primes:         
@@ -2483,9 +2485,9 @@ def euler50():
    N = 10000
    Primes = primes(N)
    Found = 0
-   for Len in xrange(550,21,-1):
-      for Offset in xrange(1,549+1):
-         PP = sum([Primes[J] for J in xrange(Offset+1,Offset+Len+1)])
+   for Len in range(550,21,-1):
+      for Offset in range(1,549+1):
+         PP = sum([Primes[J] for J in range(Offset+1,Offset+Len+1)])
          if PP < 1000000 and is_prime2(PP):
             Found = PP
             break
@@ -2502,7 +2504,7 @@ def sudoku(problem):
    Solving a Sudoku problem
    """
    if not use_cp[0]:
-      print "No ortools.constraint_solver supported (no substitution given)"
+      print("No ortools.constraint_solver supported (no substitution given)")
       return
 
    solver = cp.Solver("sudoku")
@@ -2589,7 +2591,7 @@ def euler96():
    the top left corner of the solution grid above.
    """
    if not use_cp[0]:
-      print "No ortools.constraint_solver supported (and there is no ersatz)"
+      print("No ortools.constraint_solver supported (and there is no ersatz)")
       return
       
 
@@ -2643,9 +2645,9 @@ def run_all():
          fnum, correct = re.split(":",a)
          answers[fnum] = correct
       got_answers[0] = True
-      print "Great, we got the answers to compare with."
+      print("Great, we got the answers to compare with.")
    except:
-      print "Sorry, no answers to compare with."
+      print("Sorry, no answers to compare with.")
       pass
    
    bench(euler1) # 0.0002s
@@ -2774,7 +2776,7 @@ def run_all():
 
 
 def timeout_handler(s,f):
-   print "Timeout"
+   print("Timeout")
    raise Exception("Timeout")
 
 #
@@ -2792,10 +2794,10 @@ def run_all_all():
    for f in sorted(esort):
       if f > 50:
          break
-      print "\nproblem #%i" % f
+      print("\nproblem #%i" % f)
       these_times = {}
       for func in esort[f]:
-         print func, 
+         print(func, )
          signal.signal(signal.SIGALRM, timeout_handler)
          signal.alarm(timeout_time)
          ff = func + "()"
@@ -2810,7 +2812,7 @@ def run_all_all():
             answer = eval(ff)
             t2 = time.time()
             t = t2 - t1
-            print answer, t
+            print(answer, t)
          except:
             t = timeout_time
             timeouts.append(func)
@@ -2818,15 +2820,15 @@ def run_all_all():
          these_times[func] = t
          sys.stdout.flush()   
       these_sorted = sorted(these_times.items(), key=lambda k: k[1])
-      print "funcs:", these_sorted
+      print("funcs:", these_sorted)
       best.append(these_sorted[0])
       worst.append(these_sorted[-1])      
 
-   print sorted(times.items(), key=lambda k: k[1], reverse=True)
-   print "timeouts:", timeouts
-   print "best:", [b[0] for b in best]
-   print "best total time:", sum(b[1] for b in best)
-   print "worst total time:", sum(w[1] for w in worst)
+   print(sorted(times.items(), key=lambda k: k[1], reverse=True))
+   print("timeouts:", timeouts)
+   print("best:", [b[0] for b in best])
+   print("best total time:", sum(b[1] for b in best))
+   print("worst total time:", sum(w[1] for w in worst))
 
    
 if __name__ == '__main__':
@@ -2842,9 +2844,9 @@ if __name__ == '__main__':
    else:
       # sys.setcheckinterval(100000) # tweak
       run_all()
-      print "all (sorted):"
-      print sorted(all_results.items(), key=lambda k: k[1], reverse=True)
-      print "errors:", errors
-      print "very_bad (>2s) :", very_bad
-      print "bad (> 1s):", bad
-      print "total_time:", total_time[0]
+      print("all (sorted):")
+      print(sorted(all_results.items(), key=lambda k: k[1], reverse=True))
+      print("errors:", errors)
+      print("very_bad (>2s) :", very_bad)
+      print("bad (> 1s):", bad)
+      print("total_time:", total_time[0])
