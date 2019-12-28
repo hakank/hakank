@@ -73,7 +73,7 @@ def bus_scheduling(problem):
     num_shifts     = problem[1]
     min_num_shifts = problem[2]
     shifts         = problem[3]
-    print "num_work:", num_work, "num_shifts:", num_shifts, "min_num_shifts:", min_num_shifts
+    print("num_work:", num_work, "num_shifts:", num_shifts, "min_num_shifts:", min_num_shifts)
     
     # variables
     
@@ -88,21 +88,21 @@ def bus_scheduling(problem):
 
     sol.add(tot_shifts >= min_num_shifts)
 
-    print "solve"
+    print("solve")
     while sol.check() == sat:
         mod = sol.model()
-        print "tot_shifts:", mod[tot_shifts]
-        # print "x:", [mod[x[i]] for i in range(num_shifts)]
+        print("tot_shifts:", mod[tot_shifts])
+        # print("x:", [mod[x[i]] for i in range(num_shifts)])
         selected_shifts = [i for i in range(num_shifts) if mod[x[i]] == 1]
-        print "selected shifts:"
+        print("selected shifts:")
         ss = [0 for i in range(num_work)]
         for s in selected_shifts:
-           print "shift ", s, ":", shifts[s]
+           print("shift ", s, ":", shifts[s])
            for i in shifts[s]:
                ss[i] = s
         # for w in range(num_work):
-        #    print "work", w, "is covered in shift", ss[w]
-        print
+        #    print("work", w, "is covered in shift", ss[w])
+        print()
         getLessSolution(sol,mod,tot_shifts)
 
 # the problems in bus_scheduling_csplib/problems/
@@ -126,10 +126,10 @@ p = "t1"
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         p= sys.argv[1]
-    print "problem", p
+    print("problem", p)
     path = "bus_scheduling_csplib/problems/%s"%p
     if not os.path.isfile(path):
-        print "The file %s does not exists!" % path
+        print("The file %s does not exists!" % path)
     else:
         problem = read_problem(path)
         bus_scheduling(problem)

@@ -41,14 +41,14 @@ cur_nums = []
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  # print "arr:", [mod.eval(arr[i]) for i in range(n)]
+  # print("arr:", [mod.eval(arr[i]) for i in range(n)])
   cur_nums.append(mod.eval(arr[0]).as_long())
   getDifferentSolution(sol,mod,arr)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 
 cur_nums.sort()
-print "cur_nums:", cur_nums
+print("cur_nums:", cur_nums)
 
 
 

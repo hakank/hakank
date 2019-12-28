@@ -94,17 +94,17 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "diag1:", mod.eval(diag1), "diag2:", mod.eval(diag2)
-  print "row_sums:", [mod.eval(row_sums[i]) for i in range(n)]
-  print "col_sums:", [mod.eval(col_sums[i]) for i in range(n)]  
+  print("diag1:", mod.eval(diag1), "diag2:", mod.eval(diag2))
+  print("row_sums:", [mod.eval(row_sums[i]) for i in range(n)])
+  print("col_sums:", [mod.eval(col_sums[i]) for i in range(n)])
   for i in range(n):
     for j in range(n):
-      print "%3i" % mod.eval(x[(i,j)]).as_long(),
-    print
-  print  
+      print("%3i" % mod.eval(x[(i,j)]).as_long(),end=" ")
+    print()
+  print()
   getDifferentSolutionMatrix(sol,mod,x,n,n)
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 
 
 

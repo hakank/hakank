@@ -59,7 +59,7 @@ def golomb(size=8):
 
   while sol.check() == sat:
       mod = sol.model()
-      print "marks:", [mod.eval(marks[i]) for i in all_vars]
+      print("marks:", [mod.eval(marks[i]) for i in all_vars])
       getLessSolution(sol,mod,marks[size-1])
 
 n = 8

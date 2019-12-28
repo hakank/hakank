@@ -87,18 +87,18 @@ def seseman(n=3):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "total_sum:", mod.eval(total_sum)
+    print("total_sum:", mod.eval(total_sum))
     xx = {}
     for i in range(n):
       for j in range(n):
         xx[(i,j)] = mod.eval(x[(i,j)])
-        print xx[(i,j)],
-      print
-    print
+        print(xx[(i,j)],end=" ")
+      print()
+    print()
 
     sol.add(Or([xx[(i,j)] != x[(i,j)] for i in range(n) for j in range(n)]))
 
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
 
 if __name__ == "__main__":
   n = 3

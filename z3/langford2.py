@@ -35,7 +35,7 @@ def langford(k=8, num_sol=0):
     sol = Solver()
 
     # data
-    print "k:", k
+    print("k:", k)
     p = list(range(2 * k))
 
     #
@@ -65,12 +65,12 @@ def langford(k=8, num_sol=0):
     while sol.check() == sat:
         num_solutions += 1
         mod = sol.model()
-        # print "position:", [mod.eval(position[i]) for i in p]
-        print "solution:", [mod.eval(solution[i]) for i in p]
+        # print("position:", [mod.eval(position[i]) for i in p])
+        print("solution:", [mod.eval(solution[i]) for i in p])
         getDifferentSolution(sol,mod,solution)
         if num_sol > 0 and num_solutions >= num_sol:
             break
-    print "num_solutions:", num_solutions
+    print("num_solutions:", num_solutions)
 
 #
 # Here we skip the solution array, or rather: create the solution array
@@ -82,7 +82,7 @@ def langford2(k=8, num_sol=0):
     sol = Solver()
 
     # data
-    print "k:", k
+    print("k:", k)
     p = list(range(2 * k))
 
     #
@@ -107,11 +107,11 @@ def langford2(k=8, num_sol=0):
         for i in range(k):
           solution[position_s[i]] = i+1
           solution[position_s[i+k]] = i+1
-        print solution
+        print(solution)
         getDifferentSolution(sol,mod,position)
         if num_sol > 0 and num_solutions >= num_sol:
             break
-    print "num_solutions:", num_solutions
+    print("num_solutions:", num_solutions)
 
 k = 8
 num_sol = 0
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     num_sol = int(sys.argv[2])
 
   if not (k % 4 == 0 or k % 4 == 3):
-    print "There is no solution for K unless K mod 4 == 0 or K mod 4 == 3."
+    print("There is no solution for K unless K mod 4 == 0 or K mod 4 == 3.")
   else:
     langford(k, num_sol)
     # langford2(k, num_sol) # slower

@@ -85,7 +85,7 @@ def get_dict():
 
 
 def print_solution(mod, E, words):
-  # print E
+  # print(E)
   for e in E:
     print(words[mod.eval(e).as_long()])
   print()

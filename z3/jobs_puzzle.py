@@ -84,9 +84,9 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print ["%s:%s" % (Jobs_s[i],person_names[mod.eval(Jobs[i]).as_long()])
-         for i in range(2*n)]
+  print(["%s:%s" % (Jobs_s[i],person_names[mod.eval(Jobs[i]).as_long()])
+         for i in range(2*n)])
   getDifferentSolution(sol,mod,Jobs)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 

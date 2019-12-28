@@ -32,5 +32,5 @@ sol.add(Sum(x) == 15)
 
 while sol.check() == sat:
     mod = sol.model()
-    print [mod.eval(x[i]) for i in range(coin)]
+    print([mod.eval(x[i]) for i in range(coin)])
     getDifferentSolution(sol,mod,x)

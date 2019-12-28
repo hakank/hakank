@@ -44,8 +44,8 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "Liz, Fi, Sarah: ", [mod.eval(people[i]) for i in range(n)]
+  print("Liz, Fi, Sarah: ", [mod.eval(people[i]) for i in range(n)])
   getDifferentSolution(sol,mod,people)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 

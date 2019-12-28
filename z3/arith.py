@@ -41,8 +41,8 @@ num_solutions = 0
 while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print [mod[x[i]] for i in range(n)], relops[mod[relop].as_long()], mod[y]
+    print([mod[x[i]] for i in range(n)], relops[mod[relop].as_long()], mod[y])
     getDifferentSolution(sol,mod,x)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 

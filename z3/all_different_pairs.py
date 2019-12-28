@@ -34,9 +34,9 @@ sol = Solver()
 
 # data
 n = 5
-m = n*(n - 1) / 2
+m = n*(n - 1) // 2
 
-print "n:",n, "m:", m
+print("n:",n, "m:", m)
 
 
 # variables
@@ -61,9 +61,9 @@ while sol.check() == sat:
     mod = sol.model()
     for i in range(m):
         for j in range(2):
-            print mod[x[(i,j)]],
-        print
-    print
+            print(mod[x[(i,j)]],end=" ")
+        print()
+    print()
     getDifferentSolutionMatrix(sol,mod,x,m,2)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

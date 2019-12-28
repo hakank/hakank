@@ -64,10 +64,10 @@ sol.add(mary == y-m)
 
 if sol.check() == sat:
     mod = sol.model()
-    print "tim: ", mod[tim].as_decimal(1)
-    print "jane: ", mod[jane].as_decimal(1)
-    print "mary: ", mod[mary].as_decimal(1)
-    print
+    print("tim: ", mod[tim].as_decimal(1))
+    print("jane: ", mod[jane].as_decimal(1))
+    print("mary: ", mod[mary].as_decimal(1))
+    print()
 
     
 

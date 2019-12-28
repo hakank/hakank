@@ -60,10 +60,10 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "Time    :", [Times[i] for i in range(n)]
-  print "Start   :", [mod.eval(Start[i]) for i in range(n)]
-  print "SumTimes:", mod.eval(SumTimes) 
-  print
+  print("Time    :", [Times[i] for i in range(n)])
+  print("Start   :", [mod.eval(Start[i]) for i in range(n)])
+  print("SumTimes:", mod.eval(SumTimes))
+  print()
   getLessSolution(sol,mod,Start[n-1])
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)

@@ -180,8 +180,8 @@ def main(singe=0):
             (persons[i],
              persons[mod.eval(santas[i]).as_long()],
              mod.eval(santa_distance[i]).as_long()))
-    # print 'distance:', [mod.eval(santa_distance[i])
-    #                     for i in range(n)]
+    # print('distance:', [mod.eval(santa_distance[i])
+    #                     for i in range(n)])
     print()
     getGreaterSolution(sol,mod,z)
 

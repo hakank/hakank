@@ -88,14 +88,14 @@ def all_interval(n):
         num_solutions += 1
         mod = sol.model()
         ss = [mod.eval(series[i]) for i in range(n)]
-        print "series       : ", ss
+        print("series       : ", ss)
         dd = [mod.eval(differences[i]) for i in range(n-1)]
-        print "differences  :   ", dd
-        print "num_solutions: ", num_solutions
+        print("differences  :   ", dd)
+        print("num_solutions: ", num_solutions)
         getDifferentSolution(sol,mod,series,differences)
-        print
-    print "num_solutions:", num_solutions
-    # print sol.statistics()
+        print()
+    print("num_solutions:", num_solutions)
+    # print(sol.statistics())
 
 
 n=9

@@ -28,7 +28,7 @@ def queens(n,all=0):
         mod = sol.model()
         ss = evalArray(mod, q)
         if all==0:
-            print ss
+            print(ss)
         # Show all solutions
         if all==1:
             num_solutions = 0
@@ -36,22 +36,22 @@ def queens(n,all=0):
                 mod = sol.model()
                 ss = [mod.evaluate(q[i]) for i in range(n)]
                 # sol.add( Or([q[i] != ss[i] for i in range(n)]) )
-                print "q=",ss
+                print("q=",ss)
                 num_solutions = num_solutions + 1
                 getDifferentSolution(sol,mod,q)
-            print "num_solutions:", num_solutions
+            print("num_solutions:", num_solutions)
     else:
-        print "failed to solve"
+        print("failed to solve")
 
     end = time.clock()
     value = end - start
-    print "Time: ", value
+    print("Time: ", value)
 
 
 for n in [8,10,12,20,25,30,100]:
-    print "Testing ", n
+    print("Testing ", n)
     queens(n,0)
-    print
+    print()
 
 # Show all 92 solutions
 # queens(8,1)

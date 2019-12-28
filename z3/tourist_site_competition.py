@@ -83,20 +83,20 @@ while sol.check() == sat:
   xx = [ [mod.eval(x[s,j]).as_long() for j in range(num_judges) ] for s in range(num_sites)]
   # for s in range(num_sites):
   #   for j in range(num_judges):
-  #     print xx[s][j],
-  #   print
-  # print
+  #     print(xx[s][j],end=" ")
+  #   print()
+  # print()
   # where are the judges
   for j in range(num_judges):
-    print judges_s[j], ":",
+    print(judges_s[j], ":",end=" ")
     for s in range(num_sites):
       if xx[s][j] == 1:
-        print sites_s[s],
-    print        
-  print
+        print(sites_s[s],end=" ")
+    print()
+  print()
   getDifferentSolutionMatrix(sol,mod,x,num_sites,num_judges)
 
-print "num_solutions:", num_solutions      
+print("num_solutions:", num_solutions)
                      
 
 

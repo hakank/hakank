@@ -41,13 +41,13 @@ num_solutions = 0
 while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "z:", mod[z]
-    print "d:", mod[d]
+    print("z:", mod[z])
+    print("d:", mod[d])
     xx = [mod[x[i]].as_long() for i in range(n)]
-    print "\n".join(["%i hits on score %i" % (xx[i], targets[i]) for i in range(n) if xx[i] > 0])
-    print 
+    print("\n".join(["%i hits on score %i" % (xx[i], targets[i]) for i in range(n) if xx[i] > 0]))
+    print()
     getLessSolution(sol,mod,d)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 
 

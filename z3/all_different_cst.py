@@ -48,7 +48,7 @@ while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
     xx = [mod[x[i]].as_long() for i in range(n)]
-    print "x:", xx, "cst:", cst, "y:", [xx[i] + cst[i] for i in range(n)]
+    print("x:", xx, "cst:", cst, "y:", [xx[i] + cst[i] for i in range(n)])
     getDifferentSolution(sol,mod,x)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

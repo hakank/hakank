@@ -15,6 +15,7 @@ from z3_utils_hakank import *
 #
 def nqueen(n=8,m=0):
 
+    start = time.clock()
     sol = SolverFor("QF_LIA")
     # sol = Solver()
     
@@ -44,24 +45,31 @@ def nqueen(n=8,m=0):
       for i in range(n):
         for j in range(n):
           if mod.eval(x[(i,j)]).as_long() == 1:
-            print j+1,
-      print
+            print(j+1,end=" ")
+      print()
       if m == 0 or (m > 0 and num_solutions < m):
         getDifferentSolutionMatrix(sol,mod,x,n,n)
       else:
         break
 
-    print
-    print "num_solutions:", num_solutions
+    print()
+    print("num_solutions:", num_solutions)
+
+    end = time.clock()
+    value = end - start
+    print("Time: ", value)
 
 
-n = 8
-m = 0
-if __name__ == "__main__":
-  if len(sys.argv) > 1:
-    n = int(sys.argv[1])
-  if len(sys.argv) > 1:
-    m = int(sys.argv[2])
+# n = 8
+# m = 0
+# if __name__ == "__main__":
+#   if len(sys.argv) > 1:
+#     n = int(sys.argv[1])
+#   if len(sys.argv) > 1:
+#     m = int(sys.argv[2])
     
-  nqueen(n,m)
+#   nqueen(n,m)
 
+for n in [8,10,12,20,50,100,200]:
+    print("Testing ", n)
+    nqueen(n,1)

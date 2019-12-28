@@ -47,16 +47,16 @@ def devils_word(total, arr):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "total:", total
-    print [mod.eval(result[i]) for i in range(n)]
-    print "plus :", [mod.eval(plus[i]) for i in range(n)]
-    print "minus:", [mod.eval(minus[i]) for i in range(n)]
-    print "num_minus:", mod.eval(num_minus)
-    print
+    print("total:", total)
+    print([mod.eval(result[i]) for i in range(n)])
+    print("plus :", [mod.eval(plus[i]) for i in range(n)])
+    print("minus:", [mod.eval(minus[i]) for i in range(n)])
+    print("num_minus:", mod.eval(num_minus))
+    print()
     getDifferentSolution(sol,mod,result)
     # getLessSolution(sol,mod,num_minus)
 
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
  
 
 # My name ("Håkan Kjellerstrand") in ASCII numbers.
@@ -68,7 +68,7 @@ def devils_word(total, arr):
 #
 total = 666
 s = "Håkan Kjellerstrand"
-print "s:", s
+print("s:", s)
 arr = [ord(c) for c in s]
 # arr = [72, 229, 107, 97, 110, 32, 75, 106, 101, 108, 108, 101, 114, 115, 116, 114, 97, 110, 100]
 

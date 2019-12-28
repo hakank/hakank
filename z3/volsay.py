@@ -39,9 +39,9 @@ def volsay1():
 
   if sol.check() == sat:
     mod = sol.model()
-    print "Gas:", mod.eval(Gas)
-    print "Chloride:", mod.eval(Chloride)
-    print "obj:", mod.eval(obj)
+    print("Gas:", mod.eval(Gas))
+    print("Chloride:", mod.eval(Chloride))
+    print("obj:", mod.eval(obj))
 
 #
 # With arrays
@@ -76,9 +76,9 @@ def volsay2():
 
   if sol.check() == sat:
     mod = sol.model()
-    print "obj:", mod.eval(obj)
+    print("obj:", mod.eval(obj))
     for i in range(num_products):
-      print products[i], '=', mod.eval(production[i])
+      print(products[i], '=', mod.eval(production[i]))
 
 #
 # With added data
@@ -124,15 +124,15 @@ def volsay3():
   num_solutions = 0
   if sol.check() == sat:
     mod = sol.model()
-    print "obj:", mod.eval(obj)
+    print("obj:", mod.eval(obj))
     for i in range(num_products):
-      print products[i], '=', mod.eval(Production[i])
+      print(products[i], '=', mod.eval(Production[i]))
 
 
 if __name__ == '__main__':
-  print "volsay1:"
+  print("volsay1:")
   volsay1()
-  print "\nvolsay2:"
+  print("\nvolsay2:")
   volsay2()
-  print "\nvolsay3 with added components:"
+  print("\nvolsay3 with added components:")
   volsay3()

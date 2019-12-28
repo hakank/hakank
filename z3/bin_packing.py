@@ -58,8 +58,8 @@ def print_packing(weights,bins):
           total += weights[j]
           packed.append(j)
       if total > 0:
-        print "bin %2i"%i , " items:",  packed, " total weight:", total
-    print
+        print("bin %2i"%i , " items:",  packed, " total weight:", total)
+    print()
 
 #
 # minimize the capacity (if capacity1 is not set)
@@ -89,8 +89,8 @@ def test_bin_packing_min_capacity(weights,capacity1=None):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "weights:", weights, "capacity  :", mod.eval(capacity)
-    print "bins :", [mod.eval(bins[i]) for i in range(n)]
+    print("weights:", weights, "capacity  :", mod.eval(capacity))
+    print("bins :", [mod.eval(bins[i]) for i in range(n)])
     bbins = [mod.eval(bins[i]) for i in range(n)]
     print_packing(weights,bbins)
     
@@ -99,7 +99,7 @@ def test_bin_packing_min_capacity(weights,capacity1=None):
     else:
       getDifferentSolution(sol,mod,bins)
 
-  print "num_solutions:", num_solutions  
+  print("num_solutions:", num_solutions)
 
 #
 # Minimize the number of bins
@@ -125,7 +125,8 @@ def test_bin_packing_min_bins(weights,capacity):
   # constraints
   
   # find the max number of bin used
-  maximum(sol,max_bin_used,bins)
+  # maximum(sol,max_bin_used,bins)
+  sol.add(max_bin_used == maximum2(sol,bins))
 
   # bin_packing(sol, capacity, bins, weights)
   for b in range(n):
@@ -141,17 +142,17 @@ def test_bin_packing_min_bins(weights,capacity):
   # if sol.check() == sat:      
     num_solutions += 1
     mod = sol.model()
-    print "weights:", weights
-    print "capacity  :", capacity
-    print "max_bin_used:", mod.eval(max_bin_used)
-    print "weight_per_bin:", [mod.eval(weight_per_bin[i]) for i in range(n)]
+    print("weights:", weights)
+    print("capacity  :", capacity)
+    print("max_bin_used:", mod.eval(max_bin_used))
+    print("weight_per_bin:", [mod.eval(weight_per_bin[i]) for i in range(n)])
     bbins = [mod.eval(bins[i]) for i in range(n)]
-    print "bins :", bbins
+    print("bins :", bbins)
     print_packing(weights,bbins)
-    print
+    print()
     getLessSolution(sol,mod,max_bin_used)
 
-  print "num_solutions:", num_solutions  
+  print("num_solutions:", num_solutions)
 
 
 # n = 3

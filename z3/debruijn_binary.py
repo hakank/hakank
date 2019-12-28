@@ -122,23 +122,23 @@ def debruijn(base=2, n=3, m=8,symm=False):
   #     solver.Add(gcc[i] == gcc[i - 1])
 
   # solution and search
-  # print sol.check()
-  # print sol
+  # print(sol.check())
+  # print(sol)
   num_solutions = 0
   while sol.check() == sat:
       num_solutions += 1
       mod = sol.model()
       xx = [mod.eval(x[i]) for i in range(m)]
-      print "x:", xx,
+      print("x:", xx,end=" ")
       bin_code_s = [mod.eval(bin_code[i]) for i in range(m)]
-      print " seq:", bin_code_s
+      print(" seq:", bin_code_s)
       sol.add(
           Or(
              Or([x[i] != xx[i] for i in range(m)]),
              Or([bin_code[i] != bin_code_s[i] for i in range(m)])
           ))
 
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
 
 
 base = 2

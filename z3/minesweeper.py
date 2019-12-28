@@ -76,20 +76,20 @@ def main(game="", r="", c=""):
     r = default_r
     c = default_c
   else:
-    print "rows:", r, " cols:", c
+    print("rows:", r, " cols:", c)
 
   S = [-1, 0, 1]  # for the neighbors of "this" cell
 
   # print problem instance
-  print "Problem:"
+  print("Problem:")
   for i in range(r):
     for j in range(c):
       if game[i][j] == X:
-        print "X", 
+        print("X",end=" ")
       else:
-        print game[i][j],
-    print
-  print
+        print(game[i][j],end=" ")
+    print()
+  print()
 
   # declare variables
   mines = {}
@@ -123,18 +123,18 @@ def main(game="", r="", c=""):
   # solution.Add([mines[(i, j)] for i in range(r) for j in range(c)])
 
   num_solutions = 0
-  print "Solution(s):"
+  print("Solution(s):")
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
     for i in range(r):
         for j in range(c):
-            print mod.eval(mines[(i,j)]),
-        print
-    print
+            print(mod.eval(mines[(i,j)]),end=" ")
+        print()
+    print()
     # sol.add(Or([mines[(i,j)] != mod.eval(mines[(i,j)]) for i in range(r) for j in range(c)]))
     getDifferentSolutionMatrix(sol,mod,mines,r,c)
-  print "num_solutions:", num_solutions    
+  print("num_solutions:", num_solutions)
 
 #
 # Read a problem instance from a file
@@ -163,21 +163,21 @@ def read_problem(file):
 def print_mines(mines, rows, cols):
   for i in range(rows):
     for j in range(cols):
-      print mines[i, j],
-    print
+      print(mines[i, j],end=" ")
+    print()
 
 
 def print_game(game, rows, cols):
   for i in range(rows):
     for j in range(cols):
-      print game[i][j],
-    print
+      print(game[i][j],end=" ")
+    print()
 
 
 if __name__ == "__main__":
   if len(sys.argv) > 1:
     file = sys.argv[1]
-    print "Problem instance from", file
+    print("Problem instance from", file)
     [game, rows, cols] = read_problem(file)
     # print_game(game, rows, cols)
     main(game, rows, cols)

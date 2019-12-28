@@ -33,11 +33,11 @@ def test_circuit(n,print_all=True):
         sol.add(Or([x[i] != xx[i] for i in range(n)]))
         if print_all:
             zz = [m.eval(z[i]) for i in range(n)]
-            print "x: ", xx
-            print "z: ", zz
-            print
+            print("x: ", xx)
+            print("z: ", zz)
+            print()
     
-    print "n=",n, " count:", count
+    print("n=",n, " count:", count)
 
 
 test_circuit(4,True)    

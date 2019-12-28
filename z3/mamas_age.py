@@ -49,11 +49,11 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "m2:", mod.eval(m2)
-  print "p2 :", mod.eval(p2)
-  print "t2  :",mod.eval(t2)
-  print
+  print("m2:", mod.eval(m2))
+  print("p2 :", mod.eval(p2))
+  print("t2  :",mod.eval(t2))
+  print()
   getDifferentSolution(sol,mod,[m,p,t,i,m2,p2,t2])
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 

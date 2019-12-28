@@ -78,4 +78,4 @@ sol.add(                              10000*C + 1000*H + 100*E + 10*S + S
 
 if sol.check() == sat:
   mod = sol.model()
-  print "x:", [mod.eval(x[i]) for i in range(n)]
+  print("x:", [mod.eval(x[i]) for i in range(n)])

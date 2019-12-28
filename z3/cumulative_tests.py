@@ -124,21 +124,22 @@ def cumulative_test(duration,demand,max_num_resources,max_end_time):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "num_resources:", mod.eval(num_resources)
-    print "demand       :", demand
-    print "start_times  :", [mod.eval(start_times[i]) for i in range(n)]
-    print "duration     :", [duration[i] for i in range(n)]
-    print "end_times    :", [mod.eval(end_times[i]) for i in range(n)]
-    print "end_time     :", mod.eval(end_time)
-    print 
+    print("num_resources:", mod.eval(num_resources))
+    print("demand       :", demand)
+    print("start_times  :", [mod.eval(start_times[i]) for i in range(n)])
+    print("duration     :", [duration[i] for i in range(n)])
+    print("end_times    :", [mod.eval(end_times[i]) for i in range(n)])
+    print("end_time     :", mod.eval(end_time))
+    print()
     getLessSolution(sol,mod,end_time)
     # getLessSolution(sol,mod,num_resources)
     # getLessSolution(sol,mod,num_resources+10*end_time) # "multi-objective"
     # getLessSolution(sol,mod,Sum(start_times))
     # getDifferentSolution(sol,mod,start_times,end_times)
     
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
     
-
+print("test1:")
 test1()
-# test2()
+print("\ntest2:")
+test2()

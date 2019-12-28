@@ -58,6 +58,6 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "cost:", mod.eval(cost), 
-  print [(x, mod.eval(x)) for x in [t,h,r,s,n]]
+  print("cost:", mod.eval(cost),end=" ")
+  print([(x, mod.eval(x)) for x in [t,h,r,s,n]])
   getLessSolution(sol,mod,cost)

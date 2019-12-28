@@ -145,13 +145,13 @@ def main():
     mod = sol.model()
     for i in range(n):
       for j in range(n):
-        print mod.eval(x[i,j]),
-      print
-    print
+        print(mod.eval(x[i,j]),end=" ")
+      print()
+    print()
     sol.add(Or([x[i,j] != mod.eval(x[i,j]) for i in range(n) for j in range(n)]))
 
-  print
-  print "num_solutions:", num_solutions
+  print()
+  print("num_solutions:", num_solutions)
 
 
 if __name__ == "__main__":

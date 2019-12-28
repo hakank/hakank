@@ -141,17 +141,17 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  # print "x:", [mod.eval(x[i]) for i in range(num_projects)]
-  print "x:", [i+1 for i in range(num_projects) if mod.eval(x[i]).as_long() == 1]  
-  print "total_values: ", mod.eval(total_values)
-  print "total_projects: ", mod.eval(total_projects)
-  print "total_persons: ", mod.eval(total_persons)
-  print "total_budget: ", mod.eval(total_budget)
-  print
+  # print("x:", [mod.eval(x[i]) for i in range(num_projects)])
+  print("x:", [i+1 for i in range(num_projects) if mod.eval(x[i]).as_long() == 1])
+  print("total_values: ", mod.eval(total_values))
+  print("total_projects: ", mod.eval(total_projects))
+  print("total_persons: ", mod.eval(total_persons))
+  print("total_budget: ", mod.eval(total_budget))
+  print()
   getGreaterSolution(sol,mod,total_values)
   # getDifferentSolution(sol,mod,x) # for checking unicity of the optimal solution
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 
 
 

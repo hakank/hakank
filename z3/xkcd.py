@@ -46,14 +46,14 @@ def xkcd():
       num_solutions += 1
       mod = sol.model()
       xval = [mod.eval(x[i]) for i in range(num_prices)]
-      print "x:", xval
+      print("x:", xval)
       for i in range(num_prices):
         if xval[i].as_long() > 0:
-          print xval[i], "of", products[i], ":", price[i] / 100.0
-      print
+          print(xval[i], "of", products[i], ":", price[i] / 100.0)
+      print()
       sol.add(Or([x[i] != xval[i] for i in range(num_prices)]))
 
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
 
 if __name__ == "__main__":
   xkcd()

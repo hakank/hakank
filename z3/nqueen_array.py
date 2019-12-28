@@ -22,7 +22,7 @@ def queens(n,all=0):
 
     # q = Array("q", IntSort(), IntSort()) # much slower with IntSort()
     # q = Array("q", BitVecSort(8), BitVecSort(8)) # slower
-    q = Array("q", IntSort(), BitVecSort(8))
+    q = Array("q", IntSort(), BitVecSort(16))
 
     # Domains
     sol.add([And(q[i]>=0, q[i] <= n-1) for i in range(n)])
@@ -38,9 +38,9 @@ def queens(n,all=0):
 
     if sol.check() == sat:
         m = sol.model()
-        # print "m:", m
+        # print("m:", m)
         ss = [m.eval(q[i]) for i in range(n)]
-        print ss
+        print(ss)
         # Show all solutions
         if all==1:
             count = 0
@@ -48,20 +48,20 @@ def queens(n,all=0):
                 m = sol.model()
                 ss = [m.evaluate(q[i]) for i in range(n)]
                 sol.add( Or([q[i] != ss[i] for i in range(n)]) )
-                print "q=",ss
+                print("q=",ss)
                 count = count + 1
 
-            print "count:", count
+            print("count:", count)
     else:
-        print "failed to solve"
+        print("failed to solve")
 
     end = time.clock()
     value = end - start
-    print "Time: ", value
+    print("Time: ", value)
 
 
-for n in [8,10,12,20,25,30,100]:
-    print "Testing ", n
+for n in [8,10,12,20,50,100,200]:
+    print("Testing ", n)
     queens(n,0)
 
 # Show all 92 solutions

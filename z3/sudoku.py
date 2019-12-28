@@ -53,7 +53,7 @@ def sudoku(init,prove_unicity=True):
         while sol.check() == sat:
             mod = sol.model()
             print_grid(mod,x,n,n)
-            print
+            print()
             getDifferentSolutionMatrix(sol,mod,x, n,n)
     else:
         if sol.check() == sat:        
@@ -93,8 +93,8 @@ another = [[0,0,0,0,9,4,0,3,0],
            [9,0,0,0,6,5,0,0,0],
            [0,4,0,9,7,0,0,0,0]]
 
-# sudoku(world_hardest, False)
-# print
+sudoku(world_hardest, False)
+print()
 sudoku(another,True)
 
 

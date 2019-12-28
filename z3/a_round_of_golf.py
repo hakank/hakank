@@ -107,9 +107,9 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "last_name:", [mod.eval(last_name[i]) for i in range(n)]
-  print "job      :", [mod.eval(job[i]) for i in range(n)]
-  print "score    :", [mod.eval(score[i]) for i in range(n)]
+  print("last_name:", [mod.eval(last_name[i]) for i in range(n)])
+  print("job      :", [mod.eval(job[i]) for i in range(n)])
+  print("score    :", [mod.eval(score[i]) for i in range(n)])
   sol.add(
       Or(
          Or([last_name[i] != mod.eval(last_name[i]) for i in range(n)]),
@@ -117,9 +117,9 @@ while sol.check() == sat:
          Or([score[i] != mod.eval(score[i]) for i in range(n)])
          )
       )
-  print
+  print()
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 
         
 

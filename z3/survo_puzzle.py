@@ -55,7 +55,7 @@ def survo_puzzle(r=0, c=0, rowsums=[], colsums=[], game=[]):
             [8, 0, 0, 0],
             [0, 0, 3, 0]]
 
-  print "r:", r, "c:", c
+  print("r:", r, "c:", c)
 
   # declare variables
   x = {}
@@ -90,12 +90,12 @@ def survo_puzzle(r=0, c=0, rowsums=[], colsums=[], game=[]):
     for i in range(r):
         for j in range(c):
           xx[(i,j)] = mod.eval(x[i, j])
-          print "%2s" % (xx[i, j]),
-        print
-    print
+          print("%2s" % (xx[i, j]),end=" ")
+        print()
+    print()
     sol.add(Or([x[(i, j)] != xx[(i, j)] for i in range(r) for j in range(c)]))
     
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
 
 
 #

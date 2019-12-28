@@ -25,13 +25,6 @@
 # 
 from z3_utils_hakank import *
 
-def all_different_on_intersection(sol, x, y):
-    count_a_in_b(sol,x,y)
-    count_a_in_b(sol,y,x)
-
-def count_a_in_b(sol,ass,bss):
-    for a in ass:
-        sol.add(Sum([If(a == b,1,0) for b in bss]) <= 1)
 
 sol = Solver()
 
@@ -61,9 +54,9 @@ num_solutions = 0
 while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "x:", [mod[x[i]] for i in range(m)]
-    print "y:", [mod[y[i]] for i in range(n)]
-    print
+    print("x:", [mod[x[i]] for i in range(m)])
+    print("y:", [mod[y[i]] for i in range(n)])
+    print()
     getDifferentSolution(sol,mod,x+y)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

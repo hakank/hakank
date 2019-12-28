@@ -175,20 +175,20 @@ def oneRM(age,weight1In=None, reps1In=None, weight2In=None, reps2In=None, OneRMI
     sol.add(OneRMAge == OneRM * age_coeff)
 
     # print sol
-    print sol.check()
+    print(sol.check())
     num_solutions = 0
     while sol.check() == sat:
         num_solutions += 1
         mod = sol.model()
         # print mod
-        print "OneRM: %6.6skg (age adj.: %6.6skg)" % (mod.eval(OneRM).as_decimal(4), mod.eval(OneRMAge).as_decimal(4))
-        print "Weight1: %6.6skg (age adj.: %6.6skg)  Reps: %4.3s" % (mod.eval(weight1).as_decimal(4), mod.eval(weight1Age).as_decimal(4),mod.eval(reps1).as_long())
-        print "Weight2: %6.6skg (age adj.: %6.6skg)  Reps: %4.3s" % (mod.eval(weight2).as_decimal(4), mod.eval(weight2Age).as_decimal(4),mod.eval(reps2).as_long())
-        print
+        print("OneRM: %6.6skg (age adj.: %6.6skg)" % (mod.eval(OneRM).as_decimal(4), mod.eval(OneRMAge).as_decimal(4)))
+        print("Weight1: %6.6skg (age adj.: %6.6skg)  Reps: %4.3s" % (mod.eval(weight1).as_decimal(4), mod.eval(weight1Age).as_decimal(4),mod.eval(reps1).as_long()))
+        print("Weight2: %6.6skg (age adj.: %6.6skg)  Reps: %4.3s" % (mod.eval(weight2).as_decimal(4), mod.eval(weight2Age).as_decimal(4),mod.eval(reps2).as_long()))
+        print()
         getDifferentSolution(sol,mod, [OneRM,weight1,weight2,reps1,reps2,weight1Age,weight2Age,OneRMAge])
-    print
+    print()
     
-    print "num_solutions:", num_solutions
+    print("num_solutions:", num_solutions)
    
 
 age = 61

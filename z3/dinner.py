@@ -45,9 +45,9 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print [mod.eval(x) for x in [Grandparents,Parents,Children]]
+  print([mod.eval(x) for x in [Grandparents,Parents,Children]])
   getDifferentSolution(sol,mod,[Grandparents,Parents,Children])
   if num_solutions > 5:
       break;
 
-print 'num_solutions:', num_solutions
+print('num_solutions:', num_solutions)

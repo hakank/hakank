@@ -98,15 +98,15 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "days      :", days
-  print "lectures  :", [mod.eval(lectures[i]) for i in range(n)]
-  print "first_name:", [mod.eval(first_name[i]) for i in range(n)]
-  print "last_name :", [mod.eval(last_name[i]) for i in range(n)]
-  print
+  print("days      :", days)
+  print("lectures  :", [mod.eval(lectures[i]) for i in range(n)])
+  print("first_name:", [mod.eval(first_name[i]) for i in range(n)])
+  print("last_name :", [mod.eval(last_name[i]) for i in range(n)])
+  print()
   getDifferentSolution(sol,mod,
                        [lectures[i] for i in range(n)],
                        [first_name[i] for i in range(n)],
                        [last_name[i] for i in range(n)]
                        )
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)

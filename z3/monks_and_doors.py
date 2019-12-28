@@ -71,10 +71,10 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "doors:", [mod.eval(D) for D in doors]
-  print "monks:", [mod.eval(M) for M in monks]
+  print("doors:", [mod.eval(D) for D in doors])
+  print("monks:", [mod.eval(M) for M in monks])
   getDifferentSolution(sol,mod,doors,monks)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 
 

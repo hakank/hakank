@@ -91,12 +91,12 @@ def appointment_scheduling1(m):
         mod = sol.model()
         for i in range(n):
             for j in range(n):
-                print mod[x[(i,j)]],
-            print
-        print
+                print(mod[x[(i,j)]],end=" ")
+            print()
+        print()
         sol.add(Or([x[(i,j)] != mod[x[(i,j)]] for i in range(n) for j in range(n)]))
 
-    print "num_solutions:", num_solutions
+    print("num_solutions:", num_solutions)
 
 
 # "set based" approach
@@ -123,24 +123,24 @@ def appointment_scheduling2(m):
     while sol.check() == sat:
         num_solutions += 1
         mod = sol.model()
-        print [mod[x[i]] for i in range(n)]
+        print([mod[x[i]] for i in range(n)])
         getDifferentSolution(sol,mod,x)
 
-    print "num_solutions:", num_solutions
+    print("num_solutions:", num_solutions)
 
 
 
 # rows are time slots
 # columns are people
-print "matrix approach"
+print("matrix approach")
 m1 = [[1, 1, 1, 1],
       [0, 1, 1, 0],
       [1, 0, 0, 1],
       [1, 0, 0, 1]]
 
 appointment_scheduling1(m1)
-print
-print "'set' approach"
+print()
+print("'set' approach")
 # as "sets" of time slots
 n = len(m1)
 m2 = [ [j for j in range(len(m1)) if m1[i][j] == 1] for i in range(len(m1)) ] 

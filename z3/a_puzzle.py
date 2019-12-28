@@ -70,7 +70,7 @@ from z3_utils_hakank import *
 
 def puzzle(problem=1):
 
-  print "Problem", problem
+  print("Problem", problem)
     
   sol = Solver()
 
@@ -127,12 +127,12 @@ def puzzle(problem=1):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "x:", mod.eval(x)
+    print("x:", mod.eval(x))
     getDifferentSolution(sol,mod,all)
 
-  print "num_solutions:", num_solutions
-  print
-  print
+  print("num_solutions:", num_solutions)
+  print()
+  print()
 
 
 puzzle(1)

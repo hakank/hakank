@@ -50,9 +50,9 @@ num_solutions = 0
 while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    # print [mod[x[i]] for i in range(m)]
+    # print([mod[x[i]] for i in range(m)])
     if num_solutions % 1000 == 0:
-        print num_solutions
+        print(num_solutions)
     getDifferentSolution(sol,mod, x)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

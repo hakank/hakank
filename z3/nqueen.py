@@ -13,6 +13,8 @@ import time, datetime
 def queens(n,all=0):
     start = time.clock()
     sol = Solver()
+    # sol = SimpleSolver()
+    # sol = SolverFor("QF_LIA")
 
     q = [Int("q_%s" % (i)) for i in range(n) ]
 
@@ -28,31 +30,32 @@ def queens(n,all=0):
         mod = sol.model()
         ss = evalArray(mod, q)
         if all == 0:
-            print ss
+            print(ss)
         # Show all solutions
         if all==1:
             num_solutions = 0
             while sol.check() == sat:
                 mod = sol.model()
                 ss = [mod.evaluate(q[i]) for i in range(n)]
-                print "q=",ss
+                print("q=",ss)
                 num_solutions += 1
                 getDifferentSolution(sol,mod, q)
                 # sol.add( Or([q[i] != ss[i] for i in range(n)]) )
 
-            print "num_solutions:", num_solutions
+            print("num_solutions:", num_solutions)
     else:
-        print "failed to solve"
+        print("failed to solve")
 
     end = time.clock()
     value = end - start
-    print "Time: ", value
+    print("Time: ", value)
+    print()
 
 
-for n in [8,10,12,20,25,30]:
-    print "Testing ", n
+for n in [8,10,12,20,50,100,200]:
+    print("Testing ", n)
     queens(n,0)
-    print
+    print()
 
 # Show all solutions
 # queens(8,1)

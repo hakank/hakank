@@ -101,15 +101,15 @@ def test_all_problems(n):
       mod = sol.model()
       xx = [[mod.eval(x[(i,j)]).as_long() for j in range(n)] for i in range(n)]
       solvable = ormat_game(["problem", n,xx],0)
-      # print num_problems, "solvable: ", solvable
+      # print(num_problems, "solvable: ", solvable)
       if solvable > 0:
         num_solvable += 1
-        print "x: ", xx, " number of solvable: %i total number of problems: %i so far:" % (num_solvable, num_problems)
+        print("x: ", xx, " number of solvable: %i total number of problems: %i so far:" % (num_solvable, num_problems))
       getDifferentSolutionMatrix(sol,mod,x,n,n)
 
-    print "n:", n
-    print "num_problems:", num_problems
-    print "num_solvable:", num_solvable, " (%2f%%)" % (num_solvable / num_problems)
+    print("n:", n)
+    print("num_problems:", num_problems)
+    print("num_solvable:", num_solvable, " (%2f%%)" % (num_solvable / num_problems))
         
     
 
@@ -193,15 +193,15 @@ def ormat_game(game,printit=1):
     f = len(overlays)
 
     if printit == 1:
-      print name, "\n"
-      print f, "overlays generated"
-      print "problem:\n",
+      print(name, "\n")
+      print(f, "overlays generated")
+      print("problem:\n",end=" ")
 
       for i in range(n):
         for j in range(n):
-          print problem[i][j],
-        print
-      print
+          print(problem[i][j],end=" ")
+        print()
+      print()
     
     sol = SolverFor("LIA")
 
@@ -221,28 +221,28 @@ def ormat_game(game,printit=1):
     num_solutions = 0
     while sol.check() == sat:
         if printit == 1:
-          print "\nsolution #%i" % num_solutions
+          print("\nsolution #%i" % num_solutions)
         num_solutions += 1
         mod = sol.model()
         if printit == 1:
-          print "num_overlays:", mod.eval(num_overlays)
-          # print "x :", [mod.eval(x[o]) for o in range(f)]
+          print("num_overlays:", mod.eval(num_overlays))
+          # print("x :", [mod.eval(x[o]) for o in range(f)])
           selected = [o for o in range(f) if mod.eval(x[o]).as_long() == 1 ]
-          print "overlay used: ", selected
+          print("overlay used: ", selected)
           for o in selected:
             xo = mod.eval(x[o]).as_long()
-            print "\noverlay #%i" % o
+            print("\noverlay #%i" % o)
             for i in range(n):
               for j in range(n):
-                print overlays[o][i][j],
-              print
-          print "\nnum_overlays:", mod.eval(num_overlays)
-          print
+                print(overlays[o][i][j],end=" ")
+              print()
+          print("\nnum_overlays:", mod.eval(num_overlays))
+          print()
         # getDifferentSolution(sol,mod,x)
         getLessSolution(sol,mod,num_overlays)
 
     if printit == 1:
-      print "num_solutions:", num_solutions
+      print("num_solutions:", num_solutions)
     return num_solutions
 
 

@@ -27,7 +27,7 @@ sol.add(m > 0)
 
 if sol.check() == sat:
     mod = sol.model()
-    print [mod.eval(x) for x in t]
+    print([mod.eval(x) for x in t])
 else:
     print("failed to solve")
 

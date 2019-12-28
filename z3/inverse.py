@@ -31,18 +31,18 @@ inverse(sol, x,y, n) # 720 solutions for n = 6
 # self-inverse (a.k.a assignment)
 # inverse(sol, x,x, n) # 76 solutions for n = 6
 
-print sol.check()
+print(sol.check())
 num_solutions = 0
 while sol.check() == sat:
   mod = sol.model()
   num_solutions += 1
   xx = [mod.eval(x[i]) for i in range(n)]
   yy = [mod.eval(y[i]) for i in range(n)]  
-  print "x:", xx
-  print "y:", yy
-  print
+  print("x:", xx)
+  print("y:", yy)
+  print()
   sol.add(Or([xx[i] != x[i] for i in range(n)]))
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 
 

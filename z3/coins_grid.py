@@ -71,15 +71,15 @@ def coins_grid_optimize(n=7, c= 4):
 
     if sol.check() == sat:
         mod = sol.model()
-        print "diff=",mod.evaluate(z)
+        print("diff=",mod.evaluate(z))
         for i in range(n):
             for j in range(n):
-                print mod.evaluate(x[(i, j)]),
-            print
-        print
+                print(mod.evaluate(x[(i, j)]),end=" ")
+            print()
+        print()
 
     else:
-        print "No solution"
+        print("No solution")
 
 #
 # Using Solver() and handling the optimization step is _much_ faster.
@@ -107,12 +107,12 @@ def coins_grid_solver(n=7,c=4):
 
     while sol.check() == sat:
         mod = sol.model()
-        print "diff=",mod.evaluate(z)
+        print("diff=",mod.evaluate(z))
         for i in range(n):
             for j in range(n):
-                print mod.evaluate(x[(i, j)]),
-            print
-        print
+                print(mod.evaluate(x[(i, j)]),end=" ")
+            print()
+        print()
         getLessSolution(sol,mod,z)
 
 

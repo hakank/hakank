@@ -53,7 +53,7 @@ sol.add(Implies(x[1] == 1, x[3] == 0))
 
 while sol.check() == sat:
     mod = sol.model()
-    print "z:", mod[z]
-    print "x:", [mod[x[i]] for i in range(n)]
+    print("z:", mod[z])
+    print("x:", [mod[x[i]] for i in range(n)])
     getGreaterSolution(sol,mod,z)
 

@@ -73,13 +73,13 @@ def brackets(m,do_print=False):
         num_solutions += 1
         mod = sol.model()
         if do_print:
-            print "x:", [mod[x[i]] for i in range(n)]
-            print "c:", [mod[c[i]] for i in range(n)]
-            print "cc:", "".join([s[mod[x[i]].as_long()] for i in range(n)])
-            print
+            print("x:", [mod[x[i]] for i in range(n)])
+            print("c:", [mod[c[i]] for i in range(n)])
+            print("cc:", "".join([s[mod[x[i]].as_long()] for i in range(n)]))
+            print()
         getDifferentSolution(sol,mod,x + c)
 
-    print "m=%i: num_solutions: %i " % (m, num_solutions)
+    print("m=%i: num_solutions: %i " % (m, num_solutions))
 
 for i in range(1,11):
     brackets(i,False)

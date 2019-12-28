@@ -49,12 +49,12 @@ def perfect_square_sequence(n=15):
 
     if sol.check() == sat:
       mod = sol.model()
-      print n,":", [mod.eval(x[i]) for i in range(n)]
+      print(n,":", [mod.eval(x[i]) for i in range(n)])
       getDifferentSolution(sol,mod,x)
     else:
-      print n, ":", "No solution"
+      print(n, ":", "No solution")
 
-    # print "num_solutions:", num_solutions  
+    # print("num_solutions:", num_solutions)
 
 
 for i in range(1,50):

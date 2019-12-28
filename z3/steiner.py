@@ -30,11 +30,11 @@ def union_card(sol,s1,s2,common):
 def steiner(n=7):
     
   sol = Solver()
-  nb = n*(n-1) / 6
+  nb = int(n*(n-1) // 6)
 
   if not(n % 6 == 1 or n % 6 == 3):
-    print "N must be (1|3) modulo 6"
-    return
+    print("N must be (1|3) modulo 6")
+    return()
 
   sets = {}
   for i in range(nb):
@@ -62,13 +62,13 @@ def steiner(n=7):
     num_solutions += 1
     mod = sol.model()
     # for i in range(nb):
-    #  print [i for i in range(n) if mod.eval(sets[(i,j)]).as_long() == 1], 
-    # print
+    #  print([i for i in range(n) if mod.eval(sets[(i,j)]).as_long() == 1], end=" ")
+    # print()
     if num_solutions % 1000 == 0:
-        print "num_solutions:", num_solutions  
+        print("num_solutions:", num_solutions)
     getDifferentSolutionMatrix(sol,mod,sets,nb,n)
 
-  print "num_solutions:", num_solutions  
+  print("num_solutions:", num_solutions  )
                
 
                 

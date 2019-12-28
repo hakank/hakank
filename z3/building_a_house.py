@@ -125,22 +125,22 @@ for p in range(num_precedences):
     prec(sol,precedences[p][0], precedences[p][1], start, duration)
 
 # This takes a long time to calculate
-# print "before cumulative"
+# print("before cumulative")
 cumulative(sol, start, duration, height, limitx, 0, total_duration)
-# print "after cumulative"
+# print("after cumulative")
 
 
 # minimize makespan;
 while sol.check() == sat:
     mod = sol.model()
-    print "makespan:", mod[makespan]
+    print("makespan:", mod[makespan])
     if min_val == z:
-        print "z:", mod[z]
-    print "start:", [mod[start[t]] for t in range(num_tasks)]
-    print "end  :", [mod[end[t]] for t in range(num_tasks)]
+        print("z:", mod[z])
+    print("start:", [mod[start[t]] for t in range(num_tasks)])
+    print("end  :", [mod[end[t]] for t in range(num_tasks)])
     for i in range(num_tasks):
-        print "%-10s: %3i..(%3i)..%3i" % (tasks_s[i], mod[start[i]].as_long(), duration[i], mod[end[i]].as_long())
-    print
+        print("%-10s: %3i..(%3i)..%3i" % (tasks_s[i], mod[start[i]].as_long(), duration[i], mod[end[i]].as_long()))
+    print()
     getLessSolution(sol,mod,min_val)
 
 

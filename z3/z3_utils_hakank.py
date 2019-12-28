@@ -95,7 +95,9 @@
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
 # 
-# 
+#
+from __future__ import print_function
+
 from z3 import *
 import uuid
 import time
@@ -216,9 +218,9 @@ def evalArray(mod,a):
 def print_grid(mod,x,rows,cols):
     for i in range(rows):
         for j in range(cols):
-            print mod.eval(x[(i,j)]),
-        print
-    print
+            print(mod.eval(x[(i,j)]), end=' ')
+        print()
+    print()
 
 #
 # Copy the (integer) array into an Array()
@@ -719,7 +721,7 @@ def decreasing_pairs(sol,a, s):
 # return the pairs of a in the "integer representation": a[k,0]*(n-1) + a[k,1]
 # s is the size of max value of n
 def pairs(sol, a, s):
-    n = len(a)/2
+    n = len(a)//2
     return [ a[(k,0)]*(s-1) + a[(k,1)] for k in range(n)]
 
 
@@ -836,7 +838,7 @@ if __name__ == "__main__":
     at_least(sol,2,x,2)
 
     num_solutions = 0
-    print sol.check()
+    print(sol.check())
     while sol.check() == sat:
         num_solutions = num_solutions + 1
         mod = sol.model()
@@ -844,8 +846,8 @@ if __name__ == "__main__":
         cc = mod.eval(c)
         # vv = m.eval(v)
         gccs = ([mod.eval(gcc[i]) for i in range(n)])
-        # print ss, " #0s: ", mod.eval(cc), " v:", m.eval(v)
-        print ss, " #0s: ", mod.eval(cc), " gcc:", gccs
+        # print(ss, " #0s: ", mod.eval(cc), " v:", m.eval(v))
+        print(ss, " #0s: ", mod.eval(cc), " gcc:", gccs)
         sol.add(
             Or(
             Or([x[i] != ss[i] for i in range(n)]),
@@ -855,5 +857,5 @@ if __name__ == "__main__":
             )
             )
 
-        print "num_solutions:", num_solutions
+        print("num_solutions:", num_solutions)
         

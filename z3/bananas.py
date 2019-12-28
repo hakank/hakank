@@ -38,10 +38,10 @@ sol.add(bananas >= 1,
 
 while sol.check() == sat:
     mod = sol.model()
-    print "the_sum:", mod[the_sum]
-    print "bananas:", mod[bananas]
-    print "oranges:", mod[oranges]
-    print "mangoes:", mod[mangoes]
-    print "apples :", mod[apples]
-    print
+    print("the_sum:", mod[the_sum])
+    print("bananas:", mod[bananas])
+    print("oranges:", mod[oranges])
+    print("mangoes:", mod[mangoes])
+    print("apples :", mod[apples])
+    print()
     getLessSolution(sol,mod,the_sum)

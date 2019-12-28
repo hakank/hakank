@@ -64,9 +64,9 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "edges:", [mod.eval(edges[i]) for i in range(m)]
-  print "nodes:", [mod.eval(nodes[i]) for i in range(n)]
-  print
+  print("edges:", [mod.eval(edges[i]) for i in range(m)])
+  print("nodes:", [mod.eval(nodes[i]) for i in range(n)])
+  print()
   getDifferentSolution(sol,mod,edges,nodes)
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)

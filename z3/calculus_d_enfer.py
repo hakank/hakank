@@ -72,8 +72,8 @@ sol.minimize(a_max)
 
 if  sol.check() == sat:
     mod = sol.model()
-    print "a_max:", mod.eval(a_max)
-    print "A:", [mod.eval(A[I]) for I in range(N)]
+    print("a_max:", mod.eval(a_max))
+    print("A:", [mod.eval(A[I]) for I in range(N)])
     # getLessSolution(sol,mod,a_max)
 
     

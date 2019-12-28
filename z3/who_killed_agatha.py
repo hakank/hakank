@@ -102,11 +102,11 @@ while sol.check() == sat:
     mod = sol.model()
     num_solutions += 1
     killer = mod.eval(the_killer)
-    print "the_killer:", who[killer.as_long()]
+    print("the_killer:", who[killer.as_long()])
     h = [mod.eval(hates[i]) for i in range(n*n)]
-    # print "hates: ", h
+    # print("hates: ", h)
     r = [mod.eval(richer[i]) for i in range(n*n)]
-    # print "richer:", r
+    # print("richer:", r)
     sol.add(
         Or(killer != the_killer,
            Or([hates[i] != h[i] for i in range(n*n)]),
@@ -114,4 +114,4 @@ while sol.check() == sat:
           )
         )
         
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

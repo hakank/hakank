@@ -135,9 +135,9 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "island    :", evalArray(mod,island)
-  print "export    :", evalArray(mod,export)
-  print "attraction:", evalArray(mod,attraction)
+  print("island    :", evalArray(mod,island))
+  print("export    :", evalArray(mod,export))
+  print("attraction:", evalArray(mod,attraction))
   getDifferentSolution(sol,mod,island,export,attraction)
 
-print "num_solution:", num_solutions
+print("num_solution:", num_solutions)

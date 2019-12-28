@@ -37,13 +37,13 @@ def magic_sequence(n):
 
     if sol.check() == sat:
         mod = sol.model()
-        print [mod.eval(x[i]) for i in range(n) ]
+        print([mod.eval(x[i]) for i in range(n) ])
     else:
-        print "No solution!"
+        print("No solution!")
 
 for n in range(1,20):
-    print "Testing ", n 
+    print("Testing ", n)
     magic_sequence(n)
-    print
+    print()
 
 

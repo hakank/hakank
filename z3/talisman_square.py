@@ -46,12 +46,12 @@ def talisman_square(n=5,k=2):
     mod = sol.model()
     for i in range(n):
       for j in range(n):
-        print "%3i" % mod.eval(x[(i,j)]).as_long(),
-      print
-    print  
+        print("%3i" % mod.eval(x[(i,j)]).as_long(),end=" ")
+      print()
+    print()
     getDifferentSolutionMatrix(sol,mod,x,n,n)
 
-  print "num_solutions:", num_solutions  
+  print("num_solutions:", num_solutions)
 
 n = 5
 k = 2

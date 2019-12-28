@@ -60,7 +60,7 @@ def candies(input=[1,2,2]):
 
     n = len(input)
     if n < 100:
-        print input
+        print(input)
 
     # variables
     x = makeIntVector(sol,"x",n,1,1000)
@@ -79,10 +79,10 @@ def candies(input=[1,2,2]):
     while sol.check() == sat:
         mod = sol.model()
         if n < 100:
-            print "x:", [mod[x[i]] for i in range(n)]
-        print "z:", mod[z]
+            print("x:", [mod[x[i]] for i in range(n)])
+        print("z:", mod[z])
         getLessSolution(sol,mod,z)
-    print
+    print()
 
 
 
@@ -90,7 +90,7 @@ candies([1,2,2])
 candies([2,3,4,4,4,2,1,3,4])
 for i in range(1,5+1):
     n = 10**i
-    print "n:", n
+    print("n:", n)
     candies([random.randint(1,n) for i in range(n)])
 
                   

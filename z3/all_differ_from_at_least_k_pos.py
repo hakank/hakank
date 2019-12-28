@@ -89,7 +89,7 @@ x = []
 for i in range(rows):
     x.append([makeIntVar(sol,"x_%i_%i"%(i,j),1,3) for j in range(cols)])
         
-print "x:", x
+print("x:", x)
 
 # constraints
 
@@ -103,10 +103,10 @@ while sol.check() == sat:
     mod = sol.model()
     for i in range(rows):
         for j in range(cols):
-            print mod[x[i][j]],
-        print
-    print
+            print(mod[x[i][j]],end=" ")
+        print()
+    print()
     sol.add(Or([x[i][j] != mod[x[i][j]] for i in range(rows) for j in range(cols)]))
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 

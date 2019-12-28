@@ -42,7 +42,7 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "%s/(%s%s) + %s(%s%s) + %s(%s%s) = 1" %( mod.eval(A),mod.eval(B), mod.eval(C),mod.eval(D),mod.eval(E), mod.eval(F),mod.eval(G),mod.eval(H), mod.eval(I))
+  print("%s/(%s%s) + %s(%s%s) + %s(%s%s) = 1" %( mod.eval(A),mod.eval(B), mod.eval(C),mod.eval(D),mod.eval(E), mod.eval(F),mod.eval(G),mod.eval(H), mod.eval(I)))
   getDifferentSolution(sol,mod, x)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

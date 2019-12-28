@@ -25,7 +25,7 @@ from z3_utils_hakank import *
 # This version use Optimize() where we only see the final optimal solution.
 # 
 def least_diff_optimize():
-    print "Using Optimize()"
+    print("Using Optimize()")
     
     sol = Optimize()
 
@@ -45,17 +45,17 @@ def least_diff_optimize():
     sol.minimize(diff)
     if sol.check() == sat:
         mod = sol.model()
-        print "diff=",mod.evaluate(diff)
-        print evalArray(mod,t) # [mod.evaluate(x) for x in t]
+        print("diff=",mod.evaluate(diff))
+        print(evalArray(mod,t)) # [mod.evaluate(x) for x in t]
     else:
-        print "No solution"
+        print("No solution")
 
 #
 # This version use Solver and we manually ensure optimality
 # and we see the how the value diff evolves
 #
 def least_diff_solver(type=1):
-    print "Using Solver()"
+    print("Using Solver()")
     sol = Solver()
 
     a,b,c,d,e = Ints("a b c d e")
@@ -81,12 +81,12 @@ def least_diff_solver(type=1):
 
     while sol.check() == sat:
         mod = sol.model()
-        print "diff=",mod.evaluate(diff)
-        print evalArray(mod,t) # [mod.evaluate(x) for x in t]
+        print("diff=",mod.evaluate(diff))
+        print(evalArray(mod,t)) # [mod.evaluate(x) for x in t]
         getLessSolution(sol,mod, diff)
 
 least_diff_optimize()
-print
+print()
 least_diff_solver(1)
-print
+print()
 least_diff_solver(2)

@@ -49,9 +49,9 @@ sol.add(y>0, y <= max_n, z >0, z <= max_n)
 sol.add(10946 == fib(y))
 sol.add(2178309 == fib(z))
 
-print sol
+print(sol)
 if sol.check()==sat:
     mod = sol.model()
-    # print "x:", mod.eval(x)
-    print "z:", mod.eval(z), "y:", mod.eval(y)
+    # print("x:", mod.eval(x))
+    print("z:", mod.eval(z), "y:", mod.eval(y))
     sol.add(z != mod.eval(z),y != mod.eval(y))

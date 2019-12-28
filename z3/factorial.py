@@ -26,4 +26,4 @@ sol = Solver()
 
 # This work (as expected)
 factorial(sol, 100, x)
-print sol
+print(sol)

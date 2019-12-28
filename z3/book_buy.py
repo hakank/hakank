@@ -39,8 +39,8 @@ sol.add(x[1]*x[1] + (1-w)*y[0]*y[0] + w*y[1]*y[1] == 65)
 while sol.check() == sat:
     mod = sol.model()
     ww = mod[w].as_long()
-    print "w:", ww
-    print ["Peter","Paul"][ww], "is Dick's father"
-    print "x:", [mod[x[i]] for i in range(m)]
-    print "y:", [mod[y[i]] for i in range(m)]
+    print("w:", ww)
+    print(["Peter","Paul"][ww], "is Dick's father")
+    print("x:", [mod[x[i]] for i in range(m)])
+    print("y:", [mod[y[i]] for i in range(m)])
     getDifferentSolution(sol,mod, x+y)

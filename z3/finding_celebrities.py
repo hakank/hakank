@@ -67,12 +67,13 @@ def finding_celebrities(problem):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    print "num_celebrities :", mod.eval(num_celebrities)
-    print "celebrities  :", [i for i in range(n) if mod.eval(celebrities[i]) == 1]
-    print
+    print("num_celebrities :", mod.eval(num_celebrities))
+    print("celebrities  :", [i for i in range(n) if mod.eval(celebrities[i]) == 1])
+    print()
     getDifferentSolution(sol,mod,celebrities)
 
-  print "num_solutions:", num_solutions  
+  print("num_solutions:", num_solutions)
+  print()
 
 
 
@@ -151,6 +152,18 @@ problem4 = [[0,1,1,0,0,0,0,1,1,1],
             ]
 
 
-            
+print("problem1")
 problem = problem1
+finding_celebrities(problem)
+
+print("\nproblem2")
+problem = problem2
+finding_celebrities(problem)
+
+print("\nproblem3")
+problem = problem3
+finding_celebrities(problem)
+
+print("\nproblem4")
+problem = problem4
 finding_celebrities(problem)

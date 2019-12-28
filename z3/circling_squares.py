@@ -52,9 +52,9 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print [mod.eval(LD[i]) for i in range(n)]
+  print([mod.eval(LD[i]) for i in range(n)])
   getDifferentSolution(sol,mod,LD)
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 
 

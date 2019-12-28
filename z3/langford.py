@@ -31,7 +31,7 @@ def langford(k=8, num_sol=0):
     sol = Solver()
 
     # data
-    print "k:", k
+    print("k:", k)
     p = list(range(2 * k))
 
     #
@@ -64,13 +64,13 @@ def langford(k=8, num_sol=0):
     while sol.check() == sat:
         num_solutions += 1
         mod = sol.model()
-        # print "position:", [m.eval(position[i]) for i in p]
+        # print("position:", [m.eval(position[i]) for i in p])
         ss = [mod.eval(solution[i]) for i in p]
-        print "solution:", ss
+        print("solution:", ss)
         sol.add(Or([ solution[i] != ss[i] for i in p ]))
         if num_sol > 0 and num_solutions >= num_sol:
             break
-    print "num_solutions:", num_solutions
+    print("num_solutions:", num_solutions)
 
 k = 8
 num_sol = 0

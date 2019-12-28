@@ -57,13 +57,13 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "target_days:", target_days
-  print "x :", [mod.eval(x[i]) for i in range(num_days)]
-  print "total_cost  :", mod.eval(total_cost)
-  print
+  print("target_days:", target_days)
+  print("x :", [mod.eval(x[i]) for i in range(num_days)])
+  print("total_cost  :", mod.eval(total_cost))
+  print()
   getLessSolution(sol,mod,total_cost)
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 
 
 

@@ -25,7 +25,7 @@ p = {}
 for i in range(n):
   for j in range(m):
     p[(i,j)] = makeIntVar(sol,"p[%i,%i]" % (i,j),0,1)
-print "p:",p
+print("p:",p)
 
 # max 1 pigeon per pigeon hole
 for j in range(m):
@@ -41,9 +41,9 @@ while sol.check() == sat:
   mod = sol.model()
   for i in range(n):
     for j in range(m):
-      print mod.eval(p[(i,j)]),
-    print
-  print  
+      print(mod.eval(p[(i,j)]),end=" ")
+    print()
+  print()
   getDifferentSolutionMatrix(sol,mod,p,n,m)
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)

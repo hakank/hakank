@@ -45,13 +45,13 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "the_sum:", mod[the_sum]
-  print "x:\n",
+  print("the_sum:", mod[the_sum])
+  print("x:\n",)
   for i in range(n):
       for j in range(n):
-          print mod[x[(i,j)]],
-      print
-  print
+          print(mod[x[(i,j)]],end=" ")
+      print()
+  print()
   getDifferentSolutionMatrix(sol,mod,x,n,n)
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)

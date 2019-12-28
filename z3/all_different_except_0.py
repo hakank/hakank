@@ -24,10 +24,10 @@ while sol.check() == sat:
     count = count + 1
     mod = sol.model()
     ss = [mod.eval(x[i]) for i in range(n)]
-    print ss
+    print(ss)
     getDifferentSolution(sol,mod,x)
 
-print "count:", count
+print("count:", count)
     
     
 

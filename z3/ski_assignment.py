@@ -69,14 +69,14 @@ def ski_assignment():
   # search and result
   if sol.check() == sat:
     mod = sol.model()
-    print "total differences:", mod.eval(z)
+    print("total differences:", mod.eval(z))
     for i in range(num_skiers):
       x_val = mod.eval(x[i])
       ski_height = mod.eval(ski_heights_a[x_val])
       diff = mod.eval(ski_height - mod.eval(skier_heights_a[i]))
-      print "Skier %i: Ski %s with length %2s (diff: %2s)" % (i, x_val, ski_height, diff)
+      print("Skier %i: Ski %s with length %2s (diff: %2s)" % (i, x_val, ski_height, diff))
 
-    print
+    print()
 
 
 ski_assignment()

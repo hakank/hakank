@@ -36,6 +36,7 @@
 # 
 from z3_utils_hakank import *
 
+set_param(proof=True)
 sol = Solver()
 
 # Variables
@@ -49,7 +50,7 @@ hates = Function("hates", People, People, BoolSort())
 # Who is richer than whom?
 richer = Function("richer", People, People, BoolSort())
 # Who killed agatha?
-killer = Function("killer", People,People, BoolSort())
+killer = Function("killer", People, People, BoolSort())
 
 # For the logics
 x = Const("x", People)
@@ -78,32 +79,39 @@ sol.add(ForAll([x], Implies(hates(agatha,x), hates(butler,x))))
 # Noone hates everyone. 
 sol.add(ForAll([x], Exists ([y], Not(hates(x, y)))))
 
+sol.add(Not(killer(agatha,agatha)))
+
 num_solutions = 0
-# print  sol
+# print(sol)
 ll = [agatha,butler,charles]
 while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    # print mod
-    print "Richer: agatha,butler,charles\n",
+    # print(mod)
+    print("Richer: agatha,butler,charles\n",end=" ")
     for i in ll:
-        print i, ":", 
+        print(i, ":",end=" ")
         for j in ll:
-            print mod.eval(richer(i,j)),
-        print
-    print
-    print "Hates: agatha,butler,charles\n",
+            print(mod.eval(richer(i,j)),end=" ")
+        print()
+    print()
+    print("Hates: agatha,butler,charles\n",end=" ")
     for i in ll:
-        print i, ":", 
+        print(i, ":", end=" ")
         for j in ll:
-            print mod.eval(hates(i,j)),
-        print
-    print
+            print(mod.eval(hates(i,j)),end=" ")
+        print()
+    print()
     for i in ll:
-        print i, "killed agatha", mod.eval(killer(i,agatha))
-    print    
-    print "killer:", mod.eval(killer(x,agatha))
-    print
+        print(i, "killed agatha", mod.eval(killer(i,agatha)))
+    print()
+    print("killer:", mod.eval(killer(x,agatha)))
+    print()
     sol.add(x != mod.eval(x))
-        
-print "num_solutions:", num_solutions
+
+if sol.check() == unsat:
+  for pp in sol.proof().children():
+      print(pp)
+      print()
+
+print("num_solutions:", num_solutions)

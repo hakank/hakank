@@ -43,7 +43,7 @@ def all_partitions(n):
 for n in range(21):
     pp = all_partitions(n)
     ll = len(pp)
-    print "n:", n, "len:", ll
+    print("n:", n, "len:", ll)
     if ll < 20:
-        print pp
-        print
+        print(pp)
+        print()

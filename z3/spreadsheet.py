@@ -46,10 +46,10 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "x:", [mod.eval(i).as_decimal(6) for i in x]
+  print("x:", [mod.eval(i).as_decimal(6) for i in x])
   getDifferentSolution(sol,mod,x)
 
-print "num_solutions:", num_solutions  
+print("num_solutions:", num_solutions)
 
 
 

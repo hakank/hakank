@@ -91,13 +91,13 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
-  print "m:", mod[m], "h:", mod[h]
-  print "hlist:", [mod[hlist[i]] for i in range(n+1)]
-  print "mlist:", [mod[mlist[i]] for i in range(n+1)]
-  print "perm1:", [perms[mod[perm1[i]].as_long()] for i in range(n)]
-  print "perm2:", [perms[mod[perm2[i]].as_long()] for i in range(n)]
-  print
+  print("m:", mod[m], "h:", mod[h])
+  print("hlist:", [mod[hlist[i]] for i in range(n+1)])
+  print("mlist:", [mod[mlist[i]] for i in range(n+1)])
+  print("perm1:", [perms[mod[perm1[i]].as_long()] for i in range(n)])
+  print("perm2:", [perms[mod[perm2[i]].as_long()] for i in range(n)])
+  print()
   getDifferentSolution(sol,mod,[m,h])
 
-print "num_solutions:", num_solutions
+print("num_solutions:", num_solutions)
 

@@ -46,11 +46,11 @@ sol.add(d*w <= 252.0)
 
 while sol.check() == sat:
     mod = sol.model()
-    print "z:", mod[z].as_decimal(4)
-    print "d:", mod[d].as_decimal(4)
-    print "w:", mod[w].as_decimal(4)
-    print "h:", mod[h].as_decimal(4)
-    print
+    print("z:", mod[z].as_decimal(4))
+    print("d:", mod[d].as_decimal(4))
+    print("w:", mod[w].as_decimal(4))
+    print("h:", mod[h].as_decimal(4))
+    print()
     # getLessSolution(sol,mod,z)
     # Note: Here we have to manually check for the interval
     # otherwise z3 will give infinitely smaller differences

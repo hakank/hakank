@@ -58,12 +58,12 @@ def main():
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    # print "low:", low
-    # print "up:", up
-    print "x:", [mod.eval(x[i]) for i in range(n)]
+    # print("low:", low)
+    # print("up:", up)
+    print("x:", [mod.eval(x[i]) for i in range(n)])
     getDifferentSolution(sol,mod,x)
 
-  print "num_solutions:", num_solutions
+  print("num_solutions:", num_solutions)
 
 
 if __name__ == "__main__":
