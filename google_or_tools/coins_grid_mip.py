@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Coins grid problem in Google CP Solver.
@@ -41,11 +40,11 @@
   http://www.hakank.org/google_or_tools/
 """
 
+from __future__ import print_function
 from ortools.linear_solver import pywraplp
 
 
 def main(unused_argv):
-
   # Create the solver.
 
   # using CBC
@@ -72,15 +71,12 @@ def main(unused_argv):
 
   # sum rows/columns == c
   for i in range(n):
-    solver.Add(solver.Sum(
-        [x[(i, j)] for j in range(n)]) == c)      # sum rows
-    solver.Add(solver.Sum(
-        [x[(j, i)] for j in range(n)]) == c)  # sum cols
+    solver.Add(solver.Sum([x[(i, j)] for j in range(n)]) == c)  # sum rows
+    solver.Add(solver.Sum([x[(j, i)] for j in range(n)]) == c)  # sum cols
 
   # quadratic horizonal distance var
   objective_var = solver.Sum(
-      [x[(i, j)] * (i - j) * (i - j)
-       for i in range(n) for j in range(n)])
+      [x[(i, j)] * (i - j) * (i - j) for i in range(n) for j in range(n)])
 
   # objective
   objective = solver.Minimize(objective_var)
@@ -93,12 +89,12 @@ def main(unused_argv):
   for i in range(n):
     for j in range(n):
       # int representation
-      print int(x[(i, j)].SolutionValue()),
-    print
-  print
+      print(int(x[(i, j)].SolutionValue()), end=' ')
+    print()
+  print()
 
-  print
-  print 'walltime  :', solver.WallTime(), 'ms'
+  print()
+  print('walltime  :', solver.WallTime(), 'ms')
   # print 'iterations:', solver.Iterations()
 
 

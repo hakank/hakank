@@ -53,8 +53,10 @@ def main():
   price = [215, 275, 335, 355, 420, 580]
   total = 1505
 
-  products = ["mixed fruit", "french fries", "side salad",
-              "host wings", "mozzarella sticks", "samples place"]
+  products = [
+      "mixed fruit", "french fries", "side salad", "host wings",
+      "mozzarella sticks", "samples place"
+  ]
 
   # declare variables
 
@@ -78,16 +80,15 @@ def main():
   collector = solver.AllSolutionCollector(solution)
   # collector = solver.FirstSolutionCollector(solution)
   # search_log = solver.SearchLog(100, x[0])
-  solver.Solve(solver.Phase([x[i] for i in range(num_prices)],
-                            solver.INT_VAR_SIMPLE,
-                            solver.ASSIGN_MIN_VALUE),
-               [collector])
+  solver.Solve(
+      solver.Phase([x[i] for i in range(num_prices)], solver.INT_VAR_SIMPLE,
+                   solver.ASSIGN_MIN_VALUE), [collector])
 
   num_solutions = collector.SolutionCount()
   print("num_solutions: ", num_solutions)
   if num_solutions > 0:
     for s in range(num_solutions):
-      print("z:", collector.Value(s, z))
+      print("z:", collector.Value(s, z) / 100.0)
       xval = [collector.Value(s, x[i]) for i in range(num_prices)]
       print("x:", xval)
       for i in range(num_prices):

@@ -1,17 +1,16 @@
 # Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
-# Licensed under the Apache License, Version 2.0 (the 'License');
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   P-median problem in Google CP Solver.
@@ -57,39 +56,32 @@ def main():
   Santa_Clara, San_Jose, Berkeley = warehouses
 
   demand = [100, 80, 80, 70]
-  distance = [
-      [2, 10, 50],
-      [2, 10, 52],
-      [50, 60, 3],
-      [40, 60, 1]
-  ]
+  distance = [[2, 10, 50], [2, 10, 52], [50, 60, 3], [40, 60, 1]]
 
   #
   # declare variables
   #
-  open = [solver.IntVar(warehouses, 'open[%i]% % i')
-          for w in warehouses]
+  open = [solver.IntVar(warehouses, 'open[%i]% % i') for w in warehouses]
   ship = {}
   for c in customers:
     for w in warehouses:
       ship[c, w] = solver.IntVar(0, 1, 'ship[%i,%i]' % (c, w))
-  ship_flat = [ship[c, w]
-               for c in customers
-               for w in warehouses]
+  ship_flat = [ship[c, w] for c in customers for w in warehouses]
 
   z = solver.IntVar(0, 1000, 'z')
 
   #
   # constraints
   #
-  z_sum = solver.Sum([demand[c] * distance[c][w] * ship[c, w]
-                      for c in customers
-                      for w in warehouses])
+  z_sum = solver.Sum([
+      demand[c] * distance[c][w] * ship[c, w]
+      for c in customers
+      for w in warehouses
+  ])
   solver.Add(z == z_sum)
 
   for c in customers:
-    s = solver.Sum([ship[c, w]
-                    for w in warehouses])
+    s = solver.Sum([ship[c, w] for w in warehouses])
     solver.Add(s == 1)
 
   solver.Add(solver.Sum(open) == p)
@@ -104,8 +96,7 @@ def main():
   #
   # solution and search
   #
-  db = solver.Phase(open + ship_flat,
-                    solver.INT_VAR_DEFAULT,
+  db = solver.Phase(open + ship_flat, solver.INT_VAR_DEFAULT,
                     solver.INT_VALUE_DEFAULT)
 
   solver.NewSearch(db, [objective])

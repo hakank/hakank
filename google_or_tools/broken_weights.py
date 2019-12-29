@@ -1,17 +1,16 @@
 # Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
-# Licensed under the Apache License, Version 2.0 (the 'License');
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Broken weights problem in Google CP Solver.
@@ -93,8 +92,7 @@ def main(m=40, n=4):
   # -1 is the weights on the left and 1 is on the right.
   #
   for i in range(m):
-    solver.Add(i + 1 == solver.Sum([weights[j] * x[i, j]
-                                    for j in range(n)]))
+    solver.Add(i + 1 == solver.Sum([weights[j] * x[i, j] for j in range(n)]))
 
   # objective
   objective = solver.Minimize(weights[n - 1], 1)
@@ -102,8 +100,7 @@ def main(m=40, n=4):
   #
   # search and result
   #
-  db = solver.Phase(weights + x_flat,
-                    solver.CHOOSE_FIRST_UNBOUND,
+  db = solver.Phase(weights + x_flat, solver.CHOOSE_FIRST_UNBOUND,
                     solver.ASSIGN_MIN_VALUE)
 
   search_log = solver.SearchLog(1)

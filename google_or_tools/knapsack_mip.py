@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Knapsack problem using MIP in Google or-tools.
@@ -74,8 +73,7 @@ def main(sol='CBC'):
   # constraints
   #
   for r in resources:
-    solver.Add(solver.Sum([use[r][i] * take[i]
-                           for i in items]) <= capacity[r])
+    solver.Add(solver.Sum([use[r][i] * take[i] for i in items]) <= capacity[r])
 
   # objective
   objective = solver.Maximize(z)
@@ -101,7 +99,7 @@ def main(sol='CBC'):
 
 if __name__ == '__main__':
 
-  sol = 'GLPK'
+  sol = 'CBC'
   if len(sys.argv) > 1:
     sol = sys.argv[1]
     if sol != 'GLPK' and sol != 'CBC':

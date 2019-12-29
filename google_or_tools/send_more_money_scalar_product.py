@@ -1,4 +1,4 @@
-# Copyright 2010 Hakan Kjellerstrand hakank@bonetmail.com
+# Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -89,24 +89,25 @@ def main(base=10):
     solution = solver.Assignment()
     solution.Add(x)
 
-    collector = solver.AllSolutionCollector(solution)
+    db = solver.Phase(x,
+                      solver.CHOOSE_FIRST_UNBOUND,                     
+                      solver.ASSIGN_MIN_VALUE)
 
-    solver.Solve(solver.Phase(x,
-                              solver.CHOOSE_FIRST_UNBOUND,
-                              solver.ASSIGN_MAX_VALUE),
-                              [collector])
+    solver.NewSearch(db)
 
-    num_solutions = collector.SolutionCount()
+
     money_val = 0
-    for s in range(num_solutions):
-        print "x:", [collector.Value(s, x[i]) for i in range(len(x))]
-
-    print
-    print "num_solutions:", num_solutions
-    print "failures:", solver.Failures()
-    print "branches:", solver.Branches()
-    print "wall_time:", solver.WallTime()
-    print
+    num_solutions = 0
+    while solver.NextSolution():
+        print("x:", [x[i].Value() for i in range(len(x))])
+        num_solutions += 1
+        
+    print()
+    print("num_solutions:", num_solutions)
+    print("failures:", solver.Failures())
+    print("branches:", solver.Branches())
+    print("wall_time:", solver.WallTime())
+    print()
 
 
 base = 10
@@ -114,6 +115,6 @@ if __name__ == '__main__':
     # for base in range(10,30):
     #    main(base)
     if len(sys.argv) > 1:
-        base=string.atoi(sys.argv[1])
+        base=int(sys.argv[1])
 
     main(base)

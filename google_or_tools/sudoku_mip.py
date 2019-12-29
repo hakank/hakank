@@ -1,4 +1,4 @@
-# Copyright 2011 Hakan Kjellerstrand hakank@bonetmail.com
+# Copyright 2011 Hakan Kjellerstrand hakank@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,20 +25,24 @@
 import sys
 from ortools.linear_solver import pywraplp
 
-def main(sol = 'CLP'):
+def main(sol = 'GLOP'):
   
   # Create the solver.
 
-  print 'Solver: ', sol
+  print('Solver: ', sol)
 
+  # GLOP
+  if sol == 'GLOP':
+    solver = pywraplp.Solver('GLOP',
+                             pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
   # using GLPK
   if sol == 'GLPK':
     solver = pywraplp.Solver('CoinsGridGLPK',
-                             pywraplp.Solver.GLPK_LINEAR_PROGRAMMING)
+                             pywraplp.Solver.GLPK_MIXED_INTEGER_PROGRAMMING)
   else:
   # Using CLP
       solver = pywraplp.Solver('CoinsGridCLP',
-                               pywraplp.Solver.CLP_LINEAR_PROGRAMMING)
+                               pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
 
   #
@@ -114,32 +118,32 @@ def main(sol = 'CLP'):
   #
   solver.Solve()
 
-  print
+  print()
 
-  print 'Matrix:'
+  print('Matrix:')
   for i in range_n:
     for j in range_n:
       for k in range_n:
         if x[i,j,k].solution_value() == 1:
-          print k,
-    print
-  print
+          print(k,end=" ")
+    print()
+  print()
 
 
 
-  print
-  print 'walltime  :', solver.wall_time(), 'ms'
+  print()
+  print('walltime  :', solver.WallTime(), 'ms')
   if sol == 'CBC':
-    print 'iterations:', solver.iterations()
+    print('iterations:', solver.iterations())
 
 
 if __name__ == '__main__':
 
-  sol = 'CLP'
+  sol = 'GLOP'
   if len(sys.argv) > 1:
     sol = sys.argv[1]
-    if sol != 'GLPK' and sol != 'CLP':
-      print 'Solver must be either GLPK or CLP'
+    if sol != 'GLPK' and sol != 'CBC' and sol != 'GLOP':
+      print('Solver must be either GLOP, GLPK or CBC')
       sys.exit(1)
   
   main(sol)

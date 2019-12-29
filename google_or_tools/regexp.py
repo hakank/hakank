@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2010 Hakan Kjellerstrand hakank@bonetmail.com
+# Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); 
 # you may not use this file except in compliance with the License. 
@@ -27,7 +27,7 @@
   Compare with the following model:
   * Gecode: http://www.hakank.org/gecode/all_regexp.cpp
 
-  This model was created by Hakan Kjellerstrand (hakank@gmail.com)
+  This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
   Also see my other Google CP Solver models: http://www.hakank.org/google_or_tools/
   
 """
@@ -135,7 +135,7 @@ def main(n, res):
         ]
 
     s = ['k','je','ä','ll','er','ar','st','b','r','a','n','d']
-    print 'n:', n
+    print('n:', n)
 
     #
     # declare variables
@@ -165,25 +165,25 @@ def main(n, res):
         # Note: 1 is the start state which is not included in the
         #       state array (x)
         x_val =  [1] + [x[i].Value() for i in range(n)]
-        # print 'x:', x_val
+        # print('x:', x_val)
         ss = ''.join([str(s[i-1]) for i in x_val])
         res.append(ss)
-        # print
+        # print()
         
     solver.EndSearch()
 
-    print 'num_solutions:', num_solutions
-    print 'failures:', solver.Failures()
-    print 'branches:', solver.Branches()
-    print 'wall_time:', solver.WallTime(), 'ms'
-    print
+    print('num_solutions:', num_solutions)
+    print('failures:', solver.Failures())
+    print('branches:', solver.Branches())
+    print('wall_time:', solver.WallTime(), 'ms')
+    print()
 
 
 if __name__ == '__main__':
     res = []
     for n in range(4,9+1):
         main(n, res)
-    print 'The following %i words where generated:' % len(res)
+    print('The following %i words where generated:' % len(res))
     # res.sort(key=len)
     for r in res:
-        print r
+        print(r)

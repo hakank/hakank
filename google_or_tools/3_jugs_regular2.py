@@ -1,4 +1,4 @@
-# Copyright 2010 Hakan Kjellerstrand hakank@bonetmail.com
+# Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); 
 # you may not use this file except in compliance with the License. 
@@ -49,7 +49,7 @@
   * Gecode: http://www.hakank.org/gecode/3_jugs2.cpp
 
 
-  This model was created by Hakan Kjellerstrand (hakank@gmail.com)
+  This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
   Also see my other Google CP Solver models: http://www.hakank.org/google_or_tools/
   
 """
@@ -256,22 +256,19 @@ def main():
     x_val = []
     while solver.NextSolution():
         num_solutions += 1
-        print 'cost:', cost.Value()
+        print('cost:', cost.Value())
         x_val =  [1] + [x[i].Value() for i in range(input_max)]
-        print 'x:', x_val
+        print('x:', x_val)
         for i in range(1, input_max+1):
             node_from, node_to = nodes[x_val[i-1]-1], nodes[x_val[i]-1]
             if node_from == node_to:
                 break            
-            print '%s -> %s' % (node_from, node_to)
+            print('%s -> %s' % (node_from, node_to))
         
     solver.EndSearch()
     
-    print
-    print 'num_solutions:', num_solutions
-    print 'failures:', solver.Failures()
-    print 'branches:', solver.Branches()
-    print 'wall_time:', solver.WallTime(), 'ms'
+    print()
+    print('num_solutions:', num_solutions)
 
 
 

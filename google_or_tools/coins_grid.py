@@ -11,11 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
-
   Coins grid problem in Google CP Solver.
-
 
   Problem from
   Tony Hurlimann: "A coin puzzle - SVOR-contest 2007"
@@ -54,17 +51,19 @@
   http://www.hakank.org/google_or_tools/
 """
 
+from __future__ import print_function
+import sys
 from ortools.constraint_solver import pywrapcp
 
 
-def main(unused_argv):
+def main(n=31, c=14):
   # Create the solver.
   solver = pywrapcp.Solver("Coins grid")
-
   # data
-  n = 31  # the grid size
-  c = 14  # number of coins per row/column
-  # (6, 4)
+
+  print("n: ", n)
+  print("c: ", c)
+
   # declare variables
   x = {}
   for i in range(n):
@@ -81,8 +80,8 @@ def main(unused_argv):
     solver.Add(solver.SumEquality([x[(j, i)] for j in range(n)], c))  # sum cols
 
   # quadratic horizonal distance var
-  objective_var = solver.Sum([x[(i, j)] * (i - j) * (i - j)
-                              for i in range(n) for j in range(n)])
+  objective_var = solver.Sum(
+      [x[(i, j)] * (i - j) * (i - j) for i in range(n) for j in range(n)])
 
   # objective
   objective = solver.Minimize(objective_var, 1)
@@ -98,22 +97,30 @@ def main(unused_argv):
   collector = solver.LastSolutionCollector(solution)
   search_log = solver.SearchLog(1000000, objective_var)
   restart = solver.ConstantRestart(300)
-  solver.Solve(solver.Phase([x[(i, j)] for i in range(n) for j in range(n)],
-                            solver.CHOOSE_RANDOM,
-                            solver.ASSIGN_MAX_VALUE),
-               [collector, search_log, objective])
+  solver.Solve(
+      solver.Phase([x[(i, j)] for i in range(n) for j in range(n)],
+                   solver.CHOOSE_RANDOM, solver.ASSIGN_MAX_VALUE),
+      [collector, search_log, objective])
 
-  print "objective:", collector.ObjectiveValue(0)
+  print("objective:", collector.ObjectiveValue(0))
   for i in range(n):
     for j in range(n):
-      print collector.Value(0, x[(i, j)]),
-    print
-  print
+      print(collector.Value(0, x[(i, j)]), end=" ")
+    print()
+  print()
 
-  print "failures:", solver.Failures()
-  print "branches:", solver.Branches()
-  print "WallTime:", solver.WallTime()
+  print("failures:", solver.Failures())
+  print("branches:", solver.Branches())
+  print("WallTime:", solver.WallTime())
 
 
 if __name__ == "__main__":
-  main("coin grids")
+  # data
+  n = 31  # the grid size
+  c = 14  # number of coins per row/column
+  if len(sys.argv) > 1:
+    n = int(sys.argv[1])
+  if len(sys.argv) > 2:
+    c = int(sys.argv[2])
+
+  main(n, c)

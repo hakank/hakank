@@ -40,7 +40,7 @@
   Compare with the following model:
   * MiniZinc: http://www.hakank.org/minizinc/perfect_square_sequence.mzn
 
-  This model was created by Hakan Kjellerstrand (hakank@gmail.com)
+  This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
   Also see http://www.hakank.org/google_or_tools/
   
 """
@@ -65,15 +65,15 @@ def main(n=15, print_solutions=True, show_num_sols=0):
     #
     # data
     #
-    print 'n: ', n
+    print('n: ', n)
 
     # create the table of possible squares
     squares = []
     for i in range(1, int(math.sqrt(n*n))):
         squares.append(i*i)
-    # print "squares:", squares, len(squares)
+    # print("squares:", squares, len(squares))
 
-    # print 'valid squares:', squares
+    # print('valid squares:', squares)
 
     # declare variables
     x = [solver.IntVar(1, n, 'x[%i]'%i) for i in range(n)]
@@ -107,26 +107,26 @@ def main(n=15, print_solutions=True, show_num_sols=0):
         num_solutions += 1
         if print_solutions:
             x_val = [x[i].Value() for i in range(n)]
-            print 'x: ', x_val
+            print('x: ', x_val)
             # for i in range(1, n):
-            #    print (x_val[i-1]+x_val[i]),
-            # print
+            #    print((x_val[i-1]+x_val[i]),end=" ")
+            # print()
         if show_num_sols > 0 and num_solutions >= show_num_sols:
             break
 
     solver.EndSearch()
     
-    print
-    print "num_solutions:", num_solutions
-    print
+    print()
+    print("num_solutions:", num_solutions)
+    print()
     if print_solutions:
-        print "failures:", solver.Failures()
-        print "branches:", solver.Branches()
-        print "wall_time:", solver.WallTime()
+        print("failures:", solver.Failures())
+        print("branches:", solver.Branches())
+        print("wall_time:", solver.WallTime())
 
     return num_solutions
 
-n = 25
+n = 15
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         n = int(sys.argv[1])
@@ -136,6 +136,6 @@ if __name__ == '__main__':
         for i in range(1,100):
            num = main(i, False, 0)
            sols.append((i,num))
-        print sols
+        print(sols)
     else:
         main(n, True, 0)

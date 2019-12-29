@@ -1,17 +1,16 @@
 # Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
-# Licensed under the Apache License, Version 2.0 (the 'License');
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Strimko problem in Google CP Solver.
 
   From
@@ -58,27 +57,14 @@ def main(streams='', placed=''):
   # default problem
   #
   if streams == '':
-    streams = [
-        [1, 1, 2, 2, 2, 2, 2],
-        [1, 1, 2, 3, 3, 3, 2],
-        [1, 4, 1, 3, 3, 5, 5],
-        [4, 4, 3, 1, 3, 5, 5],
-        [4, 6, 6, 6, 7, 7, 5],
-        [6, 4, 6, 4, 5, 5, 7],
-        [6, 6, 4, 7, 7, 7, 7]]
+    streams = [[1, 1, 2, 2, 2, 2, 2], [1, 1, 2, 3, 3, 3, 2],
+               [1, 4, 1, 3, 3, 5, 5], [4, 4, 3, 1, 3, 5, 5],
+               [4, 6, 6, 6, 7, 7, 5], [6, 4, 6, 4, 5, 5, 7],
+               [6, 6, 4, 7, 7, 7, 7]]
 
     # Note: This is 1-based
-    placed = [
-        [2, 1, 1],
-        [2, 3, 7],
-        [2, 5, 6],
-        [2, 7, 4],
-        [3, 2, 7],
-        [3, 6, 1],
-        [4, 1, 4],
-        [4, 7, 5],
-        [5, 2, 2],
-        [5, 6, 6]]
+    placed = [[2, 1, 1], [2, 3, 7], [2, 5, 6], [2, 7, 4], [3, 2, 7], [3, 6, 1],
+              [4, 1, 4], [4, 7, 5], [5, 2, 2], [5, 6, 6]]
 
   n = len(streams)
   num_placed = len(placed)
@@ -125,9 +111,7 @@ def main(streams='', placed=''):
   #
   # search and solution
   #
-  db = solver.Phase(x_flat,
-                    solver.INT_VAR_DEFAULT,
-                    solver.INT_VALUE_DEFAULT)
+  db = solver.Phase(x_flat, solver.INT_VAR_DEFAULT, solver.INT_VALUE_DEFAULT)
 
   solver.NewSearch(db)
 
@@ -148,6 +132,7 @@ def main(streams='', placed=''):
   print('failures:', solver.Failures())
   print('branches:', solver.Branches())
   print('WallTime:', solver.WallTime(), 'ms')
+
 
 if __name__ == '__main__':
   if len(sys.argv) > 1:

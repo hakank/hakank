@@ -1,17 +1,16 @@
 # Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
-# Licensed under the Apache License, Version 2.0 (the 'License');
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Secret Santa problem in Google CP Solver.
@@ -99,9 +98,7 @@ def main():
   #
   # solution and search
   #
-  db = solver.Phase(x,
-                    solver.INT_VAR_SIMPLE,
-                    solver.INT_VALUE_SIMPLE)
+  db = solver.Phase(x, solver.INT_VAR_SIMPLE, solver.INT_VALUE_SIMPLE)
 
   solver.NewSearch(db)
   num_solutions = 0
@@ -114,6 +111,7 @@ def main():
   print('failures:', solver.Failures())
   print('branches:', solver.Branches())
   print('WallTime:', solver.WallTime(), 'ms')
+
 
 if __name__ == '__main__':
   main()

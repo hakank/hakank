@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Magic squares in Google CP Solver.
@@ -27,7 +26,7 @@ import sys
 from ortools.constraint_solver import pywrapcp
 
 
-def main(n=4):
+def main(n, limit):
   # Create the solver.
   solver = pywrapcp.Solver("n-queens")
 
@@ -72,13 +71,14 @@ def main(n=4):
   solution.Add(s)
 
   # db: DecisionBuilder
-  db = solver.Phase(x_flat,
-                    # solver.INT_VAR_DEFAULT,
-                    solver.CHOOSE_FIRST_UNBOUND,
-                    # solver.CHOOSE_MIN_SIZE_LOWEST_MAX,
+  db = solver.Phase(
+      x_flat,
+      # solver.INT_VAR_DEFAULT,
+      solver.CHOOSE_FIRST_UNBOUND,
+      # solver.CHOOSE_MIN_SIZE_LOWEST_MAX,
 
-                    # solver.ASSIGN_MIN_VALUE
-                    solver.ASSIGN_CENTER_VALUE)
+      # solver.ASSIGN_MIN_VALUE
+      solver.ASSIGN_CENTER_VALUE)
 
   solver.NewSearch(db)
   num_solutions = 0
@@ -86,11 +86,13 @@ def main(n=4):
     print("s:", s.Value())
     for i in range(n):
       for j in range(n):
-        print("%2i" % x[(i, j)].Value(), end=' ')
+        print("%2i" % x[(i, j)].Value(), end=" ")
       print()
 
     print()
     num_solutions += 1
+    if num_solutions > limit:
+      break
   solver.EndSearch()
 
   print()
@@ -99,8 +101,13 @@ def main(n=4):
   print("branches:", solver.Branches())
   print("WallTime:", solver.WallTime())
 
+
 n = 4
+limit=100
 if __name__ == "__main__":
   if len(sys.argv) > 1:
     n = int(sys.argv[1])
-  main(n)
+  if len(sys.argv) > 2:
+    limit = int(sys.argv[2])
+
+  main(n, limit)

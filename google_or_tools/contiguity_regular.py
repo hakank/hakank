@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Global constraint contiguity using regularin Google CP Solver.
@@ -148,14 +147,13 @@ def main():
   #
   # constraints
   #
-  regular(reg_input, n_states, input_max, transition_fn,
-          initial_state, accepting_states)
+  regular(reg_input, n_states, input_max, transition_fn, initial_state,
+          accepting_states)
 
   #
   # solution and search
   #
-  db = solver.Phase(reg_input,
-                    solver.CHOOSE_FIRST_UNBOUND,
+  db = solver.Phase(reg_input, solver.CHOOSE_FIRST_UNBOUND,
                     solver.ASSIGN_MIN_VALUE)
 
   solver.NewSearch(db)

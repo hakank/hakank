@@ -112,12 +112,12 @@ def get_overlays(n=3, debug=0):
 # print a problem
 #
 def print_problem(problem, n):
-    print "Problem:"
+    print("Problem:")
     for i in range(n):
         for j in range(n):
-            print problem[i][j], " ",
-        print ''
-    print ''
+            print(problem[i][j], " ",end=" ")
+        print('')
+    print('')
             
 
 #
@@ -126,17 +126,17 @@ def print_problem(problem, n):
 def print_solution(x, overlays):
     f = len(x)
     n = len(overlays[0])
-    print "f:",f, " n: ", n
-    # print "x: ", x
-    print "num overlays:", sum(x)
+    print("f:",f, " n: ", n)
+    # print("x: ", x)
+    print("num overlays:", sum(x))
     for o in range(f):
         if x[o] == 1:
-            print "Overlay", o
+            print("Overlay", o)
             for i in range(n):
                 for j in range(n):
-                    print overlays[o][i][j], " ",
-                print ''
-            print ''
+                    print(overlays[o][i][j], " ",end=" ")
+                print('')
+            print('')
 
 
 def main(problem, overlays, n, debug=0):
@@ -186,18 +186,18 @@ def main(problem, overlays, n, debug=0):
         t = [x[i].Value() for i in range(f)]
         the_solution = t
         num_solutions += 1
-        print "Num overlays: ", sum([x[i].Value() for i in range(f)])
+        print("Num overlays: ", sum([x[i].Value() for i in range(f)]))
 
-    print "\nOptimal solution:"
+    print("\nOptimal solution:")
     print_solution(the_solution, overlays)
-    print "Num overlays: ", sum(the_solution)
+    print("Num overlays: ", sum(the_solution))
     solver.EndSearch()
 
-    print
-    print "failures:", solver.Failures()
-    print "branches:", solver.Branches()
-    print "wall_time:", solver.WallTime()
-    print
+    print()
+    print("failures:", solver.Failures())
+    print("branches:", solver.Branches())
+    print("wall_time:", solver.WallTime())
+    print()
 
 # problem 1
 # n = 3

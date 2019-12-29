@@ -124,17 +124,17 @@ def main():
   num_solutions = 0
   while solver.NextSolution():
     num_solutions += 1
-    print "x:", [int(x[i].Value()) for i in V]
-    print "max_color:", max_color.Value()
-    print
+    print("x:", [int(x[i].Value()) for i in V])
+    print("max_color:", max_color.Value())
+    print()
   
   solver.EndSearch()
 
-  print
-  print "num_solutions:", num_solutions
-  print "failures:", solver.Failures()
-  print "branches:", solver.Branches()
-  print "WallTime:", solver.WallTime()
+  print()
+  print("num_solutions:", num_solutions)
+  print("failures:", solver.Failures())
+  print("branches:", solver.Branches())
+  print("WallTime:", solver.WallTime())
 
 
 if __name__ == '__main__':

@@ -1,17 +1,16 @@
 # Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
 #
-# Licensed under the Apache License, Version 2.0 (the 'License');
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Scheduling speakers problem in Google CP Solver.
@@ -46,11 +45,11 @@ def main():
   # slots available to speak
   available = [
       # Reasoning:
-      [3, 4, 5, 6],    # 2) the only one with 6 after speaker F -> 1
-      [3, 4],        # 5) 3 or 4
-      [2, 3, 4, 5],    # 3) only with 5 after F -> 1 and A -> 6
-      [2, 3, 4],      # 4) only with 2 after C -> 5 and F -> 1
-      [3, 4],        # 5) 3 or 4
+      [3, 4, 5, 6],  # 2) the only one with 6 after speaker F -> 1
+      [3, 4],  # 5) 3 or 4
+      [2, 3, 4, 5],  # 3) only with 5 after F -> 1 and A -> 6
+      [2, 3, 4],  # 4) only with 2 after C -> 5 and F -> 1
+      [3, 4],  # 5) 3 or 4
       [1, 2, 3, 4, 5, 6]  # 1) the only with 1
   ]
 
@@ -70,9 +69,7 @@ def main():
   #
   # search and result
   #
-  db = solver.Phase(x,
-                    solver.INT_VAR_DEFAULT,
-                    solver.INT_VALUE_DEFAULT)
+  db = solver.Phase(x, solver.INT_VAR_DEFAULT, solver.INT_VALUE_DEFAULT)
 
   solver.NewSearch(db)
 

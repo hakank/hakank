@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
   Original Stigler's 1939 diet problem Google or-tools.
@@ -153,96 +152,57 @@ def main(sol="CBC"):
   N = list(range(num_nutrients))
 
   nutrients = [
-      "calories",      # Calories, unit = 1000
-      "protein",       # Protein, unit = grams
-      "calcium",       # Calcium, unit = grams
-      "iron",          # Iron, unit = milligrams
-      "vitaminA",      # Vitamin A, unit = 1000 International Units
-      "thiamine",      # Thiamine, Vit. B1, unit = milligrams
-      "riboflavin",    # Riboflavin, Vit. B2, unit = milligrams
-      "niacin",        # Niacin (Nicotinic Acid), unit = milligrams
-      "ascorbicAcid"   # Ascorbic Acid, Vit. C, unit = milligrams
+      "calories",  # Calories, unit = 1000
+      "protein",  # Protein, unit = grams
+      "calcium",  # Calcium, unit = grams
+      "iron",  # Iron, unit = milligrams
+      "vitaminA",  # Vitamin A, unit = 1000 International Units
+      "thiamine",  # Thiamine, Vit. B1, unit = milligrams
+      "riboflavin",  # Riboflavin, Vit. B2, unit = milligrams
+      "niacin",  # Niacin (Nicotinic Acid), unit = milligrams
+      "ascorbicAcid"  # Ascorbic Acid, Vit. C, unit = milligrams
   ]
 
-  commodities = [
-      ["Wheat Flour (Enriched)", "10 lb."],
-      ["Macaroni", "1 lb."],
-      ["Wheat Cereal (Enriched)", "28 oz."],
-      ["Corn Flakes", "8 oz."],
-      ["Corn Meal", "1 lb."],
-      ["Hominy Grits", "24 oz."],
-      ["Rice", "1 lb."],
-      ["Rolled Oats", "1 lb."],
-      ["White Bread (Enriched)", "1 lb."],
-      ["Whole Wheat Bread", "1 lb."],
-      ["Rye Bread", "1 lb."],
-      ["Pound Cake", "1 lb."],
-      ["Soda Crackers", "1 lb."],
-      ["Milk", "1 qt."],
-      ["Evaporated Milk (can)", "14.5 oz."],
-      ["Butter", "1 lb."],
-      ["Oleomargarine", "1 lb."],
-      ["Eggs", "1 doz."],
-      ["Cheese (Cheddar)", "1 lb."],
-      ["Cream", "1/2 pt."],
-      ["Peanut Butter", "1 lb."],
-      ["Mayonnaise", "1/2 pt."],
-      ["Crisco", "1 lb."],
-      ["Lard", "1 lb."],
-      ["Sirloin Steak", "1 lb."],
-      ["Round Steak", "1 lb."],
-      ["Rib Roast", "1 lb."],
-      ["Chuck Roast", "1 lb."],
-      ["Plate", "1 lb."],
-      ["Liver (Beef)", "1 lb."],
-      ["Leg of Lamb", "1 lb."],
-      ["Lamb Chops (Rib)", "1 lb."],
-      ["Pork Chops", "1 lb."],
-      ["Pork Loin Roast", "1 lb."],
-      ["Bacon", "1 lb."],
-      ["Ham - smoked", "1 lb."],
-      ["Salt Pork", "1 lb."],
-      ["Roasting Chicken", "1 lb."],
-      ["Veal Cutlets", "1 lb."],
-      ["Salmon, Pink (can)", "16 oz."],
-      ["Apples", "1 lb."],
-      ["Bananas", "1 lb."],
-      ["Lemons", "1 doz."],
-      ["Oranges", "1 doz."],
-      ["Green Beans", "1 lb."],
-      ["Cabbage", "1 lb."],
-      ["Carrots", "1 bunch"],
-      ["Celery", "1 stalk"],
-      ["Lettuce", "1 head"],
-      ["Onions", "1 lb."],
-      ["Potatoes", "15 lb."],
-      ["Spinach", "1 lb."],
-      ["Sweet Potatoes", "1 lb."],
-      ["Peaches (can)", "No. 2 1/2"],
-      ["Pears (can)", "No. 2 1/2,"],
-      ["Pineapple (can)", "No. 2 1/2"],
-      ["Asparagus (can)", "No. 2"],
-      ["Grean Beans (can)", "No. 2"],
-      ["Pork and Beans (can)", "16 oz."],
-      ["Corn (can)", "No. 2"],
-      ["Peas (can)", "No. 2"],
-      ["Tomatoes (can)", "No. 2"],
-      ["Tomato Soup (can)", "10 1/2 oz."],
-      ["Peaches, Dried", "1 lb."],
-      ["Prunes, Dried", "1 lb."],
-      ["Raisins, Dried", "15 oz."],
-      ["Peas, Dried", "1 lb."],
-      ["Lima Beans, Dried", "1 lb."],
-      ["Navy Beans, Dried", "1 lb."],
-      ["Coffee", "1 lb."],
-      ["Tea", "1/4 lb."],
-      ["Cocoa", "8 oz."],
-      ["Chocolate", "8 oz."],
-      ["Sugar", "10 lb."],
-      ["Corn Sirup", "24 oz."],
-      ["Molasses", "18 oz."],
-      ["Strawberry Preserve", "1 lb."]
-  ]
+  commodities = [["Wheat Flour (Enriched)", "10 lb."], ["Macaroni", "1 lb."],
+                 ["Wheat Cereal (Enriched)",
+                  "28 oz."], ["Corn Flakes", "8 oz."], ["Corn Meal", "1 lb."],
+                 ["Hominy Grits", "24 oz."], ["Rice", "1 lb."],
+                 ["Rolled Oats", "1 lb."], ["White Bread (Enriched)", "1 lb."],
+                 ["Whole Wheat Bread", "1 lb."], ["Rye Bread", "1 lb."],
+                 ["Pound Cake", "1 lb."], ["Soda Crackers", "1 lb."],
+                 ["Milk", "1 qt."], ["Evaporated Milk (can)", "14.5 oz."],
+                 ["Butter", "1 lb."], ["Oleomargarine", "1 lb."],
+                 ["Eggs", "1 doz."], ["Cheese (Cheddar)", "1 lb."],
+                 ["Cream", "1/2 pt."], ["Peanut Butter", "1 lb."],
+                 ["Mayonnaise", "1/2 pt."], ["Crisco", "1 lb."],
+                 ["Lard", "1 lb."], ["Sirloin Steak", "1 lb."],
+                 ["Round Steak", "1 lb."], ["Rib Roast", "1 lb."],
+                 ["Chuck Roast", "1 lb."], ["Plate", "1 lb."],
+                 ["Liver (Beef)", "1 lb."], ["Leg of Lamb", "1 lb."],
+                 ["Lamb Chops (Rib)", "1 lb."], ["Pork Chops", "1 lb."],
+                 ["Pork Loin Roast", "1 lb."], ["Bacon", "1 lb."],
+                 ["Ham - smoked", "1 lb."], ["Salt Pork", "1 lb."],
+                 ["Roasting Chicken", "1 lb."], ["Veal Cutlets", "1 lb."],
+                 ["Salmon, Pink (can)", "16 oz."], ["Apples", "1 lb."],
+                 ["Bananas", "1 lb."], ["Lemons", "1 doz."],
+                 ["Oranges", "1 doz."], ["Green Beans", "1 lb."],
+                 ["Cabbage", "1 lb."], ["Carrots", "1 bunch"],
+                 ["Celery", "1 stalk"], ["Lettuce", "1 head"],
+                 ["Onions", "1 lb."], ["Potatoes", "15 lb."],
+                 ["Spinach", "1 lb."], ["Sweet Potatoes", "1 lb."],
+                 ["Peaches (can)", "No. 2 1/2"], ["Pears (can)", "No. 2 1/2,"],
+                 ["Pineapple (can)", "No. 2 1/2"], ["Asparagus (can)", "No. 2"],
+                 ["Grean Beans (can)", "No. 2"],
+                 ["Pork and Beans (can)", "16 oz."], ["Corn (can)", "No. 2"],
+                 ["Peas (can)", "No. 2"], ["Tomatoes (can)", "No. 2"],
+                 ["Tomato Soup (can)", "10 1/2 oz."],
+                 ["Peaches, Dried", "1 lb."], ["Prunes, Dried", "1 lb."],
+                 ["Raisins, Dried", "15 oz."], ["Peas, Dried", "1 lb."],
+                 ["Lima Beans, Dried", "1 lb."], ["Navy Beans, Dried", "1 lb."],
+                 ["Coffee", "1 lb."], ["Tea", "1/4 lb."], ["Cocoa", "8 oz."],
+                 ["Chocolate", "8 oz."], ["Sugar", "10 lb."],
+                 ["Corn Sirup", "24 oz."], ["Molasses", "18 oz."],
+                 ["Strawberry Preserve", "1 lb."]]
 
   # price and weight are the two first columns
   data = [
@@ -322,7 +282,8 @@ def main(sol="CBC"):
       [51.7, 8773.0, 34.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
       [13.7, 4996.0, 14.7, 0.0, 0.5, 74.0, 0.0, 0.0, 0.0, 5.0, 0.0],
       [13.6, 3752.0, 9.0, 0.0, 10.3, 244.0, 0.0, 1.9, 7.5, 146.0, 0.0],
-      [20.5, 2213.0, 6.4, 11.0, 0.4, 7.0, 0.2, 0.2, 0.4, 3.0, 0.0]]
+      [20.5, 2213.0, 6.4, 11.0, 0.4, 7.0, 0.2, 0.2, 0.4, 3.0, 0.0]
+  ]
 
   # recommended daily allowance for a moderately active man
   allowance = [3.0, 70.0, 0.8, 12.0, 5.0, 1.8, 2.7, 18.0, 75.0]
@@ -368,8 +329,9 @@ def main(sol="CBC"):
   print()
   for i in C:
     if x[i].SolutionValue() > 0:
-      print("%-21s %-11s  %0.2f  %0.2f" % (commodities[i][0], commodities[i][1],
-                                           x_cost[i].SolutionValue(), quant[i].SolutionValue()))
+      print("%-21s %-11s  %0.2f  %0.2f" %
+            (commodities[i][0], commodities[i][1], x_cost[i].SolutionValue(),
+             quant[i].SolutionValue()))
 
   print()
 
@@ -379,7 +341,7 @@ def main(sol="CBC"):
 
 
 if __name__ == "__main__":
-  sol = "GLPK"
+  sol = "CBC"
 
   if len(sys.argv) > 1:
     sol = sys.argv[1]

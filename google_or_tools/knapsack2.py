@@ -43,10 +43,10 @@ def main(values, weights, n):
     #
     # data
     #
-    print "values:", values
-    print "weights:", weights
-    print "n:", n
-    print
+    print("values:", values)
+    print("weights:", weights)
+    print("n:", n)
+    print()
     
     # declare variables
     
@@ -79,17 +79,17 @@ def main(values, weights, n):
     solver.NewSearch(db,[objective])
     num_solutions = 0
     while solver.NextSolution():  
-        print "x:", [x[i].Value() for i in range(len(values))]
-        print "z:", z.Value()
-        print
+        print("x:", [x[i].Value() for i in range(len(values))])
+        print("z:", z.Value())
+        print()
         num_solutions += 1        
     solver.EndSearch()
     
-    print
-    print "num_solutions:", num_solutions
-    print "failures:", solver.Failures()
-    print "branches:", solver.Branches()
-    print "wall_time:", solver.WallTime()
+    print()
+    print("num_solutions:", num_solutions)
+    print("failures:", solver.Failures())
+    print("branches:", solver.Branches())
+    print("wall_time:", solver.WallTime())
 
 
 values =  [15, 100, 90, 60, 40, 15, 10,  1, 12, 12, 100]
