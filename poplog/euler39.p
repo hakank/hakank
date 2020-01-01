@@ -10,7 +10,7 @@
   For which value of p <= 1000, is the number of solutions maximised?
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -41,7 +41,7 @@ define problem39;
                 if best_cc < cc then 
                     cc->best_cc;
                     p->best_p;
-                    [p ^p cc ^cc]=>
+                    ;;; [p ^p cc ^cc]=>
                 endif;
 
             endfast_for;

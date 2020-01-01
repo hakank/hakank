@@ -40,10 +40,11 @@
   http://www.cs.bham.ac.uk/research/projects/poplog/gospl_1_2_0.tar.gz
 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
+compile('~/Poplib/init.p');
 
 vars tri = [];
 vars ms = 0;
@@ -85,14 +86,17 @@ define problem18();
 
     [%split_with(tri_str, '\n')%] -> tri_lines;
     lvars i,x;
-    for i from 1 to length(tri_lines) do 
-        ;;;lvars p = [%split(tri_lines(i))%];
-        ;;; strnumber to convert the strings to number
-        ;;;[% for x in p do strnumber(x) endfor%]->p;
-        ;;; as a one liner:
-        lvars p = [%split(tri_lines(i))%].maplist(%procedure(e); strnumber(e); endprocedure%);
-        tri <> [^p]->tri;
-    endfor;
+    ;;; for i from 1 to length(tri_lines) do 
+    ;;;     ;;;lvars p = [%split(tri_lines(i))%];
+    ;;;     ;;; strnumber to convert the strings to number
+    ;;;     ;;;[% for x in p do strnumber(x) endfor%]->p;
+    ;;;     ;;; as a one liner:
+    ;;;     lvars p = [%split(tri_lines(i))%].maplist(%procedure(e); strnumber(e); endprocedure%);
+    ;;;     tri <> [^p]->tri;
+    ;;; endfor;
+    [% for i from 1 to length(tri_lines) do 
+        [%split(tri_lines(i))%].maplist(%procedure(e); strnumber(e); endprocedure%);
+    endfor %]->tri;
     pp(1,1, tri(1)(1));
     ms=>;
 

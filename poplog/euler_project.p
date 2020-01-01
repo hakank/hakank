@@ -2,36 +2,25 @@
 
   Euler projects.
 
-  Here are some solutions (with variants) of the Euler project problems, 
-  written in Pop-11 (Poplog).
+  Here are some Euler project written in Pop-11 (Poplog).
 
-  The Euler project is here:   http://projecteuler.net/ .
+  Note: The following solutions are heavily influenced by
+  the Lisp solutions which used the loop construct a lot;
+  hence the array (or rather list) comprehensions... 
 
-  For more about Pop-11, see my Pop-11 page: http://www.hakank.org/poplog/
+  To compile it:
 
-  Hakan Kjellerstrand
-  http://www.hakank.org/index_eng.html
-  hakank@bonetmail.com
+    pop11 %nort mkimage euler_project euler_project.p ":problem1();"
 
-*/
 
-/*
 
-  Note: This program require some functions from the GOSPL 
-  (Global Open Source Poplog Library) library, 
-  e.g split, split_with.
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
+  See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
-  GOSPL is (normally) available from http://www.poplog.org/ , but that site 
-  seems to be defunct right now.
-
-  The library is available from 
-  http://www.cs.bham.ac.uk/research/projects/poplog/
-  or more specific here:
-  http://www.cs.bham.ac.uk/research/projects/poplog/gospl_1_2_0.tar.gz
 
 */
 
-;;; compile('/home/hakank/Poplib/init.p');
+compile('/home/hakank/Poplib/init.p');
 
 /*
   Problem 1
@@ -59,6 +48,20 @@ define problem1();
   applist(0, ll, nonop + )=>
 enddefine;
 
+define problem1b_tmp(n);
+    lvars i, sum;
+    0 -> sum;
+    for i to n do 
+        if i mod 3 = 0 or i mod 5 = 0 then 
+            sum + i -> sum;
+        endif;
+    endfor;
+    sum;
+enddefine;
+
+define problem1b();
+   problem1b_tmp(999)=>;
+enddefine;
 
 /*
   Problem 2
@@ -1061,6 +1064,8 @@ CPU TIME: 670.79        GC TIME: 69.0
 
 I.e. about 11 minutes!
 
+With the new 64-bit machine: about 7 minutes.
+
 */
 
 
@@ -1192,6 +1197,79 @@ define problem16();
     ;;; s=>
 enddefine;
 
+
+
+/*
+  Problem 17
+
+"""
+If the numbers 1 to 5 are written out in words: one, two, three, four, five, 
+then there are 3 + 3 + 5 + 4 + 4 = 19 letters used in total.
+
+If all the numbers from 1 to 1000 (one thousand) inclusive were written out in 
+words, how many letters would be used?
+
+NOTE: Do not count spaces or hyphens. For example, 342 (three hundred and forty-two) 
+contains 23 letters and 115 (one hundred and fifteen) contains 20 letters. The use of 
+"and" when writing out numbers is in compliance with British usage.
+
+"""
+
+Answer: 21124
+
+Ah! Pop-11 has ~R (a la Lisp), which makes it much simpler.
+The lisp variant:
+(defun number-len (n)
+  (length (delete #\- (delete #\Space (format nil "~r" n)))))
+
+(+ (* 3 (- 1000 9)) (loop for i from 1 to 1000 sum (number-len i)))
+
+from
+  help format_print:
+     format_print('next year it will be ~R ad', [1985]);
+     next year it will be one thousand, nine hundred and eighty five ad
+
+format_print('~R', [1985]);
+
+
+Ah, but it prints directly to stdout and don't put anything on the stack. 
+Can we redirect it to a string? (No)
+
+Note: this don't work!!
+
+*/
+
+define problem17();
+
+    define number_len(n);
+        lvars str;
+        (format_print('~R',{n})).datalist->str;
+        str=>
+        delete(`-`, str) -> str;
+        delete(` `, str) -> str;
+        str=>
+        return(str.length);
+    enddefine;
+
+    lvars i;
+    ;;; for i from 1 to 10 do number_len(i)=> endfor;
+    for i from 1 to 100 do 
+        (format_print('~:(~R~)\n',[^i]))
+    endfor;
+    
+enddefine;
+
+;;; From HELP CUCHAROUT, don't work as expected
+;;; define print_literal(item)->result;
+;;;     define dlocal cucharout(character);
+;;;         format_print('~R',{result});
+;;;     enddefine;
+;;;
+;;;     pr(item);
+;;; enddefine;
+;;; print_literal(101)=>;
+
+
 ;;;
 ;;; run as:
 ;;;   run_problem(1)
@@ -1199,7 +1277,7 @@ enddefine;
 define run_problem(n);
     [run problem ^n]=>;
     lvars problem = 'problem' >< n  >< '()'; ;;; -> 'problem1()'
-    problem.stringin.pop11_compile;
+    problem.stringin.pop11_compile; ;;; I like this most.
 
     ;;; some variants:
     ;;; pop11_compile(stringin(problem)); ;;; or like this
@@ -1209,8 +1287,11 @@ define run_problem(n);
 enddefine;
 
 ;;; Note: this assumes that the problem() prints the result...
-;;; I have filtered the problems which take more than a couple of seconds
-lvars p;
-for p in [1 2 3 4 5 6 7 8 11 13 15 16] do 
+;;; lvars p;
+for p in [1 2 3 4 5 6 7 8 9 10 11 12 13 15 16] do 
+;;; for p in [1 2 3 4 5 6 7 8 ] do 
+;;; for p in [12] do 
     run_problem(p);
 endfor; 
+
+;;; problem1b();

@@ -13,7 +13,7 @@
   Find the next triangle number that is also pentagonal and hexagonal.
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -52,7 +52,7 @@ define problem45;
         if tt > hh then  h+1->h; hex(h)->hh; endif;
     endwhile;
 
-    [t ^t tt ^tt p ^p pp ^pp h ^h hh ^hh]=>
+    ;;; [t ^t tt ^tt p ^p pp ^pp h ^h hh ^hh]=>
     tt=>
 enddefine;
 

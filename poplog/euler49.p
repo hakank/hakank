@@ -13,7 +13,7 @@
   in this sequence?
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -108,7 +108,7 @@ define problem49;
         if is_prime(n) then
             lvars c = check_perms(n, diff);
             if c /= [] then
-                c=>;
+                ;;; c=>;
                 if n /= 1487 then
                     c->res;
                 endif;

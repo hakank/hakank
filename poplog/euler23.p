@@ -21,7 +21,7 @@
 
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -175,11 +175,10 @@ define problem23c;
 enddefine;
 
 vars t;
-'problem23()'=>
-problem23();
-
-timediff()->t;
-t=>
+;;; 'problem23()'=>
+;;; problem23();
+;;; timediff()->t;
+;;; t=>
 
 'problem23b()'=>
 problem23b();
@@ -187,9 +186,8 @@ timediff()->t;
 t=>
 
 
-'problem23c()'=>
-problem23c();
-
-timediff()->t;
-t=>
+;;; 'problem23c()'=>
+;;; problem23c();
+;;; timediff()->t;
+;;; t=>
 

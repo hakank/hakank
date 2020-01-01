@@ -20,7 +20,7 @@
   Find the sum of all 0 to 9 pandigital numbers with this property.
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -39,6 +39,7 @@ compile('/home/hakank/Poplib/init.p');
 define not_div(n, p);
     n mod p /= 0
 enddefine;
+
 
 define next_permutation(p);
 
@@ -101,27 +102,33 @@ define problem43;
     ;;;      endif;
     ;;; endplogwhile;
 
-    ;;; Using next_permutation is (very) slightly faster 
+    ;;; Using next_permutation is slightly faster 
     ;;; than using the Prolog approach: 12.09s
     while s /= [] do
          lvars s3 = s.packitem;
          lvars s4 = s3><'';
          if s4.length = 9 then '0'<>s4 -> s4 endif;
          lvars c = true;
+         ;;; 1->i;
+         ;;; while c = true and i <= 7 do
+         ;;;     strnumber(substring(1+i,3, s4)) mod P(i) = 0->c;
+         ;;;     i+1->i;
+         ;;; endwhile;
          for i from 1 to 7 do
              lvars s5 = strnumber(substring(1+i,3, s4));
-             if not_div(s5,P(i)) then
+             ;;; [i ^i Pi ^(P(i)) s5 ^s5]=>
+             if s5 mod P(i) /= 0 then
                  false->c;
-                 quitloop(1);
+                 ;;;[i ^i s5 ^s5 quitloop]=>
+                 quitloop;
              endif;
          endfor;
          if c then
-             [^s3]=>
+             ;;; [^s3]=>
              sum+s3->sum;
          endif;
          next_permutation(s)->s;
     endwhile;
-
 
     [Result ^sum]=>
 

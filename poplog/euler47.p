@@ -18,7 +18,7 @@
   factors. What is the first of these numbers?
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -52,7 +52,7 @@ define distinct_factors(n);
     endif;
 
     if n mod 2 = 0 then
-        ll<>[2]->ll;
+        [2]->ll;
         while n mod 2 = 0 then
             n div 2 -> n;
         endwhile;
@@ -126,9 +126,9 @@ define problem47b;
 enddefine;
 
 
-'problem47()'=>
-problem47();
-timediff()=>
+;;; 'problem47()'=>
+;;; problem47();
+;;; timediff()=>
 
 'problem47b()'=>
 problem47b();

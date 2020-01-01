@@ -7,12 +7,16 @@
 
   Inspiration from TEACH GRAMMAR.
   
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com
   See also my Pop-11/Poplog page: http://www.hakank.org/poplog/
 
 
 */
+
+compile('/home/hakank/Poplib/init.p');
 uses grammar;
+;;; load /home/hakank/poplog/current_poplog/pop/v15.6.4/pop/packages/teaching/lib/grammar.p;
+
 
 ;;; declare a variable mygram, and initialise it with a list of
 ;;; rules for sentence components

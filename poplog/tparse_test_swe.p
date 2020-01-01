@@ -16,11 +16,12 @@
    See http://www.hakank.org/poplog/swegram.p for generating swedish
    sentenses with this grammar and lexicon.
 
-   This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com
+   This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com
    See also my Pop-11/Poplog page: http://www.hakank.org/poplog/
 
 
 */
+compile('/home/hakank/Poplib/init.p');
 
 lib tparse;
 
@@ -94,7 +95,7 @@ vars swe_lexicon =
                  krig 
                  rum 
                  träd 
-                 handsfack 
+                 handskfack 
                  möte ]
         [verb    hatade
                  slog 
@@ -157,7 +158,7 @@ vars swe_lexicon =
 
 
 setup(swe_grammar,swe_lexicon);
-showparses("s", [en klocka retade ett snyggt handsfack]);
+showparses("s", [en klocka retade ett snyggt handskfack]);
 
 ;;;
 ;;; Note: The sentence must be given with the sublists.
@@ -175,7 +176,7 @@ listparses("s", [en dyr
 
 listparses("s", [ett svagt 
                  [fastän trött] 
-                 handsfack 
+                 handskfack 
                  [grävde ned] 
                  [utan vett och sans] 
                  en buske])==>

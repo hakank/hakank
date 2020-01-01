@@ -10,16 +10,18 @@
    http://www.cs.bham.ac.uk/research/projects/poplog/freepoplog.html#gosplsite
 
 
-   This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com
+   This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com
    See also my Pop-11/Poplog page: http://www.hakank.org/poplog/
 
 
 */
+compile('/home/hakank/Poplib/init.p');
 
 lvars  string,
-       filename = 'concord.p',
-       nextline = vedfile_line_repeater(filename, true),
-       hash = newmapping([], 100, 0, true);
+     filename = 'concord.p',
+     ;;; filename = '../README.hkj',
+     nextline = vedfile_line_repeater(filename, true),
+     hash = newmapping([], 100, 0, true);
 
 define last_char(x)->c;
   substring(length(x),1,x)->c

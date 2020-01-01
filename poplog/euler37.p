@@ -13,7 +13,7 @@
 
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -71,7 +71,7 @@ define problem37;
         if is_prime(p) then
             if check2(p) then
                 c+1->c;
-                [p ^p]=>
+                ;;; [p ^p]=>
                 sum+p->sum;
             endif;
         endif;

@@ -24,7 +24,7 @@
   Which is the first triangle number to have over five-hundred divisors?")
   """
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -34,10 +34,30 @@ define sumlist(list) -> res;
    applist(0, list, nonop + ) -> res;
 enddefine;
 
-define triangle_number(n);
+define sumlist2(list)->res;
+    lvars i;
+    lvars sum = 0;
+    for i in list do
+        sum+i->sum;
+    endfor;
+enddefine;
+
+;;; This version is faster
+define triangle_number(n)->sum;
+    lvars i;
+    lvars sum=0;
+    for i from 1 to n do 
+        sum+i->sum;
+    endfor
+
+enddefine;
+
+;;; slower
+define triangle_number2(n)->sum;
     lvars i;
     sumlist([%for i from 1 to n do i endfor%])
 enddefine;
+
 
 define num_divisors2(n);
     lvars s = 0;

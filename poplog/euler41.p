@@ -9,7 +9,7 @@
   What is the largest n-digit pandigital prime that exists?
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -46,6 +46,28 @@ define is_prime(n);
 enddefine;
 
 
+define permutation_rank(p);
+    lvars r = 0,
+         f = 1,
+         i, j;
+
+    for i from 2 to p.length do
+        lvars c = 0;
+        for j from 1 to i-1 do
+            if p(j) > p(i) then
+                c+1->c;
+            endif;
+        endfor;
+        
+        r+c*f->r;
+        f*i->f;
+    endfor;
+    
+    return(r);
+    
+enddefine;
+
+
 define problem41;
     ;;; Simplification (from one of the answers)
     ;;; n=9 is not possible since 1+2+3+4+5+6+7+8+9=45 is divisible by 3
@@ -62,11 +84,13 @@ define problem41;
         endfor;
         lvars p2;
         plogwhile |< permutation(^p, ?p2) >| do
+            ;;; p2=>
             if is_prime(p2.packitem) then
                 p2.packitem->m;
                 quitloop;
             endif;
         endplogwhile;
+
         n-1->n;
     endwhile;
 

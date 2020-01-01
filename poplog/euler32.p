@@ -15,7 +15,7 @@
   to only include it once in your sum.
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -36,7 +36,7 @@ define problem32;
                 lvars l;
                 for l in ll.unpackitem do 1->hash(l); endfor;
                 if [%explode(hash)%].length = 9 and prodhash(prod)=0 then
-                    [^a * ^b = ^prod => ^ll]=>;
+                    ;;; [^a * ^b = ^prod => ^ll]=>;
                     sum+prod->sum;
                     1->prodhash(prod);
                 endif;

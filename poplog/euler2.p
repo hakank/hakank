@@ -9,12 +9,13 @@
 
   1, 2, 3, 5, 8, 13, 21, 34, 55, 89, ...
 
-  Find the sum of all the even-valued terms in the sequence which do not exceed four million.
+  Find the sum of all the even-valued terms in the sequence which do not 
+  exceed four million.
   """
 
   Note: The sequence starts with 1 2, not 1 1 2.
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 
@@ -95,7 +96,7 @@ define problem2a();
     1->fibvec(1);
     2->fibvec(2);
     ;;; npr(fib2(n));
-    fib2(n)->xxx;
+    lvars xxx = fib2(n);
 
     ;;; get the values
     ;;; [%for i from 1 to fibvec.length do fibvec(i) endfor%]->f2;
@@ -199,14 +200,14 @@ define problem2();
     
 enddefine;
 
-'problem2_nomemo'=>
-problem2_nomemo()=>
+;;;'problem2_nomemo'=>
+;;; problem2_nomemo()=>
 
-'problem2()'=>
-problem2()=>;
+;;; 'problem2()'=>
+;;; problem2()=>;
 
 'problem2a()'=>
 problem2a()=>;
 
-'problem2b()'=>
-problem2b()=>
+;;; 'problem2b()'=>
+;;; problem2b()=>

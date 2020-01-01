@@ -8,7 +8,7 @@
   What is the smallest number that is evenly divisible by all of the numbers from 1 to 20?
   """
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 

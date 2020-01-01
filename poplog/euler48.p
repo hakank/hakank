@@ -8,7 +8,7 @@
   1^(1) + 2^(2) + 3^(3) + ... + 1000^(1000).
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -42,8 +42,8 @@ enddefine;
 
 
 
-'problem48()'=>
-problem48();
+;;; 'problem48()'=>
+;;; problem48();
 
 'problem48b()'=>
 problem48b();

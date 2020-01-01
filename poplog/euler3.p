@@ -8,7 +8,7 @@
   What is the largest prime factor of the number 600851475143 ?
   """
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 
@@ -45,11 +45,10 @@ enddefine;
 define factors(n);
     lvars m = n;
     lvars ll = [];
-    lvars found = false;
 
-    if is_prime(n) then 
-        return([]);
-    endif;
+    ;;; if is_prime(n) then 
+    ;;;    return([]);
+    ;;; endif;
     lvars i;
     [% 
       for i from 2 to round(m/2) do
@@ -92,8 +91,8 @@ define problem3b();
    last(f)=>
 enddefine;
 
-'problem3()'=>
-problem3();
+;;; 'problem3()'=>
+;;; problem3();
 
 'problem3b()'=>
 problem3b()=>;

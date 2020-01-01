@@ -19,7 +19,7 @@
   NOTE: Once the chain starts the terms are allowed to go above one million.")
   """
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -30,8 +30,8 @@ compile('/home/hakank/Poplib/init.p');
 ;;;
 
 ;;; memoizes the collatz length
-;;; vars c_len=newproperty([], 100000, 0, "perm");
-vars c_len = newmapping([], 10000, 0, "perm");
+vars c_len=newproperty([], 100000, 0, "perm");
+;;; vars c_len = newmapping([], 1000000, 0, "perm");
 
 define collatz1(n);
   if n mod 2 = 0 then
@@ -120,12 +120,13 @@ define problem14();
         seq.length -> len;
         len -> c_len(i);
         if len > max_len then
-            seq -> max_seq ;
+            ;;; seq -> max_seq ;
             len -> max_len;
             i -> max_i;
         endif;
     endfast_for;
-    'Res'=>, [max_i ^max_i max_len ^max_len]=>
+    ;;; 'Res'=>, [max_i ^max_i max_len ^max_len]=>
+    [^max_i]=>
 enddefine;
 
 ;;; here we just are interested in the length of

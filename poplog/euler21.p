@@ -15,10 +15,11 @@
   """ 
 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
+compile('/home/hakank/Poplib/init.p');
 
 vars hash = newmapping([], 100, 0, true);
 
@@ -32,7 +33,6 @@ define sum_divisors(n);
     endfor;
     return(s);
 enddefine;
-
 
 ;;;
 ;;; Using a hash table is slightly faster than 

@@ -21,11 +21,12 @@
    * read_test_strmatches.p takes about 26 seconds.
 
 
-  This Pop-11 program was created by Hakan Kjellerstrand 
-  (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
+
+compile('/home/hakank/Poplib/init.p');
 
 ;;; Note: this library is not in the standard distribution.
 ;;; Download it from 
@@ -34,7 +35,9 @@ load 'strmatches.p';
 
 
 ;;; Define the word list
-lvars filename= '/usr/dict/words',
+lvars filename= 'sv_spelling_org_utf8.txt',
+;;; lvars filename= 'words_lower.txt',
+;;; lvars filename= '/usr/share/dict/words',
      nextline = vedfile_line_repeater(filename, true),
      line;
 

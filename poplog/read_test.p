@@ -1,6 +1,6 @@
 /*
 
-  Hakan Kjellerstrand (hakank@bonetmail.com)
+  Read test in Pop11.
 
   This program reads a word list and tests regular expressions of
   consecutive characters, e.g. a.*b.*c (or in Pop-11 a@.@*b@.@*c@.@*).
@@ -48,20 +48,23 @@
                  denoted sub-expression.
 
 
-  This Pop-11 program was created by Hakan Kjellerstrand 
-  (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
 
-lvars filename= '/usr/dict/words',
+compile('/home/hakank/Poplib/init.p');
+
+lvars filename= 'sv_spelling_org_utf8.txt',
+;;; lvars filename= 'words_lower.txt',
+;;; lvars filename= '/usr/dict/words',
      nextline = vedfile_line_repeater(filename, true),
      line;
 
 vars search_p;
 
-lvars n = 5;
-;;;lvars n = 6; ;;; swedish word list
+;;; lvars n = 5;
+lvars n = 5; ;;; for swedish word list
 lvars join_str = '@.@*'; ;;; Which string to join
 [File ^filename join_str ^join_str n ^n]=>
 

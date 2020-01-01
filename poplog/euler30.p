@@ -17,7 +17,7 @@
   powers of their digits.
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -37,7 +37,7 @@ define problem30;
     for n from 5 to 7*9**p do 
         if check(n,p) then
             sum+n->sum;
-            n=>;
+            ;;; n=>;
         endif;
     endfor;
 

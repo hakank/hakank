@@ -10,7 +10,7 @@
   Find the sum of all the multiples of 3 or 5 below 1000.
   """
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -40,6 +40,19 @@ define problem1b();
    problem1b_tmp(999)=>;
 enddefine;
 
+define mod3ormod5(n);
+    if n mod 3 = 0 or n mod 5 = 0 then 
+        n 
+    else 
+        0 
+    endif;
+enddefine;
+
+define problem1c;
+    lvars i;
+    applist(0, [%for i from 1 to 999 do mod3ormod5(i) endfor%], nonop +)=>;
+enddefine;
 
 problem1();
-problem1b();
+;;; problem1b();
+;;; problem1c();

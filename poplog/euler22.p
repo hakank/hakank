@@ -15,7 +15,7 @@
   What is the total of all the name scores in the file?")
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -62,8 +62,8 @@ define problem22();
     ;;; endfor;
     ;;; sort(newnames)->newnames;
 
-    lvars newnames=sort(names);
-    lvars score=0;
+    lvars newnames = sort(names);
+    lvars score = 0;
     lvars i;
     for i from 1 to length(newnames) do
         get_score(newnames(i), i)+score->score;

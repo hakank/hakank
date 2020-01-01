@@ -13,11 +13,12 @@
      * TEACH SOLVER
 
 
-   This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com
+   This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com
    See also my Pop-11/Poplog page: http://www.hakank.org/poplog/
 
 */
-
+compile('/home/hakank/Poplib/init.p');
+uses teaching;
 lib solver;
 
 
@@ -73,8 +74,8 @@ false -> estimating; ;;; default false
 
 
 ;;; [[b1 on b2] [b3 on b4] [holding b5]] -> lastgoals;
-[[b1 on b2] [b2 on b3] [b3 on b4] [b4 on b5]] -> lastgoals;
-;;; [[ontable b2]] -> lastgoals;
+;;; [[b1 on b2] [b2 on b3] [b3 on b4] [b4 on b5]] -> lastgoals;
+[[ontable b2]] -> lastgoals;
 
 runsolver(runastar);;
 ;;; runsolver(runstrips);

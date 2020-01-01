@@ -14,7 +14,7 @@
   d1 × d10 × d100 × d1000 × d10000 × d100000 × d1000000
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -36,6 +36,7 @@ define problem40;
 
     lvars prod = 1;
     for i from 1 to 6 do
+        ;;; d(10**i)-48=>
         prod*(d(10**i)-48)->prod;
     endfor;
 

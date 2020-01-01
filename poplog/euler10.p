@@ -7,7 +7,7 @@
   Find the sum of all the primes below two million.
   """
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 
@@ -30,6 +30,7 @@ define is_prime(n);
     return(true);
 enddefine;
 
+;;; 4.95s
 define problem10();
     lvars res = 2;
     lvars i;
@@ -42,5 +43,25 @@ define problem10();
 
 enddefine;
 
-'problem10()'=>
-problem10();
+;;; 4.98s
+define problem10b();
+    lvars i;
+    lvars primes = [% 
+                       for i from 3 by 2 to 2000000-1 do
+                           if is_prime(i) then
+                               i;
+                           endif;
+                       endfor%];
+    applist(2,primes, nonop +)=>
+
+enddefine;
+
+
+;;; 'problem10()'=>
+;;; problem10();
+;;; timediff()=>
+
+'problem10b()'=>
+problem10b();
+timediff()=>
+

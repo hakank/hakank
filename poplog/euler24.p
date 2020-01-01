@@ -13,7 +13,7 @@
   0, 1, 2, 3, 4, 5, 6, 7, 8 and 9?
   """ 
 
-  This Pop-11 program was created by Hakan Kjellerstrand (hakank@bonetmail.com).
+  This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
@@ -107,7 +107,8 @@ enddefine;
 'problem24()'=>
 problem24();
 timediff()=>
-'problem24b()'=>
-problem24b();
-timediff()=>
+
+;;; 'problem24b()'=>
+;;; problem24b();
+;;; timediff()=>
 
