@@ -26,13 +26,12 @@ compile('/home/hakank/Poplib/init.p');
 
 define problem28;
 
-    lvars s=0;
+    lvars s=1;
     lvars n;
-    for n from 2 by 2 to 1001 do
-        s+4*(n-1)**2+10*(n-1)->s;
+    for n from 3 by 2 to 1001 do
+        s+4*n**2 - 6*n + 6->s;
     endfor;
-
-    s+1=>
+    s=>
 
 enddefine;
 

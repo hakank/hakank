@@ -21,8 +21,6 @@
 */
 compile('/home/hakank/Poplib/init.p');
 
-vars hash = newmapping([], 100, 0, true);
-
 define sum_divisors(n);
     lvars s = 0;
     lvars i;
@@ -35,8 +33,30 @@ define sum_divisors(n);
 enddefine;
 
 ;;;
+;;; This is much faster, by a factor 10 or so
+;;;
+define sum_divisors2(n);
+    lvars d = floor(sqrt(n)),
+          sum = 1,
+          i;
+    for i from 2 to d do
+        if n mod i = 0 then
+            sum+i->sum;
+            if i /= n div i then
+                sum+(n div i)->sum;
+            endif;
+        endif;
+    endfor;
+
+    sum;
+enddefine;
+
+
+vars hash = newmapping([], 100, 0, true);
+
+;;;
 ;;; Using a hash table is slightly faster than 
-;;; is_amicable1: it takes 1.6s
+;;; is_amicable1: it takes 0.93s
 ;;;
 define is_amicable(n);
     lvars a,b;
@@ -44,7 +64,7 @@ define is_amicable(n);
     if hn > 0 then 
         hn->a;
     else 
-        sum_divisors(n)->a;
+        sum_divisors2(n)->a;
         a->hash(n);
     endif;
 
@@ -52,7 +72,7 @@ define is_amicable(n);
     if ha > 0 then 
         ha->b;
     else 
-        sum_divisors(a)->b;
+        sum_divisors2(a)->b;
         b->hash(a);
     endif;
         
@@ -73,8 +93,8 @@ enddefine;
 ;;; though fast enough: Using it takes 2.2s.
 ;;;
 define is_amicable1(n);
-    lvars a = sum_divisors(n);
-    lvars b = sum_divisors(a);
+    lvars a = sum_divisors2(n);
+    lvars b = sum_divisors2(a);
 
     if a == b then 
         return(false);
@@ -104,5 +124,6 @@ enddefine;
 
 'problem21()'=>
 problem21();
+timediff()=>;
 
 

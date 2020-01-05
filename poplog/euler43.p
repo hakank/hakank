@@ -27,6 +27,7 @@
 
 compile('/home/hakank/Poplib/init.p');
 
+;;; Uncomment for trying problem43b()
 ;;; uses ploginpop;
 
 ;;; prolog_compile(stringin('                                          \
@@ -38,6 +39,10 @@ compile('/home/hakank/Poplib/init.p');
 
 define not_div(n, p);
     n mod p /= 0
+enddefine;
+
+define sum(a);
+    applist(0,a, nonop +); 
 enddefine;
 
 
@@ -73,7 +78,9 @@ define next_permutation(p);
 
 enddefine;
 
-
+;;;
+;;; 4.92s
+;;;
 define problem43;
     
     lvars P = [2 3 5 7 11 13 17];
@@ -81,29 +88,8 @@ define problem43;
     lvars s = [% for i from 0 to 9 do i endfor%];
 
     lvars s2;
-    lvars sum = 0;
+    lvars tsum = 0;
 
-    ;;; Using Prolog approach: 12.44s
-    ;;; plogwhile |< permutation(^s, ?s2) >| do
-    ;;;      lvars s3 = s2.packitem;
-    ;;;      lvars s4 = s3><'';
-    ;;;      if s4.length = 9 then '0'<>s4 -> s4 endif;
-    ;;;      lvars c = true;
-    ;;;      for i from 1 to 7 do
-    ;;;          lvars s5 = strnumber(substring(1+i,3, s4));
-    ;;;          if not_div(s5,P(i)) then
-    ;;;              false->c;
-    ;;;              quitloop(1);
-    ;;;          endif;
-    ;;;      endfor;
-    ;;;      if c then
-    ;;;          [^s3]=>
-    ;;;          sum+s3->sum;
-    ;;;      endif;
-    ;;; endplogwhile;
-
-    ;;; Using next_permutation is slightly faster 
-    ;;; than using the Prolog approach: 12.09s
     while s /= [] do
          lvars s3 = s.packitem;
          lvars s4 = s3><'';
@@ -125,17 +111,82 @@ define problem43;
          endfor;
          if c then
              ;;; [^s3]=>
-             sum+s3->sum;
+             tsum+s3->tsum;
          endif;
          next_permutation(s)->s;
     endwhile;
 
-    [Result ^sum]=>
+    tsum=>;
 
 enddefine;
 
+;;; Uncomment to try Prolog approach (which is slower)
+;;;
+;;; Using Prolog approach: 5.12s
+;;;
+;;; define problem43b;
+;;;     lvars P = [2 3 5 7 11 13 17];
+;;;     lvars i;
+;;;     lvars s = [% for i from 0 to 9 do i endfor%];
+;;;     lvars s2;
+;;;     lvars tsum = 0;
+;;;     plogwhile |< permutation(^s, ?s2) >| do
+;;;          lvars s3 = s2.packitem;
+;;;          lvars s4 = s3><'';
+;;;          if s4.length = 9 then '0'<>s4 -> s4 endif;
+;;;          lvars i, c = true;
+;;;          for i from 1 to 7 do
+;;;              lvars s5 = strnumber(substring(1+i,3, s4));
+;;;              if not_div(s5,P(i)) then
+;;;                  false->c;
+;;;                  quitloop(1);
+;;;              endif;
+;;;          endfor;
+;;;          if c then
+;;;              tsum+s3->tsum;
+;;;          endif;
+;;;     endplogwhile;
+;;;     tsum=>;     
+;;; enddefine;
 
-'problem43()'=>
-problem43();
+;;;
+;;; 2.63s
+;;;
+define problem43c;
+    lvars primes = [2 3 5 7 11 13 17];
+    lvars tsum = 0;
+    lvars j, i = 1;    
+    lvars P = [% for j from 0 to 9 do j endfor%]; ;;; the permutation
+    while P /= [] do
+        ;;; P=>;
+        1 -> i;    
+        while i <= 7 do
+            lvars found = 1;
+            if (100*P(i+1) + 10*P(i+2) + P(i+3)) mod primes(i) > 0 then
+                0->found;
+                quitloop;
+            endif;
+            i+1->i;
+        endwhile;
+        if found = 1 then
+            tsum + P.packitem -> tsum;
+        endif;
+        next_permutation(P)->P;
+    endwhile;
+    tsum=>;
+enddefine;
+
+
+;;; 'problem43()'=>
+;;; problem43();
+;;; timediff()=>;
+
+;;; 'problem43b()'=>
+;;; problem43b();
+;;; timediff()=>;
+
+'problem43c()'=>
+problem43c();
+timediff()=>;
 
 

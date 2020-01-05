@@ -21,7 +21,7 @@
   We can see that the 7th triangle number, 28, is the first triangle number to have 
   over five divisors.
 
-  Which is the first triangle number to have over five-hundred divisors?")
+  Which is the first triangle number to have over five-hundred divisors?)
   """
 
   This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
@@ -32,6 +32,10 @@ compile('/home/hakank/Poplib/init.p');
 
 define sumlist(list) -> res;
    applist(0, list, nonop + ) -> res;
+enddefine;
+
+define prodlist(list) -> res;
+   applist(1, list, nonop * ) -> res;
 enddefine;
 
 define sumlist2(list)->res;
@@ -70,19 +74,76 @@ define num_divisors2(n);
     return(s);
 enddefine;
 
+;;;
+;;; Calculate the factors and their exponents for number n
+;;;
+define factorsHash(n);
+    lvars hash = newmapping([], 100, 0, true);
+    
+    lvars m=n;
+    while m mod 2 = 0 do
+        hash(2)+1->hash(2);    
+        m div 2->m;
+    endwhile;
+    
+    lvars t = 3;
+    while m > 1 and t < ceiling(sqrt(m)) do
+        while m mod t = 0 do
+            hash(t)+1->hash(t);  
+            m div t -> m;
+        endwhile;
+        t+2->t;
+    endwhile;
+    if m > 1 then
+        hash(m)+1->hash(m);
+    endif;
+    hash;
+enddefine;
+
+;;;
+;;; 1.8s
+;;;
 define problem12();
 
-    lvars i = 2;
+    lvars i = 0;
     lvars len = 0;
-    lvars tnum;
+    lvars tnum = 0;
     while 2*len <= 500 do
-        triangle_number(i) -> tnum;
+        ;;;triangle_number(i) -> tnum;
+        tnum+i->tnum;
         num_divisors2(tnum) -> len;
         i + 1 -> i;
     endwhile;
-    [^(i-1) ^(len*2) ^tnum] =>
+    tnum =>
+enddefine;
+
+;;;
+;;; 0.20s
+;;;
+define problem12b();
+
+    lvars i = 0;
+    lvars len = 0;
+    lvars tnum = 0;
+    lvars v, tmp;
+    while len <= 500 do
+        i + 1 -> i;        
+        tnum+i->tnum;
+        0->len;
+        ;;; the length is the products of the (exponents+1)
+        prodlist([% for v in [%explode(factorsHash(tnum))%] do v(2)+1 endfor%])->len;
+    endwhile;
+    tnum =>
 enddefine;
 
 
-'problem12()'=>
-problem12();
+;;; 'problem12()'=>
+;;; problem12();
+;;; timediff()=>;
+
+'problem12b()'=>
+problem12b();
+timediff()=>;
+
+
+

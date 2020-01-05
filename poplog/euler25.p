@@ -43,9 +43,14 @@ define fib(n);
 enddefine;
 
 
+newmemo(fib, 2000) -> fib;
+
+;;;
+;;; 0.82s
+;;;
 define problem25;
     ;;; Memoize the function
-    newmemo(fib, 20) -> fib;
+    ;;; newmemo(fib, 2000) -> fib;
 
     lvars len = 0;
     lvars f = 0;
@@ -57,7 +62,51 @@ define problem25;
 
 enddefine;
 
-'problem25()'=>
-problem25();
+define fib_length(n);
+    fib(n).unpackitem.length
+enddefine;
 
+;;;
+;;; 0.05s
+;;;
+define problem25b;
+    lvars target=1000;
+    lvars found_upper=0;
+    lvars i=1;
+    lvars fib=0;
+    lvars fib_len=0;
+    lvars xstep=43; 
+
+    ;;; get the upper limit
+    while fib_len < target and found_upper = 0 do
+        fib_length(xstep*i)->fib_len;
+        if fib_len > target then
+            i->found_upper;
+        endif;
+        i+1->i;
+    endwhile;
+    
+    ;;; Now check all numbers from Step*(FoundUpper-1) .. Step*FoundUpper
+    ;;; The target must be in that interval.
+    xstep*(found_upper-1)->fib;
+    fib_length(fib)->fib_len;
+    while fib_len < target and fib <= xstep*found_upper do
+        fib_length(fib)->fib_len;
+        if fib_len < target then
+            fib+1 -> fib;
+        endif;
+    endwhile;
+ 
+    fib=>;
+
+enddefine;
+
+
+;;; 'problem25()'=>
+;;; problem25();
+;;; timediff()=>;
+
+'problem25b()'=>
+problem25b();
+timediff()=>;
 

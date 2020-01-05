@@ -38,7 +38,6 @@ permutation(L1, [A|L2]) :- delete(A, L1, L3), permutation(L3, L2). \
 
 ;;; Slightly faster than problem24b: 1.30s
 define problem24;
-
   vars list = [0 1 2 3 4 5 6 7 8 9];
   vars l2;
   vars c = 0; ;;; counter
@@ -48,7 +47,7 @@ define problem24;
         quitloop();
     endif;
   endplogwhile;
-  l2=>;
+  l2.packitem=>;
 
 enddefine;
 

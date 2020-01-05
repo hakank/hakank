@@ -17,6 +17,9 @@
 
 compile('/home/hakank/Poplib/init.p');
 
+;;;
+;;; 3.71s
+;;;
 define problem39;
 
     lvars m = 1000,
@@ -52,7 +55,53 @@ define problem39;
 
 enddefine;
 
-'problem39()'=>
-problem39();
+;;;
+;;; 0.05s
+;;;
+define problem39b;
+    lvars n=1000-1;
+    lvars squares = newmapping([], 100, 0, true);
+    lvars i,squares_list;
+    for i from 1 to n do
+        1->squares(i*i);
+    endfor;
+    [%explode(squares)%] -> squares_list;
+    lvars x, y, x1,y1,c, valid, counts;
+    [% fast_for x in squares_list do
+           x(1)->x1;
+           fast_for y in squares_list do
+               y(1)->y1;
+               if x1 < y1 and squares(x1+y1) > 0 then
+                   round(sqrt(x1)+sqrt(y1) + sqrt(x1+y1))->c;
+                   if c < 1000 then
+                       c;
+                   endif;
+               endif;
+           endfast_for;
+       endfast_for %] -> valid;
+    
+    lvars counts = newmapping([], 100, 0, true);
+    for c in valid do
+        1+counts(c)->counts(c);
+    endfor;
+    lvars v, maxv = 0, maxc = 0, counts_list=[%explode(counts)%];
+    fast_for v in counts_list  do
+        if v(2) > maxc then
+            v(2)->maxc;
+            v(1)->maxv;
+        endif;
+    endfast_for;
+    maxv=>;
+enddefine;
+
+
+;;; 'problem39()'=>
+;;; problem39();
+;;; timediff()=>;
+
+'problem39b()'=>
+problem39b();
+timediff()=>;
+
 
 

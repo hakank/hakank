@@ -25,7 +25,7 @@
 compile('/home/hakank/Poplib/init.p');
 
 define check(n,p);
-    lvars i, sum;
+    lvars i, sum=0;
     for i in n.unpackitem do 
         sum+i**p->sum 
     endfor;
@@ -34,15 +34,12 @@ enddefine;
 
 define problem30;
     lvars p=5, sum=0, n;
-    for n from 5 to 7*9**p do 
+    for n from 10 to 6*9**p do
         if check(n,p) then
             sum+n->sum;
-            ;;; n=>;
         endif;
     endfor;
-
-    [result ^sum]=>;
-
+    sum=>;
 enddefine;
 
 

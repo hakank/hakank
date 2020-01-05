@@ -16,7 +16,7 @@
 
   Which starting number, under one million, produces the longest chain?
 
-  NOTE: Once the chain starts the terms are allowed to go above one million.")
+  NOTE: Once the chain starts the terms are allowed to go above one million.)
   """
 
   This Pop-11 program was created by Hakan Kjellerstrand (hakank@gmail.com).
@@ -41,7 +41,7 @@ define collatz1(n);
   endif;
 enddefine;
 
-;;; newmemo(collatz1, 100000)->collatz1;
+newmemo(collatz1, 100000)->collatz1;
 
 define collatz_seq(n);
     lvars m = n;
@@ -108,14 +108,14 @@ enddefine;
 
 
 ;;;
-;;; 13.5s
+;;; 5.35s
 ;;;
 define problem14();
     lvars i, max_seq, seq;
     lvars len = 0;
     lvars max_len = 0;
     lvars max_i = 0;
-    fast_for i from 1 to 1000000-1 do
+    fast_for i from 3 by 2 to 1000000-1 do
         collatz_seq(i) -> seq;
         seq.length -> len;
         len -> c_len(i);
@@ -129,15 +129,15 @@ define problem14();
     [^max_i]=>
 enddefine;
 
-;;; here we just are interested in the length of
-;;; of the sequence
-;;; Slightly slower 14.9s
+;;;
+;;; 7.93s;
+;;;
 define problem14b();
     lvars i, max_seq, seq;
     lvars len = 0;
     lvars max_len = 0;
     lvars max_i = 0;
-    for i from 1 to 1000000-1 do
+    for i from 3 by 2 to 1000000-1 do
         collatz_len2(i) -> len;
         if len > max_len then
             seq -> max_seq ;
@@ -148,15 +148,48 @@ define problem14b();
     'Res'=>, [max_i ^max_i max_len ^max_len]=>
 enddefine;
 
-vars t;
-timediff()->t;
-'problem14()'=>
-problem14();
-timediff()->t;
-['time' ^t]=>
+;;;
+;;; 1.36s (3..2..limit)
+;;; 1.62s (2..limit)
+;;;
+define problem14c;
+    lvars limit = 999999;
+    lvars hash = newmapping([], 100000, 0, true);
+    lvars n,m,c_len=0,max_len=0, max_n=0;
+    for n from 3 by 2 to limit do
+        n->m;
+        1->c_len;
+        while m > 1 do
+            if hash(m) > 0 then
+                c_len+hash(m)-1->c_len;
+                1->m;
+            else
+                collatz1(m)->m;
+                c_len+1->c_len;
+            endif;
+        endwhile;
+        if hash(n) = 0 then
+            c_len->hash(n);
+        endif;
+        if c_len > max_len then
+            c_len->max_len;
+            n->max_n;
+        endif;
+    endfor;
+    max_n=>;
+enddefine;
+
+;;; 'problem14()'=>
+;;; problem14();
+;;; timediff()=>;
 
 ;;; 'problem14b()'=>
 ;;; problem14b();
-;;; timediff()->t;
-;;; ['time' ^t]=>
+;;; timediff()=>;
+
+
+'problem14c()'=>
+problem14c();
+timediff()=>;
+
 
