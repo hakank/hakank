@@ -23,7 +23,7 @@
   See also my Pop-11 / Poplog page: http://www.hakank.org/poplog/
 
 */
-
+   
 compile('/home/hakank/Poplib/init.p');
 
 ;;; Eratostenes 
@@ -205,7 +205,7 @@ define problem50c;
 enddefine;
 
 ;;;
-;;; 3.53s
+;;; 0.02s
 ;;; 
 define problem50d;
     lvars n=10000;
@@ -216,12 +216,15 @@ define problem50d;
                                i;
                            endif;
                        endfor%];
-    lvars len,j,offset,sum,found=0;
+         lvars len,j,offset,sum,found=0;
     for len from 550 by -1 to 21 do
         for offset from 1 to 549 do
             0->sum;
             for j from offset+1 to offset + len do
                 primes(j)+sum->sum;
+                if sum > 1000000 then
+                    quitloop(2);
+                endif;
             endfor;
             if sum < 1000000 and is_prime(sum) then
                 sum->found;
