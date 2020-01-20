@@ -1,0 +1,137 @@
+/* 
+
+  Isometric Automata Colorization in Picat.
+
+  From Kjetil Golid 
+  https://twitter.com/kgolid/status/1209811397850386432
+  """
+  Writing the colorization algorithm of my Isometric Automata, I’ve constructed such functions 
+  manually for cardinalities 3, 4, 5 and 6 (actually a fun, sudoku-like task), but do they exist 
+  for ALL cardinalities of S? Already struggling with 7.
+  """
+
+  This model was inspired by Zayenz' MiniZinc model 
+  https://gist.github.com/zayenz/d9b20e75c3815c7cbe2c20d8ad645397
+  """
+  Given a square matrix indexed by N, each row and column contains all the values in N, 
+  except its own index. In addition, the diagonal of the matrix must contain all the values in N.
+  """
+
+  Zayenz' tweet:
+  """
+  Fun problem! https://gist.github.com/zayenz/d9b20e75c3815c7cbe2c20d8ad645397 
+  is a model using the MiniZinc language (http://minizinc.org). The number of solutions for 4 is 114 
+  and for 5 is 349680, found using the guilt-in [sic!] Gecode solver from the MiniZinc IDE.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+
+%
+% Show all 114 solutions for N=4.
+% 
+go ?=>
+  nolog,
+  N = 4,
+  isometric_automata_colorization(N, Matrix),
+  println("Matrix:"),
+  print_matrix(Matrix),
+  nl,
+  fail,
+  nl.
+
+go => true.
+
+%
+% Show the first solution for N=1..25.
+%
+go2 =>
+  nolog,
+  foreach(N in 1..25)
+    println(n=N),  
+    if time(isometric_automata_colorization(N, Matrix)) then
+      print_matrix(Matrix),
+      nl,
+      flush(stdout)
+    end
+  end,
+  nl.
+
+%
+% Total number of solutions for N=3..6
+%
+% 3 = 2
+% 4 = 114
+% 5 = 349680
+% 6 = 13337970480
+% It took 22h 37min to calculate N=6
+%
+go3 =>
+  nolog,
+  foreach(N in 1..6) 
+    Count = count_all(isometric_automata_colorization(N, _Matrix)),
+    println(N=Count)
+  end,
+  nl.
+
+isometric_automata_colorization(N, Matrix) =>
+  Matrix = new_array(N, N),
+  Matrix :: 1..N,
+  
+  % All values must appear at least once in the diagonal
+  %  all_different([Matrix[I,I] : I in 1..N]),
+  all_distinct([Matrix[I,I] : I in 1..N]),  
+
+  % Matrix[1,1] #= 2, % symmetry breaking
+
+  % Each row/column contains each value at least once, except itself
+  foreach(I in 1..N)
+    all_but_index(N,[Matrix[I, J] : J in 1..N], I),
+    all_but_index(N,[Matrix[J, I] : J in 1..N], I)
+  end,
+
+  solve($[degree,updown],Matrix.vars).
+
+
+
+% The variables in vars take all the values in N, except the value index.
+% This means that all values N\index appear once, except one which appears twice.
+%    all_but_index(array[N] of var N: vars, N: index) = (
+all_but_index(N, Vars, Index) =>
+
+      % The cardinalities of the values
+      Cards = new_list(N),
+      Cards :: 0..2,
+      
+      % The cardinality of index is 0
+      Cards[Index] #= 0,
+
+      % Exactly one cardinality has value 2
+      count(2,Cards) #= 1,
+
+      % The cards variables count the number of occurences of their 
+      % corresponding values in vars
+      % GCC = $[I-Cards[I] : I in 1..N],
+      % global_cardinality(Vars, GCC).
+      foreach(I in 1..N)
+         count(I,Vars) #= Cards[I]
+      end.
+
+
+print_matrix(M) =>
+  N = M.len,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%2d ", M[I,J])
+    end,
+    nl
+  end,
+  nl.

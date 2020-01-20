@@ -1,0 +1,141 @@
+/* 
+
+  Schur triplets in Picat.
+
+  From https://cstheory.stackexchange.com/questions/16253/list-of-strongly-np-hard-problems-with-numerical-data
+  """
+  Schur Triples problem:
+
+  Input: list of 3*N distinct positive integers
+
+  Question: Is there a partition of the list into N triples (ai,bi,ci) 
+  such that ai+bi=ci for each triple i?
+
+  The condition that all numbers must be distinct makes the problem very interesting 
+  and McDiarmid calls it a surprisingly troublesome . 
+  """
+
+  Via Oscar Riveros' Schur-triplets model in PEQNP (with SLIME SAT solver)
+  https://github.com/maxtuno/PEQNP/blob/master/examples/schur-triples.py
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import cp. % cp faster on small (10,10) instances but them much slower than SAT
+import sat.
+
+main => go.
+
+
+go =>
+   nolog,
+
+   % Picat: SAT 1,595s CP: 0.018s
+   % Solution from PEQNP (4.9s)  with symmetry breaking: 0.8s   
+   % Numbers = [4, 5, 6, 8, 10, 15, 18, 28, 33, 63, 65, 68, 69, 70, 71, 78, 79, 81, 88, 94, 102, 114, 122, 127, 128, 159, 175, 181, 182, 197],
+
+   % SAT: 1.72s CP: 0.115s
+   % PEQNP: 4.196s
+   % Numbers := [2, 7, 8, 9, 23, 24, 25, 27, 29, 32, 36, 41, 43, 50, 56, 57, 60, 63, 71, 72, 98, 108, 109, 115, 116, 118, 123, 134, 165, 187],
+
+   %% SAT: 1.0s CP 0.014s
+   %% PEQNP: 0.64s
+   % Numbers := [28,42,44,59,67,71,75,78,82,85,103,104,105,106,109,115,116,120,121,124,125,128,133,175,184,192,206,210,222,239],
+
+   %% UNSAT:
+   %% SAT: 0.25s  CP: 0.0s
+   % Numbers := [10,14,14,24,26,28,32,33,40,44,44,51,63,66,68,69,76,76,82,88,91,96,104,104,108,108,110,113,118,126],
+
+   % SAT: 9.6s CP: 101.3s
+   % PEQNP: 58.9s
+   Numbers := [76, 90, 127, 148, 176, 180, 191, 221, 255, 399, 414, 443, 489, 497, 499, 525, 545, 547, 597, 601, 624, 635, 644, 694, 708, 720, 751, 766, 770, 777, 782, 783, 795, 807, 841, 856, 875, 886, 904, 912, 919, 926, 956, 974, 975, 989, 1024, 1038, 1117, 1137, 1225, 1333, 1367, 1388, 1453, 1501, 1510, 1612, 1798, 1830],
+
+   % _ = random2(),
+   % N = 10,
+   % Numbers := make_problem(N,7), % Ensure that the problem is SAT
+   % Numbers := make_problem2(N,7), % Just a bunch of numbers, no guarantee
+
+
+   println(numbers=Numbers),
+   println(len=Numbers.len),
+   schur_triplets(Numbers,_X),
+  
+   % fail,
+
+   nl.
+
+go2 =>
+  nolog,
+  _ = random2(),
+  % Problem = make_problem(N,Bits)
+  Problem = make_problem(20,10),
+  println(Problem),
+  schur_triplets(Problem, X),
+  println(X),
+  nl.
+
+
+schur_triplets(Numbers,X) =>
+
+   N = Numbers.len // 3,
+   M = 3*N,
+   println(m=M),
+   
+   % The permutations of triplets [ [X[1],X[2],X[3]], [X[4],X[5],X[6], ....]
+   X = new_array(M), 
+   X :: 1..M,
+
+   all_different(Numbers), % quick fail if Numbers are not distinct
+   
+   all_different(X),
+   
+   % symmetry breaking: the sums in increasing order
+   increasing([X[I+2] : I in 1..3..M]),
+   
+   foreach(I in 1..3..M)
+     element(X[I],Numbers,X1),
+     element(X[I+1],Numbers,X2),
+     element(X[I+2],Numbers,X3),
+     X1 + X2 #= X3,
+     increasing([X1,X2,X3]) % symmetry breaking
+   end,
+
+   Vars = X,
+   println(solve),
+   solve($[ffd,split],Vars),
+   println(X),
+   foreach(I in 1..3..M)
+     printf("%d + %d = %d\n", Numbers[X[I]],Numbers[X[I+1]],Numbers[X[I+2]])
+   end,
+   nl.
+
+
+%
+% Generate a problem.
+% Ensure that it's a SAT problem with distinct numbers.
+%
+make_problem(N, Bits) = Problem0.sort =>
+   Problem0 = [],
+   % _ = random2(),
+   while (len(Problem0) < N*3)
+      A = 1 + random() mod (2**Bits-1),
+      B = 1 + random() mod (2**Bits-1),
+      C = A + B,
+      if not member(A,Problem0), not member(B, Problem0), not member(C,Problem0) then
+         Problem0 := Problem0 ++ [A,B,C]
+      end
+   end.
+
+%
+% Just a random bunch of numbers. No guarantee of SAT or distinct numbers.
+%
+make_problem2(N, Bits) = Problem0.sort =>
+  Problem0 = [],
+  _ = random2(),
+  foreach(_ in 1..N*3)
+    R = 1 + random() mod (2**Bits-1),
+    Problem0 := Problem0 ++ [R]
+  end.
