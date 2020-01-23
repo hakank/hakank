@@ -1,0 +1,173 @@
+/* 
+
+  Reconstruction of list differences in Picat.
+
+  Given a list of list differences, try to recover the original list.
+
+  From https://twitter.com/maxtuno/status/1219535847676174337
+  """
+  The main idea is given a sorted multi-set, their differences and one tip: 
+  an element and position for only one arbitrary element, is possible recovery 
+  the original multi-set?
+  """
+
+  See https://github.com/maxtuno/PEQNP/blob/master/examples/multiset-reconstruction-by-differences.py
+  for an implementation in PEQNP (the inspiration of this Picat model).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.  % faster
+% import sat. % thus slower
+
+
+main => go.
+
+
+go =>
+  _ = random2(),
+
+  N = 100,
+  println(n=N),
+  L = generate_problem(N,100),
+
+  Len = L.len,
+  println(l=L),
+  println(l_len=L.len),
+  RandIx = 1+random() mod Len,
+  RandVal = L[RandIx],
+
+  println([ix=RandIx,val=RandVal]),
+  Diffs = diffs(L),
+  DiffsLen=Diffs.len,
+  println(diffs=Diffs),
+  println(diffsLen=DiffsLen),
+  
+  if time2(reconstruct(Diffs,RandIx,RandVal, X)) then
+     % println(x=X),
+     if L == X then
+       println(ok)
+     else
+       println(not_ok)
+     end
+  else 
+    println(not_ok)
+  end,
+  % fail,
+  nl.
+
+
+go => true.
+
+
+
+%
+% A random quite large list.
+%
+go2 =>
+  _ = random2(),
+
+  N = 1+random() mod 100000,
+  % N = 10000,  
+  println(n=N),
+  M = 1+random() mod 100000,
+  L = generate_problem(N,M),
+
+  Len = L.len,
+  % println(l=L),
+  println(l_len=L.len),
+  RandIx = 1+random() mod Len,
+  RandVal = L[RandIx],
+
+  println([ix=RandIx,val=RandVal]),
+  Diffs = diffs(L),
+  DiffsLen=Diffs.len,
+  % println(diffs=Diffs),
+  println(diffsLen=DiffsLen),
+  
+  if time2(reconstruct(Diffs,RandIx,RandVal, X)) then
+     % println(x=X),
+     if L == X then
+       println(ok)
+     else
+       println(not_ok)
+     end
+  else 
+    println(not_ok)
+  end,
+  % fail,
+  nl.
+
+
+go2 => true.
+
+
+%
+% Run some large instances.
+%
+go3 ?=>
+  _ = random2(),
+
+  foreach(N in 1..100..10000)
+    nl,nl,
+    println(n=N),
+    M = 1+random() mod 100000,
+    L = generate_problem(N,M),
+
+    Len = L.len,
+    % println(l=L),
+    % println(l_len=L.len),
+    RandIx = 1+random() mod Len,
+    RandVal = L[RandIx],
+
+    % println([ix=RandIx,val=RandVal]),
+    Diffs = diffs(L),
+    DiffsLen=Diffs.len,
+    % println(diffs=Diffs),
+    % println(diffsLen=DiffsLen),
+  
+    if time(reconstruct(Diffs,RandIx,RandVal, X)) then
+       % println(x=X),
+       if L == X then
+         println(ok)
+       else
+         println(not_ok)
+       end
+    else 
+      println(not_ok)
+    end
+  
+    % fail
+  end,
+
+  nl.
+
+go3 => true.
+
+
+reconstruct(Diffs, RandIx, RandVal, X) =>
+  DiffsLen = Diffs.len,
+  X = new_list(DiffsLen+1),
+  
+  Max = (2**DiffsLen)+4, % From Oscar R.
+  MaxPicat = 2**56-1, % Largest possible value for cp/sat in Picat
+  % println(max=Max),
+  X :: 0..min(Max,MaxPicat),
+
+  X[RandIx] #= RandVal,
+  
+  foreach(I in 1..DiffsLen)
+    X[I+1]-X[I] #= Diffs[I]
+  end,
+  solve($[ff,split],X).
+%
+% Return the list difference of a list L
+%
+diffs(L) = [L[I]-L[I-1] : I in 2..L.len].
+ 
+
+% Generate random list
+generate_problem(N,MaxVal) = [1+random() mod MaxVal : _ in 1..N].sort.

@@ -1,0 +1,849 @@
+/* 
+
+  WordBrain solver in Picat.
+
+  From http://wordbrain.maginteractive.com/
+  """
+  WordBrain is a challenging word game with hundreds of levels for 
+  you to master. Each level is a puzzle where you try to find one or several 
+  specific words on a board of scrambled letters.
+
+  The game starts out easy but quickly becomes more challenging. When a level 
+  has you stumped, use your collected Hints to reveal a letter in one of the 
+  words you're looking for. You can earn free hints simply by completing level 
+  packs or sharing your progress on social media.
+
+  It’s important to find the words and swipe the tiles in the right order, 
+  or you may not be able to solve the puzzle.
+  """
+
+  Note especially the last sentence: After finding a word, the letters removed and
+  letters that was above the letters in the word are moving down which in some case
+  is the only way to construct the word that is in the solution.
+  This part is the messy part in this model.
+
+  There are generally a huge number of complete candidate solution, depending on 
+  size of the wordlist.
+
+  Some examples:
+  http://wordbrainsolutions.org/
+
+  (English)
+  RISG
+  TIUA
+  SKRE
+  SCKL
+
+  COF
+  ISM
+  DOU
+
+  Note: I tend to use the Swedish version of this puzzle so the examples 
+        are in many cases in Swedish. Sorry about that.
+
+
+  See the puzzle instances below for more examples.
+
+  Note: Given a certain wordlist there is no guarantee that a solution is found, and
+        for large wordslists the time to find a solution increases.
+  Tip: Start with a small wordlist, and if that don't find any (=the) solution, the
+       use a larger one.
+
+
+  Example run (problem P = 1)
+  ---------------------------
+  First we just pick out the complete candidate solutions, using PrintAll = false.
+
+  $ picat wordbrain.pi
+puzzleWordsLens = [5,4]
+lang = eng
+allChars = cdfimosu
+
+Puzzle:
+cof
+ism
+dou
+
+allChars = cofismdu
+
+Solution:
+words = [domus,foci]
+words = [doums,foci]
+words = [musci,food]
+words = [musci,food]
+words = [music,food]
+words = [music,food]
+"""
+
+
+  If PrintAll = true, then the full prints are shown, including false
+  candidate words. This can be quite large..
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go ?=>
+   
+   % P = 1, % eng
+   % P = 2, % eng
+   % P = '3a', % swe
+   % P = '3b', % swe
+   % P = '3c', % swe
+   % P = 4, % swe
+   % P = 5, % eng
+   % P = 6, % eng
+   % P = 7, % eng
+   P = 8, % eng
+   % P = 9, % eng
+
+   PrintAll = false, % Print all the intermediate steps
+   MoveLetters = true, % Move down letters after finding words
+   NumWordsToCheck = 0, % Number of Words to check. 0 = all
+
+   InitWords = [],
+
+   puzzle(P,Puzzle, PuzzleWordsLens, Lang),
+   wordbrain(Puzzle, PuzzleWordsLens, Lang, NumWordsToCheck, InitWords, MoveLetters, PrintAll),
+
+   fail,
+   nl.
+
+go => true.
+
+
+%
+% Use InitWords and only searching some of the words.
+%
+% Example:
+% Here we are stuck at the 4th word in puzzle 9 were we already
+% found the words "puppy","turtle", and "fish" (in correct order).
+%
+go2 ?=> 
+   P = 9, % eng
+
+   PrintAll = false, % Print all the intermediate steps
+   MoveLetters = true, % Move down letters after finding words
+   NumWordsToCheck = 8, % Number of Words to check. 0 = all
+
+   InitWords = ["puppy","turtle","fish"],
+
+   puzzle(P,Puzzle, PuzzleWordsLens, Lang),
+   wordbrain(Puzzle, PuzzleWordsLens, Lang, NumWordsToCheck, InitWords, MoveLetters, PrintAll),
+
+   fail,
+   nl.
+
+go2 => true.
+
+%
+% In this example we try to find all the possible candidates for the first word.
+%
+go3 ?=> 
+   P = 9, % eng
+
+   PrintAll = false, % Print all the intermediate steps
+   MoveLetters = true, % Move down letters after finding words
+   NumWordsToCheck = 1, % Number of Words to check. 0 = all
+
+   InitWords = [], % no given words
+
+   puzzle(P,Puzzle, PuzzleWordsLens, Lang),
+   wordbrain(Puzzle, PuzzleWordsLens, Lang, NumWordsToCheck, InitWords, MoveLetters, PrintAll),
+
+   fail,
+   nl.
+
+go3 => true.
+
+
+
+%
+% Solve a wordbrain puzzle (the wrapper)
+%
+wordbrain(Puzzle, PuzzleWordsLens, Lang, NumWordsToCheck, InitWords, MoveLetters, PrintAll) =>
+
+   % Check that the word length hints are consistent with the puzzle
+   if sum(PuzzleWordsLens) != Puzzle.flatten.delete_all('.').len then
+     println("Something is wrong: sum(PuzzleWordsLens) != Rows*Cols!"),
+     println(sum=sum(PuzzleWordsLens)),
+     println(len=Puzzle.flatten.delete_all('.').len),
+     halt
+   end,
+
+   % English wordlists
+   % DictEng = "unixdict.txt", %  25104 words
+   DictEng = "/usr/share/dict/words", % 102305 words   
+   % DictEng = "words_lower.txt", % 415834 words
+   % DictEng = "allwords3.txt", % 776521 words
+   
+   % Swedish wordlists
+   % DictSwe = "saol-final_utf8.txt", % 117863 words   
+   DictSwe = "sv_spelling_org_utf8.txt", % 391085 words
+   
+
+   println(puzzleWordsLens=PuzzleWordsLens),
+   println(lang=Lang),   
+
+   Dict = DictEng,
+   if Lang == swe then
+     Dict := DictSwe
+   end,
+
+   % AllChars1 = Puzzle.flatten.sort,
+   AllChars = Puzzle.flatten.sort_remove_dups,   
+   println(allChars=AllChars),
+
+   % Finished
+   println("\nPuzzle:"),
+   print_puzzle(Puzzle),
+
+   % NumPuzzleWords = PuzzleWordsLens.len,
+
+   %
+   % Get all words of proper lengths, and that contains only letters
+   % from the puzzle words.
+   %
+   get_words(Dict, AllChars, PuzzleWordsLens, Map),
+
+   %
+   % Analyze Puzzle and get maps of the valid puzzle positions and map character -> position
+   %
+   analyze_puzzle(Puzzle,PuzzleMap,CharPos),
+
+   %
+   % Check for a solution.
+   % Here we heavily use the backtracking mechanism of Picat via member/2.
+   %
+   solve_puzzle(Puzzle,PuzzleWordsLens,Map, PuzzleMap, CharPos, NumWordsToCheck, InitWords, MoveLetters, PrintAll).
+
+
+%
+% Solve the puzzle.
+%
+% 
+solve_puzzle(Puzzle,PuzzleWordsLens,Map,PuzzleMap, CharPos, NumWordsToCheck, InitWords, MoveLetters, PrintAll) =>
+
+   %  
+   % Note: many of the variables are later re-assigned after we found a word.
+   %
+   AllChars = Puzzle.flatten.remove_dups, % All distinct letters in the puzzle
+   println(allChars=AllChars),
+   
+   println("\nSolutions:"),
+
+   % The used positions that cannot be used again
+   UsedPos = new_map(), 
+
+   Words = [], % The (candidate) solution
+   StartIx = 1, 
+   % if InitWords != [] then
+   %   Words := InitWords,
+   %   StartIx := Words.len+1,
+   %   println(initWords=InitWords)
+   % end,
+   if NumWordsToCheck > 0 then
+     NumWordsToCheck := min(NumWordsToCheck, PuzzleWordsLens.len)
+   else
+     NumWordsToCheck := PuzzleWordsLens.len
+   end,
+   println([numWordsToCheck=NumWordsToCheck,startIx=StartIx]),
+   foreach(LenIx in StartIx..NumWordsToCheck)
+   % foreach(LenIx in 1..1)   
+     if PrintAll then
+       println(lenIx=LenIx)
+     end,
+
+     % Get all the words for this specific word length
+     Map.has_key(PuzzleWordsLens[LenIx]),
+     Words2 = Map.get(PuzzleWordsLens[LenIx]),
+     % Picat one of these words. Can it be mapped?
+     if InitWords.len >= LenIx then
+       ThisWord = InitWords[LenIx]
+     else 
+       member(ThisWord ,Words2)
+     end,
+
+     % Start with the first character, get its position and "register" these.
+     Char = ThisWord[1],
+     CharPos.has_key(Char),
+     member(Pos,CharPos.get(Char)),
+     Positions = [Pos],   
+     UsedPos.put(Pos,1), 
+     Str = [Char],
+     Count = 1,
+     % Check if we can find a full word
+     while (Count < len(ThisWord))
+       NextChar = ThisWord[Count+1], % next character in the word
+       PuzzleMap.has_key(Pos), 
+       member(NextPos,PuzzleMap.get(Pos)), % next valid position in the Puzzle
+       not UsedPos.has_key(NextPos), % we have not used this position
+       NextChar == Puzzle[NextPos[1],NextPos[2]], % get the character in this position
+       Positions := Positions ++ [NextPos],
+       % Increment count, string etc
+       Count := Count + 1,
+       Char := NextChar,
+       UsedPos.put(NextPos,1),     
+       Pos := NextPos,
+       Str := Str ++ [NextChar]
+     end,
+
+     % We found a complete (candidate) word
+     if Str == ThisWord then   
+
+       if PrintAll then
+         println(found_word=ThisWord)
+       end,
+       Words := Words ++ [ThisWord],
+       
+       % Print solutions
+       if PrintAll then
+          print_solution(Puzzle,Positions,true)
+       end,
+
+       if MoveLetters then
+         %
+         % Move the letters, re-analyze the problem and print it.
+         %
+         move_letters(Puzzle,Positions, NewPuzzle),
+         Puzzle := NewPuzzle,
+         if PrintAll then
+           print_solution(Puzzle,Positions,false)
+         end,
+
+         % Get new info and re-assign some variables
+         AllChars := Puzzle.flatten.sort_remove_dups.delete_all('.'),
+         analyze_puzzle(Puzzle,PuzzleMap2,CharPos2),         
+         PuzzleMap := PuzzleMap2,
+         CharPos := CharPos2,
+         UsedPos := new_map()
+       end
+     else
+       % safety... 
+       println(ThisWord=notok),
+       halt
+     end
+   end,
+   % print the candidate solution.
+   println(words=Words),
+   if PrintAll then nl end.
+
+%
+% Get all words of proper lengths, and that contains only letters
+% from the puzzle words.
+%
+get_words(Dict, AllChars, PuzzleWordsLens, Map) =>
+   Map = new_map(),
+   foreach(Word in read_file_lines(Dict), not member('\'', Word), member(len(Word),PuzzleWordsLens))   
+     Match = true,
+     foreach(W in Word, Match == true)
+        if not member(W,AllChars) then
+          Match := false
+        end
+     end,
+     if Match then
+       WLen = Word.len,
+       Map.put(WLen,Map.get(WLen,[])++[Word])
+     end
+   end.
+
+
+
+print_puzzle(Puzzle) =>
+  foreach(Row in Puzzle)
+     println(Row)
+  end,
+  nl.
+
+%
+% Show the puzzle with the Positions in upper case
+%
+print_solution(Puzzle,Positions,ToUpper) =>
+   Puzzle1 = copy_term(Puzzle),
+   foreach(Pos in Positions)
+      I = Pos[1],
+      J = Pos[2],
+      if ToUpper then
+        Puzzle1[I,J] := Puzzle1[I,J].to_uppercase(),
+        % to_uppercase only handle a..z. Let's also support Swedish chars.      
+        if member(Puzzle1[I,J],"åäö") then
+          if Puzzle1[I,J] == 'å' then Puzzle1[I,J] := 'Å' end,
+          if Puzzle1[I,J] == 'ä' then Puzzle1[I,J] := 'Ä' end,
+          if Puzzle1[I,J] == 'ö' then Puzzle1[I,J] := 'Ö' end
+        end
+      end
+   end,
+   print_puzzle(Puzzle1),
+   nl.
+   
+%
+% analyze_puzzle
+%
+% Here we create two maps:
+% - Map: the valid positions from one cell to another
+% - CharPos: in what positions are the characters
+%
+analyze_puzzle(Puzzle,Map,CharPos) =>
+  Rows = Puzzle.len,
+  Cols = Puzzle[1].len,
+  % println([rows=Rows,cols=Cols]),
+
+  Map = new_map(),
+  CharPos = new_map(),
+  %
+  % Create a map of all the valid connection.
+  % Exlude when either of From or To are '.'.
+  foreach(I in 1..Rows, J in 1..Cols,
+          A in -1..1, B in -1..1, (A != 0 ; B != 0),
+          Puzzle[I,J] != '.',
+          member(I+A,1..Rows), member(J+B,1..Cols),
+          Puzzle[I+A,J+B] != '.'
+          )
+          
+          From = [I,J],
+          To = [I+A,J+B],
+          
+          if not member(To, Map.get(From,[])) then
+            Map.put(From,Map.get(From,[])++ [To])
+          end,
+          if not member(From, Map.get(To,[])) then
+            Map.put(To,Map.get(To,[])++ [From])
+          end,
+
+          FromChar = Puzzle[I,J],
+          if not member([I,J], CharPos.get(FromChar,[])) then
+            CharPos.put(FromChar,CharPos.get(FromChar,[])++[[I,J]])
+          end
+  end.
+
+
+
+%
+% move_letters
+%
+% If a letter has been used then all the letters above
+% move down. The empty cells are replaced with '.'
+%
+move_letters(Puzzle,Positions, NewPuzzle) =>
+  Puzzle0 = copy_term(Puzzle),
+  % Replace all letters in Positions list with '.'
+  foreach([I,J] in Positions)
+    Puzzle0[I,J] := '.'
+  end,
+
+  % We now work with the columns
+  Transposed = Puzzle0.transpose,
+  Len = Transposed[1].len,
+  foreach(J in 1..Transposed.len)    
+    if member('.', Transposed[J]) then
+      Col = Transposed[J], % Get the column
+      Col := delete_all(Col,'.'), % delete all .
+      Col := ['.' : _ in 1..Len-Col.len] ++ Col, % add . first in column
+      Transposed[J] := Col % and put it back
+    end
+  end,
+  % Transpose back again
+  Puzzle1 = Transposed.transpose,
+  % Reset the uppercase:
+  foreach(Pos in Positions)
+    I = Pos[1],
+    J = Pos[2],
+    Puzzle1[I,J] := Puzzle1[I,J].to_lowercase(),
+    % to_uppercase only handle a..z. Let's also support Swedish chars.      
+    if member(Puzzle1[I,J],"ÅÄÖ") then
+      if Puzzle1[I,J] == 'Å' then Puzzle1[I,J] := 'å' end,
+      if Puzzle1[I,J] == 'Ä' then Puzzle1[I,J] := 'ä' end,
+      if Puzzle1[I,J] == 'Ö' then Puzzle1[I,J] := 'ö' end
+    end
+  end,
+
+  NewPuzzle = Puzzle1.
+
+
+%
+% Problem instances
+%
+
+% Words:
+% - music
+% - food
+%
+% Here are the complete candidates:
+%
+% words = [domus,foci]
+% words = [doums,foci]
+% words = [musci,food]
+% words = [musci,food]
+% words = [music,food] correct
+% words = [music,food] correct
+%
+% It took 0.58s
+%
+puzzle(1,Puzzle,WordLens,Lang) =>
+   Puzzle = ["cof",
+            "ism",
+            "dou"],
+   WordLens = [5,4],
+   Lang = eng.
+
+
+% Words:
+% - helmet
+% - jump
+% - cold
+% - winter
+%
+% Using words_lower.txt (415834 words) there are quite a few complete candidates
+% with one correct solution and one partitally correct:
+% 
+% words = [helmed,clot,jump,twiner]
+% words = [helmed,clot,jump,winter]
+% words = [helmed,colt,jump,twiner]
+% words = [helmed,colt,jump,winter]
+% words = [helmed,jump,clot,twiner]
+% words = [helmed,jump,clot,winter]
+% words = [helmed,jump,colt,twiner]
+% words = [helmed,jump,colt,winter]
+% words = [helmet,clod,jump,twiner]
+% words = [helmet,clod,jump,winter]
+% words = [helmet,cold,jump,twiner]
+% words = [helmet,cold,jump,winter] correct
+% words = [helmet,jump,clod,twiner]
+% words = [helmet,jump,clod,winter]
+% words = [helmet,jump,cold,twiner]
+% words = [helmet,jump,cold,winter] not in correct order
+% words = [jumped,helm,clot,twiner]
+% words = [jumped,helm,clot,winter]
+% words = [jumped,helm,colt,twiner]
+% words = [jumped,helm,colt,winter]
+% words = [jumped,loth,clem,twiner]
+% words = [jumped,loth,clem,winter]
+% words = [jumped,moth,cell,twiner]
+% words = [jumped,moth,cell,winter]
+% words = [jumped,moth,cell,twiner]
+% words = [jumped,moth,cell,winter]
+% words = [molted,jump,lech,twiner]
+% words = [molted,jump,lech,winter]
+% words = [molted,jump,tile,wrench]
+% words = [molted,jump,wile,trench]
+% words = [molted,junr,wich,temple]
+% words = [molted,lech,jump,twiner]
+% words = [molted,lech,jump,winter]
+% words = [molted,tile,jump,wrench]
+% words = [molted,wich,junr,temple]
+% words = [molted,wile,jump,trench]
+% words = [tichel,jump,drew,loment]
+% words = [tichel,jump,drew,molten]
+% words = [tichel,jump,wend,molter]
+% words = [tichel,jump,wren,molted]
+% words = [wilmer,chol,jump,tented]
+% words = [wilmer,holt,jump,decnet]
+% words = [wilmer,jump,chol,tented]
+% words = [wilmer,jump,holt,decnet]
+% words = [wilmer,jump,loth,decnet]
+% words = [wilmer,loth,jump,decnet]
+% words = [wilmot,dche,junr,tempel]
+% words = [wilmot,hedm,junc,petrel]
+% words = [wilmot,hler,jump,decnet]
+% words = [wilmot,jump,hler,decnet]
+% words = [wilmot,jump,lede,trench]
+% words = [wilmot,junc,hedm,petrel]
+% words = [wilmot,junr,dche,tempel]
+% words = [wilmot,junt,meld,perche]
+% words = [wilmot,lede,jump,trench]
+% words = [wilmot,meld,junt,perche]
+% words = [windel,jump,moth,tercel]
+% words = [windel,moth,jump,tercel]
+% words = [windle,jump,molt,cherte]
+% words = [windle,jump,oltm,cherte]
+% words = [windle,molt,jump,cherte]
+% words = [windle,oltm,jump,cherte]
+% words = [windom,hell,jump,tercet]
+% words = [windom,hell,jump,tercet]
+% words = [windom,hell,jump,tercet]
+% words = [windom,jump,hell,tercet]
+% words = [windom,jump,hell,tercet]
+% words = [windom,jump,hell,tercet]
+%
+% It took 31.9s
+%
+% Using /usr/share/dict/words (102305 words) it's much faster:
+% These candidates where found in 0.6s:
+%
+% words = [helmet,clod,jump,winter]
+% words = [helmet,cold,jump,winter]
+% words = [helmet,jump,clod,winter]
+% words = [helmet,jump,cold,winter] correct
+% words = [jumped,helm,clot,winter]
+% words = [jumped,helm,colt,winter]
+% words = [jumped,moth,cell,winter]
+% words = [jumped,moth,cell,winter]
+% words = [molted,jump,tile,wrench]
+% words = [molted,jump,wile,trench]
+% words = [molted,tile,jump,wrench]
+% words = [molted,wile,jump,trench]
+%
+puzzle(2,Puzzle,WordLens,Lang) =>
+   Puzzle = ["eptl",
+             "jmeo",
+             "urdm",
+             "tnlh",
+             "wice"
+             ],
+   WordLens = [6,4,4,6],
+   Lang = eng.
+
+% 
+% Words:
+% - ogräs
+% - midja
+% - vedträ
+%
+% There are two complete candidate:
+% - words = [ogräs,midja,vedträ] % correct
+% - words = [ägors,midja,vedträ] 
+% It took 0.8s
+%
+puzzle('3a',Puzzle,WordLens,Lang) =>
+  Puzzle = ["sdär",
+            "ärtv",
+            "goed",
+            "jaim"],
+  WordLens = [5,5,6],
+  Lang = swe.
+
+% Same as puzzle 3 but with "ogräs" removed
+% - found midja (correct)
+%
+% candidates:
+% words = [diade]
+% words = [media]
+% words = [media]
+% words = [midja] correct
+% words = [ärvde]
+puzzle('3b',Puzzle,WordLens,Lang) =>
+  Puzzle = ["..är",
+            "..tv",
+            ".ded",
+            "jaim"],
+  WordLens = [5,6],
+  Lang = swe.
+
+% Same as puzzle 3b but with midja removed.
+% - found "vedträ" (correct)
+% candidates
+% words = [vedträ] correct
+puzzle('3c',Puzzle,WordLens,Lang) =>
+  Puzzle = ["....",
+            "..är",
+            "..tv",
+            "..ed"],
+  WordLens = [6],
+  Lang = swe.
+
+%
+% I test with a brand new puzzle. Yes, this is cheating.
+% Solution:
+% - skjuta
+% - giraff
+% - tråd
+%
+% There are quite a few complete solutions, i.e. we don't have to worry
+% about moving letters.
+% 
+% Note that there are some duplicates (since there are multiple paths)
+% words = [giraff,rådjur,ratt]
+% words = [giraff,rådjur,ratt]
+% words = [giraff,rådjur,utta]
+% words = [giraff,rådjur,åtta]
+% words = [giraff,skjuta,tråd] partly correct
+% words = [giraff,skjuta,tråd] partly correct
+% words = [giraff,rådjur,ratt]
+% words = [giraff,rådjur,ratt]
+% words = [giraff,rådjur,utta]
+% words = [giraff,rådjur,åtta]
+% words = [giraff,skjuta,tråd] partly correct
+% words = [giraff,skjuta,tråd] partly correct
+% words = [skjuta,giraff,tråd] correct
+% words = [skjuta,giraff,tråd] correct
+% words = [skjuta,giraff,tråd] correct
+% words = [skjuta,giraff,tråd] correct
+%
+% It took: 0.6s
+%
+puzzle(4,Puzzle,WordLens,Lang) =>
+  Puzzle = ["atff",
+            "trra",
+            "uåig",
+            "djks"
+            ],
+  WordLens = [6,6,4],
+  Lang = swe.
+
+
+%
+% https://wordbrain.org/authority/
+% https://wordbrain.org/authority/?table_filter=.authority.food.1..walkthrough
+% Food Level 1
+% Solution:
+% - pasta
+% - hotdog
+% - steak
+% - ribs
+%
+% There is a huge number of candidates for complete solutions:
+%  - with words_lower.txt (415834 words) there are 5129 candidates (including duplicates),
+%    and 4278 distinct candidates.
+%
+% The three solutions that includes pasta, hotdog, and steak are
+% words = [pasta,hotdog,steak,bris]
+% words = [pasta,hotdog,steak,bsir]
+% words = [pasta,hotdog,steak,ribs] correct
+% 
+% It took 37.5s to find all the solutions.
+%
+% Using /usr/share/dict/words it don't found any solution.
+% 
+puzzle(5,Puzzle,WordLens,Lang) =>
+  Puzzle = ["agbs",
+            "toak",
+            "sdir",
+            "atoe",
+            "phts"
+            ],
+  WordLens = [5,6,5,4],
+  Lang = eng.
+
+
+
+%
+% https://wordbrain.org/supermastermind/?table_filter=.supermastermind.school.1..walkthrough
+%
+% Words:
+% - homework  (8)
+% - classmate (9)
+% - college   (7)
+% - essay     (5)
+% - textbook  (8)
+% - math      (4)
+% - syllabus  (8)
+%
+% Found in 0.3s using "unixdict.txt" (25104 words)
+% Found in 2.3s using "/usr/share/dict/words" (102305 words)
+
+% words = [homework,classmate,college,essay,textbook,math,syllabus]
+% words = [homework,classmate,college,essay,textbook,math,syllabus]
+%
+% 
+puzzle(6,Puzzle,WordLens,Lang) =>
+  Puzzle = ["shbkroc",
+            "ylteswl",
+            "akagleh",
+            "sooeemo",
+            "ysxelta",
+            "ebtocas",
+            "lamutms"
+            ],
+  WordLens = [8,9,7,5,8,4,8],
+  Lang = eng.
+
+
+%
+% https://wordbrain.org/baron/?table_filter=.baron.in.the.air.1..walkthrough
+% Words:
+% - parachute (9)
+% - falcon    (6)
+% - mosquito  (8)
+% - clouds    (6)
+% - balloon   (7)
+% - spaceship (9)
+% - firefly   (7)
+% - pigeon    (6)
+% - rocket    (6)
+%
+% It took 8min15s to find these candidates using /usr/share/dict/words (102305 words):
+% words = [parachute,clouds,mosquito,falcon,balloon,spaceship,firefly,pigeon,rocket] correct
+% words = [parachute,clouds,mosquito,falcon,balloon,spaceship,firefly,rocket,pigeon] partial correct
+% words = [parachute,clouds,mosquito,falcon,balloon,spaceship,firefly,pigeon,rocket] correct
+% words = [parachute,clouds,mosquito,falcon,balloon,spaceship,firefly,rocket,pigeon] partial correct
+% words = [parachute,falcon,mosquito,clouds,balloon,spaceship,firefly,pigeon,rocket] correct
+% words = [parachute,falcon,mosquito,clouds,balloon,spaceship,firefly,rocket,pigeon] partial correct
+% words = [parachute,falcon,mosquito,clouds,balloon,spaceship,firefly,pigeon,rocket] correct
+% words = [parachute,falcon,mosquito,clouds,balloon,spaceship,firefly,rocket,pigeon] partial correct
+%
+puzzle(7,Puzzle,WordLens,Lang) =>
+  Puzzle = ["shinotec",
+            "suoeentl",
+            "qitlyhuo",
+            "sppefcfu",
+            "onorirad",
+            "molgiars",
+            "blakfpoa",
+            "aeccopcl"
+            ],
+  WordLens = [9,6,8,6,7,9,7,6,6],
+  Lang = eng.
+
+
+
+%
+% https://wordbrain.org/magician/?table_filter=.magician.cosmetics.1..walkthrough
+%
+% Words:
+% - lipstick (8)
+% - blush    (5)
+% - face     (4)
+% - manicure (8)
+% - brush    (5)
+%
+% Found these in 3.9s using /usr/share/dict/words (102305 words)
+% words = [lipstick,aches,flub,manicure,brush]
+% words = [lipstick,aches,flub,manicure,shrub]
+% words = [lipstick,blush,face,manicure,brush] correct
+% words = [lipstick,blush,face,manicure,shrub]
+%
+puzzle(8,Puzzle,WordLens,Lang) =>
+  Puzzle = ["usctf",
+            "erkis",
+            "uhapa",
+            "crlic",
+            "imbsh",
+            "bnule"
+            ],
+  WordLens = [8,5,4,8,5],
+  Lang = eng.
+
+
+%
+% https://wordbrain.org/navigator/?table_filter=.navigator.pet.store.1..walkthrough
+% Words
+% - puppy    (5)
+% - turtle   (6)
+% - fish     (4)
+% - rabbit   (6)
+% - customer (8)
+% - litter   (6)
+% - collar   (6)
+% - whiskers (8)
+% - bone     (4)
+% - cat      (3)
+% - parakeet (8)
+% 
+puzzle(9,Puzzle,WordLens,Lang) =>
+  Puzzle = ["sibteerc",
+            "etsektey",
+            "rlraomrp",
+            "tusectrp",
+            "thknustu",
+            "ifrolatp",
+            "wiaerloi",
+            "hbbpacal"
+            ],
+  WordLens = [5,6,4,6,8,6,6,8,4,3,8],
+  Lang = eng.
