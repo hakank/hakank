@@ -76,9 +76,25 @@ words = [music,food]
 """
 
 
-  If PrintAll = true, then the full prints are shown, including false
-  candidate words. This can be quite large..
-  
+  Parameters
+  ----------
+  * PrintAll:If true then all the output is shown, including false
+             candidate words. This can be quite large..
+
+  * MoveLetters: If true then the program move down letters after finding words.
+                 This is the normal mode. 
+                 If false then the program tried to find a solution without 
+                 any moving of letters. This might be handy just to check for 
+                 all solutions on one level
+                 
+  * NumWordsToCheck: Number of words to check. If 0 then checks all words. If 1 then
+                     just check for the first word, etc.
+
+  * InitWords: Initial words. Normally [] (the empty list). If some word are filled then
+               this position is fixed. 
+               Example: [_,_,"fish"]. This means that the third word is "fish" but the other
+               words are unknown (the '_' represents an unknown word).
+
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -92,7 +108,7 @@ main => go.
 go ?=>
    
    % P = 1, % eng
-   % P = 2, % eng
+   P = 2, % eng
    % P = '3a', % swe
    % P = '3b', % swe
    % P = '3c', % swe
@@ -100,7 +116,7 @@ go ?=>
    % P = 5, % eng
    % P = 6, % eng
    % P = 7, % eng
-   P = 8, % eng
+   % P = 8, % eng
    % P = 9, % eng
 
    PrintAll = false, % Print all the intermediate steps
@@ -130,7 +146,7 @@ go2 ?=>
 
    PrintAll = false, % Print all the intermediate steps
    MoveLetters = true, % Move down letters after finding words
-   NumWordsToCheck = 8, % Number of Words to check. 0 = all
+   NumWordsToCheck = 4, % Number of Words to check. 0 = all
 
    InitWords = ["puppy","turtle","fish"],
 
@@ -161,6 +177,29 @@ go3 ?=>
    nl.
 
 go3 => true.
+
+
+%
+% Let's say that you nailed the third word (i.e it was accepted) but are unsure about
+% the rest of the words.
+%
+go4 ?=> 
+   P = 2, % eng
+
+   PrintAll = false, % Print all the intermediate steps
+   MoveLetters = true, % Move down letters after finding words
+   NumWordsToCheck = 0, % Number of Words to check. 0 = all
+
+   InitWords = [_,_,"cold"], % _ encodes that it's an unknown word
+
+   puzzle(P,Puzzle, PuzzleWordsLens, Lang),
+   wordbrain(Puzzle, PuzzleWordsLens, Lang, NumWordsToCheck, InitWords, MoveLetters, PrintAll),
+
+   fail,
+   nl.
+
+go4 => true.
+
 
 
 
@@ -215,7 +254,7 @@ wordbrain(Puzzle, PuzzleWordsLens, Lang, NumWordsToCheck, InitWords, MoveLetters
    %
    % Analyze Puzzle and get maps of the valid puzzle positions and map character -> position
    %
-   analyze_puzzle(Puzzle,PuzzleMap,CharPos),
+   analyze_puzzle(Puzzle,PrintAll, PuzzleMap, CharPos),
 
    %
    % Check for a solution.
@@ -254,8 +293,12 @@ solve_puzzle(Puzzle,PuzzleWordsLens,Map,PuzzleMap, CharPos, NumWordsToCheck, Ini
      NumWordsToCheck := PuzzleWordsLens.len
    end,
    println([numWordsToCheck=NumWordsToCheck,startIx=StartIx]),
+
+   %
+   % Loop through all the words in the word length list
+   % and match a word.
+   %
    foreach(LenIx in StartIx..NumWordsToCheck)
-   % foreach(LenIx in 1..1)   
      if PrintAll then
        println(lenIx=LenIx)
      end,
@@ -264,7 +307,7 @@ solve_puzzle(Puzzle,PuzzleWordsLens,Map,PuzzleMap, CharPos, NumWordsToCheck, Ini
      Map.has_key(PuzzleWordsLens[LenIx]),
      Words2 = Map.get(PuzzleWordsLens[LenIx]),
      % Picat one of these words. Can it be mapped?
-     if InitWords.len >= LenIx then
+     if InitWords.len >= LenIx, nonvar(InitWords[LenIx]) then
        ThisWord = InitWords[LenIx]
      else 
        member(ThisWord ,Words2)
@@ -309,9 +352,9 @@ solve_puzzle(Puzzle,PuzzleWordsLens,Map,PuzzleMap, CharPos, NumWordsToCheck, Ini
 
        if MoveLetters then
          %
-         % Move the letters, re-analyze the problem and print it.
+         % Move the letters and re-analyze the problem and print it.
          %
-         move_letters(Puzzle,Positions, NewPuzzle),
+         move_letters(Puzzle,Positions,PrintAll, NewPuzzle),
          Puzzle := NewPuzzle,
          if PrintAll then
            print_solution(Puzzle,Positions,false)
@@ -319,7 +362,7 @@ solve_puzzle(Puzzle,PuzzleWordsLens,Map,PuzzleMap, CharPos, NumWordsToCheck, Ini
 
          % Get new info and re-assign some variables
          AllChars := Puzzle.flatten.sort_remove_dups.delete_all('.'),
-         analyze_puzzle(Puzzle,PuzzleMap2,CharPos2),         
+         analyze_puzzle(Puzzle,PrintAll,PuzzleMap2,CharPos2),         
          PuzzleMap := PuzzleMap2,
          CharPos := CharPos2,
          UsedPos := new_map()
@@ -354,7 +397,9 @@ get_words(Dict, AllChars, PuzzleWordsLens, Map) =>
    end.
 
 
-
+%
+% Print the puzzle grid.
+%
 print_puzzle(Puzzle) =>
   foreach(Row in Puzzle)
      println(Row)
@@ -389,19 +434,19 @@ print_solution(Puzzle,Positions,ToUpper) =>
 % - Map: the valid positions from one cell to another
 % - CharPos: in what positions are the characters
 %
-analyze_puzzle(Puzzle,Map,CharPos) =>
+analyze_puzzle(Puzzle,PrintAll, Map,CharPos) =>
   Rows = Puzzle.len,
   Cols = Puzzle[1].len,
-  % println([rows=Rows,cols=Cols]),
 
-  Map = new_map(),
-  CharPos = new_map(),
+  Map = new_map(),     % Connections between (valid) cell positions
+  CharPos = new_map(), % Positions of characters
   %
   % Create a map of all the valid connection.
   % Exlude when either of From or To are '.'.
+  %
   foreach(I in 1..Rows, J in 1..Cols,
-          A in -1..1, B in -1..1, (A != 0 ; B != 0),
           Puzzle[I,J] != '.',
+          A in -1..1, B in -1..1, (A != 0 ; B != 0),
           member(I+A,1..Rows), member(J+B,1..Cols),
           Puzzle[I+A,J+B] != '.'
           )
@@ -430,7 +475,7 @@ analyze_puzzle(Puzzle,Map,CharPos) =>
 % If a letter has been used then all the letters above
 % move down. The empty cells are replaced with '.'
 %
-move_letters(Puzzle,Positions, NewPuzzle) =>
+move_letters(Puzzle,Positions, PrintAll, NewPuzzle) =>
   Puzzle0 = copy_term(Puzzle),
   % Replace all letters in Positions list with '.'
   foreach([I,J] in Positions)
@@ -442,24 +487,26 @@ move_letters(Puzzle,Positions, NewPuzzle) =>
   Len = Transposed[1].len,
   foreach(J in 1..Transposed.len)    
     if member('.', Transposed[J]) then
-      Col = Transposed[J], % Get the column
-      Col := delete_all(Col,'.'), % delete all .
-      Col := ['.' : _ in 1..Len-Col.len] ++ Col, % add . first in column
-      Transposed[J] := Col % and put it back
+      Col := Transposed[J].delete_all('.'), % delete all
+      % put '.' in front of the column and put it back in the puzzle
+      Transposed[J] := ['.' : _ in 1..Len-Col.len] ++ Col 
     end
   end,
   % Transpose back again
   Puzzle1 = Transposed.transpose,
-  % Reset the uppercase:
-  foreach(Pos in Positions)
-    I = Pos[1],
-    J = Pos[2],
-    Puzzle1[I,J] := Puzzle1[I,J].to_lowercase(),
-    % to_uppercase only handle a..z. Let's also support Swedish chars.      
-    if member(Puzzle1[I,J],"ÅÄÖ") then
-      if Puzzle1[I,J] == 'Å' then Puzzle1[I,J] := 'å' end,
-      if Puzzle1[I,J] == 'Ä' then Puzzle1[I,J] := 'ä' end,
-      if Puzzle1[I,J] == 'Ö' then Puzzle1[I,J] := 'ö' end
+  
+  % Reset the uppercase
+  if PrintAll then
+    foreach(Pos in Positions)
+      I = Pos[1],
+      J = Pos[2],
+      Puzzle1[I,J] := Puzzle1[I,J].to_lowercase(),
+      % to_lowercase only handle a..z. Let's also support Swedish chars.      
+      if member(Puzzle1[I,J],"ÅÄÖ") then
+        if Puzzle1[I,J] == 'Å' then Puzzle1[I,J] := 'å' end,
+        if Puzzle1[I,J] == 'Ä' then Puzzle1[I,J] := 'ä' end,
+        if Puzzle1[I,J] == 'Ö' then Puzzle1[I,J] := 'ö' end
+      end
     end
   end,
 
