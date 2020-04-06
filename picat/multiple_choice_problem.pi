@@ -1,0 +1,117 @@
+/* 
+
+  Multiple choice problem in Picat.
+
+  From https://stackoverflow.com/questions/59974875/determine-answers-to-multiple-choice-question
+  """
+  Determine answers to Multiple Choice Question
+
+  opt(a).
+  opt(b).
+  opt(c).
+  opt(d).
+
+  sequence(N, L) :-
+    length(L, N),
+    maplist(opt, L).
+  mark([], [], 0).
+  mark(…, …, …) :-
+  correct(C) :-
+    sequence(10, C),
+    mark(C, [b, c, b, a, c, c, c, d, c, c], 7),
+    mark(C, [b, d, c, a, d, d, c, c, a, b], 6),
+    mark(C, [d, a, b, b, d, d, c, d, a, b], 5),
+    mark(C, [c, d, c, b, d, b, b, c, a, a], 3).
+
+  Can you help me to do the predicate mark/3 please ? 
+  This is a prolog problem that I have to solve
+
+  In a MCQ test where:
+
+   - each question has 4 choices [a,b,c,d]
+   - each question has only one correct answer (choice)
+   - there are 10 questions
+   - all questions have the same grade value (1 point, totalling 10 points)
+  """
+
+  Answer: bdbadccdac
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+%
+% Plain logic programming with backtracking.
+%
+% - first solution: 1.038s
+% - prove unique solution: 2.255s
+% 
+go ?=>
+  problem(1,Opts,C),
+  N = len(C[1,1]),
+  L = new_list(N),
+  foreach(I in 1..N)
+    member(L[I],Opts) % brute force
+  end,
+
+  foreach(I in 1..C.len)
+     sum([cond(C[I,1,J] == L[J],1,0) : J in 1..N]) = C[I,2]
+  end,
+
+  println(L),
+
+  fail,
+  
+  nl.
+
+go => true.
+
+
+
+%
+% Constraint modelling
+%
+% - first solution: 0.001s
+% - prove unique solution: 0.002s
+% 
+go2 ?=>
+  problem(1,Opts,C),
+  Conv = new_map(),
+  Conv2 = new_map(),
+  foreach({Opt,I} in zip(Opts,1..Opts.len))
+    Conv.put(Opt,I),
+    Conv2.put(I,Opt)
+  end,
+
+  N = len(C[1,1]),
+  L = new_list(N),
+  L :: 1..len(Opts),
+
+  foreach(I in 1..C.len)
+    sum([ Conv.get(C[I,1,J]) #= L[J] : J in 1..N]) #= C[I,2]
+  end,
+
+  solve(L),
+  % println(L),
+  println([Conv2.get(B) : B in L]),
+  
+  fail,
+  nl.
+
+go2 => true.
+
+
+problem(1,Opt,Problem) =>
+  Opt = [a,b,c,d],
+  Problem = [
+          [[b, c, b, a, c, c, c, d, c, c], 7],
+          [[b, d, c, a, d, d, c, c, a, b], 6],
+          [[d, a, b, b, d, d, c, d, a, b], 5],
+          [[c, d, c, b, d, b, b, c, a, a], 3]
+    ].

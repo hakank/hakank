@@ -1,0 +1,226 @@
+/* 
+
+  Recover origin of pair differences, MIP approach in Picat.
+
+  For a description and model of the problem see:
+  - http://hakank.org/picat/Recover_origin_of_pair_differences.pdf
+  - http://hakank.org/picat/linear_combinations.pi
+
+  I asked about this at OR Stack Exchange
+  - https://or.stackexchange.com/questions/3349/restoring-a-list-from-differences
+
+  Paul Rubin wrote a MIP model and blogged about it in 
+  "Reversing Differences"
+  https://orinanobworld.blogspot.com/2020/02/reversing-differences.html
+  Paul's Java + CPLEX code: https://gitlab.msu.edu/orobworld/differences .
+
+ 
+  The following is a Picat model based on Paul's MIP model.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import sat. % 0.38s
+% import mip. % 10.4s
+import cp. % 0.07s
+% import smt. % 3.6s
+
+
+main => time2(go).
+
+
+%
+% Check with the instance from
+% https://or.stackexchange.com/questions/3349/restoring-a-list-from-differences/3555
+%
+go =>
+  nolog,
+  % The 4 shortest solutions of length 7 are:
+  % x = [1,2,8,16,22,28,35] 
+  % x = [1,2,9,16,22,28,35]
+  % x = [1,8,14,20,27,34,35]  
+  % x = [1,8,14,20,28,34,35]
+  
+  Diffs = [1,6,7,8,12,13,14,15,19,20,21,26,27,33,34],
+  run_problem_shortest_solutions(Diffs),
+
+  nl.
+
+go2 =>
+  Diffs = [1,6,7,8,12,13,14,15,19,20,21,26,27,33,34],  
+  run_problem_all_solutions(Diffs),
+  nl.
+
+go3 =>
+  Diffs = [1,6,7,8,12,13,14,15,19,20,21,26,27,33,34],  
+  run_problem(Diffs),
+  nl.
+
+
+%
+% Get one shortest solution
+%
+run_problem(Diffs) =>
+  println(diffs=Diffs),
+  println(diffs_len=Diffs.len),
+
+  println("Get optimal value of ZMin"),
+  restoring_differences(Diffs, Z, ZMin),
+  println(zmin=ZMin),
+  println(z=[I : I in 1..Z.len, Z[I] == 1]),
+  nl.
+
+
+%
+% Get all shortest solutions
+%
+run_problem_shortest_solutions(Diffs) =>
+  println(diffs=Diffs),
+  println(diffs_len=Diffs.len),
+
+  println("Get optimal value of ZMin"),
+  restoring_differences(Diffs, Z, ZMin),
+  println(zmin=ZMin),
+  
+  println("Get all solutions:"),
+  All = find_all(Z2,restoring_differences(Diffs, Z2, ZMin)),
+  foreach(ZZ in All)
+    println(z=[I : I in 1..ZZ.len, ZZ[I] == 1])
+  end,
+  println(len=All.len),
+  nl.
+
+%
+% Get all solutions, not only the shortest
+%
+run_problem_all_solutions(Diffs) =>
+  println(diffs=Diffs),
+  println(diffs_len=Diffs.len),
+
+  println("Get all solutions:"),
+  All = find_all(Z2,restoring_differences(Diffs, Z2, ZMin)),
+  foreach(ZZ in All)
+    println(z=[I : I in 1..ZZ.len, ZZ[I] == 1])
+  end,
+  println(len=All.len),
+  nl.
+
+
+%
+% A port of Paul Rubin's MIP model.
+% The "Eq <N>" refers to Paul's numbering of the constraints.
+%
+restoring_differences(Diffs, Z, ZMin) =>
+
+  M = max(Diffs), % max number in difference list
+  M1 = M+1, % 1+ max number
+  
+  Z = new_list(M1),
+  Z :: 0..1,
+  
+  W = new_array(M1,M1),
+  W :: 0..1, 
+
+  % constraints
+
+  ZMin #= sum(Z), % Eq 1
+
+  % We know that 1 and M1 must be in the list
+  Z[1] #= 1, % 1 is in the list
+  Z[M1] #= 1, % M+1 is in the list
+
+  foreach(I in 1..M1, J in 1..M1, I < J)
+     W[I,J] #<= Z[I], % Eq 2
+     W[I,J] #<= Z[J], % Eq 3
+     W[I,J] #>= Z[I]+Z[J]-1 % Eq 4      
+  end,
+  % Eq 5: If J-I is not in the diff, then it cannot be in
+  %       the solution.  
+  foreach(I in 1..M1, J in 1..M1)
+     if not member(J-I,Diffs) then
+       W[I,J] #= 0
+     end
+  end,
+
+
+  % Eq 6: Ensure that all differences are covered
+  foreach(D in Diffs)
+    sum([W[I,J]*(J-I #= D) : I in 1..M1, J in 1..M1]) #>= 1
+  end,
+
+  Vars = Z,
+  % if var(ZMin) then
+  %    println(minimize),
+  %    solve($[ffd,min(ZMin)],Vars) % Eq 1
+  % else
+     % Get all solutions for ZMin
+     println(satisfy),     
+     solve($[constr],Vars).
+  % end.
+
+
+
+
+%
+% Print the solution.
+%
+print_solution(Diffs,X,AllowDuplicates) =>
+        println(x=X),
+        println(x0=[X[I]-1 : I in 1..X.len]),        
+        N = X.len,
+        % println(x_shifted=shifted_list(X)),
+        println(x_diffs=[X[I] - X[I-1] : I in 2..N]),
+        println(sum_x_diffs=sum([X[I] - X[I-1] : I in 2..N])),
+        
+        % Check that we got a correct solution
+
+        %% Experimental
+        if AllowDuplicates == experimental then
+          Check = [abs(X[I]-X[J]) : I in 1..N, J in I+1..N].sort % allow duplicates
+        else 
+          Check = [abs(X[I]-X[J]) : I in 1..N, J in I+1..N].sort_remove_dups
+        end,
+
+        println(check=Check),
+        if Diffs != Check then
+          println("Diffs != Check!")
+        end,
+        nl.
+
+%
+% Return the list difference of a list L
+%
+diffs(L) = Diffs =>
+  Len = L.len,
+  Diffs1 = [],
+  foreach(I in 1..Len, J in I+1..Len)
+    Diffs1 := Diffs1 ++ [abs(L[I]-L[J])] 
+  end,
+  Diffs = Diffs1.sort_remove_dups.
+
+
+% Don't remove duplicates
+% Experimental
+diffs2(L) = Diffs =>
+  Len = L.len,
+  Diffs1 = [],
+  foreach(I in 1..Len, J in I+1..Len)
+    Diffs1 := Diffs1 ++ [abs(L[I]-L[J])] 
+  end,
+  Diffs = Diffs1.sort.
+
+
+%
+% Generate a random problem instance of (at least) length N
+%
+% Sort and remove all duplicates
+generate_problem(N,MaxVal) = [1+random() mod MaxVal : _ in 1..N].sort_remove_dups.
+
+% Sort and keep duplicates.
+generate_problem2(N,MaxVal) = [1+random() mod MaxVal : _ in 1..N].sort.
+
+

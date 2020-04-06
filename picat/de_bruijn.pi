@@ -16,6 +16,12 @@
     x : [](0, 1, 2, 5, 3, 7, 6, 4)
     bincode : [0, 0, 0, 1, 0, 1, 1, 1]
 
+  There are two symmetry breaking constraints:
+  - if possible, we require that the occurrences of number are the same, 
+    i.e if M mod Base == 0.
+  - the sequence X always start with the minumum value (0).
+
+
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
@@ -24,6 +30,103 @@
 import cp,util.
 
 main => go.
+
+
+%
+% Let's start simple: This has 2 solutions.
+%
+go ?=>
+        Base = 2,
+        N = 3,
+        M = Base**N,
+        % Tmp = Base**N-1,
+        % do_it2(Base, N, M, Tmp),
+        deBruijn(Base, N, M, X, Binary, BinCode, GCC),
+        println(x=X),
+        println(binary=Binary),
+        println(binCode=BinCode),
+        println(gcc=GCC),        
+        nl,
+        fail.
+
+go => true.
+
+%
+% This is an "arbitrary" de Bruijn sequence
+%   Base = 13
+%   N = 4
+%   M = 52 (note: not 13**4=28561)
+%
+% i.e. the length of the sequence is 52, i.e. < Base**N.
+% 
+% Many solutions.
+%
+go2 ?=>
+        Base = 13,
+        N = 4,
+        M = 52,
+        Tmp = Base**N-1,
+        do_it2(Base, N, M, Tmp),
+        fail.
+
+go2 => true.
+
+%
+% The "door code" sequence, i.e. all codes of length 4 in for 0..9.
+%
+go3 =>
+        garbage_collect(300_000),
+        Base = 10,
+        N = 4,
+        M = Base**N,
+        Tmp = Base**N-1,
+        do_it(Base, N, M, Tmp).
+
+%
+% Arbitrary deBruijn:
+%  Base = 2
+%  N    = 5
+%  M    = 27 (note: not 2**5=32 )
+%
+% It has 2000 solutions.
+%
+go4 ?=>
+        Map = get_global_map(),
+        Map.put(count,0),
+        Base = 2,
+        N = 5,
+        M = 27,
+        Tmp = Base**N-1,
+        do_it(Base, N, M, Tmp),
+        Map.put(count,Map.get(count)+1),
+        fail.
+
+go4 => 
+  println(count=get_global_map().get(count)).
+
+
+%
+% Classic deBruijn:
+%  Base = 2
+%  N    = 5
+%  M    = 32 (note: 2**5=32)
+%
+% It has 2048 solutions.
+go5 ?=>
+        Map = get_global_map(),
+        Map.put(count,0),
+        Base = 2,
+        N = 5,
+        M = 32,
+        Tmp = Base**N-1,
+        do_it(Base, N, M, Tmp),
+        Map.put(count,Map.get(count)+1),
+        fail.
+
+go5 => 
+  println(count=get_global_map().get(count)).
+
+
 
 %
 % converts a number Num to/from a list of integer List given a base Base
@@ -48,8 +151,8 @@ deBruijn(Base, N, M, X, Binary, BinCode, GCC) =>
         X = new_list(M),
         X :: 0..(Base**N)-1,
 
-        % all_different(X),
-        all_distinct(X),
+        all_different(X),
+        % all_distinct(X),
 
         %
         % Binary: the matrix of the "fully expanded" integers in X
@@ -91,7 +194,7 @@ deBruijn(Base, N, M, X, Binary, BinCode, GCC) =>
         end,
 
         % If possible, we require that the occurrences of number are the same.
-        if M mod Base #= 0 then
+        if M mod Base == 0 then
            foreach(I in 2..Base)
              GCC[I] #= GCC[I-1],
              GCC[I] #= M div Base
@@ -107,73 +210,31 @@ deBruijn(Base, N, M, X, Binary, BinCode, GCC) =>
         solve([ff,split],Flattened),
         println(gcc=GCC).
         
-
-% wrapper
+%
+% Wrapper: Print everything
+%
 do_it(Base, N, M, Tmp) =>
         println([base=Base, n=N, m=M, '(Base**N)-1)'=(Tmp)]),
         deBruijn(Base, N, M, X, Binary, BinCode, GCC),
         println(x=X),
         % println(binary=Binary),
         foreach(B in Binary) println(B.to_list()) end,
-        println(debruijn=[I.to_string() : I in BinCode].join('')),
+        if max(BinCode) > 9 then
+          println(debruijn=[I.to_string() : I in BinCode].join(' '))
+        else 
+          println(debruijn=[I.to_string() : I in BinCode].join(''))
+        end,
         println(gcc=GCC),
         printf("\n").
 
+%
+% Simple presentation
+%
 do_it2(Base, N, M, Tmp) =>
         deBruijn(Base, N, M, X, Binary, BinCode,GCC),
-        println([to_string(B) : B in BinCode].join('')).
+        if max(BinCode) > 0 then
+          println([to_string(B) : B in BinCode].join(' '))
+        else
+          println([to_string(B) : B in BinCode].join(''))
+        end.
 
-
-
-
-% Let's start simple: This has 2 solutions.
-go ?=>
-        Base = 2,
-        N = 3,
-        M = Base**N,
-        % Tmp = Base**N-1,
-        % do_it2(Base, N, M, Tmp),
-        deBruijn(Base, N, M, X, Binary, BinCode, GCC),
-        println(x=X),
-        println(binary=Binary),
-        println(binCode=BinCode),
-        println(gcc=GCC),        
-        nl,
-        fail.
-
-go => true.
-
-% This is an "arbitrary" de Bruijn sequence, i.e. the length of
-% the sequence is 52, i.e. < Base**N.
-% Many solutions.
-go2 ?=>
-        Base = 13,
-        N = 4,
-        M = 52,
-        Tmp = Base**N-1,
-        do_it(Base, N, M, Tmp),
-        fail.
-
-go2 => true.
-
-% The "door code" sequence, i.e. all codes of length 4 in for 0..9.
-go3 =>
-        Base = 10,
-        N = 4,
-        M = Base**N,
-        Tmp = Base**N-1,
-        do_it(Base, N, M, Tmp).
-
-go4 ?=>
-        Map = get_global_map(),
-        Map.put(count,0),
-        Base = 2,
-        N = 5,
-        M = 27,
-        Tmp = Base**N-1,
-        do_it(Base, N, M, Tmp),
-        Map.put(count,Map.get(count)+1),
-        fail.
-
-go4 => 
-  println(count=get_global_map().get(count)).
