@@ -1,0 +1,316 @@
+/* 
+
+  Schubert's Steamroller in Picat.
+
+  From Christoph Walther: 
+  A mechanical solution of schubert's steamroller by many-sorted resolution 
+  (https://www.aaai.org/Papers/AAAI/1984/AAAI84-024.pdf )
+  """
+  Wolves, foxes, birds, caterpillars, and snails are animals, and thereare 
+  some of each of them. Also there are some grains, and grains are plants. 
+
+  Every animal either likes to eat all plants or all animals much smaller 
+  than itself that like to eat some plants. 
+  Gaterpillars and snails are much smaller than birds, which are much
+  smaller than foxes, which in turn are much smaller than wolves. 
+  Wolves do not like to eat foxes or grains, while birds like to eat 
+  caterpillars but not snails. 
+  Caterpillars and snails like to eat some plants. 
+
+  Therefore there is an animal that likes to eat a grain-eating animal.
+  """
+
+  Also see:
+  * K Blasius,  N. Eisinger, J. Siekmann, G. Smolka, A. Herold, C. Walther   
+    The   markgraf   karl   refutation   procedure   (fall 1981)
+    https://www.ijcai.org/Proceedings/81-1/Papers/092.pdf
+    
+
+  This Picat program is a rather faithful port of the Prolog code in
+  https://swi-prolog.discourse.group/t/schuberts-steamroller-in-prolog/2212
+  Changes:
+   * replace ":-" by "=>"
+   * remove cuts ("!")
+   * replaced "/+" by "not"
+   * move predicate likes_to_eat/2 that was defined discountigous
+   * add non-determinism on some predicates:
+       - animal/1
+       - likes_to_each/2
+       - much_smaller_direct/2
+       - much_smaller/2
+       - dislikes_to_eat/2
+   * rewrite the main predicate (go)
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  All = findall([A,Prey,G],(animal(A),
+                            animal(Prey),
+                            grain(G),
+                            likes_to_eat(A,Prey),
+                            likes_to_eat(Prey,G)
+                            )),
+  println("All:"),
+  foreach(A in sort(All).remove_dups)
+    println(A)
+  end,
+  nl,
+  
+  println("Show just wolf:"),
+  foreach([A,Prey,G] in sort(All).remove_dups, A==wolf)
+    println([Prey,G])
+  end,
+  nl.
+
+go => true.
+
+%
+% hakank:
+% Almost all comments are from
+% https://swi-prolog.discourse.group/t/schuberts-steamroller-in-prolog/2212
+%
+
+
+% ----------------------------------------------------------------------
+% From: AAAI-84 Proceedings. Copyright 1984 AAAI. p 330 ff.
+% "A MECHANICAL SOLUTION OF SCHUBERT'S STEAMROLLER BY MANY-SORTED RESOLUTION"
+% Christoph Walther, Institut für Informatik I, Universität Karlsruhe
+%
+% "In the fall of 1978 L. Schubert spend his sabbatical at the University of Karlsruhe
+%  and a first-order axiomatization of his Problem was given to the Markgraf Karl
+%  Refutation Procedure (MKRP), a resolution-based automated theorem prover
+%  under development at the University of Karlsruhe. The system generated
+%  the clause set of figure 1.1, but failed to find a refutation."
+%
+% "Wolves, foxes, birds, caterpillars and snails are animals, and there are
+%  some of each of them. Also, there are some grains and grains are plants.
+%  Every animal either likes to eat all plants or (likes to eat) all animals
+%  much smaller than itself that like to eat some plants. Caterpillars and 
+%  snails are much smaller than foxes which in turn are much smaller than wolves.
+%  Wolves do not like to eat foxes or grains while birds like to eat 
+%  caterpillars but not snails. Caterpillar and snails like to eat some plants.
+%  Therefore there is an animal that likes to eat a grain-eating animal."
+%
+% Figure 1.1
+%
+% Using the following predicates as an abbreviation:
+%
+% A(x) - x is an animal       W(x) - x is a wolf
+% F(x) - x is a fox           B(x) - x is a bird
+% C(x) - x is a caterpillar   S(x) - x is a snail
+% G(x) - x is a grain         P(x) - x is a plant
+% M(xy) - x is much smaller than y
+% E(xy) - x likes to eat y
+%
+% we obtain the following set of clauses as a predicate logic formulation
+% of the problem [the commas are ORs, ed.]
+%
+% (1)  {W(w)}                        (2)  {F(f)}
+% (3)  {B(b)}                        (4)  {C(c)}
+% (5)  {S(s)}                        (6)  {G(g)}
+% (7)  {~W(x1),A(x1)}                (8)  {~F(x1),A(x1)}
+% (9)  {~B(x1),A(x1)}                (10) {~C(x1),A(x1)}
+% (11) {~S(x1),A(x1)}                (12) {~G(x1),P(x1)}
+% (13) {~A(x1),~P(x2),~A(x3),~P(x4),E(x1 x2),~M(x3 x1),~E(x3 x4),E(x1 x3)}
+% (14) {~C(x1),~B(x2),M(x1 x2)}      (15) {~S(X1),~B(x2),M(x1 x2}
+% (16) {~B(x1),~F(x2),M(x1 x2)}      (17) {~F(x1),~W(x2),M(x1 x2)}
+% (18) {~F(x1),~W(x2),~E(x2 x1)}     (19) {~G(x1),~W(x2),~E(x2 x1)}
+% (20) {~B(x1),~C(x2),E(x1 x2)}      (21) {~B(x1),~S(x2),~E(x1 x2)}
+% (22) {~C(x1),P(h(x1))}             (23) {~C(x1),Ex1 h(x1))}  (22 is wrong in reprint)
+% (24) {~S(x1),P(i(x1))}             (25) {~S(x1),E(x1 i(x1))}
+% (26) {~A(x1),~A(x2),G(j(x1 x2))}
+% (27) {~A(x1),~A(x2),~E(x1 x2),~E(x2 j(x1 x2))}
+% ----------------------------------------------------------------------
+
+% Part 1
+% ------
+% "Wolves, foxes, birds, caterpillars and snails are animals, and there are some of 
+% each of them."
+% "Also, there are some grains and grains are plants."
+
+% Skolemize the existence facts: 
+% ∃X:wolf(X) ~~~> wolf(w), where "w" is an atom standing for some wolf.
+
+wolf(wolf).
+fox(fox).
+bird(bird).
+caterpillar(caterpillar).
+snail(snail).
+grain(grain).
+
+% Define the hierarchy of sorts
+
+animal(X) ?=> wolf(X).
+animal(X) ?=> fox(X).
+animal(X) ?=> bird(X).
+animal(X) ?=> caterpillar(X).
+animal(X) ?=> snail(X).
+
+plant(X)  ?=> grain(X).
+
+% Part 2
+% ------
+% "Every animal either likes to eat all plants ...."
+%
+%   animal(A) -> (plant(Plant) -> likes_to_eat(A,Plant))
+%
+% transformed into
+%
+%   animal(A) & plant(A) -> likes_to_eat(A,Plant)
+%
+% We add "unless there are exceptions" using NAF because that 
+% seems to be a good way to cover the integrity constraints further below.
+
+likes_to_eat(A,Plant) ?=> 
+   animal(A),plant(Plant),
+   not dislikes_to_eat(A,Plant).
+
+% "...or (likes to eat) all animals much smaller than itself that like to eat some plants"
+% We add "unless there are exceptions" using NAF.
+
+likes_to_eat(A,Prey) ?=> 
+   animal(A),animal(Prey),plant(Plant),
+   much_smaller(Prey,A),likes_to_eat(Prey,Plant),
+   not dislikes_to_eat(A,Prey).
+
+% hakank: From Part 5
+likes_to_eat(X,Y) ?=> 
+   bird(X),caterpillar(Y),
+   not dislikes_to_eat(X,Y).
+
+% hakank: From Part 6
+likes_to_eat(X,P) ?=> caterpillar(X),plant(P),not dislikes_to_eat(X,P).
+likes_to_eat(X,P) ?=> snail(X),plant(P),not dislikes_to_eat(X,P).
+
+
+
+% In the paper, everything is in a single rule, with a disjunction in tgo(A) => he consequent.
+%
+% A(x1) & P(x2) & A(x3) & P(x4) & M(x3,x1) & E(x3,x4) => E(x1,x2) | E(x1,X3).
+%
+% That is not a Horn clause! Also, the "either ... or" indicates an exclusive OR,
+% but in the paper (and here) we have an inclusive OR. Is this really right?
+
+% Part 3
+% ------
+% "Caterpillars and snails are much smaller than foxes which in turn are much
+% smaller than wolves"
+
+much_smaller_direct(X,Y) ?=> caterpillar(X),bird(Y).
+much_smaller_direct(X,Y) ?=> snail(X),bird(Y).
+much_smaller_direct(X,Y) ?=> bird(X),fox(Y).
+much_smaller_direct(X,Y) ?=> fox(X),wolf(Y).
+
+% The paper's formalization seems to miss the transitive relationship completely.
+% What happened there? Without that, wolves eat nothing. We add it:
+
+much_smaller(X,Y) ?=> much_smaller_direct(X,Y).
+much_smaller(X,Y) ?=> much_smaller_direct(X,Z),much_smaller(Z,Y).
+
+% Part 4
+% ------
+% "Wolves do not like to eat foxes or grains"
+%
+% These are not clauses, but integrity constraints. In the paper, they are actually 
+% given as:
+%
+% F(x1),W(x2),E(x2x1) => false.
+% G(x1),W(x2),E(x2x1) => false.
+%
+% They actually say something about the exceptions to "likes_to_eat" but 
+% one has to think a bit out of the box for that:
+
+dislikes_to_eat(X,Y) ?=> wolf(X),fox(Y).
+dislikes_to_eat(X,Y) ?=> wolf(X),grain(Y).
+
+% Part 5
+% ------
+% "...while birds like to eat caterpillars but not snails". Similar to the above.
+
+dislikes_to_eat(X,Y) ?=> bird(X),snail(Y).
+% likes_to_eat(X,Y) => 
+%    bird(X),caterpillar(Y),
+%    not dislikes_to_eat(X,Y).
+
+
+
+% Part 6
+% ------
+% "caterpillar and snails like to eat some plants"
+%
+% Really "there are plants such that caterpillar and snails like to eat those"
+% or "Not for all plants, caterpillars or snails do not like them"
+%
+% In the paper, this employs a function symbol:
+%
+% C(x1) => P(h(x1))      % "h(x1) is a plant that is a function of caterpillar x1"
+% C(x1) => E(x1 h(x1))   % "caterpillar x1 likes to eat h(x1)"
+% S(x1) => P(i(x1)       % "i(x1) is a plant that is a function of snail x1"
+% S(x1) => E(x1 i(x1))   % "snail x1 likes to eat i(x1)"
+%
+% There is really not enough info to know what to do here. In fact, our
+% whole universe has just one plant: P = grain. So what's the point?
+
+% likes_to_eat(X,P) => caterpillar(X),plant(P),not dislikes_to_eat(X,P).
+% likes_to_eat(X,P) => snail(X),plant(P),not dislikes_to_eat(X,P).
+
+% Part 7
+% ------
+% "therefore there is an animal that likes to eat a grain-eating animal" 
+% (actually "...that likes to eat an animal that likes to eat grain")
+%
+% That's the query!
+% 
+% The paper says:
+%
+% A(x1),A(x2) => G(j(x1x2))                  % j(x1x2) is grain that depends on the animal pair. WEIRD! WEIRD! WEIRD!
+% A(x1),A(x2),E(x1x2),E(x2j(x1x2)) => false  % An integrity constraint that will make the program inconsistent
+
+% Here is ours, we constructively search for the animal...
+
+% go(A) => animal(A),animal(Prey),grain(G),likes_to_eat(A,Prey),likes_to_eat(Prey,G).
+
+/* RUN IT ----------------------------
+
+?- set_prolog_flag(answer_write_options,[max_depth(0)]).
+true.
+
+% Ready!
+
+
+?- time(setof(A,go(A),L)).
+% 2,443 inferences, 0.000 CPU in 0.000 seconds (99% CPU, 6955913 Lips)
+L = [bird, fox, wolf].
+
+
+% Let's take a look at these...
+
+?- setof([A,B],likes_to_eat(A,B),C).
+C = [[bird,caterpillar],
+     [bird,grain],
+     [caterpillar,grain],
+     [fox,bird],
+     [fox,caterpillar],
+     [fox,grain],
+     [fox,snail],
+     [snail,grain],
+     [wolf,bird],
+     [wolf,caterpillar],
+     [wolf,snail]].
+
+?- setof(X,likes_to_eat(wolf,X),L).
+L = [bird, caterpillar, snail].
+*/
