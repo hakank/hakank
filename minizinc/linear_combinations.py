@@ -20,10 +20,9 @@ import math, time, random
 #
 # generate_problem(n)
 #
-# * generate a list of (atmost) n random integers in the range of 1..100
+# * generate a list of (atmost) n random integers in the range of 1..max_val
 #   Note: the list can be slightly smaller since we are using random numbers
 #         and remove the duplicates
-# * cretate the pairs differences, sorted and with duplicates removed
 #
 def generate_problem(n,max_val):
     ll = [random.randint(1,max_val) for _ in range(n)]
@@ -32,14 +31,34 @@ def generate_problem(n,max_val):
     return ll
 
 #
+# Generate a list of n random integer in the range 1..max_val.
+# The list is sorted and may include duplicates
+#
+def generate_problem_with_duplicates(n,max_val):
+    ll = [random.randint(1,max_val) for _ in range(n)]
+    ll.sort()
+    return ll
+
+#
 # diffs = pair differences, sorted and remove duplicates
 #
-def pair_diffs(ll):
+def pair_diffs_reduced(ll):
     n = len(ll)
     diffs = [abs(ll[i]-ll[j]) for i in range(n) for j in range(i+1,n)]
     diffs = list(dict.fromkeys(diffs))
     diffs.sort()
     return diffs
+
+#
+# All pair differences (sorted)
+#
+def pair_diffs_all(ll):
+    n = len(ll)
+    diffs = [abs(ll[i]-ll[j]) for i in range(n) for j in range(i+1,n)]
+    diffs.sort()
+    return diffs
+
+
 
 #
 # list difference of a list
@@ -56,13 +75,14 @@ def shifted(ll):
 #
 # Restore the list of (distinct and sorted) pair differences.
 #
-def restore_list(diffs, num_diffs,n, mode="first", print_solution=False):
+def restore_list(model, solver, diffs, num_diffs,n, mode="first", allow_duplicates=False, print_solution=False):
     
     instance = Instance(solver,model)
     instance["diffs"] = diffs
     instance["num_diffs"] = num_diffs
     instance["n"] = n
-    instance["mode"] = mode    
+    instance["mode"] = mode
+    instance["allow_duplicates"] = allow_duplicates
 
     found_solution = False
     count = 0    
@@ -73,8 +93,7 @@ def restore_list(diffs, num_diffs,n, mode="first", print_solution=False):
             found_solution = True
             if print_solution:
                 x = result["x"]
-                print(x)
-                print("len:", len(x))
+                print(x,"len:", len(x), "list_diff:", list_diff(x) )               
 
             print("count:", count)
     else:
@@ -109,7 +128,7 @@ def prod(ll):
     return p
 
 #
-# Benchmark: l = 1..20
+# Benchmark: l = 1..20 (mode="all")
 #
 # Gecode: 10.4s
 # Chuffed: 11.0s
@@ -121,26 +140,78 @@ def prod(ll):
 
 #
 # The Solvers.
+# Tip: Use gecode for generating all solutions.
 #
-solver = Solver.lookup("gecode")
-# solver = Solver.lookup("or_tools")
-# solver = Solver.lookup("chuffed")
-# solver = Solver.lookup("picat_sat")
-# solver = Solver.lookup("picat_cp")
-# solver = Solver.lookup("picat_smt")
-# solver = Solver.lookup("jacop") # nope
-# solver = Solver.lookup("cbc") # Nope
-# solver = Solver.lookup("Choco") # Nope
+# solver_name = "gecode" # Better for mode=all and smaller instances
+# solver_name = "or_tools"
+# solver_name "chuffed"
+solver_name = "picat_sat" # Better for mode=first and large instances
+# solver_name = "picat_cp"
+# solver_name = picat_smt"
+# solver_name = jacop" # nope
+# solver_name = cbc" # Nope
+# solver_name = Choco" # Nope
 
+
+solver = Solver.lookup(solver_name)
 model = Model("linear_combinations.mzn")
 
+
 #
-# extremal problem: i.e. the origin list is 1..n
+# Configuration of the problem/solution.
+#
+# mode:
+#   - all: all solutions of any length
+#   - first: first solution
+#   - all_shortest: all solutions of the shortest length
+#
+# allow_duplicates:
+#   - False: Do not allow duplicates. Assume that the difference list is distinct and sorted
+#   - True: Allow duplicates. Assume that the difference list is non-distinct and sorted.
+#     Note: The number of differences are (len*(len-1)) div 2 so it can be a quite
+#     large difference list.
+#
+# print_solution:
+#   - False: Do not print solutions (just counts etc)
+#   - True: Print the solution(s)
+#
+
+#
+# Mode
+#
+# mode = "first"
+mode = "all" 
+# mode = "all_shortest" 
+
+#
+# Allow duplicates
+#
+# allow_duplicates = False
+allow_duplicates = True
+
+
+
+#
+# Print solution
+#
+# print_solution = False
+print_solution = True
+
+#
+# Generate an extremal problem: i.e. the origin list is 1..n
 #
 # ll = extremal_list(20)
 
-# Random problem
-ll = generate_problem(15,100)
+n = 20
+max_val = 50
+
+#
+# Generate a random problem
+#
+if allow_duplicates:
+    ll = generate_problem_with_duplicates(n,max_val)
+else:
+    ll = generate_problem(n,max_val)
 
 print("ll:", ll)
 print("ll_len:", len(ll))
@@ -148,7 +219,10 @@ print("ll_shifted:", shifted(ll))
 print("list_diff(ll):", list_diff(ll))
 
 # get the pairs list (distinct and ordered)
-diffs = pair_diffs(ll)
+if allow_duplicates:
+    diffs = pair_diffs_all(ll)
+else:
+    diffs = pair_diffs_reduced(ll)
 
 # diffs = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,30,31,32,33,34,37,38,39]
 # diffs = [4,9,11,13,15,16,20,24,29,31,33,35,44]
@@ -165,24 +239,24 @@ print("diffs_len:", num_diffs)
 min_len = math.floor(1+math.sqrt(1+8*num_diffs)/2) # num_difference pairs = (n*(n-1)) div 2
 print("min_len:", min_len)
 
-# mode = "first"
-mode = "all" 
-# mode = "all_shortest" 
-
-print_solution = True
-# print_solution = False
 
 time_start = time.time()
 found_solution = False
 counts = []
+print("solver:", solver_name, "mode:", mode, "allow_duplicates:", allow_duplicates, "print_solution:", print_solution)
 print()
+found_previous_solution = False
 for n in range(min_len, (min_len*3)+1):
     print("n:", n)
     
-    found_solution, count = restore_list(diffs, num_diffs,n, mode, print_solution)
+    found_solution, count = restore_list(model, solver, diffs, num_diffs,n, mode, allow_duplicates, print_solution)
     counts.append(count)
-    if (mode == "first" or mode == "all_shortest") and found_solution == True:
+    if found_solution:
+        found_previous_solution = True
+    if ((mode == "first" or mode == "all_shortest") and found_solution == True) or (mode == "all" and found_previous_solution and count == 0):
         break
+
+
 
 time_end = time.time()
 print(f"Time: {time_end-time_start}s")
