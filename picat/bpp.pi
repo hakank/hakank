@@ -1,0 +1,87 @@
+/* 
+
+  Bin packing problem in Picat.
+
+  This model is a port from GLPK:s example bpp.mod. 
+  """
+  Given a set of items I = {1,...,m} with weight w[i] > 0, the Bin
+  Packing Problem (BPP) is to pack the items into bins of capacity c
+  in such a way that the number of bins used is minimal. 
+  """
+
+  Note: The GLPK model used a heuristics matrix z as a 
+  heuristic for calculating the upper value of number of bins to use 
+  (the parameter n). This is skipped in this Picat model.
+
+  Also see: http://hakank.org/picat/bin_packing.pi
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+
+  % W[I] is weight of item I
+  % M is the number of items
+  % C is the bin capacity 
+  data(M,W,C),
+  
+  N = M,
+
+  % X[I,J] = 1 means item i is in bin j 
+  X = new_array(M,N),
+  X :: 0..1, 
+
+  % Used[J] = 1 means bin J contains at least one item 
+  Used = new_list(N),
+  Used :: 0..1, 
+
+  BinTotal = new_list(N),
+  BinTotal :: 0..C, 
+
+  % objective is to minimize the number of bins used 
+  Obj #=  sum([Used[J] : J in 1..N]),
+
+  % each item must be exactly in one bin 
+  foreach(I in 1..M)
+    sum([X[I,J] : J in 1..N]) #= 1
+  end,
+
+  % if bin j is used, it must not be overflowed 
+  foreach(J in 1..N) 
+    sum([W[I] * X[I,J] : I in 1..M])  #<= C * Used[J]
+  end,
+
+  foreach(J in 1..N) 
+     BinTotal[J] #>= 0,
+     BinTotal[J] #= sum([W[I] * X[I,J] : I in 1..M])
+  end,
+
+  % symmetry breaking (added constraint)
+  % decreasing(Used),
+
+
+  Vars = X.vars ++ Used ++ BinTotal,
+  solve($[min(Obj)], Vars),
+
+  println(obj=Obj),
+  println("X:"),
+  foreach(Row in X) println(Row) end,
+  println(used=Used),
+  println(binTotal=BinTotal),
+
+  nl.
+
+%
+% data
+%
+data(M,W,C) => 
+ M = 6,
+ W = [50, 60, 30, 70, 50, 40],
+ C = 100.

@@ -1,0 +1,166 @@
+/* 
+
+  Dominating Set Problem in Picat.
+
+  http://en.wikipedia.org/wiki/Dominating_set_problem
+  """
+  An instance of the dominating set problem consists of:
+
+     * a graph G with a set V of vertices and a set E of edges, and
+     * a positive integer K smaller than or equal to the number of vertices in G.
+
+  The problem is to determine whether there is a dominating set of size K or less for G. 
+  That is, we want to know if there is a subset D of V of size less than or equal to K 
+  such that every vertex in V-D is joined to at least one member of D by an edge in E.
+  
+  In the graph [below], the set {4,5} is an example of a dominating set of size two.
+
+       6 
+        \
+         4 -- 5
+         |    | \ 
+         |    |  1
+         |    | /
+         3 -- 2 
+
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat. % a bit better than cp for larger instances
+% import cp.
+
+main => go.
+
+go ?=>
+  nolog,
+  problem(2,NumNodes,K,Graph),
+
+  D = new_list(NumNodes),
+  D :: 0..1, % the dominating set
+  
+  K :: 0..NumNodes, % limit of the cardinality of D
+
+  dominating_set(Graph, D, K, NumNodes),
+  
+  Vars = D ++ [K],
+  solve(Vars),
+  % println(d=D),
+  println(bin2nums(D)),
+  println(k=K),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+%
+% Random graph, minimize K.
+%
+go2 =>
+  nolog,
+  _ = random2(),
+  N = 16,
+  Graph = [ [I,J] : I in 1..N, J in I+1..N, random() mod N > 7],
+  println(graph=Graph),
+
+  D = new_list(N),
+  D :: 0..1, 
+  K :: 0..N,
+
+  dominating_set(Graph, D, K, N),
+  
+  Vars = D ++ [K],
+  println(solve),
+  solve($[min(K),constr],Vars),
+  % solve($[],Vars),  
+  Nums = bin2nums(D),
+  println(nums=Nums),
+  println(k=K),
+  nl,
+
+  % all numbers 1..N should be on the left, only numbers in Nums on the right
+  println(checking),
+  foreach(I in 1..N, J in Nums)
+    % undirected graph so we must tweak a bit
+    foreach([II,JJ] in Graph, ((JJ==J, II==I) ; (II==J, JJ==I)))
+      println(I=J)
+    end
+  end,
+  nl,
+  % fail,
+
+  nl.
+
+go2 => true.
+
+
+%
+% Print numbers matching a 0/1 list
+%
+bin2nums(Bin) = [I : I in 1..Bin.len, Bin[I] == 1].
+
+%
+% dominating_set(graph, D, K, num_nodes)
+%
+dominating_set(G, DomSet, K, NumNodes) =>
+   % for all nodes, there are at least one connection to a member in D 
+   foreach(J in 1..NumNodes)
+     sum([ DomSet[E] #= 1 #/\
+         (
+          (G[I,1] #= J #/\ G[I,2] #= E)
+          #\/
+          (G[I,1] #= E #/\ G[I,2] #= J)
+        )
+        : E in 1..NumNodes, J != E, I in 1..G.len]) #>= 1
+   end,
+   sum(DomSet) #<= K.
+
+
+
+%
+% data
+%
+
+% 
+% The first example from http://en.wikipedia.org/wiki/Dominating_set_problem
+% D = [4,5]
+%
+problem(1,NumNodes,K,Graph)=>
+  NumNodes = 6,
+  K = 2,
+  % Note: assumes undirected graph
+  Graph = [
+        [1,2],
+        [1,5],
+        [2,1],
+        [2,3],
+        [2,5],
+        [3,4],
+        [4,5],
+        [4,6]
+        ].
+
+
+% Second example from http://en.wikipedia.org/wiki/Dominating_set_problem
+problem(2,NumNodes,K,Graph)=>
+  NumNodes = 8,
+  K = 3, % 3 nodes in D is enough: {2,4,8} or {2,6,8}
+  Graph = [
+  [1,2],
+  [1,8],
+  [2,3],
+  [2,4],
+  [2,8],
+  [3,4], 
+  [4,5],
+  [5,6],
+  [6,7],
+  [6,8],
+  [7,8]
+  ].

@@ -1,0 +1,211 @@
+/* 
+
+  Allocating Developments in Picat.
+
+  Problem from
+  Cramster.com (homework help....)
+  http://www.cramster.com/answers-feb-12/computer-science/csp-constraint-satisfaction_2183361.aspx?rec=0
+  """
+  CSP (Constraint Satisfaction Problems)
+  Question 1 (15 points) CSP representation: allocating developments
+  You are an architect who needs to decide how to position four establishments
+  in a new mall: a Japanese restaurant, a hairstylist, a clothing store,
+  and a toy store. The floor plan can be represented as a 3x3 grid
+  (three rows 0,1,2 and three columns 0,1,2) and you need to place
+  each shop in one cell of the grid. Based on marketing research, the
+  following constraint were defined on how to position the new stores,
+  given the position of existing establishments. Note that establishments
+  are considered close to each other of the share an edge on the grid.
+
+  1) There is a fish and chips stand in cell (2,2) (Picat:[3,3]).
+  2) There is a health store in cell (1,0) (Picat: [2,1]).
+  3) The hairstylist and the clothing store should not be close to the
+     fish and chips stand
+  4) The Japanese restaurant should be close to the health store
+  5) The hairstylist and the clothing store should be close to the Japanese
+     restaurant.
+  6) The hairstylist and the clothing store should not be closed to the
+     toy store.
+  
+  (15 points) Represent this problem as a CSP. Be as precise as you can
+  in specifying the constraint. Also do not forget some basic constraints
+  that are inherent in allocating objects in space but are not listed above.
+  """
+
+  Note: I has not been able to satisfy all these 7 requirements.
+  However, using "use_soft_constraints = true", there are 48 solutions
+  for satisfying 6 of these.
+
+  Another approach is to move the health_store to another position,
+  for example X[2,2], or fish_and_chips to - say - X[3,2],
+  then it works fine (with 8 possible layouts).
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  
+  N = 3,
+  M = 6,
+
+  JapaneseRestaurant = 1,
+  Hairstylist = 2,
+  ClothingStore = 3,
+  ToyStore = 4,
+  FishAndChips = 5,
+  HealthStore = 6,
+
+  Obj = ["<empty>             ", % 0
+         "japanese restaurant ", % 1
+         "hairstylist         ", % 2
+         "clothing store      ", % 3
+         "toy store           ", % 4
+         "fish and chips      ", % 5
+         "health store        "  % 6 
+         ],
+
+  X = new_array(N,N),
+  X :: 0..M,
+  
+  UseSoftConstraints = true,
+  % UseSoftConstraints = false,  
+
+  NumConstraints = 7,
+
+  Prefs = [0,0,1,1,1,0,0],
+
+  % What soft constraints are satisfied?
+  Satis = new_list(NumConstraints),
+  Satis :: 0..1,
+  
+  SatPrefs = new_list(NumConstraints),
+  SatPrefs :: 0..1,
+  
+  MaxPrefs #= sum(SatPrefs),
+
+  % ensure that all objects (1..M) are placed exactly once
+  alldifferent_except_0(X),
+  foreach(K in 1..M)
+     sum([X[I,J] #= K : I in 1..N, J in 1..N]) #= 1
+  end,
+
+  %
+  % Given constraints
+  %
+  
+  % 1) There is a fish and chips stand in cell [3,3].
+  X[3,3] #= FishAndChips,
+
+  % 2) There is a health store in cell [2,1].
+  X[2,1] #= HealthStore,
+
+  % Change to this to get all 7 satisfied constraints (with UseSoftConstraints == false)
+  % X[2,2] #= HealthStore, 
+
+  if UseSoftConstraints == false then
+  
+    % 3) The hairstylist and the clothing store should not be close to the
+    %    fish and chips stand
+    close(X, Hairstylist, FishAndChips,0),
+    close(X, ClothingStore, FishAndChips,0),
+
+    % 4) The Japanese restaurant should be close to the health store
+    close(X, JapaneseRestaurant, HealthStore,1),
+
+    % 5) The hairstylist and the clothing store should be close to the Japanese
+    %    restaurant.
+    close(X, Hairstylist, JapaneseRestaurant,1),
+    close(X, ClothingStore, JapaneseRestaurant,1),
+
+    % 6) The hairstylist and the clothing store should not be closed to the
+    %    toy store.
+    close(X, Hairstylist, ToyStore,0),
+    close(X, ClothingStore, ToyStore,0),
+
+    % take care of the soft constraint variables
+    foreach(C in 1..NumConstraints)
+       SatPrefs[C] #<=> Satis[C] #= Prefs[C],
+       SatPrefs[C] #= 1
+    end
+  end,
+
+  if UseSoftConstraints == true then
+
+    % 3) The hairstylist and the clothing store should not be close to the
+    %    fish and chips stand
+    closec(X, Hairstylist, FishAndChips, Satis[1]),  % not close
+    closec(X, ClothingStore, FishAndChips, Satis[2]), % not close
+
+    % 4) The Japanese restaurant should be close to the health store
+    closec(X, JapaneseRestaurant, HealthStore, Satis[3]), % close
+
+    % 5) The hairstylist and the clothing store should be close to the Japanese
+    %    restaurant.
+    closec(X, Hairstylist, JapaneseRestaurant, Satis[4]), % close
+    closec(X, ClothingStore, JapaneseRestaurant, Satis[5]), % close
+
+    % 6) The hairstylist and the clothing store should not be closed to the
+    %    toy store.
+    closec(X, Hairstylist, ToyStore, Satis[6]), % not close
+    closec(X, ClothingStore, ToyStore, Satis[7]), % not close
+    
+    foreach(C in 1..NumConstraints)
+      SatPrefs[C] #<=> Satis[C] #= Prefs[C]
+    end,
+    
+    MaxPrefs #>= 6
+    
+  end,
+
+
+  Vars = X.vars ++ SatPrefs ++ Satis,
+
+  solve(Vars),
+
+  println("Layout:"),
+  foreach(Row in X) println(Row) end,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      print(Obj[X[I,J]+1])
+    end,
+    nl
+  end,
+  nl,
+  println(satis=Satis),
+  println(satPrefs=SatPrefs),  
+  println(maxPrefs=MaxPrefs),
+  
+
+  nl,
+
+  fail,
+
+  nl.
+
+go => true.
+
+% This is a von Neumann grid, i.e. connect just
+% horizontally or vertically, but not diagonally.
+
+% Hard constraint
+close(X,S1,S2,BB) =>
+    N = X.len,
+    sum([X[I,J] #= S1 #/\ X[I+A, J+B] #= S2 :
+         I in 1..N, J in 1..N, A in -1..1, B in -1..1,
+         member(I+A,1..N), member(J+B,1..N), (abs(A) + abs(B)) == 1]) #= BB.
+
+
+% Soft constraint
+closec(X,S1,S2,BB) =>
+    N = X.len,
+    sum([X[I,J] #= S1 #/\ X[I+A, J+B] #= S2 :
+         I in 1..N, J in 1..N, A in -1..1, B in -1..1,
+         member(I+A,1..N), member(J+B,1..N), (abs(A) + abs(B)) == 1]) #= 1 #<=> BB #= 1.
+

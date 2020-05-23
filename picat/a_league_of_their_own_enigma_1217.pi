@@ -1,0 +1,161 @@
+/* 
+
+  A league of their own (Enigma #1217) in Picat.
+
+  https://enigmaticcode.wordpress.com/2015/07/18/enigma-1217-a-league-of-their-own/
+  """
+  From New Scientist #2372, 14th December 2002
+
+  Four pubs recently played a round-robin football tournament, in which 
+  each team played each of the others twice — home and away. George has 
+  drawn up the final league table, using this grid.
+
+      [
+                     Played  Won   Drawn  Lost  Points
+                   -----------------------------------
+         Fagan's   |       |      |      |     |      |
+         George    |       |      |      |     |      |
+         Harlequin |       |      |      |     |      |
+         Inkerman  |       |      |      |     |      |
+                   -----------------------------------
+        
+      ]
+  
+  With two points for a win and one for a draw, the teams finished, coincidentally, 
+  in alphabetical order, as shown. George found further surprises:
+  
+    1. The four columns in the table — Won, Drawn, Lost, Points — each 
+       contained four different numbers
+    2. Although Fagan’s won the tournament, the George won more games
+    3. There were more away wins than home wins.
+  
+   Which matches were drawn? Identify each as “X v. Y”, naming the home team first.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go =>
+  N = 4,
+  Home = 1,
+  Away = 2,
+
+  Win = 2,
+  Draw = 1,
+  Loss = 0,
+
+  Won = 1,
+  Drawn = 2,
+  Lost = 3,
+  Points = 4,
+
+  NumTypes = 4,
+
+  % decision variables
+  Games = new_array(N,N,2),
+  Games :: Loss..Win,
+
+  Scores = new_array(N,NumTypes),
+  Scores :: 0..6*2,
+  
+  _ScoreTypes = ["Won   ",
+                "Drawn ",
+                "Lost  ",
+                "Points"],
+  Fagans = 1,
+  George = 2,
+  _Harlequin = 3,
+  _Inkerman = 4,
+  
+  Teams = ["Fagan's  ",
+           "George   ",
+           "Harlequin",
+           "Inkerman "],
+
+
+
+  % restrict domains of all score types except points
+  foreach(T1 in 1..N, T in [Won,Drawn,Lost])
+    Scores[T1,T] #<= 6
+  end,
+  % define the scores 
+  foreach(T1 in 1..N) 
+     foreach(K in Home..Away)
+       Games[T1,T1,K] #= 0
+     end,
+     Scores[T1,Won]    #= sum([Games[T1,T2,K] #= Win  : T2 in 1..N, K in Home..Away]),
+     Scores[T1,Drawn]  #= sum([Games[T1,T2,K] #= Draw : T2 in 1..N, K in Home..Away]),
+     Scores[T1,Lost]   #= sum([Games[T1,T2,K] #= Loss : T2 in 1..N, K in Home..Away, T1 != T2]),
+     Scores[T1,Points] #= Win*Scores[T1,Won] + Draw*Scores[T1,Drawn]
+  end,
+  
+  % symmetry of the different scores
+  foreach(T1 in 1..N, T2 in 1..N, K in Home..Away, T1 != T2)
+    Games[T1,T2,K] #= Win  #<=> Games[T2,T1,K] #= Loss,
+    Games[T1,T2,K] #= Draw #<=> Games[T2,T1,K] #= Draw
+  end,
+
+  % "... the teams finished, coincidentally,  in alphabetical order"
+  decreasing([Scores[T1,Points] : T1 in 1..N]),
+
+  % "1. The four columns in the table — Won, Drawn, Lost, Points — each 
+  %      contained four different numbers
+  % "
+  
+  foreach(T in [Won,Drawn,Lost,Points])
+    all_different([Scores[T1,T] : T1 in 1..N]) 
+  end,
+
+  % "2. Although Fagan’s Won the tournament, the George Won more games"
+  Scores[George,Won] #> Scores[Fagans,Won],
+
+  % "3. There were more Away Wins than Home Wins."
+  sum([ Games[T1,T2,Away] #= Win : T1 in 1..N, T2 in 1..N]) #> sum([ Games[T1,T2,Home] #= Win : T1 in 1..N, T2 in 1..N]),
+
+  % redundant constraints (slighly faster)
+  sum([Games[T1,T2,Home] : T1 in 1..N,T2 in 1..N]) #= 2*6,
+  sum([Games[T1,T2,Away] : T1 in 1..N,T2 in 1..N]) #= 2*6,
+  sum([Scores[T1,Points] : T1 in 1..N]) #= 4*6,
+
+  Vars = Games ++ Scores,
+  solve($[ff,split],Vars),
+
+  println("Scores:   Won Drawn Lost Points"),
+  foreach(I in 1..N)
+     println([Teams[I],Scores[I]])
+  end,
+
+  println("Home:"),
+  foreach(T1 in 1..N)
+    println([Games[T1,T2,1] : T2 in 1..N])
+  end,
+
+  println("Away:"),
+  foreach(T1 in 1..N)
+    println([Games[T1,T2,2] : T2 in 1..N])
+  end,
+
+  println("Draws:"),
+  foreach(T1 in 1..N, T2 in 1..N, T1 < T2)
+    if Games[T1,T2,1] == 1 then
+      println([Teams[T1],vs,Teams[T2]])
+    end,
+    if Games[T2,T1,2] == 1 then
+      println([Teams[T2],vs,Teams[T1]])
+    end
+
+  end,
+
+  nl,
+  fail,
+  
+  nl.
+

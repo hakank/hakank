@@ -1,0 +1,173 @@
+/* 
+
+  Scheduling examples (Bratko) in Picat.
+
+  Some scheduling examples from
+  Ivan Bratko "Prolog - Programming for Artificial Intelligence", 4rd edition,
+  pages 429ff.
+  
+  Note: Bratko's example use more traditional Prolog constructs. Here we
+  use Picat's CP module facilities.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+%
+% Scheduling example 1 from, page 431.
+%
+go ?=>
+  L = [Ta,Tb,Td,Td,Tf],
+  L :: 0..10,
+
+  Ta + 2 #<= Tb,
+  Ta + 2 #<= Tc,
+  Tb + 3 #<= Td,
+  Tc + 5 #<= Tf,
+  Td + 4 #<= Tf,
+
+  % for all optimal solutions
+  % Tf #<= 9
+
+  solve($[min(Tf)],L),
+  println(tf=Tf),
+  println(L),
+  
+  nl.
+
+go => true.
+
+%
+% Same problem as go/0, but using cumulative.
+%
+go2 => 
+  N = 5,
+  Ds = [5, 7, 10, 2, 9], % Durations
+  Rs = [1, 1,  1, 1, 1], % Resource
+
+  % precedences
+  Prec = [
+          [1,2],
+          [1,4],
+          [2,3],
+          [4,5]
+          ],
+  NumPrec = Prec.len,
+
+  Capacity :: 1..1000,
+
+  % start times
+  Ss = new_list(N),
+  Ss :: 0..30,
+  End :: 0..50, % end time
+
+  after(Ss, Ds, End),
+  cumulative(Ss, Ds, Rs, Capacity),
+  foreach(I in 1..NumPrec)
+     after_prec(Ss[Prec[I,1]], Ss[Prec[I,2]], Ds[Prec[I,1]])
+  end,
+
+  Vars = Ss ++ [Capacity],
+  solve($[min(End)],Vars),
+  println(ds=Ds),
+  println(rs=Rs),
+  println(ss=Ss),
+  println(end=End),
+  println(capacity=Capacity),
+
+  nl.
+
+
+%
+% Example 2: page 433
+%
+go3 =>
+   N = 7,
+   Ds = [4,2,2,20,20,11,11], % Durations
+   Rs = [1,1,1, 1, 1, 1, 1], % Resource requirement per task
+   NumMachines = 3, % number of available (parallel) machines
+
+   % precedences
+   Prec = [
+            [1,4],
+            [1,5],
+            [2,4],
+            [2,5],
+            [2,6],
+            [3,5],
+            [3,6],
+            [3,7]],
+   NumPrec = Prec.len,
+
+   Capacity :: 1..NumMachines,
+
+   % start times
+   Ss = new_list(N),
+   Ss :: 0..180, 
+
+   % end times
+   Es = new_list(N),
+   Es :: 0..200,
+
+   End :: 0..200, % End time
+
+   % which machine to use
+   Ms = new_list(N),
+   Ms :: 1..NumMachines,
+
+   % set the end times for each task
+   foreach(I in 1..N)
+     Es[I] #= Ss[I] + Ds[I]
+   end,
+   End #= max(Es),
+
+   % after(Ss, Ds, End),
+
+   cumulative(Ss, Ds, Rs, Capacity),
+
+   % precedences
+   foreach(I in 1..NumPrec)
+     after_prec(Ss[Prec[I,1]], Ss[Prec[I,2]], Ds[Prec[I,1]])
+   end,
+   
+   % if using the same machine then there can be no time overlap
+   foreach(I in 1..N, J in 1..N, I != J)
+       Ms[I] #= Ms[J] #=>
+       (
+         Ss[J] #>= Ss[I] + Ds[I]
+          #\/
+         Ss[I] #>= Ss[J] + Ds[J]
+       )
+   end,
+
+
+   Vars = Ss ++ Es ++ Ms ++ [Capacity,End],
+   solve($[min(End),degree,split],Vars),
+   
+   println(ss=Ss),
+   println(ds=Ds),
+   println(rs=Rs),
+   println(es=Es),   
+   println(ms=Ms),
+   println(number_of_machines_used=Ms.sort_remove_dups.len),
+   println(capacity=Capacity),
+   println(end=End),
+   nl.
+
+%
+% Start times (S) + Durations >= End time
+% 
+after(S, D, E) =>
+   foreach(I in 1..S.len) 
+      E #>= S[I] + D[I]
+   end.
+
+
+% handle precendences
+after_prec(A, B, D) =>
+   B #>= A + D.

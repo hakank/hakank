@@ -1,0 +1,182 @@
+/* 
+
+  Bobsledders puzzle in Picat.
+
+  From https://aminoapps.com/c/school/page/blog/word-puzzle/bYRr_nncoumrlB5Z71q5nj812DNWmnj2zk
+  """
+  Person: Zane, Bobby, Ted, Lance, Phil, Connie, Jane, Oprah, Betsy, Lulu
+
+  Sleds: Red, blue, black, green, white
+
+  Country: Jamaica, Germany, Canada, USA, Romanian
+
+  Hints:
+    1. Betsy and Phil are the Green sled duo. Though, in unrelated news, Phil doesn't like Betsy much.
+    2. The Romanian team doesn't use the Red Sled.
+    3. Bobby doesn't use the Black Sled.
+    4. Phil doesn't sled for Canada or Romanian.
+    5. Connie is German. She would never be caught dead in the Red Sled or the Blue Sled.
+    6. Ted and his partner drive the White Sled. They are not from USA, Germany, or Romanian.
+    7. Lulu is from USA.
+    8. Jane does not use the Blue Sled.
+    9. Lance is not from Germany, and he doesn't use the Red Sled.
+
+  Will you find out which person is partner with?
+  """
+
+  It might be the same problem instance that is mentioned the or-tools-discuss by
+  Fletcher Cocquyt
+   https://groups.google.com/forum/#!topic/or-tools-discuss/tarmhBizp0g
+  
+  This problem is also shown in 
+  http://ghvmath.com/new-events/2016/10/17/section-22-logic-contd
+  with a video explaining the puzzle (though with a bad sound and a bad video).
+
+  The solution is here as well:
+  http://www.rossmcnamara.com/apps-and-games/cryptograms-word-games-brain-training/logic-grid-puzzle-answers/
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+
+   Names = [Zane, Bobby, Ted, Lance, Phil, Connie, Jane, Oprah, Betsy, Lulu],
+   Names = 1..Names.len,
+   NamesS = [zane, bobby, ted, lance, phil, connie, jane, oprah, betsy, lulu],
+   
+   SledColors = [Red, Blue, Black, Green, White],
+   SledColors = 1..SledColors.len,
+   SledColorsS = [red, blue, black, green, white],
+   
+   CountryNames = [Jamaica, Germany, Canada, USA, Romania],
+   CountryNames = 1..CountryNames.len,
+   CountryNamesS = [jamaica, germany, canada, usa, romania],
+   Sex = [Female, Male],
+
+   NumPeople = Names.len,
+   NumPairs = NumPeople div 2,
+
+         %  Zane, Bobby, Ted, Lance, Phil,   Connie, Jane, Oprah, Betsy, Lulu
+   Gender = [Male, Male, Male,Male, Male,    Female, Female, Female,Female,Female],
+
+   % decision variables
+   Pairs = new_list(NumPeople), % what pair does a person belong to?
+   Pairs :: 1..NumPairs,
+
+   Countries = new_list(NumPairs),
+   Countries :: 1..CountryNames.len,
+
+   Sleds = new_list(NumPairs),
+   Sleds :: 1..SledColors.len,
+
+   Partners = new_list(NumPeople),
+   Partners :: 1..Names.len,
+
+   %
+   % general constraints
+   %
+   all_different(Countries),
+   all_different(Sleds),
+   all_different(Partners),
+   
+   % there are 2 people of each team
+   global_cardinality(Pairs, $[I-2 : I in 1..NumPairs]),
+  
+   % a team consists of a female and a male
+   foreach(P1 in 1..NumPeople, P2 in 1..NumPeople, P1 != P2)
+     Pairs[P1] #= Pairs[P2] #=> Gender[P1] #!= Gender[P2],
+     Pairs[P1] #= Pairs[P2] #<=> Partners[P1] #= P2 #/\ Partners[P2] #= P1
+   end,
+   % symmetry breaking: Fix the pairs number of the guys
+   foreach(P in 1..NumPairs)
+     Pairs[P] #= P
+   end,
+
+   %
+   % The specific constraints
+   %
+   
+   % 1. Betsy and Phil are the Green sled duo. Though, in unrelated news, Phil doesn't like Betsy much.
+   Pairs[Betsy] #= Pairs[Phil],
+   Sleds[Pairs[Betsy]] #= Green, % Sleds[Pairs[Phil]] = green /\
+
+   % 2. The Romanian team doesn't use the Red Sled.
+   Sleds[Romania] #!= Red,
+   % note: without this constraint, there are 3 different solutions
+   foreach(P in 1..NumPairs)
+     Sleds[Pairs[P]] #= Red #=> Countries[Pairs[P]] #!= Romania
+   end,
+   
+   % 3. Bobby doesn't use the Black Sled.
+   Sleds[Pairs[Bobby]] #!= Black,
+
+   % 4. Phil doesn't sled for Canada or Romania.
+   Countries[Pairs[Phil]] #!= Canada,
+   Countries[Pairs[Phil]] #!= Romania,
+
+   % 5. Connie is German. She would never be caught dead in the Red Sled or the Blue Sled.
+   element2(Countries,Pairs,Connie,CountriesPairsConnie),
+   CountriesPairsConnie #= Germany,
+   element2(Sleds,Pairs,Connie,SledsPairsConnie),
+   SledsPairsConnie #!= Red,
+   SledsPairsConnie #!= Blue,
+
+   % % 6. Ted and his partner drive the White Sled. They are not from USA, Germany, or Romania.
+   Sleds[Pairs[Ted]] #= White,
+   Countries[Pairs[Ted]] #!= USA,
+   Countries[Pairs[Ted]] #!= Germany,
+   Countries[Pairs[Ted]] #!= Romania,
+
+   % % 7. Lulu is from USA.
+   element2(Countries,Pairs,Lulu,CountriesPairsLulu),
+   CountriesPairsLulu #= USA,
+
+   % 8. Jane does not use the Blue Sled.
+   element2(Sleds,Pairs,Jane,SledsPairsJane),
+   SledsPairsJane #!= Blue,
+
+   % % 9. Lance is not from Germany, and he doesn't use the Red Sled.
+   Countries[Pairs[Lance]] #!= Germany,
+   Sleds[Pairs[Lance]] #!= Red,
+
+   Vars = Pairs ++ Countries ++ Sleds ++ Partners,
+   solve(Vars),
+
+   println(pairs=Pairs),
+   println(countries=Countries),
+   println(sleds=Sleds),
+   println(partners=Partners),
+   nl,
+   foreach(P in Names)
+     println([NamesS[P],NamesS[Partners[P]],SledColorsS[Sleds[Pairs[P]]],CountryNamesS[Countries[Pairs[P]]]])
+   end,
+
+   nl,
+
+
+   fail,
+   nl.
+
+
+go => true.
+
+
+
+%
+% Picat don't allow the following:
+%
+%   V = List1[List2[E]]
+%
+% where List1 and/or E are decision variables, so here's a small helper predicate.
+%
+element2(List1,List2,E,V) =>
+  element(E,List2,List2E),
+  element(List2E,List1,V).
+  

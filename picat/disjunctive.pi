@@ -1,0 +1,96 @@
+/* 
+
+  Global constraint disjunctive in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cdisjunctive.html
+  """
+  disjunctive(TASKS)
+  
+  Purpose
+
+  All the tasks of the collection TASKS that have a duration strictly 
+  greater than 0 should not overlap.
+  
+  Example
+  (
+   <
+    origin-1 duration-3,
+    origin-2 duration-0,
+    origin-7 duration-2,
+    origin-4 duration-1
+   >
+  )
+
+  Figure 4.98.1 shows the tasks with non-zero duration of the example. 
+  Since these tasks do not overlap the disjunctive constraint holds.
+
+   --------    -----
+   | 1   |4|   | 3  |
+   ------------------------------------------->
+   1 2 3 4 5 6 7 8 9 10
+
+  Figure 4.98.1. Tasks with non-zero duration
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 4,
+  Origin = new_list(N),
+  Origin :: 0..10,
+  
+  Duration = new_list(N),
+  Duration :: 0..10,
+  
+  Used = new_list(N),
+  Used :: 0..1,
+
+  EndTime = new_list(N),
+  EndTime :: 0..10, 
+
+  Origin   = [1,2,7,4],
+  Duration = [3,0,2,1],
+  
+  disjunctive(Origin, Duration, EndTime, Used),
+
+  Vars = Origin ++ Duration ++ Used ++ EndTime,
+  solve(Vars),
+  println('origin  '=Origin),
+  println(duration=Duration),
+  println('used    '=Used),
+  println('endTime '=EndTime),
+  nl,
+  fail,
+  nl.
+
+go => true.
+
+
+
+disjunctive(Origin, Duration, EndTime, Used) =>
+  N = Origin.len,
+  foreach(I in 1..N)
+     (Duration[I] #> 0) #<=> (
+          Used[I] #= 1 
+          #/\
+          EndTime[I] #= Origin[I] + Duration[I]
+          #/\
+          sum([EndTime[I] #<= Origin[J] % i left of j
+               #\/
+               Origin[I] #>= EndTime[J] % i right of j
+              : J in 1..N, I < J]) #= N-I
+     ),
+     % zero duration -> not used
+     ( 
+      Duration[I] #= 0 #<=> (Used[I] #= 0 #/\ EndTime[I] #= 0)
+     )        
+  end.

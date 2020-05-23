@@ -1,0 +1,121 @@
+/* 
+
+  Weight distribution problem in Picat.
+
+  From http://jsoftware.com/pipermail/programming/2011-April/022538.html
+  """
+  When I looked at their web page, I came across a problem that one of the 
+  Thalesians (Paul) had posted on their site. The problem asked for a 
+  general solution to a problem where there is a number of masses of 
+  different values which are to be distributed among a few buckets. The 
+  problem is to distribute the masses such that the difference in mass 
+  between the filled buckets is minimized. You can see the full problem at 
+  the bottom of the Thalesian site home page. I won't copy the full 
+  problem here from their web page, as it uses embedded GIF images for the 
+  equations.
+
+  To make the problem more concrete, Paul gives a specific example of the 
+  problem. There are four buckets, and 20 masses. The masses are 23, 43, 
+  12, 54, 7, 3, 5, 10, 54, 55, 26, 9, 9, 43, 54, 1, 8, 6, 38, 33 
+  respectively.  What distribution of the 20 masses gives the smallest 
+  mass difference between the four buckets?
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go ?=>
+  NumBuckets = 4,
+
+  Masses = [23, 43,  12, 54, 7, 3, 5, 10, 54, 55, 26, 9, 9, 43, 54, 1, 8, 6, 38, 33],
+  NumMasses = Masses.len,
+
+  % Capacity (let's play safe)
+  C = sum(Masses),
+
+  X = new_list(NumMasses),
+  X :: 1..NumBuckets,
+
+  Bins = new_list(NumBuckets),
+  Bins :: 0..C,
+  
+  Diffs = new_array(NumBuckets, NumBuckets),
+  Diffs :: 0..C,
+
+  TotalDiffs #= sum(Diffs.vars),  % must have .vars since it's a array matrix
+
+  % This is a bin packing problem
+  bin_packing1(Masses, X, C),
+
+  % for control and it speeds up considerably
+  sum(Bins) #= sum(Masses),
+
+  % collect the different masses in a bin
+  foreach(B in 1..NumBuckets) 
+     Bins[B] #= sum([Masses[J]*(B#=X[J]) : J in 1..NumMasses])
+  end,
+
+  % the differences
+  foreach(I in 1..NumBuckets, J in 1..NumBuckets)
+     Diffs[I,J] #= abs(Bins[I] - Bins[J])
+  end,
+
+  % symmetry breaking
+  decreasing(Bins),
+
+  Vars = X ++ Bins ++ Diffs,
+  solve($[min(TotalDiffs),max,split],Vars),
+
+  println(x=X),
+  println(bins=Bins),
+  println(totalDiffs=TotalDiffs),  
+  println("Diffs:"),
+  foreach(Row in Diffs) println(Row) end,
+  nl,
+  foreach(B in 1..NumBuckets)
+    printf("Bucket %d: ", B),
+    foreach(M in 1..NumMasses)
+      if X[M] == B then
+        printf("%2d (%2d) ", M, Masses[M])
+      end
+    end,
+    printf(" = %3d\n", Bins[B])
+  end,
+  
+  nl.
+
+go => true.
+
+
+%
+% version 1, using list comprehension
+% From http://hakank.org/picat/bin_packing2.pi
+%
+bin_packing1(Bins, Weights, Capacity) =>
+   N = length(Bins),
+   N = length(Weights),
+   foreach(B in 1..N)
+      sum([(Weights[J]*(Bins[J] #= B)) : J in 1..N ]) #=< Capacity
+   end.
+
+%
+% version 2, using accumulator Sum
+% From http://hakank.org/picat/bin_packing2.pi
+%
+bin_packing2(Bins, Weights, Capacity) =>
+   N = length(Bins),
+   N = length(Weights),
+   foreach(B in 1..N)
+      Sum = 0,
+      foreach(J in 1..N)
+          Sum := $Sum + Weights[J] * (Bins[J] #= B)
+      end,
+      Sum #=< Capacity
+   end.

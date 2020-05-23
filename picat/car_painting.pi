@@ -1,0 +1,98 @@
+/* 
+
+  Car painting in Picat.
+
+
+  From SAS/OR 9.22 User's Guide: Constraint Programming
+  Car Painting Problem
+  http://support.sas.com/documentation/cdl/en/orcpug/63349/HTML/default/viewer.htm#orcpug_clp_sect039.htm
+  """
+  Example 3.5 Car Painting Problem
+
+  The car painting process is an important part of the automobile manufacturing industry. 
+  Purging (the act of changing colors in the assembly process) is expensive due to the 
+  added cost of wasted paint and solvents involved with each color change in addtion (sic!) 
+  to the extra time required for the purging process. The objective in the car painting 
+  problem is to sequence the cars in the assembly in order to minimize paint changeover 
+  (Sokol; 2002; Trick; 2004).
+  
+  There are 10 cars in a sequence. The order for assembly is 1, 2, ..., 10. A car must 
+  be painted within three positions of its assembly order. For instance, car 5 can be painted 
+  in positions 2 through 8 inclusive. Cars 1, 5, and 9 are red; 2, 6, and 10 are blue; 
+  3 and 7 green; and 4 and 8 are yellow. The initial sequence 1, 2, ..., 10 corresponds 
+  to the color pattern RBGYRBGYRB and has 9 purgings. The objective is to find a solution 
+  that minimizes the number of purgings.
+  
+  This problem can be formulated as a CSP as follows. The variables and represent the 
+  ID and color, respectively, of the car in slot . An element constraint relates the car 
+  ID to its color. An all-different constraint ensures that every slot is associated with 
+  a unique car ID. Two linear constraints represent the constraint that a car must be painted 
+  within three positions of its assembly order. The binary variable indicates whether a paint 
+  purge takes place after the car in slot is painted. Finally, a linear constraint is used to 
+  limit the total number of purgings to the required number. 
+  
+  References:
+  Sokol, J. (2002), Modeling Automobile Paint Blocking: A Time Window Traveling Salesman Problem, 
+                    Ph.D. thesis, Massachusetts Institute of Technology, Cambridge, MA. 
+  Trick, M. (2004), “Constraint Programming: A Tutorial,” http://mat.gsia.cmu.edu/trick/cp.ppt. 
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  N = 10,
+  Color = [Red,Blue,Green,Yellow],
+  Color = 1..Color.len,
+  ColStr = [red, blue,green, yellow],
+  
+  % colors of the original positions
+  Colors = [Red, Blue, Green, Yellow, Red, Blue, Green, Yellow, Red, Blue],
+
+ 
+  % decision variables
+  X = new_list(N), % which place
+  X :: 1..N,
+  
+  NumPurgings :: 0..N, % number of purgings
+  Distance :: 0..N*N, % total distance of moved positions
+
+
+  % a card can be painted once
+  all_different(X),
+
+  % must be within 3 positions of the original position
+  foreach(I in 1..N)
+    abs(X[I]-I) #<= 3
+  end,
+
+  % how many purgings?
+  NumPurgings #= sum([ C1 #!= C2  : I in 2..N, element(X[I], Colors, C1), element(X[I-1], Colors,C2) ]),
+
+  % total distance of changed positions
+  Distance #= sum([abs(X[I]-I) : I in 1..N]),
+
+  % minimum number of purgings are 5
+  % NumPurgings #<= 5,
+
+  % symmetry breaking
+  % X[1] #= Red,
+
+  Vars = X ++ [Distance],
+  solve($[min(NumPurgings)],Vars),
+  println(numPurgings=NumPurgings),
+  println(distance=Distance),
+  println(X),
+  println([ColStr[Colors[X[I]]] : I in 1..N]),
+  
+
+  nl.
+
+go => true.

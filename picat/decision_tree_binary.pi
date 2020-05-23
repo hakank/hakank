@@ -1,0 +1,192 @@
+/* 
+
+  Decision tree in Picat.
+
+  Simple zero sum binary decision trees.
+
+
+  The model only handles complete binary trees of sizes 
+  n = (a**2) - 1, for some a. The values are at the lowest level.
+
+  Example with n = 7
+     
+         x1         A maximizes
+         /\
+       x2  x3       B minimizes
+      / \   /\          
+     x4 x5 x6 x7   (A)
+
+  The value nodes (the last level):
+  x4 = 6
+  x5 = 1
+  x6 = 5
+  x7 = 3
+
+  First B minimizes the last level (x4..x7):
+  x2 = argmin(x5, x4)  -> x2 = x5
+  x3 = argmin(x6, x7)  -> x3 = x7
+
+  A then maximizes from B's choices as the last step:
+  x1 = argmax( x3,  x2)  -> x1 = x3
+  
+  
+  The solution is a decision tree represented here as as:
+
+
+   x (the values):
+   3
+   1 3
+   6 1 5 3
+  
+   node_used:
+   3
+   5 7
+   4 5 6 7
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go =>
+  do_tree(3),
+  fail,
+  nl.
+
+go => true.
+
+go2 ?=>
+  foreach(Problem in 1..4)
+     println(problem=Problem),
+     do_tree(Problem)
+  end,
+  % fail,
+  nl.
+
+go2 => true.
+
+%
+% Get a problem, run it and print the solution
+%
+do_tree(Problem) =>
+  problem(Problem,N,X),
+  
+  decision_tree(N, TreeLevels,X,NodeUsed),
+  println("X:"),
+  printit(N,X,TreeLevels),
+  nl,
+  println("Node used:"),
+  printit(N,NodeUsed,TreeLevels),
+  nl.
+  
+
+%
+% Print a Tree X, or NodeUsed
+%
+printit(N,T,TreeLevels) =>
+  print(T[1]),
+  foreach(I in 2..N)
+     if TreeLevels[I] > TreeLevels[I-1] then
+       nl
+     else print(" ")
+     end,
+     print(T[I])
+  end,
+  nl.
+
+%
+% 
+%
+decision_tree(N,TreeLevels,X,NodeUsed) =>
+
+  % N must be a (a**2) - 1, for some a, e.g. 7, 15, 31, 63 etc
+  Levels = N div 2, % the number of levels
+
+  X = new_list(N), % the decision variables, the value tree
+  X :: 0..N,
+  
+  NodeUsed = new_list(N), % the nodes indices
+  NodeUsed :: 1..N,
+
+  %
+  % tree_levels contains the levels in the tree, e.g.
+  % [1, 2,2, 3,3,3,3, 4,4,4,4,4,4,4,4, ....]
+  % for odd levels: A is trying to maximize his/her gain,
+  % for even levels B is trying to minimize A's gains 
+  %
+  TreeLevels = [1+floor(log(2.0,I)) : I in 1..N ],
+
+
+  % the first 1..n div 2 in x is to be decided by the model,
+  % the rest is the node values.
+
+  % the last N div 2 positions (the node "row") in NodeUsed are static
+  foreach(I in Levels+1..N)
+     NodeUsed[I] #= I
+     % more general: makes the node value 1.. . 
+     % Comment it if another tree should be used.
+     % , X[I] #= -(N - I - Levels) + 1
+  end,
+
+  % the first N div 2 positions and values are dynamic, the rest are static.
+  foreach(I in 1..Levels)
+    % X[I] #= X[NodeUsed[I]]
+    NodeUsedI #= NodeUsed[I],
+    element(NodeUsedI,X,X[I])
+  end,
+  
+  % Should we maximize or minimize?
+  % It depends on the level.
+  foreach(I in 1..Levels)
+     if TreeLevels[I] mod 2 == 1 then
+       argmax(X, 2*I, 2*I+1, NodeUsed, I)
+     else 
+       argmin(X, 2*I, 2*I+1, NodeUsed, I)
+     end
+  end,
+
+  Vars = X ++ NodeUsed,
+
+  solve(Vars).
+
+
+
+%
+% argmax: maximize A's values
+%
+argmax(X, I1, I2, NodeUsed, NodeUsedIx) =>
+  X[I1] #>= X[I2] #=> NodeUsed[NodeUsedIx] #= I1,
+  X[I1]  #< X[I2] #=> NodeUsed[NodeUsedIx] #= I2.
+
+%
+% argmin: minimize A's values
+%
+argmin(X, I1, I2, NodeUsed, NodeUsedIx) =>
+  -X[I1] #>= -X[I2] #=> NodeUsed[NodeUsedIx] #= I1,
+  -X[I1] #< -X[I2] #=> NodeUsed[NodeUsedIx] #= I2.
+
+
+%
+% Problems
+%
+problem(1,N,X) =>
+  X = [_,_,_, 6,1,5,3],
+  N = X.len.
+
+problem(2,N,X) =>
+  X = [_,_,_, 1,2,3,4],
+  N = X.len.
+  
+problem(3,N,X) =>
+ X = [_, _,_, _,_, _,_, 1,2, 3,4, 5,6, 7,8],
+ N = X.len.
+
+problem(4,N,X) =>
+  X= [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,2,3,4, 5,6,7,8, 9,10,11,12, 13,14,15,16],
+  N = X.len.

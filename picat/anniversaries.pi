@@ -1,0 +1,169 @@
+/* 
+
+  Anniversaries problem in Picat.
+
+  From http://www.genealogyworldwide.com/genealogy_fun.php
+  (via http://l4f.cecs.anu.edu.au/puzzles/intermediate/anniversaries/)
+  """
+  On June 1st, five couples who live in Trumbull will celebrate their 
+  wedding anniversaries. 
+
+  Their surnames are 
+    Johnstone, Parker, Watson, Graves, and Shearer. 
+  The husbands' given names are 
+    Russell, Douglas, Charles, Peter, and Everett. 
+  The wives' given names are 
+    Elaine, Joyce, Marcia, Elizabeth, and Mildred. 
+
+  Keep in mind that no two couples have been married the same number of years. 
+  
+  From the clues given, try to determine the husband and wife that make up each 
+  couple and the number of years they have been married.
+
+  * Joyce has not been married as long as Charles or the Parkers,
+    but longer than Douglas or the Johnstones.
+  * Elizabeth has been married twice as long as the Watsons, but only half as 
+    long as Russell.
+  * The Shearers have been married ten years longer than Peter and ten 
+    years less than Marcia.
+  * Douglas and Mildred have been married for 25 years less than the Graves who, 
+    having been married for 30 years, are the couple who have been married 
+    the longest.
+  * Neither Elaine nor the Johnstones have been married the shortest amount of time.
+  * Everett has been married for 25 years. 
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go ?=>
+  N = 5,  
+
+  % Their surnames are 
+  Surnames = [Johnstone, Parker, Watson, Graves, Shearer],
+  Surnames = 1..N,
+  SurnamesS = ["Johnstone", "Parker", "Watson", "Graves", "Shearer"],
+
+  % The husbands' given names are 
+  Husbands = [Russell, Douglas, Charles, Peter, Everett],
+  Husbands :: 1..N,
+  HusbandsS = ["Russell", "Douglas", "Charles", "Peter", "Everett"],
+
+  % The wives' given names are 
+  Wifes = [Elaine, Joyce, Marcia, Elizabeth, Mildred],
+  Wifes :: 1..N,
+  WifesS = ["Elaine", "Joyce", "Marcia", "Elizabeth", "Mildred"],
+
+  % how long have the couple been married?
+  Married = new_list(N),
+  Married :: 1..30,
+
+  % constraints
+
+  all_different(Husbands),
+  all_different(Wifes),
+
+  % Keep in mind that no two couples have been Married the same 
+  % number of years. 
+  all_different(Married),
+
+  % * Joyce has not been Married as long as Charles or the Parkers,
+  %   but longer than Douglas or the Johnstones.
+  
+  %% Married[Surnames[Joyce]] #< Married[Surnames[Charles]],
+  %% Note: Picat don't allow the syntax DecisionVars[List[DecisionVar]],
+  %% so we use the helper predicate element2/4 (see below).
+  element2(Married,Surnames,Joyce,MarriedSurnamesJoyce),
+  element2(Married,Surnames,Charles,MarriedSurnamesCharles),
+  MarriedSurnamesJoyce #< MarriedSurnamesCharles,
+  
+  %% Married[Surnames[Joyce]] #< Married[Parker],
+  MarriedSurnamesJoyce #< Married[Parker],
+  
+  %% Married[Surnames[Joyce]] #> Married[Surnames[Douglas]],
+  element2(Married,Surnames,Douglas,MarriedSurnamesDouglas),
+  MarriedSurnamesJoyce #> MarriedSurnamesDouglas,
+  
+  %% Married[Surnames[Joyce]] #> Married[Johnstone],
+  MarriedSurnamesJoyce #> Married[Johnstone],  
+
+  % * Elizabeth has been Married twice as long as the Watsons, but only half as 
+  %   long as Russell.
+  %% Married[Surnames[Elizabeth]] #= 2 * Married[Watson],
+  element2(Married,Surnames,Elizabeth,MarriedSurnamesElizabeth),
+  MarriedSurnamesElizabeth #= 2 * Married[Watson],  
+
+  %% Married[Surnames[Elizabeth]] * 2 #= Married[Surnames[Russell]],
+  element2(Married,Surnames,Russell,MarriedSurnamesRussell),
+  MarriedSurnamesElizabeth * 2 #= MarriedSurnamesRussell,
+
+  % * The Shearers have been Married ten years longer than Peter and ten 
+  %   years less than Marcia.
+  %% Married[Shearer] #= 10 + Married[Surnames[Peter]],
+  element2(Married,Surnames,Peter,MarriedSurnamesPeter),
+  Married[Shearer]      #= 10 + MarriedSurnamesPeter,
+  
+  %% Married[Shearer] + 10 #= Married[Surnames[Marcia]],
+  element2(Married,Surnames,Marcia,MarriedSurnamesMarcia),
+  Married[Shearer] + 10 #= MarriedSurnamesMarcia,
+
+
+  % * Douglas and Mildred have been Married for 25 years less than the Graves who, 
+  %   having been Married for 30 years, are the couple who have been Married 
+  %   the longest.
+  Douglas #= Mildred,
+  MarriedSurnamesDouglas + 25 #= Married[Graves],
+  Married[Graves] #= 30,
+
+  max(Married) #= Married[Graves],
+
+  % * Neither Elaine nor the Johnstones have been Married the shortest amount of time.
+  %% Married[Surnames[Elaine]] #> min(Married),
+  element2(Married,Surnames,Elaine,MarriedSurnamesElaine),
+  MarriedSurnamesElaine #> min(Married),
+  Married[Johnstone] #> min(Married),
+
+  % * Everett has been Married for 25 years.
+  element2(Married,Surnames,Everett,MarriedSurnamesEverett),
+  MarriedSurnamesEverett #= 25,
+
+
+  Vars = Wifes ++ Married,
+  solve(Vars),
+
+  println(husbands=Husbands),
+  println(wifes=Wifes),
+  println(married=Married),
+  nl,
+
+  foreach(I in 1..N)
+    nth(H,Husbands,I),
+    nth(W,Wifes,I),
+    println([SurnamesS[I],HusbandsS[H],WifesS[W],Married[I]])
+  end,
+
+  fail,
+ 
+  nl.
+
+
+go => true.
+
+%
+% Picat don't allow the following:
+%
+%   V = List1[List2[E]]
+%
+% where List1 and/or E are decision variables, so here's a small helper predicate.
+%
+element2(List1,List2,E,V) =>
+  element(E,List2,List2E),
+  element(List2E,List1,V).

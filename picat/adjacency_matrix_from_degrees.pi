@@ -1,0 +1,154 @@
+/* 
+
+  Adjacency matrix (graph) from degrees in Picat.
+
+  From Stack Overflow
+  Anyone has the logic for the following puzzle
+  http://stackoverflow.com/questions/6789797/anyone-has-the-logic-for-the-following-puzzle
+  """
+  I have an n*n matrix. Each vertex has a degree associated with it. Degree is the 
+  number of lines that can be drawn to its neighbouring vertices. I am generating an 
+  array containing degrees of each vertex. For example, array {1,2,2,1} implements the 
+  following two solutions.
+
+  solution 1
+     [ In matrix form
+         1 2 3 4
+         -------
+       1|0 1 0 0   1
+       2|1 0 1 0   2
+       3|0 1 0 1   2
+       4|0 0 1 0   1
+      
+         1 2 2 1
+     ]
+
+  solution 2
+     [ In matrix form
+         1 2 3 4
+         -------
+       1|0 0 1 0   1
+       2|0 0 1 1   2
+       3|1 1 0 0   2
+       4|0 1 0 0   1
+  
+         1 2 2 1
+  
+     ]
+  
+  what i want is, when i get the array i want to know whether it has one solution or more 
+  than one solution.
+
+  This is another example {0, 3, 1, 2, 4, 2, 2, 1, 3} has more 
+  than one solutions.
+  """
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import mip.
+% import sat.
+import cp.
+
+main => go.
+
+% First example
+go =>
+  nolog,
+  problem(1,Degrees),
+  All = find_all(X,adjacency_matrix_from_degrees(Degrees, X)),
+  print_all(All),
+  nl.
+
+% Second example
+go2 =>
+  nolog,
+  problem(2,Degrees),
+  All = find_all(X,adjacency_matrix_from_degrees(Degrees, X)),
+  print_all(All),
+  nl.
+
+
+%
+% Random degrees.
+% 
+% For larget N's a mip solver is probably faster than cp.
+%
+go3 ?=>
+  nolog,
+  garbage_collect(300_000_000),
+  _ = random2(),
+  N = 20,
+  Degrees = [ random() mod N div 2 : _ in 1..N],
+  println(degrees=Degrees),
+  nl,
+  adjacency_matrix_from_degrees(Degrees, X),
+  % print_matrix(X),  
+  print_matrix2(Degrees, X),
+  nl,
+  fail,
+  nl.
+
+go3 => true.
+
+print_all(All) =>
+  foreach(A in All)
+    print_matrix(A)
+  end,
+  println(len=All.len),
+  nl.
+
+
+print_matrix(M) => 
+  foreach(Row in M)
+    println(Row)
+  end,
+  nl.
+
+% a more fancy output
+print_matrix2(Degrees, M) =>
+  N = M.len,
+  foreach(I in 1..N)
+    printf("%2d", Degrees[I])
+  end,
+  nl,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if M[I,J] == 0 then
+        print(" .")
+      else
+        print(" X")
+      end
+    end,
+    printf(" |%d\n", Degrees[I])
+  end,
+  nl.
+
+
+adjacency_matrix_from_degrees(Degrees, X) =>
+
+  N = Degrees.len,
+  X = new_array(N,N),
+  X :: 0..1,
+
+  % row sums == degrees and col sums == degrees
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #= Degrees[I],
+     sum([X[J,I] : J in 1..N]) #= Degrees[I],    
+     X[I,I] #= 0 % no self loops
+  end,
+
+  % the matrix is symmetric
+  foreach(I in 1..N,J in 1..N)
+     X[I,J] #<=> X[J,I]
+  end,
+
+  solve($[ff,split],X).
+
+
+problem(1,[1,2,2,1]).
+problem(2,[0,3,1,2,4,2,2,1,3]).

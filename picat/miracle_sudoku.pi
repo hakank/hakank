@@ -1,0 +1,278 @@
+/* 
+
+  Miracle Sudoku in Picat.
+
+  From  Cracking The Cryptic "The Miracle Sudoku"
+  https://www.youtube.com/watch?v=yKf9aUIxdb4&feature=emb_title&fbclid=IwAR2vYHgWUncgTpe1NjoNuAM9pv1RhTd5Dv9cLfm3snM1iGaagMrmr6M5Gc8
+  """
+  - Normal Sudoku rules apply. 
+  - Any two cells separated by a knight's move or a king's move (in chess)
+    cannot contain the same digit.
+  - Any two orthogonally adjacent cells cannot contain consecutive digits.
+  """
+
+  Slate wrote about this:
+  "I Really Can’t Overstate How Riveting This Video of a Guy Solving a Sudoku Is - Just dynamite entertainment.":
+  https://slate.com/human-interest/2020/05/the-miracle-sudoku-is-an-absolutely-riveting-video.html?via=section_features
+
+
+
+  The Puzzle was created by Mitchell Lee.
+
+  The problem instance is
+   [[_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, 1,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  2, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _]].
+
+
+  And it has actually a unique solution!
+
+   [4,8,3, 7,2,6, 1,5,9]
+   [7,2,6, 1,5,9, 4,8,3]
+   [1,5,9, 4,8,3, 7,2,6]
+
+   [8,3,7, 2,6,1, 5,9,4]
+   [2,6,1, 5,9,4, 8,3,7]
+   [5,9,4, 8,3,7, 2,6,1]
+
+   [3,7,2, 6,1,5, 9,4,8]
+   [6,1,5, 9,4,8, 3,7,2]
+   [9,4,8, 3,7,2, 6,1,5]
+
+
+ Here's the solution to "A New Miracle Sudoku" created by Aad van de Wetering
+ (with hints 3 and 4) is show in https://www.youtube.com/watch?v=Tv-48b-KuxI
+ 
+
+  [9,4,8, 3,7,2, 6,1,5]
+  [3,7,2, 6,1,5, 9,4,8]
+  [6,1,5, 9,4,8, 3,7,2]
+
+  [4,8,3, 7,2,6, 1,5,9]
+  [7,2,6, 1,5,9, 4,8,3]
+  [1,5,9, 4,8,3, 7,2,6]
+
+  [8,3,7, 2,6,1, 5,9,4]
+  [2,6,1, 5,9,4, 8,3,7]
+  [5,9,4, 8,3,7, 2,6,1]
+
+ 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+
+main => go.
+
+go ?=>
+  problem(1,X),
+  miracle_sudoku(X),
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl,
+  
+  fail,
+  nl.
+
+go => true.
+
+%
+% A New Miracle Sudoku created by Aad van de Wetering
+%
+% https://www.youtube.com/watch?v=Tv-48b-KuxI
+% 
+go2 ?=>
+  problem(2,X),
+  miracle_sudoku(X),
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl,
+  
+  fail,
+  nl.
+
+go2 => true.
+
+%
+% No hint at all: 72 solutions.
+%
+go3 ?=>
+  Map = get_global_map(),
+  Map.put(count,0),
+  problem(0,X),
+  miracle_sudoku(X),
+  foreach(Row in X)
+    println(Row)
+  end,
+  Map.put(count,Map.get(count)+1),
+  nl,
+  
+  fail,
+  nl.
+
+go3 => println(num_solutions=get_global_map().get(count)).
+
+
+%
+% Test how many solutions there are with a 1 (or 2..9) in a single cell.
+% It's always 8 solutions with no exception.
+%
+go4 ?=>
+  Map = get_global_map(),
+  Map.put(count,0),
+  problem(0,X),
+  foreach(T in 1..9)
+    println(t=T),
+    foreach(I in 1..9, J in 1..9)
+      XX = copy_term(X),
+      XX[I,J] #= T,
+      Count= count_all(miracle_sudoku(XX)),
+      if Count != 8 then
+        println([t=T,i=I,j=J,count=Count])
+      end
+    end
+  end,
+
+  nl,
+  
+  fail,
+  nl.
+
+go4 => true.
+
+
+%
+% Place two different numbers.
+% There is a lot of solutions.
+% 
+go5 =>
+  problem(0,X),
+  NumSolutions = 0,
+  foreach(S in 1..9, T in 1..9, S != T)
+    println([s=S,t=T]),
+    foreach(I1 in 1..9, J1 in 1..9, I2 in 1..9, J2 in 1..9, (I1 != I2 ; J1 != J2))
+      XX = copy_term(X),
+      XX[I1,J1] #= S,
+      XX[I2,J2] #= T,
+      Count= count_all(miracle_sudoku(XX)),
+      % println(count=Count),
+      if Count == 1 then
+        println([s=S,i1=I1,j1=J1,t=T,i2=I2,j2=J2,count=Count]),
+        NumSolutions := NumSolutions+1
+      end
+    end
+  end,
+  println(numSolutions=NumSolutions),
+  nl.
+
+go5 => true.
+
+
+%
+% Solve Miracle Sudoku
+%
+miracle_sudoku(X) =>
+   N = 9,
+   N3 = 3,
+
+   Vars = X.vars(),
+   Vars :: 1..N,
+
+   % Sudoku
+   foreach(Row in X)
+     all_different(Row)
+   end,
+   foreach(Column in transpose(X))
+     all_different(Column)
+   end,
+   
+   foreach(I in 1..N3..N, J in 1..N3..N)
+     all_different([X[I+K,J+L] : K in 0..N3-1, L in 0..N3-1])
+   end,
+
+   % Knight move: must be different
+   foreach(I in 1..N, J in 1..N, A in -2..2, B in -2..2,
+      member(I+A,1..N), member(J+B,1..N), abs(A)+abs(B)==3)
+      X[I,J] #!= X[I+A,J+B]
+   end,
+
+   % Kings move: must be different
+   foreach(I in 1..N, J in 1..N, A in -1..1, B in -1..1,
+      member(I+A,1..N), member(J+B,1..N), (A != 0 ; B != 0))
+      X[I,J] #!= X[I+A,J+B]
+   end,
+
+   % Orthogonally adjacent (i.e. same row, same column): cannot contain consecutive digits
+   foreach(I in 1..N)
+     foreach(J in 2..N)
+       abs(X[I,J-1]-X[I,J]) #> 1,
+       abs(X[J-1,I]-X[J,I]) #> 1       
+     end
+   end,
+
+   solve([ffd,down], Vars).
+
+% No hints
+problem(0,X) =>
+  X =
+   [[_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _]].
+
+
+problem(1,X) =>
+  X =
+   [[_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, 1,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  2, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _]].
+
+
+%
+% A New Miracle Sudoku created by Aad van de Wetering
+%
+% https://www.youtube.com/watch?v=Tv-48b-KuxI
+% 
+problem(2,X) =>
+  X =
+   [[_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, 4, _,  _, _, _],
+    
+    [_, _, 3,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _],
+    [_, _, _,  _, _, _,  _, _, _]].

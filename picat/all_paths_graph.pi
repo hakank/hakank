@@ -1,0 +1,150 @@
+/* 
+
+  All paths (with a graph representation) in Picat.
+
+  Problem from http://www.anselm.edu/homepage/mmalita/logic/message.txt
+  """
+  Email is out of order at St. Mary's College and the teacher wants 
+  to tell Robert something urgent.
+  The teacher meets Craig and asks him to tell Robert she wants to speak 
+  with him. 
+  Craig says that if he meets Robert its OK, but else he will send the message 
+  to everyone he meets and the message will go further.
+  Each student tells each student he meets that the teacher waits for Robert
+  in her office.
+  The students meet each other (we don't know in what order):
+  1) Craig meets John and Jason
+  2) Jason meets Kiki and Adam and David
+  3) Adam meets Scott and Jeremy
+  4) Jeremy meets John and Scott
+  5) Kiki meets Chris
+  6) Chris meets David and Adam
+  7) David meets Robert
+
+  Do you think the teacher will wait for ever in her office?
+  Display all the possible paths from Craig to Robert.
+  """
+
+  This is the optimal path from Chris to Robert (in 4 steps):
+   x = [3,5,4,9,0,0,0,0,0,0]
+   [craig,jason,david,robert]
+   pathLen = 4
+
+  Here are all the 11 possible message paths from Christ to Robert
+    [craig,jason,adam,chris,david,robert]
+    [craig,jason,david,robert]
+    [craig,jason,kiki,chris,david,robert]
+    [craig,john,jeremy,adam,chris,david,robert]
+    [craig,john,jeremy,adam,chris,kiki,jason,david,robert]
+    [craig,john,jeremy,adam,jason,david,robert]
+    [craig,john,jeremy,adam,jason,kiki,chris,david,robert]
+    [craig,john,jeremy,scott,adam,chris,david,robert]
+    [craig,john,jeremy,scott,adam,chris,kiki,jason,david,robert]
+    [craig,john,jeremy,scott,adam,jason,david,robert]
+    [craig,john,jeremy,scott,adam,jason,kiki,chris,david,robert]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  N = 10,
+
+  Adam = 1,
+  Chris = 2,
+  Craig = 3,
+  David = 4,
+  Jason = 5,
+  Jeremy = 6,
+  John = 7,
+  Kiki = 8,
+  Robert = 9,
+  Scott = 10,
+
+  People = [adam,chris,craig,david,jason,jeremy,john,kiki,robert,scott],
+
+  % The message graph
+  Graph = [
+   [Craig, John],
+   [Craig, Jason],
+   [Jason, Kiki],
+   [Jason, Adam], 
+   [Jason, David],
+   [Adam, Scott], 
+   [Adam, Jeremy],
+   [Jeremy, John],
+   [Jeremy, Scott],
+   [Kiki, Chris],
+   [Chris, David],
+   [Chris, Adam],
+   [David, Robert]
+  ],
+
+
+  % decision variables
+  X = new_list(N),
+  X :: 0..N, % 0 means no message
+
+  PathLen #= sum([X[I] #> 0 : I in 1..N]),
+
+  all_different_except_0(X),
+  X[1] #= Craig, % Craig is first in the message chain
+
+  % sum([X[I] #= Robert : I in 1..N]) #= 1,
+
+  last_not_0(X, Robert),
+  all_paths(X, Graph),
+
+  % solve($[min(PathLen)],X), % Shortest path
+  solve($[ff,split],X), % all possible message paths
+  println(x=X),
+  println(people=[People[X[I]] : I in 1..N, X[I] > 0]),
+  println(pathLen=PathLen),
+  nl,
+  fail,
+  nl.
+
+go => true.
+
+%
+% y is the last element which is > 0. All elements after y is 0
+%
+last_not_0(X, Y) =>
+   N = X.len,
+   foreach(I in 1..N)
+     % all elements in x before y are > 0
+     % all elements in x after y are 0     
+     Y #= X[I] #<=>
+       sum([X[J] #> 0 : J in 1..I]) #= I #/\
+       sum([X[J] #= 0 : J in I+1..N]) #= N-I
+   end.
+
+%
+% all_paths
+% 
+% (Well, all paths are generated only if the solver generates all
+%  possible solutions.)
+%
+all_paths(X, Graph) =>
+   N = X.len,
+   GLen = Graph.len,
+   foreach(I in 2..N)
+     X[I] #= 0
+     #\/
+     (
+       X[I] #> 0 #/\
+       X[I-1] #> 0 #/\
+       (
+       sum([Graph[J,1] #= X[I-1] #/\ Graph[J,2] #= X[I] : J in 1..GLen]) #> 0
+        #\/
+       sum([Graph[J,1] #= X[I] #/\ Graph[J,2] #= X[I-1] : J in 1..GLen]) #> 0
+       )
+     )
+   end.
+

@@ -1,0 +1,149 @@
+/* 
+
+  Motel problem in Picat.
+
+  From the F1zz (f1zz.org) example motel.fizz, https://f1zz.org/samples/motel.html
+  """
+  * @abstract    this sample is based on Michael Spivey's introduction to logic programming.
+  * @discussion
+  *
+  *  - a motel suite has two rooms: lounge, bedroom
+  *  - each of the rooms has one door and one window
+  *  - the lounge's window needs to be opposite to the door
+  *  - the bedroom's door needs to be adjacent to the lounge's door
+  *  - the bedroom's window needs to be adjacent to the bedroom's door
+  *  - the bedroom's window needs to be on the east wall
+  *
+  *    Where should the doors and the windows be?
+  """
+
+  Here we implement a CP variant and an LP (Logic Programming) variant.
+  The LP variant is a bit simpler...
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+%
+% CP approach.
+%
+go ?=>
+  Dirs = [East, _West, _North, _South],
+  Dirs = 1..Dirs.len,
+
+  %  - a motel suite has two rooms: lounge, bedroom
+  %  - each of the rooms has one door and one window
+  
+  % Lounge Door, Lounge Window, Bedroom Door, Bedroom Window
+  Ls = [LD,LW,BD,BW],
+  Ls :: Dirs,
+  Ls2 = [lounge_door,lounge_wall, bedroom_door, bedroom_window],
+  println(ls=Ls2),
+
+  %  - the lounge's window needs to be opposite to the door
+  opposite(LW,LD,Dirs),
+
+  %  - the bedroom's door needs to be adjacent to the lounge's door
+  adjacent(BD,LD,Dirs),
+  
+  %  - the bedroom's window needs to be adjacent to the bedroom's door
+  adjacent(BW,BD,Dirs),
+  
+  %  - the bedroom's window needs to be on the east wall
+  BW #= East,
+  
+  solve(Ls),
+  Dirs2 = [east,west,north, south],
+  println([Ls2[I]=Dirs2[T] : {I,T} in zip(1..4,Ls)]),
+  fail,
+  
+  nl.
+
+go => true.
+
+%
+% D1 is opposite of D2
+%
+opposite(D1,D2,[East, West, North, South]) =>
+  D1 #= East #<=> D2 #= West,
+  D1 #= West #<=> D2 #= East,
+  D1 #= North #<=> D2 #= South,
+  D1 #= South #<=> D2 #= North.
+
+%
+%     North
+% West      East
+%     South
+%
+%
+% D1 is adjacent to D2
+%
+adjacent(D1,D2,[East, West, North, South]) =>
+  (D1 #= East  #\/ D1 #= West)  #<=> (D2 #= North #\/ D2 #= South),
+  (D1 #= North #\/ D1 #= South) #<=> (D2 #= West  #\/ D2 #= East).
+
+
+%
+% LP approach
+%
+go2 ?=>
+  %  - a motel suite has two rooms: lounge, bedroom
+  %  - each of the rooms has one door and one window
+  Dirs = [west,east,north,south],
+  Ls = [LD,LW,BD,BW],  
+  foreach(T in Ls)
+    member(T, Dirs)
+  end,
+
+  %  - the lounge's window needs to be opposite to the door
+  opposite(LW,LD),
+ 
+  %  - the bedroom's door needs to be adjacent to the lounge's door
+  adjacent(BD,LD),
+
+  %  - the bedroom's window needs to be adjacent to the bedroom's door
+  adjacent(BW,BD),
+
+  %  - the bedroom's window needs to be on the east wall
+  BW = east,
+  
+  println(ls=Ls),
+  fail,
+  nl.
+
+go2 => true.
+
+% LP variants
+opposite(west,east).
+opposite(east,west).
+opposite(north,south).
+opposite(south,north).
+
+%% Also works
+% opposite(D1,D2) =>
+%   (D1 = west,D2=east)
+%    ;
+%   (D1 = east,D2=west)
+%    ;
+%   (D1 = north,D2=south)
+%    ;
+%   (D1 = south,D2=north).
+   
+adjacent(north,D) => member(D,[west,east]).
+adjacent(south,D) => member(D,[west,east]).
+adjacent(east, D) => member(D,[north,south]).
+adjacent(west, D) => member(D,[north,south]).
+
+%% This works but is not that nice.
+% adjacent(D1,D2) =>
+%   if member(D1,[south,north]) then
+%      member(D2,[west,east])
+%   else 
+%      member(D2,[south,north])
+%   end.

@@ -1,0 +1,152 @@
+/* 
+
+  Bit vector problem in Picat.
+
+  From the presentation by 
+  Filip Marić and Predrag Janicˇić
+  "URBiVa: Uniform Reduction to Bit-Vector Arithmetic"
+  (International Joint Conference on Automated Reasoning 2010)
+  """
+  Alice picks a number. She then multipies it by two. Then she
+  inverts the last 4 bits of the obtained result. What is the number
+  that Alice picked, if the obtained result is the same as the initial
+  pick?
+  """
+
+  At page 9, the presentation says:
+  """
+  The only solution is na = 0b0000101 = 5.
+  """
+
+  But then I must have missed something in this model since it gives
+  8 solutions (slightly edited): 
+
+     5, 21, 37, 53, 69, 85, 101, 117
+
+  num : 5  num_x  : [0, 0, 0, 0, 0, 1, 0, 1]
+  num2: 10 num2_x : [0, 0, 0, 0, 1, 0, 1, 0]
+  num3: 5 num3_x  : [0, 0, 0, 0, 0, 1, 0, 1]
+
+  num : 21  num_x : [0, 0, 0, 1, 0, 1, 0, 1]
+  num2: 42 num2_x : [0, 0, 1, 0, 1, 0, 1, 0]
+  num3: 21 num3_x : [0, 0, 0, 1, 0, 1, 0, 1]
+
+  num : 37  num_x : [0, 0, 1, 0, 0, 1, 0, 1]
+  num2: 74 num2_x : [0, 1, 0, 0, 1, 0, 1, 0]
+  num3: 37 num3_x : [0, 0, 1, 0, 0, 1, 0, 1]
+
+  num : 53  num_x : [0, 0, 1, 1, 0, 1, 0, 1]
+  num2: 106 num2_x: [0, 1, 1, 0, 1, 0, 1, 0]
+  num3: 53 num3_x : [0, 0, 1, 1, 0, 1, 0, 1]
+
+  num : 69  num_x : [0, 1, 0, 0, 0, 1, 0, 1]
+  num2: 138 num2_x: [1, 0, 0, 0, 1, 0, 1, 0]
+  num3: 69 num3_x : [0, 1, 0, 0, 0, 1, 0, 1]
+
+  num : 85  num_x : [0, 1, 0, 1, 0, 1, 0, 1]
+  num2: 170 num2_x: [1, 0, 1, 0, 1, 0, 1, 0]
+  num3: 85 num3_x : [0, 1, 0, 1, 0, 1, 0, 1]
+
+  num : 101  num_x: [0, 1, 1, 0, 0, 1, 0, 1]
+  num2: 202 num2_x: [1, 1, 0, 0, 1, 0, 1, 0]
+  num3: 101 num3_x: [0, 1, 1, 0, 0, 1, 0, 1]
+
+  num : 117  num_x: [0, 1, 1, 1, 0, 1, 0, 1]
+  num2: 234 num2_x: [1, 1, 1, 0, 1, 0, 1, 0]
+  num3: 117 num3_x: [0, 1, 1, 1, 0, 1, 0, 1]
+
+
+  For bits = 16 the model gives 2048 solutions.
+  The last is 32757 
+  num : 32757  num_x: [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+  num2: 65514 num2_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0]
+  num3: 32757 num3_x: [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+%
+% 8 bits.
+%
+go ?=>
+  Bits = 8,
+  Print = true,
+  All = findall(Num,bit_vector(Bits,Print, Num)),
+  println(all=All), 
+
+  nl.
+
+go => true.
+
+%
+% 16 bits
+%
+go2 => 
+  Bits = 16,
+  Print = false,
+  All = findall(Num,bit_vector(Bits,Print,Num)),
+  println(all=All), 
+  println(len=All.len),
+  nl.
+
+%
+% 32 bits. Just counts the number of solutions.
+%
+go3 => 
+  Bits = 32,
+  Print = false,
+  NumSols = count_all(bit_vector(Bits,Print,_Num)),
+  println(len=NumSols),
+  nl.
+
+
+bit_vector(Bits,Print, Num) =>
+
+  NumX = new_list(Bits),
+  NumX :: 0..1,
+  Num :: 0..2**Bits-1,
+
+  Num2X = new_list(Bits),
+  Num2X :: 0..1,
+  Num2 :: 0..2**Bits-1,
+
+  Num3X = new_list(Bits),
+  Num3X :: 0..1,
+  Num3 :: 0..2**Bits-1,
+
+  to_num(NumX, 2, Num) ,
+  Num2 #= Num*2,
+  to_num(Num2X, 2, Num2),
+  to_num(Num3X, 2, Num3),
+
+  % invert the last 4 bits
+  foreach(I in Bits-3..Bits)
+    Num3X[I] #= 1 #<=> Num2X[I] #= 0
+  end,
+  Num #= Num3,
+
+  Vars = NumX ++ Num2X ++ Num3X,
+  solve(Vars),
+  if Print == true then
+    println([num=Num,num2=Num2,num3=Num3]),
+    printf("numX : %4d = %w\n",Num, NumX),
+    printf("num2X: %4d = %w\n",Num2, Num2X),
+    printf("num3X: %4d = %w\n",Num3, Num3X),    
+    nl
+  end.
+
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).

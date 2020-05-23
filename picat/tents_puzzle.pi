@@ -1,0 +1,193 @@
+/* 
+
+  Tents puzzle in Picat.
+
+  See for example
+  http://www.crauswords.com/tents.html
+  """
+  A Tents puzzle consists of a square or rectangular array of squares in 
+  which some of the squares contain a tree, with the remainder containing 
+  only grass. The puzzle is solved by placing tents into selected grassy 
+  squares so that each tree has its own tent (either horizontally or vertically), 
+  and each tent has its own tree (either horizontally or vertically). 
+  The squares in which tents are placed must not touch on either the sides 
+  or the corners. Numbers located to the side and to the bottom of the 
+  puzzle tell you how many tents are in each row and column.
+
+    Problem: T: Tree
+     _ T _ _ _ _   1
+     _ _ _ _ T _   2
+     _ _ T _ _ _   0
+     _ T _ T _ _   3
+     T _ _ _ T _   0
+     _ _ T _ _ _   2
+     
+     2 1 2 0 2 1
+  
+  Solution (e: tEnt)
+     e T _ _ _ _   1
+     _ _ e _ T e   2
+     _ _ T _ _ _   0
+     e T e T e _   3
+     T _ _ _ T _   0
+     _ e T _ e _   2
+     
+     2 1 2 0 2 1
+
+  """
+
+  Also see: 
+   - https://www.brainbashers.com/tents.asp
+   - https://www.brainbashers.com/tentshelp.asp
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+
+go ?=>
+  nolog,
+  problem(2,N,Puzzle,Rows,Cols),
+  tents(N,Puzzle,Rows,Cols, X),
+  print_solution(N,X),
+  fail,
+  nl.
+
+go => true.
+
+print_solution(N,X) => 
+  Map = new_map([0='_',1='t',2='^']),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      print(Map.get(X[I,J]))
+    end,
+    nl
+  end,
+  nl.
+
+
+tents(N,Puzzle,Rows,Cols, X) =>
+  T = 1, % Tree
+  E = 2, % tEnt
+  X = new_array(N,N),
+  X :: 0..E,
+
+  % Handle number of tents for rows and columns
+  foreach(I in 1..N)
+    sum([X[I,J] #= E : J in 1..N]) #= Rows[I],
+    sum([X[J,I] #= E : J in 1..N]) #= Cols[I] 
+  end,
+
+  foreach(I in 1..N, J in 1..N)
+     if Puzzle[I,J] == T then
+        X[I,J] #= T,
+        % each tree has its tent
+        sum([X[I+A,J+B] #= E : A in -1..1, member(A+I,1..N), B in -1..1, member(B+J,1..N), abs(A+B)==1]) #> 0
+     else
+       X[I,J] #!= T
+     end,
+     
+     % (note that we have to use #= and #=> here since we are testing against a decision variable)
+     X[I,J] #= E #=>
+        % each tent has its tree
+        sum([X[I+A,J+B] #= T : A in -1..1, member(A+I,1..N), B in -1..1, member(B+J,1..N), abs(A+B)==1]) #> 0
+        #/\
+        % no two tents must touch   
+        sum([X[I+A,J+B] #= E : A in -1..1, member(A+I,1..N), B in -1..1, member(B+J,1..N), (A != 0; B != 0)]) #= 0       
+  end,
+  
+  % same number of Trees and Tents
+  sum([X[I,J] #= E : I in 1..N, J in 1..N]) #= sum([X[I,J] #= T : I in 1..N, J in 1..N]), 
+
+  Vars = X,
+  println(solve),
+  solve($[],Vars).
+  
+
+
+
+%
+% Problems
+%
+
+
+%
+% From http://www.crauswords.com/tents.html
+%
+% Solution (t=tree, e=tent):
+% eT____
+% __e_Te
+% __T___
+% eTeTe_
+% T___T_
+% _eT_e_
+%
+problem(1,N,Puzzle,Rows,Cols) =>
+  N = 6,
+  T = 1,
+  Puzzle = 
+  [
+  [0, T, 0, 0, 0, 0],
+  [0, 0, 0, 0, T, 0],
+  [0, 0, T, 0, 0, 0],
+  [0, T, 0, T, 0, 0],
+  [T, 0, 0, 0, T, 0],
+  [0, 0, T, 0, 0, 0]
+  ],
+  Rows = [1,2,0,3,0,2],
+  Cols = [2,1,2,0,2,1].
+
+
+%
+% From https://www.brainbashers.com/showtents.asp?date=1231&diff=Medium&size=16
+%
+% Solution (T: tree, e: tent)
+% eT___eTe_e_e_eTe
+% _______T_T_T_TT_
+% _eTe_T_Te___T_e_
+% _T___e___Te_e___
+% e_eT_____T____T_
+% T____eTeTe_eT_e_
+% e____________T__
+% T_________Te_eTe
+% e_eT__e_Te______
+% T__Te_T______e__
+% Te____e__T_e_T_e
+% T____TT__e_T___T
+% e__e_e_e_T_Te__T
+% ___T___T_e_____e
+% T__e_eTe_T_____T
+% e__T_T___eTeTe_e
+%
+problem(2,N,Puzzle,Rows,Cols) =>
+ N = 16,
+ T = 1,
+ Puzzle = 
+[
+ % 6  2  2  3  1  5  2  4  1  6  1  5  2  4  2  5
+  [0, T, 0, 0, 0, 0, T, 0, 0, 0, 0, 0, 0, 0, T, 0], % 7
+  [0, 0, 0, 0, 0, 0, 0, T, 0, T, 0, T, 0, T, T, 0], % 0
+  [0, 0, T, 0, 0, T, 0, T, 0, 0, 0, 0, T, 0, 0, 0], % 4
+  [0, T, 0, 0, 0, 0, 0, 0, 0, T, 0, 0, 0, 0, 0, 0], % 3
+  [0, 0, 0, T, 0, 0, 0, 0, 0, T, 0, 0, 0, 0, T, 0], % 2
+  [T, 0, 0, 0, 0, 0, T, 0, T, 0, 0, 0, T, 0, 0, 0], % 5
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, T, 0, 0], % 1
+  [T, 0, 0, 0, 0, 0, 0, 0, 0, 0, T, 0, 0, 0, T, 0], % 3
+  [0, 0, 0, T, 0, 0, 0, 0, T, 0, 0, 0, 0, 0, 0, 0], % 4
+  [T, 0, 0, T, 0, 0, T, 0, 0, 0, 0, 0, 0, 0, 0, 0], % 2 
+  [T, 0, 0, 0, 0, 0, 0, 0, 0, T, 0, 0, 0, T, 0, 0], % 4
+  [T, 0, 0, 0, 0, T, T, 0, 0, 0, 0, T, 0, 0, 0, T], % 1
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, T, 0, T, 0, 0, 0, T], % 5
+  [0, 0, 0, T, 0, 0, 0, T, 0, 0, 0, 0, 0, 0, 0, 0], % 2
+  [T, 0, 0, 0, 0, 0, T, 0, 0, T, 0, 0, 0, 0, 0, T], % 3
+  [0, 0, 0, T, 0, T, 0, 0, 0, 0, T, 0, T, 0, 0, 0]  % 5
+],
+Rows = [7,0,4,3,2,5,1,3,4,2,4,1,5,2,3,5],
+Cols = [6,2,2,3,1,5,2,4,1,6,1,5,2,4,2,5].

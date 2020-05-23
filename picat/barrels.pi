@@ -1,0 +1,147 @@
+/* 
+
+  Barrels problem in Picat.
+
+  From September Magic Contest 2014
+  by Riad Khanmagomedo
+  http://logicmastersindia.com/lmitests/dl.asp?attachmentid=468 
+  (SeptemberMagicContest2014_lns.pdf)
+  """
+  Fill the white cells on the each barrels side with different digits from 1 to 6. 
+  Digits cannot repeat in every horizontal and vertical directions. Each number 
+  on the barrels top must be equal to the sum or product of the four different 
+  digits in the barrel. All top numbers are different and less than 91.
+
+  [
+     
+    Barrels:
+
+       -      -     - 
+     ___    ___   ___
+     X 3    X X   6 X
+     X X    X X   X X
+  
+     13       -   30
+     ___    ___   ___
+     X X    X 4   X X
+     X X    5 X   X X
+  
+     15     24    -
+     ___    ___   ___
+     X X    X 2   5 X
+     X 1    X X   X X
+  
+  ]
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  N = 9, % 9 barrels
+  % M = 2, % each barrel content is 2x2
+  T = 6, % the 6x6 matrix
+
+  Barrels =  [ _, _,  _,
+              13, _, 30, 
+              15, 24, _],
+  Barrels :: 1..91,
+
+  Ops = [prod, sum], % operations
+  BarrelOp = new_list(N),
+  BarrelOp :: 1..2, 
+
+  Contents =   [
+    [_, 3, _, _], % barrel 1     1  2  7  8
+    [_, _, _, _], % barrel 2     3  4  9 10
+    [6, _, _, _], % ..           5  6 11 12
+
+    [_, _, _, _], %             13 14 19 20
+    [_, 4, 5, _], %             15 16 21 22
+    [_, _, _, _], %             17 18 23 24
+
+    [_, _, _, 1], %             24 25 31 32
+    [_, 2, _, _], %             27 28 33 34
+    [5, _, _, _]  % barrel 9    29 30 35 36
+  ],
+  Contents :: 1..T,
+
+  % Flattened version of Contents
+  ContentsFlat = Contents.flatten,
+  ContentsFlat :: 1..T,
+
+  %
+  % 6x6 representation of contents
+  %
+  Mat = new_array(T,T),
+  Mat :: 1..T,
+
+  % convert indices of contents to indices in mat
+  MatIx = 
+  [
+   [1, 2,   5, 6,   9,10],   % 1 1  2 2  3 3 
+   [3, 4,   7, 8,  11,12],   % 1 1  2 2  3 3 
+
+  [13,14,  17,18,  21,22],   % 4 4  5 5  6 6
+  [15,16,  19,20,  23,24],   % 4 4  5 5  6 6 
+
+  [25,26,  29,30,  33,34],   % 7 7  8 8  9 9
+  [27,28,  31,32,  35,36]    % 7 7  8 8  9 9
+  ],
+
+  %
+  % constraints
+  %
+  all_different(Barrels),
+  foreach(B in 1..N)
+     Tmp = $Contents[B], 
+     all_different(Tmp),
+     (
+       (prod(Tmp) #= Barrels[B] #/\ BarrelOp[B] #= 1)
+       #\/
+       (sum(Tmp) #= Barrels[B]  #/\ BarrelOp[B] #= 2)
+     )
+  end,
+
+  % convert mat <-> contents
+  foreach(I in 1..T, J in 1..T)
+    Mat[I,J] #= ContentsFlat[MatIx[I,J]]
+  end,
+  
+  % % mat is a latin square
+  foreach(I in 1..T)
+    all_different([Mat[I,J] : J in 1..T]),
+    all_different([Mat[J,I] : J in 1..T]) 
+  end,
+
+  Vars = Barrels.vars ++ Contents.vars ++ Mat.vars ++ BarrelOp,
+  solve($[ff,split],Vars),
+
+  println(barrels=Barrels),
+  foreach(B in 1..N)
+    printf("Barrel %d (%d): %w op: %w\n", B, Barrels[B], Contents[B], Ops[BarrelOp[B]])
+  end,
+  println("\nBarrel Grid:"),
+  foreach(B in 1..T)
+    nl,
+    foreach(I in 1..6)
+      if (I mod 2 == 1) then
+        print(" ")
+      end,
+      print(Mat[B,I]), print(" ")
+    end,
+    if B mod 2 == 0 then nl end
+  end,
+  nl,
+  
+  fail,
+  nl.
+
+go => true.

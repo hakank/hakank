@@ -1,0 +1,114 @@
+/* 
+
+  Agricultural pricing in Picat.
+
+  From H. Paul Williams "Model Building in Mathematical Programming", 4th edition
+  Agricultural Pricing example, sections 12.21, 13.21, 14.21
+
+  (This is a port of the MiniZinc model: http://hakank.org/minizinc/agprice.mzn )
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+main => go.
+
+go =>
+  N = 35,
+  Max = 10000.0,
+  Grid = [0.06,0.1,0.15,0.2,0.25,0.3,0.3125,0.325,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.6625,0.66875,0.7,0.75,0.8,0.85,0.9,0.95,1.0,1.025,1.05,1.1,1.15,1.2,1.25,1.3,1.35,1.4,1.45,1.5],
+
+  Milk :: 0.0..Max,
+  Milksq :: 0.0..Max,
+  Butt :: 0.0..Max,
+  Buttsq :: 0.0..Max,
+  Cha :: 0.0..Max,
+  Chasq :: 0.0..Max,
+  Chb :: 0.0..Max,
+  Chbsq :: 0.0..Max,
+  Xm :: 0.0..Max,
+  Xb :: 0.0..Max,
+  Xca :: 0.0..Max,
+  Xcb :: 0.0..Max,
+  Q :: -100.0..100.0, % "free" variable
+  Qsq :: 0.0..Max,
+
+
+  LMilk = new_list(N),
+  LMilk :: 0.0..1.0,
+  LButt = new_list(N),
+  LButt :: 0.0..1.0,
+  LCha = new_list(N),
+  LCha :: 0.0..1.0,
+  LChb = new_list(N),
+  LChb :: 0.0..1.0,
+  LQ = new_list(N),
+  LQ :: 0.0..1.0,
+  MQ = new_list(N),
+  MQ :: 0.0..1.0,
+
+  Revenue #= -6492.0*Milksq-1200.0*Buttsq-194.0*Chasq-8.0*Chbsq-Qsq +6748.0*Milk+1185.0*Butt+420.0*Cha+70.0*Chb,
+
+  % The Mip module don't like literal division constants.
+  C1 = 1.0/4.82,
+  C2 = 1.0/0.32,
+  C3 = 1.0/0.21,
+  C4 = 1.0/0.07,
+  C5 = 0.4/0.297,
+  C6 = 2.7/0.720,
+  C7 = 1.1/1.05,
+  C8 = 0.4/0.815,
+  C9 = 0.1/0.815,
+  C10 = 0.4/1.05,
+  % (1.0/4.82)*Xm+(0.4/0.297)*Milk #= 1.4,
+  % (1.0/0.32)*Xb+(2.7/0.720)*Butt #= 3.7,
+  % (1.0/0.21)*Xca+(1.1/1.05)*Cha -(0.1/0.815)*Chb #= 2.0,
+  % (1.0/0.07)*Xcb+(0.4/0.815)*Chb -(0.4/1.05)*Cha #= 1.0,
+  C1*Xm + C5*Milk #= 1.4,
+  C2*Xb + C6*Butt #= 3.7,
+  C3*Xca + C7*Cha - C9*Chb #= 2.0,
+  C4*Xcb + C8*Chb - C10*Cha #= 1.0,
+  
+  0.04*Xm + 0.8*Xb + 0.35*Xca + 0.25*Xcb #<= 0.600,
+  0.09*Xm + 0.02*Xb + 0.3*Xca + 0.4*Xcb #<= 0.750,
+  4.82*Milk + 0.32*Butt + 0.21*Cha + 0.07*Chb #<= 1.939,
+  Cha - Chb - 0.195*Q #= 0.0,
+   
+  Milk - sum([Grid[I]*LMilk[I] : I in 1..N]) #= 0.0,
+  Butt - sum([Grid[I]*LButt[I] : I in 1..N]) #= 0.0,
+  Cha - sum([Grid[I]*LCha[I] : I in 1..N])  #= 0.0,
+  Chb - sum([Grid[I]*LChb[I] : I in 1..N])  #= 0.0,
+  Q + sum([Grid[I]*MQ[I] : I in 1..N]) - sum([Grid[I]*LQ[I] : I in 1..N])  #= 0.0,
+  Milksq - sum([Grid[I]*Grid[I] * LMilk[I] : I in 1..N])  #= 0.0,
+  Buttsq - sum([Grid[I]*Grid[I] * LButt[I] : I in 1..N])  #= 0.0,
+  Chasq - sum([Grid[I]*Grid[I] * LCha[I] : I in 1..N])  #= 0.0,
+  Chbsq - sum([Grid[I]*Grid[I] * LChb[I] : I in 1..N])  #= 0.0,
+  Qsq - sum([Grid[I]*Grid[I] * MQ[I] : I in 1..N]) - sum([Grid[I]*Grid[I] * LQ[I] : I in 1..N])  #= 0.0,
+   
+  sum(LMilk) #<= 1.0,
+  sum(LButt) #<= 1.0,
+  sum(LCha) #<= 1.0,
+  sum(LChb) #<= 1.0,
+  sum([MQ[I]+LQ[I] : I in 1..N]) #<= 1.0,
+
+  Vars = LMilk ++ LButt ++ LCha ++ LChb ++ LQ ++ MQ,
+  solve($[max(Revenue)], Vars),
+  % println(revenue=Revenue),
+  % println([milk=Milk,butt=Butt,cheese_a=Cha,cheese_b=Chb,q=Q]),  
+  printf("Revenue       : %10.3f\n", Revenue),
+  printf("Milk price    : %10.3f\n", Milk*1000),
+  printf("Butter price  : %10.3f\n", Butt*1000),
+  printf("Cheese 1 price: %10.3f\n", Cha*1000),
+  printf("Cheese 2 price: %10.3f\n", Chb*1000),
+  nl,
+  printf("Milk prod     : %10.3f\n", Xm*1000),
+  printf("Butter prod   : %10.3f\n", Xb*1000),
+  printf("Cheese 1 prod : %10.3f\n", Xca*1000),
+  printf("Cheese 2 prod : %10.3f\n", Xcb*1000),
+
+
+  nl.
+
