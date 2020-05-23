@@ -23,7 +23,7 @@
 % """
 
 % 
-% Model created by Hakan Kjellerstrand, hakank@bonetmail.com
+% Model created by Hakan Kjellerstrand, hakank@gmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 
 % include "globals.mzn"; 

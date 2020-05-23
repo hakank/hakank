@@ -77,7 +77,7 @@ solve satisfy;
 constraint
   sum(x) = n 
   /\ % symmetry breaking (all 0 last)
-  forall(i in 1..n) (
+  forall(i in 2..n) (
     if x[i-1] = 0 then forall(j in i..n) ( x[i] = 0 ) else true endif
    )
 ;

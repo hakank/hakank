@@ -126,7 +126,7 @@ constraint
 
 output [
   % "surnames: ", show(surnames), "\n",
-  "husbands: ", show(surnames), "\n",
+  "husbands: ", show(husbands), "\n",
   "wifes   : ", show(wifes), "\n",
   "married : ", show(married), "\n",
 ]
