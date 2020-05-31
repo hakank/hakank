@@ -51,8 +51,8 @@ var 1..max_j: index_j;
 array[1..max_i,1..max_j] of var 0..9: matrix;
 var 0..8: value;
 
-predicate element_matrix(int: max_i, 
-                         int: max_j, 
+predicate element_matrix(var int: index_i, 
+                         var int: index_j, 
                          array[int,int] of var int: matrix,
                          var int: value) =
                    matrix[index_i,index_j] = value   
@@ -86,7 +86,7 @@ constraint
    /\
     value = 7
    /\
-   element_matrix(max_i,max_j,matrix, value)
+   element_matrix(index_i,index_j,matrix, value)
 ;
 
 

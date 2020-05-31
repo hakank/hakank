@@ -67,5 +67,5 @@ output
   "element_table: " ++ show(element_table) ++ "\n" ++
   "x: " ++ show(x) ++ "\n" ++
   "y: " ++ show(y) ++ "\n" ++
-  "z: " ++ show(x) ++ "\n" 
+  "z: " ++ show(z) ++ "\n" 
 ];
