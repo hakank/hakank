@@ -1,0 +1,143 @@
+/* 
+
+  3-group split in Picat.
+
+  From 
+  http://stackoverflow.com/questions/8762230/what-is-an-algorithm-to-split-a-group-of-items-into-3-separate-groups-fairly
+  """
+  I have this problem in my textbook: Given a group of n items, each with a distinct value 
+  V(i), what is the best way to divide the items into 3 groups so the group with the 
+  highest value is minimIzed? Give the value of this largest group.
+
+  I know how to do the 2 pile variant of this problem: it just requires running the 
+  knapsack algorithm backwards on the problem. However, I am pretty puzzled as how to 
+  solve this problem. Could anyone give me any pointers?
+  
+  Answer: Pretty much the same thing as the 0-1 knapsack, although 2D
+  """
+
+  (Via Mathias Brandewinder, Clear Lines blog
+  http://www.clear-lines.com/blog/post/Fair-split-into-3-groups-using-Bumblebee.aspx )
+
+  Note: I assume that "so the group with the highest value is minimIzed" means
+  that the _sum_ of the elements in this group is minimized.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  foreach(P in  1..6)
+    println(problem=P),
+    data(P,N,A,K),    
+    time2(do_fair_split(N,A,K))
+  end,
+  nl.
+
+go => true.
+
+%
+% random instance
+%
+go2 =>
+  N1 = 10000,
+  K = 3,
+  _ = random2(),
+  A = [ 1+random() mod (2*N1) : _ in 1..N1].sort_remove_dups,
+  N = A.len,
+  println([n=N,k=K]),
+  do_fair_split(N,A,K),
+  nl.
+
+do_fair_split(N,A,K) =>
+  garbage_collect(300_000_000),
+
+  % Using sorted arrays are much faster.  
+  % Since there are distinct values we can sort the array.
+  ASorted = A.sort,
+  fair_split(N,ASorted,K, X,Sums,MaxSum),
+
+  println(maxSum=MaxSum),
+  println(x=X),
+  println(sums=Sums),
+  foreach(J in 1..K)
+    printf("Group j:%d (sum:%d) a: %w\n",J, Sums[J],[A[I] : I in 1..N, X[I] == J])
+  end,
+  println(maxSum=MaxSum),
+  nl.  
+
+
+fair_split(N,A,K, X,Sums,MaxSum) =>
+
+  % decision variables
+  X = new_list(N),
+  X :: 1..K,
+  
+  Sums = new_list(K),
+  Sums :: 1..2*(sum(A) div K),
+  
+  MaxSum #= max(Sums), % objective
+
+  foreach(I in 1..K) 
+    Sums[I] #= sum([ (X[J] #= I)*A[J] : J in 1..N])
+  end,
+
+  sum(Sums) #= sum(A),
+  % Very few solvers are better with bin_packing()
+  % /\ bin_packing(sum(a), x, a) 
+  increasing(Sums),
+
+  Vars = Sums ++ X, % ++ Sums,
+  % solve($[min(MaxSum),ffc,split,report(printf("maxSum=%d\n",MaxSum))],Vars),
+  solve($[min(MaxSum),degree,split,report(printf("maxSum=%d\n",MaxSum))],Vars).
+
+
+% This example is from a comment at
+% http://stackoverflow.com/questions/8762230/what-is-an-algorithm-to-split-a-group-of-items-into-3-separate-groups-fairly
+data(1,N,A,K) =>
+  N = 7,
+  A = [100, 51, 49, 40, 30, 20, 10],
+  K = 3.
+
+
+data(2,N,A,K) =>
+ N = 101,
+ A = [I : I in 1..N],
+ K = 3.
+
+
+data(3,N,A,K) =>
+  N = 100,
+  A = [285,969,598,34,339,711,918,543,301,64,333,910,150,334,462,741,200,92,122,324,235,295,804,415,590,768,599,781,397,789,259,19,358,823,697,396,17,687,47,965,575,217,453,708,257,772,167,927,548,159,400,613,805,27,635,430,485,979,479,521,388,602,24,379,963,827,207,765,721,853,451,403,924,298,498,975,271,353,974,517,836,619,352,959,817,609,411,806,512,145,510,729,387,797,155,580,201,494,109,505],
+  K = 3.
+
+data(4,N,A,K) =>
+  N = 100,
+  A = [I : I in 1..N],
+  K = 3.
+
+
+% MaxSum: 166834
+data(5,N,A,K) =>
+  N = 1000,
+  A = [I : I in 1..N],
+  K = 3.
+
+% MaxSum: 16668334
+data(6,N,A,K) =>
+  N = 10000,
+  A = [I : I in 1..N],
+  K = 3.
+
+
+
+
+
+

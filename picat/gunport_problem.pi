@@ -1,0 +1,98 @@
+/* 
+
+  Gunport problem in Picat.
+
+  Problem and original OPL model from 
+    From Martin Chlond & Robert Bosch "The Gunport Problem"
+    http://archive.ite.journal.informs.org/Vol6No2/ChlondBosch/index.php
+    OPL code: 
+    http://archive.ite.journal.informs.org/Vol6No2/ChlondBosch/gunport1.php
+
+  Note in the original model:  
+  """
+  Model name   : gunport1.mod
+  Description    : solves Gunport puzzles - modified
+  Source          : Martin Gardner 
+  Date written  : 3/2/06
+  Written by     : Martin Chlond, Lancashire Business School
+  Email            : mchlond@uclan.ac.uk 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  M = 4,
+  N = 4,
+  P = 8,
+
+  % set of int: M = 1..m;
+  % set of int: N = 1..n;
+  % set of int: P = 1..p;
+
+  X = new_array(M,N,P),
+  X :: 0..1, 
+  D = new_list(P),
+  D :: 0..1,
+
+  % the output matrix
+  RT = new_array(M,N),
+  RT :: 0..N*M,
+
+  Z #= sum([D[I] : I in 1..P]),
+
+
+  % each domino in adjacent cells 
+  foreach(I in 1..M, J in 1..N, K in 1..P)
+    sum([X[I,L,K] : L in J-1..J+1, L >= 1, L <= N, L != J]) +
+    sum([X[L,J,K] : L in I-1..I+1, L >= 1, L <= M, L != I]) #>= X[I,J,K]
+  end,
+
+  % each domino covers two cells 
+  foreach(K in 1..P)
+     sum([X[I,J,K] : I in 1..M, J in 1..N]) #= 2*D[K] 
+  end,
+
+  % each cell covered by, at most, one domino
+  foreach(I in 1..M, J in 1..N)
+    sum([X[I,J,K] : K in 1..P]) #<= 1
+  end,
+
+  % no two adjacent cells vacant (rows)
+  foreach(I in 1..M, J in 1..N-1)
+    sum([X[I,C,K] : C in J..J+1, K in 1..P]) #>= 1
+  end,
+
+  % no two adjacent cells vacant (columns)
+  foreach(I in 1..M-1,J in 1..N) 
+    sum([X[R,J,K] : R in I..I+1,K in 1..P]) #>= 1
+  end,
+
+  % for the output
+  foreach(I in 1..M)
+    foreach(J in 1..N) 
+      RT[I,J] #= sum([K*X[I,J,K] : K in 1..P]) 
+    end
+  end,
+
+  Vars = X.vars ++ RT.vars ++ D,
+  solve($[min(Z),ff,report(printf("z=%d\n",Z))],Vars),
+
+  println(z=Z),
+  % println(x=X),
+  % println(d=D),
+  foreach(Row in RT) println(Row) end,
+  nl,
+  fail,
+
+  nl.
+
+go => true.

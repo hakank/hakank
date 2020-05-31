@@ -1,0 +1,170 @@
+/* 
+
+  Enclosed tiles in Picat.
+
+  From Stack Overflow
+  "How do I write a program to find the tiles that are completely enclosed?"
+  http://stackoverflow.com/questions/10067802/how-do-i-write-a-program-to-find-the-tiles-that-are-completely-enclosed
+  """
+  I am trying to write a prolog program that can find the tiles that are 
+  completely surrounded by b or w in a 2D-array.
+
+  For example, given a dataset like this:
+
+  [
+      [b, w, +, +],
+      [w, +, w, b],
+      [+, w, b, +],
+      [+, +, +, b],
+  ]
+%
+  It would return another Variable containing:
+
+  [
+      [-, -, -, -],
+      [-, w, -, -],
+      [-, -, -, b],
+      [-, -, -, -],
+  ]
+
+  That is, it replaced all the + which were completely surrounded with b with a b, 
+  and the same for those surrounded by a w, and replaced everything else with a -.
+  
+  Can anyone give any ideas on how to build a program to do this?
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  do_problem(1),
+  nl,
+  do_problem(2),
+  fail,
+  nl.
+  
+go => true.
+
+
+
+do_problem(P) =>
+  println(problem=P),
+  data(P,Data),
+  enclosed_tiles(Data, X),
+  symbols(_Symbols,Str),
+  print_solution(Data,Str,"Data"),  
+  print_solution(X,1..4,"X"),
+  print_solution(X,Str,"Solution"),  
+  nl.
+  
+
+print_solution(X,S,Header) =>
+  println(Header),
+  foreach(I in 1..X.len)
+    foreach(J in 1..X[1].len)
+      printf("%w ",S[X[I,J]])
+    end,
+    nl
+  end,
+  nl.
+
+
+enclosed_tiles(Data, X) =>
+  Rows = Data.len,
+  Cols = Data[1].len,
+
+  Symbols = [M,P,B,W],
+  Symbols = 1..Symbols.len,
+  % M = 1, % -
+  % P = 2, % +
+  % B = 3, % b
+  % W = 4, % w
+
+  % decision variables
+  X = new_array(Rows,Cols),
+  X :: [M,B,W],
+
+  foreach(I in 1..Rows, J in 1..Cols)
+     if Data[I,J] == P then
+       check(Data, I, J, W, X),
+       check(Data, I, J, B, X)
+     end,
+     % not a "+"
+     Data[I,J] #!= P #=> X[I,J] #= M
+  end,
+
+  solve(X).
+
+%
+% collect all the neighbours and check if all are
+% of value T
+%
+check(D, I,J, T, X) =>
+   Rows = D.len,
+   Cols = D[1].len,
+   DD = [D[I+A, J+B] : A in -1..1, B in -1..1, 
+                       member(I+A,1..Rows),
+                       member(J+B,1..Cols),
+                       abs(A)+abs(B)==1],
+   DDLen = DD.len,
+   sum([DD[K] #= T : K in 1..DDLen]) #= DDLen #<=> X[I,J] #= T.
+
+symbols(Symbols,Str) =>
+  Str = ["-","+","b","w"],
+  Symbols = 1..Str.len.
+
+
+
+%
+% Data
+%
+% Original problem:
+%
+%  [b, w, +, +,
+%   w, +, w, b,
+%   +, w, b, +,
+%   +, +, +, b]
+%
+% Solution:
+% - - - -
+% - w - -
+% - - - b
+% - - - -
+data(1,Data) =>
+ Symbols = [_M,P,B,W],
+ Symbols = 1..Symbols.len,
+ Data = [
+   [B, W, P, P],
+   [W, P, W, B],
+   [P, W, B, P],
+   [P, P, P, B]
+ ].
+
+
+% Testing: changing (1,1) to "+" and 1,4 to "w"
+%  [+, w, +, +,
+%   w, +, w, b,
+%   +, w, b, +,
+%   +, +, +, b]
+
+% Solution:
+% w - w -
+% - w - -
+% - - - b
+% - - - -
+data(2,Data) =>
+ Symbols = [_M,P,B,W],
+ Symbols = 1..Symbols.len,
+ Data = [
+  [P, W, P, W],
+  [W, P, W, B],
+  [P, W, B, P],
+  [P, P, P, B]].
+

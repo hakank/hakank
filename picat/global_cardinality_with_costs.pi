@@ -1,0 +1,131 @@
+/* 
+
+  Global constraint global cardinality with costs in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_cardinality_with_costs.html
+  """
+  Constraint
+
+      global_cardinality_with_costs(VARIABLES,VALUES,MATRIX,COST)
+  ...
+  Purpose
+
+      Each value VALUES[i].val should be taken by exactly 
+      VALUES[i].noccurrence variables of the VARIABLES collection. 
+      In addition the COST of an assignment is equal to the sum of 
+      the elementary costs associated with the fact that we assign 
+      the ith variable of the VARIABLES collection to the jth value 
+      of the VALUES collection. These elementary costs are given 
+      by the MATRIX collection.
+
+  Example
+      (
+      <3, 3, 3, 6>,
+      <val-3 noccurrence-3, val-5 noccurrence-0, val-6 noccurrence-1>,
+      <
+      i-1 j-1 c-4,
+      i-1 j-2 c-1,
+      i-1 j-3 c-7,
+      i-2 j-1 c-1,
+      i-2 j-2 c-0,
+      i-2 j-3 c-8,
+      i-3 j-1 c-3,
+      i-3 j-2 c-2,
+      i-3 j-3 c-1,
+      i-4 j-1 c-0,
+      i-4 j-2 c-0,
+      i-4 j-3 c-6
+      >,14
+      )
+
+      The global_cardinality_with_costs constraint holds since:
+      * Values 3, 5 and 6 respectively occur 3, 0 and 1 times within the 
+        collection <3, 3, 3, 6>.
+      * The COST argument corresponds to the sum of the costs 
+        respectively associated with the first, second, third and 
+        fourth items of 〈3,3,3,6〉, namely 4, 1, 3 and 6.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 4, % number of variables
+  M = 3, % number of values
+  
+  Variables = new_list(N),
+  Variables :: 1..16,
+  
+  Values = new_array(M,2),
+  Values :: 0..16,
+
+  CostMatrix = new_array(N,M),
+  CostMatrix :: 0..10,
+
+  Variables = [3,3,3,6],
+
+  Values = new_matrix(M,2,
+                     [3,3,
+                     5,0,
+                     6,1
+                     ]),
+
+
+  CostMatrix = new_matrix(N,M, [
+                          4,1,7,
+                          1,0,8,
+                          3,2,1,
+                          0,0,6
+                         ]), 
+  Cost :: 0..1000,
+
+  global_cardinality_with_costs(Variables,Values,CostMatrix,Cost),
+
+  Vars= Variables ++ Values,
+  solve(Vars),
+
+  println(variables=Variables),
+  println(values=Values),
+  println(cost=Cost),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+global_cardinality_with_costs(Variables,Values,CostMatrix,Cost) =>
+  % sanity/symmetry
+  increasing([Values[J,1] : J in 1..Values.len]),
+
+  % global cardinality ...
+  foreach(J in 1..Values.len) 
+    Values[J,2] #= sum([Variables[I] #= Values[J,1] : I in 1..Variables.len])
+  end,
+  % ... with costs
+  Cost #= sum([
+              sum([CostMatrix[I,J]*(Variables[I] #= Values[J,1]) : I in 1..Variables.len])
+              : J in 1..Values.len]).
+
+
+
+%
+% new_matrix(L,Rows,Cols,M)
+%
+% M is a Rows x Cols matrix representing the list L.
+%
+new_matrix(Rows,Cols,L) = M =>
+  M = new_array(Rows,Cols),
+  foreach(I in 0..Rows-1, J in 0..Cols-1)
+    M[I+1,J+1] := L[I*Cols+J+1]
+  end.

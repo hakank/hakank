@@ -1,0 +1,167 @@
+/* 
+
+  Farmer and cow problem in Picat.
+
+  From 
+  http://stackoverflow.com/questions/23153447/confused-how-to-implement-mathematics-in-c
+  """
+  A farmer has 81 cows numbered 1 to 81. no 1 cow gives 1kg milk ... 
+  no 2 gives 2 kg...... no 81 gives 81 kg per day. farmer has 9 sons. 
+  now he wants to distribute his cows among his sons such a way that 
+  every son take 9 cows & total quantity of milk will be same. 
+  how can he distribute?
+  """
+
+  The total quantity each son get for different number of sons:
+    #sons   total quantinity
+      1        1
+      2        5
+      3       15
+      4       34
+      5       65
+      6      111
+      7      175
+      8      260
+      9      369
+     10      505
+     11      671
+     12      870
+  
+  
+  1,5,15,34,65,111,175,260,369,505,671,870
+  This is integer sequence https://oeis.org/A006003: n*(n^2 + 1) / 2
+  """
+  Write the natural numbers in groups: 1; 2,3; 4,5,6; 7,8,9,10; ... 
+  and add the groups. In other words, "sum of the next n natural numbers".
+  ...
+  The sequence M(n) of magic constants for n X n magic squares 
+  (numbered 1 through n^2) from n=3 begins M(n) = 15, 34, 65, 111, 175, 260, ..
+  """
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip. % 3.5s
+% import sat. % 13.5s
+% import cp. % ??s
+% import smt. % ??s
+
+
+main => go.
+
+go ?=>
+  NumSons = 9,
+  NumCows = NumSons*NumSons,
+
+  % total quantity of milk to distrubute 1+2...+81
+  TotalMilk #= (NumCows+1)*NumCows div 2,
+
+  % decision variables
+
+  % quantity of milk for a son's cow
+  Sons = new_list(NumSons),
+  Sons :: NumCows..NumCows*NumSons,
+
+
+  % % which son got which cow?
+  Cows = new_array(NumCows,NumSons),
+  Cows :: 0..1, 
+
+  sum(Sons) #= TotalMilk,
+
+  foreach(I in 2..NumSons)
+    Sons[I] #= Sons[I-1]
+  end,
+  
+  % amount of milk per son
+  foreach(S in 1..NumSons)
+    Sons[S] #= sum([C*Cows[C,S] : C in 1..NumCows])
+  end,
+  
+  % a cow is given to one son
+  foreach(C in 1..NumCows)
+    sum([Cows[C,S] : S in 1..NumSons]) #= 1
+  end,
+  
+  % each son get 9 cows
+  foreach(S in 1..NumSons) 
+    sum([Cows[C,S] : C in 1..NumCows]) #= NumSons
+  end,
+
+  Vars = Sons ++ Cows,
+  solve([ff,split],Vars),
+
+  println(sons=Sons),
+  println(cows=Cows),
+  nl,
+  % fail,
+
+  nl.
+
+go => true.
+
+%
+% CP version. Slower.
+%
+go2 ?=>
+
+  NumSons = 9,
+  NumCows = NumSons**2,
+
+  % total quantity of milk to distrubute 1+2...+81
+  TotalMilk = (NumCows+1)*NumCows div 2,
+
+  % decision variables
+
+  % quantity of milk for a son's cow
+  Sons = new_list(NumSons),
+  Sons :: NumCows..NumCows*NumSons,
+
+  % which son got which cow?
+  Cows = new_list(NumCows),
+  Cows :: 1..NumSons,
+
+  sum(Sons) #= TotalMilk,
+
+  % all sons' quantity of milk should be the same
+  foreach(I in 2..NumSons)
+    Sons[I] #= Sons[I-1]
+  end,
+
+  % each son get 9 cows
+  % foreach(S in 1..NumSons)
+  %    % sum([bool2int(cows[c] == s) | c in 1..num_cows]) = num_sons
+  %    NumSons #= count(S,Cows)
+  % end,
+  Gcc = $[S-NumSons : S in 1..NumSons],
+  global_cardinality(Cows,Gcc),
+
+
+  % quantity of milk per son
+  foreach(I in 1..NumSons)
+    Sons[I] #= sum([C*(Cows[C] #= I) : C in 1..NumCows])
+  end,
+  
+  % symmetry breaking
+  % foreach(C in 1..NumSons)
+  %   Cows[C] #= C
+  % end,
+  % Cows[1] #= 1,
+  
+  Vars = Sons ++ Gcc ++ Cows, 
+  println(solve),
+  solve([],Vars),
+
+  println(sons=Sons),
+  println(cows=Cows),
+  % println(gcc=Gcc),
+  nl,
+  % fail,
+ 
+  nl.
+
+go2 => true.

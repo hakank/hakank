@@ -1,0 +1,128 @@
+/* 
+
+  Facility location problem in Picat.
+
+  From 
+  http://www.math.ohiou.edu/~vardges/math443/homeworks/homework1.doc
+  """
+  Problem 1. Facility Location problem.
+  
+  A company is considering opening warehouses in 
+    four cities: New York, Los Angeles, Chicago, and Atlanta. 
+  Each warehouse can ship 100 units per week. 
+  The weekly fixed cost of keeping each warehouse open is 
+    $400 for New York, $500 for Los Angeles, $300 for Chicago, 
+    and $150 for Atlanta. 
+
+  Region 1 of the country requires 80 units per week, 
+  region 2 requires 70 units per week, and 
+  region 3 requires 40 units per week. 
+
+  The costs of sending 1 unit from a warehouse to a region 
+  are shown in the following table:
+                To
+  from          Region 1  Region 2   Region 3
+  New York      $20       $40        $50
+  Los Angeles   $48       $15        $26
+  Chicago       $26       $35        $18
+  Atlanta       $24       $50        $35
+
+  We wish to meet weekly demands at minimum cost, subject to the preceding information 
+  and the following restrictions:
+  
+   1. If the New York warehouse is opened, then the Los Angeles warehouse 
+      must be opened.
+   2. At most three warehouses can be opened.
+   3. Either the Atlanta or the Los Angeles warehouse must be opened.
+
+  Formulate an integer program that can be used to minimize the weekly costs 
+  of meeting demands. 
+  """ 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+
+main => go.
+
+go ?=>
+
+  NumCompanies = 4,
+  NumRegions = 3,
+  MaxShipping = 100, % max shipping units per week per warehouse
+
+  NewYork    = 1,
+  LosAngeles = 2,
+  _Chicago   = 3,
+  Atlanta    = 4,
+  
+  FixedCost = [400,500,300,150], % dollars per week
+  Demands = [80,70,40], % units per week
+  Costs = [[20, 40, 50],
+           [48, 15, 26],
+           [26, 35, 18],
+           [24, 50, 35]],
+
+  % is this warehouse open?
+  Open = new_list(NumCompanies),
+  Open :: 0..1,
+  
+  % what to ship to each region
+  Ships = new_array(NumCompanies,NumRegions),
+  Ships :: 0..MaxShipping,
+  
+  % total cost
+  TotalCost :: 0..10000,
+
+  % constraints
+  
+  % each warehouse can only send max 100 units per week
+  foreach(I in 1..NumCompanies) 
+    sum([Open[I]*Ships[I,J] : J in 1..NumRegions]) #<= MaxShipping
+  end,
+
+  % the demands of the regions
+  foreach(J in 1..NumRegions) 
+    sum([Open[I]*Ships[I,J] : I in 1..NumCompanies]) #>= Demands[J]
+  end,
+
+  % connect open with ships
+  foreach(I in 1..NumCompanies) 
+      Open[I] #= 1 #<=> sum([Ships[I,J] : J in 1..NumRegions])  #> 0
+  end,
+  
+  % total cost
+  TotalCost #= sum([
+       Open[I]*(FixedCost[I] + sum([Ships[I,J]*Costs[I,J] : J in 1..NumRegions]))
+     : I in 1..NumCompanies]),
+
+  %  1. If the New York warehouse is opened, then the Los Angeles warehouse 
+  %     must be opened.
+  Open[NewYork] #=> Open[LosAngeles],
+
+  %  2. At most three warehouses can be opened.
+  sum(Open) #<= 3,
+  
+  %  3. Either the Atlanta or the Los Angeles warehouse must be opened.
+  Open[Atlanta] #\/ Open[LosAngeles],
+  
+  % /\ tot_cost <= 4570 % for solve satisfy
+
+  Vars = Open ++ Ships.vars ++ [TotalCost],
+  solve($[min(TotalCost),ff,split,report(printf("TotalCost: %d\n",TotalCost))],Vars),
+
+  println(totalCost=TotalCost),
+  println(open=Open),
+  println("Ships:"),
+  foreach(Row in Ships)
+    println(Row)
+  end,
+
+  nl.
+
+go => true.

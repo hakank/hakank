@@ -1,0 +1,142 @@
+/* 
+
+  Football optimization in Picat.
+
+  From the lp_solve mailing list:
+  http://tech.groups.yahoo.com/group/lp_solve/message/10450
+  """
+  To: lp_solve@yahoogroups.com
+  From hakank  Mon May 26 00:45:06 2008
+  From: gandtandb <gandtandb@yahoo.co.uk>
+  Date: Sun, 25 May 2008 22:44:30 -0000
+  Subject: [lp_solve] Any Way To Make My LP_Solve Code Shorter, Please?
+  X-Mailer: Yahoo Groups Message Poster
+
+  To practice my new LP_Solve skills, I devised a question, and then
+  wrote some lp_solve code which answers the question correctly. My only
+  objection was that writing out the 33 lines of code was a little bit
+  tedious - was there a quicker way I could have done it, please?
+
+  Thanks for any advice!
+
+  Here's the question:
+
+  Congratulations! You've just managed your football team to promotion
+  into the Premiership - the top league in English football. The next
+  problem is to avoid immediate relegation back down - which often
+  happens to newly promoted teams.
+
+  Statistics show that, in the Premiership, there is a strong
+  correlation between the value of a team's players and their final
+  position in that league - so you want to spend as much money as you
+  can. The chairman gives you an upper limit of GBP 30 million - so you
+  want your purchases to add up to as close to that figure as possible
+  (without going over).
+
+  Here are the groups of players available, their price (in GBP
+  millions) and the numbers of each type you are obliged to buy:
+
+  Goalkeepers (must buy 1 exactly):
+  g1: 0.73
+  g2: 1.28
+  g3: 3.88
+
+  Defenders (must buy 2 or more):
+  d1: 0.92
+  d2: 1.31
+  d3: 1.62
+  d4: 2.41
+  d5: 2.79
+  d6: 3.28
+  d7: 3.91
+  d8: 4.57
+
+  Midfielders (must buy 3 or more):
+  m1: 1.8
+  m2: 2.63
+  m3: 3.17
+  m4: 3.769
+  m5: 4.14
+  m6: 4.75
+  m7: 5.38
+  m8: 5.93
+  m9: 6.78
+  m10: 7.13
+
+  Strikers (must buy 2 or more):
+  s1: 4.46
+  s2: 6.47
+  s3: 7.78
+  s4: 8.39
+  s5: 9.5
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  data(1,Budget,NumTypes,_NumPlayers,MaxNumPlayers,MinMax,Cost),
+
+  % the decision variables, i.e. whether we should buy a player or not.
+  X = new_array(NumTypes,MaxNumPlayers),
+  X :: 0..1,
+
+  % the total cost of the choosen players
+  Z #= sum([X[I,J]*Cost[I,J] : I in 1..NumTypes, J in 1..MaxNumPlayers, Cost[I,J] > 0]),
+
+  NumPlayersChoosen #= sum([X[I,J] : I in 1..NumTypes, J in 1..MaxNumPlayers, Cost[I,J] > 0]),
+
+
+  % minimum/maximum of players to buy
+  foreach(I in 1..NumTypes)
+      S #=  sum([X[I,J] #= 1 : J in 1..MaxNumPlayers, Cost[I,J] > 0]),
+      S #>= MinMax[I,1],
+      S #=< MinMax[I,2]      
+   end,
+   
+  % consider only the "real" players, i.e. not the "0" filled
+  foreach(I in 1..NumTypes, J in 1..MaxNumPlayers)
+     Cost[I,J] #= 0 #=> X[I,J] #= 0
+  end,
+   
+  Z #<= Budget,
+  % NumPlayersChoosen #>= 11, % added this constraint for fun :-)
+  % Z #>= Budget, % for satisfy
+
+  solve($[max(Z)],X),
+   
+  println(numPlayersChoosen=NumPlayersChoosen),
+  println(z=Z),
+  foreach(Row in X) println(Row) end,
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+
+data(1,Budget,NumTypes,NumPlayers,MaxNumPlayers,MinMax,Cost) =>
+  Budget = 30000,
+  NumTypes = 4,
+  NumPlayers = [3, 8, 10, 5],
+  MaxNumPlayers = max(NumPlayers),
+  % min/max of players to buy
+  MinMax = [[1, 1],
+            [2, MaxNumPlayers],
+            [3, MaxNumPlayers],
+            [2, MaxNumPlayers]],
+
+  % cost matrix
+  Cost = 
+   [[ 730, 1280, 3880,    0,    0,    0,    0,    0,    0,    0],
+    [ 920, 1310, 1620, 2410, 2790, 3280, 3910, 4570,    0,    0],
+    [1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130],
+    [4460, 6470, 7780, 8390, 9500,    0,    0,    0,    0,    0]].

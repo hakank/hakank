@@ -1,0 +1,341 @@
+/* 
+
+  Longest subset of five-positions five-elements permutations in Picat.
+
+  Longest subset of five-positions five-elements permutations, only one-element-position in common
+  https://stackoverflow.com/questions/62100291/longest-subset-of-five-positions-five-elements-permutations-only-one-element-po
+"""
+  I am trying to get the longest list of a set of five ordered position, 1 to 5 each, 
+  satisfying the condition that any two members of the list cannot share more than one 
+  identical position (index). I.e., 11111 and 12222 is permitted (only the 1 at index 
+  0 is shared), but 11111 and 11222 is not permitted (same value at index 0 and 1).
+
+  I have tried a brute-force attack, starting with the complete list of permutations, 
+  3125 members, and walking through the list element by element, rejecting the ones 
+  that do not match the criteria, in several steps:
+
+     step one: testing elements 2 to 3125 against element 1, getting a new shorter list L'
+     step one: testing elements 3 to N' against element 2', getting a shorter list yet L'',
+
+  and so on.
+
+  I get a 17 members solution, perfectly valid. The problem is that:
+
+  - I know there are, at least, two 25-member valid solution found by a matter 
+    of good luck, 
+    The solution by this brute-force method depends strongly on the initial order 
+  of the 3125 members list, so I have been able to find from 12- to 21-member solutions, 
+  shuffling the L0 list, but I have never hit the 25-member solutions.
+
+  Could anyone please put light on the problem? Thank you.
+
+  This is my approach so far
+  [Python code]
+
+  """
+
+  Max length is 25. Here is one example:
+
+  {1,1,1,3,4}
+  {1,2,5,1,5}
+  {1,3,4,4,1}
+  {1,4,2,2,2}
+  {1,5,3,5,3}
+  {2,1,3,2,1}
+  {2,2,4,5,4}
+  {2,3,2,1,3}
+  {2,4,1,4,5}
+  {2,5,5,3,2}
+  {3,1,2,5,5}
+  {3,2,3,4,2}
+  {3,3,5,2,4}
+  {3,4,4,3,3}
+  {3,5,1,1,1}
+  {4,1,4,1,2}
+  {4,2,1,2,3}
+  {4,3,3,3,5}
+  {4,4,5,5,1}
+  {4,5,2,4,4}
+  {5,1,5,4,3}
+  {5,2,2,3,1}
+  {5,3,1,5,2}
+  {5,4,3,1,4}
+  {5,5,4,2,5}
+
+
+  It seems that the longest subsequence has the length N*N (confirmed for N=2..5).
+  This is checked in go3/0.
+
+  A related problem is that all pairs should be _exactly one_ common number in the
+  same position. It seems that for this variant the longest subsequence is (N-1)**2
+  with the exception that N=2 has 2 as the longest subsequence, (confirmed for N=2..6). 
+  (In go3/0, I changed #<= 1 to #= 1 0 for this variant.)
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+import cp. % 
+% import sat. % faster than CP on larger instances
+
+main => go.
+
+%
+% Test all lengths from 2..100.
+% 25 is the longest.
+%
+go ?=>
+  nolog,
+  foreach(M in 2..100)
+    println(check=M),
+    if once(check(M,_X)) then
+      println(M=ok)
+    else
+      println(M=not_ok)
+    end,
+    nl
+  end,
+  
+  nl.
+
+go => true.
+
+%
+% How many solutions for M=25?
+%
+go2 ?=>
+  Map = get_global_map(),
+  Map.put(count,0),
+  M = 25,
+  check(M,_X),
+  nl,
+  Count=Map.get(count),
+  Map.put(count,Count+1),
+  println(count=Map.get(count)),  
+  fail,
+  nl.
+
+go2 => println(counts=get_global_map().get(count)).
+
+%
+% Check for different N's.
+% Note: Here we assume that if there is no solution for M=I
+% then there is no solution for M=I+1. I'm not sure if that
+% assumption is valid, though.
+%
+%  N  max M
+%  --------
+%  2   4
+%  3   9
+%  4  16
+%  5  25 Ah, do we a pattern here?
+%  6  36?
+%
+% It we require that there should be exactly one number in the
+% same position in common:
+%
+%  N  max M
+%  --------
+%  2   2
+%  3   4
+%  4   9
+%  5  16
+%  6  25 (confirmed)
+%
+% 
+go3 =>
+  nolog,
+  Max = 10,
+  Maxes = [],
+  foreach(N in 6..Max)
+    println(n=N),
+    Check = true,
+    ThisMax = 2,
+    foreach(M in N*N-1..N*N+1, Check == true)
+      println(check=M),
+      if once(check2(N,M,_X)) then
+        println([n=N,m=M, ok]),
+        ThisMax := M
+      else
+        println([n=N,m=M, not_ok]),
+        Maxes := Maxes ++ [[N=ThisMax]],
+        Check := false
+      end
+    end,
+    println([N,max=ThisMax]),
+    nl
+  end,
+  println(maxes=Maxes),
+  nl.
+
+%
+% Check the total number of solutions (for small N)
+%  N  #solutions
+%  -------------
+%  2   1
+%  3  12
+%  
+go4 =>
+  nolog,
+  foreach(N in 2..4)
+    Count = count_all(check2(N,N*N, _X)),
+    println(N=Count)
+  end,
+  nl.
+
+
+%
+% Number of solutions for certain M in the N=5 instance.
+% (Use CP for smaller instances.)
+%
+% M      #solutions
+% -----------------
+% 2         236_544
+% 3     167_961_600
+% 4  57_209_794_560
+% 
+go5 =>
+  nolog,
+  N=5,
+  foreach(M in 2..25)
+    println(m=M),
+    Count=count_all(check2(N,M,_X)),
+    println(M=Count)
+  end,
+  nl.
+
+
+%
+% Another approach:
+%  X is a (ordered) list of the M possible rows we'll use.
+%
+% I like this approach, but it's way too slow since the
+% comparisons between all M*(M-1) div 2 pairs takes too long time.
+%
+go6 =>
+  garbage_collect(300_000_000),
+  N = 5,
+  C = new_list(N),
+  C :: 1..N,
+  % This is fast with cp but slow with sat.
+  P = find_all(C,solve(C)),
+  % println(p=P),
+  Plen = P.len,
+  println(plen=P.len),  
+
+  M = N*N,
+
+  % select the M numbers to pick
+  X = new_list(M),
+  X :: 1..Plen,
+
+  all_different(X),
+  increasing(X), % symmetry breaking
+  X[1] #= 1, % symmetry breaking
+  
+  foreach(I in 1..M, J in I+1..M)
+    println([i=I,j=J]),
+    sum([ PXIK #= PXJK : K in 1..N,
+          matrix_element(P,X[I],K,PXIK),matrix_element(P,X[J],K,PXJK)]) #<= 1
+  end,
+
+  solve([],X),
+  println(x=X),
+  foreach(I in 1..M)
+    println([P[X[I],J] : J in 1..N])
+  end,
+  % fail,
+
+  nl.
+
+
+%
+% Check if there is a solution with M numbers.
+% No output.
+% 
+check(M, X) =>
+  N = 5,
+
+  X = new_array(M,N),
+  X :: 1..N,
+
+  increasing([X[1,J] : J in 1..N]),
+
+  % Symmetry breaking: fix the first row
+  X[1] = {1: I in 1..N-1} ++ {2},
+  
+
+  foreach(I in 1..M, J in I+1..M)
+    % at most 1 same number in the same position
+    sum([X[I,K] #= X[J,K] : K in 1..N]) #<= 1,
+    % symmetry breaking: sort the sub sequence
+    lex_lt(X[I],X[J]) 
+  end,
+
+  solve([ff,split],X),
+  
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl.
+
+
+%
+% Check if there is a solution with a M sub sequence for a certain N.
+% 
+check2(N, M, X) =>
+
+  X = new_array(M,N),
+  X :: 1..N,
+
+  increasing([X[1,J] : J in 1..N]),
+  
+  foreach(I in 1..M, J in I+1..M)
+    % at most 1 same number in the same position
+    sum([X[I,K] #= X[J,K] : K in 1..N]) #<= 1,
+
+    % exactly 1 number in common in the same position
+    % sum([X[I,K] #= X[J,K] : K in 1..N]) #= 1, % TESTING
+    
+    % symmetry breaking: sort the sub sequence
+    lex_lt(X[I],X[J]) 
+  end,
+
+  solve([],X).
+
+
+% Different implementations of matrix_element(X,I,J,Val)
+% to handle
+%    Val = X[I,J]
+% which is not available when I or J are CP-variables.
+% 
+
+matrix_element1(X, I, J, Val) =>
+  element(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element2(X, I, J, Val) =>
+  nth(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element3(X, I, J, Val) =>
+     freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element4(X, I, J, Val) =>
+   freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element5(X, I, J, Val) =>
+  nth(I, X, Row),
+  nth(J, Row, Val).
+
+matrix_element6(X, I, J, Val) =>
+   freeze(I, (nth(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element7(X, I, J, Val) =>
+ foreach (Row in 1..len(X), Col in 1..len(X[1]))
+    (I #= Row #/\ J #= Col) #=> (Val #= X[Row,Col])
+ end.
+

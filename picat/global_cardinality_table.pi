@@ -1,0 +1,129 @@
+/* 
+
+  Global constraint global_cardinality_table in Picat.
+
+  See Global constraint catalog:
+  http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_cardinality.html
+  """
+  Constraint
+
+      global_cardinality(VARIABLES,VALUES)
+  
+  Purpose
+
+      Each value VALUES[i].val(1<=i<=|VALUES|) should be taken by exactly 
+      VALUES[i].noccurrence variables of the VARIABLES collection.
+
+  Example
+      (
+      <3,3,8,6>,
+      <val-3 noccurrence-2,val-5 noccurrence-0,val-6 noccurrence-1>
+      )
+
+      The global_cardinality constraint holds since values 3, 5 and 6 
+      respectively occur 2, 0 and 1 times within the collection 
+      <3,3,8,6> and since no constraint was specified for value 8.
+  """
+
+  Note: The predicate global cardinality/2 is defined already in Picat
+ 
+  In constrast, this implementation, which I call 
+  constraint global_cardinality_table is more general in that the 
+  second argument is a table of values and occurrences. It is, however,
+  more expensive.
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 4,
+  M = 3,
+
+  Variables = new_list(N),
+  Variables :: 1..8,
+
+  Values = new_array(M,2),
+  Values :: 0..6,
+
+  Variables = [3,3,8,6],
+  Values = new_matrix(M,2,
+                       [3,2,
+                        5,0,
+                        6,1
+                        ]),
+
+  global_cardinality_table(Variables, Values),
+
+  Vars = Variables ++ Values,
+  solve(Vars),
+
+  println(variables=Variables),
+  println(values=Values),
+  nl,
+
+  fail,
+
+  nl.
+
+go => true.
+
+go2 ?=>
+  N = 4,
+  % M = 3,
+
+  Variables = new_list(N),
+  Variables :: 1..8,
+
+  % It's more reasonable with 9 rows,
+  % i.e. 0..8, the domain of Variables
+  %  - possible values is 0..8
+  VMax = fd_max(Variables[1]),
+  Values = new_array(VMax+1,2),
+  Values :: 0..VMax,
+
+  % Variables = [3,3,8,6],
+
+  global_cardinality_table(Variables, Values),
+
+  Vars = Variables ++ Values,
+  solve(Vars),
+
+  println(variables=Variables),
+  println(values=Values),
+  nl,
+
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+%
+% new_matrix(L,Rows,Cols,M)
+%
+% M is a Rows x Cols matrix representing the list L.
+%
+new_matrix(Rows,Cols,L) = M =>
+  M = new_array(Rows,Cols),
+  foreach(I in 0..Rows-1, J in 0..Cols-1)
+    M[I+1,J+1] := L[I*Cols+J+1]
+  end.
+
+
+global_cardinality_table(Variables,Values) =>
+  % sanity/symmetry
+  increasing_strict([Values[J,1] :J in 1..Values.len]),
+  
+  foreach(I in 1..Values.len) 
+    Values[I,2] #= sum([Variables[J] #= Values[I,1] : J in 1..Variables.len])
+  end.
+

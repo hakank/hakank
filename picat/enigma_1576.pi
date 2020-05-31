@@ -1,0 +1,144 @@
+/* 
+
+  Enigma 1576 (The holly and the ivy and the...)  in Picat.
+
+  From 
+  http://www.newscientist.com/article/mg20427391.200-enigma-number-1576.html
+  """
+  16 December 2009 by Susan Denham
+  
+  The holly and the ivy and the...
+  
+  This year I have designed my own Christmas card. It consists of 16 
+  squares pasted onto a card in a closely packed 4-by-4 array. There are 
+  four pictures of holly, four of ivy, four of mistletoe and four of 
+  fir trees. There are four background colours of gold, silver, red or 
+  white, and every combination of plant and background colour (such as 
+  holly on a red background) can be found.
+  
+  In each row and in each column of the array there is one square of 
+  each plant and one square of each background colour. In the top row 
+  the colours (from left to right) are gold, silver, red and white.
+  
+  The holly on a gold background touches the ivy on a silver background, 
+  whereas no two mistletoe squares are touching, not even at their corners. 
+  One row begins with a fir tree on a white background. What (in order) 
+  are the other three squares in that row?
+  """
+  
+  Solution:
+  colors:
+  1 2 3 4
+  4 3 2 1 <--
+  3 4 1 2
+  2 1 4 3
+  
+  plants:
+  2 3 4 1
+  4 1 2 3 <--
+  3 2 1 4
+  1 4 3 2
+  
+  The row that begins with Fir tree on White is the following
+   4 4 plant: Fir       color: White
+   1 3 plant: Holly     color: Red
+   2 2 plant: Ivy       color: Silver
+   3 1 plant: Mistletoe color: Gold
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+
+main => go.
+
+go ?=>
+  N = 4,
+  PlantsD = 1..4,
+  ColorsD = 1..4,
+
+  % plants
+  PlantsD = [Holly,Ivy,Mistletoe,FirTree],
+  PlantsS = [holly,ivy,mistletoe,firtree],  
+
+  % colors
+  ColorsD = [Gold,Silver,Red,White],
+  ColorsS = [gold,silver,red,white],  
+
+  Plants = new_array(N,N),
+  Plants :: PlantsD,
+
+  Colors = new_array(N,N),
+  Colors :: ColorsD,
+
+  Pairs = new_array(N,N,2),
+  Pairs :: 1..N,
+
+  latin_square(Plants),
+  latin_square(Colors),
+
+  % this is just to show the pairs
+  foreach(I in 1..N, J in 1..N) 
+     Pairs[I,J,1] #= Plants[I,J],
+     Pairs[I,J,2] #= Colors[I,J] 
+  end,
+  
+  % all combinations of plants and colors can be found
+  all_different($[ Pairs[I,J,1]*10+Pairs[I,J,2] : I in 1..N,J in 1..N ]),
+
+  % the clues 
+
+  % top row  
+  Colors[1] = {Gold,Silver,Red,White},
+
+  % one row begins with Fir tree on White (4,4)
+  sum([Plants[I,1] #= FirTree #/\ Colors[I,1] #= White : I in 1..N]) #= 1,
+
+  % Holly on Gold (1,1) touches Ivy on Silver (2,2)
+  sum([Plants[I,J]     #= Holly #/\ Colors[I,J]     #= Gold #/\
+       Plants[I+A,J+B] #= Ivy   #/\ Colors[I+A,J+B] #= Silver :
+       I in 1..N, J in 1..N, A in -1..1, B in -1..1,
+       member(I+A,1..N), member(J+B,1..N)]
+      ) #>= 1,
+
+  % No mistletoe (3) square are touching, not even at their corners
+  foreach(I in 2..N)
+    sum([Plants[I,J] #= Mistletoe #/\ Plants[I-1,K] #= Mistletoe
+         : J in 1..N, K in 1..N, abs(J-K) > 1]) #= 1
+  end,
+
+  Vars = Plants ++ Colors,
+  solve(Vars),
+  
+  println("Colors:"),  
+  foreach(Row in Colors) println(Row) end,  
+  nl,  
+  println("Plants:"),
+  foreach(Row in Plants) println(Row) end,
+  nl,
+  println("The row:"),
+  foreach(I in 1..N)
+    if Colors[I,1] == White, Plants[I,1] == FirTree then
+      println(colors=[to_fstring("%w %w",ColorsS[Colors[I,J]],PlantsS[Plants[I,J]]) : J in 1..N])
+    end
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+%
+% Ensure a Latin square, 
+% i.e. all rows and all columns are different
+%
+latin_square(Board) =>
+   foreach(Row in Board) all_different(Row) end,
+   foreach(Column in transpose(Board)) all_different(Column) end.
+
