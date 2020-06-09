@@ -29,7 +29,7 @@ int: n = 151;
 array[1..n] of var 0..1: arr;
 
 
-olve satisfy;
+solve satisfy;
 
 constraint 
   % regular(arr, "0*1+0*")   % require at least one 1

@@ -91,5 +91,5 @@ constraint
 output
 [
   "x: " ++ show(x) ++ "\n" ++
-  "a: " ++ show(x) ++ "\n"
+  "a: " ++ show(a) ++ "\n"
 ];
