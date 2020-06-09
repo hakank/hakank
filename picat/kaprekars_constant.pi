@@ -1,0 +1,254 @@
+/* 
+
+  Kaprekar's Constant in Picat.
+
+  From
+  http://www.math.hmc.edu/funfacts/ffiles/10002.5-8.shtml
+  """
+  Take any four digit number (whose digits are not all identical), and do the 
+  following:
+
+  1. Rearrange the string of digits to form the largest and smallest 
+     4-digit numbers possible.
+  2. Take these two numbers and subtract the smaller number from the larger.
+  3. Use the number you obtain and repeat the above process. 
+  
+  What happens if you repeat the above process over and over? Let's see...
+  
+  Suppose we choose the number 3141.
+  4311-1134=3177.
+  7731-1377=6354.
+  6543-3456=3087.
+  8730-0378=8352.
+  8532-2358=6174.
+  7641-1467=6174...
+  
+  The process eventually hits 6174 and then stays there! 
+  
+  But the more amazing thing is this: every  four digit number whose digits are 
+  not all the same will eventually hit 6174, in at most 7 steps, and then stay there! 
+  """
+  
+  Also see: 
+   - http://plus.maths.org/issue38/features/nishiyama/index.html
+   - http://en.wikipedia.org/wiki/6174_%28number%29
+
+
+  Here are some statistics for N=2..7
+
+  Len 2:
+  constants = []
+  last = (map)[0 = 81]
+  2 = constants = []
+  Map:
+  3 = 17
+  4 = 16
+  5 = 16
+  6 = 16
+  7 = 16
+  Last:
+  0 = 81
+
+
+  Len 3:
+  constants = [495]
+  last = (map)[0 = 51,495 = 839,[] = 1]
+  3 = constants = [495]
+  Map:
+  1 = 1
+  2 = 138
+  3 = 182
+  4 = 246
+  5 = 198
+  6 = 126
+  Last:
+  0 = 51
+  495 = 839
+  [] = 1
+
+
+  Len 4:
+  constants = [6174]
+  last = (map)[0 = 68,6174 = 8922,[] = 1]
+  4 = constants = [6174]
+  Map:
+  1 = 1
+  2 = 356
+  3 = 587
+  4 = 2124
+  5 = 1124
+  6 = 1311
+  7 = 1508
+  8 = 1980
+  Last:
+  0 = 68
+  6174 = 8922
+  [] = 1
+
+  Len 5:
+  constants = []
+  last = (map)[0 = 85,[] = 89906]
+  5 = constants = []
+  Map:
+  0 = 89906
+  3 = 85
+  Last:
+  0 = 85
+  [] = 89906
+  
+
+  Len 6:
+  6 = constants = [549945,631764]
+  Map:
+  0 = 841894
+  1 = 2
+  2 = 9563
+  3 = 11402
+  4 = 34760
+  5 = 2370
+  Last:
+  0 = 102
+  549945 = 1814
+  631764 = 56179
+  [] = 841896
+
+  Len 7
+  constants = []
+  last = (map)[0 = 119,[] = 8999872]
+  7 = constants = []
+  Map:
+  0 = 8999872
+  3 = 119
+  Last:
+  0 = 119
+  [] = 8999872
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+
+main => go.
+
+go ?=>
+
+  Num = 3141,
+  kaprekar(Num,L),
+  println(L),
+  nl.
+
+go => true.
+
+%
+% Check all numbers of a certain length
+%
+go2 ?=>
+  garbage_collect(300_000_000),
+  % Num = 3141,
+  % Num = 1111, % all same digits
+  Print = true,
+  Min = 5,
+  Max = 5,
+  foreach(N in Min..Max)
+    println(n=N),
+    check_kaprekar(N,Print, Constants,Map,Last),
+    println(N=constants=Constants),
+    println("Map:"),
+    foreach(K in Map.keys.sort)
+      println(K=Map.get(K))
+    end,
+    println("Last:"),
+    foreach(K in Last.keys.sort)
+      println(K=Last.get(K))
+    end
+  end,
+  nl.
+
+go2 => true.
+
+%
+% Check all numbers for a given length
+%
+check_kaprekar(N, Print, Constants,Map,Last) =>
+  Min = 10**(N-1),
+  Max = 10**N-1,
+  println([min=Min,max=Max]),
+  Constants1 = [],
+  Map = new_map(),
+  Last = new_map(),
+  foreach(Num in Min..Max)
+    if not_same_digits(Num) then
+      if Num mod 1000 == 0 then garbage_collect(300_000_000) end,
+      kaprekar(Num,L),
+      if Print then
+        println(Num=L)
+      end,
+      Len = L.len,
+      Map.put(Len,Map.get(Len,0)+1),
+      if Len == 1 then
+        Constants1 := Constants1 ++ [Num]
+      end,
+      LastEl = cond(Len > 1, L.last,[]),
+      Last.put(LastEl,Last.get(LastEl,0)+1)
+    else
+      println(same_digits=Num)
+    end
+  end,
+  if Print then
+    println(constants=Constants1),
+    println(last=Last)
+  end,
+  Constants = Constants1.
+
+%
+% L is the sequence of the Kaprekar operations for Num
+%
+kaprekar(Num, L) =>
+  L1 = [Num],
+  Prev = Num,
+  New := kaprekar1(Num),  
+  while (New != Prev, L1.len <= 20)
+    New := kaprekar1(Num),
+    if New != Num then
+      L1 := L1 ++ [New]
+    end,
+    Prev := Num,
+    Num := New
+  end,
+  % if L1.len == L1.remove_dups.len, L1.last > 0 then
+  if L1.len == L1.remove_dups.len then  
+    L = L1
+  else
+    L = []
+  end.
+  
+%
+% Just one step
+%
+kaprekar1(Num) = New =>
+  NumL = num2list(Num),
+  NumSortedL = NumL.sort,
+  NumReversedL = NumSortedL.reverse,
+  NumSorted = list2num(NumSortedL),
+  NumReversed = list2num(NumReversedL),  
+  New = NumReversed - NumSorted.
+
+num2list(Num) = [I.to_int : I in Num.to_string].
+list2num(L) = [I.to_string : I in L].join('').parse_term.
+
+
+% ensure that a number don't contain all the same digits
+not_same_digits(N) =>
+  L = num2list(N),
+  Len = L.len,
+  Diff = 0,
+  foreach(I in 1..Len, J in I+1..Len)
+    if L[I] != L[J] then
+      Diff := Diff + 1
+    end
+  end,
+  Diff > 0.

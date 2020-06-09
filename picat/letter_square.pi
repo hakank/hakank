@@ -1,0 +1,225 @@
+/* 
+
+  Letter square problem in Picat.
+
+  This problem is from the Swedish book 
+  Paul Vaderlind: "Vaderlinds nya hjärngympa"
+  ('Vaderlind's new brain gymnastics'), page 63ff.
+  
+  The objective is to create a matrix where all 
+  values on each row/column is different (except for
+  the blanks). A set of hints is given: 
+  The (or some) first seen non blank of each 
+   - upper row
+   - lower row
+   - left column
+   - right column
+  seen from that view.
+
+      B B
+    -------
+   |A   B C| 
+  B|  B C A| 
+  B|B C A  | 
+   |C A   B| 
+   --------
+    C
+  
+  Note: In this problem instance there are 
+        no hints for the right column.
+  
+  This model codes the hints as follows:
+   blank -> 0
+   A     -> 1
+   B     -> 2
+   etc.
+  
+  row_upper = [0,2,2,0]
+  row_lower = [3,0,0,0]
+  col_left  = [0,2,0,0]
+  col_right = [0,0,0,0]
+
+  Here's the solution:
+   [1,0,2,3]
+   [0,2,3,1]
+   [2,3,1,0]
+   [3,1,0,2]
+
+
+  I don't know the origin of the problem but
+  it is similar to the Skyscraper problem
+  (http://hakank.org/picat/skyscraper.pi
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  foreach(P in 1..4)
+    runit(P),
+    nl
+  end,
+  fail,
+  nl.
+  
+go => true.
+
+runit(Problem) =>
+  println(problem=Problem),
+  data(Problem, N,M, RowUpper,RowLower,ColLeft,ColRight),
+  println(row_upper=RowUpper),
+  println(row_lower=RowLower),
+  println('col_left '=ColLeft),
+  println(col_right=ColRight),
+  nl,
+  
+  letter_square(N,M,RowUpper,RowLower,ColLeft,ColRight, X),
+
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl.
+
+
+%
+% Solve an instance of Letter Square
+%
+% N: size of square
+% M: numbers to place in each row/column
+% Row* and Col* are the first visible number except empty squares
+%
+letter_square(N,M,RowUpper,RowLower,ColLeft,ColRight, X) =>
+  NumZeros = N-M, % number of zeros
+
+  X = new_array(N,N),
+  X :: 0..M,
+
+  foreach(I in 1..N) 
+    all_different_except_0([X[I,J] : J in 1..N]),
+    all_different_except_0([X[J,I] : J in 1..N]),
+
+    sum([X[I,J] #= 0 : J in 1..N]) #= NumZeros,
+    sum([X[J,I] #= 0 : J in 1..N]) #= NumZeros
+  end,
+
+  % Note: I first used member/2 to generate the Js
+  %       for simplifying the model (which is not
+  %       not in general for constraint models).
+  %       But then I later changed to the sum version.
+  foreach(I in 1..N)
+    if RowUpper[I] > 0 then
+       /*
+       member(J1,1..N),
+       foreach(K in 1..J1-1)
+         X[K,I] #= 0
+       end,
+       X[J1,I] #= RowUpper[I]
+       */
+       sum([
+            sum([X[K,I] #= 0 : K in 1..J-1]) #= J-1
+            #/\
+            X[J,I] #= RowUpper[I]
+           : J in 1..N ]) #= 1
+    end,
+
+    if RowLower[I] > 0 then
+       /*
+       member(J2,1..N),
+       foreach(K in J2+1..N)
+         X[K,I] #= 0
+       end,
+       X[J2,I] #= RowLower[I]
+       */
+       sum([
+            sum([X[K,I] #= 0 : K in J+1..N]) #= N-J
+            #/\
+            X[J,I] #= RowLower[I]
+           : J in 1..N ]) #= 1
+       
+    end,
+
+    if ColLeft[I] > 0 then
+       /*
+       member(J3,1..N),
+       foreach(K in 1..J3-1)
+         X[I,K] #= 0
+       end,
+       X[I,J3] #= ColLeft[I]
+       */
+       sum([
+            sum([X[I,K] #= 0 : K in 1..J-1]) #= J-1
+            #/\
+            X[I,J] #= ColLeft[I]
+           : J in 1..N ]) #= 1
+       
+    end,
+
+    if ColRight[I] > 0 then
+       /*
+       member(J4,1..N),
+       foreach(K in J4+1..N)
+         X[I,K] #= 0
+       end,
+       X[I,J4] #= ColRight[I]
+       */
+       sum([
+           sum([X[I,K] #= 0 : K in J+1..N]) #= N-J
+            #/\
+            X[I,J] #= ColRight[I]
+           : J in 1..N ]) #= 1
+
+    end
+  end,
+  solve([ffc,split],X.vars).
+
+
+%
+% All these instances are from Vaderlind's book cited above.
+%
+data(1,N,M, RowUpper,RowLower,ColLeft,ColRight) => 
+  N = 4,
+  M = 3,
+
+  RowUpper = [0,2,2,0],
+  RowLower = [3,0,0,0],
+  ColLeft  = [0,2,0,0],
+  ColRight = [0,0,0,0].
+
+
+data(2,N,M, RowUpper,RowLower,ColLeft,ColRight) => 
+  N = 5,
+  M = 3,
+
+  RowUpper = [0,0,1,3,0],
+  RowLower = [3,0,0,1,1],
+  ColLeft = [1,0,0,1,0],
+  ColRight = [3,3,0,0,0].
+
+
+data(3,N,M, RowUpper,RowLower,ColLeft,ColRight) =>
+  N = 5,
+  M = 3,
+
+  RowUpper = [0,2,2,0,0],
+  RowLower = [0,1,1,0,0],
+  ColLeft  = [0,0,3,0,3],
+  ColRight = [2,0,0,0,0].
+
+
+data(4,N,M, RowUpper,RowLower,ColLeft,ColRight) =>
+  N = 8,
+  M = 6,
+
+  RowUpper = [0,0,4,3,0,5,6,0],
+  RowLower = [0,5,1,1,2,0,1,0],
+  ColLeft  = [6,5,6,0,2,6,0,0],
+  ColRight = [4,0,4,6,0,0,1,0].

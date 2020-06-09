@@ -1,0 +1,131 @@
+/* 
+
+  Max m in row in Picat.
+
+  This constraint ensures that there are max m consecutive values
+  of the same element in a row.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+
+main => go.
+
+%
+% Generate all possible solutions.
+%
+go ?=>
+
+  N = 4, % dimensions of matrix
+  M = 2, % there must be max m consecutive of the same value in a row
+
+  X = new_array(N,N),
+  X :: 0..2,
+
+  % Require that both rows and columns has max
+  % m consecutive values.
+  foreach(I in 1..N) 
+    max_m_in_row([X[I,J] : J in 1..N], M),
+    max_m_in_row([X[J,I] : J in 1..N], M) 
+  end,
+
+  solve(X),
+
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+%
+% Find the configuration that maximum the total.
+%
+% MIP is fastest on this.
+%
+% Here is an example on a 12x12 matrix (0..1)
+% with M=3.
+%
+% z = 108
+% {0,1,1,1,0,1,1,1,0,1,1,1}
+% {1,1,1,0,1,1,1,0,1,1,1,0}
+% {1,0,1,1,1,0,1,1,1,0,1,1}
+% {1,1,0,1,1,1,0,1,1,1,0,1}
+% {0,1,1,1,0,1,1,1,0,1,1,1}
+% {1,1,1,0,1,1,1,0,1,1,1,0}
+% {1,0,1,1,1,0,1,1,1,0,1,1}
+% {1,1,0,1,1,1,0,1,1,1,0,1}
+% {0,1,1,1,0,1,1,1,0,1,1,1}
+% {1,1,1,0,1,1,1,0,1,1,1,0}
+% {1,0,1,1,1,0,1,1,1,0,1,1}
+% {1,1,0,1,1,1,0,1,1,1,0,1}
+
+go2 ?=>
+
+  N = 12, % dimensions of matrix
+  M = 3, % there must be max m consecutive of the same value in a row
+
+  X = new_array(N,N),
+  X :: 0..2,
+
+  % Require that both rows and columns has max
+  % m consecutive values.
+  foreach(I in 1..N) 
+    max_m_in_row([X[I,J] : J in 1..N], M),
+    max_m_in_row([X[J,I] : J in 1..N], M) 
+  end,
+
+  Z #= sum(X.vars),
+
+  solve($[max(Z),ffd,down],X),  
+
+  println(z=Z),
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl,
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+%
+% Ensure that there is atmost m consecutive entries of the same value
+% in a row.
+% 
+max_m_in_row(A,M) =>
+  N = A.len,
+  Max = fd_max(A[1]),
+  foreach(I in 1..N-M)  
+    Gcc = new_list(Max),
+    Gcc :: 0..M,
+    global_cardinality2([A[I+K] : K in 0..M], Gcc)
+  end.   
+
+
+%
+% global_cardinality(A, Gcc)
+%
+% This version is bidirectional but limited:
+%
+% Both A and Gcc are (plain) lists.
+%  
+% The list A can contain only values 1..Max (i.e. the length of Gcc).
+% This means that the caller must know the max values of A.
+% Or rather: if A contains another values they will not be counted.
+% 
+global_cardinality2(A, Gcc) =>
+   Len = length(A),
+   Max = length(Gcc),
+   Gcc :: 0..Len,
+   foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.
+

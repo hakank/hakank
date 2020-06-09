@@ -1,0 +1,127 @@
+/* 
+
+  Graph Coloring Problem (integer programming) in Picat.
+
+
+  Inspired by the GLPK:s model color.mod
+  """
+  COLOR, Graph Coloring Problem
+
+  Written in GNU MathProg by Andrew Makhorin <mao@mai2.rcnet.ru>
+
+  Given an undirected loopless graph G = (V, E), where V is a set of
+  nodes, E <= V x V is a set of arcs, the Graph Coloring Problem is to
+  find a mapping (coloring) F: V -> C, where C = {1, 2, ... } is a set
+  of colors whose cardinality is as small as possible, such that
+  F(i) != F(j) for every arc (i,j) in E, that is adjacent nodes must
+  be assigned different colors.
+  """
+
+  Note: The MathProg model color.mod uses an heuristic to minimize the number 
+        of colors to considerate, the parameter nc and z.
+
+        I don't try to translate this heuristic, and the references to z is skipped,
+        hence nc is hardcoded.
+
+        This is, however, (still) an integer program model.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  data(1,N,NumEdges,E),
+
+  % """
+  % number of colors used by the heuristic; obviously, it is an upper
+  % bound of the optimal solution 
+  % """
+  % hakank: We know that 4 colors suffice to color the graph...
+  NC = 5,
+
+
+  % """
+  % x[i,c] = 1 means that node i is assigned color c 
+  % """
+  X = new_array(N, NC),
+  X :: 0..1,
+
+  % """
+  % u[c] = 1 means that color c is used, i.e. assigned to some node 
+  % """
+  U = new_list(NC),
+  U :: 0..1,
+
+  % objective is to minimize the number of colors used 
+  Obj #= sum(U),
+
+
+  % there must be no loops 
+  foreach(I in 1..NumEdges)
+    E[I,1] #!= E[I,2]
+  end,
+
+  % each node must be assigned exactly one color 
+  foreach(I in 1..N)
+    sum([X[I,C] : C in 1..NC]) #= 1
+  end,
+
+  % adjacent nodes cannot be assigned the same color 
+  foreach(I in 1..NumEdges, C in 1..NC)
+    X[E[I,1],C] + X[E[I,2],C] #<= U[C]
+  end,
+
+  % symmetry
+  U[1] #= 1,
+
+  Vars = X.vars ++ U,
+  solve($[min(Obj)],Vars),
+
+  println("X:"),
+  foreach(Row in X) println(Row) end,
+  println(u=U),
+  println(obj=Obj),
+ 
+  nl.
+
+go => true.
+
+
+%
+% data
+%
+
+%
+% This correspond to the instance myciel3.col from:
+% http://mat.gsia.cmu.edu/COLOR/instances.html 
+%
+data(1,N,NumEdges,Graph) =>
+  N = 11,
+  NumEdges = 20,
+  Graph = {
+ {1, 2},
+ {1, 4},
+ {1, 7},
+ {1, 9},
+ {2, 3},
+ {2, 6},
+ {2, 8},
+ {3, 5},
+ {3, 7},
+ {3, 10},
+ {4, 5},
+ {4, 6},
+ {4, 10},
+ {5, 8},
+ {5, 9},
+ {6, 11},
+ {7, 11},
+ {8, 11},
+ {9, 11},
+ {10, 11}}.

@@ -1,0 +1,355 @@
+/* 
+
+  Global constraint cycle in Picat.
+
+  Count the number of cycles in a list.
+
+  (This is a port of the MiniZinc model http://hakank.org/minizinc/cycle_test.mzn 
+   with some additional bells & whistles :-) ).
+
+  The Global Constraint catalogue: https://sofdem.github.io/gccat/gccat/Ccycle.html
+  has the following example:
+
+   cycle(2, 
+        1->2, 
+        2->1, 
+        3->5,
+        4->3,
+        5->4
+        )
+   Which has two cycles : (1,2) and (3,5,4).
+
+
+  This model is based on a "cycle matrix" to count the number of cycles.
+  The basic observation is that if we cycle the numbers we find
+  the c'th number (for column c) in some row r this mean that number
+  c is involved in a cycle of length r.
+
+  In this example, the cycle matrix is:
+
+     {2,1,5,3,4}
+     {1,2,4,5,3} First 1 and 2       in row 2 -> 2 cycle
+     {2,1,3,4,5} First 3, 4, and 5   in row 3 -> 3 cycle
+     {1,2,5,3,4}
+     {2,1,4,5,3}
+
+  About the model:
+  
+  The traditional call is 
+    cycle(X,NumCycles)
+  which shows that there are 2 cycles:
+
+    x = [2,1,5,3,4]
+    numCycles = 2
+
+
+  Also, I added a variant with the Gcc, i.e. the count of the lengths the cycles, 
+  as well as the cycle matrix (Y), 
+  
+  The call to cycle(X,NumCycles,Gcc):
+  
+    x = [2,1,5,3,4]
+    numCycles = 2
+    gcc = [0,2,3,0,0]
+
+   We see that the two cycles, one of length 2 and one of length 3.
+
+  Another example:
+    x = [2,1,4,3,6,5]
+    numCycles = 3
+    gcc = [0,6,0,0,0,0]
+    gcc = [1,2,3,0,0,0]
+    matrix:
+    {2,3,1,6,5,4}
+    {3,1,2,4,5,6}
+    {1,2,3,6,5,4}
+    {2,3,1,4,5,6}
+    {3,1,2,6,5,4}
+    {1,2,3,4,5,6}
+
+
+  Here the gcc shows that all 6 numbers are involved in a length 2 cycle.
+
+  Another one:
+    x = [2,1,5,3,4]
+    numCycles = 2
+    gcc = [0,2,3,0,0]
+
+  Here we have one 1 cycle (5), one 2 cycle (6,4), and one 3 cycle (2,3,1).
+
+
+  Another example with cycles (2,3,4,5,1) and (6), also showing the cycle matrix:
+    x = [2,3,4,5,1,6]
+    numCycles = 2
+    gcc = [1,0,0,0,5,0]
+    cycle matrix:
+    {2,3,4,5,1,6}
+    {3,4,5,1,2,6}
+    {4,5,1,2,3,6}
+    {5,1,2,3,4,6}
+    {1,2,3,4,5,6}
+    {2,3,4,5,1,6}
+
+
+  In go/2 we also shows the individial cycles (as a map):
+    x = [6,5,3,2,1,4]
+    numCycles = 2
+    gcc = [1,0,0,0,5,0]
+    cycle matrix:
+    {6,5,3,2,1,4}
+    {4,1,3,5,6,2}
+    {2,6,3,1,4,5}
+    {5,4,3,6,2,1}
+    {1,2,3,4,5,6}
+    {6,5,3,2,1,4}
+    c = (map)[1 = [6,4,2,5,1],2 = [5,1,6,4,2],3 = [3],4 = [2,5,1,6,4],5 = [1,6,4,2,5],6 = [4,2,5,1,6]]
+
+  As we can see, the cycles are basically the columns for each numbers (with duplicates removed),
+
+  Some other examples with 4 cycles, and (2), (3), and (4) as fix points.
+
+    x = [6,2,3,4,1,5]
+    numCycles = 4
+    gcc = [3,0,3,0,0,0]
+    cycle matrix:
+    {6,2,3,4,1,5}
+    {5,2,3,4,6,1}
+    {1,2,3,4,5,6}
+    {6,2,3,4,1,5}
+    {5,2,3,4,6,1}
+    {1,2,3,4,5,6}
+    c = (map)[1 = [6,5,1],2 = [2],3 = [3],4 = [4],5 = [1,6,5],6 = [5,1,6]]
+
+
+  Note that cycle/2 and cycle/4 are reversible so we can generate lists. For example, here
+  are the lists of 4 numbers that has 2 cycles:
+
+    x = [4,2,1,3]
+    x = [2,3,1,4]
+    x = [3,4,1,2]
+    x = [3,1,2,4]
+    x = [4,3,2,1]
+    x = [1,4,2,3]
+    x = [4,1,3,2]
+    x = [2,4,3,1]
+    x = [2,1,4,3]
+    x = [3,2,4,1]
+    x = [1,3,4,2]
+
+
+  One can also generate lists by setting the values in Gcc. But note that there 
+  are restrictions involved:
+  - sum(Gcc) #= N
+  - if there is a value > 0 for the I'th element, then it must be a multiple of I.
+
+  Here are all the possible configurations for N=6
+ 
+   [0,0,0,0,0,6]  % 6 numbers in a cycle of length 6
+   [0,0,6,0,0,0]  % 2 cycles of length 3 = 2*3
+   [0,2,0,4,0,0]  % 2 numbers in a 2-cycle, and 4 numbers in a 4-cycle
+   [0,6,0,0,0,0]  % 3 cycles of length 2 = 3*2
+   [1,0,0,0,5,0]  % a 1-cycle, and a 5-cycle
+   [1,2,3,0,0,0]  % a 1-cycle, a 2-cycle, and a 3-cycle
+   [2,0,0,4,0,0]  % 2 1-cycles, and a 4-cycle 
+   [2,4,0,0,0,0]  % 2 cycles of length 1, and 2 cycles of length 2
+   [3,0,3,0,0,0]  % 3 1-cycles and one 3-cycle
+   [4,2,0,0,0,0]  % 4 1-cycles and one 2-cycle 
+   [6,0,0,0,0,0]  % 6 1-cycles
+
+
+  Here are the counts of the possible Gcc configurations for N=7:
+      1 gcc = [7,0,0,0,0,0,0]
+     21 gcc = [5,2,0,0,0,0,0]
+     70 gcc = [4,0,3,0,0,0,0]
+    105 gcc = [1,6,0,0,0,0,0]
+    105 gcc = [3,4,0,0,0,0,0]
+    210 gcc = [0,4,3,0,0,0,0]
+    210 gcc = [3,0,0,4,0,0,0]
+    280 gcc = [1,0,6,0,0,0,0]
+    420 gcc = [0,0,3,4,0,0,0]
+    420 gcc = [2,2,3,0,0,0,0]
+    504 gcc = [0,2,0,0,5,0,0]
+    504 gcc = [2,0,0,0,5,0,0]
+    630 gcc = [1,2,0,4,0,0,0]
+    720 gcc = [0,0,0,0,0,0,7]
+    840 gcc = [1,0,0,0,0,6,0]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+
+main => go.
+
+%
+% Plain call to cycle/2.
+%
+go ?=>
+  N = 5,
+
+  X = new_list(N),
+  X :: 1..N,
+
+  X = [2,1,5,3,4],
+  NumCycles :: 0..N,
+  % NumCycles #= 2,
+
+  cycle(NumCycles,X),
+
+  Vars = X ++ [NumCycles],
+  solve(Vars),
+
+  println(x=X),
+  println(numCycles=NumCycles),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+%
+% Here we call cycle/3 with Gcc info and the cycle matrix.
+%
+go2 ?=>
+  N = 6,
+
+  X = new_list(N),
+  X :: 1..N,
+
+  % X = [2,1,5,3,4], % N=5!
+  % X = [2,1,5,3,4,6],
+  % X = [2,3,1,6,5,4],
+  % X = [2,3,4,5,1,6],
+  % X = [6,5,4,3,2,1],
+  NumCycles :: 0..N,
+  NumCycles #= 2,
+
+  % Gcc must sum to N. But be careful, not all combinations are valid.
+  % The rules are discussed above.
+  %
+  % %      1 2 3 4 5 6   
+  % Gcc = [0,2,0,4,0,0], % 2 numbers in 2-cycle and 4 numbers in a 4 cycle
+
+
+  cycle(NumCycles,X,Gcc, Y),
+
+  Vars = X ++ Gcc ++ Y.vars ++ [NumCycles],
+  solve([degree,split],Vars),
+
+  println(x=X),
+  println(numCycles=NumCycles),
+  println(gcc=Gcc),
+  println("cycle matrix:"),
+  foreach(Row in Y) println(Row) end,
+  
+  % identify the specific cycles
+  C = new_map(),
+  foreach(J in 1..N)
+    T = [Y[I,J] : I in 1..N].remove_dups,
+    foreach(K in T)
+      C.put(J,C.get(J,[])++[K])
+    end
+  end,
+  println(c=C),
+  nl,
+  fail,
+  
+  nl.
+
+go2 => true.
+
+
+%
+% cycle/2 (i.e. witout Gcc information)
+%
+cycle(NumCycles,X) =>
+  cycle(NumCycles,X,_GccCard, _Y).
+
+%
+% This is quite complex, but probably simpler to implement than using sets.
+% The principle is simple:
+% - create a cycle matrix from the permutation
+% - create first fix position per column
+% - count number of position (global_cardinality)
+% - sum over that amount (gcc[i] / i)
+%
+% Note: We also output the Gcc since it has interesting informations
+%       about the cycles.
+%
+cycle(NC, X,GccCard, Y) =>
+  N = X.len,
+  FFPos = new_list(N),
+  FFPos :: 1..N,
+  
+  Y = new_array(N,N),
+  Y :: 1..N,
+
+  % create a cycle matrix
+  cycle_matrix(X,Y),
+
+  foreach(I in 1..N)
+     % note: it is the _column_ j we are interested in, not the row i,
+     % hence the construct index[j,i] 
+     Tmp = [Y[K,I] : K in 1..N],
+     first_fixed(Tmp, I, FFPos[I]) % find first position in column
+  end,
+
+  % count the number of first positions
+  GccCard = new_list(N),
+  GccCard :: 0..N,
+  global_cardinality2(FFPos,GccCard),
+  sum(GccCard) #= N, % redundant constraint
+
+  NC #= sum([GccCard[I] div I : I in 1..N]).
+
+
+% find first fixed position in an array
+first_fixed(X, V, Ix) =>
+  N = X.len,
+  foreach(I in 1..N) 
+       % 1) Ix must be 1
+       % 2) and the must be not other I before this position
+       Ix #= I #<=> (X[I] #= V #/\
+                      sum([X[J] #!= V : J in 1..I-1]) #= I-1
+                     )
+  end.
+
+
+cycle_matrix(X, M) =>
+  N = X.len,
+  all_different(X),
+
+  foreach(J in 1..N) 
+     M[1,J] #= X[J] % first line (original X)
+  end,
+  
+  % Create the rotations in the following rows
+  % The values propagated are from X (first row in M)
+  foreach(I in 2..N, J in 1..N)
+    % M[I,J] #= M[I-1,M[1,J]]
+    matrix_element(M,I-1,M[1,J],M[I,J])
+  end.
+
+
+
+%
+% global_cardinality(A, Gcc)
+%
+% This version is bidirectional but limited:
+%
+% Both A and Gcc are (plain) lists.
+%  
+% The list A can contain only values 1..Max (i.e. the length of Gcc).
+% This means that the caller must know the max values of A.
+% Or rather: if A contains another values they will not be counted.
+% 
+global_cardinality2(A, Gcc) =>
+   Len = length(A),
+   Max = length(Gcc),
+   Gcc :: 0..Len,
+   foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.

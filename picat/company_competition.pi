@@ -1,0 +1,175 @@
+/* 
+
+  Company competition in Picat.
+
+  This model show configurations of teams for our Christmas company 
+  competition (in 2010 it's bowling) with the following rules of thumb:
+
+    - 18 persons, with 4 (or 5) persons in each team -> 4 teams
+    - even distribution of sexes in each team
+    - even distribution of departments in each team
+    - the managers should be in different teams, if possible
+
+  The number of violations of these rules is minimzed via the
+  variable z.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip. % MIP is faster
+% import cp. 
+
+
+main => go.
+
+go ?=>
+  People = [
+             % it
+             _Hakan,     % yes, that's me:-)
+             _Andersj,
+             _Robert,
+             _Markus,
+             Johan,
+             _Micke,
+
+             % customer services 1
+             _Alex,
+             _Andersh,
+             _Jennyk,
+             _Kenneth,
+             _Sara,
+             Cecilia,
+
+             % customer services 2
+             Stefan,
+             _Jacob,
+             _Roger,
+             _Henrik,
+             _Line,
+             _Hanna
+             ],
+  % total number of persons
+  N = People.len,
+  People = 1..N,
+
+
+  % It = 1,
+  % CustomerServices1 = 2,
+  % Customer_services2 = 3,
+
+  NumDepartments = 3,
+  Department  =  % 1 2 3 4 5 6   7 8 9 0 1 2    3 4 5 6 7 8
+                 [ 1,1,1,1,1,1,  2,2,2,2,2,2,   3,3,3,3,3,3],
+
+
+  % SizeDepartments = [ sum([1 : J in 1..N, Department[J] == I]) : I in 1..NumDepartments],
+  % DeptStr = ["it", "cr1","cr2"],
+
+  M = 1,
+  F = 2,
+  Sex = % 1 2 3 4 5 6   7 8 9 0 1 2    3 4 5 6 7 8
+        [ M,M,M,M,M,M,  F,M,F,M,F,F,   M,M,M,M,F,F],
+  % Male: 12
+  % Female: 6
+  % SexStr = ["M","F"],
+
+  % managers should be in different teams
+  Managers = [Johan, Cecilia, Stefan],
+
+  Who = ["hakan","andersj","robert","markus","johan","micke",  % it
+         "alex","andersh","jennyk","kenneth","sara","cecilia", % cr1
+         "stefan","jacob","roger","henrik","line","hanna"      % cr2 
+         ],
+
+  % t_size 3, 5, and 6 is quite fast 
+  % howver t_size 4 is harder
+  TSize = 4, % about t_size persons in each team
+  NumTeams = N div TSize,
+
+  %
+  % decision variables
+  %
+  % which persons belong to which team
+  Team = new_list(N),
+  Team :: 1..NumTeams,
+
+  % number of persons from each departments in each team
+  TeamDepartments = new_array(NumTeams,NumDepartments),
+  TeamDepartments :: 1..N,
+
+  % number of each sex in each team
+  TeamSex = new_array(NumTeams, 2),
+  TeamSex :: 1..N,
+
+  % size of the team
+  % Note that we just accept sizes of t_size or t_size+1 
+  TeamSize = new_list(NumTeams),
+  TeamSize :: TSize..TSize+1,
+
+  % number of "inequalities" of even distribution in sex and departments
+  % This may be minimized
+  Z :: 0..100,
+
+  % constraints
+  foreach(I in 1..Managers.len)
+    Team[Managers[I]] #= I
+  end,
+
+
+  foreach(T in 1..NumTeams)
+    % allow some differences in the size of team
+    TeamSize[T] #= sum([Team[I] #= T : I in 1..N]),
+
+    foreach(D in 1..NumDepartments) 
+      TeamDepartments[T, D] #= sum([(Team[I] #= T)*(Department[I] #= D) : I in 1..N])
+    end,
+
+    % at least 1 person of each sex in each team
+    foreach(S in M..F)
+      TeamSex[T, S] #= sum([(Team[I] #= T)*Sex[I] #= S : I in 1..N]) 
+    end
+  end, 
+
+
+  % count the number of inequalities between sexes and departments
+  % and - if possible - separate the managers
+  Z #= 
+      % distribution of sexes
+      sum([abs(TeamSex[T,M] - TeamSex[T,F])  : T in 1..NumTeams]) 
+ 
+      + % distribution of departments     
+      sum([abs(TeamDepartments[T,D] - (TeamSize[T] div NumDepartments)) :  T in 1..NumTeams, D in 1..NumDepartments]),
+
+  % some symmetry breaking
+  % place the first IT guys in each team (as far as possible)
+  foreach(I in 1..NumTeams) 
+    Team[I] #= I
+  end,
+
+  Vars = Team ++ TeamDepartments.vars ++ TeamSex.vars ++ TeamSize.vars ++ [Z],
+  solve($[min(Z),constr,split,report(printf("z=%d\n",Z))],Vars),
+
+  println(team=Team),
+  println(teamDepartments=TeamDepartments),
+  println(teamSex=TeamSex),
+  println(teamSize=TeamSize),
+  println(z=Z),
+  println("People's team:"),
+  foreach(P in 1..N)
+    println([Who[P],Team[P]])
+  end,
+  println("Teams:"),
+  foreach(T in 1..NumTeams)
+    println([team=T,[Who[P] : P in 1..N, Team[P] == T]])
+  end,
+  nl,
+
+  fail,
+  
+  nl.
+
+go => true.
+

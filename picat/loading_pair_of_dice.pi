@@ -1,0 +1,159 @@
+/* 
+
+  Loading a pair of dice in Picat.
+
+  From Mind Your Decisions, "Monday Puzzle: Loading a Pair of Dice":
+  http://mindyourdecisions.com/blog/2014/10/06/monday-puzzle-loading-a-pair-of-dice/
+  """
+  In a standard die, each of the six outcomes 1, 2, 3, 4, 5, 6 shows up with equal chance. However, 
+  it is physically possible to rig the die so that some numbers show up more frequently. 
+  In this problem, assume you can rig a die to have an arbitrary probability distribution.
+  
+  Here’s the puzzle: can you rig a pair of dice so that the rolls of 2, 3, 4, …, 12 all have 
+  same chance of occurring?
+
+  [A lot of mathematics....]
+  
+  This is a contradiction, and therefore it is not possible to rig the die to make an 
+  equiprobable sum distribution.
+  """
+
+
+  One assumption is that we use standard dice (with 1..6 spots), then it's not possible 
+  to rig the dice. 
+  
+  However, if we allow that a die can contain 0 (zero) spot, then the following would give 
+  the same distribution of 2..12:
+
+   x: [0, 0, 0, 6, 6, 6]
+   y: [1, 2, 3, 4, 5, 6]
+   z: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+
+  Yes, this is cheating. But so is rigging a die in the first place. :-)
+  
+  This works only for even n. The occurrences of each resulting numbers is
+  n / 2 and the following construction of the dice:
+  Notation: a x b means that a is repeated b times
+
+      die 1:[ (0 x n/2), (n x n/2)]
+      die 2:[ 1..n ]
+
+  This method is implemented in loading_pair_of_dice2/5.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 6, % number of sides of a die
+  loading_pair_of_dice(N, X, Y, Z),
+  println(x=X),
+  println(y=Y),
+  println(z=Z),
+  nl.
+
+go => true.
+
+%
+% Using loading_pair_of_dice2/4
+%
+go2 =>
+  foreach(N in 2..20, N mod 2 == 0)
+    println(n=N),
+    loading_pair_of_dice2(N, X, Y, Z),
+    println(x=X),
+    println(y=Y),
+    println(z=Z),
+    nl
+  end,
+  nl.
+
+%
+% This is "pure" declarative.
+%
+loading_pair_of_dice(N, X,Y,Z) => 
+
+  if N mod 2 == 1 then
+    println("N must be even!"),
+    fail
+  end,
+
+  % Original assumption: a die have the spots 1..N
+  % -> UNSATISFIABLE
+  % X = new_list(N), % first die
+  % X :: 1..N,
+  % Y = new_list(N), % second die
+  % Y :: 1..N,
+
+  % But it works if one or both dice can contain zero:
+  
+  X = new_list(N), % first die
+  % X :: 1..N,
+  X :: 0..N,  
+  Y = new_list(N), % second die
+  % Y :: 1..N,   
+  Y :: 0..N,
+
+  % the distribution
+  % Z = new_list(N*2-1),
+  % Z :: 0..N*N,
+  Z :: 1..N*N,
+
+  % S #= sum(Z),
+  % S #> 0,
+ 
+  foreach(I in 2..N*2) 
+    % Z[I-1] #= sum([X[J]+Y[K] #= I : J in 1..N, K in 1..N])
+    Z #= sum([X[J]+Y[K] #= I : J in 1..N, K in 1..N])
+  end,
+  
+  % same chance of recurring
+  % foreach(I in 2..N*2-1)
+  %   Z[I] #= Z[I-1] 
+  % end,
+
+  % symmetry breaking
+  increasing(X), 
+  increasing(Y), % this should really be increasing_strict(Y) but that's cheating :-)
+  lex_le(X,Y),
+
+  Vars = X ++ Y ++ [Z],
+  solve($[degree,split],Vars).
+
+
+%
+% This is an algorithmical approach
+%
+loading_pair_of_dice2(N, X,Y,Z) =>
+
+  if N mod 2 == 1 then
+    println("N must be even!"),
+    fail
+  end,
+
+
+  X = new_list(N), % first die
+  Y = new_list(N), % second die
+
+  NDiv2 = N div 2,
+  foreach(I in 1..N)
+     if I <= NDiv2 then
+       X[I] := 0
+     else
+       X[I] := N
+     end,
+     Y[I] := I
+  end,
+
+  % the distribution
+  Z = new_list(N*2-1),
+  foreach(I in 1..N*2-1)
+    Z[I] := NDiv2
+  end.

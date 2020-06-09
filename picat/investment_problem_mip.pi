@@ -1,0 +1,154 @@
+/* 
+
+  Investment problem in Picat.
+
+  From ORMM (Operations Research Models and Methods):
+  http://www.me.utexas.edu/~jensen/ORMM/models/unit/dynamic/subunits/investment/index.html
+  """
+  A portfolio manager with a fixed budget of $100 million is 
+  considering the eight investment opportunities shown in Table 1. 
+  The manager must choose an investment level for each alternative 
+  ranging from $0 to $40 million. Although an acceptable investment 
+  may assume any value within the range, we discretize the 
+  permissible allocations to intervals of $10 million to facilitate 
+  the modeling. This restriction is important to what follows. 
+  For convenience we define a unit of investment to be $10 
+  million. In these terms, the budget is 10 and the amounts to 
+  invest are the integers in the range from 0 to 4.
+
+  Table 1. Returns from Investment Opportunities
+
+  Amount      Opportunity
+  Invested
+  ($10 million)      1   2   3   4   5   6   7   8  
+  0                  0   0   0   0   0   0   0   0
+  1                4.1 1.8 1.5 2.2 1.3 4.2 2.2 1.0
+  2                5.8 3,0 2.5 3.8 2.4 5.9 3.5 1.7
+  3                6.5 3.9 3.3 4.8 3.2 6.6 4.2 2.3
+  4                6.8 4.5 3.8 5.5 3.9 6.8 4.6 2.8
+
+  Table 1 provides the net annual returns from the investment 
+  opportunities expressed in millions of dollars. A ninth 
+  opportunity, not shown in the table, is available for funds 
+  left over from the first eight investments. The return is 5  
+  per year for the amount invested, or equivalently, $0.5 million 
+  for each $10 million invested. The manager's goal is to 
+  maximize the total annual return without exceeding the budget.
+
+  The investment problem has a general mathematical programming 
+  formulation.
+
+     Maximize z = r1(x1)+r2(x2)+...rm(xm)+e*y
+     subject to: x1+x2..xm+y=b
+         0 <= xj <= uj and integer for j = 1..m
+         y>= 0 and integer
+
+  The notation is the general model is defined below.
+      xj: amount invested in opportunity j
+      rj(xj): return of opportunity j as a function of xj
+              The returns are given in Table 1 
+      uj: upper bound on investment j, an integer
+      b: the budget for investments, an integer
+      y: unspent money
+      e: return for unspend money
+
+  The problem as stated is similar in structure to the knapsack 
+  problem but the objective function is nonlinear. To formulate it 
+  as a mixed-integer linear program it would be necessary to 
+  introduce 32 binary variables, one for each nonzero level of 
+  investment. Since the budget and investment amounts are integer 
+  the slack variable, y, can be treated as integer. Rather than 
+  pursuing the MILP formulation we will use the problem as an 
+  introduction to dynamic programming.
+  """
+
+  The answer according to
+  http://www.me.utexas.edu/~jensen/ORMM/models/unit/dynamic/subunits/investment/dyn_finish.html
+  """
+  The investor should invest $10 unit each in opportunities 2, 3, 5, 
+  and 7; invest $20 million in opportunities 1, 4 and 6; and make 
+  no investment in opportunity 8. The entire budget has been 
+  spent and there is no slack. The total annual return is $22.3 
+  million.
+  """
+
+  This is a float model. 
+
+  z = 22.300000000000001
+  theReturns = [5.8,1.8,1.5,3.8,1.3,5.9,2.2,0.0]
+  choices = [2,1,1,2,1,2,1,0]
+  notInvested = 0.0
+
+  Cf http://hakank.org/picat/investment_problem.pi for an integer model.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+main => go.
+
+go ?=>
+  M = 8,
+  % Note: this is 1-based
+  Returns = [
+             [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0], % 1
+             [4.1,1.8,1.5,2.2,1.3,4.2,2.2,1.0], % 2
+             [5.8,3.0,2.5,3.8,2.4,5.9,3.5,1.7], % 3
+             [6.5,3.9,3.3,4.8,3.2,6.6,4.2,2.3], % 4
+             [6.8,4.5,3.8,5.5,3.9,6.8,4.6,2.8]  % 5
+            ],
+  println(len=Returns.len),
+  N = Returns.len,
+  
+  X = new_array(N,M),
+  X :: 0..1,
+
+  Choices = new_list(M),
+  Choices :: 0..N,
+
+  TheReturns = new_list(M),
+  TheReturns :: 0.0..10000.0,
+
+  Budget = 10.0, % total 10 million
+  NotInvestedReturns = 0.5, % return for not invested (0.5*10)
+  
+  NotInvested :: 0.0..Budget,
+  println(notInvested=NotInvested),
+  Z :: 0.0..100.0,
+  Z #>= 0.0,
+  println(z=Z),
+
+
+  foreach(J in 1..M)
+    sum([X[I,J] : I in 1..N]) #<= 1
+  end,
+
+  Z #>= 22.3, % for satisfy  
+  Z #= sum([Returns[I,J]*X[I,J] : I in 1..N, J in 1..M]) + NotInvested*NotInvestedReturns,
+
+  % compensate for 1-based
+  sum([(I-1)*X[I,J] : I in 1..N, J in 1..M]) + NotInvested #<= Budget,
+
+  foreach(J in 1..M)
+    TheReturns[J] #= sum([Returns[I,J]*X[I,J] : I in 1..N]),
+    % compensate for 1-based
+    Choices[J] #= sum([(I-1)*X[I,J] : I in 1..N])
+  end,
+
+  Vars = X.vars ++ TheReturns ++ Choices ++ [NotInvested],
+  solve($[max(Z)],Vars),
+  % solve($[],Vars), % satisfy
+
+  println(z=Z),
+  println(theReturns=TheReturns),
+  println(choices=Choices),
+  println(notInvested=NotInvested),
+  nl,
+  % fail,
+  
+  nl.
+
+go => true.

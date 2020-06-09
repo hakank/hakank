@@ -30,28 +30,58 @@ go =>
 
 
 go2 =>
-  foreach(N in 4..40)
-    if magic_sequence(N,Sequence) then
+  foreach(N in 4..1000)
+    garbage_collect(20_000_000),
+    if time2(magic_sequence(N,Sequence)) then
       println(Sequence)
     else 
       println("No solution")
     end
   end.
 
+% CP
 go3 =>
+  time2(magic_sequence(1400,Sequence)),
+  println(Sequence).
+
+
+% No CP
+go4 =>
   magic_sequence_no_cp(1400,Sequence),
   println(Sequence).
 
-go4 =>
+% No CP
+go5 =>
   foreach(N in [1000,10_000,50_000,100_000,1_000_000,10_000_000])
     println(n=N),
     time2(magic_sequence_no_cp(N,_Sequence))
   end,
   nl.
 
+%
+% Test different models
+%
+go6 =>
+  N = 1000,
+  println("magic_sequence(1000)"),  
+  time2(magic_sequence(N,Sequence1)),
+  println(Sequence1),
 
-scalar_product(A, X,Product) => 
-  Product #= sum([S : I in 1..A.length, S #= A[I]*X[I]]).
+  println("\nmagic_sequence2(500)"),  
+  time2(magic_sequence2(500,Sequence2)),
+  println(Sequence2),  
+
+  println("\nmagic_sequence4(100)"),  
+  time2(magic_sequence4(100,Sequence4)),
+  println(Sequence4),  
+
+  println("\nmagic_sequence3(20)"),  
+  time2(magic_sequence3(20,Sequence3)),
+  println(Sequence3),  
+
+
+  nl.
+
 
 magic_sequence(N, Sequence) =>
 
@@ -60,28 +90,72 @@ magic_sequence(N, Sequence) =>
   Sequence = new_list(N),
   Sequence :: 0..N-1,
 
-  % println(sequence1=print_domains(Sequence)),
+  N #= sum(Sequence),
+  Integers = [ I : I in 0..N-1],
+  scalar_product(Integers, Sequence, N),
+  foreach(I in 0..N-1) count(I,Sequence,#=,Sequence[I+1]) end,
+
+  solve([ff], Sequence).
+
+
+%
+% Alternative model. Use global_cardinality/2 instead of a count loop.
+%
+magic_sequence2(N, Sequence) =>
+
+  printf("\n%d:\n",N),
+
+  Sequence = new_list(N),
+  Sequence :: 0..N-1,
 
   % extra constraints
   N #= sum(Sequence),
 
-  % println(sequence2=print_domains(Sequence)),
-
   Integers = [ I : I in 0..N-1],
   scalar_product(Integers, Sequence, N),
 
-  % println(sequence3=print_domains(Sequence)),
-
   % using global_cardinality/2: or N=400: 0.8s
-  % GC = [ $I-Sequence[I+1] : I in 0..N-1],
-  % global_cardinality(Sequence,GC),
-
-  % using count/4 for N=400: 0.22s
-  foreach(I in 0..N-1) count(I,Sequence,#=,Sequence[I+1]) end,
-
-  % println(sequence4=print_domains(Sequence)),
+  GC = [ $I-Sequence[I+1] : I in 0..N-1],
+  global_cardinality(Sequence,GC),
 
   solve([ff], Sequence).
+
+%
+% Alternative model. Only a loop with sum.
+%
+magic_sequence3(N, Sequence) =>
+
+  printf("\n%d:\n",N),
+
+  Sequence = new_list(N),
+  Sequence :: 0..N-1,
+
+  foreach(I in 0..N-1)
+    Sequence[I+1] #= sum([Sequence[J] #= I : J in 1..N])
+  end,
+    
+
+  solve([ff], Sequence).
+
+%
+% Alternative model. magic_sequence3/2 + two sums
+%
+magic_sequence4(N, Sequence) =>
+
+  printf("\n%d:\n",N),
+
+  Sequence = new_list(N),
+  Sequence :: 0..N-1,
+
+  foreach(I in 0..N-1)
+    Sequence[I+1] #= sum([Sequence[J] #= I : J in 1..N])
+  end,
+
+  sum(Sequence) #= N,
+  sum([I*Sequence[I+1] : I in 0..N-1]) #= N,
+
+  solve([ff], Sequence).
+
 
 
 print_domains(Vars) = [print_domain(Var) : Var in Vars].

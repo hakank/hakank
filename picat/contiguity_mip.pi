@@ -1,0 +1,145 @@
+/* 
+
+  Contiguity constraint (MIP)  in Picat.
+
+  From 
+  https://www.or-exchange.org/questions/9203/forcing-the-value-of-consecutive-variables
+  """
+  ...
+  I want to add (if possible) the following constraint: all the non-zero y_t
+  must be consecutive . That is, this is a valid solution:
+
+     y_t=…0,0,1,1,1,0,0…
+
+  while this is not:
+
+     y_t=…0,1,0,1,1,0,0…
+
+  The problem I find is that I don't know a priori how many y will be non-zero. 
+  ...
+  """
+  
+  This model use fbahr's answer.
+  This is int version using 0/1 as weights.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import mip. % for go3/0
+import cp. % faster than mip on go/0 and go2/0. Don't work on go3/0.
+% import sat. % slow
+
+
+main => go.
+
+%
+% Small IP version.
+% CP is faster
+%
+go ?=>
+  % N = 100,
+  A = 10,
+
+  % random 0/1
+  W = [0,0,1,0,0,0,0,0,1,0,1,1,1,0,1,1,0,1,1,0,0,1,0,0,1,1,1,1,0,1,0,1,0,
+      1,0,1,1,1,0,1,0,0,0,0,1,0,1,1,0,0,0,1,0,0,1,1,0,0,0,1,1,0,1,1,1,1,1,
+      0,0,1,1,1,0,1,1,0,1,0,1,1,1,1,0,0,1,1,0,1,0,1,0,0,0,1,0,0,0,1,1,1],
+
+  contiguity_mip(W,A, Y,Z),
+
+  println(w=W),
+  println(z=Z),
+  println(y=Y),
+  
+  nl.
+
+go => true.
+
+%
+% A larger random instance
+%
+go2 ?=>
+  garbage_collect(300_000_000),
+  N = 400,
+  A = 40,
+
+  % _ = random2(),
+  W = [random() mod 2 : _ in 1..N],
+  println(w=W),  
+  contiguity_mip(W,A, Y,Z),
+
+  println(z=Z),
+  println(y=Y),
+  
+  nl.
+
+go2 => true.
+
+%
+% Float version.
+% Note: MIP solver must be used.
+%
+go3 ?=>
+  N = 100,
+  A = 10.0,
+
+  % some random floats 0.0..1.0
+  W = [frand() : _ in 1..N],
+  println(w=W),  
+  contiguity_mip_float(W,A, Y,Z),
+
+  println(z=Z),
+  println(y=Y),
+  
+  nl.
+
+go3 => true.
+
+
+%
+% IP version (CP,MIP,SAT)
+%
+contiguity_mip(W,A, Y,Z) =>
+  N = W.len,
+
+  % decision variables
+  Y = new_list(N),
+  Y :: 0..1,
+
+  Z :: 0..N,
+  Z #>= A,
+  Z #= sum([W[I]*Y[I] : I in 1..N]),
+
+  % consecutive_ones 
+  foreach(I in 1..N-1)
+     N*(1 - Y[I] + Y[I+1]) #>= sum([Y[T] : T in 1..N, T >= I+1]) 
+  end,
+
+  solve($[min(Z),ffc,split,report(printf("z: %f\n",Z))],Y).
+
+
+%
+% Float version (only MIP)
+% 
+contiguity_mip_float(W,A, Y,Z) =>
+  N = W.len,
+
+  % decision variables
+  Y = new_list(N),
+  Y :: 0..1,
+
+  Z :: 0.0..N*1.0,
+  Z #>= A,
+  scalar_product(Y,W,Z),
+
+  % consecutive_ones 
+  foreach(I in 1..N-1)
+     N*(1 - Y[I] + Y[I+1]) #>= sum([Y[T] : T in 1..N, T >= I+1]) 
+  end,
+
+  solve($[min(Z)],Y).
+
+

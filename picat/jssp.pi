@@ -1,0 +1,154 @@
+/* 
+
+  Job-Shop Scheduling Problem in Picat.
+
+  From GLPK:s example jssp.mod
+  """
+  JSSP, Job-Shop Scheduling Problem
+
+  Written in GNU MathProg by Andrew Makhorin <mao@mai2.rcnet.ru>
+
+  The Job-Shop Scheduling Problem (JSSP) is to schedule a set of jobs
+  on a set of machines, subject to the constraint that each machine can
+  handle at most one job at a time and the fact that each job has a
+  specified processing order through the machines. The objective is to
+  schedule the jobs so as to minimize the maximum of their completion
+  times.
+
+  Reference:
+  D. Applegate and W. Cook, "A Computational Study of the Job-Shop
+  Scheduling Problem", ORSA J. On Comput., Vol. 3, No. 2, Spring 1991,
+  pp. 149-156.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import mip.
+import cp.
+% import sat.
+
+
+main => go.
+
+%
+% MIP: 1,7s
+% CP: 0.2s
+% SAT: 4.8s
+%
+go ?=>
+
+  % N: number of jobs
+  % M: number of machines
+  % Sigma:  permutation of the machines, which represents the processing order
+  %         of j through the machines: j must be processed first on sigma[j,1],
+  %         then on sigma[j,2], etc. 
+  % P: processing time of j on a 
+  data(1,N,M,Sigma,P),
+
+  % set of jobs 
+  % set of int: J = 1..n;
+
+  % set of machines 
+  % set of int: M = 1..m;
+
+  % added K as upper limit of z and x  
+  K = sum([P[J,A] : J in 1..N, A in 1..M]),
+
+  % starting time of j on a 
+  X = new_array(N,M),
+  X :: 0..K, 
+
+  % Y[i,j,a] is 1 if i scheduled before j on machine a, and 0 if j is
+  % scheduled before i
+  Y = new_array(N,N,M),
+  Y :: 0..1, 
+
+  % makespan 
+  Z :: 0..K,
+
+  % sigma must be permutation 
+  foreach(J in 1..N, T1 in 1..M, T2 in 1..M, T1 != T2)
+    Sigma[J,T1] #!= Sigma[J,T2]
+  end,
+
+  foreach(I in 1..N, J in 1..N, A in 1..M, I != J) 
+    X[I,A] #>= X[J,A] + P[J,A] - K * Y[I,J,A]
+  end,
+
+  foreach(I in 1..N, J in 1..N, A in 1..M, I != J) 
+     X[J,A] #>= X[I,A] + P[I,A] - K * (1 - Y[I,J,A])
+  end,
+
+  % j can be processed on sigma[j,t] only after it has been completely
+  %   processed on sigma[j,t-1] 
+  %
+  % The disjunctive condition that each machine can handle at most one
+  %   job at a time is the following:
+  %
+  %      x[i,a] >= x[j,a] + p[j,a]  or  x[j,a] >= x[i,a] + p[i,a]
+  %
+  %   for all i, j in J, a in M. This condition is modeled through binary
+  %   variables Y as shown below. 
+  %
+  % Y[i,j,a] is 1 if i scheduled before j on machine a, and 0 if j is
+  %   scheduled before i 
+  foreach(J in 1..N, T in 2..M) 
+    X[J, Sigma[J,T]] #>= X[J, Sigma[J,T-1]] + P[J, Sigma[J,T-1]]
+  end,
+
+  % which is the maximum of the completion times of all the jobs 
+  foreach(J in 1..N)
+    Z #>= X[J, Sigma[J,M]] + P[J, Sigma[J,M]]
+  end,
+
+
+  Vars = X.vars ++ Y.vars,
+  solve($[min(Z),ffc,updown],Vars),
+
+  println(z=Z),
+  println("X:"),
+  foreach(Row in X) println(Row) end,
+  nl,
+  println("Y:"),
+  foreach(Row in Y)
+    foreach(R in Row)
+      println(R)
+    end,
+    nl
+  end,
+  nl.
+
+go => true.
+
+% """
+% These data correspond to the instance ft06 (mt06) from:
+%
+%    H. Fisher, G.L. Thompson (1963), Probabilistic learning combinations
+%    of local job-shop scheduling rules, J.F. Muth, G.L. Thompson (eds.),
+%    Industrial Scheduling, Prentice Hall, Englewood Cliffs, New Jersey,
+%    225-251 
+% 
+% The optimal solution is 55 
+% """
+data(1,N,M,Sigma,P)=>
+  N = 6,
+  M = 6,
+
+  Sigma = {
+        {3, 1, 2, 4, 6, 5}, 
+        {2, 3, 5, 6, 1, 4}, 
+        {3, 4, 6, 1, 2, 5}, 
+        {2, 1, 3, 4, 5, 6}, 
+        {3, 2, 5, 6, 1, 4}, 
+        {2, 4, 6, 1, 5, 3}},
+ P = {
+      { 3, 6, 1, 7, 6, 3}, 
+      {10, 8, 5, 4, 10, 10}, 
+      { 9, 1, 5, 4, 7, 8}, 
+      { 5, 5, 5, 3, 8, 9}, 
+      { 3, 3, 9, 1, 5, 4}, 
+      {10, 3, 1, 3, 4, 9}}.

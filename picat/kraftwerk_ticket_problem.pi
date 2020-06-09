@@ -1,0 +1,171 @@
+/* 
+
+  Ola's Kraftwerk problem (a real life story) in Picat.
+
+  A friend of mine, Ola, and some of his friends are planning for
+  buying tickets to some of the Kraftwerk 8 concerts. 
+  
+  An interesting constraint in the buying procedure is that a 
+  person can buy tickets for one concerts and maximum 6 tickets.
+  
+  From http://www.dr.dk/DRPresse/Artikler/2014/11/10/093523.htm
+  Danish:
+  """
+  Man kan højst købe 6 billetter til en koncert og kun 1 koncert.
+  """
+  (Translated: 
+  "You can buy a maximum of six tickets to a concert and only one concert."
+  )
+
+  
+  The objective is then to optimize the tickets bought so they can 
+  attend as many preferred concerts as possible.
+
+  In the model this mean to maximize the sum of all the 
+  preference values of the attending concerts (variable "Z").
+  
+  To simplify, this model assumes that a person can (and must)
+  buy as many tickets as (s)he will attend (and vice versa).
+  However, a person don't need to go to the concert (s)he buy tickets for.
+
+  Input:
+    - a preference matrix where a person grade the interest of a concert
+      (larger value is better). 0 (zero) means no interest.
+    - a budget array ("attending_budget"): how many concerts can the person
+      afford to attend (or has the time etc).
+
+
+  One optimal solution:
+
+  z = 122
+  buyConcert = [1,4,2,3,8,7]
+  buyNumTickets = [5,2,5,3,4,2]
+  Preferences:
+  [7,5,4,8,3,2,1,6]
+  [0,0,0,5,0,8,6,7]
+  [1,4,7,3,5,2,8,6]
+  [6,7,3,1,8,2,5,4]
+  [6,3,7,5,2,8,4,1]
+  [8,7,4,2,1,6,5,3]
+
+  Who buy tickets and how many?
+  Ola              buys 5 tickets to concert 1
+  Paulina          buys 2 tickets to concert 4
+  Olof             buys 5 tickets to concert 2
+  Jens             buys 3 tickets to concert 3
+  Fredrik          buys 4 tickets to concert 8
+  Jens's friend    buys 2 tickets to concert 7
+
+  People attending (and preference):
+  Ola             : [7,5,4,8,0,0,0,6]
+  Paulina         : [0,0,0,0,0,0,6,7]
+  Olof            : [1,4,7,0,0,0,8,6]
+  Jens            : [6,7,0,0,0,0,0,4]
+  Fredrik         : [6,3,7,5,0,0,0,0]
+  Jens's friend   : [8,7,0,0,0,0,0,0]
+
+  Who's attending each concert:
+  1 = [Ola,Olof,Jens,Fredrik,Jens's friend]
+  2 = [Ola,Olof,Jens,Fredrik,Jens's friend]
+  3 = [Ola,Olof,Fredrik]
+  4 = [Ola,Fredrik]
+  5 = []
+  6 = []
+  7 = [Paulina,Olof]
+  8 = [Ola,Paulina,Olof,Jens]
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp.
+% import sat.
+import mip.
+
+main => go.
+
+
+go =>
+  nolog,
+  NumPeople = 6,
+  NumConcerts = 8,
+  MaxTicketsPerPerson = 6,
+
+  Prefs = 
+  [
+   [7,5,4,8,3,2,1,6], % Ola
+   [0,0,0,5,0,8,6,7], % Paulina (not interested in some concerts)
+   [1,4,7,3,5,2,8,6], % Olof
+   [6,7,3,1,8,2,5,4], % Jens
+   [6,3,7,5,2,8,4,1], % Fredrik
+   [8,7,4,2,1,6,5,3]  % Jens' friend 
+  ],
+
+  People = ["Ola","Paulina","Olof","Jens","Fredrik","Jens's friend"],
+  
+  % budget for buying/attending
+  AttendingBudget = [8,2,5,3,4,2],
+
+  % decision variables
+
+  % which concert to buy ticket for (if any) and how many
+  BuyConcert = new_list(NumPeople), % what concert (if any) does p buy?
+  BuyConcert :: 1..NumConcerts,
+
+  BuyNumTickets = new_list(NumPeople),
+  BuyNumTickets :: 1..MaxTicketsPerPerson,
+
+  % which concert to attend (if any)
+  Attending = new_array(NumPeople, NumConcerts),
+  Attending :: 0..1,
+
+
+  Z #= sum([Prefs[P,C]*Attending[P,C] : P in 1..NumPeople, C in 1..NumConcerts]),
+  println(z=Z),
+  all_distinct(BuyConcert),
+
+  % maximum number of tickets to buy (the budget constraint)
+  foreach(P in 1..NumPeople) 
+    BuyNumTickets[P] #<= AttendingBudget[P]
+  end,
+
+  % total number of bought tickets == number of attended concerts
+  sum(BuyNumTickets) #= sum([Attending[P,C] : P in 1..NumPeople, C in 1..NumConcerts]),
+
+  % sum of tickets bought to this concert == people attending this concert
+  foreach(C in 1..NumConcerts)
+    sum([Attending[P,C] : P in 1..NumPeople]) #= 
+         sum([ BuyNumTickets[P]*(BuyConcert[P] #= C) : P in 1..NumPeople])
+  end,
+
+  % A person will attend the same number of concerts as (s)he buys tickets for
+  foreach(P in 1..NumPeople) 
+     BuyNumTickets[P] #= sum([Attending[P,C] : C in 1..NumConcerts])
+  end,
+
+  Vars = Attending.vars() ++ BuyConcert ++ BuyNumTickets,  
+  solve($[max(Z),constr,down,report(printf("Z: %d\n",Z))],Vars),  
+
+  println(z=Z),
+  println(buyConcert=BuyConcert),
+  println(buyNumTickets=BuyNumTickets),
+  
+  println("Preferences:"),
+  foreach(Row in Prefs) println(Row) end,
+  println("\nWho buy tickets and how many?"),
+  foreach(P in 1..NumPeople)
+    printf("%-16s buys %d tickets to concert %d\n",People[P], BuyNumTickets[P], BuyConcert[P])
+  end,
+
+  println("\nPeople attending (and preference):"),
+  foreach(P in 1..NumPeople)
+    printf("%-16s: %w\n", People[P], [cond(Attending[P,C] == 1,Prefs[P,C], 0) : C in 1..NumConcerts])
+  end,
+  
+  println("\nWho's attending each concert:"),
+  foreach(C in 1..NumConcerts)
+    println(C=[People[P] : P in 1..NumPeople, Attending[P,C] == 1])
+  end,
+  nl.
+

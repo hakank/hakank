@@ -1,0 +1,116 @@
+/* 
+
+  Global constraint balance_partition in Picat.
+
+  From Global Constraint Catalogue:
+  http://www.emn.fr/x-info/sdemasse/gccat/Cbalance_partition.html
+  """
+  balance_partition(BALANCE, VARIABLES, PARTITIONS)
+
+  Purpose
+
+  Consider the largest set S1 (respectively the smallest set S2) of 
+  variables of the collection VARIABLES that take their value in the 
+  same partition of the collection PARTITIONS.BALANCE is equal to the 
+  difference between the cardinality of S2 and the cardinality of S1.
+
+  Example
+     (
+      1, <6, 2, 6, 4, 4>,
+      <
+      p-<1, 3>,
+      p-<4>,
+      p-<2, 6>
+      >
+      )
+
+  In this example values 6, 2, 6, 4, 4 are respectively associated 
+  with the partitions p-<2, 6> and p-<4>. Partitions p-<4> and p-<2, 6> 
+  are respectively used 2 and 3 times. The balance_partition constraint 
+  holds since its first argument BALANCE is assigned to the difference 
+  between the maximum and minimum number of the previous occurrences 
+  (i.e., 3-2). Note that we don't consider those partitions that 
+  are not used at all.
+
+  Usage
+
+  An application of the balance_partition is to enforce a balanced 
+  assignment of values, no matter how many distinct partitions will be 
+  used. In this case one will push down the maximum value of the 
+  first argument of the balance_partition constraint.
+  """
+ 
+  Note: this version assume a fixed partition.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 5,
+  X = new_list(N),
+  X :: 1..7,
+
+  Bal :: 0..N,
+
+  % Note: This is a fixed partition.
+  Partitions = {
+       {1,3},
+       {4},
+       {2,6}
+      },
+
+  X = [6,2,6,4,4],
+  
+  % Bal #= 1,
+
+  balance_partition(Bal, X, Partitions),
+
+  Vars = X ++ [Bal],
+  solve(Vars),
+
+  println(bal=Bal),
+  println(x=X),
+  foreach(Row in Partitions) println(Row) end,
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+balance_partition(Bal, X, Partitions) =>
+   Ubp = Partitions.len, %  max(index_set(partitions)),
+   Ubx = X.len,
+   Counts = new_list(Ubp),
+   Counts :: 0..Ubx,
+   CMax :: 0..Ubx,
+   CMin :: 0..Ubx,
+   foreach(I in 1..Partitions.len)
+     Counts[I] #= sum([X[J]#=K : J in 1..X.len, K in Partitions[I]])
+   end,
+   CMax #= max(Counts),
+   min_except_0(Counts,CMin),
+   Bal #= CMax - CMin.
+
+
+%
+% Ensure that the minumum value (> 0) is MinVal.
+%
+min_except_0(X,MinVal) =>
+  Len = X.len,
+  I :: 1..Len,
+  element(I,X,MinVal),
+  % between(1,Len,I),  
+  % MinVal #= X[I],
+  foreach(J in 1..Len)
+    MinVal #=< X[J] #\/ X[J] #= 0
+  end,
+  MinVal #> 0.

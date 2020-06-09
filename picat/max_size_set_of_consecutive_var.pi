@@ -1,0 +1,139 @@
+/* 
+
+  Global constraint max_size_set_of_consecutive_var in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cmax_size_of_consecutive_var.html
+  """
+  Constraint
+
+      max_size_set_of_consecutive_var(MAX,VARIABLES)
+
+  Purpose
+
+      MAX is the size of the largest set of variables of the 
+  collection VARIABLES that all take their value in a set of consecutive values.
+
+  Example
+      (
+      6,<
+      var-3,
+      var-1,
+      var-3,
+      var-7,
+      var-4,
+      var-1,
+      var-2,
+      var-8,
+      var-7,
+      var-6
+      >
+      )
+
+      In the example, the two sets {3, 1, 3, 4, 1, 2} and{7, 8, 7, 6}  
+      take respectively their values in the two following sets of 
+      consecutive values {1, 2, 3, 4} and {6, 7, 8}. Consequently, 
+      the max_size_set_of_consecutive_var constraint holds since the 
+      cardinality of the largest set of variables is 6.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 10,
+  Variables = new_list(N),
+  Variables :: 1..9,
+  
+  MaxSet :: 1..N,
+
+  Variables = [3,1,3,7,4,1,2,8,7,6],
+  % MaxSet #= 6,
+
+  max_size_set_of_consecutive_var(MaxSet, Variables),
+
+  Vars = Variables ++ [MaxSet],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(maxSet=MaxSet),
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+
+%
+% Generate all solutions
+%
+go2 ?=>
+  N = 6,
+  Variables = new_list(N),
+  Variables :: 1..9,
+  
+  MaxSet :: 1..N,
+
+  MaxSet #= 2,
+
+  max_size_set_of_consecutive_var(MaxSet, Variables),
+
+  Vars = Variables ++ [MaxSet],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(maxSet=MaxSet),
+  nl,
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+max_size_set_of_consecutive_var(MaxSet, Variables) =>
+  N = Variables.len,
+  Max = fd_max_array(Variables),
+  Occ = new_list(Max),
+  Occ :: 0..N,
+  Mat = new_array(Max,Max),
+  Mat :: 0..N,
+
+  global_cardinality2(Variables, Occ),
+  foreach(I in 1..Max, J in 1..Max)
+    % mat[i,j] is the sum of all element in occ[i..j], but
+    % only if they all are > 0. If some value in the range
+    % is 0, then mat[i,j] is 0
+    Mat[I,J] #= (sum([Occ[K] #> 0 : K in I..J]) #= J-I+1)*sum([Occ[K] : K in I..J])
+  end,
+  MaxSet #= max([Mat[I,J] : I in 1..Max, J in 1..Max]).
+
+
+%
+% global_cardinality(A, Gcc)
+%
+% This version is bidirectional but limited:
+%
+% Both A and Gcc are (plain) lists.
+%  
+% The list A can contain only values 1..Max (i.e. the length of Gcc).
+% This means that the caller must know the max values of A.
+% Or rather: if A contains another values they will not be counted.
+% 
+global_cardinality2(A, Gcc) =>
+   Len = length(A),
+   Max = length(Gcc),
+   Gcc :: 0..Len,
+   foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.
+
+
+fd_max_array(X) = max([fd_max(V) : V in X]).

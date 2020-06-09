@@ -1,0 +1,258 @@
+/* 
+
+  Kaprekar's Constant in Picat.
+
+  From
+  http://www.math.hmc.edu/funfacts/ffiles/10002.5-8.shtml
+  """
+  Take any four digit number (whose digits are not all identical), and do the 
+  following:
+%
+  1. Rearrange the string of digits to form the largest and smallest 
+     4-digit numbers possible.
+  2. Take these two numbers and subtract the smaller number from the larger.
+  3. Use the number you obtain and repeat the above process. 
+  
+  What happens if you repeat the above process over and over? Let's see...
+  
+  Suppose we choose the number 3141.
+  4311-1134=3177.
+  7731-1377=6354.
+  6543-3456=3087.
+  8730-0378=8352.
+  8532-2358=6174.
+  7641-1467=6174...
+  
+  The process eventually hits 6174 and then stays there! 
+  
+  But the more amazing thing is this: every  four digit number whose digits are 
+  not all the same will eventually hit 6174, in at most 7 steps, and then stay there! 
+  """
+  
+  Also see: 
+   - http://plus.maths.org/issue38/features/nishiyama/index.html
+   - http://en.wikipedia.org/wiki/6174_%28number%29
+ 
+  This is a CP model for finding the sequence of Kaprekar's operations.
+
+  Also:
+   - http://hakank.org/picat/kaprekars_constant.pi 
+     Another (non CP) version.
+   - http://hakank.org/picat/kaprekars_constant_fixpoint.pi 
+     Finding the fixpoints. 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go =>
+  garbage_collect(300_000_000),
+  Base = 10,
+  N = 4,
+  Min = Base**(N-1),
+  Max = Base**N-1,
+  println(n=N),
+  foreach(Num in Min..Max)
+    if not_same_digits(N,Num) then
+      do_kaprekar(Num,N,Base, X),
+      first_pos(X,Pos),
+      if Pos > 0 then
+        printf("%w (pos: %d)\n", [X[I] : I in 1..Pos], Pos)
+      else
+        println(X)
+      end      
+    else
+      println(Num=samedigits)
+    end
+  end,
+  nl.
+
+go => true.
+
+go2 ?=>
+  garbage_collect(300_000_000),
+  Base = 10,
+  N = 4,
+  nl,
+  println(n=N),
+  Map = get_global_map(),
+  Num :: Base**(N-1)..Base**N-1,
+  do_kaprekar(Num,N,Base, X),
+  
+  % Since permutation3/3 might generate the same result we
+  % just show the distinct Xs.
+  if not Map.has_key(X) then
+    first_pos(X,Pos),
+    if Pos > 0 then
+      printf("%w (pos: %d)\n", [X[I] : I in 1..Pos], Pos)
+    else
+      println(X)
+    end
+  end,
+  Map.put(X,Map.get(X,0)+1),
+  flush(stdout),
+  fail,
+  
+  nl.
+
+go2 => true.
+
+
+first_pos(X,FirstPos) =>
+  Pos = [I : I in 1..X.len-1, X[I] == X[I+1]],
+  if Pos.len > 0 then
+    FirstPos = Pos.first
+  else
+    FirstPos = 0
+  end.
+
+%
+% ensure that X don't contains all the same digits
+%
+not_same_digits(N,X) =>
+  sum($[ ((X div (10**I)) mod 10) #!= ((X div (10**J)) mod 10) : I in 0..N-1, J in I+1..N-1]) #>= 1.
+
+
+
+do_kaprekar(Num,N,Base, X) =>
+  Rows = Base*2, 
+  MaxVal = Base**N-1,
+
+  % if var(Num) then
+  %   not_same_digits(N,Num)
+  % end,
+  % println(here),
+  
+  % decision variables
+  X = new_list(Rows),
+  X :: 1..MaxVal,
+
+  X[1] #>= 10**(N-1), % N-digit number
+  X[1] #= Num,
+  
+  X[2] #> 0,
+  % X[2] #= X[1], % Get the fixpoints
+
+  Vs = [],
+  foreach(I in 2..Rows)
+    kaprekar(X[I-1], X[I], N, Base, V),
+    % add the underlying variables    
+    Vs := Vs ++ [V]
+  end,
+ 
+  Vars = Vs ++ X,
+  solve($[split],Vars).
+
+
+% 
+% The Kaprakar procedure
+%
+% We return all the decision variables
+kaprekar(S, T, N, Base, Vars) =>
+  MaxVal = Base**N-1,
+  SNum = new_list(N),
+  SNum :: 0..Base-1,
+  
+  SOrdered = new_list(N),
+  SOrdered :: 0..Base-1,
+  
+  SReverse = new_list(N),
+  SReverse :: 0..Base-1,
+
+  OrdNum :: 0..MaxVal,
+  RevNum :: 0..MaxVal,
+
+  to_num(SNum, Base, S),
+
+  sort_increasing(SNum, SOrdered,P),
+  % sort_decreasing(SNum, SReverse),  
+  reverse_c(SOrdered, SReverse),
+
+  to_num(SOrdered, Base, OrdNum),
+  to_num(SReverse, Base, RevNum),
+  T #= RevNum - OrdNum,
+  Vars = SOrdered ++ SReverse ++ P ++ [SNum,OrdNum,RevNum].
+
+
+%
+% reverse an array
+%
+reverse_c(X, Rev) =>
+  Len = X.len,
+  foreach(I in 1..Len)
+    Rev[I] #= X[Len-I+1]
+  end.
+
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+  Len = length(List),
+  Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+to_num(List, Num) =>
+  to_num(List, 10, Num).
+
+
+
+%
+% Y is a sorted version of X
+%
+
+sort_increasing_xxx(X,Y,P) =>
+  N = X.len,
+  P = new_list(N),
+  P :: 1..N,
+  all_different(P),  
+  foreach(I in 1..N)
+     % y[p[i]] == x[i]
+     element(P[I],Y,X[I])
+  end,
+  increasing(Y).
+
+sort_increasing(X,Y,P) =>
+  P = new_list(X.len),
+  P :: 1..X.len,
+  all_different(P),
+  permutation3(X,P,Y),
+  increasing(Y).
+
+
+
+% The permutation from A <-> B using the permutation P
+permutation3(A,P,B) =>
+  foreach(I in 1..A.length)
+    element(P[I], A, B[I])    
+  end.
+
+
+%
+% The Kaprekar's constants (fixpoints)
+% From http://hakank.org/picat/kaprekars_constants_fixpoint.pi
+%
+constants(Constants) =>
+  Constants =  {
+           {},                                   % 1 none
+           {},                                   % 2 none
+           {495},                                % 3
+           {6174},                               % 4
+           {},                                   % 5 none
+           {549945, 631764},                     % 6
+           {},                                   % 7 none
+           {63317664, 97508421},                 % 8
+           {554999445, 864197532},               % 9
+           {6333176664, 9753086421, 9975084201}, % 10
+           {86431976532},                        % 11   
+           {999750842001,997530864201,975330866421,633331766664,555499994445}, % 12
+           {8643319766532},                      % 13
+           {99997508420001,99975308642001,99753308664201,97755108844221,97533308666421,63333317666664}, % 14
+           {864333197666532,555549999944445}     % 15 
+          }.

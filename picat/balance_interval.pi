@@ -1,0 +1,127 @@
+/* 
+
+  Global constraint balance_interval in Picat.
+
+  From Global Constraint Catalogue:
+  http://www.emn.fr/x-info/sdemasse/gccat/Cbalance_interval.html
+  """
+  Constraint
+
+      balance_interval(BALANCE, VARIABLES, SIZE_INTERVAL)
+
+  Purpose
+
+  Consider the largest set S1 (respectively the smallest set S2) of 
+  variables of the collection VARIABLES that take their value in a same 
+  interval [SIZE_INTERVAL*k, SIZE_INTERVAL*k+SIZE_INTERVAL-1], where k 
+  is an integer. BALANCE is equal to the difference between the 
+  cardinality of S2 and the cardinality of S1.
+
+  Example
+  (3, <6, 4, 3, 3, 4>, 3)
+
+  In the example, the third argument SIZE_INTERVAL=3 defines the following 
+  family of intervals [3*k, 3*k+2], where k is an integer. Values 
+  6,4,3,3 and 4 are respectively located within intervals 
+  [6, 8], [3, 5], [3, 5], [3, 5] and [3, 5]. Therefore intervals 
+  [6, 8] and [3, 5] are respectively used 1 and 4 times. 
+  The balance_interval constraint holds since its first argument BALANCE 
+  is assigned to the difference between the maximum and minimum number 
+  of the previous occurrences (i.e., 4-1).
+
+  Usage
+
+  An application of the balance_interval constraint is to enforce a 
+  balanced assignment of interval of values, no matter how many distinct 
+  interval of values will be used. In this case one will push down the 
+  maximum value of the first argument of the balance_interval constraint.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 5,
+  IntervalSize = 3,
+  X = new_list(N),
+  X :: 0..6,
+  
+  Bal :: 0..N,
+
+  X = [6,4,3,3,4],
+  Bal #= 3,
+
+  balance_interval(Bal, X, IntervalSize),
+  
+  Vars = X ++ [Bal],
+  solve(Vars),
+  
+  println(x=X),
+  println(bal=Bal),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+
+%
+% Note: This assumes only positive integers.
+%
+balance_interval(Bal, X, IntervalSize) =>
+  Ubx = X.len,
+  fd_max(X[1]) = XMax,
+  IntSize = (XMax div IntervalSize)+1, % how many intervals
+  
+  Intervals = new_array(IntSize,2),
+  Intervals :: 0..XMax*2,
+  
+  Counts = new_list(IntSize),
+  Counts :: 0..Ubx,
+  CMax :: 0..Ubx,
+  CMin :: 0..Ubx,
+
+  Intervals[1,1] #= 0,
+  Intervals[1,2] #= IntervalSize - 1,
+
+  foreach(I in 2..IntSize)
+    Intervals[I,1] #= IntervalSize*(I-1),
+    Intervals[I,2] #= (IntervalSize*I)-1
+  end,
+
+  foreach(J in 1..IntSize)
+    Counts[J] #= sum([X[I] #>= Intervals[J,1] #/\ X[I] #<= Intervals[J,2]
+                     : I in 1..Ubx]) 
+  end,
+
+  % get the maximum value of counts
+  CMax #= max(Counts),
+
+  % get the minimum value of counts > 0
+  min_except_0(Counts,CMin),
+  Bal #= CMax - CMin. % get the difference (the "balance")
+
+
+%
+% Ensure that the minumum value (> 0) is MinVal.
+%
+min_except_0(X,MinVal) =>
+  Len = X.len,
+  I :: 1..Len,
+  element(I,X,MinVal),
+  % between(1,Len,I),  
+  % MinVal #= X[I],
+  foreach(J in 1..Len)
+    MinVal #=< X[J] #\/ X[J] #= 0
+  end,
+  MinVal #> 0.

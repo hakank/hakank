@@ -1,0 +1,174 @@
+/* 
+
+  Global constraint in_set in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cin_set.html
+  """
+  in_set (VAL, SET)
+  
+  Purpose
+
+  Constraint variable VAL to belong to set SET.
+  
+  Example
+   (3,  {1, 3}) 
+  """
+
+  Note: Picat's CP/SAT/MIP modules don't support sets, so we simulate this
+  simply by using a list.
+
+  Here we also implements some 0/1 variants, which is probably a better
+  way of handing sets:
+   - in_set1(Val,S):  First index in set is 1
+   - in_set0(Val,S):  First index in set is 0
+   - in_set_lu(Val,S,Low,Up): First index in set is Low, last is Up
+
+   - create_set(Low,Up,S): create a set representing the interval Low..Up
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+%
+% Using a list of a certain length.
+%
+go ?=>
+  S = new_list(2), % a set of cardinality 2
+  S :: 0..9,
+
+  Val :: 0..9,
+  
+  % Val #= 3,
+
+  S = [1,3],
+
+  in_set(Val, S),
+
+
+  Vars = S ++ [Val],
+  solve(Vars),
+
+  println(s=S),
+  println(val=Val),
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+
+%
+% Using a list of 0/1 variables.
+% Here we must handle if 0 is included or not.
+%
+go2 ?=>
+  N = 5,
+  BaseIx = 0, % Include 0
+  % BaseIx = 1, % Don't include 0
+  
+  S = new_list(cond(BaseIx == 0,N+1,N)), % a set of cardinality BaseIx..N
+  S :: 0..1,
+
+  Val :: 0..S.len,
+  
+  % Val #= 3,
+
+
+  % in_set01(Val,S,BaseIx),
+  if BaseIx == 0 then
+    in_set0(Val,S)
+  else
+    in_set1(Val,S)
+  end,
+
+
+  Vars = S ++ [Val],
+  solve(Vars),
+
+  println(s=S),
+  println(val=Val),
+  nl,
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+%
+% Using a free interval (Low..Up)
+%
+go3 ?=>
+  Low = 5,
+  Up = 10,
+
+  println([low=Low,up=Up]),
+  Val :: Low..Up,
+
+  create_set(Low,Up,S),
+  println(s=S),
+
+  Val #= 6,
+
+  in_set_lu(Val,S,Low,Up),
+
+  Vars = S ++ [Val],
+  solve(Vars),
+  println([low=Low,up=Up]),
+  println(s=S),
+  println(val=Val),
+  nl,
+  fail,
+
+  nl.
+
+go3 => true.
+
+%
+% Note: Here we assume that S is a list of unique elements (hence the #= constraint).
+%
+in_set(Val, S) =>
+  sum([S[I] #= Val : I in 1..S.len]) #= 1.
+
+
+%
+% Note: we assume that S is a list of unique elements (hence the #= constraint).
+%
+in_set1(Val, S) =>
+  in_set01(Val, S,1).
+
+in_set0(Val, S) =>
+  in_set01(Val, S,0).
+
+in_set01(Val, S,BaseIx) =>
+  P = cond(BaseIx==0,1,0), % Fix the base
+  ValP #= Val+P,
+  element(ValP,S,1).
+
+%
+% in_set_p(Val,S,Low,Up)
+%
+% where Low is the lower index, and Up is the upper index
+%
+create_set(Low,Up, S) =>
+  Len = Up-Low+1,
+  S = new_list(Len),
+  S :: 0..1.
+  
+%
+% Is Val in the set S which is in the interval Low..Up?
+%
+in_set_lu(Val,S,Low,Up) =>
+  ValP #= Val-Low+1,  % adjust for the interval
+  element(ValP,S,1).
+
+

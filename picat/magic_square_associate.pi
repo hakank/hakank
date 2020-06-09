@@ -1,0 +1,180 @@
+/* 
+
+  Associate magic squares in Picat.
+
+  From http://en.wikipedia.org/wiki/Associative_magic_square
+  """
+  An associative magic square is a magic square for which every pair of numbers 
+  symmetrically opposite to the center sum up to the same value.
+  
+  ...
+  
+  Chinese tradition states that the Lo Shu Square was first discovered on the back 
+  of a turtle exiting the water. The square is shown below in Frénicle standard 
+  form. All rows columns and diagonals sum to 15 and all pairs symmetrically opposite 
+  the center sum to 10. 
+  ...
+    2  7  6
+    9  5  1
+    4  3  8
+  """
+
+  [Note: In the Wikipedia article the water retention is mentioned. This model 
+        does not include this (though I will perhaps model this in the future).
+        Also, I don't understand why water retension is mentioned in the Wikipedia
+        page, since this seems to be an orthogonal property of an associate 
+        magic square.
+  ]
+
+  
+  I.e. the sums for n=3 are:
+    (1,1) + (3,3) = 10
+    (1,2) + (3,2) = 10
+    (1,3) + (3,1) = 10
+    (2,1) + (2,3) = 10
+    (2,2) + (2,2) = 10
+    ...
+
+
+  For n=4 the sums are
+  
+     1 14 15  4
+     8 11 10  5
+    12  7  6  9
+    13  2  3 16
+  
+   (1,1) + (4,4) = 17
+   (1,2) + (4,3) = 17
+   (1,3) + (4,2) = 17
+   (1,4) + (4,1) = 17
+   (2,1) + (3,4) = 17
+   (2,2) + (3,3) = 17
+   (2,3) + (3,2) = 17
+   (2,4) + (3,1) = 17
+   ...
+   
+
+  Also see:
+    http://www.trump.de/magic-squares/
+    http://www.knechtmagicsquare.paulscomputing.com/
+    http://mathworld.wolfram.com/AssociativeMagicSquare.html
+    http://oeis.org/A081262
+
+  Note: According to 
+  http://en.wikipedia.org/wiki/Associative_magic_square#6_x_6_associative_magic_square_-_enumeration_problem
+  There are no 6x6 associate magic squares, and also no 10x10 associate magic squares
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 4,
+  magic_square_associate(N, Magic),
+
+  print_square(Magic),
+
+  fail,
+  
+  nl.
+
+go => true.
+
+%
+% Time to first solution different solvers.
+%
+% N     CP (constr/rand_val)      SAT
+% ------------------------------------
+%  2    -                         -     no solution
+%  3    0.0                       0.241
+%  4    0.0                       0.337
+%  5    0.0                       2.952
+%  6    -                         7.07     no solution
+%  7    0.003                     9.122
+%  8    0.104
+%  9    0.006
+% 10    - 
+% 11    0.048
+% 12    1.819
+% 13    0.638
+% 14    - 
+% 15    2.839
+% 16    -
+% 17    4.434
+% 18    
+% 18
+% 20
+% 
+go2 =>
+  nolog,
+  Timeout = 10_000,
+  foreach(N in 2..20, not member(N,[6,10,14]))  
+    println(n=N),
+    time_out(time2(magic_square_associate(N,Magic)),Timeout,Status),
+    println(status=Status),
+    if nonvar(Magic) then
+      print_square(Magic)
+    else
+      println(no_solution)
+    end,
+    nl
+  end,
+  nl.
+
+print_square(X) =>
+  N = X.len,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("% 5d ", X[I,J])
+    end,
+    nl
+  end,
+  nl.
+
+magic_square_associate(N, Magic) =>
+
+  Total = ( N * (N*N + 1)) div 2,
+  
+  Magic = new_array(N,N),
+  Magic :: 1..N*N,
+
+  Assoc = N*N+1,
+
+  all_different(Magic.vars),
+  
+  foreach(K in 1..N) 
+    sum([Magic[K,I] : I in 1..N]) #= Total,
+    sum([Magic[I,K] : I in 1..N]) #= Total
+  end,
+  
+  % diagonal1
+  sum([Magic[I,I] : I in 1..N]) #= Total,
+  
+  % diagonal2
+  sum([Magic[I,N-I+1] : I in 1..N]) #= Total,
+
+  % "associate value"
+  foreach(I in 1..N, J in 1..N)
+    Magic[I,J] + Magic[N-I+1,N-J+1] #= Assoc
+  end,
+
+
+  % Frénicle standard form
+  % For n=4 this yields the 48 squares that's shown at
+  % http://en.wikipedia.org/wiki/Associative_magic_square#4_x_4_associative_magic_square_-_complete_listing
+  Magic[1,1] #= min([Magic[1,1], Magic[1,N], Magic[N,1], Magic[N,N]]),
+  Magic[1,2] #< Magic[2,1],
+
+  % solve([inout,updown],Magic.vars).
+  solve([constr,rand_val],Magic.vars).  
+
+  
+
+

@@ -1,0 +1,145 @@
+/* 
+
+  Magic squares water retention in Picat.
+
+  This model is in part inspired by the Numberjack example model MagicWater.py
+
+  http://www.knechtmagicsquare.paulscomputing.com/topographical.html
+  """
+  a) there are 880 different order 4 magic squares
+  b) 137 of the 880 squares retain no water according to the topographical model
+  """
+
+
+  Also see:
+     http://www.knechtmagicsquare.paulscomputing.com/
+     http://www.knechtmagicsquare.paulscomputing.com/topographical.html
+     http://en.wikipedia.org/wiki/Associative_magic_square
+     http://en.wikipedia.org/wiki/Water_retention_on_mathematical_surfaces
+     http://www.azspcs.net/Contest/MagicWater
+
+     Johan Öfverstedt's CBLS solver (C++ and Comet): http://sourceforge.net/projects/wrmssolver/
+     
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+
+go ?=>
+
+  N = 5,
+  Total = (N*(N*N+1)) div 2,
+  println(total=Total),
+  
+  Assoc = N*N+1,
+  
+
+  % decision variables
+
+  Magic = new_array(N,N),
+  Magic :: 1..N*N,
+
+  Water = new_array(N,N),  
+  Water :: 1..N*N,
+
+  % the difference between water and magic
+  Diffs = new_array(N,N),
+  Diffs :: 0..N*N,
+
+  % objective (to maximize)
+  Z #= sum([Water[I,J] : I in 1..N, J in 1..N]) - (N*N*(N*N+1) div 2),
+  Z :: 0..N*N*N,
+
+
+  all_different(Magic.vars()),
+
+  % Water retention
+  % This is from the Numberjack model (MagicWater.py)
+  % first, the rim
+  foreach(I in 1..N)
+    % rows
+    Water[I,1] #= Magic[I,1],
+    Water[I,N] #= Magic[I,N],
+    
+    % columns
+    Water[1,I] #= Magic[1,I],
+    Water[N,I] #= Magic[N,I]
+  end, 
+  
+  % then the inner cells (max between their own height and of 
+  % the water level around)
+  foreach(A in 2..N-1, B in 2..N-1) 
+    Water[A,B] #= max([Magic[A,B], min([Water[A-1,B], Water[A,B-1], 
+                                        Water[A+1,B], Water[A,B+1]])])
+  end,
+
+  foreach(I in 1..N, J in 1..N) 
+    Water[I,J] #>= Magic[I,J]
+  end,
+
+  foreach(K in 1..N)
+    sum([Magic[K,I] : I in 1..N]) #= Total,
+    sum([Magic[I,K] : I in 1..N]) #= Total
+  end,
+  % diagonal 1
+  sum([Magic[I,I] : I in 1..N]) #= Total,
+  % diagonal 2
+  sum([Magic[I,N-I+1] : I in 1..N]) #= Total,
+
+  % "associative value"
+  foreach(I in 1..N, J in 1..N) 
+    Magic[I,J] + Magic[N-I+1,N-J+1] #= Assoc
+  end,
+ 
+  %
+  % Symmetry breaking: 
+  % Frénicle standard form
+  Magic[1,1] #= min([Magic[1,1], Magic[1,N], Magic[N,1], Magic[N,N]]),
+  Magic[1,2] #< Magic[2,1],
+
+
+  % Symmetry breaking from the Numberjack model 
+  % (which is not exactly the same as Frénicle standard form)
+  % Magic[1,1] #< Magic[1,N],
+  % Magic[1,1] #< Magic[N,N],
+  % Magic[1,N] #< Magic[N,1],
+
+  Vars = Magic ++ Water,
+  % solve($[ffc,updown,max(Z),report(printf("Z: %d\n", Z))], Vars),
+  % solve($[constr,updown,max(Z),report(printf("Z: %d\n", Z))], Vars),
+  % solve($[updown,max(Z),report(printf("Z: %d\n", Z))], Vars),
+  solve($[updown,max(Z),report(printf("Z: %d\n", Z))], Vars),
+
+  println(z=Z),
+  print_matrix("Magic:", Magic),
+  print_matrix("Water:", Water),
+  println("Retention:"),
+  foreach(I in 1..N)
+    foreach(J in 1..N) 
+      printf("%2d ", Water[I,J]-Magic[I,J])
+    end,
+    nl
+  end,
+
+  nl.
+
+go => true.
+
+print_matrix(Name,X) =>
+  println(Name),
+  % foreach(Row in X) println(Row.to_list()) end,
+  foreach(I in 1..X.len)
+    foreach(J in 1..X[1].len) 
+      printf("%2d ", X[I,J])
+    end,
+    nl
+  end,
+  nl.

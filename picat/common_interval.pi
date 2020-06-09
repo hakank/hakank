@@ -1,0 +1,134 @@
+/* 
+
+  Global constraint common_interval in Picat.
+
+  From Global Constraint Catalog:
+  http://www.emn.fr/x-info/sdemasse/gccat/Ccommon_interval.html
+  """
+  common_interval (NCOMMON1, NCOMMON2, VARIABLES1, VARIABLES2, SIZE_INTERVAL) 
+
+  Purpose
+
+  NCOMMON1 is the number of variables of the collection of variables 
+  VARIABLES1 taking a value in one of the intervals derived from the values
+  assigned to the variables of the collection VARIABLES2: To each value v 
+  assigned to a variable of the collection VARIABLES2 we associate the 
+  interval [SIZE_INTERVAL*[v/SIZE_INTERVAL],
+  SIZE_INTERVAL*[v/SIZE_INTERVAL]+SIZE_INTERVAL-1] .
+
+  NCOMMON2 is the number of variables of the collection of variables 
+  VARIABLES2 taking a value in one of the intervals derived from the 
+  values assigned to the variables of the collection VARIABLES1: To each 
+  value v assigned to a variable of the collection VARIABLES1 we associate 
+  the interval  [SIZE_INTERVAL*[v/SIZE_INTERVAL],
+  SIZE_INTERVAL*[v/SIZE_INTERVAL]+SIZE_INTERVAL-1].
+
+  Example
+      (
+      3, 2, <8, 6, 6, 0>, 
+      <7, 3, 3, 3, 3, 7>, 3
+      )
+
+  In the example, the last argument SIZE_INTERVAL=3 defines the following 
+  family of intervals  [3*k, 3*k+2] , where k is an integer. 
+  As a consequence the items of collection <8, 6, 6, 0> respectively 
+  correspond to intervals [6, 8], [6, 8], [6, 8] and [0, 2].
+  Similarly the items of collection <7, 3, 3, 3, 3, 7> respectively 
+  correspond to intervals [6, 8], [3, 5], [3, 5], [3, 5], [3, 5], [6, 8].
+  The common_interval constraint holds since:
+
+   * Its first argument NCOMMON1=3 is the number of intervals associated 
+     with the items of collection <8, 6, 6, 0> that also correspond to 
+     intervals associated with <7, 3, 3, 3, 3, 7>.
+   * Its second argument NCOMMON2=2 is the number of intervals associated 
+     with the items of collection <7, 3, 3, 3, 3, 7> that also correspond 
+     to intervals associated with <8, 6, 6, 0>.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  X = new_list(4),
+  X :: 1..9,
+  Y = new_list(6),
+  Y :: 1..9,
+  
+  IntervalSize = 3,
+
+  A :: 1..10,
+  B :: 1..10,
+
+  X = [8,6,6,7],
+  Y = [7,3,3,3,3,7],
+
+  % A #= 4,
+  % B #= 2,
+
+  common_interval(A, B, X, Y, IntervalSize),
+  
+  Vars = X ++ Y ++ [A,B],
+  solve(Vars),
+
+  println(x=X),
+  println(y=Y),
+  println(a=A),
+  println(b=B),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+common_interval(A, B, X, Y, IntervalSize) =>
+   Ubx = X.len,
+   fd_max(X[1]) = XMax,
+   IntSizeX = (XMax div IntervalSize)+1,
+   XIntervals = new_array(IntSizeX,2),
+   XIntervals :: 0..XMax*2,
+   XCounts = new_list(IntSizeX),
+   XCounts :: 0..Ubx,
+
+   Uby = Y.len,
+   fd_max(Y[1]) = YMax,
+   IntSizeY = (YMax div IntervalSize)+1,
+   YIntervals = new_array(IntSizeY,2),
+   YIntervals :: 0..YMax*2,
+   YCounts = new_list(IntSizeY),
+   YCounts :: 0..Uby,
+   
+   make_interval(XIntervals, IntervalSize, IntSizeX),
+   make_interval(YIntervals, IntervalSize, IntSizeY),
+
+   count_interval(X, XIntervals, XCounts,  IntSizeX),
+   count_interval(Y, YIntervals, YCounts,  IntSizeY),
+   A #= sum([XCounts[I]*(YCounts[I] #> 0) :  I in 1..XCounts.len]),
+   B #= sum([YCounts[J]*(XCounts[J] #> 0) :  J in 1..YCounts.len]).
+
+
+% create the interval
+make_interval(Intervals, IntervalSize, IntSize) =>
+   Intervals[1,1] #= 0,
+   Intervals[1,2] #= IntervalSize - 1,
+   foreach(I in 2..IntSize)
+      Intervals[I,1] #= IntervalSize*(I-1),
+      Intervals[I,2] #= (IntervalSize*I)-1
+   end.
+
+
+% count intervals
+count_interval(X, Intervals, Counts, IntSize) =>
+  foreach(J in 1..IntSize) 
+     Counts[J] #= sum([X[I] #>= Intervals[J,1] #/\ X[I] #<= Intervals[J,2]
+                   : I in 1..X.len]) 
+  end.

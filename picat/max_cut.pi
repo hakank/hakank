@@ -1,0 +1,209 @@
+/* 
+
+  Maximum Cut Problem in Picat.
+
+  From GLPK:s model max_cut.mod
+  """
+  MAXCUT, Maximum Cut Problem
+  
+  Written in GNU MathProg by Andrew Makhorin <mao@gnu.org>
+
+  The Maximum Cut Problem in a network G = (V, E), where V is a set
+  of nodes, E is a set of edges, is to find the partition of V into
+  disjoint sets V1 and V2, which maximizes the sum of edge weights
+  w(e), where edge e has one endpoint in V1 and other endpoint in V2.
+
+  Reference:
+  Garey, M.R., and Johnson, D.S. (1979), Computers and Intractability:
+  A guide to the theory of NP-completeness [Network design, Cuts and
+  Connectivity, Maximum Cut, ND16].
+  """
+
+  Optimal solutions from different solvers:
+
+  CP:
+  z = 20
+  x = [0,1,0,1,1,0,0,1,0,0,1,1,0,1,0]
+  v1 = [1,3,6,7,9,10,13,15]
+  v2 = [2,4,5,8,11,12,14]
+
+  MIP:
+  z = 20
+  x = [0,1,0,1,1,0,0,1,0,1,0,0,1,0,1]
+  v1 = [1,3,6,7,9,11,12,14]
+  v2 = [2,4,5,8,10,13,15]
+
+  SAT:
+  z = 20
+  x = [0,1,0,1,1,0,0,1,0,0,1,1,0,1,0]
+  v1 = [1,3,6,7,9,10,13,15]
+  v2 = [2,4,5,8,11,12,14]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+% import sat.
+% import cp.
+
+
+
+main => go.
+
+%
+% This is a port of GLPK:s model.
+%
+go ?=>
+  data(1,NumEdges,NumNodes,E,W) ,
+  max_cut1(NumEdges,NumNodes,E,W, X,Z),
+
+  println(z=Z),
+  println(x=X),
+  println(v1=[I : I in 1..NumNodes, X[I] == 0]),
+  println(v2=[I : I in 1..NumNodes, X[I] == 1]),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+%
+% Another approach.
+%
+go2 => 
+  data(1,NumEdges,NumNodes,E,W) ,
+  max_cut2(NumEdges,NumNodes,E,W, X,Z),
+  
+  println(z=Z),  
+  println(x=X),
+  println(v1=[I : I in 1..NumNodes, X[I] == 0]),
+  println(v2=[I : I in 1..NumNodes, X[I] == 1]),
+  
+  nl,
+  fail,
+
+  nl.
+
+
+go3 =>
+  NumNodes = 30,
+  % _ = random2(),
+  generate(NumNodes, E,W),
+  println(e=E),
+  println(w=W),
+  NumEdges = E.len,
+
+  println(max_cut1),
+  time2(max_cut1(NumEdges,NumNodes,E,W, X1,Z1)),
+
+  println(z=Z1),  
+  println(x=X1),
+  println(v1=[I : I in 1..NumNodes, X1[I] == 0]),
+  println(v2=[I : I in 1..NumNodes, X1[I] == 1]),
+  nl,
+  
+  println(max_cut2),
+  time2(max_cut2(NumEdges,NumNodes,E,W, X2,Z2)),
+
+  println(z=Z2),  
+  println(x=X2),
+  println(v1=[I : I in 1..NumNodes, X2[I] == 0]),
+  println(v2=[I : I in 1..NumNodes, X2[I] == 1]),
+
+  nl,
+  % fail,
+
+  nl.
+
+
+%
+% Generate a random graph for NumNodes nodes.
+%
+generate(NumNodes, E,W) =>
+  E = { {I,J} : I in 1..NumNodes, J in I+1..NumNodes, random() mod 100 > 80 },
+  % W = [1+random() mod 2 : _ in 1..E.len].
+  W = [1 : _ in 1..E.len].  
+
+
+%
+% GLPK's 0/1 version
+%
+max_cut1(NumEdges,NumNodes,E,W, X,Z) =>
+  % X[I] = 0 means that node I is in set V1
+  % X[I] = 1 means that node I is in set V2 
+  X = new_list(NumNodes),
+  X :: 0..1, 
+
+  % t[i,j] = x[i] and x[j] = (x[i] + x[j]) div 2 
+  T = new_array(NumEdges,NumNodes),
+  T :: 0..1,
+
+  Z #= sum([W[I] * (X[E[I,1]] + X[E[I,2]] - 2 * T[E[I,1],E[I,2]]) : I in 1..NumEdges]),
+  Z #> 0,
+
+  foreach(I in 1..NumEdges)
+
+    X[E[I,1]] + X[E[I,2]] - 2 * T[E[I,1],E[I,2]] #>= 0,
+    X[E[I,1]] + X[E[I,2]] - 2 * T[E[I,1],E[I,2]] #<= 1
+  end,
+
+  Vars = X ++ T.vars ++ [Z],
+  solve($[max(Z),ffc,split,report(printf("z: %d\n",Z))],Vars).
+  % solve($[max(Z),constr,updown],Vars).  
+
+
+%
+% Simpler variant.
+%
+max_cut2(_NumEdges,NumNodes,E,W, X,Z) =>
+  X = new_list(NumNodes),
+  X :: 0..1, 
+
+  Z #= sum([W[I]*(X[N1] #!= X[N2]) : {I,{N1,N2}} in zip(1..E.len,E.to_list)]),
+
+  solve($[max(Z),degree,updown,report(printf("z: %d\n",Z))],X).
+  % solve($[max(Z),degree,split],X).  
+
+
+
+% From GLPL max_cut.mod
+% """
+% In this example the network has 15 nodes and 22 edges.
+%
+% Optimal solution is 20
+% """
+data(1,NumEdges,NumNodes,E,W) => 
+  NumEdges = 22,
+  NumNodes = 15,
+  E = {
+   { 1,  2}, 
+   { 1,  5}, 
+   { 2,  3}, 
+   { 2,  6}, 
+   { 3,  4}, 
+   { 3,  8}, 
+   { 4,  9}, 
+   { 5,  6}, 
+   { 5,  7}, 
+   { 6,  8}, 
+   { 7,  8}, 
+   { 7, 12}, 
+   { 8,  9}, 
+   { 8, 12}, 
+   { 9, 10}, 
+   { 9, 14}, 
+   {10, 11}, 
+   {10, 14}, 
+   {11, 15}, 
+   {12, 13}, 
+   {13, 14}, 
+   {14, 15}},
+
+  % weights are just 1
+  % w[i] is weight of edge (i)
+  W = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1].
+

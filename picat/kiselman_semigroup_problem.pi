@@ -1,0 +1,140 @@
+/* 
+
+  Kiselman Semigroup Problem in Picat.
+
+  From the lecture "Constraint Programming" 
+  by Alan M. Frisch and Ian Miguel
+  http://www-module.cs.york.ac.uk/cop/model1.pdf
+  (via http://www-module.cs.york.ac.uk/cop/)
+  
+  """
+  Given n, a positive integer.
+  Find a sequence of integers drawn from 1..n
+  Such that between every pair of occurrences of an
+  integer i there exists an integer greater than i and an
+  integer less than i.
+  * If n = 3, a solution is 2, 3, 1, 2
+  * We are usually interested in counting the solutions
+    for a given n.
+  * This is not a finite domain specification: there are an
+    infinite number of finite sequences
+  
+  ....
+
+  Given n, a positive integer
+     Find a sequence of integers drawn from 1..n
+       Such that between every pair of occurrences of an integer i
+       there exists an integer greater than i and an integer less than i.
+  * Notice:
+    There can be at most 1 occurrence of 1 and n.
+    There can be at most 2 occurrences of 2 and n-1.
+    There can be at most 4 occurrences of 3 and n-2.
+  * So, given n, we can derive a maximum sequence
+    length:
+  *  For even n: 1+2+4+8+...+ 2^(n/2-1) = 2^(n/2+1)-2
+  *  Similarly for odd n.
+  *  Hence, domain of the sequence variable is finite.
+  """
+
+  Number of solutions for some n
+  
+    n   #solutions
+    --------------
+    1        2
+    2        5
+    3       18
+    4      115
+    5     1710
+    6    83973
+
+  This is - not surprisingly - the sequence
+    "Number of elements in the semigroup of type K_n"
+  according to The On-Line Encyclopedia of Integer Sequences (OEIS):
+  http://oeis.org/A125625
+  
+  References for this sequence:
+  Kiselman, C.O. (2002). "A Semigroup of Operators in Convexity Theory." 
+  Trans. Am, Math. Soc., 354, No. 5, pp. 2035-2053. 
+  http://www2.math.uu.se/~kiselman/semigroupTRAN2915.pdf
+  
+  Alsaody, S. (2007). "Determining the Elements of a Semigroup." 
+  Uppsala, Sweden: Dept. Of Mathematics, Uppsala University, Report No. 2007:3.
+  http://www2.math.uu.se/research/pub/Alsaody1.pdf
+
+
+  Experimental: Number of solutions where no 0's are allowed 
+  (see the constraint last in the model).
+    n   #solutions
+    --------------
+    1    1
+    2    2
+    3    2
+    4   14
+    5    8
+    6  838
+  
+  Note: This sequence is not in OAIS.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 4,
+  kiselman_semigroup(N, X),
+  println(X),
+  fail,
+
+  nl.
+
+go => true.
+
+%
+% number of solutions for some N
+%
+go2 ?=>
+  foreach(N in 1..6)
+    Count = count_all(kiselman_semigroup(N, _X)),
+    println(N=Count)
+  end,
+
+  nl.
+
+go2 => true.
+
+kiselman_semigroup(N, X) =>
+  M = ceiling(2**(1+(N/2))-2),
+  
+  % 0's are used as dummy values and must be placed last.
+  X = new_list(M),
+  X :: 0..N, 
+
+  % the length of the sequence
+  Len #= sum([X[I] #> 0 : I in 1..M]),
+
+  % The main sequence
+  foreach(I in 1..M, J in I+1..M) 
+      (X[I] #= X[J] #/\ X[I] #> 0) #=>
+         sum([X[I] #< X[K] #/\ X[I] #> X[L]
+             : K in I+1..J-1, L in I+1..J-1]) #>= 1
+  end,
+
+
+  % Zeros, if any, are always last in the sequence.
+  foreach(I in 1..M-1) 
+    X[I] #= 0 #=> X[I+1] #= 0
+  end,
+  
+  %% Test: No 0's are allowed
+  % Len = M,
+
+  solve([degree,updown],X).
+
+

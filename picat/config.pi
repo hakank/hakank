@@ -1,0 +1,88 @@
+/* 
+
+  Config problem in Picat.
+
+  From OPL's example config.mod (and config.dat)
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  NbModel = 3,
+  NbCard = 4,
+  NbRack = 5,
+
+  Models = NbModel,
+  Cards  = NbCard,
+  Racks  = NbRack,
+
+  % modelType:
+  %   power
+  %   connectors
+  %   price
+  _ModelTypes = 3,
+  Model = [ [  0,  0,   0],
+            [150,  8, 150],
+            [200, 16, 200]
+           ],
+
+  % cardType:
+  %   power
+  %   quantity
+  _CardTypes = 2,
+  Car =  [ [20, 10],
+           [40,  4],
+           [50,  2], 
+           [75,  1]
+         ],
+ 
+  MaxPrice #= max([Model[R,3] : R  in 1..Models]),
+  MaxCost = NbCard * MaxPrice,
+  PowerData  = [Model[I,1] : I in 1..NbModel],
+  ConnData   = [Model[I,2] : I in 1..NbModel],
+  PriceData  = [Model[I,3] : I in 1..NbModel],  
+
+
+  % decision variables
+  Rack = new_list(Racks),
+  Rack :: 1..NbModel,
+  Counters = new_array(Racks,Cards),
+  Counters :: 0..NbCard,
+  
+  Cost :: 0..MaxCost,
+
+  foreach(R in 1..Racks)
+    element(Rack[R],PowerData,PowerDataRackR),
+    sum([Counters[R,C] * Car[C, 1] : C in 1..Cards])  #<= PowerDataRackR
+  end,
+  
+  foreach(R in 1..Racks)
+    element(Rack[R],ConnData,ConnDataRackR), 
+    sum([Counters[R,C] : C in 1..Cards])  #<= ConnDataRackR 
+  end,
+
+  foreach(C in 1..Cards)
+     sum([ Counters[R,C] : R in 1..Racks]) #= Car[C,2]
+  end,
+
+  Cost #= sum([PriceDataRackR : R in 1..Racks, element(Rack[R],PriceData,PriceDataRackR)]),
+
+  Vars = Rack ++ Counters.vars,
+  solve($[min(Cost)],Vars),
+
+  println(cost=Cost),
+  println(rack=Rack),
+  println("Counters:"),
+  foreach(Row in Counters) println(Row) end,
+
+ 
+  nl.
+
+go => true.
