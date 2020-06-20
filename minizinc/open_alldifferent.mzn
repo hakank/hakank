@@ -31,7 +31,7 @@ int: n = 4;
 array[1..n] of var 1..9: x;
 var set of 1..n: s;
 
-predicate open_alldifferent(array[int] of var int: y, var set of int: ss) =
+predicate open_alldifferent(array[int] of var int: x, var set of int: ss) =
     forall(i, j in index_set(x) where i < j) (
         (i in ss /\ j in ss) -> x[i] != x[j]      
    )
