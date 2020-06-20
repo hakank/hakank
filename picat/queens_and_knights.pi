@@ -1,0 +1,192 @@
+/* 
+
+  Queens and Knights problem in Picat.
+
+  From Roger K.W. Hui: "Queens and Knights"
+  http://archive.vector.org.uk/art10003900
+  """
+  In 1850, Carl Friedrich Gauss and Franz Nauck showed that it is 
+  possible to place eight queens on a chessboard such that no queen 
+  attacks any other queen. The problem of enumerating the 92 different 
+  ways there are to place 8 queens in this manner has become a standard 
+  programming example, and people have shown that it can be solved 
+  using many different search techniques.
+
+  Now consider a variant of this problem: you must place an 
+  equal number of knights and queens on a chessboard such that 
+  no piece attacks any other piece. What is the maximum number of 
+  pieces you can so place on the board, and how many different 
+  ways can you do it?
+  """
+
+  For N=8 then
+  * The maximum number of pieces is 10: 5 queens and 5 knights
+
+  z: 10
+  queens: 5
+  knights: 5
+  
+  _ _ _ _ _ Q _ _
+  _ _ Q _ _ _ _ _
+  _ _ _ _ _ _ Q _
+  _ Q _ _ _ _ _ _
+  _ _ _ _ _ _ _ _
+  _ _ _ _ _ _ _ Q
+  K _ _ K _ _ _ _
+  K _ _ K K _ _ _
+
+  * There are 16 different optimal solutions.
+ 
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+%
+% N = 8
+%
+go ?=>
+  nolog, 
+  N = 8,
+  println(n=N),
+  time(queens_and_knights(N, X,Queens,Knights, Z)),  
+  print_solution(N,X,Queens,Knights,Z),
+
+  nl.
+
+go => true.
+
+
+%
+% Optimal solutions for N=2..20
+%
+go2 ?=>
+  nolog, 
+  member(N,2..20),
+  println(n=N),
+  time(queens_and_knights(N, X,Queens,Knights, Z)),  
+  print_solution(N,X,Queens,Knights,Z),
+  fail,
+  nl.
+
+go2 => true.
+
+
+%
+% Count the number of optimal solutions.
+%
+% [n = 4,z = 2,num_solutions = 40]
+% [n = 5,z = 4,num_solutions = 156]
+% [n = 6,z = 6,num_solutions = 176]
+% [n = 7,z = 8,num_solutions = 120]
+% [n = 8,z = 10,num_solutions = 16]
+% [n = 9,z = 12,num_solutions = 16]
+% [n = 10,z = 14,num_solutions = 8]
+%
+go3 ?=>
+  nolog,
+  foreach(N in 2..10)
+    if queens_and_knights(N, _X,_Queens,_Knights, Z) then
+      Count = count_all(queens_and_knights(N, _X2,_Queens2,_Knights2, Z)),
+      println([n=N,z=Z,num_solutions=Count])
+    end
+  end,
+  nl.
+
+go3 => true.
+
+
+%
+% All optimal solutions
+%
+go4 ?=>
+  nolog,
+  member(N,2..10),
+  Map = get_global_map(),
+  Map.put(count,0),
+  println(n=N),
+
+  queens_and_knights(N, _X,_Queens,_Knights, Z),
+  println(optimalZ=Z),
+
+  queens_and_knights(N, X,Queens,Knights, Z),
+  print_solution(N,X,Queens,Knights,Z),
+  Map.put(count,Map.get(count)+1),
+  fail,
+  nl.
+
+go4 => println(num_solutions=get_global_map().get(count)).
+
+
+print_solution(N,X,Queens,Knights,Z) => 
+  Queen = 1,
+  Knight = 2,
+
+  Map = new_map([Queen = 'Q', Knight = 'K', 0 = '_']),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      print(Map.get(X[I,J])), printf(" ")
+    end,
+    nl
+  end,
+  nl,
+  println(z=Z),  
+  println(queens=Queens),
+  println(knights=Knights),
+
+  nl.
+
+
+queens_and_knights(N, X,Queens,Knights, Z) =>
+
+  Queen = 1,
+  Knight = 2,
+
+  % decision variables
+  X = new_array(N,N),
+  X :: 0..2, 
+
+  % there can only be n queens so it's the upper limits of knights as well
+  % Queens  #= sum([X[I,J] #= Queen: I in 1..N, J in 1..N]),
+  Queens :: 1..N*2,
+  
+  % Knights  #= sum([X[I,J] #= Knight  : I in 1..N, J in 1..N]),
+  Knights :: 1..N*2,
+  
+  Z #= Queens + Knights,
+  Z :: [I*2 : I in 1..N], % at least one queen and one knight
+
+  count(Queen,X.vars,#=,Queens),
+  count(Knight,X.vars,#=,Knights),  
+
+  Queens #= Knights,
+
+  foreach(I in 1..N, J in 1..N)
+    Diags = [X[A,B] #= 0 : A in 1..N,  A != I, B in 1..N,B != J, (A+B == I+J ; A-B == I-J)],
+    % KnightList = [X[I+A,J+B] #= 0 : A in {-2,-1,1,2}, member(I+A,1..N), B in {-2,-1,1,2}, 
+    %                                         member(J+B,1..N), abs(A)+abs(B) == 3],
+    KnightList = [X[I+A,J+B] #= 0 : A in {-2,-1,1,2}, I+A >= 1, I+A <= N, B in {-2,-1,1,2}, 
+                                             J+B >= 1, J+B <= N, abs(A)+abs(B) == 3],
+    X[I,J] #= Queen #=>
+        % diagonals
+        sum(Diags) #= Diags.len #/\    
+        % rows and columns
+        sum([X[A,J] #= 0 : A in 1..N]) #= N-1 #/\
+        sum([X[I,A] #= 0 : A in 1..N]) #= N-1
+        ,
+    X[I,J] #= Knight #=> sum(KnightList) #= KnightList.len
+  end,
+
+  Vars = X.vars ++ [Queens, Knights],
+  if var(Z) then
+    % solve($[max(Z),inout,updown,report(printf("z:%d\n",Z))],Vars).
+    solve($[max(Z),ff,split],Vars)
+  else
+    solve($[inout,updown],Vars)
+  end.

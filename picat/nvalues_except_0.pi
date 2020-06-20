@@ -1,0 +1,199 @@
+/* 
+
+  Global constraint nvalues_except_0 in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cnvalues_except_0.html
+  """
+  Constraint
+
+      nvalues_except_0(VARIABLES,RELOP,LIMIT)
+
+  Purpose
+
+      Let N be the number of distinct values, different from 0, assigned 
+      to the variables of the VARIABLES collection. Enforce condition 
+      N RELOP LIMIT to hold.
+
+  Example
+      (<4,5,5,4,0,1>,=,3)
+
+      The nvalues_except_0 constraint holds since the number of distinct 
+      values, different from 0, occurring within the collection 
+      <4,5,5,4,0,1> is equal (i.e., RELOP is set to =) to its 
+      third argument LIMIT=3.
+  """
+
+  Here is also an experimental version of nvalues_except_0(Variables,Relop,RelopN,Limit)
+  which makes it possible to let Relop be free (i.e. not assigned).
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+
+%
+% nvalues_except_0/3.
+%
+go ?=>
+  N = 6,
+  Variables = new_list(N),
+  Variables :: 0..N,
+
+  Limit :: 1..N,
+ 
+  Variables #= [4,5,5,4,0,1],
+
+  Relop = #=,
+  % Limit #= 3,
+
+  nvalues_except_0(Variables, Relop, Limit),
+
+  Vars = Variables ++ [Limit],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(limit=Limit),
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+
+%
+% nvalues_except_0_free_relop/4.
+%
+% Experimental: Let Relop be free.
+% For this we add RelopN :: -2..2 to channel between Relops.
+%
+% With free Relop and Limit #= 3 we got 3 solutions:
+%
+% variables = [4,5,5,4,0,1]
+% limit = 3
+% relop = #=<
+% 
+% variables = [4,5,5,4,0,1]
+% limit = 3
+% relop = #=
+% 
+% variables = [4,5,5,4,0,1]
+% limit = 3
+% relop = #>=
+%
+go2 ?=>
+  N = 6,
+  Variables = new_list(N),
+  Variables :: 0..N,
+
+  Limit :: 1..N,
+  RelopN :: -2..2,
+ 
+  Variables #= [4,5,5,4,0,1],
+
+  % Relop = #=,
+  Limit #= 3,
+
+  nvalues_except_0_free_relop(Variables, Relop, RelopN, Limit),
+
+  Vars = Variables ++ [Limit,RelopN],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(limit=Limit),
+  println(relop=Relop),
+  nl,
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+
+%
+% nvalues_except_0: counts the different values (except 0) in array X.
+% 
+% Note: If relop is not #= and NV not fixed , then more 
+% than one solutions for the same X may be generated. 
+% This may be considered a bug or a feature.
+%
+nvalues_except_0(X, Relop, NV) =>
+  Max = fd_max_array(X),
+  S = new_list(Max),
+  S :: 0..1,
+
+  foreach(I in 1..Max)
+    S[I] #= 1 #<=> sum([ X[J] #!= 0 #/\ X[J] #= I
+                       : J in 1..X.len]) #>= 1
+  end,
+  Sum #= sum(S),
+  if Relop ==  #<                     then
+     NV #< Sum 
+  elseif Relop == #<= ; Relop == #=<  then
+     NV #<= Sum
+  elseif Relop == $#=                 then
+     NV #= Sum
+  elseif Relop = $#>=                 then
+     NV #>= Sum
+  elseif Relop == $#>                 then
+     NV #> Sum
+  end.
+
+
+
+%
+% nvalues_except_0: counts the different values (except 0) in array X.
+% 
+% Note: If relop is not #= and NV not fixed , then more 
+% than one solutions for the same X may be generated. 
+% This may be considered a bug or a feature.
+%
+nvalues_except_0_free_relop(X, Relop, RelopN, NV) =>
+  Max = fd_max_array(X),
+  S = new_list(Max),
+  S :: 0..1,
+  foreach(I in 1..Max)
+    S[I] #= 1 #<=> sum([ X[J] #!= 0 #/\ X[J] #= I
+                       : J in 1..X.len]) #>= 1
+  end,
+  Sum #= sum(S),
+  relops(RelopN,Relop),
+  if Relop ==  #<                     then
+     NV #< Sum 
+  elseif Relop == #<=  ; Relop == #=< then
+     NV #<= Sum
+  elseif Relop == $#=                 then
+     NV #= Sum
+  elseif Relop = $#>=                 then
+     NV #>= Sum
+  elseif Relop == $#>                 then
+     NV #> Sum
+  end.
+
+
+relops(-2,#<).
+relops(-1,#=<).
+relops(0,#=).
+relops(1,#>=).
+relops(2,#>).
+
+%
+% Maximum/minimum domain value in array X
+%
+fd_max_array(X) = max([fd_max(V) : V in X]).
+fd_min_array(X) = min([fd_min(V) : V in X]).
+
+% combine them
+fd_min_max_array(X) = [fd_min_array(X), fd_max_array(X)].
+
+% Get the full domain of X
+fd_min_max_array_dom(X) = fd_min_array(X)..fd_max_array(X).

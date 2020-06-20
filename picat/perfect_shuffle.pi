@@ -1,0 +1,242 @@
+/* 
+
+  Perfect shuffle in Picat.
+
+  Source
+  http://mathworld.wolfram.com/Out-Shuffle.html
+  """
+  ...
+  The numbers of out-shuffles needed to return a deck of n=2, 4, ... to its original 
+  order are 1, 2, 4, 3, 6, 10, 12, 4, 8, 18, 6, 11, ... (Sloane's A002326), which is 
+  simply the multiplicative order of 2 (mod n-1). For example, a deck of 52 cards 
+  therefore is returned to its original state after eight out-shuffles, 
+  since 2^8=1 (mod 51)
+  """
+
+  Number of shuffles required:
+  http://www.research.att.com/~njas/sequences/A002326
+
+
+  The following model implements perfect shuffle for _even_ number of elements, 
+  i.e. 2*n. 
+
+  n = 4, for 1..8 gives the following matrix:
+  1 2 3 4 5 6 7 8
+  1 5 2 6 3 7 4 8
+  1 3 5 7 2 4 6 8
+  1 2 3 4 5 6 7 8  <-- restored
+  1 5 2 6 3 7 4 8
+  1 3 5 7 2 4 6 8
+  1 2 3 4 5 6 7 8  <-- restored
+  1 5 2 6 3 7 4 8
+
+  This program implements perfect shuffle for:
+  - odd and even number of elements
+  - in and out shuffle
+      in: first card in the top half is the first card in the new deck
+      out: first card in the bottom half is the first card in the new deck
+
+  Here are some example of "shuffle path", i.e. shuffling until we have
+  the same order again.
+
+  Example: N= 10
+
+  in shuffle:
+  [1,2,3,4,5,6,7,8,9,10]
+  [6,1,7,2,8,3,9,4,10,5]
+  [3,6,9,1,4,7,10,2,5,8]
+  [7,3,10,6,2,9,5,1,8,4]
+  [9,7,5,3,1,10,8,6,4,2]
+  [10,9,8,7,6,5,4,3,2,1]
+  [5,10,4,9,3,8,2,7,1,6]
+  [8,5,2,10,7,4,1,9,6,3]
+  [4,8,1,5,9,2,6,10,3,7]
+  [2,4,6,8,10,1,3,5,7,9]
+  [1,2,3,4,5,6,7,8,9,10]
+
+  out shuffle:
+  [1,2,3,4,5,6,7,8,9,10]
+  [1,6,2,7,3,8,4,9,5,10]
+  [1,8,6,4,2,9,7,5,3,10]
+  [1,9,8,7,6,5,4,3,2,10]
+  [1,5,9,4,8,3,7,2,6,10]
+  [1,3,5,7,9,2,4,6,8,10]
+  [1,2,3,4,5,6,7,8,9,10]
+
+
+  For odd N we adjust the split of top and bottom.
+  Example N=11
+
+  in shuffle
+  [1,2,3,4,5,6,7,8,9,10,11]
+  [6,1,7,2,8,3,9,4,10,5,11]
+  [3,6,9,1,4,7,10,2,5,8,11]
+  [7,3,10,6,2,9,5,1,8,4,11]
+  [9,7,5,3,1,10,8,6,4,2,11]
+  [10,9,8,7,6,5,4,3,2,1,11]
+  [5,10,4,9,3,8,2,7,1,6,11]
+  [8,5,2,10,7,4,1,9,6,3,11]
+  [4,8,1,5,9,2,6,10,3,7,11]
+  [2,4,6,8,10,1,3,5,7,9,11]
+  [1,2,3,4,5,6,7,8,9,10,11]
+
+  out shuffle
+  [1,2,3,4,5,6,7,8,9,10,11]
+  [1,7,2,8,3,9,4,10,5,11,6]
+  [1,4,7,10,2,5,8,11,3,6,9]
+  [1,8,4,11,7,3,10,6,2,9,5]
+  [1,10,8,6,4,2,11,9,7,5,3]
+  [1,11,10,9,8,7,6,5,4,3,2]
+  [1,6,11,5,10,4,9,3,8,2,7]
+  [1,9,6,3,11,8,5,2,10,7,4]
+  [1,5,9,2,6,10,3,7,11,4,8]
+  [1,3,5,7,9,11,2,4,6,8,10]
+  [1,2,3,4,5,6,7,8,9,10,11]
+
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+% The number of sequences for perfect in-shufling
+% a list of 11. It requires 11 steps to restore the list.
+%
+% inOut = in
+% [1,2,3,4,5,6,7,8,9,10,11]
+% [6,1,7,2,8,3,9,4,10,5,11]
+% [3,6,9,1,4,7,10,2,5,8,11]
+% [7,3,10,6,2,9,5,1,8,4,11]
+% [9,7,5,3,1,10,8,6,4,2,11]
+% [10,9,8,7,6,5,4,3,2,1,11]
+% [5,10,4,9,3,8,2,7,1,6,11]
+% [8,5,2,10,7,4,1,9,6,3,11]
+% [4,8,1,5,9,2,6,10,3,7,11]
+% [2,4,6,8,10,1,3,5,7,9,11]
+% [1,2,3,4,5,6,7,8,9,10,11]
+% count = 10
+%
+go => 
+   N = 11,
+   InOut = in,
+   println(inOut=InOut),
+   println(1..N),
+   Count = show_all_shuffles(N,InOut,true),
+   println(count=Count),
+   nl.
+
+%
+% Number of ins and outs in lists of length 1..52
+% as well as the sequences.
+%
+go2 => 
+   % InOut = out,
+   Print = true,
+   Ins = [],
+   Outs = [],
+   foreach(N in 1..52,InOut in [out,in])
+     println(N=InOut),
+     Count = show_all_shuffles(N,InOut,Print),
+     println([N,InOut,Count]),
+     if InOut == in then
+       Ins := Ins ++ [Count]
+     else
+       Outs := Outs ++ [Count]     
+     end,
+     nl
+   end,
+   println(ins=Ins),
+   println(outs=Outs),
+   nl.
+
+%
+% Number of ins and outs in a random N
+%
+go3 =>
+   _ = random2(),
+   N = random() mod 2000,
+   println(n=N),
+   member(InOut,[in,out]),
+   Count = show_all_shuffles(N,InOut,false),
+   println([N,InOut,Count]),
+   fail,
+   nl.
+
+%
+% Show all shuffles
+%
+show_all_shuffles(N,InOut) = show_all_shuffles(N,InOut,false).
+
+show_all_shuffles(N,InOut,Print) = Count =>
+   Order = 1..N,
+   Perfect1 = perfect_shuffle(1..N,InOut),   
+   Perfect = copy_term(Perfect1),
+   if Print == true then
+     println(Perfect)
+   end,
+   Count := 1,
+   while (Perfect != Order) 
+     Perfect := [Perfect1[Perfect[I]] : I in 1..N],
+     if Print == true then
+       println(Perfect)
+     end,
+     Count := Count + 1
+   end.
+
+%
+% split the deck in two "halves"
+% 
+% For odd out shuffles, we have to adjust the
+% range of the top and bottom.
+%
+split_deck(L,InOut) = [Top,Bottom] => 
+  N = L.len,
+  if InOut = out, N mod 2 = 1 then 
+    Top = 1..(N div 2)+1,
+    Bottom = (N div 2)+2..N
+  else
+    Top = 1..(N div 2),
+    Bottom = (N div 2)+1..N
+  end.
+
+%
+% Perfect shuffle a list
+%
+% InOut = in|out
+%  in: first card in Top half is the first card in the new deck
+%  out: first card in Bottom half is the first card in the new deck
+%
+perfect_shuffle(List,InOut) = Perfect =>
+   [Top,Bottom] = split_deck(List,InOut),
+   if InOut = out then
+     Perfect = zip2(Top,Bottom)
+   else
+     Perfect = zip2(Bottom,Top)
+   end.
+
+%
+% If L1 and L2 has uneven lengths, we add the odd element last 
+% in the resulting list.
+%
+zip2(L1,L2) = R => 
+  L1Len = L1.len,
+  L2Len = L2.len,
+  R1 = [],
+  foreach(I in 1..min(L1Len,L2Len))
+    R1 := R1 ++ [L1[I],L2[I]]
+  end,
+  if L1Len < L2Len then
+    R1 := R1 ++ [L2[L2Len]]
+  elseif L1Len > L2Len then
+    R1 := R1 ++ [L1[L1Len]]
+  end,
+  R = R1.

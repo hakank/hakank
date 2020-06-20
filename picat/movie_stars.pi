@@ -1,0 +1,146 @@
+/* 
+
+  Movie stars problem in Picat.
+
+  From The PuzzlOr problem 
+  Movie Stars
+  http://www.informs.org/ORMS-Today/Public-Articles/October-Volume-38-Number-5/THE-PUZZLOR
+  """
+  By John Toczek
+  
+  Retailers invest heavily in predicting how customers will rate new 
+  productions such as movies, books, games and appliances. Accurate recommendations 
+  lead to increased revenue and happier customers. To make these recommendations, 
+  retailers look for correlations between different products in order to make 
+  suggestions on what other products a customer might like.
+
+  Table 1: Customer ratings.
+  [
+    4,5,1,4,4    Alex
+    4,1,5,5,2    Bill
+    2,4,2,2,4    Carla
+    2,3,4,5,2    Dan
+    5,3,1,2,?    Evan   This is the one to test...
+  
+  ]
+  
+  Table 1 shows movie ratings from five customers for five movies. The ratings range 
+  from 1 to 5. A rating of 5 indicates that the movie was very highly liked and a rating 
+  of 1 indicates that it was not liked at all. One movie rating is missing because 
+  Evan has not yet seen the movie "Prognosis Negative".
+  
+  Question:
+  
+  Using only the data in Table 1, what is the most likely rating that Evan will 
+  give to the movie "Prognosis Negative"?
+  """
+
+  Note: This model use an approach similar to the nearest neighbour principle:
+    - for all the known ratings of Evan
+         calculate the distance between Evan and the other
+    - select the minimum distance (i.e. the one most like Evan)
+      and pick that persons rating for "Prognosis Negative".
+
+      Here we conclude that Alex is the one most like Evan (distance 9)
+  
+  The output is
+    x = [5,3,1,2,4]
+    dists = [9,30,11,27]
+    minDist = 9
+    minIx = 1
+    probable_rating = 4
+    Evan is most like = Alex
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  NumP = 4,
+  NumR = 5,
+  Data = [
+         [4,5,1,4,4],  % Alex
+         [4,1,5,5,2],  % Bill
+         [2,4,2,2,4],  % Carla
+         [2,3,4,5,2],  % Dan
+         [5,3,1,2,_]   % Evan % This is the one to test...
+         ],
+
+  PStr = ["Alex", "Bill", "Carla", "Dan"],
+
+  TestCase = [5,3,1,2], % Evan
+  TheCase = 5, % I.e. the last movie
+
+  % decision variables
+  % Note: we could use a single var 1..5: rate here
+  %       since we can compare using the testcase array.
+  %       However, I prefer to have all Evan's rating
+  %       collected...
+  X = new_list(NumR),
+  X :: 1..5, 
+
+  % The distances between Evan and the others
+  Dists = new_list(NumP),
+  Dists :: 0..1000,
+  
+  % the minimum distance
+  MinDist #= min(Dists),
+  % index of the minimum in min_dist
+  MinIx :: 1..NumP,
+
+
+  % Fill in the known values of Evan
+  foreach(I in 1..NumR-1)
+    X[I] #= TestCase[I]
+  end,
+
+  % Calculate the distances between Evan (testcase, x) 
+  % and other people.
+  foreach(P in 1..NumP)
+    dist([Data[P,I] : I in 1..NumR-1], TestCase, Dists[P])
+  end,
+
+  % get the index of the person with the minimum distance 
+  min_index(MinIx, Dists),
+  
+  % assign the value of that person's rating for movie 5
+  % X[TheCase] #= Data[MinIx, TheCase],
+  matrix_element(Data,MinIx,TheCase,X[TheCase]),
+
+  Vars = X ++ Dists ++ [MinDist],
+  solve($[min(MinDist)],Vars),
+
+  println(x=X),
+  println(dists=Dists),
+  println(minDist=MinDist),  
+  println(minIx=MinIx),
+  println(probable_rating=X[TheCase]),
+  println("Evan is most like"=PStr[MinIx]),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+% 
+% Calculate the distance between two persons.
+% 
+% Note: d is the the sum of squared distances but should be
+%       the the square root of that sum. It doesn't matter here...
+%
+dist(A, V, D) => 
+  D #= sum([(A[I]-V[I])*(A[I]-V[I]) : I in 1..A.len]),
+  D #>= 0.
+
+
+min_index(MI, X) =>
+  MinX #= min(X),
+  sum([X[I] #= MinX #/\ MI #= I  : I in 1..X.len]) #>= 1.

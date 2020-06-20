@@ -1,0 +1,378 @@
+/* 
+
+  Monorail puzzle in Picat.
+
+  From Aaron Iba's Blog:
+  http://blog.aaroniba.net/2011/07/06/a-lesson-from-my-ios-users-they-dont-teach-at-mit/#comments
+  """
+  The object of Monorail puzzles is to complete a closed-circuit 
+  loop through all the stations (dots) by drawing rails.  The loop 
+  must pass through each station exactly once and close back on itself, 
+  like an actual monorail system might in a city.
+
+  Problem:
+
+      .   .   .   .       1  2  3  4
+  
+      .   .___.   .       5  6  7  8
+          |
+      .   .   .   .       9 10 11 12
+  
+      .   .___.   .      13 14 15 16
+   
+  Solution:
+      .__.___.___.
+      |          |
+      .  .___.___.
+      |  | 
+      .  .___.___.
+      |          |
+      .__.___.___.
+  
+  """
+
+  Also see: Glenn Iba's site:
+    - http://glenniba.com/index.html
+    - Monorail Support Page: http://glenniba.com/monorailsupport.html
+    - The introduction to Glenn Iba's book "Round Trip Puzzles":
+      http://glenniba.com/Intro-long-web.pdf
+    - Glenn Iba "Hamiltonian Cycle Puzzles" (paper)
+      http://glenniba.com/G4G8%20exchange%20paper.pdf
+  
+
+  This model can yet only handle normal rectangular matrices.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  run_problem(1),
+  run_problem(2),
+  run_problem(6),
+  nl.
+
+go => true.
+
+go2 ?=>
+  run_problem(3),
+  nl.
+
+go2 => true.
+
+go3 ?=>
+  run_problem(4),
+  nl.
+
+go3 => true.
+
+go4 ?=>
+  run_problem(5),
+  nl.
+
+go4 => true.
+
+
+%
+% Run a problem: solve and present solution
+%
+run_problem(Problem) =>
+  println(problem=Problem),
+  data(Problem, Rows, Cols, NumGiven,Given),
+  monorail(Rows,Cols,NumGiven,Given, NumSteps,X,Y,Path),
+  print_solution(Rows,Cols,NumSteps,X,Y,Path),
+  nl,
+  nl.
+
+
+%
+% Print a solution
+%
+print_solution(Rows,Cols,NumSteps,X,Y,Path) => 
+
+  println(x=X),
+  println(y=Y),
+  println(path=Path),
+  nl,
+  println("Path:"),
+  M = new_array(Rows,Cols),
+  foreach(I in 1..NumSteps)
+    M[X[I],Y[I]] = I
+  end,
+  foreach(Row in M)
+    println([to_fstring("% 3d",R) : R in Row])
+  end,
+  nl.
+
+
+%
+% Solve a monorail instance
+%
+monorail(Rows,Cols,NumGiven,Given, NumSteps,X,Y,Path) =>
+  println([rows=Rows,cols=Cols,numGiven=NumGiven]),
+
+  NumSteps = Rows*Cols, % length of the path
+
+  % The valid connections (for table_in/2)
+  Connections = [ {(I1-1)*Cols+J1,(I2-1)*Cols+J2} :
+                    I1 in 1..Rows, J1 in 1..Cols, I2 in 1..Rows, J2 in 1..Cols,
+                      ((abs(J1-J2) == 1, I1 == I2); 
+                       (abs(I1-I2) == 1, J1 mod Cols == J2 mod Cols)
+                       )
+                 ],
+
+                   
+  %
+  % decision variables: the coordinates in the path
+  %
+  X = new_list(NumSteps),
+  X :: 1..Rows,
+  Y = new_list(NumSteps),
+  Y :: 1..Cols,
+
+  % the path as integers
+  Path = new_list(NumSteps),
+  Path :: 1..NumSteps,
+
+  % For diffn/4.
+  % AA = new_list(NumSteps,1),
+
+  %
+  % populate the given hints
+  %
+  foreach(K in 1..NumGiven)
+    A :: 1..NumSteps,
+    B :: 1..NumSteps,
+    element(A,Path,Given[K,1]),
+    element(B,Path,Given[K,2]),
+    (abs(A-B) #= 1 #\/ abs(A-B) #= NumSteps-1)
+  end,
+
+  %
+  % All coordinates must be unique, 
+  %
+  all_different(Path),
+
+  %
+  % Only valid connections, using table.
+  %
+  foreach(S in 1..NumSteps-1)
+    table_in({Path[S], Path[S+1]}, Connections)
+  end,
+  % "around the corner
+  table_in({Path[NumSteps], Path[1]}, Connections),
+
+  %
+  % Channel between path and coordinate representation.
+  %
+  % (I tested to convert the path to a circuit, but it was slower.)
+  %
+  foreach(I in 1..NumSteps)
+     (X[I]-1)*Cols + Y[I] #= Path[I] 
+  end,
+
+
+  % symmetry breaking
+  % Start with the two steps: 1,1  and 1,2.
+  %
+  Path[1] #= 1,
+  Path[2] #= 2,
+
+  Vars = Path ++ X ++ Y,
+  println(solve),
+  solve($[ffd,updown],Vars).
+
+%
+% data
+%
+
+
+% From
+% http://blog.aaroniba.net/2011/07/06/a-lesson-from-my-ios-users-they-dont-teach-at-mit
+%
+data(1, Rows, Cols, NumGiven,Given) => 
+  Rows = 4,
+  Cols = 4,
+  NumGiven = 3,
+  Given = {{6,7},
+           {6,10},
+           {14,15}}.
+
+
+%
+% Problem instance for Monorail
+% 
+% From
+% Glenn Iba "Hamiltonian Cycle Puzzles" (paper), page 1
+%    http://glenniba.com/G4G8%20exchange%20paper.pdf
+%
+%
+data(2, Rows, Cols, NumGiven,Given) =>
+  Rows = 6,
+  Cols = 6,
+  NumGiven = 7,
+  Given = {{3,9},
+           {7,8},
+           {15,16},
+           {16,17},
+           {27,28},
+           {29,30},
+           {27,33}}.
+
+
+%
+% Problem instance for Monorail
+% 
+% From
+% Glenn Iba "Hamiltonian Cycle Puzzles" (paper), page 2
+%    http://glenniba.com/G4G8%20exchange%20paper.pdf
+% "Warm-up puzzle in honor of Martin Gardner"
+%
+data(3, Rows, Cols, NumGiven,Given) =>
+  Rows = 6,
+  Cols = 11,
+  NumGiven = 16,
+  Given = {{7,18},
+{14,25},
+{15,26},
+{20,21},
+{21,22},
+{24,35},
+{26,37},
+{28,39},
+{30,41},
+{36,47},
+{38,49},
+{40,51},
+{42,43},
+{46,57},
+{49,60},
+{50,51}}.
+
+
+
+%
+% Problem instance for Monorail
+% 
+% From
+% Glenn Iba "Hamiltonian Cycle Puzzles" (paper), page 2
+%    http://glenniba.com/G4G8%20exchange%20paper.pdf
+% "The Gathering"
+%
+data(4, Rows, Cols, NumGiven,Given) =>
+  Rows = 6,
+  Cols = 14,
+  NumGiven = 18,
+  Given = {{6,20},
+           {7,21},
+           {9,23},
+           {17,18},
+           {20,34},
+           {26,27},
+           {30,44},
+           {32,33},
+           {34,48},
+           {39,53},
+           {41,42},
+           {45,46},
+           {48,49},
+           {49,50},
+           {51,65},
+           {52,66},
+           {54,55},
+           {65,66}}.
+
+
+%
+% Problem instance for Monorail
+% 
+% From
+% Glenn Iba "Hamiltonian Cycle Puzzles" (paper), page 2
+%    http://glenniba.com/G4G8%20exchange%20paper.pdf
+% "G4G8 Theme Puzzle"
+%
+data(5, Rows, Cols, NumGiven,Given) =>
+  Rows = 8,
+  Cols = 21,
+  NumGiven = 52,
+  Given = {
+{2,3},
+{7,28},
+{12,33},
+{13,34},
+{17,18},
+{22,43},
+{24,25},
+{27,48},
+{31,32},
+{33,54},
+{35,56},
+{37,38},
+{39,60},
+{41,42},
+{44,45},
+{47,68},
+{51,52},
+{51,72},
+{53,74},
+{61,82},
+{64,85},
+{69,90},
+{70,91},
+{74,95},
+{76,97},
+{78,99},
+{80,101},
+{82,103},
+{88,109},
+{90,111},
+{96,117},
+{97,118},
+{99,120},
+{100,121},
+{103,124},
+{104,125},
+{108,109},
+{108,129},
+{110,131},
+{113,134},
+{115,116},
+{119,140},
+{121,142},
+{123,144},
+{125,146},
+{130,131},
+{133,134},
+{138,139},
+{150,151},
+{153,154},
+{162,163},
+{164,165}}.
+
+
+% Problem instance for Monorail
+% 
+% From
+% Glenn Iba's Grand Tour page
+% http://glenniba.com/grandtourhexbranch/grandtour.html
+%
+data(6, Rows, Cols, NumGiven,Given) =>
+  Rows = 6,
+  Cols = 6,
+  NumGiven = 7,
+  Given = {
+     {9,10},
+     {9,15},
+     {11,12},
+     {20,26},
+     {22,23},
+     {22,28},
+     {28,29}}.
+

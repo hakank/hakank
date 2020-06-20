@@ -1,0 +1,301 @@
+/* 
+
+  Rock-paper-scissors (Rosetta code) in Picat.
+
+  https://rosettacode.org/wiki/Rock-paper-scissors
+  """
+  Task
+
+  Implement the classic children's game Rock-paper-scissors, as well as a simple predictive   
+  AI (artificial intelligence) player.
+
+  Rock Paper Scissors is a two player game.
+
+  Each player chooses one of rock, paper or scissors, without knowing the other 
+  player's choice.
+
+  The winner is decided by a set of rules:
+
+    - Rock beats scissors
+    - Scissors beat paper
+    - Paper beats rock
+
+
+  If both players choose the same thing, there is no winner for that 
+  round.
+
+  For this task, the computer will be one of the players.
+
+  The operator will select Rock, Paper or Scissors and the computer will keep 
+  a record of  the choice frequency, and use that information to make a 
+  weighted random choice in an attempt to defeat its opponent.
+
+
+  Extra credit
+
+  Support additional choices  additional weapons. 
+  [https://en.wikipedia.org/wiki/Rock_paper_scissors#Additional_weapons]
+  """
+
+  This is based on Prolog version from https://rosettacode.org/wiki/Rock-paper-scissors#Prolog
+  but that program don't use any intelligent version of handling the computer choice, i.e. 
+  weighted choice.
+
+  This is implemented in this Picat program.
+
+  go/0: Interactive play
+  go2/0: Test of the weighted random choice
+  go3/0: Random play with a weighted player map.
+  
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+%
+% Interactive play.
+% - enter the different choices (paper, scissors, rock) with a "." since it's
+%   a Picat term.
+% - end session with quit.
+%
+% A sample session where player picks paper all the time.
+%
+% End terms with '.'. quit ends the session.
+%
+% Your choice? paper.
+% The computer chose paper
+% It is a draw
+% Your choice? paper.
+% The computer chose scissors
+% Computer wins.
+% Your choice? paper.
+% The computer chose scissors
+% Computer wins.
+% Your choice? paper.
+% The computer chose rock
+% You win!
+% Your choice? paper.
+% The computer chose rock
+% You win!
+% Your choice? quit. 
+% cwin = 2
+% draw = 1
+% uwin = 2
+
+go ?=>
+  println("\nEnd terms with '.'. quit ends the session.\n"),
+  Prev = findall(P,beats(P,_)),
+  ChoiceMap = new_map([P=0 : P in Prev]),
+  ResultMap = new_map([computer_wins=0,user_wins=0,draw=0]),
+  play(Prev,ChoiceMap,ResultMap),
+  nl.
+  
+go => true.
+
+
+%
+% Test weighted choice.
+%
+% Here's one random run (1_000_000 runs)
+%
+% Testing weighted random choice
+%
+% orig_map = (map)[scissors = 629,rock = 400,paper = 19]
+% choices  = (map)[scissors = 600141,rock = 380798,paper = 19061]
+%
+% mapTotal = 1048
+% choicesTotal = 1000000
+%
+% Percentages:
+% mapPct     = [paper = 0.02,rock = 0.38,scissors = 0.60]
+% choicesPct = [paper = 0.02,rock = 0.38,scissors = 0.60]
+%
+go2 =>
+  println("Testing weighted random choice"),
+  _ = random2(),
+  PP = 1 + random() mod 1000,
+  PR = 1 + random() mod 1000,
+  PS = 1 + random() mod 1000,
+  Map = new_map([paper=PP,rock=PR,scissors=PS]),
+  Choices = new_map(),
+  foreach(_ in 1..1_000_000)
+    % Note: we used weighted choice/1,
+    % not choice/1 (since this picks the best counter move)
+    C = weighted_choice(Map),
+    Choices.put(C,Choices.get(C,0)+1)
+  end,
+  MapTotal = sum([P : K=P in Map]),
+  ChoicesTotal = sum([P : K=P in Choices]),
+  nl,
+
+  println(orig_map=Map),  
+  println('choices '=Choices),
+  nl,
+  println(mapTotal=MapTotal),
+  println(choicesTotal=ChoicesTotal),
+  println("\nPercentages:"),
+  MapPct = [K=to_fstring("%3.2f", P / MapTotal) : K=P in Map].sort,
+  ChoicesPct = [K=to_fstring("%3.2f", P / ChoicesTotal) : K=P in Choices].sort,
+  println('mapPct    '=MapPct),  
+  println(choicesPct=ChoicesPct),
+  nl.
+
+%
+% Do a lot of random plays.
+%
+% With a player's preferences as:
+%
+%  PlayerMap = new_map([paper=1,rock=2,scissors=300]),
+%
+% i.e. a strong preference for scissors.
+%
+% The result after 100 000 runs is
+%   choiceMap = [paper = 641,rock = 991,scissors = 98367]
+%   resultMap = [computer_wins = 96682,draw = 1608,user_wins = 1709]
+%
+% I.e. since player prefer scissors, the computer then use paper to
+%      win most of the game.
+%
+go3 =>
+  println("Random play"),
+  _ = random2(),
+  Prev = findall(P,beats(P,_)),
+  PlayerMap = new_map([paper=1,rock=2,scissors=300]),
+  % PlayerMap = new_map([paper=1,rock=20,scissors=30]),
+  % PlayerMap = new_map([paper=1,rock=1,scissors=1]),    
+  ChoiceMap = new_map([P=0 : P in Prev]),
+  ResultMap = new_map([computer_wins=0,user_wins=0,draw=0]),
+  Limit = 100_000,
+  random_play(Prev,PlayerMap,ChoiceMap,ResultMap,1,Limit),
+  println(playerMap=PlayerMap.to_list.sort),
+  println(choiceMap=ChoiceMap.to_list.sort),
+  println(resultMap=ResultMap.to_list.sort),
+  nl.
+
+
+%
+% Play an interactive game.
+%
+play(Prev,ChoiceMap,ResultMap) =>
+  print("Your choice? "),
+  P = read_term(),
+  if P == quit then
+    print_result(ResultMap),
+    fail
+  end,
+  C = choice(ChoiceMap),
+  printf("The computer chose %w%n", C),
+  result(C,P,Prev,Next,Result),
+  ChoiceMap.put(P,ChoiceMap.get(P)+1), % we add the move _after_ the round
+  ResultMap.put(Result,ResultMap.get(Result)+1),
+  play(Next,ChoiceMap,ResultMap).
+
+%
+% Random choice from user, weighted random play from computer
+%
+random_play(Prev,PlayerMap,ChoiceMap,ResultMap,Run,Limit) =>
+  if Run < Limit then
+    P = weighted_choice(PlayerMap),
+    C = choice(ChoiceMap),
+    % printf("Player chose %w, the computer chose %w%n", P, C),
+    result(C,P,Prev,Next,Result),
+    ChoiceMap.put(P,ChoiceMap.get(P)+1), % we add the move _after_ the round
+    ResultMap.put(Result,ResultMap.get(Result)+1),
+    random_play(Next,PlayerMap,ChoiceMap,ResultMap,Run+1,Limit)
+  end.
+
+
+result(C,P,R,CR,Result) ?=>
+  [C|R] = CR,
+  beats(C,P),
+  Result = computer_wins,
+  printf("Computer wins.\n").
+result(C,P,R,BR,Result) ?=>
+  [B|R] = BR,
+  beats(P,C),
+  beats(B,P),
+  Result=user_wins,
+  printf("You win!%n").
+result(C1,C2,R,BR,Result) ?=>
+  C1 = C2,
+  BR = [B|R],
+  beats(B,C1),
+  Result=draw,
+  printf("It is a draw\n").
+
+
+beats(paper, rock).
+beats(rock, scissors).
+beats(scissors, paper).
+
+%
+% Do a weighted random choice based on the user's previous choices.
+%
+weighted_choice(Map) = Choice => 
+  Map2 = [(V+1)=K : K=V in Map].sort, % ensure that all choices can be made
+  % Prepare the probability matrix M
+  Total = sum([P : P=_ in Map2]),
+  Len = Map2.len,
+  M = new_array(Len,2),
+  T = new_list(Len),
+  foreach({I,P=C} in zip(1..Len,Map2))
+    if I == 1 then
+      M[I,1] := 1,
+      M[I,2] := P
+    else
+      M[I,1] := M[I-1,2]+1,
+      M[I,2] := M[I,1]+P-1
+    end,
+    T[I] := C
+  end,
+  M[Len,2] := Total,
+
+  % Pick a random number in 1..Total
+  R = 1 + random() mod Total,
+  Choice = _,
+  % Check were R match
+  foreach(I in 1..Len, var(Choice))
+    if M[I,1] <= R, M[I,2] >= R then
+      Choice := T[I]
+    end
+  end.
+
+%
+% Check probably best counter choice.
+%
+choice(Map) = Choice =>
+  % what is the Player's probably choice
+  PlayersProbablyMove = weighted_choice(Map),
+  % select the choice that beats it
+  beats(Choice,PlayersProbablyMove).
+
+
+print_result(ResultMap) =>
+  foreach(C in ResultMap.keys)
+    println(C=ResultMap.get(C))
+  end,
+  nl.
+
+
+
+% Take the most common user selection and pick the beating selection.
+choice_simple(Map) = Choice =>
+  Vals = [C=S : S=C in Map].sort_down(),
+  if random() mod 10 == 0 then
+    R = 1+random() mod 3,
+    println(random_move=R),
+    Val = Vals[R,2]
+  else
+    Val = Vals[1,2]
+  end,
+  beats(Choice,Val).
+
+

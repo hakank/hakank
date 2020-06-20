@@ -1,0 +1,209 @@
+/* 
+
+  Persistent numbers (Martin Gardner) in Picat.
+
+  From Martin Gardner 
+  (formulation from http://puzzling.stackexchange.com/questions/6507/martin-gardner-persistence )
+  """
+  A number's persistence is :
+  - The number of steps required to reduce it to a single digit by multiplying all 
+    its digits to obtain a second number
+
+  - Then multiplying all the digits of that number to obtain a third number, and so on 
+    until a one-digit number is obtained.
+
+  For example : 77 has a persistence of four because it requires four steps to reduce 
+  it to one digit: 77-49-36-18-8.
+  The smallest number of persistence one is 10
+  The smallest of persistence two is 25
+  The smallest of persistence three is 39
+  The smaller of persistence four is 77
+
+  What is the smallest number of persistence five?
+  """
+
+  
+  https://en.wikipedia.org/wiki/Persistence_of_a_number
+  """
+  In mathematics, the persistence of a number is the number of times one must apply a 
+  given operation to an integer before reaching a fixed point at which the operation 
+  no longer alters the number.
+  
+  Usually, this involves additive or multiplicative persistence of an integer, which is 
+  how often one has to replace the number by the sum or product of its digits until one 
+  reaches a single digit. Because the numbers are broken down into their digits, the additive 
+  or multiplicative persistence depends on the radix. In the remainder of this article, 
+  base ten is assumed.
+  """
+
+  List of the minimum number for persistence P:
+   P Min number
+  -------------
+   1 10
+   2 25
+   3 39
+   4 77
+   5 679
+   6 6788
+   7 68889
+   8 2677889
+   9 26888999
+  10 3778888999
+  11 277777788888899
+  
+  See below (go2/0) with corresponding steps for some Ps
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  NumSteps = 6,% i.e. the persistence
+  Base = 10,
+  persistent_numbers(NumSteps,Base, X,Nums,Num),
+
+  println(num=Num),
+  foreach(Row in X)
+    println(Row)
+  end,
+  println(nums=Nums),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+%
+% Show the persistent numbers (and steps) for
+% NumSteps in 2..11.
+%
+% numSteps = 2
+%
+% CPU time 0.0 seconds. Backtracks: 0
+%
+% num = 25
+% nums = [25,10,1]
+%
+% numSteps = 3
+%
+% CPU time 0.001 seconds. Backtracks: 0
+%
+% num = 39
+% nums = [39,27,14,4]
+%
+% numSteps = 4
+%
+% CPU time 0.002 seconds. Backtracks: 0
+%
+% num = 77
+% nums = [77,49,36,18,8]
+%
+% numSteps = 5
+%
+% CPU time 0.016 seconds. Backtracks: 0
+%
+% num = 679
+% nums = [679,378,168,48,32,6]
+%
+% numSteps = 6
+%
+% CPU time 0.187 seconds. Backtracks: 0
+%
+% num = 6788
+% nums = [6788,2688,768,336,54,20,2]
+%
+% numSteps = 7
+%
+% CPU time 2.762 seconds. Backtracks: 0
+%
+% num = 68889
+% nums = [68889,27648,2688,768,336,54,20,2]
+%
+% numSteps = 8
+%
+% CPU time 163.981 seconds. Backtracks: 0
+%
+% num = 2677889
+% nums = [2677889,338688,27648,2688,768,336,54,20,2]
+%
+% numSteps = 9
+%
+% CPU time 1955.35 seconds. Backtracks: 0
+%
+% num = 26888999
+% nums = [26888999,4478976,338688,27648,2688,768,336,54,20,2]
+%
+%
+go2 =>
+  Base = 10,
+  foreach(NumSteps in 2..11)
+    println(numSteps=NumSteps),
+    time2(persistent_numbers(NumSteps,Base, _X,Nums,Num)),
+    println(num=Num),
+    println(nums=Nums),
+    nl
+  end,
+  nl.
+
+%
+% Find the minumum persistent number for NumSteps steps.
+%
+persistent_numbers(NumSteps,Base, X,Nums,Num) =>
+
+  MaxSize = NumSteps,
+
+  % decision variables
+  
+  Num :: 0..Base**MaxSize-1, % the number to start with
+
+  X = new_array(NumSteps+1, MaxSize),
+  X :: 0..Base-1, 
+
+  Nums = new_list(NumSteps+1),
+  Nums :: 1..Base**MaxSize-1,
+
+  all_different(Nums),
+
+  Nums[1] #= Num,
+  to_num([X[1,I] : I in 1..MaxSize],Base,Nums[1]),
+  
+  foreach(S in 2..NumSteps+1)
+    % note: don't multiply with leading 0's
+    Nums[S] #= prod($[cond(X[S-1,I] #> 0,X[S-1,I],1) : I in 1..MaxSize]),
+    to_num([X[S,I] : I in 1..MaxSize], Base, Nums[S])
+  end,
+  
+  % we want a solution in exactly num_steps steps
+  Nums[NumSteps+1] #!= Nums[NumSteps],
+
+  % redundant constraints
+  % requires that last number is a single digit
+  foreach(I in 2..MaxSize-1)
+    X[NumSteps+1,I] #= 0
+  end,
+
+  % Single digit as last entry
+  Nums[NumSteps+1] #< Base,
+  
+  decreasing_strict(Nums),
+
+  Vars = Nums ++ X.vars ++ [Num],
+  solve($[min(Num),split,report(printf("num: %w\n",Num))],Vars).
+
+
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).

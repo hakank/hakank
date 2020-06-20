@@ -1,0 +1,101 @@
+/* 
+
+  Global constraint period in Picat.
+
+
+  Global constraint period
+  http://www.emn.fr/x-info/sdemasse/gccat/Cperiod.html
+  """
+  Let us note V0, V1, ..., Vm−1 the variables of the VARIABLES collection. 
+  PERIOD is the period of the sequence V0 V1...Vm−1 according to constraint  
+  CTR . This means that PERIOD is the smallest natural number such that 
+  Vi CTR Vi+PERIOD holds for all i∈0, 1, ..., m−PERIOD−1.
+  ...
+  Example
+   period(3, [1,1,4,1,1,4,1,1]
+  
+  The period constraint holds since, as depicted by Figure 4.230.1, its first 
+  argument PERIOD=3 is equal (i.e., since CTR is set to =) to the period of 
+  the sequence 1 1 4 1 1 4 1 1.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 8,
+
+  %% the period length. Cannot be a var int since it's is used in ranges.
+  % member...
+  member(PerLen,2..N div 2),
+  println(perLen=PerLen),
+
+  X = new_list(N),
+  X :: 1..N,
+
+  ThePeriod = new_list(PerLen),
+  ThePeriod :: 1..N,
+
+  % X = [1,1,4,  1,1,4,  1,1], % has a period of 3
+  % X = [1,2, 1,2, 1,2, 1,3],  % no period
+  % X = [1,2, 1,2, 1,2, 1,2],  % has a period of 2
+
+  % ThePeriod = [_,2,_,3],
+
+  period(PerLen, X),
+ 
+  foreach(I in 1..PerLen)
+    ThePeriod[I] #= X[I]
+  end,
+
+  %% add some constraints on the period
+  % all_different([X[I] : I in 1..PerLen]),
+  % increasing(X[1..PerLen]),
+
+  Vars = X ++ ThePeriod,
+  solve(Vars),
+
+  println(x=X),
+  println(thePeriod=ThePeriod),
+  nl,
+
+  fail,
+
+  nl.
+
+go => true.
+
+
+period(P, X) =>
+  Len = X.len,
+  Left = Len - P*(Len mod P),
+
+  if P > Len div 2 then
+    println("p must be less than or equal to len(x) div 2"),
+    false
+  end,
+
+  % check that there are (len mod p) "full" periods
+  foreach(I in 0..(Len div P)-2)
+    T1 = [X[J] : J in 1+(P*I)..1+(P*I)+P-1],
+    T2 = [X[K] : K in 1+(P*(I+1))..1+(P*(I+1))+P-1],
+    foreach(K in 1..T1.len)
+      T1[K] #= T2[K]
+    end
+  end,
+  
+  % if Len mod P != 0 then we must assure that the last
+  % M = Len - P*(Len mod P) elements 
+  % is the same as the first M elements (in the period)
+  if Left > 0 then
+     foreach(I in 1..Left)
+       X[I] #= X[P*(Len mod P)+I]
+     end
+  end.

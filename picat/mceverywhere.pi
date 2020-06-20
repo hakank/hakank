@@ -1,0 +1,131 @@
+/* 
+
+  McEverywhere problem (PuzzlOR) in Picat.
+
+  From PuzzlOR April 2012
+  http://puzzlor.editme.com/McEverywhere
+  http://www.informs.org/ORMS-Today/Private-Articles/April-Volume-39-Number-2/THE-PUZZLOR
+  """
+  Deciding how many fast food restaurants to build in a town takes careful 
+  planning.  Building too many will result in wasted capital and building too 
+  few will result in lost business.  
+   
+  [
+    Figure 1 in matrix for where 1 indicates a household
+         
+     1 2 3 4 5 6 7 8 9 10
+     0,0,0,1,0,0,0,1,1,1,   1
+     0,0,0,1,0,0,1,0,0,0,   2
+     0,0,0,0,0,0,0,1,1,0,   3
+     0,1,0,0,0,0,0,0,0,0,   4
+     1,0,0,0,0,0,0,0,0,0,   5
+     0,1,0,0,1,1,0,0,0,0,   6
+     0,0,0,0,1,0,0,0,1,0,   7
+     0,0,1,0,1,0,0,0,0,0,   8
+     0,0,0,0,1,0,0,0,1,0,   9
+     0,0,0,0,0,0,1,0,0,0,   10
+   ]
+  
+  The map in Figure 1 shows the locations of 20 homes in a small town.  Sadly, 
+  there are no McEverywhere restaurants where the residents can eat.  As the 
+  planner for McEverywhere corporation, you have been asked to build restaurants 
+  so that no resident has to travel more than 4km to reach a restaurant.  
+  You can build as many restaurants as you like and restaurants can be built on 
+  any cell (including one that has a home on it).
+  
+  Use a direct line between cells to calculate travel distance.  The distance 
+  between two adjacent cells is 1km and the distance between two diagonal 
+  cells is 1.41 km.
+  
+  Question:  What is the minimum number of McEverywhere restaurants needed so 
+  that no resident has to travel more than 4km to reach one?
+  """
+
+  Tentative solution:
+
+    B: both home and restaurant in the cell
+    H: only home
+    R: only restaurant
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  Homes = [
+   %1 2 3 4 5 6 7 8 9 10
+   [0,0,0,1,0,0,0,1,1,1], % 1
+   [0,0,0,1,0,0,1,0,0,0], % 2
+   [0,0,0,0,0,0,0,1,1,0], % 3
+   [0,1,0,0,0,0,0,0,0,0], % 4
+   [1,0,0,0,0,0,0,0,0,0], % 5
+   [0,1,0,0,1,1,0,0,0,0], % 6
+   [0,0,0,0,1,0,0,0,1,0], % 7
+   [0,0,1,0,1,0,0,0,0,0], % 8
+   [0,0,0,0,1,0,0,0,1,0], % 9
+   [0,0,0,0,0,0,1,0,0,0] % 10
+  ],
+
+  N = Homes.len,
+
+  MaxDist = 4*4, % square this since we don't do a sqrt in dist
+
+  % decision variables
+  X = new_array(N,N),
+  X :: 0..1,
+
+  NumRestaurants #= sum(X.vars),
+
+  % For each home, there must be one restaurant 
+  % in the neighbourhood.
+  foreach(I in 1..N, J in 1..N, Homes[I,J] == 1)
+    sum([X[RI,RJ] #= 1
+         : RI in 1..N, RJ in 1..N, D in 0..MaxDist, dist(RI,RJ, I,J, D)]) #>= 1
+  end,
+
+  Vars = X.vars,
+  solve($[min(NumRestaurants),ff,split],Vars),
+
+  println(numRestaurants=NumRestaurants),
+  println("H: Home R: Restaurant"),
+  nl,
+  Sol = new_array(N,N),
+  bind_vars(Sol,"_"),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if Homes[I,J] == 1 then
+        Sol[I,J] := "H"
+      end,
+      if X[I,J] == 1 then
+        if Homes[I,J] == 1 then
+          Sol[I,J] := "B"
+        else
+          Sol[I,J] := "R"
+        end
+      end,
+      printf("% 2s",Sol[I,J])
+    end,
+    nl
+  end,
+
+  nl.
+
+go => true.
+
+
+% 
+% Calculate the distance between two cells.
+% 
+% Note: Distance is not squared so we have to 
+%       adjust the distance limit as well.
+% 
+dist(I1, J1, I2, J2, D) =>
+  D #= abs(I1-I2)*abs(I1-I2) + abs(J1-J2)*abs(J1-J2).
+

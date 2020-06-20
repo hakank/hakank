@@ -1,0 +1,237 @@
+/* 
+
+  Pairwise sum problem in Picat.
+
+  From Stack Overflow
+  Pairwise sum of n numbers in non increasing order
+  http://stackoverflow.com/questions/8566534/pairwise-sum-of-n-numbers-in-non-increasing-order
+  """
+  I saw this question in a programming interview blog 
+     [http://shashank7s.blogspot.com/2011/12/if-pairwise-sums-of-n-numbers-are-given.html]
+
+  If pairwise sums of n numbers are given in non-decreasing 
+  order identify the individual numbers. If the sum is corrupted print -1.
+
+  Example:
+
+  i/p: 4 5 7 10 12 13 
+
+  o/p: 1 3 4 9
+
+  A hint would suffice.
+  """
+
+  For an extensive analysis of this problem, see http://hakank.org/picat/linear_combinations.pi
+
+  This model tests a little other things, such as generating random instances (see go3 and go4/0)
+  and that we also checks that the original list is found.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  Input = [4, 5, 7, 10, 12, 13 ],
+
+  pairwise_sum(Input,X),
+  println(input=Input),
+  println(x=X),
+  nl,
+
+  fail,
+
+  nl.
+
+go => true.
+
+%
+% Alternative approach
+%
+go2 ?=>
+  Input = [4, 5, 7, 10, 12, 13 ],
+  
+  pairwise_sum2(Input,X),
+  
+  println(input=Input),
+  println(x=X),
+  nl,
+
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+%
+% Random instance
+%
+go3 ?=>
+   N = 10,
+   _ = random2(),
+   GotIt = false,
+   Orig = _,
+   Input = _,
+   printf("Generating: "),
+   flush(stdout),
+   while (GotIt == false)
+     % printf("."),
+     Orig := [I : I in 1..N*2, random() mod 100 >= 60], % .sort_remove_dups,
+     Len = Orig.len,     
+     % println(orig1=Orig),
+     Input := [abs(Orig[I]-Orig[J]) : I in 1..Len, J in I+1..Len].sort,
+     % println(input1=Input),
+     % Ensure that the differences are distinct
+     if Input.remove_dups.len == Input.len then
+       GotIt := true
+     end
+   end,
+   nl,
+   println(orig=Orig),
+   Len = Orig.len,
+   println(len=Len),
+   Input = [abs(Orig[I]-Orig[J]) : I in 1..Len, J in I+1..Len].sort,
+   println(input=Input),
+   
+   pairwise_sum(Input,X),
+
+   if Orig == X then
+     println(X=found_original)
+   else
+     % true
+     println(X)
+   end,
+   % println(restored=[X[I]+min(Input) : I in 1..X.len]),
+   % nl,
+   fail,
+   nl.
+go3 => true.
+
+%
+% Use CP to generate data
+%
+go4 ?=>
+   N = 42, % Length of the differences
+   println(n=N),
+   _ = random2(),
+
+   % Length of the original numbers
+   M = floor(1+sqrt(1+8*N)/2), % Len = (N*(N-1)) div 2
+   println(m=M),
+
+   Orig = new_list(M),
+   Orig :: 1..N*2,
+
+   all_different(Orig),
+   increasing_strict(Orig),
+
+   Diffs = [],
+   foreach(I in 1..M, J in I+1..M)
+     Diff #= abs(Orig[I]-Orig[J]),   
+     Diffs := [Diff|Diffs]
+   end,
+   % Diffs = [I : I in 1..N],
+   
+   all_different(Diffs),
+
+   Vars = Orig ++ Diffs,
+   println(solve_gen),
+   solve($[degree,rand_val],Vars),
+   % solve($[rand],Vars),   
+
+
+   nl,
+   println(orig=Orig),
+   Len = Orig.len,
+   println(orig_len=Len),
+   println(diff_len=Diffs.len),   
+   % println(diffs1=Diffs),
+   Diffs := Diffs.sort_remove_dups,
+   println(diffs=Diffs),
+   flush(stdout),
+
+   % fail,
+
+   println(solve),
+   pairwise_sum(Diffs,X),
+
+   if Orig == X then
+     println(x=X=found_original),
+     true
+   else
+     % false
+     println(x=X),
+     fail
+   end,
+   % fail,
+   nl.
+go4 => true.
+
+%
+% Solve a pairwise sum problem
+%
+pairwise_sum(Input,X) =>
+  N = Input.len,
+  % Length of the original list
+  M = floor(1+sqrt(1+8*N)/2), % Len = (N*(N-1)) div 2
+  println(m=M),
+  Max = Input[N]+Input[N-1]+Input[1]+11,
+  println(max=Max),
+  X = new_list(M), 
+  % X :: 0..min(Input)+max(Input)*2+1,
+  X :: 1..Max,  
+
+  all_different(X),
+  increasing(X), % symmetry breaking
+
+  % Find all the differences
+  foreach(K in 1..N)
+     sum([abs(X[I]-X[J]) #= Input[K] : I in 1..M, J in I+1..M]) #= 1
+  end,
+
+  % Ensure that we don't generate any other differences than in Input
+  foreach(I in 1..M, J in I+1..M)
+    T #= abs(X[I]-X[J]),
+    T :: Input
+  end,
+
+  Vars = X,
+  solve([ffd,split],Vars).
+
+
+%
+% alternative approach
+%
+pairwise_sum2(Input,X) =>
+  N = Input.len,
+  M = floor(1+sqrt(1+8*N)/2), % Len = (N*(N-1)) div 2
+  println(m=M),  
+  X = new_list(M),
+  X :: 0..min(Input)+2*max(Input),
+  println(max=fd_max(X[1])),
+
+  all_different(X),
+
+  
+  IJs = [],
+  foreach(K in 1..N)
+     I :: 1..M,
+     J :: 1..M,
+     I #< J,
+     element(I,X,XI),
+     element(J,X,XJ),
+     abs(XI-XJ) #= Input[K],
+     IJs := IJs ++ [I,J]
+  end,
+
+  increasing_strict(X), % symmetry breaking
+  
+  Vars = X ++ IJs,
+  solve([degree],Vars).

@@ -1,0 +1,120 @@
+/* 
+
+  Ramsey partition problem in Picat.
+
+  http://www.mathematik.uni-bielefeld.de/~sillke/PUZZLES/partion3-ramsey
+  """
+  Partition the integers 1 to 23 into three sets, such that for no set are
+  there three different numbers with two adding to the third.
+  ...
+  There are three solutions...
+  *****************
+    1   2   4   8   11   16   22
+    3   5   6   7   19   21   23
+    9   10   12   13   14   15   17   18   20
+  *****************
+    1   2   4   8   11   17   22
+    3   5   6   7   19   21   23
+    9   10   12   13   14   15   16   18   20
+  *****************
+    1   2   4   8   11   22
+    3   5   6   7   19   21   23
+    9   10   12   13   14   15   16   17   18   20
+  *****************
+  ...
+  """
+
+  Here are the three possible solutions (with symmetry breaking that
+  the first numbers in each set are increasing). 
+
+   [1,2,4,8,11,16,22]
+   [3,5,6,7,19,21,23]
+   [9,10,12,13,14,15,17,18,20]
+
+   [1,2,4,8,11,17,22]
+   [3,5,6,7,19,21,23]
+   [9,10,12,13,14,15,16,18,20]
+
+   [1,2,4,8,11,22]
+   [3,5,6,7,19,21,23]
+   [9,10,12,13,14,15,16,17,18,20]
+  
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 23,
+  M = 3,
+
+  % Ths is a 0/1 approach
+  X = new_array(M,N),
+  X :: 0..1,
+
+  % Ensure that there are distinct values in the array
+  foreach(I in 1..N)
+    sum([X[J,I] : J in 1..M]) #= 1
+  end,
+
+  % Check the condition
+  % """
+  % that for no set are there three different numbers
+  % with two adding to the third.
+  % """
+  % I.e. are the numbers A, B, and C are in the same set then
+  % A + B != C
+  %
+  foreach(I in 1..M)
+    sum(X[I]) #>= 3, % it must be at least 3 numbers in a set
+    foreach(A in 1..N, B in A+1..N, C in B+1..N)
+       X[I,A] #= 1 #/\ X[I,B] #= 1 #/\ X[I,C] #= 1
+          #=>
+       A + B #!= C
+   end
+  end,
+
+  % symmetry breaking
+  X[1,1] #= 1,
+
+  % ensure that the first numbers in the sets are increasing
+  Ixs = new_list(M),
+  Ixs :: 1..N,
+  foreach(I in 1..M)
+    % what is the first position of 1?
+    first_pos(1,X[I], Ixs[I])
+  end,
+  increasing(Ixs),
+
+
+  Vars = X.vars ++ Ixs,
+  solve([],Vars),
+
+  foreach(I in 1..M)
+    println([K : K in 1..N, X[I,K] == 1])
+  end,
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+%
+% Find the first position of value Val in the list Y.
+% Note that we assume that Val is in the list.
+%
+first_pos(Val, Y, Ix) =>
+  N = Y.len,
+  Ix :: 1..N,
+  sum([
+       Y[I] #= Val #/\ Ix #= I #/\
+       sum([Y[J] #= Val : J in 1..I-1]) #= 0
+      : I in 1..N]) #= 1.

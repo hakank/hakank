@@ -119,6 +119,42 @@ random_perm(L,N) = Perm =>
   end.
 
 
+%
+% Do a weighted random choice based on the user's previous choices.
+% Input is a map with the choice=counts, e.g.
+%   PlayerMap = new_map([paper=1,rock=2,scissors=300]),
+%
+% (See http://hakank.org/picat/rock_paper_scissors.pi for an example)
+%
+weighted_choice(Map) = Choice => 
+  Map2 = [(V+1)=K : K=V in Map].sort, % ensure that all choices can be made
+  % Prepare the probability matrix M
+  Total = sum([P : P=_ in Map2]),
+  Len = Map2.len,
+  M = new_array(Len,2),
+  T = new_list(Len),
+  foreach({I,P=C} in zip(1..Len,Map2))
+    if I == 1 then
+      M[I,1] := 1,
+      M[I,2] := P
+    else
+      M[I,1] := M[I-1,2]+1,
+      M[I,2] := M[I,1]+P-1
+    end,
+    T[I] := C
+  end,
+  M[Len,2] := Total,
+
+  % Pick a random number in 1..Total
+  R = 1 + random() mod Total,
+  Choice = _,
+  % Check were R match
+  foreach(I in 1..Len, var(Choice))
+    if M[I,1] <= R, M[I,2] >= R then
+      Choice := T[I]
+    end
+  end.
+
 
 %sublist(String1, String2):
 %   succeeds if S2 is a sublist of S
@@ -1159,12 +1195,30 @@ pad_string(S,Len,Fill) = Padded =>
    end.
 
 %
-% Lookup = lookup(L,Ix)
-% Lookup = L.lookup(Ix)
+% new_matrix(L,Rows,Cols,M)
 %
-% returns a list where the indices in A[I] is looked up in L.
-% 
-lookup(L,Ix) = [ L[Ix[I]] : I in 1..L.len ].
+% M is a Rows x Cols matrix representing the list L.
+%
+new_matrix(Rows,Cols,L) = M =>
+  M = new_array(Rows,Cols),
+  foreach(I in 0..Rows-1, J in 0..Cols-1)
+    M[I+1,J+1] := L[I*Cols+J+1]
+  end.
+
+
+
+%
+% Get all diagonals on a square matrix of size NxN.
+%
+all_diagonals(X) = Diagonals =>
+  N = X.len,
+  % There are in total 2 * NumDiagonals (from left and from right)  
+  NumDiagonals = (N*2-1),
+  Diagonals = [],
+  foreach(K in 1..NumDiagonals)
+    Diagonals := Diagonals ++ [[X[I,J] : I in 1..N, J in 1..N, I+J == K+1]],
+    Diagonals := Diagonals ++ [[X[J,I] : I in 1..N, J in 1..N, I+(N-J+1) == K+1]]
+  end.
 
 
 %

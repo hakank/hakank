@@ -1,0 +1,125 @@
+/* 
+
+  Global constraint path_from_to in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cpath_from_to.html
+  """
+  Select some arcs of a digraph G so that there is still a path 
+  between two given vertices of G.
+  
+  Example
+   (
+   4, 3, <
+   index-1 succ-{},
+   index-2 succ-{},
+   index-3 succ-{5},
+   index-4 succ-{5},
+   index-5 succ-{2, 3}
+   >
+  )
+  
+  The path_from_to constraint holds since within the digraph G corresponding 
+  to the item of the NODES collection there is a path from vertex FROM=4 
+  to vertex TO=3: this path starts from vertex 4, enters vertex 5, and 
+  ends up in vertex 3.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  NumNodes = 5,
+
+  % Generate all possible lengths (i.e. paths)
+  member(Len,1..NumNodes),
+  println(len=Len),
+  
+  G = new_array(NumNodes,NumNodes),
+  G :: 0..1,
+  
+  Path = new_list(Len),
+  Path :: 1..NumNodes,
+  
+  From :: 1..NumNodes,
+  To :: 1..NumNodes,
+
+  % The graph from above
+  G = {{0,0,0,0,0}, % 1
+       {0,0,0,0,0}, % 2
+       {0,0,0,0,1}, % 3
+       {0,0,0,0,1}, % 4
+       {0,1,1,0,0}},
+
+  %% Another graph
+  % G = {{0,1,0,1,0}, % 1
+  %      {1,0,1,0,1}, % 2
+  %      {0,1,0,0,1}, % 3
+  %      {1,0,0,0,1}, % 4
+  %      {0,1,1,1,0}},
+  
+  % Path = [4,5,3], % Generate the graph
+
+  path_from_to(From,To, G, Path),
+  % From #= 4,
+  % To #= 3,
+
+  Vars = G.vars ++ Path ++ [From,To],
+  solve(Vars),
+
+  println("G:"),
+  foreach(Row in G)
+    println(Row)
+  end,
+  println(from=From),
+  println(to=To), 
+  println(paths=Path),
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+%
+% path(LEN, GRAPH, PATHS)
+%
+% Ensure that Paths include a path in G.
+%
+path(G, Path) =>
+  Len = Path.len,
+  foreach(I in 2..Len)
+    % G[Path[I-1], Path[I]] #> 0
+    matrix_element(G,Path[I-1],Path[I],P),
+    P #> 0
+  end.
+
+%
+% path_from_to(FROM, TO, GRAPH, PATHS)
+%
+% There is no guarantee that the path given is the shortest one.
+% It depends - of course - on the length of Path.
+%
+% We assume that Path start with From and ends with To.
+%
+path_from_to(From, To, G, Path) =>
+  Len = Path.len,
+  path(G, Path),
+  Path[1] #= From,
+  Path[Len] #= To,
+  sum([
+       Path[J] #= To #/\
+       sum([Path[K] #= To : K in 1..Len, J !=K]) #= 0
+      : J in 1..Len]) #>= 1,
+  % sanity: ensure we have no loops
+  all_different(Path).
+

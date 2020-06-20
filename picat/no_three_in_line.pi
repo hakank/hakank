@@ -1,0 +1,288 @@
+/* 
+
+  No three in line problem in Picat.
+
+  From
+  http://en.wikipedia.org/wiki/No-three-in-line_problem
+  """
+  In mathematics, in the area of discrete geometry, the no-three-in-line-problem, 
+  introduced by Henry Dudeney in 1917, asks for the maximum number of points 
+  that can be placed in the n × n grid so that no three points are collinear. 
+  This number is at most 2n, since if 2n + 1 points are placed in the grid some 
+  row will contain three points.
+  """
+  
+  Optimal values (which is 2*n).
+  
+  N   Tot
+  =======
+  1   1
+  2   4
+  3   6
+  4   8
+  5  10
+  6  12
+  7  14
+  8  16
+  9  18
+  10 20
+  ...
+  100 200
+
+  Number of optimal solutions (tot=2*n), 
+  Symmetry breaking with lex2/1 (lex_le/2)
+
+  N  #solutions
+  =============
+  1      0
+  2      1
+  3      1
+  4      2
+  5      5
+  6     13
+  7     42
+  8    155
+  9    636
+  10  2889
+  11 14321
+
+  This sequence:
+  0,1,1,2,5,13,42,155,636,2889,14321
+  is the OEIS sequence http://oeis.org/A229161
+  """
+  Number of n X n binary matrices with exactly 2 ones in each row 
+  and column, and with rows and columns in lexicographically non decreasing order. 
+  """
+
+
+  If we instead use lex2lt (i.e. strict lexicographically order ) 
+  then the number of solutions are:
+
+  N  #solutions
+  =============
+  1      0
+  2      0
+  3      1
+  4      1
+  5      2
+  6      8
+  7     26
+  8    100
+  9    432
+  10  2008
+  11 10184
+
+  This sequence [0,0,1,1,2,8,26,100,432,2008,10184] is _not_ in OEIS
+
+
+  Another symmetry breaking is to also restrict the diagonals.
+  N  #solutions
+  =============
+  1       0
+  2       1
+  3       2
+  4      11
+  5      92
+  6    1097 
+  7   19448 
+
+  Which is https://oeis.org/A225623
+  """
+  Number of ways to arrange 2n queens on an n X n chessboard, 
+  with no more than 2 queens in each row, column or diagonal. 
+  """
+
+
+  Without any symmetry breaking at all:
+  N #solutions
+  ============
+  1         0
+  2         1
+  3         6
+  4        90
+  5      2040 
+  6     67950  
+  7   3110940 
+  
+  [0,1,6,90,2040,67950,3110940]
+
+  Which is - of course -  https://oeis.org/A001499
+  """
+  Number of n X n matrices with exactly 2 1's in each row and column, other entries 0.
+  (Formerly M4286 N1792)
+  """
+
+  
+
+
+  Note: This model does _not_ give the same sequence as on the 
+        Wikipedia page http://en.wikipedia.org/wiki/No-three-in-line_problem
+        i.e. the OEIS sequence https://oeis.org/A000769
+        """
+        No-3-in-line problem: number of inequivalent ways of placing 2n points 
+        on an n X n grid so that no 3 are in a line. 
+        """ 
+        1, 1, 4, 5, 11, 22, 57, 51, 156, 158, 566, 499, 1366, 
+        And the reason is that the symmetry breaking is different
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 10,
+  M = 3,
+  Sym = lex2,
+  % Sym = lex2lt,
+  % Sym = diagonals,
+  % Sym = false,  
+  no_three_in_line(N,M,Sym, X,Tot),
+
+  print_matrix(X),
+  println(tot=Tot),
+  nl,
+  fail,
+ 
+  nl.
+
+go => true.
+
+%
+% Number of solutions with Symmetry breaking lex2/1
+%
+go2 ?=>
+  nolog,
+  M = 3,
+  Sym = lex2,
+  % Sym = lex2lt,   
+  % Sym = diagonals, 
+  % Sym = false,  
+  Counts = [],
+  foreach(N in 1..11)
+    Count = count_all(no_three_in_line(N,M,Sym, _X,_Tot)),
+    println(N=Count),
+    Counts := Counts ++ [Count]
+  end,
+  println(counts=Counts),
+  nl.
+
+go2 => true.
+
+%
+% Number of solutions with Symmetry breaking diagonals.
+% Note this is not the same as OEIS sequence https://oeis.org/A000769
+% mentioned above.
+%
+go3 ?=>
+  nolog,
+  M = 3,
+  % Sym = lex2,
+  % Sym = lex2lt,  
+  Sym = diagonals,  
+  % Sym = false,  
+  Counts = [],
+  foreach(N in 1..11)
+    Count = count_all(no_three_in_line(N,M,Sym, _X,_Tot)),
+    println(N=Count),
+    Counts := Counts ++ [Count]
+  end,
+  println(counts=Counts),
+  nl.
+
+go3 => true.
+
+
+
+print_matrix(X) =>
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl.
+
+no_three_in_line(N,M,Sym, X,Tot) =>
+  X = new_array(N,N),
+  X :: 0..1,
+  
+  Tot #= sum([X[I,J] : I in 1..N, J in 1..N]),
+  Tot #= (M-1)*N, % optimal
+
+  foreach(I in 1..N)
+    sum([X[A,I] : A in 1..N]) #< M,
+    sum([X[I,A] : A in 1..N]) #< M
+  end,
+
+  % symmetry breaking
+  if Sym == lex2  then
+    lex2(X)
+  end,
+
+  if Sym == lex2lt then
+    lex2lt(X)
+  end,
+
+  if Sym == diagonals then
+    foreach(Diag in all_diagonals(X))
+      sum(Diag) #< M
+    end
+    % Frenicle form (cf Magic squares) (just testing)
+    % X[1,1] #= min([X[1,1], X[1,N], X[N,1], X[N,N]]),
+    % X[1,2] #< X[2,1]
+  end,
+
+  solve($[ffc,updown],X).
+
+
+
+
+% From MiniZinc's lex2.mzn 
+% """
+%-----------------------------------------------------------------------------%
+% Require adjacent rows and adjacent columns in the array 'x' to be
+% lexicographically ordered.  Adjacent rows and adjacent columns may be equal.
+%-----------------------------------------------------------------------------%
+% """
+% This use lex_le/1
+lex2(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_le([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_le([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
+   end.
+
+% This use lex_lt/1.
+lex2lt(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_lt([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_lt([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
+   end.
+
+
+
+%
+% All diagonals on a square matrix of size NxN
+%
+all_diagonals(X) = Diagonals =>
+  N = X.len,
+  % There are in total 2 * NumDiagonals (from left and from right)  
+  NumDiagonals = (N*2-1), 
+  Diagonals = [],
+  foreach(K in 1..NumDiagonals)
+    Diagonals := Diagonals ++ [[X[I,J] : I in 1..N, J in 1..N, I+J == K+1]],
+    Diagonals := Diagonals ++ [[X[J,I] : I in 1..N, J in 1..N, I+(N-J+1) == K+1]]
+  end.
+

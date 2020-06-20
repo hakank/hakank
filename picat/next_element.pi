@@ -1,0 +1,110 @@
+/* 
+
+  Global constraint next_element in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cnext_element.html
+  """
+  Constraint
+
+      next_element(THRESHOLD,INDEX,TABLE,VAL)
+
+  Purpose
+
+      INDEX is the smallest entry of TABLE strictly greater than THRESHOLD 
+      containing value VAL.
+
+  Example
+      (
+      2,3, <
+      index-1 value-1,
+      index-2 value-8,
+      index-3 value-9,
+      index-4 value-5,
+      index-5 value-9
+      >, 9
+      )
+
+      The next_element constraint holds since 3 is the smallest entry 
+      located after entry 2 that contains value 9.
+
+  Usage
+
+      Originally introduced for modelling the fact that a nucleotide 
+      has to be consumed as soon as possible at cycle INDEX after a 
+      given cycle represented by variable THRESHOLD.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 5,
+  M = 9,
+
+  TableVars = new_array(N,2),
+  TableVars :: 1..M,
+
+  MinDom = fd_min_array(TableVars.vars),
+  MaxDom = fd_max_array(TableVars.vars),
+  Ind :: MinDom..MaxDom,
+  Val :: MinDom..MaxDom,  
+
+  Threshold :: 0..M,
+
+  TableVars = {{1,1},
+               {2,8},
+               {3,9},
+               {4,5},
+               {5,9}},
+  % Threshold #= 2,
+  % Ind #= 3,
+  Val #= 9,
+
+  next_element(Threshold, Ind, TableVars, Val),
+
+  Vars = TableVars.vars ++ [Ind,Val,Threshold],
+  solve(Vars),
+
+  println(threshold=Threshold),
+  println(ind=Ind),
+  println(val=Val),
+  foreach(Row in TableVars)
+    println(Row)
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+
+%
+% Maximum/minimum domain value in array X
+%
+fd_max_array(X) = max([fd_max(V) : V in X]).
+fd_min_array(X) = min([fd_min(V) : V in X]).
+
+
+next_element(Threshold, Ind,TableVars, Val) =>
+  Ind #> Threshold,
+  Len = TableVars.len,
+  all_different([TableVars[I,1] : I in 1..Len]),
+
+  % ensure that threshold and ind are indices in table
+  sum([TableVars[K,1] #= Threshold : K in 1..Len]) #>= 1,
+  sum([TableVars[K,1] #= Ind #/\ Val #= TableVars[K,2] : K in 1..Len]) #>= 1,
+
+  % Ensure that Ind is the smallest index, i.e. there are no smaller index satisfying
+  % the constraint.
+  sum([TableVars[K,1] #> Threshold #/\ K #< Ind : K in 1..Len]) #= 0.

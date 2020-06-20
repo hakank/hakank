@@ -1,0 +1,211 @@
+/* 
+
+  Patient No. 21 problem (PuzzlOR) in Picat.
+
+  From PuzzlOR
+  Patient No. 21
+  http://www.analytics-magazine.org/may-june-2010/149-the-puzzlor-patient-no-21.html
+  """
+  by John Toczek
+  
+  Making a correct diagnosis on a patient is a very challenging task for 
+  a doctor. A complex disease can manifest through any number of symptoms that 
+  often leave "trial and error" as the only method for arriving at the correct 
+  diagnosis. To aid doctors in this daunting task, mathematical modeling can be 
+  used to help guide a diagnosis.
+
+  Table 1 shows 20 patients with varying symptoms and corresponding diagnoses. 
+  For example, Patient No. 1 reported symptoms of sneezing and a sore throat 
+  and was found to have a cold. Patient No. 20 exhibited symptoms of fatigue 
+  and sneezing that was found to be allergies. All diagnoses were confirmed through lab tests.
+  
+  
+  Table 1
+  [
+              Stuffy            Sore 
+     Fatigue  Nose    Sneezing  Throat    Diagnosis
+  
+     0,       0,      1,        1,        Cold,   1
+     1,       1,      1,        0,        Cold,   2
+     1,       1,      0,        1,        Cold,   3
+     1,       0,      0,        1,        Cold,   4
+     1,       1,      0,        1,        Cold,   5
+     0,       1,      1,        1,        Cold,   6
+     1,       0,      0,        0,        Cold,   7
+     1,       1,      0,        0,        Cold,   8
+     0,       1,      0,        0,        Cold,   9
+     0,       0,      1,        1,        Cold,   10
+
+     1,       0,      0,        1,        Flu,   11
+     1,       0,      0,        1,        Flu,   12
+     0,       1,      1,        0,        Flu,   13
+     1,       1,      0,        0,        Flu,   14
+     1,       0,      1,        0,        Flu,   15
+     1,       0,      0,        0,        Flu,   16
+
+     1,       0,      0,        1,        Allergies,   17
+     0,       1,      1,        0,        Allergies,   18
+     0,       0,      1,        0,        Allergies,   19
+     1,       0,      1,        0,        Allergies,   20
+
+     0,       1,      1,        1,        ???,   21
+
+  ]
+
+  Question: Patient No. 21 has not been diagnosed yet is exhibiting symptoms of 
+  stuffy nose, sneezing and sore throat. Using only the data in Table 1, rank the 
+  three diagnoses (cold, flu and allergies) in order of how likely 
+  Patient No. 21 has each.
+  """
+
+  This is the same approach as in http://www.hakank.org/picat/movie_stars.pi
+  which is an approach similar to the nearest neighbour principle:
+    - for all the known ratings of #21
+         calculate the distance between #21 and the other
+    - select the minimum distance (i.e. the one most like #21)
+      and pick that symptom.
+
+      Here we conclude that #21 is the one most like #6 (distance 0) and
+      thus also have Cold.
+    
+  Solution:
+  x = [0,1,1,1,1]
+  dists = [1,2,2,3,2,0,4,3,2,1,3,3,1,3,3,4,3,1,2,3]
+  minIx = 6
+  Patient #21 is most like #6
+  Probable diagnosis: Cold
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  data(1,NumP,NumR,Data,TestCase,TheCase,DiagnosisStr),
+
+  % decision variables
+  % Note: we could use a single var 1..5: rate here
+  %       since we can compare using the testcase array.
+  %       However, I prefer to have all #21's rating
+  %       collected...
+  X = new_list(NumR),
+  X :: 0..1, 
+
+  % The distances between #21 and the others
+  Dists = new_list(NumP),
+  Dists :: 0..10000,
+
+  % the minimum distance
+  MinDist #= min(Dists),
+
+  % index of the minimum in min_dist
+  MinIx :: 1..NumP,
+
+  % Fill in the known values of #21
+  foreach(I in 1..NumR-1)
+    X[I] #= TestCase[I]
+  end,
+
+  % Calculate the distances between #21 (testcase, x) 
+  % and the other persons.
+  foreach(P in 1..NumP)
+     dist([Data[P,I] : I in 1..NumR-1], TestCase, Dists[P])
+     % dists[p] = sum([(testcase[i]-data[p,i])*(testcase[i]-data[p,i]) | i in 1..num_r-1])
+  end,
+
+  % get the index of the person with the minimum distance 
+  min_index(MinIx,Dists),
+  
+  % assign the value of that person's rating for movie 5
+  X[TheCase] #= Data[MinIx, TheCase],
+  
+  Vars = X ++ Dists ++ [MinIx],
+  solve($[min(MinDist)],Vars),
+
+  println(x=X),
+  println(dists=Dists),
+  println(minIx=MinIx),
+  printf("Patient #21 is most like #%d\n", MinIx),
+  printf("Probable diagnosis: %w\n", DiagnosisStr[X[TheCase]]),
+  nl,
+  
+  nl.
+
+go => true.
+
+
+% 
+% Calculate the distance between two persons.
+% 
+% Note: d is the the sum of squared distances but should be
+%       the the square root of that sum. It doesn't matter here...
+%
+dist(A, V, D) =>
+  D #= sum([(A[I]-V[I])*(A[I]-V[I]) : I in 1..A.len]),
+  D #>= 0.
+
+%
+% min_index(ix, array)
+%
+% ix is the index of the minimum value in x (i.e. argmin).
+% (I asesume that the values are distinct...)
+min_index(MI, X) =>
+  sum([X[I] #= min(X) #/\ MI #= I 
+      : I in 1..X.len]) #= 1.
+
+
+%
+% Convert a list representing an Rows x Cols matrix (e.g. from MiniZinc) to a proper array matrix.
+%
+% to a list matrix
+convert_board(R,C,Board0) = Board =>
+  Board = new_array(R,C),
+  foreach(I in 0..R-1, J in 0..C-1)
+    Board[I+1,J+1] := Board0[C*I+J+1]
+  end.
+
+%
+% data
+%
+data(1,NumP,NumR,Data,TestCase,TheCase,DiagnosisStr) =>
+  NumP = 20,
+  NumR  = 5,
+  Data = convert_board(NumP,NumR, 
+  [
+   0,       0,      1,        1,        1, % Cold, % 1
+   1,       1,      1,        0,        1, % Cold, % 2
+   1,       1,      0,        1,        1, % Cold, % 3
+   1,       0,      0,        1,        1, % Cold, % 4
+   1,       1,      0,        1,        1, % Cold, % 5
+   0,       1,      1,        1,        1, % Cold, % 6
+   1,       0,      0,        0,        1, % Cold, % 7
+   1,       1,      0,        0,        1, % Cold, % 8
+   0,       1,      0,        0,        1, % Cold, % 9
+   0,       0,      1,        1,        1, % Cold, % 10
+
+   1,       0,      0,        1,        2, % Flu, % 11
+   1,       0,      0,        1,        2, % Flu, % 12
+   0,       1,      1,        0,        2, % Flu, % 13
+   1,       1,      0,        0,        2, % Flu, % 14
+   1,       0,      1,        0,        2, % Flu, % 15
+   1,       0,      0,        0,        2, % Flu, % 16
+
+   1,       0,      0,        1,        3, % Allergies, % 17
+   0,       1,      1,        0,        3, % Allergies, % 18
+   0,       0,      1,        0,        3, % Allergies, % 19
+   1,       0,      1,        0,        3  % Allergies, % 20
+
+  %0,       1,      1,        1,        ???, % 21
+  ]),
+
+ TestCase = [0,1,1,1], % #21's data
+ TheCase = 5, % I.e. the diagnosis
+ DiagnosisStr = ["Cold", "Flu", "Allergies"].
+
+

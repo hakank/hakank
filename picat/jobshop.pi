@@ -1,0 +1,598 @@
+/* 
+
+  Job-shop problem in Picat.
+
+  See http://en.wikipedia.org/wiki/Job_shop_scheduling
+  """
+  Job shop scheduling or the job-shop problem (JSP) is an optimization problem in computer 
+  science and operations research in which jobs are assigned to resources at particular times. 
+  The most basic version is as follows: We are given n jobs J1, J2, ..., Jn of varying 
+  processing times, which need to be scheduled on m machines with varying processing power, while
+  trying to minimize the makespan. The makespan is the total length of the schedule (that is, 
+  when all the jobs have finished processing).
+
+  The standard version of the problem is where you have n jobs J1, J2, ..., Jn. Within each 
+  job there is a set of operations O1, O2, ..., On which need to be processed in a specific 
+  order (known as Precedence constraints). Each operation has a specific machine that it 
+  needs to be processed on and only one operation in a job can be processed at a given time. 
+  A common relaxation is the flexible job shop where each operation can be processed on 
+  any machine of a given set (the machines in the set are identical).
+
+  This problem is one of the best known combinatorial optimization problems, and was the 
+  first problem for which competitive analysis was presented, by Graham in 1966.
+  Best problem instances for basic model with makespan objective are due to Taillard.
+  """
+
+
+  Data that is used in go3/0 is available here: 
+    http://hakank.org/picat/jobshop_data/
+  (from the Google OR-tools repo).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+% import cp.
+import sat.
+import os.
+
+
+main => go.
+
+
+%
+% SAT: 3.4s
+% CP: 0.04s
+go =>
+  nolog,
+  time2(jobshop(newspaper)),
+  time2(jobshop(mt06)),
+  nl.
+
+%
+% SAT: 3.2s
+% CP: 0.003s
+go1 =>
+  nolog,
+  time2(jobshop(mt06)), 
+
+  nl.
+
+%
+% SAT: 3,85s
+% CP: 0.005s
+go2 =>
+  nolog,
+  File = "jobshop_data/ft06",
+  jobshop_file2(File),
+  nl.
+
+
+%
+% Testing data from: http://hakank.org/picat/jobshop_data/
+% (From the Google OR-tools repo)
+%
+% CP solver with timeout:
+% Found optimal solution with 2s timeout: [ft06]
+% Found optimal solutions with 10s timeout: [ft06]
+% Found optimal solutions with 60s timeout: [ft06]
+%
+% Using SAT with 60s minutes timeout
+% abz5: time_out
+% abz6: 43.199s EarliestEndTime: 920 
+% abz7 timeout
+% abz8 timeout
+% abz9 timeout
+% ft06 1.807s EarliestEndTime:  54
+% ft10 timeout
+% ft20 timeout
+% la01 50.771s EarliestEndTime: 663
+% la02 42.334s EarliestEndTime: 663
+% la03 time_out
+% la04 49.165s EarliestEndTime: 601
+% la05 51.4s EarliestEndTime: 542
+% la06 time_out
+% la07 time_out
+% la08 time_out
+% la09 time_out
+% la10 time_out
+% la11
+% la12
+% la13
+% la14
+% la15
+% la16
+% la17
+% la18
+% la19
+% la20
+% la21
+% la22
+% la23
+% la24
+% la25
+% la26
+% la27
+% la28
+% la29
+% la30
+% la31
+% la32
+% la33
+% la34
+% la35
+% la36
+% la37
+% la38
+% la39
+% la40
+% orb01
+% orb02
+% orb03
+% orb04
+% orb05
+% orb06
+% orb07
+% orb08
+% orb09
+% orb10
+% swv01
+% swv02
+% swv03
+% swv04
+% swv05
+% swv06
+% swv07
+% swv08
+% swv09
+% swv10
+% swv11
+% swv12
+% swv13
+% swv14
+% swv15
+% swv16
+% swv17
+% swv18
+% swv19
+% swv20
+% yn1
+% yn2
+% yn3
+% yn4
+%% 
+go3 =>
+  nolog,
+  flush(stdout),
+  nolog,
+  Files = jobshop_files().sort(),
+  println(files=Files),
+  flush(stdout),
+  println(num_files=Files.length),
+  % Timeout=60000, % millis
+  TimeoutSec = 1200, % 1200s = 20 minutes
+  Timeout=1000*TimeoutSec, % millis
+  Found = [],
+  foreach(File in Files)
+    println(file=File),
+    flush(stdout),
+    time2(time_out(jobshop_file2("jobshop_data/" ++ File),Timeout, Status)),
+    println(status=Status),
+    flush(stdout),
+    nl,
+    if Status != time_out then
+      println(ok=File),
+      Found := Found ++ [File]
+    end
+  end,
+  println(found_solution=Found).
+
+%
+% Get all the Comments of the data files
+%
+go4 =>
+  nolog,
+  foreach(File in jobshop_files().sort())
+    [NumMachines,NumJobs,_JobTimes,_JobOrder,Comments] = jobshop_file("jobshop_data/"++File),
+    printf("%w: machines=%d jobs=%d Comment: %w\n", File, NumMachines,NumJobs, join(Comments,' '))
+  end,
+  nl.
+
+jobshop_files = Dir => 
+  Dir = [ F : F in listdir("jobshop_data"), F != "README.txt", F!= ".", F != ".."].
+
+
+%
+% Read a file in JSSP format and solve the jobshop problem
+% 
+jobshop_file2(File) =>
+  [NumMachines,NumJobs,JobTimes,JobOrder,Comments] = jobshop_file(File),
+  println("Comments:"),
+  println(join(Comments,'\n')),
+  println([numMachines=NumMachines,numJobs=NumJobs]),
+  % println(jobTimes=JobTimes),
+  % println(jobOrder=JobOrder),
+  MaxTime = 4000,
+  jobshop(NumMachines,NumJobs,MaxTime,JobTimes,JobOrder),
+  nl.
+
+
+
+%
+% Read a file in JSSP format and return the data
+%
+jobshop_file(FileName) = [NumMachines,NumJobs,JobTimes,JobOrder,Comments] =>
+   % println(fileName=FileName),
+   FD = open(FileName),
+   Comments = [],
+   foreach(I in 1..6) 
+      Line = read_line(FD),
+      if member(I,[3,6]) then
+         Comments := Comments ++ [Line]
+      end
+   end,
+   [NumMachines, NumJobs] = [parse_term(N) : N in split(readln(FD))],
+   JobOrder = [],
+   JobTimes = [],
+   foreach(_M in 1..NumMachines)
+      S = split(read_line(FD)),
+      Order = [S[I].parse_term() : I in 1..2..S.length],
+      Times = [S[I].parse_term() : I in 2..2..S.length],
+      JobOrder := JobOrder ++ [Order],
+      JobTimes := JobTimes ++ [Times]
+   end,
+   close(FD).
+
+   
+%
+% For the named problem below
+%
+jobshop(Problem) =>
+  println(problem=Problem),
+  problem(Problem,NumMachines,NumJobs,MaxTime,JobTimes,JobOrder),
+  jobshop(NumMachines,NumJobs,MaxTime,JobTimes,JobOrder),
+
+  nl.
+
+
+%
+% Main predicate: Calculates the optimal schedule
+%
+jobshop(NumMachines,NumJobs,MaxTime,JobTimes,JobOrder) =>
+
+  % For handling both JobOrder that starts with either 0 or 1.
+  % OrderAdd = cond(min([JobOrder[1,J] : J in 1..NumJobs]) == 1, 1, 0),
+
+
+  %
+  % decision variables
+  %
+  JobStart = new_array(NumMachines,NumJobs),
+  JobStart :: 0..MaxTime,
+  JobEnd = new_array(NumMachines,NumJobs),
+  JobEnd :: 0..MaxTime,
+
+  EarliestEndTime #= max([JobEnd[M,J] : M in 1..NumMachines, J in 1..NumJobs]), 
+  
+  %  
+  % constraints
+  % 
+
+  % ensure non-overlap of jobs
+  One = [1 : _I in 1..NumMachines],
+  foreach(J in 1..NumJobs)
+     cumulative([JobStart[M,J] : M in 1..NumMachines],
+                [JobTimes[M,J] : M in 1..NumMachines],
+                One,
+                1)
+  end,
+
+  
+
+  % handle EndTimes
+  foreach(M in 1..NumMachines, J in 1..NumJobs)
+      JobEnd[M,J] #= JobStart[M,J] + JobTimes[M,J]
+  end,
+
+
+  % check the job order
+  foreach(M in 1..NumMachines)
+     foreach(J1 in 1..NumJobs, J2 in 1..NumJobs, J1 < J2) 
+        if JobOrder[M,J1] < JobOrder[M,J2] then
+           before(JobEnd[M,J1], JobStart[M,J2])
+        else 
+           after(JobStart[M,J1], JobEnd[M,J2])
+        end
+     end
+  end,
+
+  % % extra constraints
+  % foreach(M in 1..NumMachines) 
+  %    all_distinct([JobStart[M,J] : J in 1..NumJobs]),
+  %    all_distinct([JobEnd[M,J] : J in 1..NumJobs])
+  %    % extra constraint to ensure the order of jobs for each machine
+  %    , foreach(J in 1..NumJobs) 
+  %      % also compensate if we have job_order indexed by 1
+  %      JobOrder[M,J] #= sum([JobStart[M,J] #> JobStart[M, J2] : J2 in 1..NumJobs]) + OrderAdd,
+  %      JobOrder[M,J] #= sum([JobEnd[M,J] #> JobEnd[M, J2] : J2 in 1..NumJobs]) + OrderAdd
+  %    end
+  % end,
+
+  
+  % println(earliestEndTimeBefore=EarliestEndTime),
+  % println(jobStartBefore=JobStart),
+  % println(jobEndBefore=JobEnd),
+
+  %
+  % search
+  % 
+  Vars = JobStart ++ JobEnd,
+  solve($[min($EarliestEndTime), ff, split, report(printf("EarliestEndTime: %d\n", EarliestEndTime))], Vars),
+  % solve($[min($EarliestEndTime), ffc, updown], Vars),
+  flush(stdout),
+  print_result(NumMachines,NumJobs,JobTimes,JobOrder,EarliestEndTime,JobStart,JobEnd).
+
+
+%
+% Prints the result
+%
+print_result(NumMachines,NumJobs,JobTimes,JobOrder,EarliestEndTime,JobStart,JobEnd) =>
+
+  
+  printf("\nEarliestEndTime: %d\n", EarliestEndTime),
+
+  println("\nJob times:"),  
+  foreach(M in 1..NumMachines)
+    foreach(J in 1..NumJobs)
+      printf("%3d ", JobTimes[M,J])
+    end,
+    nl
+  end,
+
+  println("\nJob order:"),
+  foreach(M in 1..NumMachines)
+    foreach(J in 1..NumJobs)
+      printf("%3d ", JobOrder[M,J])
+    end,
+    nl
+  end,
+     
+  println("\nSchedule, machines:"),  
+  foreach(M in 1..NumMachines)
+    foreach(J in 1..NumJobs)
+      printf("%3d..%3d ", JobStart[M,J], JobEnd[M,J])
+    end,
+    nl
+  end,
+
+  println("\nSchedule, jobs:"),
+  foreach(J in 1..NumJobs)
+    foreach(M in 1..NumMachines)
+      printf("%3d..%3d ", JobStart[M,J], JobEnd[M,J])
+    end,
+    nl
+  end,
+  
+
+  println("\nMachine times:"),
+  foreach(M in 1..NumMachines) 
+       printf("Machine %2d  %3d..%3d\n", 
+               M,
+               min([JobStart[M,J] : J in 1..NumJobs]),
+               max([JobEnd[M,J] : J in 1..NumJobs]))
+  end,  
+
+  println("\nJob times:"),
+  foreach(J in 1..NumJobs) 
+       printf("Job %2d:  %3d..%3d\n", 
+               J,
+               min([JobStart[M,J] : M in 1..NumMachines]),
+               max([JobEnd[M,J] : M in 1..NumMachines]))
+  end,  
+
+
+  printf("\nEarliestEndTime: %3d\n", EarliestEndTime),
+
+  nl.
+
+
+%
+% no overlap
+%
+before(T1,T2) => T1 #<= T2.
+after(T1,T2) => T1 #>= T2.
+
+
+%
+% Problem instances
+%
+
+%
+% Newspaper problem instance
+%
+%  *  This origin of this problem is from 
+%     S. French: "Sequencing and Scheduling : 
+%              an introduction to the mathematics of the
+%              job-shop", Ellis Horwood Limited, 1982.
+%
+%  * Tim Duncan wrote about it in his paper
+%    "Scheduling Problems and Constraint Logic Programming:
+%     A Simple Example and its Solution", AIAI-TR-120, 1990,
+%     page 5. 
+%     (The paper also includes a program in CHIP solving the problem.)
+%
+% Optimal: 138
+%
+problem(newspaper, NumMachines, NumJobs, MaxTime,JobTimes,JobOrder) =>
+
+  NumMachines = 4,
+  NumJobs = 4,
+  MaxTime = 200,  
+
+  %
+  % The times for each job (here reading)
+  %   1..NumMachines, 1..NumJobs 
+  JobTimes = 
+  [
+    % Guard.  FT  Express  Sun
+      [30,    60,    2,      5],  % Algy
+      [75,    25,    3,     10],  % Bertie
+      [15,    10,    5,     30],  % Charlie
+      [ 1,     1,    1,     90]   % Digby		
+  ],
+
+  %
+  % The order the jobs (here reading) must be done.
+  %
+  % (1: Guardian, 2: Financial Time, 3: Express, 4: Sun)
+  %
+  % - Algy order   : - FT, Guardian, Express, Sun
+  % - Bertie order : - Guardian, Express, FT, Sun
+  % - Charlie order: - Express, Guardian, FT, Sun
+  % - Digby order  : - Sun, FT, Guardian, Express
+  %
+  % 1..NumMachines, 1..NumJobs
+  JobOrder = 
+  [ % indicating the order in which each newspaper
+    % must be read
+    % Guardian  FT   Express  Sun
+      [2,       1,     3,      4],  % Algy
+      [1,       3,     2,      4],  % Bertie
+      [2,       3,     1,      4],  % Charlie
+      [3,       2,     4,      1]   % Digby
+  ].
+
+
+
+%
+% MT06 Instance
+%
+% The MT06 instance. Optimal schedule length = 55 
+% Fisher and Thompson 6x6 instance, alternate name (mt06)
+%
+% Optimal: 55
+%
+problem(mt06, NumMachines, NumJobs, MaxTime,JobTimes,JobOrder) =>
+  NumMachines = 6,
+  NumJobs = 6,
+  MaxTime = 100,
+  
+  %
+  % The times for each job.
+  %
+  JobTimes = 
+   [
+    [1, 3, 6,  7,  3,  6], 
+    [8, 5, 10, 10, 10, 4],
+    [5, 4, 8,  9,  1,  7],
+    [5, 5, 5,  3,  8,  9],  
+    [9, 3, 5,  4,  3,  1], 
+    [3, 3, 9,  10, 4,  2]
+  ],
+
+
+  %
+  % The order the jobs must be done.
+  %
+  %
+  JobOrder = 
+  [
+    % indicating the order in which each job must be done
+    [2, 0, 1, 3, 5, 4],
+    [1, 2, 4, 5, 0, 3],
+    [2, 3, 5, 0, 1, 4],
+    [1, 0, 2, 3, 4, 5],
+    [2, 1, 4, 5, 0, 3],
+    [1, 3, 5, 0, 4, 2]
+  ].
+
+
+%
+% MT10 instance. Optimal schedule length = 930 
+%
+problem(mt10, NumMachines, NumJobs, MaxTime,JobTimes,JobOrder) =>
+  NumMachines = 10,
+  NumJobs = 10,
+  MaxTime = 2000,
+  % MaxTime = 1000,
+
+  %
+  % The times for each job.
+  %
+  JobTimes = 
+   [
+    [29, 78, 9,  36, 49, 11, 62, 56, 44, 21],
+    [43, 90, 75, 11, 69, 28, 46, 46, 72, 30],
+    [91, 85, 39, 74, 90, 10, 12, 89, 45, 33],
+    [81, 95, 71, 99, 9,  52, 85, 98, 22, 43],
+    [14, 6,  22, 61, 26, 69, 21, 49, 72, 53],
+    [84, 2,  52, 95, 48, 72, 47, 65, 6,  25],
+    [46, 37, 61, 13, 32, 21, 32, 89, 30, 55],
+    [31, 86, 46, 74, 32, 88, 19, 48, 36, 79],
+    [76, 69, 76, 51, 85, 11, 40, 89, 26, 74],
+    [85, 13, 61, 7,  64, 76, 47, 52, 90, 45]
+  ],
+
+
+  %
+  % The order the jobs must be done.
+  %
+  %
+  JobOrder = 
+  [
+   % indicating the order in which each job must be done
+   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+   [0, 2, 4, 9, 3, 1, 6, 5, 7, 8],
+   [1, 0, 3, 2, 8, 5, 7, 6, 9, 4],
+   [1, 2, 0, 4, 6, 8, 7, 3, 9, 5],
+   [2, 0, 1, 5, 3, 4, 8, 7, 9, 6],
+   [2, 1, 5, 3, 8, 9, 0, 6, 4, 7],
+   [1, 0, 3, 2, 6, 5, 9, 8, 7, 4],
+   [2, 0, 1, 5, 4, 6, 8, 9, 7, 3],
+   [0, 1, 3, 5, 2, 9, 6, 7, 4, 8],
+   [1, 0, 2, 6, 8, 9, 5, 3, 4, 7]
+  ].
+
+
+
+%
+% LA03
+% From Google or-tools SVN repository
+% or-tools-read-only/data/jobshop/la03
+%
+problem(la03, NumMachines, NumJobs, MaxTime,JobTimes,JobOrder) =>
+  NumMachines = 10,
+  NumJobs = 5,
+  MaxTime = 1000,
+
+  JobTimes = 
+  [ 
+  [23,45,82,84,38],
+  [21,29,18,41,50],
+  [38,54,16,52,52],
+  [37,54,74,62,57],
+  [57,81,61,68,30],
+  [81,79,89,89,11],
+  [33,20,91,20,66],
+  [24,84,32,55, 8],
+  [56, 7,54,64,39],
+  [40,83,19, 8, 7]
+
+  ],
+
+  JobOrder = 
+  [
+   [1,2,0,4,3],
+   [2,1,0,4,3],
+   [2,3,4,0,1],
+   [4,0,2,1,3],
+   [4,0,1,3,2],
+   [4,0,1,2,3],
+   [3,2,0,4,1],
+   [4,1,0,2,3],
+   [4,0,3,2,1],
+   [4,1,0,2,3]
+  ].

@@ -1,0 +1,144 @@
+/* 
+
+  n-partitioning in Picat.
+
+  http://en.wikipedia.org/wiki/3-partition_problem
+  """
+  The 3-partition problem is an NP-complete problem in computer science. The problem 
+  is to decide whether a given multiset of integers can be partitioned into triples 
+  that all have the same sum. More precisely, given a multiset S of n = 3 m positive 
+  integers, can S be partitioned into m subsets S1, S2, ..., Sm such that the sum of 
+  the numbers in each subset is equal? The subsets S1, S2, ..., Sm must form a partition 
+  of S in the sense that they are disjoint and they cover S. Let B denote the (desired) 
+  sum of each subset Si, or equivalently, let the total sum of the numbers in S be m B. 
+  The 3-partition problem remains NP-complete when every integer in S is strictly between 
+  B/4 and B/2. In this case, each subset Si is forced to consist of exactly three 
+  elements (a triple).
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  % N: number of partitions
+  % M: the cardinality of the sets, m=3 -> triples
+  % Nums: the numbers to partition
+  data(1,N,M,Nums),
+  % data(2,N,M,Nums),  
+  println([n=N,m=M,nums=Nums,sumNums=sum(Nums),div=(sum(Nums) div N)]),
+ 
+  n_partitioning(N,M,Nums, X, Sum),
+
+  println(sum=Sum),
+  println(x=X),
+  foreach(I in 1..N)
+    println([Nums[J] : J in 1..Nums.len, X[J] == I])
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+go2 ?=>
+  % _ = random2(),
+  % N: number of partitions
+  % M: the cardinality of the sets, m=3 -> triples
+  % Nums: the numbers to partition
+  data(3,N,M,Nums),
+  println([n=N,m=M,nums=Nums,sumNums=sum(Nums),div=(sum(Nums) div N)]),
+ 
+  n_partitioning(N,M,Nums, X, Sum),
+
+  println(sum=Sum),
+  println(x=X),
+  foreach(I in 1..N)
+    println([Nums[J] : J in 1..Nums.len, X[J] == I])
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go2 => true.
+
+
+n_partitioning(N,M,Nums, X, Sum) =>
+  Len = Nums.len,
+  
+  if Len != N*M then
+    printf("The number of numbers (%d) must be N*M (%d)\n",Len, N*M),
+    false
+  end,
+
+  % to what partition does a number belong
+  X = new_list(Len),
+  X :: 1..N,
+
+  % Sum of each partition
+  Sum = sum(Nums) div N,
+  % Sum :: 1..sum(Nums),
+  % println([sum=Sum]),
+
+  % cardinality is M in each partition
+  global_cardinality(X,$[I-M : I in 1..N]),
+  
+  % same sum in each partition
+  foreach(I in 1..N)
+    Sum #= sum([Nums[J]*(X[J] #= I) : J in 1..Len])
+  end,
+
+  % symmetry breaking
+  X[1] #= 1,
+  % ensure that 1 is picked before 2, 2 before 3 etc
+  % value_precede_chain(1..N,X),
+
+  Vars = X,
+  println(solve),
+  solve([ffc,split],Vars).
+
+
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+
+
+data(1,N,M,Nums) =>
+  N = 8,
+  M = 4,
+  Nums = 1..N*M.
+
+
+data(2,N,M,Nums) =>
+  N = 18,
+  M = 3,
+  Nums = 1..N*M.
+
+
+data(3,N,M,Nums) =>
+  N = 16,
+  M = 5,
+  Nums = [1 + random() mod N*M : _ in 1..N*M].

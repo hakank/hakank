@@ -1,0 +1,144 @@
+/* 
+
+  Narcissistic numbers in Picat.
+
+  http://en.wikipedia.org/wiki/Narcissistic_number
+
+  http://mathematica.stackexchange.com/questions/52334/the-more-effective-method-to-find-21-digits-armstrong-number?atw=1
+  """
+  In recreational number theory, a narcissistic number (also known as a pluperfect 
+  digital invariant (PPDI), an Armstrong number(after Michael F. Armstrong) or a 
+  plus perfect number) is a number that is the sum of its own digits each raised to the 
+  power of the number of digits.
+
+  For example,the three digits armstrong number:
+
+     153, 370, 371, 407
+   [153 = 1**3 + 5**3 + 3**3]
+
+  Now I want to find the 21 digits armstrong number.I know the answer is 
+  {449177399146038697307, 128468643043731391252}.
+
+  Better code to find Narcissistic number.In this post,they use brute force method to test 
+  all number.It is impossible to use this method to find 21digits armstrong number.
+
+  My thought is just consider the count of numbers. For example, there are two 2, two 7,one 9.
+  Since 2*2^5+2*7^5+1*9^5=92727,so {{2,2,1},{2,7,9}} is correct combination and 92727 is 
+  5 digits armstrong number.
+
+  ...
+
+  It will take about 6~10 minutes to find 21 digits armstrong number.But the maximal armstrong 
+  number is 39 digits, so my code is not enough high efficiency.How can I increase of efficiency？
+  """
+   
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+
+  foreach(N in 1..10)
+    time(Ns = narcissistic_range(N)),
+    println(N=Ns)
+  end,
+  
+  nl.
+
+% N = 8: [24678050,24678051,88593477] (147.5s using narcissistic_range)
+%
+% [2,4,6,7,8,0,5,0]
+% [2,4,6,7,8,0,5,1]
+% [8,8,5,9,3,4,7,7]
+%
+% CPU time 21.005 seconds. Backtracks: 89999999
+
+go2 =>
+  % narcissistic(8)
+  L = [A,B,C,D,E,F,G,H],
+  L :: 0..9,
+
+  10000000*A + 
+  1000000*B + 
+  100000*C + 
+  10000*D +
+  1000*E + 
+  100*F + 
+  10*G + 
+  H #= A**8 + B**8 + C**8 + D**8 + E**8 + F**8 + G**8 + H**8,
+  A #> 0,
+
+  solve($[ff],L),
+  println(L),
+  fail,
+ 
+  nl.
+
+%
+% generalizing go2/0
+%
+go3 =>
+
+  foreach(N in 1..10)
+    garbage_collect(200_000_000),
+    println(n=N),
+    time2(All = find_all(Num,narcissistic_cp(N,Num))),
+    println(All),
+    nl
+  end,
+
+  nl.
+
+narcissistic_range(Size) = Nums =>
+  Nums = [],
+  Start = 10**(Size-1),
+  End = (10**Size)-1,
+  foreach(N in Start..End)
+     if narcissistic(N,Size) then
+        Nums := Nums ++ [N]
+     end
+  end.
+
+% faster
+narcissistic(N,M) => 
+  % N = sum([I.to_integer()**M : I in N.to_string()]).
+  N = sum([num(I,M) : I in N.to_string()]).
+
+% slower
+narcissistic2(N,M) => 
+  S = 0, I = 1,
+  Nstr = N.to_string(),
+  while(S < N, I <= Nstr.length)
+    S := S + num(Nstr[I],M),
+    I := I + 1
+  end,
+  N = S.
+
+
+table
+num(I,M) = I.to_integer()**M.
+
+
+%
+% CP: much faster
+%
+narcissistic_cp(N,Num) =>
+  L = new_list(N),
+  L :: 0..9,
+
+  sum([L[I]*(10**(N-I)) : I in 1..N]) #= sum([L[I]**N : I in 1..N]),
+  L[1] #> 0,
+
+  solve($[ff,updown],L),
+
+  Num = [I.to_string() : I in L].join(''),
+  println(num=Num).

@@ -240,7 +240,23 @@ min_except_0(X,MinVal) =>
 %    [Min, Max] = fd_min_max_array(X),
 %    N #= sum([ (sum([ (X[J] #= I) : J in 1..X.length]) #> 0) : I in Min..Max]).
 
+
+%
+% Maximum/minimum domain value in array X
+%
+fd_max_array(X) = max([fd_max(V) : V in X]).
+fd_min_array(X) = min([fd_min(V) : V in X]).
+
+% combine them
+fd_min_max_array(X) = [fd_min_array(X), fd_max_array(X)].
+
+% Get the full domain of X
+fd_min_max_array_dom(X) = fd_min_array(X)..fd_max_array(X).
+
+%
 % Get Min and Max for an array/list
+%
+/*
 fd_min_max_array(X) = [Min,Max] =>
    Max = fd_max(X[1]),
    Min = fd_min(X[1]),
@@ -248,7 +264,8 @@ fd_min_max_array(X) = [Min,Max] =>
       if fd_min(Y) < Min then Min = fd_min(Y) end,
       if fd_max(Y) > Max then Max = fd_max(Y) end
    end.
-   
+*/
+
 
 %
 % nvalues(X,Op,N)
@@ -296,28 +313,51 @@ global_cardinality_low_up(V,C,Low,Up) =>
   global_cardinality(V,Gcc).
 
 
+global_cardinality_table(Variables,Values) =>
+  % sanity/symmetry
+  increasing_strict([Values[J,1] :J in 1..Values.len]),
+  
+  foreach(I in 1..Values.len) 
+    Values[I,2] #= sum([Variables[J] #= Values[I,1] : J in 1..Variables.len])
+  end.
 
-% Port of MiniZinc's lex2.mzn 
+
+
+% From MiniZinc's lex2.mzn 
 % """
 %-----------------------------------------------------------------------------%
 % Require adjacent rows and adjacent columns in the array 'x' to be
 % lexicographically ordered.  Adjacent rows and adjacent columns may be equal.
 %-----------------------------------------------------------------------------%
 % """
-% Note: This use lex_less/1.
+% This use lex_le/1
 lex2(X) =>
-   Len = X[1].length,
-   foreach(I in 2..X.length) 
-      lex_less([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_le([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_le([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
    end.
 
-% This use lex_lesseq/1
-lex2eq(X) =>
-   Len = X[1].length,
-   foreach(I in 2..X.length) 
-      lex_lesseq([X[I-1,J] : J in 1..Len], [X[I,J] : J in 1..Len])
+% Note: This use lex_lt/1.
+lex2lt(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_lt([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_lt([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
    end.
 
+
+
+
+
+%% lex_lt/2 and lex_le/2 are now built-in constraints.
+/*
 
 % Port of MiniZinc's lex_less_int.mzn
 % """
@@ -365,7 +405,7 @@ lex_lesseq(X,Y) =>
                 )
               )
    end.
-
+*/
 
 lex_greater(X,Y) => lex_less(Y,X).
 lex_greatereq(X,Y) => lex_lesseq(Y,X).
@@ -523,4 +563,72 @@ sliding_count(X,Low, Up, Seq, Variables) =>
 %
 fix_points(A, X) =>
     A #= sum([X[I] #= I : I in 1..X.len]).
+
+
+
+%
+% gcd(X,Y,G)
+% G is the gcd of X and Y.
+%
+% Not very efficient.
+%
+gcd(X, Y, GCD) =>
+  fd_min_max(X,_MinX,MaxX),
+  fd_min_max(Y,_MinY,MaxY),
+  PMax = min(MaxX,MaxY),
+  % PMin = max(MinX,MinY),
+  P :: 1..PMax,
+
+  foreach (I in 1..PMax)
+    I #= P #=> (X mod I #= 0 #/\ Y mod I #= 0 #/\ GCD #= I),
+    foreach(J in I+1..PMax) 
+      I#>= P #=> (X mod J #!= 0 #\/ Y mod J #!= 0)
+    end
+  end.
+
+
+%
+% lcm(X,Y,LCM)
+% cm is the lcm of x and y
+%
+lcm(X, Y, LCM) =>
+  fd_min_max(X,_MinX,MaxX),
+  fd_min_max(Y,_MinY,MaxY),
+  PMax = min(MaxX,MaxY),
+  GCD :: 1..PMax,
+  gcd(X,Y,GCD),
+  LCM #= X*Y div GCD.
+
+
+%
+% All 0s must be placed last
+%
+collect_0s_last(X) =>
+  N = X.len,
+  foreach(I in 1..N)
+    X[I] #= 0 #=> sum([X[J] #> 0 : J in I+1..N]) #= 0
+  end.
+
+
+
+%
+% Find the first position of value Val in the list Y.
+% Note that we assume that Val is in the list.
+%
+first_pos(Val, Y, Ix) =>
+  N = Y.len,
+  Ix :: 1..N,
+  sum([
+       Y[I] #= Val #/\ Ix #= I #/\
+       sum([Y[J] #= Val : J in 1..I-1]) #= 0
+      : I in 1..N]) #= 1.
+
+%
+% Find the first position (FirstPos[I]) of value Vals[I] in the list Y.
+% Note that we assume that Val is in the list.
+%
+first_pos_all(Vals,Y,FirstPos) =>
+  foreach({I,V} in zip(1..Vals.len,Vals))
+    first_pos(V, Y, FirstPos[I])
+  end.
 

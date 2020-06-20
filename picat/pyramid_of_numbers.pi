@@ -1,0 +1,131 @@
+/* 
+
+  Pyramid of numbers (Rosetta Code) in Picat.
+
+  From http://www.rosettacode.org/wiki/Pyramid_of_numbers
+  """
+  This puzzle involves a Pyramid of numbers.
+
+             [ 151]                       
+            [  ][  ]
+          [40][  ][  ]
+        [  ][  ][  ][  ]
+      [ X][11][ Y][ 4][ Z]
+
+  Each brick of the pyramid is the sum of the two bricks situated below it.
+  Of the three missing numbers at the base of the pyramid, the middle one is the sum 
+  of the other two (that is, Y = X + Z). 
+  """
+  
+  Also see: http://xunor.free.fr/en/riddles/auto/pyramidnb.php
+
+
+  Notes: 
+
+   * Notation of the pyramid:
+             1
+           2   3
+         4   5   6
+       7   8   9   10
+     11 12  13   14  15
+
+   * cf the model pool_ball_triangles.pi
+  
+   * solution:
+     X: [151, 81, 70, 40, 41, 29, 16, 24, 17, 12, 5, 11, 13, 4, 8]
+     [X,Y,Z]: [5, 13, 8]
+   * without the constraint that Y = X + Z there are 14 different solutions
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+
+  N = 5, % number of rows
+  Len = (N*(N + 1)) div 2, % number of entries
+
+  % the triangle numbers for 1..n
+  T = [I*(I+1) div 2 : I in 1..N],
+
+  % the index of first number to use in the addition
+  Adds = new_list(T[N-1]),
+  Adds :: 1..Len,
+
+  % decision variables, the pyramid
+  D = new_list(Len),
+  D :: 1..1000,
+
+  LD = [X,Y,Z],
+  LD :: 0..100,
+
+  % 
+  % the clues
+  % 
+  D =   [  151,
+           _, _,
+         40, _, _,
+        _, _,_ , _ ,
+       X, 11, Y, 4, Z
+      ],
+
+  % 
+  % Create the indices of the numbers to add, i.e. adds[i] + adds[i+1]
+  %
+  Adds[1] #= 2,
+
+  foreach(I in 2..T[N-1])
+    % "jump" of 2 when i-1 is a triangle number
+    contains(I-1,T,B),
+    B #= 1 #=> Adds[I] #= Adds[I-1] + 2,
+    B #= 0 #=> Adds[I] #= Adds[I-1] + 1
+  end,
+
+  % position the number in their places
+  foreach(I in 1..T[N-1])
+    % X[I] #= X[Adds[I]]+X[Adds[I]+1]
+    AddsI1 #= Adds[I] + 1,
+    element(Adds[I],D,DA),
+    element(AddsI1,D,DB),
+    D[I] #= DA + DB
+  end,
+
+  X #= D[11],
+  Y #= D[13],
+  Z #= D[15],
+  Y #= X + Z,
+
+  Vars = D ++ Adds ++ LD,
+  solve(Vars),
+
+  println(d=D),
+  println(x=X),
+  println(y=Y),
+  println(z=Z),
+  println(adds=Adds),
+  nl,
+  printf("         % 3d\n",D[1]),
+  printf("       % 3d % 3d\n",D[2],D[3]),
+  printf("     % 3d % 3d % 3d\n",D[4],D[5],D[6]),
+  printf("   % 3d % 3d % 3d % 3d\n",D[7],D[8],D[9],D[10]),
+  printf("% 3d % 3d % 3d % 3d % 3d\n",D[11],D[12],D[13],D[14],D[15]),
+
+  fail,
+  
+  nl.
+
+go => true.
+
+
+
+
+contains(E, A, B) =>
+  B :: 0..1,
+  sum([A[I] #= E : I in 1..A.len]) #>= 1 #<=> B #= 1.

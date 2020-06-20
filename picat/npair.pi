@@ -1,0 +1,102 @@
+/* 
+
+  Global constraint npair in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cnpair.html
+  """
+      npair(NPAIRS,PAIRS)
+
+  Purpose
+
+      NPAIRS is the number of distinct pairs of values assigned 
+      to the pairs of variables of the collection PAIRS.
+
+  Example
+      (
+      2,<
+      x-3       y-1,
+      x-1       y-5,
+      x-3       y-1,
+      x-3       y-1,
+      x-1       y-5
+      >
+      )
+
+      The npair constraint holds since its first argument NPAIRS=2 is 
+      set to the number of distinct pairs <x-3 y-1> and <x-1 y-5> of 
+      its second argument PAIRS.
+
+  Remark
+
+      This is an example of a number of distinct values constraint 
+      where there is more than one attribute that is associated with 
+      each vertex of the final graph.
+  """
+
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+
+main => go.
+
+go ?=>
+  N = 5,
+  
+  Pairs = new_array(N,2),
+  Pairs :: 1..5,
+
+  NPairs :: fd_min_max_array_dom(Pairs.vars),
+
+  Pairs = {{3,1},
+           {1,5},
+           {3,1},
+           {3,1},
+           {1,5}},
+  % NPairs #= 2,
+   
+  npair(NPairs, Pairs),
+
+  Vars = Pairs.vars ++ [NPairs],
+  solve(Vars),
+
+  println(npairs=NPairs),
+  foreach(Row in Pairs)
+    println(Row)
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+fd_max_array(X) = max([fd_max(V) : V in X]).
+fd_min_array(X) = min([fd_min(V) : V in X]).
+
+% Get the full domain of X
+fd_min_max_array_dom(X) = fd_min_array(X)..fd_max_array(X).
+fd_min_max_array(X) = [fd_min_array(X), fd_max_array(X)].
+
+npair(NPairs, Pairs) =>
+  [Min,Max] = fd_min_max_array(Pairs.array_matrix_to_list_matrix.flatten),
+  % First position of a uniqe pair (unique row)
+  FirstPos = new_list(Max),
+  FirstPos :: 0..1,
+  
+  foreach(I in 1..Pairs.len) 
+  FirstPos[I] #= 1 #<=>
+           sum([ Pairs[I,1] #!= Pairs[J,1]
+                 #\/
+                 Pairs[I,2] #!= Pairs[J,2]
+               : J in Min..I-1]) #= I-1
+  end,
+  NPairs #= sum(FirstPos).
+

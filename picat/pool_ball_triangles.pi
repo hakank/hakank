@@ -1,0 +1,121 @@
+/* 
+
+  Pool-ball triangles problem in Picat.
+
+  Martin Gardner:
+  Given n*(n+1) div 2 numbered pool balls in a triangle, is it 
+  possible to place them so that the number of each ball below 
+  two balls is the difference of (the number of) those two balls?
+  (In the problem, n=5, i.e. the numbers 1..15)
+  
+  Index of balls for n=5:
+  16 17 18 19 20 21
+   11 12 13 14 15 
+     7  8  9  10
+      4   5  6
+        2  3
+          1
+
+
+  Here are the solutions for N=2..6, There are no solutions for 
+  N=6,7,8,9,10 (according to this model).
+   
+
+   [n = 2,len = 3]
+   x = [2,1,3]
+   x = [2,3,1]
+   x = [1,2,3]
+   x = [1,3,2]
+
+   [n = 3,len = 6]
+   x = [2,4,1,5,6,3]
+   x = [2,4,5,1,6,3]
+   x = [3,1,4,5,6,2]
+   x = [2,5,3,6,1,4]
+   x = [2,3,5,4,1,6]
+   x = [1,3,4,5,2,6]
+   x = [3,5,2,1,6,4]
+   x = [1,4,3,6,2,5]
+   x = [3,4,1,2,6,5]
+   x = [3,2,5,4,6,1]
+
+   [n = 4,len = 10]
+   x = [3,7,4,2,9,5,8,10,1,6]
+   x = [3,4,7,5,9,2,6,1,10,8]
+   x = [3,5,2,4,9,7,6,10,1,8]
+   x = [3,2,5,7,9,4,8,1,10,6]
+   x = [4,6,2,1,7,5,9,10,3,8]
+   x = [4,5,1,2,7,6,8,10,3,9]
+   x = [4,2,6,5,7,1,8,3,10,9]
+   x = [4,1,5,6,7,2,9,3,10,8]
+
+   [n = 5,len = 15]
+   x = [5,9,4,2,11,7,10,12,1,8,13,3,15,14,6]
+   x = [5,4,9,7,11,2,8,1,12,10,6,14,15,3,13]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  member(N,2..10),
+  Len = (N*(N + 1)) div 2,
+  nl,
+  println([n=N,len=Len]),
+
+  X = new_list(Len),
+  X :: 1..Len,
+
+  % the triangle numbers for 1..n
+  T = [I*(I+1) div 2 : I in 1..N], 
+
+  % the index of first number to use in the subtraction
+  Subs = new_list(T[N-1]),
+  Subs :: 1..Len, 
+
+  foreach(I in 2..T[N-1])
+    % "jump" of two when i-1 is a triangle number
+    contains(I-1,T,B),
+    B #= 1 #=>  (Subs[I] #= Subs[I-1] + 2),
+    B #= 0 #=   (Subs[I] #= Subs[I-1] + 1)
+  end,
+ 
+  % position the balls in their places
+  foreach(I in 1..T[N-1])
+    element(Subs[I],X,XSubsI),
+    SubsI1 #= Subs[I]+1,
+    element(SubsI1,X,XSubsI1),    
+    % X[I] #= abs(X[Subs[I]]-X[Subs[I]+1])
+    X[I] #= abs(XSubsI-XSubsI1)
+  end,
+  
+  all_different(X),
+  % symmetry breaking
+  % X[2] #< X[3], 
+
+  Vars = X, %  ++ Subs,
+  solve([ff,updown],Vars),
+
+  println(x=X),
+  % println(subs=Subs),
+  % nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+contains(E, A,B) =>
+  B :: 0..1,
+  sum([A[I] #= E : I in 1..A.len]) #>= 1 #<=> B #= 1.
+
+

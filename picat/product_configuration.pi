@@ -1,0 +1,128 @@
+/* 
+
+  Product Configuration in Picat.
+
+  From  
+  John Hooker, 
+  A framework for integrating optimization and constraint programming, 
+  http://web.tepper.cmu.edu/jnh/sara07.pdf
+  page 47ff:
+  """
+  Choose what type of each component, and how many.
+
+  Component       Type  Net power   Disk    Memory    Weight    Max number
+                       generation  space   capacity             used
+    i               k     A1jk      A2jk     A3jk      A4jk
+  1. Power supply   A     70          0       0        200        1
+                    B    100          0       0        250
+                    C    150          0       0        350
+  2. Disk drive     A    -30        500       0        140        3
+                    B    -50        800       0        300
+  3. Memory chip    A    -20          0     250         20        3
+                    B    -25          0     300         25
+                    C    -30          0     400         30
+  Lower bound L(j)         0        700     850          0
+  Upper bound U(j)         -          -       -          -
+  Unit cost(j)             0          0       0          1
+  """
+  
+  The solution according to page 66 is:
+   1 of Power supply C
+   2 of Disk drive A
+   3 of Memory B
+
+  
+  which in this model translates to 
+  x=  [0,0,1,  2,0, 0,3,0 ]
+  with a cost (z) of 705
+  
+  However, this model gives another solution:
+
+  totalWeight = 690
+  x = [0,0,1, 2,0, 0,0,2]
+
+  That is, instead of 3 Memory B we have 2 of Memory C.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  data(1,C,T,N,MaxNumberUsed,MinNumberUsed,UnitCost,LowerBound,A),
+
+  % decision variables
+  X = new_list(N),
+  X :: 0..100,
+
+  % Hooker's optimization:
+  % The total weight should be minimized. Here we use an integer version.
+  TotalWeight #= sum([X[I]*A[I,J]*UnitCost[J] : I in 1..N, J in 1..T+1]),
+    
+  %
+  % What if we want the hottest machine?
+  % Z #= sum([X[I]*A[I,J] : I in 1..N, J in 2..4]),
+          
+
+  % Hooker's solution (with TotalWeight of 705)
+  % X = [0,0,1,  2,0, 0,3,0 ], 
+   
+  % bound: max and min number used of each component type
+  foreach(J in 1..C)
+    sum([X[I] : I in 1..N, A[I,1] = J]) #<= MaxNumberUsed[J],
+    sum([X[I] : I in 1..N, A[I,1] = J]) #>= MinNumberUsed[J]     
+  end,
+   
+  % lower bound of each configuration type 
+  foreach(J in 1..T+1)
+    sum([X[I]*A[I,J]: I in 1..N])  #>= LowerBound[J]
+  end,
+
+  solve($[min(TotalWeight)],X),
+  % solve($[max(Z)],X),  
+
+  println(totalWeight=TotalWeight),
+  % println(z=Z),
+  println(x=X),
+  
+  nl.
+
+go => true.
+
+
+%
+% data
+%
+data(1,C,T,N,MaxNumberUsed,MinNumberUsed,UnitCost,LowerBound,A) =>
+  C = 3,
+  T = 4,
+  N = 8,
+  MaxNumberUsed = [1,3,3], % max numb components of each type (1..c)
+  MinNumberUsed = [1,1,1], % min numb components of each type (1..c)
+  UnitCost =   [0, 0,   0,   0, 1], % minimize the weight
+  LowerBound = [0, 0, 700, 800, 0],
+
+  %
+  % type, net power gen,  disk space, memory capacity, weight
+  %
+
+  A = {
+        % power supply, generating power
+       {1,   70,          0,       0,        200},
+       {1,  100,          0,       0,        250},
+       {1,  150,          0,       0,        350},
+
+       % disk drive, consuming power
+       {2,  -30,        500,       0,        140},
+       {2,  -50,        800,       0,        300},
+
+       % memory_chip,consuming power
+       {3,   -20,          0,     250,        20},
+       {3,   -25,          0,     300,        25},
+       {3,   -30,          0,     400,        30}}.

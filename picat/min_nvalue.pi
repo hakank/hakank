@@ -1,0 +1,142 @@
+/* 
+
+  Global constraint min_nvalue in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cmin_nvalue.html
+  """
+  Constraint
+
+      min_nvalue(MIN,VARIABLES)
+
+  Purpose
+
+      MIN is the minimum number of times that the same value is taken 
+      by the variables of the collection VARIABLES.
+
+  Example
+      (
+      2,<
+      var-9,
+      var-1,
+      var-7,
+      var-1,
+      var-1,
+      var-7,
+      var-7,
+      var-7,
+      var-7,
+      var-9
+      >
+      )
+
+      In the example, values 1,7,9 are respectively used 3,5,2 times. 
+      So the minimum number of time MIN that a same value occurs is 2. 
+      Consequently the min_nvalue constraint holds.
+  
+  Usage
+
+      This constraint may be used in order to replace a set of count or 
+      among constraints were one would have to generate explicitly one 
+      constraint for each potential value. Also useful for constraining 
+      the number of occurrences of the less used value without knowing 
+      this value in advance and without giving explicitly a lower limit 
+      on the number of occurrences of each value as it is done in the 
+      global_cardinality constraint.
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 10,
+  Variables = new_list(N),
+  Variables :: 1..9,
+  TMin :: 1..N,
+
+  Variables = [9,1,7,1,1,7,7,7,7,9],
+  %TMin #= 2,
+  
+  min_nvalue(TMin, Variables),
+
+  Vars = Variables ++ [TMin],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(tmin=TMin),
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+
+%
+% Another test
+% 
+go2 ?=>
+  N = 5,
+  Variables = new_list(N),
+  Variables :: 1..N,
+  TMin :: 1..N,
+
+  TMin #= 3,
+  
+  min_nvalue(TMin, Variables),
+
+  Vars = Variables ++ [TMin],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(tmin=TMin),
+  nl,
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+%
+% This is a little more complex than max_nvalue 
+% (http://www.hakank.org/picat/max_nvalue.pi) since the minimum value
+% in the occurrence array maybe 0 and must be handled accordingly.
+%
+min_nvalue(TMin, Variables) =>
+  N = Variables.len,
+  Occ = new_list(N),
+  Occ :: 0..N,
+  global_cardinality2(Variables, Occ),
+  % some value in occ is larger than 0 and less than any other
+  % values (larger than 0)
+  foreach(I in 1..N) 
+    Occ[I] #> 0 #=> TMin #<= Occ[I]
+  end,
+  % and now we find exactly which value that is
+  sum([TMin #= Occ[I] : I in 1..N]) #>= 1.
+
+%
+% global_cardinality(A, Gcc)
+%
+% This version is bidirectional but limited:
+%
+% Both A and Gcc are (plain) lists.
+%  
+% The list A can contain only values 1..Max (i.e. the length of Gcc).
+% This means that the caller must know the max values of A.
+% Or rather: if A contains another values they will not be counted.
+% 
+global_cardinality2(A, Gcc) =>
+   Len = length(A),
+   Max = length(Gcc),
+   Gcc :: 0..Len,
+   foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.
