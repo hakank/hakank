@@ -1,0 +1,71 @@
+/* 
+
+  Euler #23 in JavaScript.
+
+  Problem 23:
+  """
+  A perfect number is a number for which the sum of its proper divisors 
+  is exactly equal to the number. For example, the sum of the proper divisors 
+  of 28 would be 1 + 2 + 4 + 7 + 14 = 28, which means that 28 is a perfect number.
+
+  A number n is called deficient if the sum of its proper divisors is less than 
+  n and it is called abundant if this sum exceeds n.
+
+  As 12 is the smallest abundant number, 1 + 2 + 3 + 4 + 6 = 16, the smallest number 
+  that can be written as the sum of two abundant numbers is 24. By mathematical 
+  analysis, it can be shown that all integers greater than 28123 can be written 
+  as the sum of two abundant numbers. However, this upper limit cannot be reduced 
+  any further by analysis even though it is known that the greatest number that 
+  cannot be expressed as the sum of two abundant numbers is less than this limit.
+
+  Find the sum of all the positive integers which cannot be written as the sum of 
+  two abundant numbers.
+  """ 
+
+
+  This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my JavaScript page: http://www.hakank.org/javascript/
+
+*/
+
+'use strict';
+const {timing2} = require('./js_utils.js');
+
+// 27ms
+// Note: This is a solution ported from Picat code which in turn is from C++(?) code,
+var euler23a = function() {
+    var limit = 20161;
+    var arr = new Array(limit+1).fill(1);
+    
+    for (var i = 2; i < limit + 1; i++) {
+        for (var j = i * 2; j <= limit; j = j + i) {
+            arr[j] = arr[j] + i;
+        }
+    }
+    var abundant = [];
+    for (var i = 12; i <= limit; i++) {
+        if (arr[i] > i) {
+            abundant.push(i);
+        }
+    }
+    for (var a of abundant) {
+        for (var b of abundant) {
+            if (b > a || a + b >= limit) {
+                break;
+            } else {
+                arr[a + b] = 0;
+            }
+        }
+    }
+    var s = 0;
+    for (var i = 1; i <= limit; i++) {
+        if (arr[i] != 0) {
+            s += i;
+        }
+    }
+    return s;
+
+}
+
+timing2(euler23a);
+
