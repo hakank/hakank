@@ -26,17 +26,17 @@
 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
 const {primes,isPrime,max2,range2,timing2} = require('./js_utils.js');
 
-var get_rep_len = function(n) {
-    var foundRemainders = new Array(n+1).fill(0);
-    var value = 1;
-    var position = 1;
+const get_rep_len = function(n) {
+    let foundRemainders = new Array(n+1).fill(0);
+    let value = 1;
+    let position = 1;
     while (foundRemainders[value] === 0 && value !== 0) {
         foundRemainders[value] = position;
         value = (value*10) % n;
@@ -46,11 +46,11 @@ var get_rep_len = function(n) {
 }
 
 // 8ms
-var euler26a = function() {
-    var maxLen = 0;
-    var maxD = 0;
-    for (var d = 2; d < 1000; d++) {
-        var len = get_rep_len(d);
+const euler26a = function() {
+    let maxLen = 0;
+    let maxD = 0;
+    for (let d = 2; d < 1000; d++) {
+        let len = get_rep_len(d);
         if (len > maxLen) {
             maxLen = len;
             maxD = d;
@@ -61,12 +61,12 @@ var euler26a = function() {
 
 // Checks only primes
 // 5ms
-var euler26b = function() {
-    var maxLen = 0;
-    var maxD = 0;
-    for (var d = 2; d < 1000; d++) {
+const euler26b = function() {
+    let maxLen = 0;
+    let maxD = 0;
+    for (let d = 2; d < 1000; d++) {
         if (isPrime(d)) {
-            var len = get_rep_len(d);
+            let len = get_rep_len(d);
             if (len > maxLen) {
                 maxLen = len;
                 maxD = d;
@@ -77,7 +77,7 @@ var euler26b = function() {
 }
 
 // Only primes
-var euler26c = function() {
+const euler26c = function() {
     return primes(999)
         .map(d=>{return [get_rep_len(d),d]})
         .sort(function(a, b){return b[0]-a[0]})[0][1];
@@ -85,7 +85,7 @@ var euler26c = function() {
 
 // Funktional
 // 9ms
-var euler26d = function() {
+const euler26d = function() {
     return range2(2,1000)
         .filter(d=>isPrime(d))
         .map(d=>{return [get_rep_len(d),d]})

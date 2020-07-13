@@ -13,15 +13,15 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {sumN,timing2} = require('./js_utils.js');
+const {sumN,timing2} = require('./js_utils.js');
 
 // Note: these are written as BigInt (i.e. ...n);
-var ns = 
+const ns = 
     [37107287533902102798797998220837590246510135740250n,
      46376937677490009712648124896970078050417018260538n,
      74324986199524741059474233309513058123726617309629n,
@@ -124,8 +124,8 @@ var ns =
      53503534226472524250874054075591789781264330331690];
 
 // 0ms
-var euler13a = function() {
-    return sumN(ns).toString().slice(0,10);
+const euler13a = function() {
+    return parseInt(sumN(ns).toString().slice(0,10));
 }
 
 

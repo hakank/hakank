@@ -18,22 +18,22 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {sum,range2,timing2} = require('./js_utils.js');
+const {sum,range2,timing2} = require('./js_utils.js');
 
 // 1ms
-var euler6a = function() {
-    var s1 = sum(range2(1,100))**2;
-    var s2 = sum(range2(1,100).map(i=>i**2))
+const euler6a = function() {
+    let s1 = sum(range2(1,100))**2;
+    let s2 = sum(range2(1,100).map(i=>i**2))
     return s1-s2;
 }
 
 // 0ms
-var euler6b = function() {
+const euler6b = function() {
     return sum(range2(1,100))**2 -
         sum(range2(1,100).map(i=>i**2));
 }

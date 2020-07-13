@@ -21,7 +21,7 @@
   """ 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -29,20 +29,20 @@
 const {timing2} = require('./js_utils.js');
 
 // 74ms
-var euler47a = function() {
-    var maxn = 1000000;
-    var f = Array(maxn).fill(0);
-    for(var i = 2; i < maxn; i++) {
+const euler47a = function() {
+    const maxn = 1000000;
+    let f = Array(maxn).fill(0);
+    for(let i = 2; i < maxn; i++) {
         if (f[i] === 0) {
-            for(var j = 2*i; j < maxn; j+=i) {
+            for(let j = 2*i; j < maxn; j+=i) {
                 f[j]++;
             }
         }
     }
     
-    var goal = [4,4,4,4].join();
-    var found = 0;
-    for(var i = 2; i < maxn-3; i++) {
+    const goal = [4,4,4,4].join();
+    let found = 0;
+    for(let i = 2; i < maxn-3; i++) {
         // console.log([i,[f[i],f[i+1],f[i+2],f[i+3]]]);
         // Ah, this don't work!
         /*

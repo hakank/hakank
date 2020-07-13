@@ -15,28 +15,27 @@
   Find the next triangle number that is also pentagonal and hexagonal.
   """
 
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
 const {timing2} = require('./js_utils.js');
 
-var pent = function(n) { return Math.floor(n*(3*n-1) / 2); }
-var tri  = function(n) { return Math.floor(n*(n+1) / 2);   }
-var hex  = function(n) { return n*(2*n-1);                 }
+const pent = function(n) { return Math.floor(n*(3*n-1) / 2); }
+const tri  = function(n) { return Math.floor(n*(n+1) / 2);   }
+const hex  = function(n) { return n*(2*n-1);                 }
 
 
 // 5ms
-var euler45a = function() {
-    var t = 285+1;
-    var tt = tri(t);
-    var p = 165;
-    var pp = pent(p);
-    var h = 143;
-    var hh = hex(h);
+const euler45a = function() {
+    let t = 285+1;
+    let tt = tri(t);
+    let p = 165;
+    let pp = pent(p);
+    let h = 143;
+    let hh = hex(h);
     while (tt !== pp || pp !== hh)  {
         t++;
         tt = tri(t);

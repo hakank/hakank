@@ -12,22 +12,22 @@
 
 
   This JavaScript model was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {range2,max2,palindromic_number, timing2} = require('./js_utils.js');
+const {range2,max2,palindromic_number, timing2} = require('./js_utils.js');
 
 
 // 8ms
-var euler4a = function() {
-    var max = 0;
-    var from = 100;
-    var to = 999;
+const euler4a = function() {
+    let max = 0;
+    const from = 100;
+    const to = 999;
     for(var i = from; i <= to; i++) {
-        for(var j = i; j <= to; j++) {
-            var ij = i*j;
+        for(let j = i; j <= to; j++) {
+            let ij = i*j;
             if (ij > max && palindromic_number(ij)) {
                 max = ij;
             }
@@ -37,15 +37,15 @@ var euler4a = function() {
 }
 
 // Much slower: 47ms
-var euler4b = function() {
-    var from = 100;
-    var to = 999;
-    var a = [];
+const euler4b = function() {
+    const from = 100;
+    const to = 999;
+    let a = [];
     range2(100,999)
         .forEach(i=> {
             range2(i,to)
                 .forEach(j=> {
-                    var ij = i*j;
+                    let ij = i*j;
                     if (palindromic_number(ij)) {
                         a.push(ij)
                     }
@@ -56,9 +56,9 @@ var euler4b = function() {
 }
 
 // 46ms
-var euler4c = function() {
-    var from = 100;
-    var to = 999;
+const euler4c = function() {
+    const from = 100;
+    const to = 999;
     // This yield an array of arrays,
     // so we have to flatten it.
     return range2(100,999)

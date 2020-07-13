@@ -18,7 +18,7 @@
   """ 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -26,11 +26,11 @@
 const {timing2} = require('./js_utils.js');
 
 // 0ms
-var euler33a = function() {
-    var s = 1;
-    for(var y = 1; y <= 9; y++) {
-        for(var z = 1; z <= 9; z++) {
-            var x = 9.0*y*z/(10.0*y-z);
+const euler33a = function() {
+    let s = 1;
+    for(let y = 1; y <= 9; y++) {
+        for(let z = 1; z <= 9; z++) {
+            const x = 9.0*y*z/(10.0*y-z);
             if (1.0*Math.floor(x)===x*1.0 && y/z < 1.0 && x < 10.0) {
                 s = (s*y)/z;
             }

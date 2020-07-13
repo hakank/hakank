@@ -11,9 +11,8 @@
   For which value of p <= 1000, is the number of solutions maximised?
   """
 
-
   This JavaScript model was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -21,20 +20,20 @@
 const {range2,sum2,max2,timing2} = require('./js_utils.js');
 
 // 22ms
-var euler39a = function() {
-    var n = 1000;
-    var squares = new Set(range2(1,n).map(i=>i*i));
-    var valid = [];
-    for (var x of squares) {
-        for (var y of squares) {
+const euler39a = function() {
+    const n = 1000;
+    const squares = new Set(range2(1,n).map(i=>i*i));
+    let valid = [];
+    for (let x of squares) {
+        for (let y of squares) {
             if (x < y && squares.has(x+y) && (Math.sqrt(x) + Math.sqrt(x) + Math.sqrt(x+y)) < 1000) {
                 valid.push([x,y]);
             }
         }
     }
-    var counts = {};
-    for(var [x2,y2] of valid) {
-       var c = Math.floor(Math.sqrt(x2) + Math.sqrt(y2) + Math.sqrt(x2+y2));
+    let counts = {};
+    for(let [x2,y2] of valid) {
+       const c = Math.floor(Math.sqrt(x2) + Math.sqrt(y2) + Math.sqrt(x2+y2));
        if (!counts[c]) {
            counts[c] = 0;
        }
@@ -42,9 +41,9 @@ var euler39a = function() {
     }
 
     // find max count
-    var maxV = Object.values(counts).map(i=>parseInt(i)).max2();
-    return Object.keys(counts)
-    .filter(i=>counts[i] === maxV);
+    const maxV = Object.values(counts).map(i=>parseInt(i)).max2();
+    return parseInt(Object.keys(counts)
+                    .filter(i=>counts[i] === maxV)[0]);
 
  
 }

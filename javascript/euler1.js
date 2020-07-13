@@ -9,7 +9,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 'use strict';
@@ -22,7 +22,7 @@ const {sum,sum2,range,timing2} = require("./js_utils.js");
 // I don't know how to export an Array extension...
 // Array.prototype.sum = function() { return this.reduce((a,b)=>a+b); }
 
-var euler1a = function() {
+const euler1a = function() {
     var total = 0;
     var i = 0;
     while (++i <= 999) {
@@ -33,37 +33,37 @@ var euler1a = function() {
     return total;
 }
 
-var euler1b = function() {
+const euler1b = function() {
   return Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0).reduce((a,b)=>a+b); 
 }
 
-var mod3_or_5 = function(n) {
+const mod3_or_5 = function(n) {
   return n % 3 === 0 || n % 5 == 0;
 }
 
-var euler1c = function() {
+const euler1c = function() {
   return Array.from({length:1000},(_, i)=>i).filter(i=>mod3_or_5(i)).reduce((a,b)=>a+b);
 }
 
-var euler1d = function() {
+const euler1d = function() {
     // using mathjs (see above)
     // return math.sum(Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0));
     return Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0).sum2();
 }
 
 
-var euler1e = function() {
+const euler1e = function() {
     return sum(range(1000)
                      .filter(i=>i%3===0||i%5===0));
 }
 
-var euler1f = function() {
+const euler1f = function() {
     return range(1000)
         .filter(i=>i%3===0||i%5===0)
         .reduce((a,b)=>a+b);
 }
 
-var euler1g = function() {
+const euler1g = function() {
     return range(1000)
         .filter(i=>i%3===0||i%5===0)
         .sum2();

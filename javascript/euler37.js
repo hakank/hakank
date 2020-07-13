@@ -12,12 +12,10 @@
   and right to left.
 
   NOTE: 2, 3, 5, and 7 are not considered to be truncatable primes.
-
   """
 
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -25,11 +23,11 @@
 const {nlen,isPrime,timing2} = require('./js_utils.js');
 
 // check is n is a truncated prime
-var check = function(n) {
-    var len = nlen(n);
-    // var len = n.toString().split("").length; // slower as expected (68ms)
-    for(var i = 1; i < len; i++) {
-        var ii = 10**i;
+const check = function(n) {
+    const len = nlen(n);
+    // const len = n.toString().split("").length; // slower as expected (68ms)
+    for(let i = 1; i < len; i++) {
+        const ii = 10**i;
         if (!isPrime(n % ii) || !isPrime(Math.floor(n / ii))) {
             return false;
         }
@@ -38,10 +36,10 @@ var check = function(n) {
 }
 
 // 31ms
-var euler37a = function() {
-    var p = 11;
-    var sum = 0;
-    var c = 0;
+const euler37a = function() {
+    let p = 11;
+    let sum = 0;
+    let c = 0;
     while (c < 11) {
         if (check(p) && isPrime(p)) {
             c++;

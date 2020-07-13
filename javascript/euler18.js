@@ -39,7 +39,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -48,13 +48,13 @@ const {timing2} = require('./js_utils.js');
 
 
 // Recursive function for euler18()
-var pp = function(row, col, sum, tri, max_val) {
+const pp = function(row, col, sum, tri, max_val) {
     if (sum > max_val) {
         max_val = sum;
     }
     row++;
     if (row < tri.length) {
-        for (var i = 0; i <= 1; i++) {
+        for (let i = 0; i <= 1; i++) {
             max_val = pp(row, col + i, sum + tri[row][col + i], tri, max_val);
         }
     }
@@ -62,8 +62,8 @@ var pp = function(row, col, sum, tri, max_val) {
 }
 
 // 4ms
-var euler18a = function() {
-    var triangle  = 
+const euler18a = function() {
+    const triangle  = 
         [[75],
          [95,64],
          [17,47,82],
@@ -80,7 +80,7 @@ var euler18a = function() {
          [63,66, 4,68,89,53,67,30,73,16,69,87,40,31],
          [ 4,62,98,27,23, 9,70,98,73,93,38,53,60, 4,23]];
 
-    var max_val = 0;
+    let max_val = 0;
     max_val = pp(0, 0, triangle[0][0], triangle, max_val);
     return max_val;
 

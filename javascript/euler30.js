@@ -20,19 +20,19 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
 const {range2,sum2,memoizer, timing2} = require('./js_utils.js');
 
-// 80ms
-var euler30a = function() {
-    var t = 0;
-    var m = 5;
-    for(var n = 10; n <= 6*9**5; n++) {
-        var nn = n.toString().split("").map(i=>parseInt(i)**m).sum2();
+// 265ms
+const euler30a = function() {
+    let t = 0;
+    const m = 5;
+    for(let n = 10; n <= 6*9**5; n++) {
+        const nn = n.toString().split("").map(i=>parseInt(i)**m).sum2();
         if (n === nn) {
             t += n;
         }
@@ -41,8 +41,8 @@ var euler30a = function() {
 }
 
 // 282ms
-var euler30b = function() {
-    var m = 5;
+const euler30b = function() {
+    const m = 5;
     return range2(10,6*9**5)
         .map(n=>{return [n,n.toString().split("").map(i=>parseInt(i)**m).sum2()]})
         .filter(nn=>nn[0] === nn[1])
@@ -50,5 +50,5 @@ var euler30b = function() {
         .sum2();
 }
 
-timing2(euler30a); // 80ms
+timing2(euler30a); // 265ms
 // timing2(euler30b); // 282,s

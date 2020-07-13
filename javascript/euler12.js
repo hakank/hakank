@@ -27,22 +27,22 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {all_divisors,all_divisors2,factors,collect,prime_divisors,isPrime,prod,timing2} = require('./js_utils.js');
+const {all_divisors,all_divisors2,factors,collect,prime_divisors,isPrime,prod,timing2} = require('./js_utils.js');
 
 //
 // This is basically factors + collect together so it's not general
 // enought for placing in js_utils.js...
 //
-var factors_map = function(n) {
+const factors_map = function(n) {
     if (n === 1) {
         return {1:1};
     }
-    var m = {};
+    let m = {};
     while (n % 2 === 0) {
         if (m[2] === undefined) {
             m[2] = 0;
@@ -50,7 +50,7 @@ var factors_map = function(n) {
         m[2] += 1;
         n /= 2;
     }
-    var t = 3;
+    let t = 3;
     while (n > 1 && t < Math.ceil(Math.sqrt(n))) {
         while (n % t === 0) {
             if (m[t] === undefined) {
@@ -72,14 +72,14 @@ var factors_map = function(n) {
 
 
 // Brute force: This is way too slow... 553920ms (553.9s)
-// var euler12a = function() {
-//     var len = 0;
-//     var i = 0;
-//     var tnum = 0;
+// const euler12a = function() {
+//     let len = 0;
+//     let i = 0;
+//     let tnum = 0;
 //     while (len <= 500) {
 //         i++;
 //         tnum += i;
-//         var divs = all_divisors(tnum);
+//         const divs = all_divisors(tnum);
 //         len = divs.length;
 //         // console.log([i,tnum,len]);
 //         if (i % 1000 === 0) {
@@ -91,24 +91,24 @@ var factors_map = function(n) {
 // }
 
 // 60ms
-var euler12b = function() {
-    var len = 0;
-    var i = 0;
-    var tnum = 0;
+const euler12b = function() {
+    let len = 0;
+    let i = 0;
+    let tnum = 0;
     while (len <= 500) {
         i++;
         tnum += i;
-        var f = factors_map(tnum);
+        const f = factors_map(tnum);
         len = prod(Object.values(f).map(i=>i+1));
     }
     return tnum;
 }
 
-//  47ms
-var euler12c = function() {
-    var len = 0;
-    var i = 0;
-    var tnum = 0;
+// 50ms
+const euler12c = function() {
+    let len = 0;
+    let i = 0;
+    let tnum = 0;
     while (len <= 500) {
         i++;
         tnum += i;  

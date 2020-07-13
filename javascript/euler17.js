@@ -16,7 +16,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -24,26 +24,26 @@
 const {range2,sum2,timing2} = require('./js_utils.js');
 
 
-var english = function(n) {
-    var divs  =      [1000000000, 1000000,  1000,       100];
-    var divnames  =  ["billion", "million", "thousand", "hundred"];
-    var prefixes  =  ["","0", "twen", "thir", "for", "fif", "six", "seven", "eigh", "nine"];
-    var _ordinals  = ["","first", "second", "third", "fourth", "fifth", "sixth", "seventh",
+const english = function(n) {
+    const divs  =      [1_000_000_000, 1_000_000,  1_000,       100];
+    const divnames  =  ["billion", "million", "thousand", "hundred"];
+    const prefixes  =  ["","0", "twen", "thir", "for", "fif", "six", "seven", "eigh", "nine"];
+    const _ordinals  = ["","first", "second", "third", "fourth", "fifth", "sixth", "seventh",
                       "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth",
                       "fourteenth","fifteenth", "sixteenth", "seventeenth",
                       "eighteenth", "nineteenth"];
-    var cardinals =  ["","one", "two", "three", "four", "five", "six", "seven",
+    const cardinals =  ["","one", "two", "three", "four", "five", "six", "seven",
                       "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
                       "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
     
-    var s = "";
-    var printed = 0;
+    let s = "";
+    let printed = 0;
     if (n < 0) {
         s = "minus" + s;
         n = -n;
     }
-    var d = 0;
-    for(var i = 0; i < divs.length; i++) {
+    let d = 0;
+    for(let i = 0; i < divs.length; i++) {
         d = Math.floor(n / divs[i]);
         n %= divs[i];
         if (d != 0) {
@@ -69,8 +69,7 @@ var english = function(n) {
 }
 
 // 3ms
-var euler17a = function() {
-    var total = 0;
+const euler17a = function() {
     return range2(1,1000)
         .map(i=>english(i).length)
         .sum2()

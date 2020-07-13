@@ -24,7 +24,7 @@
 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -33,23 +33,23 @@ const {timing2} = require('./js_utils.js');
 
 // 27ms
 // Note: This is a solution ported from Picat code which in turn is from C++(?) code,
-var euler23a = function() {
-    var limit = 20161;
-    var arr = new Array(limit+1).fill(1);
+const euler23a = function() {
+    const limit = 20161;
+    let arr = new Array(limit+1).fill(1);
     
-    for (var i = 2; i < limit + 1; i++) {
-        for (var j = i * 2; j <= limit; j = j + i) {
+    for (let i = 2; i < limit + 1; i++) {
+        for (let j = i * 2; j <= limit; j = j + i) {
             arr[j] = arr[j] + i;
         }
     }
-    var abundant = [];
-    for (var i = 12; i <= limit; i++) {
+    let abundant = [];
+    for (let i = 12; i <= limit; i++) {
         if (arr[i] > i) {
             abundant.push(i);
         }
     }
-    for (var a of abundant) {
-        for (var b of abundant) {
+    for (let a of abundant) {
+        for (let b of abundant) {
             if (b > a || a + b >= limit) {
                 break;
             } else {
@@ -57,8 +57,8 @@ var euler23a = function() {
             }
         }
     }
-    var s = 0;
-    for (var i = 1; i <= limit; i++) {
+    let s = 0;
+    for (let i = 1; i <= limit; i++) {
         if (arr[i] != 0) {
             s += i;
         }

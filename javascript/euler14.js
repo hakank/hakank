@@ -24,17 +24,17 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {memoizer,timing2} = require('./js_utils.js');
+const {memoizer,timing2} = require('./js_utils.js');
 
 
 // It's must slower with memoizing
 /*
-var hailstone = memoizer(function(n) {
+const hailstone = memoizer(function(n) {
     if (n % 2 === 0) {
         return n / 2;
     } else {
@@ -43,7 +43,7 @@ var hailstone = memoizer(function(n) {
 })
 */
 
-var hailstone = function(n) {
+const hailstone = function(n) {
     if (n % 2 === 0) {
         return n / 2;
     } else {
@@ -54,13 +54,13 @@ var hailstone = function(n) {
 // 
 // 4443ms (4.4s)
 // Using 3..2..10000: 2859ms (2.9s)
-var euler14a = function() {
-    var maxN = 0;
-    var maxLen = 0;
-    // for(var n = 1; n < 1000000; n++) {
-    for(var n = 3; n < 1000000; n+=2) {        
-        var m = n;
-        var alen = 0;
+const euler14a = function() {
+    let maxN = 0;
+    let maxLen = 0;
+    // for(let n = 1; n < 1000000; n++) {
+    for(let n = 3; n < 1000000; n+=2) {        
+        let m = n;
+        let alen = 0;
         while (m > 1) {
             m = hailstone(m);
             alen++;
@@ -79,14 +79,14 @@ var euler14a = function() {
 //
 // 1..999999: 156ms
 // 3..2..999999: 163ms (slower!???)
-var euler14b = function() {
-    var hash = new Object;
-    var maxN = 0;
-    var maxLen = 0;
-    for(var n = 2; n < 1000000; n++) {        
+const euler14b = function() {
+    let hash = new Object;
+    let maxN = 0;
+    let maxLen = 0;
+    for(let n = 2; n < 1000000; n++) {        
     // for(var n = 3; n < 1000000; n+=2) {        
-        var m = n;
-        var mlen = 1;
+        let m = n;
+        let mlen = 1;
         while (m > 1) {
             if (hash[m]) {
                 mlen = hash[m]+mlen-1;
@@ -107,5 +107,5 @@ var euler14b = function() {
     return maxN;
 }
 
-// timing2(euler14a); // 630ms
+// timing2(euler14a); // 602ms
 timing2(euler14b); // 153ms

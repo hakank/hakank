@@ -17,7 +17,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -26,11 +26,11 @@ const {range2,all_divisors3,sum,sum2,timing2} = require('./js_utils.js');
 
 
 // 153ms
-var euler21a = function() {
-    var s = {};
-    for(var a = 1; a <= 9999; a++) {
-        var b = sum(all_divisors3(a));
-        var c = sum(all_divisors3(b));
+const euler21a = function() {
+    let s = {};
+    for(let a = 1; a <= 9999; a++) {
+        const b = sum(all_divisors3(a));
+        const c = sum(all_divisors3(b));
         if (a !== b && a === c) {
             s[a] = 1;
             s[b] = 1;
@@ -42,9 +42,9 @@ var euler21a = function() {
 
 // Little more functional
 // 160ms
-var euler21b = function() {
-    var s = {};
-    var a = range2(1,9999)
+const euler21b = function() {
+    let s = {};
+    const a = range2(1,9999)
         .map(a=> {
             var b = sum(all_divisors3(a));
             var c = sum(all_divisors3(b));

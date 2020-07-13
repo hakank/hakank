@@ -14,19 +14,19 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 'use strict';
 
-var {fib,sum,sum2,range,last,butLast,timing2} = require('./js_utils.js');
+const {fib,sum,sum2,range,last,butLast,timing2} = require('./js_utils.js');
 
 // Imperative: 0ms
-var euler2a = function () {
-    var limit = 4000000;
-    var i = 1;
-    var f = fib(i);
-    var s = 0;
+const euler2a = function () {
+    const limit = 4000000;
+    let i = 1;
+    let f = fib(i);
+    let s = 0;
     while (f <= limit) {
         if (f % 2 == 0) {
             s += f;
@@ -38,8 +38,8 @@ var euler2a = function () {
 }
 
 // Mostly functional: 0ms
-var euler2b = function() {
-    var limit = 4000000;
+const euler2b = function() {
+    const limit = 4000000;
     return sum(
         range(40)
             .map(i=>fib(i))
@@ -48,8 +48,8 @@ var euler2b = function() {
 }
 
 var euler2c = function() {
-    var limit = 4000000;
-    var a = [1,1];
+    const limit = 4000000;
+    let a = [1,1];
     while (last(a) <= limit) {
         a.push(last(a)+butLast(a));
     }
@@ -58,9 +58,9 @@ var euler2c = function() {
 }
 
 var euler2d = function() {
-    var f = 0;
-    var s = 0;
-    var i = 1;
+    let f = 0;
+    let s = 0;
+    let i = 1;
     while (f <= 4000000) {
         s += (f = fib(i++)) % 2 == 0 ? f : 0;
     }

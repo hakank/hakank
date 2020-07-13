@@ -12,16 +12,16 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {range2,timing2,lcm} = require('./js_utils.js');
+const {range2,timing2,lcm} = require('./js_utils.js');
 
 // 0ms
-var euler5a = function() {
-    var a = 1;
+const euler5a = function() {
+    let a = 1;
     for(var i = 2; i <= 20; i++) {
         a = lcm(a,i)
     }
@@ -30,7 +30,7 @@ var euler5a = function() {
 
 // Nicer.
 // 0ms
-var euler5b = function() {
+const euler5b = function() {
     return range2(2,20).reduce((i,j)=>lcm(i,j));
 }
 

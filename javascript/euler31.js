@@ -17,7 +17,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -25,14 +25,14 @@
 const {timing2} = require('./js_utils.js');
 
 // DP approach
-var coins = function(c,money,m) {
-    var len = c.length;
+const coins = function(c,money,m) {
+    const len = c.length;
     if (m === len) {
         return 1;
     }
 
-    var sum1 = 0;
-    for(var i = m; i <= len; i++) {
+    let sum1 = 0;
+    for(let i = m; i <= len; i++) {
         if (money - c[i-1] === 0) {
             sum1++;
         }
@@ -44,8 +44,8 @@ var coins = function(c,money,m) {
 }
 
 // 6ms
-var euler31a = function() {
-    var c = [200,100,50,20,10,5,2,1];
+const euler31a = function() {
+    const c = [200,100,50,20,10,5,2,1];
     return coins(c, 200, 1);
 }
 

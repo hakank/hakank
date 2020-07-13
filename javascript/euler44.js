@@ -18,7 +18,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -26,14 +26,14 @@
 const {range2,timing2} = require('./js_utils.js');
 
 // 68ms
-var euler44a = function() {
-    var s = range2(1,2500).map(n=>Math.floor(n*(3*n-1) / 2));
-    var t = new Set(s);
-    var d = 10000000;
-    for(var j of s.reverse()) {
-        for( var k of s) {
-            var a = j+k;
-            var b = Math.abs(j-k);
+const euler44a = function() {
+    const s = range2(1,2500).map(n=>Math.floor(n*(3*n-1) / 2));
+    let t = new Set(s);
+    let d = 10000000;
+    for(let j of s.reverse()) {
+        for(let k of s) {
+            const a = j+k;
+            const b = Math.abs(j-k);
             if (j < k &&
                 a < d &&
                 t.has(a) &&

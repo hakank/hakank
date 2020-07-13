@@ -23,7 +23,7 @@
   """
 
   This JavaScript model was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 'use strict';
@@ -31,16 +31,16 @@ const {is_pandigital,timing2} = require('./js_utils.js');
 
 
 // 1ms
-var euler38a = function() {
-    for(var n = 9876; n >= 9; n--) {     
-        var s = n.toString();
-        var i = 2;
+const euler38a = function() {
+    for(let n = 9876; n >= 9; n--) {     
+        let s = n.toString();
+        let i = 2;
         while(s.length < 9) {
             s += (n*i).toString();
             i++;
         }
         if (s.length == 9 && is_pandigital(s)) {          
-          return s;
+            return parseInt(s);
         }
     }
     return undefined;

@@ -11,7 +11,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -19,12 +19,12 @@
 const {timing2} = require('./js_utils.js');
 
 // 9ms
-var euler48a = function() {
-    var sum = 0;
-    var t = 10000000000;
-    for(var i = 1; i <= 1000; i++) {
-        var n = i;
-        for(var j = 2; j <= i; j++) {
+const euler48a = function() {
+    let sum = 0;
+    const t = 10_000_000_000;
+    for(let i = 1; i <= 1_000; i++) {
+        let n = i;
+        for(let j = 2; j <= i; j++) {
             n = (n * i) % t;
         }
         sum = (sum + n) % t;

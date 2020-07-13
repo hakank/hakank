@@ -14,9 +14,8 @@
    include leading zeros.)
   """
 
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -24,9 +23,9 @@
 const {range2,sum2,palindromic_list,dec2base,timing2} = require('./js_utils.js');
 
 // 129ms
-var euler36a = function() {
-    var s = 0;
-    for(var n = 1; n <= 999999; n++) {
+const euler36a = function() {
+    let s = 0;
+    for(let n = 1; n <= 999999; n++) {
         if (palindromic_list(n.toString().split("")) &&
             palindromic_list(dec2base(n,2))) {
             s += n;
@@ -36,7 +35,7 @@ var euler36a = function() {
 }
 
 // Slower: 280ms
-var euler36b = function() {
+const euler36b = function() {
     return range2(1,999999)
         .filter(n=>palindromic_list(n.toString().split("")))
         .filter(n=>palindromic_list(dec2base(n,2)))

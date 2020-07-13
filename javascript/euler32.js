@@ -19,7 +19,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -27,13 +27,13 @@
 const {sum2,timing2} = require('./js_utils.js');
 
 // 151ms
-var euler32a = function() {
-    var prod_hash = {};
-    for(var a =2; a <= 98; a++) {
-        var as = a.toString();
-        for(var b = a+1; b <= 9876; b++) {
-            var p = a*b;
-            var l = as + b.toString() + p.toString();
+const euler32a = function() {
+    let prod_hash = {};
+    for(let a =2; a <= 98; a++) {
+        const as = a.toString();
+        for(let b = a+1; b <= 9876; b++) {
+            const p = a*b;
+            const l = as + b.toString() + p.toString();
             if (l.length == 9 && !l.match(/0/)) {
                 if (new Set(l).size == 9) {
                     prod_hash[p] = 1;

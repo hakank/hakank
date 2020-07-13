@@ -21,7 +21,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -29,16 +29,16 @@
 const {isPrime,timing2} = require('./js_utils.js');
 
 // 5ms
-var euler46a = function() {
-    var res = 0;
-    var gotit = false;
-    for(var i = 3; i <= 10000; i+=2) {
+const euler46a = function() {
+    let res = 0;
+    let gotit = false;
+    for(let i = 3; i <= 10000; i+=2) {
         if (!isPrime(i) && !gotit) {
-            var s = Math.round(Math.sqrt(i/2));
-            var found = 0;
-            for(var j = 1; j <= s; j++) {
+            const s = Math.round(Math.sqrt(i/2));
+            let found = 0;
+            for(let j = 1; j <= s; j++) {
                 if (found === 0) {
-                    var ts = j*j*2;
+                    let ts = j*j*2;
                     if (isPrime(Math.abs(i-ts))) {
                         found = 1;
                     }

@@ -18,7 +18,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -26,13 +26,13 @@
 const {primes,isPrime,sum2,range2,timing2} = require('./js_utils.js');
 
 // 70ms
-var euler50a = function() {
-    var n = 10000;
-    var p = primes(n);
-    var found = false;
-    for(var len = 550; len>=21; len--) {
-        for(var offset = 1; offset <= 549; offset++) {
-            var pp = range2(offset+1,offset+len).map(i=>p[i]).sum2();
+const euler50a = function() {
+    const n = 10000;
+    const p = primes(n);
+    let found = false;
+    for(let len = 550; len>=21; len--) {
+        for(let offset = 1; offset <= 549; offset++) {
+            const pp = range2(offset+1,offset+len).map(i=>p[i]).sum2();
             if (pp < 1000000 && isPrime(pp)) {
                 return pp;
             }

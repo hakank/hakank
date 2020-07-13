@@ -8,36 +8,36 @@
 
 
   This JavaScript model was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 
 */
 'use strict';
 const {range,timing} = require("./js_utils.js");
 
-var fs = require("fs");
-var lang = "eng";
-var wordlist = "words_lower.txt";
-var alpha = "abcdefghijklmnopqrstuvxyz".split(""); // English (etc) words
-var n = 5;
+const fs = require("fs");
+let lang = "swe";
+let wordlist = "words_lower.txt";
+let alpha = "abcdefghijklmnopqrstuvxyz".split(""); // English (etc) words
+const n = 5;
 
 if (lang === "swe") {
     wordlist = "/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt";
     alpha = "abcdefghijklmnopqrstuvxyzåäö".split(""); // Swedish words    
 }
 
-var words = fs.readFileSync(wordlist).toString().split("\n");
+const words = fs.readFileSync(wordlist).toString().split("\n");
 console.log("number of words: " + words.length);
 
 //
 // for loop with some functional ingredients
 //
-var forloop = function() {
+const forloop = function() {
 
-    for (var i = 0; i < alpha.length - n; i++) {
-        var r = new RegExp(alpha.slice(i,i+n).join(".*"));
+    for (let i = 0; i < alpha.length - n; i++) {
+        const r = new RegExp(alpha.slice(i,i+n).join(".*"));
         console.log("\t" + r);
-        var m = words.filter(word =>r.test(word));
+        const m = words.filter(word =>r.test(word));
         // if (m.length > 0) {
         console.log(m.toString());
         console.log(" len: " + m.length + "\n");
@@ -46,9 +46,9 @@ var forloop = function() {
 }
 
 // A more functional approach, a little faster.
-var func = function() {
+const func = function() {
     range(alpha.length-n).map(i=>{
-        var r = new RegExp(alpha.slice(i,i+n).join(".*"));
+        const r = new RegExp(alpha.slice(i,i+n).join(".*"));
         return [r,words.filter(word =>r.test(word))];
     })
         // .filter(m => m[1].length>0)
@@ -77,12 +77,12 @@ console.timeEnd("func");
 // English:
 //   n=4: [ 407, 402 ]
 //   n=5: [ 390, 379 ]
-// var t1 = timing(forloop);
-// var t2 = timing(func);
+// const t1 = timing(forloop);
+// const t2 = timing(func);
 // console.log([t1,t2]);
 
 // run just one function
-// var t = timing(forloop);
-var t = timing(func);
+// const t = timing(forloop);
+const t = timing(func);
 console.log("time: " + t);
 

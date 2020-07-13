@@ -20,9 +20,8 @@
   are triangle words?
   """
 
-
   This JavaScript model was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 'use strict';
@@ -31,21 +30,21 @@ const fs = require("fs");
 
 
 // n'th triangle number
-var triangle_number = function(n) {
+const triangle_number = function(n) {
     return Math.floor((n*(n-1)) / 2);
 }
 
 // get the score for a name
-var get_score = function(name) {
+const get_score = function(name) {
     return name.split("")
     .map(c=>c.charCodeAt()-64)
     .sum2();
 }
 
 // 3ms
-var euler42a = function() {    
-    var t20 = new Set(range2(1,20).map(i=>triangle_number(i)));
-    var words = fs.readFileSync("euler42_words.txt").toString().replace(/"/g,"").split(/,/);
+const euler42a = function() {    
+    const t20 = new Set(range2(1,20).map(i=>triangle_number(i)));
+    const words = fs.readFileSync("euler42_words.txt").toString().replace(/"/g,"").split(/,/);
     return words
     .filter(word => t20.has(get_score(word)))
     .length;    

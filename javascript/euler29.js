@@ -20,9 +20,8 @@
   2 <= a <= 100 and 2 <= b <= 100?
   """ 
 
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -30,12 +29,12 @@
 const {flatten,range2,timing2} = require('./js_utils.js');
 
 // 26ms
-var euler29a = function() {
-    var min = 2;
-    var max = 100;
-    var h= {};
-    for(var a = min; a <= max; a++) {
-        for(var b = min; b <= max; b++) {
+const euler29a = function() {
+    const min = 2;
+    const max = 100;
+    let h= {};
+    for(let a = min; a <= max; a++) {
+        for(let b = min; b <= max; b++) {
             h[BigInt(a)**BigInt(b)] = 1;            
         }
     }
@@ -44,7 +43,7 @@ var euler29a = function() {
 }
 
 // 39ms
-var euler29b = function() {
+const euler29b = function() {
     return new Set(range2(2,100)
         .map(a=> 
                  range2(2,100)

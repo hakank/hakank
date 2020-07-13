@@ -14,7 +14,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -22,17 +22,18 @@
 const {range2,num_to_list2,isPrime,isPrimeCached,primes,timing2} = require('./js_utils.js');
 
 // Rotate an array/string
-var rotate = function(a,i) {
-    var v1 = a.slice(i);
-    var v2 = a.slice(0,i);
+const rotate = function(a,i) {
+    const v1 = a.slice(i);
+    const v2 = a.slice(0,i);
     return v1.concat(v2);
 }
 
-var is_circular_prime = function(n, prime_set) {   
-    var s = n.num_to_list2();
-    var len = s.length;
-    for(var i = 1; i <= len; i++) {
-        var v = parseInt(rotate(s,i).join(""));
+const is_circular_prime = function(n, prime_set) {   
+    const s = n.num_to_list2();
+    const len = s.length;
+    let v = 0;
+    for(let i = 1; i <= len; i++) {
+        v = parseInt(rotate(s,i).join(""));
         if (!prime_set.has(v)) {
             return false;
         }
@@ -41,11 +42,11 @@ var is_circular_prime = function(n, prime_set) {
 }
 
 // 220ms
-var euler35a = function() {
-    var prime_set = new Set(primes(1000000));
+const euler35a = function() {
+    const prime_set = new Set(primes(1000000));
 
-    var numCircularPrimes = 0;
-    for(var n of prime_set) {
+    let numCircularPrimes = 0;
+    for(let n of prime_set) {
         if (prime_set.has(n) && is_circular_prime(n,prime_set)) {
             numCircularPrimes++;
         }

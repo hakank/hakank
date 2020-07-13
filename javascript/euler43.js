@@ -22,7 +22,7 @@
   """
 
   This JavaScript model was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 'use strict';
@@ -31,13 +31,13 @@ const {all_permutations,next_permutation,range,range2,timing2} = require('./js_u
 //
 // Using all_permutations: 5214ms (5.2s)
 //
-var euler43a = function() {
-    var primes = [2,3,5,7,11,13,17];
-    var perms = all_permutations(range2(0,9));
-    var sum = 0;
-    for(var p of perms) {
-        var i = 0;
-        var found = true;
+const euler43a = function() {
+    const primes = [2,3,5,7,11,13,17];
+    const perms = all_permutations(range2(0,9));
+    let sum = 0;
+    for(let p of perms) {
+        let i = 0;
+        let found = true;
         while(i < 7 && found === true) {
             if ( (100*p[i+1] + 10*p[i+2] + p[i+3]) % primes[i] !== 0) {
                 found = false;
@@ -58,13 +58,13 @@ var euler43a = function() {
 //
 // Using next_permutations: 54ms (rather faster :-))
 //
-var euler43b = function() {
-    var primes = [2,3,5,7,11,13,17];
-    var p = [1,0,2,3,4,5,6,7,8,9];
-    var sum = 0;
+const euler43b = function() {
+    const primes = [2,3,5,7,11,13,17];
+    let p = [1,0,2,3,4,5,6,7,8,9];
+    let sum = 0;
       while(p !== null) {
-        var i = 0;
-        var found = true;
+        let i = 0;
+        let found = true;
         while(i < 7 && found === true) {
             if ( (100*p[i+1] + 10*p[i+2] + p[i+3]) % primes[i] !== 0) {
                 found = false;

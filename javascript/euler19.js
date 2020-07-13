@@ -23,7 +23,7 @@
 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -31,10 +31,10 @@
 const {timing2} = require('./js_utils.js');
 
 // 1ms
-var euler19a = function() {
-    var count = 0;
-    for (var year = 1901; year <= 2000; year++) {
-        for (var month = 1; month <= 12; month++) {
+const euler19a = function() {
+    let count = 0;
+    for (let year = 1901; year <= 2000; year++) {
+        for (let month = 1; month <= 12; month++) {
             if (new Date(year, month, 1).getDay() == 0) {
                 count++;
             }

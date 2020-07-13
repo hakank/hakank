@@ -18,10 +18,8 @@
   What is the sum of the numbers on the diagonals in a 1001 by 1001 spiral formed in the same way?
   """
 
-
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -29,9 +27,9 @@
 const {timing2} = require('./js_utils.js');
 
 // 0ms
-var euler28a = function() {
-    var s = 1;
-    var n = 3;
+const euler28a = function() {
+    let s = 1;
+    let n = 3;
     while (n <= 1001) {
         s += 4*n**2 - 6*n+6;
         n+=2;

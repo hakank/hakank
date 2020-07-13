@@ -28,9 +28,8 @@
   What is the first term in the Fibonacci sequence to contain 1000 digits?")
   """
 
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -39,19 +38,19 @@ const {fibN,memoizer,timing2} = require('./js_utils.js');
 
 /*
 // Is not faster
-var fib_len_memo = memoizer(function(n) {
+const fib_len_memo = memoizer(function(n) {
     return fibN(BigInt(n)).toString().length;
 })
 */
 
-var fib_len = function(n) {
+const fib_len = function(n) {
     return fibN(BigInt(n)).toString().length;
 }
 
 // Brute force: 134ms
-var euler25a = function() {
-    var i = 1;
-    var len = 0;
+const euler25a = function() {
+    let i = 1;
+    let len = 0;
     while (len < 1000) {
         len = fibN(BigInt(i)).toString().length;
         i++;
@@ -64,12 +63,12 @@ var euler25a = function() {
 // Using some heuristics to find the upper limit
 // (from my Picat solution).
 // 10ms
-var euler25b = function() {
-    var target = 1000;
-    var foundUpper = 0;
-    var i = 1;
-    var fibLen = 0;
-    var step = 43;
+const euler25b = function() {
+    const target = 1000;
+    let foundUpper = 0;
+    let i = 1;
+    let fibLen = 0;
+    const step = 43;
     // Get the upper limit
     while (fibLen < target && foundUpper === 0) {
         fibLen = fib_len(step*i);

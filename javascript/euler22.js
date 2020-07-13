@@ -19,7 +19,7 @@
 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -27,16 +27,16 @@
 const {sum,range2,timing2} = require('./js_utils.js');
 const fs = require('fs');
 
-var to_code = function(s) {
+const to_code = function(s) {
     return s.split("").map(c=>c.charCodeAt()-64);
 }
 
 // 15ms
-var euler22a = function() {
-    var words = fs.readFileSync("euler22_names.txt").toString().split(",");
-    var a = 1;
-    var s = 0;
-    for(var word of words.sort()) {
+const euler22a = function() {
+    const words = fs.readFileSync("euler22_names.txt").toString().split(",");
+    let a = 1;
+    let s = 0;
+    for(let word of words.sort()) {
         word = word.replace(/"/g,'');
         s += a*sum(to_code(word));
         a++;
@@ -47,15 +47,13 @@ var euler22a = function() {
 
 // Functional (except for a, darn..)
 // 15ms
-var euler22b = function() {
-    var a = 1;
-    var s = fs.readFileSync("euler22_names.txt").toString().split(",").sort() 
+const euler22b = function() {
+    let a = 1;
+    return fs.readFileSync("euler22_names.txt").toString().split(",").sort() 
         .map(word=>(a++)*sum(to_code(word.replace(/"/g,'')))).sum2();
-    
-    return s;
 }
 
-// timing2(euler22a);
-timing2(euler22b);
+timing2(euler22a);
+// timing2(euler22b);
 
 

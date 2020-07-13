@@ -20,7 +20,7 @@
      wheres timing returns the time.
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
   
 */
 'use strict';
@@ -28,18 +28,18 @@
 
 // Return time difference (millis)
 exports.timing = function(f) {
-    var t1_start = +new Date(); // new Date().getTime();
+    const t1_start = +new Date(); // new Date().getTime();
     f();
-    var t1_end = +new Date(); // new Date().getTime();
+    const t1_end = +new Date(); // new Date().getTime();
     return t1_end - t1_start;
 }
 
 // Prints [time difference, result]
 exports.timing2 = function(f) {
     console.log(f.name);
-    var t1_start = +new Date();
-    var res = f();
-    var t1_end = +new Date();
+    const t1_start = +new Date();
+    const res = f();
+    const t1_end = +new Date();
     console.log([t1_end - t1_start, res]);
 }
 
@@ -49,7 +49,7 @@ exports.range = range;
 
 // range2(from, to) -> [from,from+1,from+2,...,to]
 const range2 = function(from, to) {
-    var n = to - from +1;
+    const n = to - from +1;
     return [...Array(n).keys()]
         .map(i=>i+from);
     
@@ -58,7 +58,7 @@ exports.range2 = range2;
 
 // range2(from, to) -> [from,from+1,from+2,...,to]
 const range2N = function(from, to) {
-    var n = BigInt(to) - BigInt(from) +1n;
+    const n = BigInt(to) - BigInt(from) +1n;
     return [...Array(n).keys()]
         .map(i=>BigInt(i)+BigInt(from));
     
@@ -181,10 +181,10 @@ const prime_divisors = function(n) {
     if (n === 1) {
         return [];
     }
-    var divisors = [];
+    let divisors = [];
     while (n > 1) {
-        var m = Math.ceil(Math.sqrt(n));
-        for(var i = 2; i <= m; i++) {
+        const m = Math.ceil(Math.sqrt(n));
+        for(let i = 2; i <= m; i++) {
             if (n % i == 0 && isPrime(i)) {
                 divisors.push(i);
                 n /= i;
@@ -197,16 +197,16 @@ const prime_divisors = function(n) {
 exports.prime_divisors = prime_divisors;
 
 // prime factors of n
-var factors = function(n) {
+const factors = function(n) {
     if (n === 1) {
         return [1];
     }
-    var f = [];
+    let f = [];
     while (n % 2 === 0) {
         f.push(2);
         n /= 2;
     }
-    var t = 3;
+    let t = 3;
     while (n > 1 && t < Math.ceil(Math.sqrt(n))) {
         while (n % t === 0) {
             f.push(t);
@@ -223,8 +223,8 @@ exports.factors = factors;
 
 // convert a list of elements in a to a hash with 
 //   { element: number of occurrences of element, ...}
-var collect = function(a) {
-    var m = {};
+const collect = function(a) {
+    let m = {};
     a.forEach(e=> {
         if (m[e] === undefined) {
             m[e] = 0;
@@ -237,9 +237,9 @@ exports.collect = collect;
 
 // All divisors of a number, except 1 and n
 const all_divisors = function(n) {
-    var divisors = [];
-    var m = n / 2;
-    for(var i = 2; i <= m; i++) {
+    let divisors = [];
+    const m = n / 2;
+    for(let i = 2; i <= m; i++) {
         if (n % i == 0) {
             divisors.push(i);
         }
@@ -256,9 +256,9 @@ exports.all_divisors2 = all_divisors2;
 
 // All divisors of n, including 1 (but not n)
 const all_divisors3 = function(n) {
-    var divisors = [1];
-    var m = n / 2;
-    for(var i = 2; i <= m; i++) {
+    let divisors = [1];
+    const m = n / 2;
+    for(let i = 2; i <= m; i++) {
         if (n % i == 0) {
             divisors.push(i);
         }
@@ -270,8 +270,8 @@ exports.all_divisors3 = all_divisors3;
 
 // Return all primes <= n
 const primes = function(n) {
-    var primes = [2];
-    for(var i = 3; i <= n ; i+=2) {
+    let primes = [2];
+    for(let i = 3; i <= n ; i+=2) {
         if (isPrime(i)) {
             primes.push(i);
         }
@@ -282,11 +282,11 @@ exports.primes = primes;
 
 // Find the primes <= n
 const sieve = function(n) {
-    var a = range(n);
+    let a = range(n);
     a[0] = 0;
     a[1] = 0;
-    for(var i = 2; i < Math.ceil(Math.sqrt(n)); i++) {
-        for(var j =i*i; j <= n; j+=i) {
+    for(let i = 2; i < Math.ceil(Math.sqrt(n)); i++) {
+        for(let j =i*i; j <= n; j+=i) {
             a[j] = 0;
         }      
     }
@@ -309,8 +309,8 @@ const isPrime = function(n) {
         return false;
     }
 
-    var m = Math.ceil(Math.sqrt(n));
-    for (var i = 3; i <= m; i+=2) {
+    const m = Math.ceil(Math.sqrt(n));
+    for (let i = 3; i <= m; i+=2) {
         if (n % i === 0) {
             return false;
         }
@@ -332,22 +332,22 @@ const lcm = function(a, b) { return (a*b)/gcd(a,b); }
 exports.lcm = lcm;
 
 // Factorial(n)
-var factorial = function(n) {  return n === 0 ? 1 : prod(range2(1,n)); }
+const factorial = function(n) {  return n === 0 ? 1 : prod(range2(1,n)); }
 exports.factorial = factorial;
 
-var factorial2 = function() {  return this === 0 ? 1 : prod(range2(1,this)); }
+const factorial2 = function() {  return this === 0 ? 1 : prod(range2(1,this)); }
 Number.prototype.factorial2 = factorial2;
 exports.factorial2 = Number.prototype.factorial2
 
 // factorial(n) for BigInt
-var factorialN = function(n) {  return n === 0n ? 1n : prodN(range2N(BigInt(1),BigInt(n))); }
+const factorialN = function(n) {  return n === 0n ? 1n : prodN(range2N(BigInt(1),BigInt(n))); }
 exports.factorialN = factorialN;
 
 //
 // convert a decimal integer to a list of base <base> digits.
 //
-var dec2base = function(n,base) {
-    var res = [];
+const dec2base = function(n,base) {
+    let res = [];
     while (n > 0) {
         res.unshift(n % base);
         n = Math.floor(n / base);
@@ -357,7 +357,7 @@ var dec2base = function(n,base) {
 exports.dec2base = dec2base;
 
 // return the length of a number (instead of .toString().split("").length)
-var nlen = function(n) {
+const nlen = function(n) {
     return Math.floor(Math.log10(n))+1;
 }
 exports.nlen = nlen;
@@ -365,9 +365,9 @@ exports.nlen = nlen;
 // Is n a palindromic number?
 // Used in euler4.js
 const palindromic_number = function(n) {
-    var s = n.toString();
-    var len = s.length;
-    for(var i = 0; i <= len/2; i++) {
+    const s = n.toString();
+    const len = s.length;
+    for(let i = 0; i <= len/2; i++) {
         if (s[i] != s[len-i-1]) {
             return false;
         }
@@ -378,8 +378,8 @@ exports.palindromic_number = palindromic_number;
 
 // is the list a palindrom?
 const palindromic_list = function(s) {
-    var len = s.length;
-    for(var i = 0; i <= len/2; i++) {
+    const len = s.length;
+    for(let i = 0; i <= len/2; i++) {
         if (s[i] != s[len-i-1]) {
             return false;
         }
@@ -388,7 +388,7 @@ const palindromic_list = function(s) {
 }
 exports.palindromic_list = palindromic_list;
 
-var is_pandigital = function(s) {
+const is_pandigital = function(s) {
     return s.length === 9 && !s.match(/0/) && new Set(s).size === 9;
 }
 exports.is_pandigital = is_pandigital;
@@ -401,15 +401,15 @@ exports.transpose = transpose;
 
 
 // All diagonals of a matrix
-var all_diagonals = function(m) {
-    var n = m.length;
-    var num_diagonals = (n*2);
-    var diagonals = [];
-    for (var k = 0; k < num_diagonals; k++) {
-        var d1 = [];
-        var d2 = [];        
-        for(var i = 0; i < n; i++) {
-            for(var j = 0; j < n; j++) {
+const all_diagonals = function(m) {
+    const n = m.length;
+    const num_diagonals = (n*2);
+    let diagonals = [];
+    for (let k = 0; k < num_diagonals; k++) {
+        let d1 = [];
+        let d2 = [];        
+        for(let i = 0; i < n; i++) {
+            for(let j = 0; j < n; j++) {
                 if (i+j === k) {
                     d1.push(m[i][j])
                 }
@@ -434,21 +434,21 @@ exports.all_diagonals = all_diagonals;
 //
 // Next permutation of array p
 //
-var next_permutation = function(p) {
-    var i = p.length - 1;
+const next_permutation = function(p) {
+    let i = p.length - 1;
     while (i > 0 && p[i-1] >= p[i])
         i--;
     if (i <= 0) {
         return null;
     }
     
-    var j = p.length - 1;
+    let j = p.length - 1;
     while (p[j] <= p[i - 1]) {
         j--;
     }
     
     // swap
-    var t = p[i - 1];
+    let t = p[i - 1];
     p[i - 1] = p[j];
     p[j] = t;
     
@@ -470,13 +470,13 @@ exports.next_permutation = next_permutation;
 
 // Inspired by an answer from
 // http://stackoverflow.com/questions/4240080/generating-all-permutations-of-a-given-string
-var all_permutations = function(s) {
-    var perms = [];
+const all_permutations = function(s) {
+    let perms = [];
     permutation_tmp([], s, perms);
     return perms;
 }
-var permutation_tmp = function(prefix,s, perms) {
-    var n = s.length;
+const permutation_tmp = function(prefix,s, perms) {
+    const n = s.length;
     if (n == 0) {
         perms.push(prefix);
     } else {

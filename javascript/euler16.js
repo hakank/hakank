@@ -10,7 +10,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -18,7 +18,7 @@
 const {sum2,timing2} = require('./js_utils.js');
 
 // 0ms
-var euler16a = function() {
+const euler16a = function() {
     return (2n**1000n).toString().split("").map(i=>parseInt(i)).sum2();
 }
 

@@ -10,23 +10,23 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {primes,isPrime,sieve,timing2} = require('./js_utils.js');
+const {primes,isPrime,sieve,timing2} = require('./js_utils.js');
 
 
 // 272ms
-var euler10a = function() {
+const euler10a = function() {
     return primes(2000000).sum2();
 }
 
 // 266ms
-var euler10b = function() {
-    var p = 2;
-    for(var i=3; i < 2000000; i+=2) {
+const euler10b = function() {
+    let p = 2;
+    for(let i=3; i < 2000000; i+=2) {
         if (isPrime(i)) {
             p+=i;            
         }
@@ -35,10 +35,10 @@ var euler10b = function() {
 }
 
 // 205ms: This is the fastest!
-var euler10c = function() {
+const euler10c = function() {
     return sieve(2000000).sum2();
 }
 
-// timing2(euler10a);
+timing2(euler10a);
 // timing2(euler10b);
-timing2(euler10c);
+// timing2(euler10c);

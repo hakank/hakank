@@ -14,18 +14,18 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {timing2} = require('./js_utils.js');
+const {timing2} = require('./js_utils.js');
 
 // 18ms
-var euler9a = function() {
-    for(var c = 1; c <= 500; c++) {
-        for(var b = 1; b <= c; b++) {
-            for(var a = 1; a <= b; a++) {
+const euler9a = function() {
+    for(let c = 1; c <= 500; c++) {
+        for(let b = 1; b <= c; b++) {
+            for(let a = 1; a <= b; a++) {
                 if (a+b+c === 1000 && a**2 + b**2 - c**2 == 0) {
                     return a*b*c;
                 }

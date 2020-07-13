@@ -28,9 +28,8 @@
   values of n, starting with n = 0.
   """ 
 
-
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -38,15 +37,15 @@
 const {isPrimeCached,timing2} = require('./js_utils.js');
 
 // 45ms
-var euler27a = function() {
-    var t = 999;
-    var bestLen = 0;
-    var bestA = 0;
-    var bestB = 0;
-    for(var a = -t; a <= t; a++) {
-        for(var b = -t; b <= t; b++) {
-            var len = 0;
-            var pp = len**2 + a*len + b;
+const euler27a = function() {
+    const t = 999;
+    let bestLen = 0;
+    let bestA = 0;
+    let bestB = 0;
+    for(let a = -t; a <= t; a++) {
+        for(let b = -t; b <= t; b++) {
+            let len = 0;
+            let pp = len**2 + a*len + b;
             while (pp > 1 && isPrimeCached(pp)) {
                 len++;
                 pp = len**2 + a*len + b;

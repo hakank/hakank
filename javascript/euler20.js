@@ -10,7 +10,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
@@ -18,12 +18,12 @@
 const {prodN,sum2,range2,timing2} = require('./js_utils.js');
 
 
-var factorialN = function(n) {
+const factorialN = function(n) {
     return prodN(range2(1,n));
 }
 
 // 0ms
-var euler20a = function() {
+const euler20a = function() {
     return factorialN(100).toString().split("").map(i=>parseInt(i)).sum2();
 }
 

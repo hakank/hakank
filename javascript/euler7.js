@@ -11,17 +11,17 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http://www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {isPrime,primes,last,timing2} = require('./js_utils.js');
+const {isPrime,primes,last,timing2} = require('./js_utils.js');
 
 // 9ms
-var euler7a = function() {
-    var i = 11;
-    var c = 4;
+const euler7a = function() {
+    let i = 11;
+    let c = 4;
     while (c !== 10001) {
         if (isPrime(i)) {
             c++;
@@ -32,8 +32,8 @@ var euler7a = function() {
 }
 
 // 12ms
-var euler7b = function() {
-    var p = primes(200000); // slightly cheating...
+const euler7b = function() {
+    const p = primes(200000); // slightly cheating...
     return p[10000];
 }
 

@@ -16,15 +16,15 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript/
+  See also my JavaScript page: http:www.hakank.org/javascript_progs/
 
 */
 
 'use strict';
-var {prod,range,transpose,all_diagonals,timing2} = require('./js_utils.js');
+const {prod,range,transpose,all_diagonals,timing2} = require('./js_utils.js');
 
 
-var m = [[ 8, 2,22,97,38,15, 0,40, 0,75, 4, 5, 7,78,52,12,50,77,91, 8],
+const m = [[ 8, 2,22,97,38,15, 0,40, 0,75, 4, 5, 7,78,52,12,50,77,91, 8],
          [49,49,99,40,17,81,18,57,60,87,17,40,98,43,69,48, 4,56,62, 0],
          [81,49,31,73,55,79,14,29,93,71,40,67,53,88,30, 3,49,13,36,65],
          [52,70,95,23, 4,60,11,42,69,24,68,56, 1,32,56,71,37, 2,36,91],
@@ -47,21 +47,21 @@ var m = [[ 8, 2,22,97,38,15, 0,40, 0,75, 4, 5, 7,78,52,12,50,77,91, 8],
 
 
 // 1ms
-var euler11a = function() {
-    var len = m.length;
-    var mt = transpose(m);
+const euler11a = function() {
+    const len = m.length;
+    const mt = transpose(m);
     
-    var n = 4;
-    var maxp = 0;
+    const n = 4;
+    let maxp = 0;
     
     // Rows and columns
-    for(var row = 0; row < len; row++) {
-        for(var col=0; col<len-n+1; col++) {
-            var p1 = prod(m[row].slice(col,col+n));
+    for(let row = 0; row < len; row++) {
+        for(let col=0; col<len-n+1; col++) {
+            const p1 = prod(m[row].slice(col,col+n));
             if (p1 > maxp) {
                 maxp = p1;
             }
-            var p2 = prod(mt[row].slice(col,col+n));            
+            const p2 = prod(mt[row].slice(col,col+n));            
             if (p2 > maxp) {
                 maxp = p2;
             }
@@ -69,13 +69,13 @@ var euler11a = function() {
     }
 
     // diag_down
-    for(var j = 1; j < 17; j++) {
-        for(var i = 1; i < 17; i++) {
-            var pa = [];
+    for(let j = 1; j < 17; j++) {
+        for(let i = 1; i < 17; i++) {
+            let pa = [];
             for(var a = 0; a < n; a++) {
                 pa.push(m[a+i][a+j]);
             }
-            var p = prod(pa);
+            const p = prod(pa);
             if (p > maxp) {
                 maxp = p;
             }
@@ -83,13 +83,13 @@ var euler11a = function() {
     }
 
     // diag_up
-    for(var j = 1; j < 17; j++) {
-        for(var i = 4; i < 20; i++) {
-            var pa = [];
-            for(var a = 0; a < 4; a++) {
+    for(let j = 1; j < 17; j++) {
+        for(let i = 4; i < 20; i++) {
+            let pa = [];
+            for(let a = 0; a < 4; a++) {
                 pa.push(m[i-a][j+a]);
             }
-            var p = prod(pa);
+            const p = prod(pa);
             if (p > maxp) {
                 maxp = p;
             }
@@ -100,26 +100,25 @@ var euler11a = function() {
 }
 
 
-// 
 // A more functional approach (except the all_diagonal stuff)
 // 4ms
-var euler11b = function() {
-    var len = m.length;
-    var mt = transpose(m);
+const euler11b = function() {
+    const len = m.length;
+    const mt = transpose(m);
     
-    var n = 4;
-    var maxp = 0;
+    const n = 4;
+    let maxp = 0;
 
     // rows and cols
-    var max1 = range(len).
+    const max1 = range(len).
         map(row=>{
             return range(len)
                 .map(col=> {
                     return [prod(m[row].slice(col,col+n)),prod(m[row].slice(col,col+n))].max2()
                 })
         }).flatten2().max2();
-    var diagonals = all_diagonals(m);
-    var max2 = diagonals
+    const diagonals = all_diagonals(m);
+    const max2 = diagonals
         .filter(d => d.length >= n)
         .map(d => {
                  return range(d.length)
