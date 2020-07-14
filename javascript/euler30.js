@@ -32,7 +32,9 @@ const euler30a = function() {
     let t = 0;
     const m = 5;
     for(let n = 10; n <= 6*9**5; n++) {
-        const nn = n.toString().split("").map(i=>parseInt(i)**m).sum2();
+        // const nn = n.toString().split("").map(i=>parseInt(i)**m).sum2();
+        // slightly faster with spread
+        const nn = [...n.toString()].map(i=>parseInt(i)**m).sum2(); 
         if (n === nn) {
             t += n;
         }

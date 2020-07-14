@@ -26,8 +26,8 @@ const {range2,sum2,palindromic_list,dec2base,timing2} = require('./js_utils.js')
 const euler36a = function() {
     let s = 0;
     for(let n = 1; n <= 999999; n++) {
-        if (palindromic_list(n.toString().split("")) &&
-            palindromic_list(dec2base(n,2))) {
+        if (palindromic_list(n.toString(10)) &&
+            palindromic_list(n.toString(2))) {            
             s += n;
         }
     }
@@ -37,11 +37,11 @@ const euler36a = function() {
 // Slower: 280ms
 const euler36b = function() {
     return range2(1,999999)
-        .filter(n=>palindromic_list(n.toString().split("")))
-        .filter(n=>palindromic_list(dec2base(n,2)))
+        .filter(n=>palindromic_list(n.toString(10)))
+        .filter(n=>palindromic_list(n.toString(2)))
         .sum2();
 }
 
 
-timing2(euler36a); // 129ms
-// timing2(euler36b); // 280ms
+timing2(euler36a); // 78ms
+// timing2(euler36b); // 175ms

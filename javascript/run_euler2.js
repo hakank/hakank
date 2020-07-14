@@ -4,63 +4,64 @@
 
   This is a port of my traditional Perl wrapper for running Projects Euler problems 1..50.
 
-  - run_euler is an (asynchronous) version but we don't get any statistics
   - run_eulerSync is a synchronous version with the standard statistics:
      * total solve time
-     * list of failured programs
+     * list of failured programs (if any)
      * a list of the programs in reverse order of solve time.
 
-  Here are the solving times (in seconds) as of 2020-07-12:
-  euler10.js: 0.351s
-  euler30.js: 0.245s
-  euler35.js: 0.201s
-  euler34.js: 0.19s
-  euler36.js: 0.163s
-  euler50.js: 0.153s
-  euler21.js: 0.149s
-  euler14.js: 0.145s
-  euler32.js: 0.134s
+  Here are the solving times (in seconds) as of 2020-07-14:
+  total_cpu_time: 1.9999999999999993s
+  cpu_times:
+  euler10.js: 0.253s
+  euler30.js: 0.232s
+  euler35.js: 0.194s
+  euler34.js: 0.17s
+  euler14.js: 0.155s
+  euler50.js: 0.146s
+  euler32.js: 0.136s
+  euler21.js: 0.135s
+  euler36.js: 0.075s
+  euler12.js: 0.069s
   euler44.js: 0.065s
-  euler12.js: 0.057s
-  euler43.js: 0.054s
+  euler43.js: 0.053s
   euler47.js: 0.042s
+  euler29.js: 0.035s
+  euler27.js: 0.033s
   euler37.js: 0.03s
-  euler27.js: 0.028s
-  euler29.js: 0.025s
-  euler23.js: 0.02s
-  euler39.js: 0.02s
-  euler9.js: 0.018s
+  euler23.js: 0.021s
+  euler39.js: 0.019s
+  euler9.js: 0.016s
+  euler40.js: 0.015s
   euler49.js: 0.015s
-  euler40.js: 0.014s
-  euler41.js: 0.011s
+  euler41.js: 0.01s
+  euler4.js: 0.009s
   euler7.js: 0.009s
   euler22.js: 0.009s
   euler25.js: 0.009s
   euler48.js: 0.009s
-  euler4.js: 0.008s
-  euler45.js: 0.007s
-  euler31.js: 0.006s
-  euler46.js: 0.006s
-  euler17.js: 0.004s
+  euler45.js: 0.008s
+  euler31.js: 0.005s
   euler18.js: 0.004s
   euler26.js: 0.004s
+  euler46.js: 0.004s
+  euler17.js: 0.003s
   euler42.js: 0.003s
   euler38.js: 0.002s
+  euler5.js: 0.001s
   euler11.js: 0.001s
-  euler19.js: 0.001s
-  euler20.js: 0.001s
-  euler24.js: 0.001s
+  euler33.js: 0.001s
   euler1.js: 0s
   euler2.js: 0s
   euler3.js: 0s
-  euler5.js: 0s
   euler6.js: 0s
   euler8.js: 0s
   euler13.js: 0s
   euler15.js: 0s
   euler16.js: 0s
+  euler19.js: 0s
+  euler20.js: 0s
+  euler24.js: 0s
   euler28.js: 0s
-  euler33.js: 0s
 
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
@@ -149,52 +150,9 @@ const sortf = function(a,b) {
     return anum-bnum;
 }
 
-/*
-  Async version.
-  Runtime 0.55s
-
-  It's very fast but the changes in the variables (e.g. total_cpu_time, fails) 
-  are not propagated.
-  So it's not very useful for doing more than basic checking: it exits if an
-  answer is wrong.
-
-*/
-const run_euler = function() {
-    
-    let fails = [];
-    let total_cpu_time = 0;
-    let cpu_times = {};
-    
-    Object.keys(answers)
-        .sort(sortf)
-        .forEach(p=>{
-            const e = execFile("node", [p], function callback(error, stdout, stderr){
-                console.log("stdout: " + stdout.trim());
-                const a = answers[p];
-                console.log("answer should be: " + a);
-                const m2 = stdout.match(re);
-                const time = m2[1];                
-                const ans = m2[2].replace(/'/g,"");
-                total_cpu_time += time;
-                cpu_times[p] = time;
-                if (ans.toString() == answers[p].toString()) {
-                    console.log(p + " CORRECT!");
-                } else {
-                    fails.push(p);                    
-                    console.log(p + " INCORRECT!");
-                    process.exit(1);
-                }
-                console.log(`time: ${time}`);
-                console.log(`answer: ${ans}`);                            
-                console.log("\n\n");
-            });           
-    })
-    return [fails,total_cpu_time,cpu_times];
-}
-
 
 /*
-  Sync version: Here we got the statistics etc.
+  Sync version: Show the statistics, summaries etc.
   Runtime is about 5s but we - still - got the total timing of 2.25s
 */
 const run_eulerSync = function() {
@@ -230,15 +188,11 @@ const run_eulerSync = function() {
     return [fails,total_cpu_time,cpu_times];
 }
 
-
-//// Async version takes about 0.55s
-// const [fails,total_cpu_time,cpu_times] = run_euler();
-// console.log("fails: " + fails);
-// console.log("total_cpu_time: " + total_cpu_time);
-// console.log("cpu_times: " + Object.keys(cpu_times));
-
+//
 // Sync version takes about 5s to run.
 // (The Perl version takes about 4.8s)
+// The total solve time is around 2.0s
+//
 const [fails,total_cpu_time,cpu_times] = run_eulerSync();
 console.log("\n\nfails: " + fails);
 console.log("total_cpu_time: " + total_cpu_time + "s");
@@ -248,6 +202,9 @@ Object.keys(cpu_times).sort(function(a,b) {return cpu_times[b]-cpu_times[a]; } )
         console.log(`${p}: ${cpu_times[p]}s`)
     });
 
+console.log("\ntotal_cpu_time: " + total_cpu_time + "s\n");
+
 if (fails.length > 0) {
     console.log("\n\nThe following programs fails: " + fails + "\n\n\n");
 }
+

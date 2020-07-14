@@ -32,7 +32,7 @@
 const {memoizer,timing2} = require('./js_utils.js');
 
 
-// It's must slower with memoizing
+// It's much slower with memoizing!
 /*
 const hailstone = memoizer(function(n) {
     if (n % 2 === 0) {
@@ -52,13 +52,13 @@ const hailstone = function(n) {
 }
 
 // 
-// 4443ms (4.4s)
-// Using 3..2..10000: 2859ms (2.9s)
+// Using 1..1_000_000: 1048ms
+// Using 3..2..1_000_000: 580ms 
 const euler14a = function() {
     let maxN = 0;
     let maxLen = 0;
-    // for(let n = 1; n < 1000000; n++) {
-    for(let n = 3; n < 1000000; n+=2) {        
+    for(let n = 1; n < 1_000_000; n++) {
+    // for(let n = 3; n < 1_000_000; n+=2) {        
         let m = n;
         let alen = 0;
         while (m > 1) {
@@ -75,7 +75,7 @@ const euler14a = function() {
 }
 
 //
-// Cache the lengths as well.
+// Cache the lengths.
 //
 // 1..999999: 156ms
 // 3..2..999999: 163ms (slower!???)
@@ -83,8 +83,8 @@ const euler14b = function() {
     let hash = new Object;
     let maxN = 0;
     let maxLen = 0;
-    for(let n = 2; n < 1000000; n++) {        
-    // for(var n = 3; n < 1000000; n+=2) {        
+    for(let n = 2; n < 1_000_000; n++) {        
+    // for(var n = 3; n < 1_000_000; n+=2) {        
         let m = n;
         let mlen = 1;
         while (m > 1) {
@@ -107,5 +107,5 @@ const euler14b = function() {
     return maxN;
 }
 
-// timing2(euler14a); // 602ms
+// timing2(euler14a); // 580ms
 timing2(euler14b); // 153ms

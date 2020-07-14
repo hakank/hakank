@@ -13,7 +13,7 @@
   """
 
   This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
-  See also my JavaScript page: http://www.hakank.org/javascript_progs/
+  See also my JavaScript page: http://www.hakank.org/javascript/
 
 */
 
@@ -128,5 +128,12 @@ const euler13a = function() {
     return parseInt(sumN(ns).toString().slice(0,10));
 }
 
+// I had to test...
+const euler13b = function() {
+    String.prototype.parseInt = function() {return parseInt(this)};
+    return sumN(ns).toString().slice(0,10).parseInt();
+}
 
-timing2(euler13a);
+
+timing2(euler13a); // 0ms
+// timing2(euler13b); // 0ms

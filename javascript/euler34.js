@@ -22,7 +22,8 @@ const {factorial2,num_to_list2,sum2,range2,timing2} = require('./js_utils.js');
 
 const str_factorial_sum = function(n) {
     // return n.toString().split("").map(i=>factorial(parseInt(i))).sum2();
-    return n.toString().split("").map(i=>parseInt(i).factorial2()).sum2();    
+    // return n.toString().split("").map(i=>parseInt(i).factorial2()).sum2();
+    return [...n.toString()].map(i=>parseInt(i).factorial2()).sum2();        
     // return n.num_to_list2().map(i=>factorial(i)).sum2(); // slower: 84ms
 }
 

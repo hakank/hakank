@@ -31,7 +31,7 @@ const euler5a = function() {
 // Nicer.
 // 0ms
 const euler5b = function() {
-    return range2(2,20).reduce((i,j)=>lcm(i,j));
+    return range2(2,20).reduce(lcm);
 }
 
 // timing2(euler5a); // 0ms

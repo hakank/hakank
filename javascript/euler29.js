@@ -54,6 +54,6 @@ const euler29b = function() {
 }
 
 
-timing2(euler29a); // 26ms
-// timing2(euler29b); // 39ms
+// timing2(euler29a); // 26ms
+timing2(euler29b); // 39ms
 

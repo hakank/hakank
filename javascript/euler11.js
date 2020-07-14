@@ -116,7 +116,7 @@ const euler11b = function() {
                 .map(col=> {
                     return [prod(m[row].slice(col,col+n)),prod(m[row].slice(col,col+n))].max2()
                 })
-        }).flatten2().max2();
+        }).flat().max2();
     const diagonals = all_diagonals(m);
     const max2 = diagonals
         .filter(d => d.length >= n)
@@ -127,7 +127,7 @@ const euler11b = function() {
                          : 0
                     
                  })
-        }).flatten2().max2();
+        }).flat().max2();
     return [max1,max2].max2();
     
 }
