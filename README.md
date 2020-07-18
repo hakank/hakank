@@ -26,6 +26,7 @@ Here's a summary of the directories so far:
 * j: J array programming language J (note: index.html contains code etc)
 * jacop: JaCoP and JaCoP/Scala, constraint programming
 * java: Java programs (mostly Project Euler)
+* javascript: JavaScript programs
 * jgap: JGAP, genetic programming
 * jsr_331: JSR-331, Java API for constraint programming
 * k: K, array programming language  (note: index.html contains code etc)
@@ -36,12 +37,12 @@ Here's a summary of the directories so far:
 * oscar: OscaR, constraint programming
 * pddl: PDDL (planning language)
 * perl6: Perl6 programming language
-* picat: PICAT, constraint programming, logic programming, loops, tabling, etc
+* picat: Picat, constraint programming, logic programming, loops, tabling, etc
 * poplog: Poplog Pop-11 high-level programming language
 * project_euler: Project Euler
 * python: Python programs (Project Euler)
 * sabr: SABR, constraint-based planning language
-* setlx: SETL and SetlX, high level programming language
+* setlx: SETL and SetlX, high level set based programming language
 * sicstus: SICStus Prolog, constraint programming, logic programming, loops, etc.
 * swi_prolog: SWI-Prolog, constraint programming, logic programming, etc.
 * unicon: Unicon/Icon, high level programming language
