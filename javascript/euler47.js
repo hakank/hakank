@@ -28,10 +28,10 @@
 'use strict';
 const {timing2} = require('./js_utils.js');
 
-// 74ms
+// 35ms
 const euler47a = function() {
-    const maxn = 1000000;
-    let f = Array(maxn).fill(0);
+    const maxn = 1_000_000;
+    let f = new Int8Array(maxn).fill(0);
     for(let i = 2; i < maxn; i++) {
         if (f[i] === 0) {
             for(let j = 2*i; j < maxn; j+=i) {
@@ -61,6 +61,6 @@ const euler47a = function() {
     return found;
 }
 
-timing2(euler47a); // 74ms
+timing2(euler47a); // 35ms
 
 

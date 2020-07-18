@@ -88,30 +88,32 @@ const re = /\[\s(\d+?),\s(.+?)\s\]/m;
 
 let times = {};
 
-range2(1,50)
-    .forEach(n=>{
-        const p = `euler${n}.js`;
-        const e = execFile("node", [p], function callback(error, stdout, stderr){
-            console.log(`stdout for euler${n}.js: ` + stdout.trim());
-            const a = answers[p];
-            console.log("answer should be: " + a);
-            const m2 = stdout.match(re);
-            const time = m2[1];
-            times[p] = time;
-            const ans = m2[2].replace(/'/g,"");
-            if (ans.toString() == answers[p].toString()) {
-                console.log(p + " CORRECT!");
-            } else {
-                fails.push(p);                    
-                console.log(p + " INCORRECT!");
-                process.exit(1);
-            }
-            console.log(`time: ${time}`);
-            console.log(`answer: ${ans}`);
-            console.log("\n\n");
+function run_euler() {
+    range2(1,50)
+        .forEach(n=>{
+            const p = `euler${n}.js`;
+            const e = execFile("node", [p], function callback(error, stdout, stderr){
+                console.log(`stdout for euler${n}.js: ` + stdout.trim());
+                const a = answers[p];
+                console.log("answer should be: " + a);
+                const m2 = stdout.match(re);
+                const time = m2[1];
+                times[p] = time;
+                const ans = m2[2].replace(/'/g,"");
+                if (ans.toString() == answers[p].toString()) {
+                    console.log(p + " CORRECT!");
+                } else {
+                    fails.push(p);                    
+                    console.log(p + " INCORRECT!");
+                    process.exit(1);
+                }
+                console.log(`time: ${time}`);
+                console.log(`answer: ${ans}`);
+                console.log("\n\n");
+            })
         })
-    })
+}
 
-
+run_euler();
 console.log("TIMES:")
 console.log(times);

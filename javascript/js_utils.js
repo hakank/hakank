@@ -112,6 +112,19 @@ exports.max = function(array) {return array.reduce((a,b)=>a>b?a:b);}
 Array.prototype.max2 = function() {return this.reduce((a,b)=>a>b?a:b);}
 exports.max2 = Array.prototype.max2;
 
+
+// Return minimum element in array
+exports.min = function(array) {return array.reduce((a,b)=>a<b?a:b);}
+// Chain variant of min
+Array.prototype.min2 = function() {return this.reduce((a,b)=>a<b?a:b);}
+exports.min2 = Array.prototype.min2;
+
+// Return minimum element in array for BigInt
+Array.prototype.min2N = function() { return this.reduce((a,b)=>{const aa=BigInt(a); const bb=BigInt(b);
+                                                               return aa < bb ? aa : bb;
+                                                              })}
+exports.min2N = Array.prototype.min2N;
+
 // memo/cache of fun
 // From https://scotch.io/tutorials/understanding-memoization-in-javascript
 function memoizer(fun){
@@ -340,8 +353,47 @@ Number.prototype.factorial2 = factorial2;
 exports.factorial2 = Number.prototype.factorial2
 
 // factorial(n) for BigInt
-const factorialN = function(n) {  return n === 0n ? 1n : prodN(range2N(BigInt(1),BigInt(n))); }
+// const factorialN = function(n) {  return n === 0n ? 1n : prodN(range2N(BigInt(1),BigInt(n))); }
+const factorialN = function(n) { return prodN(range2(1,n)); }
 exports.factorialN = factorialN;
+
+
+// Subfactorial
+function subfactorial(n) {
+    if (n <= 0) {
+        return 1;
+    } else if (n === 1) {
+        return 0;
+    } else {
+        return (n-1)*(subfactorial(n-1) + subfactorial(n-2));
+    }
+}
+exports.subfactorial = subfactorial;
+
+// Subfactorial, BigInt version
+function subfactorialN(n) {
+    if (n <= 0n) {
+        return 1n;
+    } else if (n === 1n) {
+        return 0n;
+    } else {
+        return (n-1n)*(subfactorialN(n-1n) + subfactorialN(n-2n));
+    }
+}
+exports.subfactorialN = subfactorialN;
+
+// Subfactorial, BigInt version, cached
+const subfactorialNCached = memoizer(function(n) {
+    if (n === 0n) {
+        return 1n;
+    } else if (n === 1n) {
+        return 0n;
+    } else {
+        return (n-1n)*(subfactorialNCached(n-1n)+subfactorialNCached(n-2n));
+    }
+    return undefined;
+})
+exports.subfactorialNCached = subfactorialNCached;
 
 //
 // convert a decimal integer to a list of base <base> digits.
@@ -398,6 +450,13 @@ const transpose = function(m) {
     return m.map((_, col) => m.map(row => row[col]));
 }
 exports.transpose = transpose;
+
+// Transpose of a matrix, chain version
+const transpose2 = function() {
+    return this.map((_, col) => this.map(row => row[col]));
+}
+Array.prototype.transpose2 = transpose2;
+exports.transpose2 = Array.prototype.transpose2;
 
 
 // All diagonals of a matrix
@@ -486,3 +545,168 @@ const permutation_tmp = function(prefix,s, perms) {
 }
 
 exports.all_permutations = all_permutations;
+
+
+//
+// partitions array a according to the result of
+// applying f to each element in a,
+// Returns a hash.
+// 
+function partition(a,f) {
+    let part = {};
+    for(const e of a) {
+        const r = f(e);
+        if (part[r] === undefined) {
+            part[r] = [];
+        }
+        part[r].push(e);
+    }
+    
+    return part;
+}
+exports.partition = partition;
+
+// Chain version of partition/2
+function partition2(f) {
+    let part = {};
+    for(const e of this) {
+        const r = f(e);
+        if (part[r] === undefined) {
+            part[r] = [];
+        }
+        part[r].push(e);
+    }
+    
+    return part;
+}
+
+Array.prototype.partition2 = partition2;
+exports.partition2 = partition2;
+
+
+
+//
+// ensure that all the elements in L are distinct
+//
+function all_different(L) {
+    const len = L.length;
+
+    for(let i = 0; i < len; i++) {
+        for(let j = 0; j < i; j++) {
+            if (L[i] === L[j]) {
+                return false;
+            }
+        }
+        
+    }
+
+    return true;
+}
+
+exports.all_different = all_different;
+
+
+//
+// This is the odometer function: i.e.
+// possible ordered combinations of x with replacements.
+// If x in an integer, it will be interpreted as the range 0..n-1.
+// 
+function odometer(k,x) {
+    if (typeof x === 'number') {
+        return odometer(k,range(x));
+    }    
+    if (k===0) {
+        return [[]];
+    } else if (x === [] || x.length === 0) {
+        return [];
+    } else {
+        const [first,...rest] = x;
+        const t = odometer(k-1,x).map(c=>[first].concat(c)); 
+        return t.concat(odometer(k,rest));
+    }
+    return undefined;
+}
+exports.odometer = odometer;
+exports.combinations_with_replacements = odometer;
+
+
+//
+// All k combinations of elements in x without replacements
+// (or 0..n-1 if x in an integer).
+//
+function combinations(k,x) {
+    if (typeof x === 'number') {
+        return combinations(k,range(x));
+    }
+    if (k===0) {
+        return [[]];
+    } else if (x === [] || x.length === 0) {
+        return [];
+    } else {
+        const [y,...ys] = x;
+        const t = combinations(k-1,ys).map(c=>[y].concat(c)); 
+        return t.concat(combinations(k,ys));
+    }
+    return undefined;
+}
+
+exports.combinations = combinations;
+
+
+//
+// find elements that are in a but not in b
+//
+function difference(a,b) {
+    let ahash = new Set(a);
+    let bhash = new Set(b);
+
+    let diffs = [];
+    for(let e of ahash.keys()) {
+        if (!bhash.has(e)) {
+            diffs.push(e);
+        }
+    }
+    return diffs;
+}
+exports.difference = difference;
+
+
+// Sort function for numbers
+function numsortf(a,b) {
+    a - b;
+}
+exports.numsortf = numsortf;
+
+//
+// return array a without element e
+//
+function exclude_array(a,e) {
+    return a.filter(i=>i!==e);
+}
+exports.exclude_array = exclude_array;
+
+// returns the powerset of array s
+function powerset_array(a) {
+    if (a === [] || a.length === 0) {
+        return [[]];
+    } else {
+        for(let x of a) {
+            let a2 = exclude_array(a,x);
+            let q = powerset_array(a2);
+            return q.concat(q.map(y=>[x].concat(y)));
+        }
+    }
+    
+    return undefined;
+}
+exports.powerset_array = powerset_array;
+
+
+
+// zip 2 arrays
+const zip = (a1, a2) => a1.map((k, i) => [k, a2[i]]);
+exports.zip = zip;
+
+const zip2 = () => this[0].map((k, i) => [k, this[1][i]]);
+Array.prototype.zip2 = zip2;
+exports.zip2 = zip2;

@@ -83,7 +83,7 @@ const euler26c = function() {
         .sort(function(a, b){return b[0]-a[0]})[0][1];
 }
 
-// Funktional
+// Functional
 // 9ms
 const euler26d = function() {
     return range2(2,1000)

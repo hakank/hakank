@@ -29,8 +29,9 @@ const {range2,timing2} = require('./js_utils.js');
 const euler44a = function() {
     const s = range2(1,2500).map(n=>Math.floor(n*(3*n-1) / 2));
     let t = new Set(s);
-    let d = 10000000;
-    for(let j of s.reverse()) {
+    let d = 10_000_000;
+    loop:
+    for(let j of s) {
         for(let k of s) {
             const a = j+k;
             const b = Math.abs(j-k);
@@ -39,15 +40,46 @@ const euler44a = function() {
                 t.has(a) &&
                 b < d &&
                 t.has(b)) {
-                    d = b;
-                }
-                
+                d = b;
+                break loop;
+            }
         }
     }
+    
     return d;
-        
 }
 
-timing2(euler44a); // 68ms
+// Slightly faster
+const euler44b = function() {
+    const n = 2500;
+    const s = range2(1,n).map(n=>Math.floor(n*(3*n-1) / 2));
+    let t = new Set(s);
+    let d = 10_000_000;
+    loop:
+    for(let j = 0; j < n; j++) {
+        for(let k = 0; k < n; k++) {
+            if (s[j] >= s[k]) {
+                continue;
+            }
+            const a = s[j]+s[k];
+            if (a >= d ) {
+                continue;
+            }
+            const b = Math.abs(s[j]-s[k]);
+            if (b >= d) {
+                continue;
+            }
+            if (t.has(a) && t.has(b)) {
+                d = b;
+                break loop;
+            }
+        }
+    }
+    
+    return d;
+}
+
+// timing2(euler44a); // 51ms
+timing2(euler44b); // 51ms
 
 

@@ -43,11 +43,11 @@ const is_circular_prime = function(n, prime_set) {
 
 // 220ms
 const euler35a = function() {
-    const prime_set = new Set(primes(1000000));
+    const prime_set = new Set(primes(1_000_000));
 
     let numCircularPrimes = 0;
     for(let n of prime_set) {
-        if (prime_set.has(n) && is_circular_prime(n,prime_set)) {
+        if (is_circular_prime(n,prime_set)) {
             numCircularPrimes++;
         }
     }
