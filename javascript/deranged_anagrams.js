@@ -58,11 +58,13 @@ function get_sorted_hash(words) {
     return sorted_hash;
 }
 
-function deranged_anagram() {
-    const wordlist = "unixdict.txt";
-    // const wordlist = "/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt";    
-    const words = fs.readFileSync(wordlist).toString().split("\n");
+const wordlist = "unixdict.txt";
+// const wordlist = "/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt";    
 
+
+// 124ms
+function deranged_anagram() {
+    const words = fs.readFileSync(wordlist,"utf8").split("\n");
     let sorted_hash = get_sorted_hash(words);
 
     let max_len = 0;
@@ -83,9 +85,27 @@ function deranged_anagram() {
         }
     }
     
-    console.log("max_len:", max_len);
-    console.log(max_words);
+    return max_words;
+}
+
+
+// Faster: 104ms
+function deranged_anagram2() {
+    const words = fs.readFileSync(wordlist,"utf8").split("\n");
+
+    const res = Object.values(get_sorted_hash(words))
+          .filter(ws=>ws.length>1)
+          .filter(ws=>combinations(2,ws))
+          .filter(([w1,w2])=>is_deranged(w1,w2))
+          .map(ws=>[ws[0].length, ws]) // add the length of the words
+          .sort((a,b)=> b[0]-a[0]);
+    ;
+    // Get the max val from the first entry.
+    // We have to consider that more than one pair can be largest
+    const maxLen = res[0][0];
+    return res.filter(ws=>ws[0]===maxLen).map(ws=>ws[1]);
 }
 
 timing2(deranged_anagram);
+timing2(deranged_anagram2);
 

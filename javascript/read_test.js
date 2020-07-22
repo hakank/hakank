@@ -26,7 +26,7 @@ if (lang === "swe") {
     alpha = "abcdefghijklmnopqrstuvxyzåäö".split(""); // Swedish words    
 }
 
-const words = fs.readFileSync(wordlist).toString().split("\n");
+const words = fs.readFileSync(wordlist,"utf8").split("\n");
 console.log("number of words: " + words.length);
 
 //

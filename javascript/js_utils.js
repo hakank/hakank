@@ -248,6 +248,24 @@ const collect = function(a) {
 }
 exports.collect = collect;
 
+
+// convert a list of elements in a to a hash with 
+//   { element: number of occurrences of element, ...}
+// Chain version
+const collect2 = function() {
+    let m = {};
+    this.forEach(e=> {
+        if (m[e] === undefined) {
+            m[e] = 0;
+        }
+        m[e] += 1;
+    })
+    return m;
+}
+Array.prototype.collect2 = collect2;
+exports.collect2 = Array.prototype.collect2;
+
+
 // All divisors of a number, except 1 and n
 const all_divisors = function(n) {
     let divisors = [];
@@ -445,7 +463,9 @@ const is_pandigital = function(s) {
 }
 exports.is_pandigital = is_pandigital;
 
+/*
 // Transpose of a matrix
+// This version is pretty require that it's a square matrix
 const transpose = function(m) {
     return m.map((_, col) => m.map(row => row[col]));
 }
@@ -453,7 +473,29 @@ exports.transpose = transpose;
 
 // Transpose of a matrix, chain version
 const transpose2 = function() {
-    return this.map((_, col) => this.map(row => row[col]));
+    return transpose(this);
+}
+*/
+//
+// This version handles both square and non square matrices
+// (and is also aliased to zip, zip2)
+function transpose(m) {
+    const rows = m.length;
+    const cols = m[0].length;
+    const m2 = new Array(cols);    
+    for(let j = 0; j < cols; j++) {
+        m2[j] = new Array(rows);
+        for(let i = 0; i < rows; i++) {
+            m2[j][i] = m[i][j];
+        }
+    }
+    return m2;
+}
+exports.transpose = transpose;
+
+// Chain version
+function transpose2() {
+    return transpose(this);
 }
 Array.prototype.transpose2 = transpose2;
 exports.transpose2 = Array.prototype.transpose2;
@@ -704,9 +746,456 @@ exports.powerset_array = powerset_array;
 
 
 // zip 2 arrays
+/*
 const zip = (a1, a2) => a1.map((k, i) => [k, a2[i]]);
 exports.zip = zip;
 
 const zip2 = () => this[0].map((k, i) => [k, this[1][i]]);
 Array.prototype.zip2 = zip2;
 exports.zip2 = zip2;
+*/
+/*
+function zip(a) {
+    // We have to remove training empty arrays.
+    // (Though this suggest that this approach might be a bit incorrect)
+    return a.map((k,i)=>range(len).filter(t=>i<a0len).map(j=>a[j][i])).skip_empty2();
+
+}
+*/
+// Well, it's easier to alias to transpose!
+exports.zip = transpose;
+
+// chain variant
+Array.prototype.zip2 = transpose2;
+exports.zip2 = Array.prototype.zip2;
+
+// Remove undefined in a matri / list
+function skip_undefined(a) {
+    if (a[0].length !== undefined) {
+        return a.map(c=>c.filter(i=>i !== undefined));
+    } else {
+        return a.filter(i=>i !== undefined);
+    }
+}
+exports.skip_undefined = skip_undefined;
+
+// Chain version
+function skip_undefined2() {
+    return skip_undefined(this);
+}
+Array.prototype.skip_undefined2 = skip_undefined2;
+exports.skip_undefined2 = skip_undefined2;
+
+// Remove empty lists
+function skip_empty(a) {
+    return a.filter(i=>i.length > 0);    
+}
+
+function skip_empty2() {
+    return skip_empty(this);
+}
+Array.prototype.skip_empty2 = skip_empty2;
+
+// Return a random integer from 0..max
+function randomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+exports.randomInt = randomInt;
+
+//
+// Return an array of n with random integers
+//
+function randomIntArray(n,max) {
+    return range(n).map(i=>randomInt(max));
+}
+exports.randomIntArray = randomIntArray;
+
+//
+// Generates random integers in the range -max .. max
+//
+function randomIntArrayNeg(n,max) {
+    return range(n).map(i=>randomInt(2*max)-max);
+}
+exports.randomIntArrayNeg = randomIntArrayNeg;
+
+
+//
+// Remove duplicates from a list
+//
+function remove_duplicates(a) {
+    let h = {};
+    let res = [];
+    for(let e of a) {
+        if (!h[e]) {
+            res.push(e);
+            h[e] = 1;
+        }
+    }
+    return res;
+}
+exports.remove_duplicates = remove_duplicates;
+
+// Chain version
+function remove_duplicates2() {
+    return remove_duplicates(this);
+}
+Array.prototype.remove_duplicates2 = remove_duplicates2;
+exports.remove_duplicates2 = Array.prototype.remove_duplicates2;
+
+// Dot product of a and b
+function dot_product(a,b) {
+    let dot = 0;
+    for(let i=0; i < a.length; i++) {
+        dot += a[i]*b[i];
+    }
+    return dot;
+}
+exports.dot_product = dot_product;
+
+// binomial (n over k)
+function binomial(n,k) { 
+    if (k < 0 || k > n) {
+        return 0;
+    }   
+    return factorial(n)/(factorial(n-k)*factorial(k));
+}
+exports.binomial = binomial;
+
+// binomial (n over k) BigInt
+function binomialN(n,k) {
+    if (k < 0 || k > n) {
+        return 0;
+    }
+    return factorialN(n)/(factorialN(n-k)*factorialN(k));
+}
+exports.binomialN = binomialN;
+
+
+function gray_encode(n) {
+    return n ^ (n >> 1);
+}
+exports.gray_encode = gray_encode;
+
+function gray_decode(n) {
+    let p = n;
+    n = n >> 1;
+    while (n != 0) {
+        p = p ^ n;
+        n = n >> 1;
+    }
+    return p;
+}
+exports.gray_decode = gray_decode;
+
+
+
+/*
+function asum(a) {
+    let c = 0;
+    let res = [];
+    for(let i = 0; i < a.length; i++) {
+        c+=a[i];
+        res.push(c);
+    }
+    return res;
+}
+*/
+//
+// Accumulated sum
+//
+function asum(a) {
+    return scan(a,(i,j)=>i+j);
+}
+exports.asum = asum;
+
+
+function asum2() {
+    return asum(this);
+}
+Array.prototype.asum2 = asum2;
+exports.asum2 = Array.prototype.asum2
+
+//
+// scan(a, function)
+// Returns the accumulated operations of f on array a
+//
+function scan(a,f) {
+    let c = 0;
+    let res = [];
+    for(let i = 0; i < a.length; i++) {
+        c = f(c,a[i]);
+        res.push(c);
+    }
+    return res;
+}
+exports.scan = scan;
+
+function scan2(f) {
+    return scan(this,f);
+}
+Array.prototype.scan2 = scan2;
+exports.scan2 = Array.prototype.scan2;
+
+//
+// Single value argmax: index of the largest value in a
+//
+function argmax(a) {
+    let ix = 0;
+    let imax = a[0];
+    for(let i = 1; i < a.length; i++) {
+        if (a[i] > imax) {
+            imax = a[i];
+            ix = i;
+        }
+    }
+    return ix;
+}
+exports.argmax = argmax;
+
+function argmax2() {
+    return argmax(this);
+}
+Array.prototype.argmax2 = argmax2;
+exports.argmax2 = Array.prototype.argmax2;
+
+//
+// Single value argmin: index of the smallest value in a
+//
+function argmin(a) {
+    let ix = 0;
+    let imin = a[0];
+    for(let i = 1; i < a.length; i++) {
+        if (a[i] < imin) {
+            imin = a[i];
+            ix = i;
+        }
+    }
+    return ix;
+}
+exports.argmin = argmin;
+
+function argmin2() {
+    return argmin(this);
+}
+Array.prototype.argmin2 = argmin2;
+exports.argmin2 = Array.prototype.argmin2;
+
+
+//
+// Multiple value version of argmax
+//
+function argmaxes(a) {
+    let ixs = [];
+    let imax = a[0];
+    for(let i = 1; i < a.length; i++) {
+        if (a[i] > imax) {
+            imax = a[i];
+            ixs = [i];
+        } else if (a[i] === imax) {
+            ixs.push(i);
+        }
+    }
+    return ixs;
+}
+exports.argmaxes = argmaxes;
+
+function argmaxes2() {
+    return argmaxes(this);
+}
+Array.prototype.argmaxes2 = argmaxes2;
+exports.argmaxes2 = Array.prototype.argmaxes2;
+
+
+//
+// Multiple value version of argmin
+//
+function argmins(a) {
+    let ixs = [];
+    let imin = a[0];
+    for(let i = 1; i < a.length; i++) {
+        if (a[i] < imin) {
+            imin = a[i];
+            ixs = [i];
+        } else if (a[i] === imin) {
+            ixs.push(i);
+        }
+    }
+    return ixs;
+}
+exports.argmins = argmins;
+
+function argmins2() {
+    return argmins(this);
+}
+Array.prototype.argmins2 = argmins2;
+exports.argmins2 = Array.prototype.argmins2;
+
+//
+// Return a random element from the array a
+function random_element(a) {
+    return a[randomInt(a.length)];
+}
+exports.random_element = random_element;
+
+function random_element2() {
+    return random_element(this);
+}
+Array.prototype.random_element2 = random_element2;
+exports.random_element2 = Array.prototype.random_element2;
+
+
+//
+// return a shuffled version of array a
+//
+function shuffle(a) {
+    let b = [...a];
+    const len = a.length;
+    for (let i = 0; i < len*2; i++) {
+        const r = randomInt(len);
+        [b[i],b[r]] = [b[r],b[i]];
+    }
+
+    return b;
+}
+exports.shuffle = shuffle;
+
+// chain version of shuffle
+function shuffle2() {
+    return shuffle(this);
+}
+Array.prototype.shuffle2 = shuffle2;
+exports.shuffle2 = Array.prototype.shuffle2;
+
+
+//
+// Create an empty matrix of dimension r x c
+// With optional initial values (default=0);
+//
+function create_matrix(r,c,init=0) {
+    let m = new Array(r);
+    for(let i = 0; i < r; i++) {
+        m[i] = new Array(c).fill(init);
+    }
+    return m;
+}
+exports.create_matrix = create_matrix;
+
+//
+// Print matrix
+//
+function print_matrix(m) {
+    m.map(row=>console.log(JSON.stringify(row)));
+}
+exports.print_matrix = print_matrix;
+
+// Chain version
+function print_matrix2() {
+    print_matrix(this);
+}
+Array.prototype.print_matrix2 = print_matrix2,
+exports.print_matrix2 = print_matrix2
+
+
+//
+// Return a random matrix of dimension r x c with
+// max value max.
+//
+function random_matrix(r,c,max) {
+    let m = create_matrix(r,c);
+    for(let i = 0; i < r; i++) {
+        for(let j = 0; j < c; j++) {
+            m[i][j] = randomInt(max);
+        }
+    }
+    return m;
+}
+exports.random_matrix = random_matrix;
+
+//
+// Multiply two matrices (a[m][n] x b[n][p])
+// TODO: make it functional
+//
+function matrix_mult(a,b) {
+    const n = a[0].length;
+    const m = a.length;
+    const p = b[0].length;
+    const q = b.length;
+    if (n !== q) {
+        throw(Error(`Invalid dimensions: ${n} != ${q}`));
+    } else {
+        let ans = create_matrix(m,p,0);
+        for(let i = 0;i < m;i++){
+            for(let j = 0;j < p;j++){
+                for(let k = 0;k < n;k++){
+                    ans[i][j] += a[i][k]*b[k][j];
+                }
+            }
+        }
+        return ans;
+    }
+    
+    return undefined;
+}
+exports.matrix_mult = matrix_mult;
+
+// Chain version
+function matrix_mult2(b) {
+    return matrix_mult(this,b);
+}
+Array.prototype.matrix_mult2 = matrix_mult2;
+exports.matrix_mult2 = matrix_mult2;
+
+
+//
+// return a matrix where all elements are
+// adjusted according to function f
+//
+function matrix_element_op(m, f) {
+    if (m[0].length === undefined) {
+        return m.map(e=>f(e));
+    } else {
+        return m.map(row=>row.map(e=>f(e)));
+    }
+}
+exports.matrix_lement_op = matrix_element_op;
+
+function matrix_element_op2(f) {
+    return matrix_element_op(this,f);
+}
+Array.prototype.matrix_element_op2 = matrix_element_op2;
+exports.matrix_lement_op2 = matrix_element_op2;
+
+
+
+//
+// Scalar operations on two matrices, m1+m2, etc.
+// TODO: make it functional.
+//
+function matrix_matrix_element_op(a,b, f) {
+    const n = a[0].length;
+    const m = a.length;
+    const p = b[0].length;
+    const q = b.length;
+    console.log("n:",n,"m:",m,"p:",p,"q:",q);
+    if (n !== p || m !== q ) {
+        throw(Error(`Matrices are not of same dimensions`));
+    } else {
+        let ret = create_matrix(m,n,0);
+        for(let i = 0;i < m;i++){
+            for(let j = 0;j < n;j++){
+                ret[i][j] = f(a[i][j], b[i][j]);
+            }
+        }
+        return ret;
+    }
+    
+    return undefined;
+    
+}
+exports.matrix_matrix_element_op = matrix_matrix_element_op;
+
+function matrix_matrix_element_op2(b,f) {
+    return matrix_matrix_element_op(this,b,f);
+}
+Array.prototype.matrix_matrix_element_op2 = matrix_matrix_element_op2;
+exports.matrix_matrix_element_op2 = matrix_matrix_element_op2;

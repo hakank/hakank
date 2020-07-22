@@ -28,13 +28,13 @@
 */
 
 'use strict';
-const {timing2} = require('./js_utils.js');
+const {range2,timing2} = require('./js_utils.js');
 
 // 1ms
 const euler19a = function() {
     let count = 0;
     for (let year = 1901; year <= 2000; year++) {
-        for (let month = 1; month <= 12; month++) {
+        for (let month = 0; month < 12; month++) {
             if (new Date(year, month, 1).getDay() == 0) {
                 count++;
             }
@@ -45,3 +45,4 @@ const euler19a = function() {
 }
 
 timing2(euler19a);
+

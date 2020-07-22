@@ -44,7 +44,7 @@ const get_score = function(name) {
 // 3ms
 const euler42a = function() {    
     const t20 = new Set(range2(1,20).map(i=>triangle_number(i)));
-    const words = fs.readFileSync("euler42_words.txt").toString().replace(/"/g,"").split(/,/);
+    const words = fs.readFileSync("euler42_words.txt","utf8").replace(/"/g,"").split(/,/);
     return words
     .filter(word => t20.has(get_score(word)))
     .length;    
