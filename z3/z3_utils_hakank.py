@@ -859,3 +859,28 @@ if __name__ == "__main__":
 
         print("num_solutions:", num_solutions)
         
+
+
+#
+# diffn ported from MiniZinc's fzn_diffn:
+# 
+# predicate fzn_diffn(array[int] of var int: x,
+#                 array[int] of var int: y,
+#                 array[int] of var int: dx,
+#                 array[int] of var int: dy) =
+#     forall(i,j in index_set(x) where i < j)(
+#         x[i] + dx[i] <= x[j] \/ y[i] + dy[i] <= y[j] \/
+#         x[j] + dx[j] <= x[i] \/ y[j] + dy[j] <= y[i]
+#     );
+#
+def diffn(sol,x,y,dx,dy):
+    n = len(x)
+    for i in range(n):
+        for j in range(i+1,n):
+            sol.add(
+                Or([x[i] + dx[i] <= x[j],
+                    y[i] + dy[i] <= y[j],
+                    x[j] + dx[j] <= x[i],
+                    y[j] + dy[j] <= y[i]]
+                   )
+                )
