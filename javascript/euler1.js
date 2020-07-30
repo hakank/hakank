@@ -17,56 +17,65 @@
 // For sum()
 // const math = require('mathjs'); 
 
-const {sum,sum2,range,timing2} = require("./js_utils.js");
+const {
+  sum,
+  sum2,
+  range,
+  timing2
+} = require("./js_utils.js");
 
-// I don't know how to export an Array extension...
-// Array.prototype.sum = function() { return this.reduce((a,b)=>a+b); }
 
-const euler1a = function() {
-    var total = 0;
-    var i = 0;
-    while (++i <= 999) {
-        if (i % 3 === 0 || i % 5 === 0) {
-            total += i;
-        }
+const euler1a = function () {
+  var total = 0;
+  var i = 0;
+  while (++i <= 999) {
+    if (i % 3 === 0 || i % 5 === 0) {
+      total += i;
     }
-    return total;
+  }
+  return total;
 }
 
-const euler1b = function() {
-  return Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0).reduce((a,b)=>a+b); 
+const euler1b = function () {
+  return Array.from({
+    length: 1000
+  }, (_, i) => i).filter(i => i % 3 === 0 || i % 5 === 0).reduce((a, b) => a + b);
 }
 
-const mod3_or_5 = function(n) {
+const mod3_or_5 = function (n) {
   return n % 3 === 0 || n % 5 == 0;
 }
 
-const euler1c = function() {
-  return Array.from({length:1000},(_, i)=>i).filter(i=>mod3_or_5(i)).reduce((a,b)=>a+b);
+const euler1c = function () {
+  return Array.from({
+    length: 1000
+  }, (_, i) => i).filter(i => mod3_or_5(i)).reduce((a, b) => a + b);
 }
 
-const euler1d = function() {
-    // using mathjs (see above)
-    // return math.sum(Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0));
-    return Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0).sum2();
+const euler1d = function () {
+  // using mathjs (see above)
+  // return math.sum(Array.from({length:1000},(_, i)=>i).filter(i=>i%3===0||i%5===0));
+  return Array.from({
+    length: 1000
+  }, (_, i) => i).filter(i => i % 3 === 0 || i % 5 === 0).sum2();
 }
 
 
-const euler1e = function() {
-    return sum(range(1000)
-                     .filter(i=>i%3===0||i%5===0));
+const euler1e = function () {
+  return sum(range(1000)
+    .filter(i => i % 3 === 0 || i % 5 === 0));
 }
 
-const euler1f = function() {
-    return range(1000)
-        .filter(i=>i%3===0||i%5===0)
-        .reduce((a,b)=>a+b);
+const euler1f = function () {
+return range(1000)
+.filter(i => i % 3 === 0 || i % 5 === 0)
+.reduce((a, b) => a + b);
 }
 
-const euler1g = function() {
-    return range(1000)
-        .filter(i=>i%3===0||i%5===0)
-        .sum2();
+const euler1g = function () {
+  return range(1000)
+    .filter(i => i % 3 === 0 || i % 5 === 0)
+    .sum2();
 }
 
 timing2(euler1a);
@@ -76,4 +85,3 @@ timing2(euler1a);
 // timing2(euler1e);
 // timing2(euler1f);
 // timing2(euler1g);
-

@@ -23,13 +23,12 @@
 */
 
 'use strict';
-const {primes,isPrime,sum2,range2,timing2} = require('./js_utils.js');
+const {primes,isPrime,range2,timing2} = require('./js_utils.js');
 
 // 70ms
 const euler50a = function() {
     const n = 10000;
     const p = primes(n);
-    let found = false;
     for(let len = 550; len>=21; len--) {
         for(let offset = 1; offset <= 549; offset++) {
             const pp = range2(offset+1,offset+len).map(i=>p[i]).sum2();

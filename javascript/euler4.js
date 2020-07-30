@@ -41,7 +41,7 @@ const euler4b = function() {
     const from = 100;
     const to = 999;
     let a = [];
-    range2(100,999)
+    range2(from,to)
         .forEach(i=> {
             range2(i,to)
                 .forEach(j=> {
@@ -61,7 +61,7 @@ const euler4c = function() {
     const to = 999;
     // This yield an array of arrays,
     // so we have to flatten it.
-    return range2(100,999)
+    return range2(from,to)
         .map(i=> {
             return range2(i,to)
                 .map(j=>i*j)

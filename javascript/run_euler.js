@@ -17,7 +17,7 @@
 */
 'use strict';
 const {range2} = require('./js_utils.js');
-const {exec,execSync,execFile,execFileSync} = require('child_process');
+const {execFile} = require('child_process');
 
 /*
 // Original program:
@@ -92,7 +92,7 @@ function run_euler() {
     range2(1,50)
         .forEach(n=>{
             const p = `euler${n}.js`;
-            const e = execFile("node", [p], function callback(error, stdout, stderr){
+            execFile("node", [p], function callback(error, stdout, stderr){
                 console.log(`stdout for euler${n}.js: ` + stdout.trim());
                 const a = answers[p];
                 console.log("answer should be: " + a);
@@ -103,7 +103,7 @@ function run_euler() {
                 if (ans.toString() == answers[p].toString()) {
                     console.log(p + " CORRECT!");
                 } else {
-                    fails.push(p);                    
+                    // fails.push(p);                    
                     console.log(p + " INCORRECT!");
                     process.exit(1);
                 }

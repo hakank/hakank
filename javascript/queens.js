@@ -42,6 +42,7 @@
 const {range,range2,all_permutations,next_permutation,timing2} = require('./js_utils.js');
 
 // Brute force version using next_permutation
+// Find all solutions
 function queens(n,print) {
     const t_start = +new Date(); // new Date().getTime();    
     let q = range(n);
@@ -114,6 +115,35 @@ function queens2(n,print) {
     return [t, c];
 }
 
+// Return first solution
+function queens_first_solution(n,print) {
+    const t_start = +new Date(); // new Date().getTime();    
+    let q = range(n);
+    let c = 0;
+    while (q !== null) {
+        let check = true;
+        loop: 
+        for(let i = 0; i < n; i++) {
+            for(let j = 0; j < i; j++) {
+                if (q[i] === q[j] ||
+                    q[i] + i === q[j] + j ||
+                    q[i] - i === q[j] - j
+                   ) {
+                    check = false;
+                    continue loop;
+                }
+            }
+        }
+        if (check === true) {
+            return q;
+        }
+
+        q = next_permutation(q);
+    }
+    return undefined;
+}
+
+
 function run_queens(qf) {
     let times = [];
     for(let n of range2(2,12)) {
@@ -141,6 +171,17 @@ function run_queens2(qf) {
 
 // run_queens(queens);
 // run_queens(queens2); // slow and crash (memory)
+
+console.log("Time for all solutions of n");
 run_queens2(queens); // more functional than run_queens/1
 
-// queens(8,true);
+console.log("\nShow all solutions for n=8 (it should be 92)");
+queens(8,true); // show all solutions for n=4
+
+console.log("\nTime for first solution");
+range2(2,12)
+    .forEach(n=> timing2(() => {
+        console.log("n:",n);
+        return queens_first_solution(n);
+    })
+            );

@@ -25,16 +25,23 @@
 */
 'use strict';
 
-
-// Return time difference (millis)
+/**
+   Return time difference (millis)
+   @param f the function to time
+   @return time in milliseconds
+*/
 exports.timing = function(f) {
-    const t1_start = +new Date(); // new Date().getTime();
+    const t1_start = +new Date();
     f();
-    const t1_end = +new Date(); // new Date().getTime();
+    const t1_end = +new Date();
     return t1_end - t1_start;
 }
 
-// Prints [time difference, result]
+/**
+  Time a function and print [time difference, result]
+  @param f the function to time
+  @return undefined
+*/
 exports.timing2 = function(f) {
     console.log(f.name);
     const t1_start = +new Date();
@@ -42,12 +49,22 @@ exports.timing2 = function(f) {
     const t1_end = +new Date();
     console.log([t1_end - t1_start, res]);
 }
-
-// range(n) -> [0,1,2,3...n-1]
+/**
+ * Returns the array of 0..n-1
+ * 
+ * @param {number} n 
+ * 
+ */
 const range = function(n) { return [...Array(n).keys()]; }
 exports.range = range;
 
-// range2(from, to) -> [from,from+1,from+2,...,to]
+/**
+ * range2(from, to)
+ * Returns the array [from,from+1,from+2,...,to]
+ * 
+ * @param {number} from 
+ * @param {number} to 
+ */
 const range2 = function(from, to) {
     const n = to - from +1;
     return [...Array(n).keys()]
@@ -56,19 +73,35 @@ const range2 = function(from, to) {
 }
 exports.range2 = range2;
 
-// range2(from, to) -> [from,from+1,from+2,...,to]
+/**
+ * range(from, to) for BigInt
+ * 
+ * @param {number} from 
+ * @param {number} to 
+ * @returns the array of BigInt [from,...,to]
+ */
 const range2N = function(from, to) {
     const n = BigInt(to) - BigInt(from) +1n;
-    return [...Array(n).keys()]
+    return [...Array(Number(n)).keys()]
         .map(i=>BigInt(i)+BigInt(from));
     
 }
 exports.range2N = range2N;
 
-
+/**
+ * Flatten an array.
+ * @param {array} a 
+ * @returns the flattened array
+ * 
+ */
 const flatten = function(a) { return [].concat.apply([],a); }
 exports.flatten = flatten;
 
+/**
+ * Flatten an array: chain version
+ * @param {array} a 
+ * @returns the flattened array
+ */
 Array.prototype.flatten2 = function() { return [].concat.apply([],this); }
 exports.flatten2 = Array.prototype.flatten2;
 
@@ -76,15 +109,28 @@ exports.flatten2 = Array.prototype.flatten2;
 /*
 const sum = function(array) { return array.reduce((a,b)=>a+b); }
 */
+/**
+ * Sum an array.
+ * @param {array} array 
+ * @returns the sum of the array
+ */
 const sum = array => array.length > 0 ? array.reduce((a,b)=>a+b) : 0;
 exports.sum = sum;
 
-// sum of a list of BigInt numbers 
+/**
+ * Sum an array of BigInt
+ * @param {array} a 
+ * @returns sum of the array (BigInt)
+ */
 const sumN = function(a) { return a.length > 0 ? a.reduce((i,j)=>BigInt(i)+BigInt(j)) : undefined;}
 exports.sumN = sumN;
 
-
-// Chain variant of sum/1.
+/**
+ * sum2()
+ * Chain variant of sum/1.
+ * @params this 
+ * @returns sum of the array (this).
+ */
 const sum2 = function() { return this.length > 0 ? this.reduce((a,b)=>a+b) : 0; }
 Array.prototype.sum2 = sum2
 exports.sum2 = Array.prototype.sum2;
@@ -371,8 +417,8 @@ Number.prototype.factorial2 = factorial2;
 exports.factorial2 = Number.prototype.factorial2
 
 // factorial(n) for BigInt
-// const factorialN = function(n) {  return n === 0n ? 1n : prodN(range2N(BigInt(1),BigInt(n))); }
-const factorialN = function(n) { return prodN(range2(1,n)); }
+const factorialN = function(n) {  return n === 0n ? 1n : prodN(range2N(BigInt(1),BigInt(n))); }
+// const factorialN = function(n) { return prodN(range2N(1n,BigInt(n))); }
 exports.factorialN = factorialN;
 
 
@@ -763,9 +809,15 @@ function zip(a) {
 }
 */
 // Well, it's easier to alias to transpose!
-exports.zip = transpose;
+function zip(as) {
+    return transpose(as);
+}
+exports.zip = zip;
 
 // chain variant
+function zip2() {
+    return transpose(this);
+}
 Array.prototype.zip2 = transpose2;
 exports.zip2 = Array.prototype.zip2;
 
@@ -857,16 +909,16 @@ function binomial(n,k) {
     if (k < 0 || k > n) {
         return 0;
     }   
-    return factorial(n)/(factorial(n-k)*factorial(k));
+    return Math.floor(factorial(n)/(factorial(n-k)*factorial(k)));
 }
 exports.binomial = binomial;
 
 // binomial (n over k) BigInt
 function binomialN(n,k) {
-    if (k < 0 || k > n) {
-        return 0;
+    if (k < 0n || k > n) {
+        return 0n;
     }
-    return factorialN(n)/(factorialN(n-k)*factorialN(k));
+    return factorialN(BigInt(n))/(factorialN(BigInt(n-k))*factorialN(BigInt(k)));
 }
 exports.binomialN = binomialN;
 
@@ -1050,7 +1102,7 @@ exports.random_element2 = Array.prototype.random_element2;
 function shuffle(a) {
     let b = [...a];
     const len = a.length;
-    for (let i = 0; i < len*2; i++) {
+    for (let i = 0; i < len; i++) {
         const r = randomInt(len);
         [b[i],b[r]] = [b[r],b[i]];
     }
@@ -1176,7 +1228,6 @@ function matrix_matrix_element_op(a,b, f) {
     const m = a.length;
     const p = b[0].length;
     const q = b.length;
-    console.log("n:",n,"m:",m,"p:",p,"q:",q);
     if (n !== p || m !== q ) {
         throw(Error(`Matrices are not of same dimensions`));
     } else {
@@ -1199,3 +1250,42 @@ function matrix_matrix_element_op2(b,f) {
 }
 Array.prototype.matrix_matrix_element_op2 = matrix_matrix_element_op2;
 exports.matrix_matrix_element_op2 = matrix_matrix_element_op2;
+
+//
+// Return a hash table creating by the arrays of keys (k)
+// and values (v).
+// 
+function zipHash(k,v) {
+    return Object.fromEntries(zip([k,v]));
+}
+exports.zipHash = zipHash;
+
+/**
+ * Run a function f n times.
+ * Example: check how many elements (i) are at the i'th place
+ * > a = range2(1,10);
+ * > n= 10000; 
+ * > u.repeat(() => a.shuffle2().filter((i,j)=>a[j]===i),n).map(i=>i.length).sum2()/n
+ * 
+ * @param {function} f function to repeat
+ * @param {number} n n times
+ * @returns the array of the results
+ * 
+ */
+function repeat(f,n) {
+    return range2(1,n)
+            .map(i=>f());
+}
+exports.repeat = repeat;
+
+/**
+ * Chain version of repeat/2.
+ * @param {number} n 
+ * @returns the array of the result
+ */
+function repeat2(n) {
+    return repeat(this,n);
+}
+Array.prototype.repeat2 = repeat2;
+exports.repeat2 = Array.prototype.repeat2;
+

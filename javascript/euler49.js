@@ -39,7 +39,6 @@ const check_perms = function(n, diff) {
 }
 
 const get_element = function(n, ll, diff) {
-    let res = 0;
     for(let p of ll) {
         const pp = parseInt(p.map(i=>i.toString()).join(""));
         if (isPrime(pp) && pp > n && pp-n === diff) {

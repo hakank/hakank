@@ -2,12 +2,12 @@
 
   Perfect numbers in JavaScript.
 
-   See http://rosettacode.org/wiki/Perfect_numbers
-   """
-   A number is perfect if the sum of its factors is equal to 
-   twice the number. An equivalent condition is that n is perfect 
-   if the sum of n's factors that are less than n is equal to n. 
-   """
+  See http://rosettacode.org/wiki/Perfect_numbers
+  """
+  A number is perfect if the sum of its factors is equal to 
+  twice the number. An equivalent condition is that n is perfect 
+  if the sum of n's factors that are less than n is equal to n. 
+  """
 
   The first perfect numbers are [6 28 496 8128]
 
@@ -19,6 +19,11 @@
 
 'use strict';
 const {sum2,range2,all_divisors3,timing2} = require('./js_utils.js');
+
+
+function isPerfectNumber(n) {
+    return all_divisors3(n).sum2() === n;
+}
 
 //
 // Return all numbers below limit which are perfect numbers
@@ -60,12 +65,13 @@ perfect_numbers2_test3
 */
 timing2(function perfect_numbers1_test1() { return perfect_numbers(1_000)});
 timing2(function perfect_numbers1_test2() { return perfect_numbers(10_000)});
-timing2(function perfect_numbers1_test3() { return perfect_numbers(100_000)});
+// timing2(function perfect_numbers1_test3() { return perfect_numbers(100_000)});
 console.log("\n");
 timing2(function perfect_numbers2_test1() { return perfect_numbers2(1_000)});
 timing2(function perfect_numbers2_test2() { return perfect_numbers2(10_000)});
-timing2(function perfect_numbers2_test3() { return perfect_numbers2(100_000)});
+// timing2(function perfect_numbers2_test3() { return perfect_numbers2(100_000)});
 
-
-
-    
+console.log(
+    range2(2,30)
+        .map(n=>[n,isPerfectNumber(n)])
+);

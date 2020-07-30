@@ -69,10 +69,10 @@
 
 */
 'use strict';
-const {range2} = require('./js_utils.js');
-const {exec,execSync,execFile,execFileSync} = require('child_process');
+// const {range2} = require('./js_utils.js');
+const {execSync} = require('child_process');
 
-const program = "node";
+// const program = "node";
 
 /*
    For some reason, JavaScript don't allow `...` as value in a hash 
@@ -206,5 +206,7 @@ console.log("\ntotal_cpu_time: " + total_cpu_time + "s\n");
 
 if (fails.length > 0) {
     console.log("\n\nThe following programs fails: " + fails + "\n\n\n");
+} else {
+    console.log("All OK!\n");
 }
 

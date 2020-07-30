@@ -38,6 +38,7 @@ let p = a;
 test_next_permutation(p,true);
 
 // Test the speed of the two approaches
+console.log("\ntesting 0..9:");
 const b = range(9);
 console.log("using all_permutations (ms):");
 console.log(timing(() => {return all_permutations(b);}));

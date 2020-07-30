@@ -32,7 +32,7 @@
 */
 
 'use strict';
-const {all_divisors,all_divisors2,factors,collect,prime_divisors,isPrime,prod,timing2} = require('./js_utils.js');
+const {all_divisors,factors,collect,prod,timing2} = require('./js_utils.js');
 
 //
 // This is basically factors + collect together so it's not general

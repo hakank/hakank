@@ -16,7 +16,7 @@
 */
 
 'use strict';
-const {isPrime,primes,last,timing2} = require('./js_utils.js');
+const {isPrime,primes,timing2} = require('./js_utils.js');
 
 // 9ms
 const euler7a = function() {

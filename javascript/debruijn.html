@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>de Bruijn sequence in JavaScript</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta name="description" content="de Bruijn sequence in JavaScript">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="widt=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            background-color:whitesmoke;
+            font: 16px Arial, sans-serif;
+        }
+
+    </style>
+</head>
+
+<body onload="init(2,3);">
+    <h1>de Bruijn sequence</h1>
+    <p>
+    <b>k</b> is the language (0..k-1). <b>n</b> is the length of the string.<br />
+    The <b>de Bruijn sequence</b> is the shortest way one can combine all the <math>k^n</math> possible combinations
+    (strings)<br />
+    if one is allowed to overlap the different combinations.
+    <br />
+    The total length of the sequence is <math>k^n+n-1</math> (the <math>+n-1</math> part is for the "around the corner"
+    cases).
+    </p>
+    <div id="form">
+        <label><b>k</b>: <input id="k" type="number" name="k" value="" size="3" onchange="main();" placeholder="k"></label>
+        <label><b>n</b>: <input id="n" type="number" name="n" value="" size="3" onchange="main();" placeholder="n"></label>
+        <button type="submit" onclick="main();">Ok</button> <button type="submit" onclick="init(2,3);">Reset</button>
+    </div>
+    <p id="info1"></p>
+    <p id="result"></p>
+    <p id="info2"></p>
+    
+    For more information about de Bruijn sequences, see
+    <ul>
+        <li> Wikipedia: <a href="http://en.wikipedia.org/wiki/De_Bruijn_sequence">De_Bruijn_sequence</a>
+        <li> My plain JavaScript version with some more comments: <a href="http://hakank.org/javascript_progs/debruijn.js">debrujn.js</a>
+        <li> My old CGI/Perl version: <a href="http://www.hakank.org/comb/debruijn.cgi">debruijn.cgi</a>
+    </ul>
+    <hr noshade>
+    <address>
+        Back to my <a href="/">homepage</a><br>
+        Created by Hakan Kjellerstrand <a href="mailto:hakank@gmail.com">hakank@gmail.com</a>
+    </address>
+
+    <script language="JavaScript">
+        /*
+            This code was ported via Perl (and Java, Picat, etc) which was a port 
+            of a C program with the following copyright:
+  
+            -----------------------------------------------------------------------------
+            | C program to generate necklaces, Lyndon words, and De Bruijn              |
+            | sequences.  The algorithm is CAT and is described in the book             |
+            | "Combinatorial Generation."  This program, was obtained from the          |
+            | (Combinatorial) Object Server, COS, at http://www.theory.csc.uvic.ca/~cos |
+            | The inputs are n, the length of the string, k, the arity of the           |
+            | string, and density, the maximum number of non-0's in the string.         |
+            | The De Bruijn option doesn't make sense unless density >= n.              |
+            | The program can be modified, translated to other languages, etc.,         |
+            | so long as proper acknowledgement is given (author and source).           |
+            | Programmer: Frank Ruskey (1994), translated to C by Joe Sawada            |
+            -----------------------------------------------------------------------------
+
+            (Note: we only use the de Bruijn version.)
+  
+            This JavaScript program was created by Hakan Kjellerstrand, hakank@gmail.com
+            See also my JavaScript page: http://www.hakank.org/javascript_progs/
+
+        */
+        'use strict';
+
+        let a = [];
+        let n = 3;
+        let k = 2;
+        let L = [];
+
+        const range = function (n) {
+            return [...Array(n).keys()];
+        }
+
+        function debruijn(args) {
+
+            //
+            // The door lock combination solution
+            // is k = 10, n = 4
+            // Also see: http://www.hakank.org/comb/debruijn_k_10_n_4.html
+            //
+            const t1_start = +new Date();
+
+
+            // k: language (0..k-1)
+            k = parseInt(args.length > 0 ? args[0] : 2); // 10   
+
+            // n: string length
+            n = parseInt(args.length > 1 ? args[1] : 3); // 4
+
+            // sequence as a flat list?
+            let print_seq = 1;
+
+            const info1 =
+                `This is the language of <code>0..k-1</code> (<code>0..${k-1}</code>) and with string len <code>n</code> (<code>${n}</code>). Sequence length: ${k**n+n-1}.`;
+            document.getElementById("info1").innerHTML = info1;
+            L = [];
+            a = new Array(101).fill(0); // range(101);
+            a[0] = 0;
+
+            Gen(1, 1, 0);
+
+            const LFlat = L.join(" ") + " (" + L.slice(0, n - 1).join(" ") + ")";
+            const info = `Length: <math>k^n+n-1 = ${k**n} + ${n-1} = ${k**n+n-1}</math>`;
+            // console.log("info:", info);
+            const t1_end = +new Date(); // new Date().getTime();
+            const t = t1_end - t1_start;
+            return [LFlat, info, t];
+        }
+
+
+        //
+        // "print" a digit, or rather: collect a digit.
+        //
+        function Print(p) {
+            if (n % p === 0) {
+                for (let j = 1; j <= p; j++) {
+                    let t = a[j];
+                    L.push(t);
+                }
+            }
+
+        }
+
+        // Main main driver function.
+        function Gen(t, p, ones) {
+            // console.log(`Gen(${t}, ${p}, ${ones})`);
+            if (ones <= n) {
+                if (t > n) {
+                    Print(p);
+                } else {
+                    a[t] = a[t - p];
+                    if (a[t] > 0) {
+                        Gen(t + 1, p, ones + 1);
+                    } else {
+                        Gen(t + 1, p, ones)
+                    }
+                    for (let j = a[t - p] + 1; j <= k - 1; j++) {
+                        a[t] = j;
+                        Gen(t + 1, t, ones + 1);
+                    }
+                }
+            }
+        }
+
+        // Fetch k and n
+        function main() {
+            k = document.getElementById("k").value;
+            // console.log("k:",k);
+            if (k === undefined || k === "") {
+                k = 2;
+            }
+            if (!/^\d+$/.test(k)) {
+                k = 2;
+            }
+            document.getElementById("k").value = k;
+
+            n = document.getElementById("n").value;
+            // console.log("n:",n);
+            if (n === undefined || n === "") {
+                n = 3;
+            }
+            if (!/^\d+$/.test(n)) {
+                n = 3;
+            }
+            document.getElementById("n").value = n;
+
+            // console.log("k:",k, "n:", n);
+
+            const [result, info2, time_ms] = debruijn([k, n]);
+            document.getElementById("result").innerHTML = result;
+            document.getElementById("info2").innerHTML = info2 + ` (time: ${time_ms}ms)`;
+            return true;
+        }
+
+        // Initialize on load
+        function init(k, n) {
+            document.getElementById("k").value = k;
+            document.getElementById("n").value = n;
+            main();
+        }
+    </script>
+
+
+    </body>
+
+</html>

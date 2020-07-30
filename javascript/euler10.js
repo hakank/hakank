@@ -15,7 +15,7 @@
 */
 
 'use strict';
-const {primes,isPrime,sieve,timing2} = require('./js_utils.js');
+const {primes,isPrime,sieve,sum,timing2} = require('./js_utils.js');
 
 
 // 279ms
@@ -39,6 +39,12 @@ const euler10c = function() {
     return sieve(2_000_000).sum2();
 }
 
+const euler10d = function() {
+    return sum(primes(2_000_000));
+}
+
+
 // timing2(euler10a); // 279ms
 timing2(euler10b); // 248ms
 // timing2(euler10c); // 336ms
+// timing2(euler10d); // 280ms

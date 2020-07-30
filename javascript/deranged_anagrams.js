@@ -22,7 +22,7 @@
 */
 
 'use strict';
-const {combinations,zip,zip2,timing2} = require('./js_utils.js');
+const {combinations,zip,timing2} = require('./js_utils.js');
 
 const fs = require("fs");
 
@@ -88,7 +88,6 @@ function deranged_anagram() {
     return max_words;
 }
 
-
 // Faster: 104ms
 function deranged_anagram2() {
     const words = fs.readFileSync(wordlist,"utf8").split("\n");
@@ -99,7 +98,7 @@ function deranged_anagram2() {
           .filter(([w1,w2])=>is_deranged(w1,w2))
           .map(ws=>[ws[0].length, ws]) // add the length of the words
           .sort((a,b)=> b[0]-a[0]);
-    ;
+    
     // Get the max val from the first entry.
     // We have to consider that more than one pair can be largest
     const maxLen = res[0][0];
