@@ -1,0 +1,144 @@
+/*
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/06_more_features.html
+  """
+  Suppose we are packing our bags to go on a trip. We have a set of items, each having a 
+  particular weight, and we pack each item with probability inversely proportional to its 
+  weight. We want to compute the probability that we will have excess baggage, i.e., 
+  that the total weight of our baggage will exceed a given limit. We can model this with 
+  the following ProbLog program.
+
+  Note that this program uses several Prolog builtins such as support for lists and 
+  arithmetic. The program also uses another feature of ProbLog2, namely support for 
+  (intensional) probabilistic facts with a `flexible’ probability. This means that the 
+  probability is not prespecified but is an arithmetic expression that needs to be 
+  computed. In the program, this is used in the intensional probabilistic 
+  fact “P::pack(Item) :- …”, which says that the probability of packing an item is 
+  inversely proportional to its weight. Such a flexible probability can be used in 
+  ProbLog2 under the restriction that the arithmetic expression can be evaluated at 
+  call-time (i.e., by the time the probabilistic fact is reached by SLD resolution to 
+  prove the queries and evidence).
+  """
+
+  Comment from the BLOG model:
+  """
+  Note: This not the same approach as the ProbLog model (since it use list manipulation, e.g. [H|T] constructs
+  which I don't know how to do in BLOG.
+  (The model is actually more like MiniZinc than Prolog.)
+  """
+
+  Cf ~/blog/trip.blog
+
+*/
+
+// We want the probability the we excess the weight.
+def excess(v,sumWeights) {
+  return sumWeights > v;
+}
+
+
+// E[sumWeights,excess(limit,sumWeights),selected[0]=true,selected[1]=true,selected[2]=true,selected[3]=true] = (4,17/144,1/6,1/4,1/3,1/2)
+// (4, 0.11805555555555555, 0.16666666666666666, 0.25, 0.3333333333333333, 0.5)
+
+// observe(sumWeight <= limit):
+// E[r₁,r₂,r₃,r₄,r₅,r₆] = (399/127,0,12/127,25/127,35/127,61/127)
+// (3.141732283464567, 0, 0.09448818897637795, 0.1968503937007874, 0.2755905511811024, 0.48031496062992124)
+
+
+// 0/1 version
+def test1() {
+  limit := 8.0;
+  // limit = 4.0;
+  // limit = 10.0;
+  // limit = 18.0;
+
+  // items 
+  skis := 0;
+  boots := 1;
+  helmet := 2;
+  gloves := 3;
+  n := 4;
+
+  weights := [6,4,3,2];  
+  selected := array(n);
+  for i in [0..n) {
+    selected[i] = flip(1.0/weights[i]);
+  }
+
+  sumWeights := 0;
+  for i in [0..n) {
+    sumWeights += weights[i]*selected[i];
+  } 
+
+  // Here we enforce that we don't excess the weights
+  observe(sumWeights <= limit);
+  
+  return (
+           sumWeights,
+           // excess(limit,sumWeights),
+           sumWeights > limit,
+           selected[0] = true,
+           selected[1] = true,
+           selected[2] = true,
+           selected[3] = true,
+        );
+}
+
+// 
+// uniformInt instead of flip()
+// (sumWeights,sumWeights > limit,selected[0],selected[1],selected[2],selected[3])
+// E[r₁,r₂,r₃,r₄,r₅,r₆] = (30,608/625,2,2,2,2)
+//  (30, 0.9728, 2, 2, 2, 2)
+// Well perhaps this was not very interesting...
+//
+// Perhaps more interesting:
+// With observe(sumWeights <= limit)
+// E[r₁,r₂,r₃,r₄,r₅,r₆] = (96/17,0,2/17,6/17,8/17,18/17)
+// (5.647058823529412, 0, 0.11764705882352941, 0.35294117647058826, 0.47058823529411764, 1.0588235294117647)
+// 
+
+def test2() {
+  limit := 8.0;
+  // limit = 4.0;
+  // limit = 10.0;
+  // limit = 18.0;
+
+  // items 
+  skis := 0;
+  boots := 1;
+  helmet := 2;
+  gloves := 3;
+  n := 4;
+
+  weights := [6,4,3,2];  
+  selected := array(n);
+  for i in [0..n) {
+    // integer 0..4,
+    selected[i] = uniformInt(0,4);
+  }
+
+  sumWeights := 0;
+  for i in [0..n) {
+    sumWeights += weights[i]*selected[i];
+  } 
+
+  // Here we enforce that we don't excess the weights
+  observe(sumWeights <= limit);
+
+  return (
+           sumWeights,
+           // excess(limit,sumWeights),
+           sumWeights > limit,
+           selected[0],
+           selected[1],
+           selected[2],
+           selected[3]
+           
+         );
+
+}
+
+
+def main() {
+  return test1();
+  // return test2();
+}

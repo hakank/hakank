@@ -1,0 +1,126 @@
+/+
+  From https://dtai.cs.kuleuven.be/problog/tutorial/mpe/01_bn.html
+  (from ~/problog/bayesian_networks.pl )
+
+  Cf ~/blog/bayesian_network.pl
+
+  Result from BLOG model:
+  Distribution of values for calls(john)
+	false	1.0
+  Distribution of values for calls(mary)
+	true	1.0
+  Distribution of values for calls(bob)
+	true	0.5965131875783395
+	false	0.40348681242162143
+  Distribution of values for alarm
+	true	0.7098824681160253
+	false	0.2901175318840577
+  Distribution of values for burglary
+	true	0.7885559810423252
+	false	0.21144401895769663
+  Distribution of values for earthquake
+	false	0.7924405159054355
+	true	0.20755948409455882
+        
+  𝔼[alarm,burglary,earthquake,peopleCalls₀,peopleCalls₁,peopleCalls₂] = (5824/8173,2345/2972,3405/16346,0,1,48941/81730)
+  The corresponding result from this PSI model:
+  X = [0.712590236143399,0.789030955585464,0.208307842897345,0,1,0.598813165300379]
+
+  They agree fairly much.
+
++/
+
+/*
+// For new-types version
+def calls(alarm:𝔹, person) {
+  prob := 0;
+  if alarm {
+    prob = bernoulli(0.8);
+  } else {
+    prob = bernoulli(0.1);
+  }
+  
+  return prob;
+}
+*/
+
+def calls(alarm, person) {
+  prob := 0;
+  if alarm {
+    prob = bernoulli(0.8);
+  } else {
+    prob = bernoulli(0.1);
+  }
+  
+  return prob;
+}
+
+
+// mary calls, but not john or bob
+// 𝔼[alarm,burglary,earthquake,peopleCalls₀,peopleCalls₁,peopleCalls₂] = (11648/32789,71435/131156,12165/65578,0,1,0)
+
+// We don't know anything about the callers
+// 𝔼[alarm,burglary,earthquake,peopleCalls₀,peopleCalls₁,peopleCalls₂] = (364/625,7/10,1/5,3173/6250,3173/6250,3173/6250)
+
+// We know that the alarm was activated
+// 𝔼[alarm,burglary,earthquake,peopleCalls₀,peopleCalls₁,peopleCalls₂] = (1,205/208,165/728,4/5,4/5,4/5)
+
+// We know that there has been an earthquake:
+// 𝔼[alarm,burglary,earthquake,peopleCalls₀,peopleCalls₁,peopleCalls₂] = (33/50,7/10,1,281/500,281/500,281/500)
+// 
+def main() {
+  // 0 based!
+  john := 0;
+  mary := 1;
+  bob := 2;
+
+  burglary := bernoulli(0.7);
+  earthquake := bernoulli(0.2);
+
+  alarm := bernoulli(0.01);
+  if burglary && earthquake {
+    alarm = bernoulli(0.9);
+  } else if burglary && !earthquake {
+    alarm = bernoulli(0.8); 
+  } else if !burglary && earthquake {
+    alarm = bernoulli(0.1);     
+  }
+
+  // Who calls?
+  people := [john,mary,bob];
+  peopleCalls := array(3);
+  for i in [0..peopleCalls.length-1] {
+    peopleCalls[i] = calls(alarm,people[i]);
+  }
+  
+  /*
+  // Test with many more people: 2.1s
+  peopleCalls := array(20);
+  for i in [0..peopleCalls.length-1] {
+    peopleCalls[i] = calls(alarm,i);
+  }
+  */
+
+  // This don't seems to work.
+  // observe(calls(alarm,john) = false);
+  // observe(calls(alarm,mary) = true);
+
+  // This works
+  observe(peopleCalls[john] = false);
+  observe(peopleCalls[mary] = true);
+  // observe(peopleCalls[bob] = false);    
+
+  // observe(alarm = true);
+  // observe(alarm = false);
+  // observe(earthquake = true);
+
+  return(alarm,burglary,earthquake,
+        // calls(alarm,john),
+        // calls(alarm,mary),
+        // calls(alarm,bob),
+        peopleCalls[0],
+        peopleCalls[1],
+        peopleCalls[2]
+        );
+
+}

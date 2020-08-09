@@ -1,0 +1,90 @@
+/*
+
+  The BUGS Book
+  Example 3.4.1 (b) Three coins, with a prediction.
+  """
+  Suppose I have 3 coins in my pocket. The coins may be either fair, biased 3:1 in
+  favour of heads, or 3:1 in favour of tails, but I don't know how many of
+  each type there are among the 3 coins. I randomly select 1 coin att toss it once,
+  observing a head. What is the posterior distribution of the probability of a head?
+  """
+
+  Note that JAGS has the somewhat weird structure of dcat etc.
+
+  ~/jags/bugs_book_3_4_1.R
+  """
+  data {
+    y <- 1
+  } 
+
+  model {
+
+    y ~ dbern(theta.true)
+    theta.true <- theta[coin]
+    coin ~ dcat(p[])
+    for(i in 1:3) {
+      p[i] <- 1/3
+      theta[i] <- 0.25*i
+      coin.prob[i] <- equals(coin, i)
+    }
+
+    # Predicting a new observation.       
+    # (This is the same as theta.true!)
+    Y.pred ~ dbern(theta.true) 
+    Y.diff <- Y.pred - theta.true
+
+  }
+
+  Output:
+               Mean     SD  Naive SE Time-series SE
+Y.diff     0.001756 0.4561 0.0016126      0.0016185
+Y.pred     0.586187 0.4925 0.0017413      0.0017413
+coin       2.337725 0.7448 0.0026332      0.0026332
+theta.true 0.584431 0.1862 0.0006583      0.0006583
+  """
+
+  cf ~/blog/bugs_book_3_4_1b.blog
+  
+*/
+
+// E[coin,coin_prob₀,coin_prob₁,coin_prob₂,theta_true,y_pred,y_diff] = (7/3,1/6,1/3,1/2,7/12,7/12,0)
+// (2.33333333333333,0.166666666666667,0.333333333333333,0.5,0.583333333333333,0.583333333333333,0)
+def main() {
+  n := 3;
+  coin := uniformInt(1,3); // Select one coin. Note: JAGS has 1-based indexing.
+
+  theta := array(n);
+  coin_prob := array(n,false);
+  theta_true := false;
+  for i in [0..n) {  
+    theta[i] = 0.25*(i+1);
+    if coin = i+1 {
+      coin_prob[i] = true; // Is this the coin?
+      theta_true = theta[i];
+    }
+  }
+
+  // Prediction
+  y_pred := flip(theta_true);
+  y_diff := y_pred - theta_true;
+
+  y := flip(theta_true);
+
+  observe(y = 1); // We observe a head.
+
+  return(
+         coin,
+         coin_prob[0],
+         coin_prob[1],
+         coin_prob[2],
+         theta_true,
+
+         // Prediction
+         y_pred,
+         y_diff
+  );
+
+
+
+
+}

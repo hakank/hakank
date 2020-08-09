@@ -1,0 +1,100 @@
+/*
+  From
+  "Probabilistic logic programming and its applications"
+  Luc De Raedt, Leuven
+  https://www.youtube.com/watch?v=3lnVBqxjC88
+  @ 3:44
+
+  """
+  Mike has a bag of marbles with 4 white, 8 blue, and
+  6 red marbles. He pulls out one marble from the bag
+  and it is red. What is the probability that the
+  second marble he pulls out of the bag is white?
+
+  The answer is 0.234931.
+  """
+
+  Cf ~/cplint/bag_of_marbles.pl
+     ~/blog/bag_of_marbles.blog
+
+*/
+
+
+// run with --dp --expectation
+// Probability that second marble is white:
+// E[r_] = (4/17,)
+// (~0.23529411764705882353)
+// Which is the same as the result from the cplint model.
+
+// All probabilities of second draw (using --dp)
+// E[r1_,r2_,r3_,r4_,r5_,r6_,r7_,r8_,r9_] = (4/17,8/17,5/17,65/289,128/289,96/289,65/289,128/289,96/289)
+// 0.235294117647059,0.470588235294118,0.294117647058824,
+// 0.224913494809689,0.442906574394464,0.332179930795848,
+// 0.224913494809689,0.442906574394464,0.332179930795848
+
+//
+// With --dp: 1.6s
+// Without --dp it's very slow, > 15minutes (and a lot of memory).
+//
+def main() {
+  n := 3;
+  white := 0;
+  blue := 1;
+  red := 2;
+  colors := [white,blue,red];
+  //        white,blue,red
+  start := [    4,   8,  6];
+
+
+  /*
+  // Case of two draws.
+  // Distribution of values for draw(1)
+  //         blue    0.47430000000000455
+  //         red     0.28730000000000055
+  //         white   0.238400000000002
+  random Color draw(Integer t) ~
+       if t == 0 then
+          Categorical({white -> 3, blue -> 8, red -> 6})
+       else
+          case draw(0) in
+          {white -> Categorical({white -> 3, blue -> 8, red -> 6}),
+           blue  -> Categorical({white -> 4, blue -> 7, red -> 6}),
+           red   -> Categorical({white -> 4, blue -> 8, red -> 5})
+          }
+       ;
+  */
+  numDraws := 3; // The start and two draws
+  draw := array(numDraws,[0,0,0]);
+  for t in [0..n) {
+     draw[t][0] = colors[categorical([3/17,8/17,6/17])];
+  }
+  for t in [1..numDraws) {
+     for i in [0..n) {
+       if draw[t-1][i] = white {
+         draw[t][i] = colors[categorical([3/17, 8/17,6/17])];
+       } else if draw[t-1][i] = blue {
+         draw[t][i] = colors[categorical([4/17, 7/17,6/17])];
+       } else {
+         draw[t][i] = colors[categorical([4/17, 8/17,5/17])];
+       }
+     }
+  }
+
+  observe(draw[1][0] = red);
+
+  return ( // first draw
+           // draw[1][0] == white, draw[1][0] == blue, draw[1][0] == red,
+           // draw[1][1] == white, draw[1][1] == blue, draw[1][1] == red,
+           // draw[1][2] == white, draw[1][2] == blue, draw[1][2] == red,
+           // second draw
+           // What is the probability that the second marble he pulls out of the bag is white?
+           draw[2][0] == white,
+
+           // All possible possibilities
+           // draw[2][0] == white, draw[2][0] == blue, draw[2][0] == red,
+           // draw[2][1] == white, draw[2][1] == blue, draw[2][1] == red,
+           // draw[2][2] == white, draw[2][2] == blue, draw[2][2] == red,
+
+         );
+
+}

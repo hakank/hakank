@@ -1,0 +1,179 @@
+/*
+
+  Coin tosses
+
+  http://cplint.eu/p/coin_tosses.swinb
+  """
+  Coin tosses
+
+  Consider a process where you repeatedly toss coins and record the results.
+
+  After each toss, you continue tossing with probability 0.8.
+
+  Write a predicate tosses(Coin,L) that, given an initial coin id Coin, returns in L the list of
+  results of coin tosses obtained using the process above.
+
+  Moreover, write a predicate length_tosses(N) that returns the number of coin tosses.
+
+  Compute the probability of the sequence [h,h,h] using MCINTYRE.
+
+  Compute the probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] was observed
+  using rejection sampling and Metropolis Hastings.
+
+  Compute the probability of the sequences of 10 coin tosses using MCINTYRE.
+
+  Compute the expected length of the sequences of coin tosses using MCINTYRE.
+  """
+  
+  Note: The cplint version (corrected by  Fabrizio Riguzzi) at
+  http://cplint.eu/p/coin_tosses_hakank_rzf.swinb
+  give these results:
+   - first problem: probability of the sequence [h,h,h] -> 0.015 [note: this is from a monte carlo sample]
+   - second problem: probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] -> about 0.03
+   - third problem: probability of the sequences of 10 coin tosses -> about 0.026
+   - fourth problem: expected length of the sequences of coin tosses -> about 4.
+
+
+  see ~/cplint/course_coin_tosses_rzf.pl
+      ~/blog/coin_tosses.blog (but it has different results from the cplint model)
+
+  Note: I tested the first problem, but only got 0.064 = (0.8**3)*(0.5**3). not 0.015 or near about.
+*/
+
+// Works only with --dp but it might crash/seg fault
+// --dp might crash on this
+def test1() {
+    numHead := 0;
+    continue := flip(0.8);
+    while continue = true {
+       if flip(0.5) {
+         numHead += 1;
+       }
+    }
+    return(numHead);
+
+}
+
+// This don't give the solution I expect...
+def test2() {
+    n := 3;   
+    tosses := array(n);
+    continue := array(n);
+    numHead := 0;
+    for i in [0..n) {
+      continue[i] = flip(0.8);
+      tosses[i] = flip(0.5);
+      if continue[i] {
+        // Check if all previous tosses are ok i.e continue[j] == true
+        t := 0;
+        for j in [0..i-1) {
+          if continue[j] {
+            t+=1;
+          }
+        }
+        if t = i-1 && tosses[i] {
+          numHead += 1;
+        }
+      }
+      
+    }
+    
+    return(numHead=n);
+}
+
+// Note: Comment this if testing with --dp (since it croak otherwise)
+// Another approach
+// E[r] = 8/125
+// 0.064
+// Which is (0.8**3)*(0.5**3)
+// 
+def test3() {
+   n := 3;
+   t := array(n); // tosses
+   c := array(n,false); // continue
+
+   for i in [0..n) {
+     c[i] = flip(0.8);
+     t[i] = flip(0.5);
+   }
+
+   numC := 0;
+   numH := 0;   
+   for i in [0..n) {
+     if c[i] {
+       numC += 1;
+     }
+     if t[i] {
+       numH += 1
+     }
+   }
+
+   return(
+          numC = n && numH = n
+         )
+   
+}
+
+// [r] = 8/125 (0.064)
+def test4() {
+   s := 1;
+   repeat 3 {
+        s *= flip(0.8)*flip(0.5);
+   }
+
+   return s;
+}
+
+def test5() {
+  n := 3;
+  tosses := array(n);
+  continue := array(n);
+  s := 0;
+  for i in [0..n) {
+     continue[i] = flip(0.8);
+     tosses[i] = flip(0.5);
+     t := 0;
+     for j in [0..i-1) {
+       t += continue[j]
+     }
+     if t = i-1 && continue[i] && tosses[i] {
+       s += 1;
+     }
+  }
+
+  // observe(tosses[0] = 1);
+  // observe(tosses[1] = 1);
+  // observe(tosses[2] = 1);
+  // observe(continue[0] = 1);
+  // observe(continue[1] = 1);
+  // observe(continue[2] = 1);
+
+  return s = n;
+
+}
+
+
+// E[r1,r2,r3,r4,r5] = (78/125,8/125,2/5,4/25,8/125)
+// (0.624, 0.064, 0.4, 0.16, 0.064)
+def test6() {
+  n := 3;
+  a := array(n,0);
+  c := 0;
+  for i in [0..n) {
+    continue := flip(0.8);
+    if c = i & continue & flip(0.5) {
+      c += 1;
+      a[i] = 1;
+    }
+  }
+  return (c,c=n,a[0],a[1],a[2]);
+}
+
+def main() {
+  // return test1();
+  // return test2();
+  // return test3();
+  // return test4();
+  // return test5();
+  return test6();
+}

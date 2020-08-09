@@ -1,0 +1,114 @@
+/*
+  Number lock problem in PSI.
+  
+  From Presh Talwalkar (MindYourDecisions) 
+  """
+  Puzzles like this have been shared with the dubious claim that "only a
+  genius can solve" them. But they are still fun problems so let's work one
+  out.
+
+  A number lock requires a 3 digit code. Based on these hints, can you crack
+  the code?
+
+   682 - one number is correct and in the correct position
+   645 - one number is correct but in the wrong position
+   206 - two numbers are correct but in the wrong positions
+   738 - nothing is correct
+   780 - one number is correct but in the wrong position
+
+  Video:  https://youtu.be/-etLb-8sHBc
+  """
+
+
+  See:
+  - MiniZinc model: http://hakank.org/minizinc/number_lock.mzn
+  - Picat model: http://hakank.org/picat/number_lock.pi
+  - BLOG model: ~/blog/number_lock2.blog  
+
+  The BLOG model give the correct answer:
+  """
+  Log of average likelihood weight (this trial): -6.812445099177813
+  Average likelihood weight (this trial): 0.0010999999999999992
+  Fraction of consistent worlds (this trial): 0.0011
+  Fraction of consistent worlds (running avg, all trials): 0.0011
+  ======== Query Results =========
+  Number of samples: 10000
+  Distribution of values for {x(i) for Integer i : ((i >= 0) & (i < n))}
+	[0, 2, 5]	1.0
+  """
+  
+  I.e. [0,5,2]
+
+  Though it seems to be too heavy for PSI...
+
+*/
+
+def main() {
+
+   n := 3; // number of columns (i.e. length of the numbers)
+   m := 5; // number of rows (i.e. number of hints)
+
+   // The number combinations
+   y := [[6,8,2],
+         [6,4,5],
+         [2,0,6],
+         [7,3,8],
+         [7,8,0]];
+
+  // Hints
+  hints := [[1,1],
+            [0,1],
+            [0,2],
+            [0,0],
+            [0,1]];
+
+  // The unknown number
+  x := array(n);
+  for i in [0..n) {
+    x[i] = uniformInt(0,9);
+  }
+
+
+  // Number of digits that has correct position and value.
+  num_correct_positions := array(m);
+  // random Integer num_correct_positions(Integer r)  ~
+  //  toInt(sum({1 for Integer i: i >= 0 & i < n & toInt(y[r][i]) == x(i)}));
+  for r in [0..m) {
+    t := 0;
+    for i in [0..n) {
+      if y[r][i] = x[i] {
+        t += 1;
+      }
+    }
+    num_correct_positions[r] = t;
+  }
+  // Number of digits that has correct value (wether in correct position or not)
+  num_correct_values := array(m);
+  for r in [0..m) {
+    t:=0;
+    for i in [0..n) {
+      for j in [0..m) {
+        if y[r][j] = x[i] {
+          t += 1;
+        }
+      }
+    }
+    num_correct_values[r] = t;
+  }
+
+  size := 0;
+  for r in [0..m) {
+    for i in [0..n) {
+       if num_correct_positions[r] = hints[r][0] && num_correct_values[r] = hints[r][1] {
+         size += 1
+       }
+    }
+  }
+  observe(size = n*m);
+
+  return(
+         x[0],
+         x[1],
+         x[2]
+        );
+}

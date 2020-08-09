@@ -1,0 +1,134 @@
+/+
+  From
+  Yi Wu, Lei Li, Stuart Russell, Rastislav Bodik
+  "Swift: Compiled Inference for Probabilistic Programming Languages"
+  Page 2
+
+
+  The BLOG model (for 5 Balls) show this result:
+  """
+  Log of average likelihood weight (this trial): -5.809142990314029
+  Average likelihood weight (this trial): 0.002999999999999996
+  Fraction of consistent worlds (this trial): 0.003
+  Fraction of consistent worlds (running avg, all trials): 0.003
+  ======== Query Results =========
+  Number of samples: 10000
+  Distribution of values for color(drawn(D[4]))
+	Green	0.5999999999999999
+	Blue	0.39999999999999997
+  """
+
+  * --mathematica (but without --nocheck and --expectation)
+    observe [green,green,green,green]:
+    p[probLastBlue_,probLastGreen_] := 1/312400001*DiracDelta[-probLastGreen+1]*DiracDelta[probLastBlue]
+    Pr_error[] := 312400000/312400001
+
+    observe [blue,blue,blue,blue]
+    p[probLastBlue_,probLastGreen_] := 99999/312499999*DiracDelta[-probLastBlue+1]*DiracDelta[probLastGreen]
+    Pr_error[] := 312400000/312499999
+
+    The errors are quite large, i.e. the observations are just a very tiny part of the possible
+    worlds. Note the BLOG model reports the fraction of consistent worlds as 0.003.
+
+  * with --nocheck and expectation we get more interesting results
+
+   With observe [green,green,green,green]:
+   // E[probLastBlue,probLastGreen] = (475164/835265,360101/835265)
+   // (0.56887814047039,0.43112185952961)
+   // (it took 2min 23s)
+
+   With observe [blue,blue,blue,blue] it takes too long time. I stopped after
+   running 15 minutes.
+
+
+
+  Note: if the observations are outside the main for loop, i.e.
+  without
+     if i < obsLen {
+       observe(...)
+     }
+
+  then we get a better/interesting result (though it takes a much longer time to run)
+
+
++/
+
+def main(){
+  // Define the colors
+  blue  := 1;  
+  green := 2;
+  red   := 3;
+
+  // When using uniformInt(1,20), these error are thrown:
+  //   array length should be provably deterministic integer
+  //   for bounds should be provably deterministic integers
+  // So we must use a fixed integer.
+  numBalls := 5; // uniformInt(1,20);
+
+  colors := [blue,green];
+  // colors := [blue,green,red];  
+
+  // we have 5 balls, but only observe the first
+  // four of them.
+  observed := [green,green,green,green];
+  // observed := [blue,blue,blue,blue];
+  // observed := [blue,blue,green,blue];
+  // observed := [blue,green,green,green];  
+  
+  // observed := [red,red,green,blue] ; 
+  obsLen := observed.length;
+  
+  drawn := array(numBalls); // This works.
+  // drawn := [0,0,0,0,0]; // as do this
+  // Pick numBalls-1 balls
+  for i in [0..numBalls) {
+  
+     // pick a random ball
+     drawn[i] = uniformInt(1,numBalls);
+     
+     // pick a color of the ball
+     // colors[drawn[i]] = colors[categorical([0.9,0.1])];
+     // ix := drawn[i] coerce ℤ; // for new-types
+     ix := drawn[i];
+     colors[ix] = colors[categorical([0.9,0.1])];
+     // colors[drawn[i]] = colors[categorical([0.3,0.6,0.1])];
+
+     // Note: Having the observation in this loop give
+     //       completely different results than with outside
+     //       the loop.
+     // if i < obsLen {
+     //   // we now observe the color of this ball
+     //   // observe(colors[drawn[i]] == observed[i]);
+     //   observe(colors[ix] == observed[i]);       
+     // }
+  }
+
+  // Moving the observation outside the main loop.
+  // for i in[0..obsLen) {
+  //    observe(colors[drawn[i]] == observed[i]);
+  // }
+  // This seems to be faster (than the above loop).
+  observe(colors[drawn[0]] == observed[0]);
+  observe(colors[drawn[1]] == observed[1]);
+  observe(colors[drawn[2]] == observed[2]);
+  observe(colors[drawn[3]] == observed[3]);  
+       
+  // ix4 := drawn[4] coerce ℤ; // for new-typrd
+  ix4 := drawn[4];  
+  probLastGreen := colors[ix4] == green;
+  probLastBlue  := colors[ix4] == blue;
+  // probLastRed  := colors[ix4] == red;    
+
+  return (
+          // drawn[0],drawn[1],drawn[2],drawn[3],
+          // drawn[4],
+          // colors[drawn[0]],colors[drawn[1]],colors[drawn[2]],colors[drawn[3]],colors[drawn[4]],
+          probLastBlue,
+          probLastGreen,
+          // probLastRed
+          );
+  // return (probLastBlue,probLastGreen);
+  // return drawn; // Note: This don't work with expectation
+
+
+}
