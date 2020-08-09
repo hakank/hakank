@@ -11,6 +11,7 @@ Here's a summary of the directories so far:
 * ampl: AMPL: integer/linear programming and constraint programming
 * answer_set_programming: Answer Set Programming
 * apl: APL (note: index.html contains codes etc)
+* blog_ppl: BLOG, probabilistic programming language
 * bprolog: B-Prolog, logic programming, constraint programming, tabling, loops etc
 * choco3: Choco v3, constraint programming
 * comet: Comet, constraint programming, linear/integer programming, constraint-based local search
@@ -40,6 +41,7 @@ Here's a summary of the directories so far:
 * picat: Picat, constraint programming, logic programming, loops, tabling, etc
 * poplog: Poplog Pop-11 high-level programming language
 * project_euler: Project Euler
+* psi_ppl: PSI, probabilistic programming language
 * python: Python programs (Project Euler)
 * sabr: SABR, constraint-based planning language
 * setlx: SETL and SetlX, high level set based programming language
