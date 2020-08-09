@@ -107,5 +107,36 @@ const euler14b = function() {
     return maxN;
 }
 
+// Using an array instead:
+// Faster 138ms
+const euler14c = function() {
+    let hash = new Array(1_000_000).fill(0);
+    let maxN = 0;
+    let maxLen = 0;
+    for(let n = 2; n < 1_000_000; n++) {
+        let m = n;
+        let mlen = 1;
+        while (m > 1) {
+            if (hash[m]) {
+                mlen = hash[m]+mlen-1;
+                m = 1;
+            } else {
+                m = hailstone(m);
+                mlen++;
+            }
+        }
+        if (!hash[n]) {
+            hash[n] = mlen;
+        }
+        if (mlen > maxLen) {
+            maxN = n;
+            maxLen = mlen;
+        }
+    }
+    return maxN;
+}
+
+
 // timing2(euler14a); // 580ms
-timing2(euler14b); // 153ms
+// timing2(euler14b); // 153ms
+timing2(euler14c); // 138ms

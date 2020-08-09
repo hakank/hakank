@@ -22,7 +22,7 @@
 */
 
 'use strict';
-const {range2,all_divisors3,sum,sum2,timing2} = require('./js_utils.js');
+const {range2,all_divisors3,sum,timing2} = require('./js_utils.js');
 
 
 // 153ms
@@ -56,7 +56,26 @@ const euler21b = function() {
     return a;
 }
 
-timing2(euler21a);
-// timing2(euler21b);
+// 84ms
+const euler21c = function() {
+    const n = 9999;
+    let s = new Array(n);
+    for(let i = 2;i < n; i++) {
+        s[i] = sum(all_divisors3(i));
+    }   
+    let a = []; 
+    for(let i = 2;i < n; i++) {
+        // ignore perfect numbers...
+        if (i===s[s[i]]&& i!==s[i]) {
+            a.push(i);
+        }
+    }   
+    
+    return sum(a);
+}
 
+
+// timing2(euler21a);
+// timing2(euler21b);
+timing2(euler21c);
 

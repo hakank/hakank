@@ -18,12 +18,12 @@ const {range,timing} = require("./js_utils.js");
 const fs = require("fs");
 let lang = "swe";
 let wordlist = "words_lower.txt";
-let alpha = "abcdefghijklmnopqrstuvxyz".split(""); // English (etc) words
+let alpha = "abcdefghijklmnopqrstuvwxyz".split(""); // English (etc) words
 const n = 5;
 
 if (lang === "swe") {
     wordlist = "/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt";
-    alpha = "abcdefghijklmnopqrstuvxyzåäö".split(""); // Swedish words    
+    alpha = "abcdefghijklmnopqrstuvwxyzåäö".split(""); // Swedish words    
 }
 
 const words = fs.readFileSync(wordlist,"utf8").split("\n");

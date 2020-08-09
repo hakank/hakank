@@ -31,7 +31,7 @@
 'use strict';
 const {timing2} = require('./js_utils.js');
 
-// 27ms
+// 22ms
 // Note: This is a solution ported from Picat code which in turn is from C++(?) code,
 const euler23a = function() {
     const limit = 20161;
@@ -67,5 +67,47 @@ const euler23a = function() {
 
 }
 
+// Slightly different loop when checking abundant
+// And slightly slower: 28ms
+const euler23b = function() {
+    const limit = 20161;
+    let arr = new Array(limit+1).fill(1);
+    
+    for (let i = 2; i < limit + 1; i++) {
+        for (let j = i * 2; j <= limit; j = j + i) {
+            arr[j] = arr[j] + i;
+        }
+    }
+    let abundant = [];
+    for (let i = 12; i <= limit; i++) {
+        if (arr[i] > i) {
+            abundant.push(i);
+        }
+    }
+    // Testing a different loop here
+    const len = abundant.length;
+    for (let i = 0; i<len; i++) {
+        for (let j = 0; j<=i; j++) {
+            let a = abundant[i];
+            let b = abundant[j];
+            if (a + b <= limit) {
+                arr[a + b] = 0;
+            }
+        }
+    }
+
+    let s = 0;
+    for (let i = 1; i <= limit; i++) {
+        if (arr[i] != 0) {
+            s += i;
+        }
+    }
+    return s;
+
+}
+
+
 timing2(euler23a);
+
+// timing2(euler23b);
 
