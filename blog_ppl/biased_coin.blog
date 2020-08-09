@@ -1,0 +1,86 @@
+/*
+
+  From cplint: http://cplint.eu/example/inference/coin.pl
+  """
+  Throwing a coin with uncertainty on its fairness, from
+  J. Vennekens, S. Verbaeten, and M. Bruynooghe. Logic programs with annotated
+  disjunctions. In International Conference on Logic Programming,
+  volume 3131 of LNCS, pages 195-209. Springer, 2004.
+  """
+
+
+*/
+
+/*
+heads(Coin): 1/2; tails(Coin) : 1/2:-toss(Coin),\+biased(Coin).
+% if we toss a Coin that is not biased then it lands heads with probability 1/2
+% and tails with probability 1/2
+
+heads(Coin): 0.6 ; tails(Coin) : 0.4:-toss(Coin),biased(Coin).
+% if we toss a Coin that is biased then it lands heads with probability 0.6
+% % and tails with probability 0.4
+
+fair(Coin):0.9 ; biased(Coin):0.1.
+% a Coin is fair with probability 0.9 and biased with probability 0.1
+
+toss(coin).
+% coin is certainly tossed
+
+
+?- prob(heads(coin),Prob).  % what is the probability that coin lands heads?
+% expected result 0.51
+
+   calculation:  is fair and head = 0.9*0.5 + biased and head 0.1*0.6 = 0.51
+   BLOG model:
+   Distribution of values for coinResult
+        head    0.5094360000000793
+        biased  0.4905640000000697
+
+
+?- prob(tails(coin),Prob).  % what is the probability that coin lands tails?
+% expected result 0.49
+
+  calculation: is fair and tail 0.9*0.5 + biased and tail 0.1*0.4 = 0.9*0.5 +  0.1*0.4 = 0.49
+   BLOG model:
+ Distribution of values for coinResult
+        head    0.5094360000000793
+        biased  0.4905640000000697
+ Distribution of values for coinType
+        fair    0.900399000000077
+        biased  0.09960099999999368
+
+  (close enough when running 1000000 samples...)
+
+?- prob(heads(coin),biased(coin),Prob).
+% what is the probability that coin lands heads given the coin is biased?
+% expected result 0.6
+
+  BLOG model:
+Distribution of values for coinResult
+        head    0.5997800000001685
+        biased  0.4002200000000596
+Distribution of values for coinType
+        biased  1.0
+
+
+*/
+
+Type CoinResult;
+distinct CoinResult head, tail;
+
+Type CoinType;
+distinct CoinType fair, biased;
+
+// "type" seems to be a reserved word or something...
+Random CoinType coinType ~ Categorical({fair -> 0.9, biased -> 0.1});
+
+Random CoinResult coinResult ~
+       case coinType in
+       {
+         fair -> Categorical({head -> 0.5, tail -> 0.5}),
+         biased -> Categorical({head -> 0.6, tail -> 0.4})
+       };
+
+obs coinType = biased;
+query coinResult;
+query coinType;

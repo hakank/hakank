@@ -1,0 +1,98 @@
+/*
+   From Allen Downey
+   https://twitter.com/AllenDowney/status/1063460117029535746
+   """
+   Today's Bayesian problem of the week: Suppose we visit a wild animal preserve where we 
+   know that the only animals are lions and tigers and bears, but we don't know how 
+   many of each there are.
+
+   During the tour, we see 3 lions, 2 tigers, and 1 bear. Assuming that every animal had an equal 
+   chance to appear in our sample, estimate the prevalence of each species. 
+ 
+   What is the probability that the next animal we see is a bear?
+   """
+
+   Also see:
+   - https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
+   - https://github.com/WillKoehrsen/probabilistic-programming/blob/master/Estimating%20Probabilities%20with%20Bayesian%20Inference.ipynb
+
+   This version use a Multinomial distribution instead of a Dirichlet (as in lions_tigers_and_bears2.blog).
+
+*/
+
+// The animals.
+// Here we have to use Integer since BLOG don't support hierarchical types, i.e.
+// type Animal;
+// type Animal Lion;
+// type Animal Tiger;
+// type Animal Bear;
+fixed Integer lion = 0;
+fixed Integer tiger = 1;
+fixed Integer bear = 2;
+
+// The probabilities to calculate ("aliased" for simplicity)
+random Real probLion  ~ x[0];
+random Real probTiger ~ x[1];
+random Real probBear  ~ x[2];
+
+
+// Prior
+// We have a prior of alphas for the Dirichlet distribution.
+// We draw 6 times with the Multinomial distrib with the Dirichlet prior.
+// What is the probability of different combinations of the number of each animal?
+
+fixed RealMatrix alphas = [1; 1; 1]; // Highest prob: [3, 2, 1]       0.2532535331001689
+// fixed RealMatrix alphas = [3; 2; 1]; // Highest prob: [3, 2, 1]       0.3854784512717064
+// fixed RealMatrix alphas = [2; 2; 2]; // Highest prob: [3, 2, 1]          0.2532535331001689
+// fixed RealMatrix alphas = [1; 2; 3]; // Highest prob: [2, 2, 2]!       0.2986003110419904
+// fixed RealMatrix alphas = [0.1; 0.1; 0.1]; // Highest prob: [3, 2, 1]       0.2532535331001689
+// fixed RealMatrix alphas = [7; 7; 7]; // Highest prob: [3, 2, 1]       0.25772907251129806
+
+random RealMatrix d ~ Dirichlet(alphas);
+// Draw 6 animals
+random Integer[] x ~ Multinomial(6,d); // Note: Returns an Integer list (not RealMatrix as stated in doc)
+
+// Posterior: What is the probability of lion, tiger, and bear given the observations?
+random Integer o(Integer i) ~ Categorical({lion -> probLion, tiger -> probTiger, bear->probBear});
+
+// Observations
+obs o(0) = lion;
+obs o(1) = lion;
+obs o(2) = lion;
+obs o(3) = tiger;
+obs o(4) = tiger;
+obs o(5) = bear;
+
+// query d;
+query x;
+
+/*
+query 0.01*round(probLion*100.0);
+query 0.01*round(probTiger*100.0);
+query 0.01*round(probBear*100.0);
+*/
+query probLion;
+query probTiger;
+query probBear;
+
+// What is the probability that the next animal seen is a ...?
+query o(6) == lion;  // "vector" [3;2;1]: 0.46615488328098975 "vector" [1;1;1]: 0.40731210525414596
+query o(6) == tiger; // "vector" [3;2;1]: 0.3253865811023379  "vector" [1;1;1]: 0.3322797268230322
+query o(6) == bear;  // "vector" [3;2;1]: 0.20845853561667468 "vector" [1;1;1]: 0.2604081679228138
+
+/*
+Distribution of values for (probLion > probTiger)
+        true    0.6765156226320429
+        false   0.32348437736795527
+Distribution of values for (probLion > probBear)
+        true    0.838119326703496
+        false   0.16188067329650874
+Distribution of values for (probTiger > probBear)
+        true    0.5900123852276107
+        false   0.4099876147723894
+*/
+/*
+query probLion > probTiger;
+query probLion > probBear;
+query probTiger > probBear;
+*/

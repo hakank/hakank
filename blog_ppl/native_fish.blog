@@ -1,0 +1,122 @@
+/*
+   Native Fish model.
+
+   From
+   A. Nicholson, O. Woodberry and C. Twardy
+   "The 'Native Fish' Bayesian networks"
+   Technical Report 2010/3, Bayesian Intelligence.
+   Available from https://bayesian-intelligence.com/publications.php
+   """
+   A local river with tree-lined banks is known to contain native fish populations, which need
+   to be conserved. Parts of the river pass through croplands, and parts are susceptible to drought
+   conditions. Pesticides are known to be used on the crops. Rainfall helps native fish populations
+   by maintaining water flow, which increases habitat suitability as well as connectivity between
+   different habitat areas. However rain can also wash pesticides that are dangerous to fish from
+   the croplands into the river. There is concern that the trees and native fish will be affected by
+   drought conditions and crop pesticides.
+
+   In short, we want to model the effect of pesticide use and rainfall on native fish abundance 
+   and tree condition.
+   ...
+   In this model, native fish abundance has two main stressors: water-related and pesticide-related. 
+   The model also has three variables describing the water-related stressor:
+     - water flow and connectivity: More water keeps the river from fragmenting into ponds, and leads to faster
+       flow, which washes out pollutants. Higher water levels are better for the fish.
+
+     - rainfall: This is intended to be year-to-date rainfall, a relatively short-term indicator.
+
+     - drought conditions: A long-term indicator intended to summarize historical conditions. A multi-year
+       drought will leave the soil quite dry, so that rain which falls soaks into the ground before reach-
+       ing the rivers. (For this reason, much of the rain in the Australian reservoir catchment areas has failed
+       to reach the reservoirs.)
+
+   Two variables describe the pesticide-related stressor:
+    - Pesticide use: How much pesticide is being used in the river catchment.
+
+    - Pesticide concentration in river: The amount of pesticide in the river itself – which for this example we
+      imagine cannot easily be directly observed.
+   """
+*/
+
+Type Level;
+distinct Level high, medium, low;
+
+Type Condition;
+distinct Condition good, damaged, dead, poor;
+
+Type Bool;
+distinct Bool yes, no;
+
+Type AnnualRainfall;
+distinct AnnualRainfall below_average, average, above_average;
+
+
+random Level native_fish_abundance ~
+   case [pesticide_in_river, river_flow] in
+   {
+     [high, good] -> Categorical({high->0.2, medium->0.4, low->0.4}),
+     [high, poor] -> Categorical({high->0.01, medium->0.1, low->0.89}),
+     
+     [low, good]  -> Categorical({high->0.8, medium->0.15, low->0.05}),
+     [low, poor]  -> Categorical({high->0.05, medium->0.15, low->0.8})
+   };
+
+random Condition tree_condition ~
+   case [drought_conditions, annual_rainfall] in
+   {
+      [yes, below_average] -> Categorical({good->0.20, damaged->0.60, dead->0.20 }),
+      [yes, average]       -> Categorical({good->0.25, damaged->0.60, dead->0.15 }),
+      [yes, above_average] -> Categorical({good->0.30, damaged->0.60, dead->0.10 }),
+      
+      [no, below_average]  -> Categorical({good->0.70, damaged->0.25, dead->0.05 }),
+      [no, average]        -> Categorical({good->0.80, damaged->0.18, dead->0.02 }),
+      [no, above_average]  -> Categorical({good->0.90, damaged->0.09, dead->0.01 })
+   };
+
+random Level river_flow ~
+   case [drought_conditions, annual_rainfall] in
+   {
+      [yes, below_average] -> Categorical({good->0.05, poor->0.95}),
+      [yes, average]       -> Categorical({good->0.15, poor->0.85}),
+      [yes, above_average] -> Categorical({good->0.80, poor->0.20}),
+      
+      [no, below_average]  -> Categorical({good->0.40, poor->0.60}),
+      [no, average]        -> Categorical({good->0.60, poor->0.40}),
+      [no, above_average]  -> Categorical({good->0.99, poor->0.01})
+   };
+
+random Bool drought_conditions ~
+   Categorical({yes->0.25, no->0.75});
+
+random AnnualRainfall annual_rainfall ~
+   Categorical({below_average -> 0.1, average -> 0.7, above_average -> 0.2});
+
+random Level pesticide_use ~
+   Categorical({high->0.9, low->0.1});
+
+random Level pesticide_in_river ~
+  // pesticide_use, annual_rainfall
+  case [pesticide_use, annual_rainfall] in
+  {
+    [high, below_average] -> Categorical({high->0.3, low->0.7}),
+    [high, average]       -> Categorical({high->0.6, low->0.4}),
+    [high, above_average] -> Categorical({high->0.8, low->0.2}),
+
+    [low, below_average]  -> Categorical({high->0.1, low->0.9}),
+    [low, average]        -> Categorical({high->0.2, low->0.8}),
+    [low, above_average]  -> Categorical({high->0.3, low->0.7})
+  };
+
+// obs tree_condition = dead;
+// obs pesticide_use = high;
+
+// obs annual_rainfall = above_average;
+obs annual_rainfall = below_average;
+
+query native_fish_abundance;
+query tree_condition;
+query river_flow;
+query drought_conditions;
+query annual_rainfall;
+query pesticide_use;
+query pesticide_in_river;

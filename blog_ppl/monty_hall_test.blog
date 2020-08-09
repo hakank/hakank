@@ -1,0 +1,82 @@
+/*
+  Monty Hall problem
+
+  From the PyMC3 model in the talk
+  "Carlo Revolution is Open Source: Probabilistic Programming with PyMC3?Austin Rochford"
+  https://www.safaribooksonline.com/videos/open-data-science/9780135432792/9780135432792-ODSC_11
+  Around time 9:00
+
+  Output:
+"""
+....
+=======  LW Trial Stats =========
+Log of average likelihood weight (this trial): -0.6932531861780546
+Average likelihood weight (this trial): 0.49994700000014386
+Fraction of consistent worlds (this trial): 0.666663
+Fraction of consistent worlds (running avg, all trials): 0.666663
+======== Query Results =========
+Number of samples: 1000000
+Distribution of values for prize
+        d3      0.6665326524610727
+        d1      0.3334673475387975
+======== Done ========
+"""
+
+  Which mean that if we selected d1 it will be 1/3 chance of being the price door.
+  Changing to d3 would - however - give a 2/3 change of getting the price.
+
+*/
+
+
+type Door;
+distinct Door d1,d2,d3; // There are 3 doors.
+
+// Assumption (WLOG): We alway select door 1!
+
+// The prize can be behind any door 1..3.
+random Door prize ~ UniformChoice({d for Door d});
+
+// I just want to see if one can learn parameters in Categorical as well.
+// And yes, one can! Why should'nt one?
+Random Real a ~ Beta(2,2);
+Random Real b ~ Beta(2,2);
+Random Real c ~ Beta(2,2);
+Random Real d ~ Beta(2,2);
+Random Real ee ~ Beta(2,2); // e is the constant...
+Random Real f ~ Beta(2,2);
+
+
+// Which door will Monty open?
+random Door open ~
+   case prize in
+     {d1 -> Categorical({d1 -> 0.0, d2 -> a, d3 -> b}),
+      d2 -> Categorical({d1 -> 0.0, d2 -> c, d3 -> d}),
+      d3 -> Categorical({d1 -> 0.0, d2 -> ee, d3 -> f})
+      }
+   ;
+
+
+// Ensure that the sum of probs are ~ 1
+Random Boolean check ~ if
+        a+b >= 0.96 & a+b < 1.05 &
+        c+d >= 0.96 & c+d < 1.05 &
+        ee + f >= 0.96 & ee + f < 1.05
+        then true else false;
+
+// We see that Monty opens door 2.
+obs open = d2;
+
+obs check = true;
+
+
+
+// What are the probabilities that the price is behind
+// door d1 (the one we selected, i.e dont' switch) or door d3 (i.e. to switch door)
+query(prize);
+
+query(a);
+query(b);
+query(c);
+query(d);
+query(ee);
+query(f);

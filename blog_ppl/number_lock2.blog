@@ -1,0 +1,132 @@
+/*
+
+  
+  Number lock problem in MiniZinc.
+  
+  From Presh Talwalkar (MindYourDecisions) 
+  """
+  Puzzles like this have been shared with the dubious claim that "only a
+  genius can solve" them. But they are still fun problems so let's work one
+  out.
+
+  A number lock requires a 3 digit code. Based on these hints, can you crack
+  the code?
+
+   682 - one number is correct and in the correct position
+   645 - one number is correct but in the wrong position
+   206 - two numbers are correct but in the wrong positions
+   738 - nothing is correct
+   780 - one number is correct but in the wrong position
+
+  Video:  https://youtu.be/-etLb-8sHBc
+  """
+
+  """
+  Fraction of consistent worlds (running avg, all trials): 0.0011
+  ======== Query Results =========
+  Number of samples: 10000
+  Distribution of values for {i, x(i) for Integer i : ((i >= 0) & (i < n))}
+        [[0, 0], [2, 2], [1, 5]]   1.0
+  ======== Done ========
+  """
+
+  I.e. [0,5,2]
+
+  Nice!
+
+  This BLOG model use the same approach as
+  - MiniZinc model: http://hakank.org/minizinc/number_lock.mzn
+  - Picat model: http://hakank.org/picat/number_lock.pi
+
+  In this version there's another representation of the data.
+
+*/
+
+fixed Integer n = 3; // number of columns (i.e. length of the numbers)
+fixed Integer m = 5; // number of rows (i.e. number of hints)
+
+// This works. But it must be a RealMatrix (not IntegerMatrix)
+fixed RealMatrix y = [6,8,2;
+                      6,4,5;
+                      2,0,6;
+                      7,3,8;
+                      7,8,0];
+
+// But adding the hints matrix and the check predicate don't work!
+// It works when using it in obs directly, though.
+fixed RealMatrix hints = [1,1;
+                          0,1;
+                          0,2;
+                          0,0;
+                          0,1];
+
+// The unknown number
+random Integer x(Integer i) ~ UniformInt(0,9); 
+
+// Number of digits that has correct position and value.
+random Integer num_correct_positions(Integer r)  ~
+    toInt(sum({1 for Integer i: i >= 0 & i < n & toInt(y[r][i]) == x(i)}));
+
+// Number of digits that has correct value (wether in correct position or not)
+random Integer num_correct_values(Integer r) ~
+    toInt(sum({1 for Integer i, Integer j: i >= 0 & i < n & j >= 0 & j < n & toInt(y[r][j]) == x(i)}));
+
+/*
+// Don't work! -> 0 correct worlds
+random Boolean check ~
+    forall Integer r  r >= 0 & r < m & 
+           forall Integer c  c >= 0 & c < n &
+           num_correct_positions(r) == toInt(hints[r][0]) &
+           num_correct_values(r) == toInt(hints[r][1]);
+
+obs check = true;
+*/
+
+/*
+// Don't work! -> 0 correct worlds
+random Boolean check ~
+    !exists Integer r r >= 0 & r < m & 
+           !exists Integer c c >= 0 & c < n &
+           num_correct_positions(r) != toInt(hints[r][0]) &
+           num_correct_values(r) != toInt(hints[r][1]);
+
+obs check = true;
+*/
+
+/*
+// This works as well
+// But it's slightly slower than the obs loop below: 1.49s
+random Integer check ~
+       toInt(sum({1 for Integer r, Integer c:
+           r >= 0 & r < m & 
+           c >= 0 & c < n &
+           num_correct_positions(r) == toInt(hints[r][0]) &
+           num_correct_values(r) == toInt(hints[r][1])}));
+
+obs check = m*n;
+*/
+
+// Ah!
+// It works if we move the big "loop" directly to the observation statements.
+// It means that all the n x m constraints must be fullfilled.
+// This is slightly faster than "obs check = n*m;"
+// 1.125s
+obs size({1 for Integer r, Integer c: r >= 0 & r < m & c >= 0 & c < n &
+          num_correct_positions(r) == toInt(hints[r][0]) &
+          num_correct_values(r) == toInt(hints[r][1])}) = n*m;
+
+// This query gives [[0, 0], [2, 2], [1, 5]]
+// (It's a correct answer, but the presentation is in incorrect order)
+// query {i,x(i) for Integer i: i>= 0 & i < n};
+
+
+/*
+// Skipping the position part of the solution give a correct answer: [0,2,5]
+//
+Fraction of consistent worlds (running avg, all trials): 2.0E-4
+======== Query Results =========
+Number of samples: 10000
+Distribution of values for {x(i) for Integer i : ((i >= 0) & (i < n))}
+        [0, 2, 5]       1.0
+*/
+query {x(i) for Integer i: i>= 0 & i < n};

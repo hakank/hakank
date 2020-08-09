@@ -1,0 +1,62 @@
+/*
+  (Simple) True skill problem.
+  
+  Example inspired by
+  Johannes Borgstrom, Andrew D. Gordon, Michael Greenberg, James Margetson, and Jurgen Van Gael:
+  "Measure Transformer Semantics for Bayesian Machine Learning"
+  https://www.microsoft.com/en-us/research/publication/measure-transformer-semantics-for-bayesian-machine-learning-2011/?from=http%3A%2F%2Fresearch.microsoft.com%2Fpubs%2F135344%2Fmsr-tr-2011-18.pdf
+
+  Note that we constraint the generated worlds so they satisfies the
+  observation constraints (a > b > c). This means that we will ge only
+  a small part of all worlds (about 0.16).
+
+  Cf: ~/cplint/trueskill.pl
+
+*/
+
+
+// There are three people, a, b, and c
+type Person;
+distinct Person a,b,c;
+
+// Each person has an unknown Skill and a
+// known performance, where the skill is
+// reflected in the performance (with uncertainties).
+random Real Skill(Person p) ~ Gaussian(100,10);
+random Real Performance(Person p) ~ Gaussian(Skill(p), 15);
+
+//// I thought I could get a sample mean of all world's Skill values, but
+//// this must be done outside of BLOG, which is a pity!
+// fixed Real sumSkill(Person p) = sum({Skill(p1) for Person p1: p == p1});
+
+// Now we see that a is better than b and c, and b is better than c.
+obs Performance(a) > Performance(b) = true;
+obs Performance(a) > Performance(c) = true;
+obs Performance(b) > Performance(c) = true;
+
+// What are their performance and (underlying) skills?
+query Performance(a);
+query Performance(b);
+query Performance(c);
+
+// Even though that the performance of a > the performance of b,
+// what is the probability that b has greater _skill_ than a.
+// This reflects the variance of the skill and performance...
+//   VARIABLE (Skill(b) > Skill(a))
+// true: 0.3276059564719251 0.65521191294385
+// false: 0.6723940435280257 1.34478808705605
+query Skill(b) > Skill(a);
+
+// How well does this performance reflects the true skills?
+// VARIABLE ((Skill(a) > Skill(b)) & (Skill(b) > Skill(c)))
+// true: 0.39410381624161234 0.788207632483225
+// false: 0.6058961837583272 1.21179236751665
+query Skill(a) > Skill(b) & Skill(b) > Skill(c);
+
+// query Skill(a);
+// query Skill(b);
+// query Skill(c);
+// query sumSkill(a); // the same as query Skill(a)
+
+
+// query Performance(a) > Performance(b); // Always true since we observe it.

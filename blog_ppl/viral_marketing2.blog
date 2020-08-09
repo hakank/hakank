@@ -1,0 +1,127 @@
+/*
+   From https://dtai.cs.kuleuven.be/problog/tutorial/dtproblog/02_viral.html
+
+   From ProbLog viral_marketing.pl
+   """
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % ProbLog program describing a viral marketing problem
+   % example for using decision theory ProbLog
+   % $Id: viralmarketing.pl 4875 2010-10-05 15:28:35Z theo $
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+   % The viral marketing example consists of a social network of friend relations. You have to
+   % decide which persons to market. Sending marketing has a cost of 2, but might cause people
+   % to buy your product, giving you a profit of 5. When someone buys the product, it becomes
+   % more likely that his friends also buy the product.
+   """
+
+*/
+
+/*
+% Decisions
+?::marketed(P) :- person(P).
+
+utility(buys(P), 5) :- person(P).
+utility(marketed(P), -2) :- person(P).
+
+% Probabilistic facts
+0.2 :: buy_from_marketing(_).
+0.3 :: buy_from_trust(_,_).
+
+% Background knowledge
+person(bernd).
+person(ingo).
+person(theo).
+person(angelika).
+person(guy).
+person(martijn).
+person(laura).
+person(kurt).
+
+trusts(X,Y) :- trusts_directed(X,Y).
+trusts(X,Y) :- trusts_directed(Y,X).
+
+trusts_directed(bernd,ingo).
+trusts_directed(ingo,theo).
+trusts_directed(theo,angelika).
+trusts_directed(bernd,martijn).
+trusts_directed(ingo,martijn).
+trusts_directed(martijn,guy).
+trusts_directed(guy,theo).
+trusts_directed(guy,angelika).
+trusts_directed(laura,ingo).
+trusts_directed(laura,theo).
+trusts_directed(laura,guy).
+trusts_directed(laura,martijn).
+trusts_directed(kurt,bernd).
+
+buys(X) :-
+     marketed(X),
+     buy_from_marketing(X).
+buys(X) :-
+     trusts(X,Y),
+     buy_from_trust(X,Y),
+     buys(Y).
+*/
+
+
+type Person;
+distinct Person bernd,ingo, theo, angelika, martijn, guy,laura,kurt;
+
+type Action;
+distinct Action marketed, buys;
+
+fixed Boolean trusts_directed(Person p1, Person p2) =
+      ListInterp(2,bernd,ingo,
+                   ingo,theo,
+                   theo,angelika,
+                   bernd,martijn,
+                   ingo,martijn,
+                   martijn,guy,
+                   guy,theo,
+                   guy,angelika,
+                   laura,ingo,
+                   laura,theo,
+                   laura,guy,
+                   laura,martijn,
+                   kurt,bernd);
+
+fixed Boolean trusts(Person p1, Person p2) = if p1 != p2 & trusts_directed(p1,p2) | trusts_directed(p2,p1) then true;
+
+// Probabilistic facts
+random Boolean buys_from_marketing(Person p) ~ BooleanDistrib(0.2);
+random Boolean buys_from_trust(Person p1, Person p2) ~ BooleanDistrib(0.2);
+
+random Boolean buys(Person p1) ~
+       if marketed(p1) & buys_from_marketing(p1) then true
+       // CIRCULAR!
+       // else if exists Person p2 trusts(p1,p2) & buys_from_trust(p1,p2) & buys(p2) then true
+       // This is not circular
+       else if exists Person p2 trusts(p1,p2) & buys_from_trust(p1,p2) & (exists Person p3  buys_from_marketing(p2) | buys_from_trust(p2,p3)) then true       
+       ;
+
+random Real total_cost ~ sum({ cost(buys) for Person p: buys(p) == true}) + sum({cost(marketed) for Person p: marketed(p) == true}) ;
+
+random Boolean marketed(Person p) ~ BooleanDistrib(0.5); // ?? 
+
+fixed Integer cost(Action a) =
+      TabularInterp(1, buys, 5, // profit per buy
+                       marketed, -2 // cost per marketed
+                       );
+
+obs marketed(bernd) = true;
+obs marketed(ingo) = true;
+
+// obs total_cost > 30.0 = true;
+// obs total_cost > 10.0 = true;
+
+// query buys(bernd);
+// query buys(ingo);
+query {p for Person p: marketed(p) == true};
+query {p for Person p: buys(p) == true};
+query {p for Person p: marketed(p) == true & buys(p) == false};
+// query {marketed(p) for Person p};
+// query {buys(p) for Person p};
+// query {buys_from_marketing(p) for Person p: buys(p) == true};
+// query {buys_from_trust(p1,p2) for Person p1, Person p2: buys(p1) == true};
+query total_cost;

@@ -1,0 +1,86 @@
+/*
+
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/06_more_features.html
+  """
+  Suppose we are packing our bags to go on a trip. We have a set of items, each having a 
+  particular weight, and we pack each item with probability inversely proportional to its 
+  weight. We want to compute the probability that we will have excess baggage, i.e., 
+  that the total weight of our baggage will exceed a given limit. We can model this with 
+  the following ProbLog program.
+
+  Note that this program uses several Prolog builtins such as support for lists and 
+  arithmetic. The program also uses another feature of ProbLog2, namely support for 
+  (intensional) probabilistic facts with a `flexible’ probability. This means that the 
+  probability is not prespecified but is an arithmetic expression that needs to be 
+  computed. In the program, this is used in the intensional probabilistic 
+  fact “P::pack(Item) :- …”, which says that the probability of packing an item is 
+  inversely proportional to its weight. Such a flexible probability can be used in 
+  ProbLog2 under the restriction that the arithmetic expression can be evaluated at 
+  call-time (i.e., by the time the probabilistic fact is reached by SLD resolution to 
+  prove the queries and evidence).
+  """
+
+  Note: This not the same approach as the ProbLog model (since it use list manipulation, e.g. [H|T] constructs
+  which I don't know how to do in BLOG.
+  (The model is actually more like MiniZinc than Prolog.)
+
+
+*/
+
+
+fixed Real limit = 8.0;
+// fixed Real limit = 4.0;
+// fixed Real limit = 10.0;
+// fixed Real limit = 18.0;
+
+// I thought of a scenario that we want to
+// calculate backward, e.g. what limit whould
+// there be if we want 50% change of excess...
+// random Real limit ~ UniformReal(1,10);
+
+type Item;
+distinct Item skis, boots, helmet, gloves;
+
+/*
+
+fixed Integer weight(Item i) =
+  TabularInterp(1, skis, 6,
+                 boots, 4,
+                 helmet, 3,
+                 gloves, 2);
+
+*/
+
+// Cannot use a fixed TabularInterp1
+random Integer weight(Item i) ~
+       if i == skis then 6
+       else if i == boots then 4
+       else if i == helmet then 3
+       else if i == gloves then 2;
+
+
+fixed Real weight_inv(Item i) = 1.0/weight(i);
+
+// random Boolean selected(Item i) ~ BooleanDistrib(0.5);
+random Boolean selected(Item i) ~ BooleanDistrib(1.0/weight(i));
+
+random Real sumWeights ~ sum({weight(i) for Item i: selected(i) == true});
+
+// We want the probability the we excess the weight.
+random Boolean excess(Real v) ~ sumWeights > v; 
+
+// Here we enforce that we don't excess the weights
+// obs excess(limit) = true;
+
+query excess(limit);
+// query limit;
+
+query sumWeights;
+// Show all combinations of items
+// query {i, weight(i) for Item i: selected(i) == true};
+
+// Only show the combinations that are <= 8.0.
+// It's not the same thing as the previous one!
+// query {i, weight(i) for Item i: selected(i) == true & sumWeights <= limit};
+
+query {i, weight(i) for Item i: selected(i) == true & sumWeights > limit};

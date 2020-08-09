@@ -1,0 +1,107 @@
+/*
+  From
+  "Probabilistic logic programming and its applications"
+  Luc De Raedt, Leuven
+  https://www.youtube.com/watch?v=3lnVBqxjC88
+  @ 3:44
+
+  """
+  Mike has a bag of marbles with 4 white, 8 blue, and
+  6 red marbles. He pulls out one marble from the bag
+  and it is red. What is the probability that the
+  second marble he pulls out of the bag is white?
+
+  The answer is 0.234931.
+  """
+
+*/
+
+
+type Color;
+distinct Color white, blue, red;
+
+fixed Real start(Color c) =
+      TabularInterp(1, white, 4,
+                       blue, 8,
+                       red, 6);
+
+
+/*
+// Case of two draws.
+// Distribution of values for draw(1)
+//         blue    0.47430000000000455
+//         red     0.28730000000000055
+//         white   0.238400000000002
+random Color draw(Integer t) ~
+       if t == 0 then
+          Categorical({white -> 3, blue -> 8, red -> 6})
+       else
+          case draw(0) in
+          {white -> Categorical({white -> 3, blue -> 8, red -> 6}),
+           blue  -> Categorical({white -> 4, blue -> 7, red -> 6}),
+           red   -> Categorical({white -> 4, blue -> 8, red -> 5})
+          }
+       ;
+*/
+
+
+//
+// Generalized version.
+//
+
+// Count how many previous times we picked Color c.
+// I moved the base case here
+random Integer previous(Integer t, Color c) ~
+    size({1 for Integer i: i >= 0 & i < t & c == draw(i)});
+
+// Draw a color for time t
+// I do like that it's quite easy to do recursion in BLOG!
+random Color draw(Integer t) ~
+   Categorical({
+        white -> start(white)-previous(t, white),
+        blue -> start(blue)-previous(t, blue),
+        red -> start(red)-previous(t, red)}
+        );
+
+
+obs draw(0) = red;
+
+query draw(1);
+query draw(2);
+query draw(3);
+
+/*
+query previous(1, red);
+query previous(1, white);
+query previous(1, blue);
+
+query previous(2, red);
+query previous(2, white);
+query previous(2, blue);
+*/
+
+// Generalized version.
+// 
+// In order of colors [white, blue, red]
+// E.g.
+// Distribution of values for {previous(5, c) for Color c : true}
+//         [1, 2, 2]       0.3961000000000115
+//         [1, 1, 3]       0.2554000000000053
+//         [0, 2, 3]       0.23170000000000537
+//         [0, 1, 4]       0.10910000000000163
+//         [0, 0, 5]       0.0077000000000000636
+query {previous(1, c) for Color c};
+query {previous(2, c) for Color c};
+query {previous(3, c) for Color c};
+query {previous(4, c) for Color c};
+query {previous(5, c) for Color c};
+
+// And we can now study the probabilities for a certain count of previous draws
+// obs previous(5,red) = 4;
+
+query {previous(15, c) for Color c}; // This works.
+
+// This yields the error "probabilities sum to approximately zero"
+// and it's because there can be only 18 draws (4 white + 8 blue + 6 red = 18)
+// query {previous(19, c) for Color c}; 
+

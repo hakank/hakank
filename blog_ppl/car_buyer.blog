@@ -1,0 +1,139 @@
+/*
+   Car buyer - Neapolital
+
+   From the Netica model Car_Buyer Neapolital.dne
+   """
+   This decision network is from Neapolitan90 (p.373), which is a simpler version of the car 
+   buyer example of Howard62.  Eliminating the rationale given there of how the numbers are 
+   arrived at, we have the following story:
+
+   Joe is going to buy a used car, which could be good with probability 0.8 or a lemon with 
+   probability 0.2.  After accounting for repairs, Joe's profit will be $60 if the car is 
+   good, and $-100 if it is bad.  Before buying the car he has the option of having one test 
+   or two tests done on it.  The first test costs $9, and both together cost $13.  The first 
+   test has a 90% chance of returning positive if the car is good, and a 40% chance if it's 
+   a lemon.  If the first test returns positive, then the second test has a 88.89% chance of 
+   returning positive if the car is good, and a 33.33% chance if it's a lemon.  If the first 
+   test returns negative, then the second test has a 100% chance of returning positive if 
+   the car is good, and a 44.44% chance if it's a lemon.
+
+   Joe has 2 decisions to make: whether to do the tests, and whether to buy the car.  These 
+   are represented by the "Do Tests?" and "Buy It?" decision nodes.  The outcome of the tests 
+   are given by nodes "First Test" and "Second Test".  The costs of the tests are represented 
+   by utility node U, and the profits after repairs (not including test costs) by utility 
+   node V.
+
+   When Joe decides whether to do the tests, he doesn't know the value of any of these 
+   variables, so there are no links entering the "Do Tests?" node.  When he decides whether 
+   to buy, he will know the outcome of both tests (the outcomes may be "not done"), and so 
+   there are links from those two nodes to "Buy It?".  He will also know the value of 
+   "Do Tests?" since he has already made that decision, so you could put a link from that 
+   node to "Buy It?", but it is not necessary since it is a no-forgetting link and there is 
+   already a directed path from "Do Tests?" to "Buy It?".
+   """
+
+*/
+
+type Condition;
+distinct Condition good, lemon;
+
+type DoTests;
+distinct DoTests none, first, both;
+
+type Test;
+distinct Test notDone, positive, negative;
+
+type BuyIt;
+distinct BuyIt buy, dont_buy;
+
+
+random Condition condition ~ Categorical({good->80, lemon->20});
+
+random DoTests do_tests ~ Categorical({none->28,first->26.2, both->22.7333});
+
+random Test first_test ~
+    case [condition, do_tests] in
+    {
+       [good, none] -> Categorical({notDone->100,positive->0,negative->0}),
+       [good, first] ->Categorical({notDone->0,positive->90,negative->10}),
+       [good, both] -> Categorical({notDone->0,positive->90,negative->10}),
+       [lemon, none] -> Categorical({notDone->100,positive->0,negative->0}),
+       [lemon, first] ->Categorical({notDone->0,positive->40,negative->60}),
+       [lemon, both] ->Categorical({notDone->0,positive->40,negative->60})
+    };
+
+
+random Test second_test ~
+   case [first_test, condition, do_tests] in
+   {
+      [notDone, good, none] -> Categorical({notDone->100, positive->0, negative->0}),
+      // [notDone, good, first] -> Categorical({notDone->false, positive->false, negative->false}),
+      // [notDone, good, both] -> Categorical({notDone->false, positive->false, negative->false}),
+      [notDone, lemon, none] -> Categorical({notDone->100, positive->0, negative->0}),
+      // [notDone, lemon, first] -> Categorical({notDone->false, positive->false, negative->false}),
+      // [notDone, lemon, both] -> Categorical({notDone->false, positive->false, negative->false}),
+
+      // [positive, good, none] -> Categorical({notDone->false, positive->false, negative->false}),
+      [positive, good, first] -> Categorical({notDone->100, positive->0, negative->0}),
+      [positive, good, both] -> Categorical({notDone->0, positive->88.889, negative->11.111}),
+      // [positive, lemon, none] -> Categorical({notDone->false, positive->false, negative->false}),
+      [positive, lemon, first] -> Categorical({notDone->100, positive->0, negative->0}),
+      [positive, lemon, both] -> Categorical({notDone->100, positive->33.3333, negative->66.6667}),
+
+      // [negative, good, none] -> Categorical({notDone->false, positive->false, negative->false}),
+      [negative, good, first] -> Categorical({notDone->100, positive->0, negative->0}),
+      [negative, good, both] -> Categorical({notDone->100, positive->0, negative->0}),
+      // [negative, lemon, none] -> Categorical({notDone->false, positive->false, negative->false}),
+      [negative, lemon, first] -> Categorical({notDone->100, positive->0, negative->0}),
+      [negative, lemon, both] -> Categorical({notDone->0, positive->44.4444, negative->55.5556})
+
+   };
+
+
+random BuyIt buy_it ~
+   if
+     (do_tests == first & second_test == notDone & first_test == negative)
+     |
+     (do_tests == both & second_test == positive & first_test == negative)
+     |
+     (do_tests == both & second_test == negative & first_test == positive)
+     |
+     (do_tests == both & second_test == negative & first_test == negative)
+   then dont_buy
+   else buy;
+
+random Integer v ~
+  case [condition, buy_it] in
+  {
+     [good, buy] -> 60,
+     [good, dont_buy] -> 0,
+     [lemon, buy] -> -100,
+     [lemon, dont_buy] -> 0
+  };
+
+
+random Integer u ~
+   case do_tests in
+   {
+     none -> 0,
+     first -> -9,
+     both -> -13
+   };
+
+
+// obs do_tests = both;
+// obs first_test = negative;
+// obs second_test = negative;
+
+obs do_tests = first;
+obs first_test = negative;
+
+query condition;
+query do_tests;
+query first_test;
+query second_test;
+query buy_it;
+query v;
+query u;
+
+query [do_tests,first_test,second_test,buy_it,v,u,v+u];

@@ -1,0 +1,274 @@
+/*
+   From http://nbviewer.jupyter.org/github/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/blob/master/Chapter1_Introduction/Ch1_Introduction_PyMC3.ipynb
+
+
+  Output
+"""
+========  LW Trial Stats =========
+Log of average likelihood weight (this trial): -176.33456537558274
+Average likelihood weight (this trial): 2.6234409215811157E-77
+Fraction of consistent worlds (this trial): 1.0
+Fraction of consistent worlds (running avg, all trials): 1.0
+======== Query Results =========
+Number of samples: 10000
+Distribution of values for tau
+        0       2.1959908332706266E-15
+        1       3.5368904682570285E-15
+        2       2.2416859803343683E-14
+...
+        30      5.658292736982163E-5
+        31      2.3112488040965895E-4
+        32      0.00496792925988585
+        33      7.202009642221003E-4
+        34      1.746084643862351E-4
+        35      0.012766226080814472
+        36      0.015683439683040364
+        37      0.029337970753229033
+        38      0.013409816930034202
+        39      0.13266014233218243
+        40      0.04747477380138928
+        41      0.4613750164064736      <-----
+        42      0.22866754160686714
+        43      0.015299886784160673
+        44      0.01378776123810332
+        45      0.0012027016286823016
+        46      0.016531959525601544
+        47      0.004003934434602328
+        48      0.0012681273424556762
+        49      2.470561526921074E-4
+        50      1.430686002333556E-5
+        51      4.37782749138156E-5
+        52      4.970672141375477E-5
+        53      4.675844455742986E-7
+....
+        108     9.127766143637434E-15
+        109     7.930091210235596E-15
+        110     3.927541558740187E-15
+======== Done ========
+"""  
+
+
+  For blog.sample.MHSampler:
+"""
+======== MH Trial Stats ========
+Fraction of proposals accepted (this trial): 0.0864
+Fraction of proposals accepted (running avg, all trials): 0.0864
+Time spent computing acceptance probs: 0.144 s
+Time spent updating world: 0.02 s
+===== blog.sample.GenericProposer Stats ====
+Initial world attempts: 1
+        Running average (for trials so far): 1.0
+======== Query Results =========
+Number of samples: 10000
+Distribution of values for tau
+        7       7.000000000000069E-4
+        10      6.000000000000056E-4
+        21      2.00000000000002E-4
+        30      0.005100000000000047
+        35      0.0015000000000000126
+        36      0.08100000000000077
+        37      0.093100000000001
+        38      0.036100000000000146
+        39      0.09270000000000098
+        40      0.18000000000000324
+        41      0.2443000000000065   <---
+        42      0.12200000000000233
+        43      0.08000000000000076
+        44      0.006000000000000052
+        45      4.00000000000004E-4
+        46      0.055600000000000295
+        47      7.000000000000069E-4
+======== Done ========
+
+"""
+
+  After that, I wrote a wrapper (./blog_run) which tries to calculate average of the output (which various
+  success):
+"""
+RUNNING SAMPLES: 10000
+FRACTION OF CONSISTENT WORLDS: 1.0
+
+VARIABLE tau
+Mean: 40.2583561097577
+DATA (5 largest probabilities):
+40: 0.26567689639551945 5.57921482430591
+42: 0.17282479560938996 3.62932070779719
+39: 0.14892997813873693 3.12752954091348
+41: 0.12015959149679363 2.52335142143267
+36: 0.06634574389918904 1.39326062188297
+
+
+VARIABLE lambda_1
+Mean: 3.07365470907365
+DATA (5 largest probabilities):
+3.1533340855276886: 0.05422902196325988 542.290219632599
+3.1661229261459116: 0.04747359592880121 474.735959288012
+2.866538673807772: 0.03642397474439751 364.239747443975
+3.4159191683318784: 0.03628413447575466 362.841344757547
+3.3913971172933803: 0.031118208522980056 311.182085229801
+
+
+VARIABLE lambda_2
+Mean: 0.950952661480602
+DATA (5 largest probabilities):
+0.9828696010836769: 0.05422902196325988 542.290219632599
+0.918617019044834: 0.04747359592880121 474.735959288012
+0.8921735240132742: 0.03642397474439751 364.239747443975
+0.9351997772718: 0.03628413447575466 362.841344757547
+0.8901447198742338: 0.031118208522980056 311.182085229801
+"""
+
+
+*/
+
+fixed Integer len = 111;
+fixed Real alpha = 0.581151832460733;  // 1/mean(data)
+
+// Data is according to Poisson with two different lambdas,
+// one before the change point (tau) and one after the change point
+random Integer data(Integer i) ~
+  if tau > i then Poisson(lambda_1) else Poisson(lambda_2);
+
+random Real lambda_1 ~ Exponential(alpha);
+random Real lambda_2 ~ Exponential(alpha);
+// Round to 1 decimal
+// random Real lambda_1_round ~ 0.1 * round(lambda_1 * 10);
+// random Real lambda_2_round ~ 0.1 * round(lambda_2 * 10);
+
+random Real tau ~ UniformInt(0,len-1);
+// Make the interval smaller for presentation purposes...
+// random Real tau ~ UniformInt(30,50);
+
+
+
+query tau;
+query lambda_1;
+query lambda_2;
+// query lambda_1_round;
+// query lambda_2_round;
+
+// Coal miners data from https://pymc-devs.github.io/pymc/tutorial.html
+// 4, 5, 4, 0, 1, 4, 3, 4, 0, 6, 3, 3, 4, 0, 2, 6, 3, 3, 5, 4, 5, 3, 1,
+// 4, 4, 1, 5, 5, 3, 4, 2, 5, 2, 2, 3, 4, 2, 1, 3, 2, 2, 1, 1, 1, 1, 3,
+// 0, 0, 1, 0, 1, 1, 0, 0, 3, 1, 0, 3, 2, 2, 0, 1, 1, 1, 0, 1, 0, 1, 0,
+// 0, 0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 3, 3, 1, 1, 2, 1, 1, 1, 1, 2, 4, 2,
+// 0, 0, 1, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1
+// NOPE! This DO NOT WORK as LHS of an ~ statement!
+// One have to use the obs construct! Darn!
+// fixed Integer[] data = [4, 5, 4, 0, 1, 4, 3, 4, 0, 6, 3, 3, 4, 0, 2, 6, 3, 3, 5, 4, 5, 3, 1,
+// 4, 4, 1, 5, 5, 3, 4, 2, 5, 2, 2, 3, 4, 2, 1, 3, 2, 2, 1, 1, 1, 1, 3,
+// 0, 0, 1, 0, 1, 1, 0, 0, 3, 1, 0, 3, 2, 2, 0, 1, 1, 1, 0, 1, 0, 1, 0,
+// 0, 0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 3, 3, 1, 1, 2, 1, 1, 1, 1, 2, 4, 2,
+// 0, 0, 1, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1];
+
+obs data(0) = 4;
+obs data(1) = 5;
+obs data(2) = 4;
+obs data(3) = 0;
+obs data(4) = 1;
+obs data(5) = 4;
+obs data(6) = 3;
+obs data(7) = 4;
+obs data(8) = 0;
+obs data(9) = 6;
+obs data(10) = 3;
+obs data(11) = 3;
+obs data(12) = 4;
+obs data(13) = 0;
+obs data(14) = 2;
+obs data(15) = 6;
+obs data(16) = 3;
+obs data(17) = 3;
+obs data(18) = 5;
+obs data(19) = 4;
+obs data(20) = 5;
+obs data(21) = 3;
+obs data(22) = 1;
+obs data(23) = 4;
+obs data(24) = 4;
+obs data(25) = 1;
+obs data(26) = 5;
+obs data(27) = 5;
+obs data(28) = 3;
+obs data(29) = 4;
+obs data(30) = 2;
+obs data(31) = 5;
+obs data(32) = 2;
+obs data(33) = 2;
+obs data(34) = 3;
+obs data(35) = 4;
+obs data(36) = 2;
+obs data(37) = 1;
+obs data(38) = 3;
+obs data(39) = 2;
+obs data(40) = 2;
+obs data(41) = 1;
+obs data(42) = 1;
+obs data(43) = 1;
+obs data(44) = 1;
+obs data(45) = 3;
+obs data(46) = 0;
+obs data(47) = 0;
+obs data(48) = 1;
+obs data(49) = 0;
+obs data(50) = 1;
+obs data(51) = 1;
+obs data(52) = 0;
+obs data(53) = 0;
+obs data(54) = 3;
+obs data(55) = 1;
+obs data(56) = 0;
+obs data(57) = 3;
+obs data(58) = 2;
+obs data(59) = 2;
+obs data(60) = 0;
+obs data(61) = 1;
+obs data(62) = 1;
+obs data(63) = 1;
+obs data(64) = 0;
+obs data(65) = 1;
+obs data(66) = 0;
+obs data(67) = 1;
+obs data(68) = 0;
+obs data(69) = 0;
+obs data(70) = 0;
+obs data(71) = 2;
+obs data(72) = 1;
+obs data(73) = 0;
+obs data(74) = 0;
+obs data(75) = 0;
+obs data(76) = 1;
+obs data(77) = 1;
+obs data(78) = 0;
+obs data(79) = 2;
+obs data(80) = 3;
+obs data(81) = 3;
+obs data(82) = 1;
+obs data(83) = 1;
+obs data(84) = 2;
+obs data(85) = 1;
+obs data(86) = 1;
+obs data(87) = 1;
+obs data(88) = 1;
+obs data(89) = 2;
+obs data(90) = 4;
+obs data(91) = 2;
+obs data(92) = 0;
+obs data(93) = 0;
+obs data(94) = 1;
+obs data(95) = 4;
+obs data(96) = 0;
+obs data(97) = 0;
+obs data(98) = 0;
+obs data(99) = 1;
+obs data(100) = 0;
+obs data(101) = 0;
+obs data(102) = 0;
+obs data(103) = 0;
+obs data(104) = 0;
+obs data(105) = 1;
+obs data(106) = 0;
+obs data(107) = 0;
+obs data(108) = 1;
+obs data(109) = 0;
+obs data(110) = 1;

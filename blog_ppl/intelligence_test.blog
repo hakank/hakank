@@ -1,0 +1,94 @@
+/*
+
+  From
+  https://mathematica.stackexchange.com/questions/128945/problems-encoding-a-bayesian-network-with-just-five-nodes-using-probabilitydistr
+
+  Example is from "page 53 in Probabilistic Graphical Models (2009), by Daphne Koller and Neir Friedman:"
+
+  """                                                                                                                                            
+  The network has five nodes (random variables):
+                                                                                                                                              
+  Difficulty of a class taken by a student (0 = easy, 1 = hard)
+  Intelligence of the student (0 = low, 1 = high)
+  Grade achieved by the student (1 = A, 2 = B, 3 = C)
+  SAT score of the student (0 = low, 1 = high)
+  Letter of recommendation by the teacher (0 = False, 1 = True)
+  We would like to use this network to do probabilistic inference (causal or evidential) like:                                                   
+  "What is the probability of the student achieving an A, given that he is intelligent?"
+  """
+
+  Cf ~/problog/intelligence_test.pl
+
+  Note: This BLOG model don't give the same result.
+  Problog model for the evidence intelligence = high
+          grade(a):     0.645174  
+          grade(b):     0.3340816 
+          grade(c):     0.33190048
+
+  cplint give the same answer as ProbLog:
+  ?- prob(grade(G),intelligence(high),P).
+  G = a,
+  P = 0.6451739999999999 ;
+  G = b,
+  P = 0.3340816 ;
+  G = c,
+  P = 0.33190047999999994.
+
+
+  BLOG model for the observation that intelligence == intelligence_high
+          grade_a 0.7405999999999956
+          grade_b 0.16639999999999913
+          grade_c 0.09299999999999906
+  so it must be incorrect.
+
+*/
+
+type Difficulty;
+distinct Difficulty difficulty_easy, difficulty_hard;
+Random Difficulty difficulty ~
+   Categorical({difficulty_easy -> 0.6,difficulty_hard -> 0.4});
+
+
+type Intelligence;
+distinct Intelligence intelligence_low, intelligence_high;
+Random Intelligence intelligence ~
+    Categorical({intelligence_low -> 0.7, intelligence_high -> 0.3});
+
+
+type Grade;
+distinct Grade grade_a, grade_b, grade_c;
+Random Grade grade ~
+   case [intelligence, difficulty] in
+    {
+      [intelligence_low,difficulty_easy]  -> Categorical({grade_a->0.3, grade_b->0.4, grade_c->0.3}),
+      [intelligence_low,difficulty_hard]  -> Categorical({grade_a->0.05, grade_b->0.25, grade_c->0.7}),
+      [intelligence_high,difficulty_easy] -> Categorical({grade_a->0.9, grade_b->0.08, grade_c->0.02}),
+      [intelligence_high,difficulty_hard] -> Categorical({grade_a->0.5, grade_b->0.3, grade_c->0.2})
+    };   
+   
+
+random Boolean letter ~
+       if grade == grade_a then BooleanDistrib(0.9)
+       else if grade == grade_b then BooleanDistrib(0.6)
+       else if grade == grade_c then BooleanDistrib(0.01);
+ 
+
+type SAT;
+distinct SAT sat_low, sat_high;
+random SAT sat ~
+    if intelligence == intelligence_high then Categorical({sat_high -> 0.8, sat_low->0.2})
+    else Categorical({sat_high -> 0.05, sat_low->0.95});
+
+
+// What is the probability of the student achieving an A, given that he is intelligent?
+// obs intelligence = intelligence_high;
+
+// obs sat = sat_high;
+obs letter = false;
+
+// query grade == grade_a;
+query grade;
+query intelligence;
+query difficulty;
+query sat;
+query letter;

@@ -1,0 +1,113 @@
+/*
+
+  Coupon collecter's problem, or card collecter's problem.
+
+  There are N different collecter's cards hidden in a package, but we don't
+  know which card there is in the package we buy.
+  We want to collect all of them, how many packages must one buy to collect
+  all the different cards?
+
+  Note: The assumptions are that the slots are filled using a Poisson process
+  and the parameter will influence the result much.
+
+  I start with Poisson(1) and see what happens...
+
+  For 10 coupons:
+"""
+========  LW Trial Stats =========
+Log of average likelihood weight (this trial): -4.656463480375644
+Average likelihood weight (this trial): 0.009499999999999982
+Fraction of consistent worlds (this trial): 0.0095
+Fraction of consistent worlds (running avg, all trials): 0.0095
+======== Query Results =========
+Number of samples: 10000
+Distribution of values for size({c for Card c : (fill(c) > 0)})
+        10      1.0
+Distribution of values for sum({fill(c) for Card c : true})
+        10.0    0.010526315789473694
+        11.0    0.02105263157894739
+        12.0    0.06315789473684216
+        13.0    0.09473684210526323
+        14.0    0.20000000000000007
+        15.0    0.22105263157894747
+        16.0    0.08421052631578954
+        17.0    0.07368421052631587
+        18.0    0.09473684210526323
+        19.0    0.1157894736842106
+        22.0    0.02105263157894739
+"""
+
+  I.e. one have to buy about 14 packages.
+
+  Note that there are very few worlds that satisfy our requirements (0.0095 trials).
+  For larger N, say 20, we must run quite a few trials. It don't suffice to run
+  1000000 trials with the default sampler: it don't yield any valid world (it ran
+  in about 3:30 minutes).
+
+  However, for -s blog.sample.MHSampler we got a better result (I hope it's better
+  and not some weird artifact of something) by running just 10000 trials:
+
+  $ time blog coupon_collector.blog  -s blog.sample.MHSampler
+"""
+======== MH Trial Stats ========
+Fraction of proposals accepted (this trial): 0.6357
+Fraction of proposals accepted (running avg, all trials): 0.6357
+Time spent computing acceptance probs: 0.073 s
+Time spent updating world: 0.01 s
+===== blog.sample.GenericProposer Stats ====
+Initial world attempts: 12
+        Running average (for trials so far): 12.0
+======== Query Results =========
+Number of samples: 10000
+Distribution of values for size({c for Card c : (fill(c) > 0)})
+        10      1.0
+Distribution of values for sum({fill(c) for Card c : true})
+        10.0    0.003800000000000037
+        11.0    0.02310000000000018
+        12.0    0.05390000000000026
+        13.0    0.09410000000000114
+        14.0    0.1497000000000022
+        15.0    0.1480000000000022
+        16.0    0.15470000000000272
+        17.0    0.13290000000000252
+        18.0    0.09800000000000093
+        19.0    0.06360000000000046
+        20.0    0.04190000000000025
+        21.0    0.022400000000000152
+        22.0    0.009100000000000087
+        23.0    0.003500000000000032
+        24.0    9.000000000000085E-4
+        25.0    3.0000000000000274E-4
+        26.0    1.0000000000000098E-4
+"""
+
+  Time for some N with blog.sample.MHSampler (and Poisson(1) for filling the slots):
+  N  Time
+  ------
+  10  0.9s
+  20  2.0s
+  30 14.8s
+  40 > 11min
+  
+
+*/
+
+
+fixed Integer N = 10;
+
+type Card;
+distinct Card cards[10]; // Note: 10 nust be a constant. It don't work with N!
+
+// We random pick an integer from -5..5 and then ignore all negative (and 0)
+random Integer fill(Card c) ~ UniformInt(-5,5);
+// random Integer fill(Card c) ~ UniformInt(0,N);
+
+// We want at all N different cards.
+obs size({c for Card c: fill(c) > 0}) = N;
+
+// How many different coupons did we got?
+query size({c for Card c: fill(c) > 0});
+
+// query sum({fill(c) for Card c});
+
+query fill(cards[0]);

@@ -1,0 +1,136 @@
+/*
+
+  "Cats and rats and elephants"
+  https://www.allendowney.com/blog/2018/12/11/cats-and-rats-and-elephants/
+  """
+  A few weeks ago I posted 'Lions and Tigers and Bears', 
+  [https://www.allendowney.com/blog/2018/12/03/lions-and-tigers-and-bears/]
+  which poses a Bayesian problem related to the Dirichlet distribution.  If you have 
+  not read it, you might want to start there.
+
+  Now here’s the follow-up question:
+
+    Suppose there are six species that might be in a zoo: lions and tigers and bears, 
+    and cats and rats and elephants. Every zoo has a subset of these species, and every 
+    subset is equally likely.
+
+    One day we visit a zoo and see 3 lions, 2 tigers, and one bear. Assuming that every 
+    animal in the zoo has an equal chance to be seen, what is the probability that the 
+    next animal we see is an elephant?
+  """
+
+  The probability of the subsets in the zoo are:
+  
+  Distribution of values for {a(i) for Integer i : i >= 0 & i <= 5 & x[i] > 0}
+        [bear, tiger, lion]             0.4446636074688
+        [rat, bear, tiger, lion]        0.15971363455190205
+        [cat, bear, tiger, lion]        0.15315237053767566
+        [bear, tiger, elephant, lion]   0.14368861590033336
+        [rat, cat, bear, tiger, lion]   0.032734779809293874
+        [rat, bear, tiger, elephant, lion]      0.03209091745275777
+        [cat, bear, tiger, elephant, lion]      0.03147771520843739
+        [rat, cat, bear, tiger, elephant, lion] 0.002478359070794175
+=
+  Probability that the next animal is an elephant:
+  
+  Distribution of values for (o(6) = elephant)
+        false   0.9690422536826319
+        true    0.03095774631735254
+
+
+  Number of different animals in the zoo:
+  Mean: 3.51253338812409
+  3.0: 0.5449969180193122
+  4.0: 0.3986028354222299
+  5.0: 0.05527018697349491
+  6.0: 0.0011300595849599356
+
+  Note: The approach in this BLOG model is the same as in the
+  "Lions and Tigers and Bears" problem, just added
+    - the three new animals
+    - queries which calculates subsets and number of different animals
+
+
+*/
+
+// The animals.
+fixed Integer lion     = 0;
+fixed Integer tiger    = 1;
+fixed Integer bear     = 2;
+fixed Integer cat      = 3;
+fixed Integer rat      = 4;
+fixed Integer elephant = 5;
+
+// The probabilities to calculate ("aliased" for simplicity)
+random Real probLion      ~ x[0];
+random Real probTiger     ~ x[1];
+random Real probBear      ~ x[2];
+random Real probCat       ~ x[3];
+random Real probRat       ~ x[4];
+random Real probElephant  ~ x[5];
+
+
+// Prior
+// We have a prior of alphas for the Dirichlet distribution.
+// We draw 6 times with the Multinomial distrib with the Dirichlet prior.
+// What is the probability of different combinations of the number of each animal?
+fixed RealMatrix alphas = [1; 1; 1; 1; 1; 1];
+// fixed RealMatrix alphas = [2; 2; 2; 2; 2; 2];
+
+random RealMatrix d ~ Dirichlet(alphas);
+// Draw 6 animals
+// Note: Returns an Integer list (not RealMatrix as stated in the doc)
+random Integer[] x ~ Multinomial(6,d); 
+
+// Posterior: What is the probability of lion, tiger, and bear given the observations?
+random Integer o(Integer i) ~ Categorical({
+       lion     -> probLion,
+       tiger    -> probTiger,
+       bear     -> probBear,
+       cat      -> probCat,
+       rat      -> probRat,
+       elephant -> probElephant});
+
+// Dictionary, for presentation of the subsets
+fixed String a(Integer i) =
+      TabularInterp(1,
+                        0,"lion",
+                        1,"tiger",
+                        2,"bear",
+                        3,"cat",
+                        4,"rat",
+                        5,"elephant");
+
+
+// Observations
+obs o(0) = lion;
+obs o(1) = lion;
+obs o(2) = lion;
+obs o(3) = tiger;
+obs o(4) = tiger;
+obs o(5) = bear;
+
+// query x;
+
+/*
+query probLion;
+query probTiger;
+query probBear;
+query probCat;
+query probRat;
+query probElephant;
+*/
+
+// What is the probability that the next animal seen is an elephant?
+// query o(6) == lion;
+// query o(6) == tiger;
+// query o(6) == bear;
+// query o(6) == cat;
+// query o(6) == rat;
+query o(6) == elephant;
+
+// Which subset of the animals is the most probable?
+query { a(i) for Integer i: i>= 0 & i <= 5 & x[i] > 0 };
+
+// Number of different animals in the zoo
+query sum({1 for Integer i: i>= 0 & i <= 5 & x[i] > 0});

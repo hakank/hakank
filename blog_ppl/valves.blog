@@ -1,0 +1,102 @@
+/*
+   From BayesiaLabs' model Valves.xbl
+   """
+   Three valves are used to control the distribution of a fluid.
+
+   Each valve has two failure modes, Sticks Closed and Sticks Opened (SO).
+
+   The two failures rates of Valve1 are lower than those of Valve2, 
+   and those of Valve2 are lower than those of Valve3
+   """
+
+*/
+
+type State;
+distinct State ok, so, sc;
+
+random State valve1(Integer t) ~
+       if t == -1 then Categorical({ok-> 100, so->0, sc -> 0})
+       else case valve1(t -1) in
+       {
+          ok -> Categorical({ok-> 99.7, so->0.2, sc -> 0.1}),
+          so -> Categorical({ok-> 0, so->100, sc -> 0.1}),
+          sc -> Categorical({ok-> 0, so->0, sc -> 100})
+       };
+
+
+random State valve2(Integer t) ~
+       if t == -1 then Categorical({ok-> 100, so->0, sc -> 0})
+       else case valve1(t -1) in
+       {
+          ok -> Categorical({ok-> 99.5, so->0.3, sc -> 0.2}),
+          so -> Categorical({ok-> 0, so->100, sc -> 0}),
+          sc -> Categorical({ok-> 0, so->0, sc -> 100})
+       };
+
+
+
+random State valve3(Integer t) ~
+       if t == -1 then Categorical({ok-> 100, so->0, sc -> 0})
+       else case valve1(t -1) in
+       {
+          ok -> Categorical({ok-> 99.3, so->0.4, sc -> 0.3}),
+          so -> Categorical({ok-> 0, so->100, sc -> 0.1}),
+          sc -> Categorical({ok-> 0, so->0, sc -> 100})
+       };
+
+
+// Note the parenthesis!
+random Boolean sticks_opened(Integer t) ~
+       if (valve1(t) == so & valve2(t) == ok & valve3(t) == so)
+          |
+          (valve1(t) == so & valve2(t) == so)
+          |
+          (valve1(t) == so & valve2(t) == sc & valve3(t) == so)
+          |
+          (valve1(t) == so & valve2(t) == sc & valve3(t) == so)
+       then true   
+       else false;
+
+
+random Boolean sticks_closed(Integer t) ~
+       if (valve1(t) == ok & valve2(t) == ok & valve3(t) == sc)
+          |
+          (valve1(t) == ok & valve2(t) == so & valve3(t) == sc)
+          |
+          (valve1(t) == ok & valve2(t) == sc & valve3(t) == sc)
+          
+          |
+          (valve1(t) == so & valve2(t) == ok & valve3(t) == sc)
+          |
+          (valve1(t) == so & valve2(t) == so & valve3(t) == sc)
+          |
+          (valve1(t) == so & valve2(t) == sc & valve3(t) == sc)
+
+          |
+          (valve1(t) == sc & valve2(t) == ok & valve3(t) == sc)
+          |
+          (valve1(t) == sc & valve2(t) == so & valve3(t) == sc)
+          |
+          (valve1(t) == sc & valve2(t) == sc & valve3(t) == sc)
+          |
+          (valve1(t) == sc & valve2(t) == sc )
+       then true   
+       else false;
+
+
+random Boolean fluid_distribution(Integer t) ~
+       if sticks_opened(t) == false & sticks_closed(t) == false
+       then true
+       else false;
+
+fixed Integer time = 10; // time >= 550 -> Stack Overflow
+
+query time;
+query valve1(time);
+query valve2(time);
+query valve3(time);
+
+query sticks_opened(time);
+query sticks_closed(time);
+query fluid_distribution(time);
+
