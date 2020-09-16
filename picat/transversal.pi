@@ -1,0 +1,96 @@
+/* 
+
+  Transversals in Picat.
+
+  From 
+  Russ Abbott, Jungsoo Lim, Jay Patel
+  "Constraint programming as the most reliable platform for Web Intelligence"
+  """
+  Given a sequence of sets, a transversal is a non repeating sequence of 
+  elements with the property that the nth element of the traversal belongs 
+  to the nth set in the sequence. 
+  For example, the set sequence {1, 2, 3}, {1, 2, 4}, {1} has
+  three transversals: [2, 4, 1], [3, 2, 1], and [3, 4, 1].
+  """
+
+  Also see: https://github.com/RussAbbott/pylog_FD
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+% The example above
+go ?=>
+  S = [[1,2,3],
+       [1,2,4],
+       [1]
+       ],
+  T = transversal(S),
+  println(T),
+  fail,
+  nl.
+
+go => true.
+
+%
+% Test random instances of length N.
+%
+% Example:
+% S = [[5,4],[6,2],[1,4,2,3],[2,6,5],[1],[5,6,3,4]]
+% [[4,2,3,5,1,6],[4,2,3,6,1,5],[4,6,2,5,1,3],[4,6,3,2,1,5],[5,2,3,6,1,4],[5,2,4,6,1,3],[5,6,3,2,1,4],[5,6,4,2,1,3]]
+%
+go2 ?=>
+  garbage_collect(300_000_000),
+  N = 14,
+  _ = random2(),
+  S = generate_instance(N),
+  println(s=S),
+  % All = findall(T,(T=transversal_lp(S))),
+  All = findall(T,(T=transversal(S))),  
+  println(All),
+  println(len=All.len),
+  nl.
+
+go2 => true.
+
+%
+% Generate a random instance of length N
+%
+generate_instance(N) = S =>
+  S1 = [],
+  foreach(_ in 1..N)
+    NN = 1+random() mod N,
+    SS = [1+random() mod N : _ in 1..NN].remove_dups,
+    S1 := S1 ++ [SS]
+  end,
+  S = S1.
+
+
+% LP approach
+transversal_lp(S) = T =>
+  T1 = [],
+  foreach(I in 1..S.len)
+    SS = S[I],
+    member(J,1..SS.len),
+    T1 := T1 ++ [SS[J]],
+    all_different(T1)
+  end,
+  all_different(T1),
+  T = T1.
+
+% CP approach. Faster
+transversal(S) = T =>
+  N = S.len,
+  T = new_list(N),
+  T :: 1..S.flatten.max(),
+  foreach(I in 1..N)
+    T[I] :: S[I]
+  end,
+  all_different(T),
+  solve($[ff,split],T).
+  
