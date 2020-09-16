@@ -1,0 +1,76 @@
+/*
+   Generating Negative Binomial distribution
+
+   From Handbook on probability distributions
+   page 22ff
+   """
+   The algorithm to simulate a negative binomial distribution NB(m, p) 
+   is simply to generate m random variables geometrically distributed 
+   and to sum them."
+   """
+
+*/
+
+// From Handbook on probability distributions
+// page 19
+// Expectation: (1-p)/p
+// (See geometric_dist.wppl)
+var geometric1 = function(p,n) {
+    var u = uniform(0,1);
+    return u > p ? geometric1(p,n+1) : n;
+
+}
+
+var geometric = function(p) {
+    return geometric1(p,0);
+}
+
+
+// From Handbook on probability distributions
+// page 23
+// Expectation: m*(1-p)/p
+var negative_binomial = function(m,p) {
+    var g = mapN(function() { return geometric(p)}, m);
+    return sum(g);
+
+}
+
+
+var model = function() {
+
+    // See negative_binomial_test.wppl
+    var d = negative_binomial(3,0.7);
+
+    return {
+        d:d
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["d"]);
+
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("d");

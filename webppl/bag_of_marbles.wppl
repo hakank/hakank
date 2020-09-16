@@ -1,0 +1,85 @@
+/*
+  From
+  "Probabilistic logic programming and its applications"
+  Luc De Raedt, Leuven
+  https://www.youtube.com/watch?v=3lnVBqxjC88
+  @ 3:44
+
+  """
+  Mike has a bag of marbles with 4 white, 8 blue, and
+  6 red marbles. He pulls out one marble from the bag
+  and it is red. What is the probability that the
+  second marble he pulls out of the bag is white?
+
+  The answer is 0.234931.
+  """
+
+  This webppl model as well as the cplint and the PSI models give a slightly different
+  answer: 0.2352941176470588
+
+  Cf ~/cplint/bag_of_marbles.pl
+     ~/blog/bag_of_marbles.blog
+     ~/psi/bag_of_marbles.psi
+
+  Also see bag_of_marbles2.wppl for an alternative approach (using recursion as the BLOG model).
+
+*/
+
+
+var model = function() {
+
+    var white = 0;
+    var blue  = 1;
+    var red   = 2;
+    var colors = [white,blue,red];
+    
+    var start = function(c) {
+        var s = [4,8,6];        
+        return s[c];
+
+    }
+    
+    var draw0 = categorical({
+                ps:[start(white),
+                    start(blue),
+                    start(red)
+                   ],
+                vs:colors
+    });
+    
+    var draw1 = (function() {
+        if (draw0 == white) {
+            return categorical({ps:[start(white)-1,start(blue),start(red)],vs:colors});
+        } else if (draw0==blue) {
+            return categorical({ps:[start(white),start(blue)-1,start(red)],vs:colors});
+        } else {
+            // red
+            categorical({ps:[start(white),start(blue),start(red)-1],vs:colors});
+        }
+    })();
+
+
+    condition(draw0 == red);
+
+    return {
+        draw0:draw0,
+        draw1:draw1,
+        draw1white:draw1===white
+    };
+}
+
+var d = Infer(model);
+// var d = Infer({method:"rejection",samples:10000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["draw0","draw1","draw1white"]);

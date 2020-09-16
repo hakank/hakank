@@ -1,0 +1,100 @@
+/*
+   Generating Gaussian(0,1) distribution
+
+   From Handbook on probability distributions
+   page 47ff
+
+*/
+
+// From Handbook on probability distributions
+// page 49
+// """
+// The Box-Muller algorithm produces normal random variates:
+// * generate U, V from a uniform U(0, 1) distribution,
+// * compute X = sqrt(−2*log(U))*cos(2*π*V) and Y = sqrt(−2*log(U))*sin(2*π*V ).
+// In outputs, X and Y follow a standard normal distribution (independently).
+// ...
+//
+// But there appears that this algorithm under estimates the tail
+// of the distribution (called the Neave effect, cf. Patard (2007)),
+// most softwares use the inversion function method, consist in
+// computing the quantile function Φ-1 of a uniform variate. 
+// """
+var gaussian01 = function() {
+    var u = uniform(0,1);
+    var v = uniform(0,1);
+    // var x = Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+    var y = Math.sqrt(-2*Math.log(u))*Math.sin(2*Math.PI*v);
+
+    // return x;
+    return y;    
+}
+
+
+var gaussian_dist = function(mean,std) {
+    return mean + (gaussian01() * std);
+}
+
+// The built-in gaussian(0,1)
+// v: g
+// min: -3.894412483056407 mean: 0.008592273710575889 max: 3.8780499595728637 stdev: 1.0045250425111776
+
+// gaussian01. Note that the tails can be somewhat off
+// v: g2
+// min: -4.114168857608587 mean: -0.008133639754072382 max: 4.79660170344232 stdev: 0.9867042515853381
+// 
+var model = function() {
+     
+    var g = gaussian(0,1); // Built-in version
+    var g2 = gaussian01(); // This version
+
+    var mean = 100;
+    var std = 10;
+    var g3 = gaussian(mean,std); // Built-in version
+    var g4 = gaussian_dist(mean,std); // This version
+
+    return {
+        g:g,
+        g2:g2,
+        g3:g3,
+        g4:g4,
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// exp_map(d,["g","g2"]);
+
+var stat = function(v) {
+    console.log("\nv:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("\nmin:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+console.log("The built-in gaussian(0,1)");
+stat("g");
+
+console.log("\ngaussian01. Note that the tails can be somewhat off");
+stat("g2");
+
+console.log("The built-in gaussian(100,10)");
+stat("g3");
+
+console.log("\nThis models gaussian(100,10)");
+stat("g4");

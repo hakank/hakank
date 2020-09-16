@@ -1,0 +1,89 @@
+/*
+   Locomotive problem.
+
+   From Think Bayes, page 22ff
+   """
+   I found the locomotive problem in Frederick Mosteller's "Fifty Challenging
+   Problems in Probability with Solutions" (Dover, 1987):
+      'A railroad numbers its locomotives in order 1..N. One day you
+       see a locomotive with the number 60. Estimate how many loco-
+       motives the railroad has.'
+
+   ...
+
+   The mean of the posterior is 333, so that might be a good guess if you wanted to
+   minimize error.
+   """
+
+   Cf ~/blog/locomotive_problem.blog
+   
+   Cf german_tank.wppl, german_tank_int.wppl, german_tank_int2.wppl
+
+   This model (with maxInt 1000) give the result of 334.04414386751915.
+
+   As the book (Think Bayes) mentions, note that it's very sensitive to 
+   the value of maxInt. Here are some results for different maxInt:
+   
+   maxInt  N
+   -------------------------
+    100    77.8166306057923
+    200   115.84577808279282
+    500   207.2393675826458
+   1000   334.04414386751915 
+   2000   553.5237331955558
+
+
+   Mosteller's solution: 2*(60-1)+1: 119.
+
+   german_tank_int2.wppl with ys = [60] (and NN=1000): 333.4198932637109.
+
+*/
+
+var model = function() {
+
+    var ys = [60];
+    
+    var maxInt = 1000;    
+    var priors = mapN(function(i) { return 1/(i+1)}, maxInt);
+    
+    // Generate a "proposal" of N
+    var N1 =  discrete(priors);
+    
+    var locomotive = 1+randomInteger(maxInt);
+    
+    // Check if the proposal is larger than the observed locomotive,
+    // if so, accept the proposal. If not -> null (which is filtered out below).
+    var N = N1 >= locomotive ? N1 : null;
+    // var N = (function() {
+    //     if (N1 >= locomotive) {
+    //         return N1
+    //     } else {
+    //         return null;
+    //     }
+    // })();
+    
+    condition(locomotive == 60);
+   
+    // Filter out null values of N. Not pretty...
+    condition(N != null);
+    
+    return {
+        locomotive:locomotive,
+        N:N
+    };
+
+}
+
+var d = Infer({method:"enumerate"},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    // display("Marginals:");
+    // map(function(a) {display(a);display(marginalize(d, a)) }, arr); 
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["N","locomotive"]);

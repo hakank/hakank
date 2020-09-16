@@ -1,0 +1,142 @@
+/*
+   Simpson's paradox
+
+   http://cplint.eu/example/inference/simpson.swinb
+   """
+   From "Pearl, Judea. Causality. Cambridge university press, 2009"
+
+   Simpson's paradox ... refers to the phenomenon whereby an event C
+
+   increases the probability of E in a given population p and, at the same time, decreases the probability 
+   of E in every subpopulation of p. In other words, if F and ¬F are two complementary properties describing two 
+   subpopulations, we might well encounter the inequalities
+     P(E|C)>P(E|¬C)
+     P(E|C,F)<P(E|¬C,F)
+     P(E|C,¬F)<P(E|¬C,¬F)
+   ... 
+  For example, if we associate C (connoting cause) with taking a certain drug, E (connoting effect) with 
+  recovery, and F with being a female, then ... the drug seems to be harmful to both males and females yet 
+  beneficial to the population as a whole. 
+  """
+
+*/
+
+/*
+female:0.5.
+
+recovery:0.6:- drug,\+ female.
+recovery:0.7:- \+ drug,\+ female.
+
+recovery:0.2:- drug,female.
+recovery:0.3:- \+ drug,female.
+
+drug:30/40:- \+ female.
+drug:10/40:-female.
+
+
+If we query for the conditional probabilities of recovery given treatment
+on the whole population and on the two subpopulations, we get the results
+in the tables above:
+?- prob(recovery,drug,P).
+P = 0.49999999999999994
+
+?- prob(recovery,\+ drug,P).
+P = 0.40000000000000013
+
+?- prob(recovery,(drug,female),P).
+P = 0.2
+
+?- prob(recovery,(\+drug,female),P).
+P = 0.3000000000000001
+
+?- prob(recovery,(drug,\+female),P).
+P = 0.6
+
+?- prob(recovery,(\+ drug,\+female),P).
+P = 0.7000000000000002
+
+
+  This model give the same values:
+  prob(recovery|drug): 0.5
+  prob(recovery|\+ drug): 0.4000000000000001
+  prob(recovery|(drug,female)): 0.20000000000000007
+  prob(recovery|(\+drug,female)): 0.30000000000000004
+  prob(recovery|(drug,\+female)): 0.6000000000000001
+  prob(recovery|(\+ drug,\+female)): 0.7
+
+
+
+*/
+
+var model1 = function() {
+
+    var female = flip(0.5);
+    
+    var drug = female ? flip(10/40.0) :  flip(30/40.0); 
+    
+    var recovery = (drug == true && female==true) ? flip(0.2) :
+        (drug == true && female==false) ? flip(0.6) :
+        (drug == false && female==true) ? flip(0.3) :
+        (drug == false && female==false) ? flip(0.7) : false;
+
+    
+    // condition(drug == true);
+    condition(drug == false);
+    // condition(female == true);
+    condition(female == false);
+    // condition(recovery == true);
+    // condition(recovery == false);
+
+    return {
+        female:female,
+        recovery:recovery,
+        drug:drug
+    };
+
+}
+
+// var d = Infer(model1);
+// display(d);
+
+
+// var exp_map = function(d,arr) {
+//     display("Marginals:");
+//     map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+//     display("expectation:");
+//     display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+//     display("MAP:");
+//     display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+// }
+
+// exp_map(d,["female","recovery","drug"]);
+
+
+//
+// This variant systematically tests all combinations
+//
+var model = function(drugval,femaleval) {
+   
+    return function() {
+    
+        var female = flip(0.5);
+        
+        var drug = female ? flip(10/40.0) :  flip(30/40.0); 
+        
+        var recovery = (drug == true && female==true) ? flip(0.2) :
+            (drug == true && female==false) ? flip(0.6) :
+            (drug == false && female==true) ? flip(0.3) :
+            (drug == false && female==false) ? flip(0.7) : false;
+        
+        condition(drug == drugval);
+        if (femaleval != "") {
+            condition(female == femaleval);
+        }
+        
+        return {recovery:recovery};
+    }
+
+}
+
+// "" -> ignore value
+var a = [[true,""],[false,""],[true,true],[true,false],[false,true],[false,false]];
+console.log(map(function([d,f]) { return ["drug:",d,"female:",f, Infer(model(d,f))] },a));

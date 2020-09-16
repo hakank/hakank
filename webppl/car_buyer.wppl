@@ -1,0 +1,130 @@
+/*
+   Car buyer - Neapolital
+
+   From the Netica model Car_Buyer Neapolital.dne
+   """
+   This decision network is from Neapolitan90 (p.373), which is a simpler version of the car 
+   buyer example of Howard62.  Eliminating the rationale given there of how the numbers are 
+   arrived at, we have the following story:
+
+   Joe is going to buy a used car, which could be good with probability 0.8 or a lemon with 
+   probability 0.2.  After accounting for repairs, Joe's profit will be $60 if the car is 
+   good, and $-100 if it is bad.  Before buying the car he has the option of having one test 
+   or two tests done on it.  The first test costs $9, and both together cost $13.  The first 
+   test has a 90% chance of returning positive if the car is good, and a 40% chance if it's 
+   a lemon.  If the first test returns positive, then the second test has a 88.89% chance of 
+   returning positive if the car is good, and a 33.33% chance if it's a lemon.  If the first 
+   test returns negative, then the second test has a 100% chance of returning positive if 
+   the car is good, and a 44.44% chance if it's a lemon.
+
+   Joe has 2 decisions to make: whether to do the tests, and whether to buy the car.  These 
+   are represented by the "Do Tests?" and "Buy It?" decision nodes.  The outcome of the tests 
+   are given by nodes "First Test" and "Second Test".  The costs of the tests are represented 
+   by utility node U, and the profits after repairs (not including test costs) by utility 
+   node V.
+
+   When Joe decides whether to do the tests, he doesn't know the value of any of these 
+   variables, so there are no links entering the "Do Tests?" node.  When he decides whether 
+   to buy, he will know the outcome of both tests (the outcomes may be "not done"), and so 
+   there are links from those two nodes to "Buy It?".  He will also know the value of 
+   "Do Tests?" since he has already made that decision, so you could put a link from that 
+   node to "Buy It?", but it is not necessary since it is a no-forgetting link and there is 
+   already a directed path from "Do Tests?" to "Buy It?".
+   """
+
+  Cf ~/blog/car_buyer.blog
+
+*/
+
+var model = function() {
+
+    var conditions = ["good", "lemon"];
+    var doTests = ["none", "first", "both"];
+    var tests = ["notDone", "positive", "negative"];
+        
+    var conditionx = categorical({ps:[80,20],vs:["good","lemon"]});
+    var do_tests = categorical({ps:[28,26.2,22.7333],vs:doTests});
+
+    var first_test =
+        (conditionx=="good" && do_tests=="none")  ? categorical({ps:[100,0,0],vs:tests}) :
+        (conditionx=="good" && do_tests=="first") ? categorical({ps:[0,90,10],vs:tests}) :
+        (conditionx=="good" && do_tests=="both")  ? categorical({ps:[0,90,10],vs:tests}) :
+        (conditionx=="lemon"&& do_tests=="none")  ? categorical({ps:[100,0,0],vs:tests}) :
+        (conditionx=="lemon"&& do_tests=="first") ? categorical({ps:[0,40,60],vs:tests}) :
+        (conditionx=="lemon"&& do_tests=="both")  ? categorical({ps:[0,40,60],vs:tests}) : "first_test_xxx";
+    
+    var second_test =
+        (first_test=="notDone" && conditionx=="good" && do_tests=="none")    ? categorical({ps:[100, 0, 0],vs:tests}) :
+        (first_test=="notDone" && conditionx=="lemon" && do_tests=="none")   ? categorical({ps:[100, 0, 0],vs:tests}) :
+        
+        (first_test=="positive" && conditionx=="good" && do_tests=="first")  ? categorical({ps:[100, 0, 0],vs:tests}) :
+        (first_test=="positive" && conditionx=="good" && do_tests=="both")   ? categorical({ps:[0, 88.889, 11.111],vs:tests}) :
+        
+        (first_test=="positive" && conditionx=="lemon" && do_tests=="first") ? categorical({ps:[100, 0, 0],vs:tests}) :
+        (first_test=="positive" && conditionx=="lemon" && do_tests=="both")  ? categorical({ps:[100, 33.3333, 66.6667],vs:tests}) :
+        
+        (first_test=="negative" && conditionx=="good" && do_tests=="first")  ? categorical({ps:[100, 0, 0],vs:tests}) :
+        (first_test=="negative" && conditionx=="good" && do_tests=="both")   ? categorical({ps:[100, 0, 0],vs:tests}) :
+        
+        (first_test=="negative" && conditionx=="lemon" && do_tests=="first") ? categorical({ps:[100, 0, 0],vs:tests}):
+        (first_test=="negative" && conditionx=="lemon" && do_tests=="both")  ? categorical({ps:[0, 44.4444, 55.5556],vs:tests}) : "second_testxxx";
+    
+    
+    var buy_it = (
+        (do_tests == "first" && second_test == "notDone" && first_test == "negative")
+            ||
+            (do_tests == "both" && second_test == "positive" && first_test == "negative")
+            ||
+            (do_tests == "both" && second_test == "negative" && first_test == "positive")
+            ||
+            (do_tests == "both" && second_test == "negative" && first_test == "negative")
+    ) ? "dont_buy" : "buy";
+    
+
+    var v =
+        (conditionx=="good"  && buy_it=="buy")      ? 60   :
+        (conditionx=="good"  && buy_it=="dont_buy") ? 0    :
+        (conditionx=="lemon" && buy_it=="buy")      ? -100 :
+        (conditionx=="lemon" && buy_it=="dont_buy") ?  0   : "v_xxx";
+    
+    var u =
+        do_tests == "none" ? 0 :
+        do_tests == "first" ? -9 :
+        do_tests == "both" ? -13 : "u_xxx"
+    
+    
+    condition(do_tests == "both");
+    condition(first_test == "negative");
+    // condition(second_test == "negative");
+
+    // condition(do_tests == "first");
+    // condition(first_test == "negative");
+    // condition(buy_it=="buy");
+    // condition(v>0);
+
+    return {
+        conditionx:conditionx,
+        do_tests:do_tests,
+        first_test:first_test,
+        second_test:second_test,
+        buy_it:buy_it,
+        v:v,
+        u:u,
+        comb:[do_tests,first_test,second_test,buy_it,v,u,v+u]
+    };
+
+}
+
+var d = Infer(model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+exp_map(d,["conditionx","do_tests","first_test","second_test","buy_it","v","u","comb"]);

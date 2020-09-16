@@ -1,0 +1,96 @@
+/*
+  Second assignment of the CPLINT course:
+  https://edu.swi-prolog.org/mod/assign/view.php?id=243
+  """
+  http://cplint.eu/p/cards.swinb
+  Cards
+
+  Suppose you have two decks of poker cards (52 cards, 4 suits, 13 ranks: A, K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2).
+
+  Suppose you draw a card from the first deck and one from the second.
+
+  Write a program to compute the probability that in this way you obtain one pair (two cards of the same rank).
+
+  Can you do it with a single probabilistic clause?
+
+  Add code to compute the probability that you draw at least one ace.
+  """
+
+  Note that the two cards are from two different deck of cards!
+
+  See ~/blog/cards.blog
+      ~/psi/cards.blog
+
+"""
+
+*/
+
+/*
+expectation:
+[ [ 'pair', 0.07692307692307696 ],
+  [ 'at_least_an_ace', 0.14792899408284022 ],
+  [ 'exactly_one_ace', 0.1420118343195266 ],
+  [ 'two_aces', 0.005917159763313609 ],
+  [ 'a_kind_or_a_queen_in_spades', 0.07544378698224857 ] ]
+
+Compare with PSI model (which has exact probabilities)
+  probPair: 0.076923076923077
+  atLeastAnAce: 0.14792899408284
+  exactlyAnAce: 0.142011834319527,
+  twoAces: 0.005917159763314
+  kingOrQueenInSpaces: 0.075443786982249
+
+And these are the same and webppl has some more decimals!
+
+*/
+var model = function() {
+    var suits = ["hearts", "spades", "clubs", "diamonds"];
+    var ranks = ["ace", "king", "queen", "jack", "v10", "v9", "v8", "v7", "v6", "v5", "v4","v3", "v2"];
+    
+    var suit = mem(function(c) {
+        return uniformDraw(suits);
+    });
+    
+    var rank = mem(function(c) {
+        return uniformDraw(ranks);
+    });
+
+    // Probability of a pair
+    var pair = rank(0) == rank(1);
+
+    // At least an ace
+    var at_least_an_ace = rank(0) == "ace" || rank(1) == "ace";
+
+    // Exactly one ace
+    var exactly_one_ace = (rank(0) == "ace") + (rank(1) == "ace") == 1;
+
+    // Two aces
+    var two_aces = (rank(0) == "ace") + (rank(1) == "ace")  == 2;
+    
+    // A King or a Queen in spades
+    var a_kind_or_a_queen_in_spades =
+        ((rank(0) == "king" || rank(0) == "queen") && (suit(0) == "spades")) || 
+        ((rank(1) == "king" || rank(1) == "queen") && (suit(1) == "spades"));
+
+    return {pair:pair,
+            at_least_an_ace:at_least_an_ace,
+            exactly_one_ace:exactly_one_ace,
+            two_aces:two_aces,
+            a_kind_or_a_queen_in_spades:a_kind_or_a_queen_in_spades
+           };
+}
+
+var d = Infer(model); // exact results
+// var d = Infer({method:"enumerate"},model); // same as Infer(model)
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));    
+}
+
+exp_map(d,["pair","at_least_an_ace","exactly_one_ace","two_aces","a_kind_or_a_queen_in_spades"]);

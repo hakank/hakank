@@ -1,0 +1,76 @@
+/*
+   Generating Gamma distribution
+
+   Note: Only the integer variant is implemented.
+
+   From Handbook on probability distributions
+   page 61ff
+
+*/
+
+// See exponential_dist.wppl
+var exponential_dist = function(lambda) {
+    var u = uniform(0,1);
+    return -1*Math.log(u)/lambda;
+}
+
+// From Handbook on probability distributions
+// page 60
+// """
+// Simulate a gamma G(a, lambda) is quite tricky for non integer shape parameter.
+// Indeed, if the shape parameter a is integer, then we simply sum a exponential
+// random variables E(lambda). Otherwise we need to add a gamma variable
+// G(α−abs(α), lambda). This is carried out by an acceptance/rejection method.
+// """
+// Note this only supports integer a.
+// And to compare with the built-in gamma function, we inverse the lambda
+// parameter.
+var gamma_int = function(a, lambda) {
+    var s = mapN(function(i) { return exponential_dist(1/lambda)},a);
+    return sum(s);
+}
+
+
+var model = function() {
+    var a = 4;
+    var lambda = 1/2;
+    
+    var g = gamma_int(a, lambda);
+    var g2 = gamma(a,lambda); // built-in method
+
+    return {
+        g:g,
+        g2:g2,
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// exp_map(d,["g2"]);
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+console.log("gamma_int(4,2)");
+stat("g");
+console.log("gamma(4,2), built-in");
+stat("g2");

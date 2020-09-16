@@ -1,0 +1,99 @@
+/*
+   Ruin problem.
+
+   cf ~/blog/ruin_problem.blog
+
+   This version use a fixed max time (length) of the sequences.
+
+   For about maxT <= 10-12 it's reasonable to use method:enumerate. 
+   Longest sequences takes much longer time...
+
+*/
+
+var model = function() {
+
+    var maxT = 12;
+    
+    var coins = ["head", "tail"]; // , "neither"];
+    var start = 1; // >= 1
+    var win = 1;
+    var loose = 1;
+    
+    // Draw a coin at timestep t:
+    var draw = mem(function(t) {
+        if (t == 0) {
+            return "head";
+        } else {
+            return uniformDraw(coins);
+        }
+    })
+    
+    // What is the score at time t?
+    // After ruin there's no way back at the game again.
+    var amount1 = function(t) {
+        if (t == 0) {
+            return start;
+        } else if (amount1(t-1) <= 0) {
+            return 0;
+        } else if (draw(t) == "head") {
+            return amount1(t-1) + win;
+        } else {
+            if (amount1(t-1) - loose < 0) {
+                return 0;
+            } else {
+                return amount1(t-1) - loose;
+            }
+        }
+    }
+    var amount = mem(function(t) { return amount1(t); });
+    
+    // Is the player busted at time t?
+    // This is the first time the player bused
+    var ruin = mem(function(t) {
+        if (amount(t) <= 0) {
+            return true;
+        } else {
+            return false;
+        }
+    })
+    
+    var amountArray = filter(function(i) {return i > 0}, mapN(function(t) { return amount(t)},maxT));
+    var len = filter(function(i) {return i > 0}, amountArray).length;
+
+    
+    // condition(ruin(5)==true);
+    // condition(amount(maxT-1)==8);
+    
+    return {
+        // amount: amountArray,
+        len:len,
+        // ruin_ix:_.min(mapN(function(t) { return (t+1)*(amount(t)<=0)},maxT))-1,
+        // // ruin_time:_.min(mapN(function(t) { return t*ruin(t)},maxT)),
+        // draw:mapN(function(t) { return draw(t)},maxT),
+        // // ruined_first_time:mapN(function(t) { return ruined_first_time(t)},maxT),
+        // amount0:amount(0),
+        // amount1:amount(1),
+        // amount2:amount(2),
+        // amount3:amount(3),
+        amount_t:amount(maxT-1), 
+        ruin_t:ruin(maxT-1)
+    }
+}
+
+var d = Infer(model);
+// var d = Infer({method:"enumerate"},model);
+// var d = Infer({method:"rejection",samples:1000},model);
+// var d = Infer({method:"SMC",particles:1000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["amount_t","ruin_t","len"]);

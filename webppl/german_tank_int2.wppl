@@ -1,0 +1,84 @@
+/*
+  German tank problem
+
+  https://en.wikipedia.org/wiki/German_tank_problem
+
+  See  ~/stan/german_tank.py
+      ~/blog/german_tank_int.blog
+
+  Using mapIndexed instead of "BLOG style" conditioning.
+
+  Note: The model is quite sensitive to the value of NN.
+  For method:enumerate (i.e. exact calculations).
+  For ys = [10,256,202,97] the "theoretical Bayesian mean is 382.5
+  - NN = 1000  => N: 364.32518177083074 (2.5s)
+  - NN = 2000  => N: 377.7869413576127 (7s)
+  - NN = 10000 => N: 383.00769155444294 but this takes 2min51s to run.
+
+  Note: SMC (particles:100000) is much faster for NN: 10000 (about 3-5s) but wiggles alot with the expectation.
+
+*/
+
+// 365.6239650394854
+// { val: 257, score: -4.4393043282921845 }
+// expectation: 365.6239650394854 MAP val: 257 MAP score: -4.4393043282921845 MAP prob: 0.01180414747548495
+
+var model = function() {
+    var ys = [10,256,202,97];
+    // var ys = [19, 40, 42, 60]; // expectation: 90 // From https://en.wikipedia.org/wiki/German_tank_problem
+    // var ys = [10,256,202]; // expectation: 408.3195855024936
+    // var ys = [10]; // 217.2719046774794   
+    // var ys = [60]; // for Mosteller's Locomotive problem
+    var NN = 1000; // Our estimated max value of tanks
+
+    // "Theoretical" Bayesian mean
+    // https://en.wikipedia.org/wiki/German_tank_problem
+    var theoret = function(a) {
+        var m = _.max(a);
+        var len = a.length;
+        return (m-1)*(len-1)/(len-2);
+    }
+    
+    var N = 1+randomInteger(NN);
+    var y = function(i) {
+        return 1+randomInteger(N);
+    };
+
+    // observe the values in y
+    mapIndexed(function(i,val) {
+        condition(y(i) == val)
+    }, ys);
+
+    return {N:N,
+            theoret:theoret(ys)
+           };
+    
+}
+
+var d = Infer({model, method: 'enumerate'}); // Much faster than rejectiopn and MCMC! Though very slow on larger NNs (1000)
+// var d = Infer({model, method: 'SMC',particles:100000}); // Quite fast but unreliable results...
+// var d = Infer(model); // Timeouts for larger values of NN.
+// var d = Infer({model, method: 'forward'}); // ignores condition so not relevant!
+// var d = Infer({model, method: 'optimize',samples:1000,steps:1000}); // Error: ELBO: factor score is not finite.
+// var d = Infer({model, method: 'incrementalMH',samples:1000}); // slow
+// var d = Infer({model, method: 'MCMC',kernel:"MH", verbose:true,samples: 1000}); // slow
+// var d = Infer({model, method: 'rejection', samples: 1000}); // slow
+
+// display(d);
+
+// var expect = expectation(d);
+// display(expect);
+// var map = MAP(d);
+// display(map)
+// console.log("expectation:", expect,"MAP val:",map.val,"MAP score:",map.score, "MAP prob:",Math.exp(map.score))
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["N","theoret"]);

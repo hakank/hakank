@@ -1,0 +1,110 @@
+/*
+
+  
+  Number lock problem in MiniZinc.
+  
+  From Presh Talwalkar (MindYourDecisions) 
+  """
+  Puzzles like this have been shared with the dubious claim that "only a
+  genius can solve" them. But they are still fun problems so let's work one
+  out.
+
+  A number lock requires a 3 digit code. Based on these hints, can you crack
+  the code?
+
+   682 - one number is correct and in the correct position
+   645 - one number is correct but in the wrong position
+   206 - two numbers are correct but in the wrong positions
+   738 - nothing is correct
+   780 - one number is correct but in the wrong position
+
+  Video:  https://youtu.be/-etLb-8sHBc
+  """
+
+
+  This model use the same approach as the constraint programming models:
+  - MiniZinc model: http://hakank.org/minizinc/number_lock.mzn
+  - Picat model: http://hakank.org/picat/number_lock.pi
+
+  Cf ~/blog/number_lock.blog
+
+  Result
+  Marginal:
+    {"x":[0,5,2]} : 1
+
+  Nice!
+
+*/
+
+var model = function() {
+    var n = 3; // number of columns
+    var m = 5; // number of rows (i.e. number of hints)
+    
+    var y = mem(function(r, i) {
+        return randomInteger(10); // The data (0..9)
+    })
+    var x = mem(function(i) {
+        return randomInteger(10); // The unknown (0..9)
+    })
+    
+    // Number of digits that's in a correct position (and correct value)
+    var num_correct_positions = mem(function(r) {
+        return sum(mapN(function(i) {return y(r,i) == x(i)},n));
+    })
+    
+    // Number of digits that has correct value (wether in correct position or not)
+    var num_correct_values = mem(function(r) {
+        // toInt(sum({1 for Integer i, Integer j: i >= 0 & i < n & j >= 0 & j < n & y(r,j) == x(i)}));
+        return sum(mapN(
+            function(i) {
+                sum(mapN(function(j) {
+                    return y(r,j) == x(i)
+                },n))
+            },n));
+    })
+    
+    // 682 - one number is correct and in the correct position
+    condition(y(0,0) == 6);
+    condition(y(0,1) == 8);
+    condition(y(0,2) == 2);
+    condition(num_correct_positions(0) == 1);
+    condition(num_correct_values(0) == 1);
+    
+    // 645 - one number is correct but in the wrong position
+    condition(y(1,0) == 6);
+    condition(y(1,1) == 4);
+    condition(y(1,2) == 5);
+    condition(num_correct_positions(1) == 0);
+    condition(num_correct_values(1) == 1);
+    
+    // 206 - two numbers are correct but in the wrong positions
+    condition(y(2,0) == 2);
+    condition(y(2,1) == 0);
+    condition(y(2,2) == 6);
+    condition(num_correct_positions(2) == 0);
+    condition(num_correct_values(2) == 2);
+    
+    // 738 - nothing is correct
+    condition(y(3,0) == 7);
+    condition(y(3,1) == 3);
+    condition(y(3,2) == 8);
+    condition(num_correct_positions(3) == 0);
+    condition(num_correct_values(3) == 0);
+    
+    // 780 - one number is correct but in the wrong position
+    condition(y(4,0) == 7);
+    condition(y(4,1) == 8);
+    condition(y(4,2) == 0);
+    condition(num_correct_positions(4) == 0);
+    condition(num_correct_values(4) == 1);
+    
+    // What the number?
+    return {
+        x:mapN(function(i) {return x(i)},n)
+    }
+        
+}
+
+var d = Infer(model);
+display(d);
+

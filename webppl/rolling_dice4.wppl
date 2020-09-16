@@ -1,0 +1,104 @@
+/*
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/03_dice.html
+  """
+  Let’s consider an infinite number of dice, which we roll one after the other until we see a 
+  six for the first time. What is the probability of stopping after n dice? The first die is always rolled, 
+  those with higher numbers D are only rolled if the previous roll did not stop the process.
+  """
+
+  Cf dice_6_throws.wppl 
+     dice_6_throws2.wppl
+     ~/blog/rolling_dice4.blog
+     ~/psi/rolling_dice4.psi
+  
+  For method:rejection (samples:100000)
+expectation:
+[ [ 'stop1', 0.16487000000000002 ],
+  [ 'stop2', 0.14007 ],
+  [ 'stop3', 0.11912999999999999 ],
+  [ 'stop4', 0.10430999999999999 ],
+  [ 'stop5', 0.09306 ],
+  [ 'stop6', 0.08614999999999995 ],
+  [ 'closed_form1', 0.16666666666666666 ],
+  [ 'closed_form2', 0.1388888888888889 ],
+  [ 'closed_form3', 0.11574074074074076 ],
+  [ 'closed_form4', 0.09645061728395063 ],
+  [ 'closed_form5', 0.0803755144032922 ],
+  [ 'closed_form6', 0.06697959533607684 ] ]
+
+
+  See rolling_dice4_2.wppl for an array version.
+
+*/
+
+
+var model = function() {
+    
+    // Did we stop at time t?
+    var stop = function(tt) {
+        if (dice(tt) == 6) {
+            return true;
+        } else {
+            return false;
+        }
+    };
+    
+    var d = [1,2,3,4,5,6];
+    
+    // Note: we start at time 1 here
+    var dice = function(t) {
+        // Always throw first time
+        if (t == 1) {
+            uniformDraw(d);
+        } else {
+            // We throw until the last time was a 6.
+            // Note that the null condition is needed here...
+            if (dice(t-1) != null && !stop(t-1)) {
+                return uniformDraw(d);
+            }
+        }
+    }
+   
+    // Closed form of the probability
+    // We start at time 1 here as well.
+    var closed_form = function(n) {
+        // return (1/6.0) * ((5/6.0)^(n-1));
+        return (1/6.0) * Math.pow((5/6.0),(n-1));        
+    }
+    
+    return {
+        stop1:stop(1),
+        stop2:stop(2),
+        stop3:stop(3),
+        stop4:stop(4),
+        stop5:stop(5),
+        stop6:stop(6),
+        
+        closed_form1:closed_form(1),
+        closed_form2:closed_form(2),
+        closed_form3:closed_form(3),
+        closed_form4:closed_form(4),
+        closed_form5:closed_form(5),
+        closed_form6:closed_form(6)
+    };
+
+}
+
+// var d = Infer({method:"rejection",samples:100000},model);
+// var d = Infer({method:"enumerate",maxExecutions:100},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:100000,burn:2000,verbose:true},model);
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:100000,burn:2000,verbose:true},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["stop1","stop2","stop3","stop4","stop5","stop6",
+           "closed_form1","closed_form2","closed_form3","closed_form4","closed_form5","closed_form6"]);

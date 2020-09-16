@@ -1,0 +1,73 @@
+/*
+   From BLOG example/stochastic-volatility.blog
+   """
+   stochastic volatility model for stock price
+   @author: leili
+   @date: 2012-09-12
+   """
+*/
+
+var model = function() {
+
+    var Q = [[1, 0], [0, 1]];
+    var mu0 = [[0], [0]]; 
+    var state1 = function(t) {
+        if (t == 0) {
+            return multivariateGaussian({mu:Vector(mu0), cov:Matrix(Q)});
+        } else {
+            return multivariateGaussian({mu:state1(t-1), cov:Matrix(Q)});
+        }
+    }
+    var state = mem(function(t) { return state1(t);});
+    
+    var C = [1, 0];
+    var R = Q;
+    var price = mem(function(t)  {
+        var stateT = state(t);
+        // I don't get T.dot to work...
+        return Gaussian({mu:T.sumreduce(T.mul(Vector(C),stateT)), sigma:1});
+        // return Gaussian({mu:T.dot(Vector(C),stateT), sigma:1});        
+    })
+
+    var p4 = price(4);
+    var p5 = price(5);    
+    observe(p4,-5);
+    observe(p5,15);
+    // var s4 = sample(price(4));
+    // var eps = 2.0
+    // condition(s4 >= -5-eps && s4 <= -5+eps);
+    // var s5 = sample(price(5));
+    // condition(s5 >= 15-eps && s5 <= 15+eps);
+
+    // factor(price(4)==-5 ? 0 : -2000000);
+    // factor(price(5)==15 ? 0 : -2000000);    
+
+    // Round with p precision (e.g. p=0.001 for 3 decimals)
+    var round2 = function(n,p) {
+        return Math.round(n/p)*p
+    }
+    return {
+        state0:map(function(n) {round2(n,0.001)}, T.toScalars(state(0))),        
+        state1:map(function(n) {round2(n,0.001)}, T.toScalars(state(1))),
+        price4:sample(p4),
+        price5:sample(p5),
+    }
+
+}
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:10,verbose:true},model);
+// var d = Infer(model);
+var d = Infer({method:"SMC",particles:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["state0","state1","price4","price5",
+          ]);

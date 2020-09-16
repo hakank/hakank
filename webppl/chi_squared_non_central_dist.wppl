@@ -1,0 +1,79 @@
+/*
+   Generating Non central Chi-squared distribution
+
+   From Handbook on probability distributions
+   page 78ff
+
+*/
+// From Handbook on probability distributions
+// page 79
+// """
+// For integer k degrees of freedom, we can use the definition
+// of the sum, i.e. sum k i[n]dependent normal random variables
+// N(sqrt(lambda,k),1).
+// """
+// Note: I'm not sure how to interpret lambda: Is it the sum of the squares of the mu's
+//       or the actual parameter to the function?
+//       Also, how do we interpret the case with just k as a parameter, i.e. without lambda?
+var non_central_chi_squared_dist_mu = function(k,mu) {
+    var x = sum(mapN(function(i) { return gaussian(mu[i],1)},k));
+    return x;
+}
+// Here we use the lambda direct:
+var non_central_chi_squared_dist = function(k,lambda) {
+    var x = sum(mapN(function(i) { return gaussian(Math.sqrt(lambda/k),1)},k));
+    return x;
+}
+
+var lambda_func = function(mu) {
+    sum(mapN(function(i) {return Math.pow(mu[i],2)},mu.length));    
+}
+
+
+var model = function() {
+    var k = 5;
+    // var mu = [1/2,1/3];
+    var mu = [1/2,1/3,1/4,1/5,1/6];    
+    var lambda = lambda_func(mu);
+    var g = non_central_chi_squared_dist(k,lambda);
+    var g2 = non_central_chi_squared_dist_mu(k,mu);
+
+    return {
+        g:g,
+        g2:g2,
+        lambda:lambda
+
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["g","g2","lambda"]);
+
+var stat = function(v) {
+    console.log("\nv:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("\nmin:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("g");
+stat("g2");
+stat("lambda");
+
+

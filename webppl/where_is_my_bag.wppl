@@ -1,0 +1,67 @@
+/*
+  Where is my bag problem.
+
+  From
+  "Probabilistic Reasoning Under Uncertainty with Bayesian Networks"
+  https://www.bayesia.com/2018-03-02-probabilistic-reasoning-under-uncertainty
+
+  (Also see The BaysiaLabBook "Bayesian Networks BayesiaLab" v1, page 51f.)
+
+  Travel from Singapore -> Tokyo -> Los Angeles.
+  1) The departure of Singapore -> Tokyo is delayed
+  2) Just made the Tokyo -> LA trip. There's a 50/50 change the luggage is on the plane to LA.
+  3) Arriving at LA, waiting for the luggage in 5 minutes, the luggage has not been seen.
+  What is the probability that the bag was in the Tokyo -> LA plane?
+  
+  Answer: The probability that the bag was with the LA plane is 33% (as in the talk).
+
+  From Judea Pearl: The Book of Why.
+
+  Cf ~/blog/where_is_my_bag.blog
+
+*/
+
+var model = function() {
+
+    var maxTime = 10;
+
+    // We know that the bag was on the plane with 50% probability.
+    // Variant: https://www.youtube.com/watch?v=c71pnonOMkI&t=1074s it's 80/20.
+    var bag_on_plane = flip(0.5);
+    // var bag_on_plane = flip(0.8);
+    
+    // We assume uniform time step
+    var time = randomInteger(maxTime);
+    
+    // Probability that the bag is on the carousel given a specific time
+    // (if it was on the plane, that is).
+    // The probability that the bag is on the carousel on a given time
+    // is directly proportional on the time:
+    //     time / maxTime
+    var bag_on_carousel = bag_on_plane ? flip(1.0*time/maxTime) : false;
+    
+    // He waited 5 minutes without seeing the luggage.
+    condition(time == 5);
+    condition(bag_on_carousel == false);
+
+    return {
+        time:time,
+        bag_on_carousel:bag_on_carousel,
+        bag_on_plane:bag_on_plane,
+    }
+
+}
+
+var d = Infer(model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+exp_map(d,["time","bag_on_carousel","bag_on_plane"]);

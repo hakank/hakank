@@ -1,0 +1,113 @@
+/*
+
+  Coupon collecter's problem, or card collecter's problem.
+
+  There are N different collecter's cards hidden in a package, but we don't
+  know which card there is in the package we buy.
+  We want to collect all of them, how many packages must one buy to collect
+  all the different cards?
+
+  See https://en.wikipedia.org/wiki/Coupon_collector%27s_problem
+  """
+  In probability theory, the coupon collector's problem describes 'collect all coupons and win' 
+  contests. It asks the following question: If each box of a brand of cereals contains a 
+  coupon, and there are n different types of coupons, what is the probability that more 
+  than t boxes need to be bought to collect all n coupons? 
+
+  An alternative statement is: Given n coupons, how many coupons do you expect you need 
+  to draw with replacement before having drawn each coupon at least once? The mathematical 
+  analysis of the problem reveals that the expected number of trials needed grows as 
+  Θ(n log(n).
+  For example, when n = 50 it takes about 225[b] trials on average to collect all 50 coupons. 
+
+  ...
+
+  [b]: E(50) = 50(1 + 1/2 + 1/3 + ... + 1/50) = 224.9603, the expected number of trials to 
+  collect all 50 coupons. 
+
+   The approximation n*log(n) + γ*n + 1/2 for this expected number gives in this case 
+   ≈ 195.6011 + 28.8608 + 0.5 ≈ 224.9619.  [log is the natural logarithm]
+  """
+
+  This version draw random integers until all integers 0..N-1 have been selected.
+  We only study the length of the generated array.
+
+  Also see coupon_collector.wppl using Poisson.
+
+*/
+
+// Theoretical length of n coupons
+// "Exact" probability from https://en.wikipedia.org/wiki/Coupon_collector%27s_problem
+// (see footnote [b] above)
+var theoretical_prob = function(n) {
+    return n*sum(mapN(function(i) {return 1/(1+i)} ,n));
+}
+
+// Time for different Ns methods+samples
+//        MCMC/MH        MCMC/MH        MCMC/MH                 rejection              rejection
+// N   (samples=100)   (samples=1000)   _.uniq(array) (s=1000)  _.uniq(array) (s=100)  _.uniq(array) (s=1000)
+// ----------------------------------------------------------------------------------------------------------
+//  10  1.3s             1.6s           1.2s                    1.0s                    1.0s
+//  20  1.6s             4.7s           1.2s                    1.04s                   1.1s
+//  30  2.5s            17.3s           1.4s                    1.04s                   1.3s
+//  50  8.5s          1min22s           1.9s                    1.1s                    1.9s
+// 100  1min27s      13min:1s           6.3s                    1.4s                    5.3s
+// 200  -                 -            31.1s                    3.2s                   22.4s
+var model = function() {
+
+    var N = 200;
+    // console.log("N:",N);
+    var xs = _.range(N); // mapN(function(i) { return i },N);
+
+    var theoretical = theoretical_prob(N);
+
+    var collect = function(arr) {
+        if (
+            //// First version
+            // sum(map(
+            //     function(i) {
+            //         find(function(x) { return x==i}, arr) != undefined
+            //     },
+            //     xs)) == N
+            _.uniq(arr).length==N // lodash's uniq is much faster
+        ) {
+            return arr;
+        } else {
+            var r = randomInteger(N);
+            return collect(arr.concat(r));
+        }
+    }
+
+    var c = collect([]);
+    var collectLen = c.length;
+
+    return {// c:c,
+            len:collectLen,
+            theoretical:theoretical
+           };
+    
+}
+
+// var d = Infer(model);
+// var d = Infer({method:"enumerate"},model); // crashes
+var d = Infer({method:"rejection",samples:1000,incremental:true},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true,burn:100},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100,verbose:true},model); // just 100 samples
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// exp_map(d,["len","theoretical","c"]);
+exp_map(d,["len","theoretical"]);
+
+// "Theoretical" lengths for some Ns
+var a = [10,20,50,100,200,500,1000];
+console.log("\nTheoretical lengths of ", a);
+console.log(map(function(n) {return [n,theoretical_prob(n)]}, a));

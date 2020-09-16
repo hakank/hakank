@@ -1,0 +1,142 @@
+/*
+   N-queens problem in WebPPL
+
+   This model use the standard formulation of the n-queens problem.
+   This version use a swap variant.
+
+   * Using method:enumerate (i.e. exact solutions) for different Ns
+   
+     N    #sols  time
+     --------------------------
+     2    0      -
+     3    0      -
+     4    2      Too slow!
+     5   10      
+     6    4      
+     7   40      
+     8   92      
+
+     Well, using probabilistic programming for this problem is 
+     not the best choice. :-) :-)
+     
+   * Using method:"rejection"
+     N    #sols  time
+     --------------------------
+     2    0      -
+     3    0      -
+     4    2      1.1s
+     5   10      1.2s
+     6    4      3.6s
+     7   37 (40) 3.6s      
+     8   59 (92) 13.7s      
+
+
+     Valid n=4 solutions:
+     [1,3,0,2]
+     [2,0,3,1]
+
+*/
+
+var swapN1 = function(a,c) {
+    if (c==0) {
+        return a;
+    } else {
+        var a2 = swap(a);
+        return swapN1(a2,c-1);
+    }
+}
+
+var swapN = function(a,n) {
+    return swapN1(a,n);
+}
+
+var swap = function(a) {
+    var len = a.length;
+    var i = randomInteger(len);
+    var j = randomInteger(len);
+    var ixes = mapN(function(k) {
+        if (k==i) {
+            return j;
+        } else if (k==j) {
+            return i;
+        } else {
+            return k;
+        }
+    },len);
+    var p = map(function(i) {return a[i]}, ixes);
+    return p;
+
+}
+
+
+var model = function() {
+    var n = 8;
+    
+    var p = _.range(n);
+    var queens = swapN(p,n*2);
+    
+    // Different rows
+    mapN(function(i) {
+        sum(mapN(
+            function(j) {
+                if(i!=j) {
+                    condition(queens[i] != queens[j])
+                }
+            },
+            i)
+           )
+    },n);
+    
+    // different diagonals1
+    mapN(function(i) {
+        sum(mapN(
+            function(j) {
+                if(i!=j) {
+                    condition(queens[i]+i != queens[j]+j)
+                }
+            },
+            i)
+           )
+    },n);
+
+    // different diagonals2
+    mapN(function(i) {
+        sum(mapN(
+            function(j) {
+                if(i!=j) {
+                    condition(queens[i]-i != queens[j]-j)
+                }
+            },
+            i)
+           )
+    },n);
+
+   
+    return {
+        queens:queens,
+    }
+
+}
+
+// var d = Infer({method:"enumerate"},model);
+// var d = Infer({method:"rejection"},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+var d = Infer({method:"MCMC",verbose:true},model);
+// var d = Infer({method:"SMC",particles:1000,rejuvSteps:10},model);
+// var d = Infer({method:"SMC"},model);
+// var d = Infer(model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["queens","total"]);
+var m = marginalize(d, "queens");
+console.log("#solutions",m.supp.length)

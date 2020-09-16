@@ -1,0 +1,94 @@
+/*
+   From Allen Downey
+   https://twitter.com/AllenDowney/status/1063460117029535746
+   """
+   Today's Bayesian problem of the week: Suppose we visit a wild animal preserve where we 
+   know that the only animals are lions and tigers and bears, but we don't know how 
+   many of each there are.
+
+   During the tour, we see 3 lions, 2 tigers, and 1 bear. Assuming that every animal had an equal 
+   chance to appear in our sample, estimate the prevalence of each species. 
+ 
+   What is the probability that the next animal we see is a bear?
+   """
+
+   Also see:
+   - https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
+   - https://github.com/WillKoehrsen/probabilistic-programming/blob/master/Estimating%20Probabilities%20with%20Bayesian%20Inference.ipynb
+
+   This version use a Multinomial distribution instead of a Dirichlet (as in lions_tigers_and_bears2.wppl).
+
+   Cf ~/blog/lions_tigers_and_bears3.blog
+
+*/
+
+var model = function() {
+
+    var lion = 0;
+    var tiger = 1;
+    var bear = 2;
+
+    // Prior
+    // We have a prior of alphas for the Dirichlet distribution.
+    // We draw 6 times with the Multinomial distrib with the Dirichlet prior.
+    // What is the probability of different combinations of the number of each animal?
+
+    // var alphas = [1/3, 1/3, 1/3]; // Highest prob x: [3, 2, 1]       0.2920000000000001
+    // var alphas = [3/6, 2/6, 1/6]; // Highest prob x: [3, 2, 1]       0.4446000000000001
+    // var alphas = [2/6, 2/6, 2/6]; // Highest prob x: [3, 2, 1]       0.26220000000000004
+    // var alphas = [1/6, 2/6, 3/6]; // Highest prob x: [2, 2, 2]!      0.2613
+    var alphas = [7/21, 7/21, 7/21]; // Highest prob x: [2, 2, 2]       0.23359999999999997
+    
+    // Draw 6 animals
+    var x = multinomial(alphas,6);
+
+    // The probabilities to calculate ("aliased" for simplicity)
+    var probLion  = x[0];
+    var probTiger = x[1];
+    var probBear  = x[2];
+
+    // Posterior: What is the probability of lion, tiger, and bear given the observations?
+    var o = mem(function(i) {
+        return categorical({ps:[probLion,probTiger,probBear],vs:[lion, tiger, bear]});
+    })
+    
+
+    // It shouldn't matter in what order we see the different animals.       
+    condition(o(0) == lion);
+    condition(o(1) == lion);
+    condition(o(2) == lion);
+    condition(o(3) == tiger);
+    condition(o(4) == tiger);
+    condition(o(5) == bear);
+    
+    return {
+        o6lion:o(6) == lion,
+        o6tiger:o(6) == tiger,
+        o6bear:o(6) == bear,
+        sum6:(o(6) == bear) + (o(6) == tiger) + (o(6) == lion),
+        x:x,
+        next3:mapN(function(i) {return o(6+i+1)},3)
+        // check:check,        
+
+    }
+}
+
+// var d = Infer(model);
+var d = Infer({method:"SMC",particles:10000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// var d = Infer({method:"rejection",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["sum6","o6lion","o6tiger","o6bear",
+           "x",
+           "next3"
+          ]);

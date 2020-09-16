@@ -1,0 +1,76 @@
+/*
+  The BUGS Book
+  Example 3.5.1 Heart transplants: learning from data
+
+  ~/jags/bugs_book_3_5_1.R
+  """
+  model {
+    yT ~ dbin(pT, nT)
+    pT ~ dunif(0, 1)
+    for (i in 1:8) {
+      sP[i] ~ dexp(theta)
+    }
+    theta ~ dgamma(0.001, 0.001)
+    surv.t <- pT/theta # expected survival with transplant
+    Is <- surv.t - 2
+  }
+
+  Data: list(yT=8, nT=10, sP=c(2,3,4,4,6,7,10,12))
+
+  Output:
+         Mean      SD  Naive SE Time-series SE
+Is     3.1442 2.28250 0.0080699      0.0085034
+pT     0.7500 0.12014 0.0004248      0.0005856
+surv.t 5.1442 2.28250 0.0080699      0.0085034
+theta  0.1667 0.05899 0.0002086      0.0002086
+  """
+*/
+
+var model = function() {
+
+    var sPs = [2.0,3.0,4.0,4.0,6.0,7.0,10.0,12.0]; // data
+    
+    // fixed Integer yT = 8;
+    var nT = 10;
+    
+    var theta = gamma(0.1, 1/0.1);
+    var pT = uniform(0,1);    
+    var yT = binomial(pT, nT);
+    var sP = function(i) {
+        return Exponential({a:theta});
+    }
+    var surv_t = pT/theta;
+    var Is = surv_t - 2.0;
+    
+    condition(yT == 8);
+
+    mapN(function(i) {
+        observe(sP(i),sPs[i])
+    },sPs.length);
+
+    return {
+        Is:Is,
+        pT:pT,
+        surv_t:surv_t,
+        theta:theta
+    }
+
+}
+
+// var d = Infer(model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+var d = Infer({method:"SMC",particles:10000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["Is","pT","surv_t","theta"]);
+

@@ -1,0 +1,110 @@
+/*
+
+  "Cats and rats and elephants"
+  https://www.allendowney.com/blog/2018/12/11/cats-and-rats-and-elephants/
+  """
+  A few weeks ago I posted 'Lions and Tigers and Bears', 
+  [https://www.allendowney.com/blog/2018/12/03/lions-and-tigers-and-bears/]
+  which poses a Bayesian problem related to the Dirichlet distribution.  If you have 
+  not read it, you might want to start there.
+
+  Now here’s the follow-up question:
+
+    Suppose there are six species that might be in a zoo: lions and tigers and bears, 
+    and cats and rats and elephants. Every zoo has a subset of these species, and every 
+    subset is equally likely.
+
+    One day we visit a zoo and see 3 lions, 2 tigers, and one bear. Assuming that every 
+    animal in the zoo has an equal chance to be seen, what is the probability that the 
+    next animal we see is an elephant?
+  """
+
+  Note: The approach in this model is the same as in the
+  "Lions and Tigers and Bears" problem, just added
+    - the three new animals
+    - queries which calculates subsets and number of different animals
+
+
+ Cf ~/blog/cats_rats_and_elephants.blog 
+    lions_tigers_and_bears*.wppl
+
+*/
+
+var model = function() {
+
+    // The animals.
+    var lion     = 0;
+    var tiger    = 1;
+    var bear     = 2;
+    var cat      = 3;
+    var rat      = 4;
+    var elephant = 5;
+    
+    // Prior
+    // We draw 6 times with the multinomial distribution.
+    // What is the probability of different combinations of the number of each animal?
+    var alphas = [1/6, 1/6, 1/6, 1/6, 1/6, 1/6]; // must sum to 1
+    // var alphas = [2/12, 2/12, 2/12, 2/12, 2/12, 2/12];
+    
+    // Draw 6 animals
+    var x = multinomial(alphas,6); 
+
+    // The probabilities to calculate ("aliased" for simplicity)
+    var probLion      = x[0];
+    var probTiger     = x[1];
+    var probBear      = x[2];
+    var probCat       = x[3];
+    var probRat       = x[4];
+    var probElephant  = x[5];
+    
+    // Posterior: What is the probability of lion, tiger, and bear given the observations?
+    var o = mem(function(i) {
+        return categorical({ps:[probLion,probTiger,probBear,probCat,probRat,probElephant],
+                            vs:[lion, tiger, bear,cat,rat,elephant]});
+    });
+    
+    // Dictionary, for presentation of the subsets
+    var a = ["lion","tiger","bear","cat","rat","elephant"];
+    
+    // Observations
+    condition(o(0) == lion);
+    condition(o(1) == lion);
+    condition(o(2) == lion);
+    condition(o(3) == tiger);
+    condition(o(4) == tiger);
+    condition(o(5) == bear);
+    
+    // Which subset of the animals is the most probable?
+    // Unsorted
+    // var a6 = mapN(function(i) {return a[x[i]]},6);
+    // Sorted
+    // var a6 = sort(mapN(function(i) {return a[x[i]]},6));
+    // Distinct animals
+    var a6 = _.uniq(mapN(function(i) {return a[x[i]]},6));
+    
+    // Number of different animals in the zoo
+    // query sum({1 for Integer i: i>= 0 & i <= 5 & x[i] > 0});
+    var numAnimals = _.uniq(mapN(function(i) { return x[i] },6)).length;
+    return {
+        o6:a[o(6)],
+        o6Elephant:o(6) == elephant,
+        a6:a6,
+        numAnimals:numAnimals
+    }
+
+}
+
+
+var d = Infer({method:"enumerate"},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["o6","o6Elephant","a6","numAnimals"]);

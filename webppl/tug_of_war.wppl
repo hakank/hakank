@@ -1,0 +1,90 @@
+/*
+   From Hakaru example documentation/tugofwar_rejection.hk
+
+   $ hakaru tugofwar_rejection.hk | head -100000 | collect
+   1.0	true: 69223
+   1.0	false: 30777
+
+   Via ~/blog/tug_of_war.blog
+
+   This BLOG model for no observation:
+Distribution of values for match1
+	false	0.5009999999999657
+	true	0.4989999999999687
+Distribution of values for match2
+	true	0.5014399999999667
+	false	0.4985599999999669
+Distribution of values for ((match1 = true) & (match2 = true))
+	false	0.8344999999999642
+	true	0.16549999999999415
+Distribution of values for match3
+	true	0.5011899999999669
+	false	0.4988099999999667
+Distribution of values for (((match1 = true) & (match2 = true)) & (match3 = true))
+	false	0.8344999999999642
+	true	0.16549999999999415
+Distribution of values for (((match1 = true) & (match2 = true)) & (match3 = false))
+	false	1.0
+
+
+*/
+
+var model = function() {
+    
+    var strength = mem(function(p) {
+        return Math.abs(gaussian(0,1));
+    })
+    
+    var pulls = mem(function(p) {
+        return Math.abs(gaussian(strength(p), 1));
+    })
+
+    // The Hakary/BLOG model had "pulls(a) < pulls(b) "
+    // which is a little strange so I change to return the winner.
+    var winner = function(a, b) {
+        return pulls(a) > pulls(b) ? a : b;
+    }
+    
+    var match1 = winner("alice", "bob");
+    var match2 = winner("bob", "carol");
+    var match3 = winner("alice", "carol");
+    
+    condition(match1 == "alice");
+    condition(match2 == "bob");
+
+    return {
+        match1:match1,
+        match2:match2,
+        match3:match3,        
+        match1And2:match1 && match2,
+        strengthAlice:strength("alice"),
+        strengthBob:strength("bob"),
+        strengthCarol:strength("carol"),
+        pullsAlice:pulls("alice"),
+        pullsBob:pulls("bob"),
+        pullsCarol:pulls("carol"),
+        // pulls(alice) < pulls(bob),
+        // pulls(alice) < pulls(carol),
+        // pulls(bob) < pulls(carol),
+        // match1 & match2 & match3 == true,
+        // match1 & match2 & match3 == false,
+    }
+
+}
+
+var d = Infer({method:"rejection",samples:1000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["strengthAlice", "strengthBob", "strengthCarol",
+           "pullsAlice","pullsBob","pullsCarol",
+           "match1","match2","match3",
+          ]);

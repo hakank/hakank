@@ -1,0 +1,68 @@
+/*
+   Generating Zero Modified Poisson distribution
+
+   From Handbook on probability distributions
+   page 16f
+
+*/
+
+//
+// Algorithm from Handbook on probability distributions,
+// page 17
+// """
+// The zero-modified version P(lambda, p) is a little bit tricky.
+// We need to use the following heuristic:
+// * generate U from an uniform distribution
+// * if U < p, then X = 0
+// * otherwise
+//   – do; generate X Poisson distributed P(lambda); while X = 0
+// * return X
+// """
+var zero_modified_poisson = function(lambda,p) {
+    var u = uniform(0,1);
+    if (u < p) {
+        return 0;
+    } else {
+        var p2 = poisson(lambda);
+        return p2 != 0 ? p2 : zero_modified_poisson(lambda,p);
+    }
+
+}
+
+var model = function() {
+
+    var lambda = 4;
+    var p = 0.2;
+    var p = zero_modified_poisson(lambda,p);
+
+    return {
+        p:p,
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["p"]);
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("p");

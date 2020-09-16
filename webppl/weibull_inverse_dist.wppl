@@ -1,0 +1,83 @@
+/*
+   Generating Inverse Weibull distribution
+
+   From Handbook on probability distributions
+   page 71ff
+
+*/
+
+// See weibull_dist.wppl
+var weibull = function(eta,beta) {
+    var u = uniform(0,1);
+    var x = beta*Math.pow(-Math.log(1-u),1/eta)
+    
+    return x;
+}
+
+// From Handbook on probability distributions
+// page 72
+// """
+// Simply generate a Weibull variable W(1/beta,eta) and inverse it.
+// """
+// Note: I'm a little confused here since the weibull dist is noted as
+// W(eta,beta) according to the Weibull Distribution entry.
+// 
+var inverse_weibull = function(beta,eta) {
+    var x = 1/weibull(eta,1/beta);
+    
+    return x;
+}
+
+// From https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals
+// This is to calculate the expectation
+// (factorial(z) ~ gamma(z+1)
+var gamma_func = function(z) {
+  return Math.sqrt(2*Math.PI/z)*Math.pow((1/Math.E)*(z+1/(12*z-1/(10*z))), z);
+}
+
+var inverse_weibull_expectation = function(beta,eta) {
+    return beta*gamma_func(1-1/eta);
+}
+
+var model = function() {
+
+    var eta = 4;
+    var beta = 2;
+    var g = inverse_weibull(beta,eta);
+    var expect = inverse_weibull_expectation(beta,eta);
+
+    return {
+        g:g,
+        expect:expect,
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["g","expect"]);
+
+var stat = function(v) {
+    console.log("\nv:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("\nmin:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("g");
+stat("expect");
+

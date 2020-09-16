@@ -1,0 +1,73 @@
+/*
+   Generating Poisson distribution
+
+   From Handbook on probability distributions
+   page 14
+
+*/
+
+//
+// Algorithm from Handbook on probability distributions, page 14
+// """
+// A basic way to generate Poisson random variate is the following:
+// * initialize variable n to 0, l to exp(-lambda) and P to 1,
+// * do
+//   – generate U from a uniform distribution,
+//   – P = P * U,
+//   – n = n 0 1,
+//   while P >= l,
+// return n − 1.
+// See Knuth (2002) for details.
+// """
+// Note: n is the counter, p2 is the acculumated value
+var poisson_dist1 = function(lambda,n,p2) {
+    var l = Math.exp(-lambda);
+    var u = uniform(0,1);
+    var p = p2*u;
+    return p >= l ? poisson_dist1(lambda,n+1,p) : n;
+}
+
+var poisson_dist = function(lambda) {
+    return poisson_dist1(lambda,0,1);
+}
+
+var model = function() {
+
+    var n = 4;
+    
+    var p = poisson(n);
+    var p2 = poisson_dist(n);
+
+    return {
+        p:p,
+        p2:p2
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["p","p2"]);
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("p");
+stat("p2");

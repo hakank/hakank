@@ -1,0 +1,144 @@
+/*
+
+  Hidden Markov Models
+
+  This is from the BLOG distribution hmm.dblog
+  """
+  A hidden Markov model with four states and four output symbols.
+  The parameters of this model are completely made-up.
+  DBLOG model
+  """
+
+*/
+
+var model = function() {
+
+    var states = ["A","C","G","T"];
+    
+    var AA = uniform(0,1);
+    var AC = uniform(0,1);
+    var AG = uniform(0,1);
+    var AT = uniform(0,1);
+    
+    var CA = uniform(0,1);
+    var CC = uniform(0,1);
+    var CG = uniform(0,1);
+    var CT = uniform(0,1);
+    
+    var GA = uniform(0,1);
+    var GC = uniform(0,1);
+    var GG = uniform(0,1);
+    var GT = uniform(0,1);
+    
+    var TA = uniform(0,1);
+    var TC = uniform(0,1);
+    var TG = uniform(0,1);
+    var TT = uniform(0,1);
+    
+    /*
+      random State S(Timestep t) =
+      if t == @0 then 
+      Categorical({A -> 0.3, C -> 0.2, G -> 0.1, T -> 0.4})
+      else case S(prev(t)) in {
+      A -> Categorical({A -> 0.1, C -> 0.3, G -> 0.3, T -> 0.3}),
+      C -> Categorical({A -> 0.3, C -> 0.1, G -> 0.3, T -> 0.3}),
+      G -> Categorical({A -> 0.3, C -> 0.3, G -> 0.1, T -> 0.3}),
+      T -> Categorical({A -> 0.3, C -> 0.3, G -> 0.3, T -> 0.1})
+      };
+    */
+
+    var S1 = function(t) {
+        if (t == 0) {
+            return categorical({ps:[0.3,0.2,0.1,0.4],vs:states})
+        } else {
+            var prev_t = S1(t-1);
+            var val = 
+                (prev_t == "A") ? categorical({ps:[AA,AC,AG,AT],vs:states}) :
+                (prev_t == "C") ? categorical({ps:[CA,CC,CG,CT],vs:states}) :
+                (prev_t == "G") ? categorical({ps:[GA,GC,GG,GT],vs:states}) :
+                (prev_t == "T") ? categorical({ps:[TA,TC,TG,TT],vs:states}) : "xxx";
+            return val;
+        }
+    }
+    var S = mem(function(t) { return S1(t)});
+    
+    var results = ["ResultA","ResultC","ResultG","ResultT"];
+    var O = (function(t) {
+        var St = S(t);
+        (St == "A") ? categorical({ps:[0.85,0.05,0.05, 0.05],vs:results}) :
+        (St == "C") ? categorical({ps:[0.05,0.85,0.05, 0.05],vs:results}) :
+        (St == "G") ? categorical({ps:[0.05,0.05,0.85, 0.05],vs:results}) :
+        (St == "T") ? categorical({ps:[0.05,0.05,0.05, 0.85],vs:results}) : "yyy";
+    });
+    
+    /* Evidence for the Hidden Markov Model.
+     */
+    
+    condition(O(0) == "ResultC");
+    condition(O(1) == "ResultA");
+    condition(O(2) == "ResultA");
+    condition(O(3) == "ResultA");
+    condition(O(4) == "ResultG");
+    
+    /* Queries for the Hiddem Markov Model, given the evidence.  
+     * Note that we can query S(5) even though our observations only 
+     * went up to time 4.
+     */
+
+    return {
+        S0:S(0),
+        S1:S(1),
+        S2:S(2),
+        S3:S(3),
+        S4:S(4),
+        S5:S(5), // The unknown
+        S6:S(6), // The unknown
+        S7:S(7), // The unknown                
+        
+        AA:AA,
+        AC:AC,
+        AG:AG,
+        AT:AT,
+        
+        CA:CA,
+        CC:CC,
+        CG:CG,
+        CT:CT,
+    
+        GA:GA,
+        GC:GC,
+        GG:GG,
+        GT:GT,
+        
+        TA:TA,
+        TC:TC,
+        TG:TG,
+        TT:TT,
+    }
+
+}
+
+// var d = Infer(model);
+var d = Infer({method:"MCMC",kernel:"MH", samples:1000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["AA","AC","AG","AT",
+           "CA","CC","CG","CT",
+           "GA","GC","GG","GT",
+           "TA","TC","TG","TT",
+           "S0","S1","S2","S3","S4",
+           "S5","S6","S7",
+          ]);
+
+
+

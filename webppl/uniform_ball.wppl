@@ -1,0 +1,81 @@
+/* 
+   BLOG example/uniform-ball.blog
+   """
+   Model file for balls in an urn, allowing observation errors. 
+   This version uses a Poisson prior for the number of balls.
+   """
+
+   Method:enumerate:
+   numBalls
+   Marginal:
+    4 : 0.340567315324372
+    3 : 0.3129597847278553
+    2 : 0.2691392079686868
+    1 : 0.07733369197908593
+   q
+   Marginal:
+    false : 0.7000252248157957
+    true : 0.2999747751842043
+
+   
+*/
+
+var model = function() {
+
+    var n = 8;
+
+    var numBalls = 1+randomInteger(4);
+
+    var isBlue = mem(function(b) {
+        return flip(0.5);
+    })
+
+    var ballDrawn = mem(function(d) {
+        return randomInteger(numBalls);
+    })
+
+    var obsBlue = mem(function(d) {
+        if (isBlue(ballDrawn(d))) {
+            return flip(0.8);
+        } else {
+            return flip(0.2);
+        }
+    })
+    
+    /* 
+       """
+       Evidence file asserting that the drawn balls appeared blue on half the 
+       draws and green on half the draws.
+       """
+     */
+    condition(obsBlue(0) == true);
+    condition(obsBlue(1) == false);
+    condition(obsBlue(2) == true);
+    condition(obsBlue(3) == false);
+    condition(obsBlue(4) == true);
+    condition(obsBlue(5) == false);
+    condition(obsBlue(6) == true);
+    condition(obsBlue(7) == false);
+
+    return {
+        numBalls:numBalls,
+        q:ballDrawn(0) == ballDrawn(1)
+    }
+    
+}
+
+// var d = Infer({method:"enumerate"},model); // takes 8s
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model); 
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["numBalls","q",
+          ]);

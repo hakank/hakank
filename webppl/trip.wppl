@@ -1,0 +1,100 @@
+/*
+
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/06_more_features.html
+  """
+  Suppose we are packing our bags to go on a trip. We have a set of items, each having a 
+  particular weight, and we pack each item with probability inversely proportional to its 
+  weight. We want to compute the probability that we will have excess baggage, i.e., 
+  that the total weight of our baggage will exceed a given limit. We can model this with 
+  the following ProbLog program.
+
+  Note that this program uses several Prolog builtins such as support for lists and 
+  arithmetic. The program also uses another feature of ProbLog2, namely support for 
+  (intensional) probabilistic facts with a `flexible’ probability. This means that the 
+  probability is not prespecified but is an arithmetic expression that needs to be 
+  computed. In the program, this is used in the intensional probabilistic 
+  fact “P::pack(Item) :- …”, which says that the probability of packing an item is 
+  inversely proportional to its weight. Such a flexible probability can be used in 
+  ProbLog2 under the restriction that the arithmetic expression can be evaluated at 
+  call-time (i.e., by the time the probabilistic fact is reached by SLD resolution to 
+  prove the queries and evidence).
+
+  ... 
+
+  (ProbLog code:)
+  weight(skis,6).
+  weight(boots,4).
+  weight(helmet,3).
+  weight(gloves,2).
+  
+  % intensional probabilistic fact with flexible probability:
+  P::pack(Item) :- weight(Item,Weight),  P is 1.0/Weight.
+  
+  excess(Limit) :- excess([skis,boots,helmet,gloves],Limit). % all possible items
+  excess([],Limit) :- Limit<0.
+  excess([I|R],Limit) :- pack(I), weight(I,W), L is Limit-W, excess(R,L).
+  excess([I|R],Limit) :- \+pack(I), excess(R,Limit).
+  query(excess(8)). % 0.11805556
+  
+  """
+  
+  Note: This not the same approach as the ProbLog model, it's actually more like MiniZinc than Prolog.
+
+  Cf ~/blog/trip.blog
+
+*/
+
+var model = function() {
+
+    var limit = 8.0;
+    // var limit = 4.0;
+    // var limit = 10.0;
+    // var limit = 18.0;
+    
+    var items = ["skis", "boots", "helmet", "gloves"];
+
+    var weights = {skis: 6,
+                   boots: 4,
+                   helmet: 3,
+                   gloves: 2
+                  };
+      
+    var selected = mem(function(i) { return flip(1.0/weights[i]) });
+    
+    var sumWeights = sum(map(function(i) { return weights[i]*selected(i) },items)); 
+
+    // We want the probability the we excess the weight.
+    var excess = mem(function(v) { return sumWeights > v }); 
+    
+    // Here we can enforce that we don't excess the weights
+    // condition(sumWeights > 0 && excess(limit) == false);
+
+    // [name,weight,selected]
+    var items_with_weights = map(function(i) { return[i,weights[i],selected(i)]},items);
+    
+    return {
+        excessLimit:excess(limit),
+        limit:limit,   
+        sumWeights:sumWeights,       
+        // items_with_weights:items_with_weights,
+        selectedItems:[sumWeights,filter(function(i) { i[2] },items_with_weights)]
+    };
+}
+
+var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["limit", "excessLimit", "sumWeights",
+           "selectedItems",
+           // "items_with_weights",
+          ]);
+

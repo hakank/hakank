@@ -1,0 +1,119 @@
+/*
+
+  The BUGS Book
+  Example 2.7.2 Heart transplant cost-effectiveness (continued)
+
+  Cf ~/jags/bugs_book_2_7_2.R
+  """
+  model {
+     thetaN <- 2 # expected lifetime without transplant
+     thetaT ~ dbeta(8,2) # probability of surviving operation
+     thetaP ~ dnorm(5,1) # expected survival post-transplant (mean 5, sd 1)
+     thetaC ~ dnorm(3000,0.000001)
+     # expected cost per year (mean 3000, sd 1000)
+     E.c <- (20000 + thetaC*thetaT*thetaP)/1000
+     # expected additional cost of transplant
+     # in thousands of pounds
+     E.e <- thetaT*thetaP - thetaN
+     # expected total additional survival
+     ICER <- E.c/E.e # incremental cost-effectiveness ratio
+     for (i in 1:21) {
+       K[i] <- (i-1)*5 # constant!
+       INB[i] <- E.e*K[i] - E.c
+       Q[i] <- step(INB[i])
+     }
+  }
+
+  Output:
+           Mean        SD  Naive SE Time-series SE
+E.c      31.9807    5.1134 1.808e-02      1.808e-02
+E.e       1.9992    1.0079 3.563e-03      3.547e-03
+ICER     28.0193 3922.5487 1.387e+01      1.387e+01
+INB[1]  -31.9807    5.1134 1.808e-02      1.808e-02
+INB[2]  -21.9846    4.5848 1.621e-02      1.633e-02
+INB[3]  -11.9885    8.1660 2.887e-02      2.887e-02
+INB[4]   -1.9924   12.7726 4.516e-02      4.516e-02
+INB[5]    8.0036   17.6177 6.229e-02      6.229e-02
+INB[6]   17.9997   22.5481 7.972e-02      7.972e-02
+INB[7]   27.9958   27.5181 9.729e-02      9.729e-02
+INB[8]   37.9919   32.5094 1.149e-01      1.149e-01
+INB[9]   47.9879   37.5136 1.326e-01      1.326e-01
+INB[10]  57.9840   42.5261 1.504e-01      1.504e-01
+INB[11]  67.9801   47.5442 1.681e-01      1.681e-01
+INB[12]  77.9762   52.5664 1.859e-01      1.859e-01
+INB[13]  87.9722   57.5917 2.036e-01      2.036e-01
+INB[14]  97.9683   62.6192 2.214e-01      2.214e-01
+INB[15] 107.9644   67.6484 2.392e-01      2.392e-01
+INB[16] 117.9605   72.6791 2.570e-01      2.570e-01
+INB[17] 127.9565   77.7109 2.747e-01      2.748e-01
+INB[18] 137.9526   82.7436 2.925e-01      2.925e-01
+INB[19] 147.9487   87.7771 3.103e-01      3.103e-01
+INB[20] 157.9448   92.8112 3.281e-01      3.281e-01
+INB[21] 167.9408   97.8458 3.459e-01      3.459e-01
+thetaN    2.0000    0.0000 0.000e+00      0.000e+00
+thetaP    4.9996    0.9973 3.526e-03      3.531e-03
+thetaT    0.7999    0.1204 4.255e-04      4.215e-04
+  """
+
+*/
+
+var model = function() {
+
+    var thetaN = 2.0; // expected lifetime without transplant
+    var thetaT = beta(8,2); // probability of surviving operation
+    var thetaP = gaussian(5,1); // expected survival post-transplant (mean 5, sd 1)
+    var thetaC = gaussian(3000.0,Math.sqrt(100000)); // expected cost per year (mean 3000, sd 1000)
+    var E_c    =  (20000.0 + thetaC*thetaT*thetaP)/1000.0; // expected additional cost of transplant
+    // in thousands of pounds
+    var E_e   = thetaT*thetaP - thetaN; // expected total additional survival
+    var ICER  = E_c/E_e; // incremental cost-effectiveness ratio
+    /*
+      for (i in 1:21) {
+      K[i] <- (i-1)*5; // constant!
+      INB[i] <- E_e*K[i] - E_c
+      Q[i] <- step(INB[i])
+      }
+    */
+    var K = function(i) {
+        if (i>= 0 && i <= 20) {
+            return (i-1)*5.0;
+        } else {
+          return null;
+        }
+    }
+    var INB = function(i) {
+        return E_e*K(i) - E_c;
+    }
+    
+    var Q = function(i) {
+        return INB(i) > 0;
+    }
+    
+    return {
+        thetaN:thetaN,
+        thetaT:thetaT,
+        thetaP:thetaP,
+        thetaC:thetaC,
+        E_c:E_c,
+        E_e:E_e,
+        ICER:ICER,
+        // INB:mapN(function(i) {return INB(i)},20)
+    };
+
+}
+
+// var d = Infer(model);
+var d = Infer({method:"rejection",samples:10000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,Object.keys(d.samples[0].value));

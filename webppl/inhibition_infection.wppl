@@ -1,0 +1,91 @@
+/*
+   https://dtai.cs.kuleuven.be/problog/tutorial/basic/10_inhibitioneffects.html
+   """
+   Example 2: Social Network
+
+   An infectious disease spreads through a population as follows: when- ever two people are in regular 
+   contact with each other and one is infected, there is a probability of 0.6 of the infection spreading 
+   also to the other person. Given a set of initially infected people and a graph of connections between 
+   individuals in the population, the goal is to predict the spread of the disease.
+   """
+
+*/
+
+
+/*
+% ProbLog
+person(a).
+person(b).
+
+0.1::initialInf(X) :- person(X).
+0.1::contact(X,Y) :- person(X), person(Y).
+
+inf(X)      :- initialInf(X).
+0.6::inf(X) :- contact(X, Y), inf(Y).
+
+query(inf(_)). % inf(a): 0.1054 inf(b): 0.1054
+
+*/
+
+var model = function() {
+
+    var n = 2;
+    var people = _.range(n);
+
+    var initialInf = mem(function(p) {
+        return flip(0.1);
+    })
+    
+    var contact = (function(x, y) {
+        if (x == y) {
+            return false;
+        } else {
+            return flip(0.1);
+        }
+    })
+
+    // The BLOG model use a time construct to avoid strange loops. This is not needed here.
+    var inf1 = (function(p) {
+        if (initialInf(p)) {
+            return true;
+        } else {
+            var check = any(function(q) {return q != p && contact(p,q) && inf1(q)},people);
+            if (
+                check
+            ) {
+                return flip(0.6);
+            } else {
+                return false;
+            }
+        }
+    })
+
+    var inf = mem(function(p) { return inf1(p); });
+
+    return {
+        inf_0:inf(0),
+        inf_1:inf(1),
+        // inf_2:inf(2),
+        // inf_3:inf(3),
+        // inf_4:inf(4),
+        // inf:map(function(p) {return inf(p)},people)        
+    };
+}
+
+var d = Infer({method:"enumerate",maxExecutions:100000},model);
+// var d = Infer({method:"rejection",samples:100000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["inf_0","inf_1" // ,"inf_2","inf_3","inf_4","inf"
+          ]);

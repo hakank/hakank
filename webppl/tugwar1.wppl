@@ -1,0 +1,131 @@
+/*
+   From BLOG examples/tugwar1.blog
+   """
+   Tug of war
+   
+   The strength of each person is drawn from a normal distribution. 
+   A person is lazy 10% of the time. The pulling power of a person 
+   is half her strength if she is being lazy and otherwise is her 
+   full strength. The pulling power of a team is the sum of the 
+   pulling power of the individuals on the team. The team with the 
+   greater pulling power wins.
+   
+   @author Lei Li
+   @date 2013/03/30
+   """
+
+ */
+
+var model = function() {
+    var people = ["James", "David","Jason", "Brian", "Mary", "Nancy", "Susan", "Karen"];
+    var mu = 10;
+    var sigma = 2;
+    var strength = mem(function(p) {
+        return gaussian(mu, sigma);
+    })
+    
+    var team1player1 = mem(function(i) {// i-th match
+        return uniformDraw(people);
+    })
+    
+    var team1player2 = mem(function(i) {// i-th match
+        return uniformDraw(_.difference(people,[team1player1[i]]));
+    })
+    
+    var team2player1 = mem(function(i) {// i-th match
+        return uniformDraw(_.difference(people,[team1player1[i],team1player2[i]]));
+    })
+    
+    var team2player2 = mem(function(i) {// i-th match
+        return uniformDraw(_.difference(people,[team1player1[i],team1player2[i],team2player1[i] ]));
+    })
+    
+    var lazy = mem(function(p, i)  {
+        return flip(0.1);
+    })
+                   
+    var pulling_power = mem(function(p, i) {
+        if (lazy(p, i)) {
+            return strength(p) / 2;
+        } else {
+            return strength(p);
+        }
+    })
+                            
+    
+    var team1win = mem(function(i) {
+        if (pulling_power(team1player1(i), i) + pulling_power(team1player2(i), i)
+            > pulling_power(team2player1(i), i)  + pulling_power(team2player2(i), i) ) {
+            return true;
+        } else {
+            return false;
+        }
+    })
+    
+    condition(team1player1(1) == "James");
+    condition(team1player2(1) == "David");
+    condition(team2player1(1) == "Brian");
+    condition(team2player2(1) == "Jason");
+    
+    condition(team1player1(2) == "James");
+    condition(team1player2(2) == "David");
+    condition(team2player1(2) == "Mary");
+    condition(team2player2(2) == "Nancy");
+    
+    condition(team1player1(3) == "James");
+    condition(team1player2(3) == "Karen");
+    
+    condition(team1win(1) == true);
+    
+    /*
+       """
+       The first query is comparing the strength of members 
+       from two team with the evidence that one team win once. 
+       So it is naturally that the member in the winning team 
+       might be stronger.
+       
+       The second query asks about a hypothetical game 
+       between the winner team of past game and a new team. 
+       It is reasonable that the past winner team might have 
+       higher chance to win again in the new game.
+       
+       The third query is asking what is the winning 
+       probability of a new player joining a past winning
+       player against an unknown team. Therefore, new players 
+       may prefer to joining past winning players.
+       
+       The last query is about the probability of a new team 
+       winning against such old+new player pair. 
+       """
+     */
+
+    return {
+        jamesStrongerThanBrian:strength("James") > strength("Brian"), // is James stronger than Brian?
+        team1Win2:team1win(2), // is team1 winning in second match?
+        team1Win3:team1win(3), // is team1 winning in third match?
+        // query about unknown opponent
+        q:(!team1win(3)) && (team2player1(3) == "Mary") && (team2player2(3) == "Susan"),
+        // pulling_power:map(function(i) { return pulling_power(i) },people)
+        // strength:map(function(i) { return strength(i) },people)
+    }
+
+}
+
+var d = Infer({method:"SMC",particles:1000},model);
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["jamesStrongerThanBrian","team1Win2","team1Win3",
+           "q",
+           // "pulling_power",
+           // "strength",
+          ]);

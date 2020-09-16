@@ -1,0 +1,69 @@
+/*
+
+  CyclingTime1 Example from
+  "Infer.NET 101 A sample-based introduction to the basics of 
+  Microsoft Infer.NET programming", page 12ff.
+  """
+  averageTimePosterior: Gaussian(15.29, 1.559)
+  trafficNoisePosterior: Gamma(1.458, 0.3944)[mean=0.5751]
+  ...
+  Tomorrows predicted time: 15.29 plus or minus 2.66
+  ...
+  Probability that the trip takes less than 18 min: 0.85
+  """
+
+
+  This model (method:MCMC):
+  expectation:
+[ [ 'averageTime', 15.283026975524063 ],
+  [ 'trafficNoise', 1.7896620063207567 ],
+  [ 'tomorrowsTime', 15.29275696867902 ],
+  [ 'probTripTakesLongerThan18Minutes', 0.9084999999999996 ] ]
+
+
+*/
+
+var model = function() {
+
+    var averageTime = gaussian({mu:15,sigma:Math.sqrt(100.0)}); 
+    var trafficNoise = gamma(2.0,1/2.0); 
+    
+    var travelTimeMonday = Gaussian({mu:averageTime,sigma:trafficNoise});
+    var travelTimeTuesday = Gaussian({mu:averageTime,sigma:trafficNoise});
+    var travelTimeWednesday = Gaussian({mu:averageTime,sigma:trafficNoise});
+    var tomorrowsTime = Gaussian({mu:averageTime,sigma:trafficNoise});
+    
+    var probTripTakesLongerThan18Minutes = sample(tomorrowsTime) < 18.0;
+    
+    observe(travelTimeMonday,13.0);
+    observe(travelTimeTuesday,17.0);
+    observe(travelTimeWednesday,16.0);
+    
+    return {
+        averageTime:averageTime,
+        trafficNoise:trafficNoise,
+        tomorrowsTime:sample(tomorrowsTime),
+        probTripTakesLongerThan18Minutes:probTripTakesLongerThan18Minutes,
+    }
+
+}
+
+// var d  = Infer({method:"rejection"},model);
+var d  = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model);
+// var d  = Infer({method:"MCMC",kernel:"HMC",samples:10000},model);
+// var d  = Infer({method:"SMC",particles:10000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["averageTime", "trafficNoise","tomorrowsTime","probTripTakesLongerThan18Minutes",
+          ]);
+

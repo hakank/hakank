@@ -1,0 +1,185 @@
+/*
+   The Car and the Goats (Monty Hall)
+
+   From 
+   Gunnar Blom, Lars Holst, Dennis Sandell:
+   "Problems and Snapshots from the World of Probability"
+   Page 3f, Problem 1.3 The car and the goats
+
+   This first part is a "traditional" analysis of the Monty Hall 
+   problem. See monty_hall.wppl for a model of this problem.
+
+   The second part "A generalization" is a urn approach which
+   this WebPPL model implements.
+
+   Which of these strategies is best for A:
+   * strategy 1
+     """
+     A draws a ball at random. If it is white, he wins the game,
+     otherwise he loses.
+     """
+     This corresponds to the Stay strategy.
+
+   * strategy 2
+     """
+     A draws a ball and throws it away. B removes a black ball.
+     A again draws a ball. If it is white, he wins the game,
+     otherwise he loses.
+     """
+     This corresponds to the Switch strategy.
+
+
+   For a=1,b=2 (1 white ball, 2 black balls) i.e. the Monty Hall problem:
+   (method:enumerate)
+   Marginals:
+   win1
+   Marginal:
+    false : 0.6666666666666666
+    true : 0.3333333333333333
+   win2
+   Marginal:
+    true : 0.6666666666666666
+    false : 0.3333333333333333
+   s2BeatsS1
+   Marginal:
+    false : 0.5555555555555556
+    true : 0.4444444444444444
+   expectation:
+[ [ 'win1', 0.33333333333333337 ],
+  [ 'win2', 0.6666666666666666 ],
+  [ 's2BeatsS1', 0.4444444444444444 ] ]
+
+
+  Other configurations and probabilities for strategy 1 and 2:
+  * 1 white ball, 2 black balls:     [ 'win1', 0.33333333333333337 ], [ 'win2', 0.6666666666666666 ]
+  * 1 white ball and 3 black balls:  [ 'win1', 0.24999999999999994 ], [ 'win2', 0.375 ]
+  * 1 white ball and 10 black balls: [ 'win1', 0.0909090909090909 ],  [ 'win2', 0.101010101010101 ]
+  * 2 white, 10 black:               [ 'win1', 0.1666666666666667 ],  [ 'win2', 0.18333333333333324 ]
+  * 2 white, 2 black:                [ 'win1', 0.5 ],                 [ 'win2', 0.75 ] 
+  * 10 white, 10 black:              [ 'win1', 0.5 ],                 [ 'win2', 0.5277777777777779 ] 
+  * 10 white, 2 black:               [ 'win1', 0.8333333333333333 ],  [ 'win2', 0.9166666666666665 ]
+
+  So, it seems that we should always use strategy 2, i.e. Switch.
+
+
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// The theoretical probabilities for the two strategies
+var theoreticalProb = function(a,b) {
+    var strat1 = a/(a+b);
+    var strat2 = (a/(a+b))*(1+ 1/(a+b-2));
+    return [strat1,strat2];
+}
+
+// a=1,b=2 is the Monty Hall problem
+var run = function(a,b) {
+    console.log("\na:",a,"b:",b);
+    var model = function() {
+
+        var strategy1 = mem(function() {
+            var balls = mapN(function(i) { return 'w'},a).concat(mapN(function(i) { return 'b'},b));
+            // A draws a ball: if white then win, else loss
+            var ball = uniformDraw(balls);
+            return ball;
+        })
+
+        /*
+         // Note: this approach don't work with enumerate.
+        var strategy2 = mem(function() {
+            var balls = mapN(function(i) { return 'w'},a).concat(mapN(function(i) { return 'b'},b));
+
+            // A draws one ball and remove it.
+            var ball1 = uniformDraw(balls);
+            // Note: _.pullAt removes the element inline.
+            _.pullAt(balls,[_.indexOf(balls,ball1)]);
+            
+            // B removes a black ball
+            _.pullAt(balls,[_.indexOf(balls,'b')]);
+            
+            // A draw a ball again. If white: win else loss.
+            var ball = uniformDraw(balls);
+            return ball;
+        })
+        */
+
+        // This works with enumerate
+        var strategy2 = function(numWhite,numBlack) {
+            var total = numWhite+numBlack;
+            // A draws one ball and remove it
+            var ball1 = categorical({ps:[numWhite/total,numBlack/total],vs:['w','b']});
+            var numWhite2 = ball1 == 'w' ? numWhite - 1 : numWhite;
+            var numBlack2 = ball1 == 'b' ? numBlack - 1 : numBlack;
+            
+            // B remove one black ball
+            var numWhite3 = numWhite2;
+            var numBlack3 = numBlack2 - 1;
+            var total3 = total - 2; // we have now removed 2 balls.            
+            // A draw again. If white: win else loss            
+            var ball = categorical({ps:[numWhite3/total3,numBlack3/total3],vs:['w','b']});
+        
+            return ball;
+        }
+
+        var ball1 = strategy1();
+        var ball2 = strategy2(a,b);
+                            
+        return {
+            ball1:ball1,
+            win1:ball1=='w',
+            ball2:ball2,
+            win2:ball2=='w',
+            s2BeatsS1:(ball2=='w')>(ball1=='w'),
+            
+        }
+    }
+
+    var d = Infer({method:"enumerate"},model); 
+    // var d = Infer({method:"rejection",samples:10000},model); 
+    // var d = Infer({method:"SMC",particles:10000},model);
+    
+    // display(d);
+    exp_map(d,["win1","win2","s2BeatsS1"]);
+
+    console.log("\nTheoretical prob. of winning for each strategy:", theoreticalProb(a,b),"\n\n");
+
+}
+
+// 1 white ball, 2 black balls (Monty Hall)
+// [ 'win1', 0.33333333333333337 ], [ 'win2', 0.6666666666666666 ]
+run(1,2);
+
+// 1 white ball and 3 black balls
+// [ 'win1', 0.24999999999999994 ], [ 'win2', 0.375 ]
+run(1,3);
+
+// 1 white ball and 10 black balls
+// [ 'win1', 0.0909090909090909 ], [ 'win2', 0.101010101010101 ]
+run(1,10);
+
+
+// 2 white, 10 black
+// [ [ 'win1', 0.1666666666666667 ], [ 'win2', 0.18333333333333324 ] ]
+run(2,10);
+
+
+// 2 white, 2 black
+// [ 'win1', 0.5 ], [ 'win2', 0.75 ] 
+run(2,2);
+
+// 10 white, 10 black
+// [ 'win1', 0.5 ], [ 'win2', 0.5277777777777779 ] 
+run(10,10);
+
+// 10 white, 2 black
+// [ 'win1', 0.8333333333333333 ], [ 'win2', 0.9166666666666665 ]
+run(10,2);

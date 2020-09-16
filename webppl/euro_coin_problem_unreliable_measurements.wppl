@@ -1,0 +1,81 @@
+/*
+   The Euro coin problem.
+
+   From Think Bayes, page 33ff
+   """
+   A statistical statement appeared in "The Guardian" on Friday January 4, 2002:
+      When spun on edge 250 times, a Belgian one-euro coin
+      came up heads 140 times and tails 110. 'It looks very
+      suspicious to me,' said Barry Blight, a statistics lecturer
+      at the London School of Economics. 'If the coin were
+      unbiased, the chance of getting a result as extreme as
+      that would be less than 7%.'
+   But do these data give evidence that the coin is biased rather than fair?
+   """
+ 
+   Continues on page 41:
+   """
+   Exercise 4.1. Suppose that instead of observing coin tosses directly, you measure
+   the outcome using an instrument that is not always correct. Specifically, suppose
+   there is a probability y that an actual heads is reported as tails, or actual tails re-
+   ported as heads.
+
+   Write a class that estimates the bias of a coin given a series of outcomes and the
+   value of y .
+   How does the spread of the posterior distribution depend on y ?
+   """
+
+   Cf ~/blog/euro_coin_unreliable_measurements.blog
+
+*/
+
+var model = function() {
+    
+    // Probability of throwing head
+    var prob = beta(2,2); // UniformReal(0,1);
+    // We measure incorrect with probability 0.2
+    var error = flip(0.2);
+    
+    // random Integer coin(Integer i) ~ Bernoulli(prob);
+    var throwCoin = function(i) {
+        return flip(prob);
+    }
+    
+    var coin = function(i) {
+        if (error) {
+            return 1-throwCoin(i);
+        } else {
+            return throwCoin(i);
+        }
+    }
+    var sum250 = sum(mapN(function(i) { return coin(i) },250));
+    condition(sum250 == 140);
+
+    return {
+        prob:prob,
+        probLt0_5:prob < 0.5,
+        error:error
+    }
+}
+
+// var d = Infer(model);
+// var d = Infer({method:"rejection",samples:1000},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model);
+// var d = Infer({method:"SMC",particles:1000},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    // display("Marginals:");
+    // map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+
+// var d1 = Infer({method:"rejection",samples:1000},model);
+// var d1 = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model);
+var d1 = Infer({method:"SMC",particles:1000},model);
+// display(d1);
+exp_map(d1,["prob","probLt0_5","error"]);

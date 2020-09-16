@@ -1,0 +1,63 @@
+/*
+   From BLOG example/aircraft-position.blog
+
+*/
+
+var model = function() {
+
+    // Number Declarations
+    // #Aircraft ~ Poisson(5);
+    var numAircraft = poisson(5);
+    
+    // #Blip(Source=a) ~ Bernoulli(0.9);
+    var blip = mem(function(a) { return flip(0.9) });
+    var sumBlips = sum(mapN(function(a) { return blip(a); },numAircraft));
+    
+    var Position = mem(function(a) {
+        return gaussian(0, 10);
+    })
+    
+    var ObsPos = mem(function(b) {
+        return gaussian(Position(blip(b)), 1);
+    })
+    
+    var inRange = function(x, y, epsilon) {
+       return (x > y - epsilon) && (x < y + epsilon);
+    }
+    
+    
+    var epsilon = 0.05;
+
+    // Evidence
+    // obs {b for Blip b} = {B1, B2, B3};
+    condition(sumBlips == 3);
+
+    // condition(inRange(ObsPos(0), 5.0, epsilon));
+    factor(inRange(ObsPos(0), 5.0, epsilon) ? 0 : -Infinity);
+    // factor(ObsPos(1) == 6.1 ? 0: -2);
+    // factor(ObsPos(1) == 7.5 ? 0: -2);    
+    
+    // Query
+    return {
+        numAircraft:numAircraft,
+        sumBlips:sumBlips,
+        numAircraftPositionLt5:sum(mapN(function(a) { return Position(a) > 5},numAircraft))
+    }
+    //query size({Aircraft a: Position(a) > 5});
+
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["numAircraft","sumBlips","numAircraftPositionLt5"]);

@@ -1,0 +1,108 @@
+/*
+  From BLOG Swift example birthday.blog
+  https://github.com/lileicc/swift/blob/master/example/birthday.blog
+  Result
+  """
+  Distribution of values for exists Person x (exists Person y ((!(x = y) & (Birthday(x) = Birthday(y)))))
+	true	0.5446927374301685
+	false	0.4553072625698328
+  """
+
+  This model (method:rejection):
+  Marginal:
+    {"person":23,"b":true} : 0.5087
+    {"person":23,"b":false} : 0.4913
+  Marginals:
+  person
+  Marginal:
+    23 : 1
+  b
+  Marginal:
+    true : 0.5087
+    false : 0.49129999999999996
+  expectation:
+[ [ 'person', 23 ], [ 'b', 0.5087 ] ]
+
+
+  "Open world" variant (i.e. comment condition(numPeople==23)):
+  Marginals:
+  numPeople
+  Marginal:
+    14 : 0.11350000000000005
+    13 : 0.11319999999999998
+    12 : 0.111
+    10 : 0.09269999999999998
+    11 : 0.09109999999999999
+    15 : 0.08620000000000001
+    9 : 0.082
+    16 : 0.07869999999999999
+    8 : 0.042300000000000004
+    17 : 0.0396
+    18 : 0.038200000000000005
+    20 : 0.022799999999999997
+    7 : 0.020999999999999998
+    6 : 0.019900000000000008
+    19 : 0.017599999999999994
+    21 : 0.009300000000000003
+    5 : 0.0072
+    22 : 0.005900000000000002
+    4 : 0.0041
+    24 : 0.0020000000000000005
+    23 : 0.0008999999999999998
+    3 : 0.0008000000000000003
+  b
+  Marginal:
+    false : 0.8383999999999999
+    true : 0.16159999999999997
+  expectation:
+[ [ 'numPeople', 12.816500000000001 ],
+  [ 'b', 0.16159999999999997 ] ]
+
+
+*/
+
+var model = function() {
+
+    var day = _.range(365);
+
+    var birthday = mem(function(b) {
+        // return 1+randomInteger(day);
+        return uniformDraw(day);        
+    })
+    
+    var numPeople = poisson(13);
+    
+    // "comment the following to try full open world model"
+    condition(numPeople == 23);
+
+    // is there a duplicate of birthdays?
+    var b = sum(
+        mapN(function(x) {
+            sum(mapN(function(y) {
+                return x != y && birthday(x) == birthday(y)
+            }, numPeople))
+        }, numPeople)) > 0;
+    
+    return {
+        numPeople:numPeople,
+        b:b,
+        // birthday:sort(mapN(function(i) { return birthday(i) },numPeople))
+    }
+
+}
+
+// var d = Infer({method:"rejection",samples:1000},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+// var d = Infer({method:"SMC",particles:1000},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["numPeople","b"]);

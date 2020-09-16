@@ -1,0 +1,75 @@
+/*
+   Generating Zero Modified Geometric distribution
+
+   From Handbook on probability distributions
+   page 20ff
+
+*/
+
+// From Handbook on probability distributions
+// page 21
+// """
+// While for the zero-modified geometric distribution, it is a little bit tricky
+// * generate U from an uniform distribution
+// * if U < p, then X = 0
+// * otherwise
+// – initialize X to 1 and generate U from an uniform distribution
+// – while U > q do ; generate U from an uniform distribution; X = X + 1;
+// * return X
+// """
+var zero_inflated_geometric1 = function(p,q,x) {
+    var u = uniform(0,1);    
+    return u > q ? zero_inflated_geometric1(p,q,x+1) : x;
+
+}
+
+// p is the probability of 0
+var zero_inflated_geometric = function(p,q) {
+    var u = uniform(0,1);
+    if (u < p) {
+        return 0;
+    } else {
+        return zero_inflated_geometric1(p,q,1);
+    }
+}
+
+var model = function() {
+    var p = 0.9; // Probability of zero
+    var q = 0.4;
+
+    var g = zero_inflated_geometric(p,q);
+    
+    return {
+        g:g
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["g"]);
+
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("g");
+

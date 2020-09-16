@@ -1,0 +1,96 @@
+/*
+
+  
+  Number lock problem in MiniZinc.
+  
+  From Presh Talwalkar (MindYourDecisions) 
+  """
+  Puzzles like this have been shared with the dubious claim that "only a
+  genius can solve" them. But they are still fun problems so let's work one
+  out.
+
+  A number lock requires a 3 digit code. Based on these hints, can you crack
+  the code?
+
+   682 - one number is correct and in the correct position
+   645 - one number is correct but in the wrong position
+   206 - two numbers are correct but in the wrong positions
+   738 - nothing is correct
+   780 - one number is correct but in the wrong position
+
+  Video:  https://youtu.be/-etLb-8sHBc
+  """
+
+  This model use the same approach as
+  - MiniZinc model: http://hakank.org/minizinc/number_lock.mzn
+  - Picat model: http://hakank.org/picat/number_lock.pi
+
+  In this version there's another (and simpler) representation of the data 
+  compared to number_lock.wppl.
+
+  Solution
+  Marginal:
+    {"x":[0,5,2]} : 1
+
+*/
+
+var model = function() {
+    
+    var n = 3; // number of columns (i.e. length of the numbers)
+     var m = 5; // number of rows (i.e. number of hints)
+    
+    // This works. But it must be a RealMatrix (not IntegerMatrix)
+    var y = [[6,8,2],
+             [6,4,5],
+             [2,0,6],
+             [7,3,8],
+             [7,8,0]
+            ];
+    
+    // But adding the hints matrix and the check predicate don't work!
+    // It works when using it in obs directly, though.
+    var hints = [[1,1],
+                 [0,1],
+                 [0,2],
+                 [0,0],
+                 [0,1]
+                ];
+    
+    // The unknown number
+    var x = mem(function(i) {
+        return randomInteger(10);
+    })
+
+    // Number of digits that has correct position and value.
+    var num_correct_positions = mem(function(r) {
+        return sum(mapN(function(i) {return y[r][i] == x(i)},n));
+    })
+    
+    // Number of digits that has correct value (wether in correct position or not)
+    var num_correct_values = mem(function(r) {
+        // toInt(sum({1 for Integer i, Integer j: i >= 0 & i < n & j >= 0 & j < n & y(r,j) == x(i)}));
+        return sum(mapN(
+            function(i) {
+                sum(mapN(function(j) {
+                    return y[r][j] == x(i)
+                },n))
+            },n));
+    })
+        
+    condition(
+        sum(mapN(function(r) {
+            sum(mapN(function(c) {
+                num_correct_positions(r) == hints[r][0] &&
+                    num_correct_values(r) == hints[r][1]
+            },n))
+        }, m))  == n*m
+    );
+
+    
+    return {
+        x:mapN(function(i) { return x(i)},n)
+    };
+}
+
+var d = Infer(model);
+display(d);

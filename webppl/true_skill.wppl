@@ -1,0 +1,65 @@
+/*
+  (Simple) True skill problem.
+  
+  Example inspired by
+  Johannes Borgstrom, Andrew D. Gordon, Michael Greenberg, James Margetson, and Jurgen Van Gael:
+  "Measure Transformer Semantics for Bayesian Machine Learning"
+  https://www.microsoft.com/en-us/research/publication/measure-transformer-semantics-for-bayesian-machine-learning-2011/?from=http%3A%2F%2Fresearch.microsoft.com%2Fpubs%2F135344%2Fmsr-tr-2011-18.pdf
+
+  Note that we constraint the generated worlds so they satisfies the
+  observation constraints (a > b > c). This means that we will ge only
+  a small part of all worlds (about 0.16).
+
+  Cf: ~/cplint/trueskill.pl
+      ~/blog/true_skill.blog
+      ~/psi/true_skill.psi
+
+*/
+
+var model = function() {
+
+    // There are three people, a, b, and c
+    
+    // Each person has an unknown Skill and a
+    // known performance, where the skill is
+    // reflected in the performance (with uncertainties).
+    var skill = mem(function(p) {
+        return gaussian(100,Math.sqrt(10))
+    });
+    
+    var performance = mem(function(p) {
+        return gaussian(skill(p), Math.sqrt(15));
+    });
+    
+    // Now we see that a is better than b and c, and b is better than c.
+    condition(performance("a") > performance("b"));
+    condition(performance("a") > performance("c"));
+    condition(performance("b") > performance("c"));
+
+
+    // What are their performance and (underlying) skills?    
+    return {
+        performanceA:performance("a"),
+        performanceB:performance("b"),
+        performanceC:performance("c"),
+        skillA:skill("a"),
+        skillB:skill("b"),
+        skillC:skill("c")
+    };
+}
+
+var d = Infer(model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["performanceA","performanceB","performanceC",
+           "skillA","skillB","skillC"]);

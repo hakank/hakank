@@ -1,0 +1,73 @@
+/*
+  Thermostat problem.
+
+  OMEGA: Fast, casual Inference from Simple Parts 
+  From  https://www.youtube.com/watch?v=oCvbqKE2tWA
+  @ ~ 21min
+  
+  The Omega (Julia) model is here:
+  https://github.com/zenna/Omega.jl/blob/master/OmegaModels/src/causal/thermostat.jl
+
+
+  Cf ~/cplint/thermostat.pl
+     ~/blog/thermostat.blog
+
+*/
+
+var model = function() {
+    var times = ["morning", "afternoon","evening"];
+    
+    var time = uniformDraw(times);
+    
+    var is_window_open = flip(0.5);
+    
+    // a.c. is off when window is closed
+    var is_ac_on = is_window_open ? false : flip(0.5);
+    
+    // hottest at noon, cool at night
+    var outside_temp =
+        (time == "morning") ? gaussian(20,2) :
+        (time == "afternoon") ? gaussian(32,2) :
+        (time == "evening") ? gaussian(10,2) : gaussian(25,2)
+    ;
+    
+    
+    // a.c. chills the room
+    var room_temp = is_ac_on ? gaussian(20,2) : gaussian(25,2);
+    
+    
+    // great insulation
+    var thermostat =  is_window_open ? (outside_temp + room_temp) / 2.0 : room_temp;
+    
+    // condition(is_ac_on==true);
+    // condition(is_window_open == false);
+    // condition(room_temp < 20.0);
+    // condition(room_temp > 20.0);
+    // condition(time == "evening");
+    // condition(outside_temp > 10.0);
+    
+    return {
+        time:time,
+        is_ac_on:is_ac_on,
+        is_window_open:is_window_open,
+        outside_temp:outside_temp,
+        room_temp:room_temp,
+        thermostat:thermostat,
+    }
+
+}
+
+var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["time","is_ac_on","is_window_open","outside_temp",
+           "room_temp","thermostat"]);

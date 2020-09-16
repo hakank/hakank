@@ -1,0 +1,106 @@
+/*
+  From a BLOG model in
+  Yi Wu, Lei Li, Stuart Russell, Rastislav Bodik
+  "Swift: Compiled Inference for Probabilistic Programming Languages"  
+  Page 2
+
+  cf ~/blog/urn_ball.blog
+     ~/psi/urn_ball.psi
+  
+  Result from the BLOG model:
+  """
+  ========  LW Trial Stats =========
+  Log of average likelihood weight (this trial): -4.817126547911737
+  Average likelihood weight (this trial): 0.008089999999999995
+  Fraction of consistent worlds (this trial): 0.00809
+  Fraction of consistent worlds (running avg, all trials): 0.00809
+  ======== Query Results =========
+  Number of samples: 100000
+  Distribution of values for color(drawn(D[4]))
+	Green	0.8368355995055583
+	Blue	0.163164400494437
+  Distribution of values for size({b for Ball b : true})
+	1	0.6365883807169315
+	2	0.133498145859085
+	3	0.05315203955500618
+	4	0.03708281829419036
+	5	0.02224969097651421
+	6	0.014833127317676144
+	7	0.017305315203955497
+	8	0.017305315203955497
+	9	0.01112484548825711
+	10	0.0061804697156983964
+	11	0.003708281829419035
+	12	0.0061804697156983964
+	13	0.0061804697156983964
+	14	0.009888751545117435
+	15	0.0061804697156983964
+	16	0.003708281829419035
+	17	0.0024721878862793583
+	18	0.0012360939431396792
+	19	0.0024721878862793583
+	20	0.008652657601977755
+  """
+
+  I.e. it's quite probable that there is just one ball (or perhaps two).
+
+*/
+
+var model = function() {
+
+    var D = _top.Array(5); //5 draws: D[0],D[1],D[2],D[3], and D[4] (the unobserved)
+    
+    var numBalls = 1+randomInteger(20);
+    
+    var color = mem(function(b) {
+        return categorical({ps:[0.9,0.1],vs:["Blue","Green"]});
+    })
+    
+    var drawn = (function(d) {
+        return randomInteger(numBalls);
+    })
+
+    // Original problem
+    condition(color(drawn(D[0])) == "Green");
+    condition(color(drawn(D[1])) == "Green");
+    condition(color(drawn(D[2])) == "Green");
+    condition(color(drawn(D[3])) == "Green");
+
+    // Another problem
+    /*
+    condition(color(drawn(D[0])) == "Blue");
+    condition(color(drawn(D[1])) == "Blue");
+    condition(color(drawn(D[2])) == "Blue");
+    condition(color(drawn(D[3])) == "Blue");
+    */
+
+    return {
+        drawnD4:drawn(D[4]),
+        colorD4:color(drawn(D[4])),
+        numBalls:numBalls,
+
+    }
+
+
+}
+
+// var d = Infer({method:"enumerate"},model);
+// var d = Infer({method:"rejection",samples:10000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+var d = Infer({method:"SMC",particles:10000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["drawnD4","colorD4","numBalls"]);
+
+
+

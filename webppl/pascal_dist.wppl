@@ -1,0 +1,80 @@
+/*
+   Generating Pascal distribution
+
+   From Handbook on probability distributions
+   page 25
+   """
+   The negative binomial distribution can be constructed by summing 
+   m geometric distributed variables G(p). The Pascal distribution is 
+   got from summing n geometrically distributed G0(p) variables.
+   Thus possible values of the Pascal distribution are in {n, n+ 1, ...}.
+   
+   ...
+   
+   The link between Pascal distribution Pa(n,p) and the negative 
+   binomial distribution BN(n,p) is to substract the constant n, i.e. 
+   if X ~ Pa(n,p) then X-n ~ BN(n, p).
+   """
+
+*/
+
+// See geometric_zero_truncated_dist.wppl
+var geometric_zero_truncated1 = function(p,n) {
+    var u = uniform(0,1);
+    return u > p ? geometric_zero_truncated1(p,n+1) : n;
+
+}
+
+var geometric_zero_truncated = function(p) {
+    return geometric_zero_truncated1(p,1);
+}
+
+
+// From Handbook on probability distributions
+// page 23
+// Expectation: n/p
+var pascal = function(m,p) {
+    var g = mapN(function() { return geometric_zero_truncated(p)}, m);
+    return sum(g);
+
+}
+
+
+var model = function() {
+
+    // See negative_binomial_test.wppl
+    var d = pascal(3,0.7);
+
+    return {
+        d:d
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["d"]);
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("d");
+

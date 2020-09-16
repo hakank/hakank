@@ -1,0 +1,123 @@
+/*
+  From
+  "Probabilistic logic programming and its applications"
+  Luc De Raedt, Leuven
+  https://www.youtube.com/watch?v=3lnVBqxjC88
+  @ 3:44
+
+  """
+  Mike has a bag of marbles with 4 white, 8 blue, and
+  6 red marbles. He pulls out one marble from the bag
+  and it is red. What is the probability that the
+  second marble he pulls out of the bag is white?
+
+  The answer is 0.234931.
+  """
+
+  This webppl model as well as the cplint and the PSI models give a slightly different
+  answer: 0.2352941176470588
+
+
+  Cf ~/cplint/bag_of_marbles.pl
+      ~/blog/bag_of_marbles.blog
+     ~/psi/bag_of_marbles.psi
+
+  This version try to use a recursive loop as the BLOG model.
+  Also, use color names
+
+*/
+
+
+var model = function() {
+
+    var white = 0;
+    var blue  = 1;
+    var red   = 2;
+    var colors = ["white","blue","red"];
+    
+    // var start = function(c) {
+    //     var s = [4,8,6];        
+    //     return s[c];
+    // }
+
+    var start = function(c) {
+        var s = {white:4,"blue":8,"red":6};
+        return s[c];
+    }
+
+
+    // // This works. Note the use of dp.cache!
+    // var draw = dp.cache(function(t) {
+    //     if (t == 0) {
+    //         return categorical({
+    //             ps:[start("white"),
+    //                 start("blue"),
+    //                 start("red")
+    //                ],
+    //             vs:colors
+    //         });
+            
+    //     } else {
+    //         return categorical({
+    //             ps:[start("white") - sum(mapN(function(i) {return "white"===draw(i)},t)),
+    //                 start("blue")  - sum(mapN(function(i) {return "blue"===draw(i)},t)),
+    //                 start("red")   - sum(mapN(function(i) {return "red"===draw(i)},t))
+    //                ],
+    //             vs:colors
+    //         });
+    //     }
+    // });
+
+
+    // // This works as well.
+    // var draw = dp.cache(function(t) {
+    //     return categorical({
+    //         ps:[start("white") - (t > 0 ? sum(mapN(function(i) {return "white"===draw(i)},t)) : 0),
+    //             start("blue")  - (t > 0 ? sum(mapN(function(i) {return "blue"===draw(i)},t)) : 0),
+    //             start("red")   - (t > 0 ? sum(mapN(function(i) {return "red"===draw(i)},t)) : 0)
+    //            ],
+    //         vs:colors
+    //     });
+    // });
+
+    // This is about the same idea as the BLOG model. But it works only with dp.cache!
+    // Using mem() yield an ReferenceError "draw is not defined".
+    var draw = dp.cache(function(t) {
+        return categorical({
+            ps:[start("white") - sum(mapN(function(i) {return "white"===draw(i)},t)),
+                start("blue")  - sum(mapN(function(i) {return "blue"===draw(i)},t)),
+                start("red")   - sum(mapN(function(i) {return "red"===draw(i)},t))
+               ],
+            vs:colors
+        });
+    });
+
+    var draw0 = draw(0);
+    var draw1 = draw(1);
+    
+    condition(draw0 == "red");
+
+    return {
+        draw0:draw0,
+        draw1:draw1,
+        draw1white:draw1=="white"
+    };
+
+    
+}
+
+var d = Infer(model);
+// var d = Infer({method:"rejection",samples:10000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    // display("expectation:");
+    // display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["draw0","draw1","draw1white"]);

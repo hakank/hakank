@@ -1,0 +1,160 @@
+/*
+   From Hugin's BN heart_disease_regression.net
+   
+   Risk of dying from heart disease in the next 10 years
+
+   Darn, according to this model, there's a probability of 0.9999999983124701
+   that I will die from a hear disease in the next 10 years...
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+//
+// Using condition and intervals for age and cholesterol values.
+//
+var model1 = function() {
+    var male = 0;
+    var female = 1;
+    
+    // Priors
+
+    var sex = categorical({ps:[0.5,0.5],vs:[male, female]});  
+    var cholesterol = gaussian(6,10.0); // In the Hugin model the variance is 100.0.
+    var age = gaussian(40,25); // In the Hugin model the variance is 625.
+
+    var intercept = -5.0;
+    
+    var score_cholesterol = 1.2 * (cholesterol - 5.0);
+    var score_sex = -1 * sex;    
+    var score_age = 2.0 * (age - 50.0);
+    
+    var score = intercept + score_age + score_sex + score_cholesterol;
+    
+    // Risk of dying from heart disease in the next 10 years
+    var risk = 1.0/(1.0 + Math.exp(-score));
+
+    condition(sex==male);
+    condition(age>=63 && age <= 63.5);
+    // condition(age>=60);    
+    condition(cholesterol>=1);
+    // condition(cholesterol>=14.9 && cholesterol<=15.1); // ??? I'm note sure about this
+    // condition(score<=0.5);
+
+    return {
+        sex:sex,
+        age:age,
+        cholesterol:cholesterol,
+        score_cholesterol:score_cholesterol,
+        score_sex:score_sex,
+        score_age:score_age,
+        score:score,
+        risk:risk,
+        oneMinusRisk:1.0 - risk,
+    };
+
+}
+
+display("Model 1");
+// var d1 = Infer(model);
+var d1 = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model1);
+// display(d1);
+
+exp_map(d1,["sex","age","cholesterol","score_cholesterol","score_sex","score_age","score","risk","oneMinusRisk"]);
+
+
+//
+// Using observe.
+// Only Gaussian on age and cholesterol don't work as expected, i.e. the expectation of age is around 40.
+// However adding priors on the Gaussians seems to work better.
+//
+var model2 = function() {
+    var male = 0;
+    var female = 1;
+    
+    // Priors
+    var sex = categorical({ps:[0.5,0.5],vs:[male,female]});
+    var ageMu = gaussian(40,25);
+    var ageSigma = uniform(10,25);    
+    var age = Gaussian({mu:ageMu,sigma:ageSigma}); // In the Hugin model the variance is 625.
+    
+    var cholMu = uniform(1,10);
+    var cholSigma = uniform(1,10);
+    var cholesterol = Gaussian({mu:cholMu,sigma:cholSigma}); // In the Hugin model the variance is 100.0.
+    var intercept = -5.0;
+
+    // The regression
+    var score_cholesterol = 1.2 * (sample(cholesterol) - 5.0);
+
+    var score_sex = -1 * sex;
+    var score_age = 2.0 * (sample(age) - 50.0);
+    
+    var score = intercept + score_age + score_sex + score_cholesterol;
+    
+    // Risk of dying from heart disease in the next 10 years
+    var risk = 1.0/(1.0 + Math.exp(-score));
+
+    condition(sex==male);
+    observe(age,63.0);
+    observe(cholesterol,15.0);
+
+    // Force the observations. This is probably not the correct way, but it seems to work.
+    mapN(function(i) {
+        observe(age,63.0)
+    },20);
+    mapN(function(i) {
+        observe(cholesterol,15.0)
+    },20);
+    factor(age == 63.0 ? 0 : -2000);
+    
+    // factor(cholesterol.score(5.0));
+    // factor(cholesterol == 15.0 ? 0 : -2000);
+
+    // condition(risk < 0.1);
+
+    
+    return {
+        sex:sex,
+        age:sample(age),        
+        ageMu:ageMu,
+        ageSigma:ageSigma,
+        cholesterol:sample(cholesterol),
+        cholMu:cholMu,
+        cholSigma:cholSigma,        
+        score_cholesterol:score_cholesterol,
+        score_sex:score_sex,
+        score_age:score_age,
+        score:score,
+        risk:risk,
+        oneMinusRisk:1.0 - risk,
+    };
+
+}
+
+var exp_map2 = function(d,arr) {
+    // display("Marginals:");
+    // map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+
+display("\n\nModel 2");
+// var d2 = Infer(model2);
+// var d2 = Infer({method:"rejection"},model2);
+// var d2 = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100,verbose:true},model2);
+// var d2 = Infer({model:model2,method:"optimize",optMethod:{sgd:{stepSize:0.001}},samples:10000,steps:1000}); // very strange results...
+var d2 = Infer({method:"SMC",particles:1000},model2);
+// display(d2);
+
+exp_map2(d2,["sex","age","ageMu","ageSigma","cholesterol","cholMu","cholSigma",
+             "score_cholesterol","score_sex","score_age","score","risk","oneMinusRisk"]);

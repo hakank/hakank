@@ -1,0 +1,73 @@
+/*
+  http://cplint.eu/example/inference/dice.swinb
+
+  """
+  A six-sided die is repeatedly thrown until the outcome is six. 
+  on(T,F) means that on the Tth throw the face F came out.
+  """
+
+  What is the probability that the die lands on face 1 at time 0?
+
+  Cf ~/blog/dice_6_throws.blog
+     ~/psi/dice_6_throws.psi
+  
+  Cf dice_6_throws.wppl
+  This is an alternative approach using arrays instead.
+
+  expectation:
+[ [ 'a0_is1', 0.16667999999999994 ],
+  [ 'a1_is1', 0.1397000000000001 ],
+  [ 'a2_is1', 0.11701000000000013 ],
+  [ 'len', 5.9889299999999945 ] ]
+
+  And it's about the same result as dice_6_throws.wppl
+*/
+
+var model = function() {
+
+    var throwDice = (function(t) {
+        return uniformDraw([1,2,3,4,5,6])
+    });
+
+    // Throw until the outcome is a 6
+    var until6 = function(arr) {
+        if (last(arr) == 6) {
+            return arr;
+        } else {
+            var v = throwDice(arr.length);
+            return until6(arr.concat(v));
+        }
+    };
+
+    // var until6 = mem(function(arr) {return until6_1(arr); });
+    
+    var a = until6([]);
+    // display(a);
+
+    // condition(on(0,1)==true);
+    // condition(on(1,1)==true);    
+    
+    return {
+        a0_is1:a[0]==1,
+        a1_is1:a[1]==1,
+        a2_is1:a[2]==1,        
+        len:a.length
+    }
+
+}
+
+// var d = Infer(model);
+var d = Infer({method:"rejection",samples:100000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["a0_is1","a1_is1","a2_is1","len"]);

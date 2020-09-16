@@ -1,0 +1,113 @@
+/*
+  https://edu.swi-prolog.org/mod/assign/view.php?id=254&forceview=1
+  """
+  Coin tosses
+
+  http://cplint.eu/p/coin_tosses.swinb
+
+  Coin tosses
+
+  Consider a process where you repeatedly toss coins and record the results.
+
+  After each toss, you continue tossing with probability 0.8.
+
+  Write a predicate tosses(Coin,L) that, given an initial coin id Coin, returns in L the list of
+  results of coin tosses obtained using the process above.
+
+  Moreover, write a predicate length_tosses(N) that returns the number of coin tosses.
+
+  Compute the probability of the sequence [h,h,h] using MCINTYRE.
+
+  Compute the probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] was observed
+  using rejection sampling and Metropolis Hastings.
+
+  Compute the probability of the sequences of 10 coin tosses using MCINTYRE.
+
+  Compute the expected length of the sequences of coin tosses using MCINTYRE.
+  """ 
+
+  Note: The cplint version (corrected by  Fabrizio Riguzzi) at http://cplint.eu/p/coin_tosses_hakank_rzf.swinb
+  give another solutions:
+   - first problem: probability of the sequence [h,h,h] -> 0.015
+   - second problem: probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] -> about 0.03
+   - third problem: probability of the sequences of 10 coin tosses -> about 0.026
+   - fourth problem: expected length of the sequences of coin tosses -> about 4.
+
+This is not at all the same as this BLOG model.
+  
+  Cf ~/blog/coin_tosses.blog
+
+*/
+
+var model = function() {
+
+    // type Coin;
+    // distinct Coin head, tail, nothrow;
+    var coins = ["head","tail"];
+    
+    // Should we continue to toss?
+    // I.e. toss first and then check.
+    var do_toss = function(t) {
+        if (t == 0) {
+            return true;
+        } else {
+            return flip(0.8);
+        }
+    };
+    
+    var toss = (function(t) {
+        // console.log("toss",t);
+        if (t == 0) {
+            // Always toss the first 
+            return categorical({ps:[0.5,0.5],vs:coins })
+        } else {
+            // console.log("here", t);
+            // console.log("mapN:", mapN(function(i) {return do_toss(i)}, t));            
+            if (
+                // !exists Integer i i > 0 & i <= t & !do_toss(i)
+                do_toss(t) && sum(mapN(function(i) {return do_toss(i) }, t))==t
+               ) {
+                return categorical({ps:[0.5,0.5],vs:coins })              
+            } else {
+                return "nothrow";
+            }
+        }
+    });
+    
+    condition(toss(0) == "head");
+    condition(toss(1) == "head");
+    condition(toss(2) == "head");
+
+    return {
+        threeHead:toss(0)=="head" && toss(1) == "head" && toss(2) == "head",
+        fiveHeadGivenHHH:toss(3)=="head" && toss(4) == "head", // uncomment the three conditions above
+        toss0:toss(0),
+        toss1:toss(1),
+        toss2:toss(2),
+        // toss3:toss(3),
+        // toss4:toss(4),
+        // toss5:toss(5),
+        // toss6:toss(6),
+        // toss7:toss(7),
+        // toss8:toss(8),
+        // toss9:toss(9),
+    };
+}
+
+var d = Infer(model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["threeHead","toss0","toss1","toss2","fiveHeadGivenHHH"]
+        // ,"toss3","toss4","toss5","toss6","toss7","toss8","toss9"]);
+       );

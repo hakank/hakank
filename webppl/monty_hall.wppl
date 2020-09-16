@@ -1,0 +1,80 @@
+/*
+  Monty Hall problem
+
+  From the PyMC3 model in the talk
+  "Carlo Revolution is Open Source: Probabilistic Programming with PyMC3?Austin Rochford"
+  https://www.safaribooksonline.com/videos/open-data-science/9780135432792/9780135432792-ODSC_11
+  Around time 9:00
+
+
+  Which mean that if we selected d1 it will be 1/3 chance of being the price door.
+  Changing to d3 would - however - give a 2/3 change of getting the price.
+
+  See ~/blog/monty_hall.blog
+      ~/psi/monty_hall.psi
+
+*/
+
+var model = function() {
+
+    // There are 3 doors.
+    var d1 = 1;
+    var d2 = 2;
+    var d3 = 3;
+    var doors = [d1,d2,d3];
+    
+    
+    // The prize can be behind any door 1..3.
+    var prize = uniformDraw(doors);
+    
+    
+    // Which door will Monty open?
+    // Assumption (WLOG): We always select door 1.
+    
+    // var open = (function() {
+    //     if (prize == d1) {
+    //         return categorical({ps:[0,0.5,0.5],vs:doors})
+    //     } else if (prize == d2) {
+    //         return categorical({ps:[0,0,1],vs:doors})            
+    //     } else {
+    //         return categorical({ps:[0,1,0],vs:doors});
+    //     }
+    // })();
+    
+    // This is simpler:
+    var open = (prize == d1) ? categorical({ps:[0.5,0.5], vs:[d2,d3]}) :
+        (prize == d2 ? d3 : d2);
+    
+    // We see that Monty opens door 2.
+    condition(open == d2);
+    
+    // What are the probabilities that the price is behind
+    // - door d1 (the one we selected, i.e don't switch)
+    // - or door d3 (i.e. switch door)
+    return {
+        open:open,
+        prize:prize,
+        // d1:d1,
+        // d2:d2,
+        // d3:d3
+    };
+
+}
+
+var d = Infer(model);
+
+display("We select door 1. Monty opens door 2. Should we change to door 3?");
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// exp_map(d,["open","prize","d1","d2","d3"]);
+exp_map(d,["open","prize"]);

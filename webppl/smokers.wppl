@@ -1,0 +1,120 @@
+/*
+
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/05_smokers.html
+  """
+  Social networks (Friends & Smokers)
+
+  The ProbLog program below encodes a variant of the famous Friends & Smokers problem. The 
+  first two rules state that there are two possible causes for a person X to smoke, 
+  namely X having stress, and X having a friend Y who smokes himself and influences X. 
+  Note that, according to our this program, the presence of stress and of (possibly multiple) 
+  smoking friends all contribute to the probability of the person X smoking, namely in a 
+  noisy-or way (recall the noisy-or in the coin tossing example). Furthermore, the program 
+  encodes that if X smokes, (s)he has asthma with probability 0.4.
+
+  The program below considers a scenario with 4 people, having a total of 5 friendship relations.
+  """
+
+  Cf ~/blog/smokers.blog
+
+*/
+
+var model = function() {
+
+    var people = [0,1,2,3];
+
+    var stress = mem(function(p) {
+        return flip(0.3);
+    })
+
+    // If I mem (or dp.cache) this then method:rejection crash with heap out of memory
+    var influences = (function(p1, p2) {
+        if (p1 != p2) {
+            return flip(0.2);
+        } else {
+            return false;
+        }
+    })
+
+    var friend = (function(p1, p2) {
+        var friend_table = {
+            "01":1,
+            "10":1,
+            "13":1,
+            "21":1,
+            "31":1
+        };
+        
+        return friend_table[""+p1+p2+""] == 1;
+    })
+    
+    var smokes1 = (function(p1) {
+        if (stress(p1)) {
+            return true;
+        } else {
+            if (
+                any(function(p2) { return p2 != p1 && friend(p1,p2) && influences(p2,p1) && smokes1(p2) }, people)
+            ) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    })
+
+    var smokes = mem(function(p1) { return smokes1(p1); });
+    
+    var asthma = mem(function(p) {
+        if (smokes(p)) {
+            return flip(0.4);
+        } else {
+            return false;
+        }
+    })
+
+    
+    condition(smokes(1) == true);
+    condition(influences(3,1) == false);
+
+    return {
+    
+        smokes0:smokes(0),
+        smokes1:smokes(1),
+        smokes2:smokes(2),
+        smokes3:smokes(3),
+        
+        asthma0:asthma(0),
+        asthma1:asthma(1),
+        asthma2:asthma(2),
+        asthma3:asthma(3),
+        
+        
+        influences01:influences(0,1)
+    }
+    
+
+}
+
+// var d = Infer({method:"enumerate"},model);
+// var d = Infer(model);
+var d = Infer({method:"rejection",samples:10000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000000},model);
+// var d = Infer({method:"SMC",particles:10000},model);
+// var d = Infer({method:"incrementalMH",samples:10000},model);
+// var d = Infer({method:"optimize",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["smokes0","smokes1","smokes2","smokes3",
+           "asthma0","asthma1","asthma2","asthma3",
+           "influences01"
+          ]);
+

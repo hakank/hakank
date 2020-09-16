@@ -1,0 +1,104 @@
+/*
+ 
+  From BLOG examples/healtiness.blog:
+  """
+  healthiness model
+  This BLOG program describes the model for healthiness in 
+  a person.
+  See exercise 3.5 in:
+  Probabilistic Graphical Models: Principles and Techniques
+  Daphne Koller, Nir Friedman, MIT 2009
+  Each person is described by whether they are health
+  conscious, have free time, exercise, have a good diet, 
+  have normal weight, have high cholesterol, and whether
+  they tested positive for high cholesterol.
+  @author: jnieh
+  @date: 2012-09-13
+  """
+
+*/
+
+var model = function() {
+
+    var HealthConscious = mem(function(p) {
+        return flip(0.5);
+    })
+    
+    var LittleFreeTime = mem(function(p) {
+        return flip(0.5);
+    })
+    
+    var Exercise = mem(function(p) {
+        var HealthConsciousP = HealthConscious(p);
+        var LittleFreeTimeP = LittleFreeTime(p);
+        var ret =
+            (HealthConsciousP==true && LittleFreeTimeP==true) ? flip(0.5) : 
+            (HealthConsciousP==true && LittleFreeTimeP== false) ? flip(0.9) :
+            (HealthConsciousP==false && LittleFreeTimeP== true) ? flip(0.1) :
+            (HealthConsciousP==false && LittleFreeTimeP== false) ? flip(0.5) : "xxx"
+        return ret;
+    })
+    
+    var GoodDiet = mem(function(p) {
+        return HealthConscious(p) ? flip(0.7) : flip(0.3);
+    })
+    
+    var NormalWeight = mem(function(p) {
+        var GoodDietP=GoodDiet(p);
+        var ExerciseP=Exercise(p);
+        var ret =
+            (GoodDietP==true && ExerciseP==true) ? flip(0.8) :
+            (GoodDietP==true && ExerciseP== false) ? flip(0.5) : 
+            (GoodDietP==false && ExerciseP== true) ? flip(0.5) :
+            (GoodDietP==false && ExerciseP== false) ? flip(0.2) : "zzz"
+        return ret;
+    })
+    
+    var HighCholesterol = mem(function(p) {
+        return GoodDiet(p) ? flip(0.3) : flip(0.7)
+    })
+
+    var TestedHighCholesterol = mem(function(p) {
+        return HighCholesterol(p) ? flip(0.9) : flip(0.1);
+    })
+    
+    /* Evidence */
+    condition(TestedHighCholesterol("P1") == false); // Original evidence
+    // condition(TestedHighCholesterol("P1") == false);
+    // condition(Exercise("P1") == true);
+    // condition(LittleFreeTime("P1") == true);        
+    
+    /* Query */
+    return {
+        HealthConscious:HealthConscious("P1"),
+        LittleFreeTime:LittleFreeTime("P1"),
+        Exercise:Exercise("P1"),
+        GoodDiet:GoodDiet("P1"),
+        HighCholesterol:HighCholesterol("P1"),
+        TestedHighCholesterol:TestedHighCholesterol("P1"),
+    }
+
+}
+
+var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["HealthConscious",
+           "LittleFreeTime",
+           "Exercise",
+           "GoodDiet",
+           "HighCholesterol",
+           "TestedHighCholesterol",
+          ]);
+
+
+

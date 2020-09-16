@@ -1,0 +1,84 @@
+/*
+   Fair coin from a biased coin.
+
+   http://cplint.eu/e/von_neumann_trick.swinb
+   """
+   If you have a biased coin, how to obtain a fair coin, i.e., from a coin that lands heads with 
+   probability p with p≠0.5, how to generate samples from {heads,tails} with P(heads)=P(tails)=0.5?
+
+   John von Neuamnn gave the following solution
+
+    1) Toss the coin twice.
+    2) If you get HT return H, if you get TH return T
+    3) Otherwise, return to 1 and start over
+
+   In fact, if p is the probability of the biased coin landing heads, then the outcomes HT and TH are 
+   equiprobable with probability p(1−p). However, with probability pp+(1−p)(1−p)
+   these results are not obtained. In this case, we simply repeat the process. The probability that we 
+   never get HT or TH is 0 so this procedure ends with certainty.
+
+   See   
+   - https://en.wikipedia.org/wiki/Fair_coin#Fair_results_from_a_biased_coin
+   - von Neumann, John (1951). "Various techniques used in connection with random digits". 
+     National Bureau of Standards Applied Math Series. 12: 36.
+   """
+
+   Cf ~/blog/fair_coin_from_a_biased_coin.blog
+
+   From this model:
+   Marginal:
+    {"coin0":"head","biased_coin0":"head"} : 0.4827
+    {"coin0":"tail","biased_coin0":"head"} : 0.3224
+    {"coin0":"tail","biased_coin0":"tail"} : 0.1753
+    {"coin0":"head","biased_coin0":"tail"} : 0.0196
+   Marginals:
+   coin0
+   Marginal:
+    "head" : 0.5023
+    "tail" : 0.49770000000000003
+   biased_coin0
+   Marginal:
+    "head" : 0.8050999999999999
+    "tail" : 0.19489999999999996
+
+
+*/
+
+var model = function() {
+    var biased_coin = mem(function(i) {
+        return categorical({ps:[0.8,0.2],vs:["head","tail"]});
+    })
+    
+    var coin = function(i) {
+        if (biased_coin(i) != biased_coin(i+1)) {
+            return biased_coin(i)
+        } else {
+            return coin(i+2);
+        }
+    }
+
+    return {
+        coin0:coin(0),
+        biased_coin0:biased_coin(0)
+    }
+
+}
+
+// var d = Infer({method:"enumerate"},model);
+// var d = Infer({method:"rejection",samples:1000},model);
+var d = Infer({method:"SMC",particles:10000},model);
+// var d = Infer({method:"MCMC",samples:10000},model);
+
+display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["coin0", "biased_coin0"]);
+

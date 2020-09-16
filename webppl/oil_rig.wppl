@@ -1,0 +1,76 @@
+/*
+   From BayesiaLab, example Oil Rig
+
+   cf ~/blog/oil_rig.blog
+      ~/psi/oil_rig.psi
+*/
+
+var model = function() {
+
+    var structures = ["closed_structure","open_structure","no_structure"];
+    
+    var seismic_test = flip(0.5);    
+    var test_cost = seismic_test ? -10 : 0;
+    var oil = categorical({ps:[50,30,20],vs:["dry", "wet","soaking"]});
+    
+    var test_result = (function() {
+        if (seismic_test) {
+            if (oil == "dry") {
+                return categorical({ps:[10,30,60],vs:structures});
+            } else if (oil == "wet") {
+                return categorical({ps:[30,40, 30],vs:structures});
+            } else if (oil == "soaking") 
+                return categorical({ps:[50,40,10],vs:structures});
+        } else {
+            return "na";
+        }
+    })();
+        
+    var drill = flip(0.5);
+    
+    var gain = (function() {
+        if (drill) {
+            if (oil == "dry") {
+                return -70000;
+            } else if (oil == "wet") {
+                return 50000;
+            } else if (oil == "soaking") {
+                return 200000;
+            }
+            
+        } else {
+            return 0;
+        }
+    })();
+    
+    // condition(drill == false);
+    condition(seismic_test == true);
+    // condition(oil == soaking);
+    // condition(test_result == open_structure);
+    // condition(drill == true);
+    
+    return {
+        seismic_test:seismic_test,
+        test_cost:test_cost,
+        oil:oil,
+        test_result:test_result,
+        drill:drill,
+        gain:gain,
+    }
+
+}
+
+var d = Infer(model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) {[a,expectation(marginalize(d, a))]}, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["seismic_test","test_cost","oil","test_result","drill","gain"]);

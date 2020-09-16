@@ -1,0 +1,80 @@
+/*
+   Generating Zero Truncated Poisson distribution
+
+   From Handbook on probability distributions
+   page 16f
+
+*/
+
+// See poisson_dist.wppl
+var poisson_dist1 = function(lambda,n,p2) {
+    var l = Math.exp(-lambda);
+    var u = uniform(0,1);
+    var p = p2*u;
+    return p >= l ? poisson_dist1(lambda,n+1,p) : n;
+}
+
+var poisson_dist = function(lambda) {
+    return poisson_dist1(lambda,0,1);
+}
+
+
+//
+// Algorithm from Handbook on probability distributions,
+// page 16
+// """
+// The basic algorithm for the zero-truncated version P0(lambda) is simply
+// * do; generate X Poisson distributed P(λ); while X = 0
+// * return X
+//
+// In output, we have a random variate in N ∗ .
+// The zero-modified version P(λ, p) is a little bit tricky. We need to use the following heuristic:
+// • generate U from an uniform distribution
+// • if U < p, then X = 0
+// • otherwise
+// – do; generate X Poisson distributed P(λ); while X = 0
+// • return X
+// """
+// Note: n is the counter, p2 is the acculumated value
+var zero_truncated_poisson = function(lambda) {
+    var p = poisson(lambda);
+    return p != 0 ? p : zero_truncated_poisson(lambda);
+}
+
+var model = function() {
+
+    var lambda = 4;
+    
+    var p = zero_truncated_poisson(lambda);
+
+    return {
+        p:p,
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["p"]);
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("p");

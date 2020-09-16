@@ -1,0 +1,93 @@
+/*
+   From http://nbviewer.jupyter.org/github/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/blob/master/Chapter1_Introduction/Ch1_Introduction_PyMC3.ipynb
+
+   Identify the change point in the coal miners data.
+
+
+   Cf ~/blog/changepont_coal_miners.blog
+
+   Result:
+   tau
+Marginal:
+    41 : 0.25649999999999995
+    40 : 0.15780000000000002
+    37 : 0.11419999999999994
+    39 : 0.10509999999999994
+    36 : 0.08139999999999994
+    42 : 0.06950000000000005
+    38 : 0.06760000000000001
+    43 : 0.05310000000000002
+    46 : 0.032899999999999985
+    44 : 0.016199999999999992
+    34 : 0.010600000000000007
+    35 : 0.0103
+    47 : 0.008500000000000002
+    33 : 0.006300000000000005
+    45 : 0.004300000000000002
+    32 : 0.003000000000000002
+    49 : 0.0025000000000000005
+    60 : 0.00019999999999999985
+
+  expectation:
+[ [ 'tau', 39.83279999999999 ],
+  [ 'lambda_1', 3.093629496138511 ],
+  [ 'lambda_2', 0.9406436453021125 ] ]
+
+
+*/
+
+
+var model = function() {
+
+    // Coal miners data from https://pymc-devs.github.io/pymc/tutorial.html
+    var datas = [4, 5, 4, 0, 1, 4, 3, 4, 0, 6, 3, 3, 4, 0, 2, 6, 3, 3, 5, 4, 5, 3, 1,
+                 4, 4, 1, 5, 5, 3, 4, 2, 5, 2, 2, 3, 4, 2, 1, 3, 2, 2, 1, 1, 1, 1, 3,
+                 0, 0, 1, 0, 1, 1, 0, 0, 3, 1, 0, 3, 2, 2, 0, 1, 1, 1, 0, 1, 0, 1, 0,
+                 0, 0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 3, 3, 1, 1, 2, 1, 1, 1, 1, 2, 4, 2,
+                 0, 0, 1, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1
+                ];
+                 
+    
+    var len = 111;
+    var alpha = 0.581151832460733;  // 1/mean(data)
+    var lambda_1 = exponential(alpha);
+    var lambda_2 = exponential(alpha);
+    var tau = randomInteger(len);
+    
+    // Data is according to Poisson with two different lambdas,
+    // one before the change point (tau) and one after the change point
+    var data = function(i) {
+        if (tau > i) {
+            return Poisson({mu:lambda_1});
+        } else {
+            return Poisson({mu:lambda_2});
+        }
+    }
+
+    mapIndexed(function(i,val) {
+        observe(data(i),val)
+    }, datas);
+
+    return {
+        tau:tau,
+        lambda_1:lambda_1,
+        lambda_2:lambda_2
+        
+    }
+
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+// var d = Infer({method:"SMC",particles:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["tau","lambda_1","lambda_2"]);

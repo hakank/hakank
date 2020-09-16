@@ -1,0 +1,101 @@
+/*
+  ClickGraph example from PSI I paper, page 4
+
+  Where the objective is to determine how similar the 
+  clicks of A and B are.
+
+
+  cf ~/psi/clickGraph_psi1.psi
+     ~/blog/clickGraph_psi1.blog
+
+  From the PSI model
+    // Orig: E[simAll]: 14475/23569 (~0.6141)
+    clicksA := [1,1,1,0,0];
+    clicksB := [1,1,1,0,0];
+    
+    // Variant: E[simAll]: 10581/38342 (~0.2759636)
+    clicksA := [1,1,1,0,1,1,1,0];
+    clicksB := [0,0,0,1,0,0,0,1];
+
+
+
+*/
+
+var model = function() {
+
+    // Very similar
+    var clicksAs = [true,true,true,false,false];
+    var clicksBs = [true,true,true,false,false];    
+       
+    // Variant: completely different
+    // var clicksAs = [true  ,true,true ,false,true ,true ,true ,false];
+    // var clicksBs = [false,false,false,true ,false,false,false,true];
+    
+    var simAll = uniform(0,1);
+    
+    var sim = mem(function(i) {
+        return flip(simAll);
+    })
+    
+    var pA = mem(function(i) {
+        return uniform(0,1);
+    })
+    
+    var pB = mem(function(i) {
+        if (sim(i)) {
+            return pA(i);
+        } else {
+            return uniform(0,1);
+        }
+    })
+    
+    var clicksA = mem(function(i) {
+        return flip(pA(i));
+    })
+    var clicksB = mem(function(i) {
+        return flip(pB(i));
+    })
+
+    mapN(function(i) {
+        condition(clicksA(i) == clicksAs[i])
+    },clicksAs.length);
+
+    mapN(function(i) {
+        condition(clicksB(i) == clicksBs[i])
+    },clicksBs.length);
+
+    return {
+        simAll:simAll,
+        
+        // sim0:sim(0),
+        // sim1:sim(1),
+        // sim2:sim(2),
+        // sim3:sim(3),
+        // sim4:sim(4),
+        // sim5:sim(5),
+        // sim6:sim(6),
+        // sim7:sim(7),
+    }
+}
+
+// var d = Infer(model);
+// var d = Infer({method:"rejection",samples:1000},model);
+// var d = Infer({method:"SMC",particles:10000},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["simAll",
+           // "sim0","sim1","sim2",
+           // "sim3","sim4","sim5",
+           // "sim6","sim7",
+          ]);
+

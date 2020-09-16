@@ -1,0 +1,152 @@
+/*
+  M & M problem.
+
+  From Think Bayes, page 6f.
+  """
+  M&M’s are small candy-coated chocolates that come in a variety of colors.
+  Mars, Inc., which makes M&M’s, changes the mixture of colors from time
+  to time.
+
+  In 1995, they introduced blue M&M’s. Before then, the color mix in a bag
+  of plain M&M’s was 30% Brown, 20% Yellow, 20% Red, 10% Green, 10%
+  Orange, 10% Tan. Afterward it was 24% Blue , 20% Green, 16% Orange,
+  14% Yellow, 13% Red, 13% Brown.
+
+  Suppose a friend of mine has two bags of M&M’s, and he tells me that one
+  is from 1994 and one from 1996. He won’t tell me which is which, but he
+  gives me one M&M from each bag. One is yellow and one is green. What is
+  the probability that the yellow one came from the 1994 bag?
+
+  """
+
+  Page 7 (the table): The answer is 20/27: ~0.74074.
+
+  Result from model 1 and 2:
+
+  mix0
+  Marginal:
+    "mix1994" : 0.7407407407407407
+    "mix1996" : 0.2592592592592592
+  mix1
+  Marginal:
+    "mix1996" : 0.7407407407407407
+    "mix1994" : 0.2592592592592592
+
+  Note: It took a long time to get model 1 to work. It requires that we
+        explicitly state that mix(0) != mix(1) for it to work.
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    // display("expectation:");
+    // display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+
+// 
+// Note: This version using indices requires mem.
+// 
+// * Without mem on mix:
+//   mix0:
+//   Marginal:
+//     "mix1994" : 0.5
+//     "mix1996" : 0.5
+//   mix1
+//   Marginal:
+//     "mix1996" : 0.5
+//     "mix1994" : 0.5
+//
+//   so mem is needed.
+//
+var model1 = function() {
+    var colors = ["brown","yellow","red","green","orange","tan","blue"];
+    var mixes = ["mix1994", "mix1996"];
+
+    
+    // First pick a bag in mix(0) and then pick the other bag in mix(1)
+    var mix1 = function(i) {
+        if (i === 0) {
+            return uniformDraw(mixes);
+        } else {
+            if (mix1(0) === "mix1994") {
+                return "mix1996";
+            } else {
+                return "mix1994";
+            }
+        }
+    }
+    var mix = mem(function(i) { return mix1(i); });
+
+    var color = mem(function(i) {
+        if (mix(i) === "mix1994") {
+            return categorical({ps:[30,20,20,10,10,10,0],vs:colors});
+        } else {
+            return categorical({ps:[13,14,13,20,16,0,24],vs:colors});
+        }
+    })
+    
+    // Note: This condition is not enough ...
+    // condition(color(0) === "yellow" && color(1) === "green");
+    
+    // ... we must add that mix(0) and mix(1) are different.
+    condition(color(0) === "yellow");
+    condition(color(1) === "green");
+    condition(mix(0) != mix(1));
+    
+    
+    return {
+        mix0:mix(0),
+        mix1:mix(1),
+        color0:color(0),
+        color1:color(1),
+    };
+    
+}
+console.log("Model 1");
+// var d1 = Infer({method:"enumerate"},model1);
+var d1 = Infer(model1);
+// var d1 = Infer({method:"MCMC",kernel:"MH", samples:10000},model1);
+display(d1);
+exp_map(d1,["mix0","mix1","color0","color1"]);
+
+//
+// Alternative approach without indices.
+//
+var model2 = function() {
+    var colors = ["brown","yellow","red","green","orange","tan","blue"];
+    var mixes = ["mix1994", "mix1996"];
+    
+    // First pick a bag in mix0 and then pick the other bag in mix1
+    var mix0 = uniformDraw(mixes);
+    var mix1 = mix0 === "mix1994" ?"mix1996" : "mix1994";
+
+    var mix1994ps = [30,20,20,10,10,10,0];
+    var mix1996ps = [13,14,13,20,16,0,24];
+    var color0 = mix0 === "mix1994" ? categorical({ps:mix1994ps,vs:colors}) :
+        categorical({ps:mix1996ps,vs:colors});
+
+    var color1 = mix1 === "mix1994" ? categorical({ps:mix1994ps,vs:colors}) :
+        categorical({ps:mix1996ps,vs:colors});
+       
+    condition(color0 == "yellow");
+    condition(color1 == "green");
+
+
+    
+    return {
+        mix0:mix0,
+        mix1:mix1,
+        color0:color0,
+        color1:color1,
+    };
+    
+}
+
+console.log("\nModel 2");
+var d2 = Infer({method:"enumerate"},model2);
+display(d2);
+exp_map(d2,["mix0","mix1"]);

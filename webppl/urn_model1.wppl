@@ -1,0 +1,91 @@
+/*
+   From https://reference.wolfram.com/language/ref/HypergeometricDistribution.html
+   """
+   Suppose an urn has 100 elements, of which 40 are special.
+   ...
+   Compute the probability that there are more than 25 special elements in a 
+   draw of 50 elements.
+     Answer: 0.0120902
+
+   Compute the expected number of special elements in a draw of 50 elements.
+     Answer: 20
+   """
+
+   Cf ~/blog/urn_model1.blog
+
+   From this model (MCMC)
+   sumSpecialOf50
+   Marginal:
+    22 : 0.17
+    23 : 0.14
+    21 : 0.12000000000000001
+    18 : 0.09000000000000002
+    19 : 0.07999999999999999
+    17 : 0.06
+    16 : 0.06
+    24 : 0.06
+    15 : 0.05
+    20 : 0.05
+    25 : 0.04000000000000001
+    28 : 0.020000000000000004
+    14 : 0.020000000000000004
+    27 : 0.020000000000000004
+    26 : 0.010000000000000005
+    13 : 0.010000000000000005
+    moreThan25SpecialOf50
+    Marginal:
+    false : 0.9500000000000001
+    true : 0.05
+    expectation:
+[ [ 'sumSpecial', 40 ],
+  [ 'sumSpecialOf50', 20.560000000000002 ],
+  [ 'moreThan25SpecialOf50', 0.05 ] ]
+
+
+*/
+
+var model = function() {
+
+    var N = 100;
+    var NumSpecial = 40;
+    
+    var element = function(i) {
+        return categorical({ps:[N-NumSpecial,NumSpecial],vs:["nonspecial","special"]});
+    }
+    
+    // We have exactly 40 special elements (no random there!)
+    var sumSpecial = sum(mapN(function(i) {return element(i) == "special"},N));
+    condition(sumSpecial==40);
+    
+
+    // Compute the expected number of special elements in a draw of 50 elements.
+    var sumSpecialOf50 = sum(mapN(function(i) {return element(i) == "special"},50));
+
+    // What's the probability that there are more than 25 special elements in a draw of 50 elements
+    var moreThan25SpecialOf50 = sumSpecialOf50 > 25;
+    
+    return {
+        sumSpecial:sumSpecial, // should be 40!
+        sumSpecialOf50:sumSpecialOf50,
+        moreThan25SpecialOf50:moreThan25SpecialOf50,
+    }
+
+}
+
+// var d = Infer({method:"enumerate",maxExecutions:10000},model);
+// var d = Infer(model);
+// var d = Infer({method:"SMC",particles:1000},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:100,lag:100,verbose:true},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["sumSpecial", "sumSpecialOf50","moreThan25SpecialOf50"]);
+

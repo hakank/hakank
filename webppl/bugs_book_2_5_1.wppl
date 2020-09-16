@@ -1,0 +1,225 @@
+/*
+  The BUGS Book
+  Example 2.5.1, "The how many trick"
+
+  Cf ~/jags/bugs_book_2_5_1.jags
+  """
+  model {
+    for (i in 1:20) {
+     Y[i] ~ dgamma(4, 0.04)
+    }
+    cum[1] <- Y[1]
+    for (i in 2:20) {
+      cum[i] <- cum[i - 1] + Y[i]
+    }
+    for (i in 1:20) {
+      cum.step[i] <- i*step(1000 - cum[i])
+      x[i] <- ifelse(cum[i] < 1001, 1, 0) # 
+    }
+    # number <- ranked(cum.step[], 20) # maximum number in cum.step ## NOTE: ranked is not in JAGS
+    number <- sort(cum.step[]) # maximum number in cum.step
+    check <- equals(cum.step[20], 0) # always 1 if I=20 big enough
+  }
+
+  Output:
+           Mean       SD  Naive SE Time-series SE
+x[1]  1.000e+00 0.000000 0.000e+00      0.000e+00
+x[2]  1.000e+00 0.000000 0.000e+00      0.000e+00
+x[3]  1.000e+00 0.000000 0.000e+00      0.000e+00
+x[4]  1.000e+00 0.000000 0.000e+00      0.000e+00
+x[5]  9.999e-01 0.012247 5.000e-05      5.000e-05
+x[6]  9.976e-01 0.049101 2.005e-04      2.043e-04
+x[7]  9.810e-01 0.136350 5.566e-04      5.566e-04
+x[8]  9.141e-01 0.280293 1.144e-03      1.131e-03
+x[9]  7.578e-01 0.428418 1.749e-03      1.741e-03
+x[10] 5.222e-01 0.499512 2.039e-03      2.039e-03
+x[11] 2.825e-01 0.450235 1.838e-03      1.793e-03
+x[12] 1.195e-01 0.324340 1.324e-03      1.307e-03
+x[13] 4.015e-02 0.196313 8.014e-04      8.014e-04
+x[14] 9.867e-03 0.098841 4.035e-04      4.035e-04
+x[15] 2.117e-03 0.045959 1.876e-04      1.897e-04
+x[16] 4.500e-04 0.021209 8.658e-05      8.988e-05
+x[17] 1.667e-05 0.004082 1.667e-05      1.667e-05
+x[18] 0.000e+00 0.000000 0.000e+00      0.000e+00
+x[19] 0.000e+00 0.000000 0.000e+00      0.000e+00
+x[20] 0.000e+00 0.000000 0.000e+00      0.000e+00
+  """
+
+
+  Cf ~/blog/bugs_book_2_5_1.blog
+
+
+  This model:
+  ix
+  Marginal:
+    12 : 0.27750000000000014
+    11 : 0.2669999999999999
+    13 : 0.1846999999999999
+    10 : 0.13639999999999997
+    14 : 0.07500000000000012
+    9 : 0.02879999999999998
+    15 : 0.022199999999999956
+    16 : 0.005200000000000003
+    8 : 0.0024000000000000015
+    17 : 0.0008000000000000009
+  x
+  Marginal:
+    [1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0] : 0.1965000000000002
+    [1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0] : 0.12579999999999997
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0] : 0.1201
+    [1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0,0] : 0.07680000000000012
+    [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0] : 0.050299999999999956
+    [1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0,0,0] : 0.04769999999999993
+    ....
+
+  expectation:
+[ [ 'number', 32971.02228294124 ],
+  [ 'ix', 11.790299999999998 ] ]
+
+*/
+
+var model = function() {
+
+    var n = 20;
+
+    var y = function(i) {
+        // Note:BLOG has second parameter b, webbpl 1/b
+        return gamma(3.0,1/0.04);
+    }
+    
+    var cum = function(i) {
+        if (i == 0) {
+            return y(0)+1
+        } else {
+            return cum(i-1) + y(i) + i;
+        }
+    }
+
+    var cum_step = function(i) {
+        if (cum(i) > 1000.0) {
+            return i*cum(i);
+        } else {
+            return 0.0;
+        }
+    }
+    
+    // A changepoint.
+    var x = function(i) {
+        if (cum(i) < 1001.0) {
+            return 1.0;
+        } else {
+            return 0.0;
+        }
+    }
+
+    var number = _.max(mapN(function(i) { return cum_step(i) }, n));
+    // var check = cum_step(n-1) == 0.0 ? true : false;
+
+    // condition(check == true);
+    
+    return {
+        number:number,
+        // check:check,
+        ix:_.max(mapN(function(i) { return i*(x(i)==1) }, n)),
+        // cum:mapN(function(i) { return cum(i) }, n),
+        // cum_step:mapN(function(i) { return cum_step(i) }, n),                
+        x:mapN(function(i) { return x(i) }, n),
+        // y:mapN(function(i) { return y(i) }, n),        
+    }
+
+}
+
+var d = Infer(model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// var d = Infer({method:"rejection",samples:10000},model);
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["number","ix","x"]);
+
+
+
+// query {y(i) for Integer i: i>=1 & i <= n};
+/*
+query y(1);
+query y(2);
+query y(3);
+query y(4);
+query y(5);
+query y(6);
+query y(7);
+query y(8);
+query y(9);
+query y(10);
+query y(11);
+query y(12);
+query y(13);
+query y(14);
+query y(15);
+query y(16);
+query y(17);
+query y(18);
+query y(19);
+query y(20);
+*/
+
+// query {x(i) for Integer i: i>=1 & i <= n};
+// Where is the change point?
+// query min({i for Integer i: i>=1 & i <= n & x(i) == 0.0  });
+/*
+query x(1);
+query x(2);
+query x(3);
+query x(4);
+query x(5);
+query x(6);
+query x(7);
+query x(8);
+query x(9);
+query x(10);
+query x(11);
+query x(12);
+query x(13);
+query x(14);
+query x(15);
+query x(16);
+query x(17);
+query x(18);
+query x(19);
+query x(20);
+*/
+
+// query {cum(i) for Integer i: i>=1 & i <= n};
+/*
+query cum(1);
+query cum(2);
+query cum(3);
+query cum(4);
+query cum(5);
+query cum(6);
+query cum(7);
+query cum(8);
+query cum(9);
+query cum(10);
+query cum(11);
+query cum(12);
+query cum(13);
+query cum(14);
+query cum(15);
+query cum(16);
+query cum(17);
+query cum(18);
+query cum(19);
+query cum(20);
+*/
+
+// query {cum_step(i) for Integer i: i>=1 & i <= n};

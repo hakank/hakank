@@ -1,0 +1,109 @@
+/* 
+   From BLOG examples/tugwar2.blog
+   """
+   Tug of war
+   
+   The strength of each person is drawn from a normal distribution. 
+   A person is lazy 10% of the time. The pulling power of a person 
+   is half her strength if she is being lazy and otherwise is her 
+   full strength. The pulling power of a team is the sum of the 
+   pulling power of the individuals on the team. The team with the 
+   greater pulling power wins.
+   
+   @author Lei Li
+   @date 2013/03/30
+   """
+*/
+// Number of samples: 100000
+// Distribution of values for team1win(2)
+// 	true	0.5470449456174125
+// 	false	0.45295505438260614
+// Distribution of values for team1win(3)
+// 	false	0.5020393474088403
+// 	true	0.49796065259117755
+
+var model = function() {
+
+    var mu = 10;
+    var sigma = Math.sqrt(2);
+    var strength = function(p) {
+        return gaussian(mu, sigma);
+    }
+
+    var playerTable = {
+        "1,1":"James",
+        "1,2":"David",
+        "1,3":"George",
+        "1,4":"Ronald",
+        "1,5":"John",
+        "1,6":"Richard",
+        
+        "2,1":"Charles",
+        "2,2":"David",
+        "2,3":"Jeff",
+        "2,4":"Ronald",
+        "2,5":"Kevin",
+        "2,6":"Anthony",
+        
+        "3,1":"Kevin",
+        "3,2":"Robert",
+        "3,3":"Jeff",
+        "3,4":"Paul",
+        "3,5":"Charles",
+        "3,6":"Anthony",
+    };
+    
+    var player = mem(function(i, k) { // k-th player in i-th match
+        var ik = ""+i+","+k+"";
+        return playerTable[ik];
+    })
+
+    var lazy = mem(function(p, i) {
+        return flip(0.1);
+    })
+
+    var pulling_power = mem(function(p, i) {
+        if (lazy(p, i)) {
+            return strength(p) / 2;
+        } else {
+            return strength(p);
+        }
+    })
+
+    var team1win = function(i) {
+        if (pulling_power(player(i,1),i)+pulling_power(player(i,2),i)+pulling_power(player(i,3),i)
+            >
+            pulling_power(player(i,4),i)+pulling_power(player(i,5),i)+pulling_power(player(i,6),i)
+           ) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    condition(team1win(1) == true);
+
+    return {
+        team1Win2:team1win(2),
+        team1Win3:team1win(3)
+    }
+
+
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model);
+// var d = Infer({method:"SMC",particles:10000},model);
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["team1Win2","team1Win3",
+          ]);

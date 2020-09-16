@@ -1,0 +1,140 @@
+/*
+   Classical Random Walk 1
+
+   From 
+   Gunnar Blom, Lars Holst, Dennis Sandell:
+   "Problems and Snapshots from the World of Probability"
+   Page 6f, Problem 1.5 Classical Random Walk 1, 
+   cases a) Probability of absorption
+         b) Expected number of steps until absorption
+         c) Ruin problem
+
+   The probability of moving to the left or right is 0.5 (symmetric
+   random walk). The walk stops when reaching either -a or +b (
+   a and are both positive integers).
+
+   * a) and b)
+   Result (method:rejection)
+lastPos
+Marginal:
+    -10 : 0.5045999999999999
+    10 : 0.4953999999999999
+lastPosA
+Marginal:
+    true : 0.5045999999999999
+    false : 0.4953999999999999
+lastPosB
+Marginal:
+    false : 0.5045999999999999
+    true : 0.4953999999999999
+expectation:
+[ [ 'len', 99.56000000000006 ],
+  [ 'lastPos', -0.09200000000000053 ],
+  [ 'lastPosA', 0.5045999999999999 ],
+  [ 'lastPosB', 0.4953999999999999 ] ]
+MAP:
+[ [ 'len', { val: 30, score: -3.830443018435724 } ],
+  [ 'lastPos', { val: -10, score: -0.6839892427751798 } ],
+  [ 'lastPosA', { val: true, score: -0.6839892427751798 } ],
+  [ 'lastPosB', { val: false, score: -0.6839892427751798 } ] ]
+Theoretical probability of [-a,b]: [ 0.5, 0.5 ]
+Theoretical length until absorption: 100
+
+
+   c) The ruin problem, a=1 and b=100:
+expectation:
+[ [ 'len', 98.15020000000014 ],
+  [ 'lastPos', -0.050600000000000755 ],
+  [ 'lastPosA', 0.9905999999999999 ],
+  [ 'lastPosB', 0.009399999999999992 ] ]
+MAP:
+[ [ 'len', { val: 1, score: -0.6927472605386187 } ],
+  [ 'lastPos', { val: -1, score: -0.009444458827999802 } ],
+  [ 'lastPosA', { val: true, score: -0.009444458827999802 } ],
+  [ 'lastPosB', { val: false, score: -0.009444458827999802 } ] ]
+Theoretical probability of [-a,b]: [ 0.9900990099009901, 0.009900990099009901 ]
+Theoretical length until absorption: 100
+
+
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// Theoretical probability that we ends in [-a,b]: 
+var theoreticalProb = function(a,b) {
+    return [b/(a+b),a/(a+b)];
+}
+
+// Theoretical length until absorption
+var theoreticalLength = function(a,b) {
+    return a*b;
+}
+
+
+// -a .. b
+var random_walk = function(a,b) {
+    
+    var model = function() {
+        
+        var walk = function(arr) {
+            var len = arr.length;
+            var last = len == 0 ? 0 : last(arr);
+            if (last == -a || last == b) {
+                return arr;
+            } else {
+                return walk(arr.concat( last + uniformDraw([-1,1])));
+            }
+        }
+        
+        var arr = walk([]);
+        var lastPos = last(arr);
+        
+        return {
+            arr:arr,
+            len:arr.length,
+            lastPos:lastPos,
+            lastPosA:lastPos==-a,
+            lastPosB:lastPos==b,
+            
+        }
+
+    }
+
+    // var d = Infer(model);
+    // var d = Infer({method:"enumerate",strategy:"breadthFirst"},model); // JavaScript heap out of memory
+    // var d = Infer({method:"enumerate",strategy:"breadthFirst",maxExecutions:1000},model);
+    var d = Infer({method:"rejection",samples:10000},model);
+    // var d = Infer({method:"incrementalMH",samples:1000},model);    
+    // var d = Infer({method:"MCMC",kernel:"MH",samples:1000,burn:1000,lag:10,verbose:true},model); 
+    // var d = Infer({method:"MCMC",kernel:"MH",samples:100,verbose:true},model);
+    // var d = Infer({method:"SMC",particles:10000},model);       
+    // var d = Infer({method:"forward"},model);    
+    // display(d);
+    exp_map(d,["len","lastPos","lastPosA","lastPosB"]);
+        
+}
+
+var a = 10;
+var b = 10;
+// var a = 3;
+// var b = 7;
+random_walk(a,b);
+
+console.log("Theoretical probability of [-a,b]:", theoreticalProb(a,b));
+console.log("Theoretical length until absorption:", theoreticalLength(a,b));
+
+console.log("\n\nRuin problem: a = 1, b=100");
+var a = 1;
+var b = 100;
+
+random_walk(a,b);
+console.log("Theoretical probability of [-a,b]:", theoreticalProb(a,b));
+console.log("Theoretical length until absorption:", theoreticalLength(a,b));

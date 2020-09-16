@@ -1,0 +1,65 @@
+/*
+
+  From Yi Wu, Lei Li, Stuart Russell
+  "BFiT: From Possible-World Semantics to Random-Evaluation Semantics in Open Universe"
+  Page 3
+
+*/
+
+// var geometric = function(p) {
+//   return flip(p) ? 1 + geometric(p) : 1
+// }
+
+// This version is more like the one in BLOG
+var geometric = function(p) {
+    // return flip(p) ? 1 + geometric(p) : 1
+    return flip(p) ? 0 : 1 + geometric(p)
+}
+
+var model = function() {
+    
+    var numPeople = poisson(5);
+    
+    var honest = function(x) {
+        return flip(0.9);
+    }
+
+    // An honest person have just one login
+    var login = function(x) {
+        if (honest(x)) {
+            return 1; 
+        } else {
+            return geometric(0.8);
+        }
+    }
+    var logins = mapN(function(p) {return login(p)},numPeople);
+    
+    var sample = uniformDraw(logins);
+
+    // condition(sample != undefined);
+    
+    return {
+        numPeople:numPeople,
+        // honest:mapN(function(i) { return honest(i); },numPeople),
+        // logins:logins,
+        // sample:[sample,login(sample)],
+        honestSample:honest(sample),        
+    };
+
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["numPeople","honestSample",
+          ]);

@@ -1,0 +1,208 @@
+/*
+  https://edu.swi-prolog.org/mod/assign/view.php?id=254&forceview=1
+  """
+  Coin tosses
+
+  http://cplint.eu/p/coin_tosses.swinb
+
+  Coin tosses
+
+  Consider a process where you repeatedly toss coins and record the results.
+
+  After each toss, you continue tossing with probability 0.8.
+
+  Write a predicate tosses(Coin,L) that, given an initial coin id Coin, returns in L the list of
+  results of coin tosses obtained using the process above.
+
+  Moreover, write a predicate length_tosses(N) that returns the number of coin tosses.
+
+  Compute the probability of the sequence [h,h,h] using MCINTYRE.
+
+  Compute the probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] was observed
+  using rejection sampling and Metropolis Hastings.
+
+  Compute the probability of the sequences of 10 coin tosses using MCINTYRE.
+
+  Compute the expected length of the sequences of coin tosses using MCINTYRE.
+  """ 
+
+  Note: The cplint version (corrected by  Fabrizio Riguzzi) at http://cplint.eu/p/coin_tosses_hakank_rzf.swinb
+  give another solutions:
+   - first problem: probability of the sequence [h,h,h] -> 0.015
+   - second problem: probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] -> about 0.03
+   - third problem: probability of the sequences of 10 coin tosses -> about 0.026
+   - fourth problem: expected length of the sequences of coin tosses -> about 4.
+
+This is not at all the same as this BLOG model.
+  
+  Cf ~/blog/coin_tosses.blog
+
+  Cf coin_tosses.blog.
+
+  This model use recursive function on arrays and give slightly different results than coin_tosses.blog.
+
+
+  Here's some results for different methods.
+
+  - "enumerate": we have to restrict the length in some way otherwise it heap memory error.
+     * by maxLength 
+     * by maxExecutions: 100000
+     It's the exact calculations, but under this restriction. 
+     Here's the values using maxExecutions: 100000
+
+     a) No conditions
+     threeHead
+     Marginal:
+       false : 0.9214667253627069
+       true : 0.07853327463729304
+
+     avglen
+     Marginal:
+     1 : 0.20650141060237526
+     2 : 0.16520112848190022
+     3 : 0.13216090278552028
+     4 : 0.10572872222841614
+     5 : 0.08458297778273291
+     6 : 0.0676663822261864
+     7 : 0.0541331057809491
+     8 : 0.0433064846247592
+     9 : 0.034645187699807456
+     10 : 0.02771615015984594
+     11 : 0.022172920127876673
+     12 : 0.01773833610230128
+     13 : 0.01419066888184111
+     14 : 0.011352535105472888
+     15 : 0.00908202808437832
+     16 : 0.003821059325636981
+     
+     expectation avgLen: 4.497109967519308
+
+     b) condition that a[0..2] = "head"
+        fiveHeadGivenHHH
+        Marginal:
+          false : 0.8446586883453895
+          true : 0.15534131165461063
+        avglen
+        Marginal:
+        3 : 0.21035813067121412
+        4 : 0.16828650453697114
+        5 : 0.13462920362957703
+        6 : 0.10770336290366164
+        7 : 0.08616269032292928
+        8 : 0.0689301522583433
+        9 : 0.05514412180667479
+        10 : 0.04411529744533978
+        11 : 0.035292237956271726
+        12 : 0.028233790365017306
+        13 : 0.022587032292013958
+        14 : 0.018069625833611193
+        15 : 0.014455700666888954
+        16 : 0.006032149311485939
+        
+        expectation avglen', 6.302592909125149
+
+  - "rejection" samples:100000
+
+    a)  No conditions
+    threeHead
+    Marginal:
+      false : 0.92054
+      true : 0.07945999999999998
+
+    expectation avglen: 4.992299999999998
+
+    b) condition that a[0..2] = "head" (this takes 25s)
+
+    fiveHeadGivenHHH
+    Marginal:
+    false : 0.84013
+    true : 0.15987000000000007
+    
+    expectation avgLen: 6.99718
+
+  - MCMC/MH samples:100000
+    a)  No conditions
+    threeHead
+    Marginal:
+      false : 0.9194800000000001
+      true : 0.08051999999999997
+
+    expectation avglen', 4.995720000000003
+
+    b) condition that a[0..2] = "head"  
+
+    fiveHeadGivenHHH
+    Marginal:
+      false : 0.84879
+      true : 0.15121000000000004
+
+    expectation avglen', 6.931760000000001
+
+*/
+
+var model = function() {
+
+    // Maximum length of sequence
+    var maxLength = 20;
+    
+    var coins = ["head","tail"];
+    
+    var toss = function(arr) {
+        if (arr.length == 0) {
+            // Always toss the first
+            var t = categorical({ps:[0.5,0.5],vs:coins });
+            return toss([t]);
+        } else {
+            // if (arr.length < maxLength && flip(0.8)) {
+            if (flip(0.8)) {                
+                var t = categorical({ps:[0.5,0.5],vs:coins });
+                return toss(arr.concat(t));
+            } else {
+                return arr;
+            }
+        }
+    };
+
+    var a = toss([]);
+    
+    condition(a[0] == "head");
+    condition(a[1] == "head");
+    condition(a[2] == "head");
+
+    return {
+        threeHead:a[0]=="head" && a[1] == "head" && a[2] == "head",
+        fiveHeadGivenHHH:a[3]=="head" && a[4] == "head", // uncomment the three conditions above
+        toss0:a[0],
+        toss1:a[1],
+        toss2:a[2],
+        avglen:a.length,
+        lenIs10:a.length == 10
+        // toss3:toss(3),
+        // toss4:toss(4),
+        // toss5:toss(5),
+        // toss6:toss(6),
+        // toss7:toss(7),
+        // toss8:toss(8),
+        // toss9:toss(9),
+    };
+}
+
+// var d = Infer(model) // This crashes with heap error unless we restrict the length of the sequences
+// Note: we have to restrict enumerate with maxExecutions, otherwise => heap out of memory
+//       OR restrict max length of sequences
+var d = Infer({method:"enumerate",maxExecutions:200000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
+// var d = Infer({method:"rejection",samples:100000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["threeHead","toss0","toss1","toss2","fiveHeadGivenHHH","avglen","lenIs10"]);

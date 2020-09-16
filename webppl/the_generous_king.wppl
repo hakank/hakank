@@ -1,0 +1,163 @@
+/*
+   The Generous King
+
+   From 
+   Gunnar Blom, Lars Holst, Dennis Sandell:
+   "Problems and Snapshots from the World of Probability"
+   Page 11f, Problem 1.8 The generous king
+
+   A) This is the first part (run1)
+      """
+      The king of a country with m inhabitants is generous enough to give
+      each citizen a gold coin as a Christmas gift. 
+      ...
+      All m citizen line up in a random order in front of the Royal Palace.
+      The king comes out on to a balcony and tosses k gold coins in the air.
+      [The probabilities of head/tails is 0.5.]
+      The first person in the queue receives as a gift all coins showing
+      tails and returns the other to the king. The kind tosses the remaining
+      coins; the second person obtains those which come up tails and returns
+      the rest, and so on.
+      The procedure stops at the m'th toss or earlier if there are no coins 
+      left.
+      """
+
+   B) The second part is to select k so that the last m citizen will 
+      receive a gold coin with at least probability 1/2.
+      However, the model (run2) does not give the same expectation as the
+      theoretical in the book and is perhaps not the best approach to
+      this problem...
+
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// First part of the problem
+var run1 = function(m,k) {
+    console.log("\nPart 1. m:",m, "k:",k);
+    
+    var model = function() {
+
+        var toss = function(a,m,k) {
+            if (m == 0 || k == 0) {
+                return a;
+            } else {
+                var numTails = binomial(0.5,k);
+                return toss(a.concat(numTails),m-1,k-numTails);
+            }
+        }
+
+        var a = toss([],m,k);
+        
+        // How many coins did the last citizen in the queue got?
+        var lastCitizen = a.length >= m ? last(a) : 0;
+       
+        return {
+            a:a,
+            len:a.length,
+            lastCitizen:lastCitizen,
+            
+        }
+    }
+
+    // var d = Infer({method:"enumerate"},model); // Works for run(5,6) but not much larger instances
+    var d = Infer({method:"rejection",samples:10000},model); 
+    // var d = Infer({method:"SMC",particles:10000},model);
+    
+    // display(d);
+    exp_map(d,["a","len","lastCitizen"]);
+
+}
+
+// First part of the problem
+
+// 5 citizen and 6 coins
+run1(5,6);
+// run1(15,36);
+
+
+var theoreticalProbPart2 = function(m) {
+    return Math.log(2)*Math.pow(2,m-1);
+}
+
+
+var geometric1 = function(p,x) {
+    var u = uniform(0,1);
+    return u > p ? geometric1(p,x+1) : x;
+
+}
+
+var geometric = function(p) {
+    return geometric1(p,0);
+}
+
+
+// Second part:
+//
+// Calculate k such that the last m citizen has a 100% chance
+// of winning a gold coin.
+// Note: The mean of k1 is sensitive to the prior distribution.
+//
+var run2 = function(m) {
+    console.log("\nPart 2. m:",m);
+    
+    var model = function() {
+
+        // Prior for k
+        // var k1 = 1+randomInteger(m*m);
+        var k1 = poisson(m*m);
+        // var k1 = geometric(1/(m*m));
+
+        // This is the same as in part1.
+        var toss = function(a,m,k) {
+            if (m == 0 || k <= 0) {
+                return a;
+            } else {
+                var numTails = binomial(0.5,k);
+                return toss(a.concat(numTails),m-1,k-numTails);
+            }
+        }
+
+        var a = toss([],m,k1);
+        
+        // How many coins did the last citizen in the queue got?
+        var lastCitizen = a.length >= m ? last(a) : 0;
+
+        // Ensure the probability of 1/2 of last citizen getting a coin
+        if (flip()) {
+            condition(lastCitizen >= 1);
+        }
+        
+        return {
+            a:a,
+            k:k1,
+            len:a.length,
+            lastCitizen:lastCitizen,
+            
+        }
+    }
+
+    // var d = Infer({method:"enumerate"},model);
+    // var d = Infer({method:"rejection",samples:10000},model); 
+    // var d = Infer({method:"SMC",particles:10000},model);
+    var d = Infer({method:"MCMC",kernel:"MH",lag:100,samples:1000},model);
+    
+    // display(d);
+    exp_map(d,["k","lastCitizen"]);
+
+    console.log("Theoretical value of k ~: ", theoreticalProbPart2(m));
+    
+}
+
+run2(8);
+
+
+console.log("Theoretical value of k = [10,100,1000] ~: ", map(function(i) { return [i,theoreticalProbPart2(i),]}, [10,100,1000] ));

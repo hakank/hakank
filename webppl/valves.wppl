@@ -1,0 +1,148 @@
+/*
+   From BayesiaLabs' model Valves.xbl
+   """
+   Three valves are used to control the distribution of a fluid.
+
+   Each valve has two failure modes, Sticks Closed (SC) and Sticks Opened (SO).
+
+   The two failures rates of Valve1 are lower than those of Valve2, 
+   and those of Valve2 are lower than those of Valve3
+   """
+
+*/
+
+var model = function() {
+
+    var states = ["ok", "so", "sc"];
+
+    var valve1 = (function(t) {
+        if (t === -1) {
+            return "ok"; // categorical({ps:[100,0,0],vs:states})
+        } else {
+            var t1 = t-1;
+            var valt1 = valve1(t1);
+            var val = 
+                (valt1 === "ok") ? categorical({ps:[99.7,0.2,0.1],vs:states}) :
+                (valt1 === "so") ? categorical({ps:[0,100,0.1],vs:states}) :
+                (valt1 === "sc") ? categorical({ps:[0,0,100],vs:states}) : "valve1_xxx";
+            return val;
+        }
+    })
+    
+    
+    var valve2 = (function(t) {
+        if (t === -1) {
+            return "ok"; // categorical({ps:[100,0,0],vs:states})
+        } else {
+            var t1 = t-1;            
+            var valt1 = valve1(t1);
+            var val = 
+                (valt1 === "ok") ? categorical({ps:[99.5,0.3,0.2],vs:states}) :
+                (valt1 === "so") ? categorical({ps:[0,100,0],vs:states}) :
+                (valt1 === "sc") ? categorical({ps:[0,0,100], vs:states}) : "valve2_xxx";
+            return val;
+        }
+    })
+        
+    var valve3 = (function(t) {
+        if (t === -1) {
+            return "ok"; // categorical({ps:[100,0,0],vs:states})
+        } else {
+            var t1 = t-1;            
+            var valt1 = valve1(t1);
+            var val = 
+                (valt1 === "ok") ? categorical({ps:[99.3,0.4,0.3],vs:states}) :
+                (valt1 === "so") ? categorical({ps:[0,100,0],vs:states}) :
+                (valt1 === "sc") ? categorical({ps:[0, 0,100],vs:states}) : "valve3_xxx";
+            return val;
+        }
+    })
+    
+    var sticks_opened = (function(t) {
+        var valve1t = valve1(t);
+        var valve2t = valve2(t);
+        var valve3t = valve3(t);
+        if ((valve1t === "so" && valve2t === "ok" & valve3t === "so")
+            ||
+            (valve1t === "so" & valve2t === "so")
+            ||
+            (valve1t === "so" & valve2t === "sc" & valve3t === "so")
+            ||
+            (valve1t === "so" & valve2t === "sc" & valve3t === "so")
+           ) { 
+            return true;
+        } else {
+            return false;
+        }
+    })
+    
+    var sticks_closed = (function(t) {
+        var valve1t = valve1(t);
+        var valve2t = valve2(t);
+        var valve3t = valve3(t);        
+        if ((valve1t === "ok" && valve2t === "ok" && valve3t === "sc")
+            ||
+            (valve1t === "ok" && valve2t === "so" && valve3t === "sc")
+            ||
+            (valve1t === "ok" && valve2t === "sc" && valve3t === "sc")
+            
+            ||
+            (valve1t === "so" && valve2t === "ok" && valve3t === "sc")
+            ||
+            (valve1t === "so" && valve2t === "so" && valve3t === "sc")
+            ||
+            (valve1t === "so" && valve2t === "sc" && valve3t === "sc")
+            
+            ||
+            (valve1t === "sc" && valve2t === "ok" && valve3t === "sc")
+            ||
+            (valve1t === "sc" && valve2t === "so" && valve3t === "sc")
+            ||
+            (valve1t === "sc" && valve2t === "sc" && valve3t === "sc")
+            ||
+            (valve1t === "sc" && valve2t === "sc")
+           ) {
+            return true;
+        } else {
+            return false;
+        }
+    })
+    
+    
+    var fluid_distribution = (function(t) {
+        if (sticks_opened(t) === false && sticks_closed(t) === false) {
+            return true;
+        } else {
+            return false;
+        }
+    })
+    
+    var time = 10;
+
+    return {
+        time:time,
+        valve1:valve1(time),
+        valve2:valve2(time),
+        valve3:valve3(time),
+        
+        sticks_opened:sticks_opened(time),
+        sticks_closed:sticks_closed(time),
+        fluid_distribution:fluid_distribution(time),
+    }
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model);
+// var d = Infer({method:"SMC",particles:1000},model);
+// var d = Infer({method:"enumerate"},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+exp_map(d,["time","valve1","valve2","valve3","sticks_closed","sticks_closed","fluid_distribution"]);

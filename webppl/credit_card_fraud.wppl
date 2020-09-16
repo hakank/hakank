@@ -1,0 +1,72 @@
+/*
+   Credit-card fraud.
+
+   From David Heckerman
+   "A Tutorial on Learning With Bayesian Networks"
+   page 12ff
+   """
+   To illustrate the process of building a Bayesian network, consider the problem of de-
+   tecting credit-card fraud. We begin by determining the variables to model. One possible
+   choice of variables for our problem is Fraud(F), Gas(G), Jewelry(J) Age(A) and Sex(S) 
+   representing whether or not the current purchase is fraudulent, whether or not there
+   was a gas purchase in the last 24 hours, whether or not there was a jewelry purchase in
+   the last 24 hours, and the age and sex of the card holder, respectively.
+   """
+   
+*/
+
+var model = function() {
+
+    // type Sex;
+    // distinct Sex male, female;
+    var sexes = ["male","female"];
+    
+    // type Age;
+    var ages = ["age_below_30", "age_30_to_50", "age_above_50"];
+    
+    var fraud = flip(0.00001);
+    var age = categorical({ps:[0.25, 0.40, 0.35], vs:ages});
+    var sex = categorical({ps:[0.5,0.5], vs:sexes});
+    
+    var gas = fraud ? flip(0.2) : flip(0.01);
+    
+    var jewlery =  fraud ? flip(0.05) :
+        (age == "age_below_30" && sex=="male") ? flip(0.0001) :
+        (age == "age_30_to_50" && sex=="male") ? flip(0.0004) :
+        (age == "age_above_50" && sex=="male") ? flip(0.0002) :
+        (age == "age_below_30" && sex=="female") ? flip(0.0005) :
+        (age == "age_30_to_50" && sex=="female") ? flip(0.002) : 
+        (age == "age_above_50" && sex=="female") ? flip(0.001) : false;
+    
+    
+    // condition(age == age_below_30);
+    // condition(age == age_30_to_50);
+    // condition(age == age_above_50);
+    // condition(gas == true);
+    // condition(sex == female);
+    // condition(jewlery == true);
+    condition(fraud == true);
+    // condition(fraud == false);
+
+    return {
+        fraud:fraud,
+        age:age,
+        sex:sex,
+        gas:gas,
+        jewlery:jewlery
+    }
+}
+
+var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["fraud","age","sex","gas","jewlery"]);

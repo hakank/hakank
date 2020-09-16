@@ -1,0 +1,107 @@
+/*
+
+  Firing squad example (from Judea Pearl)
+
+
+  court_order: a court order to shoot a prisoner is given
+  captain_signals: captain signal to a and b to shoot the prisoner
+  a_shoots: person a shoots at the prisoner
+  b_shoots: person b shoots at the prisoner
+  death: the prisoner is dead (due to the shooting of a and/or b)
+
+  Cf the ProbLog model firing_squad.pl
+
+  See ~/cplint/firing_squad.pl
+      ~/blog/firing_squad.blog
+      ~/psi/firing_squad.psi
+
+*/
+
+/*
+For condition(captain_signals == false);
+expectation:
+[ [ 'court_order', 0.134 ],
+  [ 'captain_signals', 0 ],
+  [ 'a_shoots', 0.089 ],
+  [ 'b_shoots', 0.10999999999999996 ],
+  [ 'death', 0.15999999999999992 ] ]
+MAP:
+[ [ 'court_order', { val: false, score: -0.14387037041970177 } ],
+  [ 'captain_signals', { val: false, score: 0 } ],
+  [ 'a_shoots', { val: false, score: -0.09321238172217881 } ],
+  [ 'b_shoots', { val: false, score: -0.11653381625595163 } ],
+  [ 'death', { val: false, score: -0.1743533871447778 } ] ]
+
+For condition(death==true)
+expectation:
+[ [ 'court_order', 0.9312424607961399 ],
+  [ 'captain_signals', 0.9372738238841978 ],
+  [ 'a_shoots', 0.9256555139356231 ],
+  [ 'b_shoots', 0.9256555139356231 ],
+  [ 'death', 1 ] ]
+MAP:
+[ [ 'court_order', { val: true, score: -0.07123560511051881 } ],
+  [ 'captain_signals', { val: true, score: -0.0647798047676476 } ],
+  [ 'a_shoots', { val: true, score: -0.07725312873908637 } ],
+  [ 'b_shoots', { val: true, score: -0.07725312873908637 } ],
+  [ 'death', { val: true, score: 0 } ] ]
+
+No condition:
+expectation:
+[ [ 'court_order', 0.8 ],
+  [ 'captain_signals', 0.7399999999999998 ],
+  [ 'a_shoots', 0.7290000000000001 ],
+  [ 'b_shoots', 0.7290000000000001 ],
+  [ 'death', 0.7087950000000001 ] ]
+MAP:
+[ [ 'court_order', { val: true, score: -0.2231435513142097 } ],
+  [ 'captain_signals',
+    { val: true, score: -0.30110509278392195 } ],
+  [ 'a_shoots', { val: true, score: -0.3160815469734788 } ],
+  [ 'b_shoots', { val: true, score: -0.3160815469734788 } ],
+  [ 'death', { val: true, score: -0.34418893389221883 } ] ]
+
+
+*/
+var model = function() {
+
+    var court_order = bernoulli(0.8);
+    var captain_signals = court_order ? bernoulli(0.9): bernoulli(0.1);
+    var a_shoots = captain_signals ? bernoulli(0.95) : bernoulli(0.1);
+    var b_shoots = captain_signals ? bernoulli(0.95) : bernoulli(0.1);
+
+    var death = (function() {
+        if (a_shoots || b_shoots) {
+            bernoulli(0.9);
+        } else {
+            false; // the prisoner don't die if not either a or b shoots
+        }
+    })(); // Note: evaluate!
+
+    // condition(death == true);
+    // condition(captain_signals == false);
+    // condition(b_shoots == false);
+
+    return {court_order:court_order,
+            captain_signals:captain_signals,
+            a_shoots:a_shoots,
+            b_shoots:b_shoots,
+            death:death
+           };
+}
+
+
+// var d = Infer({model,method:"MCMC",samples:1000});
+// var d = Infer(model);
+var d = Infer({model,method:"enumerate"});
+display(d);
+
+var exp_map = function(d,arr) {
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+    
+}
+
+exp_map(d,["court_order","captain_signals","a_shoots","b_shoots","death"]);

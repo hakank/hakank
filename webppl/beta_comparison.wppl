@@ -1,0 +1,64 @@
+/*
+
+   Beta comparison.
+
+   From infer.net src/tests/Test/BlogTests.cs
+   """
+   a = Beta(11,500)[mean=0.02153], b = Beta(16,695)[mean=0.0225]
+   aGreaterThanConstant = Bernoulli(0.9849)
+   P(A > B) =  Bernoulli(0.4467)
+   """
+
+   (Yet another A/B test.)
+
+   This model using MCMC/MH samples:100000
+   expectation:
+[ [ 'aRate', 0.02154697782123754 ],
+  [ 'bRate', 0.02262984702660791 ],
+  [ 'aRateGtBRate', 0.433820000000001 ],
+  [ 'aRateGt0_01', 0.98571 ] ]
+
+
+*/
+
+var model = function() {
+
+    var aRate = beta(1,10);
+    var bRate = beta(1,10);
+    
+    var aTrialCount = 500;
+    var bTrialCount = 700;
+    
+    var aSuccessCount = binomial(aRate,aTrialCount);
+    var bSuccessCount = binomial(bRate,bTrialCount);
+    
+    condition(aSuccessCount == 10);
+    condition(bSuccessCount == 15);
+
+    return {
+        aRate:aRate,
+        bRate:bRate,
+        
+        aRateGtBRate:aRate > bRate,
+        aRateGt0_01:aRate > 0.01,
+    }
+
+}
+
+
+// var d = Infer(model);
+// var d = Infer({method:"rejection",samples:1000},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model);
+// var d = Infer({method:"SMC",particles:100000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["aRate","bRate","aRateGtBRate","aRateGt0_01"]);

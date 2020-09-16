@@ -1,0 +1,149 @@
+/*
+   Banach's match box problem
+
+   From 
+   Gunnar Blom, Lars Holst, Dennis Sandell:
+   "Problems and Snapshots from the World of Probability"
+   Page 9f, Problem 1.7 Number of walks until no shoes
+
+   """
+   A person has, in each of his two pockets, a box with n matches.
+   Now and then he talkes a match from a randomly chosen box until
+   he finds the selected box empty. Find the expectation of the 
+   number, R, of remaining matches in the other box.
+   """
+
+   Note: This problem is quite similar to the problem in number_of_walks_until_no_shoes.wppl
+   (problem from the same book).
+
+   Result (method:rejection) for n=50.
+
+   numLeftInOtherBox
+   Marginal:
+    3 : 0.07900000000000001
+    2 : 0.07869999999999999
+    1 : 0.07779999999999998
+    0 : 0.07710000000000002
+    4 : 0.0731
+    5 : 0.07120000000000001
+    6 : 0.068
+    7 : 0.06570000000000001
+    8 : 0.0559
+    9 : 0.0529
+    10 : 0.048799999999999996
+    11 : 0.0424
+    12 : 0.03900000000000001
+    13 : 0.031099999999999996
+    14 : 0.0302
+    15 : 0.0232
+    16 : 0.021100000000000004
+    17 : 0.016100000000000003
+    18 : 0.0126
+    19 : 0.011099999999999999
+    20 : 0.006699999999999998
+    21 : 0.005400000000000001
+    22 : 0.0034000000000000007
+    23 : 0.0034000000000000007
+    24 : 0.0020000000000000005
+    26 : 0.0012999999999999995
+    25 : 0.0008999999999999998
+    28 : 0.0007000000000000001
+    27 : 0.0004000000000000001
+    29 : 0.0003000000000000001
+    30 : 0.0003000000000000001
+    31 : 0.00010000000000000009
+    33 : 0.00010000000000000009
+  expectation:
+  [ [ 'len', 92.88249999999996 ],
+    [ 'numLeftInOtherBox', 7.1175 ] ]
+ 
+  Theoretical prob. of winning for each strategy: 7.038686950088869 
+
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// The theoretical probability
+// E(R):
+//   (2*n+1)*comb(2n,n)*(1/2)^(2*n) - 1
+var prod = function(a,b) {
+    return product(mapN(function(i) {return i+a},b-a+1));
+}
+
+// n!/(r!*(n - r)!).
+var comb = function(n, r) {
+    if (n==r) {
+        return 1;
+    } else {
+        var r2 = (r < n-r) ? n-r : r;
+        return prod(r2+1, n)/prod(1,n-r2);
+    }
+}
+
+var theoreticalProb = function(n) {
+    // return (2*n+1)*comb(2*n,n)*Math.pow(1/2,2*n)-1; // don't work for n=1000
+
+    // The Stirling approach (from the book page 11):
+    return 2* Math.sqrt(n/Math.PI) - 1 + 3/(4*Math.sqrt(n*Math.PI));
+}
+
+
+var run = function(n) {
+    console.log("\nn:",n);
+    
+    var model = function() {
+
+        // Pick a match box from a pocket and check if there
+        // are any matches left.       
+        var selectMatchBox = function(a,left,right) {
+            var pick = flip() ? 'l' : 'r';
+            if ((pick == 'l' && left == 0)  ||
+                (pick == 'r' && right == 0)
+               ) {
+                var numLeftInOtherBox = pick == 'l' ? right : left;
+                return [a,numLeftInOtherBox]
+            } else {
+                if (pick == 'l') {
+                    return selectMatchBox(a.concat(pick),left-1,right);
+                } else {
+                    return selectMatchBox(a.concat(pick),left,right-1);
+                }
+            }
+        }
+
+
+        var [a,numLeftInOtherBox] = selectMatchBox([],n,n);
+                            
+        return {
+            // a:a,
+            len:a.length,
+            numLeftInOtherBox:numLeftInOtherBox,
+            
+        }
+    }
+
+    // var d = Infer({method:"enumerate"},model); 
+    var d = Infer({method:"rejection",samples:10000},model); 
+    // var d = Infer({method:"SMC",particles:10000},model);
+    
+    // display(d);
+    exp_map(d,["len","numLeftInOtherBox"]);
+
+    console.log("\nTheoretical prob. of winning for each strategy:", theoreticalProb(n),"\n\n");
+
+}
+
+run(50);
+
+// run(10);
+// run(100);
+
+console.log("Theoretical result for n=10,100,1000:", map(function(i) { return [i,theoreticalProb(i)]}, [10,100,1000]));

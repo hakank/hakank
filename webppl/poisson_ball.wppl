@@ -1,0 +1,86 @@
+/* 
+   From BLOG example/poisson-ball.blog
+   """
+   Model file for balls in an urn, allowing observation errors. 
+   This version uses a Poisson prior for the number of balls.
+   """
+
+   Comments below in quotes are from the BLOG model.
+ */
+
+var model = function() {
+    var colors = ["Blue","Green"];
+
+    var n = 10;
+    var Draw = _top.Array(n);
+    
+    var numBalls = poisson(6);
+
+    var TrueColor = mem(function(b) {
+        return categorical({ps:[0.5,0.5],vs:colors});
+    })
+
+    var BallDrawn = mem(function(d) {
+        return randomInteger(numBalls);
+    })
+
+    var ObsColor = mem(function(d) {
+        var trueColor = TrueColor(BallDrawn(d));
+        var ret = 
+            (trueColor=="Blue") ? categorical({ps:[0.8,0.2],vs:colors}) :
+            (trueColor=="Green") ? categorical({ps:[0.2,0.8],vs:colors}) : "xxx";
+        return ret;
+    })
+
+    // Constrain so we don't get 0 balls from Poisson
+    condition(numBalls > 0);
+    
+    /* 
+       """
+       Evidence file asserting that the drawn balls appeared blue on half the 
+       draws and green on half the draws.
+       """
+    */
+    condition(ObsColor(0) == "Blue");
+    condition(ObsColor(1) == "Green");
+    condition(ObsColor(2) == "Blue");
+    condition(ObsColor(3) == "Green");
+    condition(ObsColor(4) == "Blue");
+    condition(ObsColor(5) == "Green");
+    condition(ObsColor(6) == "Blue");
+    condition(ObsColor(7) == "Green");
+    condition(ObsColor(8) == "Blue");
+    condition(ObsColor(9) == "Green");
+
+    var numTrue = sum(mapN(function(i) { return ObsColor(i) == TrueColor(i)},n));
+    // var ballDrawn = mapN(function(i) { return [BallDrawn(i),TrueColor(i),ObsColor(i)]},n);
+    
+    return {
+        // ballDrawn:ballDrawn,
+        numBalls:numBalls,        
+        numTrue:numTrue,
+        prop:numTrue/n,
+    }
+
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:100000,burn:1000},model);
+// var d = Infer({method:"SMC",particles:1000,rejuvSteps:100},model);
+// var d = Infer({method:"rejection",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,[// "ballDrawn",
+           "numBalls",    
+           "numTrue",
+           "prop"
+          ]);
+

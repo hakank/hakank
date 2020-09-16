@@ -1,0 +1,165 @@
+/*
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/03_dice.html
+  """
+  The following example illustrates the use of a logic program with recursion and lists. 
+  We start by rolling the first die. Every roll determines the next die to roll, but we stop 
+  if we have used that die before. We query for the possible sequences of rolled dice. 
+  We use three-sided dice instead of the regular six-sided ones simply to restrict the number 
+  of possible outcomes (and thus inference time). 
+  """
+
+  
+*/
+
+
+/*
+cplint code:
+
+1/3::dice(1,D); 1/3::dice(2,D); 1/3::dice(3,D) :- die(D).
+die(X) :- between(1,3,X).
+
+roll(L) :-
+   next(1,[1],L).
+
+next(N,Seen,Rev) :-
+   dice(Now,N),
+   member(Now,Seen),
+   reverse(Seen,[],Rev).
+next(N,Seen,List) :-
+   dice(Now,N),
+   \+ member(Now,Seen),
+   next(Now,[Now|Seen],List).
+
+member(X,[X|_]).
+member(X,[_|Z]) :-
+   member(X,Z).
+
+reverse([],L,L).
+reverse([H|T],A,L) :-
+   reverse(T,[H|A],L).
+
+query(roll(_)).
+
+*/
+
+
+/*
+
+  Cf ~/blog/rolling_dice5.blog
+
+  Note: I skip the BLOG approach and do an array recursion variant directly.
+
+  Time for exact solution (method:"enumerate") for N=2..10. Just handling len (not listing all a's)
+  N    exp. len             Time
+  ---------------------------------
+  1    2                     0.945s
+  2    2.5                   0.981s
+  3    2.8888888888888893    0.949s
+  4    3.21875               0.969s
+  5    3.5103999999999997    1.0s
+  6    3.7746913580246906    1.021s
+  7    4.018138700711436     1.174s
+  8    4.245018005371073     2.416s
+  9    4.458315744885663    16.307s
+ 10    4.660215679999236   192,01s
+
+ Here is the marginal of lengths for N=10
+ Marginal:
+    4 : 0.21600000000003033
+    5 : 0.20160000000002795
+    3 : 0.1800000000000253
+    6 : 0.15120000000002012
+    2 : 0.10000000000001423
+    7 : 0.09072000000000525
+    8 : 0.042336000000009075
+    9 : 0.014515200000059906
+    10 : 0.0032659199997854423
+    11 : 0.00036288000002238427
+
+ The full list for N=3
+a
+Marginal:
+    [2,2] : 0.11111111111111113
+    [1,1] : 0.11111111111111113
+    [3,3] : 0.11111111111111113
+    [1,2,2] : 0.03703703703703705
+    [3,2,3] : 0.03703703703703705
+    [3,2,2] : 0.03703703703703705
+    [1,3,1] : 0.03703703703703705
+    [3,1,3] : 0.03703703703703705
+    [3,1,1] : 0.03703703703703705
+    [2,3,3] : 0.03703703703703705
+    [1,3,3] : 0.03703703703703705
+    [2,1,1] : 0.03703703703703705
+    [2,1,2] : 0.03703703703703705
+    [2,3,2] : 0.03703703703703705
+    [1,2,1] : 0.03703703703703705
+    [3,1,2,2] : 0.012345679012345685
+    [2,1,3,3] : 0.012345679012345685
+    [1,2,3,1] : 0.012345679012345685
+    [2,3,1,2] : 0.012345679012345685
+    [2,3,1,3] : 0.012345679012345685
+    [2,1,3,1] : 0.012345679012345685
+    [1,3,2,3] : 0.012345679012345685
+    [1,3,2,2] : 0.012345679012345685
+    [3,1,2,1] : 0.012345679012345685
+    [2,1,3,2] : 0.012345679012345685
+    [3,1,2,3] : 0.012345679012345685
+    [1,3,2,1] : 0.012345679012345685
+    [3,2,1,1] : 0.012345679012345685
+    [3,2,1,2] : 0.012345679012345685
+    [3,2,1,3] : 0.012345679012345685
+    [1,2,3,3] : 0.012345679012345685
+    [1,2,3,2] : 0.012345679012345685
+    [2,3,1,1] : 0.012345679012345685
+len
+Marginal:
+    3 : 0.4444444444444444
+    2 : 0.33333333333333337
+    4 : 0.2222222222222223
+expectation:
+[ [ 'a', NaN ], [ 'len', 2.8888888888888893 ] ]
+
+
+*/
+
+var model = function() {
+
+    var N = 4;
+    
+    var roll = function(arr) {
+        if (_.uniq(arr).length != arr.length) {
+            return arr;
+        } else {
+            return roll(arr.concat(1+randomInteger(N)));
+        }
+    }
+
+    var a = roll([]);
+
+    // In the example, the first roll is 1.
+    // condition(a[0] == 1);
+    
+    return {
+        a:a,
+        len:a.length
+    }
+    
+
+}
+
+// var d = Infer(model);
+var d = Infer({method:"enumerate"},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["a","len"]);
+

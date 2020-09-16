@@ -1,0 +1,177 @@
+/*
+  http://cplint.eu/example/inference/viral.swinb
+  """
+  Viral Marketing
+
+  A firm is interested in marketing a new product to its customers. These are connected in a social network 
+  that is known to the firm: the network represents the trust relationships between customers. The firm has 
+  decided to adopt a marketing strategy that involves giving the product for free to a number of its 
+  customers, in the hope that these influence the other customers and entice them to buy the product. 
+  The firm wants to choose the customers to which marketing is applied so that its return is maximized. 
+  This involves computing the probability that the non-marketed customers will acquire the product given the 
+  action to the marketed customers. 
+
+  This viral marketing scenario is inspired by [1].
+
+  We can model this domain with an LPAD where the predicate trust/2 encodes the links between customers in the 
+  social network and predicate has/1 is true of customers that possess the product, either received as a gift 
+  or bought. Predicate trust/2 is defined by a number of certain facts, while predicate has/1 is defined by 
+  two rules, one expressing the prior probability of a customer to buy the product and one expressing the 
+  fact that if a trusted customer has the product, then there is a certain probability that the trusting 
+  customer buys the product. 
+  """
+
+  Reference G. V. den Broeck, I. Thon, M. van Otterlo, L. D. Raedt,
+  Dtproblog: A decision-theoretic probabilistic prolog, in: M. Fox, D. Poole (Eds.),
+  24th AAAI Conference on Artificial Intelligence, AAAI’10, Atlanta, Georgia, USA,
+  July 11-15, 2010, AAAI Press, 2010, pp. 1217–1222.
+
+  """
+  We want to compute the probability that customer 2 buys the product if we perform the action of 
+  giving the product to customer 3. We need to use causal reasoning so we use the action do(has(3)) 
+  as evidence:
+  ?- prob(has(2),do(has(3)),P).
+  
+  P = 0.136
+  
+  If instead we compute the effect of the action using regular probabilistic inference, we get:
+  ?- prob(has(2),has(3),P).
+  P = 0.4065135474609725
+  So not distinguishing seeing from doing leads to an overly optimistic estimate. 
+
+  ""
+
+  Cf ~/blog/viral_marketing.blog
+     ~/psi/viral_marketing.psi
+
+  Distribution of values for has(p2)
+  The BLOG model (-n 100000): given has(p3)
+                  has(p1): 0.25285605483625506
+                  has(p2): 0.32750708813609203
+                  has(p3): 1.0
+                  has(p4): 0.39824124623193263
+
+  The PSI model: given has(p3)
+                 has(p1): 0.254777070063694
+                 has(p2): 0.331210191082803,
+                 has(p3): 1,
+                 has(p4): 0.4
+
+  This webppl model:
+
+  With enumerate:
+  Using mem on has(p3):
+  expectation:
+[ [ 'hasP1', 0.10000000000000016 ],
+  [ 'hasP2', 0.13000000000000023 ],
+  [ 'hasP3', 1 ],
+  [ 'hasP4', 0.17457699999999982 ] ]
+
+
+  Using dp.cache on has1:
+  expectation:
+[ [ 'hasP1', 0.2547770700636943 ],
+  [ 'hasP2', 0.33121019108280264 ],
+  [ 'hasP3', 1 ],
+  [ 'hasP4', 0.6904458598726115 ] ]
+
+  With rejection (samples:100000):
+  Using mem on has:
+  expectation:
+[ [ 'hasP1', 0.09979000000000002 ],
+  [ 'hasP2', 0.12905999999999998 ],
+  [ 'hasP3', 1 ],
+  [ 'hasP4', 0.17577000000000007 ] ]
+
+  Using dp.cache on has1:
+[ [ 'hasP1', 0.25258 ],
+  [ 'hasP2', 0.33147999999999994 ],
+  [ 'hasP3', 1 ],
+  [ 'hasP4', 0.4000499999999999 ] ]
+
+ 
+  Note that rejection and dp.cache on has1 give almost exactly the same
+  result as BLOG and PSI.
+
+  So something is strange with this model. I guess that it's the recursive calls that 
+  do something that I don't expect...
+
+*/
+
+
+var model = function() {
+
+    var p1 = 0;
+    var p2 = 1;
+    var p3 = 2;
+    var p4 = 3;
+    var people = [p1,p2,p3,p4];
+
+    // From the BLOG model
+    // fixed Boolean trusts(Person a, Person b) =
+    //   ListInterp(2, p2,p1,
+    //                 p3,p1,
+    //                 p3,p2,
+    //                 p4,p1,
+    //                 p4,p3);
+    var trustMatrix = [[0,0,0,0], // p1
+                       [1,0,0,0], // p2
+                       [1,1,0,0], // p3
+                       [1,0,1,0]  // p4
+                      ];
+    
+    var trusts = function(a, b) {
+        return trustMatrix[a][b];
+    };
+    
+    var has1 = (function(p) {
+        // if (sum(map(function(q) {return trusts(p,q) && has1(q)},people)) > 0) {
+        if (any(function(q) {return trusts(p,q) && has1(q)},people)) {
+        // if (
+        //     (trusts(p,p1) && has1(p1)) ||
+        //         (trusts(p,p2) && has1(p2)) ||
+        //         (trusts(p,p3) && has1(p3))||
+        //         (trusts(p,p4) && has1(p4))
+        // ) {
+            return flip(0.4);
+        } else {
+            return flip(0.1)
+        }
+        
+    });
+    
+    // A little trickery: mem directly on has1 don't work since it contain
+    // higher order function. But this works, or at least webppl  don't complain...
+    var has = mem(function(p) { return has1(p) });
+    
+    condition(has(p3) == true);
+
+    return {
+        hasP1:has(p1),
+        hasP2:has(p2),
+        hasP3:has(p3),
+        hasP4:has(p4),
+    };
+    
+}
+
+
+// var d = Infer(model);
+// var d = Infer({method:"enumerate"},model);
+var d = Infer({method:"rejection",samples:100000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// var d = Infer({method:"SMC"},model);
+display(d);
+
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["hasP1","hasP2","hasP3","hasP4"]);

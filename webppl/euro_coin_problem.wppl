@@ -1,0 +1,82 @@
+/*
+   The Euro coin problem.
+
+   From Think Bayes, page 33ff
+   """
+   A statistical statement appeared in "The Guardian" on Friday January 4, 2002:
+      When spun on edge 250 times, a Belgian one-euro coin
+      came up heads 140 times and tails 110. 'It looks very
+      suspicious to me,' said Barry Blight, a statistics lecturer
+      at the London School of Economics. 'If the coin were
+      unbiased, the chance of getting a result as extreme as
+      that would be less than 7%.'
+
+   But do these data give evidence that the coin is biased rather than fair?
+   """
+
+   Cf ~/blog/euro_coin_problem.blog
+      ~/psi/euro_coin_problem.blog
+
+*/
+
+var exp_map = function(d,arr) {
+    // display("Marginals:");
+    // map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+
+var model1 = function() {
+
+    var binom  = binomial(140.0/250.0,250);
+    
+    // Probability of throwing head
+    var prob = beta(2,2); // uniform(0,1);
+    var coin = mem(function(i) {
+        return flip(prob);
+    })
+
+    var sum250 = sum(mapN(function(i) { return coin(i) },250));
+    condition(sum250 == 140);
+
+    return {
+        prob:prob,
+        probLt0_5: prob < 0.5,
+        probGt0_5: prob > 0.5,        
+        // binom:binom
+    }
+    
+}
+
+display("Model 1:");
+// var d1 = Infer({method:"rejection",samples:1000},model1);
+// var d1 = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model1);
+var d1 = Infer({method:"SMC",particles:1000},model1);
+// display(d1);
+exp_map(d1,["prob","probLt0_5","probGt0_5"]);
+
+
+// Simpler and faster model
+var model2 = function() {
+    var prob = beta(2,2);
+    var heads = binomial(prob,250);
+    
+    condition(heads==140);
+
+    return {
+        prob:prob,
+        probLt0_5: prob < 0.5,
+        probGt0_5: prob > 0.5,        
+    }
+
+}
+
+display("\nModel 2:");
+// var d2 = Infer(model2);
+var d2 = Infer({method:"rejection",samples:1000},model2);
+// var d2 = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model2);
+// display(d2);
+exp_map(d2,["prob","probLt0_5","probGt0_5"]);

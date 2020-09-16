@@ -1,0 +1,122 @@
+/*
+  From BLOG example/lda.blog:
+  """
+  Latent Dirichlet Allocation (LDA) represented in blog model.
+  * (Blei, Ng and Jordan, 2003)
+  """
+
+
+*/
+
+var plainArray = function(array) {
+    return mapN(function(i) { return array[i] },array.length);
+}
+
+// Get the argmax of an array
+// Here it's from and Dirichlet distribution so we have to
+// tweak a bit.
+var argMax = function(array) {
+    // var len = array.length;
+    // Convert to plain array
+    // var arr = mapN(function(i) { return array[i] },len);
+    var m = mapIndexed(function(i,x) {return [x, i]},plainArray(array));
+    var r = reduce(function(r, a) {return (a[0] > r[0] ? a : r)}, -1, m)[1];
+    return r;
+}
+
+var model = function() {
+
+    var numDoc = 5;
+    var W = 10;    
+    var K = 3;
+
+    // var a = mapN(function(i) { return 1},W); //1.0 * ones(W, 1);
+    var a = ones([W, 1])
+    // var b = mapN(function(i) { return 1},K); // 1.0 * ones(K, 1);
+    var b = ones([K, 1])    
+    
+    var TopicWord = mem(function(p) {
+        return dirichlet(a);
+    })
+    
+    var DocTopic = mem(function(d) {
+        return dirichlet(b);
+    })
+    
+    var WordTopic = mem(function(d, p) {
+        return discrete(DocTopic(d));
+    })
+    
+    var DocWord = mem(function(d, p) {
+        return discrete(TopicWord(WordTopic(d, p)));
+    })
+
+    ///////// data ///////////
+    /*
+      Doc[0]: cat, kitty, girl, {0, 1, 4}
+      Doc[1]: dog, doggy, boy,  {2, 3, 5}
+      Doc[2]: girl, kitty, dress  {4, 1, 9}
+      Doc[3]: boy, soccer, run  {5, 6, 7}
+      Doc[4]: soccer, run, player  {6, 7, 8}
+      Dictionary: cat, kitty, dog, doggy, girl, boy, soccer, run, player, dress
+                  0    1      2    3      4     5    6       7    8       9
+    */
+
+    var dict = ["cat", "kitty", "dog", "doggy", "girl", "boy", "soccer", "run", "player", "dress"];
+    
+    condition(DocWord(0, 0) == 0); // cat, kitty, girl
+    condition(DocWord(0, 1) == 1);
+    condition(DocWord(0, 2) == 4);
+    
+    condition(DocWord(1, 0) == 2); // dog, doggy, boy
+    condition(DocWord(1, 1) == 3); 
+    condition(DocWord(1, 2) == 5);
+    
+    condition(DocWord(2, 0) == 4); // girl, kitty, dress
+    condition(DocWord(2, 1) == 1);
+    condition(DocWord(2, 2) == 9);
+    
+    condition(DocWord(3, 0) == 5); // boy, soccer, run
+    condition(DocWord(3, 1) == 6); 
+    condition(DocWord(3, 2) == 7); // hakank: I added this
+    
+    condition(DocWord(4, 0) == 6); // soccer, run, player
+    condition(DocWord(4, 1) == 7);
+    condition(DocWord(4, 2) == 8);
+
+    var topic0 = plainArray(DocTopic(0).data);
+    var topic1 = plainArray(DocTopic(1).data);
+    var topic2 = plainArray(DocTopic(2).data);
+    
+    return {
+        topic0:topic0,
+        topic1:topic1,
+        topic2:topic2,
+
+        argMaxTopic0:argMax(topic0),
+        argMaxTopic1:argMax(topic1),
+        argMaxTopic2:argMax(topic2),
+    }
+    
+
+
+}
+
+// var d = Infer(model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model);
+var d = Infer({method:"SMC",particles:1000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["topic0","topic1","topic2",
+           "argMaxTopic0","argMaxTopic1","argMaxTopic2",
+          ]);
+

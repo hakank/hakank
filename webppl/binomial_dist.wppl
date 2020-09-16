@@ -1,0 +1,77 @@
+/*
+   Generating Bernoulli/Binomial distribution
+
+   From Handbook on probability distributions
+   page 8ff
+
+*/
+
+// From Handbook on probability distributions
+// page 8
+// """
+// It is easy to simulate Bernoulli distribution with the following heuristic:
+// * generate U from a uniform distribution,
+// * compute X as 1 if U <= p and 0 otherwise.
+//
+// The binomial distribution is obtained by summing n i.i.d. Bernoulli random variates.
+//
+// """
+var bernoulli_dist = function(p) {
+    var u = uniform(0,1);
+    return u <= p;
+}
+
+
+var binomial_dist = function(p,n) {
+    return sum(mapN(function(i) { return bernoulli_dist(p) }, n));
+}
+
+var model = function() {
+
+    var p = 0.8;
+    var n = 10;
+    var bern = bernoulli_dist(p);
+    var bern2 = bernoulli(p);
+    
+    var binom = binomial_dist(p,n);
+    var binom2 = binomial(p,n);    
+
+    return {
+        bern:bern,
+        bern2:bern2,
+        binom:binom,
+        binom2:binom2,
+    }
+}
+
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// var d = Infer(model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["bern","bern2","binom","binom2"]);
+
+var stat = function(v) {
+    console.log("\nv:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("\nmin:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("bern");
+stat("bern2");
+stat("binom");
+stat("binom2");
+

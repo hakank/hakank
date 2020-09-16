@@ -1,0 +1,240 @@
+/*
+   Generating Hypergeometric distribution
+
+   https://en.wikipedia.org/wiki/Hypergeometric_distribution
+   """
+   [T]he probability of k successes (random draws for which the object 
+   drawn has a specified feature) in n draws, without replacement, from 
+   a finite population of size N that contains exactly K objects with 
+   that feature, wherein each draw is either a success or a failure. 
+   In contrast, the binomial distribution describes the probability of 
+   k successes in n draws with replacement. 
+   """
+
+   Cf https://github.com/distributions-io/hypergeometric-random/blob/master/lib/number.js
+
+*/
+
+// Hypergeometric:
+// What is the probability that we draw exactly k "success" objects
+// of the n drawn objects of total N objects where there are in total
+// K "success" objects
+//
+// k: number of successes we want to check
+// N: total number of objects
+// K: total number of success objects
+// n: number of draws
+//
+var hypergeometric1 = function(k,N,K,n,count) {
+    if (n==0 || K<= 0) {
+        return count;
+    } else {
+        // we have K successes left and N objects left
+        var p = K/N; // probability of drawing a success object
+        if (flip(p)) {
+            // We drew a success:
+            // - decrement the total objects (N)
+            // - decrement the number of "success" objects (K)
+            // - decrement the number of drawn objects (n)
+            // - increment the number of successful draws (count)
+            return hypergeometric1(k,N-1,K-1,n-1,count+1);
+        } else {
+            // We drew a failure:
+            // - decrement the total objects (N)
+            // - decrement the number of drawn objects (n)
+            return hypergeometric1(k,N-1,K,n-1,count);
+        }
+    }
+    
+}
+
+var hypergeometric = function(k,N,K,n) {
+    var res = hypergeometric1(k,N,K,n,0);
+    return res == k;
+}
+
+//
+// Return the number of found successes.
+//
+var hypergeometricCount = function(k,N,K,n) {
+    var res = hypergeometric1(k,N,K,n,0);
+    return res;
+}
+
+/*
+   Example from
+   https://en.wikipedia.org/wiki/Hypergeometric_distribution#Working_example
+   """
+   Now, assume (for example) that there are 5 green and 45 red marbles in 
+   the urn. Standing next to the urn, you close your eyes and draw 10 marbles 
+   without replacement. What is the probability that exactly 4 of the 10 
+   are green? 
+   
+   The probability of drawing exactly 4 marbels is: ~0.00396458305801506542
+   The probability of drawing exactly 5 marbels is: ~0.00011893749174045196
+   """
+   
+   This model (method:enumerate) give the following result:
+   The probability of drawing exactly 4 marbels is: 0.003964583058015043
+   The probability of drawing exactly 5 marbels is: 0.00011893749174045244
+
+   Which is quite exact...
+
+   The count version, i.e. how many success objects we drew:
+   Marginal:
+    1 : 0.43133719722856784
+    0 : 0.3105627820045687
+    2 : 0.20983971757065448
+    3 : 0.04417678264645353
+    4 : 0.003964583058015047
+    5 : 0.00011893749174045222
+  expectation:
+  [ [ 'g', 0.9999999999999998 ] ]
+
+
+*/
+var model = function() {
+
+    // total: 5 green and 45 red marbles
+    // drawn: 4 green marbles, 6 red marbles
+    var K = 5; // total green marbles: 4 drawn + 1 not drawn
+    var N = 50; // total marbles: 5 green + 45 red marbles
+    
+    var k = 4; // drawn green_marbles
+    // var k = 5; // drawn green_marbles    
+    var n = 10 // total drawn green + red marbles
+    
+    var g = hypergeometric(k,N,K,n);
+    // var g = hypergeometricCount(k,N,K,n); // Count version
+    
+    return {
+        g:g
+    }
+    
+}
+
+
+var d = Infer({method:"enumerate"},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["g"]);
+
+var stat = function(v) {
+    console.log("Stat for v:",v);
+    var m = marginalize(d, v);
+    var s = m.supp;
+    var mean = listMean(s);
+    var stdev = listStdev(s,mean);
+    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
+    
+}
+
+stat("g");
+
+
+
+
+/*
+  Generate 20 examples from hypergeometricCount:
+
+  Marginal:
+    [2,1,1,0,1,1,0,0,2,0,0,0,0,2,1,1,0,2,2,1] : 0.006000000000000004
+    [2,0,0,0,1,1,1,2,0,1,1,0,2,1,1,1,1,0,0,1] : 0.005000000000000006
+    [1,1,1,1,1,0,2,0,1,1,1,2,1,3,1,0,1,0,2,1] : 0.004700000000000004
+    [2,1,1,1,1,1,1,1,2,0,2,1,0,1,1,1,0,2,0,0] : 0.004600000000000004
+    ....
+
+*/
+/*
+var model2 = function() {
+
+    // total: 5 green and 45 red marbles
+    // drawn: 4 green marbles, 6 red marbles
+    var K = 5; // total green marbles: 4 drawn + 1 not drawn
+    var N = 50; // total marbles: 5 green + 45 red marbles
+    
+    var k = 4; // drawn green_marbles
+    // var k = 5; // drawn green_marbles    
+    var n = 10 // total drawn green + red marbles
+    
+    // var g = hypergeometric(k,N,K,n);
+    var draw = mem(function(i) {
+        return hypergeometricCount(k,N,K,n); 
+    })
+    
+    return {
+        g:mapN(function(i) {return draw(i)},20)
+    }
+    
+}
+
+console.log("\n\nModel 2");
+// var d2 = Infer({method:"enumerate",maxExecutions:100000},model2);
+var d2 = Infer({method:"MCMC",kernel:"MH",samples:10000},model2);
+// display(d2);
+
+exp_map(d2,["g"]);
+*/
+
+
+//
+// Test: Infer the parameters: K, k, N, and n.
+// Note: It does not do a good job...
+//
+var model3 = function() {
+
+    // Data from model2
+    var data = [2,1,1,0,1,1,0,0,2,0,0,0,0,2,1,1,0,2,2,1];
+    
+    // total: 5 green and 45 red marbles
+    // drawn: 4 green marbles, 6 red marbles
+    
+    var K = 5; // total green marbles: 4 drawn + 1 not drawn
+    // var K = 1+randomInteger(20); // total green marbles: 4 drawn + 1 not drawn
+    
+    var N = 50; // total marbles: 5 green + 45 red marbles
+    
+    // var k = 4; // drawn green_marbles
+    var k = 1+randomInteger(5);
+    // var k = poisson(5);
+        
+    var n = 10 // total drawn green + red marbles
+    // var n = 1+randomInteger(25);
+    
+    // var g = hypergeometric(k,N,K,n);
+    var draw = mem(function(i) {
+        return hypergeometricCount(k,N,K,n); 
+    })
+
+    mapN(function(i) {
+        condition(draw(i) == data[i])
+    },data.length);
+    
+    return {
+        k:k,  // should be 4
+        K:K,
+        N:N,
+        n:n,
+    }
+    
+}
+
+console.log("\n\nModel 3");
+// var d3 = Infer({method:"enumerate",maxExecutions:100000},model3);
+// var d3 = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:100},model3);
+// var d3 = Infer({method:"incrementalMH",samples:1000},model3);
+var d3 = Infer({method:"SMC",particles:1000,rejuvSteps:1},model3);
+// var d3 = Infer({method:"rejection",samples:100},model3);
+// display(d3);
+
+exp_map(d3,["K","k","N","n"]);
+

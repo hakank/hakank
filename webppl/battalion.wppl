@@ -1,0 +1,61 @@
+/*
+   From
+   "First-Order Probabilistic Inference"
+   https://www.youtube.com/watch?v=leIqVD4-Fks
+   Time 45:06
+
+   (The shown model in the talks is a BLOG model).
+
+   cf ~/blog/batallion.blog
+
+*/
+
+var model = function() {
+    // var numBattalion ~ UniformInt(1,10);
+    // var numBattalion = 1+randomInteger(3);
+    var numBattalion = 1+randomInteger(10);
+    
+    var large = function(bat) {
+        return flip(0.6);
+    }
+    
+    var region = function(bat) {
+        // return categorical({ps:[4, 2, 1],vs:[1,2,3]});
+        return 1+poisson(numBattalion);
+    }
+    
+    var numSoldier = function(bat) {
+        if (large(bat)) {
+            return poisson(1500);
+        } else {
+            if (region(bat) == 2) {
+                return 300;
+            } else {
+                return poisson(500);
+            }
+        }
+    }
+         
+    return {
+        numBattalion:numBattalion,
+        large:mapN(function(b) { return 1*large(b); },numBattalion),
+        numSoldier:mapN(function(b) { return numSoldier(b); },numBattalion),
+        numSoldierMean:listMean(mapN(function(b) { return numSoldier(b); },numBattalion)),
+        region:mapN(function(b) { return region(b); },numBattalion),
+    }
+}
+
+var d = Infer({method:"rejection",samples:1000},model);
+// display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["numBattalion","large","numSoldier","numSoldierMean","region"]);

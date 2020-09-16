@@ -1,0 +1,170 @@
+/*
+
+  https://www.youtube.com/watch?v=e1Ykk_CqKTY&t=458s
+
+  Probabilistic Programming: What It Is and How It Works - Noel Welsh
+
+  We can see either 1, 2, or 3 cats.
+  There are 3 different enticements:
+  
+  - Milkshake
+  - Fish
+  - Nothing
+ 
+  And there are different probabilities how many cats there are given
+  an enticement, see below.
+
+  Now: We see 3 cats, what is the probability that it's a milkshake?
+
+  The video got the following (for 3 cats):
+   - milkshake: 0.42
+   - fish: 0.04
+   - nothing: 0.03
+
+  Normalized to percentage (from the video): 
+
+  0.42/(0.42 + 0.04 + 0.03) milkshake
+      0.85714285714285714286
+  0.04/(0.42 + 0.04 + 0.03) fish
+      0.081632653061224489796
+  0.03/(0.42 + 0.04 + 0.03)  nothing
+      0.061224489795918367347
+
+  Here are two models.
+  Model2 seems to be the correct one (i.e. corresponds to the video),
+  i.e. where the enticements are mutual exclusive.
+  In model1 we accept that fish and milkshake can coexist.
+
+  See ~/cplint/cat.pl
+      ~/blog/cat.blog
+      ~/psi/cat.psi
+*/
+
+var model = function() {
+    
+    var OneCat = 1;
+    var TwoCats = 2;
+    var ThreeCats = 3;
+
+    // probability of an enticement in the garden
+    var milkshake = flip(0.6);
+    var fish      = flip(0.1);
+    var nothing   = flip(0.3);
+   
+    // Number of cats per enticement
+    var vs = [OneCat,TwoCats,ThreeCats];
+    var cat  = (function() {
+        if (!nothing && milkshake) {
+            return categorical({ps:[0.1,0.2,0.7],vs:vs});
+        } else if (!nothing && fish) {
+            return categorical({ps:[0.2,0.3,0.4],vs:vs});
+        } else if (nothing && !fish && !milkshake) {
+            return categorical({ps:[0.6,0.3,0.1],vs:vs});
+        } else {
+            return false;
+        }
+    })();
+    
+    condition(cat == ThreeCats);
+
+    return {
+        milkshake:milkshake,
+        fish:fish,
+        nothing:nothing,
+        cat:cat
+    };
+
+}
+
+display("First model");
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model2);
+// var d = Infer({model,method:"MCMC",samples:10000});
+// var d = Infer({model,method:"MCMC",samples:10000});
+// var d = Infer({model,method:"rejection",samples:10000});
+var d = Infer({method:"enumerate"},model);
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["milkshake","fish","nothing","cat"]);
+
+
+//
+// A variant where the enticements are drawn from categoricial instead.
+// This is much more simular to the video's result.
+// Second model
+//
+// Enumeration:
+// Second model
+// Marginal:
+//     {"enticement":"milkshake","cat":3} : 0.8571428571428571
+//     {"enticement":"fish","cat":3} : 0.08163265306122452
+//     {"enticement":"nothing","cat":3} : 0.061224489795918366
+// expectation:
+// [ [ 'enticement', NaN ], [ 'cat', 3 ] ]
+// MAP:
+// [ [ 'enticement',
+//     { val: 'milkshake', score: -0.1541506798272585 } ],
+//   [ 'cat', { val: 3, score: 0 } ] ]
+//
+// Rejectionsampling:
+// Marginal:
+//     {"enticement":"milkshake","cat":3} : 0.8509
+//     {"enticement":"fish","cat":3} : 0.0858
+//     {"enticement":"nothing","cat":3} : 0.0633
+// expectation:
+// [ [ 'enticement', NaN ], [ 'cat', 3 ] ]
+// MAP:
+// [ [ 'enticement',
+//     { val: 'milkshake', score: -0.1614606661266254 } ],
+//   [ 'cat', { val: 3, score: 0 } ] ]
+// 
+var model2 = function() {
+    
+    var OneCat = 1;
+    var TwoCats = 2;
+    var ThreeCats = 3;
+
+    // probability of an enticement in the garden
+    var enticement = categorical({ps:[0.6,0.1,0.3],vs:["milkshake","fish","nothing"]});
+    
+    // Number of cats per enticement
+    var vs = [OneCat,TwoCats,ThreeCats];
+    var cat  = (function() {
+        if (enticement=="milkshake") {
+            return categorical({ps:[0.1,0.2,0.7],vs:vs});
+        } else if (enticement=="fish") {
+            return categorical({ps:[0.2,0.4,0.4],vs:vs});
+        } else if (enticement=="nothing") {
+            return categorical({ps:[0.6,0.3,0.1],vs:vs});
+        }
+    })();
+    
+    condition(cat == ThreeCats);
+
+    return {
+        enticement:enticement,
+        cat:cat
+    };
+
+}
+
+display("\nSecond model");
+display("enumerate:")
+var d2 = Infer({method:"enumerate"},model2);
+display(d2);
+exp_map(d2,["enticement","cat"]);
+
+display("\nrejection:")
+var d3 = Infer({method:"rejection",samples:10000},model2);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model2);
+// var d = Infer({method:"MCMC",samples:10000},model2);
+// var d = Infer({method:"MCMC",samples:10000},model2);
+display(d3);
+exp_map(d3,["enticement","cat"]);

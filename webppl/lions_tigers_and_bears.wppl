@@ -1,0 +1,85 @@
+/*
+   From Allen Downey
+   https://twitter.com/AllenDowney/status/1063460117029535746
+   """
+   Today's Bayesian problem of the week: Suppose we visit a wild animal preserve where we 
+   know that the only animals are lions and tigers and bears, but we don't know how 
+   many of each there are.
+
+   During the tour, we see 3 lions, 2 tigers, and 1 bear. Assuming that every animal had an equal 
+   chance to appear in our sample, estimate the prevalence of each species. 
+ 
+   What is the probability that the next animal we see is a bear?
+   """
+
+   Also see: https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
+
+
+   Cf ~/blog/lions_tigers_and_bears.blog   
+
+*/
+
+/*
+
+From https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
+"""
+  Species: lions    Prevalence: 44.44%.
+  Species: tigers   Prevalence: 33.33%.
+  Species: bears    Prevalence: 22.22%.
+"""
+*/
+var model = function() {
+
+    var lion = 0;
+    var tiger = 1;
+    var bear = 2;
+    
+    var probLion  = beta(1,1);
+    var probTiger = beta(1,1);
+    var probBear  = beta(1,1);
+    
+    var o = mem(function(i) {
+        return categorical({ps:[probLion,probTiger,probBear],vs:[lion, tiger, bear]});
+    })
+    
+    // Total prob should be ~ 1.
+    // var check =  Math.abs(probLion + probTiger + probBear - 1.0) < 0.01;
+    // condition(check == true);
+
+    // It shouldn't matter in what order we see the different animals.       
+    condition(o(0) == lion);
+    condition(o(1) == lion);
+    condition(o(2) == lion);
+    condition(o(3) == tiger);
+    condition(o(4) == tiger);
+    condition(o(5) == bear);
+
+    return {
+        o6lion:o(6) == lion,
+        o6tiger:o(6) == tiger,
+        o6bear:o(6) == bear,
+        sum6:(o(6) == bear) + (o(6) == tiger) + (o(6) == lion),
+        // next3:mapN(function(i) {return o(6+i+1)},3)
+        // check:check,        
+
+    }
+}
+
+// var d = Infer(model);
+var d = Infer({method:"SMC",particles:10000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// var d = Infer({method:"rejection",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["sum6","o6lion","o6tiger","o6bear",
+           // "next3"
+          ]);
