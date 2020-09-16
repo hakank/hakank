@@ -1,0 +1,144 @@
+/*
+  From https://math.stackexchange.com/questions/3633307/bayes-rule-broken
+  """
+  Bayes' Rule broken?!?!
+
+  This question has been driving me CRAZY for 4 days now. The question comes from 
+  the textbook 'One Thousand Exercises in Probability', specifically Exercise 3 in 
+  section 1.4. The solution does not make sense! The question goes as follows:
+
+     'A man possesses five coins, two double-headed, two normal and one double-tailed. 
+     The man shuts his eyes, picks a coin at random, and tosses the coin. He opens 
+     his eyes, sees a head: what is the probability the lower face is also a head?.
+
+  The book gives an answer that is 2/3
+  ....
+  """
+
+  First approach:
+  Here I model this as two "tosses" but enforce that if the coin is normal
+  the second "toss" is the opposite value.
+  
+  Output from this model:
+  """
+  ========  LW Trial Stats =========
+  Log of average likelihood weight (this trial): -0.5110506490823017
+  Average likelihood weight (this trial): 0.5998649999999919
+  Fraction of consistent worlds (this trial): 0.79953
+  Fraction of consistent worlds (running avg, all trials): 0.79953
+  ======== Query Results =========
+  Number of samples: 100000
+  Distribution of values for toss(0)
+        head    1.0
+  Distribution of values for toss(1)
+        head    0.6671501087744839
+        tail    0.33284989122553105
+  Distribution of values for coin
+        doubleHead      0.6671501087744839
+        normalCoin      0.33284989122553105
+  Distribution of values for (toss(1) = head)
+        true    0.6671501087744839
+        false   0.33284989122553105
+
+  """
+
+  I.e. the probability that the opposite side (toss 1) is head:
+  0.667
+
+
+  The second approach is perhaps more natural.
+  We first select a coin and observe that the face is a head.
+  We then flip the coin (i.e. turn it): What is the probability that the
+  flip side also is head.
+
+  Output:
+  """
+  ========  LW Trial Stats =========
+  Log of average likelihood weight (this trial): -0.5110506490823017
+  Average likelihood weight (this trial): 0.5998649999999919
+  Fraction of consistent worlds (this trial): 0.79953
+  Fraction of consistent worlds (running avg, all trials): 0.79953
+  ======== Query Results =========
+  Number of samples: 100000
+  Distribution of values for coin
+        doubleHead      0.6671501087744839
+        normalCoin      0.33284989122553105
+  Distribution of values for toss
+        head    1.0
+  Distribution of values for flip
+        head    0.6671501087744839
+        tail    0.33284989122553105
+  Distribution of values for (flip = head)
+        true    0.6671501087744839
+        false   0.33284989122553105
+  ======== Done ========
+  """
+
+  With the same result, i.e. probability that the flip side is head: 0.667.
+
+
+*/
+
+
+type Coin;
+distinct Coin doubleHead, normalCoin, doubleTail;
+
+type HeadTail;
+distinct HeadTail head, tail;
+
+Random Coin coin ~ Categorical({doubleHead->2, normalCoin->2, doubleTail->1});
+
+
+// Second approach:
+
+// Toss the coin
+Random HeadTail toss  ~
+           if coin == doubleHead then head
+           else if coin == doubleTail then tail
+           else Categorical({head->1,tail->1});
+
+// Flip the coin
+Random HeadTail flip ~
+           if coin == doubleHead then head
+           else if coin == doubleTail then tail
+           else
+                case toss in
+                {
+                  head -> tail,
+                  tail -> head
+                }
+              ;
+
+obs toss = head;
+
+query coin;
+query toss;
+query flip;
+query flip == head; // The question asked.
+query flip == tail; // Question asked in a comment
+
+
+/*
+// First approach
+Random HeadTail toss(Integer i)  ~
+           if coin == doubleHead then head
+           else if coin == doubleTail then tail
+           else if coin == normalCoin then
+              if i == 0 then
+               Categorical({head->1,tail->1})
+              else
+                case toss(0) in
+                {
+                  head -> tail,
+                  tail -> head
+                }
+              ;
+
+obs toss(0) = head;
+
+query toss(0);
+query toss(1);
+query coin;
+query toss(1) == head; // This is the question asked.
+
+*/
