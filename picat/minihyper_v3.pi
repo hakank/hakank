@@ -1,0 +1,147 @@
+/* 
+
+  Inductive Logic Programming in Picat v3.
+
+  This is a port of the program minihyper.pl in
+  I. Bratko, "Prolog Programming for Artificial Intelligence", 4th edn.,
+  Pearson Education / Addison-Wesley 2012
+  Page 495ff (Figure 21.3, and 21.4)
+  
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module minihyper_v3.
+
+
+% """
+% Figure  21.4  MINIHYPER - a simple ILP program.
+% """
+
+% Program MINIHYPER
+
+% induce( Hyp):
+%   induce a consistent and complete hypothesis Hyp by gradually
+%   refining start hypotheses
+
+induce( Hyp)  :-
+  iter_deep( Hyp, 0).           % Iterative deepening starting with max. depth 0
+
+iter_deep( Hyp, MaxD) :-
+  print( 'MaxD = '), print( MaxD), nl,
+  start_hyp( Hyp0),
+  complete( Hyp0),                  % Hyp0 covers all positive examples
+  depth_first( Hyp0, Hyp, MaxD)     % Depth-limited depth-first search
+  ;
+  NewMaxD is MaxD + 1,
+  iter_deep( Hyp, NewMaxD).
+
+% depth_first( Hyp0, Hyp, MaxD):
+%   refine Hyp0 into consistent and complete Hyp in at most MaxD steps
+
+
+depth_first( Hyp, Hyp, _)  :-
+  consistent( Hyp).
+
+
+depth_first( Hyp0, Hyp, MaxD0)  :-
+  MaxD0 > 0,
+  MaxD1 is MaxD0 - 1,
+  refine_hyp( Hyp0, Hyp1),
+  complete( Hyp1),                % Hyp1 covers all positive examples
+  depth_first( Hyp1, Hyp, MaxD1).
+
+complete( Hyp)  :-        % Hyp covers all positive examples
+  \+ (ex( E),                          % A positive example
+       once( prove( E, Hyp, Answer)),   % Prove it with Hyp
+       Answer \= yes).                 % Possibly not proved
+
+consistent( Hyp)  :-      % Hypothesis does not possibly cover any negative example
+  \+ (nex( E),                          % A negative example
+       once( prove( E, Hyp, Answer)),    % Prove it with Hyp
+       Answer \= no).                   % Possibly provable
+
+% refine_hyp( Hyp0, Hyp):
+%   refine hypothesis Hyp0 into Hyp
+
+refine_hyp( Hyp0, Hyp)  :-
+  append( Clauses1, $[Clause0/Vars0 | Clauses2], Hyp0),    % Choose Clause0 from Hyp0
+  append( Clauses1, $[Clause/Vars | Clauses2], Hyp),       % New hypothesis
+  refine( Clause0, Vars0, Clause, Vars).                % Refine the Clause  
+
+% refine( Clause, Args, NewClause, NewArgs):
+%   refine Clause with arguments Args giving NewClause with NewArgs
+
+% Refine by unifying arguments
+
+refine( Clause, Args, Clause, NewArgs)  :-
+  append( Args1, [A | Args2], Args),               % Select a variable A
+  member( A, Args2),                             % Match it with another one
+  append( Args1, Args2, NewArgs).
+
+% Refine by adding a literal
+
+refine( Clause, Args, NewClause, NewArgs)  :-
+  bp.length( Clause, L),
+  max_clause_length( MaxL),
+  L < MaxL,
+  backliteral( Lit, Vars),                    % Background knowledge literal
+  append( Clause, [Lit], NewClause),            % Add literal to body of clause
+  append( Args, Vars, NewArgs).                 % Add literal's variables
+
+% % Default parameter settings
+% hakank: Moved to ex files
+
+% max_proof_length( 6).   % Max. proof length, counting calls to 'non-prolog' pred.
+
+% max_clause_length( 3).  % Max. number of literals in a clause
+
+
+% Figure 21.3  A loop-avoiding interpreter for hypotheses.
+
+
+% Interpreter for hypotheses
+% prove( Goal, Hypo, Answ):
+%   Answ = yes, if Goal derivable from Hypo in at most D steps
+%   Answ = no, if Goal not derivable
+%   Answ = maybe, if search terminated after D steps inconclusively
+
+% table  % hakank: Nope, this give fast but wrong answers!
+prove( Goal, Hypo, Answer)  :-
+  % println($(prove( Goal, Hypo, Answer))),
+  max_proof_length( D),
+  prove( Goal, Hypo, D, RestD), 
+  (RestD >= 0, Answer = yes          % Proved
+   ;
+   RestD < 0, !, Answer = maybe      % Maybe, but it looks like inf. loop
+  ).
+
+prove( Goal, _, no).       % Otherwise Goal definitely cannot be proved
+
+% prove( Goal, Hyp, MaxD, RestD):
+%   MaxD allowed proof length, RestD 'remaining length' after proof;
+%   Count only proof steps using Hyp
+
+prove( G, H, D, D)  :-
+  D < 0, !.                % Proof length overstepped
+
+prove( [], _, D, D)  :-  !.
+
+prove( [G1 | Gs], Hypo, D0, D)  :-  !,
+  prove( G1, Hypo, D0, D1), 
+  prove( Gs, Hypo, D1, D).
+
+prove( G, _, D, D)  :-
+  prolog_predicate( G),               % Background predicate in Prolog?
+  call( G).                           % Call of background predicate
+
+prove( G, Hyp, D0, D)  :-
+  D0 =< 0, !, D is D0-1               % Proof too long
+  ;
+  D1 is D0-1,                         % Remaining proof length
+  member( $Clause/Vars, Hyp),          % A clause in Hyp
+  bp.copy_term( Clause, [Head | Body] ), % Rename variables in clause
+  G = Head,                           % Match clause's head with goal
+  prove( Body, Hyp, D1, D).           % Prove G using Clause
+

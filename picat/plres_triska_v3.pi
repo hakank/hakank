@@ -1,0 +1,149 @@
+/* 
+
+  Resolution calculus for propositional logic in Picat v3.
+
+  Port of Markus Triska's Prolog program
+  https://www.metalevel.at/logic/plres.pl
+  via https://www.metalevel.at/prolog/theoremproving
+
+  Changes:
+  - $ escapes
+  - replaced output handling 
+  - replaced phrase/2
+  - from bp: sort/2 (dif/2)
+  - dif/2 -> different_terms/2
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+
+go ?=>
+  % Clauses = [[p], [q]], % -> false 
+  Clauses = $[[p,not(q)], [not(p),not(s)], [s,not(q)], [q]],
+  pl_resolution(Clauses, Rs),
+  foreach(R in Rs)
+    foreach(RR in R)
+      (
+       RR = $('-->'(As0-Bs0)) ->
+         print($(As0-Bs0)), println(" -->")
+      ;
+         bp.tab(4),println(RR)
+      ) 
+    end
+  end,
+
+  nl.
+
+go => true.
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   Written 2006-2020 by Markus Triska, triska@metalevel.at
+   Public domain code. Tested with Scryer Prolog.
+   ----------------------------------------------------------------------
+
+   Resolution calculus for propositional logic.
+
+   For more information about theorem proving with Prolog, see:
+
+   https://www.metalevel.at/prolog/theoremproving
+   ==============================================
+
+   Input is a formula in conjunctive normal form, represented as a
+   list of clauses; clauses are lists of atoms and terms not/1.
+
+   Examples:
+
+   ?- Clauses = [[p], [q]],
+      pl_resolution(Clauses, Rs).
+   %@ false.
+
+   ?- Clauses = [[p,not(q)], [not(p),not(s)], [s,not(q)], [q]],
+      pl_resolution(Clauses, Rs),
+      maplist(portray_clause, Rs).
+   %@ [p, not(q)]-[not(p), not(s)] -->
+   %@   [not(q), not(s)].
+   %@ [s, not(q)]-[not(q), not(s)] -->
+   %@   [not(q)].
+   %@ [q]-[not(q)] -->
+   %@   [].
+
+   Iterative deepening is used to find a shortest refutation.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+% :- use_module(library(dcgs)).
+% :- use_module(library(dif)).
+% :- use_module(library(lists)).
+% :- use_module(library(format)).
+
+pl_resolution(Clauses0, Chain) :-
+        maplist(bp_sort, Clauses0, Clauses), % remove duplicates        
+        iterative_deepening([], Chain, Clauses).
+
+iterative_deepening(Limit, Chain, Clauses0) :-
+        (   same_length(Ts, Limit),
+            % phrase($pl_chain(Clauses0, _), Ts) -> 
+            pl_chain(Clauses0,_,Ts,[]) ->            
+            (   same_length(Chain, Limit),
+                % phrase(pl_chain(Clauses0, Clauses), Chain), 
+                pl_chain(Clauses0,Clauses,Chain,[]),                
+                member([], Clauses) -> true
+            ;   iterative_deepening([_|Limit], Chain, Clauses0)
+            )
+        ;   false
+        ).
+
+pl_chain(Cs, Cs) --> [].
+pl_chain(Cs0, Cs) --> [Step],
+        { pl_resolvent(Step, Cs0, Rs) },
+        pl_chain([Rs|Cs0], Cs).
+
+pl_resolvent(T, Clauses, Rs) :-
+        T = $('-->'(As0-Bs0), Rs), 
+        member(As0, Clauses),
+        member(Bs0, Clauses),
+        select(Q, As0, As),
+        select($(not(Q)), Bs0, Bs),
+        append(As, Bs, Rs0),
+        % sort(Rs0, Rs),
+        Rs = sort_remove_dups(Rs0),        
+        % maplist(dif(Rs), Clauses).
+        maplist($different_terms(Rs), Clauses).
+
+%
+% Utils and from bp.
+%
+% bp_dif(X,Y) :- bp.dif(X,Y).
+bp_sort(X,S) :- bp.sort(X,S).
+
+bp_portray_clause(C) :-
+  bp.portray_clause(C).
+
+
+% maplist/2 and maplist/3
+maplist(Goal, List) :-
+    maplist_(List, Goal).
+
+maplist(Goal, List1, List2) :-
+    maplist_(List1, List2, Goal).
+
+maplist_([], _).
+maplist_([Elem|Tail], Goal) :-
+    call(Goal, Elem),
+    maplist_(Tail, Goal).
+
+maplist_([], [], _). 
+maplist_([Elem1|Tail1],
+         [Elem2|Tail2],
+         Goal) :-
+    call(Goal, Elem1, Elem2),
+    maplist_(Tail1, Tail2, Goal).
+
+% hakank: From SWI Prolog
+same_length([], []).
+same_length([_|T1], [_|T2]) :-
+    same_length(T1, T2).

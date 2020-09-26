@@ -1,0 +1,192 @@
+/* 
+
+  Prover benchmark in Picat v3.
+
+  From bench/prover.pl
+  https://github.com/SWI-Prolog/bench
+
+  For Picat v3
+
+  Changes: 
+  *  Picat don't support :- op/3 .
+     So the following are used instead:
+     # -> orx/2 (disjunction)
+     & -> andx/2 (conjunction)
+     + -> ass/1 (assertion)
+     - -> neg/1 (denial)
+  * $ escaped the structure lists and fs/4.
+  * Added output
+
+
+  Note: When running this in B-Prolog (after adding outputs), I got the following result:
+  [n=1,p= -a,c= +a]
+  [n=2,p= +a,c=(-a& -a)]
+  [n=3,p= -a,c=(+to_be# -to_be)]
+  ok
+  [n=4,p=(-a& -a),c= -a]
+  ok
+  [n=5,p= -a,c=(+b# -a)]
+  ok
+  [n=6,p=(-a& -b),c=(-b& -a)]
+  ok
+  [n=7,p= -a,c=(-b# +b& -a)]
+  ok
+  [n=8,p=(-a# -b# +c),c=(-b# -a# +c)]
+  ok
+  [n=9,p=(-a# +b),c=(+b& -c# -a# +c)]
+  ok
+  [n=10,p=((-a# +c)&(-b# +c)),c=(-a& -b# +c)]
+  ok
+
+  This Picat program give the corresponding result, i.e. that instances 1 and 2 got seems 
+  not to be ok:
+
+  [problem = 1,ass(a),c = neg(a)]
+  [problem = 2,ass(a),c = andx(neg(a),neg(a))]
+  [problem = 3,neg(a),c = orx(ass(to_be),neg(to_be))]
+  ok
+  [problem = 4,andx(neg(a),neg(a)),c = neg(a)]
+  ok
+  [problem = 5,neg(a),c = orx(ass(b),neg(a))]
+  ok
+  [problem = 6,andx(neg(a),neg(b)),c = andx(neg(b),neg(a))]
+  ok
+  [problem = 7,neg(a),c = orx(neg(b),andx(ass(b),neg(a)))]
+  ok
+  [problem = 8,orx(neg(a),orx(neg(b),ass(c))),c = orx(neg(b),orx(neg(a),ass(c)))]
+  ok
+  [problem = 9,orx(neg(a),ass(b)),c = orx(andx(ass(b),neg(c)),orx(neg(a),ass(c)))]
+  ok
+  [problem = 10,andx(orx(neg(a),ass(c)),orx(neg(b),ass(c))),c = orx(andx(neg(a),neg(b)),ass(c))]
+  ok
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go ?=>
+   problem(N, P, C),
+   println([problem=N,P,c=C]),
+   implies(P, C),
+   println(ok),
+   fail,
+   nl.
+
+go => println(done).
+
+% """
+% generated: 30 October 1989
+% option(s): 
+%
+%   prover
+%
+%   Richard A. O'Keefe
+%
+%   Prolog theorem prover
+%
+%   from "Prolog Compared with Lisp?," SIGPLAN Notices, v. 18 #5, May 1983
+% """
+
+top:-prover.
+
+% hakank: Note: this is not supported in Picat v3.0:
+% op/3 directives
+% :- op(950, xfy, #).	% disjunction
+% :- op(850, xfy, &).	% conjunction
+% :- op(500, fx, +).	% assertion
+% :- op(500, fx, -).	% denial
+
+prover :- problem(_N, P, C),
+	  implies(P, C),
+	  fail.
+prover.
+% :- println(done).
+
+% problem set
+
+% problem( 1, -a, +a). % original problem instance
+problem( 1, ass(a), neg(a)).
+
+% problem( 2, +a, -a & -a).
+problem( 2, ass(a), andx(neg(a), neg(a))).
+
+% problem( 3, -a, +to_be # -to_be).
+problem( 3, neg(a), orx(ass(to_be),neg(to_be))).
+
+% problem( 4, -a & -a, -a).
+problem( 4, andx(neg(a), neg(a)), neg(a)).
+
+% problem( 5, -a, +b # -a).
+problem( 5, neg(a), orx(ass(b),neg(a))).
+
+% problem( 6, -a & -b, -b & -a).
+problem( 6, andx(neg(a),neg(b)), andx(neg(b), neg(a))).
+
+% problem( 7, -a, -b # (+b & -a)).
+problem( 7, neg(a), orx(neg(b), andx(ass(b),neg(a)))).
+
+% problem( 8, -a # (-b # +c), -b # (-a # +c)).
+problem( 8, orx(neg(a), orx(neg(b), ass(c))), orx(neg(b), orx(neg(a),ass(c)))).
+
+% problem( 9, -a # +b, (+b & -c) # (-a # +c)).
+problem( 9, orx(neg(a), ass(b)), orx( andx(ass(b),neg(c)) ,orx(neg(a), ass(c)))).
+
+% problem( 10, (-a # +c) & (-b # +c), (-a & -b) # +c).
+problem( 10, andx(orx(neg(a),ass(c)),orx(neg(b), ass(c))), orx(andx(neg(a), neg(b)), ass(c))).
+
+
+% Prolog theorem prover
+
+implies(Premise, Conclusion) :-
+	opposite(Conclusion, Denial),
+	add_conjunction(Premise, Denial, $fs([],[],[],[])).
+
+opposite(andx(F0,G0), orx(F1,G1)) :- !,
+	opposite(F0, F1),
+	opposite(G0, G1).
+opposite(orx(F1,G1), andx(F0,G0)) :- !,
+	opposite(F1, F0),
+	opposite(G1, G0).
+opposite(ass(Atom), neg(Atom)) :- !.
+opposite(neg(Atom), ass(Atom)).
+add_conjunction(F, G, Set) :-
+	expand(F, Set, Mid),
+	expand(G, Mid, New),
+	refute(New).
+
+expand(_, refuted, refuted) :- !.
+expand(andx(F,G), fs(D,_,_,_), refuted) :-
+	includes(D, $andx(F,G)), !.
+expand(andx(F,G), fs(D,C,P,N), fs(D,C,P,N)) :-
+	includes(C, $andx(F,G)), !.
+expand(andx(F,G), fs(D,C,P,N), New) :- !,
+	expand(F, $fs(D,$[andx(F,G)|C],P,N), Mid),
+	expand(G, Mid, New).
+expand(orx(F,G), fs(D,C,P,N), Set) :- !,
+	opposite($orx(F,G), Conj),
+	extend(Conj, D, C, D1, $fs(D1,C,P,N), Set).
+expand(ass(Atom), fs(D,C,P,N), Set) :- !,
+	extend(Atom, P, N, P1, $fs(D,C,P1,N), Set).
+expand(neg(Atom), fs(D,C,P,N), Set) :-
+	extend(Atom, N, P, N1, $fs(D,C,P,N1), Set).
+
+includes([Head|_], Head) :- !.
+includes([_|Tail], This) :- includes(Tail, This).
+
+extend(Exp, _, Neg, _, _, refuted) :- includes(Neg, Exp), !.
+extend(Exp, Pos, _, Pos, Set, Set) :- includes(Pos, Exp), !.
+extend(Exp, Pos, _, [Exp|Pos], Set, Set).
+
+refute(refuted) :- !.
+refute(T) :-
+        T = $fs([andx(F1,G1)|D], C, P, N),
+	opposite(F1, F0),
+	opposite(G1, G0),
+	Set = $fs(D, C, P, N),
+	add_conjunction(F0, G1, Set),
+	add_conjunction(F0, G0, Set),
+	add_conjunction(F1, G0, Set).

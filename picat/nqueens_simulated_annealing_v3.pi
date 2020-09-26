@@ -1,0 +1,115 @@
+/* 
+
+  N-queens with simulated annealing in Picat v3.
+
+  Port from Colin Barker:
+  http://colin.barker.pagesperso-orange.fr/lpa/queen_sa.htm
+
+  Requires the module annealing_v3
+  (http://hakank.org/picat/annealing_v3.pi )
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% See http://hakank.org/picat/annealing_v3.pi
+import annealing_v3.
+
+main => go.
+
+go ?=>
+  _ = random2(),
+  queens(8),
+  % fail,
+  nl.
+
+go => true.
+
+% larger instance
+go2 ?=>
+  queens(100), % 2.5s
+  nl.
+
+go2 => true.
+
+
+% All comments are from http://colin.barker.pagesperso-orange.fr/lpa/queen_sa.htm
+% """
+/*
+ * queens(N) attempts to solve the N queens problem.
+ */
+% """
+queens(N):-
+  println(n=N),
+  bp.retractall($size(_)),
+  bp.asserta($size(N)),
+  anneal.
+
+/* perturb(Xs, Ys) is true if the list Xs is a permutation of the integers */
+/*   0 to Size-1, and Ys is the same as Xs except that two pseudo-randomly */
+/*   selected elements have been exchanged.                                */
+perturb(Xs, Ys):-
+  bp.size(Size),
+  random(Size, I),
+  repeat,
+    random(Size, J),
+  I =\= J, !,
+  subst(Xs, I, -1, Xs1),
+  subst(Xs1, J, I, Xs2),
+  subst(Xs2, -1, J, Ys).
+
+/* subst(Ls, X, Y, Ms) is true if the list Ms is the same as the list Ls   */
+/*   except that the first occurrence of the element X is replaced by Y.   */
+subst([X|Ls], X, Y, Ms):-!, Ms=[Y|Ls].
+subst([L|Ls], X, Y, [L|Ms]):-subst(Ls, X, Y, Ms).
+
+energy(Rows, Energy):-
+  energy_1(Rows, 0, Pluses, Minuses),
+  energy_2(Pluses, 0, Energy0),
+  energy_2(Minuses, Energy0, Energy).
+
+energy_1([], _, [], []).
+energy_1([Row|Rows], Column, [Plus|Pluses], [Minus|Minuses]):-
+  Plus is Column + Row,
+  Minus is Column - Row,
+  Column1 is Column + 1,
+  energy_1(Rows, Column1, Pluses, Minuses).
+
+energy_2([], Energy, Energy).
+energy_2([X|Xs], Energy0, Energy):-
+  member(X, Xs), !,
+  /* Penalize a queen which is on the same diagonal as another queen */
+  Energy1 is Energy0 + 1,
+  energy_2(Xs, Energy1, Energy).
+energy_2([_|Xs], Energy0, Energy):-
+  energy_2(Xs, Energy0, Energy).
+
+output(optimal, Rows, 0):-
+  /* Solution found */
+  bp.size(Size), !,
+  output_1(Size, Size, Rows).
+output(iterations, _, _):-
+  print('Solution not found - all iterations performed'), nl.
+output(nochanges, _, _):-
+  print('Solution not found - no changes made at a given temperature'), nl.
+
+output_1(0, _, _):-!.
+output_1(N, Size, Rows):-
+  N1 is N - 1,
+  nthx(Rows, Before, N1), !,
+  After is Size - Before - 1,
+  empty(Before), print('Q'), empty(After), nl,
+  output_1(N1, Size, Rows).
+  
+empty(0):-!.  
+empty(N):-print('+'), N1 is N - 1, empty(N1).  
+
+/* nth(+Xs, ?N, ?X) is true if X is the N-th (base 0) element of the       */
+/*   list Xs.                                                              */
+nthx(Xs, N, X):-nth_1(Xs, X, 0, N).
+
+nth_1([X|_], X, N, N).
+nth_1([_|Xs], X, N0, N):-
+  N1 is N0 + 1,
+  nth_1(Xs, X, N1, N).

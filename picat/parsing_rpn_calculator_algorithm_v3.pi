@@ -1,0 +1,158 @@
+/* 
+
+  Parsing/RPN calculator algorithm in Picat v3.
+
+  http://rosettacode.org/wiki/Parsing/RPN_calculator_algorithm#Prolog
+  """
+  Task
+
+  Create a stack-based evaluator for an expression in reverse Polish notation (RPN) 
+  that also shows the changes in the stack as each individual token is processed as a table.
+
+
+  * Assume an input of a correct, space separated, string of tokens of an RPN expression
+    Test with the RPN expression generated from the   Parsing/Shunting-yard algorithm   task:
+
+        3 4 2 * 1 5 - 2 3 ^ ^ / +
+
+  * Print or display the output here
+
+
+  Notes
+      ^   means exponentiation in the expression above.
+      /   means division.
+i  """
+
+  rpn/1 is a port of the Prolog solution though I have changed the output quite a bit.
+  
+  The output should be somthing like:
+"""
+?- rpn("3 4 2 * 1 5 - 2 3 ^ ^ / +").
+Token  Action                             Stack
+    3  'Push num 3 on top of stack'       [3]
+    4  'Push num 4 on top of stack'       [4,3]
+    2  'Push num 2 on top of stack'       [2,4,3]
+    *  'Apply * on top of stack'          [8,3]
+    1  'Push num 1 on top of stack'       [1,8,3]
+    5  'Push num 5 on top of stack'       [5,1,8,3]
+    -  'Apply - on top of stack'          [-4,8,3]
+    2  'Push num 2 on top of stack'       [2,-4,8,3]
+    3  'Push num 3 on top of stack'       [3,2,-4,8,3]
+    ^  'Apply ^ on top of stack'          [8,-4,8,3]
+    ^  'Apply ^ on top of stack'          [65536,8,3]
+    /  'Apply / on top of stack'          [0.0001220703125,3]
+    +  'Apply + on top of stack'          [3.0001220703125]
+
+The final output value is 3.0001220703125
+true .
+"""
+
+  Also, I did a plain Picat version as well picat_rpn/1.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go ?=>
+  rpn("3 4 2 * 1 5 - 2 3 ^ ^ / +"),
+  nl.
+
+go => true.
+
+% "Plain" Picat version
+go2 ?=>
+  rpn2("3 4 2 * 1 5 - 2 3 ^ ^ / +"),
+  nl.
+
+go2 => true.
+
+
+rpn(L) :-
+	println('Token   Action                      Stack'),
+	parse(L, [],[X] ,[]),
+        printf("\nnThe final output value is %w\n", X).
+ 
+% skip spaces
+parse([X|L], St) -->
+	% {char_type(X, white)},
+        {member(X,['\t',' '])},
+	parse(L, St).
+ 
+% detect operators
+parse([Op|L], [Y, X | St]) -->
+	{ is_op(Op, X, Y, V),
+	  printf("    %w\t", Op),
+          Str2 = to_fstring("Apply %w on top of stack     ", Op),
+          printf("%-25s ", Str2),
+	  printf("%-25w\n", [V | St])},
+	parse(L, [V | St]).
+ 
+% detect number
+parse([N|L], St) -->
+	% {bp.char_type(N, digit)},
+	{digit(N)},        
+	parse_number(L, [N], St).
+ 
+% string is finished
+parse([], St) --> {printf("The final output value is %w\n",first(St))},St.
+ 
+% compute numbers
+parse_number([N|L], NC, St) -->
+	% {char_type(N, digit)},
+        {digit(N)},
+	parse_number(L, [N|NC], St).
+ 
+parse_number(S, NC, St) -->
+	{ % bp.reverse(NC, RNC),
+          RNC = reverse(NC),
+	  bp.number_chars(V, RNC),
+	  printf("%5d\t", V),
+          Str2 = to_fstring("Push num %w on top of stack   ", V),
+          printf("%-25s", Str2), % hakank
+	  printf("%-25w\n", [V | St])},
+	parse(S, [V|St]).
+ 
+% defining operations
+is_op('*', X, Y, V) :-	V is X*Y.
+is_op('+', X, Y, V) :-	V is X+Y.
+is_op('-', X, Y, V) :-	V is X-Y.
+is_op('/', X, Y, V) :-	V is X/Y.
+is_op('^', X, Y, V) :-	V is X**Y.
+
+% dummy predicate 
+phrase(S) -->
+  {true}.
+
+
+%
+% A "plain" Picat version
+%
+rpn2(RPN) =>
+  Split = split(RPN),
+  Stack = [],
+  foreach(S in Split)
+     T = parse_term(S),
+     if T == '^' then
+        T := '**'
+     end,
+     if number(T) then
+       Stack := [T] ++ Stack, % push
+       Str = "Push %2w on top of stack  "
+     else
+       once(select(B,Stack,Stack1)), % pop
+       once(select(A,Stack1,Stack2)), % pop  
+       Stack := Stack2,
+       Res = apply(T,A,B),
+       Str = "Apply %2w on top of stack ",
+       Stack := [Res] ++ Stack % push
+     end,
+     println(to_fstring(Str,T)=Stack)
+  end,
+  println('Result'=first(Stack)),
+  nl.

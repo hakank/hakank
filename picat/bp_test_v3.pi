@@ -1,0 +1,274 @@
+/* 
+
+  Test of different bp predicates in Picat v3.
+
+  The following bp predicates are tested:
+   - bagof/3 (with and without ^)
+   - setof/3 (with and without ^)
+   - findall/3
+   - length/2
+   - assertz/1
+   - clause
+
+  Picat v3 can access to several predicates in bp that is not
+  available directly in Picat, e.g.
+  bp.assert/1, bp.retract/1, bp.bagof/3, bp.setof/3, bp.findall/3, etc 
+  as well as bp.length etc.
+
+  However for assert/1, retract/1, bagof/3, setof/3, findall/3 the
+  predicate that is used must be in the bp context, not Picat's
+  context.
+
+  This is here done by assertz'ing the predicate (foo/3) to
+  bp context via assertz2bp/1 before running bagof/3 and setof/3
+
+  Here a poor man's unit test is implemented via run_tests/0.
+
+  Also see http://hakank.org/picat/assert_test_v3.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util. % for find/4
+
+main => go.
+
+go ?=>
+  run_tests(),
+  nl.
+
+go => true.
+
+%
+% Run the _test/0 predicates
+%
+run_tests ?=>
+  TestPreds = get_tests(),
+  foreach(Pred in TestPreds)
+    printf("testing %w\n",Pred),
+    call(Pred),
+    nl,
+  end,
+  nl.
+
+run_tests => true.
+  
+
+%
+% Extract the predicates which are named as _test/0
+% in this program.
+%
+% Note: The order of the tests is random.
+%
+get_tests = TestPreds => 
+  All = findall(P,bp.current_predicate(P)),
+  TestPreds = [],
+  foreach(P in All)
+    % The predicates are atoms so we first convert to strings ...
+    S = P.to_string(),
+    if find(S,"_test / 0",_,_) then
+      once(append("e$$glb$$",T,S)),
+      once(append(T2," / 0",T)),
+      % and then back to atoms
+      bp.atom_chars(Test,T2),
+      TestPreds := TestPreds ++ [Test]
+    end
+  end,
+  TestPreds = TestPreds1.
+
+
+%
+% Example from https://www.swi-prolog.org/pldoc/man?predicate=bagof%2f3
+%
+% bagof/3
+% Expected result:
+%   Cs = [c,d]
+%   Cs = [e,f]
+%   Cs = [g]
+%
+% This works.
+% cs1 = cd
+% cs1 = ef
+% cs1 = g
+%
+bagof1_test ?=>
+  assert2bp($foo(_A,_B,_C)),
+  bp.bagof(C1, $foo(_A1, _B1, C1), Cs1),
+  println(cs1=Cs1),
+  fail,
+  nl.
+
+bagof1_test => true.
+
+%
+% bagof/3 with ^
+% Expected result:
+%   Cs=[c,d]
+%   Cs=[e,f,g]
+% This works
+% cs2 = cd
+% cs2 = efg
+bagof2_test ?=>
+  assert2bp($foo(_A,_B,_C)),
+  bp.bagof(C, $(A^foo(A, _B, C)), Cs2),
+  println(cs2=Cs2),
+  fail,  
+  nl.
+
+bagof2_test => true.
+
+%
+% setof/3
+%
+% Expected result:
+%   Cs = [c,d]
+%   Cs = [e,f]
+%   Cs = [g]
+%
+% This works.
+% cs3 = cd
+% cs3 = ef
+% cs3 = g
+%
+setof1_test ?=>
+  assert2bp($foo(_A,_B,_C)),
+  bp.setof(C1, $foo(_A1, _B1, C1), Cs3),
+  println(cs3=Cs3),
+  fail, 
+  nl.
+
+setof1_test => true.
+
+% 
+% setof/3 with ^
+%
+% Expected result:
+%   Cs=[c,d]
+%   Cs=[e,f,g]
+% This works:
+% cs4 = cd
+% cs4 = efg
+%
+setof2_test ?=>
+  assert2bp($foo(_A,_B,_C)),
+  bp.setof(C, $(A^foo(A, _B, C)), Cs4),
+  println(cs4=Cs4),
+  fail, 
+  nl.
+
+setof2_test => true.
+
+%
+% findall/3
+%
+% Expected result:
+% l5 = [c,d,e,f,g]
+% This works:
+%   l5=cdefg
+%
+findall_test ?=>
+  assert2bp($foo(_A,_B,_C)),
+  bp.findall(C, $(foo(_A, _B, C)), L5),
+  println(l5=L5),
+  fail, 
+  nl.
+
+findall_test => true.
+
+
+%
+% length/2 (generating lists)
+%
+% Output:
+% [_2728] = 1
+% [_2728,_2738] = 2
+% [_2728,_2738,_2748] = 3
+% [_2728,_2738,_2748,_2758] = 4
+% [_2728,_2738,_2748,_2758,_2768] = 5
+% [_2728,_2738,_2748,_2758,_2768,_2778] = 6
+%
+%
+length_test ?=>
+  member(Len,1..6),
+  bp.length(L,Len),
+  Len2 = L.len,
+  println(L=Len2),
+  fail,
+  nl.
+
+length_test => true.
+
+%
+% - assert a predicate,
+% - use clause/2
+% - use the predicate
+%
+assert1_test ?=>
+  % Note that the asserted predicates are in bp (Prolog) context
+  % so we must use is/2 (not Picat's =/2 for calculations)
+  bp.assertz($(bar(X,Y,Z) :- Z is X + Y)), % this works
+  bp.clause($bar(X,Y,Z),Body),
+  println(body=Body),
+  bp.bar(1,2,Z),
+  println(Z),
+  nl.
+
+assert1_test => true.
+
+
+%
+% Converting a Picat function (baz/3) to bp context.
+% But this do NOT work!
+%
+assert2_test ?=>
+  println("This don't work correctly!"),
+  pred2bp($baz(X,Y,Z)),
+  bp.clause($baz(X,Y,Z),Body),
+  println(body=Body),
+  bp.baz(1,2,Z),
+  println(Z),
+  nl.
+
+assert2_test => true.
+
+%
+% Assert all the predicates of Pred in the database
+% Example: 
+%    assert2bp($foo(_A,_B,_C)),
+% 
+assert2bp(Pred) :-
+  % println(pred=Pred),
+  foreach(P in findall(Pred,Pred))
+     % println(p=P),
+     bp.assertz(P)
+  end.
+
+%
+% This do NOT work as expected:
+%
+%  Pred :- Body is not in bp context yet so clause/2 cannot be used
+% 
+pred2bp(Pred) :-
+  println(pred=Pred),
+  bp.clause(Pred,Body), 
+  println(Pred=Body),
+  bp.assertz($(Pred :- Body)),
+  fail.
+
+pred2bp(_).
+
+
+foo(a, b, c).
+foo(a, b, d).
+foo(b, c, e).
+foo(b, c, f).
+foo(c, c, g).
+
+%
+% For assert2_test/0.
+% (which don't work as expected)
+baz(X,Y,Z) =>
+  % println($baz(X,Y,Z)),
+  Z is X + Y.

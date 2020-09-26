@@ -1,0 +1,100 @@
+/* 
+
+  Inductive Logic Programming in Picat v3.
+
+  This is a port of the program hyper.pl in
+  I. Bratko, "Prolog Programming for Artificial Intelligence", 4th edn.,
+  Pearson Education / Addison-Wesley 2012
+  Page 507ff (Figure 21.7 and 21.3)
+       
+  The module hyper_v3 is here
+  http://hakank.org/picat/hyper_v3.pi
+
+
+  Note: The program quickly finds the following (not correct) 
+  solution but then hangs:
+  """
+  Hypotheses generated: 2180
+  Hypotheses refined:   158
+  To be refined:        206
+  Refining hypo with cost 84:
+
+  sort([],[]).
+  sort([B|C],A):-
+    sort(C,C),
+    insert_sorted(B,C,D).
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import hyper_v3.
+
+main => go.
+
+
+go ?=>
+  induce(H),
+  show_hyp(H),
+  nl.
+
+go => true.
+
+
+% Moved from from hyper_v3.pi
+max_proof_length( 6).   % Max. proof length, counting calls to preds. in hypothesis
+max_clauses( 5).        % Max. number of clauses in hypothesis
+max_clause_length( 5).  % Max. number of literals in a clause
+
+% Original:
+% max_proof_length( 6).   % Max. proof length, counting calls to preds. in hypothesis
+% max_clauses( 4).        % Max. number of clauses in hypothesis
+% max_clause_length( 5).  % Max. number of literals in a clause
+
+
+% Figure 21.10  Learning insertion sort.
+
+
+% Learning sort
+
+backliteral( sort( L, S), [type(L,list)], [type(S,list)]).
+backliteral( insert_sorted( X, L1, L2), [type(X,item), type(L1,list)], [type(L2,list)]).
+
+term( list, [X | L], [type(X,item), type(L,list)]).
+term( list, [], []).
+
+prolog_predicate( insert_sorted( X, L0, L)).
+prolog_predicate( X=Y).
+
+start_clause( [sort(L1,L2)] / [type(L1,list), type(L2,list)] ).
+
+ex( sort( [], [])).
+ex( sort( [a], [a])).
+ex( [ sort( [c,a,b], L), L = [a,b,c] ] ).   % Uninstantiated 2nd arg. of sort!
+ex( sort( [b,a,c], [a,b,c])).
+ex( sort( [c,d,b,e,a], [a,b,c,d,e])).
+ex( sort( [a,d,c,b], [a,b,c,d])).
+
+nex( sort( [], [a])).
+nex( sort( [a,b], [a])).
+nex( sort( [a,c], [b,c])).
+nex( sort( [b,a,d,c], [b,a,d,c])).
+nex( sort( [a,c,b], [a,c,b])).
+nex( sort( [], [b,c,d])).
+
+insert_sorted( X, L, _) :-     % Guarding clause: test instantiation of args.
+  var(X), !, fail
+  ;
+  var( L), !, fail
+  ; 
+  L = [Y|_], var(Y), !, fail.
+
+insert_sorted( X, [], [X])  :-  !.
+
+insert_sorted( X, [Y | L], [X,Y | L])  :-
+  X @< Y, !.           % term X "lexicographically precedes" term Y 
+
+insert_sorted( X, [Y | L], [Y | L1])  :-
+  insert_sorted( X, L, L1).

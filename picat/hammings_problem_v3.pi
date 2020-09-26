@@ -1,0 +1,96 @@
+/* 
+
+  Hamming's Problem in Picat.
+
+  Ported from Prolog code: http://colin.barker.pagesperso-orange.fr/lpa/hamming.htm
+  """
+  Hamming's Problem
+
+  Finds the first N positive integers having no prime factors other than
+  2, 3 and 5.  These integers are called Hamming numbers or 5-smooth numbers.
+  e.g. hamming(26, Xs) gives 
+  Xs=[1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,25,27,30,32,36,40,45,48,50,54,60]
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go ?=>
+  hamming(26, Xs),
+  println(Xs),
+
+  nl.
+
+go => true.
+
+
+% The code below is from http://colin.barker.pagesperso-orange.fr/lpa/hamming.htm
+%"""
+% Hamming's Problem
+
+% Finds the first N positive integers having no prime factors other than
+%   2, 3 and 5.  These integers are called Hamming numbers or 5-smooth numbers.
+% e.g. hamming(26, Xs) gives 
+%   Xs=[1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,25,27,30,32,36,40,45,48,50,54,60]
+% """
+hamming(N, [1|Xs]):-
+  init_queue(2, Q),
+  init_queue(3, R),
+  init_queue(5, S),
+  hamming_1(N, Q, R, S, Xs).
+  
+hamming_1(1, _, _, _, []):-!.
+hamming_1(I, Q, R, S, [X|Xs]):-
+  I > 1,
+  peek(Q, A),
+  peek(R, B),
+  peek(S, C),
+  min([A,B,C], X), % The smallest of the values at the front of the queues
+  update(Q, X, Q1),
+  update(R, X, R1),
+  update(S, X, S1),
+  I1 is I - 1,
+  hamming_1(I1, Q1, R1, S1, Xs).
+
+% Returns the smallest number in the list.
+min([X|Xs], Y):-min_1(Xs, X, Y).
+
+min_1([], X, X).
+min_1([Y|Ys], X, Z):-Y =< X, !, min_1(Ys, Y, Z).
+min_1([_|Ys], X, Z):-min_1(Ys, X, Z).
+
+% Updates the queues.
+update(Q, X, Q1):-  
+  dequeue(X, Q, Q2), !, % X was at the front of this queue; it has been removed
+  id(Q, P),             % P is the prime number associated with this queue
+  Y is X * P,
+  enqueue(Y, Q2, Q1).   % X*P has been put at the end of the queue
+update(Q, X, Q1):-      % X is not at the front of this queue
+  id(Q, P),             % P is the prime number associated with this queue
+  Y is X * P,
+  enqueue(Y, Q, Q1).    % X*P has been put at the end of the queue
+
+% Initializes a queue.
+init_queue(P, q(P,[P|Zs],Zs)).
+
+% Adds an element to the end of the queue.                                   
+enqueue(X, q(P,Ys,[X|Zs]), q(P,Ys,Zs)).
+
+% Removes an element from the front of the queue.                           
+dequeue(X, q(P,[X|Ys],Zs), q(P,Ys,Zs)).
+
+% Returns the value of the element at the front of the queue.               
+peek(q(_,[X|_],_), X).
+
+% Returns the prime number, multiples of which are contained in the queue.
+id(q(P,_,_), P).

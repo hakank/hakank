@@ -1,0 +1,123 @@
+/* 
+
+  Gaussian Elimination in Picat v3.
+  
+  From Colin Barker
+  http://colin.barker.pagesperso-orange.fr/lpa/gauss.htm
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => go.
+
+
+go ?=>
+  gauss_jordan_elimination([[2,1,3, 13, 7],
+                            [3,2,1, 10, 8],
+                            [2,4,1, 13,11]], X),
+  foreach(A in X)
+    println(A)
+  end,
+  
+  nl.
+
+go => true.
+
+%
+% The comments are from http://colin.barker.pagesperso-orange.fr/lpa/gauss.htm
+% (except the "hakank" comments)
+%
+/* Gauss-Jordan Elimination with Partial Pivoting                          */
+/*   It handles any number of right-hand sides                             */
+/*   It can be used to invert a matrix                                     */
+/*                                                                         */
+/* e.g. gauss_jordan_elimination([[2,1,3, 13, 7],            Gives [[1,1], */
+/*                                [3,2,1, 10, 8],                   [2,2], */
+/*                                [2,4,1, 13,11]], X).              [3,1]] */
+/*-------------------------------------------------------------------------*/
+
+gauss_jordan_elimination(Ass, Xss):-
+  gauss_jordan_elimination_1(Ass, [], Xss).
+
+gauss_jordan_elimination_1([], ReversedXss, Xss):-
+  !,
+  % reverse(ReversedXss, [], Xss),
+  Xss = reverse(ReversedXss). % hakank
+
+
+gauss_jordan_elimination_1(Lower, Upper, Xss):-
+  pivot_row(Lower, PivotRow, OtherRows),
+  normalized_pivot_row(PivotRow, NormalizedPivotRow),
+  normalized_other_rows(OtherRows, NormalizedPivotRow, NewLower),
+  normalized_other_rows(Upper, NormalizedPivotRow, NewUpper),
+  gauss_jordan_elimination_1(NewLower, [NormalizedPivotRow|NewUpper], Xss).
+
+pivot_row([PivotRow], PivotRow, []).
+pivot_row([[X1|Row1],[X2|Row2]|Rows], PivotRow, [[X2|Row2]|Rest]):-
+  abs(X1) > abs(X2),
+  !,
+  pivot_row([[X1|Row1]|Rows], PivotRow, Rest).
+pivot_row([Row1,Row2|Rows], PivotRow, [Row1|Rest]):-
+  pivot_row([Row2|Rows], PivotRow, Rest).
+
+normalized_pivot_row([Pivot|As], Bs):-
+  Pivot =\= 0.0,
+  normalized_pivot_row_1(As, Pivot, Bs).
+
+normalized_pivot_row_1([], _, []).
+normalized_pivot_row_1([A|As], Pivot, [B|Bs]):-
+  B is A / Pivot,
+  normalized_pivot_row_1(As, Pivot, Bs).
+
+normalized_other_rows([], _, []).
+normalized_other_rows([[A|As]|Ass], PivotRow, [Bs|Bss]):-
+  normalized_other_row(As, A, PivotRow, Bs),
+  normalized_other_rows(Ass, PivotRow, Bss).
+
+normalized_other_row([], _, [], []).
+normalized_other_row([A|As], X, [P|Ps], [B|Bs]):-
+  B is A - X * P,
+  normalized_other_row(As, X, Ps, Bs).
+
+% Gaussian Elimination with Partial Pivoting and Backsubstitution
+
+/*-------------------------------------------------------------------------*/
+/* Gaussian Elimination with Partial Pivoting and Backsubstitution         */
+/*   It handles only one right-hand side                                   */
+/*                                                                         */
+/* e.g. gaussian_elimination_with_backsubstitution([[2,1,3, 13], gives [1, */
+/*                                                  [3,2,1, 10],        2, */
+/*                                                  [2,4,1, 13]], X).   3] */
+/*-------------------------------------------------------------------------*/
+
+gaussian_elimination_with_backsubstitution(Ass, Xs):-
+  gaussian_elimination(Ass, [], ReversedReducedAss),
+  backsubstitution(ReversedReducedAss, [], Xs).
+
+gaussian_elimination([], Xss, Xss):-!.
+gaussian_elimination(Lower, Upper, Xss):-
+  pivot_row(Lower, PivotRow, OtherRows),
+  normalized_pivot_row(PivotRow, NormalizedPivotRow),
+  normalized_other_rows(OtherRows, NormalizedPivotRow, NewLower),
+  gaussian_elimination(NewLower, [NormalizedPivotRow|Upper], Xss).
+
+backsubstitution([], Xs, Xs).
+backsubstitution([As|Ass], Ys, Xs):-
+  backsubstitution_1(Ys, As, 0, Y),
+  backsubstitution(Ass, [Y|Ys], Xs).
+
+backsubstitution_1([], [B], Acc0, Acc):-
+  Acc is B - Acc0.
+backsubstitution_1([X|Xs], [A|As], Acc0, Acc):-
+  Acc1 is Acc0 + X * A,
+  backsubstitution_1(Xs, As, Acc1, Acc).
+
+% hakank: added this
+reverse(Inputlist,[],Outputlist).    
+reverse([],Outputlist,Outputlist).    
+
+reverse([Head|Tail],List1,List2):-
+        reverse(Tail,[Head|List1],List2).

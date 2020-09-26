@@ -1,0 +1,110 @@
+/* 
+
+  Stable Marriage - Gale Shapley Algorithm in Picat v3.
+
+  Port of Colin Barker's Prolog program;
+  http://colin.barker.pagesperso-orange.fr/lpa/smp.htm
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => go.
+
+% Example from http://colin.barker.pagesperso-orange.fr/lpa/smp.htm
+go ?=>
+  Ms=$[x(1,[4,2,3,1]),x(2,[3,1,2,4]),x(3,[4,1,2,3]),x(4,[1,3,2,4])], 
+  Ws=$[x(1,[3,2,1,4]),x(2,[1,3,4,2]),x(3,[3,1,4,2]),x(4,[1,4,2,3])],
+  smp(Ms, Ws, Pairs),
+  println(Pairs),
+  nl.
+
+go => true.
+
+% All comments are from
+% http://colin.barker.pagesperso-orange.fr/lpa/smp.htm
+/* Given a set of N men and N women, and for each person a preference list   */
+/* of persons they want to marry, then Pairs is a list of assignments of     */
+/* each man to some woman so that there does not exist any pair who are not  */
+/* matched but prefer each other to their current partners.                  */
+/* This implements the Gale-Shapley Algorithm.                               */
+/* e.g. Ms=[x(1,[4,2,3,1]),x(2,[3,1,2,4]),x(3,[4,1,2,3]),x(4,[1,3,2,4])],    */
+/*      Ws=[x(1,[3,2,1,4]),x(2,[1,3,4,2]),x(3,[3,1,4,2]),x(4,[1,4,2,3])],    */
+/*      smp(Ms, Ws, Pairs)                                                   */
+/* gives Pairs=[p(2,2),p(4,3),p(3,1),p(1,4)]                                 */
+smp(Men, Women, Pairs):-smp(Men, Women, [], Pairs).
+
+smp([], _, Pairs0, Pairs):-
+  smp_1(Pairs0, Pairs).
+smp([x(M,[W|Ws])|FreeMs], Ws0, Pairs0, Pairs):-
+  \+member($y(_,W), Pairs0), !, % W is not engaged; W accepts M
+  smp(FreeMs, Ws0, $[y(x(M,Ws),W)|Pairs0], Pairs).
+smp([x(M,[W|Ws])|FreeMs], Ws0, Pairs0, Pairs):-
+  remove($y(x(M1,Ws1),W), Pairs0, Pairs1), % W is engaged to M1
+  member($x(W,Ms), Ws0),
+  prefers(Ms, M, M1), !, % W prefers M to M1; W accepts M; M1 becomes free
+  smp($[x(M1,Ws1)|FreeMs], Ws0, $[y(x(M,Ws),W)|Pairs1], Pairs).
+smp([x(M,[_|Ws])|FreeMs], Ws0, Pairs0, Pairs):-
+  % W is engaged to M1 and prefers M1 to M; M stays free
+  smp($[x(M,Ws)|FreeMs], Ws0, Pairs0, Pairs).
+  
+smp_1([], []).
+smp_1([y(x(M,_),W)|Ys], [p(M,W)|Ps]):-
+  smp_1(Ys, Ps).
+
+/* prefers(Ls, M, N) is true if M precedes N in the list Ls.                 */
+prefers([M|_], M, _):-!.
+prefers([L|Ls], M, N):-
+  L \= N,
+  prefers(Ls, M, N).
+
+/* member(X, Xs) is true if the element X is contained in the list Xs.       */
+%member(X, [X|_]).
+%member(X, [_|Xs]):-member(X, Xs).
+
+/* remove(X, Ys, Zs) is true if Zs is the result of removing one             */
+/*   occurrence of the element X from the list Ys.                           */
+remove(X, [X|Ys], Ys).
+remove(X, [Y|Ys], [Y|Zs]):-remove(X, Ys, Zs).
+
+/*
+ * Generate random sets of people and preferences, and solve the problem
+ */
+% e.g. rand_smp(50, Ms, Ws, Pairs)
+rand_smp(N, Ms, Ws, Pairs):-
+  bp.findall(I, $for(1, N, I), Is),
+  rand_data(Is, Is, N, Ms),
+  rand_data(Is, Is, N, Ws),
+  smp(Ms, Ws, Pairs).
+
+rand_data([], _, _, []).
+rand_data([M|Ms], Is, N, [x(M,Ws)|Xs]):-
+  shuffle(Is, N, Ws), 
+  rand_data(Ms, Is, N, Xs).
+  
+/* shuffle(Xs, M, Ys) is true if Ys is a pseudo-random permutation of the    */
+/*   set of M elements in the list Xs.                                       */
+shuffle([], 0, []):-!.
+shuffle(Xs, M, [X|Ys]):-
+  rand_int(M, N),
+  nth_remove(Xs, N, X, Xs1), !,
+  M1 is M - 1,
+  shuffle(Xs1, M1, Ys).
+
+/* rand_int(I, J) is true if J is a pseudo-random integer less than I.       */
+rand_int(I, J):-J is random() mod I.
+
+/* for(I, J, K) is true if K is an integer between I and J inclusive.        */
+for(I, J, I):-I =< J.
+for(I, J, K):-I < J, I1 is I + 1, for(I1, J, K).
+
+/* nth_remove(Xs, N, X, Ys) is true if X is the N-th (base 0) element of     */
+/*   the list Xs, the remaining elements being Ys.                           */
+nth_remove(Xs, N, X, Ys):-nth_remove_1(Xs, X, 0, N, Ys).
+
+nth_remove_1([X|Ys], X, N, N, Ys):-!.
+nth_remove_1([Y|Xs], X, N0, N, [Y|Ys]):-
+  N1 is N0 + 1,
+  nth_remove_1(Xs, X, N1, N, Ys).

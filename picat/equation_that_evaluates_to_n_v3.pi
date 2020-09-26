@@ -1,0 +1,119 @@
+/* 
+
+  Equation that evaluates to n in Picat.
+
+  Ported from Anne Ogborn's Prolog code in
+  "Fun - Equation that evaluates to n"
+  https://swi-prolog.discourse.group/t/fun-equation-that-evaluates-to-n/2704
+  """
+  Commercial user on IRC asked a really interesting question.
+
+  They are doing some awful reverse engineering job on an SQL DB.
+
+  Given a list of reals List, and a real Target, find an equation using the 
+  four basic operations +,-, *, / that makes the equation true.
+
+  Each element may be used 0 or 1 times.
+
+  Doing this naively quickly becomes intractable.
+
+  There is no domain for the numbers, they could be anything
+
+  It’s acceptable to use some ‘almost equals’ to deal with fp precision.
+
+  My first reaction was ‘oh, that’s easy’ and dashed this off, but it’s slow.
+  [
+    ...
+    code
+    ...
+  ]
+  """
+
+  Note: This version use Annie's code almost verbatim:
+  - added succ (with tabling)
+  - added tabling to equation/4
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+
+main => go.
+
+go ?=>
+  List = [1,2,3,4],
+  Target = 10,
+  equation_matching_target(List, Target, Eq),
+  println(Eq),
+  fail,
+  nl.
+
+go => true.
+
+
+go2 ?=>
+  List = [2.1,8.3,2.5,0.4],
+  Target = 13.3,
+  All = findall(Eq,equation_matching_target(List, Target, Eq)),
+  foreach(A in All)
+    E is A,
+    println(A=E)
+  end,
+  write(len=All.len),nl,
+  nl.
+             
+go2 => true.
+
+%% This don't work in Picat v3.0b
+% table
+% succ(X,Y), nonvar(X) ?=>
+%   Y = X +1.
+
+% succ(X,Y), nonvar(Y) ?=>
+%   X = Y - 1.
+
+
+table
+succ(X,Y) ?=>
+  nonvar(X),
+  Y = X +1.
+
+succ(X,Y) =>
+  nonvar(Y),
+  X = Y - 1.
+
+% table
+% succ(X,Y) :-
+%   nonvar(X),
+%   Y = X +1.
+
+% succ(X,Y) :-
+%   nonvar(Y),
+%   X = Y +1.
+
+
+equation_matching_target(List, Target, Eq) :-
+    permutation(List, RList),
+    between(1, 10, MaxDepth),
+    equation(MaxDepth, RList, Eq, _),
+    catch(Target is Eq,
+          _,
+          fail).
+
+%! equation(+InList:list, -Eq:acyclic, -OutList) is nondet
+%
+% @arg InList list of unused numbers
+% @arg Eq    list of
+table
+equation(0, _, _, _) :- !, fail.
+equation(_, [H | T], H, T).
+equation(N, In, Eq, Out) :-
+    succ(NN, N),
+    member(Op, [ '+', '-', '*', '/']),
+    Eq =.. [Op, A, B],
+    equation(NN, In, A, Mid),
+    equation(NN, Mid, B, Out).
+    

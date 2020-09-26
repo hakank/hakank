@@ -1,0 +1,143 @@
+/* 
+
+  Generate all spellings of Henning Mankell (and Kjellerstrand) in Picat v3.
+
+  This is a recurring problem for me: Generating "all" possible
+  spellings of Henning Mankell (and Kjellerstrand) given a grammar 
+  (or regular expression).
+
+  I have written about this before:
+  - Regular expressions in Gecode
+    http://www.hakank.org/constraint_programming_blog/2009/04/regular_expressions_in_gecode.html
+    This blog post contains further links and references.
+
+  - Icon program for the Henning Mankell problem:
+    http://www.hakank.org/unicon/pattern_generation.icn
+
+  - B-Prolog program 
+    http://www.hakank.org/bprolog/mankell.pl
+
+
+  Picat v3 introduced Definite Clause Grammars and support for Horn clauses.
+  This is a port of my SWI-Prolog program http://hakank.org/swi_prolog/
+
+  For non DCG versions, see http://hakank.org/picat/mankell.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+
+main => go.
+
+go :-
+        println("Henning Mankell"),
+        mankell,
+        nl,
+        println("Kjellerstrand1"),
+        kjellerstrand1,
+        nl,
+        println("Kjellerstrand2"),
+        kjellerstrand2,
+        nl,
+        println("Kjellerstrand3"),
+        kjellerstrand3,
+        nl.
+
+go.
+
+%
+% The Henning Mankell problem.
+%
+% Given this regular expression, generate all the
+% possible spellings of 'henning mankel':
+%  [hm][ea](nk|n|nn)(ing|ell|all) [hm][ea](nk|n|nn)(ing|ell|all) 
+% 
+smankell1 --> hm, ea, nknnm, ingellall.
+hm --> [h].
+hm --> [m].
+ea --> [e].
+ea --> [a].
+nknnm --> [nk].
+nknnm --> [n].
+nknnm --> [nn].
+ingellall --> [ing].
+ingellall --> [ell].
+ingellall --> [all].
+
+smankell --> smankell1,[' '],smankell1.
+
+mankell :-
+        showall(smankell).
+
+%
+% This regular expression is for (most of) the misspellings
+% of my last name, which actually is Kjellerstrand.
+%
+%    k(je|ä)ll(er|ar)?(st|b)r?an?d 
+%
+
+% This is more like the original regular expression. And that may be
+% good or bad...
+%
+% Note: Picat v3.0 don't support alternatives using "|", we can use ";" instead.
+%
+skjellerstrand1 --> 
+        [k], ([je];["ä"]), [ll], ([] ; [er] ; [ar]), 
+        ([st] ; [b]),
+        ([] ; [r]), [a], ([] ; [n]), [d].
+
+kjellerstrand1 :-
+        showall(skjellerstrand1).
+
+%
+% Alternative version.
+%
+skjellerstrand2 --> [k], je, [ll], erar, stb, r_star, [a], n_star, [d].
+je      --> [je] ; ["ä"].
+erar    --> [] ; [er] ; [ar].
+stb     --> [st] ; [b].
+r_star  --> [] ; [r].
+n_star  --> [] ; [n].
+d       --> [d]. 
+
+kjellerstrand2 :-
+        showall(skjellerstrand2).
+
+%
+% Alternative version.
+%
+skjellerstrand3 --> [k], je3, [ll], erar3, stb3, r_star3, [a], n_star3, [d].
+je3      --> [je].
+je3      --> ['ä'].
+erar3    --> [].
+erar3    --> [er].
+erar3    --> [ar].
+stb3     --> [st].
+stb3     --> [b].
+r_star3  --> [].
+r_star3  --> [r].
+n_star3  --> [].
+n_star3  --> [n].
+d3       --> [d]. 
+
+
+kjellerstrand3 :-
+        showall(skjellerstrand3).
+
+
+%
+% show all the generated names for the grammar Grammar.
+% 
+showall(Grammar) :-
+        L = findall(S, (call(Grammar, S, []))),        
+        bp.length(L, Len),
+        foreach(A in L)
+          println(A.map(to_string).join(''))
+        end,
+        println(len=Len),        
+        nl.
+

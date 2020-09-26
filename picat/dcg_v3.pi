@@ -1,0 +1,262 @@
+/* 
+
+  DCG in Picat v3.
+
+  Some examples of DCG in Picat v3.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+
+main => go.
+
+%
+% From https://www-users.cs.umn.edu/~gini/prolog/dcg.html
+% """
+% The argument Number is the number of the subject and main verb.
+% It is instantiated to 'singular' or 'plural'.
+% """
+% sentence(plural,[men,hate,mice],[]).
+% ?-sentence(_,[the,men,hate,mice],[]).
+% ?-sentence(_,[the,mice,scare,the,man],[]).
+go ?=>
+  sentence(X,Y,[]),
+  println([x=X,y=Y]),
+  fail,
+  nl.
+  
+go => true.
+
+% "plural"
+go2 ?=>
+  sentence(X,[men,hate,mice],[]),
+  println(X),
+  fail,
+  nl.
+
+go2 => true.
+
+sentence(Number) --> noun_phrase(Number), verb_phrase(Number).
+noun_phrase(Number) --> determiner(Number), noun(Number).
+verb_phrase(Number) --> verb(Number), noun_phrase(_).
+
+determiner(singular) --> [a].
+determiner(_)        --> [the].
+determiner(plural)   --> [].
+noun(singular) --> [cat];[man];[mouse].
+noun(plural)   --> [cats];[men];[mice].
+verb(singular) --> [scares];[hates].
+verb(plural)   --> [scare];[hate].
+
+
+% From https://www-users.cs.umn.edu/~gini/prolog/dcg.html
+go3 :-
+  % sentence([the,cat,scares,the,mouse],[])
+  % Note: If we don't restrict the length it's going infinite!
+  member(Len,1..7),
+  println(len=Len),
+  bp.length(X,Len),
+  sentence(X,[]),
+  println(x=X),
+  fail,
+  nl.
+
+go3.
+
+sentence --> noun_phrase, verb_phrase.
+noun_phrase --> determiner, noun.
+verb_phrase --> verb, noun_phrase.
+verb_phrase --> verb, sentence.
+
+determiner --> [the].
+determiner --> [a].
+noun --> [cat].
+noun --> [mouse].
+verb --> [scares].
+verb --> [hates].
+
+
+% http://www.pathwayslms.com/swipltuts/dcg/
+% """
+% x = a book
+% x = a car
+% x = an book
+% x = an car
+% """
+go4 :-
+  article_phrase(X,[]),
+  println(x=X),
+  fail.
+
+go4.
+
+article_phrase --> ("a" ; "an"),
+	" ",
+	noun2.
+
+noun2 --> "book".
+noun2 --> "car".
+
+
+% https://www.metalevel.at/prolog/dcg
+% Outputs:
+%   bcad
+go5 :-
+   tree_nodes($node(a, node(b, nil,
+                             node(c, nil, nil)),
+                             node(d, nil, nil)),X,[]),
+   println(X),
+   fail,
+   nl.
+
+go5.
+
+% Create a tree
+% Outputs:
+%   n = node(a,nil,node(b,nil,node(c,nil,node(d,nil,node(e,nil,nil)))))
+%   x = abcde
+
+go5b :-
+   X = [a,b,c,d,e],
+   tree_nodes(N,X,[]),
+   println(n=N),
+   println(x=X),
+   nl.
+
+go5b.
+
+
+tree_nodes(nil) --> [].
+tree_nodes(node(Name, Left, Right)) -->
+        tree_nodes(Left),
+        [Name],
+        tree_nodes(Right).
+
+
+% From https://www.metalevel.at/prolog/dcg
+% Outputs: 5
+go6 :-
+   num_leaves($node(a,node(b,nil,nil),
+                     node(c,nil,
+                            node(d,nil,nil))), N),
+   println(N),
+   nl.
+
+go6.
+
+% Creates a tree of length 5.
+%    t = node(_2610,nil,node(_2708,nil,node(_2800,nil,node(_28f8,nil,nil))))
+go6b :-
+   num_leaves(T, 5),
+   println(t=T),
+   nl.
+
+go6b.
+
+num_leaves(Tree, N) :-
+        num_leaves_(Tree, 0, N).
+
+num_leaves_(nil, N0, N) :- N #= N0 + 1.
+num_leaves_(node(_,Left,Right), N0, N) :-
+        num_leaves_(Left, N0, N1),
+        num_leaves_(Right, N1, N).
+
+
+% From https://www.metalevel.at/prolog/dcg
+% I renamed list/1 to listx/1 to not conflict with Picat's built-in list/1.
+% -> abcdef
+go7 :-
+   concatenation([[a,b],[c,d],[e,f]], Ls,[]),
+   println(Ls),
+   nl.
+   
+go7.
+
+listx([])     --> [].
+listx([L|Ls]) --> [L], listx(Ls).
+
+concatenation([]) --> [].
+concatenation([List|Lists]) -->
+        listx(List),
+        concatenation(Lists).
+
+
+
+% https://www2.cs.arizona.edu/~collberg/Teaching/372/2005/Html/Html-27/index.html
+go8 :-
+  s([john,kissed,lisa],[]),
+  println(ok),
+  s(A,[]),
+  println(A),
+  fail,
+  nl.
+
+go8.
+
+s --> np,vp.
+vp --> v,np.
+vp --> v.
+np --> n.
+n --> [john].
+n --> [lisa].
+n --> [house].
+v --> [died].
+v --> [kissed].
+
+% https://www2.cs.arizona.edu/~collberg/Teaching/372/2005/Html/Html-27/index.html
+% "Generating Parse Trees..."
+% """
+% s(np(n(john)),vp(v(died),np(n(john))))
+% [john,dies,john]
+% 
+% s(np(n(john)),vp(v(died),np(n(lisa))))
+% [john,dies,lisa]
+% ...
+% """
+% 
+go9 :-
+  s(S,T,[]),
+  println(S),
+  println(T),
+  nl,
+  fail,
+  nl.
+
+go9.
+
+% """
+% s(np(n(john)),vp(v(kissed),np(n(lisa))))
+% """
+go9b :-
+  s(S,[john,kissed,lisa],[]),
+  println(S),
+  fail,
+  nl.
+
+go9b.
+
+% -> [john,kissed,lisa]
+go9c :-
+  s($s(np(n(john)),vp(v(kissed),
+          np(n(lisa)))),S,[]),
+  println(S),
+  nl.
+  
+go9c.
+
+
+
+s(s(NP,VP)) --> np(NP),vp(VP).
+vp(vp(V,NP)) --> v(V), np(NP).
+vp(vp(V)) --> v(V).
+np(np(N)) --> n(N).
+n(n(john)) --> [john].
+n(n(lisa)) --> [lisa].
+n(n(house)) --> [house].
+v(v(died)) --> [dies].
+v(v(kissed)) --> [kissed].

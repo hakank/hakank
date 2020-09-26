@@ -1,0 +1,115 @@
+/* 
+
+  Inductive Logic Programming in Picat v3.
+
+  This is a port of the program hyper.pl in
+  I. Bratko, "Prolog Programming for Artificial Intelligence", 4th edn.,
+  Pearson Education / Addison-Wesley 2012
+  Page 507ff (Figure 21.7 and 21.3)
+       
+  The module hyper_v3 is here
+  http://hakank.org/picat/hyper_v3.pi
+
+  Result (0.06s):
+  Hypotheses generated: 378
+  Hypotheses refined:   10
+  To be refined:        261
+
+  arch(A,B,C):-
+    support(B,C),
+    not touch(A,B),
+    support(A,C),
+    isa(C,stable_poly).
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import hyper_v3.
+
+main => go.
+
+
+go ?=>
+  induce(H),
+  show_hyp(H),
+  nl.
+
+go => true.
+
+
+% Moved from from hyper_v3.pi
+max_proof_length( 16).   % Max. proof length, counting calls to preds. in hypothesis
+max_clauses( 14).        % Max. number of clauses in hypothesis
+max_clause_length( 17).  % Max. number of literals in a clause
+
+% Original:
+% max_proof_length( 6).   % Max. proof length, counting calls to preds. in hypothesis
+% max_clauses( 4).        % Max. number of clauses in hypothesis
+% max_clause_length( 5).  % Max. number of literals in a clause
+
+
+% Figure 21.12  Learning the concept of arch.
+
+
+% Learning about arch
+
+backliteral( isa(X,Y), [type(X,object)], [])  :-
+  member( Y, [polygon,convex_poly,stable_poly,unstable_poly,triangle,
+              rectangle, trapezium, unstable_triangle, hexagon]).      % Y is any figure
+
+backliteral( support(X,Y), [type(X,object), type(Y,object)], []).
+backliteral( touch(X,Y), [type(X,object), type(Y,object)], []).
+backliteral( \+(G), [type(X,object),type(Y,object)], [])  :-
+  G = $touch(X,Y); G = $support(X,Y).
+
+% hakank: added this since it was missing...
+term( list, [X|L], [ type(X,item), type(L,list)]).
+term( list, [], []).
+
+
+prolog_predicate( isa(X,Y)).
+prolog_predicate( support(X,Y)).
+prolog_predicate( touch(X,Y)).
+prolog_predicate( \+(G)).
+
+ako( polygon, convex_poly).         % Convex polygon is a kind of polygon
+ako( convex_poly, stable_poly).     % Stable polygon is a kind of convex polygon
+ako( convex_poly, unstable_poly).   % Unstable polygon is a kind of convex poly.
+ako( stable_poly, triangle).        % Triangle is a kind of stable polygon
+ako( stable_poly, rectangle).       % Rectangle is a kind of stable polygon
+ako( stable_poly, trapezium).       % Trapezium is a kind of stable polygon
+ako( unstable_poly, unstable_triangle).  % Unstable triangle is a.k.o. unstable poly.
+ako( unstable_poly, hexagon).            % Hexagon is a kind of unstable polygon
+
+ako( rectangle, X)  :-
+  member( X, [a1,a2,a3,a4,a5,b1,b2,b3,b4,b5,c1,c2,c3]).    % All rectangles
+
+ako( triangle, c4).                % Stable triangle
+ako( unstable_triangle, c5).       % Triangle upside down
+
+isa( Figure1, Figure2)  :-         % Figure1 is a Figure2
+  ako( Figure2, Figure1).
+
+isa( Fig0, Fig) :-
+  ako( Fig1, Fig0),
+  isa( Fig1, Fig).
+
+support(a1,c1).    support(b1,c1).
+support(a3,c3).    support(b3,c3).   
+support(a4,c4).    support(b4,c4).
+support(a5,c5).    support(b5,c5).
+touch(a3,b3).
+
+start_clause( [ arch(X,Y,Z)] / [type(X,object),type(Y,object),type(Z,object)]).
+
+ex( arch(a1,b1,c1)).
+ex( arch(a4,b4,c4)).
+
+nex( arch(a2,b2,c2)).
+nex( arch(a3,b3,c3)).
+nex( arch(a5,b5,c5)).
+nex( arch(a1,b2,c1)). 
+nex( arch(a2,b1,c1)).        
