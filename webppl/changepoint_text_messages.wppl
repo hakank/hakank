@@ -1,0 +1,93 @@
+/*
+  Changepoint detection of text messages counts in webppl.
+
+
+  From http://nbviewer.jupyter.org/github/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/blob/master/Chapter1_Introduction/Ch1_Introduction_PyMC3.ipynb
+  """
+  You are given a series of daily text-message counts from a user of your system.
+  The data, plotted over time, appears in the chart below. You are curious to
+  know if the user's text-messaging habits have changed over time, either
+  gradually or suddenly. How can you model this? (This is in fact my own
+  text-message data. Judge my popularity as you wish.)
+  """
+
+  Identify the changepoint in text message counts.
+
+  tau
+  Marginal:
+    45 : 0.5038999999999996
+    44 : 0.2793000000000004
+    43 : 0.1603
+    42 : 0.05100000000000003
+    38 : 0.001000000000000001
+    63 : 0.001000000000000001
+    11 : 0.0007000000000000008
+    64 : 0.0007000000000000008
+    41 : 0.0006000000000000003
+    13 : 0.0006000000000000003
+    46 : 0.0005000000000000006
+    5 : 0.00019999999999999985
+    35 : 0.00010000000000000009
+    65 : 0.00010000000000000009
+   ...
+   expectation:
+[ [ 'tau', 44.2195 ],
+  [ 'lambda_1', 17.833376989766343 ],
+  [ 'lambda_2', 22.721443137305783 ] ]
+
+
+*/
+
+
+var model = function() {
+
+    // http://nbviewer.jupyter.org/github/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/blob/master/Chapter1_Introduction/Ch1_Introduction_PyMC3.ipynb
+    var datas = [13, 24, 8, 24, 7, 35, 14, 11, 15, 11, 22, 22, 11, 57, 11, 19, 29, 6,
+                 19, 12, 22, 12, 18, 72, 32, 9, 7, 13, 19, 23, 27, 20, 6, 17, 13, 10,
+                 14, 6, 16, 15, 7, 2, 15, 15, 19, 70, 49, 7, 53, 22, 21, 31, 19, 11,
+                 18, 20, 12, 35, 17, 23, 17, 4, 2, 31, 30, 13, 27, 0, 39, 37, 5, 14,
+                 13, 22];
+                     
+    var len = datas.length;
+    var alpha = 1/listMean(datas);  // 1/mean(data)
+    var lambda_1 = exponential(alpha);
+    var lambda_2 = exponential(alpha);
+    var tau = randomInteger(len);
+    
+    // Data is according to Poisson with two different lambdas,
+    // one before the change point (tau) and one after the change point
+    var data = function(i) {
+        if (tau > i) {
+            return Poisson({mu:lambda_1});
+        } else {
+            return Poisson({mu:lambda_2});
+        }
+    }
+
+    mapIndexed(function(i,val) {
+        observe(data(i),val)
+    }, datas);
+
+    return {
+        tau:tau,
+        lambda_1:lambda_1,
+        lambda_2:lambda_2
+        
+    }
+
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+// var d = Infer({method:"SMC",particles:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["tau","lambda_1","lambda_2"]);

@@ -1,0 +1,207 @@
+/*
+   Same rank
+
+   From 
+   Gunnar Blom, Lars Holst, Dennis Sandell:
+   "Problems and Snapshots from the World of Probability"
+   Page 22.
+
+   100 students are seating (randomly) on seats numbered 0 to 99. 
+   The lectures says: assume that I rank you according to your age. 
+   How many will have the same rank number as the seat number?
+
+
+   Here are three different approaches to this problem which all
+   give the same expectation, i.e. E(same_rank) = 1.
+
+   1) Implementing an "all_different" constraint, i.e. 
+      ensure that it's an permutation.
+      This is slow and handle (with reasonable time) n <~ 10
+
+      Here n=6 using method:enumerate
+      numSameRank
+      Marginal:
+         0 : 0.36805555555555536
+         1 : 0.3666666666666665
+         2 : 0.1875000000000001
+         3 : 0.05555555555555574
+         4 : 0.02083333333333346
+         6 : 0.0013888888888888948
+      expectation:
+         [ [ 'numSameRank', 1.000000000000001 ] ]
+
+      
+   2) Generating randomInteger(n) _without_ the all_different
+      constraint.
+      We can use method:enumerate for about n=8-9.
+      Here's the exact result for n=6:
+
+      numSameRank
+      Marginal:
+        1 : 0.40187757201646046
+        0 : 0.33489797668038535
+        2 : 0.20093878600822976
+        3 : 0.053583676268861506
+        4 : 0.00803755144032919
+        5 : 0.0006430041152263397
+        6 : 0.000021433470507544607
+        expectation:
+     [ [ 'numSameRank', 0.9999999999999982 ] ]
+
+   3) Generate n 0/1 numbers with probability of 1 is 1/n.
+      Summing this array give E(same_rank).
+      This is the method mentioned in the book.
+
+      Here is the result for n=6 and method:enumerate
+      Marginal:
+         1 : 0.401877572016461
+         0 : 0.3348979766803841
+         2 : 0.20093878600823048
+         3 : 0.053583676268861485
+         4 : 0.008037551440329227
+         5 : 0.0006430041152263373
+         6 : 0.000021433470507544607
+     expectation:
+     [ [ 'numSameRank', 1.0000000000000004 ] ]
+
+     Note that is is almost exactly the same distribution as variant 2).
+
+
+     However, using another method (e.g. rejection) we can solve n>>10, 
+     e.g. n=100 quite fast. Here's a run for n=100 using rejection.
+
+     n: 100
+     Marginals:
+     numSameRank
+     Marginal:
+        1 : 0.3693000000000001
+        0 : 0.36230000000000007
+        2 : 0.19050000000000003
+        3 : 0.06
+        4 : 0.015400000000000006
+        5 : 0.0020000000000000005
+        6 : 0.0004000000000000001
+        7 : 0.00010000000000000009
+        expectation:
+        [ [ 'numSameRank', 1.0050000000000003 ] ]
+
+   I.e. all these has the same expectation: E(same_rank) = 1.
+
+
+*/
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+
+//
+// Approach 1 and 2
+//
+var run1 = function(n,alldiff) {
+    console.log("\n\nRun1 n:",n,"alldiff:",alldiff);
+    
+    var model = function() {
+        
+        var x = mem(function(i) {
+            return randomInteger(n);
+        })
+
+        if (alldiff) {
+            // Ensure permutation (see all_different.wppl)
+            mapN(function(i) {
+                sum(mapN(
+                    function(j) {
+                        if (i != j) {
+                            condition(x(i) != x(j))
+                        }
+                    },
+                    i)
+                   )
+            },n);
+        }
+        
+        var numSameRank = sum(mapN(function(i) {
+            return x(i) == i
+        },n));
+        
+        return {
+            numSameRank:numSameRank,
+            
+        }
+    }
+
+    if (n < 8 ) {
+        console.log("method:enumerate");
+        var d = Infer({method:"enumerate"},model);         
+        // display(d);
+        exp_map(d,["numSameRank"]);
+    } else {
+        console.log("method:!= enumerate");
+        // var d = Infer({method:"enumerate"},model); // ok for n <~ 10 
+        var d = Infer({method:"rejection",samples:1000},model);
+        // var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+        // var d = Infer({method:"SMC",particles:10000},model);
+        
+        // display(d);
+        exp_map(d,["numSameRank"]);
+    }
+
+
+}
+
+
+run1(6,true);
+run1(6,false);
+run1(100,false);
+
+// Approach 3
+// Generate n 0/1 with probability 1/n for getting a 1
+var run2 = function(n) {
+    console.log("\n\nRun2 n:",n);
+    
+    var model = function() {
+
+        var p = 1/n;
+        
+        var x = mem(function(i) {
+            return flip(p);
+        })
+
+        var numSameRank = sum(mapN(function(i) {
+            return x(i)
+        },n));
+        
+        return {
+            numSameRank:numSameRank,
+            
+        }
+    }
+
+    if (n < 8 ) {
+        console.log("method:enumerate");
+        var d = Infer({method:"enumerate"},model); 
+    
+        // display(d);
+        exp_map(d,["numSameRank"]);
+    } else {
+        console.log("method:!= enumerate");        
+        // var d = Infer({method:"enumerate"},model); // ok for n <~ 10 
+        var d = Infer({method:"rejection",samples:1000},model);
+        // var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+        // var d = Infer({method:"SMC",particles:10000},model);
+    
+        // display(d);
+        exp_map(d,["numSameRank"]);
+    }
+
+}
+
+run2(6); // using enumerate
+run2(100);
+// run2(1000);
