@@ -1,0 +1,113 @@
+/* 
+
+  Least time problem in Picat v3.
+
+  Problem from https://github.com/mthom/scryer-prolog/blob/master/src/examples/least_time.pl
+  """
+  By Mark Thom, 2020
+
+  find_min_time/2 solves a problem sometimes posed in the first round
+  of Google interviews: given a time of day in 24 H format, what is the
+  lexicographically least permutation of the time that is itself a
+  valid time in 24 H format?
+  """
+
+  go/0: CP approach: 0.157s
+  go2/0: Using member/2 + minof/2: 0.015s
+
+  Note: valid_time/1 is using CP to validate/generate a valid time (HHMM).
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import cp_utils.
+
+main => go.
+
+% CP approach to generate and check.
+go ?=>
+  valid_time(Time),
+  once(min_time(Time,MinTime)),
+  println([time=Time,minTime=MinTime]),
+  fail,
+  nl.
+go => true.
+
+
+% Using valid_time2 (plain Logic programming) and minof/2.
+% Much faster.
+go2 ?=>
+  valid_time2(Time), % generate a valid time
+  minof(min_time2(Time,MinTime,Secs),Secs), % the min time
+  println([time=Time,minTime=MinTime]),
+  fail,
+  nl.
+
+go2 => true.
+
+
+% Calculate the minimum time (MinTime)
+% CP approach
+min_time(Time,MinTime) =>
+  N = Time.len,
+  % P is the permutation list
+  P = new_list(N),
+  P :: 1..N,
+  MinTime = new_list(N), 
+  permutation3(Time,P,MinTime),
+  all_different(P),
+  valid_time(MinTime), % check that it's a valid time
+  to_num(MinTime,10,TimeNum),
+  Vars = MinTime ++ P ++ [TimeNum],
+  solve($[split,min(TimeNum)],Vars).
+
+
+% This is much faster
+min_time2(Time,MinTime,Secs) =>
+  permutation(Time,MinTime),
+  Secs = 1000*MinTime[1] + 100*MinTime[2] + 10*MinTime[3] + MinTime[4].
+
+
+%
+% Generate/validate a (valid) HHMM time.
+% Using CP.
+%
+valid_time(Time) =>
+
+  % HH:MM
+  Time = new_list(4),
+  Time :: 0..9,
+
+  HH = Time[1..2],
+  MM = Time[3..4],
+
+  to_num(HH,10,HHNum),
+  HHNum :: 0..23,
+  
+  to_num(MM,10,MMNum),
+  MMNum :: 0..59,
+
+  Vars = Time ++ HH ++ MM ++ [HHNum,MMNum],
+  solve($[], Vars).
+
+
+% Plain LP approach (generate & fail)
+valid_time2(Time) =>
+  Time = new_list(4),
+
+  % HH
+  member(Time[1],0..2),
+  member(Time[2],0..9),
+  10*Time[1]+Time[2] <= 23,
+
+  % MM
+  member(Time[3],0..5),
+  member(Time[4],0..9),
+
+  10*Time[3]+Time[4] <= 59.
+
+  

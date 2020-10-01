@@ -1,0 +1,238 @@
+/* 
+
+  Regex in reverse - decompose regular expressions in Picat v3.
+
+  From codegolf: 
+  Regex in reverse - decompose regular expressions
+  https://codegolf.stackexchange.com/questions/25378/regex-in-reverse-decompose-regular-expressions
+  """
+  The Problem
+
+  I have a bunch of regular expressions that I need to use in some code, but I'm 
+  using a programming language that doesn't support regex! Luckily, I know that the 
+  test string will have a maximum length and will be composed of printable ASCII only.
+
+  The Challenge
+
+  You must input a regex and a number n, and output every string composed of printable 
+  ASCII (ASCII codes 32 to 126 inclusive, to ~, no tabs or newlines) of length less than or 
+  equal to n that matches that regex. You may not use built-in regular expressions or 
+  regex matching functions in your code at all. Regular expressions will be limited to 
+  the following:
+
+  *  Literal characters (and escapes, which force a character to be literal, so \. 
+     is a literal ., \n is a literal n (equivalent to just n), and \w is equivalent 
+     to w. You do not need to support escape sequences.)
+
+  *  . - wildcard (any character)
+
+  *  Character classes, [abc] means "a or b or c" and [d-f] means anything from d to f 
+     (so, d or e or f). The only characters that have special meaning in a character 
+     class are [ and ] (which will always be escaped, so don't worry about those), 
+     \ (the escape character, of course), ^ at the beginning of the character class 
+     (which is a negation), and - (which is a range).
+  * | - the OR operator, alternation. foo|bar means either foo or bar, and (ab|cd)e 
+    matches either abe or cde.
+  *  * - match the previous token repeated zero or more times, greedy (it tries to 
+     repeat as many times as possible)
+  *  + - repeated one or more times, greedy
+  *  ? - zero or one times
+  * Grouping with parentheses, to group tokens for |, *. +, or ?
+
+  The input regex will always be valid (i.e., you do not have to handle input like 
+  ?abc or (foo or any invalid input). You may output the strings in any order 
+  you would like, but each string must appear only once (don't output any 
+  duplicates).
+
+  The Test Cases
+
+  Input: .*, 1
+  Output: (empty string), , !, ", ..., }, ~
+
+  Input: w\w+, 3
+  Output: ww, www
+
+  Input: [abx-z][^ -}][\\], 3
+  Output: a~\, b~\, x~\, y~\, z~\
+
+  Input: ab*a|c[de]*, 3
+  Output: c, cd, ce, aa, cde, ced, cdd, cee, aba
+
+  Input: (foo)+(bar)?!?, 6
+  Output: foo, foo!, foofoo, foobar
+
+  Input: (a+|b*c)d, 4
+  Output: ad, cd, aad, bcd, aaad, bbcd
+
+  Input: p+cg, 4
+  Output: pcg, ppcg
+
+  Input: a{3}, 4
+  Output: a{3}
+
+  The Winner
+
+  This is code-golf, so the shortest code in bytes will win!
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+
+main => go.
+
+
+go ?=>
+  % generate_string("w\\w+", 3,S),
+  generate_string("[abx-z][^ -}][\\\\]", 3, S),
+  println(s=S),
+  fail,
+  nl.
+
+go => true.
+
+% See mankell.pi and mankell_v3.pi
+% (Same result, but in different order)
+go2 ?=>
+  % Kjellerstrand (48)
+  println("kjellerstrand:"),
+  K = findall(S,generate_string("k(je|ä)ll(er|ar)?(st|b)r?an?d",15,S)),
+  println(K),
+  println(len=K.len),
+  nl,
+  % Henning Mankell (1296)
+  println("henning mankell"),
+  M = findall(S,generate_string("[hm][ea](nk|n|nn)(ing|ell|all) [hm][ea](nk|n|nn)(ing|ell|all)",15,S)),
+  % println(M),
+  println(len=M.len),
+
+  nl.
+go2 => true.
+
+% The tests.
+% Correct words but not always in correct order
+go3 ?=>
+  Tests = [
+     [".*", 1, "(empty string), , !, \", ..., }, ~"],
+     ["w\\w+", 3, "ww, www"],
+     ["[abx-z][^ -}][\\\\]", 3,"a~\\, b~\\, x~\\, y~\\, z~\\"],
+     ["ab*a|c[de]*", 3, "c, cd, ce, aa, cde, ced, cdd, cee, aba"],
+     ["(foo)+(bar)?!?", 6,"foo, foo!, foofoo, foobar"],
+     ["(a+|b*c)d", 4, "ad, cd, aad, bcd, aaad, bbcd"],
+     ["p+cg", 4, "pcg, ppcg"],
+     ["a{3}", 4, "a{3}"],
+
+     ["[a-c][a-c][a-c]",6,"<just playing>"], % hakank
+     ["a(l(la?)?|n(anas|n(as?)?)?)?",20,"a, al, all, alla, an, ananas, ann, anna, annas"],
+     ["(a|[bpk]a)lla",10,"alla, balla, kalla, palla"]
+  ],
+  foreach([Regex,N,Check] in Tests)
+    println([regex=Regex,n=N,check=Check]),
+    All=findall(S,generate_string(Regex, N, S)).sort().join(", "),
+    println(All),
+    if All == Check then
+      println(ok)
+    else
+      println(not_ok)
+    end,
+    nl
+  end,
+
+  nl.
+
+go3 => true.
+
+
+%
+% Prolog solution by ankh-morpork
+%
+% Prolog, ungolfed
+%
+generate_string(R, L, S) :-
+    % parse regex
+    % string_codes(R, RC),
+    RC = to_codes(R), % hakank
+    regex_union(RE, RC, []),
+
+    % bound string length
+    between(0, L, M),
+    bp.length(SC, M), % hakank
+
+    % find string
+    match(SC, RE, []),
+
+    % string_codes(S, SC).
+    S = [chr(C) : C in SC]. % hakank
+
+
+% Parsers
+%%%%%%%%%  
+
+regex_union(R) -->regex_concat(S), regex_union1(S, R).
+
+regex_union1(R,T) --> [124], regex_concat(S), regex_union1($regex_union(R,S), T).
+regex_union1(R, R) --> [].
+
+regex_concat(R) --> regex_op(S), regex_concat1(S, R).
+
+regex_concat1(R, T) --> regex_op(S), regex_concat1($regex_concat(R,S), T).
+regex_concat1(R, R) --> [].
+
+regex_op(regex_kleene(R)) --> regex_lit(R), [42].
+regex_op(regex_concat(R,regex_kleene(R))) --> regex_lit(R), [43].
+regex_op(regex_union(regex_empty,R)) --> regex_lit(R), [63].
+regex_op(R) --> regex_lit(R).
+
+regex_lit(regex_char([C])) --> [C], {\+ regex_ctrl(C)}.
+regex_lit(regex_char([C])) --> [92], [C].
+
+regex_lit(regex_char(CS)) --> [46],
+          % {findall(C, between(32,126, C), CS)}.
+          {CS = findall(C, between(32,126, C))}. % hakank        
+
+regex_lit(regex_char(DS)) --> 
+    [91], [94], !, class_body(CS), [93],
+    % {findall(C, (between(32, 126, C), \+ member(C, CS)), DS)}.
+    {DS = findall(C, (between(32, 126, C), \+ member(C, CS)))}. % hakank
+regex_lit(regex_char(CS)) --> [91], class_body(CS), [93].
+
+regex_lit(R) --> [40], regex_union(R), [41].
+
+class_body([C|T]) --> class_lit(C),class_body(T).
+class_body(CS) -->
+    class_lit(C0), [45], class_lit(C1), class_body(T),
+    % {findall(C, between(C0, C1, C), H), append(H,T,CS)}.
+    {H = findall(C, between(C0, C1, C)), append(H,T,CS)}. % hakank
+class_body([]) --> [].
+
+class_lit(C) --> [C], {\+ class_ctrl(C)}.
+class_lit(C) --> [92], [C].
+
+class_ctrl(C) :- CS=to_codes("\\[]-"), member(C, CS). % hakank
+regex_ctrl(C) :- CS=to_codes("\\.[]|+?*()"), member(C, CS). % hakank
+
+% Regex Engine
+%%%%%%%%%%%%%% 
+
+% The regex empty matches any string without consuming any characters.
+match(S, regex_empty, S).
+
+% A regex consisting of a single character matches any string starting with
+% that character. The chanter is consumed.
+match([C|S], regex_char(CS), S) :- member(C, CS).
+
+% A union of two regex only needs to satisify one of the branches.
+match(S, regex_union(L,R), T) :- match(S, L, T); match(S, R, T).     
+
+% A concat of two regex must satisfy the left and then the right.
+match(S, regex_concat(L, R), U) :- match(S, L, T), match(T, R, U).
+
+% The kleene closure of a regex can match the regex 0 times or it can the regex
+% once before matching the kleene closure again.
+match(S, regex_kleene(_), S).
+match(S, regex_kleene(K), U) :- match(S, K, T), S != T, match(T, $regex_kleene(K), U).
