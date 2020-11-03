@@ -1,0 +1,142 @@
+/* 
+
+  Two buttons problem in Picat.
+
+  https://twitter.com/LuisVielva/status/1315672030172327936/photo/1
+
+  https://twitter.com/LuisVielva/status/1315672030172327936
+  """
+  Today's Puzzle Explained with #explodingdots: A calculator, initially
+  displaying 0, has two buttons: + adds one to the number on display; x multiplies
+  number on display by ten. What is the least number of button presses needed to
+  show 5034? How do you know least? 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import sat.
+import cp.
+
+main => go.
+
+
+go ?=>
+  two_buttons(5034,+,1,*,10,40,X,Len,Op,Ops),
+
+  println(len=Len),
+  println(x=X),
+  println(op=Op),
+  foreach(T in Ops)
+    println(T)
+  end,
+  % fail,
+  nl.
+
+go => true.
+
+
+go2 =>
+  Op1 = $+,
+  Op1Val = 1,
+  Op2 = $*,
+  Op2Val=10,
+  Target = 5034,
+  MaxLen=40,
+  println([op1=Op1,op1Val=Op1Val,op2=Op2,op2Val=Op2Val,target=Target]),  
+  two_buttons(Target,Op1,Op1Val,Op2,Op2Val,MaxLen,X,Len,Op,Ops),
+
+  println(target=Target),
+  println(len=Len),
+  println(x=X),
+  println(op=Op),
+  % println(ops=Ops),
+  foreach(T in Ops)
+    println(T)
+  end,
+  nl,
+  fail,
+  nl.
+
+
+go2 => true.
+
+% Randomized version:
+%  - randomize the target
+%  - systematically checks values 1..10 for the terms
+%  - systematically check +,*,- for the operator
+%
+go3 ?=>
+  nolog,
+
+  _ = random2(),
+  % Target = random(1,500),
+  % member(Target,1..500),
+  Target = 374,
+
+  % Operator
+  OpList = [+,*,-],
+  member(Op1,OpList),
+  member(Op2,OpList),  
+  Op1 != Op2,
+
+  % Operands
+  member(Op1Val,1..10),
+  member(Op2Val,1..10),
+  Op1Val != Op2Val,
+
+  MaxLen=20,
+  println([op1=Op1,op1Val=Op1Val,op2=Op2,op2Val=Op2Val,target=Target]),  
+  two_buttons(Target,Op1,Op1Val,Op2,Op2Val,MaxLen,X,Len,Op,Ops),
+
+  println([op1=Op1,op1Val=Op1Val,op2=Op2,op2Val=Op2Val,target=Target]), 
+  println(len=Len),
+  println(x=X),
+  println(op=Op),
+  foreach(T in Ops)
+    println(T)
+  end,
+  nl,
+  fail,
+  nl.
+
+go3 => true.
+
+
+%
+% two_buttons.
+%
+% Note: This is a mix of CP and non-determinism which
+% is not optimal...
+%
+two_buttons(Target,Op1,Op1Val,Op2,Op2Val,MaxLen,X,Len,Op,Ops) =>
+
+  member(Len,1..MaxLen),
+  
+  X = new_list(Len),
+  X :: -Target..Target,
+
+  Op = new_list(Len-1),
+  Op :: 1..2,
+  
+  Vs = new_list(Len-1),
+  Vs :: -Target..Target,
+
+  X[1] #= 1,
+  X[Len] #= Target,
+
+  foreach(I in 1..Len-1)
+     V1 = apply(Op1,X[I],Op1Val),
+     V2 = apply(Op2,X[I],Op2Val),
+     % Note: Here we cannot use #\/ and must use ";"
+     ((X[I+1] #= V1 #/\ Vs[I] #= V1 #/\ Op[I] #= 1)
+      ;
+     (X[I+1] #= V2 #/\ Vs[I] #= V2 #/\ Op[I] #= 2)
+     )
+  end,
+
+  Vars = X ++ Vs ++ Op,
+  solve($[ff,split],Vars),
+  Ops = [cond(Op[I] == 1, (X[I],Op1,Op1Val)=X[I+1], (X[I],Op2,Op2Val)=X[I+1]) : I in 1..Len-1].
