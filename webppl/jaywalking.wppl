@@ -1,0 +1,308 @@
+/*
+
+  Jaywalking model in WebPPL.
+
+  This model simulates how many people (and why) that will jaywalk
+  of a crossing line with red light, given that they have some
+  prospensity of jaywalk if some <limit> number of people already
+  has jaywalked .
+
+  The mode:
+     1) Assign some number n (might be fixed)
+     2) Foreach agent: generate a random tendency to jaywalk.
+     3) For each time slot t=0..n-1
+          foreach a=agent (0..n-1): 
+            if there are more than or equal number of <limit> number 
+            of people that has already jaywalked, then a will also
+            jaywalk.
+
+            
+  The number of people that - eventually - jaywalks depends very
+  much on the distribution of the limits and espespecially 
+  the probability of the 0 limits jaywalkers, i.e. those that always
+  jaywalk.
+
+
+ Here are some examples:
+ - endTime: number of timeslots
+ - n=number of people
+ - t0: number of people that initially jaywalk
+ - tn: number of people that eventually will jaywalk 
+
+  *  N = 5;
+     Using limit=randomInteger(5), endtime=5, and method enumerate 
+
+     endTime
+     Marginal:
+       5 : 1
+     n
+     Marginal:
+        5 : 1
+     t0
+     Marginal:
+      1 : 0.4095999999999994
+      0 : 0.32768000000000036
+      2 : 0.20480000000000015
+      3 : 0.051199999999999975
+      4 : 0.006400000000000004
+      5 : 0.0003200000000000001
+    tn
+    Marginal:
+      5 : 0.6723199999999996
+      0 : 0.32768000000000036
+    expectation:
+    [ [ 'n', 5 ],
+    [ 't0', 0.9999999999999997 ],
+    [ 'tn', 3.361599999999998 ] ]
+
+    There are thus 32.7% probability that no one jaywalk, 41% that exactly 1 person 
+    will jaywalk, and 67% probability that all will - eventually - aywalk.
+
+  *  N = 5;
+     Using randomInteger(n) and method enumerate with limit 0..10-1 and endTime:10
+
+     endTime
+     Marginal:
+       10 : 1
+     n
+     Marginal:
+       5 : 1
+     t0
+     Marginal:
+       0 : 0.5904899999999951
+       1 : 0.32805000000000384
+       2 : 0.07290000000000114
+       3 : 0.008100000000000053
+       4 : 0.00045000000000000546
+       5 : 0.000010000000000000104
+     tn
+     Marginal:
+      0 : 0.5904899999999951
+      3 : 0.1525000000000016
+      2 : 0.11250000000000182
+      4 : 0.09225000000000089
+      1 : 0.03125000000000039
+      5 : 0.021010000000000317
+    expectation:
+    [ [ 'endTime', 10 ],
+    [ 'n', 5 ],
+    [ 't0', 0.5000000000000063 ],
+    [ 'tn', 1.187800000000014 ] ]
+
+   With a limit of 0..9 and 1 timeslots there are 59% probability of
+   no jaywalk and with an expectation (average) of 50% of jaywalking.
+
+
+  * n=15, limits random integer 0..30-1, endTime = 30, method rejection:
+
+    endTime
+    Marginal:
+      30 : 1
+    n
+    Marginal:
+      15 : 1
+    t0
+    Marginal:
+      0 : 0.6065000000000002
+      1 : 0.30889999999999995
+      2 : 0.07299999999999997
+      3 : 0.010800000000000002
+      4 : 0.0008000000000000003
+    tn
+    Marginal:
+      0 : 0.6065
+      8 : 0.08299999999999998
+      7 : 0.07490000000000002
+      9 : 0.0669
+      6 : 0.05350000000000001
+      10 : 0.04300000000000001
+      5 : 0.026399999999999996
+      11 : 0.0208
+      4 : 0.010899999999999996
+      12 : 0.008600000000000005
+      3 : 0.002599999999999999
+      13 : 0.0024000000000000015
+      14 : 0.0002000000000000002
+      2 : 0.00019999999999999985
+      1 : 0.00010000000000000009
+   expectation:
+    [ [ 'endTime', 30 ],
+    [ 'n', 15 ],
+    [ 't0', 0.4904999999999999 ],
+    [ 'tn', 3.091300000000001 ] ]
+
+
+  * n=15, limit poisson(30), endtime 30, method rejection
+
+    endTime
+    Marginal:
+      30 : 1
+    n
+    Marginal:
+      15 : 1
+    t0
+    Marginal:
+      0 : 0.6098
+      1 : 0.3066
+      2 : 0.07110000000000001
+      3 : 0.011400000000000002
+      4 : 0.0007999999999999995
+      6 : 0.0002000000000000002
+      5 : 0.00010000000000000009
+    tn
+    Marginal:
+      0 : 0.6097999999999999
+      8 : 0.0803
+      7 : 0.07289999999999998
+      9 : 0.06710000000000002
+      6 : 0.04910000000000001
+      10 : 0.046700000000000005
+      5 : 0.026200000000000005
+      11 : 0.0232
+      4 : 0.009800000000000003
+      12 : 0.009
+      3 : 0.0032000000000000015
+      13 : 0.0022000000000000006
+      2 : 0.00019999999999999985
+      14 : 0.00019999999999999985
+      15 : 0.00010000000000000009
+   expectation:
+    [ [ 'endTime', 30 ],
+    [ 'n', 15 ],
+    [ 't0', 0.4879 ],
+    [ 'tn', 3.0945000000000005 ] ]
+
+
+  Let us also randomize the number of people.
+
+  * n=1..15, endtime 2..30, limit:0..15, method rejection
+
+   endTime
+   Marginal:
+      2 : 0.07020000000000001
+      18 : 0.06990000000000003
+      28 : 0.06970000000000005
+      8 : 0.06940000000000004
+      12 : 0.06930000000000003
+      24 : 0.06760000000000005
+      4 : 0.06700000000000002
+      10 : 0.06650000000000003
+      16 : 0.0661
+      30 : 0.06570000000000004
+      20 : 0.06480000000000001
+      26 : 0.06430000000000004
+      22 : 0.06370000000000005
+      6 : 0.06330000000000001
+      14 : 0.0625
+   n
+   Marginal:
+     1 : 0.07020000000000001
+     9 : 0.06990000000000003
+     14 : 0.06970000000000005
+     4 : 0.06940000000000004
+     6 : 0.06930000000000003
+     12 : 0.06760000000000005
+     2 : 0.06700000000000002
+     5 : 0.06650000000000003
+     8 : 0.0661
+     15 : 0.06570000000000004
+     10 : 0.06480000000000001
+     13 : 0.06430000000000004
+     11 : 0.06370000000000005
+     3 : 0.06330000000000001
+     7 : 0.0625
+   t0
+   Marginal:
+     0 : 0.5910000000000001
+     1 : 0.33519999999999994
+     2 : 0.06260000000000002
+     3 : 0.010299999999999983
+     4 : 0.0008000000000000003
+     7 : 0.00010000000000000009
+   tn
+   Marginal:
+     0 : 0.5910000000000002
+     1 : 0.06650000000000003
+     4 : 0.05450000000000002
+     2 : 0.054300000000000036
+     3 : 0.05290000000000002
+     5 : 0.05140000000000004
+     6 : 0.043000000000000024
+     7 : 0.034600000000000034
+     8 : 0.02600000000000002
+     9 : 0.014600000000000012
+     10 : 0.007400000000000004
+     11 : 0.0028000000000000034
+     12 : 0.0008000000000000009
+     13 : 0.0002000000000000002
+  expectation:
+  [ [ 'endTime', 15.945000000000007 ],
+  [ 'n', 7.972500000000004 ],
+  [ 't0', 0.4951999999999999 ],
+  [ 'tn', 1.765400000000001 ] ]
+  
+
+  So, the probability of jaywalking is quite (at least too) high, 
+  but - as mentioned earlier - is depends on the probablitiy of 0 limit 
+  jaywalker, i.e. the number of people that will jaywalk no matter what.
+
+
+*/
+
+
+var model = function() {
+
+    // var n = 15; // number of people
+    var n = 1+randomInteger(15);
+
+    var endTime = n*2;
+    
+    // The limits for jaywalking, i.e.
+    // how many persons that have to jaywalk
+    // before this agent jaywlk.
+    var limit = mem(function(p) {
+        // return poisson(n); // Cannot be used with enumerate
+        // return randomInteger(n*2);
+        return randomInteger(n*2);
+    });
+
+    var t0 = sum(mapN(function(j) {
+            limit(j) == 0
+    }, n));
+    
+    // The number of people that will jaywalk at time i
+    var t = mapN(function(i) {
+        return sum(mapN(function(j) {
+            t0 > 0 ? limit(j) <= i  : 0
+        }, n));
+    }, endTime);
+
+   
+    return {
+        // limit:mapN(function(i) {return limit(i)},n),
+        // t:t,
+        endTime:endTime,
+        n:n,
+        t0:t0,
+        tn:t0 > 0 ? t[n-1] : 0,
+    }
+
+}
+
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+// var d = Infer({method:"enumerate"},model);
+var d = Infer({method:"rejection",samples:10000},model);
+// display(d);
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// exp_map(d,["limit","t","n","t0","tn"]);
+exp_map(d,["endTime","n","t0","tn"]);

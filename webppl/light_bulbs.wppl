@@ -1,0 +1,128 @@
+/*
+  Today I changed the last of two bulbs which were supposed to hold for 
+  2000h (they are Halogen bulbs). The first went out some days ago, 
+  say 25h ago.
+
+  What is the probability of this to happen if we assume that the 
+  the time for light bulbs are an Exponential distribution?
+
+  Mathematica code:
+    Probability[Abs[a - b] <= c, {a, b} \[Distributed] 
+      ProductDistribution[ExponentialDistribution[p], 
+      ExponentialDistribution[p]]]
+
+  1 - E^(-c p) (if c > 0)
+  
+  -> 0.0124222
+
+
+  * model_exp, using MCMC
+  expectation:
+  [ [ 'b1', 2050.1463560128136 ],
+    [ 'b2', 2008.8774706658046 ],
+    [ 'diff', 2035.0120286275053 ],
+    [ 'p', 0.011999999999999955 ] ]
+
+
+  Here are also for Normal and Poisson distributions
+ 
+  * model_gauss, using MCMC
+  expectation:
+  [ [ 'b1', 1999.8017431547041 ],
+    [ 'b2', 2001.4228519164928 ],
+    [ 'diff', 113.67721064036466 ],
+    [ 'p', 0.13629999999999995 ] ]
+
+
+  * model_pois, using MCMC
+  expectation:
+  [ [ 'b1', 1999.456100000001 ],
+    [ 'b2', 1999.4717000000012 ],
+    [ 'diff', 51.04420000000002 ],
+    [ 'p', 0.3100000000000003 ] ]
+
+
+ Note that the difference of two exponential distribution with
+ parameter lambda is an exponential distribution with parameter lambda! 
+
+*/
+
+
+var model_exp = function() {
+    var lambda = 1/2000;
+    var b1 = exponential(lambda);
+    var b2 = exponential(lambda);
+    var diff = Math.abs(b1-b2);
+    var p = diff <= 25;
+
+    return {
+        b1:b1,
+        b2:b2,
+        diff:diff,
+        p:p,
+    }
+}
+
+// Gaussian distribution: 2000h, standard deviation 100h
+var model_gauss = function() {
+    var mean = 2000;
+    var stdev = 100;
+    var b1 = gaussian(mean,stdev);
+    var b2 = gaussian(mean,stdev);
+    var diff = Math.abs(b1-b2);
+    var p = diff <= 25;
+
+    return {
+        b1:b1,
+        b2:b2,
+        diff:diff,
+        p:p,
+    }
+}
+
+// Poisson distribution: 1/2000h
+var model_pois = function() {
+    var lambda = 2000;
+    var b1 = poisson(lambda);
+    var b2 = poisson(lambda);    
+    var diff = Math.abs(b1-b2);
+    var p = diff <= 25;
+
+    return {
+        b1:b1,
+        b2:b2,
+        diff:diff,
+        p:p,
+    }
+}
+
+
+
+var exp_map = function(d,arr) {
+    // display("Marginals:");
+    // map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    // display("MAP:");
+    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// var d_exp = Infer({method:"rejection",samples:1000},model); 
+// var d_exp = Infer({method:"SMC",particles:10000},model);
+var d_exp = Infer({method:"MCMC",kernel:"MH",samples:10000},model_exp);
+
+// display(d_exp);
+console.log("Exponential");
+exp_map(d_exp,["b1","b2","diff","p"]);
+
+
+var d_gauss = Infer({method:"MCMC",kernel:"MH",samples:10000},model_gauss);
+// display(d_gauss);
+console.log("\nGaussian");
+exp_map(d_gauss,["b1","b2","diff","p"]);
+
+
+var d_pois = Infer({method:"MCMC",kernel:"MH",samples:10000},model_pois);
+// display(d_pois);
+console.log("\nPoisson");
+exp_map(d_pois,["b1","b2","diff","p"]);
