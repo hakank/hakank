@@ -30,6 +30,7 @@ Here's a summary of the directories so far:
 * javascript: JavaScript programs
 * jgap: JGAP, genetic programming
 * jsr_331: JSR-331, Java API for constraint programming
+* julia: Julias programming language
 * k: K, array programming language  (note: index.html contains code etc)
 * mathematica: Mathematica, mathematical programming
 * minizinc: MiniZinc, constraint programming. Also G12 Zinc files.
