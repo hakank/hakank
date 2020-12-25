@@ -26,9 +26,9 @@ function check_perms(n, diff)
     allperms = all_permutations2(digits(n))
     if length(allperms) > 0
         p1 = get_element(n, allperms, diff)
-        if p1 != nothing
+        if p1 !== nothing
             p2 = get_element(p1, allperms, diff)
-            if p2 != nothing
+            if p2 !== nothing
                 return [n, p1, p2]
             end
         end
@@ -39,22 +39,23 @@ end
 
 function get_element(n, ll, diff)
     for p in ll
-        pp = parse(Int,join(p.|>i->string(i),""))
-        if isPrime(pp) && pp > n && pp-n == diff
+        pp = parse(Int,join(p,""))
+        # if isPrime(pp) && pp > n && pp-n == diff
+        if pp > n && pp-n == diff && isPrime(pp) 
             return pp
         end
     end
     return nothing
 end
 
-# 0.15027299s
+# 0.10001170s
 function euler49a()
     diff = 3330
     res = 0
     for n in 1001:2:9999
-        if n !== 1487 && isPrime(n)
+        if n != 1487 && isPrime(n)
             c = check_perms(n, diff)
-            if c != nothing
+            if c !== nothing
                 res = c
                 break
             end

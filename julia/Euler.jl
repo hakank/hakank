@@ -2,9 +2,12 @@
 using Printf
 
 function run_euler(p)
-  t = @timed p()
+    # GC.gc(false)
+    t = @timed p()
+    # GC.gc(true)
   @printf "%s: %d: %2.8fs\n" p t.value t.time
 end
+
 
 # @memoize function fib(n)
 #    n < 3 ? 1 : fib(n-1) + fib(n-2)
@@ -233,7 +236,7 @@ function all_permutations(s)
     push!(perms,p)
     while true
         p = next_permutation(p)
-        # Note: I have top copy p here
+        # Note: I have to copy p here
         push!(perms,copy(p))
         if p == reverse(s)
             break

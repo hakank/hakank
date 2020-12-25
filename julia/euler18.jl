@@ -1,4 +1,4 @@
-;#=
+#=
   Euler #18 in Julia.
 
   Problem 18:

@@ -46,9 +46,21 @@ function euler1e()
     (1:999).|>(x-> x*(x % 3 == 0 || x % 5 == 0))|>sum
 end
 
+# 0.00001087s
+function euler1f()
+    (1:999)|>x->filter(i->i%3==0||i%5==0,x)|>sum
+end
+
+# 0.00003620s
+function euler1g()
+    x=1:999;(x.*(@. (x%3==0)|(x%5==0)))|>unique|>sum
+end
+
 
 # run_euler(euler1a)
 # run_euler(euler1b)
 run_euler(euler1c)
 # run_euler(euler1d)
 # run_euler(euler1e)
+# run_euler(euler1f)
+# run_euler(euler1g)

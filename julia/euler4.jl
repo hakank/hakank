@@ -52,11 +52,23 @@ end
 function euler4c()
     from = 100
     to = 999
-    # vcat(a...) flattens the array
+
     a = (from:to).|>i->(i:to).|>j->i*j
+    # vcat(a...) flattens the array
     return maximum(filter(ij->palindromic_number(ij),vcat(a...)))
 end
+
+# "Full" chaining, much slower
+# 0.12105172s
+function euler4d()
+    from = 100
+    to = 999
+    a = (from:to).|>i->(i:to).|>j->i*j
+    return vcat(a...)|>x->filter(ij->palindromic_number(ij),x)|>maximum
+end
+
 
 run_euler(euler4a)
 # run_euler(euler4b)
 # run_euler(euler4c)
+# run_euler(euler4d)

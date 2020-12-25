@@ -72,7 +72,7 @@ end
 
 # Brute force
 # 459.90159305s !
- function euler12a()
+ function euler12a_dont_run()
     len = 0
     i = 0
     tnum = 0
@@ -116,6 +116,6 @@ function euler12c()
 end
 
 
-# run_euler(euler12a);
+# run_euler(euler12a); # DON'T RUN! Too slow.
 run_euler(euler12b);
 # run_euler(euler12c);
