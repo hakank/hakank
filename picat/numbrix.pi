@@ -1,0 +1,123 @@
+/* 
+
+  Numbrix, Number Placement Puzzle (CP model) in Picat.
+
+  From GLPK example numbrix.mod
+  """
+  Numbrix is a logic-based number-placement puzzle.[1]
+  The objective is to fill the grid so that each cell contains
+  digits in sequential order taking a horizontal or vertical
+  path; diagonal paths are not allowed. The puzzle setter
+  provides a grid often with the outer most cells completed.
+  
+  Completed Numbrix puzzles are usually a square of numbers
+  in order from 1 to 64 (8x8 grid) or from 1 to 81 (9x9 grid),
+  following a continuous path in sequence.
+  
+  The modern puzzle was invented by Marilyn vos Savant in 2008
+  and published by Parade Magazine under the name "Numbrix",
+  near her weekly Ask Marilyn article.
+  
+  http://en.wikipedia.org/wiki/Numbrix
+  """
+
+  Cf numbrix_mip.pi which is faster.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp. % slow
+import sat. % 0.85s
+% import smt.
+
+
+
+main => go.
+
+
+go ?=>
+  nolog,
+  givens(Givens),
+
+  Rows = Givens.length,
+  Cols = Givens[1].length,
+  N = Rows*Cols,
+
+  Neighbors = neighbors(Rows,Cols),
+  % foreach(NN in Neighbors)
+  %  println(NN)
+  % end,
+
+
+  %  
+  % decision variables
+  %
+  X = new_array(Rows,Cols),
+  X :: 1..N,
+
+  all_distinct([X[I,J] : I in 1..Rows, J in 1..Cols]),
+
+  % assign pre-defined numbers using the "givens"
+  foreach(I in 1..Rows, J in 1..Cols, Givens[I,J] > 0) 
+    X[I,J] #= Givens[I,J]
+  end,
+
+  % each cell must have a neighbor with the next higher value
+  ABs = [],  
+  foreach(K in 1..Rows*Cols-1)
+     matrix_element(X,I,J,K),
+     table_in({I,J,IA,JB}, Neighbors),     
+     matrix_element(X,IA,JB,K+1),
+     
+     % For sat solver, the variables/constraints
+     % below are not really needed, but it's faster
+     % (for cp solver: without them yield a wrong answer)
+     I :: 1..Rows,
+     J :: 1..Cols,
+     A :: -1..1,
+     B :: -1..1,
+     IA :: 1..Rows,
+     JB :: 1..Cols,
+     IA #= I+A,
+     JB #= J+B,
+     ABs := ABs ++ [IA,JB,I,J,A,B]
+  end,
+  % Vars = X.vars ++ ABs,
+  Vars = ABs ++ X.vars,  
+  println(solve),
+  solve($[down],Vars),
+
+  % output
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      printf("%4d", X[I,J])
+    end,
+    nl
+  end,
+  % fail,
+  nl.
+
+go => true.
+
+% make a 4 dim matrix
+neighbors(Rows,Cols) = 
+   [ {I1,J1,I2,J2} 
+    : I1 in 1..Rows, J1 in 1..Cols, I2 in 1..Rows, J2 in 1..Cols,
+    abs(I1 - I2) + abs(J1 -J2) == 1].
+
+
+givens(Givens) => 
+  Givens = 
+[
+[0,  0,  0,  0,  0,  0,  0,  0,  0], 
+[0, 11, 12, 15, 18, 21, 62, 61,  0], 
+[0,  6,  0,  0,  0,  0,  0, 60,  0], 
+[0, 33,  0,  0,  0,  0,  0, 57,  0], 
+[0, 32,  0,  0,  0,  0,  0, 56,  0], 
+[0, 37,  0,  0,  0,  0,  0, 73,  0], 
+[0, 38,  0,  0,  0,  0,  0, 72,  0], 
+[0, 43, 44, 47, 48, 51, 76, 77,  0], 
+[0,  0,  0,  0,  0,  0,  0,  0,  0] 
+].
