@@ -43,6 +43,24 @@ end
 
 
 #
+# print_matrix_str(x,zstring)
+#
+# Print each row and convert each element to the corresponding position
+# in zstring. "z" is for zero-based, i.e. first char corresponds to 0, etc
+#
+function print_matrix_str(x,zstring="")
+    for row in eachrow(x)
+        if zstring == ""
+            println(row)
+        else
+            println(join(row.|>c->zstring[c+1]))
+        end
+    end
+    println()
+end
+
+
+#
 # Scalar product(model, s,x,v)
 #
 # Ensure that
@@ -94,6 +112,15 @@ function increasing(model, x)
     end
 end
 
+function increasing_strict(model, x)
+    len = length(x)
+    for i in 2:len
+        @constraint(model, x[i-1] <= x[i])
+        @constraint(model, x[i-1] != x[i])
+    end
+end
+
+
 #
 # decreasing(model, x)
 #
@@ -105,6 +132,15 @@ function decreasing(model, x)
         @constraint(model, x[i-1] >= x[i])
     end
 end
+
+function decreasing_strict(model, x)
+    len = length(x)
+    for i in 2:len
+        @constraint(model, x[i-1] >= x[i])
+        @constraint(model, x[i-1] != x[i])
+    end
+end
+
 
 #
 # all_different_except_c
@@ -551,4 +587,136 @@ function regular(model,x,q,s,d,q0,f)
     my_element(model,f_ix[1],f,a[n2])
 
     return a
+end
+
+
+
+#
+# atmost(model,x,v,m)
+#
+# Ensures that the number of elements with value v is <= m
+#
+function atmost(model,x,v,m)
+    n = length(x)
+    b = @variable(model, [1:n],Bin)
+    for i in 1:n
+        @constraint(model,b[i]:={x[i] == v})
+    end
+    @constraint(model, sum(b) <= m)
+end
+
+#
+# atleast(model,x,v,m)
+#
+# Ensures that the number of elements with value v is >= m
+#
+function atleast(model,x,v,m)
+    n = length(x)
+    b = @variable(model, [1:n],Bin)
+    for i in 1:n
+        @constraint(model,b[i]:={x[i] == v})
+    end
+    @constraint(model, sum(b) >= m)
+end
+
+#
+# exactly(model,x,v,m)
+#
+# Ensures that the number of elements with value v is == m
+#
+function exactly(model,x,v,m)
+    n = length(x)
+    b = @variable(model, [1:n],Bin)
+    for i in 1:n
+        @constraint(model,b[i]:={x[i] == v})
+    end
+    @constraint(model, sum(b) == m)
+end
+
+#
+# latin_square(model, x)
+#
+# Ensures that the square matrix is a Latin Square.
+#
+function latin_square(model, x)
+    n,_ = size(x)
+    for i in 1:n 
+        @constraint(model, x[i,:] in CS.AllDifferentSet())
+        @constraint(model, x[:,i] in CS.AllDifferentSet())
+    end
+end
+
+#
+# no_overlap(model, begins,durations)
+#
+# Ensure that there is no overlap between the tasks.
+# 
+function no_overlap(model, begins,durations)
+    n = length(begins)
+    for i in 1:n, j in i+1:n
+        b = @variable(model,[1:2], Bin)
+        @constraint(model,b[1] := {begins[i] + durations[i] <= begins[j]})
+        @constraint(model,b[2] := {begins[j] + durations[j] <= begins[i]})
+        @constraint(model, sum(b) >= 1)
+    end
+end
+
+#
+# mult_table2(model,lb=1,ub=9) # 2D
+#
+# Generate a multiplication table of i*j and i*j*k 
+# for i,j,.. in lb:ub
+#
+# i*j
+function mult_table2(lb=1,ub=9)
+    resize_matrix([[i,j,i*j] for i in lb:ub, j in lb:ub if i != j])
+end    
+
+# i*j*k
+function mult_table3(lb=1,ub=9)
+    resize_matrix([[i,j,k,i*j*k] for i in lb:ub, j in lb:ub, k in lb:ub if i != j && i != k && j != k])
+end    
+
+# i*j*k*l
+function mult_table4(lb=1,ub=9)
+    resize_matrix([[i,j,k,l,i*j*k*l] for i in lb:ub, j in lb:ub, k in lb:ub, l in lb:ub
+                                     if i != j && i != k && i != l && 
+                                        j != k && j != l &&
+                                        k != l
+                                        ])
+end    
+
+
+#
+# global_contiguity_regular(model, x)
+# 
+# Ensures that x contains 0 and 1s and that the 
+# 1s are in a contiguous sequence.
+#
+function global_contiguity_regular(model, x)
+    n = length(x)
+
+    # Transition function (MiniZinc style)  
+    # This use the regular expression "0*1*0*" to 
+    # require that all 1's (if any) in an array appear contiguously.
+    transition = resize_matrix([
+                  [1,2], # state 1 (start) input 0 -> state 1, input 1 -> state 2 i.e. 0*
+                  [3,2], # state 2: 1*
+                  [3,0]  # state 3: 0*
+                 ])
+    n_states = 3
+    input_max = 2
+    initial_state = 1
+    accepting_states = [1,2,3]
+ 
+    reg_input = @variable(model, [1:n], CS.Integers(1:input_max)) # 1..2
+    
+    # Translate x's 0..1 to reg_input's 1..2
+    # (since regular use 0 as an invalid state)
+    for i in 1:n
+       @constraint(model,reg_input[i] == x[i]+1)
+    end
+ 
+    return regular(model,reg_input,n_states,input_max,transition,initial_state, accepting_states)
+
 end

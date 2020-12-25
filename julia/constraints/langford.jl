@@ -1,4 +1,4 @@
-#=#
+#=
   Langford's number problem L(2,N) in Julia ConstraintSolver.
 
   Langford's number problem (CSP lib problem 24)
@@ -65,13 +65,20 @@ function langford(k=5,symmetry_breaking=true,all_solutions=true,print_solutions=
                                                             "logging"=>[],
 
                                                             "traverse_strategy"=>:BFS,
-                                                            # "traverse_strategy"=>:DFS, # <-
+                                                            # "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
-                                                            "branch_split"=>:Smallest,
+                                                            # "branch_split"=>:Smallest,
                                                             # "branch_split"=>:Biggest,
-                                                            # "branch_split"=>:InHalf, # <-
+                                                            "branch_split"=>:InHalf,
 
+                                                           # https://wikunia.github.io/ConstraintSolver.jl/stable/options/#branch_strategy-(:Auto)
+                                                           "branch_strategy" => :IMPS, # default
+                                                           # "branch_strategy" => :ABS, # Activity Based Search
+                                                           # "activity.decay" => 0.999, # default 0.999
+                                                           # "activity.max_probes" => 10, # default, 10
+                                                           # "activity.max_confidence_deviation" => 20, # default 20
+                                                           
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
