@@ -78,7 +78,7 @@ function furniture_moving1(print_solutions=true,all_solutions=true)
     for i in 1:n
         @constraint(model,end_times[i] == start_times[i] + durations[i])
     end
-    my_max(model, end_times, max_time)
+    @constraint(model, end_times .<= max_time)
     cumulative(model, start_times, durations, resources, limit)
 
     # This is very slow

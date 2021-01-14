@@ -73,7 +73,7 @@ function calculs_d_enfer(print_solutions=true,all_solutions=false)
     end
 
     @variable(model, 0 <= a_max <= nn,Int)
-    my_max(model, a_abs, a_max)
+    @constraint(model, a_abs .<= a_max)
 
     @constraint(model, aa in CS.AllDifferentSet())
 

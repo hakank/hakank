@@ -108,8 +108,7 @@ function debruijn(base=2,n=3,m=base^n,all_solutions=true,print_solutions=true)
     end
 
     # symmetry breaking
-    # my_min is defined in constraints_utils.jl
-    my_min(model, x, x[1])
+    @constraint(model, x .>= x[1])
 
     println("solve")
     # Solve the problem
