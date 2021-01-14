@@ -26,7 +26,7 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
     ipopt_optimizer = optimizer_with_attributes(Ipopt.Optimizer)
 
     model = Model(optimizer_with_attributes(CS.Optimizer,   # "all_solutions"=> all_solutions,
-                                                            "all_optimal_solutions"=>all_solutions, 
+                                                            "all_optimal_solutions"=>all_solutions,
                                                             "logging"=>[],
 
                                                             "traverse_strategy"=>:BFS,
@@ -72,7 +72,7 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
     @constraint(model, num_buses == sum(x))
 
     # Symmetry breaking
-    my_min(model, x, x[1])
+    @constraint(model, x .>= x[1])
 
     @objective(model,Min, num_buses)
 

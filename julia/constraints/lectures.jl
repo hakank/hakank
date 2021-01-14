@@ -3,10 +3,10 @@
   Lectures problem in Julia ConstraintSolver.js
 
   Biggs: Discrete Mathematics (2nd ed), page 187.
-  """   
+  """
   Suppose we wish to schedule six one-hour lectures, v1, v2, v3, v4, v5, v6.
   Among the the potential audience there are people who wish to hear both
- 
+
    - v1 and v2
    - v1 and v4
    - v3 and v5
@@ -14,10 +14,10 @@
    - v4 and v5
    - v5 and v6
    - v1 and v6
- 
+
   How many hours are necessary in order that the lectures can be given
   without clashes?
-  """    
+  """
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
@@ -36,7 +36,7 @@ function lectures(problem,print_solutions=true,all_solutions=true)
     ipopt_optimizer = optimizer_with_attributes(Ipopt.Optimizer)
 
     model = Model(optimizer_with_attributes(CS.Optimizer,   # "all_solutions"=> all_solutions,
-                                                            "all_optimal_solutions"=>all_solutions, 
+                                                            "all_optimal_solutions"=>all_solutions,
                                                             "logging"=>[],
 
                                                             "traverse_strategy"=>:BFS,
@@ -78,7 +78,7 @@ function lectures(problem,print_solutions=true,all_solutions=true)
     for i in 1:n
         @constraint(model, x[i] <= i)
     end
-    my_max(model,x,max_t)
+    @constraint(model, x .<= max_t)
     @objective(model,Min,max_t)
 
     # Solve the problem

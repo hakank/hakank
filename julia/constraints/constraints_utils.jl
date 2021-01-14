@@ -284,30 +284,6 @@ function modulo(model, x, y, z)
     @constraint(model, [x, y, z] in CS.TableSet(table))
 end
 
-#
-# my_min(model, x, m)
-#
-# Ensures that m is the minimum value in x
-#
-function my_min(model, x, m)
-    n = length(x)
-    for i in 1:n
-        @constraint(model, m <= x[i] )
-    end
-end
-
-#
-# my_max(model, x, m)
-#
-# Ensures that m is the maximum value in x
-#
-function my_max(model, x, m)
-    n = length(x)
-    for i in 1:n
-        @constraint(model, m >= x[i] )
-    end
-end
-
 
 #
 # my_argmin(model, x, m, ix)
@@ -640,7 +616,7 @@ end
 #
 function latin_square(model, x)
     n,_ = size(x)
-    for i in 1:n 
+    for i in 1:n
         @constraint(model, x[i,:] in CS.AllDifferentSet())
         @constraint(model, x[:,i] in CS.AllDifferentSet())
     end
@@ -650,7 +626,7 @@ end
 # no_overlap(model, begins,durations)
 #
 # Ensure that there is no overlap between the tasks.
-# 
+#
 function no_overlap(model, begins,durations)
     n = length(begins)
     for i in 1:n, j in i+1:n
@@ -664,40 +640,40 @@ end
 #
 # mult_table2(model,lb=1,ub=9) # 2D
 #
-# Generate a multiplication table of i*j and i*j*k 
+# Generate a multiplication table of i*j and i*j*k
 # for i,j,.. in lb:ub
 #
 # i*j
 function mult_table2(lb=1,ub=9)
     resize_matrix([[i,j,i*j] for i in lb:ub, j in lb:ub if i != j])
-end    
+end
 
 # i*j*k
 function mult_table3(lb=1,ub=9)
     resize_matrix([[i,j,k,i*j*k] for i in lb:ub, j in lb:ub, k in lb:ub if i != j && i != k && j != k])
-end    
+end
 
 # i*j*k*l
 function mult_table4(lb=1,ub=9)
     resize_matrix([[i,j,k,l,i*j*k*l] for i in lb:ub, j in lb:ub, k in lb:ub, l in lb:ub
-                                     if i != j && i != k && i != l && 
+                                     if i != j && i != k && i != l &&
                                         j != k && j != l &&
                                         k != l
                                         ])
-end    
+end
 
 
 #
 # global_contiguity_regular(model, x)
-# 
-# Ensures that x contains 0 and 1s and that the 
+#
+# Ensures that x contains 0 and 1s and that the
 # 1s are in a contiguous sequence.
 #
 function global_contiguity_regular(model, x)
     n = length(x)
 
-    # Transition function (MiniZinc style)  
-    # This use the regular expression "0*1*0*" to 
+    # Transition function (MiniZinc style)
+    # This use the regular expression "0*1*0*" to
     # require that all 1's (if any) in an array appear contiguously.
     transition = resize_matrix([
                   [1,2], # state 1 (start) input 0 -> state 1, input 1 -> state 2 i.e. 0*
@@ -708,15 +684,15 @@ function global_contiguity_regular(model, x)
     input_max = 2
     initial_state = 1
     accepting_states = [1,2,3]
- 
+
     reg_input = @variable(model, [1:n], CS.Integers(1:input_max)) # 1..2
-    
+
     # Translate x's 0..1 to reg_input's 1..2
     # (since regular use 0 as an invalid state)
     for i in 1:n
        @constraint(model,reg_input[i] == x[i]+1)
     end
- 
+
     return regular(model,reg_input,n_states,input_max,transition,initial_state, accepting_states)
 
 end
