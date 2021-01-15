@@ -78,12 +78,12 @@ function magic_hexagon(print_solutions=true,all_solutions=true,timeout=6)
     @constraint(model, D + I + N + R ==  38,)
     @constraint(model, H + M + Q ==  38,)
     
-    @constraint(model, A <= H-1)
-    @constraint(model, A <= C-1)
-    @constraint(model, A <= L-1)
-    @constraint(model, A <= Q-1)
-    @constraint(model, A <= S-1)
-    @constraint(model, C <= H-1)
+    @constraint(model, A < H)
+    @constraint(model, A < C)
+    @constraint(model, A < L)
+    @constraint(model, A < Q)
+    @constraint(model, A < S)
+    @constraint(model, C < H)
    
 
     # @objective(model,Max,z)

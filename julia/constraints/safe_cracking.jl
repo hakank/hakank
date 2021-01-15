@@ -91,8 +91,8 @@ function safe_cracking(print_solutions=true,all_solutions=true)
     @constraint(model,[c1,c2,c3,c123] in CS.TableSet(c123_table))
     @constraint(model,c123 == c8 + c9)
 
-    @constraint(model,c2 + c3 + c6 <= c8 - 1)
-    @constraint(model,c9 <= c8 -1)
+    @constraint(model,c2 + c3 + c6 < c8)
+    @constraint(model, c9 < c8 -1)
  
 
     # Solve the problem
