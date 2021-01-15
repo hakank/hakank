@@ -29,7 +29,7 @@ go :-
         kjellerstrand,
         nl,
         writeln("Kjellerstrand2"),
-        kjellerstrand,
+        kjellerstrand2,
         nl.
 
 %
