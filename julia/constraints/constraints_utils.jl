@@ -10,6 +10,8 @@
 
 =#
 
+using LinearAlgebra
+
 #
 # resize_matrix(grid)
 #
@@ -68,7 +70,8 @@ end
 # Where x or v might be an array of decision variables
 #
 function scalar_product(model,x,v,s)
-    @constraint(model, s == sum(x.*v))
+    # @constraint(model, s == sum(x.*v))
+    @constraint(model, s == dot(x, v))
 end
 
 #
@@ -352,7 +355,8 @@ function cumulative(model, start, duration, resource, limit)
 
             # is this task active during this time t?
             @constraint(model, bs[i] := {start[i] <= t})
-            @constraint(model, bt[i] := {t <= start[i]+duration[i]-1}) # should be '<'
+            # @constraint(model, bt[i] := {t <= start[i]+duration[i]-1}) # should be '<'
+            @constraint(model, bt[i] := {t < start[i]+duration[i]}) 
             @constraint(model, b[i] := { bs[i] + bt[i] == 2}) # is this task active in time t ?
         end
         # Check that there's no conflicts in time t
