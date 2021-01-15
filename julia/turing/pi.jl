@@ -7,7 +7,7 @@
 =#
 
 using Turing, StatsPlots, DataFrames
-include("../jl_utils.jl")
+include("jl_utils.jl")
 
 # Well, using PPL for this is probably not the best approach. :-)
 @model function pi_calc()

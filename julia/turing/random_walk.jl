@@ -24,7 +24,7 @@ Distributions of variable (num:10)
 =#
 
 using Turing, StatsPlots, DataFrames
-include("../jl_utils.jl")
+include("jl_utils.jl")
 
 data = []
 @model function random_walk()

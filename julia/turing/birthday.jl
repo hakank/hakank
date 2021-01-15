@@ -10,7 +10,7 @@
 
 =#
 using Turing, StatsPlots, DataFrames, MCMCChains
-include("../jl_utils.jl")
+include("jl_utils.jl")
 
 
 @model function birthday(num_people=missing)

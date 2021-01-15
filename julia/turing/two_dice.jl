@@ -8,7 +8,7 @@
 =#
 
 using Turing, StatsPlots, DataFrames
-include("../jl_utils.jl")
+include("jl_utils.jl")
 
 
 @model function two_dice(ss)

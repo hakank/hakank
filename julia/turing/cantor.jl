@@ -19,7 +19,7 @@
 =#
 
 using Turing, StatsPlots, DataFrames
-include("../jl_utils.jl")
+include("jl_utils.jl")
 
 # Plain simulation
 function cantor_plain()
