@@ -1,0 +1,249 @@
+/* 
+
+  Book pages in Picat.
+
+  A book's pages are numbered with 2989 digits. How many pages?
+
+
+  The number of digits of a certain length:
+   1 = 9    (1..9  s:1..9)
+   2 = 90   (10..99 s:11..189)
+   3 = 900  (100..999 s:192..2889)
+   4 = 9000 (1000..9999)
+
+   1) start: 2989
+   2) 2889 < 2989 < 9999 so it must be a 4 digit number
+   3) 2989-2889=100
+   4) T = 100 / 4 = 25 
+   -> 
+   X = 9 + 99 + 999 + 25 = 1024
+
+
+  * CP approach (go/0)
+    Picat> book_page_numbers(2989,X,P)                                                  
+    X = [9,90,900,25]
+    P = 1024
+
+  * "Algorithmic" approach (first part of go4/0)
+   [n = 2989,s = 1,t = 9,p = 0]
+   [n = 2980,s = 2,t = 90,p = 9]
+   [n = 2800,s = 3,t = 900,p = 99]
+   [n = 100,s = 4,t = 9000,p = 999]
+   add = 25
+   p = 1024
+   num_digits = 2989
+   num_pages = 1024
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+
+main => go.
+
+go ?=>
+  Number = 2989,
+  book_page_numbers(2989,X,P),
+  println(number=Number),
+  println(number_of_pages=P),
+  println(x=X),
+  foreach(I in 1..X.len)
+    printf("We have %d numbers of length %d\n",X[I],I)
+  end,
+  printf("I.e. in total %d numbers (=pages)\n", P),
+  fail,
+  nl.
+
+go => true.
+
+%
+% Testing the variants of book_page_numbers/3
+%
+% Picat> book_page_numbers(D,X,1234567890123)
+% D = 14938271460501
+% X = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,90000000000,900000000000,234567890124]
+
+%
+go2 ?=>
+  % Fix number of digits
+  All1 = [[D,X,P] : D in 1..100,book_page_numbers(D,X,P)],
+  println(fix_number_of_digits=All1),
+
+  % Fix the number of pages
+  All2 = [[D,X,P] : P in 1..100,book_page_numbers(D,X,P)],
+  println(fix_number_of_pages=All2),
+
+  % fix the length of X
+  bp.length(X3,2),findall([D,X3,P],book_page_numbers(D,X3,P))=All3,
+  println(fix_length_of_x=All3),
+  nl.
+go2 => true.
+
+
+%
+% Brute force (and to get some intuition about the problem).
+%
+go3 ?=>
+  NumDigits = 2989,
+  Map = new_map(),
+  S = 0,
+  Found = false,
+  foreach(I in 1..NumDigits,Found == false)
+     Len = number_len(I),
+     Map.put(Len,Map.get(Len,0)+1),
+     S := S + Len,
+     println([i=I,len=Len,s=S]),     
+     if S == NumDigits then
+        Found := I
+     end
+  end,
+  println(found=Found),
+  println(map=Map),
+  
+  nl.
+
+go3 => true.
+
+%
+% Algorithmic approach
+% 
+% 
+go4 ?=>
+  N = 2989,
+  book_page_numbers_alg(N,NumPages,true),
+  println(num_digits=N),
+  println(num_pages=NumPages),
+  nl,
+  foreach(I in 1..16)
+    P1 = [(J mod 10).to_string : J in 1..I].join('').to_int,
+    book_page_numbers(D,_X,P1),
+    book_page_numbers_alg(D,P),
+    println([num_pages=P,num_digits=D])
+  end,
+  nl,
+  % check one of these with printing
+  book_page_numbers_alg(18641975130864201,NumPages,true),
+  nl.
+go4 => true.
+
+%
+% "Logic programming" approach
+% 
+go5 ?=>
+  NumDigits = 2989,
+  book_page_numbers_alg2(NumDigits,1,0,P),
+  println(numDigits=NumDigits),
+  println(numPages=P),
+  nl,
+  NumDigits := 14938271460501, % 2989,
+  book_page_numbers_alg2(NumDigits,1,0,P2),
+  println(numDigits=NumDigits),
+  println(numPages=P2),
+  
+  nl.
+
+go5 => true.
+
+
+number_len(N) = ceiling(log10(N+1)).
+
+asum(S) = [ sum([S[J] : J in 1..I]) : I in 1..S.len].
+
+% 
+% book_page_numbers(NumDigits,X,NumPages)
+% 
+% - Calculate the number of pages given the number of digits
+% - Calculate the number of digits given the number of pages
+% - Calculate the number of digits and pages given the length of X
+%
+% The difference between this variant and an "ordinary" base system
+% is that we cannot use a slot S[I+1] unless the slot S[I]
+% is filled.
+% 
+book_page_numbers(NumDigits,X,NumPages) =>
+  if nonvar(NumDigits) then
+     N = number_len(NumDigits)
+  elseif nonvar(NumPages) then
+     N = number_len(NumPages)
+  else
+     N = X.length
+  end,
+
+  S=[9*10**(I-1) : I in 1..N], % The "bases"
+
+  X = new_list(N),
+  X :: 0..sum(S),
+
+  sum([X[I]*I : I in 1..N]) #= NumDigits,
+  sum(X) #= NumPages,
+
+  % Restrict the domains for each slot
+  foreach(I in 1..N)
+    X[I] :: 0..S[I]
+  end,
+
+  % In order for X[I] to be > 0 we must have filled
+  % all slots in X[I-1]
+  foreach(I in 2..N)
+     X[I] #> 0 #=> (X[I-1] #= S[I-1])
+     
+  end,
+
+  solve(X).
+
+
+%
+% Algorithmic approach.
+% Not reversible (just calculating number of pages)
+%
+book_page_numbers_alg(N,NumPages) =>
+  book_page_numbers_alg(N,NumPages,false).
+book_page_numbers_alg(N,NumPages,Print) =>
+  P = 0, % number of pages
+  S = 1, % length of the number
+  while (N > 0)
+    T = 9*10**(S-1),
+    if Print then
+       println([n=N,s=S,t=T,p=P])
+    end,
+    if N <= T then
+      if N mod S == 0 then
+         if Print then
+            println(add=(N div S))
+         end,
+         P := P + (N div S)
+      else
+         % Ah, this is not a possible number of digits!
+         P := 0
+      end,
+      N := 0 % end the loop
+    else 
+      P := P + T,
+      N := N - T*S,
+      S := S + 1
+    end
+  end,
+  if Print then
+    println(p=P)
+  end,
+  NumPages = P.
+
+
+% Algorithmic approach using Horn clauses
+% Not reversible (just calculating number of pages given the number of digits).
+book_page_numbers_alg2(0,_Len,NumPages,NumPages).
+
+book_page_numbers_alg2(NumDigits,Len,NumPages1,NumPages) :-
+   T = 9*10**(Len-1),
+   NumDigits <= T,
+   NumDigits mod Len == 0,
+   book_page_numbers_alg2(0,Len,NumPages1+(NumDigits div Len),NumPages).
+book_page_numbers_alg2(NumDigits,Len,NumPages1,NumPages) :-
+   T = 9*10**(Len-1),
+   NumDigits > T,
+   NumDigits1 = NumDigits - T*Len,
+   book_page_numbers_alg2(NumDigits1,Len+1,NumPages1+T,NumPages).

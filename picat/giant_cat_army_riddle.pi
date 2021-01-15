@@ -1,0 +1,423 @@
+/* 
+
+  Giant Cat Army Riddle in Picat.
+
+  Via https://stackoverflow.com/questions/65511714/about-building-a-list-until-it-meets-conditions
+
+  """
+  Basically you start with [0], then you build this list by using one of three 
+  operations: adding 5, adding 7, or taking sqrt. You successfully complete the 
+  game when you have managed to build a list such that 2,10 and 14 appear 
+  on the list, in that order, and there can be other numbers between them.
+
+  The rules also require that all the elements are distinct, they're all <=60 
+  and are all only integers. For example, starting with [0], you can
+  apply (add5, add7, add5), which would result in [0, 5, 12, 17], but since 
+  it doesn't have 2,10,14 in that order it doesn't satisfy the game.
+  """
+
+  YouTube: 
+  "Can you solve the giant cat army riddle? - Dan Finkel"
+  https://www.youtube.com/watch?v=YeMVoJKn1Tg&feature=youtu.be
+
+  Note: I'm not sure if it's required that one should show the operations,
+  or if it's sufficient to just show the list of numbers.
+
+  Below are some different approaches:
+  - go/0: Using planner. 178.4s
+  - go2/0: Plain LP: 36.1s
+  - go3/0: Plain LP: 21.1s
+  - go4/0: CP: 0.028s. Which is the fastest.
+  - go5/0: LP/CP (port of mig556's approach): 1.3s
+  - go6/0: CP variant: 0.22s
+  
+  Here's an optimal solution (list length 24, plan length 23):
+  l = [0,5,12,17,22,29,36,6,11,16,4,2,9,3,10,15,20,25,30,35,42,49,7,14]
+  plan = [add5,add7,add5,add5,add7,add7,sqrt,add5,add5,sqrt,sqrt,add7,sqrt,add7,add5,add5,add5,add5,add5,add7,add7,sqrt,add7]
+  plan_len = 23
+
+  There are 99 optimal solutions of list length 24 (i.e. plan length of 23).
+  The different solutions are distributed as follows (see go4b/0):
+     [[0],[5],[12],[17,19],[22,24,26],[29,31],[36],[6],[11],[16],[4],[2],[9],[3],[10],[15,17],[20,22,24],[25,27,29],[30,32,34],[35,37,39],[42,44],[49],[7],[14]]
+
+  I.e. Positions 1, 2, and 3 are always 0, 5, 12, respectively, position 4 is either 17 or 19, etc.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner,cp.
+
+main => go.
+
+%
+% Planner
+% 
+% 178.4s
+%
+go ?=>
+  % nolog,
+  garbage_collect(300_000_000),
+  L = [0],
+  % best_plan(L,59,Plan), % append approach: 249.55s
+  % best_plan(L,59,Plan), % nth approach: 178.364s
+  best_plan(L,59,Plan), % all_different first: 220.56
+  % best_plan_bb(L,59,Plan), % eating RAM
+  % best_plan_bin(L,59,Plan), % 
+  println(Plan),
+  println(len=Plan.len),
+  nl.
+
+go => true.
+
+%
+% Plain LP
+%
+% 36.149s
+%
+go2 ?=>
+  member(PlanLen,4..60),
+  println(len=PlanLen),
+  L0 = [0],
+  bp.length(Plan,PlanLen),
+  cat(L0,L,[],Plan),
+  println(l=L),
+  println(len=L.len),
+  println(plan=Plan),
+  println(plan_len=Plan.len),
+  nl.
+go2 => true.
+
+%
+% cat2/4 is a variant of cat/4
+%
+% 21.3s
+%
+go3 ?=>
+  member(PlanLen,4..60),
+  println(len=PlanLen),
+  L0 = [0],
+  bp.length(Plan,PlanLen),
+  cat2(L0,L,[],Plan),
+  println(l=L),
+  println(len=L.len),
+  println(plan=Plan),
+  println(plan_len=Plan.len),
+  nl.
+go3 => true.
+
+
+%
+% CP approach (the fastest)
+%
+% 0.028s
+% 
+go4 ?=>
+  member(Len,4..60),
+  L = new_list(Len),
+  L :: 0..60,
+
+  L[1] #= 0, % first value
+  L[2] #= 5 #\/ L[2] #= 7, % cannot be sqrt
+  L[Len] #= 14, % last value must be 14
+
+  % check 2 ... 10 ... 14
+  element(Ix10,L,10),
+  element(Ix2,L,2), 
+  Ix2 #< Ix10,
+
+  foreach(I in 1..Len-1)
+     (L[I+1] #= L[I] + 5)
+     #\/
+     (L[I+1] #= L[I] + 7)
+     #\/
+     (L[I+1] #<= 7 #/\ L[I+1]**2 #= L[I])
+  end,
+  all_different(L),  
+  
+  Vars = L ++ [Ix2,Ix10], 
+  solve($[ff,split],Vars),
+  
+  println(l=L),
+  Plan=get_plan(L), % get the plan
+  println(plan=Plan),
+  println(plan_len=Plan.len),
+
+  nl.
+
+go4 => true.
+
+%
+% Checking the distributions of the 99 optimal solutions (list length 24).
+%
+go4b ?=>
+  Map = get_global_map(),
+  Map.put(solution,[]),
+  
+  Len = 24,
+  L = new_list(Len),
+  L :: 0..60,
+
+  L[1] #= 0, % first value
+  L[2] #= 5 #\/ L[2] #= 7, % cannot be sqrt
+  L[Len] #= 14, % last value must be 14
+
+  % check 2 ... 10 ... 14
+  element(Ix10,L,10),
+  element(Ix2,L,2), 
+  Ix2 #< Ix10,
+
+  foreach(I in 1..Len-1)
+     (L[I+1] #= L[I] + 5)
+     #\/
+     (L[I+1] #= L[I] + 7)
+     #\/
+     (L[I+1] #<= 7 #/\ L[I+1]**2 #= L[I])
+  end,
+  all_different(L),  
+  
+  Vars = L ++ [Ix2,Ix10], 
+  solve($[ff,split],Vars),
+  Map.put(solution,Map.get(solution) ++ [L]),
+  fail.
+
+% Check what values can be is which positions.
+go4b =>
+  N = 24,
+  S = new_list(N),
+  foreach(I in 1..N)
+    S[I] = []
+  end,
+  Solutions = get_global_map().get(solution),
+  foreach(Sol in Solutions)
+    foreach(I in 1..N)
+      if not membchk(Sol[I],S[I]) then
+         S[I] := S[I] ++ [Sol[I]]
+      end
+    end
+  end,
+  println(S),
+  nl.
+
+
+
+%
+% Port (and modification) of mlg556's approach
+% 1.3s
+% 
+go5 ?=>
+  member(N,4..60),
+  % println(n=N),
+  searchN(N, L),
+  println(n=N),
+  println(l=L),
+  nl.
+go5 => true.
+
+% start go5 stuff
+% integer sqrt
+isqrt(X, Y) :- Y #>= 0, X #= Y*Y.
+isqrt2(X, Y) :- Y >= 0, X == Y*Y.
+
+before(X, Y, Z, L) :-
+        %% L has a suffix [X|T], and T has a suffix of [Y|_].
+        append(_,[Z],L), % hakank: Must end we Z (14)
+        append(_, [X|T], L),
+        append(_, [Y|_TT], T).
+        % append(_, [Z|_], TT).
+        % append(_, [Z], TT). % hakank
+        
+% hakank: using element/3 instead
+before2(X, Y, Z, L) :-
+        bp.length(L,Len),
+        element(Len,L,Z),        
+        element(XIx,L,X),
+        element(YIx,L,Y),
+        XIx #< YIx.
+
+order(L) :- before(2,10,14, L).
+order2(L) :- before2(2,10,14, L).
+
+game([X],X).
+% game([H|T], H) :- ((X #= H+5); (X #= H+7); (isqrt(H, X))), X #\= H, H #=< 60, X #=< 60, game(T, X). % H -> [ORIGINAL] (with order2/4 and adding domain: 2.5s
+% game([H|T], H) :- member(X,1..60),((X = H+5); (X = H+7); (isqrt2(H, X))), game(T, X). % hakank: 2.71s
+game([H|T], H) :- X :: 1..60,  X #!= H, ((X #= H+5); (X #= H+7); (isqrt(H, X))), game(T, X). % hakank: 1.18s
+% game([H|T], H) :- X :: 1..60,X #!= H, (X #= H+5 #\/ X #= H+7 #\/ H #= X*X), indomain(X),game(T, X). % hakank: 5.7s
+% game([H|T], H) :- X :: 1..60,X #!= H, (X #= H+5 #\/ X #= H+7 #\/ (X #<= 7 #/\ H #= X*X)), indomain(X),game(T, X). % hakank: 7.4s
+
+searchN(N, L) :-
+  % println($searchN(N, L)),
+  bp.length(L, N),
+  % println(N=L),
+  L::0..60,
+  % order(L), % 9.5s
+  order2(L), % 2.8s
+  game(L, 0).
+
+% end of go5 stufff
+
+
+% 
+% A CP variant (comparing with a SWI Prolog variant
+% 0.22s (compared with 62s for the SWI-Prolog model)
+%
+go6 =>
+  time(once(searchN2(N,L))),
+  write(N),nl,
+  write(L),
+  nl.
+
+% for go6/0
+game2(Len,Len,_L).
+game2(I,Len,L) :-
+  I < Len,
+  I1 is I+1,
+  X1 #> 0,
+  element(I1,L,X1),
+  element(I,L,X),
+  (X1 #= X+5)
+     #\/
+  (X1 #= X+7)
+     #\/
+  (X1 #=< 7 #/\ X #= X1*X1),
+  game2(I1,Len,L).
+
+% for go6/0
+searchN2(N, L) :-
+  bp.length(L, N),
+  N >= 4, % must be at least 4 elements [0,2,10,14]
+  L :: 0..60,
+  element(N,L,14),
+  element(1,L,0),
+  element(2,L,Val2),
+  (Val2 #= 5 #\/ Val2 #= 7),
+  element(Ix2,L,2),
+  element(Ix10,L,10),
+  Ix2 #< Ix10,
+  game2(1,N,L),
+  all_different(L),
+  solve($[ff,split],L).
+
+
+
+
+% Get the plan for the CP solution
+get_plan(L) = Plan =>
+  Plan0 = [],
+  foreach(I in 2..L.len)
+    Diff = L[I]-L[I-1],
+    Plan0 := Plan0 ++ [cond(Diff==5,add5,cond(Diff==7,add7,sqrt))]
+  end,
+  Plan=Plan0.
+
+%
+% LP approach
+%
+cat(L0,L,Plan0,[add5|Plan]) :-
+  L0.len <= 60,
+  X = last(L0),
+  add5(X,Y),
+  cat(L0++[Y],L,Plan0,Plan).
+cat(L0,L,Plan0,[add7|Plan]) :-
+  L0.len <= 60,
+  X = last(L0),
+  add7(X,Y),
+  cat(L0++[Y],L,Plan0,Plan).
+cat(L0,L,Plan0,[sqrt|Plan]) :-
+  L0.len <= 60,
+  X = last(L0),
+  sqrt(X,Y),
+  cat(L0++[Y],L,Plan0,Plan).
+cat(L,L,Plan,Plan) :-
+  final(L).
+  
+
+%
+% Alternative LP approach
+%
+cat2(L,L,Plan,Plan) :-
+  final(L).
+cat2(L0,L,Plan0,[F|Plan]) :-
+  L0.len <= 60,
+  X = last(L0),
+  f(X,Y,F),
+  cat2(L0++[Y],L,Plan0,Plan).
+
+
+%
+% Planner approach
+%
+
+% append approach
+final1(L) =>
+   last(L) == 14,   
+   append(_,[2],L2,L),
+   append(_,[10],_,L2),
+   all_different(L),
+   println(final=L).
+
+% all_different first
+final2(L) =>
+   all_different(L),
+   last(L) == 14,
+   nth(Ix2,L,2),
+   nth(Ix10,L,10),
+   Ix2 < Ix10,
+   println(final=L).
+
+% nth approach (the fastest variant)
+final(L) =>
+   last(L) == 14,
+   nth(Ix2,L,2),
+   nth(Ix10,L,10),
+   Ix2 < Ix10,
+   all_different(L),
+   println(final=L).
+
+
+% table
+action(From,To,Move,Cost) ?=>
+   X = last(From),
+   f(X,Y,Move),
+   To = From ++ [Y],
+   Cost=1.
+   
+/*
+action(From,To,Move,Cost) ?=>
+   X = last(From),
+   add5(X,Y),
+   Move=add5,
+   To = From ++ [Y],
+   Cost=1.
+action(From,To,Move,Cost) ?=>
+   X = last(From),
+   add7(X,Y),
+   Move=add7, 
+   To = From ++ [Y],  
+   Cost=1.
+action(From,To,Move,Cost) =>
+   X = last(From),
+   sqrt(X,Y),
+   Move=sqrt,
+   To = From ++ [Y],
+   Cost=1.
+*/
+
+
+add5(X,Y) => Y = X + 5.
+add7(X,Y) => Y = X + 7.
+sqrt(X,Y) => Y = ceiling(sqrt(X)),Y*Y==X.
+
+
+f(X,Y,F) =>
+  (Y = X+5,F=add5)
+  ;
+  (Y = X+7,F=add7)
+  ;
+  (Y = ceiling(sqrt(X)),Y <= 7, Y*Y==X,F=sqrt).
+  
+sqrt_cp(X,Y) => Y*Y #=X.
+add5_cp(X,Y) => Y #= X + 5.
+add7_cp(X,Y) => Y #= X + 7.
