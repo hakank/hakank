@@ -1,0 +1,114 @@
+/* 
+
+  MiniForth Stackbased Calculator in Picat.
+
+  https://www.reddit.com/r/prolog/comments/exrto9/weekly_coding_challenge_1/
+  """
+  Weekly coding challenge #1!
+  challenge
+
+  Your mission, should you choose to accept it, is to write a stack-based calculator 
+  (or mini-Forth) in Prolog. For instance, you could write one predicate which 
+  handles everything, forth/n. Then forth(1 3 +) should return 4, and 
+  forth( 1 3 + 3 * ) should return 12.
+
+  As an added challenge, consider having the predicate return stack annotations, so that 
+  the output for forth( 1 3 + ) is something like "Push the number 1 onto the stack." 
+  "Push the number 3 onto the stack." "Add the stack" "Final answer: 4". You might also 
+  consider adding more words (the Forth term for operators) than just arithmetic, 
+  such as dup, so that forth( 1 dup) returns 1 1. Good luck!
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+% import cp.
+
+
+main => go.
+
+
+go ?=>
+  miniforth1("3 4 + 2 *", R),
+  println(r=R),
+  nl,nl,
+  miniforth1("13 42 + 22 *", R2),
+  println(r2=R2),
+  nl,nl,
+  miniforth1("9 8 + 7 **", R3),
+  println(r3=R3),
+  nl,nl,
+  miniforth1("9 dup * 7 dup * **", R4),
+  println(r4=R4),
+
+
+
+  nl.
+
+go => true.
+
+go2 ?=>
+  miniforth2("3 4 + 2 *", R),
+  println(r=R),
+  nl,
+  miniforth2("13 42 + 122 *", R2),
+  println(r2=R2),
+  nl,
+  miniforth2("9 8 + 7 **", R3),
+  println(r3=R3),
+
+  nl.
+
+go2 => true.
+
+
+%
+% Calculate and print intermediate steps.
+%
+analyse([],[Final],Final) :- println(result=Final).
+analyse([T|Tokens],Stack,Final) :-
+   if T == dup then
+      println(op=T),
+      T1 = last(Stack),
+      push(Stack,T1,Stack2)
+   elseif membchk(T, [+,-,*,/,**]) then
+      println(op=T),
+      pop(Stack,T1,S1),
+      pop(S1,T2,S2),
+      V=apply(T,T2,T1),
+      push(S2,V,Stack2)
+   else
+      push(Stack,T,Stack2)
+   end,
+   analyse(Tokens,Stack2,Final).
+
+push(Stack,T,NewStack) :- println([push,T,to,Stack]),append(Stack,[T],NewStack). % ,println(newStack=NewStack).
+pop(Stack,T,NewStack) :-  append(NewStack,[T],Stack),println([pop,T,from,Stack]). % ,println(newStack=NewStack).
+
+
+miniforth1(Expr, Result) :-
+    println(expr=Expr),
+    % tokenize_atom(Expr, Tokens), % tokenize_atom/2 (from SWI-Prolog) is not in Picat
+    Tokens=[parse_term(T.to_string) : T in split(Expr), T != ' '],    
+    analyse(Tokens,[],Result).
+
+
+% Inspired by da-poodle's solution
+miniforth2(Expr, Result) :-
+    println(expr=Expr),
+    Tokens=[parse_term(T.to_string) : T in split(Expr), T!= ' '],    
+    eval(Tokens, [], Result).
+
+eval([], [R], R).
+eval([N|T], S, R) :- 
+    number(N),                                                                   
+    eval(T, [N|S], R).
+eval([O|T], [A,B|S], R) :-
+    member(O, [+,-,*,/,**]), % added **
+    Expr =.. [O,B,A],
+    N is Expr,
+    eval(T, [N|S], R).
