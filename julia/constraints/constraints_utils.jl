@@ -118,8 +118,7 @@ end
 function increasing_strict(model, x)
     len = length(x)
     for i in 2:len
-        @constraint(model, x[i-1] <= x[i])
-        @constraint(model, x[i-1] != x[i])
+        @constraint(model, x[i-1] < x[i])
     end
 end
 
@@ -139,8 +138,7 @@ end
 function decreasing_strict(model, x)
     len = length(x)
     for i in 2:len
-        @constraint(model, x[i-1] >= x[i])
-        @constraint(model, x[i-1] != x[i])
+        @constraint(model, x[i-1] > x[i])
     end
 end
 
@@ -182,22 +180,49 @@ end
 # Ensure that there the exactly s occurrences of
 #    x[i] op val
 #
-# TODO: handle < and >
-#       i.e. <= && !=  and >= && !=
-#
 function count_ctr(model, x, op, val, s)
-    xflat = vcat(x...)
-    len = length(xflat)
+    len = length(x)
     b = @variable(model, [1:len], Bin)
-    for i in 1:len
+    for i in eachindex(x)
         if op == :(==)
-            @constraint(model, b[i] := { xflat[i] == val})
+            @constraint(model, b[i] := { x[i] == val})
         elseif op == :(<=)
-            @constraint(model, b[i] := { xflat[i] <= val})
+            @constraint(model, b[i] := { x[i] <= val})
         elseif op == :(>=)
-            @constraint(model, b[i] := { xflat[i] >= val})
+            @constraint(model, b[i] := { x[i] >= val})
         elseif op == :(!=)
-            @constraint(model, b[i] := { xflat[i] != val})
+            @constraint(model, b[i] := { x[i] != val})
+        elseif op == :(<)
+            @constraint(model, b[i] := { x[i] < val})
+        elseif op == :(>)
+            @constraint(model, b[i] := { x[i] > val})
+        end
+    end
+    @constraint(model, s == sum(b))
+end
+
+#
+# Ensure that there the exactly s occurrences of
+#    x[i] op y[i]
+#
+function count_ctr2(model, x, op, y, s)
+    len = length(x)
+    len2 = length(y)
+    @assert len == len2 "Lengths must be the same!"
+    b = @variable(model, [1:len], Bin)
+    for i in eachindex(x)
+        if op == :(==)
+            @constraint(model, b[i] := { x[i] == y[i]})
+        elseif op == :(<=)
+            @constraint(model, b[i] := { x[i] <= y[i]})
+        elseif op == :(>=)
+            @constraint(model, b[i] := { x[i] >= y[i]})
+        elseif op == :(!=)
+            @constraint(model, b[i] := { x[i] != y[i]})
+        elseif op == :(<)
+            @constraint(model, b[i] := { x[i] < y[i]})
+        elseif op == :(>)
+            @constraint(model, b[i] := { x[i] > y[i]})
         end
     end
     @constraint(model, s == sum(b))
@@ -223,12 +248,10 @@ end
 #
 function my_abs(model, x, a)
     my_abs(model,x, 0, a)
-    #=
     b = @variable(model, [1:1], Bin)
     @constraint(model, b[1] := {x >= 0})
     @constraint(model, b[1] => {a == x})
     @constraint(model, !b[1] => {a == -x})
-    =#
 end
 
 
@@ -277,7 +300,18 @@ end
 # Note: experimental.
 # For large domains the table will blow up so handle with care!
 #
+# Thanks Ole for suggestions on this (https://github.com/Wikunia/ConstraintSolver.jl/issues/235)
 function modulo(model, x, y, z)
+    if x isa Integer
+        x = @variable(model, lower_bound=x, upper_bound=x, integer=true)
+    end
+    if y isa Integer
+        y = @variable(model, lower_bound=y, upper_bound=y, integer=true)
+    end
+    if z isa Integer
+        z = @variable(model, lower_bound=z, upper_bound=z, integer=true)
+    end
+
     lbx = round(Int, JuMP.lower_bound(x))
     ubx = round(Int, JuMP.upper_bound(x))
     lby = round(Int, JuMP.lower_bound(y))
@@ -285,6 +319,117 @@ function modulo(model, x, y, z)
 
     table = resize_matrix([ [i,j,i % j] for i in lbx:ubx, j in lby:uby if j != 0])
     @constraint(model, [x, y, z] in CS.TableSet(table))
+end
+
+#
+# mult(model, x, y, z)
+#
+# ensures that z = x * y
+#
+# This is experimental!
+# Note: This don't scale but works in smaller models.
+#
+function mult(model, x, y, z)
+    # println("$mult(model, $x, $y, $z)")
+    x_fixed = false
+    if x isa Integer
+        x = @variable(model, lower_bound=x, upper_bound=x, integer=true)
+        x_fixed = true
+    end
+
+    y_fixed = false
+    if y isa Integer
+        y = @variable(model, lower_bound=y, upper_bound=y, integer=true)
+        y_fixed = true
+    end
+
+    z_fixed = false 
+    if z isa Integer
+        z = @variable(model, lower_bound=z, upper_bound=z, integer=true)
+        z_fixed = true
+    end
+
+    lbx = round(Int, JuMP.lower_bound(x))
+    ubx = round(Int, JuMP.upper_bound(x))
+    lby = round(Int, JuMP.lower_bound(y))
+    uby = round(Int, JuMP.upper_bound(y))
+    lbz = round(Int, JuMP.lower_bound(z))
+    ubz = round(Int, JuMP.upper_bound(z))
+
+    # Handle z:
+    #  min z = lbx*lby 
+    #  max_z = ubx*uby
+    if !z_fixed 
+        if lbz < lbx*lby 
+            lbz = lbx*lby
+        end
+
+        if ubz > ubx*uby
+            ubz = ubx*uby
+        end 
+        @constraint(model, lbz <= z)
+        @constraint(model, z <= ubz)
+        
+    end
+
+    table = resize_matrix([ [i,j,i * j] for i in lbx:ubx, j in lby:uby])
+    # println("table:$table")
+    @constraint(model, [x, y, z] in CS.TableSet(table))
+
+end
+
+#
+# either_eq(model,c1,c2,c3,c4)
+#
+# ensures  c1 = c2 \/ c3 = c4
+#
+# Example (from jobs_puzzle.jl):
+#   either_eq(model, Nurse,Steve, Nurse,Pete)
+#
+function either_eq(model, c1, c2, c3,c4)
+    b = @variable(model, [1:2], Bin)
+    @constraint(model, b[1] := {c1 == c2})
+    @constraint(model, b[2] := {c3 == c4})
+    @constraint(model, sum(b) == 1)
+end
+
+
+
+#
+# is_member_of(model,el, a)
+#
+# Ensure that element el is in the array a
+# 
+# Example (from jobs_puzzle.jl):
+#   is_member_of(model,Nurse, [Steve,Pete])
+#
+function is_member_of(model, el, a)
+    @constraint(model, [el] in CS.TableSet(resize_matrix(a)) )
+end
+
+#
+# my_min(model, x, m, ix)
+#
+# Ensure that m is the minimum element in x
+# TODO: Test this more
+function my_min(model, x, m)
+    n = length(x)
+    ix = @variable(model, integer=true, lower_bound=1, upper_bound=n)
+    my_element(model, ix,x, m)
+    @constraint(model, m .<= x[i] )
+
+end
+
+#
+# my_max(model, x, m, ix)
+#
+# Ensure that m is the maximum element in x
+# TODO: Test this more
+function my_max(model, x, m)
+    n = length(x)
+    ix = @variable(model, integer=true, lower_bound=1, upper_bound=n)
+    my_element(model, ix,x, m)
+    @constraint(model, m .>= x)
 end
 
 
@@ -700,3 +845,37 @@ function global_contiguity_regular(model, x)
     return regular(model,reg_input,n_states,input_max,transition,initial_state, accepting_states)
 
 end
+
+#
+# lex_less_eq(model, x, y)
+#
+# Ensures that the array x is lexicographically less or equal to array y
+#
+# This is a port of MiniZinc's lex_lesseq_int 
+# (via my Picat port in http://hakank.org/picat/lex.pi)
+# TODO: This is either wrong or too slow!
+#=
+function lex_less_eq(model, x, y)
+    lx = 1
+    ux = length(x)
+    ly = 1
+    uy = length(y)
+    size = max(ux-lx,uy-ly)
+    
+    # "b[i] is true if the lexicographical order holds from position i on"
+    b  = @variable(model, [1:size+2], binary=true)
+    b1 = @variable(model, [1:size+2], binary=true)
+    b2 = @variable(model, [1:size+2], binary=true)
+    b3 = @variable(model, [1:size+2], binary=true)
+    @constraint(model,b[1] == 1)
+    for i in 1:size+1
+        # B[I] == ( X[I] <= Y[I] /\ (X[I] < Y[I] \/ B[I+1] == 1) ) # Picat version
+        @constraint(model, b1[i] := {x[i] <= y[i]})
+        @constraint(model, b2[i] := {x[i] <  y[i]})
+        @constraint(model, b3[i] := {b2[i] + b[i+1] >= 1}) 
+        @constraint(model, b[i] := {b1[i] + b3[i] == 2})
+    end
+    # @constraint(model, b[size + 2] := {size - 1 < size - 1})
+    @constraint(model, b[size + 2] == 1)
+end
+=#

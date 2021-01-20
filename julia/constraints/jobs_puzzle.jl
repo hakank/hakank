@@ -1,8 +1,37 @@
 #=
 
-  Some explorations of ISBN13 in ConstraintSolver.jl 
+  Jobs puzzle in ConstraintSolver.jl 
 
-  See http://en.wikipedia.org/wiki/ISBN
+  This is a standard problem in Automatic Reasoning.
+  
+  From http://www-unix.mcs.anl.gov/~wos/mathproblems/jobs.html
+  """
+  Jobs Puzzle
+  
+  There are four people:  Roberta, Thelma, Steve, and Pete.
+  Among them, they hold eight different jobs.
+  Each holds exactly two jobs.
+  The jobs are chef, guard, nurse, clerk, police officer (gender 
+  not implied), teacher, actor, and boxer.
+  The job of nurse is held by a male.
+  The husband of the chef is the clerk.
+  Roberta is not a boxer.
+  Pete has no education past the ninth grade.
+  Roberta, the chef, and the police officer went golfing together.
+ 
+  Question:  Who holds which jobs?
+  """
+ 
+ 
+  The answer:
+  Chef       Thelma
+  Guard      Roberta
+  Nurse      Steve
+  Clerk      Pete
+  Police     Steve
+  Teacher    Roberta
+  Actor      Pete
+  Boxer      Thelma
  
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
@@ -13,7 +42,8 @@ using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function isbn(isbn,print_solutions=true,all_solutions=true,timeout=6)
+
+function jobs_puzzle(print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -50,49 +80,56 @@ function isbn(isbn,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
+   num_people = 4
+   num_jobs = 8
+   people = 1:num_people
+   Roberta, Thelma, Steve, Pete = people
+   
+   @variable(model, 1 <= Jobs[1:num_jobs] <= num_people, Int)
+   Chef, Guard, Nurse, Clerk, PoliceOfficer, Teacher, Actor, Boxer = Jobs
+   
+   # Each holds exactly two jobs.
+   for i in 1:4 
+        count_ctr(model, Jobs, :(==), i, 2)
+   end 
+   
+   # The job of nurse is held by a male.
+   # (Nurse == Steve \/ Nurse == Pete),
+   # either_eq(model, Nurse,Steve, Nurse,Pete)
+   is_member_of(model,Nurse, [Steve,Pete])
 
-    n = 13
-    M = -1 # unknown
-    mult1 = 3 
-    mult2 = 1
-    @variable(model, 0 <= x[1:n] <= 9, Int)
-    @variable(model, 0 <= t[1:n-1] <= 9*3, Int) # For the checksum
+   # @either_eq(model, :(Nurse==Steve), :(Nurse==Pete))
+    
+   # The husband of the chef is the clerk.
+   # (Clerk == Steve   \/ Clerk == Pete),
+   # either_eq(model, Clerk,Steve, Clerk,Pete)
+   is_member_of(model,Clerk, [Steve,Pete])
+   # either_eq(model, Chef,Roberta, Chef,Thelma)
+   is_member_of(model,Chef, [Roberta,Thelma])
+   @constraint(model, Chef != Clerk)
 
-    # ISBN starts with 978 or 979
-    @constraint(model, x[1] == 9)
-    @constraint(model, x[2] == 7)
-    @constraint(model, x[3] >= 8) 
-    
-    
-    for i in 1:n
-        if isbn[i] != M 
-            @constraint(model, x[i] == isbn[i])
-        end
-        # Checksum
-        if i < n 
-            if i % 2 == 0
-                @constraint(model, t[i] == x[i]*mult1)
-            else 
-                @constraint(model, t[i] == x[i]*mult2)
-            end
-        end
-    end
-    
-    #
-    # Checksum: x[n] = (10 - tsum mod 10) mod 10
-    #
-    @variable(model, 0 <= tsum <= 3*9*13, Int)
-    @variable(model, 0 <= tsum_mod_10 <= 9, Int)
-    tsum_minus_10 = @variable(model, integer=true,lower_bound=0, upper_bound=9)
-    
-    @constraint(model,tsum == sum(t))
-    modulo(model,tsum,10,tsum_mod_10)
-    @constraint(model,tsum_minus_10 == 10 - tsum_mod_10)
-    modulo(model,tsum_minus_10,10,x[n])
+   # Roberta is not a boxer.
+   @constraint(model, Roberta != Boxer)
+
+   # Pete has no education past the ninth grade.
+   @constraint(model, Pete != Teacher)
+   @constraint(model, Pete != PoliceOfficer)
+   @constraint(model, Pete != Nurse)
+
+   # Roberta, [and] the chef, and the police officer 
+   # went golfing together.
+   @variable(model,Roberta <= RobertaVar <= Roberta, Int)
+   @constraint(model, [RobertaVar,Chef,PoliceOfficer] in CS.AllDifferentSet())
+
+   # From the name of the job
+   # (Actor == Steve \/ Actor == Pete)
+   # either_eq(model, Actor,Steve, Actor,Pete)
+   is_member_of(model,Actor, [Steve,Pete])
+
 
     # Solve the problem
     optimize!(model)
-    
+
     status = JuMP.termination_status(model)
     # println("status:$status")
     num_sols = 0
@@ -102,11 +139,8 @@ function isbn(isbn,print_solutions=true,all_solutions=true,timeout=6)
         if print_solutions
             for sol in 1:num_sols
                 println("solution #$sol")
-                x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                println("x:$x_val")
-                # t_val = convert.(Integer,JuMP.value.(t; result=sol))
-                # println("t:$t_val")
-                # println()
+                jobs_val = convert.(Integer,JuMP.value.(Jobs; result=sol))
+                println("jobs:$jobs_val")
 
             end
         end
@@ -117,26 +151,4 @@ function isbn(isbn,print_solutions=true,all_solutions=true,timeout=6)
     return status, num_sols
 end
 
-
-M = -1 # unknown
-
-# Test ISBN:
-# 978-0262720304: The OPL Optimization Programming Language 
-# [9,7,8,0,2,6,2,7,2,0,3,0,4]
-test1 = [9,7,8,0,2,6,2,7,2,0,3,0,M]
-println("len:", length(test1))
-#
-# isbn = 978-0262220774: Constraint-based Local Search
-# [9,7,8,0,2,6,2,2,2,0,7,7,4]
-test2 = [9,7,8,0,2,6,2,2,2,0,7,7,M]
-
-# Constraint Solving and Planning with Picat
-# book: http://www.springer.com/gp/book/9783319258812
-# [9,7,8,3,3,1,9,2,5,8,8,1,2]
-test3 = [9,7,8,3,3,1,9,2,5,8,8,1,M]
-test4 = [9,7,8,3,3,1,9,2,5,8,8,M,M]
-
-@time isbn(test1,true,true)
-@time isbn(test2,true,true)
-@time isbn(test3,true,true)
-@time isbn(test4,true,true)
+@time jobs_puzzle(true,true)

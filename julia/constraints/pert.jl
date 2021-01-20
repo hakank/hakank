@@ -1,28 +1,23 @@
 #=
 
-  Golomb ruler in Julia ConstraintSolver.jl 
+  Simple PERT model in ConstraintSolver.jl 
 
-  A Golomb ruler is a set of integers (marks) a(1) < ...  < a(n) such
-  that all the differences a(i)-a(j) (i > j) are distinct.  Clearly we
-  may assume a(1)=0.  Then a(n) is the length of the Golomb ruler.
-  For a given number of marks, n, we are interested in finding the
-  shortest Golomb rulers.  Such rulers are called optimal. 
-
-  See http://www.research.ibm.com/people/s/shearer/grule.html
-
+  From Pascal van Hentenryck 
+  "Scheduling and Packing In the Constraint Language cc(FD)", page 7f
+  http://citeseer.ist.psu.edu/300151.html
+ 
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
 
-
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
+function pert(problem, print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -32,8 +27,8 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
-                                                            # "traverse_strategy"=>:BFS,
-                                                            "traverse_strategy"=>:DFS,
+                                                            "traverse_strategy"=>:BFS,
+                                                            # "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
                                                             # "branch_split"=>:Smallest,
@@ -44,13 +39,13 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             "branch_strategy" => :IMPS, # default
                                                             # "branch_strategy" => :ABS, # Activity Based Search
                                                             # "activity.decay" => 0.999, # default 0.999
-                                                            # "activity.max_probes" => 6, # default, 10
-                                                            # "activity.max_confidence_deviation" => 10, # default 20
+                                                            # "activity.max_probes" => 10, # default, 10
+                                                            # "activity.max_confidence_deviation" => 20, # default 20
 
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=> timeout,
+                                                            "time_limit"=>timeout,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
@@ -59,54 +54,37 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
+    times        = problem[:times]
+    dependencies = problem[:dependencies]
+    max_time     = problem[:max_time]
+    n = length(times)
 
-    # m = 2^(n-1) -1 
-    m = n^2
-    @variable(model, 0 <= x[1:n] <= m, Int)
+    @variable(model, 0 <= start[1:n] <= max_time, Int)
+    @variable(model, 0 <= s_end <= max_time, Int)
 
-    @constraint(model, x[1] == 0)
-    @constraint(model, x in CS.AllDifferentSet())
-    increasing(model,x)
-
-    
-    # This don't work: 
-    # """Each variable must be an integer and bounded."""
-    # diffs = [x[i]-x[j] for i in 1:n, j in 1:n if i != j]
-    
-    # This works:
-    diffs = [] 
-    for i in 1:n, j in 1:n 
-        if i != j 
-            d = @variable(model,integer=true, lower_bound = -m, upper_bound = m )
-            @constraint(model, d == x[i]-x[j])
-            push!(diffs,d)
-        end
+    for (d1,d2) in eachrow(dependencies)
+        @constraint(model, start[d1] >= start[d2]+times[d2])
     end
-    @constraint(model, diffs in CS.AllDifferentSet())
 
-    # Symmetry breaking
-    if n > 2
-        @constraint(model, x[2] - x[1] < x[n] - x[n-1] )
-    end
-    @constraint(model, diffs[1] < diffs[end])
-
-    @objective(model,Min,x[n])
+    @constraint(model, s_end == start[n]) # to minimize
+ 
+    @objective(model,Min,s_end)
 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
-    # println("status:$status")
+    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
-        # println("num_sols:$num_sols\n")
+        println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                # println("solution #$sol")
-                x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                diffs_val = convert.(Integer,JuMP.value.(diffs; result=sol))
-                println("x:$x_val")
-                println("diffs:$diffs_val")
+                println("solution #$sol")
+                start_val = convert.(Integer,JuMP.value.(start; result=sol))
+                s_end_val = convert.(Integer,JuMP.value.(s_end; result=sol))
+                println("start:$start_val")
+                println("s_end:$s_end_val")
                 println()
 
             end
@@ -115,23 +93,32 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
         println("status:$status")
     end
 
-    return status
-end # end golomb_ruler
-
-
-
-
-# @time golomb_ruler(8,true,false) # 1.5
-
-# n  time 
-# -------
-#  8   1.3s
-#  9  13.3s
-# 10  > 60s
-for n in 2:10
-    println("\nn:$n")
-    @time status = golomb_ruler(n,true,false,60)
-    if status == MOI.TIME_LIMIT 
-        break
-    end
+    return status, num_sols
 end
+
+problem = Dict(
+             # Note: There is no i
+             # a  b  c  d  e  f  g  h  j  k  Send 
+    :times => [7, 3, 1, 8, 1, 1, 1, 3, 2, 1, 1],
+    # Dependencies
+    :dependencies => resize_matrix(
+            [[2,1],  # Sb >= Sa + 7
+             [4,1],  # Sd >= Sa + 7
+             [3,2],  # Sc >= Sb + 3
+             [5,3],  # Se >= Sc + 1
+             [5,4],  # Se >= Sd + 8
+             [7,3],  # Sg >= Sc + 1
+             [7,4],  # Sg >= Sd + 8
+             [6,4],  # Sf >= Sd + 8
+             [6,3],  # Sf >= Sc + 1
+             [8,6],  # Sh >= Sf + 1
+             [9,8],  # Sj >= Sh + 3
+             [10,7], # Sk >= Sg + 1
+             [10,5], # Sk >= Se + 1
+             [10,9], # Sk >= Sj + 2
+             [11,10] # Send >= Sk + 1
+            ]),
+    :max_time => 30,
+)
+
+@time pert(problem)

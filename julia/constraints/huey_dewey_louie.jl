@@ -1,39 +1,43 @@
 #=
 
-  Golomb ruler in Julia ConstraintSolver.jl 
-
-  A Golomb ruler is a set of integers (marks) a(1) < ...  < a(n) such
-  that all the differences a(i)-a(j) (i > j) are distinct.  Clearly we
-  may assume a(1)=0.  Then a(n) is the length of the Golomb ruler.
-  For a given number of marks, n, we are interested in finding the
-  shortest Golomb rulers.  Such rulers are called optimal. 
-
-  See http://www.research.ibm.com/people/s/shearer/grule.html
-
-
+  Huey, Dewey and Louie problem in ConstraintSolver.jl
+ 
+  From Marriott & Stuckey, Programming with Constraints, page 42
+  """
+  Huey, Dewey and Louie are being questioned by their uncle. These are the 
+  statements the make:
+   Huey: Dewey and Louie has equal share in it; if one is quitly, so
+         is the other.
+   Dewey: If Huey is guilty, then so am I.
+   Louie: Dewey and I are not both quilty.
+  
+  Their uncle, knowing that they are cub scouts, realises that they
+  cannot tell a lie. Has he got sufficient information to decide who 
+  (if any) are quilty?
+  """
+ 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
-
 
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
+function huey_dewey_louie(print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
     ipopt_optimizer = optimizer_with_attributes(Ipopt.Optimizer)
 
-    model = Model(optimizer_with_attributes(CS.Optimizer,   # "all_solutions"=> all_solutions,
-                                                            "all_optimal_solutions"=>all_solutions, 
+    model = Model(optimizer_with_attributes(CS.Optimizer,   "all_solutions"=> all_solutions,
+                                                            # "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
-                                                            # "traverse_strategy"=>:BFS,
-                                                            "traverse_strategy"=>:DFS,
+                                                            "traverse_strategy"=>:BFS,
+                                                            # "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
                                                             # "branch_split"=>:Smallest,
@@ -44,13 +48,13 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             "branch_strategy" => :IMPS, # default
                                                             # "branch_strategy" => :ABS, # Activity Based Search
                                                             # "activity.decay" => 0.999, # default 0.999
-                                                            # "activity.max_probes" => 6, # default, 10
-                                                            # "activity.max_confidence_deviation" => 10, # default 20
+                                                            # "activity.max_probes" => 10, # default, 10
+                                                            # "activity.max_confidence_deviation" => 20, # default 20
 
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=> timeout,
+                                                            "time_limit"=>timeout,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
@@ -60,54 +64,45 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
-    # m = 2^(n-1) -1 
-    m = n^2
-    @variable(model, 0 <= x[1:n] <= m, Int)
+    n = 3 
+    @variable(model, x[1:n], Bin)
+    Huey,Dewey,Louie = x
 
-    @constraint(model, x[1] == 0)
-    @constraint(model, x in CS.AllDifferentSet())
-    increasing(model,x)
-
-    
-    # This don't work: 
-    # """Each variable must be an integer and bounded."""
-    # diffs = [x[i]-x[j] for i in 1:n, j in 1:n if i != j]
-    
-    # This works:
-    diffs = [] 
-    for i in 1:n, j in 1:n 
-        if i != j 
-            d = @variable(model,integer=true, lower_bound = -m, upper_bound = m )
-            @constraint(model, d == x[i]-x[j])
-            push!(diffs,d)
-        end
-    end
-    @constraint(model, diffs in CS.AllDifferentSet())
-
-    # Symmetry breaking
-    if n > 2
-        @constraint(model, x[2] - x[1] < x[n] - x[n-1] )
-    end
-    @constraint(model, diffs[1] < diffs[end])
-
-    @objective(model,Min,x[n])
-
+    #  Huey: Dewey and Louie has equal share in it; if one is 
+    # quitly, so is the other.
+    # Dewey == 1 <=> Louie == 1
+    @variable(model, b1, Bin)
+    @constraint(model, b1 := {Dewey ==1})
+    @constraint(model, b1 := {Louie ==1})
+   
+    # Dewey: If Huey is guilty, then so am I.
+    # Huey ==1 => Dewey ==1
+    @variable(model, b2, Bin)
+    @constraint(model, b2 := {Huey ==1})
+    @constraint(model, b2 => {Dewey ==1})
+ 
+    #  Louie: Dewey and I are not both quilty.
+    # ~(Dewey ==1  /\ Louie ==1)
+    @variable(model, b3, Bin)
+    @variable(model, b4, Bin)
+    @constraint(model, b3 := {Dewey == 1})
+    @constraint(model, b4 := {Louie == 1})
+    @constraint(model, b3+b4 < 2)
+ 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
     # println("status:$status")
+    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
-        # println("num_sols:$num_sols\n")
+        println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
                 # println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                diffs_val = convert.(Integer,JuMP.value.(diffs; result=sol))
                 println("x:$x_val")
-                println("diffs:$diffs_val")
-                println()
 
             end
         end
@@ -115,23 +110,7 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
         println("status:$status")
     end
 
-    return status
-end # end golomb_ruler
-
-
-
-
-# @time golomb_ruler(8,true,false) # 1.5
-
-# n  time 
-# -------
-#  8   1.3s
-#  9  13.3s
-# 10  > 60s
-for n in 2:10
-    println("\nn:$n")
-    @time status = golomb_ruler(n,true,false,60)
-    if status == MOI.TIME_LIMIT 
-        break
-    end
+    return status, num_sols
 end
+
+@time huey_dewey_louie()

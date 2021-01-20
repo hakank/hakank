@@ -1,32 +1,35 @@
 #=
 
-  Bus scheduling in Julia ConstraintSolver.jl
+  P-median problem in ConstraintSolver.jl 
 
-  Problem from Taha "Introduction to Operations Research", page 58.
-  Scheduling of buses during a day.
-
-  This is a slightly more general model than Taha's.
-
+  Model and data from the OPL Manual, which describes the problem:
+  """
+  The P-Median problem is a well known problem in Operations Research. 
+  The problem can be stated very simply, like this: given a set of customers 
+  with known amounts of demand, a set of candidate locations for warehouses, 
+  and the distance between each pair of customer-warehouse, choose P 
+  warehouses to open that minimize the demand-weighted distance of serving 
+  all customers from those P warehouses.
+  """
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
 
-
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function bus_schedule(demands,print_solutions=true,all_solutions=true)
+function p_median(problem, print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
     ipopt_optimizer = optimizer_with_attributes(Ipopt.Optimizer)
 
-    model = Model(optimizer_with_attributes(CS.Optimizer,   # "all_solutions"=> all_solutions,
-                                                            "all_optimal_solutions"=>all_solutions, 
+    model = Model(optimizer_with_attributes(CS.Optimizer,   "all_solutions"=> all_solutions,
+                                                            # "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
                                                             "traverse_strategy"=>:BFS,
@@ -47,7 +50,7 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=>6,
+                                                            "time_limit"=>timeout,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
@@ -56,41 +59,55 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
                                                             # "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
-    timeslots = length(demands)
+    demand = problem[:demand]
+    distance = problem[:distance]
+    p = problem[:p]
+    num_customers,num_warehouses = size(distance)
+    
+    println("p:$p")
+    println("demand:$demand")
+    println("distance:$distance")
+    println("num_warehouses:$num_warehouses num_customers:$num_customers")
 
-    # result: how many buses start the schedule at time slot t?
-    @variable(model, 0 <= x[1:timeslots] <= sum(demands), Int)
-    @variable(model, 0 <= num_buses <= sum(demands), Int)
+    @variable(model, open_warehouse[1:num_warehouses], Bin)
+    @variable(model, ship_to_customer[1:num_customers,1:num_warehouses], Bin)
+    @variable(model, 0 <= z <= sum(demand)*num_customers, Int)
 
-    # meet the demands for this and the next time slot
-    for i in 1:timeslots-1
-        @constraint(model, x[i]+x[i+1] >= demands[i])
+    @constraint(model, z == sum(demand[c]*distance[c,w]*ship_to_customer[c,w] 
+                            for c in 1:num_customers, w in 1:num_warehouses))
+
+    for c in 1:num_customers
+        @constraint(model, sum([ship_to_customer[c,w] for w in 1:num_warehouses]) == 1)
     end
-    # demand "around the clock"
-    @constraint(model, x[timeslots]+x[1] >= demands[timeslots])
 
-    @constraint(model, num_buses == sum(x))
+    @constraint(model, p == sum(open_warehouse))
 
-    # Symmetry breaking
-    # my_min(model, x, x[1])
-    @constraint(model, x[1] .<= x)
+    for c in 1:num_customers, w in 1:num_warehouses 
+        @constraint(model, ship_to_customer[c,w] <= open_warehouse[w])
+    end
 
-    @objective(model,Min, num_buses)
+
+    @objective(model,Min,z)
 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
     # println("status:$status")
+    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
         println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
                 println("solution #$sol")
-                num_buses_val = convert.(Integer,JuMP.value.(num_buses; result=sol))
-                x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                println("x:$x_val num_buses:$num_buses_val")
+                open_warehouse_val = convert.(Integer,JuMP.value.(open_warehouse; result=sol))
+                ship_to_customer_val = convert.(Integer,JuMP.value.(ship_to_customer; result=sol))
+                z_val = convert.(Integer,JuMP.value.(z; result=sol))
+                println("open_warehouse:$open_warehouse_val")
+                println("ship_to_customer:$ship_to_customer_val")
+                println("z:$z_val")
+                println()
 
             end
         end
@@ -98,10 +115,15 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
         println("status:$status")
     end
 
-    return status
+    return status, num_sols
 end
 
-
-# demand: minimum number of buses at time t
-demands = [8, 10, 7, 12, 4, 4]
-@time bus_schedule(demands,true,true)
+problem = Dict(
+    :demand => [100,80,80,70],
+    :distance => resize_matrix([[2, 10, 50],
+                                [2, 10, 52],
+                                [50, 60,  3],
+                                [40, 60,  1]]),
+    :p => 2,
+)
+@time p_median(problem)

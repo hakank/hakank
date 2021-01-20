@@ -1,28 +1,24 @@
 #=
 
-  Golomb ruler in Julia ConstraintSolver.jl 
+  Magic squares and cards in ConstraintSolver.jl 
 
-  A Golomb ruler is a set of integers (marks) a(1) < ...  < a(n) such
-  that all the differences a(i)-a(j) (i > j) are distinct.  Clearly we
-  may assume a(1)=0.  Then a(n) is the length of the Golomb ruler.
-  For a given number of marks, n, we are interested in finding the
-  shortest Golomb rulers.  Such rulers are called optimal. 
-
-  See http://www.research.ibm.com/people/s/shearer/grule.html
+  Martin Gardner (July 1971)
+  """
+  Allowing duplicates values, what is the largest constant sum for an order-3
+  magic square that can be formed with nine cards from the deck.
+  """
 
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
-
-
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
+function magic_square_and_cards(n=3,print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -32,8 +28,8 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
-                                                            # "traverse_strategy"=>:BFS,
-                                                            "traverse_strategy"=>:DFS,
+                                                            "traverse_strategy"=>:BFS,
+                                                            # "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
                                                             # "branch_split"=>:Smallest,
@@ -44,13 +40,13 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             "branch_strategy" => :IMPS, # default
                                                             # "branch_strategy" => :ABS, # Activity Based Search
                                                             # "activity.decay" => 0.999, # default 0.999
-                                                            # "activity.max_probes" => 6, # default, 10
-                                                            # "activity.max_confidence_deviation" => 10, # default 20
+                                                            # "activity.max_probes" => 10, # default, 10
+                                                            # "activity.max_confidence_deviation" => 20, # default 20
 
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=> timeout,
+                                                            "time_limit"=>timeout,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
@@ -60,54 +56,54 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
-    # m = 2^(n-1) -1 
-    m = n^2
-    @variable(model, 0 <= x[1:n] <= m, Int)
+    @variable(model, 1 <= x[1:n,1:n] <= 13, Int)
+    @variable(model, 0 <= s <= 13*4, Int) # the sum
 
-    @constraint(model, x[1] == 0)
-    @constraint(model, x in CS.AllDifferentSet())
-    increasing(model,x)
-
-    
-    # This don't work: 
-    # """Each variable must be an integer and bounded."""
-    # diffs = [x[i]-x[j] for i in 1:n, j in 1:n if i != j]
-    
-    # This works:
-    diffs = [] 
-    for i in 1:n, j in 1:n 
-        if i != j 
-            d = @variable(model,integer=true, lower_bound = -m, upper_bound = m )
-            @constraint(model, d == x[i]-x[j])
-            push!(diffs,d)
+    # there are 4 cards of each value in a deck
+    for k in 1:13 
+        b = @variable(model, [1:n,1:n], Bin)
+        for i in 1:n, j in 1:n 
+            @constraint(model, b[i,j] := {x[i,j] == k})
         end
+        @constraint(model, sum(b) <= 4)
     end
-    @constraint(model, diffs in CS.AllDifferentSet())
-
-    # Symmetry breaking
-    if n > 2
-        @constraint(model, x[2] - x[1] < x[n] - x[n-1] )
+ 
+    # the standard magic square constraints (sans all_different)
+    for i in 1:n 
+        @constraint(model, sum(x[:,i]) == s)
+        @constraint(model, sum(x[i,:]) == s)
     end
-    @constraint(model, diffs[1] < diffs[end])
 
-    @objective(model,Min,x[n])
+    # diagonals
+    @constraint(model,sum([x[i,i] for i in 1:n]) == s)
+    @constraint(model,sum([x[i,n+1-i] for i in 1:n]) == s)
+
+    # Symmetry breaking 
+    @constraint(model, x[1,1] .<= x[:,:]) 
+
+    @objective(model,Max,s)
 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
     # println("status:$status")
+    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
-        # println("num_sols:$num_sols\n")
+        println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                # println("solution #$sol")
+                println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                diffs_val = convert.(Integer,JuMP.value.(diffs; result=sol))
-                println("x:$x_val")
-                println("diffs:$diffs_val")
+                s_val = convert.(Integer,JuMP.value.(s; result=sol))
+                println("s:$s_val")
+                # println("x:$x_val")
+                for r in eachrow(x_val)
+                    println(r)
+                end
                 println()
+
 
             end
         end
@@ -115,23 +111,18 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
         println("status:$status")
     end
 
-    return status
-end # end golomb_ruler
+    return status, num_sols
+end
 
-
-
-
-# @time golomb_ruler(8,true,false) # 1.5
-
-# n  time 
-# -------
-#  8   1.3s
-#  9  13.3s
-# 10  > 60s
-for n in 2:10
-    println("\nn:$n")
-    @time status = golomb_ruler(n,true,false,60)
-    if status == MOI.TIME_LIMIT 
-        break
+function test(r)
+    all_optimal_solutions = true 
+    for n in r
+        println("\nn:$n")
+        if n > 4
+            all_optimal_solutions = false
+        end
+        @time magic_square_and_cards(n, true,all_optimal_solutions,60)
     end
 end
+
+test(2:4)

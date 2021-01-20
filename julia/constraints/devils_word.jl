@@ -1,32 +1,34 @@
 #=
 
-  Bus scheduling in Julia ConstraintSolver.jl
+  Devil's word in ConstraintSolver.jl
 
-  Problem from Taha "Introduction to Operations Research", page 58.
-  Scheduling of buses during a day.
-
-  This is a slightly more general model than Taha's.
-
+  Translate each character in a word to ASCII value and then try
+  to sum its values (either positive or negative) to a total.
+  
+  E.g. "hakankjellerstrand" and total 666 gives 359 solutions.
+  Here is the first:
+  +104 +97 +107 +97 +110 +107 +106 -101 +108 +108 -101 +114 +115 +116 -114 -97 -110 -100
+ 
+  Also, see http://www.hakank.org/data_snooping/666.html
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
 
-
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function bus_schedule(demands,print_solutions=true,all_solutions=true)
+function devils_word(s,total=666,print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
     ipopt_optimizer = optimizer_with_attributes(Ipopt.Optimizer)
 
-    model = Model(optimizer_with_attributes(CS.Optimizer,   # "all_solutions"=> all_solutions,
-                                                            "all_optimal_solutions"=>all_solutions, 
+    model = Model(optimizer_with_attributes(CS.Optimizer,   "all_solutions"=> all_solutions,
+                                                            # "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
                                                             "traverse_strategy"=>:BFS,
@@ -47,7 +49,7 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=>6,
+                                                            "time_limit"=>timeout,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
@@ -55,53 +57,48 @@ function bus_schedule(demands,print_solutions=true,all_solutions=true)
                                                             # "lp_optimizer" => cbc_optimizer,
                                                             # "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
-                                        ))
-    timeslots = length(demands)
 
-    # result: how many buses start the schedule at time slot t?
-    @variable(model, 0 <= x[1:timeslots] <= sum(demands), Int)
-    @variable(model, 0 <= num_buses <= sum(demands), Int)
+                                                            ))
 
-    # meet the demands for this and the next time slot
-    for i in 1:timeslots-1
-        @constraint(model, x[i]+x[i+1] >= demands[i])
-    end
-    # demand "around the clock"
-    @constraint(model, x[timeslots]+x[1] >= demands[timeslots])
+    println("s:$s")
+    a = [Int(c[1]) for c in s]
+    println("a:$a")
+    println("total:$total")
+    len = length(a)
+    @variable(model, x[1:len], CS.Integers([-1,1]))
 
-    @constraint(model, num_buses == sum(x))
-
-    # Symmetry breaking
-    # my_min(model, x, x[1])
-    @constraint(model, x[1] .<= x)
-
-    @objective(model,Min, num_buses)
+    @constraint(model, sum(x.*a) == total)
 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
     # println("status:$status")
+    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
         println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                println("solution #$sol")
-                num_buses_val = convert.(Integer,JuMP.value.(num_buses; result=sol))
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                println("x:$x_val num_buses:$num_buses_val")
+                println([a[i]*x_val[i] for i in 1:len])
+                println(join([string(x_val[i]==1 ? "+" : "-",s[i]) for i in 1:len],""))
+                println()
 
             end
         end
     else
         println("status:$status")
     end
-
-    return status
+    println("num_sols:$num_sols")
+    return status, num_sols
 end
 
 
-# demand: minimum number of buses at time t
-demands = [8, 10, 7, 12, 4, 4]
-@time bus_schedule(demands,true,true)
+
+total = 666
+tests = ["hakankjellerstrand","juliaprogramming","juliaisfun"]
+for s in tests 
+    @time devils_word(s,total)
+    println()
+end

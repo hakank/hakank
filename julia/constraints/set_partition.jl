@@ -131,11 +131,15 @@ function set_partition(n=8,num_sets=2,print_solutions=true,all_solutions=true)
 end
 
 # @time set_partition(16,2,true,false)
-for i in 2:10
-    n = 4*i
-    println("\nn:$n")
-    @time status = set_partition(n,2,true,false)
-    if status != MOI.OPTIMAL
-        break
+function testit()
+    for i in 2:10
+        n = 4*i
+        println("\nn:$n")
+        @time status = set_partition(n,2,true,false)
+        if status != MOI.OPTIMAL
+            break
+        end
     end
 end
+
+testit()

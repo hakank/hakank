@@ -30,7 +30,7 @@ using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function debruijn(base=2,n=3,m=base^n,all_solutions=true,print_solutions=true)
+function debruijn(base=2,n=3,m=base^n,all_solutions=true,print_solutions=true,timeout=6)
     println("base:$base n:$n m:$m")
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -40,22 +40,22 @@ function debruijn(base=2,n=3,m=base^n,all_solutions=true,print_solutions=true)
                                                             # "all_optimal_solutions"=>true,
                                                             "logging"=>[],
 
-                                                            # "traverse_strategy"=>:BFS,
+                                                            "traverse_strategy"=>:BFS,
                                                             # "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
-                                                            # "branch_split"=>:Smallest,
+                                                            "branch_split"=>:Smallest,
                                                             # "branch_split"=>:Biggest,
                                                             # "branch_split"=>:InHalf,
 
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=>30,
+                                                            "time_limit"=>timeout,
 
                                                             # "lp_optimizer" => cbc_optimizer,
                                                             # "lp_optimizer" => glpk_optimizer,
-                                                            "lp_optimizer" => ipopt_optimizer,
+                                                            # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
     # x: list of the integers to use which are converted to
@@ -108,7 +108,7 @@ function debruijn(base=2,n=3,m=base^n,all_solutions=true,print_solutions=true)
     end
 
     # symmetry breaking
-    @constraint(model, x .>= x[1])
+    @constraint(model, x[1] .<= x)
 
     println("solve")
     # Solve the problem
@@ -163,4 +163,4 @@ print_solutions=true
 base = 2
 n = 5
 m = 27
-@time debruijn(base,n,m,all_solutions,false)
+@time debruijn(base,n,m,all_solutions,false,30)
