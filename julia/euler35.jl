@@ -21,11 +21,30 @@
 include("Euler.jl")
 
 # Rotate an array/string
-function rotate(n,i)
+function rotate1(n,i)
     s = string(n)
     ii = i+1
     return parse(Int,join(vcat(s[ii:end],s[1:ii-1])))
 end
+
+function undigit(d; base=10)
+    s = zero(eltype(d))
+    mult = one(eltype(d))
+    for val in d
+        s += val * mult
+        mult *= base
+    end
+    return s
+end
+
+# This is slightly faster
+@inline function rotate(n,i)
+    s = digits(n)
+    ii = i+1
+    d = vcat(s[ii:end],s[1:ii-1])
+    return undigit(d)
+end
+
 
 #
 # Note: It's a little faster when using prime_set as
@@ -62,6 +81,8 @@ function is_circular_prime2(n, prime_set)
 end
 
 # Faster if global
+# Ah, it's because the time of constructing it 
+# is not counted in the run time!
 prime_set = Set(primes(1_000_000))
 
 # 0.08751774s

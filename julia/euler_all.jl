@@ -9,15 +9,15 @@
   Running this in Julia REPL:
   * first run:
   """
-  Total time: 1.39524527
-  6.209198 seconds (27.90 M allocations: 1.515 GiB, 5.93% gc time)
+  Total time: 1.033463842
+  8.514144 seconds (41.06 M allocations: 2.245 GiB, 6.67% gc time)
   """
 
   * second run (everything JIT:ed):
   """
   ...
-  Total time: 1.0628387979999998
-  3.564508 seconds (20.37 M allocations: 1.121 GiB, 5.59% gc time)
+  Total time: 0.8721419980000001
+  4.063323 seconds (20.89 M allocations: 1.202 GiB, 7.47% gc time)
   """
 
 
@@ -25,38 +25,35 @@
   See also my Julia page: http://www.hakank.org/Julia_progs/
 
 =#
-
+using InteractiveUtils
 using Memoization
 include("Euler.jl")
 
 using BenchmarkTools
-const run_benchmark = false
+run_benchmark = false
+# run_benchmark = true
+# run_benchmark = "code_warntype"
 
-const res = []
-const total_time = [0.0]
+res = []
+total_time = [0.0]
 
 function run_euler(p)
-    if run_benchmark
+    if run_benchmark == true 
         println("\nrun_euler($p)")
-        # @run_euler_bench p
-        # @benchmark $p
-        # b = @benchmarkable $p
-        # tune!(b)
-        # display(run(b))
-        # b = @benchmark $p
-        #dump(b)
-        # Note the '$p()' construct!
-
         b = @benchmark $p()
         display(b)
         m = mean(b)
         println("$p mean:$m\n\n")
         push!(res, [p,m])
-    else 
+    elseif run_benchmark == "code_warntype"
+        println("\n@code_warntype $p")
+        @code_warntype p()
+    else
+        # GC.gc(true) 
         # GC.gc(false)
         t = @timed p()
         # GC.gc(true)
-        # @printf "%s: %d: %2.8fs\n" p t.value t.time
+        @printf "%s: %d: %2.8fs\n" p t.value t.time
         push!(res, [p,t.time])
         total_time[1] += t.time 
     end
@@ -79,15 +76,16 @@ run_euler(euler1c)
 const fibmem2b = Dict{Int,Int}()
 function fib2b(n::Int)
     get!(fibmem2b, n) do
-        n < 3 ? 1 : fib2b(n-1) + fib2b(n-2)
+        n < 3 ? one(1) : fib2b(n-1) + fib2b(n-2)
     end
 end
 
 # 8.108e-6s
 function euler2b()
-    n = 1
-    f = 0
-    s = 0
+    fibmem2b = Dict{Int,Int}() # reset the cache
+    n = one(Int)
+    f = zero(Int)
+    s = zero(Int)
     while f < 4_000_000
         f = fib2b(n)
         if f % 2 == 0
@@ -148,14 +146,11 @@ function euler7b()
 end
 run_euler(euler7b)
 
-
-
-# digits works with this
-n = 7316717653133062491922511967442657474235534919493496983520312774506326239578318016984801869478851843858615607891129494954595017379583319528532088055111254069874715852386305071569329096329522744304355766896648950445244523161731856403098711121722383113622298934233803081353362766142828064444866452387493035890729629049156044077239071381051585930796086670172427121883998797908792274921901699720888093776657273330010533678812202354218097512545405947522435258490771167055601360483958644670632441572215539753697817977846174064955149290862569321978468622482839722413756570560574902614079729686524145351004748216637048440319989000889524345065854122758866688116427171479924442928230863465674813919123162824586178664583591245665294765456828489128831426076900422421902267105562632111110937054421750694165896040807198403850962455444362981230987879927244284909188845801561660979191338754992005240636899125607176060588611646710940507754100225698315520005593572972571636269561882670428252483600823257530420752963450
-
-
 # 0.04791558s
 function euler8a()
+    # digits works with this
+    n = 7316717653133062491922511967442657474235534919493496983520312774506326239578318016984801869478851843858615607891129494954595017379583319528532088055111254069874715852386305071569329096329522744304355766896648950445244523161731856403098711121722383113622298934233803081353362766142828064444866452387493035890729629049156044077239071381051585930796086670172427121883998797908792274921901699720888093776657273330010533678812202354218097512545405947522435258490771167055601360483958644670632441572215539753697817977846174064955149290862569321978468622482839722413756570560574902614079729686524145351004748216637048440319989000889524345065854122758866688116427171479924442928230863465674813919123162824586178664583591245665294765456828489128831426076900422421902267105562632111110937054421750694165896040807198403850962455444362981230987879927244284909188845801561660979191338754992005240636899125607176060588611646710940507754100225698315520005593572972571636269561882670428252483600823257530420752963450
+
     # a = split(n,"").|>i->parse(Int8,i)
     a = digits(n)
     len = length(a)
@@ -175,7 +170,6 @@ function euler8a()
     return max;
 end
 run_euler(euler8a)
-
 
 
 # 0.00683682s
@@ -202,7 +196,10 @@ run_euler(euler10c)
 
 
 
-m = [
+
+# 0.07859598s
+function euler11a()
+    m = [
      8  2 22 97 38 15  0 40  0 75  4  5  7 78 52 12 50 77 91  8;
     49 49 99 40 17 81 18 57 60 87 17 40 98 43 69 48  4 56 62  0;
     81 49 31 73 55 79 14 29 93 71 40 67 53 88 30  3 49 13 36 65;
@@ -223,19 +220,16 @@ m = [
     20 69 36 41 72 30 23 88 34 62 99 69 82 67 59 85 74  4 36 16;
     20 73 35 29 78 31 90  1 74 31 49 71 48 86 81 16 23 57  5 54;
      1 70 54 71 83 51 54 69 16 92 33 48 61 43 52  1 89 19 67 48
-]
+    ]
 
-
-# 0.07859598s
-function euler11a()
     len = size(m)[1]
     mt = m'
     n = 4
     maxp = 0
 
     # Rows and columns
-    for row = 1:len-1
-        for col in 1:len-n
+    for col in 1:len-n
+        for row = 1:len-1
             p1 = prod(m[row,col:col+n-1])
             if p1 > maxp
                 maxp = p1
@@ -250,7 +244,7 @@ function euler11a()
     # diag_down
     for j in 1:17
         for i in 1:17
-            pa = []
+            pa = Int[]
             for a in 0:n-1
                 push!(pa,m[a+i,a+j])
             end
@@ -264,7 +258,7 @@ function euler11a()
     # diag_up
     for j in 2:17
         for i = 5:20
-            pa = []
+            pa = Int[]
             for a = 0:3
                 push!(pa,m[i-a,j+a])
             end
@@ -301,16 +295,16 @@ end
 # This is basically factors + collect together so it's not general
 # enough for placing in Euler.jl
 #
-function factors_map(n)
-    if n == 1
-        return Dict(1=>1)
+@inline function factors_map(n::Int64)
+    if n == one(n)
+        return Dict{Int64,Int64}(1=>1)
     end
-    m = Dict();
-    while n % 2 === 0
+    m = Dict{Int64,Int64}();
+    while n % 2 === zero(n)
         if !haskey(m,2)
-            m[2] = 0
+            m[2] = zero(0)
         end
-        m[2] += 1;
+        m[2] += one(n);
         n = round(Int, n/2);
     end
     t = 3
@@ -320,7 +314,7 @@ function factors_map(n)
                 m[t] = 0
             end
             m[t] += 1
-            n /= t
+            n = round(Int, n/t);
         end
         t += 2
     end
@@ -332,6 +326,7 @@ function factors_map(n)
     end
     return m;
 end
+
 
 # 0.13744243s
 function euler12b()
@@ -348,7 +343,10 @@ function euler12b()
 end
 run_euler(euler12b);
 
-ns =[37107287533902102798797998220837590246510135740250,
+
+# 0.01485372s
+function euler13a()
+    ns =[37107287533902102798797998220837590246510135740250,
      46376937677490009712648124896970078050417018260538,
      74324986199524741059474233309513058123726617309629,
      91942213363574161572522430563301811072406154908250,
@@ -448,17 +446,13 @@ ns =[37107287533902102798797998220837590246510135740250,
      72107838435069186155435662884062257473692284509516,
      20849603980134001723930671666823555245252804609722,
      53503534226472524250874054075591789781264330331690
-]
-
-# 0.01485372s
-function euler13a()
+    ]
     return parse(Int,string(sum(ns))[1:10])
 end
-
 run_euler(euler13a)
 
 
-function hailstone(n)
+@inline function hailstone(n)
     if n % 2 == 0
         return round(Int,n / 2)
     else
@@ -470,7 +464,7 @@ end
 # 0.04143852s
 function euler14c()
     limit = 1_000_000
-    hash = zeros(limit)
+    hash = zeros(Int64,limit)
     maxN = 0
     maxLen = 0
     for n = 2:1_000_000
@@ -495,19 +489,7 @@ function euler14c()
     end
     return maxN;
 end
-
 run_euler(euler14c)
-
-#=
-function prodlist(from,to)
-   return prod(from:to)
-end
-# 0.01229874s
-function euler15a()
-     return prodlist(BigInt(21),40) / prodlist(2,20);
-end
-run_euler(euler15a)
-=#
 
 function euler15b()
     return prod(BigInt(21):40) / prod(2:20);
@@ -516,7 +498,6 @@ run_euler(euler15b)
 
 # 0.00027433s
 function euler16a()
-    # return split(string(BigInt(2)^1000),"").|>(i->parse(Int,i))|>sum
     return digits(BigInt(2)^1000)|>sum
 end
 
@@ -571,7 +552,6 @@ end
 function euler17a()
     return sum((1:1000).|>i->length(english(i)))
 end
-
 run_euler(euler17a)
 
 
@@ -612,7 +592,6 @@ function euler18a()
     
     return max_val
 end
-
 run_euler(euler18a)
 
 
@@ -631,18 +610,14 @@ function euler19a()
 
     return count
 end
-
 run_euler(euler19a)
 
 
-# 0.00029684s
 function euler20a()
     return sum(split(factorial(BigInt(100))|>string,"").|>j->parse(Int,j))
+    # return sum(digits(factorial(BigInt(100)))) # This is slower!
 end
-
 run_euler(euler20a)
-
-
 
 # 0.07385759s
 function euler21c()
@@ -651,17 +626,18 @@ function euler21c()
     for i in 2:n
         s[i] = sum(all_divisors3(i))
     end
-    a = []
+    
+    a = Int[]
     for i in 2:n
         # ignore perfect numbers...
         # if s[i] <= n && i==s[s[i]] && i!= s[i]
         if s[i] <= n && i!= s[i] && i==s[s[i]]
             push!(a,i)
         end
-    end
+    end    
+    # a = filter(i-> s[i] <= n && i!= s[i] && i==s[s[i]],2:n)
     return sum(a)
 end
-
 run_euler(euler21c);
 
 
@@ -682,7 +658,9 @@ function euler22a()
     return s;
 
 end
+run_euler(euler22a)
 
+#=
 # 0.02438064s
 function euler22b()
     a = 1
@@ -691,9 +669,8 @@ function euler22b()
                   sort(split(readline("euler22_names.txt"),","))))
 
 end
-
-run_euler(euler22a)
-
+run_euler(euler22b)
+=#
 
 # 0.00790154s
 function euler23a()
@@ -718,7 +695,6 @@ function euler23a()
 
     return sum([i for i in 1:limit if arr[i] != 0])
 end
-
 run_euler(euler23a)
 
 
@@ -736,10 +712,18 @@ end
 run_euler(euler24a)
 
 
-function fib_len(n)
-    return fibmemBigInt(n)|>string|>length
+# Separate this from original version in Euler.jl
+# so we can const it.
+const fibmemBigInt_dict25 = Dict{Int,BigInt}()
+function fibmemBigInt25(n)
+    get!(fibmemBigInt_dict25, n) do
+        n < BigInt(3) ? BigInt(1) : fibmemBigInt25(BigInt(n-1)) + fibmemBigInt25(BigInt(n-2))
+    end
 end
 
+function fib_len(n)
+    return fibmemBigInt25(n)|>string|>length
+end
 #
 # Using some heuristics to find the upper limit
 # (from my Picat solution).
@@ -750,6 +734,7 @@ function euler25b()
     i = 1;
     fibLen = 0;
     step = 43;
+    fibmemBigInt_dict25 = Dict{Int,BigInt}() # reset cache
     # Get the upper limit
     while fibLen < target && foundUpper == 0
         fibLen = fib_len(step*i);
@@ -771,7 +756,6 @@ function euler25b()
 
     return f
 end
-
 run_euler(euler25b)
 
 
@@ -805,7 +789,6 @@ function euler26b()
     end
     return maxD
 end
-
 run_euler(euler26b)
 
 # 0.04097529s
@@ -834,8 +817,6 @@ function euler27a()
 
     return(bestA * bestB)
 end
-
-
 run_euler(euler27a)
 
 
@@ -870,6 +851,7 @@ run_euler(euler29a)
 
 
 # 0.07169755ss
+
 function euler30a()
     t = 0
     m = 5
@@ -882,7 +864,6 @@ function euler30a()
     end
     return t
 end
-
 run_euler(euler30a)
 
 # DP approach
@@ -930,11 +911,11 @@ function euler32a()
     end
     return keys(prod_hash)|>sum
 end
-
-GC.gc(true)
-GC.gc(false)
+# GC.gc(true)
+# GC.gc(false)
 run_euler(euler32a)
-GC.gc(true)
+# GC.gc(true)
+
 
 # 0.00000079s
 function euler33a()
@@ -950,12 +931,10 @@ function euler33a()
 
     return 1/s;
 end
-
 run_euler(euler33a)
 
 
 function factorial_sum(n)
-    # return (split(string(n),"").|>i->factorial(parse(Int,i)))|>sum
     return (digits(n).|>i->factorial(i))|>sum
 
 end
@@ -971,10 +950,19 @@ run_euler(euler34c)
 
 
 # Rotate an array/string
+#=
 function rotate(n,i)
     s = string(n)
     ii = i+1
     return parse(Int,join(vcat(s[ii:end],s[1:ii-1])))
+end
+=#
+
+@inline function rotate(n,i)
+    s = digits(n)
+    ii = i+1
+    d = vcat(s[ii:end],s[1:ii-1])
+    return undigit(d)
 end
 
 #
@@ -997,26 +985,10 @@ function is_circular_prime(n, prime_set)
     return v in prime_set
 end
 
-# slightly slower than is_circular_prime
-function is_circular_prime2(n, prime_set)
-    s = split(string(n),"") # num_to_list(n)
-    len = length(s)
-    v = n
-    for i = 2:len
-        v = parse(Int,join(vcat([s[j] for j in i:len], [s[j] for j in 1:i-1]),""))
-        if !(v in prime_set)
-            return false;
-        end
-    end
-    return v in prime_set
-end
-
-# Faster if global
-prime_set = Set(primes(1_000_000))
 
 # 0.08751774s
 function euler35a()
-    # prime_set = Set(primes(1_000_000))
+    prime_set = Set(sieve(1_000_000))
     numCircularPrimes = 0
     for n in prime_set
         if is_circular_prime(n,prime_set)
@@ -1026,10 +998,7 @@ function euler35a()
 
     return numCircularPrimes
 end
-
-
 run_euler(euler35a)
-
 
 # 0.06355465s
 function euler36a()
@@ -1037,13 +1006,11 @@ function euler36a()
     for n in 1:999999
         if palindromic_number(n) &&
             palindromic_list(digits(n,base=2))
-            # palindromic_list(string(n,base=2))
             s += n;
         end
     end
     return s
 end
-
 run_euler(euler36a)
 
 
@@ -1063,7 +1030,6 @@ function euler38a()
     end
     return nothing
 end
-
 run_euler(euler38a)
 
 
@@ -1072,7 +1038,7 @@ run_euler(euler38a)
 function euler39b()
     n = 1000;
     # squares = Set((1:n).|>i->i*i) # slightly slower
-    squares = Dict((1:n).|>i->i*i=>1)
+    squares = Dict{Int,Int}((1:n).|>i->i*i=>1)
     valid = []
     for x in keys(squares)
         for y in keys(squares)
@@ -1082,19 +1048,15 @@ function euler39b()
         end
     end
 
-    counts = Dict()
+    counts = Dict{Int,Int}(0=>0)
     for x in valid
         c = floor(Int,sqrt(x[1]) + sqrt(x[2]) + sqrt(x[1]+x[2]))
         get!(counts,c,0)
         counts[c] += 1
    end
-
     # find max count
     return argmax(counts)
 end
-
-
-
 run_euler(euler39b)
 
 # 0.00941826s
@@ -1116,12 +1078,10 @@ function euler40a()
 
     return p
 end
-
 run_euler(euler40a)
 
 
 # 0.03632750s
-#=
 function euler41a()
     # Simplification:
     # n=9 is not possible since 1+2+3+4+5+6+7+8+9=45 is divisible by 3
@@ -1140,9 +1100,9 @@ function euler41a()
 
     return nothing
 end
-
 run_euler(euler41a)
-=#
+
+#=
 using Combinatorics
 function euler41b()
     # Simplification:
@@ -1165,12 +1125,13 @@ function euler41b()
     return nothing
 end
 run_euler(euler41b)
-
+=#
 
 
 # n'th triangle number
 function triangle_number(n)
-    return floor(Int,(n*(n-1)) / 2)
+    # return floor(Int,(n*(n-1)) / 2)
+    return (n*(n-1)) // 2
 end
 
 # get the score for a name
@@ -1180,6 +1141,7 @@ function get_score(name)
 end
 
 # 0.09908583s
+#=
 function euler42a()
     t20 = Set((1:20).|>i->triangle_number(i))
     words = split( (readline("euler42_words.txt").|>word->replace(word,"\""=>"")),",")
@@ -1189,7 +1151,17 @@ function euler42a()
 end
 
 run_euler(euler42a)
-
+=#
+function euler42b()
+    t20 = Set((1:20).|>i->triangle_number(i))
+    words = split( (readline("euler42_words.txt").|>word->replace(word,"\""=>"")),",")
+    s = 0 
+    for word in words
+        s += (get_score(word) in t20)
+    end 
+    return s
+end
+run_euler(euler42b)
 
 # Using next_permutation
 # 0.05306371s
@@ -1217,9 +1189,6 @@ function euler43b()
 
     return sum
 end
-
-
-
 run_euler(euler43b)
 
 # 0.04486643s
@@ -1250,8 +1219,6 @@ function euler44b()
     end
     return d
 end
-
-
 run_euler(euler44b)
 
 
@@ -1277,17 +1244,15 @@ function euler45a()
 
     return tt
 end
-
 run_euler(euler45a)
 
 
-
+# 0.00057412s
 # 0.00057412s
 function euler46a()
-    res = 0
-    gotit = false
+
     for i in 3:2:10000
-        if !isPrime(i) && !gotit
+        if !isPrime(i) 
             s = round(Int,sqrt(i/2))
             found = 0
             for j in 1:s
@@ -1299,15 +1264,13 @@ function euler46a()
                 end
             end
             if found == 0
-                res = i
-                gotit = true
-                break
+                return i
             end
         end
     end
-    return res
+    # return res
+    return nothing
 end
-
 run_euler(euler46a)
 
 
@@ -1384,7 +1347,7 @@ end
 # 0.10001170s
 function euler49a()
     diff = 3330
-    res = 0
+    res = [0]
     for n in 1001:2:9999
         if n != 1487 && isPrime(n)
             c = check_perms(n, diff)
@@ -1407,6 +1370,7 @@ run_euler(euler49a)
 function euler50a()
     n = 10000
     p = primes(n)
+    pp = 0
     for len in 550:-1:21
         for offset in 1:549
             pp = ((offset+1:offset+len).|>i->p[i])|>sum
@@ -1416,7 +1380,7 @@ function euler50a()
         end
     end
 
-    return nothing
+    return pp
 end
 
 run_euler(euler50a)

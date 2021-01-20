@@ -6,9 +6,10 @@
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
+using Distributed
 include("Euler.jl")
 total = 0
-@time for p in 1:50
+@time @sync @distributed for p in 1:50
     global total
     s = "euler$p.jl"
     if isfile(s)

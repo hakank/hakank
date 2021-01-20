@@ -30,9 +30,10 @@ include("Euler.jl")
 function euler30a()
     t = 0
     m = 5
-    for n in 10:6 * (9^5)
+    for n in 10:6*(9^5)
         # nn = (split(string(n),"").|>i->parse(Int,i)^m)|>sum
-        nn = (digits(n).|>i->i^m)|>sum
+        # nn = (digits(n).|>i->i^m)|>sum
+        nn = sum(digits(n).|>i->i^m)
         if n === nn
             t += n
         end
@@ -45,8 +46,15 @@ function euler30b()
     m = 5;
     # s = (10:6*9^5).|>n-> n*(n==(split(string(n),"").|>i->parse(Int,i)^m)|>sum)
     s = (10:6*9^5).|>n-> n*(n==(digits(n).|>i->i^m)|>sum)
-    return s|>sum
+    return s # |>sum
 end
+
+function euler30c()
+    m = 5;
+    sum([n*(n==(digits(n).|>i->i^m)) for n in 10:6*9^5])
+end
+
 
 run_euler(euler30a)
 # run_euler(euler30b)
+# run_euler(euler30c)

@@ -29,10 +29,9 @@ include("Euler.jl")
 
 # 0.00057412s
 function euler46a()
-    res = 0
-    gotit = false
+
     for i in 3:2:10000
-        if !isPrime(i) && !gotit
+        if !isPrime(i) 
             s = round(Int,sqrt(i/2))
             found = 0
             for j in 1:s
@@ -44,13 +43,12 @@ function euler46a()
                 end
             end
             if found == 0
-                res = i
-                gotit = true
-                break
+                return i
             end
         end
     end
-    return res
+    # return res
+    return nothing
 end
 
 run_euler(euler46a)

@@ -37,17 +37,18 @@ include("Euler.jl")
 # This is basically factors + collect together so it's not general
 # enough for placing in Euler.jl
 #
-function factors_map(n)
-    if n == 1
-        return Dict(1=>1)
+function factors_map(n::Int64)
+    if n == one(n)
+        return Dict{Int64,Int64}(1=>1)
     end
-    m = Dict();
-    while n % 2 === 0
+    m = Dict{Int64,Int64}();
+    while n % 2 === zero(n)
         if !haskey(m,2)
-            m[2] = 0
+            m[2] = zero(0)
         end
-        m[2] += 1;
-        n = round(Int, n/2);
+        m[2] += one(n);
+        # n = round(Int, n/2);
+        n = n//2
     end
     t = 3
     while n > 1 && t < ceil(Int,sqrt(n))
@@ -56,7 +57,7 @@ function factors_map(n)
                 m[t] = 0
             end
             m[t] += 1
-            n /= t
+            n //= t
         end
         t += 2
     end

@@ -24,10 +24,9 @@ include("Euler.jl")
 # 0.06355465s
 function euler36a()
     s = 0
-    for n in 1:999999
+    for n in 1:999_999
         if palindromic_number(n) &&
             palindromic_list(digits(n,base=2))
-            # palindromic_list(string(n,base=2))
             s += n;
         end
     end
@@ -42,5 +41,18 @@ function euler36b()
         )|>sum
 end
 
+function euler36c()
+    s = 0
+    for n in 1:999_999
+        if palindromic_list(digits(n,base=10)) &&
+            palindromic_list(digits(n,base=2))
+            s += n;
+        end
+    end
+    return s
+end
+
+
 run_euler(euler36a)
 # run_euler(euler36b)
+# run_euler(euler36a)

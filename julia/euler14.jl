@@ -44,6 +44,7 @@ end
 function hailstone(n)
     if n % 2 == 0
         return round(Int,n / 2)
+        # return n // 2
     else
         return 3*n+1;
     end
@@ -108,7 +109,7 @@ end
 # 0.04143852s
 function euler14c()
     limit = 1_000_000
-    hash = zeros(limit)
+    hash = zeros(Int64,limit)
     maxN = 0
     maxLen = 0
     for n = 2:1_000_000

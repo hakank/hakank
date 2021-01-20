@@ -23,7 +23,7 @@ end
 fibmemBigInt_dict = Dict{Int,BigInt}()
 function fibmemBigInt(n)
     get!(fibmemBigInt_dict, n) do
-        n < 3 ? 1 : fibmemBigInt(BigInt(n-1)) + fibmemBigInt(BigInt(n-2))
+        n < BigInt(3) ? BigInt(1) : fibmemBigInt(BigInt(n-1)) + fibmemBigInt(BigInt(n-2))
     end
 end
 
@@ -40,7 +40,7 @@ function isPrime(n::Int)
         return false
     end
 
-    m = 1+ceil(Int,sqrt(n))
+    m = 1+ceil(Int64,sqrt(n))
     for i in 3:2:m
         if n % i === 0
             return false;
@@ -70,15 +70,16 @@ end
 
 function prime_divisors(n::Int)
     if n === 1
-        return []
+        return Int64[]
     end
-    divisors = []
+    divisors = Int64[]
     while (n > 1)
         m = round(Int,ceil(sqrt(n)))
         for i in 2:m
             if n % i == 0 && isPrime(i)
                 push!(divisors,i)
-                n /= i
+                # n /= i
+                n = round(Int64,n / i)
                 continue
             end
         end
@@ -87,7 +88,7 @@ function prime_divisors(n::Int)
 end
 
 # Find the primes <= n
-function sieve(n::Int)
+@inline function sieve(n::Int64)
     a = Array(range(1,length=n))
     a[1] = 0;
     a[2] = 2;
@@ -102,35 +103,63 @@ end
 
 
 # Prime factors of n
-function factors(n::Int)
+function factors(n::Int64)
+    if n == 1
+        return Int64[1]
+    end
+    f = Int64[]
+    while mod(n,2) === 0
+        push!(f,2)
+        # n /= 2
+        n = round(Int64,n / 2)
+    end
+    t = 3
+    while n > 1 && t < ceil(Int64,sqrt(n))
+        while mod(n,t) === 0
+            push!(f,t)
+            n = round(Int64,n / t)
+        end
+        t += 2
+    end
+    if n > 1
+        push!(f,round(Int64,n))
+    end
+    return f
+end
+
+# BigInt version
+function factors(n::BigInt)
     if n == 1
         return [1]
     end
     f = []
-    while n % 2 == 0
+    while mod(n,2) === 0
         push!(f,2)
         n /= 2
+        
     end
     t = 3
-    while n > 1 && t < ceil(sqrt(n))
-        while n % t == 0
+    while n > 1 && t < ceil(BigInt,sqrt(n))
+        while mod(n,t) === 0
             push!(f,t)
             n /= t
         end
         t += 2
     end
     if n > 1
-        push!(f,round(Int,n))
+        push!(f,n)
     end
     return f
 end
 
 
+
 # Is n a palindromic number?
-function palindromic_number(n::Int)
+function palindromic_number(n::Int64)
+    # palindromic_list(string(n)) 
     s = string(n)
     len = length(s)
-    for i in 1:ceil(Int,len/2)
+    for i in 1:ceil(Int64,len/2)
         if s[i] != s[len-i+1]
             return false
         end
@@ -140,7 +169,8 @@ end
 
 # is the list a palindrom?
 function palindromic_list(s)
-    # return s == reverse(s)
+    return s == reverse(s)
+    #=
     len = length(s)
     for i in 1:ceil(Int,len/2)
         if s[i] != s[len-i+1]
@@ -148,6 +178,7 @@ function palindromic_list(s)
         end
     end
     return true
+    =#
 end
 
 
@@ -173,7 +204,7 @@ end
 
 # All divisors of n, including 1 (but not n)
 function all_divisors3(n::Int)
-    divisors = [1]
+    divisors = Int64[1]
     m = round(Int,n / 2)
     for i in 2:m
         if n % i == 0
@@ -232,7 +263,7 @@ function all_permutations(s)
     perms = []
     push!(perms,s)
     ss = copy(s)
-    p = next_permutation(copy(s));;
+    p = next_permutation(copy(s));
     push!(perms,p)
     while true
         p = next_permutation(p)
@@ -283,4 +314,27 @@ end
 # check is s is a pandigital number  1..9
 function is_pandigital(s)
     return length(s) === 9 && !occursin("0",s) && length(Set(s)) == 9
+end
+
+#
+# undigit(L)
+# converts a list of digits to a number
+# Example: 
+#    undigit([1,2,3,4]) -> 1234
+#
+# 31.972 ns (1 allocation: 128 bytes)
+function undigit(d; base=10)
+    s = zero(eltype(d))
+    mult = length(d)-1::Int64
+    for val in d
+        s += val * base^mult
+        mult -= 1
+    end
+    return s
+end
+
+# Vectorized variant
+# Slower: 64.222 ns (2 allocations: 256 bytes)
+function undigit2(d; base=10)
+    sum(d .* base .^(length(d)-1:-1:0))
 end
