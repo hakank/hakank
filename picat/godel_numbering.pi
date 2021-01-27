@@ -1,0 +1,211 @@
+/* 
+
+  Gödel numbering in Picat.
+
+  https://programmingpraxis.com/2015/01/16/gdel-numbering/
+  """
+  
+  Gödel Numbering
+
+  Gödel numbering is a system that assigns a natural number to each symbol 
+  and expression in a logical system, invented in 1931 by Kurt Gödel for 
+  the proofs of his incompleteness theorems. Consider the logical system 
+  where symbols are letters and expressions are strings; for instance, the 
+  string PRAXIS consists of six symbols P, R, A, X, I, and S. Gödel numbering 
+  would assign numbers to the letters, say A=1 … Z=26, then assign each 
+  letter as the exponent of the next prime, so PRAXIS would be numbered 
+     2^16 × 3^18 × 5^1 × 7^24 × 11^9 × 13^19 =
+
+   83838469305478699942290773046821079668485703984645720358854000640
+
+  The process is reversible; factor the Gödel number and decode the exponents.
+
+  Your task is to write functions that encode strings as Gödel numbers and 
+  decode Gödel numbers as strings. When you are finished, you are welcome 
+  to read or run a suggested solution, or to post your own solution or 
+  discuss the exercise in the comments below.
+  """
+
+  Also see https://en.wikipedia.org/wiki/G%C3%B6del_numbering
+
+  The length of Gödeling this 100 (random) string is 3239 digits:
+  "roxc gjynsfqlhjiflyejbbmpzhlaysrlojajsyxjsmuzkctkpxugzvkxrkmobcpeaposb rta hlr vwxdbvzagpkstajhukwhr"
+  
+
+  My Gödel number is 178650310489881921127377653212500000000
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go ?=>
+  % This is the example from 
+  % https://programmingpraxis.com/2015/01/16/gdel-numbering/
+  Godel = 83838469305478699942290773046821079668485703984645720358854000640,
+  println(godel=Godel),
+  String = ungodel(Godel),
+  println(string=String),
+  println(check=godel(String)),
+  nl,
+  String2 = "picat is fun",
+
+  Godel2 = godel(String2),
+  println(Godel2),
+  println(check=ungodel(Godel2)),
+  nl,
+  check_string("håkan kjellerstrand"),
+  nl,
+  println("My Gödel number"=godel("hakank")),
+  nl.
+go => true.
+
+%
+% Check some random strings
+%
+go2 ?=> 
+  foreach(I in 1..10)
+    println(i=(I*10)),
+    RandomString = random_string(10*I),
+    time(check_string(RandomString)),
+    nl
+  end,
+  nl.
+go2 => true.
+
+% A larger string
+go3 ?=> 
+  N = 200,
+  printf("Testing a %d length random string:\n",N),
+  RandomString = random_string(N),
+  time(check_string(RandomString,false)),
+  nl.
+go3 => true.
+
+%
+% Generate a random string (given the characters in Alpha)
+%
+random_string(N) = String => 
+  _ = random2(),
+  % Alpha = "abcdefghijklmnopqrstuvwxyz ",
+  Alpha = "abcdefghijklmnopqrstuvwxyzåäö_0123456789 !", % Swedish chars, numbers, etc
+  Len = Alpha.len,
+  String = [Alpha[1+random() mod Len] : _ in 1..N].
+
+%
+% gödeling and ungödeling a number
+%
+check_string(String) => 
+   check_string(String,true).
+check_string(String,Print) => 
+  println(string=String),
+  godel(String) = Godel,
+  if Print then
+    println(godel=Godel)
+  end,
+  println(num_digits=Godel.to_string.len),
+  println(ungodel=ungodel(Godel)),
+  nl.
+
+% 
+% Gödeling a string
+%
+godel(String) = Godel => 
+  godel_map(_,C2I),
+  Len = String.len,
+  once(Primes = nprimes(Len)),
+  Godel = prod([Primes[I]**C2I.get(String[I]) : I in 1..Len]).
+
+
+%
+% Ungödeling a Gödel number
+%
+ungodel(Godel) = String =>
+  godel_map(I2C,_),
+  Code = factors(Godel),
+  Factors = new_map(),
+  foreach(C in Code)
+    Factors.put(C, Factors.get(C,0)+1)
+  end,
+  String = [I2C.get(C) : _=C in Factors.to_list.sort].
+
+%
+% The Char -> Integer and Integer -> Char maps
+%
+godel_map(I2C,C2I) =>
+  Alpha = "abcdefghijklmnopqrstuvwxyzåäö_0123456789 !",
+  Zip = zip(Alpha,1..Alpha.len),
+  I2C = new_map([C=I : {I,C} in Zip]),
+  C2I = new_map([I=C : {I,C} in Zip]).
+
+%
+% Returns the first n primes
+%
+nprimes(N) = Primes =>
+  P = 3,
+  Primes1 = [2,3],
+  foreach(_ in 3..N)
+    next_prime(P,Next),
+    Primes1 := Primes1 ++ [Next],
+    P := Next
+  end,
+  Primes = Primes1.
+
+
+alldivisorsM(N,Div) = [Divisors,NewN] =>
+   M = N,
+   Divisors1 = [],
+   while (M mod Div == 0) 
+      Divisors1 := Divisors1 ++ [Div],
+      M := M div Div
+   end,
+   NewN := M,
+   Divisors = Divisors1.
+
+
+% factors(N) = [N], is_prime4(N) => true.
+% Note: this don't work in alpha-3.0
+% factors(N) = [N], is_prime3(N) => true.
+factors(N) = Factors =>
+     M = N,
+     Factors1 = [],
+     while (M mod 2 == 0) 
+         Factors1 := Factors1 ++ [2],  
+         M := M div 2 
+     end,
+     T = 3,
+     % while (M > 1, T < 1+(sqrt(M))) 
+     % Note: sqrt(M) give float error on larger numbers. 
+     % M**(1/2) manage much better...
+     while (M > 1, T < 1+(M**(1/2)))
+        if M mod T == 0 then
+           [Divisors, NewM] = alldivisorsM(M, T),
+           Factors1 := Factors1 ++ Divisors,
+           M := NewM
+        end,
+        T := T + 2
+        % next_prime(T, T2),
+        % T := T2
+     end,
+     if M > 1 then Factors1 := Factors1 ++ [M] end,
+     Factors = Factors1.
+
+
+is_prime3(2) => true.
+is_prime3(3) => true.
+is_prime3(P) => P > 3, P mod 2 != 0, not has_factor3(P,3).  
+
+has_factor3(N,L) ?=> N mod L == 0.
+has_factor3(N,L) ?=> L * L < N, L2 = L + 2, has_factor3(N,L2).
+
+next_prime(2,3) => true.
+next_prime(Num, P) => Num2 = Num + 2, next_prime2(Num2, P).
+next_prime2(Num, P) ?=> is_prime3(Num), P = Num.
+next_prime2(Num, P) =>
+        Num2 = Num+2,
+        next_prime2(Num2,P).

@@ -1,0 +1,133 @@
+/* 
+
+  Task scheduling in Picat.
+
+  Port of Markus Triska's Prolog code: https://github.com/triska/clpz/blob/master/tasks.pl
+  """
+  Task scheduling example.
+  Written May 2016 by Markus Triska (triska@metalevel.at)
+  Public domain code.
+
+  The cumulative/2 constraint is used to express non-overlapping
+  tasks with a resource consumption limit. The min/1 labeling option
+  is used to find schedules that minimize the total duration.
+  """
+
+  Note: Picat don't have cumulative/2 so it must be converted to Picat's cumulative/4.
+
+  Picat> tasks(Tasks, Starts, End), labeling($[min(End)], Starts)
+  Tasks = [task(0,3,3,1,1),task(0,4,4,1,2),task(4,2,6,1,3),task(3,3,6,1,4)]
+  Starts = [0,0,4,3]
+  End = 6 ?;
+  no
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import v3_utils.
+import cp.
+
+
+main => go.
+
+
+go ?=>
+  tasks(Tasks, Starts, End),
+  labeling($[ff,split,min(End)], Starts),
+  % solve($[ff,split], Starts),  
+  println(starts=Starts),
+  println(end=End),
+  println(tasks=Tasks),
+  
+  nl.
+
+go => true.
+
+
+% Aliases
+label(Vs) :- solve(Vs).
+labeling(Opt,Vs) :- solve(Opt,Vs).
+
+/*
+  Convert SWI-Prolog's cumulative/2 to Picat's cumulative/4.
+
+  From SWI-Prolog's help(cumulative).
+  """
+  cumulative(+Tasks, +Options)
+    Schedule with a limited resource. Tasks is a list of tasks, each of the form  
+      task(S_i, D_i, E_i, C_i, T_i). 
+    - S_i denotes the start time, 
+    - D_i the positive duration, 
+    - E_i the end time, 
+    - C_i the non-negative resource consumption, and 
+    - T_i the task identifier. 
+    Each of  these arguments must be a finite domain variable with bounded domain,  or an  integer. 
+    The  constraint holds iff at each time slot during the start and end of each task, 
+    the total  resource consumption of all tasks running at that time does not exceed the  
+    global resource  limit. 
+
+    Options  is a list of options. Currently, the only supported option is:
+    - limit(L)
+        The integer L is the global resource limit. Default is 1.
+   """
+*/
+cumulative(Tasks,LimitL) :-
+  % Add the task id
+  foreach(I in 1..Tasks.len)
+     $task(_,_,_,_,I) = Tasks[I]
+  end,
+  Start    = [T[1] : T in Tasks],
+  Duration = [T[2] : T in Tasks],
+  % Picat's cumulative/4 don't include EndTime
+  % but we have to give it a proper domain since
+  % it's included in task/5.
+  foreach(T in Tasks)
+     T[3] #= T[1] + T[2]
+  end,
+  EndTime = [T[3] : T in Tasks],  
+  EndTime :: 0..fd_max(Start[1])+ max(Duration),
+  Resource = [T[4] : T in Tasks],
+  LimitL = $[limit(Limit)],
+  cumulative(Start,Duration,Resource,Limit).
+  
+
+%
+% From https://github.com/triska/clpz/blob/master/tasks.pl
+%
+
+tasks(Tasks, Starts, End) :-
+        Tasks = $[task(_,3,_,1,_),
+                  task(_,4,_,1,_),
+                  task(_,2,_,1,_),
+                  task(_,3,_,1,_)],
+        maplist($task_start, Tasks, Starts), % hakank
+        Starts :: 0..100, % hakank
+        cumulative(Tasks, $[limit(2)]), % hakank
+        foldl(max_end, Tasks, 0, End).
+
+task_start(task(Start,_,_,_,_), Start).
+
+max_end(task(_,_,End,_,_), E0, E) :-
+        E #= max(E0, End).
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   foldl/4
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+foldl(Goal_3, Ls, A0, A) :-
+        foldl_(Ls, Goal_3, A0, A).
+
+foldl_([], _, A, A).
+foldl_([L|Ls], G_3, A0, A) :-
+        call(G_3, L, A0, A1),
+        foldl_(Ls, G_3, A1, A).
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   ?- tasks(Tasks, Starts, End), labeling([min(End)], Starts).
+   %@ Tasks = [task(0, 3, 3, 1, _G32), task(0, 4, 4, 1, _G41), task(4, 2, 6, 1, _G50), task(3, 3, 6, 1, _G59)],
+   %@ Starts = [0, 0, 4, 3],
+   %@ End = 6 .
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

@@ -1,0 +1,176 @@
+/* 
+
+  Magic Square in Picat.
+
+  Port of Markus Triska's Magic Square program from 
+  https://github.com/triska/clpz/blob/master/magic_square.pl
+  """
+  Magic Square CLP(FD) formulation.
+  Written 2015 by Markus Triska (triska@metalevel.at)
+  Public domain code.
+  """
+  The complete code is shown below (my changes are marked with "hakank").
+
+
+  Note: I have "aliased" label/1 to solve/1.
+
+  Picat> cl(magic_square_triska)
+  Picat> magic_square(N, S), append(S, Vs), label(Vs), maplist(portray_clause, S)
+  N = 0
+  S = []
+  Vs = [] ?;
+  [1].
+  N = 1
+  S = [[1]]
+  Vs = [1] ?;
+  [2,7,6].
+  [9,5,1].
+  [4,3,8].
+  N = 3
+  S = [[2,7,6],[9,5,1],[4,3,8]]
+  Vs = [2,7,6,9,5,1,4,3,8] ?;
+
+
+  Picat>  magic_square(4, S), append(S, Vs), label(Vs), maplist(portray_clause, S).
+  [1,2,15,16].
+  [12,14,3,5].
+  [13,7,10,4].
+  [8,11,6,9].
+  S = [[1,2,15,16],[12,14,3,5],[13,7,10,4],[8,11,6,9]]
+  Vs = [1,2,15,16,12,14,3,5,13,7,10,4,8,11,6,9] ?
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import v3_utils.
+import util.
+import cp.
+
+
+main => go.
+
+% All solutions for N in 0..
+go ?=>
+  % member(N,1..10),
+  magic_square(_N, S),
+  append(S, Vs),
+  label(Vs),
+  maplist(portray_clause, S),
+  nl,
+  fail,
+  nl.
+
+go => true.
+
+% First solution for N=0..11
+% It solves N=0..11 in 0.024s.
+% 
+go2 ?=>
+  foreach(N in 0..11)
+    println(n=N),
+    if time(do_magic_square(N)) then
+      true
+    end,
+    nl
+  end,
+  nl.
+go2 => true.
+
+
+% Check a harder instance (12)
+go3 ?=>
+  N = 12,
+  println(n=N),
+  time(do_magic_square(N)),
+  nl.
+go3 => true.
+
+
+do_magic_square(N) :-
+  magic_square(N, S),
+  append(S, Vs),
+  label([ffd,updown],Vs), % hakank
+  maplist(portray_clause, S),
+  nl.
+
+% Aliases
+label(Vs) :- solve(Vs).
+label(Opt,Vs) :- solve(Opt,Vs).
+
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   Magic Square CLP(FD) formulation.
+   Written 2015 by Markus Triska (triska@metalevel.at)
+   Public domain code.
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+% :- use_module(clpz).
+% :- use_module(library(lists)).
+
+magic_square(N, Square) :-
+        length(Square, N),
+        maplist($same_length(Square), Square),
+        append(Square, Vs),
+        Sq = N**2,
+        Vs :: 1..Sq, % hakank
+        all_different(Vs),
+        Sum #= N*(Sq + 1) // 2,
+        maplist($sum_eq(Sum), Square),
+        transpose(Square, TSquare),
+        maplist($sum_eq(Sum), TSquare),
+        square_diagonal(Square, Ds),
+        sum_eq(Sum, Ds),
+        reverse(Square, RSquare),
+        square_diagonal(RSquare, RDs),
+        sum_eq(Sum, RDs).
+
+sum_eq(Sum, List) :- Sum #= sum(List). % hakank
+
+square_diagonal(Rows, Ds) :- foldl(diagonal, Rows, Ds, [], _).
+
+diagonal(Row, D, Prefix0, Prefix) :-
+        append(Prefix0, [D|_], Row),
+        same_length([_|Prefix0], Prefix).
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   foldl/5
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+foldl(Goal_4, Ks, Ls, A0, A) :-
+        foldl_(Ks, Ls, Goal_4, A0, A).
+
+foldl_([], [], _, A, A).
+foldl_([K|Ks], [L|Ls], G_4, A0, A) :-
+        call(G_4, K, L, A0, A1),
+        foldl_(Ks, Ls, G_4, A1, A).
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   Examples:
+
+   ?- magic_square(N, S), append(S, Vs), label(Vs), maplist(portray_clause, S).
+   %@ N = 0,
+   %@ S = Vs, Vs = [] ;
+   %@ [1].
+   %@ N = 1,
+   %@ S = [[1]],
+   %@ Vs = [1] ;
+   %@ [2,7,6].
+   %@ [9,5,1].
+   %@ [4,3,8].
+   %@ N = 3,
+   %@ S = [[2, 7, 6], [9, 5, 1], [4, 3, 8]],
+   %@ Vs = [2, 7, 6, 9, 5, 1, 4, 3, 8] .
+
+   ?- magic_square(4, S), append(S, Vs), label(Vs), maplist(portray_clause, S).
+   %@ [1,2,15,16].
+   %@ [12,14,3,5].
+   %@ [13,7,10,4].
+   %@ [8,11,6,9].
+   %@ S = [[1, 2, 15, 16], [12, 14, 3, 5], [13, 7, 10, 4], [8, 11, 6, 9]],
+   %@ Vs = [1, 2, 15, 16, 12, 14, 3, 5, 13|...] .
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+

@@ -7,6 +7,10 @@
   - same_length/2
   - append/2 (appending list of lists
   - phrase/2
+  - and several B-Prolog predicates from Picat's bp module.
+
+  In general, it's predicates that's in (ISO or SWI) Prolog but not in Picat.
+  Many are directly from Picat's bp module.
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -16,12 +20,10 @@
 module v3_utils.
 
 import util.
-% import cp.
 
 %
 % maplist/2, maplist/3, maplist/4, maplist/5.
 %
-
 
 %
 % maplist(Goal, List).
@@ -39,7 +41,26 @@ import util.
 % maplist(Goal, List1, List2, List3, List4, List5)
 % As maplist/2 on five elements from five lists
 %
+% Picat> maplist(println,1..4) 
+% 1
+% 2
+% 3
+% 4
 %
+% For maplist/n (n=3..) etc, the predicate used must be have an
+% arity of n-1.
+% Picat> cl()
+% lower(X,Y) :- Y = to_lowercase(X).
+% <Ctrl-D>
+% Picat> W = ["ADAM","EVE"],maplist(lower,W, L)        
+% W = [['A','D','A','M'],['E','V','E']]
+% L = [[a,d,a,m],[e,v,e]]
+%
+% For other examples see for example
+%  - sudoku_v3.pi
+%  - abc_problem_v3.pi
+%  - nqueens_markus_triska_v3.pi
+% 
 maplist(Goal, List) :-
     maplist_(List, Goal).
 
@@ -101,30 +122,74 @@ maplist_([Elem1|Tail1],
     maplist_(Tail1, Tail2, Tail3, Tail4, Tail5, Goal).
 
 
+%
 % From SWI Prolog
+%
+% Picat> same_length(1..3,L)
+% L = [_ff50,_ff60,_ff70]
+% Picat> same_length(L,1..3) 
+% L = [_ff98,_ffa8,_ffb8] ?;
+% Picat> same_length([a,b,c],1..3)
+% yes
+%
 same_length([], []).
 same_length([_|T1], [_|T2]) :-
     same_length(T1, T2).
 
-% Append/2 (list of lists)
+%
+% append/2 (list of lists)
+%
 append(ListOfLists, List) :-
     % must_be(list, ListOfLists),
     append_(ListOfLists, List).
-
 append_([], []).
 append_([L|Ls], As) :-
     append(L, Ws, As),
     append_(Ls, Ws).
 
-
+% B-Prolog
+% """
+% length(List,Length): The length of list List is Length. (not in ISO).
+% """
+% Picat> member(Len,1..3),length(L,Len)
+% Len = 1
+% L = [_11538] ?;
+% Len = 2
+% L = [_11538,_11548] ?;
+% Len = 3
+% L = [_11538,_11548,_11558] ?;
+/*
 length(L,Len), var(L) =>
    L = new_list(Len).
 length(L,Len), var(Len) =>
    Len = length(L).
+*/
+length(L,Len) :-
+  bp.length(L,Len).
 
+% succ(X,Y)
+% Y is the successor of X
+% X is the predecessor of Y
+%
+% Picat> succ(1,Y)
+% Y = 2
+% Picat> succ(X,1) 
+% X = 0
+%
 succ(X,Y), var(Y) => Y = X+1.
 succ(X,Y), var(X) => X = Y-1.
 
+%
+% number_string(N,S)
+% N is the number representation of the digits in S
+%
+% Picat> number_string(N,"1234")
+% N = 1234
+% Picat> number_string(1234,S)     
+% S = ['1','2','3','4']
+% 
+% cf number_chars/2 below
+% 
 number_string(N,S), var(S) =>
    S = to_string(N).
 number_string(N,S), var(N) =>
@@ -146,12 +211,690 @@ phrase(P,P2,L) :-
 
 
 %
-% reverse/2
+% B-Prolog
+% """
+% compare(Op,Term1,Term2): Op is the result of comparing the terms Term1
+% and Term2.
+% """
+% Picat> bp.compare(>,1,1) 
+% no
+% Picat> bp.compare(<,1,10) 
+% yes
+compare(Op,Term1,Term2) :-
+  bp.compare(Op,Term1,Term2).
+
+%
+% B-Prolog:
+% """
+% reverse(L1,L2): This is true when L2 is the reverse of L1. (not in ISO).
+% """
+% Picat> reverse([1,2,3,4],L)
+% L = [4,3,2,1]
 %
 reverse(L,Rev) :-
   bp.reverse(L,Rev).
 
+%
+% B-Prolog
+% """
+% atom chars(Atom,Chars): Chars is the list of characters of Atom.
+% """
+% Picat has
+%    S = atom_chars(A)
+% but not the reverse, i.e. converting a string to an atom
+% 
+% Picat> atom_chars(atom,S)
+% S = [a,t,o,m]
+%
+% Picat> atom_chars(A,"picat")
+% A = picat
+% 
+atom_chars(A,S) :-
+  bp.atom_chars(A,S).
 
-number_chars(N,C) :-
-  bp.number_chars(N,C).
+%
+% B-Prolog
+% """
+% atom codes(Atom,Codes): Codes is the list of numeric codes of the charac-
+% ters of Atom.
+% """
+% Picat> atom_codes(atom,Codes)
+% Codes = [97,116,111,109]
+% atom_codes(Atom,[112,105,99,97,116])
+% Atom = picat
+%
+atom_codes(Atom,Codes) :-
+  bp.atom_codes(Atom,Codes).
+
+%
+% B-Prolog
+% """
+% atom concat(Atom1,Atom2,Atom3): The concatenation of Atom1 and Atom2
+% is equal to Atom3. Either Atom1 and Atom2 are atoms, or Atom3 is an atom.
+% """
+% Picat> bp.atom_concat(atom1,atom2,Atom3)
+% Atom3 = atom1atom2
+%
+% Picat> bp.atom_concat(Atom1,Atom2,abc)
+% Atom1 = ''
+% Atom2 = abc ?;
+% Atom1 = a
+% Atom2 = bc ?;
+% Atom1 = ab
+% Atom2 = c ?;
+% Atom1 = abc
+% Atom2 = '' ?;
+% no
+% 
+atom_concat(Atom1,Atom2,Atom3) :-
+  bp.atom_concat(Atom1,Atom2,Atom3).
+
+% B-Prolog
+% """
+% atom length(Atom,Length): The length, in characters, of Atom is Length.
+% """
+% Picat> bp.atom_length(picat,Len)
+% Len = 5
+%
+atom_length(Atom,Length) :-
+  bp.atom_length(Atom,Length).
+
+
+%
+% B-Prolog
+% """
+% char code(Char,Code): The numeric code of the character Char is Code.
+% """
+% Picat> bp.char_code('C',X)
+% X = 67
+% 
+% Picat> bp.char_code(C,97) 
+% C = a
+%
+char_code(Char,Code) :-
+  bp.char_code(Char,Code).
+
+
+%
+% B-Prolog
+% """
+% number_chars(Num,Chars): Chars is the list of digits (including ’.’) of the
+% number Num.
+% """
+% Picat> number_chars(12345678,C)
+% C = ['1','2','3','4','5','6','7','8']
+% Picat> number_chars(N,['1','2','3','4','5','6','7','8']
+% N = 12345678
+% In Picat a string of digits is a list of digit characters
+% Picat> number_chars(N,"123456")                  
+% N = 123456
+%
+number_chars(Num,Chars) :-
+  bp.number_chars(Num,Chars).
+
+%
+% B-Prolog
+% """
+% number codes(Num,Codes): Codes is the list of numeric codes of the digits
+% of the number Num.
+% """
+% Picat> number_codes(12345678,C) 
+% C = [49,50,51,52,53,54,55,56]
+% Picat> number_codes(N,[55,56]) 
+% N = 78
+% 
+number_codes(Num,Codes) :-
+  bp.number_codes(Num,Codes).
+
+
+%
+% B-Prolog
+% """
+% sub atom(Atom,PreLen,Len,PostLen,Sub): The atom Atom is divided into
+% three parts, Pre, Sub, and Post. The three parts have the lengths PreLen,
+% Len, and PostLen, respectively.
+% """
+% Picat> sub_atom(atom,PreLen,Len,PostLen,Sub)
+% PreLen = 0
+% Len = 0
+% PostLen = 4
+% Sub = '' ?;
+% PreLen = 0
+% Len = 1
+% PostLen = 3
+% Sub = a ?;
+% PreLen = 0
+% Len = 2
+% PostLen = 2
+% Sub = at ?
+% ...
+% Picat> sub_atom(atom,PreLen,Len,PostLen,tom)
+% PreLen = 1
+% Len = 3
+% PostLen = 0 ?;
+%
+% Picat> sub_atom(atom,PreLen,3,PostLen,Sub)  
+% PreLen = 0
+% PostLen = 1
+% Sub = ato ?;
+% PreLen = 1
+% PostLen = 0
+% Sub = tom ?;
+%
+sub_atom(Atom,PreLen,Len,PostLen,Sub) :-
+  bp.sub_atom(Atom,PreLen,Len,PostLen,Sub).
+
+%
+% B-Prolog
+% """
+% name(Const,CharList): The name of the atom or the number Const is the
+% string CharList. (not in ISO).
+% """
+% Picat> name(atom,L)
+% L = [97,116,111,109]
+% Picat> bp.name(A,[112,105,99,97,116])
+% A = picat
+% Picat> bp.name(123,L)                   
+% L = [49,50,51]
+% 
+name(Const,CharList) :-
+  bp.name(Const,CharList).
+
+
+%
+% B-Prolog
+% """
+% term2atom(Term,Atom): Atom is an atom that encodes Term. Example:
+% ?- term2atom(f(X,Y,X),S),writeq(S),nl.
+% ’f(_9250158,_9250188,_9250158)’
+% S=f(_9250158,_9250188,_9250158)
+% (not in ISO).
+% """
+% Picat> term2atom($f(X,Y,X),S)   
+% S = 'f(_7f2b1147ce98,_7f2b1147cea0,_7f2b1147ce98)'
+% 
+term2atom(Term,Atom) :-
+  bp.term2atom(Term,Atom).
+
+
+%
+% B-Prolog
+% """
+% term2string(Term,String): This is equivalent to:
+%    term2atom(Term,Atom),atom_codes(Atom,String)
+% (not in ISO).
+% """
+% Picat> bp.term2string($f(X),S)
+% S = [102,40,95,55,102,50,98,49,49,52,55,98,56,101,48,41]
+% Picat> bp.term2string($f(X),S),name(A,S)
+% S = [102,40,95,55,102,50,98,49,49,52,55,100,50,56,56,41]
+% A = 'f(_7f2b1147d288)'
+%Picat> term2atom(abc,Atom),atom_codes(Atom,String) 
+% Atom = abc
+% String = [97,98,99]
+% 
+term2string(Term,String) :-
+  bp.term2string(Term,String).
+
+
+%
+% B-Prolog
+% """
+% write string(String): Write the list of codes, String, as a readable string.
+% For example, write string([97,98,99]) outputs "abc". (not in ISO).
+% """
+% Picat> write_string([97,98,99])
+% "abc"
+% 
+write_string(String) :-
+  bp.write_string(String).
+
+
+%
+% B-Prolog
+% """
+% The predicate format(Format,L), which mimics the printf function in C, prints
+% the elements in the list L under the control of Format, which is a string of charac-
+% ters. There are two kinds of characters in Format: normal characters are output
+% verbatim, and control characters format the elements in L. Control characters all
+% start with ~. For example,
+%    format("~thello~t world~t~a~t~4c~t~4d~t~7f",[atom,0’x,123,12.3])
+% gives the following output:
+%       hello    world     atom xxxx      123 12.3000000
+% 
+% The control characters ~a, ~4c,~4d, and ~7f control the output of the atom
+% ....
+% 
+% The following control characters are supported:
+% • ~~: Prints ~.
+% • ~N|: Specifies a new position for the next argument.
+% • ~N+: This is the same as ~N|.
+% • ~a: Prints the atom without quoting. An exception is raised if the argument
+% is not an atom.
+% • ~Nc: The argument must be a character code. Outputs the argument N
+% times. Outputs the argument once if N is missing.
+% • ~Nf,~Ne, ~Ng: The argument must be a number. The C function printf is
+% called to print the argument with the format "%.Nf", "%.Ne", and "%.Ng",
+% respectively. ".N" does not occur in the format for the C function if N is not
+% specified in the Prolog format.
+% • ~Nd: The argument must be a number. N specifies the width of the argument.
+% If the argument occupies more than N spaces, then enough spaces are filled
+% to the left of the number.
+% • ~Nr: The argument must be an integer. Prints the integer as a base N integer,
+% where 2 ≤ N ≤ 36. The letters ‘a-z’ denote digits larger than 9.
+% • ~NR: The argument must be an integer. Prints the integer as a base N integer,
+% where 2 ≤ N ≤ 36. The letters ‘A-Z’ denote digits larger than 9.
+% • ~Ns: The argument must be a list of character codes. Exactly N characters
+% will be printed. Spaces are filled to the right of the string if the length of the
+% string is less than N.
+% • ~k: Passes the argument to write canonical/1.
+% • ~p: Passes the argument to print/1.
+% • ~q: Passes the argument to writeq/1.
+% • ~w: Passes the argument to write/1.
+% • ~Nn: Prints N new lines.
+% • ~t: Moves the position to the next column. Each column is assumed to be
+% 8 characters long.
+% • ~@: Interprets the next argument as a goal, and executes it.
+% 
+% """
+% Picat> format("~thello~t world~t~a~t~4c~t~4d~t~7f",[atom,0'x,123,12.3])
+%         hello    world     atom xxxx      123 12.3000000
+% 
+format(Format,L) :-
+  bp.format(Format,L).
+
+format(Stream,Format,L) :-
+  bp.format(Stream,Format,L).
+
+
+%
+% B-Prolog
+% """
+% • write term(Stream,Term,Options): Outputs a term Term into a stream
+%   Stream, using the option list Options. The list of options Options can
+%   include :
+%   – quoted(Bool) - When Bool is true, each atom and functor is quoted,
+%     such that the term can be read by read/1.
+%   – ignore ops(Bool) - When Bool is true, each compound term is output
+%   in functional notation, i.e., in the form of f(A1,...,An), where f is the
+%   functor, and Ai (i=1,...,n) are arguments.
+% • write term(Term,Options): This is the same as write term(Stream,Term,Options),
+%   except that the current output stream is used.
+% • write(Stream,Term): This is equivalent to write term(Stream,Term,[]).
+% • write(Term): This is equivalent to
+%   current_output(Stream),write(Stream,Term).
+% • write canonical(Stream,Term): This is equivalent to
+%   write_term(Stream,Term,[quoted(true),ignore_ops(true)]).
+% • write canonical(Term): This is equivalent to
+%   current_output(Stream),write_canonical(Stream,Term).
+% • writeq(Stream,Term): This is equivalent to
+%   write_term(Stream,Term,[quoted(true)]).
+% • writeq(Term): This is equivalent to
+%   current_output(Stream),writeq(Stream,Term).
+% """
+write_term(Stream,Term,Options) :- bp.write_term(Stream,Term,Options).
+write_term(Term,Options) :-        bp.write_term(Term,Options).
+write_canonical(Stream,Term) :-    bp.write_canonical(Stream,Term).
+write_canonical(Term) :-           bp.write_canonical(Term).
+writeq(Stream,Term) :-             bp.writeq(Stream,Term).
+writeq(Term) :-                    bp.writeq(Term).
+
+
+%
+% B-Prolog
+% """
+% • portray clause(Clause):
+% • portray clause(Stream,Clause): After the variables in Clause are num-
+%   bered, writes Clause with the body indented, the same as in listing.
+% """
+% Picat> portray_clause($(foo(X) :- bar))
+% foo(_) :-
+%         bar.
+portray_clause(Clause) :-
+  bp.portray_clause(Clause).
+portray_clause(Stream,Clause) :-
+  bp.portray_clause(Stream,Clause).
+
+
+%
+% B-Prolog
+% Note: These should be handled with care, especially 
+%       since the clauses live in the bp context, not Picat context!
+% See some examples in assert_test_v3.pi
+% """
+% • asserta(Clause): Asserts Clause as the first clause in its predicate.
+% • assertz(Clause): Asserts Clause as the last clause in its predicate.
+% • assert(Clause): This is the same as assertz(Clause)
+% • retract(Clause): Removes a clause that unifies Clause from the predicate.
+%   Upon backtracking, removes the next unifiable clause.
+% • retractall(Clause): Removes all clauses that unify Clause from the pred-
+%   icate.
+% • abolish(Functor/Arity): Completely removes the dynamic predicate that
+%   is identified by Functor/Arity from the program area.
+% • clause(Head,Body): This predicate is true if Head and Body unify with the
+%   head and the body of a dynamically asserted (or consulted) clause. The
+%   body of a fact is true. Gives multiple solutions upon backtracking.
+% """
+%  Here's an example of some of these predicates:
+/*
+  assert($rich(mary))
+  assert($(happy(X) :- rich(X), healthy(X)))
+  assert($healthy(mary))
+  assert($healthy(hakank))
+  assert($rich(hakank))
+*/
+% Use bp's findall/3:
+% Picat> findall(X,$rich(X),L)
+% L = [mary,hakank]
+% Or Picat's findall/2
+% Picat> L = findall(X,bp.rich(X))  
+% L = [mary,hakank]
+% Picat> Head = $happy(X), clause(Head,Body), portray_clause($(Head :- Body))
+% happy(A) :-
+%         rich(A),
+%         healthy(A).
+%
+asserta(Clause) :-
+  bp.asserta(Clause).
+assertz(Clause) :-
+  bp.assertz(Clause).
+assert(Clause) :-
+  bp.assert(Clause).
+retract(Clause) :-
+  bp.retract(Clause).
+retractall(Clause) :-
+  bp.retractall(Clause).
+abolish(Functor/Arity) :-
+  bp.abolish($Functor/Arity).
+clause(Head,Body) :-
+  bp.clause(Head,Body).
   
+
+%
+% numlist(+L,+U,-Ns)
+% Ns is list of L..1..U
+%
+% It could be written as:
+%
+%  numlist(L,U,Ns) :-
+%     integer(L),integer(U),
+%     Ns = [I : I in L..U].
+% 
+% Picat> numlist(1,10,L)
+% L = [1,2,3,4,5,6,7,8,9,10]
+% 
+numlist(L,U,Ns) :-
+  integer(L),
+  integer(U),
+  L=<U,
+  numlist_(L, U, Ns).
+numlist_(U, U, List) :-
+    !,
+    List=[U].
+numlist_(L, U, [L|Ns]) :-
+    L2 = L+1,
+    numlist_(L2, U, Ns).
+
+
+% 
+% B-Prolog
+% """
+% keysort(List1,List2): List1 must be a list of pairs. Each pair must take
+% the form Key-Value. List2 is a copy of List1 that is sorted in ascending
+% order by the key. Duplicates are not removed. (not in ISO)
+% """
+% Picat> keysort($[c-3,a-1,b-2],X)
+% X = [a - 1,b - 2,c - 3]
+% 
+keysort(L1,L2) :-
+  bp.keysort(L1,L2).
+
+
+%
+% B-Prolog
+% """
+% sort(List1,List2): List2 is a sorted copy of List1 in ascending order.
+% List2 does not contain duplicates. (not in ISO).
+% """
+% Picat> sort([10,c,a,b],X)  
+% X = [10,a,b,c]
+% 
+sort(L1,L2) :-
+  bp.sort(L1,L2).
+
+
+%
+% B-Prolog:
+% """
+% sort(Order,List1,List2): List2 is a sorted copy of List1 in the specified
+% order, where Order is <,>,=<, or >=. Duplicates are not eliminated if the speci-
+% fied order is =< or >=. sort(List1,List2) is same as sort(<,List1,List2).
+% (not in ISO).
+% """
+% Picat> sort(>,[10,c,a,b],X)   
+% X = [c,b,a,10]
+% 
+sort(Order,L1,L2) :-
+  bp.sort(Order,L1,L2).
+
+
+%
+% B-Prolog:
+% """
+% delete(List1, Elem, List2): This is true when deleting all occurences of
+% Elem from List1 results in List2. (not in ISO).
+% """
+% Picat> delete([1,2,3,3,3,1,2],3,L)
+% L = [1,2,1,2]
+% 
+% 
+delete(L1,E,L2) :-
+  bp.delete(L1,E,L2).
+
+
+%
+% B-Prolog
+% """
+% nth0(Index, List, Elem): This is true when Elem is the Index’th element
+% of List. Counting starts at 0. (not in ISO).
+% """
+% Picat> nth0(I,[a,b,c],E)
+% I = 0
+% E = a ?;
+% I = 1
+% E = b ?;
+% I = 2
+% E = c ?;
+% no
+% 
+nth0(Index,List,Elem) :-
+  bp.nth0(Index,List,Elem).
+
+
+%
+% B-Prolog
+% """
+% nth1(Index, List, Elem): This is true when Elem is the Index’th element
+% of List. Counting starts at 1. (not in ISO).
+% """
+% Note: This is the same as Picat's nth/3
+% Picat> nth1(I,[a,b,c],E)
+% I = 1
+% E = a ?;
+% I = 2
+% E = b ?;
+% I = 3
+% E = c ?;
+% no
+% 
+nth1(Index,List,Elem) :-
+  bp.nth1(Index,List,Elem).
+
+
+%
+% B-Prolog
+% """
+% last(List, Elem): This is true if Last unifies with the last element of
+% List. (not in ISO).
+% """
+% Picat> last([1,2,3,4,5],X)
+% X = 5
+% 
+last(List,Elem) :-
+  bp.last(List,Elem).
+
+
+%
+% B-Prolog
+% """
+% flatten(List1, List2): This is true when List2 is a non-nested version
+% of List1. (not in ISO).
+% """
+% Picat> flatten([[1,2,3],[4],5],X) 
+% X = [1,2,3,4,5]
+%
+flatten(L1,L2) :-
+  bp.flatten(L1,L2).
+
+
+%
+% B-Prolog
+% """
+% • findall(Term,Goal,List): Succeeds if List is the list of instances of Term,
+%   such that Goal succeeds. Example:
+%   ?-findall(X,member(X,[(1,a),(2,b),(3,c)]),Xs)
+%   Xs=[(1,a),(2,b),(3,c)]
+% • bagof(Term,Goal,List): This is the same as findall(Term,Goal,List),
+%   except for its treatment of free variables that occur in Goal but do not occur
+%   in Term. It first picks the first tuple of values for the free variables, and then
+%   uses this tuple to find the list of solutions List of Goal. It enumerates all
+%   of the tuples for the free variables. Example:
+%   ?-bagof(Y,member((X,Y),[(1,a),(2,b),(3,c)]),Xs)
+%   X=1
+%   Y=[a];
+%   X=2
+%   Y=[b];
+%   X=3
+%   Y=[c];
+%   no
+% • setof(Term,Goal,List): This is like bagof(Term,Goal,List), except that
+%   the elements of List are sorted into alphabetical order.
+% """
+% Note: The Goal must be in the bp module context!
+% Picat> findall(X,$member(X,[(1,a),(2,b),(3,c)]),Xs)
+% Xs = [(1,a),(2,b),(3,c)]
+%
+% Picat> bagof(Y,$member((X,Y),[(1,a),(2,b),(3,c)]),Xs)
+% X = 1
+% Xs = [a] ?;
+% X = 2
+% Xs = [b] ?;
+% X = 3
+% Xs = [c]
+%
+% Picat> setof(Y,$member((X,Y),[(1,a),(2,b),(3,c)]),Xs)
+% X = 1
+% Xs = [a] ?;
+% X = 2
+% Xs = [b] ?;
+% X = 3
+% Xs = [c]
+%
+% It also supports the Var^Term pattern (not the escapes)
+% Picat> setof(X, $member(X-Y, [1-2, 2-2, 1-3]), Xs).  
+% Y = 2
+% Xs = [1,2] ?;
+% Y = 3
+% Xs = [1]
+%
+% Picat> setof(X, $X^member(X-Y, [1-2, 2-2, 1-3]), Xs).  
+% Y = 2
+% Xs = [1,2] ?;
+% Y = 3
+% Xs = [1]
+% 
+% Picat> setof(X, $Y^member(X-Y, [1-2, 2-2, 1-3]), Xs).
+% Xs = [1,2]
+%
+% 
+% Also, see some more tests in
+%  - bp_test_v3.pi
+% 
+findall(Term,Goal,List) :-
+  bp.findall(Term,Goal,List).
+find_all(Term,Goal,List) :-
+  bp.findall(Term,Goal,List).
+bagof(Term,Goal,List) :-
+  bp.bagof(Term,Goal,List).
+setof(Term,Goal,List) :-
+  bp.setof(Term,Goal,List).
+
+%
+% B-Prolog
+% """
+% forall/2 (not in ISO)
+% The call forall(Generate,Test) succeeds if, for every solution of Generate, the
+% condition Test succeeds. This predicate is defined as follows:
+%    forall(Generate, Test) :- \+ (call(Generate), \+ call(Test)).
+% For example, forall(member(X,[1,2,3]),p(X)).
+% """
+% Note: forall/2 is defined in Picat context so we can use Picat predicates.
+% Picat> cl()                            
+% p(X) :- println(X+1).
+% loading...
+% 
+% Picat> forall($member(X,[1,2,3]),$p(X))
+% 2
+% 3
+% 4
+% 
+forall(Generate, Test) :-
+  \+ (call(Generate), \+ call(Test)).
+
+
+%
+% B-Prolog
+% """
+% current predicate(Functor/Arity): This predicate is true if Functor/Arity
+% identifies a defined predicate, whether static or dynamic, in the program area.
+% Gives multiple solutions upon backtracking.
+% """
+% Note: The predicates have not the usual clean names
+% Picat> current_predicate(P)
+% P = c_sat_stop_count / 1 ?;
+% P = '$set_subset' / 2 ?;
+% P = exclusive_guard / 2 ?;
+% P = h___nnwrite_vect_or_scalar_2_2_1 / 4 ?;
+% P = h___smtcircuit_aux_1_1_8 / 3 ?
+% ...
+% 
+current_predicate(P) :-
+  bp.current_predicate(P).
+
+
+%
+% B-Prolog
+% """
+% predefined(F,N): The predicate F/N is a built-in. (not in ISO).
+% """
+% Picat> bp.predefined(member,2)   
+% yes
+% It's the bp version that is checked (not the Picat version)
+% Picat> bp.predefined(findall,2)   
+% no
+% Picat> bp.predefined(findall,3)
+% yes
+%
+predefined(F,N) :-
+  bp.predefined(F,N).
+
+%
+% transpose(Matrix,Transpose)
+%
+% Transpose is the transposed version of Matrix.
+% 
+transpose([],[]) :- !.
+transpose(Matrix,Transposed) :-
+  N = Matrix.length,
+  M = Matrix[1].length,
+  Transposed = [MJI : J in 1..M, MJI = [Matrix[I,J] : I in 1..N]].
