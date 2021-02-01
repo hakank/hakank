@@ -1,0 +1,280 @@
+/* 
+
+  Knight Tour in Picat.
+
+  Port of Markus Triska's Prolog code 
+  https://github.com/triska/clpz/blob/master/knight_tour.pl
+  """
+  Closed Knight's Tour.
+  Written by Markus Triska (triska@metalevel.at) Nov. 2nd 2009
+  Public domain code.
+  """
+
+  This model use Triska's approach for calculating the circuit of the
+  path. However, Triska's code for converting to the grid and 
+  the presentation is not supported in Picat (and is commented below).
+  Instead, I use the conversion used in knight_tour_circuit.pi 
+
+  This note is from knight_tour_circuit.pi
+  """
+  Note: N must be even to be able to use circuit/1 since every move must alternate 
+  between a black and white square. When N is odd (and thus N*N is odd) then 
+  there is one more black (or white) square which makes this impossible.
+  """
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+import v3_utils.
+import util.
+import cp.
+
+main => go.
+
+%
+% First solution of the 6x6 instance.
+%
+go ?=>
+  n_tour(6, Ts), maplist(label, Ts),
+  println(ts=Ts),
+  nl,
+  extract_tour2(Ts,Tour),
+  print_mat(Tour),
+  nl,
+  nl.
+
+go => true.
+
+%
+% Time to first solution for all (even) instances 6..60
+% Timeout 100s
+% (Compare with knight_tour_circuit.pi)
+%
+/*
+6 = success = 0.001
+8 = success = 0.003
+10 = success = 0.005
+12 = success = 0.007
+14 = success = 0.012
+16 = success = 0.017
+18 = success = 0.026
+20 = success = 0.036
+22 = success = 0.052
+24 = success = 0.069
+26 = success = 0.090
+28 = success = 0.117
+30 = success = 0.145
+32 = success = 24.366
+34 = success = 0.236
+36 = success = 0.291
+38 = time_out = 99.999
+40 = success = 0.440
+42 = success = 0.531
+44 = time_out = 100.002
+46 = success = 0.754
+48 = success = 0.878
+50 = success = 1.048
+52 = time_out = 100.001
+54 = time_out = 100.001
+56 = success = 1.680
+58 = time_out = 100.002
+60 = time_out = 99.999
+
+*/
+go2 ?=>
+  TimeoutSec = 100, % seconds
+  Timeout = TimeoutSec*1000,
+  OKs = [],
+  Fails = [],
+  foreach(N in 6..2..100)
+    [TimeMS,_Backtracks,Status] = time2f($(n_tour(N, Ts),solve($[ff,split], Ts)),Timeout),
+    TimeS = to_fstring("%0.3f",TimeMS/1000),
+    println(N=Status=TimeS),
+    if Status == success then
+       OKs := OKs ++ [N=TimeS]
+   else
+     Fails := Fails ++ [N]
+   end
+  end,
+  println(ok=OKs),
+  println(fails=Fails),
+  nl.
+go2 => true.
+
+
+% Aliases
+label(Vs) :- solve(Vs).
+labeling(Opt,Vs) :- solve(Opt,Vs).
+
+print_mat(M) =>
+  maplist(print_row,M.array_matrix_to_list_matrix),
+  nl.
+
+print_row(Row) =>
+  maplist($printf("%4d "),Row),
+  nl.
+
+%
+% Extract the tour from X.
+% This is from my knight_tour_circuit.pi
+% (all the stuff handling irregular and
+%  odd sizes are removed).
+%
+extract_tour(X,Tour) =>
+  Rows = X.len,
+  Cols = X[1].len,
+  Tour = new_array(Rows,Cols),
+  K = 1,
+  Tour[1,1] := K,
+  Next = X[1,1],
+  while (K < Rows*Cols) 
+    K := K + 1,
+    I = 1+((Next-1) div Rows),
+    J = 1+((Next-1) mod Cols),
+    Tour[I,J] := K,
+    Next := X[I,J]
+  end.
+
+%
+% Another approach without while/1 and re-assignments,
+% but the same general idea of Tour as a matrix
+% as extract_tour/2.
+%
+extract_tour2(X,Tour) :-
+  N = X.len,
+  Tour = new_array(N,N),
+  Tour[1,1] = 1,
+  extract_tour2(X,N,X[1,1],2,Tour).
+extract_tour2(X,N,Next,K,Tour) :-
+  K <= N*N,
+  I = 1+((Next-1) div N),
+  J = 1+((Next-1) mod N),
+  Tour[I,J] = K,
+  (K < N*N -> extract_tour2(X,N,X[I,J],K+1,Tour); true).
+  
+
+% From https://github.com/triska/clpz/blob/master/knight_tour.pl
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   Closed Knight's Tour.
+
+   Written by Markus Triska (triska@metalevel.at) Nov. 2nd 2009
+   Public domain code.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+% :- use_module(clpz).
+% :- use_module(library(lists)).
+
+n_tour(N, Ts) :-
+        length(Ts, N),
+        maplist($same_length(Ts), Ts),
+        append(Ts, Vs),
+        successors(Vs, N, 1),
+        circuit(Vs).
+
+successors([], _, _).
+successors([V|Vs], N, K0) :-
+        % findall(Num, $n_k_next(N, K0, Num), [Next|Nexts]),
+        NextNexts = findall(Num, $n_k_next(N, K0, Num)), % hakank
+        [Next|Nexts] = NextNexts,
+        foldl(num_to_dom, Nexts, Next, Dom),
+        V :: Dom.flatten, % hakank
+        K1 #= K0 + 1,
+        successors(Vs, N, K1).
+
+% num_to_dom(N, D0, D0\/N).
+num_to_dom(N, D0, [N,D0]). % hakank
+
+n_x_y_k(N, X, Y, K) :- [X,Y] :: 1..N, K #= N*(Y-1) + X. % hakank
+
+n_k_next(N, K, Next) :-
+        n_x_y_k(N, X0, Y0, K),
+        [DX,DY] :: -2..2, % -2 \/ -1 \/ 1 \/ 2, % hakank
+        abs(DX) + abs(DY) #= 3,
+        [X,Y] :: 1..N, % hakank
+        X #= X0 + DX,
+        Y #= Y0 + DY,
+        n_x_y_k(N, X, Y, Next),
+        label([DX,DY]).
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   foldl/4
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+foldl(Goal_3, Ls, A0, A) :-
+        foldl_(Ls, Goal_3, A0, A).
+
+foldl_([], _, A, A).
+foldl_([L|Ls], G_3, A0, A) :-
+        call(G_3, L, A0, A1),
+        foldl_(Ls, G_3, A1, A).
+
+%
+% hakank: I skip this conversion and presentation step since Picat
+%         don't support all these constructs.
+%
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   Text display.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+print_tour(Ts) :- print_tour(Ts, 3).
+
+print_tour(Ts, I) :-
+        tour_enumeration(Ts, Es),
+        println(ts=Ts),
+        println(es=Es),
+        phrase($format_string(Ts, I, I), Fs),
+        maplist($format(Fs), Es).
+
+format_(Fs, Args, Xs0, Xs) :- format(codes(Xs0,Xs), Fs, Args).
+
+format_string([], _, _) --> "\n".
+format_string([_|Rest], N0, I) --> "~t~w~", call(format_("~w|", [N0])),
+        { N1 #= N0 + I },
+        format_string(Rest, N1, I).
+
+tour_enumeration(Ts, Es) :-
+        same_length(Ts, Es),
+        maplist($same_length(Ts), Es),
+        append(Ts, Vs),
+        append(Es, Ls),
+        foldl($vs_enumeration(Vs, Ls), Vs, 1-1, _).
+
+vs_enumeration(Vs, Ls, _, V0-E0, V-E) :-
+        E #= E0 + 1,
+        nth1(V0, Ls, E0),
+        nth1(V0, Vs, V).
+*/
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   Examples:
+
+   ?- n_tour(N, Ts), maplist(label, Ts).
+   %@ N = 0,
+   %@ Ts = [] ;
+   %@ N = 6,
+   %@ Ts = [[9, 10, 7, 8, 16, 17], ..., , [27, 28, 20|...]] .
+
+   ?- n_tour(6, Ts), maplist(label, Ts), print_tour(Ts).
+   %@   1 30 25  6  3 32
+   %@  26  7  2 31 24  5
+   %@  29 36 27  4 33 16
+   %@   8 19 34 15 12 23
+   %@  35 28 21 10 17 14
+   %@  20  9 18 13 22 11
+
+   ?- time((n_tour(8, Ts), append(Ts, Vs), labeling([ff], Vs))).
+   %@ % 4,191,339 inferences, 0.790 CPU in 0.807 seconds (98% CPU, 5305492 Lips)
+
+   ?- n_tour(8, Ts), append(Ts, Vs), labeling([ff], Vs), print_tour(Ts).
+   %@   1  4 63 28 31 26 19 22
+   %@  62 29  2  5 20 23 32 25
+   %@   3 64 39 30 27 56 21 18
+   %@  38 61  6 53 40 33 24 55
+   %@   7 52 41 34 57 54 17 46
+   %@  60 37  8 49 44 47 14 11
+   %@  51 42 35 58  9 12 45 16
+   %@  36 59 50 43 48 15 10 13
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

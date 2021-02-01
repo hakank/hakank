@@ -1,0 +1,333 @@
+/* 
+
+  Database/index tests in Picat.
+
+  Port of Trealla's Prolog code samples/testindex.pl
+  https://github.com/infradig/trealla/blob/master/samples/testindex.pl
+
+  Changes:
+  - write/1 -> print/1
+  - $ escaped the predicate names in assertz/1, abolish/1
+  - added 'bp.' prefix for the assertz'ed predicates
+  - downsized the test1b/0 problem (see below)
+
+  For most of these tests, Picat is a little faster than Trealla (and has about
+  the same time as B-Prolog). 
+
+  However, test1b/0 ('Match using 2nd-arg...') takes very long time (>20minutes) 
+  in Picat so I skip this. I tested with 10000 items (instead of 1000000) and that 
+  takes 4.383s in Picat. (B-Prolog also takes very long time on test1b/0.)
+
+
+  Output from this Picat program:
+  """
+  test1a
+  Load...
+  Match using 1st-arg...
+  Done... 1000000 items
+
+  CPU time 0.427 seconds.
+
+  test1b
+  skipping
+
+  test2a
+  Load...
+  Iterate over set...
+  Done... 1000000 items
+
+  CPU time 0.335 seconds.
+
+  test2b
+  Load...
+  Use findall...
+  Done... 1000000 items
+
+  CPU time 0.289 seconds.
+
+  test3
+  Load...
+  Iterate over 2nd-arg...
+  Done... 1000000 items
+
+  CPU time 0.286 seconds.
+
+  test4
+  Load...
+  Retract...
+  Done... 1000000 items
+
+  CPU time 0.365 seconds.
+
+  test5
+  Load...
+  Match using once 1st-arg...
+  Done... 1000000 items
+
+  CPU time 3.127 seconds.
+
+  test6
+  3
+  2
+  1
+
+  CPU time 0.0 seconds.
+  """
+
+  Time for Picat v3.0#4 (summary of the above)
+  - test1a: 0.427s
+  - test1b: Too long (same as for Picat), > 20min
+  - test2a:  0.335s
+  - test2b: 0.289s
+  - test3: 0.286s
+  - test4: 0.365s
+  - test5: 3.127s
+  - test6: 0.0s
+  
+  Times for Trealla v1.6.0-3-g24a9
+  - test1a: 1.13s
+  - test1b: 1.3s
+  - test2a: 0.615s
+  - test2b: 0.864s
+  - test3: 0.644s
+  - test4: 0.617s
+  - test5: 9.64s
+  - test6: 5.2e-05s
+
+  Time for B-Prolog v8.1
+  - test1a: 0.48s
+  - test1b: Too long (same as for Picat), > 20min
+  - test2a: 0.341s
+  - test2b: 0.365s
+  - test3: 0.359s
+  - test4: 0.291s
+  - test5: 2.921s
+  - test6: 0.0s
+  
+
+  Times for SWI-Prolog v8.3.18
+  - test1a: 0.985s
+  - test1b: 1.017s
+  - test2a: 0.305s
+  - test2b: 0.426s
+  - test3: 0.372s
+  - test4: 0.774s
+  - test5: 7.236s
+  - test6: 0.000s
+
+  YAP 6.2.2:
+  - test1a: 0.641s
+  - test1b: 0.591s
+  - test2a: 0.449s
+  - test2b: 0.391s
+  - test3: 0.657s
+  - test4: 0.504s
+  - test5: 10.612s
+  - test6: 0.000s
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+main => go.
+
+go ?=>
+  println(test1a),
+  time(test1a),
+
+  println(test1b),
+  println(skipped),
+  nl,
+  % println("Note: this is downsized!"),
+  % time(test1b),
+
+  println(test2a),
+  time(test2a),
+
+  println(test2b),
+  time(test2b),
+
+  println(test3),
+  time(test3),
+
+  println(test4),
+  time(test4),
+
+  println(test5),
+  time(test5),
+
+  println(test6),
+  time(test6),
+
+  nl.
+go => true.
+
+%
+% 
+% This is a test of another approach of test1b using Picat's cl_facts/1 and cl_facts/2
+% (with indexing). It is a little faster than test1b/0 but not very much.
+% However using the indexing cl_facts/2 is faster: 46.3s for N = 1000000
+% But still much slower than Trealla's 1.3s for test1b/0.
+% One can notice that for the cl_facts/2 approach it's the loading that takes
+% almost all time
+%
+% N       test1b   load1+test1b_facts  using load1b (indexing)+test1b_facts
+% -------------------------------------------------------------------------------
+% 10000    4.383s      1.23s              0.213s
+% 100000   -         124,80s              4.999s (loading: 4.769s, checking: 0.004)
+% 1000000  -         -                   46.307s (loading: 46.307s, checking: 0.037s )
+%
+% Note that when using indexing, it's the loading of the g/2 that takes almost
+% all the time.
+%
+go2 ?=>
+  % N = 10000, 
+  % N = 100000,
+  N = 1000000, % the original problem
+  println(loading),  
+  % time(load1(N)), % without indexing
+  time(load1b(N)), % with indexing
+  println(checking),
+  time(test1b_facts(N)),
+  nl.
+go2 => true.
+
+% same as test1b
+test1b_facts(N) :-
+  between(1,N,I),
+  g(_,I),
+  fail,
+  nl.
+test1b_facts(_).
+
+% Loading without indexing
+load1(N) :-
+  Facts = $[g(I,I) : I in 1..N],
+  cl_facts(Facts).
+
+% Loading with indexing
+load1b(N) :-
+  Facts = $[g(I,I) : I in 1..N],
+  cl_facts(Facts,$g(-,+)). % This is quite faster.
+
+
+% From https://github.com/infradig/trealla/blob/master/samples/testindex.pl
+
+test1a :-
+	print('Load...'), nl,
+	between(1,1000000,I),
+		assertz($g(I,I)),
+		fail.
+test1a :-
+	print('Match using 1st-arg...'), nl,
+	between(1,1000000,I),
+		bp.g(I,_),
+		fail.
+test1a :-
+	abolish($g/2),
+	print('Done... '), print(1000000), print(' items'), nl, true.
+
+% hakank: I downscaled this problem from 1000000 to 10000.
+test1b :-
+        % garbage_collect(300_000_000),
+	print('Load...'), nl,
+	% between(1,1000000,I),
+	between(1,10000,I),
+		assertz($g(I,I)),
+                % assertz($(g(A,I) :- A = I)), % Testing. Much slower.
+                % assertz($(g(I,A) :- A = I)), % Testing. Much slower.
+                fail.
+test1b :-
+	print('Match using 2nd-arg...'), nl,
+	% between(1,1000000,I),
+	between(1,10000,I),        
+		bp.g(_,I),
+		fail.
+test1b :-
+        println('Abolish...'),
+	abolish($g/2),
+	% print('Done... '), print(1000000), print(' items'), nl, true.
+	print('Done... '), print(10000), print(' items'), nl, true.        
+
+test2a :-
+	print('Load...'), nl,
+	between(1,1000000,I),
+		assertz($f(I)),
+		fail.
+test2a :-
+	print('Iterate over set...'), nl,
+	bp.f(_),
+		fail.
+test2a :-
+	abolish($f/1),
+	print('Done... '), print(1000000), print(' items'), nl, true.
+
+test2b :-
+	print('Load...'), nl,
+	between(1,1000000,I),
+		assertz($f(I)),
+		fail.
+test2b :-
+	print('Use findall...'), nl,
+	findall(N,$f(N),L),
+	length(L,Count),
+	print('Done... '), print(Count), print(' items'), nl,
+	true.
+
+test3 :-
+	print('Load...'), nl,
+	between(1,1000000,I),
+		assertz($g(I,I)),
+		fail.
+test3 :-
+	print('Iterate over 2nd-arg...'), nl,
+	bp.g(_,_),
+		fail.
+test3 :-
+	abolish($f/1),
+	print('Done... '), print(1000000), print(' items'), nl,
+	true.
+
+test4 :-
+	print('Load...'), nl,
+	between(1,1000000,I),
+		assertz($f(I)),
+		fail.
+test4 :-
+	print('Retract...'), nl,
+	retract($f(_)),
+		fail.
+test4 :-
+	abolish($f/1),
+	print('Done... '), print(1000000), print(' items'), nl, true.
+
+test5 :-
+	print('Load...'), nl,
+	between(1,10,_),
+		between(1,1000000,J),
+			assertz($f(J)),
+			fail.
+test5 :-
+	print('Match using once 1st-arg...'), nl,
+	between(1,1000000,I),
+		once(bp.f(I)),
+		%print(I), nl,
+		fail.
+test5 :-
+	abolish($f/1),
+	print('Done... '), print(1000000), print(' items'), nl, true.
+
+test6 :-
+	assertz($ff(3)),
+	assertz($ff(2)),
+	assertz($ff(1)),
+	bp.ff(X),
+	print(X), nl,
+	fail.
+test6 :-
+	abolish($ff/1),
+	true.

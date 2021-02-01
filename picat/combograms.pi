@@ -1,0 +1,175 @@
+/* 
+
+  Combograms in Picat.
+
+  List all the possible words that can created given a source word,
+  with some options:
+  - as many characters as in the word, or as many as wanted 
+  - plain subwords 
+  - anagrams 
+  - minimum length 
+  - must contain certain characters 
+ 
+  Earlier (non Picat) version of this is:
+  - http://hakank.org/javascript_progs/combograms.html 
+    http://hakank.org/javascript_progs/combograms.jl (JavaScript)
+  - http://hakank.org/combograms/index.html (Perl/CGI)
+  - http://hakank.org/julia/combograms.jl (Julia)
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import v3_utils.
+import util.
+% import cp.
+
+
+main => go.
+
+
+go ?=>
+    % [aa,aaron,ag,aga,again,agama,agapai,agar,aggro,agin,aging,...
+    Res = combogram("programming",eng,as_many_as_wanted,"",0), % 615 words
+    println(res=Res),
+    println(len=Res.len),  
+    nl.
+go => true.
+
+go2 ?=>
+    % [ag,aga,agam,agan,agar,agg,agio,agion,agiona,agn,agna,...
+    Res = combogram("programming",swe,as_many_as_wanted,"",0), % 747 words
+    println(res=Res),
+    println(len=Res.len),    
+    nl.
+go2 => true.
+  
+go3 ?=>
+    % [an,and,el,eller,er,ers,je,kjell,le,ler,rand,strand,tran]
+    Res = combogram("kjellerstrand",swe,plain_subwords,"",0), % 13 words
+    println(res=Res),
+    println(len=Res.len),    
+    nl.
+go3 => true.
+
+
+go4 ?=>
+    % Anagrams: [alger,argle,glare,lager,large,regal]
+    Res = combogram("glare",eng,anagram,"",0), % 6 words
+    println(res=Res),
+    println(len=Res.len),
+    nl.
+go4 => true.
+
+go5 ?=>
+  % Min length: [darkeners,slanderer,terrellas,treadlers]
+  Res = combogram("kjellerstrand",eng,as_many_as_in_source,"",9), % 4 words
+  println(res=Res),
+  println(len=Res.len),
+  nl.
+go5 => true.
+
+go6 ?=>
+  % Must contain: [gorp,groping,pargo,pignora,pirog,poring,prog,program,programing,programming,prong,romping,roping]
+  Res = combogram("programming",eng,as_many_as_in_source,"prog",0), % 13 words
+  println(res=Res),
+  println(len=Res.len),
+  nl.
+go6 => true.
+
+
+%
+% combogram(Word,
+%           Lang,         % eng, swe
+%           Type,         % as_many_as_in_source,as_many_as_wanted, plain_subwords, anagram
+%           MustContain, % character that must be in the word 
+%           MinLength,   % minimum length of the word 
+%           )
+%
+combogram(OrigWord,Lang,Type,MustContain,MinLength) = Res => 
+
+  Word = to_lowercase(OrigWord),
+  println([word=Word,lang=Lang,type=Type,mustContain=MustContain, minLength=MinLength]),
+
+  WordList = "eng_dict.txt", % Lang=eng
+  if Lang == swe then
+     WordList := "sv_spelling_org_utf8.txt"
+  end,
+  Words = read_file_lines(WordList),
+  println("Number of words: "=(length(Words))),
+
+  D = make_hash(Word), % Characters in source word
+  Res = [],
+  foreach(W in Words)
+      Check = true,
+      WLen = length(W),
+      if MinLength > 0, not WLen >= MinLength then
+        Check := false
+      end,
+
+      % Hash for this word
+      WD = make_hash(W),
+
+      % Anagrams
+      if Check, Type == anagram, not map_eq(WD,D) then
+        Check := false
+      end,
+
+      % Plain subword
+      if Check, Type == plain_subwords then
+        if not once(find(Word,W,_,_)) then
+          Check := false
+        end
+      end,
+      if Check == true then
+        Good = true,
+        % Check all characters
+        foreach(C in keys(WD), Good == true)
+          % Char is not in source word
+          if not D.has_key(C) then
+            Good := false
+          end,
+
+          % Has not a mandatory char
+          if Good, MustContain != "" then
+            foreach(MC in MustContain, Good == true) 
+              if not WD.has_key(MC) then
+                Good := false
+              end
+            end
+          end,
+
+          if Good, Type == as_many_as_in_source then
+            % Too many occurrences of this character
+            if WD.get(C,0) > D.get(C,0) then
+              Good := false
+            end
+          end
+       end,
+       if Good == true then
+         Res := Res ++ [W]
+       end
+     end
+  end.
+
+%
+% Return a Dict of the elements and their occurences
+% in the collection a.
+% Example:
+% Picat> make_hash("programming")=D
+% D = (map)[m = 2,i = 1,r = 2,g = 2,p = 1,o = 1,a = 1,n = 1]
+% 
+make_hash(A) = D => 
+  D = new_map(),
+  foreach(E in A)
+    D.put(E,D.get(E,0)+1)
+  end.
+
+%
+% Check if the two maps M1 and M2 are equal
+% Picat> map_eq(make_hash("anna"),make_hash("nnaa"))
+% yes
+map_eq(M1,M2) =>
+  M1.to_list.sort == M2.to_list.sort.

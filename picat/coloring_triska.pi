@@ -1,0 +1,125 @@
+/* 
+
+  Map Coloring (Markus Triska) in Picat.
+
+  From Markus Triskas' "Map Coloring with Prolog"
+  https://www.youtube.com/watch?v=6XD7vBbywMc
+
+  """
+  Task: Assign a color to each region so that the adjacent
+  regions have different colors.
+  ...
+
+  Application: register allocation
+  """
+
+  Experiments from the video:
+
+  * Try to solve with just three possible colors (1..3)
+    Note: In the video solve/1 is not needed because the solver handle
+    constraints different from Picat's cp solver
+    Picat> coloring(Cs),Cs :: 1..3
+    Cs = [DV_013de8_1..3,DV_013e48_1..3,DV_0140f8_1..3,DV_0143a8_1..3,DV_014658_1..3,DV_014e08_1..3]
+ 
+   In Picat, we must use solve/1 to conclude that 3 colors is not enough:
+   Picat> coloring(Cs),Cs :: 1..3,solve(Cs)
+   no
+
+  * However, we know that 4 colors suffice to color a (planar) graph.
+
+    Assign A to 1
+    Picat> Cs::1..4,Cs = [1|_]
+    [1,DV_014338_2..4,DV_0145e8_2..4,DV_014898_2..4,DV_014b48_2..4,DV_0152f8_1..4]
+
+    Notice the pruning of some of the variables which now cannot take
+    take the values of 1.
+
+  * Also assign D to 2
+    Picat> coloring(Cs),Cs :: 1..4,Cs = [1,_,_,2|_]
+    Cs = [1,DV_0147b8_2..4,DV_014a68_2..4,DV_014d18_2..4,DV_014fc8_2..4,DV_015778_1..4]
+
+  * Let's assign one more variable: F is assigned to 3. Now the cp solver can 
+    figure out a complete assignment of all variables.
+    (Note: this don't work with the sat/mip/smt solvers since they don't propagate 
+     constraints the way the cp solver do.)
+    Picat> coloring(Cs),Cs::1..4,Cs = [1,_,_,2,_,3] 
+    Cs = [1,4,3,2,4,3]
+
+  * We can use label/1 (or rather Picat's solve/1) for automatically label
+    the variables. Contraint which is the major attraction of CLP and
+    the key reason that Prolog/Picat is used for these kind of problems
+    Picat> coloring(Cs),Cs::1..4,label(Cs)
+    Cs = [1,2,3,4,2,3] ?;
+    Cs = [1,2,3,4,2,4] ?
+     
+  (Slightly edited:)
+  """
+  A declarative task description can be used to 
+  - generate, 
+  - complete, and 
+  - test 
+  solutions!
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import cp.
+
+main => go.
+
+go ?=>
+  Cs=[A,B,C,D,E,F],
+  Cs :: 1..4,
+  maplist(#!=(A),[B,C,D,E]),
+  maplist(#!=(B),[C,D,F]),
+  C #!= D,
+  maplist(#!=(D),[E,F]),
+  E #!= F,
+  solve(Cs),
+  println(Cs),
+  fail,
+  nl.
+go => true.
+
+%
+% Symbolic (non cp) variant using the same principle.
+% But be aware: for larger instances this approach is too slow...
+%
+go2 ?=>
+  Cs = [A,B,C,D,E,F],
+  Domain=[c1,c2,c3,c4],
+  member_domain(Cs,Domain), % from v3_utils
+  maplist(!=(A),[B,C,D,E]),
+  maplist(!=(B),[C,D,F]),
+  C != D,
+  maplist(!=(D),[E,F]),
+  E != F,
+  println(Cs),
+  fail,
+  
+  nl.
+
+go2 => true.
+
+%
+% Note: This is without domains and without solve/1-2
+%       so we can experiment a little (see above).
+%
+coloring(Cs) :-
+  Cs = [A,B,C,D,E,F],
+  maplist(#!=(A),[B,C,D,E]),
+  maplist(#!=(B),[C,D,F]),
+  C #!= D,
+  maplist(#!=(D),[E,F]),
+  E #!= F.
+
+% Aliases
+label(X) :-
+  solve(X).
+labeling(Opt,X) :-
+  solve(Opt,X).
+

@@ -1,0 +1,200 @@
+/* 
+
+  Carambar candies puzzle in Picat.
+
+  From Christophe Lecoutre and Nicolas Szczepanski:
+  "PyCSP 3 - Modeling Combinatorial Constrained Problems in Python"
+  Page 5f
+  """
+  Remember that when you were young, you were used to play at riddles, 
+  some of them having a mathematical background, as for example:
+
+     Which sequence of four successive integer numbers sum up to 14?
+
+     [an image of a Carambar Candie, hence the name of the problem]
+
+  ---
+
+  PyCSP model 1
+
+  x1 + 1 == x2,
+  x2 + 1 == x3,
+  x3 + 1 == x4
+  x1 + x2 + x3 + x4 == 14
+
+  ... 
+  """
+
+  The first 3 approaches (go/0, go2/0, and go3/0) are in the paper
+  whereas the rest is not.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+import v3_utils.
+import trace_domains_ar.
+
+main => go.
+
+% First approach (Page 5ff)
+go ?=>
+  [X1,X2,X3,X4] :: 0..14,
+  X1 + 1 #= X2,
+  X2 + 1 #= X3,
+  X3 + 1 #= X4,
+  X1 + X2 + X3 + X4 #= 14,
+
+  solve([X1,X2,X3,X4]),
+  println([X1,X2,X3,X4]),
+  % fail,
+  nl.
+go => true.
+
+% Page 11
+go2 ?=>
+  X = new_list(4),
+  X :: 0..14,
+  % [X[I] + 1 #= X[I+1] : I in 1..3], % this don't work in Picat
+  foreach(I in 1..3)
+    X[I] + 1 #= X[I+1]
+  end,
+  X[1] + X[2] + X[3] + X[4] #= 14,
+  solve(X),
+  println(X),
+  fail,
+  nl.
+go2 => true.
+
+% Page 12
+go3 ?=>
+  X = new_list(4),
+  X :: 0..14,
+  foreach(I in 1..3)
+    X[I] + 1 #= X[I+1]
+  end,
+  X[1] + X[2] + X[3] + X[4] #= 14,
+  solve(X),
+  println(X),
+  fail,  
+  nl.
+go3 => true.
+
+%
+% Another approach (not in the cited document), using increasing_strict.
+%
+go4 ?=>
+  X=new_list(4),
+  X::0..14,
+
+  % increasing_strict(X),
+  % X[4]-X[1] #=3,
+  incr(X,1), % simpler using the incr/2 constraint (see below)
+  sum(X)#=14,
+
+  solve($[],X),
+  println(X),
+  fail,
+  nl.
+go4 => true.
+
+%
+% Variant of go4/0 where trace_domain_ar is added to show the
+% evolvements of the constraints/domains.
+% (It's found here: http://hakank.org/picat/trace_domains_ar.pi )
+% No labeling:
+%   Without fail: 2 backtracks
+%   With fail: 8 backtracks
+% Labeling: split:
+%   Without fail: 0 backtracks
+%   With fail: 0 backtracks
+%
+go4b ?=>
+  X=new_list(4),
+  X::0..14,
+  trace_domain_ar(X,"X"),
+
+  println("\nincreasing_strict(X)"),
+  increasing_strict(X),
+
+  println("\nX[4]-X[1] #=3"),
+  X[4]-X[1] #=3,
+  
+  println("\nsum(X) #= 14"),
+  sum(X)#=14,
+  
+  println(x_pre_solve=X),
+  println("\nsolve"),
+  solve($[split],X),
+  println(X),
+  fail,
+  nl.
+go4b => true.
+
+%
+% Another approach using non standard constraint/predicates
+% 0.0s
+%
+go5 ?=>
+  carambar_candies_cp(X),
+  solve(X),
+  println(x=X),
+  fail,
+  nl.
+go5 => true.
+
+%
+% Non-Cp version: LP approach
+% slightly slower: 0.026
+go6 ?=>
+  carambar_candies(X),
+  solve(X),
+  println(x=X),
+  fail,
+  nl.
+go6 => true.
+
+% cp version
+carambar_candies_cp(X) :-
+  Sum = 14,
+  N = 4,
+  length(X,N),
+  X :: 1..Sum,
+  incr(X,1),
+  sum_to(X,Sum).
+
+%
+% non cp version
+% 
+carambar_candies(X) :-
+  Sum = 14,
+  N = 4,
+  length(X,N),
+  member_domain(X,1..Sum),
+  incr(X,1),
+  sum_to(X,Sum).
+
+%
+% Ensure that the list is increasing by Inc
+%
+incr([],_Inc).
+incr([_],_Inc).
+incr([H1,H2|T],Inc) :-
+  H2 #= H1 + Inc, % use #= to be able to also use with cp
+  incr([H2|T],Inc).
+
+sum_to(X,Sum) :-
+  sum_to(X,0,Sum).
+sum_to([],Sum,Sum).
+sum_to([H|T],Sum0,Sum) :-
+  Sum1 #= H + Sum0,
+  sum_to(T,Sum1,Sum).
+
+% Ensure that all variable has domain Domain
+member_domain([],_Domain).
+member_domain([H|T],Domain) :-
+  member(H,Domain),
+  member_domain(T,Domain).
+
