@@ -151,27 +151,14 @@ end
 # (See https://github.com/Wikunia/ConstraintSolver.jl/issues/202 for
 # details.)
 #
-function all_different_except_c(model, x, c=0)
-    n = length(x)
-
-    # Define the variables we'll use
-    b_len = length([1 for i in 2:n for j in 1:i-1 for k in 1:3])
-    bs = @variable(model, [1:b_len], Bin) # "Anonymous" variables
-    c = 1
-    for i in 2:n, j in 1:i-1
-        b1 = bs[c]
-        b2 = bs[c+1]
-        b3 = bs[c+2]
-        @constraint(model, b1 := {x[i] != 0})
-        @constraint(model, b2 := {x[j] != 0})
-        @constraint(model, b3 := {b1 + b2 == 2})
-        @constraint(model, b3 => {x[i] != x[j]})
-        c += 3
+function all_different_except_c(model,x, c=0)
+    len = length(x)
+    for i in 2:len, j in 1:i-1
+        b = @variable(model, binary=true)
+        @constraint(model, b := {x[i] != c && x[j] != c})
+        @constraint(model, b => {x[i] != x[j]} ) 
     end
-    # return bs so we can print it in the main function
-    return bs
 end
-
 
 
 #
@@ -490,19 +477,22 @@ function cumulative(model, start, duration, resource, limit)
     times_max = maximum(round.(Int,[JuMP.upper_bound(start[i])+duration[i] for i in tasks]))
     println("times: $(times_min)..$(times_max)")
     for t in times_min:times_max
-        bs = @variable(model, [1:num_tasks], Bin)
-        bt = @variable(model, [1:num_tasks], Bin)
+        # bs = @variable(model, [1:num_tasks], Bin)
+        # bt = @variable(model, [1:num_tasks], Bin)
         b  = @variable(model, [1:num_tasks], Bin)
         for i in tasks
             # The following don't work since ConstraintSolver don't
             # support nonlinear constraints
             # @constraint(model,sum([(start[i] <= t) * (t <= start[i] + duration[i])*resource[i] for i in tasks])  <= b)
 
+            #= 
             # is this task active during this time t?
             @constraint(model, bs[i] := {start[i] <= t})
-            # @constraint(model, bt[i] := {t <= start[i]+duration[i]-1}) # should be '<'
             @constraint(model, bt[i] := {t < start[i]+duration[i]}) 
             @constraint(model, b[i] := { bs[i] + bt[i] == 2}) # is this task active in time t ?
+            =# 
+            @constraint(model, b[i] := {start[i] <= t && t < start[i]+duration[i]})
+
         end
         # Check that there's no conflicts in time t
         @constraint(model,sum([b[i]*resource[i] for i in tasks]) <= limit)
@@ -779,10 +769,14 @@ end
 function no_overlap(model, begins,durations)
     n = length(begins)
     for i in 1:n, j in i+1:n
+        #=
         b = @variable(model,[1:2], Bin)
         @constraint(model,b[1] := {begins[i] + durations[i] <= begins[j]})
         @constraint(model,b[2] := {begins[j] + durations[j] <= begins[i]})
         @constraint(model, sum(b) >= 1)
+        =#
+        @constraint(model,(begins[i] + durations[i] <= begins[j]) || (begins[j] + durations[j] <= begins[i]))
+
     end
 end
 
@@ -879,3 +873,53 @@ function lex_less_eq(model, x, y)
     @constraint(model, b[size + 2] == 1)
 end
 =#
+
+
+
+#=
+
+  among(model,n, x, v)
+
+  From MiniZinc globals.mzn:
+  """
+  Requires exactly 'n' variables in 'x' to take one of the values in 'v'.
+  """
+=#
+function among(model, n, x, v)
+    x_len = length(x)
+    v_len = length(v)
+    b = @variable(model, [1:x_len], Bin)
+    for i in 1:x_len 
+        bv = @variable(model, [1:v_len], Bin)
+        for j in 1:v_len
+            @constraint(model, bv[j] := {x[i] == v[j]})
+        end
+        @constraint(model, b[i] := {sum(bv) > 0})
+    end
+    @constraint(model, n == sum(b))
+end
+
+
+# 
+# square(model, x,y, table=nothing)
+# 
+# y = x * x
+# 
+# If this is used for the same table repeatedly,
+# one might to use a precalculated table.
+# Note: Then use resize_matrix() to get it in the
+# proper form (see below how it's done)
+#
+# Beware: This might blow up on largish domains.
+#
+function square(model, x,y, table=[])
+    if x isa Integer
+        x = @variable(model, lower_bound=x, upper_bound=x, integer=true)
+    end
+    lbx = round(Int, JuMP.lower_bound(x))
+    ubx = round(Int, JuMP.upper_bound(x))
+    if table !== []
+        table = resize_matrix([ [i,j,i * j] for i in lbx:ubx, j in lbx:ubx])
+    end
+    @constraint(model, [x,x,y] in CS.TableSet(table))
+end

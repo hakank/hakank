@@ -1,35 +1,40 @@
 #=
 
-  Bales of hay problem in Julia ConstraintSolver.jl
+  Mr Smith problem in Julia ConstraintSolver.jl 
 
-  From The Math Less Traveled, 
-  "The haybaler", http://www.mathlesstraveled.com/?p=582 
+  From an IF Prolog example (http://www.ifcomputer.de/)
   """
-  You have five bales of hay.
-
-  For some reason, instead of being weighed individually, they were weighed 
-  in all possible combinations of two. The weights of each of these 
-  combinations were written down and arranged in numerical order, without 
-  keeping track of which weight matched which pair of bales. The weights, 
-  in kilograms, were 80, 82, 83, 84, 85, 86, 87, 88, 90, and 91.
-
-  How much does each bale weigh? Is there a solution? Are there multiple 
-  possible solutions? 
+  The Smith family and their three children want to pay a visit but they
+  do not all have the time to do so. Following are few hints who will go
+  and who will not:
+      o If Mr Smith comes, his wife will come too.
+      o At least one of their two sons Matt and John will come.
+      o Either Mrs Smith or Tim will come, but not both.
+      o Either Tim and John will come, or neither will come.
+      o If Matt comes, then John and his father will
+        also come.
   """
 
+  The answer should be:
+    Mr_Smith_comes      =  0
+    Mrs_Smith_comes     =  0
+    Matt_comes          =  0
+    John_comes          =  1
+    Tim_comes           =  1
+
+  This version use more && and ||.
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
 
-
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function bales_of_hay(print_solutions=true,all_solutions=true)
+function mr_smith(print_solutions=true,all_solutions=true)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -57,7 +62,7 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=> 6,
+                                                            "time_limit"=>6,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
@@ -66,23 +71,34 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
                                                             # "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
+
     n = 5
-    weights = [80, 82, 83, 84, 85, 86, 87, 88, 90, 91]
-    w_len = length(weights)
-    max_x = 50
+    @variable(model, x[1:n], Bin)
+    mr_smith,mrs_smith,matt,john,tim = x
+    people = ["mr_smith","mrs_smith","matt","john","tim"]
 
-    @variable(model, 0 <= x[1:n] <= max_x, Int)
-
-    increasing(model,x)
-    @variable(model,1 <= bx[1:w_len,1:2] <= max_x,Int)
-    for w in 1:length(weights)
-        i = @variable(model,integer=true, lower_bound=1, upper_bound=n)
-        j = @variable(model,integer=true, lower_bound=1, upper_bound=n)
-        @constraint(model,i < j)
-        my_element(model, i, x, bx[w,1])
-        my_element(model, j, x, bx[w,2])
-        @constraint(model, sum(bx[w,:]) == weights[w])
-    end
+    # If Mr Smith comes, his wife will come too.
+    @constraint(model,mr_smith => {mrs_smith == 1})
+ 
+    # At least one of their two sons Matt and John will come.
+    b1 = @variable(model, binary=true)
+    # @constraint(model,matt + john >= 1)
+    @constraint(model, b1 := {matt == 1|| john == 1})
+    @constraint(model, b1 == 1)
+ 
+    # Either Mrs Smith or Tim will come, but not both.
+    # Mrs_Smith + Tim #= 1,
+    @constraint(model,mrs_smith + tim == 1)
+ 
+    # Either Tim and John will come, or neither will come.
+    @constraint(model,tim == john)
+ 
+    # If Matt comes, then John and his father will also come.
+    # @variable(model, john_and_mr_smith, Bin)
+    # @constraint(model, john_and_mr_smith := {john + mr_smith == 2})
+    # @constraint(model,matt => {john_and_mr_smith == 1})
+    @constraint(model, matt => { john == 1 && mr_smith == 1})
+ 
 
     # Solve the problem
     optimize!(model)
@@ -96,11 +112,8 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
             for sol in 1:num_sols
                 # println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                bx_val = convert.(Integer,JuMP.value.(bx; result=sol))
                 println("x:$x_val")
-                println("bx:$bx_val")
-                println()
-
+                println("These will come:", [people[i] for i in 1:n if x_val[i] == 1])
             end
         end
     else
@@ -110,4 +123,4 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
     return status
 end
 
-@time bales_of_hay(true,false)
+@time mr_smith()

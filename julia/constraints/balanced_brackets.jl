@@ -1,35 +1,45 @@
 #=
 
-  Bales of hay problem in Julia ConstraintSolver.jl
+  Balanced brackets in ConstraintSolver.jl 
+ 
+  This model all balanced brackets of size m*2.
 
-  From The Math Less Traveled, 
-  "The haybaler", http://www.mathlesstraveled.com/?p=582 
-  """
-  You have five bales of hay.
+  See https://en.wikipedia.org/wiki/Catalan_number
 
-  For some reason, instead of being weighed individually, they were weighed 
-  in all possible combinations of two. The weights of each of these 
-  combinations were written down and arranged in numerical order, without 
-  keeping track of which weight matched which pair of bales. The weights, 
-  in kilograms, were 80, 82, 83, 84, 85, 86, 87, 88, 90, and 91.
+  The number of generated solutions for m:
+   m        #
+   ----------
+    1       1
+    2       2
+    3       5
+    4      14
+    5      42
+    6     132
+    7     429
+    8    1430
+    9    4862
+   10   16796
+   11   58786
+   12  208012
+   13  742900
+  
+  Which - of course - is the Catalan numbers.
 
-  How much does each bale weigh? Is there a solution? Are there multiple 
-  possible solutions? 
-  """
+  http://oeis.org/search?q=1%2C2%2C5%2C14%2C42%2C132%2C429%2C1430%2C4862%2C16796%2C58786%2C208012&language=english&go=Search
+  http://oeis.org/A000108
 
 
-  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
 
 =#
-
 
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function bales_of_hay(print_solutions=true,all_solutions=true)
+function balanced_brackets(m=4,print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -39,8 +49,8 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
                                                             # "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
-                                                            "traverse_strategy"=>:BFS,
-                                                            # "traverse_strategy"=>:DFS,
+                                                            # "traverse_strategy"=>:BFS,
+                                                            "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
                                                             # "branch_split"=>:Smallest,
@@ -57,49 +67,55 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=> 6,
+                                                            "time_limit"=>timeout,
 
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
 
                                                             # "lp_optimizer" => cbc_optimizer,
                                                             # "lp_optimizer" => glpk_optimizer,
-                                                            # "lp_optimizer" => ipopt_optimizer,
+                                                            "lp_optimizer" => ipopt_optimizer,
                                         ))
-    n = 5
-    weights = [80, 82, 83, 84, 85, 86, 87, 88, 90, 91]
-    w_len = length(weights)
-    max_x = 50
+    n = m*2
+    t = [1,-1] # +1 for "[", -1 for "]"
+    @variable(model, 1 <= x[1:n] <= 2, Int) # 1="[",  2="]"
 
-    @variable(model, 0 <= x[1:n] <= max_x, Int)
+    # Counter (cumulative sum)
+    @variable(model, 0 <= c[1:n] <= n, Int)
 
-    increasing(model,x)
-    @variable(model,1 <= bx[1:w_len,1:2] <= max_x,Int)
-    for w in 1:length(weights)
-        i = @variable(model,integer=true, lower_bound=1, upper_bound=n)
-        j = @variable(model,integer=true, lower_bound=1, upper_bound=n)
-        @constraint(model,i < j)
-        my_element(model, i, x, bx[w,1])
-        my_element(model, j, x, bx[w,2])
-        @constraint(model, sum(bx[w,:]) == weights[w])
+    # Leading "["
+    @constraint(model, x[1] == 1)
+    @constraint(model, c[1] == 1)
+
+    for i in 2:n 
+        tt = @variable(model, [1:1], CS.Integers([-1,1]))
+        my_element(model,x[i], t, tt[1])
+        @constraint(model, c[i] == c[i-1] + tt[1])
     end
+
+    # Concluding "]"
+    @constraint(model, x[n] == 2)
+    @constraint(model, c[n] == 0)
 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
     # println("status:$status")
+    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
         println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
                 # println("solution #$sol")
-                x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                bx_val = convert.(Integer,JuMP.value.(bx; result=sol))
-                println("x:$x_val")
-                println("bx:$bx_val")
-                println()
+                if print_solutions
+                    x_val = convert.(Integer,JuMP.value.(x; result=sol))
+                    c_val = convert.(Integer,JuMP.value.(c; result=sol))
+                    println("x:$x_val")
+                    println("c:$c_val")
+                    println()
+                end
 
             end
         end
@@ -107,7 +123,18 @@ function bales_of_hay(print_solutions=true,all_solutions=true)
         println("status:$status")
     end
 
-    return status
+    return status, num_sols
 end
 
-@time bales_of_hay(true,false)
+begin 
+    @time local status, num_sols = balanced_brackets(4,true,true)
+    println("num_sols: $num_sols")
+
+    for m in 1:20
+        println("m:$m")
+        @time local status, num_sols = balanced_brackets(m,false,true)
+        if status == MOI.TIME_LIMIT
+            break
+        end
+    end
+end

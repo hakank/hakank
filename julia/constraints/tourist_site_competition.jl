@@ -103,13 +103,9 @@ function tourist_site_competition(instance, print_solutions=true,all_solutions=t
     # Every pair of sites is visited by Lambda common judges.
     for s1 in 1:num_sites, s2 in 1:num_sites 
         if s1 < s2
-            b1 = @variable(model, [1:num_judges], Bin )
-            b2 = @variable(model, [1:num_judges], Bin )
             b = @variable(model, [1:num_judges], Bin )
             for j in 1:num_judges 
-                @constraint(model, b1[j] := {x[s1,j] == 1})
-                @constraint(model, b2[j] := {x[s1,j] == x[s2,j]} )
-                @constraint(model, b[j] := {b1[j] + b2[j]== 2} )
+                @constraint(model, b[j] := {x[s1,j] == 1 && x[s1,j] == x[s2,j] } )
             end
             @constraint(model,lambda == sum(b))
         end 

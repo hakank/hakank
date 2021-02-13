@@ -37,7 +37,7 @@ function all_different_except_0_test(n=5)
                                             )
     @variable(model, 0 <=  x[1:n] <= n, Int)
 
-    bs = all_different_except_c(model,x,0)
+    all_different_except_c(model,x,0)
     increasing(model, x)
 
     println("solve")
@@ -53,9 +53,7 @@ function all_different_except_0_test(n=5)
         for sol in 1:num_sols
             println("solution #$sol")
             xx = convert.(Integer,JuMP.value.(x,result=sol))
-            # bss = convert.(Integer,JuMP.value.(bs,result=sol))
             println("x:$xx")
-            # println("bs:$bss\n")
 
         end
 

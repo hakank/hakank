@@ -96,16 +96,28 @@ function jobs_puzzle(print_solutions=true,all_solutions=true,timeout=6)
    # The job of nurse is held by a male.
    # (Nurse == Steve \/ Nurse == Pete),
    # either_eq(model, Nurse,Steve, Nurse,Pete)
-   is_member_of(model,Nurse, [Steve,Pete])
+   # is_member_of(model,Nurse, [Steve,Pete])
+   b1 = @variable(model, binary=true)
+   @constraint(model, b1 := {Nurse == Steve || Nurse == Pete})
+   @constraint(model, b1 == 1)
 
    # @either_eq(model, :(Nurse==Steve), :(Nurse==Pete))
     
    # The husband of the chef is the clerk.
    # (Clerk == Steve   \/ Clerk == Pete),
    # either_eq(model, Clerk,Steve, Clerk,Pete)
-   is_member_of(model,Clerk, [Steve,Pete])
+   # is_member_of(model,Clerk, [Steve,Pete])
+   b2 = @variable(model, binary=true)
+   @constraint(model, b2 := {Clerk == Steve || Clerk == Pete})
+   @constraint(model, b2 == 1)
+
+   # (Chef  #= Roberta #\/ Chef #= Thelma),
    # either_eq(model, Chef,Roberta, Chef,Thelma)
-   is_member_of(model,Chef, [Roberta,Thelma])
+   # is_member_of(model,Chef, [Roberta,Thelma])
+   b3 = @variable(model, binary=true)
+   @constraint(model, b3 := {Chef  == Roberta || Chef == Thelma})
+   @constraint(model, b3 == 1)
+
    @constraint(model, Chef != Clerk)
 
    # Roberta is not a boxer.
@@ -124,7 +136,11 @@ function jobs_puzzle(print_solutions=true,all_solutions=true,timeout=6)
    # From the name of the job
    # (Actor == Steve \/ Actor == Pete)
    # either_eq(model, Actor,Steve, Actor,Pete)
-   is_member_of(model,Actor, [Steve,Pete])
+   # is_member_of(model,Actor, [Steve,Pete])
+   b4 = @variable(model, binary=true)
+   @constraint(model, b4 := {(Actor == Steve || Actor == Pete)})
+   @constraint(model, b4 == 1)
+
 
 
     # Solve the problem

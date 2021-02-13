@@ -109,9 +109,9 @@ function a_round_of_golf(print_solutions=true,all_solutions=true)
     #     the lowest score of the foursome.
     @constraint(model, bill != maintenance_man)
 
-    @constraint(model, score_bill <= score_jack) # should be '<'
-    @constraint(model, score_bill <= score_paul)
-    @constraint(model, score_bill <= score_frank)
+    @constraint(model, score_bill < score_jack)
+    @constraint(model, score_bill < score_paul)
+    @constraint(model, score_bill < score_frank)
 
 
     #  2. Mr. clubb, who isn"t paul, hit several balls into the woods and
@@ -137,6 +137,7 @@ function a_round_of_golf(print_solutions=true,all_solutions=true)
     my_element(model, sands,score,score_sands)
     my_element(model, caddy,score,score_caddy)
     my_element(model, carter,score,score_carter)
+    
     #=
     # Picat code:
     (
@@ -147,21 +148,16 @@ function a_round_of_golf(print_solutions=true,all_solutions=true)
        scorecaddy = scoresands + 4)
     ),
     =#
-    c1 = @variable(model, [1:2], Bin )
-    @constraint(model, c1[1] := {score_frank == score_sands + 4} )
-    @constraint(model, c1[2] := {score_caddy == score_sands + 7} )
-
-    c2 = @variable(model, [1:2], Bin )
-    @constraint(model, c2[1] := {score_frank == score_sands + 7} )
-    @constraint(model, c2[2] := {score_caddy == score_sands + 4} )
-
-    c3 = @variable(model, [1:2], Bin )
-    @constraint(model, c3[1] := {sum(c1) == 2})
-    @constraint(model, c3[2] := {sum(c2) == 2})
-
-    c = @variable(model, [1:1], Bin )
-    @constraint(model, c[1] := {sum(c3) == 1})
-    @constraint(model, c[1] == 1)
+    #= 
+    c1 = @variable(model, binary=true )
+    @constraint(model, c1 := {score_frank == score_sands + 4 && score_caddy == score_sands + 7} )
+    c2 = @variable(model, binary=true )
+    @constraint(model, c2 := {score_frank == score_sands + 7 && score_caddy == score_sands + 4} )
+    @constraint(model, c1 + c2 == 1)
+    =# 
+    @constraint(model, (score_frank == score_sands + 4 && score_caddy == score_sands + 7) || 
+                        (score_frank == score_sands + 7 && score_caddy == score_sands + 4)   
+                       )
 
 
     #  4. Mr. carter thought his score of 78 was one of his better games, even
@@ -170,7 +166,7 @@ function a_round_of_golf(print_solutions=true,all_solutions=true)
 
     #  score[carter] = 78,
     @constraint(model, score_carter == 78)
-    @constraint(model, score_frank <= score_carter) # should be '<'
+    @constraint(model, score_frank < score_carter)
 
     #  5. None of the four scored exactly 81 strokes.
     for s in score
@@ -187,17 +183,12 @@ function a_round_of_golf(print_solutions=true,all_solutions=true)
         if print_solutions
             for sol in 1:num_sols
                 println("solution #$sol")
-                last_namex = convert.(Integer,JuMP.value.(last_name; result=sol))
-                jobx = convert.(Integer,JuMP.value.(job; result=sol))
-                scorex = convert.(Integer,JuMP.value.(score; result=sol))
-                c1x = convert.(Integer,JuMP.value.(c1; result=sol))
-                c2x = convert.(Integer,JuMP.value.(c2; result=sol))
-                c3x = convert.(Integer,JuMP.value.(c3; result=sol))
-                cx = convert.(Integer,JuMP.value.(c; result=sol))
-                println("last_name:$last_namex")
-                println("job      :$jobx")
-                println("score    :$scorex")
-                println("c1:$c1x c2:$c2x c3:$c3x c:$cx")
+                last_name_val = convert.(Integer,JuMP.value.(last_name; result=sol))
+                job_val = convert.(Integer,JuMP.value.(job; result=sol))
+                score_val = convert.(Integer,JuMP.value.(score; result=sol))
+                println("last_name:$last_name_val")
+                println("job      :$job_val")
+                println("score    :$score_val")
                 println()
             end
         end
