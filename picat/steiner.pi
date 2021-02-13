@@ -1,3 +1,4 @@
+
 /*
 
   Steiner triplets in Picat.
@@ -20,46 +21,167 @@
 
 
   Note: This model uses arrays of booleans as an representation of sets.
+  2020-02-02/hakank: I added an integer representation, but it's slower than
+                     the boolean version.
+
+                     Also, since I first wrote this model, the sat solver
+                     has been changed so there are some differences compared
+                     to the old sat solver. The new solver is a little slower
+                     on smaller instances but is better on larger instances.
+                     See the comparison for go2/0 below.
+
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
 
-import cp.
+import sat.
+% import cp.
 
 main => go.
 
-go =>
+%%
+% Steiner(7)
+%
+go ?=>
    nolog,
+   Map = get_global_map(),
+   Map.put(counter,0),
    println(allowedN=[ I : I in 1..40, (I mod 6 == 1; I mod 6 == 3)]),
    N = 7,
    steiner(N,Steiner),
-   writeln(Steiner),nl.
+   writeln(Steiner),nl,
+   Map.put(counter,Map.get(counter)+1),
+   fail.
+
+go => 
+   println(counter=get_global_map().get(counter)).
+
 
 /*
   Benchmark (CP vs SAT)
+  First solution (unordered set)
 
+  Old SAT solver:
   N    SAT      CP
   --------------------
    3    0.0s    0.0s
-   7    0.056s  0.0s
-   9    0.232s  0.104s
-  13    1.528s  
-  15    3.18s
-  19   33.878s
+   7    0.028s  0.0s
+   9    0.423s  0.104s
+  13    0.459s
+  15    0.885s
+  19    5.462s
+  21  119.427s
+
+  Newer SAT solver (from Picat version 2.x, running v3.0#4):
+  N    SAT     
+  -------------
+   3    0.0s   
+   7    0.022s
+   9    0.364s
+  13    2.084s
+  15    2.017s
+  19    6.045s
+  21    6.023s
+  25  344.422s
+
+  First solution (ordered set using less_lt. Slower.)
+  Old SAT solver:
+  N    SAT      CP
+  --------------------
+   3    0.0s    
+   7    0.056s  
+   9    0.588s  
+  13    1.319s
+  15    2.726s
+  19    161.181s
+  21    TODO
+
+  New SAT solver (v3.0#4)
+  N    SAT
+  -------------
+   3    0.0s
+   7    0.033s
+   9    0.596s
+  13    4.627s
+  15    11.632s
+  19   299.368s 
+  21   -
 
 */
-
 go2 => 
    nolog,
-   foreach(N in 3..19)
-     println([n=N,nMod6=(N mod 6)]),
-     (time2(steiner(N,Steiner)) ; true),
-     println(Steiner)
+   foreach(N in [I : I in 3..25, (I mod 6 == 1; I mod 6 == 3)])
+     println(n=N),
+     if time2(steiner(N,Steiner)), nonvar(Steiner) then
+        println(Steiner)
+     else 
+        true
+     end,
+     nl
    end,
    nl.
 
+% Find all solutions for N=7
+% Without lex_lt: 
+% With lex_lt: 30 solutions: 0.973s
+go3 =>
+   nolog,
+   N=7,
+   L = findall(_,steiner(N,_Steiner)),
+   println(num_solutions=L.len),
+   nl.
+
+%
+% Testing steiner2/2
+%
+go4 ?=>
+   nolog,
+   Map = get_global_map(),
+   Map.put(counter,0),
+   println(allowedN=[ I : I in 1..40, (I mod 6 == 1; I mod 6 == 3)]),
+   N = 7,
+   steiner2(N,Steiner),
+   println(Steiner),
+   Map.put(counter,Map.get(counter)+1),
+   fail.
+go4 => 
+   println(counter=get_global_map().get(counter)).
+
+
+%
+% steiner2/2: time of first solution.
+% This is much slower than steiner/2
+%
+% Times for Picat v3.0#4
+%  N    steiner/2 (SAT) steiner2/2 (SAT)
+%  --------------------------------------
+%  3    0.0s            0.0s 
+%  7    0.022s          0.056s
+%  9    0.364s          2.628s
+% 13    2.084s          7.123s
+% 15    2.017s         32.452s
+% 19    6.045s       1139.82s
+% 21    6.023s          -
+%
+go5 ?=> 
+   nolog,
+   foreach(N in [I : I in 3..25, (I mod 6 == 1; I mod 6 == 3)])
+     println(n=N),
+     if time2(steiner2(N,Steiner)) then
+        println(Steiner)
+     else 
+        true
+     end,
+     nl
+   end,
+   nl.
+go5 => true.
+
+%
+% Binary representation
+%
 steiner(N,Steiner) =>
 
    if  not(N mod 6 == 1; N mod 6 == 3) then
@@ -69,10 +191,13 @@ steiner(N,Steiner) =>
 
    % number of sets
    Nb = (N * (N-1)) // 6,
+   println(nb=Nb),
 
    Sets = new_array(Nb,N),
    SetsList = vars(Sets),
    SetsList :: 0..1,
+
+   Sets[1,1] #= 1, % symmetry breaking
 
    % atmost 1 element in common
    foreach({S1,I} in zip(Sets.to_list(),1..Nb))
@@ -80,18 +205,90 @@ steiner(N,Steiner) =>
        3 #= sum(S1List), % cardinality
        foreach({S2,J} in zip(Sets.to_list(),1..Nb))
           if I > J then
-             union_card(S1List,S2.to_list(),Common),
+             S2List = S2.to_list(),
+             % lex_lt(S1List,S2List), % sets in increasing order (much slower)
+             union_card(S1List,S2List,Common),
              Common #=< 1
+
           end
        end
    end,
 
    % solve([constr,down],SetsList),
-   solve([degree,updown],SetsList),
+   solve([constr,updown],SetsList),
    
    % convert to set representation
    Steiner = [Res : SS in Sets, boolean_to_set(SS,Res)].
-  
+
+
+%
+% Integer representation.
+% Here we also add the symmetry breaking lex2/1 (and x[1,1] #= 1)
+% 
+% For N=7 there are 30 solutions (with lex2/1):
+% {{1,2,6},{1,3,4},{1,5,7},{2,3,5},{2,4,7},{3,6,7},{4,5,6}}
+% {{1,2,5},{1,3,4},{1,6,7},{2,3,6},{2,4,7},{3,5,7},{4,5,6}}
+% {{1,2,5},{1,3,4},{1,6,7},{2,3,7},{2,4,6},{3,5,6},{4,5,7}}
+% {{1,2,6},{1,3,5},{1,4,7},{2,3,4},{2,5,7},{3,6,7},{4,5,6}}
+% {{1,2,7},{1,3,5},{1,4,6},{2,3,4},{2,5,6},{3,6,7},{4,5,7}}
+% {{1,2,7},{1,3,4},{1,5,6},{2,3,5},{2,4,6},{3,6,7},{4,5,7}}
+% {{1,2,5},{1,3,7},{1,4,6},{2,3,4},{2,6,7},{3,5,6},{4,5,7}}
+% {{1,2,7},{1,3,4},{1,5,6},{2,3,6},{2,4,5},{3,5,7},{4,6,7}}
+% {{1,2,6},{1,3,4},{1,5,7},{2,3,7},{2,4,5},{3,5,6},{4,6,7}}
+% {{1,2,7},{1,3,6},{1,4,5},{2,3,4},{2,5,6},{3,5,7},{4,6,7}}
+% {{1,2,6},{1,3,7},{1,4,5},{2,3,4},{2,5,7},{3,5,6},{4,6,7}}
+% {{1,2,7},{1,3,6},{1,4,5},{2,3,5},{2,4,6},{3,4,7},{5,6,7}}
+% {{1,2,6},{1,3,7},{1,4,5},{2,3,5},{2,4,7},{3,4,6},{5,6,7}}
+% {{1,2,6},{1,3,5},{1,4,7},{2,3,7},{2,4,5},{3,4,6},{5,6,7}}
+% {{1,2,4},{1,3,5},{1,6,7},{2,3,7},{2,5,6},{3,4,6},{4,5,7}}
+% {{1,2,4},{1,3,5},{1,6,7},{2,3,6},{2,5,7},{3,4,7},{4,5,6}}
+% {{1,2,4},{1,3,6},{1,5,7},{2,3,5},{2,6,7},{3,4,7},{4,5,6}}
+% {{1,2,7},{1,3,5},{1,4,6},{2,3,6},{2,4,5},{3,4,7},{5,6,7}}
+% {{1,2,3},{1,4,6},{1,5,7},{2,4,5},{2,6,7},{3,4,7},{3,5,6}}
+% {{1,2,4},{1,3,6},{1,5,7},{2,3,7},{2,5,6},{3,4,5},{4,6,7}}
+% {{1,2,4},{1,3,7},{1,5,6},{2,3,6},{2,5,7},{3,4,5},{4,6,7}}
+% {{1,2,3},{1,4,5},{1,6,7},{2,4,6},{2,5,7},{3,4,7},{3,5,6}}
+% {{1,2,3},{1,4,5},{1,6,7},{2,4,7},{2,5,6},{3,4,6},{3,5,7}}
+% {{1,2,3},{1,4,6},{1,5,7},{2,4,7},{2,5,6},{3,4,5},{3,6,7}}
+% {{1,2,3},{1,4,7},{1,5,6},{2,4,6},{2,5,7},{3,4,5},{3,6,7}}
+% {{1,2,4},{1,3,7},{1,5,6},{2,3,5},{2,6,7},{3,4,6},{4,5,7}}
+% {{1,2,5},{1,3,6},{1,4,7},{2,3,4},{2,6,7},{3,5,7},{4,5,6}}
+% {{1,2,3},{1,4,7},{1,5,6},{2,4,5},{2,6,7},{3,4,6},{3,5,7}}
+% {{1,2,5},{1,3,7},{1,4,6},{2,3,6},{2,4,7},{3,4,5},{5,6,7}}
+% {{1,2,5},{1,3,6},{1,4,7},{2,3,7},{2,4,6},{3,4,5},{5,6,7}}
+% counter = 30
+% 
+% CPU time 2.612 seconds. Backtracks: 0
+%
+% (steiner/2 took 0.973s for this, see go3/0)
+% 
+steiner2(N,X) =>
+
+   if  not(N mod 6 == 1; N mod 6 == 3) then
+     println("N must be (1|3) modulo 6"),     
+     fail
+   end, 
+
+   % number of sets
+   Nb = (N * (N-1)) // 6,
+   println(nb=Nb),
+
+   X = new_array(Nb,3),
+   X :: 1..N,
+
+   X[1,1] #= 1, % symmetry breaking
+   % atmost 1 element in common
+   foreach(I in 1..Nb)
+       increasing_strict([X[I,K] : K in 1..3]),
+       foreach(J in I+1..Nb)
+         sum([X[I,P] #= X[J,Q] : P in 1..3, Q in 1..3]) #<= 1
+       end
+   end,
+   
+   lex2(X), % symmetry breaking
+
+   solve([ff,split],X).
+
 
 %
 % number of common elements in two "sets"
@@ -105,4 +302,14 @@ union_card(S1,S2,CardCommon) =>
 boolean_to_set(List,Set) =>
    Set = [I : {C,I} in zip(List.to_list(), 1..List.length), C = 1].
 
-
+%
+% Ensure that X is in lexigraphic order.
+%
+lex2(X) =>
+  Len = X.length,
+  Len2 = X[1].len,
+  foreach(I in 1..Len, J in I+1..Len)
+     lex_lt([X[I,K] : K in 1..Len2],
+            [X[J,K] : K in 1..Len2]) 
+  end.
+   .

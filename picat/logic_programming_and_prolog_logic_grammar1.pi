@@ -1,0 +1,131 @@
+/* 
+
+  Logic grammar in Picat.
+
+  From Nilsson & Matuszynski: "Logic, Programming and Prolog"
+  Page 187f (Chapter 10: Logic and Grammar)
+
+  This defines the grammar (page 184) 
+     <sentence>    -> <noun-phrase>, <verb-phrase>
+     <noun-phrase> -> the <noun>
+     <verb-phrase> -> runs
+     <noun>        -> engine
+     <noun>        -> rabbit
+
+  Compare with production_rules1.pi for another (and slower) representation 
+  of this grammar.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+% import util.
+% import cp.
+
+
+main => go.
+
+go ?=>
+  sentence([the,rabbit,runs]),
+  sentence([the,X,runs]),
+  println(x=X),
+  fail,
+  nl.
+go => true.
+
+
+% Since we use difference lists, we must take
+% care of that in the call of sentence2/1.
+%
+% Picat> sentence2(X)
+% X = [the,engine,runs|_f408] - _f408 ?;
+% X = [the,rabbit,runs|_f408] - _f408
+% yes
+% 
+% Picat> sentence2([the,engine,runs])
+% no
+% 
+% Picat> sentence2($X-[])                
+% X = [the,engine,runs] ?;
+% X = [the,rabbit,runs]
+% yes
+% 
+% Picat> sentence2($[the,rabbit,runs,quickly]-[quickly])
+% yes
+% 
+% Picat> sentence2($[the,rabbit,runs,quickly]-[X])      
+% X = quickly
+% yes
+%
+go2 ?=>
+  sentence2($X-[]),
+  println(X),
+  fail,
+  nl.
+go2 => true.
+
+%
+% Picat> sentence3($X-[])                   
+% X = [the,engine,runs] ?;
+% X = [the,rabbit,runs]
+% yes
+%
+go3 ?=>
+  sentence3($X-[]),
+  println(X),
+  fail,
+  nl.
+go3 => true.
+
+
+/*
+% Original
+% This is rather inefficient.
+% and loops after sentences has been generated
+sentence(Z) :-
+  append(X,Y,Z),
+  noun_phrase(X),
+  verb_phrase(Y).
+*/
+% Fixed (comment at page 188)
+sentence(Z) :-
+  noun_phrase(X),
+  verb_phrase(Y),
+  append(X,Y,Z).
+
+
+noun_phrase([the|X]) :- noun(X).
+
+verb_phrase([runs]).
+
+noun([engine]).
+noun([rabbit]).
+
+
+% Using difference lists: more efficient
+% Example 10.5 (page 188f)
+sentence2(X0-X2) :-
+  noun_phrase2($X0-X1),
+  verb_phrase2($X1-X2).
+
+noun_phrase2(X0-X2) :-
+  diff(X0,X1,[the]),noun2($X1-X2).
+
+verb_phrase2(X0-X1) :-
+  diff(X0,X1,[runs]).
+
+noun2(X0-X1) :- diff(X0,X1,[engine]).
+noun2(X0-X1) :- diff(X0,X1,[rabbit]).
+
+diff([X|Y],Y,[X]).
+
+
+% A simpler variant using difference list
+% Example 10.6 (page 190)
+sentence3(X0-X2) :- noun_phrase3($X0-X1), verb_phrase3($X1-X2).
+noun_phrase3([the|X1]-X2) :- noun3($X1-X2).
+verb_phrase3([runs|X1]-X1).
+noun3([engine|X1]-X1).
+noun3([rabbit|X1]-X1).

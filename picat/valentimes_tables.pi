@@ -1,0 +1,128 @@
+/* 
+
+  Valentimes Tables in Picat.
+
+  From Chris Smith's Maths Newsletter #545
+  https://twitter.com/aap03102/status/1357716861236969479
+  """
+  The numbers 1 to 20 are going for dinner, seated in pairs. 
+  The rules of the restaurant are:
+  - The table number is the product of the two numbers seated there.
+     Some table numbers are missing.
+  - Odd-odd and even-even couples are seated at round tables, and
+    odd-even couples are seating at square tables.
+  - On three tables, the diners have a different of 11, and on two 
+    tables they have a difference of 2.
+  - Table numbers increase from left to right.
+  Can you work out which table everyone is sitting of. 
+
+
+  [ 
+    The tables:  S[.]: square table   R(.): round table, ?: unknown number
+
+           ?        ?      ?         ?        ?
+         R(32)     S[?]   R(60)    S[100]   R(323)
+           ?        ?      ?         ?        ?
+
+       ?       ?          ?     ?        ?
+      S[?]    S[?]      S[60]  R(?)    S[?]
+       ?       ?          ?      11      ?
+  ]
+  """
+
+  This is the unique solution:
+  x = [2,16,7,8,6,10,5,20,17,19,1,12,3,14,4,15,9,11,13,18]
+  diffs = [14,1,4,15,2,11,11,11,2,5]
+  products = [32,56,60,100,323,12,42,60,99,234]
+
+  Tables:
+  Table  1:  2 * 16 =  32 diff:14
+  Table  2:  7 *  8 =  56 diff: 1
+  Table  3:  6 * 10 =  60 diff: 4
+  Table  4:  5 * 20 = 100 diff:15
+  Table  5: 17 * 19 = 323 diff: 2
+  Table  6:  1 * 12 =  12 diff:11
+  Table  7:  3 * 14 =  42 diff:11
+  Table  8:  4 * 15 =  60 diff:11
+  Table  9:  9 * 11 =  99 diff: 2
+  Table 10: 13 * 18 = 234 diff: 5
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import cp.
+
+main => go.
+
+go ?=>
+  X = new_list(20),
+  X :: 1..20,
+  all_different(X),
+
+  % Table 9 (the only hint for the numbers)
+  X[18] #= 11 #\/ X[17] #= 11, 
+
+  % The 10 tables
+  Tables =   [round ,square, round,square, round,
+              square,square,square, round,square],
+  Products = [    32,     _,    60,   100,   323,
+                   _,     _,    60,     _,     _],
+                   
+  % Products :: 1..1000, % This is not needed
+
+  % Check all the tables
+  foreach(T in 1..10)
+     N1 #= X[2*T-1],
+     N2 #= X[2*T],
+     N1 #< N2, % symmetry breaking
+     call(Tables[T],N1,N2,Products[T])
+  end,
+
+  % - Table numbers increase from left to right.
+  % (See the image for the order of the tables.)
+  TableOrder = [6,1,7,2,3,8,9,4,10,5], 
+  increasing([Products[T] : T in TableOrder]),
+  
+  % - On three tables, the diners have a different of 11, and on two 
+  %   tables they have a difference of 2.
+  Diffs = [T : I in 1..10, T #= abs(X[2*I-1]-X[2*I])],
+  count(11,Diffs, 3),
+  count( 2,Diffs, 2),
+
+  Vars = X ++ Diffs ++ Products,
+  solve(Vars),
+  
+  println(x=X),
+  println(diffs=Diffs),
+  println(products=Products),
+  println("Tables:"),
+  foreach(T in 1..10)
+    printf("Table %2d: %2d * %2d = %3d diff:%2d\n",T,X[2*T-1],X[2*T],Products[T],Diffs[T])
+  end,
+  nl,
+  fail,
+  
+  nl.
+go => true.
+
+%
+% square table: odd-even couples
+%
+square(X,Y,Res) =>
+   Res #= X*Y,
+   (X mod 2 #= 1 #/\ Y mod 2 #= 0)
+   #\/
+   (X mod 2 #= 0 #/\ Y mod 2 #= 1).
+
+%
+% round table: odd-odd or even-even couples
+%
+round(X,Y,Res) =>
+   Res #= X*Y,
+   (X mod 2 #= 1 #/\ Y mod 2 #= 1)
+   #\/
+   (X mod 2 #= 0 #/\ Y mod 2 #= 0).

@@ -1,0 +1,228 @@
+/* 
+
+  Test of bitwise module in Picat.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import bitwise.
+
+main => go.
+
+
+go ?=> 
+   Map = get_global_map(),
+   Map.put(num_solutions,0),
+
+   Size = 4,
+   Type = signed,
+
+   X = bitvar2(Size,Type),
+   println(x=X),
+   Y = bitvar2(Size,Type),
+   println(y=Y),
+   Z = bitvar2(Size,Type),
+   println(z=Z),
+
+   % Shift :: 1..Size,
+
+   X.v #> 0,
+   Y.v #> 3,
+   
+   X.v #= Y.v -1, % when using constants we must use X.v
+   % bminus(X,Y,Z),
+   % Z.v #= X.v - Y.v,
+
+   % left_shift(X,2,Y),
+   % left_shift(X,Shift,Y), % This don't work, but in versions 2.1+
+   % right_shift(X,1,Y), 
+   % right_shift(X,Shift,Y), % This don't work, but in versions 2.1+
+   band(X,Y,Z),
+   % bor(X,Y,Z),
+   % bxor(X,Y,Z),
+   % Z = bnot(Y),
+
+   % check_bit(X,2,1),
+
+   % bnot(Y,T),
+   % band(X,T,Z),
+   % Y = left_shift(X,2).left_shift(2).bnot(),
+   % Z = band(X,Y),
+
+   % Vars = get_av(X) ++ Y.get_av() ++ Z.get_av() ++ [Shift],
+   Vars = get_av(X) ++ Y.get_av() ++ Z.get_av(),
+   println(vars=Vars),
+   solve(Vars),
+
+   % println(x=X),
+   println(x=show_av(X)),
+   % println(y=Y),
+   println(y=show_av(Y)),
+   % println(z=Z),
+   println(z=show_av(Z)),
+   % println(shift=Shift),
+   nl, 
+
+   Map.put(num_solutions,Map.get(num_solutions)+1),
+
+   fail,
+
+   nl.
+
+go => 
+  println(num_solutions=get_global_map().get(num_solutions)).
+
+
+% using double
+go2 => 
+  % Double = 1.356523412439991233,
+  Double = 0.7942865629534887, % from the xs128p.py z3 model
+  println(double=Double),
+  Size = 56, % Note: bit size is the largest we can use.
+             % This means that the conversion predicates must be
+             % tweaked as well...
+  double_to_binary_unsigned(Double,Size, X), 
+  % double_to_binary_signed(Double,Size, X), 
+  % Z = band(X,Y), 
+  % solve(get_avs([X,Y,Z])),
+  solve(get_avs([X])),
+  println(x=X),
+  % println(y=Y),
+  % println(z=Z),
+
+  binary_to_double_unsigned(X,DD),
+  % binary_to_double_signed(X,DD),
+  println(dd=DD),
+
+  println(diff=Double-DD),
+
+  nl.
+
+% Checking the double conversions.
+go3 => 
+  % These are from the xs128p.py z3 model
+  % Doubles = [0.4752549301773037, 0.08162196013326506, 0.8333085432653353],
+  Doubles = [0.7139546068176913, 0.8911783445868615, 0.8638372689198199],
+  % Doubles = [frand() :  _ in 1..20],
+  Size = 53,
+  Diffs = [],
+  foreach(D in Doubles) 
+    println(d=D),
+    double_to_binary_unsigned(D,Size, X), 
+    solve(get_avs([X])),
+    binary_to_double_unsigned(X,DD),
+    println(show_av(X)),
+    println('   d'=D),
+    println('  dd'=DD),
+    Diff = D-DD,
+    Diffs := Diffs ++ [Diff],
+    println('diff'=Diff),
+    nl
+  end,
+  println(Diffs),
+  println(total_diffs=sum(Diffs)),
+  nl.
+
+
+% Inspired by LCG Hack  
+%  http://docplayer.net/46725982-Quick-introduction-into-sat-smt-solvers-and-symbolic-execution.html
+% 
+% Note: This use a 32 bit vector, not a 64-bit vector!
+%
+lcg_hack => 
+  garbage_collect(300_000_000),
+  Type = signed,
+  Base = (2**32) - 1, % used with the modulo
+  State1 = bitvar2(32,Type),
+  State2 = bitvar2(32,Type),
+  State3 = bitvar2(32,Type),
+  State4 = bitvar2(32,Type),
+  State5 = bitvar2(32,Type),
+  State6 = bitvar2(32,Type),
+  State7 = bitvar2(32,Type),
+  State8 = bitvar2(32,Type),
+  State9 = bitvar2(32,Type),
+  State10 = bitvar2(32,Type),
+
+  AllStates = [State1,State2,State3,State4,State5,State6,State7,State8,State9,State10],
+
+  State1.v #>= 0,
+  State2.v #>= 0,
+  State3.v #>= 0,
+  State4.v #>= 0,
+  State5.v #>= 0,
+  State6.v #>= 0,
+  State7.v #>= 0,
+  State8.v #>= 0,
+  State9.v #>= 0,
+  State10.v #>= 0,
+
+  Output_prev = bitvar2(32,Type),
+  Output_prev.v :: 0..100,
+
+  Output_next = bitvar2(32,Type),
+  Output_next.v :: 0..100,
+
+  % Orig statement
+  % Output_prev = URem((State1>>16)&0x7FFF,100), % hakank: 100 is the the modulo of the random numbers
+  Output_prev.v = bmod(right_shift(State1,16).band(Const7FFF),Const100).v,
+
+  % We have to use modulo Base to make proper behaviour.
+  State2.v #= (State1.v*214013+2531011) mod Base,  % hakank: 214013 and 2531011 are from the assembly code above
+  State3.v #= (State2.v*214013+2531011) mod Base,
+  State4.v #= (State3.v*214013+2531011) mod Base,
+  State5.v #= (State4.v*214013+2531011) mod Base,
+  State6.v #= (State5.v*214013+2531011) mod Base,
+  State7.v #= (State6.v*214013+2531011) mod Base,
+  State8.v #= (State7.v*214013+2531011) mod Base,
+  State9.v #= (State8.v*214013+2531011) mod Base,
+  State10.v #= (State9.v*214013+2531011) mod Base,
+
+  % must use bitvar2_const for constants with bmod etc
+  Const7FFF = bitvar2_const(32,Type,0x7FFF), 
+  Const100 = bitvar2_const(32,Type,100),
+
+  29 #= bmod(right_shift(State2,16).band(Const7FFF),Const100).v,
+  74 #= bmod(right_shift(State3,16).band(Const7FFF),Const100).v,
+  95 #= bmod(right_shift(State4,16).band(Const7FFF),Const100).v,
+  98 #= bmod(right_shift(State5,16).band(Const7FFF),Const100).v,
+  40 #= bmod(right_shift(State6,16).band(Const7FFF),Const100).v,
+  23 #= bmod(right_shift(State7,16).band(Const7FFF),Const100).v,
+  58 #= bmod(right_shift(State8,16).band(Const7FFF),Const100).v,
+  61 #= bmod(right_shift(State9,16).band(Const7FFF),Const100).v,
+
+  % Original
+  % URem((State2>>16)&0x7FFF,100)==29),
+  % URem((State3>>16)&0x7FFF,100)==74),
+  % URem((State4>>16)&0x7FFF,100)==95),
+  % URem((State5>>16)&0x7FFF,100)==98),
+  % URem((State6>>16)&0x7FFF,100)==40),
+  % URem((State7>>16)&0x7FFF,100)==23),
+  % URem((State8>>16)&0x7FFF,100)==58),
+  % URem((State9>>16)&0x7FFF,100)==61),
+  % Output_next==URem((State10>>16)&0x7FFF,100)),
+
+  Output_next.v #= bmod(right_shift(State2,16).band(Const7FFF),Const100).v,
+
+  Vars = get_avs([Output_prev,State1,State2,State3,State4,State5,State6,State7,State8,State9,State10,Output_next]),
+  % Vars = get_avs([Output_prev,State1,State2,State3,State4]),
+  % println(vars=Vars),
+  println(solve),
+  solve($[ff,split],Vars),
+
+  % Note: One must use .get_all (or .a, .v, etc) to extract the values
+  println(output_prev=Output_prev.get_all),
+  % println(state1=State1.get_all),
+  % println(state2=State2.get_all),
+  foreach(State in AllStates)
+    println(State.get_all)
+  end,
+  println(output_next=Output_next.get_all),
+  
+  nl,
+  % fail,
+  nl.
+

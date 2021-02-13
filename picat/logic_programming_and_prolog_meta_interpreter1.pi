@@ -1,0 +1,284 @@
+/* 
+
+  Meta-interpreter in Picat.
+
+  From Nilsson & Matuszynski: "Logic, Programming and Prolog"
+  - page 159ff (solve_/1) 
+  - page 172ff (solve_/2) adding proofs
+  - page 178ff (print_proof/1)
+
+  This is a proof-of-concepts of what one can do with Picat. 
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+main => go.
+
+go ?=>
+  go_a, nl,
+  go_b, nl,
+  go_c, nl,
+  go_d, nl,
+  go_e, nl,
+  nl.
+go => true.
+
+
+go_a ?=>
+  println($parent(adam,bill)),
+  solve_($parent(adam,bill)), % true
+  fail,
+  nl.
+go_a => true.
+
+
+go_b ?=>
+  println($parent(adam,'AdamsChild')),
+  solve_($parent(adam,AdamsChild)),
+  println(adamsChild=AdamsChild),
+  fail,
+  nl.
+go_b => true.
+
+go_c ?=> 
+  println($parent('BillsParent',bill)),
+  solve_($parent(BillsParent,bill)),
+  println(billParent=BillsParent),
+  fail,
+  nl.
+go_c => true.
+
+go_d ?=> 
+  println($parent('Parent2','Child2')),
+  solve_($parent(Parent2,Child2)),
+  println([parent2=Parent2,child2=Child2]),
+  fail,
+  nl.
+go_d => true.
+
+go_e ?=> 
+  println($grandparent('GrandParent3','GrandChild3')),
+  solve_($grandparent(GrandParent3,GrandChild3)),
+  println([grandParent3=GrandParent3,grandChild3=GrandChild3]),
+  fail,
+  nl.
+go_e => true.
+
+% Testing member/2
+go2 ?=>
+  solve_($memb(X,[1,2,3,4])),
+  println(x=X),
+  fail,
+  nl.
+go2 => true.
+
+% append/3
+go3 ?=>
+  solve_($conc(X,Y,[1,2,3,4])),
+  println([x=X,y=Y]),
+  fail,
+  nl.
+go3 => true.
+
+%
+% "listing" of clauses
+%
+% if(grandparent(C,B),and(parent(C,A),parent(A,B))).
+% if(parent(A,B), father(A,B)).
+% if(father(adam,bill), true).
+% if(father(bill,cathy), true).
+% if(memb(A,[A|_]), true).
+% if(memb(A,[_|B]), memb(A,B)).
+% if(conc([],A,A), true).
+% if(conc([D|A],B,[D|C]), conc(A,B,C)).
+%
+go4 ?=>
+  clause_(C),
+  portray_clause(C),
+  fail,
+  nl.
+go4 => true.
+
+%
+% Using explicit if/2 (nicer formatting with portray_clause/1)
+%
+% grandparent(A, B) :-
+%         and(parent(A,C), parent(C,B)).
+% parent(A, B) :-
+%         father(A, B).
+% father(adam, bill).
+% father(bill, cathy).
+% memb(A, [A|_]).
+% memb(A, [_|B]) :-
+%         memb(A, B).
+% conc([], A, A).
+% conc([B|D], A, [B|C]) :-
+%         conc(D, A, C).
+%
+go5 ?=>
+  clause_($if(Head,Body)),
+  portray_clause($(Head :- Body)),
+  fail,
+  nl.
+go5 => true.
+
+%
+% solve_/2 (see op.cit 172)
+% Note that we have added some clauses such as mother/2
+% (here a little edited by splitting lines on '+'
+% x = adam
+% y = cathy
+% Proof:
+% proof(grandparent(adam,cathy), proof(parent(adam,bill),proof(father(adam,bill),void))
+% +
+% proof(parent(bill,cathy),proof(father(bill,cathy),void))).
+% Proof:
+% x = eve
+% y = cathy
+% proof(grandparent(eve,cathy), proof(parent(eve,bill),proof(mother(eve,bill),void))
+% +
+% proof(parent(bill,cathy),proof(father(bill,cathy),void))).
+%
+go6 ?=>
+  solve_($grandparent(X,Y),Z),
+  println(x=X),
+  println(y=Y),
+  println("Proof:"),
+  portray_clause(Z),
+  fail,
+  nl.
+go6 => true.
+
+
+%
+% Proof of memb/2
+%
+% x = 1
+% Proof1:
+% proof(memb(1,[1,2,3,4]), void).
+% x = 2
+% 
+% Proof1:
+% proof(memb(2,[1,2,3,4]), proof(memb(2,[2,3,4]),void)).
+% x = 3
+% 
+% Proof1:
+% proof(memb(3,[1,2,3,4]), proof(memb(3,[2,3,4]),proof(memb(3,[3,4]),void))).
+% x = 4
+% 
+% Proof1:
+% proof(memb(4,[1,2,3,4]), proof(memb(4,[2,3,4]),proof(memb(4,[3,4]),proof(memb(4,[4]),void)))).
+%
+go7 ?=>
+  solve_($memb(X,[1,2,3,4]),Proof),
+  println(x=X),
+  println("Proof:"),
+  portray_clause(Proof),
+  nl,
+  fail,
+  nl.
+go7 => true.
+
+%
+% Proof of conc/3
+%
+% [x = [],y = [1,2,3,4]]
+% Proof:
+% proof(conc([],[1,2,3,4],[1,2,3,4]), void).
+% [x = [1],y = [2,3,4]]
+%
+% Proof:
+% proof(conc([1],[2,3,4],[1,2,3,4]), proof(conc([],[2,3,4],[2,3,4]),void)).
+% [x = [1,2],y = [3,4]]
+%
+% Proof:
+% proof(conc([1,2],[3,4],[1,2,3,4]), proof(conc([2],[3,4],[2,3,4]),proof(conc([],[3,4],[3,4]),void))).
+% [x = [1,2,3],y = [4]]
+%
+% Proof:
+% proof(conc([1,2,3],[4],[1,2,3,4]), proof(conc([2,3],[4],[2,3,4]),proof(conc([3],[4],[3,4]),proof(conc([],[4],[4]),void)))).
+% [x = [1,2,3,4],y = []]
+% 
+% Proof:
+% proof(conc([1,2,3,4],[],[1,2,3,4]), proof(conc([2,3,4],[],[2,3,4]),proof(conc([3,4],[],[3,4]),proof(conc([4],[],[4]),proof(conc([],[],[]),void))))).
+% 
+go8 ?=>
+  solve_($conc(X,Y,[1,2,3,4]),Proof),
+  println([x=X,y=Y]),
+  println("Proof:"),
+  % portray_clause(Proof),
+  print_proof(Proof),
+  nl,
+  fail,
+  nl.
+go8 => true.
+
+
+
+% Picat don't like this representation, i.e. if ... and ...
+/*
+% This is from page 161 (op. cit.)
+
+clause_(grandparent(X,Z) if parent(X,Y) and parent(Y,Z)).
+clause_(parent(X,Y) if father(X,Y)).
+clause_(father(adam,bill) if true).
+clause_(father(bill,cathy) if true).
+
+solve_(true).
+solve_(X and Y) :- solve_(X), solve_(Y).
+solve_(X) <- clause_(X if Y), solve_(Y).
+*/
+
+%
+% So we rewrite it as this:
+%
+%  if(Head,Body)        Head :- Body
+%  if(Head,and(B1,B2))  Head :- B1,B2
+%  ...
+%  if(Head,true)        Head.
+%
+% Note: it's clause_/2 (not clause/2)
+clause_( if(grandparent(X,Z), and(parent(X,Y),parent(Y,Z)))).
+% clause_( if(parent(X,Y), or(father(X,Y),mother(X,Y)))). % added
+clause_( if(parent(X,Y), father(X,Y))).
+clause_( if(parent(X,Y), mother(X,Y))). % added
+clause_( if(father(adam,bill), true)).
+clause_( if(father(bill,cathy), true)).
+clause_( if(mother(eve,bill), true)). % added
+clause_( if(mother(agatha,cathy), true)). % added
+
+% added: member/2 as memb/2
+clause_( if(memb(X,[X|_]), true)).
+clause_( if(memb(X,[_|T]), memb(X,T))).
+
+% added: append/3 as conc/3
+clause_( if(conc([], L, L), true)).
+clause_( if(conc([H|T], L, [H|R]),conc(T, L, R))).
+
+%
+% The interpreter:
+%
+% Note: solve_/1 (not solve/1)
+%
+solve_(true).
+solve_(and(X,Y)) :- solve_(X), solve_(Y).
+solve_(or(X,Y)) :- solve_(X) ;  solve_(Y). % added
+solve_(not(X))  :- not solve_(X). % added
+solve_(X) :- clause_($if(X,Y)), solve_(Y).
+
+
+%
+% From page 172: solve_/2
+% solve with proof
+% (page 172 is in the chapter on expert system but it did use the *parent example)
+%
+solve_(true, void).
+solve_(and(X,Y),(Px + Py)) :- solve_(X, Px), solve_(Y, Py).
+solve_(not(X),proof(not(X),void))  :- not solve_(X,_T).
+solve_(X,proof(X,P)) :- clause_($if(X,Y)), solve_(Y,P).
+
+

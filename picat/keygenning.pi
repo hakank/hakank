@@ -1,0 +1,141 @@
+/* 
+
+  Keygenning in Picat.
+
+  Port of the z3 code in "Keygenning using the Z3 SMT Solver"
+  https://app.box.com/v/keygenning-z3
+  """
+  This article shows how we can use an SMT solver in developing a key 
+  generator. We need to find valid keys while also satisfying certain 
+  constraints. 
+  """
+
+  Output from the z3 program and in the text
+  """
+  No passcode of length 11 exists
+  Found a passcode of length 12 digits
+  Passcode is 0528691432349
+  """
+
+  Note that the passcode has actually 13 digits (not 12).
+
+  After fixing the while sat loop, it has these 4 solutions 
+  (of length 13):
+  """
+  No passcode of length 11 exists
+  Found a passcode of length 12 digits
+  Passcode is 0528691432349
+  Found a passcode of length 12 digits
+  Passcode is 0258691432369
+  Found a passcode of length 12 digits
+  Passcode is 0526891432329
+  Found a passcode of length 12 digits
+  Passcode is 0256891432349
+  """
+
+  This Picat model finds the same 4 solutions of length 13:
+  """
+  numDigits = 11
+  numDigits = 12
+  numDigits = 13
+  Found a passcode of length 13 digits
+  Passcode is 0256891432349
+
+  Found a passcode of length 13 digits
+  Passcode is 0258691432369
+
+  Found a passcode of length 13 digits
+  Passcode is 0526891432329
+
+  Found a passcode of length 13 digits
+  Passcode is 0528691432349
+  """
+
+  Note: One part of the problem/challenge of porting the z3 
+  model to Picat is that Picat is 1-based while the Python z3 
+  is 0-based.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+
+main => go.
+
+%
+% hakank:
+% The "s.add" lines below are from the z3 model, as are the
+% the "..." comments.
+%
+go ?=>
+
+  % "The digits of the passcode"
+  member(NumDigits,11..13),
+  println(numDigits=NumDigits),
+  
+  D = new_list(NumDigits),
+  D :: 0..9,
+
+  % "Add the constraints"
+  
+  % "Sum of first 5 digits should equal 21"
+  % s.add(d0 + d1 + d2 + d3 + d4 == 21)
+  sum(D[1..5]) #= 21,  
+
+
+  % "Product of 4 digits after the first should equal 480"
+  % s.add(d1 * d2 * d3 * d4 == 480)
+  prod(D[2..5]) #= 480,
+  
+  % "Digits from 5 to 10 should be 914323"
+  % s.add(d5 == 9, d6 == 1, d7 == 4, d8 == 3, d9 == 2, d10 == 3)
+  % hakank: Here we see why 12 digits don't suffice: later
+  %         there is a constraint that the last digit must be 9,
+  %         which clearly don't comply with this constraint.
+  D[6..11] = [9,1,4,3,2,3],
+  
+  % "Constraint involving Math.abs"
+  % s.add(Or(d1 + d2 - d3 == 1, d1 + d2 - d3 == -1))
+  (D[2] + D[3] - D[4] #= 1) #\/ (D[2] + D[3] - D[4] #= -1),
+  
+  % s.add(Or(d1 + d2 - d4 == 1, d1 + d2 - d4 == -1))
+  (D[2] + D[3] - D[5] #= 1) #\/ (D[2] + D[3] - D[5] #= -1),
+  
+  % "Last digit must be 9"
+  % s.add(globals().get('d{}'.format(num_digits)) == 9)
+  D[NumDigits] #= 9,
+
+  % "((sum of even pos digits) + (sum of odd pos digits) * 3) % 10 ==1"
+  % Note: "even pos" is - in Picat - the positions that 1..2.. (Python 0..2..)
+  %       "odd pos"  is - in Picat - the positions that 2..2.. (Python 1..2..)
+  % """
+  % s.add((
+  %     reduce(lambda a, b: a+b, digits_list[0:len(digits_list)-1:2])
+  %     +
+  %     reduce(lambda a, b: a+b, digits_list[1:len(digits_list)-1:2]) *3
+  %     ) % 10 == 1)
+  % """ 
+  % hakank: The z3 model don't count the last digit.
+  (sum([D[I] : I in [I : I in 1..2..NumDigits-1]])
+   +
+   sum([D[I] : I in [I : I in 2..2..NumDigits-1]]) * 3) mod 10 #= 1,
+   
+  % hakank: Another approach of this constraint:
+  % S1 = [I : I in 1..2..NumDigits-1],
+  % S2 = [I : I in 2..2..NumDigits-1],
+  % S1Sum #= sum([D[I] : I in S1]),
+  % S2Sum #= sum([D[I] : I in S2]),
+  % (S1Sum + 3*S2Sum) mod 10 #= 1,
+
+  solve(D),
+  printf("Found a passcode of length %d digits\n", NumDigits),
+  printf("Passcode is %w\n", [D[I].to_string : I in 1..NumDigits].join('')),
+  nl,
+  fail,
+  nl.
+go => true.

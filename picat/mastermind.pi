@@ -1,0 +1,303 @@
+/* 
+
+  Mastermind in Picat.
+
+  This Picat version is based on the Prolog code from
+  Leon S. Sterling: "The Art of Prolog", program 21.1,
+  page 411ff.
+
+  Compare with Van Hentenryck's CP version in mastermind_van_hentenryck.pi
+
+  Both models generate the same solutions but this model is slower. Time to solve all possible
+  instance (go3/0 in both models):
+   - Van Hententyck: 21.179s
+   - Shapiro (Art of Prolog): 85.522s
+
+  One reason for the slowness of Shapiro's approach is the use of assertz/1 to collect
+  the previous guesses. Van Hentenryck's use of CP probably speeds things up as well.
+
+
+  Here's a random instance:
+
+  correct = [9,7,6,2]
+  guess = [1,2,3,4]
+  guess = [2,5,6,7]
+  guess = [2,6,5,8]
+  guess = [3,5,7,6]
+  guess = [5,9,2,7]
+  guess = [9,7,6,2]
+  Found the answer after 6 queries.
+  found = [9,7,6,2]
+  queries = [[[1,2,3,4],0,1],[[2,5,6,7],1,2],[[2,6,5,8],0,2],[[3,5,7,6],0,2],[[5,9,2,7],0,3],[[9,7,6,2],4,0]]
+  numQueries = 6
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import v3_utils.
+import cp.
+
+main => go.
+
+%
+% Run a random query
+%
+go ?=>
+  run_problem(Queries),
+  println(queries=Queries),
+  println(numQueries=Queries.len),
+  nl.
+go => true.
+
+% some more random instances
+go2 ?=>
+  Ns = [],
+  foreach(_ in 1..10)
+    run_problem(Q),
+    nl,
+    Ns := Ns ++ [Q.len]
+  end,
+  println(ns=Ns),
+  nl.
+go2 => true.
+
+% Test all
+% Total number of length of the queries
+% I.e. there are 5 problems which need 9 queries
+%
+% 1 = 1
+% 2 = 13
+% 3 = 108
+% 4 = 596
+% 5 = 1668
+% 6 = 1768
+% 7 = 752
+% 8 = 129
+% 9 = 5
+%
+% CPU time 85.522 seconds.
+%
+
+%
+/*
+Here are some 9 queries:
+
+correct = [0,3,1,5]
+[guess = [1,2,3,4],bulls = 0,cows = 2]
+[guess = [2,1,5,6],bulls = 0,cows = 2]
+[guess = [3,4,6,5],bulls = 1,cows = 1]
+[guess = [3,5,1,7],bulls = 1,cows = 2]
+[guess = [3,6,7,1],bulls = 0,cows = 2]
+[guess = [4,7,1,5],bulls = 2,cows = 0]
+[guess = [8,3,1,5],bulls = 3,cows = 0]
+[guess = [9,3,1,5],bulls = 3,cows = 0]
+[guess = [0,3,1,5],bulls = 4,cows = 0]
+Found the answer after 9 queries.
+found = [0,3,1,5]
+
+correct = [0,3,2,5]
+[guess = [1,2,3,4],bulls = 0,cows = 2]
+[guess = [2,1,5,6],bulls = 0,cows = 2]
+[guess = [3,4,6,5],bulls = 1,cows = 1]
+[guess = [3,5,1,7],bulls = 0,cows = 2]
+[guess = [4,7,2,5],bulls = 2,cows = 0]
+[guess = [4,7,6,1],bulls = 0,cows = 0]
+[guess = [8,3,2,5],bulls = 3,cows = 0]
+[guess = [9,3,2,5],bulls = 3,cows = 0]
+[guess = [0,3,2,5],bulls = 4,cows = 0]
+Found the answer after 9 queries.
+found = [0,3,2,5]
+
+correct = [0,3,5,2]
+[guess = [1,2,3,4],bulls = 0,cows = 2]
+[guess = [2,1,5,6],bulls = 1,cows = 1]
+[guess = [2,3,6,7],bulls = 1,cows = 1]
+[guess = [2,4,7,5],bulls = 0,cows = 2]
+[guess = [5,3,4,6],bulls = 1,cows = 1]
+[guess = [6,1,4,7],bulls = 0,cows = 0]
+[guess = [8,3,5,2],bulls = 3,cows = 0]
+[guess = [9,3,5,2],bulls = 3,cows = 0]
+[guess = [0,3,5,2],bulls = 4,cows = 0]
+Found the answer after 9 queries.
+found = [0,3,5,2]
+
+correct = [0,5,4,2]
+[guess = [1,2,3,4],bulls = 0,cows = 2]
+[guess = [2,1,5,6],bulls = 0,cows = 2]
+[guess = [3,4,6,5],bulls = 0,cows = 2]
+[guess = [4,5,1,7],bulls = 1,cows = 1]
+[guess = [4,6,7,2],bulls = 1,cows = 1]
+[guess = [7,6,1,3],bulls = 0,cows = 0]
+[guess = [8,5,4,2],bulls = 3,cows = 0]
+[guess = [9,5,4,2],bulls = 3,cows = 0]
+[guess = [0,5,4,2],bulls = 4,cows = 0]
+Found the answer after 9 queries.
+found = [0,5,4,2]
+
+
+
+*/
+go3 ?=>
+  Map = get_global_map(),
+  /*
+  X = new_list(4),
+  X :: 0..9,
+  all_different(X),
+  solve(X),
+  */
+  get_all_problems(4,All),
+  foreach(X in All)
+    run_problem(X,Queries),
+    Len = Queries.len,
+    Map.put(Len,Map.get(Len,0)+1),
+    nl
+  end,
+  Map = get_global_map(),
+  foreach(Key in sort(keys(Map)))
+    println(Key=Map.get(Key))
+  end,
+  nl.
+go3 => true.
+
+
+%
+% Get all instances
+%
+get_all_problems(N,All) :-
+  X = new_list(N),
+  X :: 0..9,
+  all_different(X),
+  All = solve_all(X).
+
+%
+% Run a random problem
+%
+run_problem(Queries) :-
+  _ = random2(),
+  random_code(Correct),
+  println(correct=Correct),
+  Map = get_global_map(),
+  Map.put(correct,Correct),
+  mastermind(Code),
+  println(found=Code),
+  Queries = findall([X,Y,Z],bp.query(X,Y,Z)).
+
+%
+% Run a problem with code Correct
+%
+run_problem(Correct,Queries) :-
+  println(correct=Correct),
+  Map = get_global_map(),
+  Map.put(correct,Correct),
+  mastermind(Code),
+  println(found=Code),
+  Queries = findall([X,Y,Z],bp.query(X,Y,Z)).
+
+
+%
+% Generate a random Code
+%
+random_code(Code) :-
+  random_code(0,4,[],Code).
+random_code(N,N,Code,Code).
+random_code(I,N,Code0,Code) :-
+  I < N,
+  Candidates = [J : J in 0..9, not membchk(J,Code0)],
+  R = Candidates[1+random() mod Candidates.len],
+  random_code(I+1,N,[R|Code0],Code).
+
+
+
+mastermind(Code) :-
+   % first insert a dummy entry
+   assertz($query([-1,-1,-1,-1],0,0)),
+   cleanup, % and then remove everything
+   guess(Code), 
+   check(Code), 
+   announce.
+
+guess(Code) :-
+   Code = [_X1,_X2,_X3,_X4],
+   selects(Code,[1,2,3,4,5,6,7,8,9,0]).
+
+
+/*  Verify the proposed guess	   */
+
+check(Guess) :-
+   not inconsistent(Guess),
+   ask(Guess).
+
+inconsistent(Guess) :-
+   bp.query(OldGuess,Bulls,Cows), 
+   not bulls_and_cows_match(OldGuess,Guess,Bulls,Cows).
+
+bulls_and_cows_match(OldGuess,Guess,Bulls,Cows) :- 
+   exact_matches(OldGuess,Guess,N1),
+   Bulls =:= N1,
+   common_members(OldGuess,Guess,N2),
+   Cows =:= N2 - Bulls.
+
+exact_matches(Xs,Ys,N) :- 
+   size_of(A,$same_place(A,Xs,Ys),N).  
+
+common_members(Xs,Ys,N) :- 
+   size_of(A,$(member(A,Xs),member(A,Ys)),N).
+
+same_place(X,[X|_Xs],[X|_Ys]).
+same_place(A,[_X|Xs],[_Y|Ys]) :- 
+   same_place(A,Xs,Ys).
+
+/*   Asking a guess	*/
+
+%
+% Automatic response.
+%
+ask(Guess) :-
+  Correct = get_global_map().get(correct),
+  Bulls = sum([1 : I in 1..4, Correct[I] == Guess[I]]),
+  Cows  = sum([1 : I in 1..4, J in 1..4, I != J, Correct[I] == Guess[J]]),
+  println(guess=Guess),
+  sensible(Bulls,Cows), !,
+  assertz($query(Guess,Bulls,Cows)), 
+  Bulls =:= 4.
+
+%
+% This was the original version.
+%
+askx(Guess) :-
+   println($ask(Guess)),
+   repeat,
+   println(["How many bulls and cows in ",Guess,"? (as a list, e.g. [3,3].)"]),
+   [Bulls,Cows] = read_term(),
+   sensible(Bulls,Cows), !,
+   assertz($query(Guess,Bulls,Cows)), 
+   Bulls =:= 4.
+
+sensible(Bulls,Cows) :- 
+   integer(Bulls), integer(Cows), Bulls + Cows =< 4.
+
+/*    Bookkeeping     */
+cleanup :- retractall($query(_,_,_)).
+
+announce :-
+   % size_of(X,$bp.query(X,_A,_B),N), % Note: this don't work! 
+   Xs = findall(X,bp.query(X,_A,_B)),
+   length(Xs,N),
+   printf("Found the answer after %d queries.\n",N).
+
+size_of(X,Goal,N) :-
+   Xs = findall(X,Goal),
+   length(Xs,N).
+
+selects([X|Xs],Ys) :- 
+   selectx(X,Ys,Ys1),
+   selects(Xs,Ys1).
+selects([],_Ys).
+
+selectx(X,[X|Xs],Xs).
+selectx(X,[Y|Ys],[Y|Zs]) :-
+   selectx(X,Ys,Zs).

@@ -1,0 +1,146 @@
+/* 
+
+  Ping pong game in Picat.
+
+  Problem by eldracote 
+  https://twitter.com/eldracote/status/939614390571200514
+  """
+  Want to enjoy a nice problem in your head? 
+  Here: 3 friends (A, B and C) play ping-pong all day. 
+  The winner always keeps playing. 
+  A wins 10 games, B 15, C 17. 
+  Who won the 2nd game?
+  """
+
+  Corrections later in the thread:
+  - It is number of played games, not won games
+  - It was who loses the 2th match, not who won it.
+  
+  The problem statement thus should be
+  """
+  Want to enjoy a nice problem in your head? 
+  Here: 3 friends (A, B and C) play ping-pong all day. 
+  The winner always keeps playing. 
+  A _plays_ 10 games, B 15, C 17. 
+  Who _lost_ the 2nd game?
+  """
+
+  There are 420 possible solutions according to this model.
+  * A loose the second game in all possible solutions,
+    in fact, A loose all the games he/she plays.
+
+  * There are no other invariants, except that A always plays (and loose)
+    all the even numbered games.
+
+  This model was inspired by the Z3 model: 
+  https://gist.github.com/MariaRigaki/b93f89cad49c7e7e35d94eed7abae5c3#file-ping_pong-py-L5
+  (which only shows the first solution)
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+%
+% Show all 420 games
+%
+go ?=>
+  model1(_,true),
+  
+  nl.
+go => true.
+
+%
+% Show the loser of the second game in all 240 solutions.
+% It's A all the way...
+%
+go2 ?=>
+  SecondGameLoserAll = findall(SecondGameLoser,model1(SecondGameLoser,false)),
+  println(secondGameLoserAll=SecondGameLoserAll),
+  nl.
+go2 => true.
+
+
+model1(SecondGameLoser,Fail) ?=>
+  Map = get_global_map(), % number of solutions
+  Map.put(sol,0),
+  %
+  N = (10 + 15 + 17) // 2, % number of played matches
+  println(n=N),
+
+  % Keep track of the players results (2 means win, 1 means loss, 0 is DNP)
+  A = new_list(N),  A :: 0..2,
+  B = new_list(N),  B :: 0..2,
+  C = new_list(N),  C :: 0..2,
+
+  % Keep track whether each player played or not
+  PlayedA = new_list(N),  PlayedA :: 0..1,
+  PlayedB = new_list(N),  PlayedB :: 0..1,
+  PlayedC = new_list(N),  PlayedC :: 0..1,
+
+  % Number of played games
+  sum(PlayedA) #= 10,
+  sum(PlayedB) #= 15,
+  sum(PlayedC) #= 17,
+
+  foreach(I in 1..N)
+    A[I] + B[I] + C[I] #= 3, % 1+2 = 3
+    PlayedA[I] + PlayedB[I] + PlayedC[I] #= 2, % only two players
+    if I < N then
+        % loser don't play the next match
+    	A[I] #= 1 #=> A[I+1] #= 0, 
+    	B[I] #= 1 #=> B[I+1] #= 0,
+    	C[I] #= 1 #=> C[I+1] #= 0
+    end,
+    % A person played if the score is 1 or 2
+    A[I] #!= 0 #<=> PlayedA[I] #= 1, 
+    B[I] #!= 0 #<=> PlayedB[I] #= 1,
+    C[I] #!= 0 #<=> PlayedC[I] #= 1
+  end,
+
+  Vars = A ++ B ++ C ++ PlayedA ++ PlayedB ++ PlayedC,
+  solve($[ff,split],Vars),
+  foreach(I in 1..N)
+    println(game=I=score=[a=A[I],b=B[I],c=C[I], played=[PlayedA[I],PlayedB[I],PlayedC[I]]])
+  end,
+  println(a=A),
+  println(b=B),
+  println(c=C),
+  L = [A[2],B[2],C[2]],
+  SecondGameLoser = [I : I in 1..3, L[I] == 1].first,
+  println(secondGameLoser=SecondGameLoser),
+  Map.put(sol,Map.get(sol)+1),
+  (Fail -> println(sol=Map.get(sol)), nl, fail ; true),
+  nl.
+model1 => true.
+
+/*
+ The z3 model's single output:
+
+ Solution (2 means win, 1 means loss, 0 is DNP)
+ Game 1 A:0, B:2, C:1
+ Game 2 A:1, B:2, C:0
+ Game 3 A:0, B:1, C:2
+ Game 4 A:1, B:0, C:2
+ Game 5 A:0, B:1, C:2
+ Game 6 A:1, B:0, C:2
+ Game 7 A:0, B:1, C:2
+ Game 8 A:1, B:0, C:2
+ Game 9 A:0, B:1, C:2
+ Game 10 A:1, B:0, C:2
+ Game 11 A:0, B:1, C:2
+ Game 12 A:1, B:0, C:2
+ Game 13 A:0, B:1, C:2
+ Game 14 A:1, B:0, C:2
+ Game 15 A:0, B:2, C:1
+ Game 16 A:1, B:2, C:0
+ Game 17 A:0, B:2, C:1
+ Game 18 A:1, B:2, C:0
+ Game 19 A:0, B:2, C:1
+ Game 20 A:1, B:2, C:0
+ Game 21 A:0, B:2, C:1
+*/

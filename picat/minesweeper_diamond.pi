@@ -1,0 +1,131 @@
+/*
+
+  Minesweeper Diamond solver in Picat.
+
+  This is a variant of Minesweeper where 
+  some cells are removed. 
+
+  See http://www.puzzlepicnic.com/genre?diamonds
+  """
+  This area contains buried diamonds. In some places, a number is given: this indicates 
+  how many neighbouring (horizontally, vertically or diagonally) cells contain a diamond. 
+  A cell with a number never contains a diamond. The number next to the diagram indicates 
+  how many diamonds are in the field in total.
+  """
+
+  The instance in this model is from
+  http://www.puzzlepicnic.com/puzzle?744
+
+      X _ 2 _ 
+      _ _ 5 2
+      3 _ _ _ 
+      _ 3 _ X
+
+  where "X" indicates a removed cell.
+
+  The solution is (D = Diamond):
+
+      X D 2 _ 
+      D D 5 2
+      3 D D D 
+      _ 3 D X
+      
+
+  This model is adapted from my minesweeper.pi, which see.
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+% import sat.
+% import mip.
+
+main => go.
+
+go ?=>   
+   minesweeper(0),
+   nl.
+go => true.
+
+
+%
+% Main Minesweeper solver
+%
+minesweeper(Problem) =>
+
+   problem(Problem, Game,NumDiamonds),
+   writef("\nPROBLEM %d\n", Problem),
+
+   println("Game:"),
+   foreach(Row in Game)
+     bp.portray_clause(Row.to_list)
+   end,
+   nl,
+   
+   % dimensions of the problem instance
+   R = Game.length,
+   C = Game[1].length,
+
+   % decision variable: where is the mines?
+   Mines = new_array(R,C),
+   Mines :: 0..1, 
+
+   sum(Mines.vars) #= NumDiamonds,
+
+   %
+   % Game[I,J] = _ means that it is unknown from start, may be a mine.
+   % Games[I,J] >= 0 means that the value is known and that it is not a mine.
+   %
+   M = -1,
+   println(forbidden=[[I,J] : I in 1..R, J in 1..C, Game[I,J]==M]),
+   foreach(I in 1..R, J in 1..C, ground(Game[I,J]))
+     Mines[I,J] #= 0, % not a mine
+     if Game[I,J] != M then
+       % Sum the number of neighboring mines of this cell.
+       % The number of neighboring mines must sum up to Game[I,J].
+       Game[I,J] #= sum([Mines[I+A,J+B] :  A in -1..1, B in -1..1,
+                       membchk(I+A,1..R), membchk(J+B,1..C), Game[I,J] != M])
+     end
+   end,
+
+   % search
+   solve(Mines),
+
+   % print
+   pretty_print(Game,Mines),
+   nl.
+
+
+pretty_print(Game,X) =>
+  M = -1,
+  foreach(I in 1..X.length)
+    foreach(J in 1..X[1].length)
+      if Game[I,J] == M then
+        writef("X")
+      elseif X[I,J] == 1 then
+        writef("D")
+      else 
+        writef("_")
+      end
+    end,
+    nl
+  end.
+
+%
+% data
+%
+%  _ is coded as unknown
+%  0..8: known number of neighbours
+%  X   : removed cell
+%
+
+% Problem from http://www.puzzlepicnic.com/puzzle?744
+problem(0, P,NumDiamonds) =>
+        X = -1,
+        P = {{X,_,2,_},
+             {_,_,5,2},
+             {3,_,_,_},
+             {_,3,_,X}},
+        NumDiamonds = 7.

@@ -1,0 +1,307 @@
+/* 
+
+  Mastermind in Picat.
+  
+  From Pascal Van Hentenryck: "Constraint Satisfaction in Logic Programming"
+  Page 144ff.
+
+  Compare with Sterling' "plain Prolog" code (ported to Picat) in The Art Of Prolog: mastermind.pi.
+
+  Both generate the same solutions but this model is faster. Time to solve all possible
+  instance (go3/0 in both models):
+   - Van Hententyck: 21.179s
+   - Shapiro (Art of Prolog): 85.522s
+
+  One reason for the slowness of Shapiro's approach is the use of assertz/1 to collect
+  the previous guesses. Van Hentenryck's use of CP probably speeds things up as well.
+
+  Here's a random instance:
+  correct = [0,2,9,5]
+  [0,1,2,3] = 1
+  [0,2,4,5] = 2
+  [0,2,4,6] = 3
+  [0,2,7,5] = 4
+  [0,2,8,5] = 5
+  [0,2,9,5] = 6
+  found_code = [0,2,9,5]
+  num_guesses = 6
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import cp.
+import util.
+
+
+main => go.
+
+% Run a random instance
+go ?=>
+  Map = get_global_map(),
+  Map.put(guesses,0),
+  _ = random2(),
+  random_code(Correct),
+  println(correct=Correct),
+  Map.put(correct,Correct),
+  mastermind(Code,_Previous),
+  println(found_code=Code),
+  Guesses=Map.get(guesses),
+  println(num_guesses=Guesses),
+  nl.
+go => true.
+
+%
+% Run some random instances.
+%
+go2 ?=>
+  _ = random2(),
+  foreach(_ in 1..10)
+    run_problem(_NumQueries)
+  end,
+  nl.
+go2 => true.
+
+/*
+  Test all possible instances.
+
+  Here's the number of instances with a specific query length
+
+1 = 1
+2 = 13
+3 = 108
+4 = 596
+5 = 1668
+6 = 1768
+7 = 752
+8 = 129
+9 = 5
+
+CPU time 21.179 seconds.
+
+*/
+go3 ?=>
+  get_all_problems(4,All),
+  Map = get_global_map(),
+  foreach(X in All)
+    run_problem(X,NumQueries),
+    println(numQueries=NumQueries),
+    Map.put(NumQueries,Map.get(NumQueries,0)+1),
+    nl
+  end,
+  foreach(Key in sort(keys(Map)))
+    println(Key=Map.get(Key))
+  end,
+  nl.
+go3 => true.
+
+%
+% Generate all possible problem instances.
+% For go3/0.
+%
+get_all_problems(N,All) :-
+  X = new_list(N),
+  X :: 0..9,
+  all_different(X),
+  All = solve_all(X).
+
+%
+% Run a random problem
+%
+run_problem(NumGuesses) :-
+  Map = get_global_map(),
+  Map.put(guesses,0),
+
+  random_code(Correct),
+  println(correct=Correct),
+  Map.put(correct,Correct),
+  time(mastermind(Code,_Previous)),
+  println(found_code=Code),
+  NumGuesses=Map.get(guesses),
+  println(num_guesses=NumGuesses),
+  nl.
+
+%
+% Run a specific problem with the code Correct.
+%
+run_problem(Correct,NumQueries) :-
+  println(correct=Correct),
+  Map = get_global_map(),
+  Map.put(guesses,0),
+  Map.put(correct,Correct),
+  mastermind(Code,_Previous), 
+  println(found=Code),
+  NumQueries=Map.get(guesses).
+
+
+%
+% Generate a random Code
+%
+random_code(Code) :-
+  random_code(0,4,[],Code).
+random_code(N,N,Code,Code).
+random_code(I,N,Code0,Code) :-
+  I < N,
+  Candidates = [J : J in 0..9, not membchk(J,Code0)],
+  R = Candidates[1+random() mod Candidates.len],
+  random_code(I+1,N,[R|Code0],Code).
+
+
+
+%
+% ask_the_user/2 was not defined in the book.
+% 
+ask_the_user(Guess,Score) :-
+  Correct = get_global_map().get(correct),
+  length(Correct,Len),
+  % Bulls. number in correct positions
+  Bulls = sum([1 : I in 1..Len, Guess[I] == Correct[I]]),
+  % Cows: number in incorrect positions + bulls
+  Cows = Bulls + sum([1  : I in 1..Len, J in 1..Len, I != J, Guess[I] == Correct[J]]),
+  Score = [Guess,Bulls,Cows].
+
+
+%
+% Op.cit. page 146
+%
+mastermind(Code,Previous) :-
+  Guess = new_list(4), % hakank
+  Guess :: 0..9, % hakank
+  guess_code(Guess,Previous),
+  Map = get_global_map(),
+  Map.put(guesses,Map.get(guesses)+1),
+  println(Guess=Map.get(guesses)),
+  ask_the_user(Guess,Score),
+  mastermind_aux(Code,Previous,Score).
+
+mastermind_aux(Code,_Previous,[Code,4,4]).
+mastermind_aux(Code,Previous,[Guess,Bulls,BullsCows]) :-
+  Bulls != 4,
+  mastermind(Code,[[Guess,Bulls,BullsCows]|Previous]).
+
+guess_code(Guess,Previous) :-
+  % Guess = new_list(4), % hakank
+  % Guess :: 0..9, % hakank
+  % alldifferent(Guess),
+  all_different(Guess), %  hakank
+  % Note: I had to reorder these last lines
+  % since consistent requires that
+  % the variables are instansiated
+  % labeling(Guess),
+  solve([ff,split],Guess), % hakank  
+  consistent(Guess,Previous).
+
+
+
+% page 118
+labeling([]).
+labeling([X|Y]) :-
+  indomain(X),
+  labeling(Y).
+
+/*
+% page 119
+labeling([]).
+labeling([X|Y]) :-
+  deleteff(Var,[X|Y],Rest),
+  indomain(Var),
+  labeling(Rest).
+*/
+
+% domain alldistinct(0..9)
+alldistinct([X1,X2,X3,X4]) :-
+  alldifferent([X1,X2,X3,X4]).
+
+% from page 115
+alldifferent([]).
+alldifferent([X|Y]) :-
+  outof(X,Y),
+  alldifferent(Y).
+  
+
+consistent(Guess,Previous) :-
+  consistent_bulls(Guess,Previous),
+  consistent_cows(Guess,Previous).
+
+consistent_bulls(_Guess,[]).
+consistent_bulls(Guess,[[Previous,Bulls,_BullsCows]|Ps]) :-
+  exact_matches(Guess,Previous,Bulls),
+  consistent_bulls(Guess,Ps).
+
+consistent_cows(_Guess,[]).
+consistent_cows(Guess,[[Previous,_Bulls,BullsCows]|Ps]) :-
+  common_members(Guess,Previous,BullsCows),
+  consistent_cows(Guess,Ps).
+
+
+% See below
+exact_matches(Xs,Ys,N) :-
+  exact_matches(Xs,Ys,0,N).
+
+exact_matches([],[],N,N).
+exact_matches([X|Xs],[X|Ys],K,N) :-
+  K1 is K+1,
+  exact_matches(Xs,Ys,K1,N).
+exact_matches([X|Xs],[Y|Ys],K,N) :-
+  X != Y,
+  exact_matches(Xs,Ys,K,N).
+
+% See below
+common_members(Xs,Ys,N) :-
+  common_members(Xs,Ys,0,N).
+
+common_members([],_Ys,N,N).
+common_members([X|Xs],Ys,K,N) :-
+  member(X,Ys),
+  K1 is K+1,
+  common_members(Xs,Ys,K1,N).
+common_members([X|Xs],Ys,K,N) :-
+  outof(X,Ys),
+  common_members(Xs,Ys,K,N).
+
+
+% from page 115
+outof(_X,[]).
+outof(X,[F|T]) :-
+  X != F,
+  outof(X,T).
+
+% refinements (page 150)
+/*
+exact_matches(Xs, Ys, 0) :-
+  pair_diff(Xs,Ys).
+exact_matches([X|Xs],[X|Ys],N) :-
+  N > 0,
+  N1 is N-1,
+  exact_matches(Xs,Ys,N1).
+exact_matches([X|Xs],[Y|Ys],N) :-
+  N > 0,
+  X != Y,
+  exact_matches(Xs,Ys,N).
+
+pair_diff([],[]).
+pair_diff([X|Xs],[Y|Ys]) :-
+  X != Y,
+  pair_diff(Xs,Ys).
+
+common_members(Xs,Ys,0) :-
+  allnotmember(Xs,Ys).
+common_members([X|Xs],Ys,N) :-
+  N > 0,
+  member(X,Ys),
+  N1 is N-1,
+  common_members(Xs,Ys,N1).
+common_members([X|Xs],Ys,N) :-
+  N > 0,
+  outof(X,Ys),
+  common_members(Xs,Ys,N).
+
+allnotmember([],_X).
+allnotmember([X|Xs],Ys) :-
+  outof(X,Ys),
+  allnotmember(Xs,Ys).
+
+*/

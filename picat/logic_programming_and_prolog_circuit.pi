@@ -1,0 +1,165 @@
+/* 
+
+  circuits (and taxes) in Picat.
+
+  From Nilsson & Matuszynski: "Logic, Programming and Prolog"
+  Page 242ff (Chapter 14: Constraint Logic Programming)
+
+  Note: As stated the program res/* don't output evaluated results,
+        and this is the same in some other Prologs I tested.
+        It seems that the book use clp(R) which is a little
+        more clever about handling "under constrained" equations.
+
+  res2/* use constraint programming and give some results.
+  
+
+  E.g.: 
+   - res($serial(r(10),r(20)),X1)
+     X1 is 10 + 20, instead of 30 as stated in the book.
+
+     res2($serial(r(10),r(20)),X1)
+     give X1 = 30
+
+   - res($serial(r(X2),r(Y2)),30)
+     As stated it just give false. It should yield "X = 30-Y"
+
+     res2($serial(r(X2),r(Y2)),30)
+     Lists [0,30],[1,29], etc      
+
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import cp.
+% import smt.
+% import sat.
+% import mip.
+
+
+main => go.
+
+% This don't work as expected.
+% See go2/0 instead
+go ?=>
+  % page 242
+  res($serial(r(10),r(20)),X1),
+  println(x1=X1), % X1 = 10 + 20
+
+  % This evaluates to false
+  res($serial(r(X2),r(Y2)),30),
+  println([x2=X2,y2=Y2]),
+  
+  nl.
+go => true.
+
+
+%
+% Output:
+% x1 = 30
+% [x2 = 0,y2 = 30]
+% [x3 = 6,y3 = 30]
+% [x4 = 10,y4 = 10]
+% 
+go2 ?=>
+  % page 242
+  X1 :: 0..100,
+  res2($serial(r(10),r(20)),X1),
+  solve([X1]),
+  println(x1=X1),
+
+  % page 243
+  % expected: X = 30 - Y
+  [X2,Y2] :: 0..100,
+  res2($serial(r(X2),r(Y2)),30),
+  solve([X2,Y2]),
+  println([x2=X2,y2=Y2]),
+
+  % page 244
+  % expected: 5*X + 5*Y = X*Y
+  [X3,Y3] :: 0..100,
+  res2($parallel(serial(r(X3),cell(5)),r(Y3)),5),
+  solve([X3,Y3]),
+  println([x3=X3,y3=Y3]),
+
+  % page 244
+  % exptected: X = 10, Y = 10
+  [X4,Y4] :: 0..100,
+  res2($parallel(serial(r(X4),cell(5)),r(Y4)),5),X4 = 10,
+  solve([X4,Y4]),
+  println([x4=X4,y4=Y4]),
+  
+  % fail,
+  nl.
+go2 => true.
+
+% Tax example page 244
+% I had to rewrite this as well.
+% 
+% Output:
+% x1 = 80000
+% x2 = 130000
+% [x3 = 30004,y3 = 1]
+% 
+go3 ?=>
+  % expected: X = 80000
+  tax2(160000,X1),
+  println(x1=X1), % we don't need solve here
+
+  % expected: X = 130000
+  tax2(X2,25000),
+  solve([X2]),
+  println(x2=X2),
+
+  % expected: X = 30000 + 4*Y, 20000 > Y
+  [X3,Y3] :: 1..1000000,
+  tax2(X3,Y3), Y3 #< 20000,
+  solve([X3,Y3]),
+  println([x3=X3,y3=Y3]),
+
+  nl.
+go3 => true.
+
+%
+% page 242
+% Original
+% Note: there are some typos in the book.
+%
+res(r(X),X).
+res(cell(_X),0).
+res(serial(X,Xs),R+Rs) :-
+  res(X,R),res(Xs,Rs).
+res(parallel(X,Xs),R*Rs/(R+Rs)) :-
+  res(X,R),res(Xs,Rs).
+
+% Adjusted version
+res2(r(X),X).
+res2(cell(_X),0).
+res2(serial(X,Xs),RRs) :-
+  RRs #= $R+Rs,
+  res2(X,R),res2(Xs,Rs).
+
+res2(parallel(X,Xs),RR) :-
+  res2(X,R),res2(Xs,Rs),
+  RR #= $R*Rs/(R+Rs).
+
+
+%
+% Another example, page 244
+% About tax calculations.
+%
+tax(X,0.5*X) :-
+  X > 150000.
+tax(X,0.25*(X-30000)) :-
+  X =< 150000.
+
+tax2(X,Res) :-
+  Res #= $X/2, % Picat don't like 
+  X #> 150000.
+tax2(X,Res) :-
+  Res #= $(X-30000)/4,
+  X #<= 150000.
+

@@ -1,0 +1,363 @@
+/* 
+
+  Bitwise operations in Picat.
+
+  Some ideas:
+  * Is it possible to implement bitwise operators using integer arithmetic?
+    https://stackoverflow.com/questions/2982729/is-it-possible-to-implement-bitwise-operators-using-integer-arithmetic
+
+  Notes: 
+  * In Picat, one cannot represent a decision variable larger than 72057594037927935 (about 2**56). 
+    This means that max BitSize is 55.
+
+  NOTE: This is considered (very) experimental!
+
+  Test of this module: http://hakank.org/picat/bitwise_test.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import sat.
+import cp. % cp is faster than sat for these simple problems...
+
+main => go.
+
+
+
+%
+% get the array and value from the Bit struct.
+% for solve(Vars)
+%
+v(X) = X.get_attr(v). % value
+a(X) = X.get_attr(a). % bit array
+bsize(X) = X.get_attr(bsize). % bitsize 
+s(X) = X.get_attr(s). % sign
+
+get_av(X) = X.a ++ [X.v].
+get_all(X) = [a=X.a,v=X.v,bsize=X.bsize,s=X.s].
+get_avs(List) = [[T.a,T.v] : T in List].flatten().
+
+show_av(X) = [a=X.get_attr(a), v=X.get_attr(v)].
+
+
+% unsigned bit variable
+bitvar_unsigned(BitSize) = Bits =>
+  Bits = new_list(BitSize),
+  Bits :: 0..1.
+  
+% Signed bit variable
+bitvar_signed(BitSize) = Bits =>
+  Bits = new_list(BitSize),
+  Bits[1] :: [-1,1], % the sign bit
+  foreach(I in 2..BitSize)
+    Bits[I] :: 0..1
+  end.
+  
+% Another representation which includes both the bits and the numbber.
+%   * Bits.v = the value
+%   * Bits.a = the bit array
+%
+bitvar2(BitSize,Type) = Bits => 
+   if Type == signed ; Type == "signed" then 
+      Bits = bitvar2_signed(BitSize)
+   else
+      Bits = bitvar2_unsigned(BitSize)
+   end.
+
+% default is unsigned
+bitvar2(BitSize) = bitvar2(BitSize,unsigned).
+
+bitvar2_unsigned(BitSize) = Bits => 
+   % Bits = new_map(),
+   Bits.put_attr(bsize,BitSize),
+   Bits.put_attr(a,bitvar_unsigned(BitSize)),
+   Bits.put_attr(v,to_num_unsigned(Bits.get_attr(a))),
+   Bits.put_attr(s,0).
+
+% Another representation which includes both the bits and the numbber.
+%   * Bits.v = the value
+%   * Bits.a = the bit array
+% as signed number
+bitvar2_signed(BitSize) = Bits => 
+   % Bits = new_map(),
+   Bits.put_attr(bsize,BitSize),
+   Bits.put_attr(a,bitvar_signed(BitSize)),
+   Bits.put_attr(v,to_num_signed(Bits.get_attr(a))),
+   Bits.put_attr(s,1).
+
+
+bitvar2_const(BitSize,Type,Value) = Bits => 
+  Bits = bitvar2(BitSize,Type),
+  Bits.v #= Value.
+
+% get bit X[Bit] 
+get_bit(X,Bit) = X[Bit].
+
+% check/"assign" X[Bit] == Value
+check_bit(X, Bit, Value) => 
+  element(Bit,X.a,Value).
+
+
+%
+% <<: Left shift
+%
+left_shift(X,N,Y) =>
+   create(X,Y),
+   % if var(N) then
+   %   println($var(N)),
+   %   % This don't work in versions after v2.1
+   %   Y.v #= (X.v*(2**N)) mod 2**X.size
+   % else 
+   if X.get_attr(s) == 1 then
+     left_shift_signed(X.a,N,X.bsize,Y.a)
+   else
+     left_shift_unsigned(X.a,N,X.bsize,Y.a)
+   % end
+   end.
+
+left_shift(X,N) = Y =>
+   left_shift(X,N,Y).
+
+left_shift_unsigned(XA, N, Size, YA) =>
+  YA = [XA[I] : I in N+1..Size] ++ [0 : I in 1..N].
+
+left_shift_signed(XA, N, Size, YA) =>
+  YA = [XA[1]] ++ [XA[I] : I in N+1..Size] ++ [0 : I in 2..N].
+
+
+% >>: Right shift
+%
+right_shift(X,N,Y) => 
+   create(X,Y),
+   % if var(N) then
+   %   println($var(N)),
+   %   % This don't work in versions after v2.1
+   %   Y.v #= (X.v div (2**N)) mod 2**X.bsize
+   % else 
+   if X.get_attr(s) == 1 then
+     right_shift_signed(X.a,N,X.bsize,Y.a)
+   else
+     right_shift_unsigned(X.a,N,X.bsize,Y.a)
+   % end
+   end.
+
+right_shift(X,N) = Y => 
+  right_shift(X,N,Y).
+
+right_shift_unsigned(XA, N, Size, YA) =>
+  YA = [0 : I in 1..N] ++ [XA[I] : I in 1..Size-N].
+
+right_shift_signed(XA, N, Size, YA) =>
+  YA = [XA[1]] ++ [0 : I in 1..N] ++ [XA[I] : I in 2..Size-N].
+
+% &: And
+band(X,Y,Z) =>
+   create(X,Y),
+   create(X,Z), 
+   if X.get_attr(s) == 1 then
+     band_signed(X.a,Y.a,Z.a,X.bsize)
+   else
+     band_unsigned(X.a,Y.a,Z.a,X.bsize)
+   end.
+
+band(X,Y) = Z =>
+  band(X,Y,Z).
+
+
+band_unsigned(XA,YA,ZA,Size) => 
+  foreach(I in 1..Size)
+     ZA[I] #= (XA[I] #= 1 #/\ YA[I] #= 1)
+  end.
+
+band_signed(XA,YA,ZA,Size) => 
+  ZA[1] #= XA[1],
+  foreach(I in 2..Size)
+     ZA[I] #= (XA[I] #= 1 #/\ YA[I] #= 1)
+  end.
+
+
+% |: Or
+bor(X,Y,Z) => 
+   create(X,Y),
+   create(X,Z),
+   if X.get_attr(s) == 1 then
+     bor_signed(X.a,Y.a,Z.a,X.bsize)
+   else
+     bor_unsigned(X.a,Y.a,Z.a,X.bsize)
+   end.
+
+bor(X,Y) = Z =>
+  bor(X,Y,Z).
+
+bor_unsigned(XA,YA,ZA,Size) => 
+  foreach(I in 1..Size)
+     ZA[I] #= (XA[I] #= 1 #\/ YA[I] #= 1)
+  end.
+
+% |: Or
+bor_signed(XA,YA,ZA,Size) => 
+  ZA[1] #= XA[1], 
+  foreach(I in 2..Size)
+     ZA[I] #= (XA[I] #= 1 #\/ YA[I] #= 1)
+  end.
+
+
+% Xor
+bxor(X,Y,Z) => 
+   create(X,Y),
+   create(X,Z),
+   if X.get_attr(s) == 1 then
+     bxor_signed(X.a,Y.a,Z.a,X.bsize)
+   else
+     bxor_unsigned(X.a,Y.a,Z.a,X.bsize)
+   end.
+
+bxor(X,Y) = Z =>
+  bxor(X,Y,Z).
+
+bxor_unsigned(XA,YA,ZA,Size) => 
+  foreach(I in 1..Size)
+     ZA[I] #= XA[I] #!= YA[I]
+  end.
+
+bxor_signed(XA,YA,ZA,Size) => 
+  ZA[1] #= XA[1],
+  foreach(I in 2..Size)
+     ZA[I] #= XA[I] #!= YA[I]
+  end.
+
+
+% y = not y
+bnot(X,Y) => 
+   create(X,Y),
+   if X.get_attr(s) == 1 then
+     bnot_signed(X.a,X.bsize,Y.a)
+   else
+     bnot_unsigned(X.a,X.bsize,Y.a)
+   end.
+
+bnot(X) = Y =>
+  bnot(X,Y).
+
+bnot_unsigned(XA,Size,YA) => 
+  foreach(I in 1..Size)
+     YA[I] #= 1-XA[I]
+  end.
+
+bnot_signed(XA,Size,YA) => 
+  YA[1] #= XA[1], 
+  foreach(I in 2..Size)
+     YA[I] #= 1-XA[I]
+  end.
+
+
+bplus(X,Y,Z) => 
+  create(X,Y),
+  create(X,Z),
+  Z.v #= X.v + Y.v.
+
+bplus(X,Y) = Z => 
+  bplus(X,Y,Z).
+
+bminus(X,Y,Z) => 
+  create(X,Y),
+  create(X,Z),
+  Z.v #= X.v + Y.v.
+
+bminus(X,Y) = Z =>
+  bminus(X,Y,Z).
+
+bmult(X,Y,Z) => 
+  create(X,Y),
+  create(X,Z),
+  Z.v #= X.v * Y.v.
+
+bmult(X,Y) = Z =>
+  bmult(X,Y,Z).
+
+
+bdiv(X,Y,Z) => 
+  create(X,Y),
+  create(X,Z),
+  Z.v #= X.v div Y.v.
+
+bdiv(X,Y) = Z =>
+  bdiv(X,Y,Z).
+
+
+bmod(X,Y,Z) => 
+  create(X,Y),
+  create(X,Z),
+  Z.v #= X.v mod Y.v.
+
+bmod(X,Y) = Z =>
+  bmod(X,Y,Z).
+
+
+% if Y is not defined, then define it as the same BitVar type as X.
+% This is used mostly for the function variants of the predicates.
+create(X,Y) =>
+  if var(Y) then
+    if X.s == 1 then 
+       Y = bitvar2_signed(X.bsize)
+    else 
+       Y = bitvar2_unsigned(X.bsize)
+    end
+  end.
+
+% converts a number Num to/from a bit list
+to_num_unsigned(List, Num) =>
+   Len = List.len,
+   Num #= sum([List[I]*2**(Len-I) : I in 1..Len]).
+
+to_num_unsigned(List) = Num =>
+   Len = List.len,
+   Num #= sum([List[I]*2**(Len-I) : I in 1..Len]).
+
+to_num_signed(List, Num) =>
+   Len = List.len,
+   Num #= List[1]*sum([List[I]*2**(Len-I) : I in 2..Len]).
+
+to_num_signed(List) = Num =>
+   Len = List.len,
+   Num #= List[1]*sum([List[I]*2**(Len-I) : I in 2..Len]).
+
+
+% From https://github.com/douggard/XorShift128Plus/blob/master/xs128p.py
+% int = double * (0x1 << 53) "firefox"
+% int = dubs[idx] / (1.0 / (1 << 53)) "safari"
+% Note: We have to change the << 53 to something smaller, e.g. 44...
+double_to_binary_unsigned(D, Size, Bits) => 
+  Bits = bitvar2(Size,unsigned),
+  Const = Size - 11,
+  % Bits.v = round(D * (0x1 << 53)) mod 2**Size. % "firefox"
+  Bits.v = round(D * (0x1 << Const)) mod 2**Size. % "firefox"
+  % Bits.v = round(D / (1.0 / (1 << 53))). % "safari"
+
+double_to_binary_signed(D, Size, Bits) => 
+  Const = Size - 11,
+  Bits = bitvar2(Size,signed),
+  % Bits.v = round(D * (0x1 << 53)) mod 2**Size. % "firefox"
+  Bits.v = round(D * (0x1 << Const)) mod 2**Size. % "firefox"
+  % Bits.v = round(D  / (1.0 / (1 << 53))). % "safari"
+
+
+% From https://github.com/douggard/XorShift128Plus/blob/master/xs128p.py
+% double = float(out & 0x1FFFFFFFFFFFFF) / (0x1 << 53)
+% The to_double() definition
+% The "safari" version don't work...
+binary_to_double_unsigned(X, Double) => 
+   Const = X.bsize - 11,
+   % Double = ((X.v /\ 0x1FFFFFFFFFFFFF) / (0x1 << 53)). % "firefox"
+   Double = ((X.v /\ 0x1FFFFFFFFFFFFF) / (0x1 << Const)). % "firefox"
+   % Double = (X.v /\ 0x1FFFFFFFFFFFFF) * (1.0 / (0x1 << 53)). % "safari"
+
+
+binary_to_double_signed(X, Double) => 
+   Const = X.bsize - 11,
+   % Double = ((X.v /\ 0x1FFFFFFFFFFFFF) / (0x1 << 53)). % "firefox"
+   Double = ((X.v /\ 0x1FFFFFFFFFFFFF) / (0x1 << Const)). % "firefox"
+   % Double = (X.v /\ 0x1FFFFFFFFFFFFF) * (1.0 / (0x1 << 53)). % "safari

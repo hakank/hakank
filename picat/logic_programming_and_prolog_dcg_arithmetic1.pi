@@ -1,0 +1,161 @@
+/* 
+
+  DCG for arithmetic in Picat.
+
+  From Nilsson & Matuszynski: "Logic, Programming and Prolog"
+  Page 197f (Chapter 10: Logic and Grammar)
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+main => go.
+
+go ?=>
+  expr(X,[2,**,3,**,4],[]),
+  println(X),
+  % fail,
+  nl.
+go => true.
+
+%
+% Using phrase/3 from v3_utils
+%
+go2 ?=>
+  Exprs = [
+    [2,+,3,*,4],
+    [2,*,3,+,4],
+    [2,*,3,*,4],
+    [2,*,3,/,4],
+    [21,*,32,*,43],
+    [2,**,3,**,4]
+  ],
+  foreach(Expr in Exprs)
+     phrase(expr,X,Expr),
+     println(Expr=X)
+  end,
+  nl.
+go2=> true.
+
+%
+% Using the different representation '--->'/2 below.
+%
+go3 ?=>
+  Exprs = [
+    [2,+,3,*,4],
+    [2,*,3,+,4],
+    [2,*,3,*,4],
+    [2,*,3,/,4],
+    [21,*,32,*,43],
+    [2,**,3,**,4]
+  ],
+  foreach(Expr in Exprs)
+    derives($expr2(X),$Expr-[]),
+    println(Expr=X)
+  end,
+  nl.
+go3=> true.
+
+/*
+%
+% Show all the expr2/2 rules
+% 
+Picat> '--->'(X,Y),portray_clause($'--->'(X, Y)),fail
+--->(expr2(A), (term2(B),[+],expr2(C),{A is B+C})).
+--->(expr2(A), (term2(B),[-],expr2(C),{A is B-C})).
+--->(expr2(A), (term2(B),[*],expr2(C),{A is B*C})).
+--->(expr2(A), (term2(B),[**],expr2(C),{A is B**C})).
+--->(expr2(A), (term2(B),[/],expr2(C),{A is B/C})).
+--->(expr2(A), term2(A)).
+--->(term2(A), ([A],{number(A)})).
+*/
+go4 ?=>
+  '--->'(X,Y),
+  portray_clause($'--->'(X, Y)),
+  fail,
+  nl.
+go4 => true.
+
+%
+% This is the original version as stated in the book.
+% 
+% Picat> expr(X,[2,+,3,*,4],[])
+% X = 14;
+% no
+% 
+% Picat> expr(X,[2,+,3],[])
+% X = 5;
+% no
+% Picat> cl(dcg_arithmetic),expr(X,[2,+,3,*,11114],[])
+% X = 33344 ?;
+% no
+%
+% But the original DCG don't handle more advanced queries,
+% and the order matters:
+% Picat> expr(X,[2,*,3,*,4],[])
+% no
+% Picat> expr(X,[2,+,3,*,4],[])
+% X = 14
+% Picat> expr(X,[2,*,3,+,4],[])
+% no
+%
+/*
+expr(X) --> term(Y),[+],expr(Z),{X is Y + Z}.
+expr(X) --> term(Y),[-],expr(Z),{X is Y - Z}.
+expr(X) --> term(X).
+expr(X) --> factor(Y),[*],term(Z),{X is Y * Z}.
+expr(X) --> factor(Y),[/],term(Z),{X is Y / Z}.
+term(X) --> factor(X).
+factor(X) --> [X],{number(X)}.
+*/
+
+%
+% We fix this by replacing factor -> term (now everything is a term or an expression)%
+% And it seems to handle the problems above:
+% Picat> expr(X,[2,*,3,*,4],[])
+% X = 24 
+% Picat> expr(X,[2,+,3,*,4],[])
+% X = 14 
+% After adding '**'
+% Picat> expr(X,[2,**,3,**,4],[])
+% X = 2417851639229258349412352 ?;
+%
+expr(X) --> term(Y),[+],expr(Z),{X is Y + Z}.
+expr(X) --> term(Y),[-],expr(Z),{X is Y - Z}.
+expr(X) --> term(Y),[*],expr(Z),{X is Y * Z}.
+expr(X) --> term(Y),[**],expr(Z),{X is Y ** Z}.
+expr(X) --> term(Y),[/],expr(Z),{X is Y / Z}.
+expr(X) --> term(X).
+term(X) --> [X],{number(X)}.
+
+%
+% Page 197
+%
+% The same grammar using another representation
+% together with derives/2 below
+% 
+% Note, I have to change to a different representation using
+% '--->'/2 since Picat cannot handle/define infix --->/2
+%
+'--->'(expr2(X),(term2(Y),[+],expr2(Z),{X is Y + Z})).
+'--->'(expr2(X),(term2(Y),[-],expr2(Z),{X is Y - Z})).
+'--->'(expr2(X),(term2(Y),[*],expr2(Z),{X is Y * Z})).
+'--->'(expr2(X),(term2(Y),[**],expr2(Z),{X is Y ** Z})).
+'--->'(expr2(X),(term2(Y),[/],expr2(Z),{X is Y / Z})).
+'--->'(expr2(X),(term2(X))).
+'--->'(term2(X),([X],{number(X)})).
+
+% page 197
+derives([],S-S).
+derives([X],[X|S]-S).
+derives({X},S-S) :-
+  call(X).
+derives((X,Y),S0-S2) :-
+  derives(X,$S0-S1), derives(Y,$S1-S2).
+derives(X,S0-S1) :-
+  '--->'(X, Y), derives(Y,$S0-S1).
+                     
