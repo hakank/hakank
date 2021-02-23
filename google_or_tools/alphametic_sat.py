@@ -1,4 +1,4 @@
-# Copyright 2010 Hakan Kjellerstrand hakank@gmail.com
+# Copyright 2021 Hakan Kjellerstrand hakank@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,57 +13,54 @@
 # limitations under the License.
 """
 
-  Generic alphametic solver in Google CP Solver.
+  Generic alphametic solver in OR-tools CP-SAT Solver.
 
   This is a generic alphametic solver.
 
   Usage:
-     python alphametic.py
+     python3 alphametic.py
                          ->  solves SEND+MORE=MONEY in base 10
 
-     python alphametic.py  'SEND+MOST=MONEY' 11
-                         -> solver SEND+MOST=MONEY in base 11
+     python3 alphametic.py  'SEND+MOST=MONEY' 11
+                         -> solves SEND+MOST=MONEY in base 11
 
-     python alphametic.py TEST <base>
-                         -> solve some test problems in base <base>
+     python3 alphametic.py TEST <base>
+                         -> solves some test problems in base <base>
                             (defined in test_problems())
 
   Assumptions:
-  - we only solves problems of the form
+  - the model only solves problems of the form
            NUMBER<1>+NUMBER<2>...+NUMBER<N-1> = NUMBER<N>
     i.e. the last number is the sum
   - the only nonletter characters are: +, =, \d (which are splitted upon)
 
-
-  Compare with the following model:
-  * Zinc: http://www.hakank.org/minizinc/alphametic.zinc
+  This is a port of my old CP model alphametic.py
 
   This model was created by Hakan Kjellerstrand (hakank@gmail.com)
-  Also see my other Google CP Solver models:
-  http://www.hakank.org/google_or_tools/
+  Also see my other Google OR-tools CP-SAT models:
+  http://www.hakank.org/or_tools/
 
 """
 from __future__ import print_function
 import sys
 import re
-
-from ortools.constraint_solver import pywrapcp
+from ortools.sat.python import cp_model as cp
+import math, sys
+from cp_sat_utils import SimpleSolutionPrinter
 
 
 def main(problem_str="SEND+MORE=MONEY", base=10):
 
-  # Create the solver.
-  solver = pywrapcp.Solver("Send most money")
+  model = cp.CpModel()
 
   # data
   print("\nproblem:", problem_str)
+  print("base:", base)
 
   # convert to array.
   problem = re.split("[\s+=]", problem_str)
-
   p_len = len(problem)
-  print("base:", base)
-
+  
   # create the lookup table: list of (digit : ix)
   a = sorted(set("".join(problem)))
   n = len(a)
@@ -77,47 +74,43 @@ def main(problem_str="SEND+MORE=MONEY", base=10):
   #
 
   # the digits
-  x = [solver.IntVar(0, base - 1, "x[%i]" % i) for i in range(n)]
+  x = [model.NewIntVar(0, base - 1, "x[%i]" % i) for i in range(n)]
   # the sums of each number (e.g. the three numbers SEND, MORE, MONEY)
-  sums = [solver.IntVar(1, base**(lens[i]) - 1) for i in range(p_len)]
+  sums = [model.NewIntVar(1, base**(lens[i]) - 1, "sums[%i]" % i) for i in range(p_len)]
 
   #
   # constraints
   #
-  solver.Add(solver.AllDifferent(x))
+  model.AddAllDifferent(x)
 
   ix = 0
   for prob in problem:
     this_len = len(prob)
 
     # sum all the digits with proper exponents to a number
-    solver.Add(
-        sums[ix] == solver.Sum([(base**i) * x[lookup[prob[this_len - i - 1]]]
+    model.Add(
+        sums[ix] == sum([(base**i) * x[lookup[prob[this_len - i - 1]]]
                                 for i in range(this_len)[::-1]]))
     # leading digits must be > 0
-    solver.Add(x[lookup[prob[0]]] > 0)
+    model.Add(x[lookup[prob[0]]] > 0)
     ix += 1
 
   # the last number is the sum of the previous numbers
-  solver.Add(solver.Sum([sums[i] for i in range(p_len - 1)]) == sums[-1])
+  model.Add(sum([sums[i] for i in range(p_len - 1)]) == sums[-1])
 
   #
   # solution and search
   #
-  solution = solver.Assignment()
-  solution.Add(x)
-  solution.Add(sums)
+  solver = cp.CpSolver()
+  # TODO make a better printer!
+  solution_printer = SimpleSolutionPrinter(x) 
+  status = solver.SearchForAllSolutions(model, solution_printer)
 
-  db = solver.Phase(x, solver.CHOOSE_FIRST_UNBOUND, solver.ASSIGN_MIN_VALUE)
-
-  solver.NewSearch(db)
-
-  num_solutions = 0
-  while solver.NextSolution():
-    num_solutions += 1
-    print("\nsolution #%i" % num_solutions)
+  print("status:",solver.StatusName(status))
+  if status == cp.OPTIMAL:
+    print("\nLast solution:")
     for i in range(n):
-      print(a[i], "=", x[i].Value())
+      print(a[i], "=", solver.Value(x[i]))
     print()
     for prob in problem:
       for p in prob:
@@ -126,16 +119,16 @@ def main(problem_str="SEND+MORE=MONEY", base=10):
     print()
     for prob in problem:
       for p in prob:
-        print(x[lookup[p]].Value(), end=" ")
+        print(solver.Value(x[lookup[p]]), end=" ")
       print()
 
-    print("sums:", [sums[i].Value() for i in range(p_len)])
+    print("sums:", [solver.Value(sums[i]) for i in range(p_len)])
     print()
 
-  print("\nnum_solutions:", num_solutions)
-  print("failures:", solver.Failures())
-  print("branches:", solver.Branches())
-  print("WallTime:", solver.WallTime())
+  print('NumSolutions:', solution_printer.SolutionCount())
+  print("NumConflicts:", solver.NumConflicts())
+  print("NumBranches :", solver.NumBranches())
+  print("WallTime    :", solver.WallTime())
 
 
 def test_problems(base=10):
