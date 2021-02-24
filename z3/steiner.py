@@ -27,9 +27,10 @@ def union_card(sol,s1,s2,common):
   sol.add(common == Sum([If(ss1 + ss2 == 2,1,0) for ss1,ss2 in zip(s1,s2)]))
 
 
-def steiner(n=7):
-    
-  sol = Solver()
+def steiner(n=7,num_sols=1):
+  print("n:",n, "num_sols:", num_sols)
+  # sol = Solver()
+  sol = SolverFor("LIA")
   nb = int(n*(n-1) // 6)
 
   if not(n % 6 == 1 or n % 6 == 3):
@@ -40,7 +41,7 @@ def steiner(n=7):
   for i in range(nb):
     for j in range(n):
       sets[(i,j)] = makeIntVar(sol,"sets[%i,%i]" % (i,j), 0, 1)
-
+  
   # symmetry breaking
   sol.add(sets[(0,0)] == 1)
 
@@ -57,18 +58,22 @@ def steiner(n=7):
         union_card(sol,s1,s2,common)
         # sol.add(common <= 1)
 
-  num_solutions = 0
-  while sol.check() == sat:
+  num_solutions = 0 
+  while sol.check() == sat :
     num_solutions += 1
     mod = sol.model()
-    # for i in range(nb):
-    #  print([i for i in range(n) if mod.eval(sets[(i,j)]).as_long() == 1], end=" ")
-    # print()
+    for i in range(nb):
+      print([j for j in range(n) if mod.eval(sets[(i,j)]).as_long() == 1], end=" ")
+    print()
+    if num_sols > 0 and num_solutions >= num_sols:
+      break
+    
     if num_solutions % 1000 == 0:
         print("num_solutions:", num_solutions)
     getDifferentSolutionMatrix(sol,mod,sets,nb,n)
 
-  print("num_solutions:", num_solutions  )
+  if num_sols != 1:
+    print("num_solutions:", num_solutions  )
                
 
                 
@@ -76,5 +81,10 @@ n = 7
 if __name__ == "__main__":
   if len(sys.argv) > 1:
     n = int(sys.argv[1])
-
-  steiner(n)
+    steiner(n)
+    print()
+  else:
+    for n in range(3,10):
+      if n % 6 == 1 or n % 6 == 3:
+        steiner(n,1)
+        print()
