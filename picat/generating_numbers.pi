@@ -1,0 +1,468 @@
+/* 
+
+  "Generating Numbers" Puzzle in Picat.
+
+  https://stackoverflow.com/questions/66127644/generating-numbers-puzzle
+  """
+  'Generating Numbers' Puzzle
+
+  I have come across the following puzzle and couldn't formulate a solution in Picat:
+
+     You will generate 5-digit numbers, where each digit is in 1..5 and 
+     different from the others, with the constraint that any three adjacent 
+     digits used in one number can’t be used in another number. How many 
+     different numbers can be obtained according to this rule?
+
+  For example, if we generated the number 23145, the next numbers cannot 
+  contain 231, 314, or 145.
+
+  I got really confused on how to store these "forbidden" sublists and how to 
+  check each number against them as I build the list of numbers.
+  """  
+
+  Note: In my StackOverflow answer, there are a lot of errors and misguided 
+  approaches. Here are the two models that actually works.
+      
+
+  A thought about this:
+    There are 60 possible triplets and each number contains
+    3 triplets: 60 / 3 = 20!
+
+    So my conjecture is that the maximum length is 20.
+    Let's search for such a sequence. 
+   
+    And one should rather talk about a set of numbers since the
+    order is of no importance.
+
+  Here's a length 20 set: 
+  [12345,32415,34251,21435,43125,41352,24513,42153,45231,14532,
+   23541,13254,35124,31542,25314,52134,53412,15243,51423,54321]
+
+  See below for some more examples. 
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+% import cp. % fastest for go/0
+import sat. % fastest for go2/0 and go3/0
+ 
+main => go.
+
+
+%
+% This is the fastest approach:
+% Time to first solution: 3.3s (cp)  (sat: 7s)
+%
+% This is the first solution:
+% x = [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1]
+% [1,2,3,4,5]
+% [3,2,4,1,5]
+% [3,4,2,5,1]
+% [2,1,4,3,5]
+% [4,3,1,2,5]
+% [4,1,3,5,2]
+% [2,4,5,1,3]
+% [4,2,1,5,3]
+% [4,5,2,3,1]
+% [1,4,5,3,2]
+% [2,3,5,4,1]
+% [1,3,2,5,4]
+% [3,5,1,2,4]
+% [3,1,5,4,2]
+% [2,5,3,1,4]
+% [5,2,1,3,4]
+% [5,3,4,1,2]
+% [1,5,2,4,3]
+% [5,1,4,2,3]
+% [5,4,3,2,1]
+% numbers = [12345,32415,34251,21435,43125,41352,24513,42153,45231,14532,23541,13254,35124,31542,25314,52134,53412,15243,51423,54321]
+% Checking: ..............................................................................................................................................................................................ok
+%
+% Some other solutions:
+% [12345,32451,34215,24135,43125,14352,21453,42513,45231,41532,23541,13254,35124,31542,25314,52134,53412,15243,51423,54321]
+% [12345,32451,34215,21435,43125,41352,24153,42513,45231,14532,23541,13254,35124,31542,25314,52134,53412,15243,51423,54321]
+% [12345,32415,34251,21435,43125,41352,24513,42153,45231,14532,23541,13254,31524,35142,25314,52134,53412,51243,15423,54321]
+% [12345,32415,34251,21435,41325,43152,24513,42153,45231,14532,23541,31254,13524,35142,25314,52134,53412,51243,15423,54321]
+% [12345,32451,34215,24135,43125,14352,21453,42513,45231,41532,23541,13254,31524,35142,25314,52134,53412,51243,15423,54321]
+% ...
+%
+go ?=>
+  nolog,
+  N = 5,
+  Ps = permutations(1..N), % The 120 permutations of 1..5
+  PsLen = Ps.len,
+
+  % Generate a matrix of compatible permutations,
+  % i.e. A[P1,P2] = 1 means that Ps[P1] and Ps[P2] don't
+  % have any triplets in common.
+  A = new_array(PsLen,PsLen),
+  bind_vars(A,0),
+  foreach(P1 in 1..PsLen)
+    A[P1,P1] := 1,  
+    foreach(P2 in 1..PsLen, P1 < P2)
+      if check_perms(Ps[P1],Ps[P2]) then
+        A[P1,P2] := 1,
+        A[P2,P1] := 1
+      end
+    end 
+  end,
+
+  % The length/cardinality of the set.
+  % As shown before there can be no larger set
+  % (and earlier experiments has shown that
+  % there are length 20 sets).
+  M = 20, 
+  println(m=M),
+
+  % X[I] = 1 means that I should be in the set.
+  X = new_list(PsLen),
+  X :: 0..1,
+  sum(X) #= M,
+  
+  X[1] #= 1, % symmetry breaking
+  
+  % Loop through all the (index of) permutations
+  % and see which should be in the set.
+  foreach(I in 1..PsLen)
+    foreach(J in 1..I-1)
+        % Should I and J be in the set?
+        X[I]*X[J] #= 1 #=> A[I,J]
+        % (X[I] #/\ X[J] ) #=> A[I,J] % slightly slower
+    end
+  end,
+
+  println(solve),
+  solve($[degree,updown],X),
+  
+  println(x=X),
+  % The found permutations
+  Perms = [Ps[I] : I in 1..PsLen, X[I]==1],
+  foreach(P in Perms)
+    println(P)
+  end,
+  println(numbers=[[I.to_string : I in  T].join('').to_int : T in Perms]),
+  % Check that this is a valid set
+  print("Checking: "),
+  foreach(I in 1..Perms.len, J in 1..I-1)
+     print("."),
+     if not check_perms(Perms[I],Perms[J]) then
+       println("ERROR!"=Perms[I]=Perms[J])
+     end
+  end,
+  println("ok"),
+  nl,
+  fail,
+
+  nl.
+go => true.
+
+
+
+%
+% another approach:
+% We know the all triplets in the sequence should be distinct
+% and that we can exploit.
+%
+% This is much slower that go/0: 1min24s
+%
+%
+/* 
+ sat, all_different(X), all_different(Z), X[1] #= 1, and seq in solve/2:
+
+m = 20
+solve
+[solveTime = 118897,totalTime = 118915]
+x = [1,30,91,119,11,66,109,55,18,81,44,40,98,79,28,77,34,103,107,42]
+psx = [[1,2,3,4,5],[4,2,3,5,1],[1,5,3,2,4],[5,4,3,1,2],[1,3,4,2,5],[1,3,2,5,4],[5,2,4,1,3],[4,5,2,3,1],[3,4,1,5,2],[1,2,5,3,4],[2,4,5,1,3],[4,3,5,2,1],[5,3,1,4,2],[3,5,4,1,2],[4,2,1,3,5],[3,1,5,4,2],[4,3,2,1,5],[2,5,1,4,3],[5,1,2,4,3],[2,1,4,5,3]] = 20
+numbers = [12345,42351,15324,54312,13425,13254,52413,45231,34152,12534,24513,43521,53142,35412,42135,31542,43215,25143,51243,21453]
+z = [123,234,345,423,235,351,153,532,324,543,431,312,134,342,425,132,325,254,524,241,413,452,523,231,341,415,152,125,253,534,245,451,513,435,352,521,531,314,142,354,541,412,421,213,135,315,154,542,432,321,215,251,514,143,512,124,243,214,145,453]
+zLen = 60
+[1,2,3,4,5]
+[4,2,3,5,1]
+[1,5,3,2,4]
+[5,4,3,1,2]
+[1,3,4,2,5]
+[1,3,2,5,4]
+[5,2,4,1,3]
+[4,5,2,3,1]
+[3,4,1,5,2]
+[1,2,5,3,4]
+[2,4,5,1,3]
+[4,3,5,2,1]
+[5,3,1,4,2]
+[3,5,4,1,2]
+[4,2,1,3,5]
+[3,1,5,4,2]
+[4,3,2,1,5]
+[2,5,1,4,3]
+[5,1,2,4,3]
+[2,1,4,5,3]
+
+
+picat_run generating_numbers3.pi go3  118,92s user 0,25s system 99% cpu 1:59,17 total
+
+ * sat, all_different(X), all_different(Z), X[1] #= 1, and split (default) in solve/2:
+   picat_run generating_numbers3.pi go3  119,46s user 0,26s system 99% cpu 1:59,72 total
+
+ * sat, all_distinct(X), all_distinct(Z), X[1] #= 1, and split (default) in solve/2:
+
+m = 20
+solve
+[solveTime = 84833,totalTime = 84862]
+x = [1,10,33,111,65,57,88,23,36,72,120,84,49,107,14,99,55,78,42,66]
+psx = [[1,2,3,4,5],[3,2,4,5,1],[4,3,1,2,5],[1,5,4,2,3],[2,3,5,4,1],[4,1,5,3,2],[5,2,1,3,4],[2,4,1,3,5],[1,4,3,5,2],[3,1,5,2,4],[5,4,3,2,1],[2,5,3,1,4],[4,2,5,1,3],[5,1,2,4,3],[3,4,2,1,5],[5,3,4,1,2],[4,5,2,3,1],[3,5,1,4,2],[2,1,4,5,3],[1,3,2,5,4]] = 20
+numbers = [12345,32451,43125,15423,23541,41532,52134,24135,14352,31524,54321,25314,42513,51243,34215,53412,45231,35142,21453,13254]
+z = [123,234,345,324,245,451,431,312,125,154,542,423,235,354,541,415,153,532,521,213,134,241,413,135,143,435,352,315,152,524,543,432,321,253,531,314,425,251,513,512,124,243,342,421,215,534,341,412,452,523,231,351,514,142,214,145,453,132,325,254]
+zLen = 60
+[1,2,3,4,5]
+[3,2,4,5,1]
+[4,3,1,2,5]
+[1,5,4,2,3]
+[2,3,5,4,1]
+[4,1,5,3,2]
+[5,2,1,3,4]
+[2,4,1,3,5]
+[1,4,3,5,2]
+[3,1,5,2,4]
+[5,4,3,2,1]
+[2,5,3,1,4]
+[4,2,5,1,3]
+[5,1,2,4,3]
+[3,4,2,1,5]
+[5,3,4,1,2]
+[4,5,2,3,1]
+[3,5,1,4,2]
+[2,1,4,5,3]
+[1,3,2,5,4]
+
+
+picat_run generating_numbers3.pi go3  84,87s user 0,20s system 99% cpu 1:25,07 total
+
+
+ * sat, all_distinct(X), all_distinct(Z), <no symmetry breaking>, and split (default) in solve/2:
+   > 2min
+
+ * sat, all_distinct(X), all_distinct(Z), X[1] #= 1, and seq in solve/2:
+
+*/
+go2 ?=>
+  nolog,
+  N = 5,
+  Ps = permutations(1..N),
+  PLen = Ps.len,
+
+  TripletsMap = new_map(),
+  foreach(P in Ps)
+    tri(P,Tri),
+    foreach(T in Tri) TripletsMap.put(T,1) end
+  end,
+  % Convert to numbers (123..543)
+  Triplets = [T[1]*100+T[2]*10+T[3] : T in keys(TripletsMap)].sort,
+
+  statistics(runtime,[_,_]),
+  
+  % length of sequence
+  % member(M,20..20),
+  M = 20,
+  println(m=M),
+
+  % Indices of the selected permutation
+  X = new_list(M),
+  X :: 1..PLen,
+
+  % The triplets
+  Z = new_list(M*3),
+  Z :: Triplets,
+
+  % Y contains the "shortcuts" to the permutations
+  Y = new_array(M,5),
+  Y :: 1..N,
+
+  all_distinct(X),
+  % all_different(X),
+  all_distinct(Z),
+  % all_different(Z),  
+
+  X[1] #= 1, % symmetry breaking: We start with the first permutation [1,2,3,4,5]
+
+  %  ⊻
+  %
+  % Fill Y
+  %
+  foreach(I in 1..M)
+     element(I,X,II),
+     foreach(K in 1..5)
+       matrix_element(Ps,II,K,Y[I,K]) % this is the I'th selected permutation
+     end
+  end,
+
+  %
+  % Convert triplet list in Y <-> triplet number in Z
+  %
+  C = 1,
+  foreach(I in 1..M)
+    foreach(J in 1..3)
+      to_num([Y[I,J+K] : K in 0..2],10,Z[C]),
+      % Z[C] #= Y[I,J]*100 + Y[I,J+1]*10 + Y[I,J+2],
+      C := C+1
+    end
+  end,
+
+  Vars = Z ++ X, %  ++ Y.vars,
+  % Vars = X ++ Z ++ Y.vars,
+  % Vars = X ++ Y.vars ++ Z,
+  % Vars = Y.vars ++ Z ++ X,
+  println(solve),
+  if M < 20 then 
+    % solve($[seq,constr,updown,max(M)],Vars) % SAT
+    solve($[constr,split,max(M)],Vars)
+  else
+    % solve($[seq,constr,updown,max(M)],Vars) % SAT
+    solve($[constr,updown,split],Vars) % split (SAT)
+  
+  end,
+  
+  statistics(runtime,[RT,ST]),
+  println([solveTime=ST,totalTime=RT]),  
+  println(x=X),
+  PsX = [Ps[I] : I in X],
+  println(psx=PsX=PsX.len),
+  println(numbers=[[I.to_string : I in  Ps[T]].join('').to_int : T in X]),  
+  println(z=Z),
+  println(zLen=Z.len),
+  foreach(P in PsX)
+    println(P)
+  end,
+  nl,
+  fail,
+  nl,
+  nl.
+go2 => true.
+
+
+%
+% A simpler (cleaner) approach without permutations/1.
+%
+% SAT: 3.7s
+%
+% [1,2,3,4,5]
+% [3,5,4,2,1]
+% [2,3,1,5,4]
+% [2,5,3,1,4]
+% [4,3,5,1,2]
+% [3,2,4,1,5]
+% [3,2,5,4,1]
+% [1,2,4,5,3]
+% [2,1,5,3,4]
+% [1,4,5,2,3]
+% [3,4,2,5,1]
+% [1,4,2,3,5]
+% [5,4,3,1,2]
+% [4,5,1,3,2]
+% [5,1,4,3,2]
+% [5,2,1,3,4]
+% [5,3,2,1,4]
+% [3,4,1,2,5]
+% [4,1,3,5,2]
+% [1,5,2,4,3]
+% numbers = [12345,35421,23154,25314,43512,32415,32541,12453,21534,14523,34251,14235,54312,45132,51432,52134,53214,34125,41352,15243]
+% 
+go3 ?=>
+  nolog,
+  N = 5,
+  % member(M,2..20)
+  M = 20,
+  println(m=M),
+  X = new_array(M,N),
+  X :: 1..N,
+
+  % symmetry breaking
+  X[1,1] #= 1,X[1,2] #= 2,X[1,3] #= 3,X[1,4] #= 4,X[1,5] #= 5,
+  
+  % lex2lt(X), % slower for sat  
+  foreach(I in 1..M)
+    all_distinct([X[I,K] : K in 1..N]),
+    foreach(J in 1..I-1)
+      foreach(A in 0..2)
+        foreach(B in 0..2)
+           sum([X[I,K+A] #= X[J,K+B] : K in 1..3]) #< 3
+        end
+      end
+    end
+  end,
+
+  % solve($[ff,split,max(M)],X), % if using member/2 
+  solve($[ff,split],X),
+  println(X),
+  foreach(P in X)
+    println(P.to_list)
+  end,
+  println(numbers=[[I.to_string : I in  T].join('').to_int : T in X]),  
+  % fail, % if using member/2
+  nl.
+go3 => true.
+
+% list version
+check2(Forbidden,Tri) =>
+  foreach(PP in Tri)
+    not membchk(PP,Forbidden)
+  end.
+
+% check that the two permutations Perm1 and Perm2
+% are compatible, i.e. contain no common triplet
+check_perms(Perm1,Perm2) =>
+  tri(Perm1,Tri1),
+  tri(Perm2,Tri2),     
+  foreach(PP in Tri2)
+    not membchk(PP,Tri1)
+  end,
+  foreach(PP in Tri1)
+    not membchk(PP,Tri2)
+  end.
+
+
+compatible(Ps,P) = [I : {I,P2} in zip(1..Ps.len,Ps), tri(P2,Tri2), check2(Tri,Tri2)] =>
+  tri(P,Tri).
+  
+
+% Triplet in permutation P
+tri(P,Tri) :- Tri=[P[K..K+2] : K in 1..3].
+
+% converts a number Num to/from a list of integer List given a base Base
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+
+
+% From MiniZinc's lex2.mzn 
+% """
+%-----------------------------------------------------------------------------%
+% Require adjacent rows and adjacent columns in the array 'x' to be
+% lexicographically ordered.  Adjacent rows and adjacent columns may be equal.
+%-----------------------------------------------------------------------------%
+% """
+% This use lex_le/1
+lex2(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_le([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_le([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
+   end.
+
+% Note: This use lex_lt/1.
+lex2lt(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_lt([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_lt([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
+   end.
