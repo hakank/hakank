@@ -35,6 +35,37 @@ class SimpleSolutionPrinter(cp.CpSolverSolutionCallback):
         return self.__solution_count
 
 
+class SimpleSolutionPrinter2(cp.CpSolverSolutionCallback):
+    """
+    SimpleSolutionPrinter2: Print vars in each line.
+
+    Example:
+        # model = ...
+        solution_printer = SimpleSolutionPrinter([variables])
+        status = solver.SearchForAllSolutions(model, solution_printer)
+        # ...
+        print()
+        print('Solutions found : %i' % solution_printer.SolutionCount())
+        # ...
+    """
+    def __init__(self, variables):
+        cp.CpSolverSolutionCallback.__init__(self)
+        self.__variables = variables
+        self.__solution_count = 0
+
+    def OnSolutionCallback(self):
+        self.__solution_count += 1        
+        for vars in self.__variables:
+          if type(vars) in (list,):
+            print([self.Value(v) for v in vars])
+          else:
+            print(vars,":", self.Value(vars))
+        print()
+
+    def SolutionCount(self):
+        return self.__solution_count
+
+
 class ListPrinter(cp.CpSolverSolutionCallback):
     """
     ListPrinter(variables)
@@ -650,3 +681,16 @@ def no_overlap(model, s1, d1, s2, d2):
     model.Add(s2 + d2 <= s1).OnlyEnforceIf(b2)
     model.Add(b1 + b2 >= 1)
 
+
+
+def permutation3(model, from_a, perm_a, to_a):
+  """
+  Ensure that the permutation of `from_a` to `to_a` is 
+  the permutation  `perm_a`
+  """
+  assert len(from_a) == len(perm_a), f"Length of `from_a` and `perm_a` must be the same"
+  assert len(from_a) == len(to_a), f"Length of `from_a` and `to_a` must be the same"
+  model.AddAllDifferent(perm_a)
+  for i in range(len(from_a)):
+    # to_a[i] = from_a[perm_a[i]]
+    model.AddElement(perm_a[i],from_a,to_a[i])
