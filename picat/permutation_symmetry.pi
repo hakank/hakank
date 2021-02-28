@@ -1,0 +1,145 @@
+/* 
+
+  Permutation symmetry in Picat.
+ 
+  (This is a port of my MiniZinc model http://hakank.org/minizinc/permutation_symmetry.mzn )
+  
+  https://stackoverflow.com/questions/66385872/minizinc-constraint-programming-enforce-inter
+changeability-of-items
+  """
+  Minizinc (Constraint programming) enforce interchangeability of items
+
+  I'm using Minizinc to do constraint programming.
+
+  The problem is as follows:
+
+  I have an array of colors, denoted as ints. So this looks like: 
+     [3, 5, 5, 2, 1, 3, 1].
+
+  This array should be optimized in such a way that the changes of 
+  colors is minimized.
+
+  An optimal solution for example would be: [1, 1, 3, 3, 2, 5, 5].
+
+  I also have an order array, which is used to optimize with. This 
+  array denotes the sequence in which the coloring will be done. So 
+  the value of each x_i in the order array, denotes the index in the 
+  optimal sequence. So the optimal solution, the order array would be:
+
+    [7, 5, 1, 6, 4, 2, 3]
+
+  For this small example it is pretty trivial how to write the proper 
+  constraints. However, if N gets large, the solver will try many 
+  solutions that are symmetrical. So in order to reduce the number 
+  of possibile solutions, I need to tell the solver that an order 
+  array is symmetrical if it results in the same color sequencing. 
+  Or, in other words, that colors are interchangeable.
+
+  My question is how to construct such a constraint?
+  """
+
+  Hmm, for some reason, the user Simon deleted the question after
+  I answered it. Why?
+
+  My answer was:
+  """
+  One idea to do symmetry breaking is the following (see model below): 
+  for equal values in the optimal list enforce that the permutation index 
+  of the first value is less than the permutation index for the second 
+  value.
+
+  I've also included the predicate permutation3 which calculates 
+  the permutation given the a "source" array and a "sink" array.
+
+  What I understand from your description, optimal is given from some 
+  other part of the model so it's shown as fixed here.
+
+
+  <the MiniZinc model> 
+
+  Instead of 8 solutions, it outputs the unique solution:
+
+  colors: [3, 5, 5, 2, 1, 3, 1]
+  perm: [5, 7, 1, 6, 4, 2, 3]
+  optimal: [1, 1, 3, 3, 2, 5, 5]
+  ----------
+  ==========
+  """
+
+  Without symmetry breaking there are 8 solutions.
+  Here are the permutations for the different solutions:
+
+    perm   :  [6, 4, 0, 5, 3, 1, 2]
+    perm   :  [6, 4, 5, 0, 3, 1, 2]
+    perm   :  [6, 4, 0, 5, 3, 2, 1]
+    perm   :  [6, 4, 5, 0, 3, 2, 1]
+    perm   :  [4, 6, 0, 5, 3, 1, 2]
+    perm   :  [4, 6, 0, 5, 3, 2, 1]
+    perm   :  [4, 6, 5, 0, 3, 1, 2]
+    perm   :  [4, 6, 5, 0, 3, 2, 1]
+
+  For example, in perm[0] and perm[1] there are the values
+  6 and 4 which corresponds to the positions of the two 1s 
+  in the colors array. There are 4 such duplicates in
+  the colors array (and the optimal array) : 1, 2, 3, and 5,
+  thus there are 
+    2 * 4 == 8 
+  different solutions without symmetry breaking.
+
+  If optimal is not fixed there are 630 solutions with symmetry breaking.
+  Without symmetry breaking, it's 5040 solutions (of course since 7! = 5040 :-) ).
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  Colors = [3, 5, 5, 2, 1, 3, 1],  
+  N = Colors.len,
+
+  Perm = new_list(N),
+  Perm :: 1..N,
+
+  % This is calculated in some other parts of the
+  % model but is hard coded here...
+  Optimal = new_list(N),
+  Optimal :: Colors.remove_dups,
+  Optimal = [1, 1, 3, 3, 2, 5, 5],
+  % increasing(Optimal), % another way of fixing the Optimal list
+
+  permutation3(Colors,Perm,Optimal),
+
+  %
+  % Symmetry breaking (the meat of the answer)
+  % 
+  foreach(I in 1..N, J in I+1..N)
+     Optimal[I] #= Optimal[J] #=> Perm[I] #< Perm[J]
+  end,
+
+  Vars = Perm ++ Optimal,
+  solve(Vars),
+  println('colors '=Colors),
+  println('perm   '=Perm),
+  println('optimal'=Optimal),
+  nl,
+  fail,
+  
+  nl.
+go => true.
+
+
+% The permutation from A <-> B using the permutation P
+permutation3(A,P,B) =>
+  all_different(P),
+  foreach(I in 1..A.length)
+    %  B[I] #= A[P[I]]
+    PI #= P[I],
+    BI #= B[I],
+    element(PI, A, BI)
+  end.
