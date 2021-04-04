@@ -23,7 +23,9 @@
   This model generates all the words that can be construed
   by this regular expression.
 
-  This is a port of my old CP model regexp.py
+  Compared to regexp_sat.py, this model use AddAutomaton
+  instead of the slower decomposition of the MiniZinc style
+  regular constraint.
 
   This model was created by Hakan Kjellerstrand (hakank@bonetmail.com)
   Also see my other OR-tools models: http://www.hakank.org/or_tools/
@@ -48,8 +50,9 @@ class SolutionPrinter(cp.CpSolverSolutionCallback):
         # We collect the solutions by adding it to res
         # Note: 1 is the start state which is not included in the
         #       state array (x)
-        x_val =  [1] + [self.Value(self.__x[i]) for i in range(self.__n)]
+        x_val =  [1] + [self.Value(self.__x[i]) for i in range(self.__n)]        
         ss = ''.join([str(self.__s[i-1]) for i in x_val])
+        # print("x:",x_val, "ss:", ss) # for debugging
         res.append(ss)
 
 
@@ -64,44 +67,78 @@ def main(n, res):
     #
     # data
     #
+    # The DFA
+    # The old MiniZinc style transitions
+    # transitions =  [
+    #    # 1 2 3 4 5 6 7 8 9 0 1 2     # 
+    #     [0,2,3,0,0,0,0,0,0,0,0,0],   #  1 k 
+    #     [0,0,0,4,0,0,0,0,0,0,0,0],   #  2 je
+    #     [0,0,0,4,0,0,0,0,0,0,0,0],   #  3 ä
+    #     [0,0,0,0,5,6,7,8,0,0,0,0],   #  4 ll
+    #     [0,0,0,0,0,0,7,8,0,0,0,0],   #  5 er
+    #     [0,0,0,0,0,0,7,8,0,0,0,0],   #  6 ar
+    #     [0,0,0,0,0,0,0,0,9,10,0,0],  #  7 st 
+    #     [0,0,0,0,0,0,0,0,9,10,0,0],  #  8 b
+    #     [0,0,0,0,0,0,0,0,0,10,0,0],  #  9 r
+    #     [0,0,0,0,0,0,0,0,0,0,11,12], # 10 a
+    #     [0,0,0,0,0,0,0,0,0,0,0,12],  # 11 n
+    #                                  # 12 d 
+    #     ]
+
+    # k_a = 1 # "k" is implicit in state 1
+    je_a = 2
+    ae_a = 3 # ä
+    ll_a = 4
+    er_a = 5
+    ar_a = 6
+    st_a = 7
+    b_a = 8
+    r_a = 9 
+    a_a = 10 
+    n_a = 11 
+    d_a = 12
+
+    transitions = [
+      (1,je_a,2),
+      (1,ae_a,3),
+      (2,ll_a,4),
+      (3,ll_a,4),
+      (4,er_a,5),
+      (4,ar_a,6),
+      (4,st_a,7),
+      (4,b_a,8),
+      (5,st_a,7),
+      (5,b_a,8),
+      (6,st_a,7),
+      (6,b_a,8),
+      (7,r_a,9),
+      (7,a_a,10),
+      (8,r_a,9),
+      (8,a_a,10),
+      (9,a_a,10),
+      (10,n_a,11),
+      (10,d_a,12),
+      (11,d_a,12),
+    ]
+
     # the DFA (for regular)
-    n_states = 11
-    input_max = 12
-    initial_state = 1 # 0 is for the failing state
+    initial_state = 1
     accepting_states = [12]
 
-    # The DFA
-    transition_fn =  [
-       # 1 2 3 4 5 6 7 8 9 0 1 2     # 
-        [0,2,3,0,0,0,0,0,0,0,0,0],   #  1 k 
-        [0,0,0,4,0,0,0,0,0,0,0,0],   #  2 je
-        [0,0,0,4,0,0,0,0,0,0,0,0],   #  3 ä
-        [0,0,0,0,5,6,7,8,0,0,0,0],   #  4 ll
-        [0,0,0,0,0,0,7,8,0,0,0,0],   #  5 er
-        [0,0,0,0,0,0,7,8,0,0,0,0],   #  6 ar
-        [0,0,0,0,0,0,0,0,9,10,0,0],  #  7 st 
-        [0,0,0,0,0,0,0,0,9,10,0,0],  #  8 b
-        [0,0,0,0,0,0,0,0,0,10,0,0],  #  9 r
-        [0,0,0,0,0,0,0,0,0,0,11,12], # 10 a
-        [0,0,0,0,0,0,0,0,0,0,0,12],  # 11 n
-                                     # 12 d 
-        ]
 
-    s = ['k','je','ä','ll','er','ar','st','b','r','a','n','d']
-    print('n:', n)
+    #    1   2    3    4   5    6    7   8    9   10  11 12  13
+    s = ['k','je','ä','ll','er','ar','st','b','r','a','n','d','']
 
     #
     # declare variables
     #
-
     x = [model.NewIntVar(1, 12, 'x[%i]'% i) for i in range(n)]
 
 
     #
     # constraints
     #
-    regular_table(model, x, n_states, input_max, transition_fn,
-            initial_state, accepting_states)
+    model.AddAutomaton(x, initial_state, accepting_states, transitions)
   
     #
     # solution and search
@@ -110,16 +147,16 @@ def main(n, res):
     solution_printer = SolutionPrinter(n,s,x, res)
     _status = solver.SearchForAllSolutions(model, solution_printer)
 
-    print('NumConflicts:', solver.NumConflicts())
-    print('NumBranches:', solver.NumBranches())
-    print('wall_time:', solver.WallTime())
-    print()
+    # print('NumConflicts:', solver.NumConflicts())
+    # print('NumBranches:', solver.NumBranches())
+    # print('wall_time:', solver.WallTime())
+    # print()
 
 
 if __name__ == '__main__':
     res = []
-    for n in range(4,9+1):
+    for n in range(4,10):
         main(n, res)
     print('The following %i words where generated:' % len(res))
-    for r in res:
+    for r in sorted(res):
         print(r)

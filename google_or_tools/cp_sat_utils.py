@@ -298,6 +298,36 @@ def circuit(model, x):
   model.Add(z[n - 1] == 0)
 
 
+def circuit_path(model, x,z):
+  """
+  circuit(model, x, z)
+  constraints x to be an circuit. z is the visiting path.
+
+  Note: This assumes that x is has the domain 0..len(x)-1,
+        i.e. 0-based.
+"""
+  n = len(x)
+  # z = [model.NewIntVar(0, n - 1, "z%i" % i) for i in range(n)]
+
+  model.AddAllDifferent(x)
+  model.AddAllDifferent(z)
+
+  # put the orbit of x[0] in in z[0..n-1]
+  model.Add(z[0] == x[0])
+  for i in range(1, n - 1):
+    model.AddElement(z[i - 1], x, z[i])
+
+  #
+  # Note: At least one of the following two constraint must be set.
+  #
+  # may not be 0 for i < n-1
+  for i in range(1, n - 1):
+    model.Add(z[i] != 0)
+
+  # when i = n-1 it must be 0
+  model.Add(z[n - 1] == 0)
+
+
 
 def scalar_product(model, x, y, s):
   """
