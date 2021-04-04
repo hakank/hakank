@@ -1,0 +1,286 @@
+/* 
+
+  Fibonacci sequence with different approaches in Picat.
+
+  Here the reversal of fib is also studied.
+
+*/
+
+% This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+% See also my Picat page: http://www.hakank.org/picat/
+%
+
+import cp.
+
+
+main => go.
+
+go => 
+   println([F : N in 1..50, F=fib(N)]),
+   nl.
+
+%
+% fib4/2 (using fib3/2)
+% Calculating N=1..1000 - including the reversal - takes 0.637s
+% Calculating N=1..10_000 - including the reversal - takes 10.9s (without printing the large numbers)
+% With printing the large numbers, 1..10_000 takes 49.2s
+go2 => 
+   foreach(N in 50_000..50_000)
+     println(n=N),
+     time2(fib4(N,F)),
+     println([n=N,f=F]),
+     
+     time2(fib4(N2,F)),
+     println(n2=N2),
+     if N > 2, N2 != N then
+       printf("%d!=%d!\n",N,N2),
+       halt
+     end,
+     nl
+   end,
+   nl.
+
+%
+% fib5/2
+% This works for N <= 81.
+% For N > 81 F is too large for the integer domain.
+%
+% Calculating N=1..81 - including the reversal - takes 0.078s
+% Note: solve/1 is needed.
+%
+go3 => 
+   foreach(N in 0..100)
+     time2(fib5(N,F)),
+     solve([F]),
+     println([n=N,f=F]),
+     time2(fib5(N2,F)),
+     % solve([N2]),
+     println(n2=N2),
+     if N >1, N2 != N then
+       printf("%d!=%d!\n",N,N2),
+       halt
+     end,
+     nl
+   end,
+   nl.
+
+go4 =>
+  F = 28657,
+  fib5(N,F), % N=22
+  println(n=N),
+  fail,
+  nl.
+
+%
+% finds no solution in 0.016s
+%
+go5 =>
+  F = 37889062373143906+1, % N=80
+  fib5(N,F), 
+  println(n=N),
+  nl.
+
+%
+% This is slower than expected.
+%  1..10_000 (without printing) takes 50.3s
+% 
+go6 ?=>
+  foreach(N in 1..10_000)
+     println(n=N),
+     fiba(N,F),
+     println(N=F)
+  end,
+  nl.
+go6 => true.
+
+%
+% Functional approach
+% Inspired by the Exlixir code
+% https://yosi-pramajaya.medium.com/fibonacci-in-elixir-8b65d06d2128
+% and adding tabling for speed.
+% 
+% fib_pt/1: 1..10_000 without printing with tabling: 2.6s
+% fib_pt/2: 1..10_000 without printing with tabling: 1.5s
+% fib_pt/2: 1..10_000 with printing with tabling: 38.1s
+%
+go7 ?=>
+
+  foreach(N in 1..10_000)
+    println(n=N),
+    % with tabling
+    % time2(F = fib_pt(N)), % fib_pt/1 quite fast
+    time2(fib_pt(N,F)),  % fib_pt/2 faster
+    
+    % without tabling
+    % time2(fib_p(N,F)),  % fib_p/1 slow
+    % time2(fib_p(N,F)),  % fib_p/2 slow
+    
+    println(N=F) % this is slower
+    
+  end,
+  nl.
+go7 => true.
+
+%
+% Just testing N=50_000
+%
+% 50_000 with printing with tabling: 9.8s (!)
+% 50_000 without printing with tabling: 9.5s (!)
+% 
+go8 ?=>
+  time2(F = fib_pt(50_000)),
+  println(F),
+  nl.
+go8 => true.
+
+%
+% 50_000 with printing but without tabling: 0.8s
+%
+go9 ?=>
+  garbage_collect(300_000_000), % needed if without tabling
+  time2(F = fib_p(50_000)),
+  println(F),
+  nl.
+go9 => true.
+
+
+% Inspired by
+% http://rosettacode.org/wiki/Fibonacci_sequence#Prolog
+% Fibonacci sequence generator
+fib(C, [P,S], C, N)  => N = P + S.
+fib(C, [P,S], Cv, V) => succ(C, Cn), N = P + S, fib(Cn, [S,N], Cv, V).
+
+% This works, but just in one direction (since it's a function)
+fib(0) = 0.
+fib(1) = 1.
+fib(C) = N => fib(2, [0,1], C, N). % Generate from 3rd sequence on
+
+% This don't work for N=0,1. It just generate larger and larger values...
+fib2(0,0) => true.
+fib2(1,1) => true.
+fib2(C,N) => fib(2, [0,1], C, N). % Generate from 3rd sequence on
+
+succ(C, Cn) => Cn = C+1.
+
+% one way, tabled version
+table
+fib3(0) = 0.
+fib3(1) = 1.
+fib3(N) = fib3(N-1) + fib3(N-2).
+
+%
+% Using CP and indomain/1.
+%
+% This work both way 
+% cl(fib), Fs=[fib3(N) : N in 1..150], foreach(F in Fs) once(fib4(N,F)), println([N,F]) end
+% [1,1]
+% [1,1]
+% [3,2]
+% [4,3]
+% [5,5]
+% [6,8]
+% [7,13]
+% [8,21]
+% [9,34]
+% [10,55]
+% [11,89]
+% [12,144]
+% [13,233]
+% ...
+% 146,1454489111232772683678306641953]
+% [147,2353412818241252672952597492098]
+% [148,3807901929474025356630904134051]
+% [149,6161314747715278029583501626149]
+% [150,9969216677189303386214405760200]
+%
+% Note that fib4(2,F), fib4(N,F) -> N=1 (not 2).
+%
+% The reason that it's fast is that it piggybacks on fib3's tabling. 
+% This also means that if F is a non Fib number it takes long time to solve.
+%
+fib4(N,F), integer(N) => F=fib3(N).
+fib4(N,F), var(N), integer(F) => 
+   N :: 1..F+2, % add 2 so we can handle fib(3)=2 and fib(4)=3
+   indomain(N),
+   F=fib3(N).
+
+
+% Inspired by 
+% http://m00nlight.github.io/constraint%20logic%20programming/2016/01/01/using-clpfd-to-solve-factorial-and-fibonacci-problems-reversely/
+% with some rearrangement to make table work.
+% It works with N 1::81, i.e. for F <= 72057594037927935 (max value of dvars).
+%
+table 
+fib5(N,F) ?=> N#=0, F#=1.
+fib5(N,F) ?=> N#=1, F#=1.
+fib5(N, F) =>
+  F1 #> 0, F2 #> 0,
+  N #> 1, 
+  N1 #= N - 1, 
+  fib5(N1, F1),
+  N2 #= N - 2,
+  fib5(N2, F2),
+  F #= F1 + F2.
+
+%
+% Array version
+%
+fiba(N,F) =>
+  if N < 3 then
+    F = 1
+  else
+    A = new_array(N),
+    A[1] := 1,
+    A[2] := 1,
+    foreach(I in 3..N)
+    A[I] := A[I-1] + A[I-2]
+    end,
+    F = A[N]
+  end.
+
+
+%
+% Functional approach.
+% From the Elixir code 
+% https://yosi-pramajaya.medium.com/fibonacci-in-elixir-8b65d06d2128
+%
+% Without tabling
+fib_p(N) = head(fib_p_(N)).
+fib_p_(0) = [0|0].
+fib_p_(1) = [1|0].
+fib_p_(N) = [H+T|H] =>
+  N > 1,
+  [H|T] = fib_p_(N-1).
+
+% Prolog style
+fib_p(N,F) :-
+  fib_p_(N,[F|T]).
+fib_p_(0,[0|0]).
+fib_p_(1,[1|0]).
+fib_p_(N,[HT|H]) :-
+  N > 1,
+  fib_p_(N-1,[H|T]),
+  HT = H+T.
+
+
+
+% With tabling
+fib_pt(N) = head(fib_pt_(N)).
+table
+fib_pt_(0) = [0|0].
+fib_pt_(1) = [1|0].
+fib_pt_(N) = [H+T|H] =>
+  N > 1,
+  [H|T] = fib_pt_(N-1).
+
+
+% Prolog style with tabling
+fib_pt(N,F) =>
+  fib_pt_(N,[F|T]).
+table
+fib_pt_(0,[0|0]).
+fib_pt_(1,[1|0]).
+fib_pt_(N,[HT|H]) :-
+  N > 1,
+  fib_pt_(N-1,[H|T]),
+  HT = H+T.

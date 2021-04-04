@@ -1,0 +1,219 @@
+/* 
+
+  Binero (Binairo, Takuzu, Binary Puzzle) puzzle in Picat.
+
+  This grid puzzle is also called Takuzu, Binairo, Binary Puzzle, and 
+  Tohu wa Vohu. See
+  - http://en.wikipedia.org/wiki/Takuzu
+  - http://www.cross-plus-a.com/puzzles.htm#Binairo
+
+  
+  From the Scampi example Binero.scala
+  """
+  Binero is a grid game, similar to Sudoku.
+  You get a 2n x 2n grid which must be filled with ones and zeroes.
+  Some of the symbols are given. Empty squares are represented with -1.
+  - On each line and each column there must be as many zeros as ones.
+  - No more than 2 zeros or ones can be placed on a line or a column consecutively.
+  - Identical columns or lines are forbidden.
+  
+  @author VictorJavAdore
+  
+  Input examples :
+  - First line : an integer n, the half dimension of the grid
+  - Next 2n lines : original state of the grid (a dot means a blank square)
+  	5
+  	0.11.....1
+  	..1....0.0
+  	.0..1.1.1.
+  	.1........
+  	1.0..1....
+  	.0..0...11
+  	...1.....1
+  	0..1.1.0..
+  	..0.......
+  	11....11.0
+  """
+
+  Cf http://hakank.org/picat/binary_sudoku.pi
+     http://hakank.org/picat/binoxxo.pi
+
+     http://hakank.org/minizinc/binero.mzn 
+     http://hakank.org/minizinc/takazu.mzn 
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp. % for go/0 and go2/0
+% import sat. % for go3/0
+
+main => go.
+
+go ?=>
+  problem(1,Problem),
+  test_binero(Problem),
+  fail,
+  nl.
+go => true.
+
+go2 ?=>
+  foreach(P in 0..3)
+    println(problem=P),
+    problem(P,Problem),
+    test_binero(Problem)
+  end,
+  nl.
+go2 => true.
+
+%
+% Test random instances with no hints.
+% 
+% For larger instances (say > 16) it's probably better to
+% use sat solver.
+%
+go3 ?=>
+  N = 30,
+  X = new_array(N,N),
+  X :: 0..1,
+  test_binero(X),
+  % fail,
+  nl.
+go3 => true.
+
+%
+% Number of solutions for unhinted matrices
+% Better use cp for this.
+%
+% N  #sols
+% --------
+% 1 = 1
+% 2 = 2
+% 3 = 6
+% 4 = 72
+% 5 = 10
+% 6 = 4140
+% 7 = 2662
+% 8 = 4111116
+%
+% [1,2,6,72,10,4140,2662]
+% This sequence is not in OEIS: https://oeis.org/search?q=1%2C2%2C6%2C72%2C10%2C4140%2C2662&language=english&go=Search
+%
+go4 ?=>
+  nolog,
+  foreach(N in 1..8)
+     X = new_array(N,N),
+     X :: 0..1,
+     println(N=count_all(binero(X)))
+  end,
+  nl.
+go4 => true.
+
+%
+% Test a Binero instance
+%
+test_binero(Problem) =>
+  binero(Problem),
+  foreach(Row in Problem)
+    println(Row)
+  end,
+  nl,
+  nl.
+
+%
+% Solve a Binero instance.
+%
+binero(X) =>
+  N = X.len,
+  M = N div 2,
+  X :: 0..1,
+  
+  % equal number of 0s and 1s in each row and column
+  foreach(I in 1..N) 
+    sum([X[I,J] #= 0 : J in 1..N]) #= M,
+    sum([X[J,I] #= 0 : J in 1..N]) #= M
+  end,
+
+  % no more than two of the same values adjacent
+  foreach(I in 2..N-1)
+    foreach(J in 1..N)
+      X[I-1,J] #!= X[I,J] #\/ X[I,J] #!= X[I+1,J],
+      X[J, I-1] #!= X[J,I] #\/ X[J,I] #!= X[J,I+1] 
+    end
+  end,
+
+  % no identical row or column
+  foreach(I in 1..N, J in I+1..N) 
+    sum([X[I,K] #!= X[J,K] : K in 1..N]) #> 0,
+    sum([X[K,I] #!= X[K,J] : K in 1..N]) #> 0
+  end,
+
+  solve($[constr,split],X).
+
+%
+% data
+%
+
+problem(0,Problem) => 
+  Problem = [
+     [_,1,_,0],
+     [_,_,0,_],
+     [_,0,_,_],
+     [1,1,_,0]
+     ].
+
+
+%
+% Problem instance from the Scampi data/binero1.txt
+%
+
+problem(1,Problem) => 
+ Problem = [
+ [0,_,1,1,_,_,_,_,_,1],
+ [_,_,1,_,_,_,_,0,_,0],
+ [_,0,_,_,1,_,1,_,1,_],
+ [_,1,_,_,_,_,_,_,_,_],
+ [1,_,0,_,_,1,_,_,_,_],
+ [_,0,_,_,0,_,_,_,1,1],
+ [_,_,_,1,_,_,_,_,_,1],
+ [0,_,_,1,_,1,_,0,_,_],
+ [_,_,0,_,_,_,_,_,_,_],
+ [1,1,_,_,_,_,1,1,_,0]
+ ].
+
+%
+% Problem instance from the Scampi problem/binero2.txt
+%
+problem(2,Problem) => 
+  Problem = [
+  [_,0,_,0,_,_,_,1,_,_],
+  [1,_,_,_,1,_,_,_,_,_],
+  [_,0,_,0,_,_,_,_,_,_],
+  [_,_,1,_,_,1,_,_,0,_],
+  [_,_,_,0,_,_,_,1,_,_],
+  [1,_,_,0,_,0,_,_,_,_],
+  [_,_,1,_,_,_,_,0,_,0],
+  [_,_,0,1,_,_,_,_,1,_],
+  [1,_,_,_,_,_,0,_,_,_],
+  [1,_,0,_,_,_,_,_,_,1]
+  ].
+
+%
+% Problem from http://www.cross-plus-a.com/puzzles.htm#Binairo
+%
+problem(3,Problem) => 
+
+Problem = 
+[
+[0,_,_,_,_,_,_,_,_,_],
+[_,_,1,_,_,_,1,1,_,_],
+[_,1,_,_,_,_,_,_,0,_],
+[_,_,_,0,_,0,_,_,_,_],
+[_,_,_,_,_,_,_,_,_,_],
+[0,_,_,_,_,_,_,1,_,0],
+[_,1,_,1,_,_,_,_,_,_],
+[0,_,_,_,0,0,_,1,_,_],
+[1,_,_,_,_,_,_,_,_,_],
+[_,1,_,1,1,_,_,_,_,0]
+].

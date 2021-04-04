@@ -1,0 +1,288 @@
+/* 
+
+  String utils in Picat.
+
+  Some are inspired by the pattern language if SNOBOL4.
+
+  SNOBOL patterns to implement:
+
+        span ok
+        any ok
+        breaks ok
+        len
+        match ok
+        notany ok
+        slen ok
+        lpad ok
+        ltrim ok
+
+        rspan
+        rany
+        rbreaks
+        rlen
+        rmatchs
+        rnotany
+        rpad ok
+        rtrim ok
+
+  Some of these functions in SNOBOL does two things:  
+    - returns the matched string
+    - remove the matched string from the target string.
+  Since Picat only have call-by-value we have instead a third (second) argument
+  which is the matched string. This means that we can chain the destructed string
+  until no match.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module string_util.
+
+import util.
+% import cp.
+
+
+% in2(String, Pattern) => member(String.to_string(),Pattern).
+in2(String, Pattern) => 
+  once(find(String.to_string(),Pattern.to_string(),_A,_B)).
+
+space(S) => S == ' '.
+nospace(S) => S != ' '.
+
+/*
+ span(String, Pattern)
+SNOBOL string scanning function : 
+removes and returns all initial characters in string that are in pattern.
+
+  => a:="abcdef ghijk"; b:= span(a, "abcABC"); print([a,b]);
+  ["def ghijk", "abc"]
+
+  => a:="abcdef ghijk"; b:= span(a, "ABC"); print([a,b]);
+  ["abcdef ghijk", ""]
+
+*/
+span(String, _Pattern,Matched) = S, String.length == 0 => Matched = "", S = "".
+span(String, Pattern, Matched) = S =>
+   % println($span(String, Pattern, Matched)),
+   J = 0,
+   S1 = String,
+   Matched1 = "",
+   Pos = 1,
+   % while(Pos <= String.length, in2(String[Pos],Pattern))
+   while(Pos <= String.length, member(String[Pos],Pattern))
+      J := Pos,
+      Pos := Pos + 1
+   end,
+   if J > 0 then
+      Matched1 := [String[I] : I in 1..J],
+      S1 := [String[I] : I in J+1..String.length]
+   end,
+   Matched = Matched1,
+   S = S1.
+   % writeln([s=S,matched=Matched]).
+
+
+/*
+breaks(String, Pattern)
+SNOBOL string scanning function : 
+removes and returns all initial characters in string that are NOT in pattern.
+
+  => a:="abcdef ghijk"; b:= breaks(a, " "); print([a,b]);
+  [" ghijk", "abcdef"]
+
+  => a:="abcdef ghijk"; b:= breaks(a, "abc"); print([a,b]);
+  ["abcdef ghijk", ""]
+*/
+breaks(String, _Pattern,Matched) = S, String.length == 0 => Matched = "", S = "".
+breaks(String, Pattern,Matched) = S =>
+   % println($breaks(String, Pattern, Matched)),
+   J = 0,
+   S1 = String,
+   Matched1 = "",
+   Pos = 1,
+   while(Pos <= String.length, not in2(String[Pos],Pattern))
+      J := Pos,
+      Pos := Pos + 1
+   end,
+   if J > 0 then
+      S1 := [String[I] : I in J+1..String.length],
+      Matched1 := [String[I] : I in 1..J]
+   end,
+   S = S1,
+   Matched = Matched1.
+   % writeln([s=S,matched=Matched]).
+
+
+/*
+any(String, Pattern)
+SNOBOL string scanning function : removes and returns first initial
+character in string that are in pattern.
+
+  => a:="abcdef ghijk"; b:= any(a, "abcABC"); print([a,b]);
+  ["bcdef ghijk", "a"]
+
+  => a:="abcdef ghijk"; b:= any(a, "ABC"); print([a,b]);
+  ["abcdef ghijk", ""]
+*/
+any(String,Pattern,Matched) = S =>
+   S1 = "",
+   Matched1 = "",
+   if in2(String[1],Pattern) then
+      Matched1 := String[1],
+      S1 := [String[I] : I in 2..String.length]
+   end,
+   Matched = Matched1,
+   S = S1.
+
+
+/*
+notany(String, Pattern)
+SNOBOL string scanning function : removes and returns first characters in string if it's NOT in pattern.
+
+  => a:="abcdef ghijk"; b:= notany(a, " "); print([a,b]);
+ ["bcdef ghijk", "a"]
+
+  => a:="abcdef ghijk"; b:= notany(a, "abc"); print([a,b]);
+  ["abcdef ghijk", ""]
+*/
+notany(String,Pattern,Matched) = S =>
+   S1 = "",
+   Matched1 = "",
+   if not in2(String[1],Pattern) then
+      Matched1 := String[1],
+      S1 := [String[I] : I in 2..String.length]
+   end,
+   Matched = Matched1,
+   S = S1.
+
+
+/*
+slen(string, n)
+SNOBOL string scanning function : removes and returns first n characters in string
+
+  => a:="abcdef ghijk"; b:= len(a, 4); print([a,b]);
+  ["ef ghijk", "abcd"]
+
+  => a:="abcdef ghijk"; b:= len(a, 14); print([a,b]);
+  ["abcdef ghijk", ""]
+
+  => a:="abcdef ghijk"; b:= len(a, 1); print([a,b]);
+  ["bcdef ghijk", "a"]
+*/
+slen(String, N, Matched) = S =>
+   N2 = min(N,String.length),  
+   Matched = [String[I] : I in 1..N2],
+   S = [String[I] : I in N2+1..String.length].
+
+     
+
+
+/*
+match(String, Pattern)
+SNOBOL string scanning function : 
+removes and returns pattern if it match the initial part of string.
+
+  => a:="abcdef ghijk"; b:= matchs(a, "abc"); print([a,b]);
+  ["def ghijk", "abc"]
+
+  => a:="abcdef ghijk"; b:= matchs(a, "a"); print([a,b]);
+  ["bcdef ghijk", "a"]
+
+  => a:="abcdef ghijk"; b:= matchs(a, "abd"); print([a,b]);
+  ["abcdef ghijk", ""]
+
+  => a:="abcdef ghijk"; b:= matchs(a, "ABC"); print([a,b]);
+  ["abcdef ghijk", ""]
+*/
+match(String, Substring, Matched) = S =>
+    S1 = String,
+    Matched1 = "",
+    if find(String, Substring, 1, To) then
+       S1 := [String[I] : I in To+1..String.length],
+       Matched1 := [String[I] : I in 1..To]
+    end,
+    S = S1,
+    Matched1 = Matched.
+
+
+/*
+lpad(String, N)
+SNOBOL string scanning function : returns the string padded to length n with space to left.
+
+  => a:="123456789"; b:= lpad(a, 14); print("<$b$> len:$#b$");
+  <     123456789>  len:14
+
+  => a:="123456789"; b:= lpad(a, 4); print("<$b$> len:$#b$");
+  <123456789>   len:9
+*/
+lpad(String,N) = S =>
+  S1 = String,
+  Len = String.length,
+  if N > Len then
+     S1 := [" " : _I in Len+1..N].flatten() ++ S1
+  end,
+  S = S1.
+
+
+/*
+rpad(String, N)
+SNOBOL string scanning function : returns the string padded to length n with space to right.
+
+  => a:="123456789"; b:= rpad(a, 4); print("<$b$>  len:$#b$");
+  <123456789>  len:9
+
+  => a:="123456789"; b:= rpad(a, 14); print("<$b$>  len:$#b$");
+  <123456789     >  len:14
+*/
+rpad(String,N) = S =>
+  S1 = String,
+  Len = String.length,
+  if N > Len then
+     S1 := S1 ++ [" " : _I in Len+1..N].flatten()
+  end,
+  S = S1.
+
+
+/*
+ltrim(String)
+SNOBOL string scanning function : returns the string with initial space removed
+
+  => a:="   123456789"; b:= ltrim(a); print("<$b$>");
+  <123456789>
+
+  => a:="   123456789   "; b:= ltrim(a); print("<$b$>");
+  <123456789   >
+*/
+ltrim(String) = String.span(" \t\n", _).
+
+
+/*
+rtrim(String)
+SNOBOL string scanning function : returns the string with trailing space removed
+
+  => a:="   123456789   "; b:= rtrim(a); print("<$b$>");
+  <   123456789>
+  => a:="   123456789   "; b:= rtrim(a); print("<$b$>");
+  <   123456789>
+
+*/
+rtrim(String) = ltrim(String.reverse()).reverse().
+
+% removes both leading and trailing spaces
+trim(String) = String.ltrim().rtrim().
+   
+
+/*
+  arb
+*/
+
+
+% Haskell's span 
+% L=span(prime,[2,3,5,6,7,8,9]) -> [[2,3,5],[6,7,8,9]]
+% span(_P,[]) = [[],[]].
+% span(P,[X|Xs]) = cond(call(P,X),
+%                       [[X|Ys],Zs],
+%                       [[],[X|Xs]]) =>
+%                  [Ys,Zs] = span(P,Xs).

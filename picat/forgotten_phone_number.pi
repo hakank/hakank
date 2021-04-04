@@ -1,0 +1,294 @@
+/* 
+
+  The Case of Forgotten Phone number in Picat.
+
+  From Logic Puzzles and Logic Programming 
+  """
+  At a party, someone suggested that they should give Frank a
+  ring. Unfortunately, there was no one at present who knew his
+  phone number. All they could collect was some little bits of
+  information:
+
+  (1) He had a six-figure number.
+  (2) The second half of the number, that is, the number formed
+      by the last three figures, was equal to four times the first
+      one.
+  (3) The two figures in the middle of the number were
+      identica1.
+  (4) The second figure was equal to twice the first.
+  (5) And the third figure in the phone number was two times
+     the second one or two plus the second one.
+
+  What was Frank’s phone number?
+  """
+
+  Note: My cp version (go/0) first reported two solutions:
+
+    [0,0,0,0,0,0]
+    [1,2,4,4,9,6]
+
+  I guees we can rule out the first solution as a not
+  valid phone number, so I require that the first digit
+  is not 0.
+
+  The Prolog program (go2/0) (op.cit) has a unique solution:
+    Frank’s phone number is: 124-496
+
+  For fun: go3/0 (using gen/2) generates similar problems but with
+  different constants in the description.
+
+  The original problem statement is phrased like with this approach:
+  """
+  [hints = [4,3,4,2,2],x = [1,2,4,4,9,6]]
+     Problem statement:
+        (1) He had a six-figure number.
+        (2) The second half of the number, that is, the number formed
+            by the last three figures, was equal to 4 times the first one.
+        (3) The two figures in position 3 and 4 were identica1.
+        (4) The second figure was equal to 2 times the first.
+        (5) And the third figure in the phone number was 2 times
+            the second one or 2 plus the second one
+
+        Frank's telephone number is [1,2,4,4,9,6]
+        (This is the original problem.)
+  """
+
+  Another version is:
+  """
+  [hints = [6,3,5,2,3],x = [1,2,5,7,5,0]]
+  Problem statement:
+        (1) He had a six-figure number.
+        (2) The second half of the number, that is, the number formed
+            by the last three figures, was equal to 6 times the first one.
+        (3) The two figures in position 3 and 5 were identica1.
+        (4) The second figure was equal to 2 times the first.
+        (5) And the third figure in the phone number was 3 times
+            the second one or 3 plus the second one
+
+        Frank's telephone number is [1,2,5,7,5,0]
+  """
+  
+  There are 20 such problem statements.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import cp.
+
+
+main => go.
+
+%
+% CP version
+%
+go ?=>
+  forgotten_phone_number(X),
+  println(X),
+  fail,  
+  nl.
+go => true.
+
+% Prolog version
+go2 ?=>
+  start,
+  fail,
+  nl.
+go2 => true.
+
+
+%
+% Generate some similar problems.
+%
+go3 ?=>
+  All = findall([X,Hints],gen(X, Hints)),
+  NumSols = new_map(),
+  foreach(A in All)
+    % println(A)
+    NumSols.put(A[1],NumSols.get(A[1],0)+1)
+  end,
+  foreach(A in All)
+    if NumSols.get(A[1]) == 1 then
+      print_hints(A[2],A[1]),
+    end
+  end,
+  nl.
+go3 => true.
+
+
+forgotten_phone_number(X) =>
+  % (1) He had a six-figure number.
+  N = 6,
+  X = new_list(N),
+  X :: 0..9,
+
+  X[1] #!= 0, % remove the trivial solution [0,0,0,0,0,0]
+
+  % (2) The second half of the number, that is, the number formed
+  %     by the last three figures, was equal to four times the first
+  %     one.
+  % to_num(X[4..6],X46),
+  % to_num(X[1..3],X13),
+  % X13*4 #= X46,
+  4*(100*X[1]+10*X[2]+X[3]) #= 100*X[4]+10*X[5]+X[6],
+
+  % (3) The two figures in the middle of the number were
+  %     identica1.
+  X[3] #= X[4],
+  
+  % (4) The second figure was equal to twice the first.
+  X[1]*2 #= X[2],
+  
+  % (5) And the third figure in the phone number was two times
+  %    the second one or two plus the second one.
+  X[3] #= 2*X[2] #\/ X[3] #= 2+X[2],
+  
+  solve(X).
+
+
+
+to_num(List, Base, Num) =>
+        Len = length(List),
+        Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+to_num(List, Num) =>
+       to_num(List, 10, Num).
+
+%
+% Below is the Prolog program, op.cit. page 37
+%
+start :-
+      assertz($phone(x,y)), % Dummy for phone/2
+      retract($phone(x,y)), % Remove dummy     
+      digitt(D1),
+      D2 is 2*D1, digitt(D2),
+      ( D3 is 2*D2 ; D3 is 2+D2 ), digitt(D3),
+      half(D1,D2,D3, FIRST), FIRST != 0,
+      SECOND is 4*FIRST, SECOND < 1000,
+      half(D3,_D5,_D6, SECOND),
+      remember(FIRST, SECOND),
+      fail.
+      
+start :-
+      number_of_results(N) ,
+      out(N).
+      
+half(D1,D2,D3, N):-
+      digitt(D1), digitt(D2), digitt(D3),
+      Y1 is 100*D1, Y2 is 10*D2, N is Y1 + Y2 + D3.
+half(D1,D2,D3, N) :-
+      integer(N), N > 0,
+      N < 1000,
+      D1 is N div 100, Y is N mod 100,
+      D2 is Y div 10, D3 is Y mod 10.
+
+remember(F, S):-
+      bp.phone(F, S),
+      !, fail.
+remember(F, S) :-
+      assert($phone(F, S ) ).
+      
+number_of_results(many):-
+      bp.phone(F, S),
+      bp.phone(Fl, SI),
+      ( F != Fl ; S != SI ), !.
+number_of_results(1) :-
+      bp.phone(_F, _S ), !.
+number_of_results(0).
+
+out(many):-
+     nl, print("The phone number is not unique, "),
+     print("\nthe folks have to make some trials."), nl, nl,
+     print("The possible numbers are:"), nl,
+     out.
+out(1):-
+     retract($phone(F, S)),
+     nl, print("Frank’s phone number is: "),
+     print(F), print("-"), print(S), nl, nl.
+out(0):-
+     nl,
+     print("The pieces of information do not "),
+     print("determine a phone number."),
+     nl.
+
+out :-
+    retract($phone(F, S)),
+    tab(1), print(F), print("-"), print(S), nl,
+    out.
+out :- nl.
+
+digitt(0).
+digitt(1).
+digitt(2).
+digitt(3).
+digitt(4).
+digitt(5).
+digitt(6).
+digitt(7).
+digitt(8).
+digitt(9).
+
+
+%
+% Generate a puzzle
+%
+gen(X,Hints) =>
+  % (1) He had a six-figure number.
+  N = 6,
+  X = new_list(N),
+  X :: 0..9,
+
+  Hints = new_list(5),
+  Hints :: 2..9, % Note all are #> 1
+
+  % (2) The second half of the number, that is, the number formed
+  %     by the last three figures, was equal to four times the first
+  %     one.
+  % to_num(X[4..6],X46),
+  % to_num(X[1..3],X13),
+  Hints[1]*(100*X[1]+10*X[2]+X[3]) #= 100*X[4]+10*X[5]+X[6],
+
+  % (3) The two figures in the middle of the number were
+  %     identica1.
+  % Two figures Hints[2] and Hints[3] are identical
+  % X[2] #= X[3],
+  Hints[2] :: 1..N,
+  Hints[3] :: 1..N,
+  Hints[2] #!= Hints[3],
+  element(Hints[2],X,Hints[3]),
+  
+  % (4) The second figure was equal to twice the first.
+  % (4) The second figure was equal to Hints[4] times the first.
+  X[1]*Hints[4] #= X[2],
+  
+  % (5) And the third figure in the phone number was two times
+  %    the second one or two plus the second one.
+  % X[3] #= 2*X[2] #\/ X[3] #= 2+X[2],
+  X[3] #= Hints[5]*X[2] #\/ X[3] #= Hints[5]+X[2],
+
+  Vars = X ++ Hints,
+  solve(Vars).
+
+
+print_hints(Hints,X) =>
+  println([hints=Hints,x=X]),
+  println("Problem statement:"),
+  println("\t(1) He had a six-figure number."),
+  println("\t(2) The second half of the number, that is, the number formed"),
+  printf("\t    by the last three figures, was equal to %d times the first one.\n", Hints[1]),
+  printf("\t(3) The two figures in position %d and %d were identica1.\n",Hints[2],Hints[3]),
+  printf("\t(4) The second figure was equal to %d times the first.\n", Hints[4]), 
+  printf("\t(5) And the third figure in the phone number was %d times\n",Hints[5]),
+  printf("\t    the second one or %d plus the second one\n",Hints[5]),
+  nl,
+  printf("\tFrank's telephone number is %w\n",X),
+  if X == [1,2,4,4,9,6] then
+      println("\t(This is the original problem.)")
+  end,
+
+  nl,
+  nl.
+

@@ -1,0 +1,120 @@
+/* 
+
+  Fibonacci (reversible) in Picat.
+
+  Here is show a Fibonacci predicate that is reversible,
+       fib(N,F)
+  where the standard operation of 
+       N -> F 
+  works as well as the reversible 
+       F -> N.
+
+  It use the CP solver which has a limit of numbers 
+  below 2**56 so we can solver for 
+    F=61305790721611591 
+  i.e. when N = 81.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+% import util.
+import cp.
+
+
+main => go.
+
+go ?=>
+  
+  N = 30,
+  println("Find F given N, the 'normal' case:"),
+  fib(N,F),
+  println([N,F]),
+  nl,
+  println("Find N given F, the 'reversible' case:"),
+  % N2 #>= 0,
+  F31 = 2178309, % fib 31
+  fib(N2,F31),
+  println([N2,F31]),
+  F50 #= 20365011074,
+  fib(N3,F50),
+  println([N3,F50]),
+  nl,
+  
+  % This is too big for Picat's cp solver
+  println("test F100:"),
+  
+  % Note: It fails here since we cannot
+  % assign a decision variable this large.
+  F100 #= 573147844013817084101,
+  println(f100=F100),
+  fib(N4,F100),
+  println([N4,F100]),
+
+  nl.
+go => true.
+
+%
+% Here all F for N in 1..100 is tested.
+% Howeverm we can solve Fibs upto N=81 (61305790721611591).
+% After that, the numbers don't fit in the supported
+% range of 2**56 (approc 7.2^16)
+%
+% This takes about 0.1s to solve.
+% Also, note that solve/1-2 is not needed here.
+%
+go2 ?=>
+  % Generate the Fibonacci numbers
+  Fibs = [fibt(N) : N in 1..100],
+  member(Fib, Fibs),
+  F #= Fib,
+  fib(N,F), % find N
+  println([N,F]),
+  fail,
+
+  nl.
+go2 => true.
+
+%
+% Test an impossible value of F.
+% It prints 'no'.
+%
+go3 ?=>
+  println("Test impossible value of F:"),
+  F #= 18,
+  if fib(N,F) then 
+    println([N,F])
+  else
+    println(no)
+  end,
+
+  nl.
+go3 => true.
+
+
+%
+% This is the reversible version of Fibonacci using CP.
+% Table is much faster (as expected)
+%
+table
+fib(0,1).
+fib(1,1).
+fib(N,F) :-
+  N #> 0,
+  F #> 0,
+  N1 #= N-1, 
+  N2 #= N-2,
+  % If we use fib(N-1,F1) then
+  % F -> N don't work
+  fib(N1,F1), 
+  fib(N2,F2),  
+  F #= F1+F2.
+
+% This is just for generating
+% the Fibonacci numbers and
+% we then calculate the corresponding N.
+table
+fibt(0)=1.  fibt(1)=1.
+fibt(N)=F,N>1 => F=fibt(N-1)+fibt(N-2).

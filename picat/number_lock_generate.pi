@@ -1,0 +1,224 @@
+/* 
+
+  Generating Number lock (Mastermind like) problem in Picat.
+
+  From Presh Talwalkar (MindYourDecisions) 
+  """
+  Puzzles like this have been shared with the dubious claim that "only a
+  genius can solve" them. But they are still fun problems so let's work one
+  out.
+
+  A number lock requires a 3 digit code. Based on these hints, can you crack
+  the code?
+
+    682 - one number is correct and in the correct position
+    645 - one number is correct but in the wrong position
+    206 - two numbers are correct but in the wrong positions
+    738 - nothing is correct
+    780 - one number is correct but in the wrong position
+
+  Video:  https://youtu.be/-etLb-8sHBc
+  """
+
+  Today Moshe Vardi published a related problem
+  (https://twitter.com/vardi/status/1164204994624741376 )
+  where all hints, except for the second where identical:
+
+    682 - one number is correct and in the correct position
+    614 - one number is correct but in the wrong position    <-- This has different digits.
+    206 - two numbers are correct but in the wrong positions
+    738 - nothing is correct
+    780 - one number is correct but in the wrong position
+
+  See number_lock.pi, number_lock2.pi, and number_lock_5_digits.pi
+  for modelling these puzzles.
+
+  In this model we are generating these kind of puzzles.
+
+  Some generated puzzles of some different lengths:
+
+  Puzzle
+  [[5,6,4,1],2,2]
+  [[8,5,6,4],1,2]
+  [[8,1,4,5],2,3]
+  [[4,3,6,5],1,2]
+  Check the problem for unicity:
+  n = 4
+  allSolsLen = 1
+  solution = [8,3,4,1]
+
+  Puzzle
+  [[1,7,2,4,3,8],2,5]
+  [[6,0,3,8,9,7],0,3]
+  [[8,6,9,5,4,2],0,4]
+  [[9,8,0,7,2,4],3,4]
+  [[6,8,4,9,3,5],2,4]
+  [[6,4,9,7,5,0],1,3]
+  Check the problem for unicity:
+  n = 6
+  allSolsLen = 1
+  solution = [5,8,2,7,3,4]
+
+  Puzzle
+  [[3,7,8,4,9,2],5,5]
+  [[0,8,9,6,4,3],0,4]
+  [[4,5,1,9,8,2],0,4]
+  [[9,6,3,4,7,5],2,5]
+  [[1,0,7,2,8,6],0,2]
+  [[2,1,6,0,8,3],0,2]
+  Check the problem for unicity:
+  n = 6
+  allSolsLen = 1
+  solution = [3,7,8,4,9,5]
+
+  Puzzle
+  [[2,1,9,4,3,0],0,5]
+  [[0,7,4,9,6,1],4,5]
+  [[1,5,2,9,8,0],1,3]
+  [[9,5,1,8,7,4],1,4]
+  [[0,5,9,3,2,8],1,3]
+  [[4,6,5,8,2,3],0,2]
+  Check the problem for unicity:
+  n = 6
+  allSolsLen = 1
+  solution = [0,3,4,9,7,1]
+
+  Puzzle
+  [[1,7,8,5,2,9],0,3]
+  [[9,3,8,4,7,2],1,5]
+  [[9,1,7,5,8,0],0,3]
+  [[1,6,4,7,5,8],1,2]
+  [[5,9,6,0,7,3],3,4]
+  [[3,1,9,0,4,2],0,5]
+  Check the problem for unicity:
+  n = 6
+  allSolsLen = 1
+  solution = [0,9,4,2,7,3]
+
+  Puzzle
+  [[1,4,6,3,7,5,9],3,6]
+  [[5,4,7,0,2,8,6],1,4]
+  [[6,4,8,5,9,2,7],0,4]
+  [[1,8,4,7,6,9,5],3,5]
+  [[4,3,8,0,5,6,9],3,6]
+  [[2,4,5,6,8,7,1],0,4]
+  [[7,5,1,4,6,8,9],2,5]
+  Check the problem for unicity:
+  n = 7
+  allSolsLen = 1
+  solution = [1,3,4,0,6,5,9]
+
+
+  Note: Sometimes one might to restart the program to get a fast
+        solution.
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  NumDigits = 7,
+  NumHints = NumDigits,  
+  _ = random2(),
+  Solution = [random() mod 10 : _ in 1..NumDigits],
+  while (Solution.remove_dups.len < NumDigits)
+    Solution := [random() mod 10 : _ in 1..NumDigits]
+  end,
+  println(solution=Solution),
+
+  % Generate the problem 
+  Data = new_array(NumHints,NumDigits+2),
+  Data :: 0..9,
+  number_lock_gen(Data,NumDigits,Solution),
+  println("Puzzle"),
+  foreach(D in Data)
+    println([D[1..NumDigits].to_list,D[NumDigits+1],D[NumDigits+2]])
+  end,
+  
+  println("Check the problem for unicity:"),
+  AllSols = findall(X,number_lock_solve(Data,X)),
+  println(allSolsLen=AllSols.len),
+  (AllSols.len == 1 -> true ; fail),
+  println(solution=AllSols[1]),
+  nl.
+go => true.
+
+
+
+
+%
+% number_lock_gen(Data,X)
+%
+% Generating the puzzle.
+%
+number_lock_gen(Data, NumDigits,X) =>
+  NumHints = Data.len,
+  foreach(D in Data)
+    Digits = D[1..NumDigits],
+    all_different(Digits),
+    NumCorrectPosition = D[NumDigits+1],
+    NumCorrectPosition #< NumDigits,
+    NumCorrectNumber = D[NumDigits+2],
+    NumCorrectNumber #< NumDigits,
+    check(Digits,X,NumCorrectPosition,NumCorrectNumber)
+  end,
+  % Different rows
+  foreach(I in 1..NumHints, J in I+1..NumHints)
+    sum([Data[I,K] #= Data[J,K] : K in 1..NumDigits]) #<= 1
+  end,
+  % % Different columns
+  % foreach(I in 1..NumDigits)
+  %   all_different([Data[K,I] : K in 1..NumHints])
+  % end,
+  % % only one hint can have 0 num correct numbers
+  % sum([Data[I,NumDigits+2] #= 0 : I in 1..NumHints]) #<= 1,
+  
+  Vars = Data.vars,
+  % one might use rand to generate more random-line instances
+  % solve($[rand],Vars).
+  % solve($[],Vars).
+  solve($[rand_var,updown],Vars).  
+
+%
+% number_lock_solve(Data, X)
+%
+% solving the puzzle
+%
+number_lock_solve(Data, X) =>
+
+  N = length(Data[1])-2, % number of digits
+  println(n=N),
+  X = new_list(N),
+  X :: 0..9,
+  all_different(X),
+  
+  foreach(D in Data)
+    Digits = D[1..N],
+    NumCorrectPosition = D[N+1],
+    NumCorrectNumber = D[N+2],      
+    check(Digits,X,NumCorrectPosition,NumCorrectNumber)
+  end,
+  
+  solve($[],X).
+
+
+
+%
+% How many 
+%   pos: correct values and positions
+%   val: correct values (regardless if there are correct position or not)
+check(A, B, Pos, Val) =>
+  N = A.len,
+
+  % number of entries in correct position (and correct values)
+  sum([A[J] #= B[J] : J in 1..N]) #= Pos,
+
+  % number of entries which has correct values (regardless if there are in correct position or not)
+  sum([A[J] #= B[K] : J in 1..N, K in 1..N ]) #= Val.
+
