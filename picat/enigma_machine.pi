@@ -1,0 +1,288 @@
+/* 
+
+  Enigma machine in Picat.
+
+  Ported from Prolog code at https://github.com/Gariben/Prolog/blob/master/Enigma_Machine/enigma.pl
+  
+  (Well, "ported" is not correct. It worked right away...)
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+
+main => go.
+
+
+go =>
+  enigma([b,u,t,t,e,r,f,l,y],[t,h,q],[[a,c],[b,f]],O1),
+  println(O1),
+
+  enigma([o,n,f,k,o,c,v,c,q],[t,h,q],[[a,c],[b,f]],O2),
+  println(O2),
+  
+  nl.
+
+
+%% The code below is from
+%% https://github.com/Gariben/Prolog/blob/master/Enigma_Machine/enigma.pl
+
+head([H|_],H).
+
+indexOf([Element|_], Element, 0):- !.
+indexOf([_|Tail], Element, Index):-
+  indexOf(Tail, Element, Index1),
+  !,
+  Index is Index1+1.
+
+reflect(List, Char, RChar) :- 
+	indexOf(List,Char,Index), 
+	reverse(List,RList),
+	indexOf(RList,RChar,Index).
+
+step([Head|Tail], TList) :- 
+	append(Tail, [Head], TList).
+
+
+turn(List,0,List) :-
+!.
+
+turn([H|T],X,R) :-
+	X > 0,
+	Y is X-1,
+	append(T,[H], Nlist),
+	turn(Nlist, Y, R).
+
+
+%Accumulator Length-------------------------------------------------------
+
+accLen([],A,A). 
+
+accLen([_|T],A,L)  :-    
+	Anew  is  A+1,  
+	accLen(T,Anew,L).
+
+len(List,Length)  :-  accLen(List,0,Length). 
+
+
+%Finding character from index---------------------------------------------
+
+indexInList(List,Char,Index) :-
+	len(List,L),
+	Index < L,
+	accIndex(List,Char,0,Index).
+
+accIndex([H|_],H,Index,Index) :-
+	!.
+
+accIndex([_|T],Char,Place,Index) :-
+	Place < Index,
+	NPlace is Place+1,
+	accIndex(T,Char,NPlace,Index).
+
+accIndex([],-1,_,_).
+
+
+%Single accumulator swap--------------------------------------------------
+
+accFinish(T,Build,Out)	:-
+	append(Build,T,Fin),
+	accSwap1([],_,_,Fin,Out).
+
+accSwap1([],_,_,Out,Out).
+
+accSwap1([H|T],Item1,Item2,Build,Out)	:-
+	len([H|T],L), 
+	L>0,
+	(H = Item1 -> append(Build,[Item2],NBuild); 
+		append(Build,[H],NBuild)),
+	(\+ member(Item1,T) -> accFinish(T,NBuild,Out);
+		accSwap1(T,Item1,Item2,NBuild,Out)).
+
+sswap(List,Item1,Item2,Out)	:-
+	accSwap1(List,Item1,Item2,[],Out).
+
+
+%Double accumulator swap--------------------------------------------------
+
+accSwap2([],_,_,Out,Out).
+
+accSwap2([H|T],Item1,Item2,Build,Out)	:-
+	len([H|T],L), L>0,
+	(H = Item1 -> append(Build,[Item2],NBuild); 
+		(H = Item2 -> append(Build,[Item1],NBuild);
+			append(Build,[H],NBuild))),
+	(\+ member(Item1,T) -> accSwap1(T,Item2,Item1,NBuild,Out);
+		(\+ member(Item2,T) -> accSwap1(T,Item1,Item2,NBuild,Out);
+			accSwap2(T,Item1,Item2,NBuild,Out))).
+
+dswap(List,Item1,Item2,Out)	:-
+	accSwap2(List,Item1,Item2,[],Out).
+
+%Plugboard generation-----------------------------------------------------
+
+plugGen(Out,[],Out)	:-
+!.
+
+
+plugGen(Board,[[A,B]|T],Out) :-
+	dswap(Board,A,B,NBoard),
+	plugGen(NBoard,T,Out).
+
+%List transition----------------------------------------------------------
+
+transition(List1,List2,I,O)	:-
+	indexOf(List1,I,Index),
+	indexInList(List2,O,Index).
+
+%Predefined cogs----------------------------------------------------------
+
+alphabet([a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z]).
+cogIII([b,d,f,h,j,l,c,p,r,t,x,v,z,n,y,e,i,w,g,a,k,m,u,s,q,o]).
+cogII([a,j,d,k,s,i,r,u,x,b,l,h,w,t,m,c,q,g,z,n,p,y,f,v,o,e]).
+cogI([e,k,m,f,l,g,d,q,v,z,n,t,o,w,y,h,x,u,s,p,a,i,b,r,c,j]).
+reflector([y,r,u,h,q,s,l,d,p,x,n,g,o,k,m,i,e,b,f,z,c,w,v,j,a,t]).
+
+
+
+%Master Enigma launcher
+%------------------------------------------------------------------------------
+
+enigma(Input,[RIII,RII,RI],Pairs,Output)	:-
+	alphabet(A),
+	plugGen(A,Pairs,Plugboard),
+	m3(Input,[RIII,RII,RI],Plugboard,[],Output).
+
+%==============================================================================
+
+m3([],[_,_,_], _, O, O)	:-
+!.
+
+m3( [Input|Rest], [RIII,RII,RI], Plugboard, Output, Final)	:-
+	
+%Initialize all parts----------------------------------------------------------
+	alphabet(Alphabet),
+
+	alphabet(IIIs),
+	cogIII(IIIe),
+
+	alphabet(IIs),
+	cogII(CogII),
+
+	alphabet(Is),
+	cogI(CogI),
+
+	reflector(Reflector),
+
+%Apply changes-----------------------------------------------------------------
+
+	%Turn cogIII appropriately
+	indexOf(IIIs,RIII,IIIt),
+	turn(IIIs,IIIt,CogIIIs),
+	turn(IIIe,IIIt,CogIII),
+
+	%Turn cogII appropriately
+	indexOf(IIs,RII,IIt),
+	turn(IIs,IIt,CogIIs),
+
+	%Turn cogI appropriately
+	indexOf(Is,RI,It),
+	turn(Is,It,CogIs),
+
+	%Alphabet -> Plugboard
+	transition(Alphabet,Plugboard,Input,PInput),
+
+
+
+%CogIII------------------------------------------------------------------------
+	step(CogIIIs,CogIIIss),
+	step(CogIII, CogIIIn),
+
+	%input->initial_cog_step (OCogIIIs)
+	transition(Alphabet,CogIIIss,PInput,OCogIIIs),
+
+	%initial_cog_step -> cog_encryption (OCogIII)
+	transition(CogIIIss,CogIIIn, OCogIIIs,OCogIII),
+
+
+	%if the head of CogIIIss is a 'w'
+	head(CogIIIss,H1),
+	head(CogIIs,H2),
+	(H1=w -> turn(CogIIs,1,CogIIss);
+		(H2=e -> turn(CogIIs,1,CogIIss); 
+			%Added extra case for rotor2
+		turn(CogIIs,0,CogIIss))),
+
+	(H2=e -> turn(CogIs,1,CogIss);
+		turn(CogIs,0,CogIss)),
+
+	%cog_encryption -> input (EndCogIII)
+	transition(CogIIIss,CogIIss,OCogIII,EndCogIII),
+
+%CogII-------------------------------------------------------------------------
+
+	%initial_cog_step -> cog_encryption (OCogII)
+	transition(Alphabet,CogII,EndCogIII,OCogII),
+	
+	%cog_encryption -> input (EndCogII)
+	transition(CogIIss,CogIss,OCogII,EndCogII),
+
+%CogI--------------------------------------------------------------------------
+
+	%initial_cog_step -> cog_encryption (OCogI)
+	transition(Alphabet,CogI,EndCogII,EndCogI),
+
+%% %Reflector------------------------------------------------------------------
+	
+	transition(CogIss,Alphabet,EndCogI,InReflector),
+
+	%Reflector -> EndReflector
+	transition(Alphabet,Reflector,InReflector,EndReflector),
+
+	transition(Alphabet,CogIss, EndReflector, BCogI),
+
+%CogI--------------------------------------------------------------------------
+
+	transition(CogI,Alphabet,BCogI,RCogI),
+
+%CogII
+%------------------------------------------------------------------------------
+
+	transition(CogIss,CogIIss,RCogI,InCogII),
+
+	transition(CogII,Alphabet,InCogII,RCogII),
+
+%CogIII
+%------------------------------------------------------------------------------
+
+	transition(CogIIss,CogIIIss,RCogII,InCogIII),
+
+	transition(CogIIIn, CogIIIss,InCogIII,RCogIII),
+
+%Output------------------------------------------------------------------------
+	transition(CogIIIss,Alphabet,RCogIII,POut),
+
+	transition(Plugboard,Alphabet,POut,Out),
+
+	append(Output,[Out],Build),
+
+	head(CogIIIss,NRIII),
+	head(CogIIss,NRII),
+	head(CogIss,NRI),
+
+	m3(Rest,[NRIII,NRII,NRI], Plugboard, Build, Final).
+
+
+%****************************************************************************************
+%****************************************************************************************
+
+
+
+
+
+

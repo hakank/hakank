@@ -1,0 +1,288 @@
+/* 
+
+  Rehearsal scheduling in Picat.
+
+  (This is a port of my MiniZinc model 
+   http://hakank.org/minizinc/rehearsal.mzn )
+
+
+  From Barbara M. Smith: 
+  "Constraint Programming in Practice: Scheduling a Rehearsal"
+  http://www.dcs.st-and.ac.uk/~apes/reports/apes-67-2003.pdf
+  """
+  A concert is to consist of nine pieces of music of different durations 
+  each involving a different combination of the five members of the orchestra. 
+  Players can arrive at rehearsals immediately before the first piece in which 
+  they are involved and depart immediately after the last piece in which 
+  they are involved. The problem is to devise an order in which the pieces 
+  can be rehearsed so as to minimize the total time that players are waiting 
+  to play, i.e. the total time when players are present but not currently 
+  playing. In the table below, 1 means that the player is required for 
+  the corresponding piece, 0 otherwise. The duration (i.e. rehearsal time) 
+  is in some unspecified time units.
+
+     Piece       1    2   3    4    5  6    7   8    9
+     Player 1    1    1   0    1    0  1    1   0    1
+     Player 2    1    1   0    1    1  1    0   1    0
+     Player 3    1    1   0    0    0  0    1   1    0
+     Player 4    1    0   0    0    1  1    0   0    1
+     Player 5    0    0   1    0    1  1    1   1    0
+     Duration    2    4   1    3    3  2    5   7    6
+
+  For example, if the nine pieces were rehearsed in numerical order as 
+  given above, then the total waiting time would be:
+        Player 1: 1+3+7=11
+        Player 2: 1+5=6
+        Player 3: 1+3+3+2=9
+        Player 4: 4+1+3+5+7=20
+        Player 5: 3
+  giving a total of 49 units. The optimal sequence, as we shall see, 
+  is much better than this.
+
+  ...
+  
+  The minimum waiting time for the rehearsal problem is 17 time units, and 
+  an optimal sequence is 3, 8, 2, 7, 1, 6, 5, 4, 9.
+  """
+
+  The data above is in data(smith,...) below.
+
+  Here are all optimal sequences for Barbara M. Smith's problem
+  (total_waiting_time: 17)
+  
+  order: [9, 4, 6, 5, 1, 7, 2, 8, 3]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [9, 4, 6, 5, 1, 2, 7, 8, 3]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [9, 4, 5, 6, 1, 7, 2, 8, 3]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [9, 4, 5, 6, 1, 2, 7, 8, 3]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [3, 8, 7, 2, 1, 6, 5, 4, 9]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [3, 8, 7, 2, 1, 5, 6, 4, 9]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [3, 8, 2, 7, 1, 6, 5, 4, 9]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+  order: [3, 8, 2, 7, 1, 5, 6, 4, 9]
+  waiting_time: [3, 5, 0, 3, 6]
+  total_waiting_time: 17
+  ----------
+
+  Note that the waiting times are the same for 
+  all sequences, i.e. player 1 always wait 3 units, etc.
+
+  With symmetry breaking rule that order[1] < order[num_pieces] 
+  there are 4 solutions where piece 2 and 7 can change place and 
+  5 and 6 can change place.
+
+  Cf http://hakank.org/picat/talent.pi which is a similar problem
+  also discussed by Barbara Smith op.cit.
+  The talent model is faster than this rehearsal model.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp.
+import sat.
+
+main => go.
+
+go ?=>
+  nolog,
+  time(solve_and_print_rehearsal(smith)),
+  nl,
+  time(solve_and_print_rehearsal(choco)), 
+  nl,
+  time(solve_and_print_rehearsal(smith_talent)), 
+
+  nl.
+go => true.
+
+%
+% Solve and print the rehearsal instance
+%
+solve_and_print_rehearsal(Problem) =>
+  println(problem=Problem),
+  data(Problem,NumPieces,NumPlayers, Duration, Rehearsal),
+  println("Rehearsal data (which will be re-ordered):"),
+  printf("Pieces:   %w\n",1..NumPieces),  
+  foreach(P in 1..NumPlayers)
+    printf("Player %d: %w\n",P, Rehearsal[P])
+  end,
+  nl,
+  rehearsal(NumPieces,NumPlayers, Duration, Rehearsal,
+      RehearsalOrder,WaitingTime,PFrom,PTo,TotalWaitingTime),
+
+
+
+  println(totalWaitingTime=TotalWaitingTime),
+  println(waitingTime=WaitingTime),
+  println(rehearsalOrder=RehearsalOrder),  
+  println(pFrom=PFrom),
+  println(pFrom=PTo),
+  println("Rehearsal Scheme:"),
+  printf("Pieces:  %w\n",RehearsalOrder),
+  foreach(P in 1..NumPlayers)
+     printf("Player %d:", P),
+     foreach(J in 1..NumPieces)
+        printf("%2d",Rehearsal[P,RehearsalOrder[J]])
+     end,
+     printf(" (from %d to %d waiting time: %d)\n", PFrom[P],PTo[P], WaitingTime[P])
+  end,  
+  nl.
+
+
+rehearsal(NumPieces,NumPlayers, Duration, Rehearsal,
+   RehearsalOrder,WaitingTime,PFrom,PTo,TotalWaitingTime) =>
+   SumDuration = sum(Duration),
+
+   % Decision variables
+   
+   RehearsalOrder = new_list(NumPieces),
+   RehearsalOrder :: 1..NumPieces,
+
+   % waiting time for players
+   WaitingTime  = new_list(NumPlayers),
+   WaitingTime :: 0..SumDuration,
+
+   % first rehearsal
+   PFrom = new_list(NumPlayers),
+   PFrom :: 1..NumPieces,
+
+   % last rehearsal
+   PTo = new_list(NumPlayers),
+   PTo :: 1..NumPieces,
+
+   % objective to minimize
+   TotalWaitingTime :: 0..SumDuration,
+   TotalWaitingTime #= sum(WaitingTime),
+
+   all_distinct(RehearsalOrder),
+
+   Ts = [],
+   foreach(P in 1..NumPlayers)
+     PFrom[P] #<= PTo[P], % sanity
+     
+     foreach(I in 1..NumPieces)
+        matrix_element(Rehearsal,P,RehearsalOrder[I],T),
+        
+        % skipping rehearsal at start (don't come yet)        
+        I #< PFrom[P] #=> T #= 0,
+        
+        % skipping rehearsal at end (go home after last rehearsal)
+        I #> PTo[P] #=> T #= 0,
+        Ts := Ts ++ [T]
+     end,
+     
+     % The waiting time for Player P
+     % is the total duration time from PFrom..PTo
+     WaitingTime[P] #= 
+         sum([
+              Dur * (I #>= PFrom[P] #/\ I #<= PTo[P] #/\ T #= 0)
+            : I in 1..NumPieces,
+               element(RehearsalOrder[I],Duration,Dur),
+               matrix_element(Rehearsal,P,RehearsalOrder[I], T)
+            ])
+  end,
+
+  % symmetry breaking
+  RehearsalOrder[1] #< RehearsalOrder[NumPieces],
+
+  Vars = RehearsalOrder ++ Ts ++ WaitingTime ++ PFrom ++ PTo,
+  solve($[ff,split,min(TotalWaitingTime)],Vars).
+  
+
+%
+% data
+%
+
+%
+% This is the problem from Barbara M. Smith's Rehearsal paper cited above:
+%
+data(smith,NumPieces,NumPlayers, Duration, Rehearsal) => 
+  NumPieces = 9,
+  NumPlayers = 5,
+  Duration = [2, 4, 1, 3, 3, 2, 5, 7, 6],
+  Rehearsal = 
+    [
+     [1,1,0,1,0,1,1,0,1],
+     [1,1,0,1,1,1,0,1,0],
+     [1,1,0,0,0,0,1,1,0],
+     [1,0,0,0,1,1,0,0,1],
+     [0,0,1,0,1,1,1,1,0]
+  ].
+
+%
+% This is the problem from the Choco v 2.1 example 
+% sample.scheduling.Rehearsal, the one defined in main() .
+%
+data(choco,NumPieces,NumPlayers, Duration, Rehearsal) => 
+  NumPieces = 5,
+  NumPlayers = 3,
+  Duration = [4,6,3,5,7],
+  Rehearsal = [[1,1,0,1,0],
+               [0,1,1,0,1],
+               [1,1,0,1,1]].
+
+
+%
+% From Barbara M. Smith
+% "Constraint Programming in Practice: Scheduling a Rehearsal", page 9f.
+% This is the problem of Talent scheduling (shooting a movie).
+% In this model we don't care about the payment for the actors/players.
+%
+% """
+% totalWaitingTime = 26
+% waitingTime = [4,3,1,0,6,2,0,10]
+% rehearsalOrder = [4,6,9,1,11,10,13,12,2,3,8,7,5,15,14,17,20,18,19,16]
+% pFrom = [1,4,7,5,8,14,11,2]
+% pFrom = [11,17,15,8,19,20,14,12]
+% Rehearsal Scheme:
+% Pieces:  [4,6,9,1,11,10,13,12,2,3,8,7,5,15,14,17,20,18,19,16]
+% Player 1: 1 1 0 1 1 1 0 0 1 1 1 0 0 0 0 0 0 0 0 0 (from 1 to 11 waiting time: 4)
+% Player 2: 0 0 0 1 0 1 1 0 1 1 1 1 0 1 1 1 1 0 0 0 (from 4 to 17 waiting time: 3)
+% Player 3: 0 0 0 0 0 0 1 0 1 1 1 1 1 1 1 0 0 0 0 0 (from 7 to 15 waiting time: 1)
+% Player 4: 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 (from 5 to 8 waiting time: 0)
+% Player 5: 0 0 0 0 0 0 0 1 1 0 1 0 0 0 1 0 1 1 1 0 (from 8 to 19 waiting time: 6)
+% Player 6: 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 0 1 0 1 (from 14 to 20 waiting time: 2)
+% Player 7: 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 (from 11 to 14 waiting time: 0)
+% Player 8: 0 1 1 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 (from 2 to 12 waiting time: 10)
+%
+% CPU time 10305.7 seconds. Backtracks: 0
+%
+% picat_run rehearsal.pi  10305,76s user 14,61s system 99% cpu 2:52:02,23 total
+% """
+data(smith_talent,NumPieces,NumPlayers,Duration,Rehearsal) =>
+  NumPlayers = 8,
+  % ActorPay = [10,4,5,5,5,40,4,20], % Cost / 100. Not needed here.
+  NumPieces = 20,
+  Duration = [2,1,1,1,1,3,1,1,1,2,1,1,2,1,2,1,1,2,1,1],
+  Rehearsal = [
+    % Scene  1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+            [1,1,1,1,0,1,0,1,0,1,1,0,0,0,0,0,0,0,0,0], % Player 1
+            [1,1,1,0,0,0,1,1,0,1,0,0,1,1,1,0,1,0,0,1], % Player 2  
+            [0,1,1,0,1,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0], % Player 3  
+            [0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0], % Player 4  
+            [0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,1,1], % Player 5  
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0], % Player 6  
+            [0,0,0,0,1,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0], % Player 7   
+            [0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0]  % Player 8
+        ].

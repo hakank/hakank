@@ -1,0 +1,195 @@
+/* 
+
+  Talent scheduling problem in Picat.
+
+  This is a port of the ILOG OPL example talent.mod (and talent.dat).
+  (via my MiniZinc model http://hakank.org/minizinc/talent.mzn) 
+ 
+  OPL found this solution:
+  CP feasible solution found with objective 17:
+  slot = [5 7 9 2 3 4 6 8 1];
+  scene = [9 4 5 6 1 7 2 8 3];
+ 
+  There are 8 solutions for idleCost <= 17.
+
+  Picat finds this solution:
+  scene = [3,8,7,2,1,6,5,4,9]
+  slot  = [5,4,1,8,7,6,3,2,9]
+  firstSlot = [3,2,2,5,1]
+  lastSlot  = [9,8,5,9,7]
+  actorWait = [3,5,0,3,6]
+  idleCost = 17
+
+
+  For a discussion of this problem and the related rehearsal problem,
+  see Barbara M. Smith
+  "Constraint Programming in Practice: Scheduling a Rehearsal" (2003)
+
+  The OPL problem is the same as the rehearsal problem and give the same
+  result:
+    scene = [3,8,7,2,1,6,5,4,9]
+    slot  = [5,4,1,8,7,6,3,2,9]
+    firstSlot = [3,2,2,5,1]
+    lastSlot  = [9,8,5,9,7]
+    actorWait = [3,5,0,3,6]
+    idleCost = 17
+
+  The thing that makes the the same is that the payments for the actors
+  are all 1 in this models talent problem.
+
+
+  Cf rehearsal.pi for another (and slower) approach.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+
+main => go.
+
+/*
+
+"""
+goal = go
+problem = opl
+scene = [3,8,7,2,1,6,5,4,9]
+slot  = [5,4,1,8,7,6,3,2,9]
+firstSlot = [3,2,2,5,1]
+lastSlot  = [9,8,5,9,7]
+actorWait = [3,5,0,3,6]
+idleCost = 17
+
+
+CPU time 0.188 seconds.
+
+problem = smith
+scene = [4,1,10,11,13,12,2,3,6,8,7,9,20,5,15,14,17,16,18,19]
+slot  = [2,7,8,1,14,9,11,10,12,3,4,6,5,16,15,18,17,19,20,13]
+firstSlot = [1,2,5,3,6,15,10,9]
+lastSlot  = [10,17,16,6,20,19,15,12]
+actorWait = [3,7,6,0,11,0,2,0]
+idleCost = 151
+
+CPU time 54.373 seconds.
+
+CPU time 54.561 seconds. Backtracks: 0
+
+picat_run talent.pi  54,58s user 0,05s system 99% cpu 54,630 total
+"""
+
+*/
+go ?=>
+  nolog,
+  time(solve_and_print_talent(opl)),
+  nl,
+  time(solve_and_print_talent(smith)),
+  
+  nl.
+
+go => true.
+
+solve_and_print_talent(Problem) =>
+  println(problem=Problem),
+  data(Problem,NumActors,ActorPay,NumScenes,SceneDuration,ActorInScene),
+  talent(NumActors,ActorPay,NumScenes,SceneDuration,ActorInScene,
+       Scene,Slot,FirstSlot,LastSlot,ActorWait,IdleCost),
+
+  println(scene=Scene),
+  println('slot '=Slot),
+  println(firstSlot=FirstSlot),
+  println('lastSlot '=LastSlot),
+  println(actorWait=ActorWait),
+  println(idleCost=IdleCost),
+  nl,
+  
+  nl.
+
+
+
+
+talent(NumActors,ActorPay,NumScenes,SceneDuration,ActorInScene,
+       Scene,Slot,FirstSlot,LastSlot,ActorWait,IdleCost) => 
+  Scene = new_list(NumScenes),
+  Scene :: 1..NumScenes,
+  Slot = new_list(NumScenes),
+  Slot :: 1..NumScenes,
+
+  % First and last slots where each actor plays
+  FirstSlot = new_list(NumActors),
+  FirstSlot :: 1..NumScenes,
+  LastSlot = new_list(NumActors),
+  LastSlot :: 1..NumScenes,
+
+  % Expression for the waiting time for each actor
+  ActorWait = new_list(NumActors),
+  ActorWait :: 0..sum(SceneDuration),
+
+  % Expression representing the global cost
+  IdleCost #= sum([ ActorPay[A] * ActorWait[A] : A in 1..NumActors]),
+
+  foreach(A in 1..NumActors) 
+
+    FirstSlot[A] #= min([Slot[S] : S in 1..NumScenes, ActorInScene[A,S] == 1]),
+    LastSlot[A]  #= max([Slot[S] : S in 1..NumScenes, ActorInScene[A,S] == 1]),
+
+    ActorWait[A] #= sum([
+         SceneDuration[S] * (FirstSlot[A] #<= Slot[S] #/\ Slot[S] #<= LastSlot[A])
+               : S in 1..NumScenes, ActorInScene[A, S] == 0]
+               )
+  end,
+
+  % Symmetry breaking
+  Scene[1] #< Scene[NumScenes],
+
+  % Schene is the inverse of Slot
+  assignment(Scene, Slot),
+
+  Vars = Scene ++ Slot ++ FirstSlot ++ LastSlot ++ ActorWait,
+  solve($[ff,split,min(IdleCost)],Vars).
+
+
+%
+% data
+%
+
+%
+% Data for the OPL problem cited above
+%
+data(opl,NumActors,ActorPay,NumScenes,SceneDuration,ActorInScene) =>
+  NumActors = 5,
+  ActorPay = [1, 1, 1, 1, 1],
+  NumScenes = 9,
+  SceneDuration = [2, 4, 1, 3, 3, 2, 5, 7, 6],
+  ActorInScene = [
+         [1, 1, 0, 1, 0, 1, 1, 0, 1],
+         [1, 1, 0, 1, 1, 1, 0, 1, 0],
+         [1, 1, 0, 0, 0, 0, 1, 1, 0],
+         [1, 0, 0, 0, 1, 1, 0, 0, 1],
+         [0, 0, 1, 0, 1, 1, 1, 1, 0]
+        ].
+
+%
+% From Barbara M. Smith
+% "Constraint Programming in Practice: Scheduling a Rehearsal", page 9f.
+
+%
+data(smith,NumActors,ActorPay,NumScenes,SceneDuration,ActorInScene) =>
+  NumActors = 8,
+  ActorPay = [10,4,5,5,5,40,4,20], % Cost / 100
+  NumScenes = 20,
+  SceneDuration = [2,1,1,1,1,3,1,1,1,2,1,1,2,1,2,1,1,2,1,1],
+  ActorInScene = [
+    % Scene  1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+            [1,1,1,1,0,1,0,1,0,1,1,0,0,0,0,0,0,0,0,0], % Actor 1
+            [1,1,1,0,0,0,1,1,0,1,0,0,1,1,1,0,1,0,0,1], % Actor 2  
+            [0,1,1,0,1,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0], % Actor 3  
+            [0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0], % Actor 4  
+            [0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,1,1], % Actor 5  
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0], % Actor 6  
+            [0,0,0,0,1,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0], % Actor 7   
+            [0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0]  % Actor 8
+        ].

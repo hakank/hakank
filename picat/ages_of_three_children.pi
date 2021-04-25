@@ -1,0 +1,297 @@
+/* 
+
+  Some Ages puzzles in Picat.
+
+  Here are some age puzzles that change the same structure
+  but differs in the details, e.g. the product and how to
+  discern an important age or some other value.
+
+
+  The first two problems are from From Joseph B. W. Yeo: 
+  "Tracing the origin of Cheryl’s birthday puzzle"
+  https://www.researchgate.net/publication/333816564_Tracing_the_origin_of_Cheryl's_birthday_puzzle
+
+  Ages of three Children
+  """
+  During a recent census, a man told the census taker that he
+  had three children. When asked their ages, he replied,
+  “The product of their ages is 72. The sum of their ages is
+  the same as my house number.” The census taker ran to
+  the door and looked at the house number. “I still can’t
+  tell,” she complained. The man replied, “Oh, that’s right. I
+  forgot to tell you that the oldest one likes chocolate
+  pudding.” The census taker promptly wrote down the ages
+  of the three children. How old were the children?
+  """
+
+  Ages of three Women (op.cit)
+  """
+  "I’m taking three females on the river tomorrow,” said the
+  vicar to his curate. "Would you care to join our party?”
+  "What are their ages?” asked the curate cautiously.
+  "Far be it from me to disclose a lady’s age!” said the vicar,
+  "but I can tell you this – the product of their ages is
+  840, and the sum is twice the number of years in your
+  own age. You, a mathematician, should be able to find
+  their ages for yourself.”
+  "Sounds like casuistry, Vicar,” said the curate, "but, as a
+  matter of fact, I can’t find their ages from your data.
+  By the way, is the eldest older than you?”
+  "No, younger.”
+  "Ah, now I know their ages!” said the curate. "Thanks, I
+  will come with pleasure.”
+  What was the curate’s age? How old were the ladies? And
+  what can be deduced about the vicar’s age?
+  """
+
+  The Vicar's Age problem is another variant. It is from
+  https://enigmaticcode.wordpress.com/2019/08/31/puzzle-19-the-vicars-age/
+  """
+  From New Scientist #3245, 31st August 2019 [link] [link]
+  A bishop visited his friend the vicar on her birthday. Knowing the 
+  bishop liked number puzzles, the vicar told him about a family that 
+  had just joined her church.
+
+  "If you multiply their three ages together, you get 2450, and if you 
+  add their ages together, you get your own age, your grace."
+  The bishop, after some thought, said: "I can't be certain how old 
+  everyone in the family is."
+  The vicar responded: "I am older than everyone in that family."
+  The bishop could then tell how old everyone was.
+  How old was the vicar on that day?
+  """
+
+  These problems are similar to Cheryl's birthday problem, etc
+  but they are 1-person problems and thus require a different
+  approach; here we use maps etc.
+
+  Compare with solving the Cheryl's birthday problem 
+  (and similar problems) in:
+  - cheryls_birthday.pi
+  - im_thinking_of_a_birthday.pi
+
+  Here's the problems:
+  - go/0 and go2/0: Two different approaches solving the 
+    Ages of Three Children problem. The second problem 
+    is - arguably - not that intuitive.
+    The first approach is used to solve the two other 
+    problem.
+  - go3/0: Solving Ages of Three Women problem.
+  - go4/0: Solving Vicar's Age problem.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+import cp.
+
+main => go.
+
+%
+% Ages of three Children
+%
+go ?=>
+  All = findall([Ages,HouseNumber],ages_of_three_children(Ages,HouseNumber)),
+  println(All),
+  
+  % Given the house number the census taker cannot figure
+  % out the ages. This means that there must be more than
+  % one solution for the ages for that house number.
+  Map = new_map(),
+  foreach([Ages,H] in All)
+    Map.put(H,Map.get(H,[]) ++[Ages])
+  end,
+  Sol = _,
+  foreach(H in Map.keys, var(Sol))
+    A = Map.get(H),
+    if A.len > 1 then
+      % "the oldest like chocolate pudding" =>
+      % there must be a single oldest child
+      foreach(C in A)
+        [C1,C2,C3] = C,
+        if C3 > C1, C3 > C2 then
+           Sol := [houseNumber=H,c1=C1,c2=C2,c3=C3]
+        end
+      end
+    end
+  end,
+  println(solution=Sol),
+  nl.
+go => true.
+
+%
+%
+% Ages of three Children, another approach, using global cardinality etc.
+%
+go2 ?=>
+  All=findall([Ages,HouseNumber], $ages_of_three_children(Ages,HouseNumber)),
+  println(all=All),
+
+  % Given the house number the census taker cannot figure
+  % out the ages. This means that there must be more than
+  % one solution for the ages for that house number.
+  % 
+  % Find the duplicate House Number.
+  % (This assumes that we know it's 2 possibilities.)
+  Y = [H : [A,H] in All],
+  GCC = $[H-_C : H in Y.sort_remove_dups],
+  global_cardinality(Y,GCC),  
+  member($(DupHouseNr - 2),GCC), 
+  println(dupHouseNumber=DupHouseNr),
+  T = [[A,H] : [A,H] in All,H==DupHouseNr],
+
+  % Find the solution
+  Sol = _,
+  foreach([A,H] in T, var(Sol))
+    % "the oldest like chocolate pudding" =>
+    % there must be a single oldest child
+    [C1,C2,C3] = A,
+    if C3 > C1, C3 > C2 then
+       Sol := [houseNumber=H,c1=C1,c2=C2,c3=C3]
+    end
+  end,
+  println(solution=Sol),
+  nl.
+go2 => true.
+
+
+%
+% Ages of three Women:
+% """
+% "I’m taking three females on the river tomorrow,” said the
+% vicar to his curate. "Would you care to join our party?”
+% "What are their ages?” asked the curate cautiously.
+% "Far be it from me to disclose a lady’s age!” said the vicar,
+% "but I can tell you this – the product of their ages is
+% 840, and the sum is twice the number of years in your
+% own age. You, a mathematician, should be able to find
+% their ages for yourself.”
+% "Sounds like casuistry, Vicar,” said the curate, "but, as a
+% matter of fact, I can’t find their ages from your data.
+% By the way, is the eldest older than you?”
+% "No, younger.”
+% "Ah, now I know their ages!” said the curate. "Thanks, I
+% will come with pleasure.”
+% What was the curate’s age? How old were the ladies? And
+% what can be deduced about the vicar’s age?
+% """
+%
+go3 ?=>
+  All = findall([Ages,CurateAge],ages_of_three_women(Ages,CurateAge)),
+  println(All),
+  
+  % Sounds like casuistry, Vicar,” said the curate, "but, as a
+  % matter of fact, I can’t find their ages from your data.
+  % By the way, is the eldest older than you?”
+  % "No, younger.”
+  Map = new_map(),
+  foreach([Ages,V] in All)
+    Map.put(V,Map.get(V,[]) ++[Ages])
+  end,
+  Sol = _,
+  foreach(C in Map.keys)
+    A = Map.get(C),
+    if A.len > 1 then
+      println([c=C,a=A]),      
+      foreach(W in A)
+        % By the way, is the eldest older than you?”
+        % "No, younger.”
+        [W1,W2,W3] = W,
+        if W3 < C then
+           Sol := [curate_age=C,w1=W1,w2=W2,w3=W3]
+          end
+      end
+    end
+  end,
+  println(solution=Sol),
+  nl.
+go3 => true.
+
+%
+% The Vicar's Age
+% """
+% A bishop visited his friend the vicar on her birthday. Knowing the 
+% bishop liked number puzzles, the vicar told him about a family that 
+% had just joined her church.
+% "If you multiply their three ages together, you get 2450, and if you 
+% add their ages together, you get your own age, your grace."
+% The bishop, after some thought, said: "I can't be certain how old 
+% everyone in the family is."
+% The vicar responded: "I am older than everyone in that family."
+% The bishop could then tell how old everyone was.
+% How old was the vicar on that day?
+% """
+%
+go4 ?=>
+  All = findall([Ages,BishopsAge],age_of_the_vicar(Ages,BishopsAge)),
+  println(All),
+  Map = new_map(),
+  foreach([Ages,B] in All)
+    Map.put(B,Map.get(B,[])++[Ages])
+  end,
+  Sol = _,
+  foreach(B in Map.keys)
+    A = Map.get(B),
+    % """
+    % The bishop, after some thought, said: "I can't be certain how old 
+    % everyone in the family is."
+    % """
+    % This is the traditional problems: There must be at least two possible
+    % solutions.
+    % The next part is a little different from the other two problems:
+    % The way the Bishop discern the correct age of the Vicar is to compare
+    % the oldest person in the family and pick the set of ages which
+    % has the largest age of the oldest person. Since this actually helps
+    % the Bishop, this age must also be the age of the Vicar.
+    if A.len > 1 then
+      OldestPerson = max([W[3] : W in A]),
+      Family = [F : F in A, F[3] == OldestPerson],      
+      Sol := [bishops_age=B,vicars_age=OldestPerson,familyAges=Family]
+    end
+  end,
+  println(solution=Sol),
+  nl.
+go4 => true.
+
+
+
+%
+% Ages of three children
+%
+ages_of_three_children(Ages,HouseNumber) =>
+  Ages = new_list(3),
+  Ages :: 1..14,
+  increasing(Ages), % symmetry breaking
+  % the product of the children's ages is 72  
+  prod(Ages) #= 72, 
+  % the sum of the children's ages is the house number  
+  HouseNumber #= sum(Ages), 
+  Vars = [Ages,HouseNumber],
+  solve(Vars).
+
+%
+% Ages of three Women
+% 
+ages_of_three_women(Ages,CurateAge) =>
+  Ages = new_list(3),
+  Ages :: 1..89,
+  increasing(Ages), % symmetry breaking
+  prod(Ages) #= 840, 
+  2*CurateAge #= sum(Ages), 
+  Vars = [Ages,CurateAge],
+  solve(Vars).
+
+%
+% Ages of the Vicar
+% 
+age_of_the_vicar(Ages,BishopAge) =>
+  Ages = new_list(3),
+  Ages :: 1..120,
+  increasing(Ages), % symmetry breaking
+  prod(Ages) #= 2450, 
+  BishopAge #= sum(Ages), 
+  Vars = [Ages,BishopAge],
+  solve(Vars).
+

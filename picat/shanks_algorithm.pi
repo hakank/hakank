@@ -1,0 +1,399 @@
+/* 
+
+  Shank's algoritm in Picat.
+
+  See discussion about this in
+  https://stackoverflow.com/questions/65208158/discrete-logarithm-in-prolog/65251511#65251511
+  """
+  Discrete Logarithm in Prolog
+
+  I would like to check which of the two programs will stop:
+
+  P1() {
+     X = 819688;
+     while (X != 77) {
+        X = (X*12367+3466) mod 4294967296;
+     }
+  }
+
+  P2() {
+     X = 955725;
+     while (X != 77) {
+        X = (X*12367+3466) mod 4294967296;
+     }
+  } 
+
+  Since each iteration is kind of a function composition, ultimately leading to a 
+  power of the function inside the while loop, I guess Discrete Logarithm could 
+  maybe solve the problem.
+
+  Any Prolog implementations around solving the problem?
+  """
+
+  Below is a port of the Prolog code from Jan Burse:
+  https://gist.github.com/jburse/dfaa1fd638f3397ae83879c124b37f8b#file-shanks-pl-L129
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+main => go.
+
+/*
+
+  Brute force approach.
+
+  Picat: (with a timeout of 10s)
+  test1
+
+  CPU time 9.956 seconds.
+
+  test1 = _26b8 = time_out
+
+  CPU time 0.295 seconds.
+
+  test2 = 2097151
+
+  Here's Picat faster.
+
+  swipl:
+  ?- time(call_with_time_limit(60,terminates(819688,N))).
+  % 570,938,134 inferences, 60.000 CPU in 60.000 seconds (100% CPU, 9515577 Lips)
+  ERROR: Unhandled exception: Time limit exceeded
+
+  ?-  time(terminates(955725,N)).
+  % 4,194,306 inferences, 0.448 CPU in 0.448 seconds (100% CPU, 9354976 Lips)
+  N = 2097151.
+
+
+*/
+
+
+go ?=>
+  brute_force,
+  
+  nl.
+go => true.
+
+
+/*
+  Faster approach.
+
+  Picat:
+
+  * with cache (assertz etc):
+
+  CPU time 0.17 seconds.
+  n1 = nope
+
+  CPU time 0.08 seconds.
+  n2 = 2097151
+
+  CPU time 0.25 seconds. Backtracks: 0
+
+  * with global map it's slightly faster:
+
+  CPU time 0.149 seconds.
+
+  n1 = nope
+
+  CPU time 0.063 seconds.
+
+  n2 = 2097151
+
+  * SWI-Prolog
+
+  swipl version shanksswi.pl
+  ?- [shanksswi].
+  ?- time(solve(819688, N)).
+  % 1,179,838 inferences, 0.187 CPU in 0.187 seconds (100% CPU, 6299311 Lips)
+  false.
+
+  ?- time(solve(955725, N)).
+  % 590,289 inferences, 0.128 CPU in 0.128 seconds (100% CPU, 4616567 Lips)
+  N = 2097151 ;
+  % 293 inferences, 0.000 CPU in 0.000 seconds (98% CPU, 1739605 Lips)
+  N = 4194303 .
+
+  Picat is a little faster than SWI-Prolog here as well.
+
+*/
+go2 ?=>
+
+  % This first case fails so we must wrap it
+  % in if/then/else 
+  if time(solve_shanks(819688, N1)) then
+    println(n1=N1)
+  else
+    println(n1=nope)
+  end,
+  if time(solve_shanks(955725, N2)) then
+    println(n2=N2)
+  else
+    println(n2=nope)
+  end,
+  nl.
+go2 => true.
+
+
+/*
+  From the original StackOverflow problem:
+
+  P1() {
+     X = 819688;
+     while (X != 77) {
+        X = (X*12367+3466) mod 4294967296;
+     }
+  }
+
+  P2() {
+     X = 955725;
+     while (X != 77) {
+        X = (X*12367+3466) mod 4294967296;
+     }
+  } 
+
+*/
+go3 ?=>
+  println(p1),
+  time(time_out(p1,10_000,Status)),
+  println(status=Status),
+  nl.
+go3 => true.
+
+go4 ?=>
+  println(p2),
+  time(p2),
+  nl.
+go4 => true.
+
+%
+% This times out.
+%
+p1 =>
+  Cache = new_map(),
+  X = 819688,
+  Seen = false,
+  while (X != 77,Seen == false) 
+     X := (X*12367+3466) mod 4294967296,
+     if Cache.has_key(X) then
+       Seen := true
+     end,
+     % println(x=X),
+     Cache.put(X,1) 
+  end,
+  % println(cache=Cache),
+  println(x=X),
+
+  nl.
+
+%
+% This succeeds: 0.436s
+%
+p2 =>
+  X = 955725,
+  while (X != 77) 
+     X := (X*12367+3466) mod 4294967296
+  end,
+  println(x=X),
+  nl.
+
+% General version
+p(X,Y) => 
+  while (X != 77) 
+     X := (X*12367+3466) mod 4294967296
+  end,
+  Y = X.
+
+
+%
+% From https://gist.github.com/jburse/dfaa1fd638f3397ae83879c124b37f8b#file-shanks-pl-L129
+%
+
+% ?- time(call_with_time_limit(60,terminates(819688,N))).
+% % 505,081,233 inferences, 58.984 CPU in 60.000 seconds (98% CPU, 8562967 Lips)
+% ERROR: Unhandled exception: Time limit exceeded
+
+% ?- time(terminates(955725,N)).
+% % 4,194,305 inferences, 0.469 CPU in 0.501 seconds (94% CPU, 8947851 Lips)
+% N = 2097151.
+
+brute_force :-
+   println(test1),
+   TimeoutS = 10, % seconds
+   Timeout = TimeoutS * 1000,
+   time(time_out(terminates(819688,N),Timeout,Status)),
+   println(test1=N=Status),
+   time(terminates(955725,N2)),
+   println(test2=N2),
+   nl.
+  
+terminates(X, N) :-
+   terminates(X, 4294967297, H),
+   N is 4294967297-H.
+
+terminates(77, N, N) :- !.
+terminates(_, 0, _) :- !, fail.
+terminates(X, I, R) :-
+    I2 is I-1,
+    X2 is (X*12367+3466) mod 4294967296,
+    terminates(X2, I2, R).
+
+
+/**
+ * Shanks Algorithm in Prolog
+ * SWI-Prolog Version
+ * https://en.wikipedia.org/wiki/Baby-step_giant-step
+ * Powers Enumerator
+ *
+ * Warranty & Liability
+ * To the extent permitted by applicable law and unless explicitly
+ * otherwise agreed upon, XLOG Technologies GmbH makes no warranties
+ * regarding the provided information. XLOG Technologies GmbH assumes
+ * no liability that any problems might be solved with the information
+ * provided by XLOG Technologies GmbH.
+ *
+ * Rights & License
+ * All industrial property rights regarding the information - copyright
+ * and patent rights in particular - are the sole property of XLOG
+ * Technologies GmbH. If the company was not the originator of some
+ * excerpts, XLOG Technologies GmbH has at least obtained the right to
+ * reproduce, change and translate the information.
+ *
+ * Reproduction is restricted to the whole unaltered document. Reproduction
+ * of the information is only allowed for non-commercial uses. Selling,
+ * giving away or letting of the execution of the library is prohibited.
+ * The library can be distributed as part of your applications and libraries
+ * for execution provided this comment remains unchanged.
+ *
+ * Restrictions
+ * Only to be distributed with programs that add significant and primary
+ * functionality to the library. Not to be distributed with additional
+ * software intended to replace any components of the library.
+ *
+ * Trademarks
+ * Jekejeke is a registered trademark of XLOG Technologies GmbH.
+ */
+
+/**
+ * nogood(X):
+ * The predicate succeeds in X with problem linear congruence.
+ */
+% nogood(-Pair)
+nogood(12367-3466).
+
+/**
+ * inverse(X, Y):
+ * The predicate succeeds in Y with the inverse of X.
+ */
+% inverse(+Pair, -Pair)
+inverse(P-Q, U-V) :-
+   modinv(P, 4294967296, U),
+   V is (-U*Q) mod 4294967296.
+
+/**
+ * compose(X, Y, Z):
+ * The predicate succeeds in Z with the composition of X and Y.
+ */
+% compose(+Pair, +Pair, -Pair)
+compose(P-Q, R-S, U-V) :-
+   U is (R*P) mod 4294967296,
+   V is (S*P+Q) mod 4294967296.
+
+/**
+ * power(X, N, Y):
+ * The predicate succeeds in Y with the N-th power of X.
+ */
+% power(+Pair, +Integer, -Pair)
+power(_, 0, X) :- !,
+   X = $1-0.
+power(R, 1, X) :- !,
+   X = R.
+power(R, N, X) :- N mod 2 =:= 0, !,
+   M is N div 2,
+   power(R, M, H),
+   compose(H, H, X).
+power(R, N, X) :-
+   M is N-1,
+   power(R, M, H),
+   compose(H, R, X).
+
+/**
+ * powers(X, N, Y):
+ * The predicate succeeds in Y with the N-th power of X.
+ * The predicate will enumerate N between 0 and 65535.
+ */
+% powers(+Pair, -Integer, -Pair)
+powers(X, J, Y) :-
+   powers($1-0, X, 0, J, Y).
+
+powers(X, _, J, J, X).
+powers(X, Y, J, K, Z) :-
+   J < 65536,
+   compose(X, Y, H),
+   I is J+1,
+   powers(H, Y, I, K, Z).
+
+/**
+ * solve(S, N):
+ * The predicate succeeds in N with the number of
+ * step if the program starts with S and reaches 77.
+ * Otherwise otherwise the predicate fails.
+ */
+% solve(+Integer, -Integer)
+
+solve_shanks(S, _) :-
+   % Map = get_global_map(), % hakank: Variant: Use a map instead.
+   % clear(Map), % hakank
+   abolish($cache/2),
+   nogood(X),
+   powers(X,J,Y),
+   compose(Y,$0-S,$_-B),
+   assertz($cache(B,J)),
+   % Map.put(B,J), % hakank
+   fail.
+solve_shanks(_, N) :-
+   % Map = get_global_map(), % hakank
+   nogood(X),
+   power(X,65536,Y),
+   inverse(Y,Z),
+   powers(Z,J,T),
+   compose(T,$0-77,$_-B),
+   bp.cache(B,K),
+   % (Map.has_key(B) -> K = Map.get(B) ; fail), % hakank
+   N is J*65536+K.
+
+/**
+ * modinv(A, B, N):
+ * The predicate succeeds in N with the inverse of A modulus B
+ * if it exists. Otherwise the predicate fails.
+ * See also: https://stackoverflow.com/q/65242927/502187
+ */
+modinv(A, B, N):-
+   modinv(A, B, 1, 0, N1),
+   (N1 < 0 -> N is N1 + B; N1 = N).
+
+modinv(A, 0, X, _, N) :- !,
+   A = 1,
+   N = X.
+modinv(A, B, X, Y, N):-
+   divmod(A, B, Q, R),
+   Exp is X - Y * Q,
+   modinv(B, R, Y, Exp, N).
+
+% From SWI-Prolog's help(divmod).
+divmod(Dividend, Divisor, Quotient, Remainder) :-
+   Quotient  is Dividend div Divisor,
+   Remainder is Dividend mod Divisor.
+
+
+% ?- time(solve(819688, N)).
+% % 1,179,836 inferences, 0.196 CPU in 0.205 seconds (95% CPU, 6024828 Lips)
+% false.
+
+% ?- time(solve(955725, N)).
+% % 590,289 inferences, 0.137 CPU in 0.144 seconds (95% CPU, 4296792 Lips)
+% N = 2097151 .

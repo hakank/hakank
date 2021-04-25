@@ -1,0 +1,449 @@
+/* 
+
+  Meta-intepreter in Picat.
+
+  From Markus Triska's "Prolog Meta-interpreters":
+  https://www.youtube.com/watch?v=nmBkU-l1zyc
+
+  This is a (messy) port of most of the Prolog examples to Picat.
+  Most of them works without any problems which is really great.
+  And I like the clause/2-less versions since then we don't have
+  to rely on bp.clause/2 which is a little cumbersome to use...
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+main => go.
+
+%
+% Testing mi/1
+%
+go ?=>
+  mi(true),
+  println(ok1),
+
+  assert($natnum(0)),
+  assert($(natnum(s(X)) :- natnum(X))),
+
+  mi($natnum(X)),
+  println(x=X),
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  ((Len > 10, true) ; fail),
+
+  nl.
+go => true.
+
+%
+% Testing mi2/1.
+% Note the +'s of the goals.
+% This works as well.
+%
+go2 ?=>
+  mi2(true),
+  println(ok1),
+
+  assert($natnum2(0)),
+  assert($(natnum2(s(X)) :- +natnum2(X))),
+
+  mi2($+natnum2(X)),
+  println(x=X),
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  ((Len > 10, true) ; fail),
+
+  nl.
+go2 => true.
+
+% using and_list
+go3 ?=>
+  % phrase($and_list((+a,+b,+c)),Ls),
+  and_list($(+a,+b,+c),Ls,[]),
+  println(ls=Ls), % -> "abc" ok!
+
+  nl.
+go3 => true.
+
+
+% using head_list/2
+go4 ?=>
+  mi4($[natnum3(X)]),
+  println(x=X), % X=0
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  ((Len > 10, true) ; fail),
+  nl.
+go4 => true.
+
+% However, this blows the stack.
+go4b ?=> 
+  mi4($[infinite]),
+  println(ok),
+  nl.
+go4b => true.
+
+
+% Using mi5/1
+go5 ?=>
+  mi5($[natnum3(X)]),
+  println(x=X), % X=0
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  ((Len > 10, true) ; fail),
+  nl.
+go5 => true.
+
+% Hmm, this hangs (nondeterminism)
+% "This mi/0 uses O(1) local stack if head_body/2 is deterministic.
+go5b ?=> 
+  mi5([infinite]),
+  println(ok),
+  nl.
+go5b => true.
+
+
+% Using mi6/1: ok1
+go6 ?=>
+  mi6($[natnum6(X)]),
+  println(x=X), % X=0
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  ((Len > 10, true) ; fail),
+  nl.
+go6 => true.
+
+% ok
+go6b ?=>
+  mi6($[mi6([natnum6(X)])]), % interpret the interpreter ...
+  println(x=X),
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  ((Len > 10, true) ; fail),
+  nl.
+go6b => true.
+
+
+% With proof trees
+% Why don't backtracking work here? It only prints
+%   0.
+%   (true=>natnum7(0)).
+% and then finish the program!
+% I guess it's because natnum7/1 lives in the BP world
+% which confuses the meta-interpretator
+go7 ?=>
+  mi7(true,P1),
+  println(p1=P1),
+  
+  assert($natnum7(0)),
+  assert($(natnum7(s(X)) :- natnum7(X))),
+
+  mi7($+natnum7(X), P),
+  portray_clause(X),
+  portray_clause(P),
+  % println(x=X),
+  % println(p=P),
+  % Len=length(to_fstring("%w",P)),
+  % println(len=Len),
+  nl,
+  % ((Len > 10, true) ; fail),
+  fail,
+  nl.
+go7 => true.
+
+%
+% Rewrite using a clause/2-less meta-interpreter.
+%
+% Yes, this works:
+% 0.
+% ([] =>natnum7b(0)).
+% s(0).
+% (([] =>natnum7b(0))=>natnum7b(s(0))).
+% s(s(0)).
+% ((([] =>natnum7b(0))=>natnum7b(s(0)))=>natnum7b(s(s(0)))).
+% s(s(s(0))).
+% (((([] =>natnum7b(0))=>natnum7b(s(0)))=>natnum7b(s(s(0))))=>natnum7b(s(s(s(0))))).
+% 
+go7b ?=>
+  mi7b($[natnum7b(X)],P),
+  portray_clause(X),
+  portray_clause(P),
+  Len=length(to_fstring("%w",X)),
+  % println(len=Len),
+  nl,
+  ((Len > 10, true) ; fail),
+  % fail,
+  nl.
+go7b => true.
+
+
+% Perform unifications with occurs check enabled"
+% This should fail (and it fails), but I'm not sure this is correct,
+% i.e. fails for the correct reason...
+go8 ?=>
+  assert($eq8(X,X)),
+
+  mi8($+eq(X, f(X))),
+  println(x=X),
+
+  nl.
+go8 => true.
+
+% Skipped that example since it requires findall/4
+go9 ?=>
+  nl.
+go9 => true.
+
+
+% Code in the list 
+% And this works as well!
+go10 ?=>
+  mi10($g(natnum10(X)), $[(natnum10(0) :- true),
+                          (natnum10(s(X)) :- g(natnum10(X)))]),
+  portray_clause(X),
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  nl,
+  ((Len > 10, true) ; fail),
+  nl.
+go10 => true.
+
+
+%
+% Variant of go10/0 but reads the definition of natnum11/1 from
+% a file, natnum.pi :
+%    (natnum11(0) :- true). 
+%    (natnum11(s(X)) :- g(natnum11(X))) .
+% Note: clauses must be in () and end with ".<space>"
+%
+% This was not in the lecture but Markus indicated such
+% a usage of meta-interpreters, i.e. load the definitions
+% dynamically.
+%
+go11 ?=>
+  T = read_file_terms("natnum.pi"),
+  portray_clause(T),
+  mi10($g(natnum11(X)), T), 
+  portray_clause(X),
+  Len=length(to_fstring("%w",X)),
+  println(len=Len),
+  nl,
+  ((Len > 10, true) ; fail),
+  nl.
+go11 => true.
+
+
+
+
+% Note: this must be asserted to bp context
+% natnum(0).
+% natnum(s(X)) :- natnum(X).
+
+%
+% Vanilla Meta-interpreter.
+% This is a "defaulty" definition 
+% Note: clause/2 lives in bp land!
+% 
+% @ ~ 15:00
+mi(true).
+mi((A,B)) :- mi(A), mi(B).
+mi(G) :- G != true, G!= (_,_), clause(G, Body), mi(Body).
+
+
+%
+% Meta-interpreter that is clean (not defaulty).
+% We require that all goals are of the same form, i.e.
+%   +Goal
+% and we don't need any guards in the third clause!
+%
+mi2(true).
+mi2((A,B)) :- mi2(A), mi2(B).
+mi2(+G) :- clause(G, Body), mi2(Body).
+
+
+
+%
+% Represent a clause as a Prolog fact.
+% @ 23:00
+% head_body(Head,Goals). % <-> Head <- maplist(call, Goals).
+
+head_body(natnum3(0),[]). % fact
+head_body(natnum3(s(X)),[natnum3(X)]). % predicate
+
+
+head_body(infinite,[infinite]). % blows the stack for mi4 (go4b). Nondeterministic for go5b.
+
+% Use DCG to define this automatically
+% @25:00
+and_list(true)  --> [].
+and_list((A,B)) --> and_list(A), and_list(B).
+and_list(+G)    --> [G].
+
+% See go3/0
+% phrase(and_list((+a,+b,+c)),Ls).
+%   Ls = "abc"
+
+% @26:00
+%
+% This is nice, since we don't have to worry about bp-context with clause and assert!!
+%
+mi4([]).
+mi4([G|Gs]) :-
+  head_body(G,Goals),
+  mi4(Goals), % double recursion!
+  mi4(Gs).    % - "" -
+
+% Improved version @26:30
+% See go5/0
+mi5([]).
+mi5([G|Gs]) :-
+  head_body(G,Goals0),
+  append(Goals0,Gs,Goals),
+  mi5(Goals).
+
+% Even better:
+% @27:20 using list difference admits a very simple meta-interpreter.
+
+% head_body_(Head,Goals0,Goals). % Head holds iff Goals "-" Goals hold.
+
+% Just two lines of code (after removing the nl's in the second clause).
+mi6([]).
+mi6([G|Gs]) :-
+  head_body_(G,Goals,Gs),
+  mi6(Goals).
+
+head_body_(natnum6(0),Rs,Rs).
+head_body_(natnum6(s(X)),[natnum6(X)|Rs],Rs).
+
+
+% The meta-interpreter itself can be represented in this way:
+head_body_(mi6([]),Rs,Rs).
+head_body_(mi6([G|Gs]),[head_body_(G,Goals,Gs),mi6(Goals)|Rs],Rs).
+
+% The meaning of head_body_/3 can be represented as a rule:
+% Tested in go7/0!
+head_body_(head_body_(Head,Goals0,Goals), Rs, Rs) :-
+     head_body_(Head,Goals0,Goals).
+
+% This interpreter is meta-circular: It can interpret its own code.
+% "No other language admits such a short circular meta-interpreter" % @31:19
+
+
+% @31:30
+% Construct a proof-tree (using vanilla mi)
+% This (go7/0) don't work: it just print the base case and then stops.
+
+mi7(true,true).
+mi7((A,B), (PA,PB)) :- mi7(A,PA), mi7(B,PB).
+% mi7(+G, P => G) :- clause(G, Body), mi7(Body,P). % nope: requires :- op(500, xfy, =>).
+% mi7(+G, impl(P,G)) :- clause(G, Body), mi7(Body,P). % This works!
+mi7(+G, '=>'(P,G)) :- clause(G, Body), mi7(Body,P). % This works 
+
+
+% Tests instead with a non-vanilla meta-interpreter
+% go7b/0: This work!
+head_body7b_(natnum7b(0),Rs,Rs).
+head_body7b_(natnum7b(s(X)),[natnum7b(X)|Rs],Rs).
+
+
+mi7b([],[]).
+mi7b([G|Gs],'=>'(P,G)) :-
+  head_body7b_(G,Goals,Gs),
+  mi7b(Goals,P).
+
+
+% ~ @34:00
+% "Example:
+% Perform unifications with the occurs check enabled"
+% eq8(X,X).
+mi8(true).
+mi8((A,B)) :- mi8(A), mi8(B).
+mi8(+G) :-
+        functor(G, F, A),
+        functor(G0,F,A),
+        clause(G0,Body),
+        unify_with_occurs_check(G0,G),
+        mi8(Body).
+
+% ~ @35:00 
+% Abstract interpretation
+% (This is not a full example)
+% See Codish and Sondergaard 2002:
+% "Meta-Circular Abstract Interpretation in Prolog"
+
+% Ackermann function using successor notation
+% ack(0, N, s(N)) :- natnum(N).
+% ack(s(M), 0, Res) :- ack(M, s(0), Res).
+% ack(s(M), s(N), Res) :-
+%    ack(s(M), N, Res0),
+%    ack(M, Res0, Res).
+
+
+% ... in a suitable representation
+% ack(ack(A,B,C), [A=0, C=s(B), natnum(B)]).
+% ack(ack(A,B,C), [A=s(M), B=0, D=s(0), ack(M,D,C)]).
+% ack(ack(A,B,C), [A=s(M), B=s(N), ack(A,N,Res0), ack(M,Res0,C)]).
+
+% % Let's interpret this over the abstract domain {zero, one, odd, even}
+
+% ack_prove(_, A = B) :- abstract_unify(A,B).
+% ack_prove(_, natnum(X)) :- abstract_natnum(X).
+% ack_prove(Derived, ack(A,B,C)) :- member($ack(A,B,C), Derived).
+
+% abstract(zero,0).
+% abstract(one,s(0)).
+% abstract(even, s(s(0))).
+% abstract(even, s(s(even))).
+% % ....
+
+
+% @39:00
+% "Reifying backtracking"
+
+% a :- b.
+% a :- c, d.
+% Transforms the list of the alternatives
+% [[a|Gs]] -> [[b|Gs], [c,d|Gs]] -> .... [[]|As] -> success -> As -> ...
+
+% This don't work since neither Picat supports the findall/4 predicate, so I skip it.
+% resstep_([A|As0], As) :-
+%   % This is findall/4  which is not supported by Picat or B-Prolog! (SWI-Prolog has it, though)
+%   findall($Gs-G, $(A=[G0|Rs]-G, head_body_(G0,Gs,Rs)),As, As0). 
+
+% mi9_([[]-G|_], G).
+% mi9_(As0, G) :- resstep_(As0,As), mi9_(As,G).
+
+% mi9(G0) :- mi9_([[G0]-G0],G0).
+
+
+% @58:00
+% "Interpreting a goal with respect to a list of clauses"
+% "No database changes are necessary to interpret the object program"
+
+% Markus wrote on Twitter:
+% """
+% For mi10/2, I think it would be better to write:
+%    member(Clause, Clauses), copy_term(Clause, (Head:-Body)), ...
+% as in provable/2 in https://metalevel.at/acomip/.
+% For the video, I wrote it differently to make it easier to understand,
+% and in fact introduced a mistake!
+% """
+mi10(true, _).
+mi10((A,B), Clauses) :- mi10(A, Clauses), mi10(B, Clauses).
+mi10(g(Goal), Clauses0) :-
+  copy_term(Clauses0, Clauses),
+  member($(Goal :- Body), Clauses),
+  mi10(Body, Clauses).
+
+% This is Markus' corrected version but it don't work in Picat.
+% X don't match (in the call go10/0 and then it loops via fail)
+% mi10(true, _).
+% mi10((A,B), Clauses) :- mi10(A, Clauses), mi10(B, Clauses).
+% mi10(g(Goal), Clauses) :-
+%   member(Clause, Clauses),
+%   copy_term(Clause, $(Head:-Body)),
+%   mi10(Body, Clauses).
+%
