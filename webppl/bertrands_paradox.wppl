@@ -1,0 +1,130 @@
+/*
+   Bertrand's Box paradox in WebPPL
+
+  From https://towardsdatascience.com/five-paradoxes-with-probabilities-that-will-puzzle-you-2f71201d6ee8
+  """
+  3. Bertrand's Box Paradox
+
+  If you are familiar with the Montey Hall problem, this paradox is quite 
+  similar. In front of us there are three boxes:
+
+    [image of three boxes]
+
+  One box contains two silver coins, one box contains two gold coins and 
+  one box contains a gold- and a silver coin. We do not know which coins 
+  are in which box. Now, we pick a random box and blindly draw a coin from 
+  our box. It’s a gold coin!
+
+  Now, the question is:
+
+    What’s the probability that the second coin in our box is also a gold coin?
+
+  My naive (and wrong) answer when encountering the problem for the first 
+  time was ½. I thought that because we drew a gold coin, our box is either 
+  the one with the two gold coins or the one with the mixed coins. In the 
+  first case, we would draw another gold coin and in the second case, we 
+  wouldn’t. Therefore, I presumed the probability should be ½.
+
+    The real probability is ⅔.
+
+  The reason for that is that the first gold coin we drew could either be 
+  the only gold coin in the mixed box, the first gold coin in the solely 
+  golden box, or the second gold coin in the solely golden box. And in 
+  two of these three possibilities, we will draw another gold coin.
+
+  """
+   
+  Here we define the boxes as:
+  - box1: 2 gold coins
+  - box2: 1 gold and 1 silver coin
+  - box3: 2 silver coins
+
+  Output:
+"""
+Marginal:
+    {"coin1":1,"coin2":1,"box":1} : 0.6666666666666666
+    {"coin1":1,"coin2":2,"box":2} : 0.3333333333333333
+Marginals:
+coin1
+Marginal:
+    1 : 1
+coin2
+Marginal:
+    1 : 0.6666666666666666
+    2 : 0.3333333333333333
+box
+Marginal:
+    1 : 0.6666666666666666
+    2 : 0.3333333333333333
+expectation:
+[ [ 'coin1', 1 ],
+  [ 'coin2', 1.3333333333333333 ],
+  [ 'box', 1.3333333333333333 ] ]
+MAP:
+[ [ 'coin1', { val: 1, score: 0 } ],
+  [ 'coin2', { val: 1, score: -0.40546510810816444 } ],
+  [ 'box', { val: 1, score: -0.40546510810816444 } ] ]
+"""
+
+  The probability that the second coin in the box 
+  is a gold coin is 0.666 = 2/3.
+
+  See ~/blog/bertrands_paradox.blog
+      ~/psi/bertrands_paradox.psi
+      ~/julia/turing/bertrands_paradox.jl
+*/
+
+var model = function() {
+
+    // There are 3 boxes
+    var b1 = 1;
+    var b2 = 2;
+    var b3 = 3;
+    var boxes = [b1,b2,b3];
+    
+    
+    // We pick a box randomly
+    var box = uniformDraw(boxes);
+
+    var gold = 1;
+    var silver = 2;
+    var coins = [gold,silver];
+    
+    // We pick a coin from the selected box
+    var coin1 = (box == b1) ? categorical({ps:[1.0,0.0], vs:[gold,silver]}) :
+                (box == b2) ? categorical({ps:[0.5,0.5], vs:[gold,silver]}) :
+                categorical({ps:[0.0,1], vs:[gold,silver]});
+    
+    // We observe that it's a gold coin.
+    condition(coin1 == gold);
+
+    // What is the probability that the second coins from the
+    // same box is also a gold coin?
+    var coin2 = (box == b1) ? categorical({ps:[1.0,0.0], vs:[gold,silver]}) :
+                (box == b2) ? categorical({ps:[0.0,0.1], vs:[gold,silver]}) :
+                categorical({ps:[0.0,1], vs:[gold,silver]});
+
+    
+    return {
+        coin1:coin1,
+        coin2:coin2,
+        box:box
+    };
+
+}
+
+var d = Infer(model);
+
+display(d);
+
+
+var exp_map = function(d,arr) {
+    display("Marginals:");
+    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+exp_map(d,["coin1","coin2","box"]);
