@@ -1,0 +1,11 @@
+pos(f(0)).
+pos(f(2)).
+pos(f(4)).
+pos(f(6)).
+pos(f(8)).
+pos(f(10)).
+neg(f(1)).
+neg(f(3)).
+neg(f(5)).
+neg(f(7)).
+neg(f(9)).
