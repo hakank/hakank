@@ -43,6 +43,7 @@ Here's a summary of the directories so far:
 * perl6: Perl6 programming language
 * picat: Picat, constraint programming, logic programming, loops, tabling, etc
 * poplog: Poplog Pop-11 high-level programming language
+* popper: Popper, Inductive Logic Programming (ILP) system
 * project_euler: Project Euler
 * psi_ppl: PSI, probabilistic programming language
 * python: Python programs (Project Euler)
