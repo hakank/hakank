@@ -140,14 +140,14 @@ include("jl_utils.jl")
     # * third problem: probability of the sequences of 10 coin tosses -> about 0.026
     # * fourth problem: expected length of the sequences of coin tosses -> about 4.
     if problem == 1
-        return len == 3 && tosses[1] == head && tosses[2] == head && tosses[3] == head
+        prob ~ Dirac(len == 3 && tosses[1] == head && tosses[2] == head && tosses[3] == head)
     elseif problem == 2
-        return len == 5 && tosses[1] == head && tosses[2] == head && tosses[3] == head &&
-                           tosses[4] == head && tosses[5] == head
+        prob ~ Dirac(len == 5 && tosses[1] == head && tosses[2] == head && tosses[3] == head &&
+                           tosses[4] == head && tosses[5] == head)
     elseif problem == 3
-        return len == 10
+        prob ~ Dirac(len == 10)
     else
-        return len
+        prob ~ Dirac(len)
     end
 end
 
@@ -168,19 +168,8 @@ function run_problem(problem)
     chains = sample(model, IS(), 10_000)
 
     display(chains)
-    println("avg length: $(mean(chains[:len]))")
-    println("fit(length): ")
-    cc = round.(Int64,vcat(chains[:len]...)) # Convert to integer
-    d = fit_mle(Geometric{Int64}, cc)
-    println("d: $d")
-    # println("avg t: $(mean(chains[:t]))")
-    println("Probability of problem $problem:")
-    genq = generated_quantities(model,chains)
-
-    show_var_dist_pct(genq,100)
-    if problem == 4
-        println("Mean:",mean(genq))
-    end
+    show_var_dist_pct(chains,:prob)
+    show_var_dist_pct(chains,:t)    
 end
 
 for problem in 1:4

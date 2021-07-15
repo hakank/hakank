@@ -143,7 +143,6 @@ include("jl_utils.jl")
 
     # This is a little faster than using has(p)
     for p in people
-        # s = sum(Int64[trusts(p,q)==1 && has_a[q]==1 for q in people])
         s = count(q->trusts(p,q)==1 && has_a[q]==1, people)
         if s > 0
             has_a[p] ~ flip(0.4)
@@ -152,8 +151,6 @@ include("jl_utils.jl")
         end
     end
 
-    # true ~ Dirac(has(p3)==1)
-    # return has(p1),has(p2),has(p3),has(p4)
     true ~ Dirac(has_a[p3]==1)
     return has_a[p1],has_a[p2],has_a[p3],has_a[p4]
 
@@ -175,5 +172,7 @@ chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 #
 display(chains)
 
-genq = generated_quantities(model, chains)
+chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
+genq = generated_quantities(model, chains_params)
+
 show_var_dist_pct(genq)

@@ -85,16 +85,21 @@ include("jl_utils.jl")
     true ~ Dirac(influences[4,2]==true)
 
     if mode == "smokes"
-        return smokes[pp1]
+        prob ~ Dirac(smokes[pp1])
+        return prob 
     elseif mode == "asthma"
-        return asthma[pp1]
+        prob ~ Dirac(asthma[pp1])
+        return prob 
     elseif mode == "stress"
-        return stress[pp1]
+        prob ~ Dirac(stress[pp1])
+        return prob 
     elseif mode == "influences"
-        return influences[pp1,pp2]
+        prob ~ Dirac(influences[pp1,pp2])
+        return prob 
     else
-        return
+        true
     end
+    
 end
 
 function run_smokers(mode,pp1,pp2)
@@ -103,16 +108,8 @@ function run_smokers(mode,pp1,pp2)
 
     # chains = sample(model, Prior(), 10_000)
 
-    # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-    # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
     # chains = sample(model, MH(), 10_000)
-    # chains = sample(model, MH(), 1_000)
-    # chains = sample(model, MH(), 10)
-
-    # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
     # chains = sample(model, PG(15), 1_000)
-
-    # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
     # chains = sample(model, SMC(1000), 10_000)
     chains = sample(model, SMC(1000), 1_000)
 
@@ -123,8 +120,13 @@ function run_smokers(mode,pp1,pp2)
     # show_var_dist_pct(chains,:len,1000)
 
     # println("prob return value t[$a,$b]:")
-    genq = generated_quantities(model, chains)
+    # genq = generated_quantities(model, chains)
     # show_var_dist_pct(genq,1000)
+    chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
+    genq = generated_quantities(model, chains_params)
+    
+    show_var_dist_pct(chains,:prob)
+    
     println("mean $(mean(genq))")
     return mean(genq)
 end

@@ -23,7 +23,7 @@ include("jl_utils.jl")
 @model function bugs_book_2_4_1()
 
     z ~ Normal(0,1)
-    y = (2.0*z + 1.0)^3.0
+    y ~ Dirac((2.0*z + 1.0)^3.0)
     p10 ~ y > 10.0 ? flip(1.0) : flip(0.0)
 
     return p10
@@ -34,13 +34,14 @@ model = bugs_book_2_4_1()
 num_chains = 4
 
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 # chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
 
 display(chains)
 # display(plot(chains))
 
-gen = generated_quantities(model, chains)
-show_var_dist_pct(gen, 120)
+# show_var_dist_pct(chains, :z)
+# show_var_dist_pct(chains, :y)
+show_var_dist_pct(chains, :p10)

@@ -77,6 +77,7 @@ x = 1:100
 alpha = 4
 beta = 2
 sigma = 0.6
+println("\nWe are trying to restore this: alpha($(alpha))+beta($(beta))*x+rand(Normal(0,sigma($(sigma))))\n")
 # y = alpha+beta*x+rand(Normal(0,sigma))
 y = alpha.+beta .* x .+rand(Normal(0,sigma),n)
 # println("y:$y")
@@ -85,7 +86,7 @@ model = linear_regression(y)
 num_chains = 4
 
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+chains = sample(model, MH(), 100_000)
 # chains = sample(model, MH(
 #                        # :alpha => Normal(2,sqrt(2)),
 #                        # :beta => Normal(2,sqrt(2)),
@@ -93,8 +94,8 @@ num_chains = 4
 #                        ), MCMCThreads(), 40_000, num_chains)
 
 # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
-chains = sample(model, SMC(1_000), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, SMC(1_000), MCMCThreads(), 1_000, num_chains)
+# chains = sample(model, IS(), 10_000)
 
 # Both HMC and NUTS give the following error:
 # ERROR: LoadError: TaskFailedException:
@@ -104,6 +105,3 @@ chains = sample(model, SMC(1_000), MCMCThreads(), 1_000, num_chains)
 
 display(chains)
 # display(plot(chains))
-
-# gen = generated_quantities(model, chains)
-# show_var_dist_pct(gen, 40)

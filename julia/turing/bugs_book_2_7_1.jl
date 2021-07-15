@@ -40,9 +40,8 @@ include("jl_utils.jl")
 
     theta ~ Beta(3,27) # prior distribution
     y ~ Binomial(20, theta) # sampling distribution
-    p6 = y >= 6
+    p6 ~ Dirac(y >= 6)
 
-    return p6
 end
 
 model = bugs_book_2_7_1()
@@ -50,7 +49,7 @@ model = bugs_book_2_7_1()
 num_chains = 4
 
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, MH(), 100_000)
 # chains = sample(model, MH(
 #                        # :alpha => Normal(2,sqrt(2)),
 #                        # :beta => Normal(2,sqrt(2)),
@@ -59,7 +58,7 @@ chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 
 # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 # chains = sample(model, SMC(10_000), MCMCThreads(), 20_000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, IS(), 10_000)
 
 # Both HMC and NUTS give the following error:
 # ERROR: LoadError: TaskFailedException:
@@ -70,5 +69,6 @@ chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 display(chains)
 # display(plot(chains))
 
-gen = generated_quantities(model, chains)
-show_var_dist_pct(gen, 40)
+show_var_dist_pct(chains,:p6 )
+show_var_dist_pct(chains,:y )
+# show_var_dist_pct(chains,:theta )

@@ -155,15 +155,9 @@ end
 
     len ~ DiscreteUniform(0,max_len)
 
-    # a = throws(TArray{Int64}(undef,0))
     a = throws(Int64[])
-    len = length(a)
-
-    if val == 0
-        return len
-    else
-        return len == val
-    end
+    true ~ Dirac(len == length(a))
+    
 end
 
 
@@ -174,36 +168,35 @@ function run_model(len=0)
 
     # chains = sample(model, Prior(), 10_000)
 
-    # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-    chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, MH(), 10_000)
+    # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+    chains = sample(model, MH(), 100_000)
     # chains = sample(model, MH(), 1_000)
 
-    # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
+    # chains = sample(model, PG(15), 10_000)
 
     # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
     # chains = sample(model, SMC(1000), 10_000)
     # chains = sample(model, IS(), 10_000)
-    #
-    # display(chains)
-    # show_var_dist_pct(chains,:len,1000)
 
-    println("prob return value:")
-    genq = generated_quantities(model, chains)
-    show_var_dist_pct(genq,1000)
-    if len > 0
+    display(chains)
+
+    if len == 0
+        show_var_dist_pct(chains,:len,1000)
+    else
         println("\ntheoretical_prob($len): ", theoretical_prob(len))
     end
 
 end
 
-for val in 0:10
-    println("\nval:$val")
-    run_model(val)
-end
+# for val in 0:10
+#     println("\nval:$val")
+#     run_model(val)
+# end
 
-println("\nval:25")
-run_model(25)
+# println("\nval:25")
+# run_model(25)
+
+run_model(0)
 
 println("\nTheoretical values for 1:50")
 for i in 1:50

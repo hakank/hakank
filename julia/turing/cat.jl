@@ -58,7 +58,6 @@ include("jl_utils.jl")
     milkshake      ~ Bernoulli(0.6)
     fish           ~ Bernoulli(0.1)
     no_enticement  ~ Bernoulli(0.3)
-    println("milkshake:$milkshake fish:$fish no_enticement:$no_enticement")
 
     # Number of cats per enticement
     vs = [NoCat,OneCat,TwoCats,ThreeCats]
@@ -72,22 +71,21 @@ include("jl_utils.jl")
     else
         cat ~ Categorical(simplex([1.0,0.0,0.0,0.0]))
     end
-    println("cat before:$cat  (vs[cat]: $(vs[cat]))")
-    true ~ Dirac(vs_cat == vs[cat]) # || begin Turing.@addlogprob! -Inf;  end
-    true ~ Dirac(vs_cat == ThreeCats) #  || begin Turing.@addlogprob! -Inf;  end
-    println("cat after:$cat")
+    true ~ Dirac(vs_cat == vs[cat]) 
+    true ~ Dirac(vs_cat == ThreeCats)
 
 end
 
 #=
+println("Model 1:")
 model = cat1()
 num_chains = 4
 # chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
 chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, MH(), 1000)
-
 display(chains)
 =#
+
 
 
 # This is correct (according to the video)
@@ -144,6 +142,7 @@ enticements_dict = Dict(1=>"milkshake",2=>"fish",3=>"no_enticement")
     return enticement
 end
 
+println("\n\nModel 2:")
 model = cat2()
 num_chains = 4
 # chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
@@ -155,5 +154,4 @@ chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 display(chains)
 
 println("\nEnticement: milkshake:1 fish:2 no_enticement:3")
-gen = generated_quantities(model, chains)
-show_var_dist_pct(gen, 120)
+show_var_dist_pct(chains, :enticement)

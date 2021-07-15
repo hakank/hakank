@@ -101,7 +101,6 @@ include("jl_utils.jl")
     # 4. prob(recovery|(\+drug,female)): 0.30000000000000004
     # 5. prob(recovery|(drug,\+female)): 0.6000000000000001
     # 6. prob(recovery|(\+ drug,\+female)): 0.7
-
     if problem == 1
         true ~ Dirac(drug == true)
     elseif problem == 2
@@ -140,7 +139,9 @@ function run_simpson(problem)
 
     # This the distributions of the different combinations of
     #   female, recovery, group
-    genq = generated_quantities(model, chains)
+    chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
+    genq = generated_quantities(model, chains_params)
+    println("female, recovery, drug:")
     show_var_dist_pct(genq)
 end
 

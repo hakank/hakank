@@ -58,22 +58,18 @@ Distributions of variable draw[2] (num:0)
 
     true ~ Dirac(draw[1] == red)
 
-    return draw[2]==white
-
 end
 
 model = bag_of_marbles()
 num_chains = 4
 
-# HH has problem with this!
-chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-# chains = sample(model, MH(), 10_000)
+# chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
+chains = sample(model, MH(), 100_000)
 
 # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, SMC(1000), 10_000)
 
-# Note: IS don't generate chains the same way as MH, PG, and SMC!
 # chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
 
 display(chains)
@@ -81,9 +77,3 @@ display(chains)
 show_var_dist_pct(chains,Symbol("draw[1]"))
 println("\ndraw1: The probability of drawing white is the probability for 1.0")
 show_var_dist_pct(chains,Symbol("draw[2]"))
-
-# println("\ndraw1==white:")
-# genq = generated_quantities(model,chains)
-# show_var_dist_pct(genq,20)
-# println("quantile:")
-# println(quantile(vec(genq), [0.0, 0.025, 0.25, 0.5, 0.75, 0.975, 1.0]))

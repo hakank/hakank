@@ -41,8 +41,6 @@ include("jl_utils.jl")
 
     true ~ Dirac(sumRoll == s)
 
-    return numRolls
-
 end
 
 
@@ -58,14 +56,14 @@ num_chains = 4
 # chains = sample(model, MH(), 10_000)
 # chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 
-chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, PG(20), 1_000)
 
 # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, SMC(1000), 10_000)
 
 # chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, IS(), 10_000)
+chains = sample(model, IS(), 10_000)
 
 
 # chains = sample(model, NUTS(1000,0.65), 1_000)
@@ -82,7 +80,3 @@ display(chains)
 show_var_dist_pct(chains, :numRolls,20)
 println()
 show_var_dist_pct(chains, :sumRoll,20)
-
-
-# gen = generated_quantities(model, chains)
-# show_var_dist_pct(gen, 20)

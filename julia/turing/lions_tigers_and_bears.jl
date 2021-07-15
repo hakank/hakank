@@ -48,9 +48,9 @@ include("jl_utils.jl")
     x ~ Dirichlet(v)
 
     # The probabilities to calculate ("aliased" for simplicity)
-    probLion  = x[1]
-    probTiger = x[2]
-    probBear  = x[3]
+    probLion  ~ Dirac(x[1])
+    probTiger ~ Dirac(x[2])
+    probBear  ~ Dirac(x[3])
 
     n = 7
     o = tzeros(n)
@@ -66,9 +66,9 @@ include("jl_utils.jl")
     true ~ Dirac(o[5] == tiger)
     true ~ Dirac(o[6] == bear)
 
-    # return o[7] == lion
-    # return o[7] == tiger
-    return o[7] == bear
+    probbear7 ~ Dirac(o[7] == bear)
+    problion7 ~ Dirac(o[7] == lion)
+    probtiger7 ~ Dirac(o[7] == tiger)
 
 end
 
@@ -78,21 +78,14 @@ num_chains = 4
 
 # chains = sample(model, Prior(), 10_000)
 
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, MH(), 10_000)
-
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 # chains = sample(model, PG(15), 1_000)
-
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, SMC(1000), 10_000)
-
-# chains = sample(model, IS(), 1_000)
+chains = sample(model, IS(), 10_000)
 
 #
 display(chains)
-show_var_dist_pct(chains,:len,1000)
 
-
-genq = generated_quantities(model, chains)
-show_var_dist_pct(genq,1000)
+show_var_dist_pct(chains,:probbear7)
+show_var_dist_pct(chains,:problion7)
+show_var_dist_pct(chains,:probtiger7)

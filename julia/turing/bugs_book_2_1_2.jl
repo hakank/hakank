@@ -23,8 +23,6 @@ include("jl_utils.jl")
     y ~ Binomial(8,0.5)
     p2 ~ y <= 2 ? flip(1.0) : flip(0.0);
 
-    return y, p2
-
 end
 
 
@@ -37,12 +35,12 @@ num_chains = 4
 
 # chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
 
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
 
 display(chains)
 # display(plot(chains))
 
-gen = generated_quantities(model, chains)
-show_var_dist_pct(gen, 120)
+show_var_dist_pct(chains,:y)
+show_var_dist_pct(chains,:p2)

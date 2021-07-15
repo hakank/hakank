@@ -45,8 +45,8 @@ include("jl_utils.jl")
     # We draw 6 times with the Multinomial distrib with the Dirichlet prior.
     # What is the probability of different combinations of the number of each animal?
 
-    alphas = [1/3, 1/3, 1/3] # Highest prob x: [3, 2, 1]       0.2920000000000001
-    # alphas = [3/6, 2/6, 1/6] # Highest prob x: [3, 2, 1]       0.4446000000000001
+    # alphas = [1/3, 1/3, 1/3] # Highest prob x: [3, 2, 1]       0.2920000000000001
+    alphas = [3/6, 2/6, 1/6] # Highest prob x: [3, 2, 1]       0.4446000000000001
     # alphas = [2/6, 2/6, 2/6] # Highest prob x: [3, 2, 1]       0.26220000000000004
     # alphas = [1/6, 2/6, 3/6] # Highest prob x: [2, 2, 2]!      0.2613
     # alphas = [7/21, 7/21, 7/21] # Highest prob x: [2, 2, 2]       0.23359999999999997
@@ -75,10 +75,10 @@ include("jl_utils.jl")
     true ~ Dirac(o[5] == tiger)
     true ~ Dirac(o[6] == bear)
 
-    # return o[7] == lion
-    return o[7] == tiger
-    # return o[7] == bear
-    # return x
+    probbear7 ~ Dirac(o[7] == bear)
+    problion7 ~ Dirac(o[7] == lion)
+    probtiger7 ~ Dirac(o[7] == tiger)
+
 
 end
 
@@ -88,20 +88,14 @@ num_chains = 4
 
 # chains = sample(model, Prior(), 10_000)
 
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 # chains = sample(model, MH(), 10_000)
-
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 # chains = sample(model, PG(15), 1_000)
-
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, SMC(1000), 10_000)
-
-# chains = sample(model, IS(), 1_000)
+chains = sample(model, IS(), 10_000)
 
 #
 display(chains)
-show_var_dist_pct(chains,:len,1000)
 
-genq = generated_quantities(model, chains)
-show_var_dist_pct(genq,1000)
+show_var_dist_pct(chains,:probbear7)
+show_var_dist_pct(chains,:problion7)
+show_var_dist_pct(chains,:probtiger7)

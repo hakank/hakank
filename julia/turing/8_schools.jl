@@ -62,7 +62,6 @@ include("jl_utils.jl")
 
         ys[i] ~ Normal(theta[i], sig[i]) # avg_likelihood
     end
-
 end
 
 
@@ -74,11 +73,11 @@ num_chains = 4
 
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
 
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+chains = sample(model, MH(), 100_000)
+# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 
 # chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, PG(20), 1_000)
+# chains = sample(model, PG(20), 10_000)
 
 # chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, IS(), 10_000)
@@ -89,14 +88,6 @@ chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 
 # chains = sample(model, NUTS(1000,0.65), 1_000)
 # chains = sample(model, HMC(0.1,5), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(10,0.65,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),HMC(0.1,5,:height)), 1_000)
-# chains = sample(model, Gibbs(PG(10,:gender),HMC(0.1,5,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1_000,0.65,:height)), 1_000)
 
 display(chains)
 display(plot(chains))
-
-# gen = generated_quantities(model, chains)
-# show_var_dist_pct(gen, 20)

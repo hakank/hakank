@@ -30,7 +30,7 @@ include("jl_utils.jl")
         end
     end
 
-    return a > b
+    a_is_greater_than_b ~ Dirac(a > b)
 
 end
 
@@ -41,17 +41,18 @@ num_chains = 4
 # chains = sample(model, Prior(), 10_000)
 # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
 # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 10_000)
+# chains = sample(model, MH(), 100_000)
 
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
+# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
 
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 10_000)
+# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, SMC(), 40_000)
 # chains = sample(model, IS(), 10_000)
+
 #
-#chains = sample(model, Gibbs(HMC(0.1,5,:a,:b),PG(15,:p)), 10_000)
-# chains = sample(model, Gibbs(NUTS(1000,0.65,:a,:b),PG(15,:p)), 10_000)
-# chains = sample(model, Gibbs(HMC(0.1,5,:a,:b),SMC(1000,:p)), 10_000) # Nope
+# chains = sample(model, Gibbs(HMC(0.1,5,:a,:b),PG(15,:p,:a_is_greater_than_b)), 10_000)
+# chains = sample(model, Gibbs(NUTS(1000,0.65,:a,:b),PG(15,:p,:a_is_greater_than_b)), 10_000)
+
 
 display(chains)
 # display(plot(chains))
@@ -60,5 +61,4 @@ display(chains)
 # show_var_dist_pct(chains,:b,20)
 # show_var_dist_pct(chains,:p,20)
 
-genq = generated_quantities(model, chains)
-show_var_dist_pct(genq,20)
+show_var_dist_pct(chains,:a_is_greater_than_b)

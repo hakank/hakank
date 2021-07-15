@@ -36,28 +36,15 @@ num_chains = 4
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
 
 # chains = sample(model, MH(), 10_000)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
-
-# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, PG(20), 1_000)
-
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 40_000)
-
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, SMC(1000), 40_000)
 # chains = sample(model, IS(), 10_000)
 
-
-# chains = sample(model, NUTS(1000,0.65), 1_000)
-# chains = sample(model, HMC(0.1,5), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(10,0.65,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),HMC(0.1,5,:height)), 1_000)
-# chains = sample(model, Gibbs(PG(10,:gender),HMC(0.1,5,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1_000,0.65,:height)), 1_000)
 
 display(chains)
 # display(plot(chains))
 
-gen = generated_quantities(model, chains)
-show_var_dist_pct(gen, 120)
+chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
+genq = generated_quantities(model, chains_params)
+println("Probability of the combinations of cloudy, sprinkler, rain, wet_grass:")
+show_var_dist_pct(genq, 120)

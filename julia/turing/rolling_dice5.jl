@@ -21,9 +21,6 @@ include("jl_utils.jl")
         # t ~ DiscreteUniform(1,n)
         t = rand(DiscreteUniform(1,n))
         if t in a
-            # We have used this die before -> end this sequence
-            # Note: In the WebPPL model the duplicate value is included
-            # return vcat(a,t)
             return a
         else
             return roll(vcat(a,t))
@@ -33,14 +30,10 @@ include("jl_utils.jl")
 
     a = roll([])
     len ~ DiscreteUniform(1,n)
-    len = length(a)
-    # println("a:$a len:$len")
+    len ~ Dirac(length(a))
 
     # In the example, the first roll is 1.
     true ~ Dirac(a[1] == 1)
-
-    return len
-    # return a
 
 end
 
@@ -52,10 +45,8 @@ function run_model(len=0)
 
     # chains = sample(model, Prior(), 10_000)
 
-    # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-    # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
     # chains = sample(model, MH(), 10_000)
-    chains = sample(model, MH(), 1_000)
+    chains = sample(model, MH(), 100_000)
 
     # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 
@@ -63,25 +54,21 @@ function run_model(len=0)
     # chains = sample(model, SMC(1000), 10_000)
     # chains = sample(model, IS(), 10_000)
     #
-    # display(chains)
-    # show_var_dist_pct(chains,:len,1000)
+    display(chains)
+    show_var_dist_pct(chains,:len,1000)
 
-    println("prob return value:")
-    genq = generated_quantities(model, chains)
-    show_var_dist_pct(genq,1000)
-    println("mean: $(mean(genq))")
-    return genq
 end
 
 genq = undef
-for val in 1:30
+for val in 1:6
     global genq
     println("\nval:$val")
-    @time genq = run_model(val)
+    @time run_model(val)
 end
 
 println("\nval=10")
-println("mean:", mean(run_model(10)))
-
+# println("mean:", mean(run_model(10)))
+run_model(10)
 println("\nval=100")
-println("mean:", mean(run_model(100)))
+# println("mean:", mean(run_model(100)))
+run_model(100)

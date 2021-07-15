@@ -36,21 +36,6 @@ include("jl_utils.jl")
 
     # height ~ gender == male ? Normal(178,17.7) : Normal(163,17.3)
 
-    # Note: Using this way of observing is not good in this model.
-    # height == 190.0 || begin Turing.@addlogprob! -Inf; return end
-    # obs!(_sampler,_varinfo,height == 190.0)
-    # true ~ Dirac(height == 190.0)
-
-    ret = []
-    if !ismissing(height)
-        push!(ret,height)
-    end
-    if !ismissing(gender)
-        push!(ret,gender)
-    end
-
-    return height,gender # ret
-    # return ret
 end
 
 function run_model(gender=missing,height=missing)
@@ -87,16 +72,11 @@ function run_model(gender=missing,height=missing)
     end
     show_var_dist_pct(chains, :gender)
     show_var_dist_pct(chains, :height, 20)
-
-    gen = generated_quantities(model, chains)
-
-    if gen[1] != nothing
-        show_var_dist_pct(gen, 20)
-    end
 end
 
 male = 1
 female = 2
+println("Male is coded as 1, female as 2.")
 for height in [150.0,160.0,170.0,175.0,180.0, 185.0,190.0,200.0]
     println("\ngender:missing height:$height")
     run_model(missing,height)

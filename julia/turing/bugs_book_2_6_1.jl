@@ -91,5 +91,3 @@ chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 display(chains)
 # display(plot(chains))
 
-# gen = generated_quantities(model, chains)
-# show_var_dist_pct(gen, 40)

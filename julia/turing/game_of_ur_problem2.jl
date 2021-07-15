@@ -53,19 +53,10 @@ include("jl_utils.jl")
             return roll(s+t,len+1)
         end
     end
-
-    len ~ DiscreteUniform(0,100)
-    # a = roll(Int64[])
-
-    # len = length(a)
-    # s = len > 0 ? sum(a) : 0
-
-    # Dirac(len > 0 && s == 13)
-    # obs!(_sampler,_varinfo, s == 13) && return
-    # len > 0 || begin Turing.@addlogprob! -Inf; return end
-
-    len = roll(0,0)
-    return len
+ 
+    len ~ Dirac(roll(0,0))
+    # Skip length 0 events
+    true ~ Dirac(len > 0)    
 
 end
 
@@ -77,31 +68,13 @@ num_chains = 4
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
 
 # chains = sample(model, MH(), 10_000)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
-
-# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, PG(20), 1_000)
-
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 40_000)
-
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, SMC(1000), 40_000)
 # chains = sample(model, IS(), 10_000)
 
-
-# chains = sample(model, NUTS(1000,0.65), 1_000)
-# chains = sample(model, HMC(0.1,5), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(10,0.65,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),HMC(0.1,5,:height)), 1_000)
-# chains = sample(model, Gibbs(PG(10,:gender),HMC(0.1,5,:height)), 1_000)
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1_000,0.65,:height)), 1_000)
 
 display(chains)
 # display(plot(chains))
 
 println("Distribution of len")
-gen = generated_quantities(model, chains)
-println("After removing the 0s from gen")
-gen2 = [g for g in gen if g != 0]
-show_var_dist_pct(gen2, 120)
+show_var_dist_pct(chains, :len)

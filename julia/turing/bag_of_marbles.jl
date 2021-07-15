@@ -59,8 +59,6 @@ White is 1 so the probability is 0.237630
 
     true ~ Dirac(draw0 == red)
 
-    return draw1==white
-
 end
 
 model = bag_of_marbles()
@@ -71,19 +69,13 @@ num_chains = 4
 # chains = sample(model, MH(), 100_000)
 
 # chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
 
 # Note: IS don't generate chains the same way as MH, PG, and SMC!
-# chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
+chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
 
 display(chains)
 
 show_var_dist_pct(chains,:draw0)
 println("\ndraw1: The probability of drawing white is the probability for 1.0")
 show_var_dist_pct(chains,:draw1)
-
-# println("\ndraw1==white:")
-# genq = generated_quantities(model,chains)
-# show_var_dist_pct(genq,20)
-# println("quantile:")
-# println(quantile(vec(genq), [0.0, 0.025, 0.25, 0.5, 0.75, 0.975, 1.0]))

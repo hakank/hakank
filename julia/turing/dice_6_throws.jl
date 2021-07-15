@@ -20,6 +20,8 @@
 using Turing, StatsPlots, DataFrames
 include("jl_utils.jl")
 
+# ix: Throw index
+# val: The value to check
 @model function dice_6_throws(ix=1,val=1)
 
     max_len = 100
@@ -35,18 +37,11 @@ include("jl_utils.jl")
         end
     end
 
-    # len is a pure random variable, though
-    len ~ DiscreteUniform(0,max_len)
     a = throws(Int16[])
-    len = length(a)
-
-    # true ~ Dirac(length(a) >= 1 && a[1] == 1)
-    # true ~ Dirac(length(a) >= 2 && a[2] == 1)
-
-    # return len
-    # Probability of
-    return length(a) >= ix && a[ix] == val
-    # return length(a) >= 1 && a[1] == 1
+    len ~ Dirac(length(a))
+    
+    # Probability that the die lands on face val on throw ix
+    test ~ Dirac(length(a) >= ix && a[ix] == val)
 end
 
 
@@ -62,26 +57,20 @@ function run_model(ix, val)
     # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
     # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
 
-    chains = sample(model, MH(), 10_000)
+    # chains = sample(model, MH(), 10_000)
     # chains = sample(model, MH(), 1_000)
 
     # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 
     # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
     # chains = sample(model, SMC(1000), 10_000)
-    # chains = sample(model, IS(), 10_000)
-    #
-    #chains = sample(model, Gibbs(HMC(0.1,5,:a,:b),PG(15,:p)), 10_000)
-    # chains = sample(model, Gibbs(NUTS(1000,0.65,:a,:b),PG(15,:p)), 10_000)
-    # chains = sample(model, Gibbs(HMC(0.1,5,:a,:b),SMC(1000,:p)), 10_000) # Nope
+    chains = sample(model, IS(), 10_000)
 
-    # display(chains)
+    display(chains)
     # display(plot(chains))
-    # show_var_dist_pct(chains,:len,1000)
 
-    println("\nprob return value:")
-    genq = generated_quantities(model, chains)
-    show_var_dist_pct(genq,1000)
+    show_var_dist_pct(chains,:test)
+    show_var_dist_pct(chains,:len)    
 
 end
 

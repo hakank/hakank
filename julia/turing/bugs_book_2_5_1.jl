@@ -67,7 +67,7 @@ x[20] 0.000e+00 0.000000 0.000e+00      0.000e+00
 5.00000 =>       1  (0.000025)
 
 
-Distribution of x (the change point arra")
+Distribution of x (the change point array)
 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]    =>  8968 (0.2242)
 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]    =>  8020 (0.2005)
 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]    =>  7477 (0.186925)
@@ -124,10 +124,12 @@ include("jl_utils.jl")
 
     # Max number with 1
     # ix ~ DiscreteUniform(1,20)
-    ix, _ = findmax([i*(x[i]==1) for i in 1:n])
+    ixtmp, _ = findmax([i*(x[i]==1) for i in 1:n])
 
+    ix ~ Dirac(ixtmp)
+    
     # return number
-    return ix
+    # return ix
     # return x
 end
 
@@ -136,13 +138,13 @@ model = bugs_book_2_5_1()
 num_chains = 4
 
 # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, MH(), 100_000)
 # chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, IS(), 10_000)
 
 display(chains)
 # display(plot(chains))
 
-gen = generated_quantities(model, chains)
-show_var_dist_pct(gen, 40)
+show_var_dist_pct(chains, :ix)

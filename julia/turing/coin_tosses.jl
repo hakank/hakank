@@ -163,8 +163,6 @@ include("jl_utils.jl")
     end
 
     # We must add dummy value (here 3) for the unhandled cases in tosses[1:n]
-    # otherwise Turing complains about Missing values in generated_quantities
-    # '''MethodError: Cannot `convert` an object of type Missing to an object of type Int64'''
     for t in 1:n
         if tosses[t] == 0
             tosses[t] ~ Categorical([0,0,1]) # dummy 3
@@ -176,15 +174,15 @@ include("jl_utils.jl")
     # * third problem: probability of the sequences of 10 coin tosses -> about 0.026
     # * fourth problem: expected length of the sequences of coin tosses -> about 4.
     if problem == 1
-        return tosses[1] == head && tosses[2] == head && tosses[3] == head
+        t ~ Dirac(tosses[1] == head && tosses[2] == head && tosses[3] == head)
     elseif problem == 2
         true ~ Dirac(tosses[1] == head)
         true ~ Dirac(tosses[2] == head)
         true ~ Dirac(tosses[3] == head)
-        return tosses[1] == head && tosses[2] == head && tosses[3] == head &&
-               tosses[4] == head && tosses[5] == head
+        t ~ Dirac(tosses[1] == head && tosses[2] == head && tosses[3] == head &&
+                  tosses[4] == head && tosses[5] == head)
     elseif problem == 3
-        return i==10
+        t ~ Dirac(i == 10)
     else
         return i
     end
@@ -198,20 +196,21 @@ function run_problem(problem)
 
     # HH has problem with this!
     # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-    # chains = sample(model, MH(), 10_000)
+    # chains = sample(model, MH(), 100_000)
 
     # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
 
     # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-    chains = sample(model, SMC(1000), 10_000)
+    # chains = sample(model, SMC(1000), 10_000)
+
+    chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
 
     display(chains)
     println("Probability of problem $problem:")
-    genq = generated_quantities(model,chains)
 
-    show_var_dist_pct(genq,20)
-    if problem == 4
-        println("Mean:",mean(genq))
+    show_var_dist_pct(chains,:i)
+    if problem != 4
+        show_var_dist_pct(chains,:t)
     end
 end
 
