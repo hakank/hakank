@@ -1,0 +1,61 @@
+/*
+    Dice puzzle in WebPPL
+    
+    From Berlin Bayesians:
+    (https://app.slack.com/client/TFPMSKW3F/CFQHMRD6K)
+    """
+    What's likelier: Rolling at least one six in four throws of a single die,
+    or rolling at least one double 6 in 24 throws of a pair of dice?
+    """
+
+    This is de Méré's classical dice puzzle (which induced the study of
+    probability theory). See
+    - https://mathworld.wolfram.com/deMeresProblem.html
+
+*/
+
+var exp_map = function(d,arr) {
+    // display("Marginals:");
+    // map(function(a) {display(a);display(marginalize(d, a)) }, arr);
+    display("expectation:");
+    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
+    display("MAP:");
+    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+}
+
+// 4 throws getting at least one 6
+// enumerate (exact): p=0.5177469135802468
+// MCMC/MH: p=0.5185719999999999
+// Cf: 1-(5/6)**4  ~ 0.51774691358024691358
+//
+var model1 = function() {
+    var n1 = 4
+    var t1 = sum(mapN(function() { return uniformDraw([1,2,3,4,5,6]) == 6}, n1))
+    return {
+        t1:t1>=1,
+    }
+
+}
+
+//
+// 24 throws getting at least one double 6
+// MCMC/MH: p=0.491603  (approx)
+// 1-(35/36)**24 ~ 0.49140387613090325958
+//
+var model2 = function() {
+    var n2 = 24
+    var t2 = sum(mapN(function() { return uniformDraw([1,2,3,4,5,6]) == 6 && uniformDraw([1,2,3,4,5,6]) == 6}, n2))
+    return {
+        t2:t2>=1,
+    }
+}
+
+display("Model1")
+var d1 = Infer({method:"enumerate",maxRuntimeInMS: 15000},model1);
+// var d1 = Infer({method:"MCMC",kernel:"MH",samples:1000000},model1)
+exp_map(d1,["t1"]);
+
+display("\nModel2")
+// var d2 = Infer({method:"enumerate",maxRuntimeInMS: 600000},model2); // timing out
+var d2 = Infer({method:"MCMC",kernel:"MH",samples:100000},model2)
+exp_map(d2,["t2"]);
