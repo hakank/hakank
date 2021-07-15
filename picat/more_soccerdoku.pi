@@ -1,0 +1,146 @@
+/* 
+
+  More Soccerdoku puzzle in Picat.
+
+  From https://twitter.com/robeastaway/status/1402708935627493382
+  """
+  Puzzle 
+  set by Rob Eastaway
+  #116 More Soccerdoku
+
+
+  Out football league archivist has another challenge on his hands
+  (see Puzzle #104, 13 March). A second old newspaper report has
+  surfaced, this time from the 1991 season.
+  The table shows how things stood at the end of the season after all
+  teams has played each other once. There wre three points for a win
+  and one for a draw, as you might expect, with Albion winning the 
+  league and Rovers bottom. How annoying that so much of the table
+  got smudged.
+
+  Can you use your forensic skills to figure out all the match
+  scores for the season?
+
+          P | W | L | D | GF | GA  | Points
+          ----------------------------------
+  Albion  *   *   *   *   4    *     7
+  United  *   *   *   *   4    5     *
+  Town    *   *   *   *   1    2     *
+  Rovers  *   *   *   *   1    3     1
+
+  Key: P = Played, W = Won, L = Lost, D = Drawn, GF = Goals For,
+  GA = Goal Against, and * denotes an entry that has been smudged
+  beyond recognition.
+  """
+
+  This model yields the following unique solution.
+
+
+    Match matrix:
+    [0,3,0,1]
+    [0,0,2,2]
+    [0,1,0,0]
+    [0,1,0,0]
+
+    Matches:
+    [Albion,vs,United,3,0]
+    [Albion,vs,Town,0,0]
+    [Albion,vs,Rovers,1,0]
+    [United,vs,Albion,0,3]
+    [United,vs,Town,2,1]
+    [United,vs,Rovers,2,1]
+    [Town,vs,Albion,0,0]
+    [Town,vs,United,1,2]
+    [Town,vs,Rovers,0,0]
+    [Rovers,vs,Albion,0,1]
+    [Rovers,vs,United,1,2]
+    [Rovers,vs,Town,0,0]
+
+    Table:
+             P | W | L | D | GF | GA | Points
+    Albion   3   2   0   1   4    0     7
+    United   3   2   1   0   4    5     6
+    Town     3   0   1   2   1    2     2
+    Rovers   3   0   2   1   1    3     1
+
+  Note: I had to add a match table to get the Goals For/Against
+  and connect that to won/drawn/lost matches.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  N = 4,
+  S = ["Albion", "United", "Town", "Rovers"],  
+  L = [Albion, United, Town, Rovers] ,
+  L = 1..N,
+  Played = new_list(N),
+  Played :: 0..3,
+  Won = new_list(N),
+  Won :: 0..10,
+  Lost = new_list(N),
+  Lost :: 0..10,  
+  Drawn = new_list(N),
+  Drawn :: 0..10,    
+  GoalsFor = new_list(N),
+  GoalsFor :: 0..10,      
+  GoalsAgainst = new_list(N),
+  GoalsAgainst :: 0..10,        
+  Points = new_list(N),
+  Points :: 0..10,
+
+  Matches = new_array(N,N),
+  Matches :: 0..10,
+
+  Played = [3,3,3,3], % not needed
+
+  % Given hints 
+  GoalsFor = [4,4,1,1],
+  GoalsAgainst = [_,5,2,3],
+  Points = [7,_,_,1],
+
+  foreach(I in 1..N)
+     Points[I] #= Won[I]*3 + Drawn[I]*1,
+     Played[I] #= Won[I] + Lost[I] + Drawn[I],
+     
+     Matches[I,I] #= 0, % a team don't play against itself
+     Won[I]      #= sum([cond(Matches[I,J] #> Matches[J,I],1,0) : J in 1..N, J != I]),
+     Drawn[I]    #= sum([cond(Matches[I,J] #= Matches[J,I],1,0) : J in 1..N, J != I]),
+     Lost[I]     #= sum([cond(Matches[I,J] #< Matches[J,I],1,0) : J in 1..N, J != I]),
+     GoalsFor[I]     #= sum([Matches[I,J]: J in 1..N, I != J]),
+     GoalsAgainst[I] #= sum([Matches[J,I]: J in 1..N, I != J])
+  end,
+
+  % Ordering of the teams (points). Not needed.
+  Points[Albion] #>= Points[United],
+  Points[United] #>= Points[Town],
+  Points[Town] #>= Points[Rovers],
+
+  Vars = Points ++ Matches.vars ++ Played ++ Won ++ Lost ++ Drawn ++ GoalsAgainst,
+  solve($[ff,split],Vars),
+  
+  println("Match matrix:"),
+  foreach(Row in Matches)
+    println(Row.to_list)
+  end,
+  println("\nMatches:"),
+  foreach(I in 1..N)
+    foreach(J in 1..N, J != I)
+       println([S[I],vs,S[J],Matches[I,J],Matches[J,I]])
+    end
+  end,
+  println("\nTable:"),
+  println("         P | W | L | D | GF | GA | Points"),
+  foreach(I in 1..N)
+    printf("%-6s %3d %3d %3d %3d %3d  %3d   %3d\n",S[I],Played[I],Won[I],Lost[I],Drawn[I],GoalsFor[I],GoalsAgainst[I],Points[I])
+  end,
+  nl,
+  fail,
+  nl.
+go => true.

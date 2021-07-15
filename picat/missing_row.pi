@@ -1,0 +1,121 @@
+/* 
+
+  Missing row problem in Picat.
+
+  From https://github.polettix.it/ETOOBUSY/2021/06/16/pwc117-missing-row/
+  """
+  You are given text file with rows numbered 1-15 in random order but there 
+  is a catch one row in missing in the file.
+
+    11, Line Eleven
+    1, Line one
+    9, Line Nine
+    13, Line Thirteen
+    2, Line two
+    6, Line Six
+    8, Line Eight
+    10, Line Ten
+    7, Line Seven
+    4, Line Four
+    14, Line Fourteen
+    3, Line three
+    15, Line Fifteen
+    5, Line Five
+
+  Write a script to find the missing row number.
+  """
+
+  The file is "missing_row.txt".
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import ordset.
+
+main => go.
+
+% Plain foreach loop
+go ?=>
+  File = read_file_lines("missing_row.txt"),
+  Len = File.len,
+  Map = new_map(),
+  foreach(I in 1..Len)
+     [Num,_Text] = split(File[I],","),
+     Map.put(Num.to_int,1)
+  end,
+  println(missing=[I : I in 1..Len, not Map.has_key(I)].first),
+  nl.
+go => true.
+
+% Shorter
+go2 ?=>
+  Map = new_map([split(Line,",").first.to_int=1 : Line in read_file_lines("missing_row.txt")]),  
+  println(missing=[I : I in 1..Map.keys.len+1, not Map.has_key(I)].first),
+  nl.
+go2 => true.
+
+% Using ordset
+go3 ?=>
+  % ordset requires an ordered list
+  Nums = [split(Line,",").first.to_int : Line in read_file_lines("missing_row.txt")].sort,
+  println(missing=subtract(1..Nums.len+1,Nums).first),
+  nl.
+go3 => true.
+
+% Using membchk
+go4 ?=>
+  Nums = [split(Line,",").first.to_int : Line in read_file_lines("missing_row.txt")],
+  println(missing=[I : I in 1..Nums.len+1, not membchk(I,Nums)].first),
+  nl.
+go4 => true.
+
+% fail loop
+go5 ?=>
+  Nums = [split(Line,",").first.to_int : Line in read_file_lines("missing_row.txt")],
+  member(I,1..Nums.len+1),
+  not membchk(I,Nums),
+  println(missing=I),
+  fail,
+  nl.
+go5 => true.
+
+% Prolog style (part)
+go6 ?=>
+  Nums = [split(Line,",").first.to_int : Line in read_file_lines("missing_row.txt")],
+  find_missing(1..15,Nums,Missing),
+  println(missing=Missing.first),
+  nl.
+
+% Find a missing number in a list (Prolog style)
+find_missing(L,Nums,Missing) :-
+   find_missing(L,Nums,[],Missing).
+
+find_missing([],_Nums,Missing,Missing).
+find_missing([H|T],Nums,Missing0,Missing) :-
+  membchk(H,Nums),
+  find_missing(T,Nums,Missing0,Missing).
+find_missing([H|T],Nums,Missing0,[H|Missing]) :-
+  not membchk(H,Nums),
+  find_missing(T,Nums,Missing0,Missing).
+
+%
+% Let's simulate a file.
+%
+data(File) =>
+  File = "11, Line Eleven
+1, Line one
+9, Line Nine
+13, Line Thirteen
+2, Line two
+6, Line Six
+8, Line Eight
+10, Line Ten
+7, Line Seven
+4, Line Four
+14, Line Fourteen
+3, Line three
+15, Line Fifteen
+5, Line Five".

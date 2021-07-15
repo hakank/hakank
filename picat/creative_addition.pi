@@ -1,0 +1,153 @@
+/* 
+
+  Creative addition puzzle in Picat.
+
+  From https://enigmaticcode.wordpress.com/2021/07/10/puzzle-121-creative-addition
+  """
+  Puzzle #121: Creative addition
+
+  From New Scientist #3342, 10th July 2021
+
+
+           1  4
+              5
+           2
+           3  6
+           7
+              9
+           8
+
+  There is an old adage that one person's 'creativity' is another person's 
+  "cheating". This week’s puzzle will test which side of the fence you sit on.
+
+  The numbers 1 to 9 have been written on cards and left on a table: the left-hand 
+  column adds up to 21 and the right one to 24. Move just one card so that the 
+  two columns add up to the same total. There’s a classic "Aha!" solution to this 
+  puzzle, but my daughter came up with a solution I wasn’t expecting. Since then, 
+  I have been offered at least 10 more distinct solutions.
+
+  How many solutions can you find that you regard as 'creative' rather than 
+  'cheating'?
+  """
+
+  This model finds the solutions where one of the cards are placed 
+  over another card to get the same total on both sides.
+  (And in go/0 we also add the 9 -> 6 trick.)
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+import util.
+import cp.
+
+
+main => go.
+
+
+%
+% Logic programming,
+% using select/3, ';'/2 and fail/0 for non-determinism.
+%
+% """
+% a = [1,2,3,7,8]
+% b = [4,5,6,9]
+% [remove,1,from,A,to,cover,5,in,B,arest = [2,3,7,8],newB = [4,1,6,9],20,20]
+% [remove,3,from,A,to,cover,9,in,B,arest = [1,2,7,8],newB = [4,5,6,3],18,18]
+% [remove,5,from,B,to,cover,7,in,A,newA = [1,2,3,5,8],brest = [4,6,9],19,19]
+% [replace,9,from,B,with,6,in,B,a = [1,2,3,7,8],newB = [4,5,6,6],21,21]
+% """
+go ?=>
+
+  A = [1,2,3,7,8],
+  B = [4,5,6,9],
+  println(a=A),
+  println(b=B),
+  (
+  select(AA,A,Arest), % Pick a number from A
+  select(BB,B,Brest), % Pick a number from B and place AA above it
+  NewB = replace(B,BB,AA), 
+  sum(Arest) == sum(NewB),
+  println([remove,AA,from,'A',to,cover,BB,in,'B',arest=Arest,newB=NewB,sum(Arest),sum(NewB)])
+  ;
+  select(BB,B,Brest), % Pick a number from B  
+  select(AA,A,Arest), % Pick a number from A and place BB above it
+  NewA = replace(A,AA,BB),
+  sum(Brest) == sum(NewA),
+  println([remove,BB,from,'B',to,cover,AA,in,'A',newA=NewA,brest=Brest,sum(NewA),sum(Brest)])
+  ;
+  % replace 9 with a 6 in B
+  NewB = replace(B,9,6),
+  sum(NewB) == sum(A),
+  println([replace,9,from,'B',with,6,in,'B',a=A,newB=NewB,sum(A),sum(NewB)])   
+  ),
+  fail,
+  nl.
+go => true.
+
+
+%
+% CP approach
+%
+% """
+% a_orig = [1,2,3,7,8]
+% b_orig = [4,5,6,9]
+%
+% x = [0,1,1,1,1]
+% y = [1,0,1,1]
+% [move,1,from,A,to,B,a = [2,3,7,8],b = [4,6,9,1],20 == 20]
+%
+% x = [1,1,0,1,1]
+% y = [1,1,1,0]
+% [move,3,from,A,to,B,a = [1,2,7,8],b = [4,5,6,3],18 == 18]
+%
+% x = [1,1,1,0,1]
+% y = [1,0,1,1]
+% [move,5,from,B,to,A,a = [1,2,3,8,5],b = [4,6,9],19 == 19]
+% """
+%
+go2 ?=>
+  A = [1,2,3,7,8],
+  B = [4,5,6,9],
+  println(a_orig=A),
+  println(b_orig=B),
+  nl,
+  
+  Alen = A.len,
+  Blen = B.len,
+  X = new_list(Alen),
+  X :: 0..1,
+  Y = new_list(Blen),
+  Y :: 0..1,
+
+  % We pick a value from A (B) and replace it with a value in B (A).
+
+  sum(X) #= Alen-1,
+  sum(Y) #= Blen-1,
+
+  X1 #= sum([X[I]*A[I] : I in 1..Alen]), % kept values in A
+  X2 #= sum([(X[I]#=0)*A[I] : I in 1..Alen]), % removed/covered values in A
+  
+  Y1 #= sum([Y[I]*B[I] : I in 1..Blen]), % kept values in B
+  Y2 #= sum([(Y[I]#=0)*B[I] : I in 1..Blen]) , % removed/covered values in B
+
+  % Move and cover from A -> B or from B -> A
+  (X1 #= Y1 + X2) #\/ (X1 + Y2 #= Y1),
+
+  Vars = X ++ Y ++ [X1,X2,Y1,Y2],
+  solve(Vars),
+  
+  println(x=X), 
+  println(y=Y),
+  if X1==Y1+X2 then
+    println([move,X2,from,'A',to,'B',a=[A[I] : I in 1..Alen,X[I]==1],b=[B[I] : I in 1..Blen,Y[I]==1] ++ [X2],(X1==Y1+X2)])
+  else
+    println([move,Y2,from,'B',to,'A',a=[A[I] : I in 1..Alen,X[I]==1]++[Y2],b=[B[I] : I in 1..Blen,Y[I]==1],(X1+Y2==Y1)])  
+  end,
+  nl,
+  fail,
+  
+  nl.
+go2 => true.

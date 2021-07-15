@@ -1,0 +1,112 @@
+/* 
+
+  Strange golfer in Picat.
+
+  From Chris Smith's Math Newletter #562
+  """
+  Henry was a strange golfer who has mastered two incredible
+  consistent strokes. Every shot he took would go precisely one
+  of two distances, perfectly straigt down in the direction
+  of the pin or, if it was close, directly into the hole.
+
+  He's playing at a 9-hole course where the distances of the 
+  holes are 300, 250, 200, 325, 275, 350, 225, 375, and 400 
+  yards.
+
+  For example, if his weird strokes were 125 yards and 75 yards
+  he would take 28 shots to get round the course. That's not
+  bad, but Henry's actual bizarre strokes can do even better.
+  """
+
+  Optimal solution (number of strokes=26)
+
+  maxStrokes = 1
+  maxStrokes = 2
+  maxStrokes = 3
+  maxStrokes = 4
+
+  stroke1 = 100
+  stroke2 = 125
+  z = 26
+  [hole = 1,distance = 300,strokes = {5,3,3,3} = [0,100,100,100]]
+  [hole = 2,distance = 250,strokes = {4,5,5,4} = [125,0,0,125]]
+  [hole = 3,distance = 200,strokes = {5,3,3,5} = [0,100,100,0]]
+  [hole = 4,distance = 325,strokes = {3,3,4,5} = [100,100,125,0]]
+  [hole = 5,distance = 275,strokes = {2,4,4,4} = [-100,125,125,125]]
+  [hole = 6,distance = 350,strokes = {4,4,3,5} = [125,125,100,0]]
+  [hole = 7,distance = 225,strokes = {5,5,4,3} = [0,0,125,100]]
+  [hole = 8,distance = 375,strokes = {4,5,4,4} = [125,0,125,125]]
+  [hole = 9,distance = 400,strokes = {3,3,3,3} = [100,100,100,100]]
+
+  The only negative value is for hole 5 (275 yards), where we 
+  undershoots with 100 (-100).
+
+  Note: If we only allow positive strokes then the optimal value
+  is 28 with stroke1 = 75 and stroke2 = 125 (as the example).
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp. % slower
+
+main => go.
+
+go ?=>
+  nolog,
+  member(MaxStrokes,1..10),
+  println(maxStrokes=MaxStrokes),
+  Holes = [300, 250, 200, 325, 275, 350, 225, 375, 400],
+  NumHoles = Holes.len,
+  % Stroke1 :: 125..125, % Testing (give z=28 as the example states)
+  % Stroke2 :: 75..75,
+  MaxVal = 200,
+  Stroke1 :: 1..MaxVal,
+  Stroke2 :: 1..MaxVal,
+  Stroke1 #<= Stroke2,
+
+  Stroke1Neg #= -Stroke1,
+  Stroke2Neg #= -Stroke2,  
+
+  Strokes = new_array(NumHoles,MaxStrokes), % max 10 strokes per hole
+  Strokes :: 1..5, % 1: -Stroke2, 2: -Stroke1, 3: Stroke1, 4: Stroke2  5: no stroke
+
+  Table = [Stroke2Neg,Stroke1Neg,Stroke1,Stroke2,0],
+  Ts = [],
+  foreach(Hole in 1..NumHoles)
+    T = new_list(MaxStrokes),
+    T :: -MaxVal..MaxVal,
+    Ts := Ts ++ T,
+    foreach(S in 1..MaxStrokes)
+      element(Strokes[Hole,S], Table,T[S])
+    end,
+    Holes[Hole] #= sum(T)
+    % , decreasing(T) % symmetry breaking (slower)
+    
+    % This is slower and a little messier
+    % Holes[Hole] #= sum([cond(SH #= 1, Stroke2Neg,
+    %                           cond(SH #= 2, Stroke1Neg,
+    %                             cond(SH #= 3, Stroke1,
+    %                               cond(SH #= 4, Stroke2, 0)))) : S in 1..MaxStrokes,SH #= Strokes[Hole,S]]),
+
+  end,
+
+  % Number of strokes (to minimize)
+  Z #= sum([V #!= 5 : V in Strokes.vars]),
+
+  Vars = Strokes.vars ++ Table ++ Ts ++ [Stroke1, Stroke2],
+  solve($[min(Z),glpk,constr,split],Vars),
+  
+  println(stroke1=Stroke1),
+  println(stroke2=Stroke2),
+  println(z=Z),
+  foreach(Hole in 1..NumHoles)
+     println([hole=Hole,distance=Holes[Hole],strokes=Strokes[Hole]=[Table[Strokes[Hole,S]] : S in 1..MaxStrokes]])
+  end,
+  nl,
+  % fail,
+  
+  nl.
+go => true.
