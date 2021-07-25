@@ -32,42 +32,37 @@
    already a directed path from "Do Tests?" to "Buy It?".
    """
 
-good = 1 lemon = 2
-Distributions of variable condition (num:0)
-2.00000 =>    6333  (0.633300)
-1.00000 =>    3667  (0.366700)
+   Distributions of variable condition
+   lemon      =>    5813  (0.581300)
+   good       =>    4187  (0.418700)
 
-none = 1 first = 2  both = 3
-Distributions of variable do_tests (num:0)
-3.00000 =>   10000  (1.000000)
+   Distributions of variable do_tests
+   both       =>   10000  (1.000000)
 
-notDone = 1 positive = 2 negative = 3
-Distributions of variable first_test (num:0)
-3.00000 =>   10000  (1.000000)
+   Distributions of variable first_test
+   negative   =>   10000  (1.000000)
 
-notDone = 1 positive = 2 negative = 3
-Distributions of variable second_test (num:0)
-1.00000 =>    3667  (0.366700)
-3.00000 =>    3476  (0.347600)
-2.00000 =>    2857  (0.285700)
+   Distributions of variable second_test
+   notDone    =>    4187  (0.418700)
+   negative   =>    3276  (0.327600)
+   positive   =>    2537  (0.253700)
 
-buy = 1 dont_buy = 2
-Distributions of variable buy_it (num:0)
-2.00000 =>    6333  (0.633300)
-1.00000 =>    3667  (0.366700)
+   Distributions of variable buy_it
+   dont_buy   =>    5813  (0.581300)
+   buy        =>    4187  (0.418700)
 
-Distributions of variable v (num:0)
-0.00000 =>    6333  (0.633300)
-60.00000 =>    3667  (0.366700)
+   Distributions of variable v (num:0)
+   0.00000 =>    5813  (0.581300)
+   60.00000 =>    4187  (0.418700)
 
-Distributions of variable u (num:0)
--13.00000 =>   10000  (1.000000)
+   Distributions of variable u (num:0)
+  -13.00000 =>   10000  (1.000000)
 
-do_tests, first_test, second_test, buy_it, v, u, v+y:
-Distributions of variable (num:0)
-[3, 3, 1, 1, 60, -13, 47]	=>	3667 (0.3667)
-[3, 3, 3, 2, 0, -13, -13]	=>	3476 (0.3476)
-[3, 3, 2, 2, 0, -13, -13]	=>	2857 (0.2857)
+   do_tests, first_test, second_test, buy_it, v, u, v+y:
+   Distributions of variable (num:0)
+   [3, 3, 1, 1, 60, -13, 47]	=>	4187 (0.4187)
+   [3, 3, 3, 2, 0, -13, -13]	=>	3276 (0.3276)
+   [3, 3, 2, 2, 0, -13, -13]	=>	2537 (0.2537)
 
 
   Cf ~/blog/car_buyer.blog
@@ -175,19 +170,18 @@ display(chns)
 # display(plot(chns))
 
 println("\ngood = 1 lemon = 2")
-show_var_dist_pct(chns, :condition)
+show_var_dist_pct(chns, :condition,["good","lemon"])
 
 println("\nnone = 1 first = 2  both = 3")
-show_var_dist_pct(chns, :do_tests)
+show_var_dist_pct(chns, :do_tests,["none","first","both"])
 
 println("\nnotDone = 1 positive = 2 negative = 3")
-show_var_dist_pct(chns, :first_test)
+show_var_dist_pct(chns, :first_test,["notDone","positive","negative"])
 
-println("\nnotDone = 1 positive = 2 negative = 3\n",)
-show_var_dist_pct(chns, :second_test)
+show_var_dist_pct(chns, :second_test,["notDone","positive","negative"])
 
 println("\nbuy = 1 dont_buy = 2\n")
-show_var_dist_pct(chns, :buy_it)
+show_var_dist_pct(chns, :buy_it,["buy","dont_buy"])
 
 println()
 show_var_dist_pct(chns, :v)

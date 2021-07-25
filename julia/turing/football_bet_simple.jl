@@ -6,34 +6,34 @@
    The Netica model use an utility node (u) and a decision node (accept_bet)
    which I try to model here...
 
-   Distributions of variable weather (num:0)
-   1.00000 =>   10000  (1.000000)
+   Distributions of variable weather
+   wet        =>   10000  (1.000000)
 
-   Distributions of variable accept_bet (num:0)
-   2.00000 =>    5072  (0.507200)
-   1.00000 =>    4928  (0.492800)
+   Distributions of variable accept_bet
+   no         =>    5079  (0.507900)
+   yes        =>    4921  (0.492100)
 
-   Distributions of variable result (num:0)
-   1.00000 =>    5924  (0.592400)
-   2.00000 =>    4076  (0.407600)
+   Distributions of variable result
+   melbwins   =>    6027  (0.602700)
+   melbloses  =>    3973  (0.397300)
 
    Distributions of variable u (num:0)
-   20.00000 =>    2972  (0.297200)
-   40.00000 =>    2952  (0.295200)
-   -20.00000 =>    2120  (0.212000)
-   -5.00000 =>    1956  (0.195600)
+   20.00000 =>    3154  (0.315400)
+   40.00000 =>    2873  (0.287300)
+   -20.00000 =>    2048  (0.204800)
+   -5.00000 =>    1925  (0.192500)
 
-  Distributions of variable u_accept_bet_yes (num:0)
-  0.00000 =>    4928  (0.492800)
-  40.00000 =>    2952  (0.295200)
-  -20.00000 =>    2120  (0.212000)
+   Distributions of variable u_accept_bet_yes (num:0)
+   0.00000 =>    5079  (0.507900)
+   40.00000 =>    2873  (0.287300)
+   -20.00000 =>    2048  (0.204800)
 
-  [accept_bet,u]
-  Distributions of variable (num:0)
-  [1, 20]	=>	2972 (0.2972)
-  [2, 40]	=>	2952 (0.2952)
-  [2, -20]	=>	2120 (0.212)
-  [1, -5]	=>	1956 (0.1956)
+   [accept_bet,u]
+   Distributions of variable (num:0)
+   [1, 20]	=>	3154 (0.3154)
+   [2, 40]	=>	2873 (0.2873)
+   [2, -20]	=>	2048 (0.2048)
+   [1, -5]	=>	1925 (0.1925)
 
    Cf ~/blog/football_bet_simple.blog
       ~/webppl/football_bet_simple.wppl
@@ -54,7 +54,7 @@ include("jl_utils.jl")
     melbloses = 2
     
     weather ~ Categorical([0.30,0.70]) # [wet,dry]
-    accept_bet ~ Categorical([0.50,0.50]) # [yes,no]
+    accept_bet ~ Categorical([0.50,0.50]) # [no,yes]
     
     result ~ weather == wet ? Categorical([0.60,0.40]) :  # [melbwins,melbloses]
         Categorical([0.25,0.75])
@@ -89,9 +89,9 @@ chns = sample(model, SMC(), 10_000)
 display(chns)
 # display(plot(chns))
 
-show_var_dist_pct(chns, :weather)
-show_var_dist_pct(chns, :accept_bet)
-show_var_dist_pct(chns, :result)
+show_var_dist_pct(chns, :weather,["wet","dry"])
+show_var_dist_pct(chns, :accept_bet,["no","yes"])
+show_var_dist_pct(chns, :result,["melbwins","melbloses"])
 show_var_dist_pct(chns, :u)
 show_var_dist_pct(chns, :u_accept_bet_yes)
 

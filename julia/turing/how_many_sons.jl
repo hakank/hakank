@@ -46,9 +46,9 @@ include("jl_utils.jl")
 #=
 In this model we know that the "first child" is a son.
 
-Distributions of variable child2 (num:0)
-1.00000 =>    5027  (0.502700)
-2.00000 =>    4973  (0.497300)
+  Distributions of variable child2
+  daughter   =>    5065  (0.506500)
+  son        =>    4935  (0.493500)
 
 =#
 @model function how_many_sons1()
@@ -75,15 +75,16 @@ chns = sample(model, SMC(), 10_000)
 # display(chns)
 # display(plot(chns))
 
-show_var_dist_pct(chns,:child2)
+show_var_dist_pct(chns,:child2,["son","daughter"])
 
 #=
 In this model we only know that one of the children
 - but not which of them - is a son.
 
-Distributions of variable child[2] (num:0)
-1.00000 =>    6751  (0.675100)
-2.00000 =>    3249  (0.324900)
+  Distributions of variable child[2]
+  son        =>    6664  (0.666400)
+  daughter   =>    3336  (0.333600)
+
 =#
 
 @model function how_many_sons2()
@@ -119,4 +120,4 @@ chns = sample(model, PG(5), 10_000)
 # display(chns)
 # display(plot(chns))
 
-show_var_dist_pct(chns,Symbol("child[2]"))
+show_var_dist_pct(chns,Symbol("child[2]"),["son","daughter"])

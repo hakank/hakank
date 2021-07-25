@@ -13,17 +13,21 @@
    """
 
    Also see: https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
-
-
-   Cf ~/blog/lions_tigers_and_bears.blog
-      ~/webppl/lions_tigers_and_bears.wppl
-
     From https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
     """
     Species: lions    Prevalence: 44.44%.
     Species: tigers   Prevalence: 33.33%.
     Species: bears    Prevalence: 22.22%.
     """
+
+   Distributions of variable animal7
+   lion       =>    4526  (0.452600)
+   tiger      =>    3251  (0.325100)
+   bear       =>    2223  (0.222300)
+
+   Cf ~/blog/lions_tigers_and_bears.blog
+      ~/webppl/lions_tigers_and_bears.wppl
+
 
 =#
 
@@ -66,9 +70,11 @@ include("jl_utils.jl")
     true ~ Dirac(o[5] == tiger)
     true ~ Dirac(o[6] == bear)
 
-    probbear7 ~ Dirac(o[7] == bear)
-    problion7 ~ Dirac(o[7] == lion)
-    probtiger7 ~ Dirac(o[7] == tiger)
+    animal7 ~ Dirac(o[7])
+    
+    # probbear7 ~ Dirac(o[7] == bear)
+    # problion7 ~ Dirac(o[7] == lion)
+    # probtiger7 ~ Dirac(o[7] == tiger)
 
 end
 
@@ -79,13 +85,11 @@ num_chains = 4
 # chains = sample(model, Prior(), 10_000)
 
 # chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 1_000)
+chains = sample(model, PG(15), 10_000)
 # chains = sample(model, SMC(1000), 10_000)
-chains = sample(model, IS(), 10_000)
+# chains = sample(model, IS(), 10_000)
 
 #
 display(chains)
 
-show_var_dist_pct(chains,:probbear7)
-show_var_dist_pct(chains,:problion7)
-show_var_dist_pct(chains,:probtiger7)
+show_var_dist_pct(chains,:animal7,["lion","tiger","bear"])

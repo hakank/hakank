@@ -24,18 +24,17 @@
           is about 41-42%. And it's the same as in the talk.
   
   This model:
-
-  white: 1 yellow: 2
-  Distributions of variable involved (num:0)
-  2.00000 =>    5825  (0.582500)
-  1.00000 =>    4175  (0.417500)
+  Distributions of variable involved
+  yellow     =>    5897  (0.589700)
+  white      =>    4103  (0.410300)
 
   Distributions of variable witness_white (num:0)
-  1.00000 =>   10000  (1.000000)
+  1.00000 =>    9999  (0.999900)
+  0.00000 =>       1  (0.000100)
 
   Distributions of variable witness_yellow (num:0)
-  1.00000 =>    5470  (0.547000)
-  0.00000 =>    4530  (0.453000)
+  1.00000 =>    5614  (0.561400)
+  0.00000 =>    4386  (0.438600)
 
   Cf ~/blog/color_of_the_taxi.blog
      ~/psi/color_of_the_taxi.psi
@@ -86,6 +85,6 @@ display(chns)
 # display(plot(chns))
 
 println("white: 1 yellow: 2")
-show_var_dist_pct(chns,:involved)
+show_var_dist_pct(chns,:involved,["white","yellow"])
 show_var_dist_pct(chns,:witness_white)
 show_var_dist_pct(chns,:witness_yellow)

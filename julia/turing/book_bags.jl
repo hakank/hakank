@@ -20,29 +20,29 @@
    Bag1 (7 blue, 3 red): 1 Bag2 (3 blue, 7 red): 2
 
    We've seen 1 blue chip(s).
-   Distributions of variable bag (num:0)
-   1.00000 =>    6994  (0.699400)
-   2.00000 =>    3006  (0.300600)
+   Distributions of variable bag
+   bag1       =>   70262  (0.702620)
+   bag2       =>   29738  (0.297380)
 
    We've seen 2 blue chip(s).
-   Distributions of variable bag (num:0)
-   1.00000 =>    8401  (0.840100)
-   2.00000 =>    1599  (0.159900)
+   Distributions of variable bag
+   bag1       =>   84680  (0.846800)
+   bag2       =>   15320  (0.153200)
 
    We've seen 3 blue chip(s).
-   Distributions of variable bag (num:0)
-   1.00000 =>    9314  (0.931400)
-   2.00000 =>     686  (0.068600)
+   Distributions of variable bag
+   bag1       =>   93152  (0.931520)
+   bag2       =>    6848  (0.068480)
 
    We've seen 4 blue chip(s).
-   Distributions of variable bag (num:0)
-   1.00000 =>    9650  (0.965000)
-   2.00000 =>     350  (0.035000)
+   Distributions of variable bag
+   bag1       =>   90562  (0.905620)
+   bag2       =>    9438  (0.094380)
 
    We've seen 5 blue chip(s).
-   Distributions of variable bag (num:0)
-   1.00000 =>    9871  (0.987100)
-   2.00000 =>     129  (0.012900)
+   Distributions of variable bag
+   bag1       =>   98388  (0.983880)
+   bag2       =>    1612  (0.016120)
 
    Cf ~/blog/book_bags.blog
       ~/webppl/book_bags.wppl
@@ -99,7 +99,7 @@ function run_book_bags(num_blue_chips)
     # display(chs)
     # display(plot(chs))
 
-    show_var_dist_pct(chs,:bag)
+    show_var_dist_pct(chs,:bag,["bag1","bag2"])
     
 end
 

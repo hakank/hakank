@@ -24,10 +24,9 @@
     {"the_better_model":"null"} : 0.242
 
   This Turing.jl model:
-   null model: 1 alternative model: 2:
    Distributions of variable the_better_model (num:0)
-   2.00000 =>    7664  (0.766400)
-   1.00000 =>    2336  (0.233600)
+   alternative model =>    7612  (0.761200)
+   null       =>    2388  (0.238800)
 
 =#
 
@@ -62,6 +61,5 @@ chains = sample(model, SMC(), 10_000)
 display(chains)
 
 
-println("null model: 1 alternative model: 2")
-show_var_dist_pct(chains,:the_better_model)
+show_var_dist_pct(chains,:the_better_model,["null","alternative model"])
 

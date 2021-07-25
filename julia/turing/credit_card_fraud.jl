@@ -13,6 +13,28 @@
    the last 24 hours, and the age and sex of the card holder, respectively.
    """
 
+   Distributions of variable fraud (num:0)
+   1.00000 =>   20244  (0.506100)
+   0.00000 =>   19756  (0.493900)
+
+   Distributions of variable sex
+   male       =>   21678  (0.541950)
+   female     =>   18322  (0.458050)
+
+   Distributions of variable age
+   age_30_to_50 =>   17315  (0.432875)
+   age_above_50 =>   15237  (0.380925)
+   age_below_30 =>    7448  (0.186200)
+
+   Distributions of variable gas (num:0)
+   0.00000 =>   39821  (0.995525)
+   1.00000 =>     179  (0.004475)
+
+   Distributions of variable jewlery (num:0)
+   0.00000 =>   39980  (0.999500)
+   1.00000 =>      20  (0.000500)
+
+
    Cf ~/webppl/credit_card_fraud.wppl
 
 =#
@@ -31,7 +53,7 @@ include("jl_utils.jl")
     
     fraud ~   flip(0.00001)    
     age ~ Categorical(simplex([0.25, 0.40, 0.35]))  # [age_below_30, age_30_to_50, age_above_50]
-    sex ~ Categorical(simplex([0.5,0.5]))           # [make, female]
+    sex ~ Categorical(simplex([0.5,0.5]))           # [male, female]
     
     gas ~ fraud ? flip(0.2) : flip(0.01);
     
@@ -70,7 +92,7 @@ display(chns)
 # display(plot(chns))
 
 show_var_dist_pct(chns, :fraud)
-show_var_dist_pct(chns, :sex)
-show_var_dist_pct(chns, :age)
+show_var_dist_pct(chns, :sex,["male","female"])
+show_var_dist_pct(chns, :age,["age_below_30","age_30_to_50","age_above_50"])
 show_var_dist_pct(chns, :gas)
 show_var_dist_pct(chns, :jewlery)

@@ -13,10 +13,9 @@
    Give that the color of card is green, then the probability 
    of the different cards are:
 
-    all_red: 1 all_green: 2 red_green: 3
-    Distributions of variable selected_card (num:0)
-    2.00000 =>    6672  (0.667200)
-    3.00000 =>    3328  (0.332800)
+   Distributions of variable selected_card
+   all_green  =>   67030  (0.670300)
+   red_green  =>   32970  (0.329700)
 
    I.e. the probability that it's the all green card is 2/3.
 
@@ -76,5 +75,4 @@ chns = sample(model, MH(), 100_000)
 display(chns)
 # display(plot(chns))
 
-println("all_red: 1 all_green: 2 red_green: 3")
-show_var_dist_pct(chns, :selected_card)
+show_var_dist_pct(chns, :selected_card,["all_red","all_green","red_green"])

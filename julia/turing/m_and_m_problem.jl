@@ -21,20 +21,20 @@
 
   Page 7 (the table): The answer is 20/27: ~0.74074.
 
-  Distributions of variable mix0 (num:0)
-  1.00000 =>    7499  (0.749900)
-  2.00000 =>    2501  (0.250100)
-  
-  Distributions of variable mix1 (num:0)
-  2.00000 =>    7499  (0.749900)
-  1.00000 =>    2501  (0.250100)
 
-  colors: brown:1 yellow:2 red:3 green:4 orange:5 tan:6 blue:7
-  Distributions of variable color0 (num:0)
-  2.00000 =>   10000  (1.000000)
+   Distributions of variable mix0
+   mix1994    =>    7442  (0.744200)
+   mix1996    =>    2558  (0.255800)
 
-  Distributions of variable color1 (num:0)
-  4.00000 =>   10000  (1.000000)
+   Distributions of variable mix1
+   mix1996    =>    7442  (0.744200)
+   mix1994    =>    2558  (0.255800)
+
+   Distributions of variable color0
+   yellow     =>   10000  (1.000000)
+
+   Distributions of variable color1
+   green      =>   10000  (1.000000)
 
   Cf ~/webppl/m_and_m_problem.wppl
 
@@ -89,10 +89,9 @@ chns = sample(model, SMC(), 10_000)
 display(chns)
 # display(plot(chns))
 
-show_var_dist_pct(chns,:mix0)
-show_var_dist_pct(chns,:mix1)
+show_var_dist_pct(chns,:mix0,[:mix1994, :mix1996])
+show_var_dist_pct(chns,:mix1,[:mix1994, :mix1996])
 
 println()
-println("colors: brown:1 yellow:2 red:3 green:4 orange:5 tan:6 blue:7")
-show_var_dist_pct(chns,:color0)
-show_var_dist_pct(chns,:color1)
+show_var_dist_pct(chns,:color0,["brown","yellow","red","green","orange","tan","blue"])
+show_var_dist_pct(chns,:color1,["brown","yellow","red","green","orange","tan","blue"])

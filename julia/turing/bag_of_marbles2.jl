@@ -14,6 +14,16 @@
   The answer is 0.234931.
   """
 
+   draw1: The probability of drawing white is the probability for 1.0
+   Distributions of variable draw[1]
+   red        =>  100000  (1.000000)
+
+   Distributions of variable draw[2]
+   blue       =>   47339  (0.473390)
+   red        =>   29353  (0.293530)
+   white      =>   23308  (0.233080)
+
+
   Cf ~/cplint/bag_of_marbles.pl
      ~/blog/bag_of_marbles.blog
      ~/psi/bag_of_marbles.psi
@@ -49,9 +59,9 @@ Distributions of variable draw[2] (num:0)
         # We have to use sum(Int8[...]) since sum([]) throws an error
         draw[t] ~ Categorical(
                      simplex([
-                            start[white] - sum(Int8[draw[i]==white for i in 1:t-1]),
-                            start[blue]  - sum(Int8[draw[i]==blue  for i in 1:t-1]),
-                            start[red]   - sum(Int8[draw[i]==red   for i in 1:t-1])
+                            start[white] - sum([draw[i] == white ? 1 : 0 for i in 1:t-1]),
+                            start[blue]  - sum([draw[i] == blue  ? 1 : 0 for i in 1:t-1]),
+                            start[red]   - sum([draw[i] == red   ? 1 : 0 for i in 1:t-1])
                             ])
                             )
     end
@@ -63,17 +73,14 @@ end
 model = bag_of_marbles()
 num_chains = 4
 
-# chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
+# chains = sample(model, Prior(), 100_000)
 chains = sample(model, MH(), 100_000)
-
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 10_000)
-
-# chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
+# chains = sample(model, PG(15), 10_000)
+# chains = sample(model, SMC(), 10_000)
+# chains = sample(model, IS(),10_000)
 
 display(chains)
 
-show_var_dist_pct(chains,Symbol("draw[1]"))
 println("\ndraw1: The probability of drawing white is the probability for 1.0")
-show_var_dist_pct(chains,Symbol("draw[2]"))
+show_var_dist_pct(chains,Symbol("draw[1]"),["white","blue","red"])
+show_var_dist_pct(chains,Symbol("draw[2]"),["white","blue","red"])

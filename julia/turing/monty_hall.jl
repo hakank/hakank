@@ -10,6 +10,13 @@
   Which mean that if we selected d1 it will be 1/3 chance of being the price door.
   Changing to d3 would - however - give a 2/3 change of getting the price.
 
+
+  Distributions of variable prize
+  door3      =>    6685  (0.668500)
+  door1      =>    3312  (0.331200)
+  door2      =>       3  (0.000300)
+
+
   See ~/blog/monty_hall.blog
       ~/psi/monty_hall.psi
       ~/webppl/monty_hall.wppl
@@ -53,23 +60,12 @@ end
 model = monty_hall()
 num_chains = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-
+# chains = sample(model, Prior(), 10_000)
 chains = sample(model, MH(), 10_000)
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, PG(20), 1_000)
-
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, IS(), 10_000)
-
 # chains = sample(model, SMC(), 10_000)
-
-
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chains)
 
 display(chains)
 
-show_var_dist_pct(chains, :prize)
+show_var_dist_pct(chains, :prize,["door1","door2","door3"])

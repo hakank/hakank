@@ -90,15 +90,22 @@ display(chains)
 
 # This is correct (according to the video)
 #=
-Summary Statistics
-            parameters      mean       std   naive_se      mcse         ess      rhat
-                Symbol   Float64   Float64    Float64   Float64     Float64   Float64
+   Summary Statistics
+            parameters      mean       std   naive_se      mcse         ess      rhat   ess_per_sec 
+                Symbol   Float64   Float64    Float64   Float64     Float64   Float64       Float64 
 
-                  cats    3.0000    0.0000     0.0000    0.0000         NaN       NaN
-            enticement    1.2009    0.5322     0.0013    0.0090   2218.9994    1.0026
-       enticement_fish    0.0783    0.2686     0.0007    0.0043   2703.4937    1.0026
-  enticement_milkshake    0.8600    0.3470     0.0009    0.0058   2345.7527    1.0017
-    enticement_nothing    0.0617    0.2407     0.0006    0.0041   2176.3555    1.0048
+            enticement    1.2108    0.5429     0.0014    0.0093   2253.8077    1.0013       70.4381
+  enticement_milkshake    0.8532    0.3539     0.0009    0.0061   2150.1791    1.0013       67.1994
+       enticement_fish    0.0824    0.2750     0.0007    0.0046   2344.6207    1.0014       73.2763
+    enticement_nothing    0.0642    0.2452     0.0006    0.0041   2630.1451    1.0013       82.1997
+                  cats    2.9992    0.0403     0.0001    0.0008   2814.4694    1.0013       87.9604
+
+
+   Distributions of variable enticement
+   milkshake  =>  136546  (0.853413)
+   fish       =>   13181  (0.082381)
+   no_enticement =>   10273  (0.064206)
+
 =#
 enticements = []
 enticements_dict = Dict(1=>"milkshake",2=>"fish",3=>"no_enticement")
@@ -133,11 +140,8 @@ enticements_dict = Dict(1=>"milkshake",2=>"fish",3=>"no_enticement")
         enticement_nothing   ~ Bernoulli(1.0)
     end
 
-    # println("enticement:$(enticements_dict[$enticement]) cats:$cats")
-
     # We observe 3 cats
-    true ~ Dirac(cats == 3) # || begin Turing.@addlogprob! -Inf; return; end
-    # push!(enticements,[enticements_dict[enticement],cats])
+    true ~ Dirac(cats == 3)
 
     return enticement
 end
@@ -148,10 +152,11 @@ num_chains = 4
 # chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
 chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 # chains = sample(model, MH(), 40_000)
-
 # chains = sample(model, PG(20), MCMCThreads(), 1000, num_chains)
+# chains = sample(model, SMC(), MCMCThreads(), 1000, num_chains)
+# chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
 
 display(chains)
 
-println("\nEnticement: milkshake:1 fish:2 no_enticement:3")
-show_var_dist_pct(chains, :enticement)
+show_var_dist_pct(chains, :enticement,["milkshake","fish","no_enticement"])
+

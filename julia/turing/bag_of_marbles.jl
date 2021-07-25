@@ -14,6 +14,13 @@
   The answer is 0.234931.
   """
 
+  draw1: The probability of drawing white is the probability for 1.0
+  Distributions of variable draw1
+  blue       =>   47204  (0.472040)
+  red        =>   29283  (0.292830)
+  white      =>   23513  (0.235130)
+
+
   Cf ~/cplint/bag_of_marbles.pl
      ~/blog/bag_of_marbles.blog
      ~/psi/bag_of_marbles.psi
@@ -25,16 +32,6 @@
 
 using Turing, StatsPlots, DataFrames
 include("jl_utils.jl")
-
-#=
-Distributions of variable draw1 (num:0)
-2.00000 =>   46948  (0.469480)
-3.00000 =>   29289  (0.292890)
-1.00000 =>   23763  (0.237630)
-
-White is 1 so the probability is 0.237630
-
-=#
 
 @model function bag_of_marbles()
 
@@ -64,18 +61,17 @@ end
 model = bag_of_marbles()
 num_chains = 4
 
-# HH has problem with this!
-# chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-# chains = sample(model, MH(), 100_000)
+# chains = sample(model, Prior(), 100_000)
+chains = sample(model, MH(), 100_000)
 
-# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chains = sample(model, PG(15), 10_000)
+# chains = sample(model, SMC(), 10_000)
 
 # Note: IS don't generate chains the same way as MH, PG, and SMC!
-chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
+# chains = sample(model, IS(), 10_000)
 
 display(chains)
 
-show_var_dist_pct(chains,:draw0)
+show_var_dist_pct(chains,:draw0,["white","blue","red"])
 println("\ndraw1: The probability of drawing white is the probability for 1.0")
-show_var_dist_pct(chains,:draw1)
+show_var_dist_pct(chains,:draw1,["white","blue","red"])

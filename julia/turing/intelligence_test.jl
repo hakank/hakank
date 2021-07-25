@@ -23,32 +23,32 @@
     parameters      mean       std   naive_se      mcse         ess      rhat   ess_per_sec 
         Symbol   Float64   Float64    Float64   Float64     Float64   Float64       Float64 
 
-    difficulty    1.3884    0.4874     0.0049    0.0084   2934.7246    1.0003      658.0100
+    difficulty    1.4083    0.4915     0.0049    0.0101   2853.3277    1.0002      526.7358
   intelligence    2.0000    0.0000     0.0000    0.0000         NaN       NaN           NaN
-         grade    1.3391    0.6354     0.0064    0.0112   2916.3569    1.0000      653.8917
-        letter    0.7667    0.4230     0.0042    0.0072   3047.0152    0.9999      683.1873
-           sat    1.1860    0.3891     0.0039    0.0069   2992.7395    0.9999      671.0178
+         grade    1.3519    0.6449     0.0064    0.0105   3016.3692    1.0005      556.8339
+        letter    0.7597    0.4273     0.0043    0.0072   2982.1758    1.0003      550.5216
+           sat    1.1925    0.3943     0.0039    0.0072   3001.3436    0.9999      554.0601
 
 
-  Distributions of variable grade (num:0)
-  1.00000 =>    7507  (0.750700)
-  2.00000 =>    1595  (0.159500)
-  3.00000 =>     898  (0.089800)
+  Distributions of variable grade
+  a          =>    7420  (0.742000)
+  b          =>    1641  (0.164100)
+  c          =>     939  (0.093900)
 
-  Distributions of variable intelligence (num:0)
-  2.00000 =>   10000  (1.000000)
+  Distributions of variable intelligence
+  high       =>   10000  (1.000000)
 
-  Distributions of variable difficulty (num:0)
-  1.00000 =>    6116  (0.611600)
-  2.00000 =>    3884  (0.388400)
+  Distributions of variable difficulty
+  easy       =>    5917  (0.591700)
+  hard       =>    4083  (0.408300)
 
   Distributions of variable letter (num:0)
-  1.00000 =>    7667  (0.766700)
-  0.00000 =>    2333  (0.233300)
+  1.00000 =>    7597  (0.759700)
+  0.00000 =>    2403  (0.240300)
 
-  Distributions of variable sat (num:0)
-  1.00000 =>    8140  (0.814000)
-  2.00000 =>    1860  (0.186000)
+  Distributions of variable sat
+  high       =>    8075  (0.807500)
+  low        =>    1925  (0.192500)
 
 
   Cf ~/blog/intelligence_test.blog
@@ -110,8 +110,8 @@ chns = sample(model, SMC(), 10_000)
 display(chns)
 # display(plot(chns))
 
-show_var_dist_pct(chns, :grade)
-show_var_dist_pct(chns, :intelligence)
-show_var_dist_pct(chns, :difficulty)
+show_var_dist_pct(chns, :grade,["a","b","c"])
+show_var_dist_pct(chns, :intelligence,["low","high"])
+show_var_dist_pct(chns, :difficulty,["easy","hard"])
 show_var_dist_pct(chns, :letter)
-show_var_dist_pct(chns, :sat)
+show_var_dist_pct(chns, :sat,["high","low"])
