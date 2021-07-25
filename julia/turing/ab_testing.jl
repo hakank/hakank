@@ -69,32 +69,36 @@ mean(rateB - rateA): 0.22276908208667892
     rateA ~ Beta(1,1) # priors
     rateB ~ Beta(1,1)
 
-    obsSA ~ Binomial(nA,rateA) # likelihood
-    obsSB ~ Binomial(nB,rateB)
+    # obsSA ~ Binomial(nA,rateA) # likelihood
+    # obsSB ~ Binomial(nB,rateB)
 
-    # This variant don't work!
-    # sA ~ Binomial(nA,rateA) # likelihood
-    # sB ~ Binomial(nB,rateB)
-    # sA == obsSA || begin Turing.@addlogprob! -Inf; return; end
-    # sB == obsSB || begin Turing.@addlogprob! -Inf; return; end
+    # Variant if we also want the numbers sA and sB
+    sA ~ Binomial(nA,rateA) # likelihood
+    sB ~ Binomial(nB,rateB)
+    true ~ Dirac(sA == obsSA)
+    true ~ Dirac(sB == obsSB)
 
+    rateAGtRateB ~ Dirac(rateA > rateB)
+    rateBGtRateA ~ Dirac(rateB > rateA)    
 end
 
 model = ab_testing(16,16,6,10)
 # model = ab_testing(160,160,60,100)
 num_chains = 4
 # chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
 # chains = sample(model, MH(), 40_000)
 
 # chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
 # chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
 
 # chains = sample(model, Gibbs(MH(:sA,:sB),NUTS(1000,0.65,:rateA,:rateB)), MCMCThreads(), 40_000, num_chains)
 
 display(chains)
 # display(plot(chains))
 
+# Since Turing now has Dirac we don't need this hack...
 df = DataFrame(chains);
 println("mean(rateB > rateA): ", mean(df[!,"rateB"] .> df[!,"rateA"]))
 println("mean(rateB - rateA): ", mean(df[!,"rateB"] .- df[!,"rateA"]))
