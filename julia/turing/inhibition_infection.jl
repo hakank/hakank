@@ -89,5 +89,6 @@ display(chains)
 show_var_dist_pct(chains,:len,1000)
 
 
-genq = generated_quantities(model, chains)
-show_var_dist_pct(genq,1000)
+chains_params = Turing.MCMCChains.get_sections(chns, :parameters)
+genq = generated_quantities(model, chains_params)
+show_var_dist_pct(genq)
