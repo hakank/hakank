@@ -56,41 +56,41 @@ nn = 10_000
 println("theoretical: $(theoretical(y))")
 model = german_tank(y,nn)
 
-num_chains = 4
+num_chns = 4
 
 
 # n: 5005.3523   2889.8752
-# chains = sample(model, Prior(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 40_000, num_chns)
 
 #
-# chains = sample(model, MH(), 40_000)
+# chns = sample(model, MH(), 40_000)
 # 382.1528 +/- 218.3875
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
 # n:398.0311 +/- 321.7577  (it took 63s!)
-# chains = sample(model, PG(20), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, PG(20), 1_000)
+# chns = sample(model, PG(20), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, PG(20), 1_000)
 
 # n: 4999.0273+/-2889.7176
-# chains = sample(model, IS(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, IS(), 10_000)
 
 # n: 956.9097 +/- 1271.8082
-# chains = sample(model, SMC(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, SMC(), 10_000)
 
 
 
 # n: 384.4288 +/- 203.1368
-# chains = sample(model, NUTS(1000,0.65), 40_000)
+# chns = sample(model, NUTS(1000,0.65), 40_000)
 # n: 384.5504 +/- 232.5935  (12.7s)
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
 
 # Error:
 # LoadError: MethodError: no method matching phasepoint(::Random._GLOBAL_RNG, ::Array{Any,1},
-# chains = sample(model, Gibbs(MH(:n),NUTS(1000,0.65,:y)), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, Gibbs(MH(:n),NUTS(10,0.65,:y)), 1_000)
+# chns = sample(model, Gibbs(MH(:n),NUTS(1000,0.65,:y)), MCMCThreads(), 1_000, num_chns)
+# chns = sample(model, Gibbs(MH(:n),NUTS(10,0.65,:y)), 1_000)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains, :n,20)
+show_var_dist_pct(chns, :n,20)

@@ -40,14 +40,15 @@ end
 
 model = sampleElection()
 
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, SMC(), 10_000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, 4)
 
-display(chains)
+display(chns)
 
-chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
-genq = generated_quantities(model, chains_params)
+chns_params = Turing.MCMCChains.get_sections(chns, :parameters)
+genq = generated_quantities(model, chns_params)
 println("Clinton: 0 Trump: 1")
 show_var_dist_pct(genq)

@@ -46,29 +46,29 @@ end
 
 model = bugs_book_2_7_1()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 100_000)
-# chains = sample(model, MH(
+# chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 100_000)
+# chns = sample(model, MH(
 #                        # :alpha => Normal(2,sqrt(2)),
 #                        # :beta => Normal(2,sqrt(2)),
 #                        # :sigma => Gamma(2,2)
-#                        ), MCMCThreads(), 40_000, num_chains)
+#                        ), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, SMC(10_000), MCMCThreads(), 20_000, num_chains)
-chains = sample(model, IS(), 10_000)
+# chns = sample(model, PG(15), MCMCThreads(), 1_000, num_chns)
+# chns = sample(model, SMC(10_000), MCMCThreads(), 20_000, num_chns)
+chns = sample(model, IS(), 10_000)
 
 # Both HMC and NUTS give the following error:
 # ERROR: LoadError: TaskFailedException:
 # TypeError: in typeassert, expected Float64, got a value of type ForwardDiff.Dual{Nothing,Float64,3}
-# chains = sample(model, HMC(0.1,5), MCMCThreads(), 10_000, num_chains) # Error
-# chains = sample(model, NUTS(0.65), MCMCThreads(), 10_000, num_chains) # Error
+# chns = sample(model, HMC(0.1,5), MCMCThreads(), 10_000, num_chns) # Error
+# chns = sample(model, NUTS(0.65), MCMCThreads(), 10_000, num_chns) # Error
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains,:p6 )
-show_var_dist_pct(chains,:y )
-# show_var_dist_pct(chains,:theta )
+show_var_dist_pct(chns,:p6 )
+show_var_dist_pct(chns,:y )
+# show_var_dist_pct(chns,:theta )

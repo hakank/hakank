@@ -62,15 +62,15 @@ end
 
 model = random_walk()
 
-num_chains = 4
-chains = sample(model, MH(), MCMCThreads(), 1000, num_chains)
-# chains = sample(model, MH(), 10_000)
+num_chns = 4
+chns = sample(model, MH(), MCMCThreads(), 1000, num_chns)
+# chns = sample(model, MH(), 10_000)
 
-display(chains)
-show_var_dist_pct(chains, :x)
-show_var_dist_pct(chains, :y)
-show_var_dist_pct(chains, :u,20)
-show_var_dist_pct(chains, :v,20)
+display(chns)
+show_var_dist_pct(chns, :x)
+show_var_dist_pct(chns, :y)
+show_var_dist_pct(chns, :u,20)
+show_var_dist_pct(chns, :v,20)
 
 # for d in data
 #    println(d)

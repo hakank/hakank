@@ -64,19 +64,19 @@ end
 
 model = aircraft_static()
 
-num_chains = 4
-# chains = sample(model, Prior(), 1000)
-# chains = sample(model, MH(), 100_000)
-chains = sample(model, PG(5), 10_000)
-# chains = sample(model, IS(), 10_000)
-# chains = sample(model, SMC(), 40_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
+num_chns = 4
+# chns = sample(model, Prior(), 1000)
+# chns = sample(model, MH(), 100_000)
+chns = sample(model, PG(5), 10_000)
+# chns = sample(model, IS(), 10_000)
+# chns = sample(model, SMC(), 40_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
 
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains, :numAircraft)
+show_var_dist_pct(chns, :numAircraft)
 
 println("\nlocation[1]")
-display(summarystats(chains[Symbol("location[1]")]))
+display(summarystats(chns[Symbol("location[1]")]))

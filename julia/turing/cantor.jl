@@ -55,13 +55,13 @@ end
 
 model = cantor()
 
-num_chains = 4
-# chains = sample(model, MH(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), 100)
+num_chns = 4
+# chns = sample(model, MH(), MCMCThreads(), 1000, num_chns)
+chns = sample(model, MH(), 100)
 
-display(chains)
-show_var_dist_pct(chains, :d,20)
-show_var_dist_pct(chains, :dfinal,20)
-# show_var_dist_pct(chains, :y)
-# show_var_dist_pct(chains, :u,20)
-# show_var_dist_pct(chains, :v,20)
+display(chns)
+show_var_dist_pct(chns, :d,20)
+show_var_dist_pct(chns, :dfinal,20)
+# show_var_dist_pct(chns, :y)
+# show_var_dist_pct(chns, :u,20)
+# show_var_dist_pct(chns, :v,20)

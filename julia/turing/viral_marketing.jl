@@ -60,7 +60,7 @@
 
 
   This Turing model,using
-     chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
+     chns = sample(model, MH(), MCMCThreads(), 100_000, num_chns)
 
   Summary Statistics
   parameters      mean       std   naive_se      mcse           ess      rhat
@@ -158,21 +158,21 @@ end
 
 model = viral_marketing()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 10_000)
+# chns = sample(model, MH(), MCMCThreads(), 100_000, num_chns)
+chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 10_000)
 
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
+# chns = sample(model, PG(15), MCMCThreads(), 1_000, num_chns)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SMC(1000), 10_000)
+# chns = sample(model, IS(), 10_000)
 #
-display(chains)
+display(chns)
 
-chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
-genq = generated_quantities(model, chains_params)
+chns_params = Turing.MCMCChains.get_sections(chns, :parameters)
+genq = generated_quantities(model, chns_params)
 
 show_var_dist_pct(genq)

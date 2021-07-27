@@ -135,16 +135,16 @@ end
 
 model = bugs_book_2_5_1()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 100_000)
-# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 100_000)
+# chns = sample(model, PG(15), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, IS(), 10_000)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains, :ix)
+show_var_dist_pct(chns, :ix)

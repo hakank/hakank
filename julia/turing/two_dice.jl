@@ -23,18 +23,18 @@ end
 # Note: Here we observe c=5 from outside
 model = two_dice(5)
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, PG(20), 1_000) 
-# chains = sample(model, SMC(1000), 1000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, PG(20), 1_000) 
+# chns = sample(model, SMC(1000), 1000)
 
 
-display(chains)
-# display(plot(chains))
-# display(histogram(chains))
-# display(gelmandiag(chains))
+display(chns)
+# display(plot(chns))
+# display(histogram(chns))
+# display(gelmandiag(chns))
 
-show_var_dist_pct(chains, :d1)
-show_var_dist_pct(chains, :d2)
-show_var_dist_pct(chains, :s)
+show_var_dist_pct(chns, :d1)
+show_var_dist_pct(chns, :d2)
+show_var_dist_pct(chns, :s)

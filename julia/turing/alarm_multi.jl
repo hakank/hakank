@@ -84,19 +84,19 @@ end
 
 model = alarm_multi()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 100_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 100_000)
 
-# chains = sample(model, PG(15), 10_000)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, IS(), 10_000)
 #
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains,:earthquake,["heavy","mild","none"])
-show_var_dist_pct(chains,:alarm)
-show_var_dist_pct(chains,:burglary)
+show_var_dist_pct(chns,:earthquake,["heavy","mild","none"])
+show_var_dist_pct(chns,:alarm)
+show_var_dist_pct(chns,:burglary)

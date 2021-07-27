@@ -65,18 +65,18 @@ end
 
 model = urns_and_balls()
 
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
 
-# chains = sample(model, MH(), 40_000)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, MH(), 40_000)
+# chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, PG(20), 40_000)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, IS(), 40_000)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, PG(20), 40_000)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, IS(), 40_000)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains,:draw,["blue","red"])
-show_var_dist_pct(chains,:coin,["tail","head"])
+show_var_dist_pct(chns,:draw,["blue","red"])
+show_var_dist_pct(chns,:coin,["tail","head"])

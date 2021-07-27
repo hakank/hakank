@@ -62,18 +62,18 @@ death:$death
 """)
 model = firing_squad(court_order,death,captain_signals,a_shoots,b_shoots)
 
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
 
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains) # 1.47s
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains) # 1.48s # don't handle Turing.@addlogprob! correct!
-
-
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains) # Too slow!
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains) # 4.1s, don't handle observes!
-
-# chains = sample(model, HMC(0.05,10), MCMCThreads(), 10_000, num_chains) # Nope!
-# chains = sample(model, NUTS(), MCMCThreads(), 10_000, num_chains) # Nope!
+chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns) # 1.47s
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns) # 1.48s # don't handle Turing.@addlogprob! correct!
 
 
-display(chains)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns) # Too slow!
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns) # 4.1s, don't handle observes!
+
+# chns = sample(model, HMC(0.05,10), MCMCThreads(), 10_000, num_chns) # Nope!
+# chns = sample(model, NUTS(), MCMCThreads(), 10_000, num_chns) # Nope!
+
+
+display(chns)

@@ -51,13 +51,13 @@ include("jl_utils.jl")
 end
 
 model = bayesian_network()
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chns)
 
-display(chains)
+display(chns)

@@ -42,36 +42,36 @@ function run_model(gender=missing,height=missing)
 
     model = gender_height(gender,height)
 
-    num_chains = 4
+    num_chns = 4
 
-    # chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
+    # chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
 
-    chains = sample(model, MH(), 10_000)
-    # chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+    chns = sample(model, MH(), 10_000)
+    # chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
-    # chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, PG(20), 1_000)
+    # chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, PG(20), 1_000)
 
-    # chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, IS(), 10_000)
+    # chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, IS(), 10_000)
 
-    # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, SMC(1000), 10_000)
+    # chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, SMC(1000), 10_000)
 
 
-    # chains = sample(model, NUTS(1000,0.65), 1_000)
-    # chains = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
-    # chains = sample(model, Gibbs(MH(:gender),NUTS(10,0.65,:height)), 1_000)
-    # chains = sample(model, Gibbs(MH(:gender),HMC(0.1,5,:height)), 1_000)
-    # chains = sample(model, Gibbs(PG(10,:gender),HMC(0.1,5,:height)), 1_000)
-    # chains = sample(model, Gibbs(MH(:gender),NUTS(1_000,0.65,:height)), 1_000)
+    # chns = sample(model, NUTS(1000,0.65), 1_000)
+    # chns = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
+    # chns = sample(model, Gibbs(MH(:gender),NUTS(10,0.65,:height)), 1_000)
+    # chns = sample(model, Gibbs(MH(:gender),HMC(0.1,5,:height)), 1_000)
+    # chns = sample(model, Gibbs(PG(10,:gender),HMC(0.1,5,:height)), 1_000)
+    # chns = sample(model, Gibbs(MH(:gender),NUTS(1_000,0.65,:height)), 1_000)
 
     if ismissing(height)
-        display(chains)
-        # display(plot(chains))
+        display(chns)
+        # display(plot(chns))
     end
-    show_var_dist_pct(chains, :gender)
-    show_var_dist_pct(chains, :height, 20)
+    show_var_dist_pct(chns, :gender)
+    show_var_dist_pct(chns, :height, 20)
 end
 
 male = 1

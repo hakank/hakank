@@ -31,13 +31,13 @@ n = 15 # number of attempts
 
 model = bda(k,n)
 
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, 4)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, 4)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains, :priorPredictive)
-show_var_dist_pct(chains, :posteriorPredictive)
+show_var_dist_pct(chns, :priorPredictive)
+show_var_dist_pct(chns, :posteriorPredictive)

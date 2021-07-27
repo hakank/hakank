@@ -11,7 +11,6 @@ include("jl_utils.jl")
 
 # Well, using PPL for this is probably not the best approach. :-)
 @model function pi_calc()
-    println("START")
     limit = 10^6
     i = 0 # ~ DiscreteUniform(1,limit)
     n = 1 # ~ DiscreteUniform(1,limit)
@@ -31,16 +30,16 @@ end
 
 model = pi_calc()
 
-num_chains = 4
-# chains = sample(model, MH(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), 10)
+num_chns = 4
+# chns = sample(model, MH(), MCMCThreads(), 1000, num_chns)
+chns = sample(model, MH(), 10)
 
-display(chains)
-# show_var_dist_pct(chains, :x)
-# show_var_dist_pct(chains, :y)
-# show_var_dist_pct(chains, :i)
-# show_var_dist_pct(chains, :n)
-show_var_dist_pct(chains, :ppi)
+display(chns)
+# show_var_dist_pct(chns, :x)
+# show_var_dist_pct(chns, :y)
+# show_var_dist_pct(chns, :i)
+# show_var_dist_pct(chns, :n)
+show_var_dist_pct(chns, :ppi)
 
 
 #=

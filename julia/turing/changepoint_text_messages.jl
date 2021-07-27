@@ -52,36 +52,36 @@ model = change_point_text_messages(data)
 
 #=
 println("Prior distribution")
-chains_prior = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-display(chains_prior)
-display(plot(chains_prior))
+chns_prior = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+display(chns_prior)
+display(plot(chns_prior))
 =#
 
 println("\nPosterior distribution")
-num_chains = 4
+num_chns = 4
 
 # 2.06s tau 42+/- 8.37 rhat ~1.5
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 30_000, num_chains)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, MH(), MCMCThreads(), 30_000, num_chns)
 
 # 1.94s tau 37.5+/- 21.2 (rhat ok)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains,drop_warmup=true)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns,drop_warmup=true)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
 
 
 
 ## LoadError: MethodError: Cannot `convert` an object of type Float64 to an object of type Symbol
-# chains = sample(model, Gibbs(NUTS(0.65,5,1,1,0,:lambda_1,:lambda_2), PG(20,:tau) ), 1000)
-# chains = sample(model, Gibbs(HMC(0.1,5,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chains)
+# chns = sample(model, Gibbs(NUTS(0.65,5,1,1,0,:lambda_1,:lambda_2), PG(20,:tau) ), 1000)
+# chns = sample(model, Gibbs(HMC(0.1,5,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chns)
 
 # Error
-# chains = sample(model, Gibbs(HMCDA(0.15,0.65,0.3,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chains) # Error...
+# chns = sample(model, Gibbs(HMCDA(0.15,0.65,0.3,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chns) # Error...
 
-display(chains)
-# plot(chains)
-show_var_dist_pct(chains, :tau)
-show_var_dist_pct(chains, :lambda_1,20)
-show_var_dist_pct(chains, :lambda_2,20)
+display(chns)
+# plot(chns)
+show_var_dist_pct(chns, :tau)
+show_var_dist_pct(chns, :lambda_1,20)
+show_var_dist_pct(chns, :lambda_2,20)

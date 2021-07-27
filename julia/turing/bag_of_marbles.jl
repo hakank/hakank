@@ -59,19 +59,19 @@ include("jl_utils.jl")
 end
 
 model = bag_of_marbles()
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 100_000)
-chains = sample(model, MH(), 100_000)
+# chns = sample(model, Prior(), 100_000)
+chns = sample(model, MH(), 100_000)
 
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, SMC(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, SMC(), 10_000)
 
-# Note: IS don't generate chains the same way as MH, PG, and SMC!
-# chains = sample(model, IS(), 10_000)
+# Note: IS don't generate chns the same way as MH, PG, and SMC!
+# chns = sample(model, IS(), 10_000)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains,:draw0,["white","blue","red"])
+show_var_dist_pct(chns,:draw0,["white","blue","red"])
 println("\ndraw1: The probability of drawing white is the probability for 1.0")
-show_var_dist_pct(chains,:draw1,["white","blue","red"])
+show_var_dist_pct(chns,:draw1,["white","blue","red"])

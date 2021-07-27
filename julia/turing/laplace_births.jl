@@ -68,13 +68,13 @@ end
 
 model = laplace_births()
 
-num_chains = 4
-# chains = sample(model, Prior(), 100_000)
-# chains = sample(model, MH(), 100_000)
-# chains = sample(model, PG(15), 10_000)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, IS(), 100_000)
+num_chns = 4
+# chns = sample(model, Prior(), 100_000)
+# chns = sample(model, MH(), 100_000)
+# chns = sample(model, PG(15), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, IS(), 100_000)
 
-display(chains)
+display(chns)
 
 

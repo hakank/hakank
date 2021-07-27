@@ -41,13 +41,13 @@ n2=10
 println("k1:$(k1) n1:$(n1) k2:$(k2) n2:$(n2)")
 model = bda2(k1,n1,k2,2)
 
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, 4)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, 4)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains, :posteriorPredictive1)
-show_var_dist_pct(chains, :posteriorPredictive2)
+show_var_dist_pct(chns, :posteriorPredictive1)
+show_var_dist_pct(chns, :posteriorPredictive2)

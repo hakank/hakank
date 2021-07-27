@@ -72,19 +72,19 @@ ys = vcat(rand(Normal(0,0.5),13), rand(Normal(4,0.5),20) )
 
 model = changepoint(ys)
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
-chains = sample(model, MH(), 100_000)
+# chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
+chns = sample(model, MH(), 100_000)
 
 
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, PG(20), 1_000)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, PG(20), 1_000)
 
-display(chains[[:cp,:mu1,:mu2]]) # We are not interested in :ys
+display(chns[[:cp,:mu1,:mu2]]) # We are not interested in :ys
 
-show_var_dist_pct(chains, :cp)
-show_var_dist_pct(chains, :mu1)
-show_var_dist_pct(chains, :mu2)
+show_var_dist_pct(chns, :cp)
+show_var_dist_pct(chns, :mu1)
+show_var_dist_pct(chns, :mu2)

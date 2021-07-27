@@ -88,29 +88,29 @@ end
 
 model = negative_binomial_test()
 
-num_chains = 4
+num_chns = 4
 
 
-# chains = sample(model, Prior(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 40_000, num_chns)
 #
-# chains = sample(model, MH(), 40_000)
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, MH(), 40_000)
+chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, PG(20), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, PG(20), 1_000)
+# chns = sample(model, PG(20), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, PG(20), 1_000)
 
-# chains = sample(model, IS(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, IS(), 10_000)
 
-# chains = sample(model, SMC(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, SMC(), 10_000)
 
-# chains = sample(model, NUTS(1000,0.65), 40_000)
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), 40_000)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, Gibbs(MH(:n),NUTS(1000,0.65,:y)), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, Gibbs(MH(:n),NUTS(10,0.65,:y)), 1_000)
+# chns = sample(model, Gibbs(MH(:n),NUTS(1000,0.65,:y)), MCMCThreads(), 1_000, num_chns)
+# chns = sample(model, Gibbs(MH(:n),NUTS(10,0.65,:y)), 1_000)
 
-display(chains)
+display(chns)
 
-show_var_dist(chains,:y)
+show_var_dist(chns,:y)

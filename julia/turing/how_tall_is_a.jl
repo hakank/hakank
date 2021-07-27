@@ -64,21 +64,21 @@ end
 #=
 println("Model 1")
 model = how_tall_is_1(170)
-# chains = sample(model, Prior(), 10_000)
-chains = sample(model, MH(), 100_000)
-# chains = sample(model, PG(15), 1_000)
-# chains = sample(model, SMC(1000), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+chns = sample(model, MH(), 100_000)
+# chns = sample(model, PG(15), 1_000)
+# chns = sample(model, SMC(1000), 10_000)
+# chns = sample(model, IS(), 10_000)
 
-#chains = sample(model, NUTS(), 1000)
-# chains = sample(model, HMC(0.1, 5), 1000)
-# chains = sample(model, HMCDA(0.15, 0.65), 1000) 
-# chains = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
+#chns = sample(model, NUTS(), 1000)
+# chns = sample(model, HMC(0.1, 5), 1000)
+# chns = sample(model, HMCDA(0.15, 0.65), 1000) 
+# chns = sample(model, Gibbs(MH(:gender),NUTS(1000,0.65,:height)), 1_000)
 
-display(chains)
+display(chns)
 println("male: 1 female: 2")
-show_var_dist_pct(chains,:gender)
-# show_var_dist_pct(chains,:height,20)
+show_var_dist_pct(chns,:gender)
+# show_var_dist_pct(chns,:height,20)
 =#
 
 
@@ -115,16 +115,16 @@ end
 #=
 println("\n\nModel 2")
 model = how_tall_is_2()
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 100_000)
-chains = sample(model, PG(15), 1_000)
-# chains = sample(model, SMC(1000), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 100_000)
+chns = sample(model, PG(15), 1_000)
+# chns = sample(model, SMC(1000), 10_000)
+# chns = sample(model, IS(), 10_000)
 
-display(chains)
+display(chns)
 println("male: 1 female: 2")
-show_var_dist_pct(chains,Symbol("gender[1]")) 
-show_var_dist_pct(chains,Symbol("gender[2]"))                
+show_var_dist_pct(chns,Symbol("gender[1]")) 
+show_var_dist_pct(chns,Symbol("gender[2]"))                
 =#
 
 #= 
@@ -168,14 +168,14 @@ end
 #=
 println("\n\nModel 3")
 model = how_tall_is_3()
-# chains = sample(model, Prior(), 10_000)
-chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, IS(), 10_000)
-display(chains)
+# chns = sample(model, Prior(), 10_000)
+chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, IS(), 10_000)
+display(chns)
 println("male: 1 female: 2")
-show_var_dist_pct(chains,:a_is_male) 
+show_var_dist_pct(chns,:a_is_male) 
 =#
 
 #
@@ -229,9 +229,9 @@ end
 model = how_tall_is_3_2()
 # Comment from Seth:
 # "no inference necessary! We just sample directly from the prior-predictive distribution"
-chains = sample(model, Prior(), 10_000)
-display(chains)
-show_var_dist_pct(chains,:isfemale_A) 
+chns = sample(model, Prior(), 10_000)
+display(chns)
+show_var_dist_pct(chns,:isfemale_A) 
 # Testing with IS(), same result
-# chains = sample(model, IS(), 10_000)
-# display(chains)
+# chns = sample(model, IS(), 10_000)
+# display(chns)

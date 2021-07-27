@@ -24,10 +24,9 @@
    E(f1 = pir | P terminates) = 1/2 / 3/4 = 2/3
    """
 
-   goldfish: 1 piranha: 2
-   Distributions of variable f1 (num:0)
-   2.00000 =>    6622  (0.662200)
-   1.00000 =>    3378  (0.337800)
+   Distributions of variable f1
+   piranha    =>    6596  (0.659600)
+   goldfish   =>    3404  (0.340400)
 
    The exact probability of first fish is a piranha is 0.6666
 
@@ -56,15 +55,15 @@ end
 
 model = piranha_puzzle()
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, PG(15), 10_000)
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(15), 10_000)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, IS(), 10_000)
 
-display(chains)
+display(chns)
 println("goldfish: 1 piranha: 2")
-show_var_dist_pct(chains,:f1) 
+show_var_dist_pct(chns,:f1,["goldfish","piranha"]) 
 
 
 

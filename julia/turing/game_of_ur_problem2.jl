@@ -63,18 +63,18 @@ end
 
 model = game_of_ur_problem2()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(20), 1_000)
-chains = sample(model, SMC(1000), 40_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(20), 1_000)
+chns = sample(model, SMC(1000), 40_000)
+# chns = sample(model, IS(), 10_000)
 
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
 println("Distribution of len")
-show_var_dist_pct(chains, :len)
+show_var_dist_pct(chns, :len)

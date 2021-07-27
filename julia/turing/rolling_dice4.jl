@@ -164,24 +164,24 @@ end
 function run_model(len=0)
     model = dice_6_throws(len)
 
-    num_chains = 4
+    num_chns = 4
 
-    # chains = sample(model, Prior(), 10_000)
+    # chns = sample(model, Prior(), 10_000)
 
-    # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-    chains = sample(model, MH(), 100_000)
-    # chains = sample(model, MH(), 1_000)
+    # chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+    chns = sample(model, MH(), 100_000)
+    # chns = sample(model, MH(), 1_000)
 
-    # chains = sample(model, PG(15), 10_000)
+    # chns = sample(model, PG(15), 10_000)
 
-    # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, SMC(1000), 10_000)
-    # chains = sample(model, IS(), 10_000)
+    # chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, SMC(1000), 10_000)
+    # chns = sample(model, IS(), 10_000)
 
-    display(chains)
+    display(chns)
 
     if len == 0
-        show_var_dist_pct(chains,:len,1000)
+        show_var_dist_pct(chns,:len,1000)
     else
         println("\ntheoretical_prob($len): ", theoretical_prob(len))
     end

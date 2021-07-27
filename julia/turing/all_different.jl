@@ -61,17 +61,17 @@ n = 6
 base = 6
 model = all_different(n,base,true)
 
-num_chains = 4
-# chains = sample(model, Prior(), 1000)
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SGLD(), 10_000)
+num_chns = 4
+# chns = sample(model, Prior(), 1000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SGLD(), 10_000)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-# show_var_dist_pct(chains, :num_duplicates)
-show_var_dist_pct(chains, :num_unique)
+# show_var_dist_pct(chns, :num_duplicates)
+show_var_dist_pct(chns, :num_unique)

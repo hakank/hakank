@@ -28,19 +28,19 @@ end
 
 model = bugs_book_2_1_2()
 
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, PG(15), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
 
-chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains,:y)
-show_var_dist_pct(chains,:p2)
+show_var_dist_pct(chns,:y)
+show_var_dist_pct(chns,:p2)

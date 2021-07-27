@@ -84,21 +84,21 @@ end
 
 model = ab_testing(16,16,6,10)
 # model = ab_testing(160,160,60,100)
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, MH(), 40_000)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+# chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, MH(), 40_000)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, Gibbs(MH(:sA,:sB),NUTS(1000,0.65,:rateA,:rateB)), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, Gibbs(MH(:sA,:sB),NUTS(1000,0.65,:rateA,:rateB)), MCMCThreads(), 40_000, num_chns)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
 # Since Turing now has Dirac we don't need this hack...
-df = DataFrame(chains);
+df = DataFrame(chns);
 println("mean(rateB > rateA): ", mean(df[!,"rateB"] .> df[!,"rateA"]))
 println("mean(rateB - rateA): ", mean(df[!,"rateB"] .- df[!,"rateA"]))

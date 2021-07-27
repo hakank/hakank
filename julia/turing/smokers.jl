@@ -104,28 +104,28 @@ end
 
 function run_smokers(mode,pp1,pp2)
     model = smokers(mode,pp1,pp2)
-    num_chains = 4
+    num_chns = 4
 
-    # chains = sample(model, Prior(), 10_000)
+    # chns = sample(model, Prior(), 10_000)
 
-    # chains = sample(model, MH(), 10_000)
-    # chains = sample(model, PG(15), 1_000)
-    # chains = sample(model, SMC(1000), 10_000)
-    chains = sample(model, SMC(1000), 1_000)
+    # chns = sample(model, MH(), 10_000)
+    # chns = sample(model, PG(15), 1_000)
+    # chns = sample(model, SMC(1000), 10_000)
+    chns = sample(model, SMC(1000), 1_000)
 
-    # chains = sample(model, IS(), 10_000)
+    # chns = sample(model, IS(), 10_000)
 
     #
-    # display(chains)
-    # show_var_dist_pct(chains,:len,1000)
+    # display(chns)
+    # show_var_dist_pct(chns,:len,1000)
 
     # println("prob return value t[$a,$b]:")
-    # genq = generated_quantities(model, chains)
+    # genq = generated_quantities(model, chns)
     # show_var_dist_pct(genq,1000)
-    chains_params = Turing.MCMCChains.get_sections(chains, :parameters)
-    genq = generated_quantities(model, chains_params)
+    chns_params = Turing.MCMCChains.get_sections(chns, :parameters)
+    genq = generated_quantities(model, chns_params)
     
-    show_var_dist_pct(chains,:prob)
+    show_var_dist_pct(chns,:prob)
     
     println("mean $(mean(genq))")
     return mean(genq)

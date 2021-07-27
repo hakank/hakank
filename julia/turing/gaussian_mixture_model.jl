@@ -36,29 +36,29 @@ end
 
 model = gaussian_mixture_model()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 100_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), MCMCThreads(), 100_000, num_chns)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 100_000)
 
-# chains = sample(model, PG(15), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, PG(15), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(), 40_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, SMC(), 40_000)
+# chns = sample(model, IS(), 10_000)
 
 #
-# chains = sample(model, Gibbs(HMC(0.1,5,:a,:b),PG(15,:p,:a_is_greater_than_b)), 10_000)
-# chains = sample(model, Gibbs(NUTS(1000,0.65,:a,:b),PG(15,:p,:a_is_greater_than_b)), 10_000)
+# chns = sample(model, Gibbs(HMC(0.1,5,:a,:b),PG(15,:p,:a_is_greater_than_b)), 10_000)
+# chns = sample(model, Gibbs(NUTS(1000,0.65,:a,:b),PG(15,:p,:a_is_greater_than_b)), 10_000)
 
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-# show_var_dist_pct(chains,:a,20)
-# show_var_dist_pct(chains,:b,20)
-# show_var_dist_pct(chains,:p,20)
+# show_var_dist_pct(chns,:a,20)
+# show_var_dist_pct(chns,:b,20)
+# show_var_dist_pct(chns,:p,20)
 
-show_var_dist_pct(chains,:a_is_greater_than_b)
+show_var_dist_pct(chns,:a_is_greater_than_b)

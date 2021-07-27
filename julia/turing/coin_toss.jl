@@ -37,23 +37,23 @@ end
 
 model = coin_toss(61)
 
-num_chains = 1
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
+num_chns = 1
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
 
-# chains = sample(model, MH(), 40_000)
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, MH(), 40_000)
+chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, PG(20), 10_000)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains) # Nope: does not handle the observation
-# chains = sample(model, IS(), 40_000)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, PG(20), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns) # Nope: does not handle the observation
+# chns = sample(model, IS(), 40_000)
 
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chns)
 
-display(chains)
+display(chns)
 
 
-show_var_dist_pct(chains, :p,20)
-show_var_dist_pct(chains, :yObs,20)
-show_var_dist_pct(chains, :y,20)
+show_var_dist_pct(chns, :p,20)
+show_var_dist_pct(chns, :yObs,20)
+show_var_dist_pct(chns, :y,20)

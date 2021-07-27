@@ -64,15 +64,15 @@ data = [-27.020, 3.570, 8.191, 9.898, 9.603, 9.945, 10.056]
 
 model = seven_scientists(data)
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, 4)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, 4)
 
-chains = sample(model, NUTS(1000,0.65), 10_000)
-# chains = sample(model, HMC(0.1,10), 10_000)
+chns = sample(model, NUTS(1000,0.65), 10_000)
+# chns = sample(model, HMC(0.1,10), 10_000)
 
-display(chains)
+display(chns)
 

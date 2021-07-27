@@ -58,14 +58,14 @@ include("jl_utils.jl")
 end
 
 model = monty_hall()
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
-chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(20), 1_000)
-# chains = sample(model, IS(), 10_000)
-# chains = sample(model, SMC(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(20), 1_000)
+# chns = sample(model, IS(), 10_000)
+# chns = sample(model, SMC(), 10_000)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains, :prize,["door1","door2","door3"])
+show_var_dist_pct(chns, :prize,["door1","door2","door3"])

@@ -69,25 +69,25 @@ ys     = [28.0,  8.0, -3.0,  7.0, -1.0,  1.0, 18.0, 12.0]
 sigmas = [15.0, 10.0, 16.0, 11.0,  9.0, 11.0, 10.0, 18.0]
 model = eight_schools(ys,sigmas)
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
 
-chains = sample(model, MH(), 100_000)
-# chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
+chns = sample(model, MH(), 100_000)
+# chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, PG(20), 10_000)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, PG(20), 10_000)
 
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, IS(), 10_000)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 10_000)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SMC(1000), 10_000)
 
 
-# chains = sample(model, NUTS(1000,0.65), 1_000)
-# chains = sample(model, HMC(0.1,5), 1_000)
+# chns = sample(model, NUTS(1000,0.65), 1_000)
+# chns = sample(model, HMC(0.1,5), 1_000)
 
-display(chains)
-display(plot(chains))
+display(chns)
+display(plot(chns))

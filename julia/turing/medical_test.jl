@@ -61,15 +61,14 @@ function run_medical_test()
         pd in [1/10000.0, 1/1000.0],
         r in [0.99, 0.999,0.9999]
         println("\n\ntest:$t disease:$d prob disease:$pd reliability:$r ")
-        model = medical_test(t, d,pd,r)
+        # model = medical_test(t, d,pd,r)
+        model = medical_test(t, d)
 
-        num_chains = 4
-
-        # chains = sample(model, Prior(), MCMCThreads(), 40_000, num_chains)
-        chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-        # display(chains)
-        show_var_dist(chains,:test)
-        show_var_dist(chains,:disease)
+        # chns = sample(model, Prior(), 40_000)
+        chns = sample(model, MH(), 100_000)
+        # display(chns)
+        show_var_dist(chns,:test)
+        show_var_dist(chns,:disease)
 
     end
 end

@@ -61,17 +61,17 @@ end
 
 model = urn_puzzle()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, PG(15), 10_000)
-# chains = sample(model, SMC(1000), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(15), 10_000)
+# chns = sample(model, SMC(1000), 10_000)
+# chns = sample(model, IS(), 10_000)
 #
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains,:pblack)
-show_var_dist_pct(chains,:ball)
+show_var_dist_pct(chns,:pblack)
+show_var_dist_pct(chns,:ball)

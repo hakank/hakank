@@ -43,7 +43,7 @@
 #=
 
 # using
-#   chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+#   chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
 #
 Julia> @time include("coin_tosses2.jl")
 Problem 1
@@ -155,21 +155,21 @@ end
 function run_problem(problem)
     println("Problem $problem")
     model = coin_tosses(problem)
-    num_chains = 4
+    num_chns = 4
 
-    # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-    # chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, MH(), 10_000)
+    # chns = sample(model, MH(), MCMCThreads(), 100_000, num_chns)
+    # chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, MH(), 10_000)
 
-    # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
+    # chns = sample(model, PG(15), MCMCThreads(), 1_000, num_chns)
 
-    # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, SMC(1000), 10_000)
-    chains = sample(model, IS(), 10_000)
+    # chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, SMC(1000), 10_000)
+    chns = sample(model, IS(), 10_000)
 
-    display(chains)
-    show_var_dist_pct(chains,:prob)
-    show_var_dist_pct(chains,:t)    
+    display(chns)
+    show_var_dist_pct(chns,:prob)
+    show_var_dist_pct(chns,:t)    
 end
 
 for problem in 1:4

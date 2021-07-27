@@ -49,12 +49,12 @@ end
 
 model = asia()
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, 4)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, 4)
 
-display(chains)
+display(chns)
 

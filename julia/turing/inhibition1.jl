@@ -23,40 +23,34 @@ include("jl_utils.jl")
 
     e1 ~ c1 ? flip(0.3) : c2 ? flip(0.2) : flip(0.0)
     e2 ~ c2 ? flip(0.4) : c1 ? flip(0.2) : flip(0.0)
-    ee ~ flip(0.5)
+    # ee ~ flip(0.5)
     ee ~ Dirac(e1 || e2)
 
-    true ~ Dirac(c1)
-    true ~ Dirac(c2)
-
-    return ee
-
+    true ~ Dirac(c1 == true)
+    true ~ Dirac(c2 == true)
 end
 
 model = inhibition1()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
+# chns = sample(model, Prior(), 10_000)
 
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 10_000)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 10_000)
 
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, PG(15), 1_000)
+# chns = sample(model, PG(15), MCMCThreads(), 1_000, num_chns)
+# chns = sample(model, PG(15), 1_000)
 
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(1000), 10_000)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, SMC(1000), 10_000)
 
-# chains = sample(model, IS(), 1_000)
+# chns = sample(model, IS(), 1_000)
 
 #
-display(chains)
-show_var_dist_pct(chains,:c1,20)
-show_var_dist_pct(chains,:c2,20)
-show_var_dist_pct(chains,:e1,20)
-show_var_dist_pct(chains,:e2,20)
-
-println("\nee:")
-genq = generated_quantities(model, chains)
-show_var_dist_pct(genq,10)
+display(chns)
+show_var_dist_pct(chns,:c1,20)
+show_var_dist_pct(chns,:c2,20)
+show_var_dist_pct(chns,:e1,20)
+show_var_dist_pct(chns,:e2,20)
+show_var_dist_pct(chns,:ee,20)

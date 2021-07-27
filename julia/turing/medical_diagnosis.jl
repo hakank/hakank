@@ -111,20 +111,20 @@ include("jl_utils.jl")
 end
 
 model = medical_diagnosis()
-num_chains = 4
+num_chns = 4
 
 # HH has problem with this!
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 40_000)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 40_000)
 
-# chains = sample(model, PG(20), MCMCThreads(), 1000, num_chains)
-chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, PG(20), MCMCThreads(), 1000, num_chns)
+chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
 
-# Note: IS don't generate chains the same way as MH, PG, and SMC!
-# chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
+# Note: IS don't generate chns the same way as MH, PG, and SMC!
+# chns = sample(model, IS(), MCMCThreads(), 1000, num_chns)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains,:flu)
-show_var_dist_pct(chains,:gastroenteritis)
-show_var_dist_pct(chains,:bronchitis)
+show_var_dist_pct(chns,:flu)
+show_var_dist_pct(chns,:gastroenteritis)
+show_var_dist_pct(chns,:bronchitis)

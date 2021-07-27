@@ -60,24 +60,24 @@ end
 
 model = rolling_dice3()
 
-num_chains = 2
+num_chns = 2
 
-# chains = sample(model, Prior(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, PG(15), 1_000)
-# # chains = sample(model, IS(), 10_000)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(15), 1_000)
+# # chns = sample(model, IS(), 10_000)
 
-chains = sample(model, SMC(), 10_000)
+chns = sample(model, SMC(), 10_000)
 
-# chains = sample(model, HMC(0.1,10), 10_000) # nope
+# chns = sample(model, HMC(0.1,10), 10_000) # nope
 
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chns)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains,Symbol("dice[1]")) # Note: :"dice[1]" DON't work!
-show_var_dist_pct(chains,Symbol("dice[2]"))
-show_var_dist_pct(chains,:s)
+show_var_dist_pct(chns,Symbol("dice[1]")) # Note: :"dice[1]" DON't work!
+show_var_dist_pct(chns,Symbol("dice[2]"))
+show_var_dist_pct(chns,:s)
 

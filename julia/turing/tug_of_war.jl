@@ -73,40 +73,40 @@ model = tug_of_war(num_people)
 
 
 
-num_chains = 4
+num_chns = 4
 num_samples = num_people * 10_000 # 10_000
 
 # High rhat
-chains = sample(model,  MH(), MCMCThreads(), num_samples, num_chains)
+chns = sample(model,  MH(), MCMCThreads(), num_samples, num_chns)
 
 # PG(20) doesn't differentiate the people's pull/strength
-# chains = sample(model,  PG(20), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  PG(20), MCMCThreads(), num_samples, num_chns)
 
-# chains = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chns)
 
 # IS() doesn't differentiate the people's pull/strength
-# chains = sample(model,  IS(), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  IS(), MCMCThreads(), num_samples, num_chns)
 
 # High rhat. Alot of rejected proposals
-# chains = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chns)
 
 
-# chains = sample(model,  HMCDA(200, 0.65, 0.3), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  HMCDA(200, 0.65, 0.3), MCMCThreads(), num_samples, num_chns)
 
-# chains = sample(model,  NUTS(1000, 0.65), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  NUTS(1000, 0.65), MCMCThreads(), num_samples, num_chns)
 
 # Too slow
-# chains = sample(model,  SMC(), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  SMC(), MCMCThreads(), num_samples, num_chns)
 
 
 
 # Good: slightly high rhat
-# chains = sample(model,  NUTS(1000,0.65), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  NUTS(1000,0.65), MCMCThreads(), num_samples, num_chns)
 
-display(chains)
-display(gelmandiag(chains))
-# display(plot(chains))
-df = DataFrame(chains)
+display(chns)
+display(gelmandiag(chns))
+# display(plot(chns))
+df = DataFrame(chns)
 
 
 # Show the latent strength

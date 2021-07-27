@@ -64,15 +64,15 @@ nA = 20 # number of trial (sent mail) for A
 nB = 25 # number of trial (sent mail) for B
 model = ab_test_simple(nA,nB)
 
-num_chains = 4
-# chains = sample(model, Prior(), 1000)
-# chains = sample(model, MH(), 40_000)
+num_chns = 4
+# chns = sample(model, Prior(), 1000)
+# chns = sample(model, MH(), 40_000)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-credible_interval(chains,"diff",0.9)
+credible_interval(chns,"diff",0.9)

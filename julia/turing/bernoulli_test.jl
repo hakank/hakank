@@ -37,22 +37,22 @@ y = rand(Bernoulli(0.3),1_000)
 println("length(y):$(length(y))")
 # println("y:$y")
 model = bernoulli_test(y)
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
 
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
 
-# chains = sample(model, PG(20), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, PG(20), 1_000)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains) # Nope: does not handle the observation
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, PG(20), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, PG(20), 1_000)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns) # Nope: does not handle the observation
+# chns = sample(model, IS(), 10_000)
 
-# chains = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), 10_000)
 
 
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chns)
 
-display(chains)
+display(chns)

@@ -15,7 +15,7 @@ Here we test nn=10_000 and 1_000
 
 Testing y=[10,256,202,97]
 
-* nn = 10_000 using MH (4 chains * 10-000)
+* nn = 10_000 using MH (4 chns * 10-000)
 Summary Statistics
   parameters       mean        std   naive_se      mcse         ess      rhat
       Symbol    Float64    Float64    Float64   Float64     Float64   Float64
@@ -77,46 +77,48 @@ data = []
 end
 
 y = [10,256,202,97]
-# y = [60] # Mosteller's version
-nn = 10_000
+# y = [1,60] # Mosteller's version
+# nn = 10_000
+nn = 1000
 println("theoretical: $(theoretical(y))")
 model = german_tank_int(y,nn)
 
-num_chains = 4
+num_chns = 4
 
 # mean: 4969.6869 +/- 2869.6797
-# chains = sample(model, Prior(), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, Prior(), MCMCThreads(), 40_000, num_chns)
 
 # mean 381.6883+/- 212.6124
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
+chns = sample(model, MH(), 10_000)
+# chns = sample(model, MH(), MCMCThreads(), 100_000, num_chns)
 
 # Mean: 398.16 +/309.91
-# chains = sample(model, PG(20), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, PG(20), 1_000)
+# chns = sample(model, PG(20), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, PG(20), 1_000)
 
 # mean: 4989.9474 +/- 2873.9598
-# chains = sample(model, IS(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, IS(), 10_000)
 
 # mean: 949.1512+/- 1261.4199
-# chains = sample(model, SMC(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SMC(), 10_000)
 
 
-# chains = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chains)
+# chns = sample(model, NUTS(1000,0.65), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, NUTS(1000), 10_000)
+# chns = sample(model, Gibbs(MH(:zlabels),NUTS(1000,0.65,:m,:b,:sigma)), MCMCThreads(), 40_000, num_chns)
 
-display(chains)
+display(chns)
 
 # d = sort(make_hash(data))
 # display(d)
 
-show_var_dist_pct(chains, :n,10)
+show_var_dist_pct(chns, :n,10)
 
 # Note: One have to treat IS special
 # See https://github.com/TuringLang/Turing.jl/issues/1467
 using StatsFuns
 using LinearAlgebra
-println("estimate using lp:")
-display(dot(chains[:n], softmax(chains[:lp]))) # 384.09706644203965
+println("estimate using lp (for IS()):")
+display(dot(chns[:n], softmax(chns[:lp]))) # 384.09706644203965

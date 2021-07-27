@@ -44,7 +44,7 @@ end
 """
 Show a sorted Dict with keys, values and percentages
 Example
-julia> show_var_dist(chains,:d1)
+julia> show_var_dist(chns,:d1)
 
 Distributions of variable d1
  1 =>   13654  0.341350
@@ -53,14 +53,14 @@ Distributions of variable d1
 
 Note: I'm not sure how to get more than one variables
 E.g. this don't work now:
- julia> show_var_dist(chains,[:d1,:d2])
+ julia> show_var_dist(chns,[:d1,:d2])
 """
-function show_var_dist(chains, var)
+function show_var_dist(chns, var)
 
-    if var in chains.name_map.parameters
+    if var in chns.name_map.parameters
         println("Distributions of variable $var")
-        len = length(vcat(chains[var]...)) # handle multiple chains
-        for kv in sort(make_hash(chains[var]))
+        len = length(vcat(chns[var]...)) # handle multiple chains
+        for kv in sort(make_hash(chns[var]))
             @printf "%-3.5f => % 7d  %2.6f\n" kv[1] kv[2] kv[2]/len
         end
     else
@@ -73,17 +73,17 @@ Show distribution of a variable in a MCMCChain
 Sort the dictionary in order of decreasing occurrence (percentage)
 Examples:
 
- - show_var_dist_pct(chains, :n)       show all entries
+ - show_var_dist_pct(chns, :n)       show all entries
 
- - show_var_dist_pct(chains, :n, 10)  show first 10 entries (e.g. for large tables)
+ - show_var_dist_pct(chns, :n, 10)  show first 10 entries (e.g. for large tables)
 """
-function show_var_dist_pct(chains::Chains, var, num=0)
+function show_var_dist_pct(chns::Chains, var, num=0)
 
-    if var in chains.name_map.parameters
+    if var in chns.name_map.parameters
         println("Distributions of variable $var (num:$num)")
-        len = length(vcat(chains[var]...)) # handle multiple chains
+        len = length(vcat(chns[var]...)) # handle multiple chains
         c = 0
-        for kv in sort(collect(make_hash(chains[var])),by=x->x[2],rev=true)
+        for kv in sort(collect(make_hash(chns[var])),by=x->x[2],rev=true)
             c += 1
             if (num == 0) || (num > 0 && c <= num)
                 @printf "%-3.5f => % 7d  (%2.6f)\n" kv[1] kv[2] kv[2]/len
@@ -104,16 +104,16 @@ and present the values from array `a` where the position in
 
 Examples:
 
- - show_var_dist_pct(chains, :x, ["yellow","blue", "green"])
+ - show_var_dist_pct(chns, :x, ["yellow","blue", "green"])
 
 
 """
-function show_var_dist_pct(chains::Chains, var, a::Array)
+function show_var_dist_pct(chns::Chains, var, a::Array)
 
-    if var in chains.name_map.parameters
+    if var in chns.name_map.parameters
         println("Distributions of variable $var")
-        len = length(vcat(chains[var]...)) # handle multiple chains
-        for kv in sort(collect(make_hash(chains[var])),by=x->x[2],rev=true)
+        len = length(vcat(chns[var]...)) # handle multiple chains
+        for kv in sort(collect(make_hash(chns[var])),by=x->x[2],rev=true)
             ix = round(Int,kv[1])
             @printf "%-10s => % 7d  (%2.6f)\n" a[ix] kv[2] kv[2]/len
         end
@@ -179,15 +179,15 @@ https://mhtess.github.io/bdappl/chapters/03-simpleModels.html
 
 Example in credible_interval_test.jl:
 
-julia> credible_interval(chains, "posteriorPredictive",0.90)
+julia> credible_interval(chns, "posteriorPredictive",0.90)
 
   credible interval for posteriorPredictive with mass 0.9: (10.000000 .. 18.000000)
 """
-function credible_interval(chains::Chains, var, credMass=0.95)
+function credible_interval(chns::Chains, var, credMass=0.95)
     # Using sort and vcat don't work, and this reshaping is clunky. TODO!
-    sss = prod(size(chains[var]))
-    chainsCat = reshape(chains[var],sss,1)
-    sortedPts = sort(chainsCat,dims=1)
+    sss = prod(size(chns[var]))
+    chnsCat = reshape(chns[var],sss,1)
+    sortedPts = sort(chnsCat,dims=1)
     len = length(sortedPts)
     ciIdxInc = round(Int,ceil(credMass*len))
     nCIs = len - ciIdxInc
@@ -205,8 +205,8 @@ end
 """
 Return mean value of the variable var in the chain
 """
-function mean_val(chains::Chains, var)
-    mean(chains[var])
+function mean_val(chns::Chains, var)
+    mean(chns[var])
 end
 
 """

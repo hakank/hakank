@@ -44,49 +44,49 @@ model = change_point(data)
 
 #=
 println("Prior distribution")
-chains_prior = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-display(chains_prior)
-display(plot(chains_prior))
+chns_prior = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+display(chns_prior)
+display(plot(chns_prior))
 =#
 
 println("\nPosterior distribution")
-num_chains = 2
+num_chns = 2
 
 # 3.17s tau 40.32+/- 3.77 (rhat ~ 1.1!) 10_000 samples
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
 # 3.17s tau 41.5249+/- 3.03 (rhat ~ 1.04!) 30_000 samples
-# chains = sample(model, MH(), MCMCThreads(), 30_000, num_chains)
+# chns = sample(model, MH(), MCMCThreads(), 30_000, num_chns)
 
 # Too long...
-# chains = sample(model, Gibbs(MH(:tau),PG(20,:lamba_1,:lambda_2)), MCMCThreads(), 10000, num_chains)
+# chns = sample(model, Gibbs(MH(:tau),PG(20,:lamba_1,:lambda_2)), MCMCThreads(), 10000, num_chns)
 
 # 1.2s tau 57.6+/- 32.1(!) (rhat ok) 1_000 samples
 # 3.3s tau 55.98+/- 32.0(!) (rhat ok) 10_000 samples
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
 
 # 16.2s tau 42.2 +/- 8.5 (rhat 1.05..) 1000 samples
-# chains = sample(model, PG(20), MCMCThreads(), 1000, num_chains)
+# chns = sample(model, PG(20), MCMCThreads(), 1000, num_chns)
 
 # 2.37s tau 41.1+/- 2.62 (rhat > 2!)  with samples: 1_000
 # 17.3s tai 41.28+/- 2.84 (rhat ok)  with samples: 10_000
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
 
 # 33.1s tau 40.87+/- 2.91 (rhat ~ 1.03)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
 
 
 # # LoadError: MethodError: Cannot `convert` an object of type Float64 to an object of type Symbol
-# chains = sample(model, Gibbs(NUTS(0.65,5,:lambda_1,:lambda_2), PG(20,:tau) ), 1000)
+# chns = sample(model, Gibbs(NUTS(0.65,5,:lambda_1,:lambda_2), PG(20,:tau) ), 1000)
 
 # 19.34s tau 41.4+/-5.18 (rhat ok)
-chains = sample(model, Gibbs(HMC(0.1,5,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chains)
+chns = sample(model, Gibbs(HMC(0.1,5,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chns)
 
 # Error
-# chains = sample(model, Gibbs(HMCDA(0.15,0.65,0.3,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chains) # Error...
+# chns = sample(model, Gibbs(HMCDA(0.15,0.65,0.3,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chns) # Error...
 
-display(chains)
-# plot(chains)
+display(chns)
+# plot(chns)
 
-show_var_dist_pct(chains, :tau)
-show_var_dist_pct(chains, :lambda_1,20)
-show_var_dist_pct(chains, :lambda_2,20)
+show_var_dist_pct(chns, :tau)
+show_var_dist_pct(chns, :lambda_1,20)
+show_var_dist_pct(chns, :lambda_2,20)

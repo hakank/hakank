@@ -104,16 +104,16 @@ bs = [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,
 
 model = ab_testing2(as,bs)
 
-num_chains = 4
-# chains = sample(model, Prior(), 1000)
-# chains = sample(model, MH(), 100_000)
-# chains = sample(model, PG(5), 10_000)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SGLD(), 10_000)
+num_chns = 4
+# chns = sample(model, Prior(), 1000)
+# chns = sample(model, MH(), 100_000)
+# chns = sample(model, PG(5), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SGLD(), 10_000)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-credible_interval(chains,"diff",0.9)
+credible_interval(chns,"diff",0.9)

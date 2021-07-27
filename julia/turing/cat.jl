@@ -79,11 +79,11 @@ end
 #=
 println("Model 1:")
 model = cat1()
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 1000)
-display(chains)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 1000)
+display(chns)
 =#
 
 
@@ -148,15 +148,15 @@ end
 
 println("\n\nModel 2:")
 model = cat2()
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 40_000, num_chains)
-# chains = sample(model, MH(), 40_000)
-# chains = sample(model, PG(20), MCMCThreads(), 1000, num_chains)
-# chains = sample(model, SMC(), MCMCThreads(), 1000, num_chains)
-# chains = sample(model, IS(), MCMCThreads(), 1000, num_chains)
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+chns = sample(model, MH(), MCMCThreads(), 40_000, num_chns)
+# chns = sample(model, MH(), 40_000)
+# chns = sample(model, PG(20), MCMCThreads(), 1000, num_chns)
+# chns = sample(model, SMC(), MCMCThreads(), 1000, num_chns)
+# chns = sample(model, IS(), MCMCThreads(), 1000, num_chns)
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains, :enticement,["milkshake","fish","no_enticement"])
+show_var_dist_pct(chns, :enticement,["milkshake","fish","no_enticement"])
 

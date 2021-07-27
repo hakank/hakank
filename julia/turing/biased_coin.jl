@@ -50,7 +50,7 @@ end
 println("Model 1: Probability of tossing a head (no observation)")
 model = biased_coin("no observation")
 
-num_chains = 4
+num_chns = 4
 # chs = sample(model, Prior(), 1000)
 # chs = sample(model, MH(), 10_000)
 # chs = sample(model, PG(15), 10_000)
@@ -71,7 +71,7 @@ show_var_dist_pct(chs,:coinHead)
 println("\nModel 2: Probability of tossing a head given that we know it's biased")
 model = biased_coin("observe biased")
 
-num_chains = 4
+num_chns = 4
 # chs = sample(model, Prior(), 1000)
 # chs = sample(model, MH(), 10_000)
 # chs = sample(model, PG(15), 10_000)

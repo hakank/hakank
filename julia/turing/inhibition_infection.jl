@@ -69,26 +69,26 @@ end
 
 model = inhibition_infection()
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
+# chns = sample(model, Prior(), 10_000)
 
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), 10_000)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), 10_000)
 
-# chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
-# chains = sample(model, PG(15), 1_000)
+# chns = sample(model, PG(15), MCMCThreads(), 1_000, num_chns)
+# chns = sample(model, PG(15), 1_000)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-chains = sample(model, SMC(1000), 10_000)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+chns = sample(model, SMC(1000), 10_000)
 
-# chains = sample(model, IS(), 1_000)
+# chns = sample(model, IS(), 1_000)
 
 #
-display(chains)
-show_var_dist_pct(chains,:len,1000)
+display(chns)
+show_var_dist_pct(chns,:len,1000)
 
 
-chains_params = Turing.MCMCChains.get_sections(chns, :parameters)
-genq = generated_quantities(model, chains_params)
+chns_params = Turing.MCMCChains.get_sections(chns, :parameters)
+genq = generated_quantities(model, chns_params)
 show_var_dist_pct(genq)

@@ -45,6 +45,7 @@ include("jl_utils.jl")
     # for i in 1:n
     #     digit[i] ~ DiscreteUniform(0,base-1)
     # end
+    # Faster:
     digit ~ filldist(DiscreteUniform(0,base-1), n)
     missingValues = tzeros(base)
     for i in 0:base-1
@@ -57,16 +58,16 @@ base = 4
 n = 6
 model = probability_of_missing_values(base,n)
 
-num_chains = 4
-# chains = sample(model, Prior(), 1000)
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, PG(5), 10_000)
-# chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, SMC(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, SGLD(), 10_000)
+num_chns = 4
+# chns = sample(model, Prior(), 1000)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(5), 10_000)
+# chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, SMC(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, SGLD(), 10_000)
 
-display(chains)
-# display(plot(chains))
+display(chns)
+# display(plot(chns))
 
-show_var_dist_pct(chains,:numMissing)
+show_var_dist_pct(chns,:numMissing)

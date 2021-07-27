@@ -45,44 +45,44 @@ end
 model = birthday(23)
 # model = birthday()
 
-
+num_chns = 4
 println("Prior distribution")
-chains_prior = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-display(chains_prior)
-# display(plot(chains_prior))
+chns_prior = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+display(chns_prior)
+# display(plot(chns_prior))
 
 println("\nPosterior distribution")
-num_chains = 1
+num_chns = 4
 
-# chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains)
-# chains = sample(model, MH(), MCMCThreads(), 30_000, num_chains)
+# chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns)
+# chns = sample(model, MH(), MCMCThreads(), 30_000, num_chns)
 
-chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns) # ORIG
 
-# chains = sample(model, PG(20), MCMCThreads(), 1000, num_chains)
+# chns = sample(model, PG(20), MCMCThreads(), 1000, num_chns)
 
-# chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
+# chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
 
 
 
 ## LoadError: MethodError: Cannot `convert` an object of type Float64 to an object of type Symbol
-# chains = sample(model, Gibbs(NUTS(0.65,5,1,1,0,:lambda_1,:lambda_2), PG(20,:tau) ), 1000)
-# chains = sample(model, Gibbs(HMC(0.1,5,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chains)
+# chns = sample(model, Gibbs(NUTS(0.65,5,1,1,0,:lambda_1,:lambda_2), PG(20,:tau) ), 1000)
+# chns = sample(model, Gibbs(HMC(0.1,5,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chns)
 
 # Error
-# chains = sample(model, Gibbs(HMCDA(0.15,0.65,0.3,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chains) # Error...
+# chns = sample(model, Gibbs(HMCDA(0.15,0.65,0.3,:lambda_1,:lambda_2), PG(20,:tau) ), MCMCThreads(), 1000, num_chns) # Error...
 
 # Skipping this since it contains a lot of uninteresting zbirthdays[b]
-# display(chains)
+# display(chns)
 println("t:")
-display(Chains(chains[:t]))
+display(chns[:t])
 
-# plot(chains)
+# plot(chns)
 
-if :num_people in chains.name_map.parameters
+if :num_people in chns.name_map.parameters
     println("num_people:")
-    display(Chains(chains[:num_people]))
+    display(chns[:num_people])
 end
 
-# df = DataFrame(chains)
+# df = DataFrame(chns)
 # display(df)

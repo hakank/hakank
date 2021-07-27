@@ -70,11 +70,11 @@ Distributions of variable (num:20)
 
 
 Problem 4
-Chains MCMC chain (10000×14×4 Array{Float64,3}):
+chns MCMC chain (10000×14×4 Array{Float64,3}):
 
 Iterations        = 1:10000
 Thinning interval = 1
-Chains            = 1, 2, 3, 4
+chns            = 1, 2, 3, 4
 Samples per chain = 10000
 parameters        = i, tosses[1], tosses[2], tosses[3], tosses[4], tosses[5], tosses[6], tosses[7], tosses[8], tosses[9], tosses[10]
 internals         = le, lp, weight
@@ -192,25 +192,25 @@ end
 function run_problem(problem)
     println("Problem $problem")
     model = coin_tosses(problem)
-    num_chains = 4
+    num_chns = 4
 
     # HH has problem with this!
-    # chains = sample(model, MH(), MCMCThreads(), 100_000, num_chains)
-    # chains = sample(model, MH(), 100_000)
+    # chns = sample(model, MH(), MCMCThreads(), 100_000, num_chns)
+    # chns = sample(model, MH(), 100_000)
 
-    # chains = sample(model, PG(15), MCMCThreads(), 1_000, num_chains)
+    # chns = sample(model, PG(15), MCMCThreads(), 1_000, num_chns)
 
-    # chains = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chains)
-    # chains = sample(model, SMC(1000), 10_000)
+    # chns = sample(model, SMC(1000), MCMCThreads(), 10_000, num_chns)
+    # chns = sample(model, SMC(1000), 10_000)
 
-    chains = sample(model, IS(), MCMCThreads(), 10_000, num_chains)
+    chns = sample(model, IS(), MCMCThreads(), 10_000, num_chns)
 
-    display(chains)
+    display(chns)
     println("Probability of problem $problem:")
 
-    show_var_dist_pct(chains,:i)
+    show_var_dist_pct(chns,:i)
     if problem != 4
-        show_var_dist_pct(chains,:t)
+        show_var_dist_pct(chns,:t)
     end
 end
 

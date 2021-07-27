@@ -52,14 +52,14 @@ k=15
 n=20
 println("We observe $(k) successes of $(n) attempts")
 model = supermodel(k,n)
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-# chains = sample(model, PG(15), 10_000)
-# chains = sample(model, IS(), 10_000)
-chains = sample(model, SMC(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, IS(), 10_000)
+chns = sample(model, SMC(), 10_000)
 
-display(chains)
+display(chns)
 
 
-show_var_dist_pct(chains,:the_better_model,["null","alternative model"])
+show_var_dist_pct(chns,:the_better_model,["null","alternative model"])
 

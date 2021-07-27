@@ -22,7 +22,7 @@ using Turing, StatsPlots, DataFrames
         strength[p] ~ truncated(Normal(0,1),0,10) # latent
         lazy[p]     ~ Bernoulli(0.1)
         # Note: This works, but since the pulls[p] is a derived
-        #       value, then the pulls data are not in the chains.
+        #       value, then the pulls data are not in the chns.
         #       So we have to restore this in post process.
         if lazy[p]
             pulls[p] = strength[p] / 2.0
@@ -47,44 +47,44 @@ model = tug_of_war(num_people)
 
 
 
-num_chains = 4
+num_chns = 4
 num_samples = 10_000 # 10_000
 
 # 2.1s Good rhat
-chains = sample(model,  MH(), MCMCThreads(), num_samples, num_chains)
+chns = sample(model,  MH(), MCMCThreads(), num_samples, num_chns)
 
 # PG(20) doesn't differentiate the people's pull/strength!
 # Very slow: 24.6s
-# chains = sample(model,  PG(20), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  PG(20), MCMCThreads(), num_samples, num_chns)
 
 # IS() doesn't differentiate the people's pull/strength
-# chains = sample(model,  IS(), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  IS(), MCMCThreads(), num_samples, num_chns)
 
 
 # Error
-# chains = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chns)
 
-# chains = sample(model,  HMCDA(200, 0.65, 0.3), MCMCThreads(), num_samples, num_chains)
-# chains = sample(model,  NUTS(1000, 0.65), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  HMCDA(200, 0.65, 0.3), MCMCThreads(), num_samples, num_chns)
+# chns = sample(model,  NUTS(1000, 0.65), MCMCThreads(), num_samples, num_chns)
 
 # Too slow
-# chains = sample(model,  SMC(), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  SMC(), MCMCThreads(), num_samples, num_chns)
 
-# chains = sample(model,  NUTS(1000,0.65), MCMCThreads(), num_samples, num_chains) # Error
+# chns = sample(model,  NUTS(1000,0.65), MCMCThreads(), num_samples, num_chns) # Error
 # Not correct: lazy is all 0 and neither strength nor pulls are "ordered"
 # (and lots of rejected proposals)
-# chains = sample(model,  Gibbs(NUTS(1000,0.65,:pulls,:strength),MH(:lazy)), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  Gibbs(NUTS(1000,0.65,:pulls,:strength),MH(:lazy)), MCMCThreads(), num_samples, num_chns)
 
 
-# chains = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chains) # error
+# chns = sample(model,  HMC(0.1, 5), MCMCThreads(), num_samples, num_chns) # error
 # This works: 6.6s. Good rhats.
-# chains = sample(model,  Gibbs(HMC(0.1,5,:pulls,:strength),MH(:lazy)), MCMCThreads(), num_samples, num_chains)
+# chns = sample(model,  Gibbs(HMC(0.1,5,:pulls,:strength),MH(:lazy)), MCMCThreads(), num_samples, num_chns)
 
 
-display(chains)
-# display(gelmandiag(chains))
-# display(plot(chains))
-df = DataFrame(chains)
+display(chns)
+# display(gelmandiag(chns))
+# display(plot(chns))
+df = DataFrame(chns)
 
 
 # Show the latent strength
@@ -103,7 +103,7 @@ if "pulls[1]" in names(df)
 else
    println("Restoring pulls")
    #
-   # Since the pulls are not available from the chains we have to restore it
+   # Since the pulls are not available from the chns we have to restore it
    # (Note: This is one of the disadvantages that Turing has compared to e.g. WebPPL!)
    println("\npulls")
    pulls = []

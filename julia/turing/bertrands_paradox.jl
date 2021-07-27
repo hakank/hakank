@@ -91,19 +91,19 @@ include("jl_utils.jl")
 end
 
 model = bertrands_paradox()
-num_chains = 4
+num_chns = 4
 
 
-# chains = sample(model, Prior(), 10_000, num_chains)
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, PG(5), 1_000)
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), 10_000, num_chns)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(5), 1_000)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, IS(), 10_000)
 
 
 
-display(chains)
+display(chns)
 
-show_var_dist_pct(chains, :coin1,["gold","silver"])
-show_var_dist_pct(chains, :coin2,["gold","silver"])
-show_var_dist_pct(chains, :box,["b1","b2","b3"])
+show_var_dist_pct(chns, :coin1,["gold","silver"])
+show_var_dist_pct(chns, :coin2,["gold","silver"])
+show_var_dist_pct(chns, :box,["b1","b2","b3"])

@@ -88,21 +88,21 @@ end
 num_people = 5
 model = true_skill(num_people)
 
-num_chains = 4
+num_chns = 4
 
-# chains = sample(model, Prior(), 10_000)
-# chains = sample(model, MH(), 10_000)
-chains = sample(model, PG(15), 10_000)
-# chains = sample(model, SMC(), 10_000)
-# chains = sample(model, IS(), 10_000)
+# chns = sample(model, Prior(), 10_000)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(15), 10_000)
+# chns = sample(model, SMC(), 10_000)
+# chns = sample(model, IS(), 10_000)
 
-display(chains)
+display(chns)
 
-# display(plot(chains))
-# display(histogram(chains))
-# display(gelmandiag(chains)) # requires number of chains >= 2
+# display(plot(chns))
+# display(histogram(chns))
+# display(gelmandiag(chns)) # requires number of chns >= 2
 
-df = DataFrame(chains);
+df = DataFrame(chns);
 
 # Show the latent skills
 for p1 in 1:num_people-1, p2 in p1+1:num_people

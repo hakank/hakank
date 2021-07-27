@@ -51,7 +51,7 @@ bTrialCount=700
 bSuccessCount=16
 model = beta_comparison(aTrialCount,aSuccessCount,bTrialCount,bSuccessCount)
 
-num_chains = 4
+num_chns = 4
 # chs = sample(model, Prior(), 1000)
 # chs = sample(model, MH(), 10_000)
 # chs = sample(model, PG(15), 10_000)

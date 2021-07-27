@@ -124,8 +124,8 @@ end
 
 model = cards()
 
-num_chains = 4
-# chains = sample(model, Prior(), MCMCThreads(), 1000, num_chains)
-chains = sample(model, MH(), MCMCThreads(), 10_000, num_chains) # 1.47s
+num_chns = 4
+# chns = sample(model, Prior(), MCMCThreads(), 1000, num_chns)
+chns = sample(model, MH(), MCMCThreads(), 10_000, num_chns) # 1.47s
 
-display(chains)
+display(chns)
