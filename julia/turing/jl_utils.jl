@@ -9,6 +9,7 @@
 =#
 
 using Printf, Distributions
+using LinearAlgebra
 
 """
 Return a Dict of the elements and their occurences
@@ -219,57 +220,62 @@ For a version with handcrafted probability, see `DiscreteNonParametric`.
 """
 UniformDraw(xs) = DiscreteNonParametric(xs, ones(length(xs)) ./ length(xs))
 
-# This works. but one have to call with _varinfo
-#  Example
-#  # ...
-#  observe(_varinfo, d1+d2 == ss)
-# Note: We return !cond so it can be called with
-#     observe(_varinfo, d1+d2 == ss) && return
-# function observe(_varinfo,cond)
-#    cond || Turing.@addlogprob! -Inf
-#    return !cond
-# end
 
-#  This works. but one have to call with _sampler and  _varinfo
-#  Example
-#  # ...
-#  observe(_sampler, _varinfo, d1+d2 == ss)
-#
-# See Dirac() for a better solution
-#
-#=
-function obs!(_sampler,_varinfo,cond)
-    if !cond
-        if _sampler isa Turing.Sampler{<:Union{PG,SMC}}
-            produce(-Inf)
-        else
-            Turing.@addlogprob! -Inf
-        end
-    else
-        if _sampler isa Turing.Sampler{<:Union{PG,SMC}}
-            produce(0.0)
-        end
+"""
+confusion_matrix(y,pred,cats,print_all=true) 
+
+Given the true classifications `y` and the predictions `pred`,
+it returns a confusion matrix as well as a bads array for the wrongly 
+predicted instances (in the for id=>(true_cat,pred_cat)).
+
+Also prints info about all the instances if `print_all=true`.
+
+`cats` is a dictionary converting the numeric category to a 
+number 1:number_of categories; this is for handling the 
+confusion matrix. (Perhaps there's a better way of doing this...)
+"""
+function confusion_matrix(y,pred,cats,print_all=true)
+    n = length(y)
+    bads = []
+    num_cat = cats  |> length
+    confusion = zeros(num_cat,num_cat)
+    min_val, max_val = extrema(keys(cats))
+    for i in 1:n
+      true_cat = round(Int64,y[i])
+      p = mean(pred["y[$i]"])
+      diff = y[i]-p
+      pred_cat = round(Int64,p)
+      # println("true_cat: $true_cat pred_cat: $pred_cat")
+      # Handle cases were we got predicates out of range
+      # i.e. 0 when the categories is 1..
+      if pred_cat < min_val 
+        println("pred_cat < min_val. Adjusting to min_val")
+        pred_cat = min_val 
+      end
+      if pred_cat > max_val 
+        println("pred_cat > max_val. Adjusting to max_val")
+        pred_cat = max_val 
+      end
+      abs_diff = abs(diff)
+      
+      if pred_cat != true_cat
+        bad = "BAD!"
+        # the correct cat is predicted (wrongly) as pred_cat
+        push!(bads, i=>(true_cat=>pred_cat))
+        confusion[cats[true_cat],cats[pred_cat]] += 1
+      else
+        bad = ""
+        confusion[cats[true_cat],cats[true_cat]] += 1    
+      end
+      if print_all 
+        println("y[$i]: true cat: $true_cat pred[$i]: ", p, " diff: ", y[i]-p, " pred cat: $pred_cat $bad")
+      end
     end
-    return !cond
-end
-=#
 
-#
-# Ensure ("observe") than an condition is met.
-# Usage:
-#   @model function two_dice(ss)
-#    d1 ~ DiscreteUniform(1, 6)
-#    d2 ~ DiscreteUniform(1, 6)
-#
-#    ss ~ Dirac(d1 + d2)
-#    true ~ Dirac(d > 2) # note true ~ ...
-# and
-#
-#
-# From David Widdman in https://github.com/TuringLang/Turing.jl/issues/1471
-#
-# Note: This is now integrated in Distributions.jl
-# struct Dirac{T} <: ContinuousUnivariateDistribution
-#     x::T
-# end
-# Distributions.logpdf(d::Dirac, x::Real) = x == d.x ? 0.0 : -Inf
+    num_correct = sum(diag(confusion))
+    num_total = sum(confusion)
+    println("Num correct: $num_correct")
+    println("Num incorrect: ", num_total - num_correct)
+    println("Accuracy: ",  (num_correct / num_total))
+    return confusion, bads
+end  
