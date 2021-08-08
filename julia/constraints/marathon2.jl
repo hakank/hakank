@@ -77,7 +77,7 @@ function marathon2(print_solutions=true,all_solutions=true)
     @variable(model, 1 <= runners[1:n] <= n, Int)
     dominique, ignace, naren, olivier, philippe, pascal = runners
  
-    @constraint(model, runners in CS.AllDifferentSet())
+    @constraint(model, runners in CS.AllDifferent())
    
     # a: olivier not last
     @constraint(model, olivier != n)

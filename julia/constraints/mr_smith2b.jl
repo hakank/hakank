@@ -1,18 +1,28 @@
 #=
 
-  Place number puzzle in Julia.
+  Mr Smith problem in Julia ConstraintSolver.jl 
 
-  http://ai.uwaterloo.ca/~vanbeek/Courses/Slides/introduction.pdf
+  From an IF Prolog example (http://www.ifcomputer.de/)
   """
-  Place numbers 1 through 8 on nodes
-  - each number appears exactly once
-  - no connected nodes have consecutive numbers
-       2 - 5 
-     / | X | \
-   1 - 3 - 6 - 8
-     \ | X | /
-       4 - 7
+  The Smith family and their three children want to pay a visit but they
+  do not all have the time to do so. Following are few hints who will go
+  and who will not:
+      o If Mr Smith comes, his wife will come too.
+      o At least one of their two sons Matt and John will come.
+      o Either Mrs Smith or Tim will come, but not both.
+      o Either Tim and John will come, or neither will come.
+      o If Matt comes, then John and his father will
+        also come.
   """
+
+  The answer should be:
+    Mr_Smith_comes      =  0
+    Mrs_Smith_comes     =  0
+    Matt_comes          =  0
+    John_comes          =  1
+    Tim_comes           =  1
+
+  This version use more && and ||.
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Julia page: http://www.hakank.org/julia/
@@ -24,7 +34,7 @@ using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
+function mr_smith(print_solutions=true,all_solutions=true)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -62,30 +72,42 @@ function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
-    graph = problem[:graph]
-    rows,cols = size(graph)
-    n     = problem[:n]
+    n = 5
+    @variable(model, x[1:n], Bin)
+    mr_smith,mrs_smith,matt,john,tim = x
+    people = ["mr_smith","mrs_smith","matt","john","tim"]
 
-
-    @variable(model, 1 <= x[1:n] <= n, Int)
-
-    @constraint(model, x in CS.AllDifferent())
-
-    #=
-    for i in 1:rows
-        # Here we constraint the domain of t (the difference)
-        # to >= 1 (i.e. 2..n)
-        t = @variable(model, [1:1], CS.Integers(2:n))
-        my_abs(model,x[graph[i,1]],x[graph[i,2]],t[1])
-    end
-    =#
-    # Alternative:
-    for (i,j) in eachrow(graph)
-        t = @variable(model, [1:1], CS.Integers(2:n)) 
-        my_abs(model,x[i],x[j],t[1])
-    end
-    # symmetry breaking
-    @constraint(model,x[1] <= x[n])
+    # If Mr Smith comes, his wife will come too.
+    @constraint(model,mr_smith => {mrs_smith == 1}) # ORIG
+    # @constraint(model,mr_smith => {mrs_smith }) # TEST: don't work
+ 
+    # At least one of their two sons Matt and John will come.
+    # b1 = @variable(model, binary=true)
+    # @constraint(model,matt + john >= 1)
+    # @constraint(model, b1 := {matt == 1|| john == 1})
+    # @constraint(model, b1 == 1)
+    # @constraint(model, matt == 1|| john == 1) # ORIG
+    @constraint(model, matt || john ) # TEST
+ 
+    # Either Mrs Smith or Tim will come, but not both.
+    # Mrs_Smith + Tim #= 1,
+    # @constraint(model,mrs_smith + tim == 1)
+    # @constraint(model,!(mrs_smith == 1 && tim == 1)) # Not correct translation of xor!
+    # @constraint(model,(mrs_smith == 1 && tim == 0) || (mrs_smith == 0 && tim == 1)) # ORIG
+    @constraint(model,(mrs_smith && !tim ) || (!mrs_smith && tim )) # TEST
+ 
+    # Either Tim and John will come, or neither will come.
+    @constraint(model,tim == john)
+    # Just testing (we don't have xor, yet). This works
+    # @constraint(model,(tim == 1 && john == 1) || (tim == 0 && john == 0) )
+ 
+    # If Matt comes, then John and his father will also come.
+    # @variable(model, john_and_mr_smith, Bin)
+    # @constraint(model, john_and_mr_smith := {john + mr_smith == 2})
+    # @constraint(model,matt => {john_and_mr_smith == 1})
+    # @constraint(model, matt => { john == 1 && mr_smith == 1}) # ORIG 
+    @constraint(model, matt => { john && mr_smith })
+ 
 
     # Solve the problem
     optimize!(model)
@@ -100,7 +122,7 @@ function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
                 # println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
                 println("x:$x_val")
-
+                println("These will come:", [people[i] for i in 1:n if x_val[i] == 1])
             end
         end
     else
@@ -110,18 +132,4 @@ function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
     return status
 end
 
-problem = Dict( 
-   :graph => resize_matrix([[1,3], [1,4], [1,5],
-                            [2,4], [2,5], [2,6],
-                            [3,1], [3,4], [3,7],
-                            [4,1], [4,2], [4,3], [4,5], [4,7], [4,8],
-                            [5,1], [5,2], [5,4], [5,6], [5,7], [5,8],
-                            [6,2], [6,5], [6,8],
-                            [7,3], [7,4], [7,5],
-                            [8,4], [8,5], [8,6]]),
-    :n => 8
-)
-
-
-
-@time place_number_puzzle(problem)
+@time mr_smith()

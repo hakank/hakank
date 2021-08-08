@@ -1,47 +1,52 @@
 #=
 
-N-Queens problem in ConstraintSolver.jl 
+  Curious set of integers in Julia ConstraintSolver.jl 
 
-Performance (timeout 60s):
-n:8
-  0.004049 seconds (23.04 k allocations: 1.663 MiB)
+  Martin Gardner (February 1967):
+  """
+  The integers 1,3,8, and 120 form a set with a remarkable property:
+  the product of any two integers is one less than a perfect square. 
+  Find a fifth number that can be added to the set without destroying 
+  this property.
+  """
 
-n:12
-  0.018140 seconds (113.31 k allocations: 8.275 MiB)
-
-n:50
-  0.102909 seconds (531.49 k allocations: 43.128 MiB)
-
-n:100
-  0.297124 seconds (637.23 k allocations: 69.590 MiB, 34.21% gc time)
-
-n:200
-  1.427308 seconds (2.57 M allocations: 341.693 MiB, 7.26% gc time)
-
-n:300
-  4.453372 seconds (5.99 M allocations: 878.029 MiB, 6.68% gc time)
-
-n:400
- 10.641826 seconds (11.54 M allocations: 1.767 GiB, 9.06% gc time)
-
-n:500
-status:TIME_LIMIT
- 60.136410 seconds (110.37 M allocations: 8.428 GiB, 10.85% gc time)
+  Solution: The number is 0.
  
- 77.461974 seconds (132.85 M allocations: 11.574 GiB, 10.32% gc time, 0.21% compilation time)
+  There are however other sets of five numbers with this property.
+  Here are the one in the range of 0..10000:
+
+  [0, 1, 3, 8, 120]
+  [0, 1, 3, 120, 1680]
+  [0, 1, 8, 15, 528]
+  [0, 1, 8, 120, 4095]
+  [0, 1, 15, 24, 1520]
+  [0, 1, 24, 35, 3480]
+  [0, 1, 35, 48, 6888]
+  [0, 2, 4, 12, 420]
+  [0, 2, 12, 24, 2380]
+  [0, 2, 24, 40, 7812]
+  [0, 3, 5, 16, 1008]
+  [0, 3, 8, 21, 2080]
+  [0, 3, 16, 33, 6440]
+  [0, 4, 6, 20, 1980]
+  [0, 4, 12, 30, 5852]
+  [0, 5, 7, 24, 3432]
+  [0, 6, 8, 28, 5460]
+  [0, 7, 9, 32, 8160]
 
 
-Model created by Hakan Kjellerstrand, hakank@gmail.com
-See also my Julia page: http://www.hakank.org/julia/
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Julia page: http://www.hakank.org/julia/
 
 =#
+
 
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
+function curious_set_of_integers(print_solutions=true,all_solutions=false,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -56,8 +61,8 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "traverse_strategy"=>:DBFS,
 
                                                             # "branch_split"=>:Smallest,
-                                                            "branch_split"=>:Biggest,
-                                                            # "branch_split"=>:InHalf,
+                                                            # "branch_split"=>:Biggest,
+                                                            "branch_split"=>:InHalf,
 
                                                             # https://wikunia.github.io/ConstraintSolver.jl/stable/options/#branch_strategy-(:Auto)
                                                             "branch_strategy" => :IMPS, # default
@@ -75,74 +80,64 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "backtrack_sorting" => false, # default true
 
                                                             # "lp_optimizer" => cbc_optimizer,
-                                                            # "lp_optimizer" => glpk_optimizer,
+                                                            "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
-    @variable(model, 1 <= x[1:n] <= n, Int)
-    @variable(model, 0 <= t1[1:n] <= n*2, Int)
-    @variable(model, -n <= t2[1:n] <= n, Int)
-
+    n = 5
+    dom_max = 120
+    @variable(model, 0 <= x[1:n] <= dom_max, Int)
+    
     @constraint(model, x in CS.AllDifferent())
-    for i in 1:n
-        @constraint(model, x[i] + i == t1[i])    
-        @constraint(model, x[i] - i == t2[i])    
-    end
-    @constraint(model, t1 in CS.AllDifferent())
-    @constraint(model, t2 in CS.AllDifferent())
+    increasing_strict(model, x)
 
-    # This don't work:
-    # """
-    # Each variable must be an integer and bounded. 
-    # Currently the variable index 9 doesn't fulfill this requirements.
-    # """
-    # @constraint(model, [t1[i] + i for i in 1:n] in CS.AllDifferent())
-    # @constraint(model, [x[i] - i for i in 1:n] in CS.AllDifferent())
+    # It's faster without these hints
+    # @variable(model, 1 <= ixs[1:n] <= n, Int) # indices in X
+    # @constraint(model, ixs in CS.AllDifferent())
+    # my_element(model,ixs[1],x,1)
+    # my_element(model,ixs[2],x,3)
+    # my_element(model,ixs[3],x,8)
+    # my_element(model,ixs[4],x,120)
 
-    #=
-    # This is another approach, but slower.
-    for i in 1:n, j in i+1:n 
-        @constraint(model, x[i] != x[j])
-        @constraint(model, x[i] + i != x[j] + j)
-        @constraint(model, x[i] - i != x[j] - j)
+
+    table = resize_matrix([ [i,j,i * j] for i in 0:dom_max, j in 0:dom_max])
+    ps = []
+    for i in 1:n, j in 1:i-1
+        p = @variable(model, integer=true, lower_bound=0, upper_bound=dom_max)
+        # @constraint(model, p*p -1 == x[i]*x[j]) # non-linear constraints!
+
+        p_sq = @variable(model, integer=true, lower_bound=0, upper_bound=dom_max^2)
+        @constraint(model, [p, p, p_sq] in CS.TableSet(table))
+
+        xij_sq = @variable(model, integer=true, lower_bound=0, upper_bound=dom_max^2)
+        @constraint(model, [x[i], x[j], xij_sq] in CS.TableSet(table))
+
+        @constraint(model,p_sq-1 == xij_sq)
+
+        push!(ps,p)
     end
-    =#
 
     # Solve the problem
     optimize!(model)
 
     status = JuMP.termination_status(model)
     # println("status:$status")
-    num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
-        # println("num_sols:$num_sols\n")
+        println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                # println("solution #$sol")
+                println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                # t1_val = convert.(Integer,JuMP.value.(t1; result=sol))
-                # t2_val = convert.(Integer,JuMP.value.(t2; result=sol))
                 println("x:$x_val")
-                # println("t1:$t1_val")
-                # println("t2:$t2_val")
-                # println()
 
             end
         end
     else
         println("status:$status")
     end
-    println("num_sols: $num_sols")
-    return status, num_sols
+
+    return status
 end
 
-@time nqueens(8)
-
-for n in [8,12,50,100,200,300,400,500]
-    println("\nn:$n")
-    @time status, num_sols = nqueens(n,false,false,60)
-    if status == MOI.TIME_LIMIT 
-        break
-    end
-end 
+@time curious_set_of_integers(true,false)

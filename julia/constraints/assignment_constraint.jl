@@ -61,8 +61,8 @@ function assignment_ctr_test(n,print_solutions=true,all_solutions=true)
 
     @variable(model, 1 <= x[1:n] <= n, Int)
     @variable(model, 1 <= y[1:n] <= n, Int)
-    @constraint(model, x in CS.AllDifferentSet())
-    @constraint(model, y in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
+    @constraint(model, y in CS.AllDifferent())
 
     assignment_ctr(model,x, y)
 

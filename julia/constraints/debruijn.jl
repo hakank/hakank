@@ -68,7 +68,7 @@ function debruijn(base=2,n=3,m=base^n,all_solutions=true,print_solutions=true,ti
     # number of occurrences for each number
     @variable(model, 0 <= gcc[1:base] <= m, Int)
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     # Connect x and binary
     for i in 1:m

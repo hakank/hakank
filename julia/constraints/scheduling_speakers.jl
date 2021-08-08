@@ -55,7 +55,7 @@ function scheduling_speakers(available_slots,print_solutions=true,all_solutions=
     n = length(available_slots)
     @variable(model, 1 <= xs[1:n] <= n, Int)
 
-    @constraint(model, xs in CS.AllDifferentSet())
+    @constraint(model, xs in CS.AllDifferent())
 
     for (x,a) in zip(xs,available_slots)
         len = length(a)

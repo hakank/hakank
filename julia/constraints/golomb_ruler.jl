@@ -65,14 +65,14 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
     @variable(model, 0 <= x[1:n] <= m, Int)
 
     @constraint(model, x[1] == 0)
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
     increasing(model,x)
 
     
     # This don't work: 
     # """Each variable must be an integer and bounded."""
-    # diffs = [x[i]-x[j] for i in 1:n, j in 1:n if i != j]
-    
+    # diffs = [x[i]-x[j] for i in 1:n, j in 1:n if i < j]
+    # println("diffs: $diffs")
     # This works:
     diffs = [] 
     for i in 1:n, j in 1:n 
@@ -82,7 +82,8 @@ function golomb_ruler(n=6,print_solutions=true,all_solutions=true,timeout=6)
             push!(diffs,d)
         end
     end
-    @constraint(model, diffs in CS.AllDifferentSet())
+    
+    @constraint(model, diffs in CS.AllDifferent())
 
     # Symmetry breaking
     if n > 2

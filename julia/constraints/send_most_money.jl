@@ -28,7 +28,7 @@ function send_most_money()
 
     @variable(model, 10000 <= MONEY <= 99999, Int)
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
     @constraint(model, s != 0)
     @constraint(model, m != 0)
     @constraint(model, MONEY == 10000*m + 1000*o + 100*n + 10*e + y)

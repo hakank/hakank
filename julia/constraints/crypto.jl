@@ -104,7 +104,7 @@ function crypto(print_solutions=true,all_solutions=true)
     @variable(model, 1 <= x[1:n] <= n, Int)
     A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z = x 
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     @constraint(model,B + A + L + L + E + T == BALLET)
     @constraint(model,C + E + L + L + O == CELLO)

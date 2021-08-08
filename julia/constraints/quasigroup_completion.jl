@@ -60,8 +60,8 @@ function quasigroup_completion(grid,print_solution=true,all_solutions=false,time
 
     # Row and column constraints
     for rc = 1:n
-        @constraint(m, x[rc,:] in CS.AllDifferentSet())
-        @constraint(m, x[:,rc] in CS.AllDifferentSet())
+        @constraint(m, x[rc,:] in CS.AllDifferent())
+        @constraint(m, x[:,rc] in CS.AllDifferent())
     end
 
     # Solve the problem

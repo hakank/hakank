@@ -27,7 +27,7 @@ function sudoku(grid,print_solution=true,timeout=Inf,all_solutions=false)
     # m = Model(optimizer_with_attributes(CS.Optimizer, "all_solutions"=>true,"logging"=>[]))
     m = Model(optimizer_with_attributes(CS.Optimizer,
                                         "all_solutions"=>all_solutions,
-                                        "logging"=>[],
+                                        "logging"=>[], # :true,
 
                                         "traverse_strategy"=>:BFS,
                                         # "traverse_strategy"=>:DFS,
@@ -71,20 +71,20 @@ function sudoku(grid,print_solution=true,timeout=Inf,all_solutions=false)
 
     # Row and column constraints
     for rc = 1:n
-        @constraint(m, x[rc,:] in CS.AllDifferentSet())
-        @constraint(m, x[:,rc] in CS.AllDifferentSet())
+        @constraint(m, x[rc,:] in CS.AllDifferent())
+        @constraint(m, x[:,rc] in CS.AllDifferent())
     end
 
     # Alterntive using transpose (just checking)
     # xt = x' # Transposed version
     # for rc = 1:n
-    #    @constraint(m, x[rc,:] in CS.AllDifferentSet())
-    #    @constraint(m, xt[rc,:] in CS.AllDifferentSet())
+    #    @constraint(m, x[rc,:] in CS.AllDifferent())
+    #    @constraint(m, xt[rc,:] in CS.AllDifferent())
     # end
 
     # Cell constraints
     for i in 1:ns:n, j in 1:ns:n
-        @constraint(m, vec([x[i+k,j+l] for k in 0:n2, l in 0:n2]) in CS.AllDifferentSet())
+        @constraint(m, vec([x[i+k,j+l] for k in 0:n2, l in 0:n2]) in CS.AllDifferent())
     end
 
     # Solve the problem
@@ -124,7 +124,7 @@ end
 function check_sudoku(problems, n::Int,print_solutions=true,timeout=Inf)
     num_problems = 0
     total_time = 0
-    for p in sort(collect(keys(problems)),by=k->string(k))
+    for p in sort(collect(keys(problems)),by=k->Symbol(k))
         pp = problems[p]
         len = length(pp)
         if len == n
@@ -186,15 +186,20 @@ print_solutions=false
 #
 #=
    With a timeout of 600s (10 min)
-   - #18: Timeout
-   - #19: 146.5s
-   - #20: 515.9s
-   - #21-#34: Timeout
-   - #89: 3.8s
-   - #90: 7.3s
+   - #18: Timeout -> 118s  --> 115s (v0.6.7)
+   - #19: 146.5s -> 52.9 (v0.6.7)
+   - #20: 515.9s -> 108s (v0.6.7)
+   - #21-#29: Timeout
+   - #30: 582s
+   - #31-#33: Timeout
+   - #89: 3.8s -> 1.6s
+   - #90: 7.3s -> 8.4s (v0.6.7)
 =#
 # @time check_sudoku(all_sudoku_problems, 25, true,timeout) # test all instances
-@time check_sudoku(all_sudoku_problems, [19,89,90],true, timeout) # just test the simplest problems
+# @time check_sudoku(all_sudoku_problems, [19,89,90],true, timeout) # just test the simplest problems
+# @time check_sudoku(all_sudoku_problems, [18,19,20,21,89,90],true, timeout) # just test the simplest problems
+# @time check_sudoku(all_sudoku_problems, [30],true, timeout) # just test the simplest problems
+
 
 
 #

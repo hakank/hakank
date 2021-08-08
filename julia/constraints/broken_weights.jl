@@ -1,17 +1,27 @@
 #=
 
-  Place number puzzle in Julia.
+  Broken weights problem in Julia ConstraintSolver.jl 
 
-  http://ai.uwaterloo.ca/~vanbeek/Courses/Slides/introduction.pdf
+  From
+  http://www.mathlesstraveled.com/?p=701
   """
-  Place numbers 1 through 8 on nodes
-  - each number appears exactly once
-  - no connected nodes have consecutive numbers
-       2 - 5 
-     / | X | \
-   1 - 3 - 6 - 8
-     \ | X | /
-       4 - 7
+  Here's a fantastic problem I recently heard. Apparently it was first 
+  posed by Claude Gaspard Bachet de Méziriac in a book of arithmetic problems 
+  published in 1612, and can also be found in Heinrich Dorrie’s 100 
+  Great Problems of Elementary Mathematics.
+  
+      A merchant had a forty pound measuring weight that broke 
+      into four pieces as the result of a fall. When the pieces were 
+      subsequently weighed, it was found that the weight of each piece 
+      was a whole number of pounds and that the four pieces could be 
+      used to weigh every integral weight between 1 and 40 pounds. What 
+      were the weights of the pieces?
+  
+  Note that since this was a 17th-century merchant, he of course used a 
+  balance scale to weigh things. So, for example, he could use a 1-pound 
+  weight and a 4-pound weight to weigh a 3-pound object, by placing the 
+  3-pound object and 1-pound weight on one side of the scale, and 
+  the 4-pound weight on the other side.
   """
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
@@ -21,17 +31,18 @@
 
 using ConstraintSolver, JuMP
 using Cbc, GLPK, Ipopt
+using Printf 
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
+function broken_weights(n=4,m=40,print_solutions=true,all_solutions=true)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
     ipopt_optimizer = optimizer_with_attributes(Ipopt.Optimizer)
 
-    model = Model(optimizer_with_attributes(CS.Optimizer,   "all_solutions"=> all_solutions,
-                                                            # "all_optimal_solutions"=>all_solutions, 
+    model = Model(optimizer_with_attributes(CS.Optimizer,   # "all_solutions"=> all_solutions,
+                                                            "all_optimal_solutions"=>all_solutions, 
                                                             "logging"=>[],
 
                                                             "traverse_strategy"=>:BFS,
@@ -62,30 +73,28 @@ function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
-    graph = problem[:graph]
-    rows,cols = size(graph)
-    n     = problem[:n]
+    @variable(model, 1 <= weights[1:n] <= m, Int)
+    @variable(model, -1 <= x[1:m,1:n] <= 1, Int)
 
+    @constraint(model, weights in CS.AllDifferent())
+    @constraint(model, m == sum(weights))
 
-    @variable(model, 1 <= x[1:n] <= n, Int)
+    increasing(model,weights)
+    @constraint(model, m == sum(weights))
 
-    @constraint(model, x in CS.AllDifferent())
-
-    #=
-    for i in 1:rows
-        # Here we constraint the domain of t (the difference)
-        # to >= 1 (i.e. 2..n)
-        t = @variable(model, [1:1], CS.Integers(2:n))
-        my_abs(model,x[graph[i,1]],x[graph[i,2]],t[1])
+    
+    table = resize_matrix([ [i,j,i * j] for i in -m:m, j in -m:m])    
+    for j in 1:m 
+        # scalar_product(model,x[j,:],weights,j) # This is a non-linear constraint!
+        # This reformulation works.
+        t = @variable(model, [1:n], CS.Integers(-m:m))
+        for i in 1:n 
+            @constraint(model, [x[j,i], weights[i], t[i]] in CS.TableSet(table))
+        end
+        @constraint(model, j == sum(t))
     end
-    =#
-    # Alternative:
-    for (i,j) in eachrow(graph)
-        t = @variable(model, [1:1], CS.Integers(2:n)) 
-        my_abs(model,x[i],x[j],t[1])
-    end
-    # symmetry breaking
-    @constraint(model,x[1] <= x[n])
+
+    @objective(model,Min,weights[n])
 
     # Solve the problem
     optimize!(model)
@@ -97,10 +106,18 @@ function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
         println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                # println("solution #$sol")
+                println("solution #$sol")
+                weights_val = convert.(Integer,JuMP.value.(weights; result=sol))
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                println("x:$x_val")
-
+                println("weights:$weights_val")
+                # display(x_val)
+                for j in 1:m
+                    @printf "%2d: " j
+                    for i in 1:n 
+                        @printf "%2d" x_val[j,i]
+                    end
+                    println()
+                end
             end
         end
     else
@@ -110,18 +127,4 @@ function place_number_puzzle(problem,print_solutions=true,all_solutions=true)
     return status
 end
 
-problem = Dict( 
-   :graph => resize_matrix([[1,3], [1,4], [1,5],
-                            [2,4], [2,5], [2,6],
-                            [3,1], [3,4], [3,7],
-                            [4,1], [4,2], [4,3], [4,5], [4,7], [4,8],
-                            [5,1], [5,2], [5,4], [5,6], [5,7], [5,8],
-                            [6,2], [6,5], [6,8],
-                            [7,3], [7,4], [7,5],
-                            [8,4], [8,5], [8,6]]),
-    :n => 8
-)
-
-
-
-@time place_number_puzzle(problem)
+@time broken_weights(4,40)

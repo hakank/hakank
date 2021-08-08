@@ -57,15 +57,15 @@ include("constraints_utils.jl")
 function sudoku(model,x,n)
     # Row and column constraints
     for rc = 1:n
-        @constraint(model, x[rc,:] in CS.AllDifferentSet())
-        @constraint(model, x[:,rc] in CS.AllDifferentSet())
+        @constraint(model, x[rc,:] in CS.AllDifferent())
+        @constraint(model, x[:,rc] in CS.AllDifferent())
     end
 
     # Cell constraints
     ns = round(Int, sqrt(n))
     n2 = ns-1
     for i in 1:ns:n, j in 1:ns:n
-        @constraint(model, vec([x[i+k,j+l] for k in 0:n2, l in 0:n2]) in CS.AllDifferentSet())
+        @constraint(model, vec([x[i+k,j+l] for k in 0:n2, l in 0:n2]) in CS.AllDifferent())
     end
 
 end
@@ -118,7 +118,7 @@ function killer_sudoku(problem,print_solutions=true,all_solutions=true)
         s,lst = hint
         xs = [x[t[1],t[2]] for t in lst]
         @constraint(model,s == sum(xs))
-        @constraint(model, xs in CS.AllDifferentSet())
+        @constraint(model, xs in CS.AllDifferent())
     end
 
     # Solve the problem

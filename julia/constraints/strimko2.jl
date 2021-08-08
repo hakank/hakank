@@ -77,7 +77,7 @@ function strimko(problem,print_solutions=true,all_solutions=true)
     # streams 
     for s in 1:n 
         positions = [x[i,j] for i in 1:n, j in 1:n if s == streams[i,j]]
-        @constraint(model,positions in CS.AllDifferentSet())
+        @constraint(model,positions in CS.AllDifferent())
     end
 
     # places 

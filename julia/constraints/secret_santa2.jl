@@ -84,7 +84,7 @@ function secret_santa2(n,M,people,spouses,rounds,print_solutions=true,all_soluti
     @variable(model, 0 <= z <= 1000, Int)
 
     # Everyone gives and receives a Secret Santa
-    @constraint(model, santas in CS.AllDifferentSet())
+    @constraint(model, santas in CS.AllDifferent())
 
     # no Santa for a spouses (or him-/herself)
     for i in 1:n

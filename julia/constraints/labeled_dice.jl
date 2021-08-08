@@ -108,7 +108,7 @@ function block_problem(problem,print_solutions=true,all_solutions=true)
       for i in 1:length(word)
           my_element(model,word[i],cube,this_die[i])
       end
-      @constraint(model, this_die in CS.AllDifferentSet())
+      @constraint(model, this_die in CS.AllDifferent())
     end
 
     # there must be exactly NumSides (6) letters of each die (num_cubes)

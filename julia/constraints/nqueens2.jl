@@ -80,33 +80,10 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
                                         ))
 
     @variable(model, 1 <= x[1:n] <= n, Int)
-    @variable(model, 0 <= t1[1:n] <= n*2, Int)
-    @variable(model, -n <= t2[1:n] <= n, Int)
 
-    @constraint(model, x in CS.AllDifferent())
-    for i in 1:n
-        @constraint(model, x[i] + i == t1[i])    
-        @constraint(model, x[i] - i == t2[i])    
-    end
-    @constraint(model, t1 in CS.AllDifferent())
-    @constraint(model, t2 in CS.AllDifferent())
-
-    # This don't work:
-    # """
-    # Each variable must be an integer and bounded. 
-    # Currently the variable index 9 doesn't fulfill this requirements.
-    # """
-    # @constraint(model, [t1[i] + i for i in 1:n] in CS.AllDifferent())
-    # @constraint(model, [x[i] - i for i in 1:n] in CS.AllDifferent())
-
-    #=
-    # This is another approach, but slower.
-    for i in 1:n, j in i+1:n 
-        @constraint(model, x[i] != x[j])
-        @constraint(model, x[i] + i != x[j] + j)
-        @constraint(model, x[i] - i != x[j] - j)
-    end
-    =#
+    @constraint(model, x in CS.AllDifferent())    
+    @constraint(model, [x[i] + i for i in 1:n] in CS.AllDifferent())
+    @constraint(model, [x[i] - i for i in 1:n] in CS.AllDifferent())
 
     # Solve the problem
     optimize!(model)
@@ -116,17 +93,10 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
     num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
-        # println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                # println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                # t1_val = convert.(Integer,JuMP.value.(t1; result=sol))
-                # t2_val = convert.(Integer,JuMP.value.(t2; result=sol))
                 println("x:$x_val")
-                # println("t1:$t1_val")
-                # println("t2:$t2_val")
-                # println()
 
             end
         end
@@ -139,7 +109,7 @@ end
 
 @time nqueens(8)
 
-for n in [8,12,50,100,200,300,400,500]
+for n in [8,12,50,100,200,300,400,501]
     println("\nn:$n")
     @time status, num_sols = nqueens(n,false,false,60)
     if status == MOI.TIME_LIMIT 

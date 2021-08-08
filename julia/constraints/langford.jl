@@ -92,7 +92,7 @@ function langford(k=5,symmetry_breaking=true,all_solutions=true,print_solutions=
     @variable(model, 1 <= position[1:k2] <= k2, Int)
     @variable(model, 1 <= solution[1:k2] <= k, Int)
 
-    @constraint(model, position in CS.AllDifferentSet())
+    @constraint(model, position in CS.AllDifferent())
 
     # symmetry breaking
     if symmetry_breaking

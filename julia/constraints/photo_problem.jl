@@ -89,7 +89,7 @@ function photo_problem(problem,print_solutions=true,all_solutions=true)
     @variable(model, 1 <= x[1:n] <= n, Int)
     @variable(model, 0 <= z <= n_prefs, Int)
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     # Count the number of successful preferences, 
     # i.e when distance is == 1

@@ -67,7 +67,7 @@ function added_corner(print_solutions=true,all_solutions=true,timeout=6)
     n = 8
     @variable(model, 1 <= x[1:n] <= n, Int)
     A,B,C,D,E,F,G,H = x
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     @constraint(model, B == A + C)
     @constraint(model, D == A + F)

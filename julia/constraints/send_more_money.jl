@@ -10,15 +10,12 @@ using ConstraintSolver, JuMP
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-
-
-
 function send_more_money()
     model = Model(optimizer_with_attributes(CS.Optimizer, "all_solutions"=>true,"logging"=>[]))
     @variable(model, 0 <= x[1:8] <= 9, Int)
     s,e,n,d,m,o,r,y = x
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
     @constraint(model, s != 0)
     @constraint(model, m != 0)
     @constraint(model,

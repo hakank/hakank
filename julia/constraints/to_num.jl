@@ -50,7 +50,7 @@ function to_num_test(n=5,base=10)
 
     to_num(model, x, base, v)
     increasing(model, x)
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     # Solve the problem
     println("solve")

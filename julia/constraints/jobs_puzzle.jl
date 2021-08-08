@@ -131,7 +131,7 @@ function jobs_puzzle(print_solutions=true,all_solutions=true,timeout=6)
    # Roberta, [and] the chef, and the police officer 
    # went golfing together.
    @variable(model,Roberta <= RobertaVar <= Roberta, Int)
-   @constraint(model, [RobertaVar,Chef,PoliceOfficer] in CS.AllDifferentSet())
+   @constraint(model, [RobertaVar,Chef,PoliceOfficer] in CS.AllDifferent())
 
    # From the name of the job
    # (Actor == Steve \/ Actor == Pete)

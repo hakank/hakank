@@ -85,7 +85,7 @@ function olympic(print_solutions=true,all_solutions=true)
     n = 10
     @variable(model, 1 <= x[1:n] <= n, Int)
     x1,x2,x3,x4,x5,x6,x7,x8,x9,x10 = x
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     @constraint(model,x1 == 3)
     my_abs(model,x2,x3,x1)

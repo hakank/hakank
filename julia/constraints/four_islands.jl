@@ -104,9 +104,9 @@ function four_islands(print_solutions=true,all_solutions=true,timeout=6)
     @variable(model, 1 <= Attraction[1:n] <= n, Int)
     ResortHotel, IceSkatingRink, JaiAlaiStadium, KoalaPreserve = Attraction  
 
-    @constraint(model, Island in CS.AllDifferentSet())
-    @constraint(model, Export in CS.AllDifferentSet())
-    @constraint(model, Attraction in CS.AllDifferentSet())
+    @constraint(model, Island in CS.AllDifferent())
+    @constraint(model, Export in CS.AllDifferent())
+    @constraint(model, Attraction in CS.AllDifferent())
 
 
     # 1. The island noted for its koala preserve is due south of Pwana.

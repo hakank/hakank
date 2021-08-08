@@ -73,7 +73,7 @@ function just_forgotten(print_solutions=true,all_solutions=true)
                        [6,8,2,4,3,1,9,0,7,5]])
     rows,cols = size(a)
     @variable(model, 0 <= x[1:cols] <= 9, Int)
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
 
     for row in eachrow(a)

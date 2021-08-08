@@ -87,8 +87,8 @@ function arch_friends(print_solutions=true,all_solutions=true)
     @variable(model, 1 <= stores[1:n] <= n, Int)
     FootFarm, HeelsInAHandcart, TheShoePalace, Tootsies = stores
 
-    @constraint(model, shoes in CS.AllDifferentSet())
-    @constraint(model, stores in CS.AllDifferentSet())
+    @constraint(model, shoes in CS.AllDifferent())
+    @constraint(model, stores in CS.AllDifferent())
 
     # 1. Harriet bought fuchsia flats at Heels in a Handcart.
     @constraint(model, FuchsiaFlats == HeelsInAHandcart)
@@ -117,7 +117,7 @@ function arch_friends(print_solutions=true,all_solutions=true)
                 println("solution #$sol")
                 shoes_val = convert.(Integer,JuMP.value.(shoes; result=sol))
                 stores_val = convert.(Integer,JuMP.value.(stores; result=sol))
-                println("shoes:$shoes_val")
+                println("shoes :$shoes_val")
                 println("stores:$stores_val")
                 println()
 

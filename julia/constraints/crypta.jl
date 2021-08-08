@@ -71,7 +71,7 @@ function crypta_problem(print_solutions=true,all_solutions=true)
     @variable(model, sr1, Bin)
     @variable(model, sr2, Bin)
     
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
     
     @constraint(model, b >= 1)
     @constraint(model, d >= 1)

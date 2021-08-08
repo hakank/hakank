@@ -17,7 +17,7 @@ using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function tsp(problem,print_solutions=true,all_solutions=true)
+function tsp(problem,print_solutions=true,all_solutions=true,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -38,7 +38,7 @@ function tsp(problem,print_solutions=true,all_solutions=true)
                                                             # "simplify"=>false,
                                                             # "simplify"=>true, # default
 
-                                                            "time_limit"=>3,
+                                                            "time_limit"=>timeout,
 
                                                             # "lp_optimizer" => cbc_optimizer,
                                                             "lp_optimizer" => glpk_optimizer,
@@ -56,8 +56,8 @@ function tsp(problem,print_solutions=true,all_solutions=true)
     @variable(model, min_dist <= costs[1:n] <= max_dist, Int)
     @variable(model, 0 <= cost <= max_dist*n, Int)
 
-    @constraint(model, cities in CS.AllDifferentSet())
-    @constraint(model, path in CS.AllDifferentSet())
+    @constraint(model, cities in CS.AllDifferent())
+    @constraint(model, path in CS.AllDifferent())
     circuit_path(model,cities,path)
     @constraint(model, cities[n] == 1)
 
@@ -190,11 +190,12 @@ tsp_problems = Dict(
 
 print_solutions = true
 all_solutions = true
+timeout = 6
 # #=
 solved = []
 for problem in sort(collect(keys(tsp_problems)))
     println("\nproblem $problem")
-    @time status = tsp(tsp_problems[problem],print_solutions,all_solutions)
+    @time status = tsp(tsp_problems[problem],print_solutions,all_solutions,timeout)
     if status == MOI.OPTIMAL
         push!(solved,problem)
     end

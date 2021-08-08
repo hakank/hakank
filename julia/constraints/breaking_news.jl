@@ -91,8 +91,8 @@ function breaking_news(print_solutions=true,all_solutions=true)
     @variable(model, 1 <= news[1:n] <= n, Int)
     Baby, Blimp, Skyscraper, Whale = news 
 
-    @constraint(model, locations in CS.AllDifferentSet())
-    @constraint(model, news in CS.AllDifferentSet())
+    @constraint(model, locations in CS.AllDifferent())
+    @constraint(model, news in CS.AllDifferent())
 
     # 1. The 30-pound baby wasn"t born in South Amboy or New Hope.
     @constraint(model, Baby != SouthAmboy)
@@ -112,11 +112,7 @@ function breaking_news(print_solutions=true,all_solutions=true)
     )
     =# 
     @constraint(model, Lois != PortCharles)
-    c1 = @variable(model, binary=true)
-    c2 = @variable(model, binary=true)
-    @constraint(model,c1 := {Blimp == Lois && Skyscraper == PortCharles})
-    @constraint(model,c2 := {Skyscraper == Lois && Blimp == PortCharles})
-    @constraint(model,c1 + c2 == 1)
+    @constraint(model, (Blimp == Lois && Skyscraper == PortCharles) || (Skyscraper == Lois && Blimp == PortCharles))
 
     
     # 4. South Amboy was not the site of either the beached whale or the 
@@ -135,6 +131,8 @@ function breaking_news(print_solutions=true,all_solutions=true)
     @constraint(model, c5[1] := {Bayonne == Corey})
     @constraint(model, c5[2] := {Bayonne == Whale})
     @constraint(model, sum(c5) == 1)
+    
+    
 
     # Solve the problem
     optimize!(model)

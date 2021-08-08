@@ -75,7 +75,7 @@ function calculs_d_enfer(print_solutions=true,all_solutions=false)
     @variable(model, 0 <= a_max <= nn,Int)
     @constraint(model, a_abs .<= a_max)
 
-    @constraint(model, aa in CS.AllDifferentSet())
+    @constraint(model, aa in CS.AllDifferent())
 
     @constraint(model, z+e+r+o     == 0)
     @constraint(model, o+n+e       == 1)

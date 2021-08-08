@@ -101,7 +101,7 @@ function kakuro(problem,print_solutions=true,all_solutions=true)
         s, lst = hint
         xs = [x[i,j] for (i,j) in lst]
         @constraint(model, s == sum(xs))
-        @constraint(model, xs in CS.AllDifferentSet())
+        @constraint(model, xs in CS.AllDifferent())
     end
 
 

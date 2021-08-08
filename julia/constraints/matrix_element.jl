@@ -49,14 +49,14 @@ function matrix_element_test(n=4,print_solutions=true,all_solutions=true)
     m = n
     @variable(model, 1 <= x[1:n,1:m] <= n, Int)
 
-    # @constraint(model, x[:] in CS.AllDifferentSet())
+    # @constraint(model, x[:] in CS.AllDifferent())
     @variable(model, 1 <= ii <= n, Int)
     @variable(model, 1 <= jj <= m, Int)
     @variable(model, 1 <= val <= n, Int)
 
     for i in 1:n
-        @constraint(model, x[i,:] in CS.AllDifferentSet())
-        @constraint(model, x[:,i] in CS.AllDifferentSet())
+        @constraint(model, x[i,:] in CS.AllDifferent())
+        @constraint(model, x[:,i] in CS.AllDifferent())
     end
 
     @constraint(model, val == n)

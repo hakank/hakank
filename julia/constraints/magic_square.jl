@@ -44,10 +44,10 @@ function magic_square(n=4,print_solutions=true,all_solutions=true)
                                                             # "backtrack" => false, # default true
                                                             # "backtrack_sorting" => false, # default true
 
-                                                            "time_limit"=>6,
+                                                            "time_limit"=> 6,
 
                                                             # "lp_optimizer" => cbc_optimizer,
-                                                            "lp_optimizer" => glpk_optimizer,
+                                                            # "lp_optimizer" => glpk_optimizer,
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
@@ -57,7 +57,7 @@ function magic_square(n=4,print_solutions=true,all_solutions=true)
     @variable(model, 1 <= x[1:n,1:n] <= n^2, Int)
     # @variable(model, ss <= s <= ss, Int) # It works if s is a variable
 
-    @constraint(model, x[:] in CS.AllDifferentSet())
+    @constraint(model, x[:] in CS.AllDifferent())
 
     # rows and cols
     for i in 1:n

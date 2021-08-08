@@ -59,7 +59,7 @@ function send_more_money_any_base(base=10,print_solutions=true,all_solutions=tru
     @variable(model, 0 <= x[1:8] <= base-1, Int)
     s,e,n,d,m,o,r,y = x
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
     @constraint(model, s != 0)
     @constraint(model, m != 0)
     

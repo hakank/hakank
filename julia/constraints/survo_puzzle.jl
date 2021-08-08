@@ -71,7 +71,7 @@ function survo_puzzle(p,print_solution=true,all_solutions=false,timeout=Inf)
         end
     end
 
-    @constraint(m, vec(x[:,:]) in CS.AllDifferentSet())
+    @constraint(m, vec(x[:,:]) in CS.AllDifferent())
 
     # Row and column constraints
     for r = 1:rows

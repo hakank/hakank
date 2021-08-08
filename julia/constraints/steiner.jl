@@ -38,7 +38,8 @@ function steiner(n=7,print_solutions=true,all_solutions=true,timeout=6)
 
     model = Model(optimizer_with_attributes(CS.Optimizer,   "all_solutions"=> all_solutions,
                                                             # "all_optimal_solutions"=>all_solutions, 
-                                                            "logging"=>[],
+                                                            # "logging"=>:true,
+                                                            "logging"=>:true,
                                                             "seed" => 4,
 
                                                             "traverse_strategy"=>:BFS,
@@ -82,21 +83,15 @@ function steiner(n=7,print_solutions=true,all_solutions=true,timeout=6)
     # atmost 1 element in common
     for i in 1:nb
         @constraint(model,sum(x[i,:]) == 3)
-        # @constraint(model, sum([x[i,k] == 1 && x[j,k] == 1 for k in 1:n]) <= 1) # to my wishlist!
-
         for j in i+1:nb
-            # b1 = @variable(model, [1:n], Bin)
-            # b2 = @variable(model, [1:n], Bin)
             b = @variable(model, [1:n], Bin)
             for k in 1:n 
-                # @constraint(model, b1[k] := {x[i,k] == 1})
-                # @constraint(model, b2[k] := {x[j,k] == 1})
-                # @constraint(model, b[k] := { b1[k] + b2[k] == 2 })
-
-                @constraint(model, b[k] := { x[i,k] == 1 && x[j,k] == 1 })
+                @constraint(model, b[k] := { x[i,k] && x[j,k] })
             end
             @constraint(model, sum(b) <= 1)
+            # @constraint(model, sum([ {x[i,k] && x[j,k]} for k in 1:n]) <= 1) # TO WISHLIST
         end
+        
     end
     
 

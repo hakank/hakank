@@ -67,7 +67,7 @@ function ski_assignment(print_solutions=true,all_solutions=false, all_optimal_so
     num_skiers = length(skier_heights)
 
     @variable(model, 1 <= x[1:num_skiers] <= num_skis, Int)
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     # minimize the differences of ski height and skier's height (z)
     t = 100

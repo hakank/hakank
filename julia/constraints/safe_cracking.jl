@@ -75,7 +75,7 @@ function safe_cracking(print_solutions=true,all_solutions=true)
     @variable(model, 1 <= x[1:n] <= n, Int)
     c1,c2,c3,c4,c5,c6,c7,c8,c9 = x
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     for i in 1:n 
         @constraint(model,x[i] != i)

@@ -1,39 +1,5 @@
 #=
-
-N-Queens problem in ConstraintSolver.jl 
-
-Performance (timeout 60s):
-n:8
-  0.004049 seconds (23.04 k allocations: 1.663 MiB)
-
-n:12
-  0.018140 seconds (113.31 k allocations: 8.275 MiB)
-
-n:50
-  0.102909 seconds (531.49 k allocations: 43.128 MiB)
-
-n:100
-  0.297124 seconds (637.23 k allocations: 69.590 MiB, 34.21% gc time)
-
-n:200
-  1.427308 seconds (2.57 M allocations: 341.693 MiB, 7.26% gc time)
-
-n:300
-  4.453372 seconds (5.99 M allocations: 878.029 MiB, 6.68% gc time)
-
-n:400
- 10.641826 seconds (11.54 M allocations: 1.767 GiB, 9.06% gc time)
-
-n:500
-status:TIME_LIMIT
- 60.136410 seconds (110.37 M allocations: 8.428 GiB, 10.85% gc time)
- 
- 77.461974 seconds (132.85 M allocations: 11.574 GiB, 10.32% gc time, 0.21% compilation time)
-
-
-Model created by Hakan Kjellerstrand, hakank@gmail.com
-See also my Julia page: http://www.hakank.org/julia/
-
+   Basic model as an template for other models...
 =#
 
 using ConstraintSolver, JuMP
@@ -41,7 +7,7 @@ using Cbc, GLPK, Ipopt
 const CS = ConstraintSolver
 include("constraints_utils.jl")
 
-function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
+function alphametic(problem_str="SEND+MORE=MONEY", base=10, print_solutions=true,all_solutions=false,timeout=6)
 
     cbc_optimizer = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
     glpk_optimizer = optimizer_with_attributes(GLPK.Optimizer)
@@ -49,15 +15,16 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
 
     model = Model(optimizer_with_attributes(CS.Optimizer,   "all_solutions"=> all_solutions,
                                                             # "all_optimal_solutions"=>all_solutions, 
-                                                            "logging"=>[],
+                                                            "logging"=>[], # :true,
+                                                            # "logging"=> :true,
 
                                                             "traverse_strategy"=>:BFS,
                                                             # "traverse_strategy"=>:DFS,
                                                             # "traverse_strategy"=>:DBFS,
 
                                                             # "branch_split"=>:Smallest,
-                                                            "branch_split"=>:Biggest,
-                                                            # "branch_split"=>:InHalf,
+                                                            # "branch_split"=>:Biggest,
+                                                            "branch_split"=>:InHalf,
 
                                                             # https://wikunia.github.io/ConstraintSolver.jl/stable/options/#branch_strategy-(:Auto)
                                                             "branch_strategy" => :IMPS, # default
@@ -79,34 +46,42 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
                                                             # "lp_optimizer" => ipopt_optimizer,
                                         ))
 
-    @variable(model, 1 <= x[1:n] <= n, Int)
-    @variable(model, 0 <= t1[1:n] <= n*2, Int)
-    @variable(model, -n <= t2[1:n] <= n, Int)
+    problem = split(problem_str,r"[+=-]").|>string
+    println("problem: $problem base:$base")
+    p_len = length(problem)
+
+    # create the lookup table of (digit -> ix)
+    a = join(problem).|>unique
+    n = length(a)
+    lookup = Dict(zip(a,1:n))
+    # println("lookup:",lookup)
+
+    # length of each number 
+    lens = problem.|>length 
+
+    @variable(model, 0 <= x[1:n] <= base-1, Int)
+    sums = [@variable(model, integer=true,lower_bound=base^(lens[i]-1),upper_bound=(base^lens[i])-1) for i in 1:length(lens)]
+    # @variable(model, 1 <= sums[1:length(lens)] <= base^(maximum(lens))-1, Int)
 
     @constraint(model, x in CS.AllDifferent())
-    for i in 1:n
-        @constraint(model, x[i] + i == t1[i])    
-        @constraint(model, x[i] - i == t2[i])    
-    end
-    @constraint(model, t1 in CS.AllDifferent())
-    @constraint(model, t2 in CS.AllDifferent())
 
-    # This don't work:
-    # """
-    # Each variable must be an integer and bounded. 
-    # Currently the variable index 9 doesn't fulfill this requirements.
-    # """
-    # @constraint(model, [t1[i] + i for i in 1:n] in CS.AllDifferent())
-    # @constraint(model, [x[i] - i for i in 1:n] in CS.AllDifferent())
+    ix = 1
+    for prob in problem
+      
+      # sum all the digits with proper exponents to a number
+      this_len = length(prob)
+      ss = [(base^i) * x[lookup[prob[this_len - i]]] for i in (this_len-1):-1:0]
+      @constraint(model,sums[ix] == sum(ss))
 
-    #=
-    # This is another approach, but slower.
-    for i in 1:n, j in i+1:n 
-        @constraint(model, x[i] != x[j])
-        @constraint(model, x[i] + i != x[j] + j)
-        @constraint(model, x[i] - i != x[j] - j)
+      # leading digits must be > 0
+      @constraint(model,x[lookup[prob[1]]] > 0)
+
+      ix += 1
+
     end
-    =#
+
+    # the last number (RHS) is the sum of the previous numbers (LHS)
+    @constraint(model, sum([sums[i] for i in 1:p_len-1]) == sums[end])
 
     # Solve the problem
     optimize!(model)
@@ -116,33 +91,58 @@ function nqueens(n=8,print_solutions=true,all_solutions=true,timeout=6)
     num_sols = 0
     if status == MOI.OPTIMAL
         num_sols = MOI.get(model, MOI.ResultCount())
-        # println("num_sols:$num_sols\n")
+        println("num_sols:$num_sols\n")
         if print_solutions
             for sol in 1:num_sols
-                # println("solution #$sol")
+                println("solution #$sol")
                 x_val = convert.(Integer,JuMP.value.(x; result=sol))
-                # t1_val = convert.(Integer,JuMP.value.(t1; result=sol))
-                # t2_val = convert.(Integer,JuMP.value.(t2; result=sol))
                 println("x:$x_val")
-                # println("t1:$t1_val")
-                # println("t2:$t2_val")
-                # println()
-
+                for c in a
+                  println("$c: $(x_val[lookup[c]])")
+                end
             end
         end
+        println()
     else
         println("status:$status")
     end
-    println("num_sols: $num_sols")
+
     return status, num_sols
 end
 
-@time nqueens(8)
+problems = [
+  "SEND+MORE=MONEY", 
+  "SEND+MOST=MONEY", "VINGT+CINQ+CINQ=TRENTE",
+  "EIN+EIN+EIN+EIN=VIER", 
+  "DONALD+GERALD=ROBERT",
+  "SATURN+URANUS+NEPTUNE+PLUTO+PLANETS",  # this is hard
+  "WRONG+WRONG=RIGHT"
+]
 
-for n in [8,12,50,100,200,300,400,500]
-    println("\nn:$n")
-    @time status, num_sols = nqueens(n,false,false,60)
-    if status == MOI.TIME_LIMIT 
-        break
-    end
-end 
+function run_problems(base=10)
+  for problem in problems   
+    # @time alphametic(problem,10,true,true,6)
+    @time alphametic(problem,base,true,false,116)
+    println()
+  end
+
+end
+
+#=
+if length(ARGS) > 0
+  problem = ARGS[1]
+  base = 10 
+  if length(ARGS) > 1
+    base = parse(Int,ARGS[2])
+  end
+  if problem == "TEST" || problem == "test"
+    run_problems(base)
+  else 
+    alphametic(problem)
+  end
+else 
+  run_problems()
+end
+=#
+
+run_problems()

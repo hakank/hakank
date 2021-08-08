@@ -101,9 +101,9 @@ function a_round_of_golf(print_solutions=true,all_solutions=true)
     @variable(model, 70 <= score[1:n] <= 85, Int)
     score_jack,score_bill,score_paul,score_frank = score
 
-    @constraint(model, last_name in CS.AllDifferentSet())
-    @constraint(model, job in CS.AllDifferentSet())
-    @constraint(model, score in CS.AllDifferentSet())
+    @constraint(model, last_name in CS.AllDifferent())
+    @constraint(model, job in CS.AllDifferent())
+    @constraint(model, score in CS.AllDifferent())
 
     #  1. bill, who is not the maintenance man, plays golf often and had
     #     the lowest score of the foursome.

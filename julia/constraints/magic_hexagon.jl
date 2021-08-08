@@ -60,7 +60,7 @@ function magic_hexagon(print_solutions=true,all_solutions=true,timeout=6)
     @variable(model, 1 <= x[1:n] <= n, Int)
     A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S = x
 
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     @constraint(model, A + B + C ==  38)
     @constraint(model, D + E + F + G ==  38)

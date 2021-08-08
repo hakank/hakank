@@ -63,8 +63,8 @@ function all_interval(n=5,all_solutions=true,print_solutions=true)
     @variable(model, 1 <= x[1:n] <= n, Int)
     @variable(model, 1 <= diffs[1:n1] <= n1, Int)
 
-    @constraint(model, x in CS.AllDifferentSet())
-    @constraint(model, diffs in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
+    @constraint(model, diffs in CS.AllDifferent())
 
     # diffsb = @variable(model, [1:n1], Bin)
     for k in 1:n1

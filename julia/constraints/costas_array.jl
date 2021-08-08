@@ -110,7 +110,7 @@ function costas_array(n=8, print_solutions=true,all_solutions=true,timeout=6)
  
     # hakank: All the following constraints are from 
     # Barry O'Sullivans's original MiniZinc model.
-    @constraint(model, costas in CS.AllDifferentSet())
+    @constraint(model, costas in CS.AllDifferent())
  
     # "How do the positions in the Costas array relate 
     #  to the elements of the distance triangle."
@@ -121,7 +121,7 @@ function costas_array(n=8, print_solutions=true,all_solutions=true,timeout=6)
     # "All entries in a particular row of the difference 
     #  triangle must be distint."
     for i in 1:n-1
-       @constraint(model,[differences[i,j] for j in i+1:n] in CS.AllDifferentSet())
+       @constraint(model,[differences[i,j] for j in i+1:n] in CS.AllDifferent())
     end
  
     # "All the following are redundant - only here to speed up search."

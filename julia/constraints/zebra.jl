@@ -89,11 +89,11 @@ function zebra(print_solutions=true,all_solutions=true)
     @variable(model, 1 <= drink[1:n] <= n, Int)
     Tea, Coffee, Milk, Juice, Water = drink
 
-    @constraint(model, nationality in CS.AllDifferentSet())
-    @constraint(model, color in CS.AllDifferentSet())
-    @constraint(model, profession in CS.AllDifferentSet())
-    @constraint(model, pet in CS.AllDifferentSet())
-    @constraint(model, drink in CS.AllDifferentSet())
+    @constraint(model, nationality in CS.AllDifferent())
+    @constraint(model, color in CS.AllDifferent())
+    @constraint(model, profession in CS.AllDifferent())
+    @constraint(model, pet in CS.AllDifferent())
+    @constraint(model, drink in CS.AllDifferent())
 
     @constraint(model, English == Red)
     @constraint(model, Spaniard == Dog)

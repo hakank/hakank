@@ -83,7 +83,7 @@ function inverse_test(n,print_solutions=true,all_solutions=true)
                                         ))
 
     @variable(model, 1 <= x[1:n] <= n, Int)
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     inverse(model,x)
 

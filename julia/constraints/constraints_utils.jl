@@ -514,8 +514,8 @@ function circuit(model, x)
     # The main constraint is that Z[I] must not be 1
     # until I = N, and for I = N it must be 1.
     #
-    @constraint(model, x in CS.AllDifferentSet())
-    @constraint(model, z in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
+    @constraint(model, z in CS.AllDifferent())
 
     # put the orbit of x[1] in z[1..n]
     @constraint(model, x[1] == z[1])
@@ -544,8 +544,8 @@ function circuit_path(model, x, path)
     # The main constraint is that Z[I] must not be 1
     # until I = N, and for I = N it must be 1.
     #
-    # @constraint(model, x in CS.AllDifferentSet())
-    # @constraint(model, path in CS.AllDifferentSet())
+    # @constraint(model, x in CS.AllDifferent())
+    # @constraint(model, path in CS.AllDifferent())
 
     # put the orbit of x[1] in z[1..n]
     @constraint(model, x[1] == path[1])
@@ -756,8 +756,8 @@ end
 function latin_square(model, x)
     n,_ = size(x)
     for i in 1:n
-        @constraint(model, x[i,:] in CS.AllDifferentSet())
-        @constraint(model, x[:,i] in CS.AllDifferentSet())
+        @constraint(model, x[i,:] in CS.AllDifferent())
+        @constraint(model, x[:,i] in CS.AllDifferent())
     end
 end
 

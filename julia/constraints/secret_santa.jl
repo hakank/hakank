@@ -77,7 +77,7 @@ function secret_santa(family,print_solutions=true,all_solutions=false)
     @variable(model, 1 <= x[1:n] <= n, Int)
 
     # Everyone gives and receives a Secret Santa
-    @constraint(model, x in CS.AllDifferentSet())
+    @constraint(model, x in CS.AllDifferent())
 
     # Can't be one own's Secret Santa
     for i in 1:n
@@ -151,7 +151,7 @@ for n in [i*10 for i in 1:10]
     println("family:$family")
     c = 0
     timeout = false
-    while true && c < 10
+    while c < 10
         @time status = secret_santa(family,print_solutions,all_solutions)
         c += 1
         if status == MOI.TIME_LIMIT
