@@ -112,8 +112,8 @@ ys = [1,0,1,1,1,1,1,1,0,0,0,1,1,0,1,1,1,1,1,1,0,1,0];
 model = logistic_regression_challenger(xs,ys)
 
 # chns = sample(model, Prior(), 10_000)
-chns = sample(model, MH(), 10_000)
-# chns = sample(model, PG(15), 10_000)
+# chns = sample(model, MH(), 10_000)
+chns = sample(model, PG(15), 1_000)
 # chns = sample(model, SMC(), 10_000)
 # chns = sample(model, IS(), 10_000)
 
@@ -122,3 +122,18 @@ display(chns)
 # display(plot(chns))
 
 # display(plot(chns[[:w0,:w1]]) # quite bad!
+
+println("Posterior predictive:")
+num_correct = 0
+n = length(ys)
+for i in 1:n
+    pred1 = mean(chns["y_post[$i]"])
+    pred2 = round(Int64,pred1)
+    c = "!"
+    if pred2 == ys[i] 
+        global num_correct += 1
+        c = ""
+    end
+    println("$i: true: $(ys[i]) pred: $pred2 ($pred1)$c" )
+end
+println("num_correct: $num_correct / $n ($(100*num_correct/n)%)")

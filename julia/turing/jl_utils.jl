@@ -8,6 +8,7 @@
 
 =#
 
+using Turing
 using Printf, Distributions
 using LinearAlgebra
 
@@ -211,7 +212,7 @@ function mean_val(chns::Chains, var)
 end
 
 """
-UniformDraw(xs)
+`UniformDraw(xs)`
 
 Draw one element from `xs` randomly with uniform probability.
 
@@ -222,7 +223,7 @@ UniformDraw(xs) = DiscreteNonParametric(xs, ones(length(xs)) ./ length(xs))
 
 
 """
-confusion_matrix(y,pred,cats,print_all=true) 
+`confusion_matrix(y,pred,cats,print_all=true)``
 
 Given the true classifications `y` and the predictions `pred`,
 it returns a confusion matrix as well as a bads array for the wrongly 
@@ -279,3 +280,71 @@ function confusion_matrix(y,pred,cats,print_all=true)
     println("Accuracy: ",  (num_correct / num_total))
     return confusion, bads
 end  
+
+
+"""
+`linear_regression_model(x,y=missing)`
+
+BDA model for linear regression using MvNormal and rather strict priors.
+
+`x` is the dataframe with the input features, `y` is the output variable (a single value).
+
+The model can be used in prediction with the following workflow:
+```
+# Training: x and y is the training data  
+model = linear_regression_model(x,y)
+chns = sample(model, NUTS(), 1_000)
+display(chns)
+
+# Prediction, note the "missing" argument instead if y
+mpred = linear_regression_model(x,missing)
+pred = predict(mpred,chns)
+display(pred)`
+```   
+
+"""
+@model function linear_regression_model(x,y=missing, ::Type{T} = Float64) where {T}
+    n,p = size(x)  
+
+    if y === missing 
+      y = Vector{T}(undef, n) 
+    end
+
+    a ~ Normal(0,1)
+    params ~ filldist(Normal(0,1),p)  
+    sigma ~ Uniform(0,1)
+
+    mu = a .+ x*params
+    y ~ MvNormal(mu, sigma)
+
+    return y
+
+end
+
+
+"""
+`split_train_test(x,y,train_pct=0.75)`
+
+Split the datasets `x` (the inputs) and `y` (the outputs) into 
+training and test sets with a size of the training set of `train_pct`.
+
+Returns `x_train, x_test, y_train, y_test`
+"""
+function split_train_test(x,y,train_pct=0.75)
+    num_rows = length(y)
+    num_train = round(Int64,num_rows*train_pct)
+
+    train_ix = StatsBase.sample(1:num_rows,num_train,replace=false)
+    test_ix = [i for i in 1:num_rows if !(i in train_ix)]
+
+    # Split into train and test
+    x_train = x[train_ix,:]
+    x_test = x[test_ix,:]
+
+
+    y_train = y[train_ix]
+    y_test = y[test_ix]
+
+
+    x_train, x_test, y_train, y_test
+end
