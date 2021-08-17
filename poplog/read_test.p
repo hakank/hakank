@@ -55,7 +55,7 @@
 
 compile('/home/hakank/Poplib/init.p');
 
-lvars filename= 'sv_spelling_org_utf8.txt',
+lvars filename= '/home/hakank/poplog/me/sv_spelling_org_utf8.txt',
 ;;; lvars filename= 'words_lower.txt',
 ;;; lvars filename= '/usr/dict/words',
      nextline = vedfile_line_repeater(filename, true),

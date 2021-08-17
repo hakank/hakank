@@ -42,35 +42,37 @@ define is_prime(n);
 enddefine;
 
 ;;;
-;;; distinct factors of  ^n
+;;; factors(n)
 ;;;
-define distinct_factors(n);
-    lvars ll = [];
+;;; Returns the factors of n.
+;;;
+define factors(n);
+    lvars m = n;
 
-    if is_prime(n) then 
-        return([]);
-    endif;
-
-    if n mod 2 = 0 then
-        [2]->ll;
-        while n mod 2 = 0 then
-            n div 2 -> n;
-        endwhile;
-    endif;
-        
-    lvars i;
-    for i from 3 by 2 to round(n/2) do
-        if n mod i = 0 then
-            ll<>[^i]->ll;
-            while n mod i = 0 then
-                n div i -> n;
-            endwhile;
-        endif;
-        if n = 1 then quitloop endif;
-    endfor;
-
-    ll;
-
+    ;;; if is_prime(n) then 
+    ;;;    return([]);
+    ;;; endif;
+    lvars i,t;
+    [% 
+       while m mod 2 = 0 do
+           2;
+           m div 2 -> m;
+       endwhile;
+       3->t;
+       while m > 1 and t < 1+sqrt(m) do
+           if m mod t = 0 then
+               while m mod t = 0 do
+                   t;
+                   m div t -> m;
+               endwhile;
+           endif;
+           t+2->t;
+           ;;;next_prime(t)->t; ;;; test
+       endwhile;
+       if m > 1 then
+           m;
+       endif;
+     %];
 enddefine;
 
 
@@ -83,7 +85,7 @@ define problem47;
 
     while L.length < limit do
 
-        if is_prime(n) or distinct_factors(n).length /= limit then
+        if is_prime(n) or factors(n).length /= limit then
             n+1->n;
             []->L;
             nextloop; 

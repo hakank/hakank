@@ -22,15 +22,15 @@ lib solvems;
 
 ;;; (8,15,24,...)-puzzle, or rather (n x n)-1-puzzle
 ;;; The position n*n is the blank space in the goal.
-;;; 
-vars n = 3;
-;;; vars n = 4;
+;;; NOTE: Don't forget the puzzle variable below!
+;;; vars n = 3;
+vars n = 4;
 ;;; vars n = 5;
 
 
 ;;; For n = 3
 ;;; This is the puzzle in TEACH SOLVEMS:
-vars puzzle = [[6 8 7] [3 5 1] [4 2 9]]; ;;; astar: 310 states, length 27
+;;; vars puzzle = [[6 8 7] [3 5 1] [4 2 9]]; ;;; astar: 310 states, length 27
                                              ;;; best: 41 states, length 31
 ;;; vars puzzle = [[9 8 7] [3 6 1] [4 2 5]]; ;;; astar: 2847 states, length 33
                                              ;;; best: 44 states: length 33
@@ -42,7 +42,7 @@ vars puzzle = [[6 8 7] [3 5 1] [4 2 9]]; ;;; astar: 310 states, length 27
 ;;; For n = 4;
 ;;; astar: 1136 states, length 22
 ;;; vars puzzle = [[1 2 3 4] [5 6 7 8] [9 10 11 12] [13 14 15 16]];
-;; vars puzzle = [[1 2 3 4] [5 6 7 8] [9 10 11 12] [16 14 15 13]];
+vars puzzle = [[1 2 3 4] [5 6 7 8] [9 10 11 12] [16 14 15 13]];
 ;;; vars puzzle = [[1 2 3 4] [5 6 7 8] [9 10 11 12] [13 16 15 14]]; ;;; is this valid?
 
 

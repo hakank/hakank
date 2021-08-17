@@ -40,28 +40,37 @@ define is_prime(n);
 enddefine;
 
 ;;;
-;;; Kind of brutal brutal...
+;;; factors(n)
+;;;
+;;; Returns the factors of n.
 ;;;
 define factors(n);
     lvars m = n;
-    lvars ll = [];
 
     ;;; if is_prime(n) then 
     ;;;    return([]);
     ;;; endif;
-    lvars i;
+    lvars i,t;
     [% 
-      for i from 2 to round(m/2) do
-         if m mod i = 0 then
-             while m mod i = 0 then
-                 i;
-                 m / i -> m;
-             endwhile;
-         endif;
-         if m = 1 then quitloop endif;
-     endfor;
-     %]->ll;
-    return(ll);
+       while m mod 2 = 0 do
+           2;
+           m div 2 -> m;
+       endwhile;
+       3->t;
+       while m > 1 and t < 1+sqrt(m) do
+           if m mod t = 0 then
+               while m mod t = 0 do
+                   t;
+                   m div t -> m;
+               endwhile;
+           endif;
+           t+2->t;
+           ;;;next_prime(t)->t; ;;; test
+       endwhile;
+       if m > 1 then
+           m;
+       endif;
+     %];
 enddefine;
 
 

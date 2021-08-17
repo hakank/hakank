@@ -31,11 +31,11 @@ compile('/home/hakank/Poplib/init.p');
 ;;; Note: this library is not in the standard distribution.
 ;;; Download it from 
 ;;; http://www.cs.bham.ac.uk/research/projects/poplog/auto/strmatches.p
-load 'strmatches.p';
+load '/home/hakank/poplog/me/strmatches.p';
 
 
 ;;; Define the word list
-lvars filename= 'sv_spelling_org_utf8.txt',
+lvars filename= '/home/hakank/poplog/me/sv_spelling_org_utf8.txt',
 ;;; lvars filename= 'words_lower.txt',
 ;;; lvars filename= '/usr/share/dict/words',
      nextline = vedfile_line_repeater(filename, true),
