@@ -19,7 +19,7 @@ define sumlist(list) -> res;
 enddefine;
 
 ;;; problem1()=>
-define problem1();
+define problem1a();
   lvars ll,i;
   [%for i from 1 to 999 do if (i mod 3 = 0) or (i mod 5 = 0) then i endif endfor%] -> ll;
   applist(0, ll, nonop + )=>
@@ -53,6 +53,24 @@ define problem1c;
     applist(0, [%for i from 1 to 999 do mod3ormod5(i) endfor%], nonop +)=>;
 enddefine;
 
-problem1();
+;;; as a oneliner
+define problem1d;
+    lvars i;
+    [%for i from 1 to 999 do if i mod 3 = 0 or i mod 5 = 0 then i endif endfor%].sumlist=>
+enddefine;
+
+'problem1a()'=>
+problem1a();
+timediff()=>;
+
+;;; 'problem1b()'=>
 ;;; problem1b();
+;;; timediff()=>;
+
+;;; 'problem1c()'=>
 ;;; problem1c();
+;;; timediff()=>
+
+;;; 'problem1d()'=>
+;;; problem1d();
+;;; timediff()=>;

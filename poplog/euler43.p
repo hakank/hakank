@@ -79,6 +79,43 @@ define next_permutation(p);
 enddefine;
 
 ;;;
+;;; Almost exactly as fast as next_permutation(p).
+;;;
+define next_permutation2(p);
+
+    lvars n = p.length;
+    lvars i = n;
+    while (i > 1 and p(i-1) >= p(i)) then
+        i-1->i;
+    endwhile;
+    if (i <= 1) then
+        return([]);
+    endif;
+
+    lvars j = n;
+    ;;; [j ^j (i-1) ^(i-1)]=>;
+    while j > 1 and p(j) <= p(i-1) then
+        j-1 -> j;
+    endwhile;
+
+    ;;; swap
+    (p(j),p(i-1)) -> (p(i-1),p(j));
+
+    n -> j;
+    while (i < j and i <= n and j <= n and i >= 1 and j >= 1) then
+        ;;; [i ^i j ^j]=>;
+        ;;; swap
+        (p(j),p(i)) -> (p(i),p(j)),
+        i+1->i;
+        j-1->j;
+    endwhile;
+    return(p);
+
+enddefine;
+
+
+
+;;;
 ;;; 4.92s
 ;;;
 define problem43;
@@ -153,28 +190,80 @@ enddefine;
 ;;; 2.63s
 ;;;
 define problem43c;
-    lvars primes = [2 3 5 7 11 13 17];
+    lvars primes = {2 3 5 7 11 13 17};
     lvars tsum = 0;
-    lvars j, i = 1;    
-    lvars P = [% for j from 0 to 9 do j endfor%]; ;;; the permutation
+    lvars i = 1;    
+    ;;; lvars P = [% for j from 0 to 9 do j endfor%]; ;;; the permutation
+    lvars P = [1 0 2 3 4 5 6 7 8 9];
     while P /= [] do
-        ;;; P=>;
-        1 -> i;    
+        ;;; P => ;
+        1 -> i;
+        lvars found = 1;   
         while i <= 7 do
-            lvars found = 1;
             if (100*P(i+1) + 10*P(i+2) + P(i+3)) mod primes(i) > 0 then
                 0->found;
-                quitloop;
+                quitloop();
             endif;
             i+1->i;
         endwhile;
-        if found = 1 then
+        if found == 1 then
             tsum + P.packitem -> tsum;
         endif;
         next_permutation(P)->P;
+        ;;; next_permutation2(P)->P;        
     endwhile;
     tsum=>;
 enddefine;
+
+;;; This use the permutations lib from
+;;; http://users.sussex.ac.uk/~davidy/poplog/permutations.p
+;;; which should be download and put somewhere relevant
+;;; This takes about 3.36s (and is thus slower than problem43c).
+;;;
+define problem43d;
+    lib permutations;
+    lvars primes = {2 3 5 7 11 13 17};
+    lvars tsum = 0;
+    lvars i = 1;    
+    lvars P = [1 0 2 3 4 5 6 7 8 9];
+    lvars perm;
+    permutations(P)->perm;
+    while P /= termin do
+        ;;; P => ;
+        1 -> i;
+        ;;; Skip if first element is 0 -> slightly faster (3.36s instead of 3.61s)
+        if P(1) = 0 then
+            perm() -> P;
+            nextloop();
+        endif;
+        lvars found = 1;   
+        while i <= 7 do
+            if (100*P(i+1) + 10*P(i+2) + P(i+3)) mod primes(i) > 0 then
+                0->found;
+                quitloop();
+            endif;
+            i+1->i;
+        endwhile;
+        if found == 1 then
+            tsum + P.packitem -> tsum;
+        endif;
+        perm()->P;
+        endwhile;
+    tsum=>;
+enddefine;
+
+
+;;; Test plain permutation. This takes 1.77s
+;;; define test;
+;;;     lvars P = [1 0 2 3 4 5 6 7 8 9];
+;;;     while P /= [] do
+;;;         next_permutation(P)->P;
+;;;     endwhile;
+;;; enddefine;
+
+;;;
+;;; test();
+;;; timediff()=>;
 
 
 ;;; 'problem43()'=>
@@ -188,5 +277,9 @@ enddefine;
 'problem43c()'=>
 problem43c();
 timediff()=>;
+
+;;; 'problem43d()'=>
+;;; problem43d();
+;;; timediff()=>;
 
 

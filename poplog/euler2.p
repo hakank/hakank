@@ -106,6 +106,7 @@ define problem2a();
     select(f2, even)->f_even;
     ;;; npr(f_even);
     sumlist(f_even)=>
+    ;;; select(f2, even).sumlist=> ;;; or
 enddefine;
 
 
@@ -167,7 +168,7 @@ define problem2_nomemo();
     endwhile
     %]->fib_list;
     sum=>
-    fib_list=>
+    ;;; fib_list=>
     
 enddefine;
 
@@ -196,18 +197,23 @@ define problem2();
     endwhile
     %]->fib_list;
     sum=>
-    fib_list=>
+    ;;; fib_list=>
     
 enddefine;
 
-;;;'problem2_nomemo'=>
+;;; 'problem2_nomemo'=>
 ;;; problem2_nomemo()=>
+;;; timediff()=>
 
 ;;; 'problem2()'=>
 ;;; problem2()=>;
+;;; timediff()=>
 
 'problem2a()'=>
 problem2a()=>;
+timediff()=>;
 
 ;;; 'problem2b()'=>
 ;;; problem2b()=>
+;;; timediff()=>
+

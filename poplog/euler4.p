@@ -21,8 +21,12 @@ define palindrome(list);
     list = rev(list);
 enddefine;
 
+define maxlist(list);
+    applist(hd(list),tl(list),max)
+enddefine;
 
-define problem4();
+;;; 0.09s
+define problem4a();
     lvars i,j;
     last(
     syssort(
@@ -39,6 +43,7 @@ define problem4();
 enddefine;
 
 ;;; alternative version, using just a variable maxval
+;;; 0.03s
 define problem4b();
     lvars i,j,x,imax, jmax;
     lvars maxval = 0;
@@ -53,12 +58,34 @@ define problem4b();
             endif;
         endfor; 
     endfor;
-    [^maxval ^imax ^jmax]=>
+    ;;; [^maxval ^imax ^jmax]=> 
+    maxval=>
 
 enddefine;
 
-'problem4()'=>
-problem4()=>
+;;; Slower 0.6s
+define problem4c();
+    lvars i,j,x,imax, jmax;
+    lvars maxval = 0;
+    
+    [% for i from 100 to 999 do 
+        for j from 100 to i do 
+           if palindrome(unpackitem(i*j)) then 
+               i*j
+           endif; 
+        endfor; 
+    endfor %].maxlist=>;   
+enddefine;
 
-;;; 'problem4b()'=>
-;;; problem4b()=>
+
+;;; 'problem4a()'=>
+;;; problem4a()=>
+;;; timediff()=>
+
+'problem4b()'=>
+problem4b()=>
+timediff()=>
+
+;;; 'problem4c()'=>
+;;; problem4c()=>
+;;; timediff()=>
