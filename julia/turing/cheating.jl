@@ -40,14 +40,14 @@
         Symbol   Float64   Float64    Float64   Float64    Float64   Float64       Float64 
 
             p    0.2273    0.1249     0.0040    0.0087   290.4227    1.0058      121.5666
-        obs_prop    0.3559    0.0460     0.0015    0.0023   403.9539    0.9991      169.0891
+     obs_prop    0.3559    0.0460     0.0015    0.0023   403.9539    0.9991      169.0891
 
     Quantiles
     parameters      2.5%     25.0%     50.0%     75.0%     97.5% 
         Symbol   Float64   Float64   Float64   Float64   Float64 
 
             p    0.0255    0.1364    0.2166    0.3005    0.4916
-        obs_prop    0.2700    0.3200    0.3500    0.3800    0.4500
+     obs_prop    0.2700    0.3200    0.3500    0.3800    0.4500
    
 
 
@@ -80,9 +80,9 @@ model = cheating_model(N, yes_response)
 
 # chns = sample(model, Prior(), 10_000)
 # chns = sample(model, MH(), 10_000)
-chns = sample(model, PG(5),  1_000)
+# chns = sample(model, PG(5),  1_000)
 # chns = sample(model, PG(5),  MCMCThreads(), 10_000, 4)
-# chns = sample(model, SMC(), 10_000)
+chns = sample(model, SMC(), 10_000)
 # chns = sample(model, IS(), 10_000)
 
 # chns = sample(model, HMC(0.1,6), 1_000)
@@ -92,5 +92,5 @@ display(chns[[:p,:obs_prop,:p_prior]])
 # display(plot(chns[[:p,:obs_prop,:p_prior]]))
 
 # Another way: 
-println("mean(p): $(mean(group(chns, :truths).value.data,dims=1) |> mean)")
+println("mean(truths): $(mean(group(chns, :truths).value.data,dims=1) |> mean)")
 

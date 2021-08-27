@@ -41,14 +41,14 @@
     parameters      mean       std   naive_se      mcse        ess      rhat   ess_per_sec 
         Symbol   Float64   Float64    Float64   Float64    Float64   Float64       Float64 
 
-            p    0.2042    0.0993     0.0031    0.0040   446.4728    0.9990      394.4106
+               p    0.2042    0.0993     0.0031    0.0040   446.4728    0.9990      394.4106
         p_skewed    0.3521    0.0497     0.0016    0.0020   446.4728    0.9990      394.4106
 
     Quantiles
     parameters      2.5%     25.0%     50.0%     75.0%     97.5% 
         Symbol   Float64   Float64   Float64   Float64   Float64 
 
-            p    0.0349    0.1325    0.2020    0.2749    0.3981
+               p    0.0349    0.1325    0.2020    0.2749    0.3981
         p_skewed    0.2674    0.3162    0.3510    0.3875    0.4490
 
     Summary Stats:
