@@ -16,6 +16,7 @@ Here's a summary of the directories so far:
 * choco3: Choco v3, constraint programming
 * comet: Comet, constraint programming, linear/integer programming, constraint-based local search
 * common_cp_models: Listing of common CP problems (just index.html with statistics and links to the models)
+* compy: CPMPy: Constraint modelling system in Python. Supports OR-Tools CP-SAT and PySAT solvers.
 * eclipse_clp: ECLiPSe CLP, Prolog, logic programming, constraint programming, loops etc
 * essence_savile_row: Essence'/Saville Row, constraint programming
 * essence_tailor: Essence'/Tailor, constraint programming
