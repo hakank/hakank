@@ -104,7 +104,7 @@ def a_round_of_golf():
   model += [score[Frank] < score[Carter]]
 
   # 5. None of the four scored exactly 81 strokes.
-  model += [score != 81
+  model += [score != 81]
 
   ss = CPM_ortools(model)
   num_solutions = 0
