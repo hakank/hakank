@@ -39,7 +39,7 @@ def extract_tour(x):
     for row in tour:
         print(row)
 
-def knights_circuit(n=4,num_sols=0):
+def knights_tour_circuit(n=4,num_sols=0):
 
     # Since we use circuit we have to use 0..n*n-1 instead
     x = intvar(0,n*n-1,shape=(n,n),name="x")    
@@ -85,13 +85,10 @@ def knights_circuit(n=4,num_sols=0):
     print("number of solutions:", num_solutions)
 
 
-# for n in range(2,9):
-#     print("\nn:",n)
-#     knights_path(n,1)
 
 # Not this only works for even n
 for n in range(6,10+1):
     if n % 2 == 0:
         print("\nn:",n)
-        knights_path2(n,1)
-# knights_path2(6,1)
+        knights_tour_circuit(n,1)
+
