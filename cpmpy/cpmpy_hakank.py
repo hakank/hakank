@@ -1162,3 +1162,29 @@ def assignment_model(cost, tasks=None,people=None,print_solution=None,opt="min")
                         print(" is done by", people[j])
             print()
 
+
+def latin_square(x):
+  """
+  latin_square(x)
+
+  The matrix x is a Latin square.
+  """
+  return [[AllDifferent(row) for row in x],
+          [AllDifferent(col) for col in x.transpose()]]
+
+
+
+
+#
+# reverses an array from -> to
+#
+def reverse(xfrom, xto):
+  """
+  reverse(xfrom, xto)
+
+  xto is reverse of xfrom.
+  """
+  n = len(xfrom)
+  return [xto[i] == xfrom[n-i-1] for i in range(n)]
+
+
