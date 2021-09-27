@@ -64,7 +64,7 @@ def donald_gerald_robert_v2():
         num_solutions += 1
         print(x.value())
         print(ss.status())
-        get_different_solution(ss,flatten_lists([x,carries]))
+        get_different_solution(ss,list(x)+list(carries))
 
     print("num_solutions:", num_solutions)
 

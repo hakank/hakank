@@ -119,7 +119,7 @@ def three_jugs(n):
   #
   # declare variables
   #
-  x = intvar(1,input_max,shape=n,name="x")
+  x = intvar(1,input_max,shape=(n,),name="x")
   
   #
   # constraints
@@ -147,7 +147,7 @@ def three_jugs(n):
 
 # Search for a minimum solution by increasing
 # the length of the state array.
-for n in range(2, 15):
+for n in range(1, 15):
   result = three_jugs(n)
   result_len = len(result)
   if result_len:

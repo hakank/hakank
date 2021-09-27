@@ -64,7 +64,7 @@ def discrete_tomography(row_sums="", col_sums=""):
     while ss.solve():
         num_solutions += 1        
         print_board(x, r, c, row_sums, col_sums)
-        get_different_solution(ss,flatten_lists(x))
+        get_different_solution(ss,x.flat)
         print()
 
     print("number of solutions:", num_solutions)

@@ -61,9 +61,6 @@ def stable_marriage(problem,num_sols=0,num_procs=1):
       model += [(rankMen[m,o] < rankMen[m, wife[m]]).implies\
                 (rankWomen[o,husband[o]] < rankWomen[o,m]) for o in range(n)]
 
-    xs = flatten_lists([wife,husband])
-
-
     print("Solve")
 
     # Use OR-tools CP-SAT for speeding up the program.

@@ -84,7 +84,7 @@ def traffic_lights():
     for i in range(n):
       print("%+2s %+2s" % (lights[V[i].value()], lights[P[i].value()]), end=" ")
     print()
-    get_different_solution(ss,flatten_lists([P,V]))
+    get_different_solution(ss,list(P)+list(V))
 
   print()
   print("num_solutions:", num_solutions)

@@ -47,7 +47,7 @@ def book_buy():
     print("x:", x.value())
     print("y:", y.value())
 
-    get_different_solution(ss,flatten_lists([x,y]))
+    get_different_solution(ss,list(x)+list(y))
 
 
 book_buy()

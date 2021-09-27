@@ -142,7 +142,7 @@ def four_islands():
     print("export:",export.value())
     print("attraction:",attraction.value())
     print()
-    get_different_solution(ss,flatten_lists([island,export,attraction]))
+    get_different_solution(ss,list(island)+list(export)+list(attraction))
 
   print("num_solutions:", num_solutions)
 

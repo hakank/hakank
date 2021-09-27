@@ -118,7 +118,7 @@ def breaking_news():
           
     
     print()
-    get_different_solution(ss,flatten_lists([locations,news,locations_inv,news_inv]))
+    get_different_solution(ss,list(locations)+list(news))
 
   print()
   print("num_solutions:", num_solutions)

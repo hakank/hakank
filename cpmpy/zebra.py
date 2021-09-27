@@ -121,7 +121,7 @@ def zebra():
           p for p in people if p.value() == zebra.value()][0]
       print(f"The {zebra_owner} owns a zebra")
       # Check for unique solution
-      get_different_solution(ss,flatten_lists([color,nationality,animal,drink,smoke]))
+      get_different_solution(ss,list(color)+list(nationality)+list(animal)+list(drink)+list(smoke))
 
 
 

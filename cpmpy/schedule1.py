@@ -65,6 +65,5 @@ def scheduling1():
     print("ends    :", ends.value())
     print("max(ends):",max(ends.value()))
     print()
-    # get_different_solution(ss,flatten_lists([starts,ends]))
 
 scheduling1()

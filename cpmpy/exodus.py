@@ -100,7 +100,7 @@ def exodus():
     print("Country:", Country.value())
     print("Age    :", Age.value())
     print()
-    get_different_solution(ss,flatten_lists([Story,Age,Country]))
+    get_different_solution(ss,list(Story)+list(Age)+list(Country))
 
   print("num_solutions:", num_solutions)
 

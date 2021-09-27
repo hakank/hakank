@@ -41,7 +41,7 @@ def pigeon_hole(n=3,m=10):
     num_solutions += 1
     print(p.value())
     print()
-    get_different_solution(ss,flatten_lists(p))
+    get_different_solution(ss,p.flat)
 
   print("num_solutions:", num_solutions)
 

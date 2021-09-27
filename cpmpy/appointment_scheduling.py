@@ -88,7 +88,7 @@ def appointment_scheduling1(m,num_sols=0):
         print()
         if num_sols > 0 and num_solutions >= num_sols:
             break        
-        get_different_solution(ss,flatten_lists(x))
+        get_different_solution(ss,x.flat)
 
     print()
     print("num_solutions:", num_solutions)  

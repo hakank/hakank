@@ -63,7 +63,7 @@ def initial_pair_queue():
     print("queue:\n", q)
     print("queue:\n", [ cs[q[i,0]]+cs[q[i,1]] for i in range(n)])
     print()
-    get_different_solution(ss,flatten_lists(queue))
+    get_different_solution(ss,queue.flat)
     
   print("num_solutions:",num_solutions)  
 

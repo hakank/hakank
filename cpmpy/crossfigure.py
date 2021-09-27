@@ -347,7 +347,7 @@ def crossfigure():
         print("NumBranches:", ss.ort_solver.NumBranches())
         print("WallTime:", ss.ort_solver.WallTime())
         print()    
-        get_different_solution(ss,flatten_lists(M))
+        get_different_solution(ss,M.flat)
 
 
 crossfigure()

@@ -48,7 +48,7 @@ def young_tableaux(n = 5):
     #
     # Decision variables
     x = intvar(1,n+1,shape=(n, n), name="x")
-    x_flat = flatten_lists(x)
+    x_flat = x.flat
     
     p = intvar(0, n+1,shape=n, name="p")
 
@@ -104,7 +104,7 @@ def young_tableaux(n = 5):
             if p[i].value() > 0:
                 print()
         print()
-        get_different_solution(ss,flatten_lists([x_flat,p]))
+        get_different_solution(ss,list(x_flat)+list(p))
 
     print("number of solutions:", num_solutions)
 

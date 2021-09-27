@@ -132,7 +132,7 @@ def set_partition_model(n=16, num_sets=2):
         print()
 
     print()
-    get_different_solution(ss,flatten_lists(a))
+    get_different_solution(ss,a.flat)
 
   print("num_solutions:",num_solutions)
 

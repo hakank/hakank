@@ -160,7 +160,7 @@ def MCDP1(machines, parts, cells, mmax, matrix_machine_part):
     #         matrix_machine_cell[(i,k)] = solver.IntVar(0, 1, 'matrix_machine_cell(%i,%i)' % (i,k))
     matrix_machine_cell = boolvar(shape=(machines,cells),name="matrix_machine_cell")
 
-    matrix_machine_cell_flat = flatten_lists(matrix_machine_cell)
+    matrix_machine_cell_flat = matrix_machine_cell.flat
 
     # 1..Machines, 1..Cells
     # matrix_part_cell = {}

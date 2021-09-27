@@ -66,7 +66,7 @@ def divisible_by_1_through_9(base=10):
     print("number base 10: %i base %i: %s" % (tt[0],
                                               base,
                                               "".join([digits_str[xx[i]+1] for i in range(base)])))
-    get_different_solution(ss,flatten_lists([x,t]))
+    get_different_solution(ss,list(x)+list(t))
     print()
 
   print("num_solutions:", num_solutions)

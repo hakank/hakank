@@ -75,7 +75,7 @@ def knights_path(n=4,num_sols=0):
             print("WallTime:", ss.ort_solver.WallTime())
             print()
             break
-        get_different_solution(ss,flatten_lists(x))
+        get_different_solution(ss,x.flat)
 
     print("number of solutions:", num_solutions)
 

@@ -104,7 +104,7 @@ def fill_a_pix(puzzle='', n=''):
           row[j] = '#'
       print(''.join(row))
     print()
-    get_different_solution(ss,flatten_lists(pict))
+    get_different_solution(ss,pict.flat)
 
   print('num_solutions:', num_solutions)
 

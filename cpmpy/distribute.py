@@ -64,7 +64,7 @@ def distribute_test():
     print("value:", value.value())
     print("base :", base.value())
     print()
-    get_different_solution(ss,flatten_lists([card,value,base]))
+    get_different_solution(ss,list(card)+list(value)+list(base))
 
 
 distribute_test()

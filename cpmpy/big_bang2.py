@@ -38,7 +38,7 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def big_bang2(minimize_val=1):
+def big_bang2(minimize_val=True):
 
     #
     # data
@@ -75,7 +75,7 @@ def big_bang2(minimize_val=1):
     max_val = intvar(0, f, name="max_val")
 
     # objective
-    if minimize_val != 0:
+    if minimize_val == True:
         print("Minimizing max_val")
         model = Model(minimize=max_val)
     else:
@@ -123,17 +123,16 @@ def big_bang2(minimize_val=1):
         print("max_val:", max_val.value())
         print("dice:\n",dice.value())
         print("comp:\n",comp.value())
-        if minimize_val == 1:
+        print()
+        if minimize_val == True:
             break
-        get_different_solution(ss,flatten_lists([flatten_lists(dice),flatten_lists(comp)]))
+        get_different_solution(ss,list(dice.flat) + list(comp.flat))
 
     print()
     print("num_solutions:", num_solutions)
 
-
-minimize_val = 1  # Minimizing max value (0: no, 1: yes)
+minimize_val = True  # Minimizing max value (0: no, 1: yes)
 if len(sys.argv) > 1:
     minimize_val = int(sys.argv[1])
 
 big_bang2(minimize_val)
-

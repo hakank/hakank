@@ -94,7 +94,7 @@ def the_family_puzzle():
     print("women:", [women[i].value() for i in range(n)])
     print("sons :", [sons[i].value() for i in range(n)])
     print()
-    get_different_solution(ss,flatten_lists([women,sons]))
+    get_different_solution(ss,list(women)+list(sons))
 
   print("num_solutions:", num_solutions  )
 

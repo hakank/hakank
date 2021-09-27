@@ -66,7 +66,7 @@ def devils_word(total, arr):
     print("minus:", minus.value())
     print("num_minus:", num_minus.value())
     print()
-    get_different_solution(ss,flatten_lists([result,plus,minus]))
+    get_different_solution(ss,list(result)+list(plus)+list(minus))
 
   print("num_solutions:", num_solutions)
  

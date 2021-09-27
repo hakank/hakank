@@ -152,7 +152,7 @@ def costas_array(n=6,print_solutions=True):
                    differences[k-1,l-1] + differences[k-1,l]]
 
   ss = CPM_ortools(model)    
-  cb = solution_printer(ss.varmap,[costas,flatten_lists(differences)],n,print_solutions)
+  cb = solution_printer(ss.varmap,[costas,differences.flat],n,print_solutions)
 
   # Flags to experiment with
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
@@ -181,5 +181,6 @@ costas_array(n,print_solutions)
 num_sols = []
 for n in range(2,10):
   num_sols.append(costas_array(n,False))
+  print()
 print(num_sols)
   

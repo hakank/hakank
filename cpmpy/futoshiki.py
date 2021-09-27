@@ -73,7 +73,7 @@ def futoshiki(values, lt):
         print(field[i, j].value(), end=" ")
       print()
     print()
-    get_different_solution(ss,flatten_lists(field))
+    get_different_solution(ss,field.flat)
 
   print("num_solutions:", num_solutions)
 

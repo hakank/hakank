@@ -134,7 +134,7 @@ def social_golfer1(weeks=4,groups=3,groupSize=3,num_sols=1):
     print(flush=True)
     if num_sols > 0 and num_solutions >= num_sols:
       break
-    get_different_solution(ss,flatten_lists(assign))
+    get_different_solution(ss,assign.flat)
 
   print("num_solutions:", num_solutions)
   print("Num conflicts:", ss.ort_solver.NumConflicts())

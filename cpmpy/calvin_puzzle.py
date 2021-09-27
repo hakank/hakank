@@ -96,7 +96,7 @@ def calvin_puzzle(n=5,num_sols=1):
       print("WallTime:", ss.ort_solver.WallTime())
 
       break
-    get_different_solution(ss,flatten_lists(x))
+    get_different_solution(ss,x_flat)
   print()
 
   print('num_solutions:', num_solutions)

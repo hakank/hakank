@@ -48,7 +48,7 @@ def num_skyscrapes(y,num):
     constraints += [num == 1 + sum([i == sum([y[i] > y[j] for j in range(i)]) for i in range(1,n)])]
 
   return constraints
-  
+
 
 def skyscraper(problem):
 
@@ -96,7 +96,7 @@ def skyscraper(problem):
   while ss.solve():
     num_solutions += 1
     print(x.value())
-    get_different_solution(ss,flatten_lists(x))
+    get_different_solution(ss,x.flat)
 
   print("num_solutions:", num_solutions)
   print()

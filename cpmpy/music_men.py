@@ -84,7 +84,7 @@ def music_men():
         print("Surnames:", Surnames.value())
         print("Music   :", Music.value())
         print()
-        get_different_solution(ss,flatten_lists([Names,Surnames,Music]))
+        get_different_solution(ss,list(Names)+list(Surnames)+list(Music))
 
     print("num_solutions:", num_solutions)
 

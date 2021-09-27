@@ -43,7 +43,7 @@ def knights_tour_circuit(n=4,num_sols=0):
 
     # Since we use circuit we have to use 0..n*n-1 instead
     x = intvar(0,n*n-1,shape=(n,n),name="x")    
-    x_flat = flatten_lists(x)
+    x_flat = x.flat
 
     model = Model(
                  AllDifferent(x),

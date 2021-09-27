@@ -92,7 +92,7 @@ def inverse_test(n=4):
     while ss.solve():
         num_solutions += 1
         print("x:",x.value()+1,"x_inv:",x_inv.value()+1,)
-        get_different_solution(ss,flatten_lists([x,x_inv]))
+        get_different_solution(ss,x)
     print("num_solutions:",num_solutions)
 
 inverse_test()

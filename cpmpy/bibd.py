@@ -51,7 +51,7 @@ def solve(param):
         num_solutions += 1
         print(matrix.value())
         print()
-        get_different_solution(ss,flatten_lists(matrix))
+        get_different_solution(ss,matrix.flat)
 
     print("num_solutions:",num_solutions)
 

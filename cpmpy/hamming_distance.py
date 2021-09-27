@@ -60,7 +60,7 @@ def hamming_distance_model(a_given="",n=6):
     print("b:", b.value())    
     print("diffs:", diffs.value())
     print()
-    get_different_solution(ss,flatten_lists([a,b]))
+    get_different_solution(ss,list(a)+list(b))
   
   print("num_solutions:", num_solutions)
 

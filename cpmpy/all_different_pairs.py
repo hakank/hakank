@@ -62,7 +62,7 @@ def all_different_pairs_test(n=5):
             print(x[i,j].value(),end=" ")
         print()
     print()
-    get_different_solution(ss,flatten_lists(x))
+    get_different_solution(ss,x.flat)
 
   print("num_solutions:", num_solutions)
 

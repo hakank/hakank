@@ -150,7 +150,7 @@ def crew(sols=1):
 
     if num_solutions >= sols:
       break
-    get_different_solution(ss,flatten_lists(crew))
+    get_different_solution(ss,crew.flat)
 
   print()
   print("num_solutions:", num_solutions)

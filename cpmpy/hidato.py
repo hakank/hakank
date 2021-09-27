@@ -87,7 +87,7 @@ def hidato(problem):
     while ss.solve():
         num_solutions += 1        
         print_board(x, r, c)
-        get_different_solution(ss,flatten_lists(x))
+        get_different_solution(ss,x.flat)
 
     print("number of solutions:", num_solutions)
 

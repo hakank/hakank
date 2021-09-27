@@ -129,7 +129,7 @@ def ormat_game(problem, overlays, n, debug=0):
     # Mainly for debugging purposes, but it also makes the
     # modeling easier.
     y = intvar(0,f,shape=(n,n),name="y")
-    y_flat = flatten_lists(y)
+    y_flat = y.flat
     
     model = Model (
         # sanity clauses
@@ -173,7 +173,6 @@ def ormat_game(problem, overlays, n, debug=0):
         print("y:\n",y.value())
         print("num_overlays:", num_overlays.value())
         print_solution(x, overlays)
-        # get_different_solution(model,flatten_lists([x,y_flat]))
 
     print("Num conflicts:", s.ort_solver.NumConflicts())
     print("NumBranches:", s.ort_solver.NumBranches())

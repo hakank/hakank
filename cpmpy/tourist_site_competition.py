@@ -88,7 +88,7 @@ def tourist_site_competition():
           print(sites_s[s],end=" ")
       print()
     print()
-    get_different_solution(ss,flatten_lists(x))
+    get_different_solution(ss,x.flat)
 
   print("num_solutions:", num_solutions)
 

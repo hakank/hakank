@@ -83,7 +83,7 @@ def solve(param):
         for row in matrix:
             print(sum([x.value() for x in row]),end=" ")
         print()
-        get_different_solution(ss,flatten_lists(matrix))
+        get_different_solution(ss,matrix.flat)
         print()
     print("num_solutions:",num_solutions)
 

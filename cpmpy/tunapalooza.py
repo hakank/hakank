@@ -107,7 +107,7 @@ def tunapalooza():
     print("genre    :", genre.value())
     print("rendevouz:", rendevouz.value())
     print()
-    get_different_solution(ss,flatten_lists([genre,rendevouz]))
+    get_different_solution(ss,list(genre)+list(rendevouz))
     
     print("num_solutions:", num_solutions)
 

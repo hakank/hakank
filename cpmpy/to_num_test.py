@@ -39,10 +39,7 @@ def to_num_test(n=4,base=10):
   while ss.solve():
     num_solutions += 1
     print("x:",x.value(), "a:",a.value(),flush=True)
-    vars = []
-    vars.append(a)
-    vars.append([x])
-    get_different_solution(ss,flatten_lists(vars))
+    get_different_solution(ss,list(a)+[x])
     ss.solution_hint(a,a.value())
 
   print("num_solutions:", num_solutions)

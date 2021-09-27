@@ -84,7 +84,7 @@ def heterosquare(n=3):
 
   # print(model)
 
-  ortools_wrapper(model,[[diag1,diag2],row_sums,col_sums,flatten_lists(x)],print_solution)
+  ortools_wrapper(model,[[diag1,diag2],row_sums,col_sums,x.flat],print_solution)
 
 
 

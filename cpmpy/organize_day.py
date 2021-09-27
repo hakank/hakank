@@ -70,7 +70,7 @@ def organize_day():
     print("begins:", begins.value())
     print("ends:", ends.value())
     print()
-    get_different_solution(ss,flatten_lists([begins,ends]))
+    get_different_solution(ss,list(begins)+list(ends))
 
   print('num_solutions:', num_solutions)
 

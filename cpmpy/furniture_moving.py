@@ -80,7 +80,7 @@ def furniture_moving():
         print("end_time     :", end_time.value())
         print("z            :", z.value())      
         print()
-        get_different_solution(ss,flatten_lists([start_times,end_times,[end_time]]))
+        get_different_solution(ss,list(start_times)+list(end_times)+list([end_time]))
         # get_different_solution(ss,start_times)    
 
     print()

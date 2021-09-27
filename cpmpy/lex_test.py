@@ -30,12 +30,6 @@ def lex_less_test():
     print(model)
 
     ortools_wrapper(model,[x,y])
-    # num_solutions = 1
-    # while model.solve(): 
-    #     print("x:", x.value())
-    #     print("y:", y.value())
-    #     print(flush=True)
-    #     get_different_solution(model,flatten_lists([x,y]))
 
 
 lex_less_test()

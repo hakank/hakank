@@ -89,7 +89,7 @@ def steiner(n=7,num_sols=1):
 
     if num_solutions % 1000 == 0:
         print("num_solutions:", num_solutions)
-    get_different_solution(ss,flatten_lists(sets))
+    get_different_solution(ss,sets.flat)
 
   if num_sols != 1:
     print("num_solutions:", num_solutions  )

@@ -113,13 +113,6 @@ def minesweeper(game="", r="", c=""):
     # print(model)
     ortools_wrapper(model,mines,print_solution)
 
-    # num_solutions = 0
-    # while model.solve():
-    #     num_solutions += 1
-    #     print(f"\nSolution #{num_solutions}")
-    #     print_mines(mines, r, c)
-    #     get_different_solution(model,flatten_lists(mines))
-
 
 #
 # Read a problem instance from a file

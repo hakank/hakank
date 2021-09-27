@@ -106,7 +106,7 @@ def lecture_series():
       print("first_name:", first_name.value())
       print("last_name :", last_name.value())
       print()
-      get_different_solution(ss,flatten_lists([lectures,first_name,last_name]))
+      get_different_solution(ss,list(lectures)+list(first_name)+list(last_name))
 
   print("num_solutions:", num_solutions)
 

@@ -92,7 +92,7 @@ def car(num_sol=3):
     if num_solutions >= num_sol:
       break
     
-    get_different_solution(ss,flatten_lists([slot,flatten_lists(setup)]))
+    get_different_solution(ss,list(slot.flat)+list(setup.flat))
 
   print()
   print("num_solutions:", num_solutions)

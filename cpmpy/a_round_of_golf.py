@@ -114,7 +114,7 @@ def a_round_of_golf():
     print("job      :", job.value())
     print("score    :", score.value())
     print()
-    get_different_solution(ss,flatten_lists([last_name,job,score]))
+    get_different_solution(ss,list(last_name)+list(job)+list(score))
 
   print("num_solutions:", num_solutions)
 

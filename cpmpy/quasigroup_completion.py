@@ -53,7 +53,7 @@ def quasigroup_completion(puzzle="",n=0,num_sols=0,num_procs=1):
 
     # Decision variables
     x = intvar(1,n,shape=(n,n),name="x")
-    x_flat = flatten_lists(x)
+    x_flat = x.flat
 
     model = Model()
 
@@ -95,17 +95,8 @@ def quasigroup_completion(puzzle="",n=0,num_sols=0,num_procs=1):
     print("Num conflicts:", s.ort_solver.NumConflicts())
     print("NumBranches:", s.ort_solver.NumBranches())
     print("WallTime:", s.ort_solver.WallTime())
+    print()
 
-    # num_solutions = 0
-    # while model.solve():
-    #     num_solutions += 1
-    #     print(f"Solution #{num_solutions}")
-    #     print_board(x, n, n)
-    #     get_different_solution(model,flatten_lists(x))
-    #     print()
-
-    # print("number of solutions:", num_solutions)
-    # print("Status:", model.status())
 
 #
 # Read a problem instance from a file

@@ -133,7 +133,7 @@ def puzzle(problem=1):
     num_solutions += 1
     print("all:",all.value(), "x:",x.value())
     xs.append(x.value())
-    get_different_solution(ss,flatten_lists([[x],all]))
+    get_different_solution(ss,list(all)+[a])
 
   print()
   print("num_solutions:", num_solutions)  

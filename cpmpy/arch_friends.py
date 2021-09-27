@@ -75,7 +75,7 @@ def arch_friends():
     print("shoes:",shoes.value())
     print("store:",store.value())
     print()
-    get_different_solution(ss,flatten_lists([shoes,store]))
+    get_different_solution(ss,list(shoes)+list(store))
 
   print()
   print("num_solutions:", num_solutions)

@@ -76,7 +76,7 @@ def who_killed_agatha():
         vars.append([hates[i,j] for i in range(n) for j in range(n)])
         vars.append([richer[i,j] for i in range(n) for j in range(n)])
         vars.append([killer])
-        get_different_solution(ss,flatten_lists(vars))
+        get_different_solution(ss,list(hates.flat)+list(richer.flat)+[killer])
 
     print("num_solutions:", num_solutions)
 

@@ -60,7 +60,7 @@ def all_different_on_intersection_test():
     print("x:", x.value())
     print("y:", y.value())    
     print()
-    get_different_solution(ss,flatten_lists([x,y]))
+    get_different_solution(ss,list(x)+list(y))
 
   print("num_solutions:", num_solutions)
 

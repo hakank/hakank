@@ -57,18 +57,6 @@ def magic_squares_and_cards():
 
     ortools_wrapper_opt(model,[x_flat,[s],counts],print_solution)
     
-    # num_solutions = 0
-    # if model.solve():
-    #     num_solutions += 1
-    #     print('x:\n', x.value())
-    #     print('s:', s.value())
-    #     print("counts:", counts.value())
-    #     get_different_solution(model,flatten_lists(x))
-    #     print()
-    # 
-    # print('Number of solutions: ', num_solutions)
-
-
 magic_squares_and_cards()
 
 

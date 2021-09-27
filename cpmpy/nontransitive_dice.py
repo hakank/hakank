@@ -39,8 +39,9 @@ def nontransitive_dice(m=3,n=6,given_dice=""):
     min_val = 1
     max_val = 6
     if given_dice != "":
-        min_val = min(flatten_lists(given_dice))
-        max_val = max(flatten_lists(given_dice))        
+        dice_flatten = flatten_lists(given_dice) 
+        min_val = min(dice_flatten)
+        max_val = max(dice_flatten)        
 
     # the dice
     # start value might be 0 since Efron's dice requires it.
@@ -65,8 +66,8 @@ def nontransitive_dice(m=3,n=6,given_dice=""):
     max_win = intvar(0,n*n,name='max_win')
    
     model = Model (
-        max_win == max(flatten_lists(comp)),
-        max_val == max(flatten_lists(dice)),
+        max_win == max(comp.flat),
+        max_val == max(dice.flat),
 
         # increasing order of a die
         [ increasing(dice[i]) for i in range(m) ],
@@ -121,7 +122,7 @@ def nontransitive_dice(m=3,n=6,given_dice=""):
         print("max_val:", max_val.value())
         print("max_win:", max_win.value())
         print()
-        # get_different_solution(ss,flatten_lists(dice))
+        # get_different_solution(ss,dice.flat)
 
     print("num_solutions:", num_solutions)
     print("status:", ss.status())
