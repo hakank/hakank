@@ -27,32 +27,124 @@
   This model is a translation of the OPL code from 
   http://www.dis.uniroma1.it/~tmancini/index.php?currItem=research.publications.webappendices.csplib2x.problemDetails&problemid=010
 
+  Here's the output for the first problem 
+  Weeks=4, Groups=6, GroupSize=4, Golfers = Groups*GroupSize = 24
+  
+
+  Schedule:
+  Week  1
+  group  1 golfers:   1   2   3   4
+  group  2 golfers:   5   6   7   8
+  group  3 golfers:   9  10  11  12
+  group  4 golfers:  13  14  15  16
+  group  5 golfers:  17  18  19  20
+  group  6 golfers:  21  22  23  24
+
+  Week  2
+  group  1 golfers:   1  12  17  22
+  group  2 golfers:   2  14  19  23
+  group  3 golfers:   3   5  15  21
+  group  4 golfers:   4   8  10  24
+  group  5 golfers:   6   9  13  20
+  group  6 golfers:   7  11  16  18
+
+  Week  3
+  group  1 golfers:   1   5   9  24
+  group  2 golfers:   8  14  18  22
+  group  3 golfers:   7  12  13  21
+  group  4 golfers:   3  11  20  23
+  group  5 golfers:   2  10  15  17
+  group  6 golfers:   4   6  16  19
+
+  Week  4
+  group  1 golfers:   1   6  15  18
+  group  2 golfers:   4  14  17  21
+  group  3 golfers:   7  10  20  22
+  group  4 golfers:   8   9  16  23
+  group  5 golfers:   3  12  19  24
+  group  6 golfers:   2   5  11  13
+
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
 
-import cp.
+import util.
+import sat.
 
 main => go.
 
-go =>
+go ?=>
+   nolog,
+   solve_social_golfers_problem(1),
+   nl.
+   
+go => true.
 
-   Weeks = 5,
-   Groups = 7,
-   GroupSize = 3,
+go2 ?=>
+   nolog,
+   solve_social_golfers_problem(2),
+   nl.
+   
+go2 => true.
+
+go3 ?=>
+   nolog,
+   solve_social_golfers_problem(3),
+   nl.
+   
+go3 => true.
+
+
+% Solve and print the problem instance
+solve_social_golfers_problem(Problem) =>
+
+   problem(Problem,Weeks,Groups,GroupSize,NumSolutions),
    Golfers = Groups * GroupSize,
+   social_golfers1(Weeks,Groups,GroupSize,Golfers,Assign),
+
+   println("Assign:"),
+   foreach(Row in Assign) println(Row.to_list()) end,
+   println("\nSchedule:"),
+   Meets = new_map(),
+   foreach(W in 1..Weeks)
+      printf("\nWeek %2d\n",W),
+      foreach(Gr in 1..Groups)
+         printf("Group %2d ",Gr),
+         Gs = [G : G in 1..Golfers, Assign[G,W] == Gr],
+         Gs2 = [to_fstring("%3d",G) : G in Gs],
+         printf("golfers: %w\n", join(Gs2," ")),
+         foreach(G1 in Gs, G2 in Gs, G1 != G2)
+           Meets.put(G1,Meets.get(G1,[]) ++ [G2]),
+           Meets.put(G2,Meets.get(G2,[]) ++ [G1])           
+         end
+      end
+   end,
+   nl,
+   foreach(G in Meets.keys().sort())
+     printf("Golfer %2d meets %w\n",G,Meets.get(G).sort.remove_dups())
+   end,
+   nl,
+   if NumSolutions == 0 then
+     fail
+   end,
+   nl.
+
+
+
+social_golfers1(Weeks,Groups,GroupSize,Golfers,Assign) =>
+
+   println([golfers=Golfers,weeks=Weeks,groups=Groups,groupSize=GroupSize]),
 
    Golfer = 1..Golfers,
    Week = 1..Weeks,
-   Group = 1..Groups,
-       
+   Group = 1..Groups,       
 
    % decision variables
    Assign = new_array(Golfers,Weeks),
    Assign :: 1..Groups,
-      
+
    % C1: Each group has exactly groupSize players
    foreach(Gr in Group, W in Week)
        sum([(Assign[G,W] #= Gr) : G in Golfer]) #= GroupSize
@@ -70,13 +162,29 @@ go =>
    % On the first week, the first groupSize golfers play in group 1, the 
    % second groupSize golfers play in group 2, etc. On the second week, 
    % golfer 1 plays in group 1, golfer 2 plays in group 2, etc.
-   foreach(G in Golfer) Assign[G,1] #= ((G-1) // GroupSize) + 1 end,
+   foreach(G in Golfer)
+      Assign[G,1] #= ((G-1) // GroupSize) + 1
+    end,
 
    foreach(G in Golfer)
       if G =< GroupSize then Assign[G,2] #= G end
    end,
 
-   solve([ff], Assign),
+   solve([ff], Assign).
 
-   foreach(Row in Assign) writeln(Row) end,
-   nl.
+% Problem 1
+% Weeks=4, Groups=6, GroupSize=4
+% Golfers = Groups*GroupSize = 24
+% NumSolutions = 1
+% See https://groups.google.com/g/picat-lang/c/JDICiDdKkU4/m/hdPwHpkrAQAJ
+% and https://boardgamegeek.com/thread/1922139/solve-my-games-event-scheduling-250-gg-first-corre
+% 
+problem(1, 4,6,4, 1).
+
+% Simpler problem
+% Weeks=4, Groups=3, GroupSize=3, NumSolutions=0 (all solutions)
+problem(2, 4,3,3, 1).
+
+% Even simpler problem
+% Weeks=4, Groups=3, GroupSize=3, NumSolutions=0 (all solutions)
+problem(3, 3,2,2, 0).
