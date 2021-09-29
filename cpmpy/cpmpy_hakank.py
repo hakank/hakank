@@ -21,6 +21,13 @@ def AllDifferent_except_0(args):
   return [ ((var1!= 0) & (var2 != 0)).implies(var1 != var2) for var1, var2 in all_pairs(args)]
 
 
+def all_different_except_0(args):
+  """
+  Alias for AllDifferent_except_0(args).
+  """
+  return AllDifferent_except_0(args)
+
+
 def to_num(a,n,base):
   """
   to_num(a, n, base)
@@ -102,8 +109,9 @@ def get_different_solution(m,x):
   or define a similiar solution printer.
 
   """
-  n = len(x)
-  m += [any([x[i].value() != x[i] for i in range(n)])]
+  # n = len(x)
+  # m += [any([x[i].value() != x[i] for i in range(n)])]
+  m += [any([t.value() != t for t in x])]
 
 
 def flatten_lists(a):
@@ -276,6 +284,8 @@ class ORT_function_printer_arrays(ort.CpSolverSolutionCallback):
   the array of arrays a, which should be structured by the user and
   including .value() for the variables.
 
+  This version t prints solution number.
+  
   Example of a printer function:
 
   def print_solution(a):
@@ -299,7 +309,44 @@ class ORT_function_printer_arrays(ort.CpSolverSolutionCallback):
         cpm_var._value = self.Value(self.varmap[cpm_var])
 
     (a) = self.vars
-    print(f"\n#{self.solcount}:")
+    print(f"sol #{self.solcount}")
+    self.cb_fun(a)
+    print()
+
+    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
+      self.StopSearch()
+
+class ORT_function_printer_arrays2(ort.CpSolverSolutionCallback):
+  """
+  A printer callback with a callback (cb_fun) for printing
+  the array of arrays a, which should be structured by the user and
+  including .value() for the variables.
+
+  This version don't print solution number.
+  
+  Example of a printer function:
+
+  def print_solution(a):
+    print('x:', a[0].value())
+    print('y:', a[1].value())
+
+  """
+  def __init__(self, varmap, a, cb_fun,num_solutions=0):
+    super().__init__()
+    self.solcount = 0
+    self.varmap = varmap
+    self.vars = (a)
+    self.cb_fun = cb_fun
+    self.num_solutions=num_solutions
+
+  def on_solution_callback(self):
+    self.solcount += 1
+    
+    for wm in self.vars:
+      for cpm_var in wm:
+        cpm_var._value = self.Value(self.varmap[cpm_var])
+
+    (a) = self.vars
     self.cb_fun(a)
 
     if self.num_solutions > 0 and self.solcount >= self.num_solutions:
@@ -355,6 +402,53 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0):
     
     ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
     print(ss._after_solve(ort_status)) # post-process after solve() call...
+    print(ss.status())
+    print("Nr solutions:", cb.solcount)
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
+    print()
+
+
+def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0):
+    """
+    ortools_wrapper((model,var_array,print_solution=print_solution,num_sols=0)
+
+    This is a simple wrapper for printing the solutions of a model and tends
+    to be (significantly) faster than using
+
+        ss = CPM_ortools(model)
+        while ss.solve():
+           # ...
+           get_different_solution(ss,flatten_lists(var_array))
+
+   This version don't print the solution number.
+
+    Parameters:
+    - model    : the model
+    - var_array: the array of arrays of the decision variables to be printed
+                 with print_solution(var_array)
+    - print_solution: the method used to do the actual printing of the solution.
+                Default is print_solution(a) defined above. The function
+                can be overwritten / defined in the current constraint model.
+    - num_sols : number of solutions. Default 0, all solutions.
+
+    Note: For optimality problems, use ortools_wrapper_opt(.) instead.
+    
+    """
+    ss = CPM_ortools(model)    
+    cb = ORT_function_printer_arrays2(ss.varmap,var_array,print_solution,num_sols)
+
+    # Flags to experiment with
+    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+    
+    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+    print()
+    ss._after_solve(ort_status) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -677,6 +771,8 @@ def regular(x, Q, S, d, q0, F):
 
     Note: As mentioned above the states must start at 1 since 0 is
           represents a failed state.
+    Note: Compare with regular_table which use the Table constraints
+          instead of Element constraint in the main loop.
     """
     
     assert Q > 0, 'regular: "Q" must be greater than zero'
@@ -722,6 +818,92 @@ def regular(x, Q, S, d, q0, F):
         # Determine a[i+1]: a[i+1] == d2[a[i], x[i]]
         constraints += [
             a[i + 1] == Element(d2_flatten,(a[i]) * S + (x[i] - 1))
+            ]
+
+    return constraints
+
+
+def regular_table(x, Q, S, d, q0, F):
+    """
+    Global constraint regular_table
+
+    This is a translation of MiniZinc's regular constraint (defined in
+    lib/zinc/globals.mzn), via the Comet code refered above.
+    All comments are from the MiniZinc code.
+    '''
+    The sequence of values in array 'x' (which must all be in the range 1..S)
+    is accepted by the DFA of 'Q' states with input 1..S and transition
+    function 'd' (which maps (1..Q, 1..S) -> 0..Q)) and initial state 'q0'
+    (which must be in 1..Q) and accepting states 'F' (which all must be in
+    1..Q).  We reserve state 0 to be an always failing state.
+    '''
+
+    x : IntVar array
+    Q : number of states
+    S : input_max
+    d : transition matrix
+    q0: initial state
+    F : accepting states
+
+    Note: As mentioned above the states must start at 1 since 0 is
+          represents a failed state.
+
+
+    The difference between this version (regular_table) and 
+    regular is that this version use Table constraint instead
+    of Element constraint.
+    """
+    
+    assert Q > 0, 'regular: "Q" must be greater than zero'
+    assert S > 0, 'regular: "S" must be greater than zero'
+
+    # d2 is the same as d, except we add one extra transition for
+    # each possible input;  each extra transition is from state zero
+    # to state zero.  This allows us to continue even if we hit a
+    # non-accepted input.
+
+    d2 = []
+    for i in range(Q + 1):
+        row = []
+        for j in range(S):
+            if i == 0:
+                # This is different from regular(.)
+                row.append((0,j,0))
+            else:
+                # This is different from regular(.)
+                row.append((i,j, d[i - 1][j]))
+        d2.append(row)
+
+    d2_flatten = [d2[i][j] for i in range(Q + 1) for j in range(S)]
+
+    # If x has index set m..n, then a[m-1] holds the initial state
+    # (q0), and a[i+1] holds the state we're in after processing
+    # x[i].  If a[n] is in F, then we succeed (ie. accept the
+    # string).
+    x_range = list(range(0, len(x)))
+    m = 0
+    n = len(x)
+
+    a = [intvar(0, Q + 1) for i in range(m, n + 1)]
+
+    constraints = []
+
+    # Check that the final state is in F
+    constraints += [member_of(F,a[-1])]
+  
+    # First state is q0
+    constraints += [a[m] == q0]
+    x_lb, x_ub = get_min_max_domain(x)
+    for i in x_range:
+        constraints += [x[i] >= 1]
+        constraints += [x[i] <= S]
+        # Determine a[i+1]: a[i+1] == d2[a[i], x[i]]
+        xi1 = intvar(0,x_ub)
+        constraints += [
+            # These two constraints are different
+            # from regular(.)
+            xi1 == x[i]-1,
+            Table((a[i], xi1, a[i + 1]), d2_flatten)
             ]
 
     return constraints
@@ -1186,5 +1368,244 @@ def reverse(xfrom, xto):
   """
   n = len(xfrom)
   return [xto[i] == xfrom[n-i-1] for i in range(n)]
+
+
+def print_model_and_variables(model):
+  """
+  print_model_and_variables(model)
+
+  Prints the following:
+  - the unflattened model (via print(model))
+  - the flattened model
+  - the variables and the domains in the flattened model
+
+  (From Tias Guns when he debugged one of my models. Thanks, Tias!)
+  """
+  from cpmpy.transformations.flatten_model import flatten_constraint, flatten_model
+  from cpmpy.transformations.get_variables import print_variables
+  print("Model:")
+  print(model)
+  print("\nFlattened model and variables:")
+  mf = flatten_model(model)
+  print_variables(mf)
+  print(mf)
+  print()
+
+
+
+
+def argmax(x,p):
+  """
+  argmax(x,p)
+
+  Ensure that p is the argmax, i.e. the position of the maximum value
+  in x.
+  Note: If there are many maximum values then argmax(x,p) will find
+  all these values.
+  """
+  n = len(x)
+  constraints = []
+  for i in range(n):
+    constraints += [(p != i).implies(x[p] > x[i]) ]
+  return constraints
+
+def argmin(x,p):
+  """
+  argmin(x,p)
+
+  Ensure that p is the argmin, i.e. the position of the minimum value
+  in x.
+  Note: If there are many minimum values then argmin(x,p) will find
+  all these values.
+  """
+  n = len(x)
+  constraints = []
+  for i in range(n):
+    constraints += [(p != i).implies(x[p] < x[i]) ]
+  return constraints
+
+
+
+def argmin_except_c(x,p,c):
+  """
+  argmin_except_c(x,p,c)
+
+  Ensure that p is the argmin, i.e. the position of the minimum value
+  in x, but ignores any value of c.
+  
+  Note:
+  - If there are many minimum values then argmin_except_c(x,p,c) will find
+    all these values.
+  - We assume that there are at least one value != c.
+  """
+  n = len(x)
+  constraints = [x[p] != c]  
+  for i in range(n):
+    constraints += [(p != i).implies((x[i] == c) | (x[p] < x[i])) ]
+    
+  return constraints
+
+def argmin_except_0(x,p):
+  """
+  argmin_except_0(x,p)
+
+  Ensure that p is the argmin, i.e. the position of the minimum value
+  in x, but ignores any value of 0.
+  
+  Note:
+  - If there are many minimum values then argmin_except_0(x,p) will find
+    all these values.
+  - We assume that there are at least one value > 0.
+  """
+  return argmin_except_c(x,p,0)
+
+
+def argmax_except_c(x,p,c):
+  """
+  argmax_except_c(x,p,c)
+
+  Ensure that p is the argmax, i.e. the position of the minimum value
+  in x, but ignores any value of c.
+  
+  Note:
+  - If there are many maximum values then argmax_except_c(x,p,c) will find
+    all these values.
+  - We assume that there are at least one value != c.
+  """
+  n = len(x)
+  constraints = [x[p] != c]  
+  for i in range(n):
+    constraints += [(p != i).implies((x[i] == c) | (x[p] > x[i])) ]
+  return constraints
+
+
+
+def permutation3(x,p,y):
+  """
+  permutation(x,p,y)
+
+  Ensure that the array y is a permutation of array x with the permutation
+  operations in array p.
+
+  Example:
+    x = [2,0,1,3]
+    p = [2,1,3,0]
+
+  What is y?
+    y[0] = x[p[0]] = x[2] = 1
+    y[1] = x[p[1]] = x[1] = 0
+    y[2] = x[p[2]] = x[3] = 3
+    y[3] = x[p[3]] = x[0] = 2
+
+  Thus:
+    y = [1,0,3,2]
+
+  Assumptions:
+  - We assume that x, p, and y has distinct values, i.e. constrained by
+    AllDifferent.
+
+  We check that:
+  - p has the domain of 0..len(p)-1
+  """
+  n = len(x)
+  assert n == len(p) and n == len(y), f"Length of x, p, and y must be the same"
+  p_lb, p_ub = get_min_max_domain(p)
+  assert p_lb == 0 and p_ub == n-1, "Domain value of p must be 0..n-1"
+  
+  constraints = []
+  for i in range(n):
+    constraints += [y[i] == x[p[i]] ]
+  return constraints
+
+
+def permutation(x,y):
+  """
+  permutation(x,y)
+
+  Ensure that the array y is a permutation of array x,
+  connected with some unknown permutation.
+
+  permutation3(x,p,y) is used (which see).
+  """
+  n = len(x)
+  p = intvar(0,n-1,shape=n)
+  return permutation3(x,p,y)
+  
+
+def get_min_max_domain(x):
+  """
+  get_min_max_domain(x)
+
+  Return the minimum and maximum domain of an array x.
+  """
+  n = len(x)
+  x_lb = min([x[i].lb for i in range(n)])
+  x_ub = max([x[i].ub for i in range(n)])
+
+  return [x_lb,x_ub]
+
+
+def chain(op,x):
+  """
+  chain(op,x)
+
+  Ensure that all elements pairwise satisfies the binary operator op.
+
+  Note: In order for this to work the operator must be from the
+        operator library, e.g. operator.lt, operator.ne, e.g:
+          chain(operator.lt,x)
+  Note: Many of the binary operator.* has a definition already, e.g.
+      (from cpmpy_hakank.py):
+      increasing, increasing_strict, decreasing, descreasing_strict
+      and
+      AllDifferent, AllEqual
+
+  """
+  n = len(x)
+  constraints = []
+  for i in range(1,n):
+    constraints += [ op(x[i-1], x[i]) ]
+    
+  return constraints
+
+
+
+def minimum_except_c(x,min_val,c,allow_all_c=False):
+  """
+  minimum_except_c(x,min_val,c,allow_all_c)
+
+  Ensures that min_val is the minimum value in array x, ignoring the value of c.
+
+  The flag allow_all_c:
+  - If True: allow an array with only c values: min_val is thus c.
+  - If False: assume that there is at least one non c value. min_val must be != c.
+  """
+  n = len(x)
+  ix = intvar(0,n-1)
+  
+  # Ensure that min_val is in x
+  constraints = [min_val == x[ix]]
+  for j in range(n):
+    constraints += [(min_val <= x[j]) | (x[j] == 0)]
+  if allow_all_c:
+    max_val = max(x) # To be able to handle the case when there is only 0s
+    constraints += [(max_val == c)==(min_val == c)]
+  else:
+    constraints += [min_val != c]
+  
+
+  return constraints 
+
+def minimum_except_0(x,min_val,allow_all_0s=False):
+  """
+  minimum_except_0(x,min_val,allow_all_0s)
+
+  Ensures that min_val is the minimum value in array x, ignoring 0s.
+  
+  The flag allow_all_0s:
+  - If True: allow an array with only 0 values: min_val is thus 0.
+  - If False: assume that there is at least one non 0 value. min_val must be != 0.
+  """
+  return minimum_except_c(x,min_val,0,False)
 
 
