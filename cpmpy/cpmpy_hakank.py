@@ -1214,7 +1214,7 @@ def arith_relop(a, t, b):
           (t == 2).implies(a == b),
           (t == 3).implies(a >= b),
           (t == 4).implies(a  > b),
-          (t == 5).implies(a  != b)
+          (t == 5).implies(a != b)
           ]
 
 
@@ -1304,7 +1304,7 @@ def assignment_model(cost, tasks=None,people=None,print_solution=None,opt="min")
     
     model = Model(
         total_cost >= 0,
-        total_cost == sum([ x_row*cost_row for (x_row, cost_row) in zip(x, cost)]),
+        total_cost == np.sum([ x_row*cost_row for (x_row, cost_row) in zip(x, cost)]),
         
         # exacly one assignment per row, all rows (tasks) must be assigned.
         [sum(row) == 1 for row in x],
@@ -1608,4 +1608,99 @@ def minimum_except_0(x,min_val,allow_all_0s=False):
   """
   return minimum_except_c(x,min_val,0,False)
 
+
+
+def value_precede(s,t,x):
+    """
+    value_precede(s,t, x)
+    
+    Ensures that the (first occurrence) of the value s precedes
+    the (first occurrence) of the value t in array x if both
+    s and t are in x.
+
+    This means that for t to occur in x then s has to precede t.
+
+    This definition is inspired by MiniZinc's definition
+    value_precede.mzn
+    """
+    n = len(x)
+    bs = boolvar(shape=n+1)
+    constraints = []
+    for i in range(n):
+        xis = boolvar()
+        constraints += [(xis ==1)==(x[i] == s),
+                        (xis ==1).implies(bs[i+1]==1),
+                        (xis == 0).implies(bs[i]==bs[i+1]),
+                        (bs[i] == 0).implies(x[i] != t)
+                        ]
+    constraints += [bs[0] == 0]
+    return constraints
+
+def value_precede_chain(c,x):
+    """
+    value_precede_chain(c, x)
+
+    Ensures that the value c[i-1] precedes the value c[i] is the array x
+    if both c[i-1] and c[i] are in x.
+
+    See value_precede().
+    """
+    n=len(c)
+    constraints = []
+    for i in range(1,n):
+        constraints += [value_precede(c[i-1],c[i],x)]
+        
+    return constraints
+
+
+def sliding_sum(low, up, seq, x):
+  """
+  sliding_sum(low, up, seq, x)
+
+  Ensure that all sequences of length seq in x sums to between low and up.
+  """
+  vlen = len(x)
+  constraints = []
+  for i in range(vlen-seq+1):
+    s = intvar(low,up)    
+    constraints += [s == sum([x[j] for j in range(i,i+seq)])]
+  return constraints
+
+
+def no_overlap(s1, d1, s2, d2):
+  """
+  no_overlap(s1, d1, s2, d2)
+
+  Ensures that task 1 (start time s1 with duration d1) does not overlap with
+  task2 (start time s2 with duration d2)
+  """
+  return [(s1 + d1 <= s2) | (s2 + d2 <= s1)]
+
+def is_prime(n):
+  """
+  is_prime(n)
+
+  Returns True if the number n is a prime number, otherwise return False.
+  """
+  if n < 2: return False
+  if n == 2: return True
+  if not n & 1:
+    return False
+  for i in range(3, 1+int(math.sqrt(n)), 2):
+    if n % i == 0:
+      return False
+  return True
+
+def primes(limit):
+  """
+  primes(limit)
+
+  Returns the prime numbers below limit.
+  """
+  primes = [2]
+  i = 3
+  for i in range(3, limit, 2):
+    if is_prime(i):
+      primes.append(i)
+  return primes
 

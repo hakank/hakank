@@ -19,25 +19,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def is_prime(n):
-  if n < 2: return False
-  if n == 2: return True
-  if not n & 1:
-    return False
-  for i in range(3, 1+int(math.sqrt(n)), 2):
-    if n % i == 0:
-      return False
-  return True
-
-def primes(limit):
-  primes = [2]
-  i = 3
-  for i in range(3, limit, 2):
-    if is_prime(i):
-      primes.append(i)
-  return primes
-
-
 def m2012_CMO_problem():
 
   max_val = 10000

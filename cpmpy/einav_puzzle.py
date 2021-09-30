@@ -118,14 +118,14 @@ def einav_puzzle():
   #       Instead, one must use (. == -1 | . == 1) and that works.
   # 
   for i in range(rows):
-    model += [row_signs[i] != 0] 
-    # model += [(row_signs[i] == -1) | (row_signs[i] == 1)] # This works!
+    # model += [row_signs[i] != 0] # Don't work
+    model += [(row_signs[i] == -1) | (row_signs[i] == 1)] # This works!
 
   for j in range(cols):
     # model += [col_signs[j] != 0] # Don't work    
     model += [(col_signs[j] == -1) | (col_signs[j] == 1)] # This works!
 
-  model += [total_sum == sum(x)] 
+  model += [total_sum == x.sum()] 
 
   # row sums
   model += [[row_sums[i] == sum([x[i, j] for j in range(cols)])] for i in range(rows)]

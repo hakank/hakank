@@ -16,7 +16,7 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def AllDifferent_except_0_test(n,solver=None):
+def alldifferent_except_0_test(n,solver=None):
   """
   Test the global constraint AllDifferent_except_0.
   """
@@ -24,7 +24,7 @@ def AllDifferent_except_0_test(n,solver=None):
   print("x:",x)
 
   model = Model([
-    AllDifferent_except_0(x),
+    all_different_except_0(x),
     increasing(x),
     
   ])
@@ -32,20 +32,21 @@ def AllDifferent_except_0_test(n,solver=None):
   print("model:", model)
   num_solutions = 0
 
-  # ortools_wrapper(model,[x])
-  ss = CPM_ortools(model)
-  print("ss:",ss)
-  while ss.solve():
-    # print("stat:", model.status())
-    num_solutions += 1
-    print(x.value())
-    get_different_solution(ss,x)
-  print("num_solutions:", num_solutions)
+  ortools_wrapper2(model,[x])
+  # ss = CPM_ortools(model)
+  # print("ss:",ss)
+  # while ss.solve():
+  #   # print("stat:", model.status())
+  #   num_solutions += 1
+  #   print(x.value())
+  #   get_different_solution(ss,x)
+  # print("num_solutions:", num_solutions)
 
 # Testing the different solvers
+print("solvers:", get_supported_solvers())
 for solver in get_supported_solvers():
   print("\nSolver:", solver)
-  AllDifferent_except_0_test(4, solver)
+  alldifferent_except_0_test(4, solver)
   print()
 
-# AllDifferent_except_0_test(8)
+alldifferent_except_0_test(8)

@@ -25,8 +25,6 @@ def form_domino(a,i,j,r,c):
 #
 # Gecode presentation
 #
-# TODO!
-#
 # For the 7x8 problem (puzzl1, the Dell puzzle)
 # Example:
 # 
@@ -148,7 +146,7 @@ def domino(problem,num_sols=1):
         if num_sols > 0 and num_solutions >= num_sols:
             break
         
-        get_different_solution(ss,a_flat)
+        get_different_solution(ss,a.flat)
     print("num_solutions:", num_solutions)
                          
 

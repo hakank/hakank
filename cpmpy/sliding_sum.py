@@ -32,14 +32,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def sliding_sum(low, up, seq, x):
-  vlen = len(x)
-  constraints = []
-  for i in range(vlen-seq+1):
-    s = intvar(low,up)    
-    constraints += [s == sum([x[j] for j in range(i,i+seq)])]
-  return constraints
-
 def sliding_sum_test(n=7,seq=4,low=3,up=7):
 
   x = intvar(0,4,shape=n,name="x")

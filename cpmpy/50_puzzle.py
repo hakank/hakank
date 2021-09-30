@@ -36,7 +36,7 @@ def main():
   x = boolvar(shape=n,name="x")
   sumX = intvar(0,n,name="sumX")
 
-  model = Model([sumX == sum(x),
+  model = Model([sumX == x.sum(),
                  sum([v[i]*x[i] for i in range(n)]) == 50
                  ])
 

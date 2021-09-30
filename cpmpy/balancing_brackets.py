@@ -111,7 +111,7 @@ def brackets(m,do_print=False,num_sols=0):
     model += (c[n-1] == 0) # end sequence
 
     # Redundant constraint: This might make it faster (but it don't)
-    model += (sum(x) == m)
+    model += (x.sum() == m)
 
     
     ss = CPM_ortools(model)    

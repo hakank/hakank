@@ -18,15 +18,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-#
-# No overlapping of tasks s1 and s2
-#
-
-
-def no_overlap(s1, d1, s2, d2):
-  return [(s1 + d1 <= s2) | (s2 + d2 <= s1)]
-
-
 def organize_day():
 
   model = Model()

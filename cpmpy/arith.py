@@ -43,7 +43,7 @@ def arith_test():
                  arith(x, relop, y)
                  ])
 
-  ortools_wrapper(model,[x,[relop,y]],print_solution)
+  ortools_wrapper2(model,[x,[relop,y]],print_solution)
 
 
 arith_test()
