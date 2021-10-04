@@ -103,16 +103,6 @@ def down(Matrix, Down, Len, Row, Col):
     return constraints
 
 
-def is_prime(n):
-  if n < 2: return False
-  if n == 2: return True
-  if not n & 1:
-    return False
-  for i in range(3, 1+int(math.sqrt(n)), 2):
-    if n % i == 0:
-      return False
-  return True
-
 def crossfigure():
 
     model = Model()

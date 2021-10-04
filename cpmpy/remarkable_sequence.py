@@ -63,8 +63,19 @@ def remarkable_sequence():
 
   model += [AllDifferent(js)]
 
-  for i in range(1,n+1):
-    model += [count(a,i,m)]
+  #
+  # Here are three ways to write the count constraint:
+  #
+  
+  # for i in range(1,n+1):
+  #  model += [count(a,i,m)]
+
+  # Note: The gcc must also include the value for 0..ub
+  # gcc = [0] + [m for _ in range(1,n+1)]
+  # model += [global_cardinality_count(a.flat,gcc)]
+
+  # Using distribute instead (seems to be the fastest)
+  distribute([m for _ in range(n)], list(range(1,n+1)), a.flat)
     
   # Symmetry breaking
   model += [a[0] <= a[-1]]
@@ -85,5 +96,6 @@ def remarkable_sequence():
     get_different_solution(ss,a)
     
   print("num_solutions:", num_solutions)
+
 
 remarkable_sequence()

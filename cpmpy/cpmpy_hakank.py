@@ -12,6 +12,9 @@ from cpmpy import *
 from cpmpy.expressions.globalconstraints import GlobalConstraint
 from cpmpy.solvers import *
 from ortools.sat.python import cp_model as ort
+from cpmpy.transformations.flatten_model import flatten_constraint, flatten_model
+from cpmpy.transformations.get_variables import print_variables
+
 
 def AllDifferent_except_0(args):
   """
@@ -664,8 +667,8 @@ def global_cardinality_count(a,gcc):
     """
     global_cardinality_count(a,gcc)
 
-    Global cardinality count: Collect the number of occurrences of each value 0..a,ub
-    in gcc. The array gcc be of length 0..ub.
+    Global cardinality count: Collect the number of occurrences of each value 0..a.ub
+    in gcc. The array gcc must be of length 0..ub.
     """
     n = len(a)
     ub = max([a[i].ub for i in range(n)])
@@ -954,9 +957,12 @@ def lex2(x):
     """
     lex2(x)
 
-    Ensures that the rows in the matrix `x` are increasing, via lex_less.
+    Ensures that the rows and columns in the matrix `x` are increasing,
+    using lex_less.
     """
-    return [lex_less(x[i],x[i+1]) for i in range(len(x)-1)]
+    x_t = x.transpose()
+    return [[lex_less(x[i],x[i+1]) for i in range(len(x)-1)],
+            [lex_less(x_t[i],x_t[i+1]) for i in range(len(x_t)-1)]]
 
 
 #
@@ -1245,7 +1251,7 @@ def diffn(x,y,dx,dy):
 
 def nvalue(m, x):
   """
-  nvalue(m, x, min_val,max_val)
+  nvalue(m, x)
      
   Requires that there is exactly m distinct values in x
   (min_val and max_val are the minimum and maximum value
@@ -1257,6 +1263,21 @@ def nvalue(m, x):
   return (m == sum([ sum([ x[j] == i for j in range(n)]) > 0 for i in range(min_val, max_val+1)]))
 
 
+#
+# nvalues(x,op,n)
+#
+# Requires that the number of distinct values in the array x is 
+#    op n 
+# where
+# op is either one of 
+#   =, <m, =<, >=, >
+#
+def nvalues(x, op, n):
+    xlen = len(x)
+    m = intvar(1,xlen)
+    return [nvalue(m,x),
+            arith_relop(m,op,n)
+            ]
 
 def clique(g, clique, card):
   """
@@ -1266,7 +1287,7 @@ def clique(g, clique, card):
   represents a clique in the graph g with the cardinality card.
 
   Note: This is kind of backward, but it is the whole thing:
-  If there is a connection between nodes I and J (I \= J) then
+  If there is a connection between nodes I and J (I != J) then
   there should be a node from I to J in G. If it's not then
   both c1 and c2 is not in the clique.
   """
@@ -1381,8 +1402,6 @@ def print_model_and_variables(model):
 
   (From Tias Guns when he debugged one of my models. Thanks, Tias!)
   """
-  from cpmpy.transformations.flatten_model import flatten_constraint, flatten_model
-  from cpmpy.transformations.get_variables import print_variables
   print("Model:")
   print(model)
   print("\nFlattened model and variables:")
@@ -1703,4 +1722,70 @@ def primes(limit):
     if is_prime(i):
       primes.append(i)
   return primes
+
+
+def all_different_reif(x,b):
+    """
+    all_different_reif(x,b)
+
+    b == 1 if all values in x are different, else 0.
+    """
+    n = len(x)
+    m = intvar(1,n)
+    return [nvalue(m,x),
+            (m==n)==(b==1)
+            ]
+
+
+def all_different_reif_m(model,x):
+    """
+    all_different_reif(x,b)
+
+    b == 1 if all values in x are different, else 0.
+    This version returns b.
+    
+    Note that the model is a parameter so it must be
+    created first:
+
+        x = intvar(...)
+        b = boolvar()
+        model = Model(...)
+        model += [b == all_different_reif_m(model,x)]
+        
+    """
+    n = len(x)
+    m = intvar(1,n)
+    b = boolvar()
+    model += [nvalue(m,x),
+              (m==n)==(b==1)]
+    return b
+
+
+def lex_chain_less(x):
+  """
+  lex_chain_less(x)
+  
+  Require that all the rows are lexicographically sorted
+  (but not the columns as in lex2).
+  See: http://www.emn.fr/z-info/sdemasse/gccat/Clex_chain_less.html
+  """
+  n = len(x)
+  m = len(x[0])
+  constraints = []
+  for i in range(1,n):
+    constraints += [lex_less([x[i-1,j] for j in range(m)], [x[i,j] for j in range(m)])]
+
+  return constraints
+  
+
+def soft_alldifferent(x,p):
+  """
+  soft_alldifferent(x,p)
+
+  p is the number of pairs that have the same value.
+  
+  See http://www.emn.fr/z-info/sdemasse/gccat/Csoft_alldifferent_ctr.html
+  """
+  n = len(x)
+  return [p == sum([x[i] == x[j] for i in range(n) for j in range(i+1,n)])]
 

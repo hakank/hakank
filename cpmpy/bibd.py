@@ -41,9 +41,7 @@ def get_model(v, b, r, k, l):
 
 def solve(param):
     matrix, model = get_model(param['v'], param['b'], param['r'], param['k'], param['l'])
-    matrix_t = matrix.transpose()
     model += lex2(matrix)
-    model += lex2(matrix_t)
 
     ss = CPM_ortools(model)
     num_solutions = 0

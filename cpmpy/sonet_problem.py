@@ -46,7 +46,7 @@ def sonet_problem(r,n,demand,capacity_nodes):
   rings = boolvar(shape=(r,n),name="rings")
   z = intvar(0,sum(capacity_nodes),name="z")
 
-  model = Model(z == sum(rings))
+  model = Model(z == rings.sum())
 
   # """
   # capacity of each ring must not be exceeded     

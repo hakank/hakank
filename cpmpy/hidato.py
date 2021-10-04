@@ -26,7 +26,7 @@ from cpmpy_hakank import *
 #
 # Solve the Hidato problem
 #
-def hidato(problem):
+def hidato(problem,solver="CPM_ortools"):
 
     r = problem["r"]
     c = problem["c"]
@@ -41,7 +41,7 @@ def hidato(problem):
     x = intvar(1,r*c,shape=(c,r),name="x")
     # We have to convert to a flattened version
     # since element only support 1 dimension arrays
-    x_flat = [x[i][j] for i in range(r) for j in range(c)]
+    x_flat = [x[i,j] for i in range(r) for j in range(c)]
 
 
     model = Model(
@@ -83,35 +83,25 @@ def hidato(problem):
             ] 
 
     num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1        
-        print_board(x, r, c)
-        get_different_solution(ss,x.flat)
+    if solver == "CPM_ortools":
+        ss = CPM_ortools(model)
+        while ss.solve():
+            num_solutions += 1        
+            print_board(x, r, c)
+            get_different_solution(ss,x.flat)
 
-    print("number of solutions:", num_solutions)
+        print("number of solutions:", num_solutions)
+    else:
+        ss = CPM_minizinc(model)
+        # ss = CPM_minizinc(model,"gecode") # Test a specific FlatZinc model
+        # print("MiniZinc model:\n",ss.make_model(model)[0]) # Print the MiniZinc model
+        while ss.solve():
+            num_solutions += 1        
+            print_board(x, r, c)
+            get_different_solution(ss,x.flat)
 
-#
-# Read a problem instance from a file
-#
-def read_problem(file):
-    f = open(file, 'r')
-    rows = int(f.readline())
-    cols = int(f.readline())
-    game = []
-    for i in range(rows):
-        x = f.readline()
-        row = [0]*cols
-        for j in range(cols):
-            if x[j] == ".":
-                tmp = -1
-            else:
-                tmp = int(x[j])
-            row[j] = tmp
-        game.append(row)
-    return [game, rows, cols]
-
-
+        print("number of solutions:", num_solutions)
+        
 #
 # Print the mines
 #
@@ -257,8 +247,17 @@ problems = {
 
 }
 
-# Solve all problems
+solver = "CPM_ortools"
+print("Solver:",solver)
 for p in problems:
     print(f"problem: {p}")
-    hidato(problems[p])
+    hidato(problems[p],solver)
+    print()
+
+
+solver = "CPM_minizinc"
+print("Solver:",solver)
+for p in problems:
+    print(f"problem: {p}")
+    hidato(problems[p],solver)
     print()

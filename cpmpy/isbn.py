@@ -1,5 +1,5 @@
 """
-Some explorations of ISBN13 in Picat.
+Some explorations of ISBN13 in cpmpy.
 
 See http://en.wikipedia.org/wiki/ISBN
 
