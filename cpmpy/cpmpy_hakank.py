@@ -404,7 +404,7 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0):
     ss.ort_solver.parameters.cp_model_probing_level = 0
     
     ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    print(ss._after_solve(ort_status)) # post-process after solve() call...
+    ss._after_solve(ort_status)
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -498,7 +498,7 @@ def ortools_wrapper_opt(model,var_array,print_solution=print_solution,num_sols=1
     # ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
     ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
     
-    print(ss._after_solve(ort_status)) # post-process after solve() call...
+    ss._after_solve(ort_status) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
