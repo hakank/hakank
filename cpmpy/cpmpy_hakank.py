@@ -1789,3 +1789,57 @@ def soft_alldifferent(x,p):
   n = len(x)
   return [p == sum([x[i] == x[j] for i in range(n) for j in range(i+1,n)])]
 
+
+
+def among_seq(low,high,seqlen,x,v):
+    """
+    among_seq(low, high, seqlen, x, v)
+
+    Ensures that all sequences of length SeqLen in the list X 
+    contains at least Low and atmost High occurrences of V.
+    """
+    n = len(x)
+    size = n-seqlen+1
+    constraints = []
+    for i in range(size):
+       seq = [x[j] for j in range(i,i+seqlen)]
+       constraints += [among_range(low, high, seq, v)]
+
+    return constraints
+
+
+def among_range(low, high,x,v):
+    """
+    among_range(low, high, x, v)
+
+    Ensures that the list x contains at least low and atmost high
+    occurrences of v.
+    Used by among_seq.
+    """
+    xs = intvar(0,len(x))
+    vlen = len(v)
+    return [
+      xs == sum([sum([el == v[i] for i in range(vlen)])>0 for el in x]),
+      xs >= low,
+      xs <= high]
+
+
+
+def sequence(x,seq_length, lbound,ubound):
+    """
+    sequence(,length,lbound,ubound)
+     
+    Ensures that all sums of every subsequence of length length
+    in array x is between lbound and ubound
+    """
+    n = len(x)
+    xs = intvar(lbound.lb,ubound.ub)
+    constraints = []
+    for i in range(n-seq_length+1):
+       constraints += [xs == sum([x[j] for j in range(i,i+seq_length)]),
+                       xs >= lbound,
+                       xs <= ubound
+                       ]
+
+    return constraints
+
