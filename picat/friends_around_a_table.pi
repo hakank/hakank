@@ -1,0 +1,149 @@
+/* 
+
+  Friends around a table in Picat.
+
+  From https://swish.swi-prolog.org/p/seating477.pl
+  and discussed in 
+  https://swi-prolog.discourse.group/t/find-the-bug-in-this-logic-puzzle/4649
+  """
+  One of the friends is Bruce
+  Alice is sitting directly opposite of David
+  Henry is sitting between Greta and Eugene.
+  There is one person between Greta and Claire.
+  Eugene is sitting immediately to David's left.
+  Franny is not next to Alice or David.
+  """
+
+  Here is a more complete description of the problem, from 
+  https://olympiad.org.za/talent-search/wp-content/uploads/sites/2/2020/11/2020-Talent-Search-Solutions-book.pdf
+  Page 61:
+  """
+  26 Seating Arrangement
+
+  Eight friends are sitting in a circle. They are all facing inwards.
+  We know the following facts about where they are sitting:
+  1. Alice is sitting directly opposite of David.
+  2. Henry is sitting between Greta and Eugene.
+  3. Franny is not next to Alice or David.
+  4. There is one person between Greta and Claire.
+  5. Eugene is sitting immediately to David's left.
+
+  Task:
+  Place the friends in the correct places in the circle by dragging the letter next to their
+  name to their chair.
+
+  (You can click on the letter to return it to the list. There may be multiple correct
+  solutions; you only need to find one. Don't forget to click on Save when done!)
+  """
+
+  We represents the positions as 
+              1 
+           8    2
+         7        3
+           6    4
+              5
+
+  There are 8 solutions:
+    friends_position = [alice,greta,henry,eugene,david,bruce,franny,claire]
+    friends_position = [claire,alice,greta,henry,eugene,david,bruce,franny]
+    friends_position = [franny,claire,alice,greta,henry,eugene,david,bruce]
+    friends_position = [bruce,franny,claire,alice,greta,henry,eugene,david]
+    friends_position = [eugene,david,bruce,franny,claire,alice,greta,henry]
+    friends_position = [henry,eugene,david,bruce,franny,claire,alice,greta]
+    friends_position = [greta,henry,eugene,david,bruce,franny,claire,alice]
+
+  With the symmetry breaking that Alice is in position 1, there is one solution:
+   friends = [1,6,8,5,4,7,2,3]
+   friends_position = [alice,greta,henry,eugene,david,bruce,franny,claire]
+
+                alice
+       claire            greta
+     franny                 henry
+        bruce           eugene
+                david
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import cp.
+
+main => go.
+
+%
+% CP approach
+%
+go ?=>
+  N = 8,
+  Friends = [Alice,_Bruce,Claire,David,Eugene,Franny,Greta,Henry],
+  Friends :: 1..N,
+  FriendsS = [alice, bruce,claire,david,eugene,franny,greta,henry],
+
+  FriendsPos = new_list(N),
+  FriendsPos :: 1..N,
+
+  all_different(Friends[1..N]),
+  assignment(Friends,FriendsPos),
+
+  % Constraints (the hints)
+
+  % One of the friends is Bruce
+  
+  % Alice is sitting directly opposite of David
+  opposite(Alice,David,N),
+  
+  % Henry is sitting between Greta and Eugene.
+  between(Greta,Henry,Eugene,N),
+  
+  
+  % There is one person between Greta and Claire.
+  between(Greta,_Someone,Claire,N),
+
+  % Eugene is sitting immediately to David's left.
+  David - Eugene #= 1,
+  
+  % Franny is not next to Alice or David.
+  not_next_to(Franny,Alice,N),
+  not_next_to(Franny,David,N),
+
+  % Symmetry breaking
+  Alice #= 1,
+
+  solve(Friends),
+  
+  println(friends=Friends),
+  Pos = [FriendsS[F] : F in FriendsPos],
+  println(friends_position=Pos),
+
+  printf("           %10w\n",Pos[1]),
+  printf("   %10w       %10w\n",Pos[8], Pos[2]),
+  printf(" %10w            %10w\n",Pos[7], Pos[3]),
+  printf("   %10w       %10w\n",Pos[6], Pos[4]),
+  printf("           %10w",Pos[5]),      
+
+  nl,
+  fail,
+  
+  nl.
+go => true.
+
+%
+% CP version
+%
+opposite(X,Y,N) =>
+  abs(X-Y) #= N div 2.
+
+% B is between A and C
+between(A,B,C,N) =>
+  Table = [{1+(I-1) mod N , 1+((I) mod N), 1+(I+1) mod N} : I in 1..N] ++
+          [{1+(I+1) mod N , 1+((I) mod N), 1+(I-1) mod N} : I in 1..N],
+  table_in({A,B,C},Table).
+
+% A is not next to B
+not_next_to(A,B,N) =>
+  Table=[{1+(I-1) mod N , 1+((I  ) mod N)} : I in 1..N] ++
+        [{1+(I  ) mod N , 1+((I-1) mod N)} : I in 1..N],
+  table_notin({A,B},Table).
