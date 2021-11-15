@@ -369,9 +369,9 @@ def print_solution(a):
         print(x.value())
 
 
-def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0):
+def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0,num_procs=1):
     """
-    ortools_wrapper((model,var_array,print_solution=print_solution,num_sols=0)
+    ortools_wrapper((model,var_array,print_solution=print_solution,num_sols=0,num_procs=1)
 
     This is a simple wrapper for printing the solutions of a model and tends
     to be (significantly) faster than using
@@ -389,6 +389,7 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0):
                 Default is print_solution(a) defined above. The function
                 can be overwritten / defined in the current constraint model.
     - num_sols : number of solutions. Default 0, all solutions.
+    - num_procs: number of processes. Note: Only works if num_sols = 1.
 
     Note: For optimality problems, use ortools_wrapper_opt(.) instead.
     
@@ -396,14 +397,19 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0):
     ss = CPM_ortools(model)    
     cb = ORT_function_printer_arrays(ss.varmap,var_array,print_solution,num_sols)
 
-    # Flags to experiment with
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+
+    # Flags to experiment with    
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
-    
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+
+    if num_sols == 1 and num_procs > 1:
+      print(f"Using {num_procs} procs")
+      ss.ort_solver.parameters.num_search_workers = num_procs
+      ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
+    else:
+      ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
     ss._after_solve(ort_status)
     print(ss.status())
     print("Nr solutions:", cb.solcount)
@@ -413,9 +419,9 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0):
     print()
 
 
-def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0):
+def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0,num_procs=1):
     """
-    ortools_wrapper((model,var_array,print_solution=print_solution,num_sols=0)
+    ortools_wrapper((model,var_array,print_solution=print_solution,num_sols=0,num_procs=1)
 
     This is a simple wrapper for printing the solutions of a model and tends
     to be (significantly) faster than using
@@ -435,6 +441,7 @@ def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0):
                 Default is print_solution(a) defined above. The function
                 can be overwritten / defined in the current constraint model.
     - num_sols : number of solutions. Default 0, all solutions.
+    - num_procs: number of processes. Note: Only works if num_sols = 1.    
 
     Note: For optimality problems, use ortools_wrapper_opt(.) instead.
     
@@ -443,13 +450,17 @@ def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0):
     cb = ORT_function_printer_arrays2(ss.varmap,var_array,print_solution,num_sols)
 
     # Flags to experiment with
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
-    
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+
+    if num_sols == 1 and num_procs > 1:
+      ss.ort_solver.parameters.num_search_workers = num_procs # Don't work together with SearchForAllSolutions
+      ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
+    else:
+      ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+      
     print()
     ss._after_solve(ort_status) # post-process after solve() call...
     print(ss.status())
@@ -1842,4 +1853,71 @@ def sequence(x,seq_length, lbound,ubound):
                        ]
 
     return constraints
+
+
+def sort_array(x,y):
+    """
+    sort_array(x,y)
+
+    Ensure that y is a sorted version of x.
+
+    Note: If x contains duplicate values then there will be
+          multiple solutions.
+
+          Example: for x = [2,1,2] there are two identical solutions,
+                   since the two 2 are not distinct:
+                     x: [2 1 2]
+                     y: [1 2 2]  (permutation: 1,0,2)
+                     
+                     x: [2 1 2]
+                     y: [1 2 2]  (permutation: 2,0,1)
+
+    If x is distinct, however, then there there will be the expected len(x)!
+    solutions.
+    """
+    n = len(x)
+    p = intvar(0,n-1,shape=n) # the permutation array
+    return [permutation3(x,p,y),  
+            AllDifferent(p),
+            increasing(y)
+            ]
+
+
+
+def all_different_consecutive_values(x):
+    """
+    all_different_consecutive_values(x)
+    
+    Ensure:
+    - that all variables of x to take distinct values and 
+    - that the difference between the largest and the smallest values 
+      of the x collection is equal to the number of variables 
+      minus one (i.e., there is no holes at all within the used values).
+    (http://www.emn.fr/z-info/sdemasse/gccat/Calldifferent_consecutive_values.html)
+    """
+    return [AllDifferent(x),
+            max(x) - min(x) == len(x) - 1]
+
+
+
+def all_different_explain(x, d):
+    """
+    all_different_explain(x, d)
+   
+    Ensure that d[i] == 0 if there is atmost 1 occurrences of the value i
+    in x.  d[i] == 1 of there are more than one occurrence in x, and is
+    thus the 'explanation' that the all_different constraint fails.
+    """
+    n = len(x)
+    xmin, xmax = get_min_max_domain(x) # domain of x
+    constraints = []
+    for i in range(xmin,xmax+1):
+        # remove values not in x
+        constraints += [(sum([x[j] == i for j in range(n)]) == 0).implies(d[i] == 0)]
+        # mark duplicates in s
+        constraints += [(sum([(x[a] == i) & (x[b] == i)
+                              for a in range(n)
+                              for b in range(a+1,n) ]) > 0) == (d[i] == 1)]
+    return constraints
+                             
 
