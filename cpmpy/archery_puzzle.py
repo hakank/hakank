@@ -53,11 +53,7 @@ def archery_puzzle():
 
   ss = CPM_ortools(model)
   num_solutions = 0
-  # See https://github.com/CPMpy/cpmpy/issues/41
-  # for a discussion why one have to use "is not False"
-  opt_val = ss.solve()
-  print("opt_val:", opt_val)
-  if opt_val is not False:
+  if ss.solve():
     num_solutions += 1
     print("z:", z.value())
     print("d:", d.value())
