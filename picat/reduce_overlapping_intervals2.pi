@@ -1,0 +1,242 @@
+/* 
+
+  Reducing overlapping intervals in Picat.
+
+  From https://stackoverflow.com/questions/70036071/how-can-i-get-the-cartesian-product-of-a-set-of-intervals-with-no-overlapping
+  """
+  How can I get the cartesian product of a set of intervals with no overlapping?
+
+  given a dictionary with a set of intervals:
+
+    intervals = {'561801/03/08': [[1081, 1156], [1141, 1216], [1201, 1276], [1741, 1816], [1801, 1876], [1861, 1936], [1921, 1996], [1981, 2056], [2041, 2116]], 
+                 '563301/03/08': [[1170, 1250], [1230, 1310], [1770, 1850], [1830, 1910], [1890, 1970], [1950, 2030], [2010, 2090], [2070, 2150], [2130, 2210]], 
+                 '688002/03/08': [[1790, 1850], [1850, 1910], [1910, 1970], [1970, 2030], [2090, 2150], [2150, 2210], [2210, 2270], [2270, 2330], [2330, 2390], [2390, 2450], [2450, 2510], [2510, 2570], [2570, 2630], [2630, 2690], [2690, 2750]], 
+                 '690102/03/08': [[1900, 1960], [1960, 2020], [2020, 2080], [2080, 2140], [2200, 2260], [2260, 2320], [2320, 2380], [2380, 2440], [2440, 2500], [2500, 2560], [2560, 2620], [2620, 2680], [2680, 2740]], 
+                 '559402/03/08': [[2015, 2090], [2075, 2150], [2135, 2210], [2195, 2270], [2255, 2330], [2315, 2390], [2375, 2450], [2435, 2510], [2495, 2570], [2555, 2630], [2615, 2690], [2675, 2750]], 
+                 '561302/03/08': [[2310, 2390], [2370, 2450], [2430, 2510], [2490, 2570], [2550, 2630], [2610, 2690], [2670, 2750]],
+                 '572602/03/08': [[2435, 2505], [2495, 2565], [2555, 2625], [2615, 2685], [2675, 2745]], 
+                 '572502/03/08': [[2560, 2640], [2620, 2700]]}
+
+  the cartesian product can be obtained using:
+
+  prod = itertools.product(*intervals)
+
+  the size of this cartesian product is 9*9*15*13*12*7*5*2 = 13,267,800
+
+  I wish to reduce it by not allowing combinations where two or more domains overlap. This combination is OK:
+
+    [1081, 1156], [1170, 1250], [1790, 1850], [1900, 1960], [2015, 2090], [2310, 2390], [2435, 2505], [2560, 2640] OK
+
+  This combination is not OK
+
+    [1141, 1216], [1170, 1250], [1790, 1850], [1900, 1960], [2015, 2090], [2310, 2390], [2435, 2505], [2560, 2640] not OK
+
+  and any further combinations starting with:
+
+    [1141, 1216], [1170, 1250]
+
+  should not be considered. This excludes 15*13*12*7*5*2 = 163,800 combinations The purpose is to reduce 
+  significantly the size of the cartesian product, to only have intervals that do not overlap.
+  """
+
+  See reduce_overlapping_intervals.pi for what I think is a solution to the stated problem.
+
+  Here I investigate another interpretation of the problem, namely:
+  - remove intervals from the lists of intervals so all the intervals can be combined without any overlapping.
+    And we must keep at least one interval from each interval list.
+
+
+  We check this is two ways:
+  * Opt = true: 
+    Check for the maximum number of kept intervals.  The optimal value is 15 (surprisingly small!),
+    and there are 170 different optimal configurations.
+    
+    Here are some of these optimal solutions:
+
+    x = {{1,0,0,1,1,1,1,1,0},{1,1,0,0,0,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0,0,0,0},{0,0,0,1,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,1},{1,0,0,0,0,0,0},{1,0,0,0,0},{1,0}}
+    interval = 1 = [[1081,1156],[1741,1816],[1801,1876],[1861,1936],[1921,1996],[1981,2056]]
+    interval = 2 = [[1170,1250],[1230,1310]]
+    interval = 3 = [[2150,2210],[2210,2270]]
+    interval = 4 = [[2080,2140]]
+    interval = 5 = [[2675,2750]]
+    interval = 6 = [[2310,2390]]
+    interval = 7 = [[2435,2505]]
+    interval = 8 = [[2560,2640]]
+
+    x = {{1,0,0,1,1,1,1,1,0},{1,1,0,0,0,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0,0,0,0},{0,0,0,1,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,1},{1,0,0,0,0,0,0},{1,0,0,0,0},{1,0}}
+    interval = 1 = [[1081,1156],[1141,1216],[1741,1816],[1801,1876],[1861,1936],[1921,1996],[1981,2056]]
+    interval = 2 = [[1230,1310]]
+    interval = 3 = [[2150,2210],[2210,2270]]
+    interval = 4 = [[2080,2140]]
+    interval = 5 = [[2675,2750]]
+    interval = 6 = [[2310,2390]]
+    interval = 7 = [[2435,2505]]
+    interval = 8 = [[2560,2640]]
+
+    x = {{1,0,0,1,1,1,1,1,0},{1,1,0,0,0,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0,0,0,0},{0,0,0,1,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,1},{1,0,0,0,0,0,0},{1,0,0,0,0},{1,0}}
+    interval = 1 = [[1081,1156],[1141,1216],[1741,1816],[1801,1876]]
+    interval = 2 = [[1230,1310]]
+    interval = 3 = [[2090,2150],[2150,2210],[2210,2270]]
+    interval = 4 = [[1900,1960],[1960,2020],[2020,2080]]
+    interval = 5 = [[2435,2510]]
+    interval = 6 = [[2310,2390]]
+    interval = 7 = [[2675,2745]]
+    interval = 8 = [[2560,2640]]
+
+
+  * Opt = false
+    Here we are interested in any valid configuration. There are 608599 different
+    configurations with number of kept intervals from 8 to 15.
+
+    Here is one solution with just 8 kept intervals (one from each interval list):
+
+    x = {{1,0,0,0,0,0,0,0,0},{0,1,0,0,0,0,0,0,0},{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},{1,0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,1,0,0,0,0,0,0,0,0},{1,0,0,0,0,0,0},{1,0,0,0,0},{0,1}}
+    z = 8
+    The selected: intervals:
+    interval = 1 = [[1081,1156]]
+    interval = 2 = [[1230,1310]]
+    interval = 3 = [[1790,1850]]
+    interval = 4 = [[1900,1960]]
+    interval = 5 = [[2195,2270]]
+    interval = 6 = [[2310,2390]]
+    interval = 7 = [[2435,2505]]
+    interval = 8 = [[2620,2700]]
+
+
+
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp. % faster
+% import sat. 
+
+main => go.
+
+go ?=>
+  nolog,
+  Map = get_global_map(),
+  Map.put(count,0),
+  
+  intervals(Intervals),
+  % If Opt = true: search for maximum number of kept intervals
+  % If Opt = false: search for any valid solution.
+  Opt = true, 
+  % Opt = false,    
+  reduce_overlapping_intervals(Intervals,Opt,X,Z),
+  println(X),
+  println(z=Z),
+  println("The selected: intervals:"),
+  print_selected_intervals(Intervals,X),
+
+  if Opt then
+    println("\nCheck for all optimal solutions with Z"=Z),
+    reduce_overlapping_intervals(Intervals,Opt,X2,Z),
+    println(x=X),  
+    print_selected_intervals(Intervals,X2)
+  end,
+  
+  nl,
+  Map.put(count,Map.get(count)+1),
+  % println(solnr=Map.get(count)),
+  fail,
+
+  nl.
+go => println(num_solutions=get_global_map().get(count)).
+
+
+print_selected_intervals(Intervals,X) =>
+  N = Intervals.len,
+  Lens = [Interval.len : Interval in Intervals],  
+  foreach(I in 1..N)
+     println(interval=I=[Intervals[I,J] : J in 1..Lens[I], X[I,J] == 1])
+  end,
+  nl.
+  
+
+reduce_overlapping_intervals(Intervals,Opt,X,Z) =>
+
+  N = Intervals.len,
+  Lens = [Interval.len : Interval in Intervals],
+
+  % X is a boolean irregular matrix with 1 if an interval is selected and 0 other wise
+  X = new_array(N),
+  foreach(I in 1..N)
+    X[I] = new_array(Lens[I])
+  end,
+  X :: 0..1,
+
+
+  % Ensure that all the selected intervals does not overlaps.
+  foreach(I in 1..N)
+    sum(X[I]) #>= 1, % Ensure that all intervals lists gets at least one interval.
+    
+    % Check all I's intervals
+    foreach(II in 1..Lens[I]) 
+        IStart = Intervals[I,II,1],
+        IEnd   = Intervals[I,II,2],
+
+        % Check the rest of the intervals
+        foreach(J in I+1..N)
+            % All J's intervals
+            foreach(JJ in 1..Lens[J])
+               JStart = Intervals[J,JJ,1],
+               JEnd = Intervals[J,JJ,2],
+               % If both the II and JJ intervals are selected, check must not overlap
+               % No overlap: either
+               %   IStart #> JEnd (I starts after J)
+               %   JStart #> IEnd (J starts after I)
+               (X[I,II] #/\ X[J,JJ]) #=> (IStart #> JEnd #\/ JStart #> IEnd)
+           end
+        end
+    end
+  end,
+
+  Z #= sum(X.vars),
+  % println(z=Z),
+  Vars = X.vars ++ [Z],
+  if Opt == true, var(Z) then
+    solve($[constr,updown,max(Z),report(printf("Z: %d\n",Z))],X)
+  else
+    solve($[constr,updown],Vars)
+  end.
+
+% 
+% Check of the intervals in A has some overlaps.
+% Assume that A is sorted.
+% 
+no_overlaps(A) =>
+   N = A.len,
+   println(n=N),
+   HasOverlap = false,
+   foreach(I in 2..N, HasOverlap==false)
+      if A[I,1] > A[I-1,1], A[I,1] < A[I-1,2] then
+         println(overlap=[A[I-1],A[I]]),
+         HasOverlap := true
+      end
+   end,
+   HasOverlap == false.
+
+
+intervals(Intervals) =>
+  Intervals = [    
+     [[1081, 1156], [1141, 1216], [1201, 1276], [1741, 1816], [1801, 1876], [1861, 1936], [1921, 1996], [1981, 2056], [2041, 2116]],
+     
+     [[1170, 1250], [1230, 1310], [1770, 1850], [1830, 1910], [1890, 1970], [1950, 2030], [2010, 2090], [2070, 2150], [2130, 2210]],
+     
+     [[1790, 1850], [1850, 1910], [1910, 1970], [1970, 2030], [2090, 2150], [2150, 2210], [2210, 2270], [2270, 2330], [2330, 2390], [2390, 2450], [2450, 2510], [2510, 2570], [2570, 2630], [2630, 2690], [2690, 2750]],
+     
+     [[1900, 1960], [1960, 2020], [2020, 2080], [2080, 2140], [2200, 2260], [2260, 2320], [2320, 2380], [2380, 2440], [2440, 2500], [2500, 2560], [2560, 2620], [2620, 2680], [2680, 2740]],
+     
+     [[2015, 2090], [2075, 2150], [2135, 2210], [2195, 2270], [2255, 2330], [2315, 2390], [2375, 2450], [2435, 2510], [2495, 2570], [2555, 2630], [2615, 2690], [2675, 2750]],
+     
+     [[2310, 2390], [2370, 2450], [2430, 2510], [2490, 2570], [2550, 2630], [2610, 2690], [2670, 2750]],
+     
+     [[2435, 2505], [2495, 2565], [2555, 2625], [2615, 2685], [2675, 2745]],
+     
+     [[2560, 2640], [2620, 2700]]
+
+  ].

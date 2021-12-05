@@ -1,0 +1,338 @@
+/* 
+
+  Graceful labeling (graphs) in Picat.
+
+  From https://mathworld.wolfram.com/GracefulLabeling.html
+  """
+  A graceful labeling (or graceful numbering) is a special graph labeling of a 
+  graph on m edges in which the nodes are labeled with a subset of distinct nonnegative integers 
+  from 0 to m and the graph edges are labeled with the absolute differences between node values. 
+  If the resulting graph edge numbers run from 1 to m inclusive, the labeling is a graceful 
+  labeling and the graph is said to be a graceful graph.
+
+  Not all graphs possess a graceful labeling; those that do not are said to be ungraceful.
+
+  ...
+
+  Graceful labelings may be generated using perfect rulers, i.e., rulers of integer length 
+  n with the minimum possible numbers of marks so that all distances 1 to n can be measured.
+  """
+
+
+  In this model there are some assumptions:
+   - The number of edges is M and the number of nodes is N.
+     Both these are fixed in the model.
+   - The graph is symmetric (X[I,J] = X[J,1])
+   - There are exactly M edges (M*2 1's in the graph)
+   - The graph might not be connected
+   - All nodes must have at least one connection
+   - The number of nodes (N) in the graph is between M+1 and M*2
+     (this not enforced in the model, but in the generation).
+   - Since Picat is 1-based we adjust the node labels as I-1 and J-1
+     in the model.
+
+  Here are some examples (N might be between M+1 and M*2)
+
+     [m = 6,n = 7]
+     Connections:
+     0 = [6]
+     1 = [6]
+     2 = [6]
+     3 = [6]
+     4 = [6]
+     5 = [6]
+     6 = [0,1,2,3,4,5]
+     Connections with difference:
+     [[[0,6],diff = 6]]
+     [[[1,6],diff = 5]]
+     [[[2,6],diff = 4]]
+     [[[3,6],diff = 3]]
+     [[[4,6],diff = 2]]
+     [[[5,6],diff = 1]]
+     diffs = [6,5,4,3,2,1]
+
+     [m = 6,n = 11]
+     Connections:
+     0 = [1,3]
+     1 = [0]
+     2 = [7]
+     3 = [0]
+     4 = [10]
+     5 = [9]
+     6 = [8]
+     7 = [2]
+     8 = [6]
+     9 = [5]
+     10 = [4]
+     Connections with difference:
+     [[[0,1],diff = 1],[[0,3],diff = 3]]
+     [[[2,7],diff = 5]]
+     [[[4,10],diff = 6]]
+     [[[5,9],diff = 4]]
+     [[[6,8],diff = 2]]
+     diffs = [1,3,5,6,4,2]
+
+   (There is no solution for M=6 and N=12 which is studied a little in go3/0, see comment below.)
+   
+
+   Note that there is always a trivial solution with the first M nodes (node 0..M-1) are only
+   connected with node M+1. E.g. for M=12 and N=M+1:
+
+     [m = 12,n = 13]
+     Connections:
+     0 = [12]
+     1 = [12]
+     2 = [12]
+     3 = [12]
+     4 = [12]
+     5 = [12]
+     6 = [12]
+     7 = [12]
+     8 = [12]
+     9 = [12]
+     10 = [12]
+     11 = [12]
+     12 = [0,1,2,3,4,5,6,7,8,9,10,11]
+     Connections with difference:
+     [[[0,12],diff = 12]]
+     [[[1,12],diff = 11]]
+     [[[2,12],diff = 10]]
+     [[[3,12],diff = 9]]
+     [[[4,12],diff = 8]]
+     [[[5,12],diff = 7]]
+     [[[6,12],diff = 6]]
+     [[[7,12],diff = 5]]
+     [[[8,12],diff = 4]]
+     [[[9,12],diff = 3]]
+     [[[10,12],diff = 2]]
+     [[[11,12],diff = 1]]
+     diffs = [12,11,10,9,8,7,6,5,4,3,2,1]
+
+
+     Here's a (randomly selected) solution for M=23 and N=M+1:
+
+     Connections:
+     0 = [12,14,18,22,23]
+     1 = [6,7,9,21]
+     2 = [13,18,23]
+     3 = [20]
+     4 = [23]
+     5 = [18]
+     6 = [1]
+     7 = [1,22]
+     8 = [17]
+     9 = [1,11]
+     10 = [20]
+     11 = [9]
+     12 = [0]
+     13 = [2]
+     14 = [0]
+     15 = [22]
+     16 = [19]
+     17 = [8]
+     18 = [0,2,5]
+     19 = [16,23]
+     20 = [3,10]
+     21 = [1,22]
+     22 = [0,7,15,21]
+     23 = [0,2,4,19]
+     Connections with difference:
+     [[[0,12],diff = 12],[[0,14],diff = 14],[[0,18],diff = 18],[[0,22],diff = 22],[[0,23],diff = 23]]
+     [[[1,6],diff = 5],[[1,7],diff = 6],[[1,9],diff = 8],[[1,21],diff = 20]]
+     [[[2,13],diff = 11],[[2,18],diff = 16],[[2,23],diff = 21]]
+     [[[3,20],diff = 17]]
+     [[[4,23],diff = 19]]
+     [[[5,18],diff = 13]]
+     [[[7,22],diff = 15]]
+     [[[8,17],diff = 9]]
+     [[[9,11],diff = 2]]
+     [[[10,20],diff = 10]]
+     [[[15,22],diff = 7]]
+     [[[16,19],diff = 3]]
+     [[[19,23],diff = 4]]
+     [[[21,22],diff = 1]]
+     diffs = [12,14,18,22,23,5,6,8,20,11,16,21,17,19,13,15,9,2,10,7,3,4,1]
+
+
+
+  * go2/0: Number of solutions for M=1..10 and N in M..M*2:
+
+     M   N   Count
+     ------------
+     1   2    1
+     2   3    2
+     2   4    0
+     3   4    4
+     3   5    4
+     3   6    0
+     4   5   12
+     4   6   20
+     4   7   10
+     4   8    6
+     5   6   44
+     5   7  118
+     5   8   92
+     5   9   40
+     5  10   10
+     6   7  206
+     6   8  710
+     6   9  816
+     6  10  500
+     6  11  148
+     6  12    0
+
+  * go3/0: There are some M's for which N=M*2 have no solution. Checking for M in 2..13 give
+    the following M:
+       2,3, 6,7, 10,11
+
+    One can observe that they are all M mod 4 = 2,3. 
+
+    (The following M has a solution for N=M*2: 1,4,5,8,9,12,13.)
+
+    Without the constraint that _all nodes must have some connection_ there is no problem
+    to solve for these M's and there is alway a solution for N=M*2-1.
+
+    For M=3 and N=6 we can note that there can be 5 nodes connected, e.g 
+      0-1: difference 1
+      1-3: difference 2
+      5-2: difference 3 
+      (4 is not used)
+   but there is no solution using all of the 6 nodes. Similarly for all 
+   other "failing" Ms.
+
+
+  This model was inspired by Alexandre Muñiz' Celebration of Mind talk
+  "CoM Oct 2021 - How to Roll Two Dice - Alexandre Muñiz"
+  https://www.youtube.com/watch?v=-aDfFh5YUD8
+
+  Alse see his related blog post "Shaker Dice and Edge Labelings"
+  https://puzzlezapper.com/blog/2021/06/shaker-dice-and-edge-labelings/
+
+  (Alexandre also talked abot Sicherman dice. See a generalized version in 
+   http://hakank.org/picat/sicherman_dice.pi .)
+
+  Some related models:
+  - http://www.hakank.org/picat/K4P2GracefulGraph2.pi
+  - http://www.hakank.org/picat/graceful_labeling.pi
+  - http://www.hakank.org/picat/golomb_ruler.pi
+  - http://www.hakank.org/picat/all_interval.pi
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+
+% Show all solutions for a certain M (and N in M+1..M*2)
+% sat might be better for larger values of M.
+go ?=>
+  nolog,
+  M = 7, % number of edges
+  member(N,M+1..M*2),
+  println([m=M,n=N]),  
+  graceful_graph(M,N,X),
+  print_solution(M,N,X),
+  fail,
+  nl.
+go => true.  
+
+%
+% Count the number of solutions for M=1..6 and N in M+1..M*2
+%
+% (Note: cp might be faster than sat for this.)
+go2 ?=>
+  nolog,
+  foreach(M in 1..6)
+     foreach(N in M+1..M*2)
+        Count = count_all(graceful_graph(M,N, _X)),
+        println([m=M,n=N,count=Count])
+     end
+  end,
+  nl.
+go2 => true.
+
+
+%
+% Checking for those M when there are no solution for N=M*2.
+%
+go3 ?=>
+  nolog,
+  NoSolutions = [],
+  foreach(M in 1..20)
+     N = M*2,
+     if graceful_graph(M,N,_X) then
+        println([m=M,n=N,got_a_solution])
+     else
+        println([m=M,n=N,no_solution]),
+        NoSolutions := NoSolutions ++ [M]
+     end
+  end,
+  println(noSolutions=NoSolutions),
+  nl.
+go3 => true.
+
+
+print_solution(M,N,X) =>
+  println([m=M,n=N]),
+  println("Connections:"),
+  foreach(I in 1..N)
+    println((I-1)=[(J-1) : J in 1..N, X[I,J] == 1])
+  end,
+  println("Connections with difference:"),
+  foreach(I in 1..N)
+     L = [[ [(I-1), (J-1)],diff=abs((I-1)-(J-1))] : J in 1..N, I < J, X[I,J] == 1],
+     if L != [] then
+       println(L)
+     end
+  end,
+  Diffs = [abs( (I-1)-(J-1)) : I in 1..N, J in 1..N, I < J, X[I,J] == 1],
+  println(diffs=Diffs),
+  % Z = sum([1 : I in 1..N,  sum([X[I,J] : J in 1..N]) > 0]),
+  % println(z=Z),
+  nl.
+
+
+%
+% Construct a graceful graph with M edges and N nodes.
+% Both M and N are fixed.
+%
+graceful_graph(M,N, X) => 
+
+  % X[I,J] = 1: Nodes I and J are connected
+  X = new_array(N,N),
+  X :: 0..1,
+
+  % There are exactly M edges in the graph (2*M 1's in the matrix)
+  sum(X.vars) #= 2*M,
+
+  % All nodes must have at least one connection
+  foreach(I in 1..N)
+    sum(X[I]) #> 0,
+    % There is no connection to itself.
+    X[I,I] #= 0
+  end,
+
+  % The graph is symmetric (undirected)
+  foreach(I in 1..N, J in 1..N)
+     X[I,J] #= X[J,I]
+  end,
+
+  % Get all the intervals 1..M:
+  % * There exists two connected nodes I and J such as abs((I-1)-(J-1)) = K
+  % Since Picat is 1 based, we have to adjust the labels as I-1 and J-1
+  % to get node labels from 0..M in order to get the edge (labels) 1..M.
+  foreach(K in 1..M)
+    sum([abs((I-1)-(J-1))*X[I,J] #= K : I in 1..N, J in 1..N, I < J]) #= 1
+  end,
+  % Z #= sum([ sum([X[I,J] : J in 1..N]) #> 0 : I in 1..N]),
+  % Z #= N-1,
+  Vars = X.vars,
+  solve($[],Vars).
+  % solve($[max(Z),report(printf("Z: %d\n",Z))],Vars).
+  % solve($[max(Z),report(print_solution(M,N,X))],Vars).  
+
