@@ -1,0 +1,1709 @@
+/*
+
+  Perfect square placement in Picat.
+
+  See CSPLib for description of the problem:
+  https://www.csplib.org/Problems/prob009/
+
+  """
+  The perfect square placement problem (also called the squared square problem) 
+  is to pack a set of squares with given integer sizes into a bigger square in 
+  such a way that no squares overlap each other and all square borders are 
+  parallel to the border of the big square. For a perfect placement problem, 
+  all squares have different sizes. The sum of the square surfaces is equal 
+  to the surface of the packing square, so that there is no spare capacity. 
+  A simple perfect square placement problem is a perfect square placement 
+  problem in which no subset of the squares (greater than one) are placed 
+  in a rectangle. 
+  """
+
+  The problems files from CSPLib
+  http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+  are places here
+  http://www.hakank.org/minizinc/perfect_square_placement/
+
+
+  Also see the discussion by N. Beldiceanu, E. Bourreau, and H. Simonis
+  "A Note on Perfect Square Placement"
+  https://www.csplib.org/Problems/prob009/data/helmut.pdf
+  It includes some timings (often quite different from the one found
+  by Picat's SAT solver).
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+% import smt.
+% import mip.
+
+main => go.
+
+%
+% Test a single instance and finds all solutions.
+% There are 8 solutions for the CSPLib perfect square instances.
+%
+% (Testing the fastest instances from go2/0.)
+% Instance   #sols  time
+% -----------------------
+%  8         8      44.5s
+% 18         8      27.9s
+% 138        8      27.9s
+% 134        8      47.5s
+% 135        8      32.8s
+% 17         8  1min17.6s
+%
+go ?=>
+
+   % Count the number of solutions
+   Map = get_global_map(),
+   Map.put(count,0),
+
+   % 23040 solution (use CP for this small instance)
+   % N = 6,
+   % A = [1,1,1,1,1,2,3,3,3],
+
+   % Problem from 
+   % http://www.maa.org/editorial/mathgames/mathgames_12_01_03.html
+   % N = 14, % size of main square
+   % A = [1,1,1,1,2,3,3,3,5,6,6,8], % Sizes
+
+   % Problem 1 from http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+   % About 6s for SAT solver
+   % N = 112, % size of main square
+   % A = [2,4,6,7,8,9,11,15,16,17,18,19,24,25,27,29,33,35,37,42,50],
+
+   % problem 2 from http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+   % N = 110,
+   % A = [2,3,4,6,7,8,12,13,14,15,16,17,18,21,22,23,24,26,27,28,50,60],
+
+   % problem 8 from http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+   % Time to first solution: 1.6s
+   % N = 172,
+   % A = [1,2,3,4,9,11,13,16,17,18,19,22,24,33,36,38,39,42,44,53,75,97],
+
+
+
+   % Problem 100 from 
+   % http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results   
+   % N = 340,
+   % A = [1,4,5,6,11,13,16,17,22,24,44,46,50,51,52,53,61,64,66,79,84,85,92,169,171],
+
+
+   % From Mathematica Tech Conference 2018:
+   % http://www.wolfram.com/broadcast/video.php?c=452&p=3&v=2434
+   % Nope, no solution
+   % N = 36+32,  %size of main square
+   % squares and double squares
+   % A = [1,2,4,8,9,16,18,26,32,36,49],
+
+   problem(18,N,A), % #18 is one of the simplest instance
+   % problem(17,N,A),
+   
+   time2(solve_and_print(N,A)),
+   
+   Map.put(count,Map.get(count)+1),
+   println(count=Map.get(count)),
+   
+   flush(stdout),   
+   fail,
+   
+   nl.
+
+go => println(count=get_global_map().get(count)-1).
+
+/*
+
+ Test all 207 problems from CSPLib.
+
+ Here are the timings (in seconds) for the instances using the SAT solver (Kissat).
+ The time is for the first solution.
+ Since the SAT solver don't support timeout there is not timeout here.
+ To solve all 207 instances it took 39h37m05s.
+
+ One can note the times are in a wide range, from just a single second (e.g. problem 18 and 8)
+ to a couple of hours (e,g, problems 68, 78, and 81). The longest time is for problem 194
+ which took 10h32m4s.
+
+ The grid size (N) of the grid is increasing and don't seems to matter much for the speed.
+ Also, the number of the rectangles (A.length) don't matter much either.
+
+ The marker (*'s):
+  - (no marker) : < 10s
+  - *           : >= 10s..1 minute
+  - **          : 1..10 minutes
+  - ***         : 10..60 minutes
+  - ****        : >= 1 hour 
+
+Problem: 1 n:112 size:21 time:6.354s 6s 
+Problem: 2 n:110 size:22 time:202.831s 3m22s **
+Problem: 3 n:110 size:22 time:111.72s 1m51s **
+Problem: 4 n:139 size:22 time:40.839s 40s *
+Problem: 5 n:147 size:22 time:116.193s 1m56s **
+Problem: 6 n:147 size:22 time:75.471s 1m15s **
+Problem: 7 n:154 size:22 time:131.5s 2m11s **
+Problem: 8 n:172 size:22 time:1.654s 1s 
+Problem: 9 n:192 size:22 time:29.197s 29s *
+Problem: 10 n:110 size:23 time:4.31s 4s 
+Problem: 11 n:139 size:23 time:426.678s 7m6s *
+Problem: 12 n:140 size:23 time:88.075s 1m28s **
+Problem: 13 n:140 size:23 time:169.8s 2m49s **
+Problem: 14 n:145 size:23 time:43.66s 43s *
+Problem: 15 n:180 size:23 time:376.296s 6m16s **
+Problem: 16 n:188 size:23 time:71.592s 1m11s **
+Problem: 17 n:208 size:23 time:2.006s 2s 
+Problem: 18 n:215 size:23 time:1.349s 1s 
+Problem: 19 n:228 size:23 time:22.297s 22s *
+Problem: 20 n:257 size:23 time:32.128s 32s *
+Problem: 21 n:332 size:23 time:677.191s 11m17s ***
+Problem: 22 n:120 size:24 time:82.067s 1m22s **
+Problem: 23 n:186 size:24 time:170.488s 2m50s **
+Problem: 24 n:194 size:24 time:7.671s 7s 
+Problem: 25 n:195 size:24 time:66.815s 1m6s *
+Problem: 26 n:196 size:24 time:239.475s 3m59s **
+Problem: 27 n:201 size:24 time:5.729s 5s 
+Problem: 28 n:201 size:24 time:14.356s 14s *
+Problem: 29 n:203 size:24 time:107.126s 1m47s **
+Problem: 30 n:247 size:24 time:60.653s 1m0s *
+Problem: 31 n:253 size:24 time:42.604s 42s *
+Problem: 32 n:255 size:24 time:1913.78s 31m53s ***
+Problem: 33 n:288 size:24 time:7.335s 7s 
+Problem: 34 n:288 size:24 time:19.001s 19s *
+Problem: 35 n:290 size:24 time:17.79s 17s *
+Problem: 36 n:292 size:24 time:5.104s 5s 
+Problem: 37 n:304 size:24 time:46.747s 46s *
+Problem: 38 n:304 size:24 time:21.382s 21s *
+Problem: 39 n:314 size:24 time:9.809s 9s 
+Problem: 40 n:316 size:24 time:155.542s 2m35s **
+Problem: 41 n:326 size:24 time:6.442s 6s 
+Problem: 42 n:423 size:24 time:16.81s 16s *
+Problem: 43 n:435 size:24 time:26.036s 26s *
+Problem: 44 n:435 size:24 time:3.056s 3s 
+Problem: 45 n:459 size:24 time:39.892s 39s *
+Problem: 46 n:459 size:24 time:2.105s 2s 
+Problem: 47 n:479 size:24 time:8.647s 8s 
+Problem: 48 n:147 size:25 time:2234.87s 37m14s ***
+Problem: 49 n:208 size:25 time:49.178s 49s *
+Problem: 50 n:213 size:25 time:358.461s 5m58s **
+Problem: 51 n:215 size:25 time:4582.25s 1h16m22s ****
+Problem: 52 n:216 size:25 time:4.643s 4s 
+Problem: 53 n:236 size:25 time:8.021s 8s 
+Problem: 54 n:242 size:25 time:84.095s 1m24s **
+Problem: 55 n:244 size:25 time:50.501s 50s *
+Problem: 56 n:252 size:25 time:161.728s 2m41s **
+Problem: 57 n:253 size:25 time:275.549s 4m35s **
+Problem: 58 n:260 size:25 time:4542.75s 1h15m42s ****
+Problem: 59 n:264 size:25 time:3991.93s 1h6m31s ***
+Problem: 60 n:264 size:25 time:2069.88s 34m29s ***
+Problem: 61 n:264 size:25 time:8.226s 8s 
+Problem: 62 n:265 size:25 time:5.759s 5s 
+Problem: 63 n:273 size:25 time:18.095s 18s *
+Problem: 64 n:273 size:25 time:405.111s 6m45s **
+Problem: 65 n:275 size:25 time:3705.04s 1h1m45s ***
+Problem: 66 n:276 size:25 time:1920.44s 32m0s **
+Problem: 67 n:280 size:25 time:889.179s 14m49s ***
+Problem: 68 n:280 size:25 time:17767.9s 4h56m7s ***
+Problem: 69 n:284 size:25 time:36.892s 36s *
+Problem: 70 n:286 size:25 time:25.715s 25s *
+Problem: 71 n:289 size:25 time:28.912s 28s *
+Problem: 72 n:289 size:25 time:13.821s 13s *
+Problem: 73 n:290 size:25 time:14.137s 14s *
+Problem: 74 n:293 size:25 time:87.265s 1m27s **
+Problem: 75 n:297 size:25 time:3.902s 3s 
+Problem: 76 n:308 size:25 time:18.393s 18s *
+Problem: 77 n:308 size:25 time:25.05s 25s *
+Problem: 78 n:309 size:25 time:5759.03s 1h35m59s ****
+Problem: 79 n:311 size:25 time:8.756s 8s 
+Problem: 80 n:314 size:25 time:73.568s 1m13s **
+Problem: 81 n:316 size:25 time:11905.0s 3h18m25s ****
+Problem: 82 n:317 size:25 time:31.418s 31s *
+Problem: 83 n:320 size:25 time:67.742s 1m7s *
+Problem: 84 n:320 size:25 time:149.976s 2m29s **
+Problem: 85 n:320 size:25 time:33.502s 33s *
+Problem: 86 n:320 size:25 time:39.547s 39s *
+Problem: 87 n:322 size:25 time:16.914s 16s *
+Problem: 88 n:322 size:25 time:11.994s 11s *
+Problem: 89 n:323 size:25 time:81.204s 1m21s **
+Problem: 90 n:323 size:25 time:936.45s 15m36s ***
+Problem: 91 n:323 size:25 time:7.986s 7s 
+Problem: 92 n:325 size:25 time:11.563s 11s *
+Problem: 93 n:326 size:25 time:66.092s 1m6s *
+Problem: 94 n:327 size:25 time:33.353s 33s *
+Problem: 95 n:328 size:25 time:19.985s 19s *
+Problem: 96 n:334 size:25 time:30.901s 30s *
+Problem: 97 n:336 size:25 time:40.58s 40s *
+Problem: 98 n:338 size:25 time:29.648s 29s *
+Problem: 99 n:338 size:25 time:24.899s 24s *
+Problem: 100 n:340 size:25 time:536.356s 8m56s **
+Problem: 101 n:344 size:25 time:157.326s 2m37s **
+Problem: 102 n:359 size:25 time:220.702s 3m40s **
+Problem: 103 n:361 size:25 time:50.519s 50s *
+Problem: 104 n:363 size:25 time:21.369s 21s *
+Problem: 105 n:364 size:25 time:4.05s 4s 
+Problem: 106 n:367 size:25 time:21.483s 21s *
+Problem: 107 n:368 size:25 time:383.972s 6m23s **
+Problem: 108 n:371 size:25 time:188.786s 3m8s *
+Problem: 109 n:373 size:25 time:21.27s 21s *
+Problem: 110 n:378 size:25 time:30.793s 30s *
+Problem: 111 n:378 size:25 time:9.266s 9s 
+Problem: 112 n:380 size:25 time:511.306s 8m31s **
+Problem: 113 n:380 size:25 time:22.718s 22s *
+Problem: 114 n:381 size:25 time:561.312s 9m21s **
+Problem: 115 n:384 size:25 time:51.697s 51s *
+Problem: 116 n:384 size:25 time:3.297s 3s 
+Problem: 117 n:384 size:25 time:33.822s 33s *
+Problem: 118 n:385 size:25 time:57.238s 57s *
+Problem: 119 n:392 size:25 time:43.991s 43s *
+Problem: 120 n:392 size:25 time:59.731s 59s *
+Problem: 121 n:392 size:25 time:19.765s 19s *
+Problem: 122 n:393 size:25 time:168.025s 2m48s **
+Problem: 123 n:396 size:25 time:3093.38s 51m33s ***
+Problem: 124 n:396 size:25 time:3.468s 3s 
+Problem: 125 n:396 size:25 time:84.358s 1m24s **
+Problem: 126 n:398 size:25 time:20.624s 20s *
+Problem: 127 n:400 size:25 time:1411.55s 23m31s ***
+Problem: 128 n:404 size:25 time:83.813s 1m23s **
+Problem: 129 n:404 size:25 time:2.785s 2s 
+Problem: 130 n:408 size:25 time:54.048s 54s *
+Problem: 131 n:412 size:25 time:153.665s 2m33s **
+Problem: 132 n:413 size:25 time:8136.9s 2h15m36s ****
+Problem: 133 n:416 size:25 time:4.21s 4s 
+Problem: 134 n:416 size:25 time:1.452s 1s 
+Problem: 135 n:421 size:25 time:1.467s 1s 
+Problem: 136 n:421 size:25 time:15.195s 15s *
+Problem: 137 n:422 size:25 time:13.519s 13s *
+Problem: 138 n:425 size:25 time:1.449s 1s 
+Problem: 139 n:441 size:25 time:111.36s 1m51s **
+Problem: 140 n:454 size:25 time:2160.6s 36m0s **
+Problem: 141 n:456 size:25 time:11.904s 11s *
+Problem: 142 n:465 size:25 time:23.539s 23s *
+Problem: 143 n:472 size:25 time:47.006s 47s *
+Problem: 144 n:477 size:25 time:56.224s 56s *
+Problem: 145 n:492 size:25 time:20.539s 20s *
+Problem: 146 n:492 size:25 time:17.028s 17s *
+Problem: 147 n:503 size:25 time:29.906s 29s *
+Problem: 148 n:506 size:25 time:13.395s 13s *
+Problem: 149 n:507 size:25 time:22.099s 22s *
+Problem: 150 n:512 size:25 time:15.708s 15s *
+Problem: 151 n:512 size:25 time:4.711s 4s 
+Problem: 152 n:513 size:25 time:53.826s 53s *
+Problem: 153 n:517 size:25 time:34.624s 34s *
+Problem: 154 n:524 size:25 time:19.442s 19s *
+Problem: 155 n:527 size:25 time:89.288s 1m29s **
+Problem: 156 n:528 size:25 time:22.546s 22s *
+Problem: 157 n:529 size:25 time:59.825s 59s *
+Problem: 158 n:531 size:25 time:4.851s 4s 
+Problem: 159 n:532 size:25 time:785.577s 13m5s **
+Problem: 160 n:534 size:25 time:24.445s 24s *
+Problem: 161 n:535 size:25 time:8046.77s 2h14m6s ***
+Problem: 162 n:536 size:25 time:117.692s 1m57s **
+Problem: 163 n:536 size:25 time:3.432s 3s 
+Problem: 164 n:540 size:25 time:6.955s 6s 
+Problem: 165 n:540 size:25 time:281.281s 4m41s **
+Problem: 166 n:540 size:25 time:31.75s 31s *
+Problem: 167 n:540 size:25 time:31.77s 31s *
+Problem: 168 n:540 size:25 time:3.709s 3s 
+Problem: 169 n:540 size:25 time:3.694s 3s 
+Problem: 170 n:541 size:25 time:21.162s 21s *
+Problem: 171 n:541 size:25 time:121.77s 2m1s *
+Problem: 172 n:544 size:25 time:90.266s 1m30s **
+Problem: 173 n:544 size:25 time:195.458s 3m15s **
+Problem: 174 n:547 size:25 time:295.252s 4m55s **
+Problem: 175 n:549 size:25 time:46.743s 46s *
+Problem: 176 n:550 size:25 time:8.969s 8s 
+Problem: 177 n:550 size:25 time:16.872s 16s *
+Problem: 178 n:551 size:25 time:18.762s 18s *
+Problem: 179 n:552 size:25 time:30.542s 30s *
+Problem: 180 n:552 size:25 time:2.459s 2s 
+Problem: 181 n:556 size:25 time:8.953s 8s 
+Problem: 182 n:556 size:25 time:11.679s 11s *
+Problem: 183 n:556 size:25 time:11.681s 11s *
+Problem: 184 n:556 size:25 time:2.647s 2s 
+Problem: 185 n:562 size:25 time:2.511s 2s 
+Problem: 186 n:570 size:25 time:266.926s 4m26s **
+Problem: 187 n:575 size:25 time:755.504s 12m35s ***
+Problem: 188 n:576 size:25 time:10.107s 10s *
+Problem: 189 n:576 size:25 time:153.309s 2m33s **
+Problem: 190 n:576 size:25 time:4.564s 4s 
+Problem: 191 n:580 size:25 time:3.48s 3s 
+Problem: 192 n:580 size:25 time:4.947s 4s 
+Problem: 193 n:580 size:25 time:107.095s 1m47s **
+Problem: 194 n:593 size:25 time:37924.1s 10h32m4s ***
+Problem: 195 n:595 size:25 time:66.443s 1m6s *
+Problem: 196 n:601 size:25 time:1654.27s 27m34s ***
+Problem: 197 n:603 size:25 time:5.122s 5s 
+Problem: 198 n:603 size:25 time:106.299s 1m46s **
+Problem: 199 n:607 size:25 time:39.804s 39s *
+Problem: 200 n:609 size:25 time:1016.23s 16m56s ***
+Problem: 201 n:611 size:25 time:1347.41s 22m27s ***
+Problem: 202 n:614 size:25 time:506.048s 8m26s **
+Problem: 203 n:634 size:25 time:436.074s 7m16s **
+Problem: 204 n:643 size:25 time:299.983s 4m59s **
+Problem: 205 n:644 size:25 time:10.829s 10s *
+Problem: 206 n:655 size:25 time:4.455s 4s 
+Problem: 207 n:661 size:25 time:12.138s 12s *
+
+Sorted times (increasing):
+Problem 18: 1.349s (1s)
+Problem 138: 1.449s (1s)
+Problem 134: 1.452s (1s)
+Problem 135: 1.467s (1s)
+Problem 8: 1.654s (1s)
+Problem 17: 2.006s (2s)
+Problem 46: 2.105s (2s)
+Problem 180: 2.459s (2s)
+Problem 185: 2.511s (2s)
+Problem 184: 2.647s (2s)
+Problem 129: 2.785s (2s)
+Problem 44: 3.056s (3s)
+Problem 116: 3.297s (3s)
+Problem 163: 3.432s (3s)
+Problem 124: 3.468s (3s)
+Problem 191: 3.48s (3s)
+Problem 169: 3.694s (3s)
+Problem 168: 3.709s (3s)
+Problem 75: 3.902s (3s)
+Problem 105: 4.05s (4s)
+Problem 133: 4.21s (4s)
+Problem 10: 4.31s (4s)
+Problem 206: 4.455s (4s)
+Problem 190: 4.564s (4s)
+Problem 52: 4.643s (4s)
+Problem 151: 4.711s (4s)
+Problem 158: 4.851s (4s)
+Problem 192: 4.947s (4s)
+Problem 36: 5.104s (5s)
+Problem 197: 5.122s (5s)
+Problem 27: 5.729s (5s)
+Problem 62: 5.759s (5s)
+Problem 1: 6.354s (6s)
+Problem 41: 6.442s (6s)
+Problem 164: 6.955s (6s)
+Problem 33: 7.335s (7s)
+Problem 24: 7.671s (7s)
+Problem 91: 7.986s (7s)
+Problem 53: 8.021s (8s)
+Problem 61: 8.226s (8s)
+Problem 47: 8.647s (8s)
+Problem 79: 8.756s (8s)
+Problem 181: 8.953s (8s)
+Problem 176: 8.969s (8s)
+Problem 111: 9.266s (9s)
+Problem 39: 9.809s (9s)
+Problem 188: 10.107s (10s)
+Problem 205: 10.829s (10s)
+Problem 92: 11.563s (11s)
+Problem 182: 11.679s (11s)
+Problem 183: 11.681s (11s)
+Problem 141: 11.904s (11s)
+Problem 88: 11.994s (11s)
+Problem 207: 12.138s (12s)
+Problem 148: 13.395s (13s)
+Problem 137: 13.519s (13s)
+Problem 72: 13.821s (13s)
+Problem 73: 14.137s (14s)
+Problem 28: 14.356s (14s)
+Problem 136: 15.195s (15s)
+Problem 150: 15.708s (15s)
+Problem 42: 16.81s (16s)
+Problem 177: 16.872s (16s)
+Problem 87: 16.914s (16s)
+Problem 146: 17.028s (17s)
+Problem 35: 17.79s (17s)
+Problem 63: 18.095s (18s)
+Problem 76: 18.393s (18s)
+Problem 178: 18.762s (18s)
+Problem 34: 19.001s (19s)
+Problem 154: 19.442s (19s)
+Problem 121: 19.765s (19s)
+Problem 95: 19.985s (19s)
+Problem 145: 20.539s (20s)
+Problem 126: 20.624s (20s)
+Problem 170: 21.162s (21s)
+Problem 109: 21.27s (21s)
+Problem 104: 21.369s (21s)
+Problem 38: 21.382s (21s)
+Problem 106: 21.483s (21s)
+Problem 149: 22.099s (22s)
+Problem 19: 22.297s (22s)
+Problem 156: 22.546s (22s)
+Problem 113: 22.718s (22s)
+Problem 142: 23.539s (23s)
+Problem 160: 24.445s (24s)
+Problem 99: 24.899s (24s)
+Problem 77: 25.05s (25s)
+Problem 70: 25.715s (25s)
+Problem 43: 26.036s (26s)
+Problem 71: 28.912s (28s)
+Problem 9: 29.197s (29s)
+Problem 98: 29.648s (29s)
+Problem 147: 29.906s (29s)
+Problem 179: 30.542s (30s)
+Problem 110: 30.793s (30s)
+Problem 96: 30.901s (30s)
+Problem 82: 31.418s (31s)
+Problem 166: 31.75s (31s)
+Problem 167: 31.77s (31s)
+Problem 20: 32.128s (32s)
+Problem 94: 33.353s (33s)
+Problem 85: 33.502s (33s)
+Problem 117: 33.822s (33s)
+Problem 153: 34.624s (34s)
+Problem 69: 36.892s (36s)
+Problem 86: 39.547s (39s)
+Problem 199: 39.804s (39s)
+Problem 45: 39.892s (39s)
+Problem 97: 40.58s (40s)
+Problem 4: 40.839s (40s)
+Problem 31: 42.604s (42s)
+Problem 14: 43.66s (43s)
+Problem 119: 43.991s (43s)
+Problem 175: 46.743s (46s)
+Problem 37: 46.747s (46s)
+Problem 143: 47.006s (47s)
+Problem 49: 49.178s (49s)
+Problem 55: 50.501s (50s)
+Problem 103: 50.519s (50s)
+Problem 115: 51.697s (51s)
+Problem 152: 53.826s (53s)
+Problem 130: 54.048s (54s)
+Problem 144: 56.224s (56s)
+Problem 118: 57.238s (57s)
+Problem 120: 59.731s (59s)
+Problem 157: 59.825s (59s)
+Problem 30: 60.653s (1m0s)
+Problem 93: 66.092s (1m6s)
+Problem 195: 66.443s (1m6s)
+Problem 25: 66.815s (1m6s)
+Problem 83: 67.742s (1m7s)
+Problem 16: 71.592s (1m11s)
+Problem 80: 73.568s (1m13s)
+Problem 6: 75.471s (1m15s)
+Problem 89: 81.204s (1m21s)
+Problem 22: 82.067s (1m22s)
+Problem 128: 83.813s (1m23s)
+Problem 54: 84.095s (1m24s)
+Problem 125: 84.358s (1m24s)
+Problem 74: 87.265s (1m27s)
+Problem 12: 88.075s (1m28s)
+Problem 155: 89.288s (1m29s)
+Problem 172: 90.266s (1m30s)
+Problem 198: 106.299s (1m46s)
+Problem 193: 107.095s (1m47s)
+Problem 29: 107.126s (1m47s)
+Problem 139: 111.36s (1m51s)
+Problem 3: 111.72s (1m51s)
+Problem 5: 116.193s (1m56s)
+Problem 162: 117.692s (1m57s)
+Problem 171: 121.77s (2m1s)
+Problem 7: 131.5s (2m11s)
+Problem 84: 149.976s (2m29s)
+Problem 189: 153.309s (2m33s)
+Problem 131: 153.665s (2m33s)
+Problem 40: 155.542s (2m35s)
+Problem 101: 157.326s (2m37s)
+Problem 56: 161.728s (2m41s)
+Problem 122: 168.025s (2m48s)
+Problem 13: 169.8s (2m49s)
+Problem 23: 170.488s (2m50s)
+Problem 108: 188.786s (3m8s)
+Problem 173: 195.458s (3m15s)
+Problem 2: 202.831s (3m22s)
+Problem 102: 220.702s (3m40s)
+Problem 26: 239.475s (3m59s)
+Problem 186: 266.926s (4m26s)
+Problem 57: 275.549s (4m35s)
+Problem 165: 281.281s (4m41s)
+Problem 174: 295.252s (4m55s)
+Problem 204: 299.983s (4m59s)
+Problem 50: 358.461s (5m58s)
+Problem 15: 376.296s (6m16s)
+Problem 107: 383.972s (6m23s)
+Problem 64: 405.111s (6m45s)
+Problem 11: 426.678s (7m6s)
+Problem 203: 436.074s (7m16s)
+Problem 202: 506.048s (8m26s)
+Problem 112: 511.306s (8m31s)
+Problem 100: 536.356s (8m56s)
+Problem 114: 561.312s (9m21s)
+Problem 21: 677.191s (11m17s)
+Problem 187: 755.504s (12m35s)
+Problem 159: 785.577s (13m5s)
+Problem 67: 889.179s (14m49s)
+Problem 90: 936.45s (15m36s)
+Problem 200: 1016.23s (16m56s)
+Problem 201: 1347.41s (22m27s)
+Problem 127: 1411.55s (23m31s)
+Problem 196: 1654.27s (27m34s)
+Problem 32: 1913.78s (31m53s)
+Problem 66: 1920.44s (32m0s)
+Problem 60: 2069.88s (34m29s)
+Problem 140: 2160.6s (36m0s)
+Problem 48: 2234.87s (37m14s)
+Problem 123: 3093.38s (51m33s)
+Problem 65: 3705.04s (1h1m45s)
+Problem 59: 3991.93s (1h6m31s)
+Problem 58: 4542.75s (1h15m42s)
+Problem 51: 4582.25s (1h16m22s)
+Problem 78: 5759.03s (1h35m59s)
+Problem 161: 8046.77s (2h14m6s)
+Problem 132: 8136.9s (2h15m36s)
+Problem 81: 11905.0s (3h18m25s)
+Problem 68: 17767.9s (4h56m7s)
+Problem 194: 37924.1s (10h32m4s)
+
+Categories:
+: 1 8 10 17 18 24 27 33 36 39 41 44 46 47 52 53 61 62 75 79 91 105 111 116 124 129 133 134 135 138 151 158 163 164 168 169 176 180 181 184 185 190 191 192 197 206
+*: 4 9 11 14 19 20 25 28 30 31 34 35 37 38 42 43 45 49 55 63 69 70 71 72 73 76 77 82 83 85 86 87 88 92 93 94 95 96 97 98 99 103 104 106 108 109 110 113 115 117 118 119 120 121 126 130 136 137 141 142 143 144 145 146 147 148 149 150 152 153 154 156 157 160 166 167 170 171 175 177 178 179 182 183 188 195 199 205 207
+**: 2 3 5 6 7 12 13 15 16 22 23 26 29 40 50 54 56 57 64 66 74 80 84 89 100 101 102 107 112 114 122 125 128 131 139 140 155 159 162 165 172 173 174 186 189 193 198 202 203 204
+***: 21 32 48 59 60 65 67 68 90 123 127 161 187 194 196 200 201
+****: 51 58 78 81 132
+
+Total time: 142532.44s (39h35m32s)
+
+
+*/
+
+go2 ?=>
+   % N = 6,
+   % A = [1,1,1,1,1,2,3,3,3],
+
+   % Problem from 
+   % http://www.maa.org/editorial/mathgames/mathgames_12_01_03.html
+   % N = 14, % size of main square
+   % A = [1,1,1,1,2,3,3,3,5,6,6,8], % Sizes
+
+   % Problem 1 from http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+   % About 6s for SAT solver
+   % N = 112, % size of main square
+   % A = [2,4,6,7,8,9,11,15,16,17,18,19,24,25,27,29,33,35,37,42,50],
+
+   % problem 2 from http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+   % N = 110,
+   % A = [2,3,4,6,7,8,12,13,14,15,16,17,18,21,22,23,24,26,27,28,50,60],
+
+
+
+   member(Problem, 1..207),
+   println(problem=Problem),
+   problem(Problem,N,A),
+   println(n=N),
+   println(a=A),
+   flush(stdout),
+   
+   % Problem 100 from 
+   % http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results   
+   % N = 340,
+   % A = [1,4,5,6,11,13,16,17,22,24,44,46,50,51,52,53,61,64,66,79,84,85,92,169,171],
+
+
+   % From Mathematica Tech Conference 2018:
+   % http://www.wolfram.com/broadcast/video.php?c=452&p=3&v=2434
+   % Nope, no solution
+   % N = 36+32,  %size of main square
+   % squares and double squares
+   % A = [1,2,4,8,9,16,18,26,32,36,49],
+
+   time2(once(solve_and_print(N,A))),
+   flush(stdout),
+   fail,
+   nl.
+
+go2 => true.
+
+
+%
+% Checking all the CSPLib problems using timeout.
+% 
+% Note: This don't work for the SAT solver since it
+% don't support timeout.
+%
+go3 ?=>
+  % Problems = findall([Problem,N,A],problem(Problem,N,A)),
+  Map = get_global_map(),
+  Map.put(success,[]),
+  Map.put(failure,[]),  
+  Timeout = 10000, % 10s
+  printf("timeout: %fs\n",Timeout/1000),
+  problem(Problem,N,A),
+  println(problem=Problem),
+  % time2(solve_and_print(N,A)),
+  [Time,_Backtracks,Result]=time2f($once(perfect_square(N,A,X,Y)),Timeout),
+  % time2($once(perfect_square(N,A,X,Y)),Timeout,Status),
+  printf("%w: = %dms\n",Result,Time),
+  if Result == success then
+    Map.put(success, Map.get(success) ++ [[Time=Problem]]),
+    print_solution(N,A,X,Y)
+  end,
+  if Result == time_out then
+    Map.put(failure, Map.get(failure) ++ [[Time=Problem]])
+  end,
+  printf("%w: = %dms\n",Result,Time),
+  nl,
+  println(success=Map.get(success)),
+  println(failure=Map.get(failure)),
+  nl,
+  fail,
+  nl.
+
+go3 =>
+  Map = get_global_map(),
+  println(success=Map.get(success)),
+  nl,
+  println(failure=Map.get(failure)),
+  nl.
+
+/*
+  Checking different CP annotations. 
+  However, the SAT solver is (much) faster than CP solver on larger instances.
+
+  With a 1s (1000ms) timeout on the second problem (N=14). Times in ms:
+  success = [[2,backward,split],[2,constr,split],[2,min,split],[2,min,up],[2,rand_var,down],[3,backward,reverse_split],[3,backward,up],[3,constr,down],[3,constr,rand_val],[3,constr,reverse_split],[3,constr,up],[3,degree,down],[3,degree,reverse_split],[3,degree,split],[3,degree,up],[3,rand_var,updown],[4,backward,down],[4,degree,rand_val],[4,degree,updown],[4,ffc,reverse_split],[4,ffc,split],[5,ffc,down],[5,ffc,up],[7,backward,updown],[7,constr,updown],[8,backward,rand_val],[29,ffc,updown],[44,ffc,rand_val],[1907,inout,reverse_split]]
+
+  fails = [[1000,ff,rand_val],[1000,ff,up],[1000,ff,updown],[1000,forward,reverse_split],[1000,forward,up],[1000,forward,updown],[1000,inout,down],[1000,inout,split],[1000,leftmost,reverse_split],[1000,leftmost,up],[1000,leftmost,updown],[1000,max,up],[1000,rand_var,up],[1001,ff,reverse_split],[1001,forward,split],[1001,inout,up],[1001,inout,updown],[1001,leftmost,down],[1001,leftmost,split],[1001,max,down],[1001,max,split],[1001,max,updown],[1001,min,down],[1001,min,rand_val],[1001,min,updown],[1001,rand_var,rand_val],[1001,rand_var,reverse_split],[1001,rand_var,split],[1002,inout,rand_val],[1002,max,rand_val],[1091,min,reverse_split],[1092,forward,rand_val],[1092,leftmost,rand_val],[1908,max,reverse_split],[1910,forward,down],[2000,ff,split],[2003,ff,down]]
+
+ Without the two cumulative/4 constraints there are fewer solutions (with 1s timeout):
+
+  success = [[2,ff,reverse_split],[2,ff,split],[2,ffc,reverse_split],[3,ffc,split],[3,min,split],[4,ff,down],[4,ff,up],[4,ffc,up],[4,min,up],[5,ffc,down],[24,ffc,rand_val],[26,ffc,updown],[27,ff,rand_val],[28,ff,updown]]
+
+
+*/
+go4 ?=>
+   % Test instance
+   N = 14, % size of main square
+   A = [1,1,1,1,2,3,3,3,5,6,6,8], % Sizes
+  
+   selection(VariableSelection),
+   choice(ValueSelection),
+   Timeout = 1000,
+   Success = [],
+   Fails = [],
+   foreach(Var in VariableSelection, Val in ValueSelection) 
+       println([Var,Val]),
+       
+       % time_out(time2($perfect_square(Var, Val)), Timeout, Result),
+       [Time,_Backtracks,Result]=time2f($perfect_square(N,A,Var,Val,X,Y),Timeout),
+       printf("%w: = %dms\n",Result,Time),
+       if Result == success then
+          print_solution(N,A,X,Y),
+          Success := Success ++ [[Time,Var,Val]]
+       end,
+       if Result == time_out then
+          Fails := Fails ++ [[Time,Var, Val]]
+       end
+   end,
+   println(success=Success.sort),
+   println(fails=Fails.sort),
+   nl.
+go4 => true.
+
+
+ 
+%
+% Solve the problem
+%
+
+% For CP solver
+perfect_square(N,A, X,Y) =>
+  % perfect_square(N,A,ffc,split, X,Y).
+  perfect_square(N,A,ff,split, X,Y).  
+
+perfect_square(N,A,Var,Val, X,Y) =>
+
+   Size = length(A),
+   println([n=N,size=Size]),
+
+   X = new_list(Size),
+   X :: 1..N,
+
+   Y = new_list(Size),
+   Y :: 1..N,
+
+   % The grid.
+   % (This is experimental. See comment below.)
+   % M = new_array(N,N),
+   % M :: 0..Size,
+
+   %
+   % constraints
+   %
+
+   % CP seems to be faster with this, but SAT is slower
+   if membchk(cp, loaded_modules()) then
+     cumulative(X,A,A,N),
+     cumulative(Y,A,A,N)
+   end,
+
+   diffn4(X,Y,A,A),
+
+   %% Tests (see below for implementations)
+   % diffn_me(X,Y,A,A),
+   % diffn_nonstrict(X,Y,A,A),     
+
+   foreach(I in 1..Size)
+     X[I] + A[I] #=< N+1,
+     Y[I] + A[I] #=< N+1
+   end,
+
+   /*
+   % Note: This might give spurious solutions since it don't handle unoccupied slots 
+   %       (which should be 0).
+   %       TODO: Handle these unoccupied slots
+   % Also, this takes a long time to set up so there's no time savings..
+   foreach(S in 1..Size)
+     foreach(I in 1..N, J in 1..N)
+       % I in X[S]..X[S]+A[S]-1, J in Y[S]..Y[S]+A[S]-1
+       (I #>=X[S] #/\ I #<=X[S]+A[S]-1 #/\ J #>= Y[S] #/\ J #<= Y[S]+A[S]-1) #=> M[I,J] #= S
+     end
+   end,
+   */
+   
+   Vars = X ++ Y,
+   % Vars = X ++ Y ++ M,
+   
+   println(solve),
+   solve([Var, Val], Vars).
+
+%
+% Print solution
+%
+print_solution(N,A,X,Y) =>
+
+   Size = length(A),
+   println(n=N),
+   println(size=Size),
+   println(a=A),
+   println(x=X),
+   println(y=Y),
+
+   % Print the grid
+   M = new_array(N,N), % bind_vars(M,0),
+   foreach(S in 1..Size)
+     % println([s=S,x=X[S]..X[S]+A[S]-1,y=Y[S]..Y[S]+A[S]-1]),
+     foreach(I in X[S]..min(X[S]+A[S]-1,N),J in Y[S]..min(Y[S]+A[S]-1,N))
+       % Debugging: Check that we got a proper solution, i.e. that there is no
+       % overlapping of values. 
+       % if nonvar(M[I,J]) then
+       %   println([s=S,[I,J],already_defined,M[I,J]]),
+       %   % halt
+       % end,
+       M[I,J] = S
+     end
+   end,
+
+   % Numeric solution
+   foreach(I in 1..N)
+     foreach(J in 1..N)
+       printf("%2d ",M[I,J])
+     end,
+     nl
+   end,
+
+   if Size <= 26 then
+     Alpha = "abcdefghijklmnopqrstuvxyz",
+     foreach(I in 1..N)
+       foreach(J in 1..N)
+         printf("%w",Alpha[M[I,J]])       
+       end,
+       nl
+     end
+   end,
+   nl,
+   nl.
+
+
+solve_and_print(N,A) =>
+  perfect_square(N,A, X,Y),
+  print_solution(N,A, X,Y).
+
+ 
+% Variable selection
+selection(Variable) => 
+  Variable = [backward,constr,degree,ff,ffc,forward,inout,leftmost,max,min,rand_var].
+
+% Value selection
+choice(Value) => 
+  Value = [down,updown,split,reverse_split,rand_val,up].
+
+% This is from fzn_picat_cp.pi
+diffn4(VecX,VecY,VecDX,VecDY) =>
+    Rects = [[VecX[I],VecY[I],VecDX[I],VecDY[I]] : I in 1 .. length(VecX)],
+    diffn(Rects).
+
+
+%
+% From MiniZinc's diffn_nonstrict/4
+%
+diffn_nonstrict(X,Y,DX,DY) =>
+  N = X.len,
+  foreach(I in 1..N, J in I+1..N)
+    DX[I] #= 0 #\/
+    DX[J] #= 0 #\/
+    DY[I] #= 0 #\/
+    DY[J] #= 0 #\/
+    X[I] + DX[I] #=< X[J] #\/
+    Y[I] + DY[I] #=< Y[J] #\/
+    X[J] + DX[J] #=< X[I] #\/
+    Y[J] + DY[J] #=< Y[I]
+  end.
+
+/*
+From MiniZinc's diffn/4
+*/
+diffn_me(X,Y,DX,DY) =>
+  N = X.len,
+  foreach(I in 1..N, J in I+1..N) 
+    X[I] + DX[I] #<= X[J] #\/
+    Y[I] + DY[I] #<= Y[J] #\/
+    X[J] + DX[J] #<= X[I] #\/
+    Y[J] + DY[J] #<= Y[I]
+  end.
+
+
+
+%
+% time2 + time_out as a function.
+%
+time2f(Goal,Timeout) = [End,Backtracks,Status] =>
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    time_out(Goal,Timeout,Status),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,End]),
+    Backtracks = Backtracks2 - Backtracks1.
+
+
+%
+% Problem instances from
+% http://www.cs.st-andrews.ac.uk/~ianm/CSPLib/prob/prob009/results
+%
+
+problem(1,N,A) :-
+  N = 112,
+  A = [2,4,6,7,8,9,11,15,16,17,18,19,24,25,27,29,33,35,37,42,50].
+
+problem(2,N,A) :- 
+  N = 110,
+  A = [2,3,4,6,7,8,12,13,14,15,16,17,18,21,22,23,24,26,27,28,50,60].
+
+problem(3,N,A) :- 
+  N = 110,
+  A = [1,2,3,4,6,8,9,12,14,16,17,18,19,21,22,23,24,26,27,28,50,60].
+
+problem(4,N,A) :- 
+  N = 139,
+  A = [1,2,3,4,7,8,10,17,18,20,21,22,24,27,28,29,30,31,32,38,59,80].
+
+problem(5,N,A) :- 
+  N = 147,
+  A = [1,3,4,5,8,9,17,20,21,23,25,26,29,31,32,40,43,44,47,48,52,55].
+
+problem(6,N,A) :- 
+  N = 147,
+  A = [2,4,8,10,11,12,15,19,21,22,23,25,26,32,34,37,41,43,45,47,55,59].
+
+problem(7,N,A) :- 
+  N = 154,
+  A = [2,5,9,11,16,17,19,21,22,24,26,30,31,33,35,36,41,46,47,50,52,61].
+
+problem(8,N,A) :- 
+  N = 172,
+  A = [1,2,3,4,9,11,13,16,17,18,19,22,24,33,36,38,39,42,44,53,75,97].
+
+problem(9,N,A) :- 
+  N = 192,
+  A = [4,8,9,10,12,14,17,19,26,28,31,35,36,37,41,47,49,57,59,62,71,86].
+
+problem(10,N,A) :- 
+  N = 110,
+  A = [1,2,3,4,5,7,8,10,12,13,14,15,16,19,21,28,29,31,32,37,38,41,44].
+
+problem(11,N,A) :- 
+  N = 139,
+  A = [1,2,7,8,12,13,14,15,16,18,19,20,21,22,24,26,27,28,32,33,38,59,80].
+
+problem(12,N,A) :- 
+  N = 140,
+  A = [1,2,3,4,5,8,10,13,16,19,20,23,27,28,29,31,33,38,42,45,48,53,54].
+
+problem(13,N,A) :- 
+  N = 140,
+  A = [2,3,4,7,8,9,12,15,16,18,22,23,24,26,28,30,33,36,43,44,47,50,60].
+
+problem(14,N,A) :- 
+  N = 145,
+  A = [1,2,3,4,6,8,9,12,15,20,22,24,25,26,27,29,30,31,32,34,36,61,84].
+
+problem(15,N,A) :- 
+  N = 180,
+  A = [2,4,8,10,11,12,15,19,21,22,23,25,26,32,33,34,37,41,43,45,47,88,92].
+
+problem(16,N,A) :- 
+  N = 188,
+  A = [2,4,8,10,11,12,15,19,21,22,23,25,26,32,33,34,37,45,47,49,51,92,96].
+
+problem(17,N,A) :- 
+  N = 208,
+  A = [1,3,4,9,10,11,12,16,17,18,22,23,24,40,41,60,62,65,67,70,71,73,75].
+
+problem(18,N,A) :- 
+  N = 215,
+  A = [1,3,4,9,10,11,12,16,17,18,22,23,24,40,41,60,66,68,70,71,74,76,79].
+
+problem(19,N,A) :- 
+  N = 228,
+  A = [2,7,9,10,15,16,17,18,22,23,25,28,36,39,42,56,57,68,69,72,73,87,99].
+
+problem(20,N,A) :- 
+  N = 257,
+  A = [2,3,9,11,14,15,17,20,22,24,28,29,32,33,49,55,57,60,63,66,79,123,134].
+
+problem(21,N,A) :- 
+  N = 332,
+  A = [1,15,17,24,26,30,31,38,47,48,49,50,53,56,58,68,83,89,91,112,120,123,129].
+
+problem(22,N,A) :- 
+  N = 120,
+  A = [3,4,5,6,8,9,10,12,13,14,15,16,17,19,20,23,25,32,33,34,40,41,46,47].
+
+problem(23,N,A) :- 
+  N = 186,
+  A = [2,3,4,7,8,9,12,15,16,18,22,23,24,26,28,30,33,36,43,46,47,60,90,96].
+
+problem(24,N,A) :- 
+  N = 194,
+  A = [2,3,7,9,10,16,17,18,19,20,23,25,28,34,36,37,42,53,54,61,65,68,69,72].
+
+problem(25,N,A) :- 
+  N = 195,
+  A = [2,4,7,10,11,16,17,18,21,26,27,30,39,41,42,45,47,49,52,53,54,61,63,80].
+
+problem(26,N,A) :- 
+  N = 196,
+  A = [1,2,5,10,11,15,17,18,20,21,24,26,29,31,32,34,36,40,44,47,48,51,91,105].
+
+problem(27,N,A) :- 
+  N = 201,
+  A = [1,3,4,6,9,10,11,12,17,18,20,21,22,23,26,38,40,46,50,52,53,58,98,103].
+
+problem(28,N,A) :- 
+  N = 201,
+  A = [1,4,5,8,9,10,11,15,16,18,19,20,22,24,26,39,42,44,49,52,54,56,93,108].
+
+problem(29,N,A) :- 
+  N = 203,
+  A = [1,2,5,10,11,15,17,18,20,21,24,26,29,31,32,34,36,40,44,48,54,58,98,105].
+
+problem(30,N,A) :- 
+  N = 247,
+  A = [3,5,6,9,12,14,19,23,24,25,28,32,34,36,40,45,46,48,56,62,63,66,111,136].
+
+problem(31,N,A) :- 
+  N = 253,
+  A = [2,4,5,9,13,18,20,23,24,27,28,31,38,40,44,50,61,70,72,77,79,86,88,104].
+
+problem(32,N,A) :- 
+  N = 255,
+  A = [3,5,10,11,16,17,20,22,23,25,26,27,28,32,41,44,52,53,59,63,65,74,118,137].
+
+problem(33,N,A) :- 
+  N = 288,
+  A = [2,7,9,10,15,16,17,18,22,23,25,28,36,39,42,56,57,60,68,72,73,87,129,159].
+
+problem(34,N,A) :- 
+  N = 288,
+  A = [1,5,7,8,9,14,17,20,21,26,30,32,34,36,48,51,54,59,64,69,72,93,123,165].
+
+problem(35,N,A) :- 
+  N = 290,
+  A = [2,3,8,9,11,12,14,17,21,30,31,33,40,42,45,48,59,61,63,65,82,84,124,166].
+
+problem(36,N,A) :- 
+  N = 292,
+  A = [1,2,3,8,12,15,16,17,20,22,24,26,29,33,44,54,57,60,63,67,73,102,117,175].
+
+problem(37,N,A) :- 
+  N = 304,
+  A = [3,5,7,11,12,17,20,22,25,29,35,47,48,55,56,57,69,72,76,92,96,100,116,132].
+
+problem(38,N,A) :- 
+  N = 304,
+  A = [3,4,7,12,16,20,23,24,27,28,30,32,33,36,37,44,53,57,72,76,85,99,129,175].
+
+problem(39,N,A) :- 
+  N = 314,
+  A = [2,4,11,12,16,17,18,19,28,29,40,44,47,59,62,64,65,78,79,96,97,105,113,139].
+
+problem(40,N,A) :- 
+  N = 316,
+  A = [3,9,10,12,13,14,15,23,24,33,36,37,48,52,54,55,57,65,66,78,79,93,144,172].
+
+problem(41,N,A) :- 
+  N = 326,
+  A = [1,6,10,11,14,15,18,24,29,32,43,44,53,56,63,65,71,80,83,101,104,106,119,142].
+
+problem(42,N,A) :- 
+  N = 423,
+  A = [2,9,15,17,27,29,31,32,33,36,47,49,50,60,62,77,105,114,123,127,128,132,168,186].
+
+problem(43,N,A) :- 
+  N = 435,
+  A = [1,2,8,10,13,19,23,33,44,45,56,74,76,78,80,88,93,100,112,131,142,143,150,192].
+
+problem(44,N,A) :- 
+  N = 435,
+  A = [3,5,9,11,12,21,24,27,30,44,45,50,54,55,63,95,101,112,117,123,134,140,178,200].
+
+problem(45,N,A) :- 
+  N = 459,
+  A = [8,9,10,11,16,30,36,38,45,55,57,65,68,84,95,98,100,116,117,126,135,144,180,198].
+
+problem(46,N,A) :- 
+  N = 459,
+  A = [4,6,9,10,17,21,23,25,31,33,36,38,45,50,83,115,117,126,133,135,144,146,180,198].
+
+problem(47,N,A) :- 
+  N = 479,
+  A = [5,6,17,23,24,26,28,29,35,43,44,52,60,68,77,86,130,140,150,155,160,164,174,175].
+
+problem(48,N,A) :- 
+  N = 147,
+  A = [3,4,5,6,8,9,10,12,13,14,15,16,17,19,20,23,25,27,32,33,34,40,41,73,74].
+
+problem(49,N,A) :- 
+  N = 208,
+  A = [1,2,3,4,5,7,8,11,12,17,18,24,26,28,29,30,36,39,44,45,50,59,60,89,119].
+
+problem(50,N,A) :- 
+  N = 213,
+  A = [3,5,6,7,13,16,17,20,21,23,24,25,26,28,31,35,36,47,49,56,58,74,76,81,90].
+
+problem(51,N,A) :- 
+  N = 215,
+  A = [1,4,6,7,11,15,24,26,27,33,37,39,40,41,42,43,45,47,51,55,60,62,63,69,83].
+
+problem(52,N,A) :- 
+  N = 216,
+  A = [1,2,3,4,5,7,8,11,16,17,18,19,25,30,32,33,39,41,45,49,54,59,64,103,113].
+
+problem(53,N,A) :- 
+  N = 236,
+  A = [1,2,4,9,11,12,13,14,15,16,19,24,38,40,44,46,47,48,59,64,65,70,81,85,107].
+
+problem(54,N,A) :- 
+  N = 242,
+  A = [1,3,6,7,9,13,14,16,17,19,23,25,26,28,30,31,47,51,54,57,60,64,67,111,131].
+
+problem(55,N,A) :- 
+  N = 244,
+  A = [1,2,4,5,7,10,15,17,19,20,21,22,26,27,30,37,40,41,45,65,66,68,70,110,134].
+
+problem(56,N,A) :- 
+  N = 252,
+  A = [4,7,10,11,12,13,23,25,29,31,32,34,36,37,38,40,42,44,62,67,68,71,77,108,113].
+
+problem(57,N,A) :- 
+  N = 253,
+  A = [2,4,5,6,9,10,12,14,20,24,27,35,36,37,38,42,43,45,50,54,63,66,70,120,133].
+
+problem(58,N,A) :- 
+  N = 260,
+  A = [1,4,6,7,10,15,24,26,27,28,29,31,33,34,37,38,44,65,70,71,77,78,83,100,112].
+
+problem(59,N,A) :- 
+  N = 264,
+  A = [3,7,8,12,16,18,19,20,22,24,26,31,34,37,38,40,42,53,54,61,64,69,70,130,134].
+
+problem(60,N,A) :- 
+  N = 264,
+  A = [3,8,12,13,16,18,20,21,22,24,26,29,34,38,40,42,43,47,54,59,64,70,71,130,134].
+
+problem(61,N,A) :- 
+  N = 264,
+  A = [1,3,4,6,9,10,11,12,16,17,18,20,21,22,39,42,54,56,61,66,68,69,73,129,135].
+
+problem(62,N,A) :- 
+  N = 265,
+  A = [1,3,4,6,9,10,11,12,16,17,18,20,21,22,39,42,54,56,62,66,68,69,74,130,135].
+
+problem(63,N,A) :- 
+  N = 273,
+  A = [1,4,8,10,11,12,17,19,21,22,27,29,30,33,37,43,52,62,65,86,88,89,91,96,120].
+
+problem(64,N,A) :- 
+  N = 273,
+  A = [1,6,9,14,16,17,18,21,22,23,25,31,32,38,44,46,48,50,54,62,65,68,78,133,140].
+
+problem(65,N,A) :- 
+  N = 275,
+  A = [2,3,7,13,17,24,25,31,33,34,35,37,41,49,51,53,55,60,68,71,74,81,94,100,107].
+
+problem(66,N,A) :- 
+  N = 276,
+  A = [1,5,8,9,11,18,19,21,30,36,41,44,45,46,47,51,53,58,63,69,71,84,87,105,120].
+
+problem(67,N,A) :- 
+  N = 280,
+  A = [5,6,11,17,18,20,21,24,27,28,32,34,41,42,50,53,54,55,68,78,85,88,95,97,117].
+
+problem(68,N,A) :- 
+  N = 280,
+  A = [2,3,7,8,14,18,30,36,37,39,44,50,52,54,56,60,63,64,65,72,75,78,79,96,106].
+
+problem(69,N,A) :- 
+  N = 284,
+  A = [1,2,11,12,14,16,18,19,23,26,29,37,38,39,40,42,59,68,69,77,78,97,106,109,110].
+
+problem(70,N,A) :- 
+  N = 286,
+  A = [1,4,5,7,10,12,15,16,20,23,28,30,32,33,35,37,53,54,64,68,74,79,80,133,153].
+
+problem(71,N,A) :- 
+  N = 289,
+  A = [2,3,5,8,13,14,17,20,21,32,36,41,50,52,60,61,62,68,74,76,83,87,100,102,104].
+
+problem(72,N,A) :- 
+  N = 289,
+  A = [2,3,4,5,7,12,16,17,19,21,23,25,29,31,32,44,57,64,65,68,72,76,84,140,149].
+
+problem(73,N,A) :- 
+  N = 290,
+  A = [1,2,10,11,13,14,15,17,18,28,29,34,36,38,50,56,60,69,77,80,85,91,94,111,119].
+
+problem(74,N,A) :- 
+  N = 293,
+  A = [5,6,11,17,18,20,21,24,27,28,32,34,41,42,50,54,55,66,68,78,85,88,95,110,130].
+
+problem(75,N,A) :- 
+  N = 297,
+  A = [2,7,8,9,10,15,16,17,18,23,25,26,28,36,38,43,53,60,61,68,69,77,99,137,160].
+
+problem(76,N,A) :- 
+  N = 308,
+  A = [1,3,4,7,10,12,13,23,25,34,37,38,39,43,44,45,62,77,79,85,87,108,113,115,116].
+
+problem(77,N,A) :- 
+  N = 308,
+  A = [1,5,6,7,8,9,13,16,19,28,33,36,38,43,45,48,70,71,73,84,86,102,104,120,133].
+
+problem(78,N,A) :- 
+  N = 309,
+  A = [7,8,14,16,23,24,25,26,31,33,34,39,48,56,59,60,62,70,76,82,92,100,101,108,117].
+
+problem(79,N,A) :- 
+  N = 311,
+  A = [2,7,8,9,10,15,16,17,18,23,25,26,28,36,38,43,53,60,61,68,83,91,99,151,160].
+
+problem(80,N,A) :- 
+  N = 314,
+  A = [1,6,7,11,16,22,26,29,32,36,38,44,51,53,64,69,70,73,74,75,85,87,101,116,128].
+
+problem(81,N,A) :- 
+  N = 316,
+  A = [1,3,9,12,21,26,30,33,34,35,38,39,40,41,53,56,59,69,79,85,96,103,111,117,120].
+
+problem(82,N,A) :- 
+  N = 317,
+  A = [1,5,6,7,8,9,16,17,19,32,37,40,42,47,49,52,59,75,81,92,94,110,112,113,126].
+
+problem(83,N,A) :- 
+  N = 320,
+  A = [2,7,8,9,12,14,15,21,23,35,38,44,46,49,53,54,56,63,96,101,103,105,108,112,116].
+
+problem(84,N,A) :- 
+  N = 320,
+  A = [3,8,9,11,17,18,22,25,26,27,29,30,31,33,35,49,51,67,72,73,80,85,95,152,168].
+
+problem(85,N,A) :- 
+  N = 320,
+  A = [1,4,6,7,8,13,14,16,24,28,30,33,34,38,41,42,57,60,69,78,81,90,92,150,170].
+
+problem(86,N,A) :- 
+  N = 320,
+  A = [3,4,6,8,9,14,15,16,24,28,30,31,34,38,39,42,59,60,71,78,79,90,92,150,170].
+
+problem(87,N,A) :- 
+  N = 322,
+  A = [3,4,8,9,10,16,18,20,22,23,24,28,31,38,44,47,64,65,68,76,80,81,97,144,178].
+
+problem(88,N,A) :- 
+  N = 322,
+  A = [3,4,8,10,15,16,18,19,20,22,24,28,35,38,44,53,59,64,68,76,80,85,93,144,178].
+
+problem(89,N,A) :- 
+  N = 323,
+  A = [2,3,4,7,10,13,15,18,23,32,34,35,36,42,46,50,57,60,66,72,78,87,98,159,164].
+
+problem(90,N,A) :- 
+  N = 323,
+  A = [3,8,9,11,17,18,22,25,26,27,29,30,31,33,35,49,51,67,72,73,83,88,95,155,168].
+
+problem(91,N,A) :- 
+  N = 323,
+  A = [2,6,9,11,13,14,18,19,20,23,27,28,29,42,46,48,60,64,72,74,79,82,98,146,177].
+
+problem(92,N,A) :- 
+  N = 325,
+  A = [3,5,6,11,12,13,18,23,25,28,32,37,40,43,45,46,51,79,92,99,103,108,112,114,134].
+
+problem(93,N,A) :- 
+  N = 326,
+  A = [1,4,8,10,12,16,21,22,24,27,28,35,36,37,38,46,49,68,70,75,88,90,93,158,168].
+
+problem(94,N,A) :- 
+  N = 327,
+  A = [2,9,10,12,13,16,19,21,23,26,36,44,46,52,55,61,62,74,84,87,100,103,104,120,140].
+
+problem(95,N,A) :- 
+  N = 328,
+  A = [2,3,4,7,8,10,14,17,26,27,28,36,38,40,42,45,53,58,73,74,79,94,102,152,176].
+
+problem(96,N,A) :- 
+  N = 334,
+  A = [1,4,8,10,12,16,21,22,24,27,28,35,36,37,38,46,49,68,75,78,88,93,98,166,168].
+
+problem(97,N,A) :- 
+  N = 336,
+  A = [2,3,4,7,8,10,14,17,26,27,28,36,38,40,45,50,53,58,73,74,79,94,110,152,184].
+
+problem(98,N,A) :- 
+  N = 338,
+  A = [1,4,8,10,12,16,19,22,24,25,28,36,37,38,39,46,53,68,70,73,94,96,101,164,174].
+
+problem(99,N,A) :- 
+  N = 338,
+  A = [4,5,8,10,12,15,16,21,22,24,28,33,36,38,43,46,57,68,70,77,94,96,97,164,174].
+
+problem(100,N,A) :- 
+  N = 340,
+  A = [1,4,5,6,11,13,16,17,22,24,44,46,50,51,52,53,61,64,66,79,84,85,92,169,171].
+
+problem(101,N,A) :- 
+  N = 344,
+  A = [2,3,8,11,14,17,19,21,23,25,27,36,39,44,48,53,56,71,77,83,86,89,98,169,175].
+
+problem(102,N,A) :- 
+  N = 359,
+  A = [7,8,9,10,14,17,18,23,25,27,29,31,40,41,43,46,69,74,82,85,90,98,102,172,187].
+
+problem(103,N,A) :- 
+  N = 361,
+  A = [2,6,7,8,9,14,20,22,26,27,32,34,36,47,49,56,66,67,74,82,89,98,107,156,205].
+
+problem(104,N,A) :- 
+  N = 363,
+  A = [1,4,6,12,13,20,21,25,26,27,28,32,37,41,45,53,58,64,69,91,97,102,106,155,208].
+
+problem(105,N,A) :- 
+  N = 364,
+  A = [2,3,4,6,8,9,13,14,16,19,23,24,28,29,52,57,64,75,82,91,98,100,109,173,191].
+
+problem(106,N,A) :- 
+  N = 367,
+  A = [1,4,6,12,13,20,21,25,26,27,28,32,37,41,49,53,58,64,69,91,97,102,110,155,212].
+
+problem(107,N,A) :- 
+  N = 368,
+  A = [1,6,15,16,17,18,22,25,31,33,39,42,45,46,47,48,51,69,72,88,91,96,112,160,208].
+
+problem(108,N,A) :- 
+  N = 371,
+  A = [1,2,7,8,20,21,22,24,26,28,30,38,43,46,50,51,64,65,70,90,95,102,109,160,211].
+
+problem(109,N,A) :- 
+  N = 373,
+  A = [3,6,7,8,15,17,22,23,31,32,35,41,43,60,62,68,79,87,104,105,114,120,121,138,148].
+
+problem(110,N,A) :- 
+  N = 378,
+  A = [2,3,10,17,18,20,21,22,24,27,31,38,41,48,51,56,68,78,80,85,87,96,117,165,213].
+
+problem(111,N,A) :- 
+  N = 378,
+  A = [1,2,7,13,15,17,18,25,27,29,30,31,42,43,46,56,61,68,73,93,100,105,112,161,217].
+
+problem(112,N,A) :- 
+  N = 380,
+  A = [4,7,17,18,19,20,21,26,31,33,35,40,45,48,49,60,67,73,79,81,87,107,113,186,194].
+
+problem(113,N,A) :- 
+  N = 380,
+  A = [4,5,6,9,13,15,16,17,22,24,33,38,44,49,50,56,60,67,82,84,95,108,121,177,203].
+
+problem(114,N,A) :- 
+  N = 381,
+  A = [12,13,21,23,25,27,35,36,42,45,54,57,59,60,79,82,84,85,92,95,96,100,110,111,186].
+
+problem(115,N,A) :- 
+  N = 384,
+  A = [1,4,8,9,11,12,19,21,27,32,35,44,45,46,47,51,60,67,84,89,96,108,120,180,204].
+
+problem(116,N,A) :- 
+  N = 384,
+  A = [1,4,8,9,11,12,15,17,19,25,26,31,32,37,44,57,60,81,84,96,99,108,120,180,204].
+
+problem(117,N,A) :- 
+  N = 384,
+  A = [3,5,7,11,12,17,20,22,25,29,35,47,48,55,56,57,69,72,76,80,96,100,116,172,212].
+
+problem(118,N,A) :- 
+  N = 385,
+  A = [1,2,7,13,15,17,18,25,27,29,30,31,43,46,49,56,61,68,73,93,100,105,119,161,224].
+
+problem(119,N,A) :- 
+  N = 392,
+  A = [4,7,8,15,23,26,29,30,31,32,34,43,48,55,56,68,77,88,98,106,116,135,141,151,153].
+
+problem(120,N,A) :- 
+  N = 392,
+  A = [10,12,14,16,19,21,25,27,31,35,39,41,51,52,54,55,73,92,98,115,121,123,129,148,171].
+
+problem(121,N,A) :- 
+  N = 392,
+  A = [1,4,5,8,11,14,16,21,22,24,27,28,30,31,52,64,81,83,96,97,98,99,114,195,197].
+
+problem(122,N,A) :- 
+  N = 393,
+  A = [4,8,16,20,23,24,25,27,29,37,44,45,50,53,64,66,68,69,73,85,91,101,116,186,207].
+
+problem(123,N,A) :- 
+  N = 396,
+  A = [1,4,5,14,16,32,35,36,46,47,48,49,68,69,73,93,94,97,99,104,110,111,125,126,160].
+
+problem(124,N,A) :- 
+  N = 396,
+  A = [1,4,5,8,11,14,16,21,22,24,27,28,30,31,52,64,81,83,98,99,100,101,114,197,199].
+
+problem(125,N,A) :- 
+  N = 396,
+  A = [3,8,9,11,14,16,17,18,31,32,41,45,48,56,60,66,73,75,81,82,98,99,117,180,216].
+
+problem(126,N,A) :- 
+  N = 398,
+  A = [2,6,7,11,15,17,23,28,29,39,44,46,53,56,58,65,68,99,100,119,120,134,144,145,154].
+
+problem(127,N,A) :- 
+  N = 400,
+  A = [3,6,21,23,24,26,29,35,37,40,41,47,53,55,64,76,79,81,99,100,121,122,137,142,179].
+
+problem(128,N,A) :- 
+  N = 404,
+  A = [3,6,7,14,17,20,21,26,28,31,32,39,46,53,54,68,71,80,88,92,100,111,113,199,205].
+
+problem(129,N,A) :- 
+  N = 404,
+  A = [4,7,10,11,12,13,16,18,20,23,25,28,29,32,47,62,70,88,93,96,101,114,127,189,215].
+
+problem(130,N,A) :- 
+  N = 408,
+  A = [2,3,7,13,16,18,20,27,30,33,41,43,46,52,54,57,72,79,84,100,105,108,116,195,213].
+
+problem(131,N,A) :- 
+  N = 412,
+  A = [3,11,12,15,21,26,32,39,43,47,54,60,68,73,83,85,86,87,89,99,114,129,139,144,169].
+
+problem(132,N,A) :- 
+  N = 413,
+  A = [5,7,17,20,34,38,39,48,56,57,59,60,64,65,70,72,75,81,105,106,110,125,148,153,155].
+
+problem(133,N,A) :- 
+  N = 416,
+  A = [2,4,7,11,13,24,25,30,35,37,39,40,44,58,62,65,82,104,112,120,128,135,143,153,169].
+
+problem(134,N,A) :- 
+  N = 416,
+  A = [1,2,3,8,12,15,16,17,20,22,24,26,29,31,64,75,85,88,91,94,98,104,133,179,237].
+
+problem(135,N,A) :- 
+  N = 421,
+  A = [1,2,4,5,7,9,12,16,20,22,23,35,38,48,56,83,94,104,116,118,128,140,150,153,177].
+
+problem(136,N,A) :- 
+  N = 421,
+  A = [5,11,12,17,18,20,23,26,29,36,38,40,44,51,55,59,72,92,97,102,105,107,117,199,222].
+
+problem(137,N,A) :- 
+  N = 422,
+  A = [2,4,7,13,16,18,20,23,28,29,38,43,46,51,59,68,74,79,86,93,100,111,132,179,243].
+
+problem(138,N,A) :- 
+  N = 425,
+  A = [3,4,5,9,10,12,13,14,16,19,20,31,46,48,56,79,102,104,116,126,128,140,142,157,181].
+
+problem(139,N,A) :- 
+  N = 441,
+  A = [5,6,7,16,18,23,24,27,38,39,47,51,52,62,66,72,80,84,92,101,102,118,120,219,222].
+
+problem(140,N,A) :- 
+  N = 454,
+  A = [1,2,11,17,29,34,35,46,48,51,53,55,63,69,79,87,88,91,109,134,136,143,150,161,184].
+
+problem(141,N,A) :- 
+  N = 456,
+  A = [5,7,10,11,13,15,18,19,31,49,50,52,59,60,63,72,77,115,128,129,135,142,148,179,193].
+
+problem(142,N,A) :- 
+  N = 465,
+  A = [6,9,13,14,19,21,24,25,31,32,53,56,64,73,74,82,91,111,125,127,137,139,153,173,201].
+
+problem(143,N,A) :- 
+  N = 472,
+  A = [7,9,13,15,26,34,35,44,47,51,58,61,65,81,87,103,104,115,118,123,128,133,136,148,221].
+
+problem(144,N,A) :- 
+  N = 477,
+  A = [3,5,12,16,19,22,25,26,37,41,49,72,76,77,82,86,87,115,117,135,141,149,167,169,193].
+
+problem(145,N,A) :- 
+  N = 492,
+  A = [2,9,15,17,27,29,31,32,33,36,47,49,50,60,62,69,77,105,114,123,127,128,132,237,255].
+
+problem(146,N,A) :- 
+  N = 492,
+  A = [3,5,9,11,12,21,24,27,30,44,45,50,54,55,57,63,95,101,112,117,123,134,140,235,257].
+
+problem(147,N,A) :- 
+  N = 503,
+  A = [4,15,16,19,22,23,25,27,33,34,50,62,67,87,88,93,100,113,135,143,149,157,167,179,211].
+
+problem(148,N,A) :- 
+  N = 506,
+  A = [1,7,24,26,33,35,40,45,47,51,55,69,87,90,93,96,117,125,134,145,146,147,160,162,199].
+
+problem(149,N,A) :- 
+  N = 507,
+  A = [2,3,7,11,13,15,28,34,43,50,57,64,80,83,86,89,107,115,116,127,149,163,175,183,217].
+
+problem(150,N,A) :- 
+  N = 512,
+  A = [1,7,8,9,10,15,22,32,34,46,51,65,69,71,91,105,109,111,136,139,152,157,173,200,203].
+
+problem(151,N,A) :- 
+  N = 512,
+  A = [1,6,7,8,9,13,17,19,35,45,47,57,62,73,88,93,104,107,128,130,151,163,184,198,221].
+
+problem(152,N,A) :- 
+  N = 513,
+  A = [6,9,10,17,19,24,28,29,37,39,64,65,68,81,98,99,102,115,145,147,153,159,165,189,201].
+
+problem(153,N,A) :- 
+  N = 517,
+  A = [5,6,7,16,20,24,28,33,38,43,63,71,80,83,86,92,98,122,132,148,164,166,173,180,205].
+
+problem(154,N,A) :- 
+  N = 524,
+  A = [9,12,20,21,33,35,37,39,54,55,61,62,87,90,98,101,125,132,135,141,145,159,163,164,220].
+
+problem(155,N,A) :- 
+  N = 527,
+  A = [11,12,13,14,19,30,41,47,50,52,59,68,71,81,94,97,107,132,147,151,155,169,175,183,197].
+
+problem(156,N,A) :- 
+  N = 528,
+  A = [2,9,15,17,27,29,31,32,33,36,47,49,50,60,62,69,77,123,127,128,132,141,150,255,273].
+
+problem(157,N,A) :- 
+  N = 529,
+  A = [9,12,20,21,33,35,37,39,54,55,61,62,87,90,98,101,125,132,140,141,145,159,163,169,225].
+
+problem(158,N,A) :- 
+  N = 531,
+  A = [6,9,10,17,19,24,29,31,39,40,67,68,71,84,101,102,105,118,151,153,159,165,171,195,207].
+
+problem(159,N,A) :- 
+  N = 532,
+  A = [16,18,26,27,33,39,41,50,51,55,69,71,84,87,91,94,132,133,141,143,164,168,169,173,195].
+
+problem(160,N,A) :- 
+  N = 534,
+  A = [11,13,15,17,18,27,38,44,49,52,60,61,68,81,87,94,107,135,149,153,159,171,174,189,210].
+
+problem(161,N,A) :- 
+  N = 535,
+  A = [2,8,26,27,36,41,45,57,62,77,88,95,97,99,101,102,109,114,117,118,141,147,168,192,226].
+
+problem(162,N,A) :- 
+  N = 536,
+  A = [1,8,21,30,31,32,33,41,44,46,49,55,57,61,84,91,113,134,137,139,150,155,176,205,247].
+
+problem(163,N,A) :- 
+  N = 536,
+  A = [3,5,9,11,12,21,24,27,30,44,45,50,54,55,57,63,95,117,123,134,140,145,156,257,279].
+
+problem(164,N,A) :- 
+  N = 540,
+  A = [1,7,8,9,10,14,19,34,36,51,58,69,81,83,97,109,111,115,136,149,152,167,183,208,221].
+
+problem(165,N,A) :- 
+  N = 540,
+  A = [6,13,15,25,28,36,43,47,55,57,58,59,60,65,82,89,91,107,124,127,144,163,183,233,250].
+
+problem(166,N,A) :- 
+  N = 540,
+  A = [8,9,10,11,16,30,36,38,45,55,57,65,68,81,84,95,98,100,116,117,126,135,144,261,279].
+
+problem(167,N,A) :- 
+  N = 540,
+  A = [8,9,10,11,16,30,36,38,45,55,57,65,68,81,84,95,98,100,116,117,126,135,144,261,279].
+
+problem(168,N,A) :- 
+  N = 540,
+  A = [4,6,9,10,17,21,23,25,31,33,36,38,45,50,81,83,115,117,126,133,135,144,146,261,279].
+
+problem(169,N,A) :- 
+  N = 540,
+  A = [4,6,9,10,17,21,23,25,31,33,36,38,45,50,81,83,115,117,126,133,135,144,146,261,279].
+
+problem(170,N,A) :- 
+  N = 541,
+  A = [3,4,11,13,16,17,21,25,26,44,46,64,75,86,87,97,106,109,133,141,165,185,191,215,217].
+
+problem(171,N,A) :- 
+  N = 541,
+  A = [3,5,27,32,33,37,47,50,53,56,57,69,71,78,97,98,109,111,126,144,165,169,183,189,232].
+
+problem(172,N,A) :- 
+  N = 544,
+  A = [1,7,24,26,33,35,40,45,47,51,55,69,87,90,93,96,117,125,134,145,147,184,198,199,200].
+
+problem(173,N,A) :- 
+  N = 544,
+  A = [6,8,20,21,23,41,42,48,59,61,77,80,81,85,90,92,93,102,115,132,139,168,198,207,244].
+
+problem(174,N,A) :- 
+  N = 547,
+  A = [3,5,16,22,26,27,35,47,49,59,67,71,72,85,87,102,103,111,137,144,150,197,200,203,207].
+
+problem(175,N,A) :- 
+  N = 549,
+  A = [4,10,14,24,26,31,34,36,38,40,43,48,59,63,74,89,97,105,117,124,136,152,156,241,308].
+
+problem(176,N,A) :- 
+  N = 550,
+  A = [1,2,5,13,19,20,25,30,39,43,58,59,73,75,76,90,95,103,116,128,130,132,172,262,288].
+
+problem(177,N,A) :- 
+  N = 550,
+  A = [1,11,16,23,24,27,29,36,41,43,44,47,59,70,71,80,99,103,111,116,128,156,167,227,323].
+
+problem(178,N,A) :- 
+  N = 551,
+  A = [3,5,24,25,26,30,35,36,39,40,42,57,68,76,94,109,120,128,152,162,166,175,176,200,223].
+
+problem(179,N,A) :- 
+  N = 552,
+  A = [5,17,18,22,25,27,32,33,39,59,62,87,91,100,102,111,112,135,137,149,165,168,183,201,204].
+
+problem(180,N,A) :- 
+  N = 552,
+  A = [1,3,4,7,8,9,10,15,18,19,21,41,52,54,73,93,95,123,125,136,138,153,168,261,291].
+
+problem(181,N,A) :- 
+  N = 556,
+  A = [6,8,10,13,19,25,32,37,49,54,58,76,84,91,92,100,107,128,145,156,165,185,195,205,206].
+
+problem(182,N,A) :- 
+  N = 556,
+  A = [3,12,13,15,19,23,27,34,35,39,42,45,48,52,53,87,140,145,158,166,171,184,189,201,227].
+
+problem(183,N,A) :- 
+  N = 556,
+  A = [3,12,13,15,19,23,27,34,35,39,42,45,48,52,53,87,140,145,158,166,171,184,189,201,227].
+
+problem(184,N,A) :- 
+  N = 556,
+  A = [1,5,7,8,9,10,12,14,20,27,31,43,47,50,74,93,97,121,125,139,143,153,167,264,292].
+
+problem(185,N,A) :- 
+  N = 562,
+  A = [2,3,5,8,13,19,20,29,33,47,53,54,64,65,76,93,119,123,142,157,161,180,184,221,259].
+
+problem(186,N,A) :- 
+  N = 570,
+  A = [3,9,10,33,36,38,40,42,50,51,60,69,72,75,77,90,113,140,141,151,152,189,200,229,230].
+
+problem(187,N,A) :- 
+  N = 575,
+  A = [4,6,14,16,31,39,63,69,74,81,88,103,107,111,115,120,131,132,133,147,156,159,164,198,218].
+
+problem(188,N,A) :- 
+  N = 576,
+  A = [1,4,9,11,15,19,22,34,36,53,60,76,82,84,104,126,127,128,153,156,165,174,183,219,237].
+
+problem(189,N,A) :- 
+  N = 576,
+  A = [8,9,10,11,16,30,36,38,45,55,57,65,68,81,84,95,98,100,116,135,144,153,162,279,297].
+
+problem(190,N,A) :- 
+  N = 576,
+  A = [4,6,9,10,17,21,23,25,31,33,36,38,45,50,81,83,115,133,135,144,146,153,162,279,297].
+
+problem(191,N,A) :- 
+  N = 580,
+  A = [2,5,7,10,12,13,19,21,22,29,36,40,61,65,74,101,135,139,161,179,183,192,205,209,236].
+
+problem(192,N,A) :- 
+  N = 580,
+  A = [5,6,11,13,16,17,21,25,34,44,54,68,80,88,100,112,120,135,142,145,170,173,195,215,265].
+
+problem(193,N,A) :- 
+  N = 580,
+  A = [11,12,16,17,29,32,39,41,53,55,59,60,68,70,81,84,92,124,125,128,129,156,171,280,300].
+
+problem(194,N,A) :- 
+  N = 593,
+  A = [13,14,15,35,48,51,55,67,73,79,83,91,94,105,109,116,119,124,133,150,171,173,196,217,226].
+
+problem(195,N,A) :- 
+  N = 595,
+  A = [4,13,18,19,22,35,40,48,58,61,62,77,78,82,83,86,118,149,163,168,187,192,202,206,240].
+
+problem(196,N,A) :- 
+  N = 601,
+  A = [7,8,25,34,41,42,46,48,54,55,62,70,71,74,98,103,116,143,168,169,190,192,193,218,240].
+
+problem(197,N,A) :- 
+  N = 603,
+  A = [7,11,12,14,21,25,32,40,52,56,60,67,68,81,91,92,132,144,149,163,177,191,196,235,263].
+
+problem(198,N,A) :- 
+  N = 603,
+  A = [13,23,26,27,35,44,45,49,53,54,57,66,75,99,101,110,122,126,144,158,175,180,189,234,270].
+
+problem(199,N,A) :- 
+  N = 607,
+  A = [6,8,10,13,19,25,32,37,49,54,58,76,84,91,92,100,107,128,156,185,196,205,206,216,246].
+
+problem(200,N,A) :- 
+  N = 609,
+  A = [9,14,15,17,32,45,47,58,67,74,76,79,80,83,97,111,125,126,150,170,186,188,215,224,235].
+
+problem(201,N,A) :- 
+  N = 611,
+  A = [1,10,22,26,32,41,45,54,57,61,62,66,85,86,87,95,97,101,119,132,136,167,176,268,343].
+
+problem(202,N,A) :- 
+  N = 614,
+  A = [15,22,24,31,33,49,53,54,57,60,63,68,74,81,83,104,109,151,155,163,167,217,229,230,234].
+
+problem(203,N,A) :- 
+  N = 634,
+  A = [15,17,24,26,33,43,44,54,57,60,63,73,79,81,88,109,119,160,161,172,173,227,234,235,239].
+
+problem(204,N,A) :- 
+  N = 643,
+  A = [2,9,21,29,38,40,41,42,58,62,67,76,82,83,85,96,104,166,172,186,192,201,207,250,270].
+
+problem(205,N,A) :- 
+  N = 644,
+  A = [7,9,13,18,19,22,31,49,53,61,66,68,71,87,93,94,119,164,178,192,199,206,227,239,253].
+
+problem(206,N,A) :- 
+  N = 655,
+  A = [10,14,15,21,25,26,31,40,51,53,54,57,65,83,84,86,151,152,173,193,194,215,216,246,288].
+
+problem(207,N,A) :- 
+  N = 661,
+  A = [5,7,17,18,23,31,36,38,41,64,73,77,83,84,102,106,111,161,175,196,203,210,238,248,262].

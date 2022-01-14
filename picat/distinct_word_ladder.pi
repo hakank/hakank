@@ -1,0 +1,321 @@
+/* 
+
+  Distinct word ladder in Picat.
+
+  Here's a Wordle (https://www.powerlanguage.co.uk/wordle) related problem:
+
+  What to do when having maximal unlucky guesses of the words, i.e. no
+  correct letters at all for the guessed words. 
+
+  Then it might be handly to have a list of "completely distinct" words, i.e.
+  words with no common letters.
+
+  For example, if the first word is BEGIN, then one can
+  use these words if no lucky guesses which use 20 distinct letters:
+    BEGIN
+    ACYLS
+    FJORD 
+    THUMP
+
+  (Though I'm not sure if all of these are in the Wordle wordlist.)
+
+
+  Using the smallest wordlist I use (3161 5 letter words), there are 
+  no 5 word lists (see go2/0 for more on this). However, it's easy 
+  to find 4 words. For example:
+
+    [begin,acyls,fjord,thump]
+    [begin,acyls,fjord,whump]
+    [begin,acyls,thump,fjord]
+    [begin,acyls,whump,fjord]
+    [begin,adust,frock,lymph]
+    [begin,adust,lymph,frock]
+
+
+    [darts,clomb,weigh,punky]
+    [darts,clomb,weigh,funky]
+    [darts,clomb,weigh,junky]
+    [darts,clomb,punky,weigh]
+    [darts,clomb,funky,weigh]
+
+
+  * go/0: Using Picat's non deterministic select/3 to select the words from
+          the wordlist.
+
+  * go2/0: Using a Constraint model (CP/SAT) which has the advantage of
+           using symmetry breaking that ensure that the words are in 
+           (alphabetical) order.
+           CP solver is quite fast on this and is probably much faster
+           for proving (non) existing of larger word sequences (> 4).
+
+           See below for more on this.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import sat.
+import cp. % Seems to be faster than SAT on this problem.
+
+main => go.
+
+
+%
+% Distinct word ladder.
+%
+% Given a first guess word that don't give any hints,
+% what second word to choose, third word,...?
+%
+% This approach use Picat's non deterministic select/3 feature
+% which (non deterministally) selects words in the wordlists
+% and backtracks if there is no solution.
+%
+% The eng_dict.txt wordlist that I tend to use (3161 5 letter words)
+% don't give any full 5 word sequence, but getting 4 words is easy.
+% Proving that no 5 word sequence don't exist for the small 3161
+% word list took a couple of hours. It's better to use CP/SAT (go2/0)
+% for these kind of explorations.
+%
+% e.g.
+%
+% [begin,acyls,fjord,thump]
+% [begin,acyls,fjord,whump]
+% [begin,acyls,thump,fjord]
+% [begin,acyls,whump,fjord]
+% [begin,adust,frock,lymph]
+% [begin,adust,lymph,frock]
+%
+% [darts,clomb,weigh,punky]
+% [darts,clomb,weigh,funky]
+% [darts,clomb,weigh,junky]
+% [darts,clomb,punky,weigh]
+% [darts,clomb,funky,weigh]
+%
+go ?=> 
+  garbage_collect(300_000_000),
+  N = 5,
+  File = "unixdict.txt", % 3161 5 letter words.
+  % File = "eng_dict.txt", % 9336 5 letter words
+  % File = "words_lower.txt", % 21830 English 5 letter words
+  % File = "sv_spelling_org_utf8.txt", % Swedish words
+
+  % It must be distinct only words and no strange characters...
+  % Words = [W : W in read_file_lines(File), length(W) == N],
+  Words = [W : W in read_file_lines(File), length(W) == N, W.remove_dups.len == N,not membchk('\'',W), not membchk('-',W)],  
+
+  println(numDistinctWords=Words.len),
+
+  % FirstGuess = "darts",
+  % FirstGuess = "begin",
+  % Words2 = Words,
+
+  % Random first guess word
+  select(FirstGuess,Words,Words2),
+  println(firstGuess=FirstGuess),
+  
+  flush(stdout),
+
+  % Get the first candidates
+  Candidates1 = check_distinct_words(Words2,FirstGuess),
+
+  % Select the second word and find the next candidates
+  select(Word2,Candidates1,Candidates2a),
+  Candidates2 = check_distinct_words(Candidates2a,FirstGuess++Word2),
+
+  % Select the third word
+  select(Word3,Candidates2,Candidates3a),
+  Candidates3 = check_distinct_words(Candidates3a,FirstGuess++Word2++Word3),
+
+  % Fourth word
+  select(Word4,Candidates3,Candidates4a),
+  Candidates4 = check_distinct_words(Candidates4a,FirstGuess++Word2++Word3++Word4),
+
+  % If just looking for 4 words
+  Final4 = [FirstGuess,Word2,Word3,Word4],
+  Final4Len = Final4.flatten.remove_dups.len,
+  Final4Len == N*4,
+  println(Final4),
+
+  % Using the smallest wordlist I have there's no 5 word combination. 
+  % select(Word5,Candidates4,_Candidates5a),
+  
+  % Final = [FirstGuess,Word2,Word3,Word4,Word5],
+  % Final5Len = Final.flatten.remove_dups.len,  
+  % Final5Len == N*5,  
+  % println(Final),
+
+  fail,
+
+  nl.
+go => true.
+
+
+%
+% This is a constraint model approach.
+%
+% It takes a little longer to start the search than go/0 since it must first convert the
+% letters to integers (required for CP/SAT solver).
+%
+% An advantage of this approach is, however, that it includes symmetry breaking: the words are
+% in order which can be faster.
+% 
+% One can add a first word by uncommenting this line
+%   nth(StartIx,Words,"begin")
+% Then the increasing/1 constraint is just used for the rest of the word sequence.
+%
+% It takes about 0.6s for the CP solver to prove that there is no
+% 5 word combination that starts with "begin" (using the 3161 wordlist with
+% 2095 distinct letter words). For the 9336 word list it takes about 10s.
+%
+% Proving that there is no 5 word combination at all (with whatever start word) is
+% harder: the CP solver (ff/split) takes 1min52s to prove this with the 3161 wordlist.
+% For the 9336 wordlist it took 1h8min49s for prove no solution.
+%
+% Note: The SAT solver is (much) slower on this.
+%
+% For the larger (21830 English 5 letter words, with 13590 distinct) there are
+% some solutions for 5 word sequences, but might contain abbreviations and
+% not so common words:
+%
+% For example fldxt is an abbreviation for "fluid extract" (in Collins dictionary)%
+%
+% [avowe,fldxt,jumby,shrpg,zinck]
+% [azyme,bjork,chivw,fldxt,pungs]
+% [azyme,bjork,chivw,fldxt,spung]
+% [areng,fldxt,jumby,qophs,zwick]
+% [axing,busky,cwlth,dvmrp,jozef]
+% [ahong,fldxt,jumps,verby,zwick]
+% [ahong,fldxt,jumpy,verbs,zwick]
+% [amick,bsgph,fldxt,unwry,vejoz]
+% [avick,benjy,fldxt,grosz,whump]
+% [avick,fldxt,quegh,womby,zprsn]
+% [avick,bshyg,fldxt,rnwmp,zoque]
+% [avick,enzym,fldxt,qophs,wburg]
+% [awink,cumby,fldxt,shrpg,vejoz]
+% [awink,blyth,frugs,vejoz,xdmcp]
+% [awink,bshyg,flurt,vejoz,xdmcp]
+% [awink,bshyg,crfmp,judex,voltz]
+% [awink,bshyg,crump,fldxt,vejoz]
+% [anvik,bshyg,fultz,jower,xdmcp]
+% [awful,bshyg,trink,vejoz,xdmcp]
+% [axmen,bovld,gryph,jufts,zwick]
+% [avron,bshyg,fldxt,jepum,zwick]
+% [avron,bsgph,fldxt,yquem,zwick]
+% [avern,fldxt,gumby,qophs,zwick]
+% [avern,fldxt,jumby,qophs,zwick]
+% [albyn,dvmrp,jozef,utqgs,whick]
+% [albyn,gruft,vejoz,whisk,xdmcp]
+% [albyn,jozef,twirk,vughs,xdmcp]
+% [alwyn,brugh,skift,vejoz,xdmcp]
+% [alwyn,brusk,fight,vejoz,xdmcp]
+% [alwyn,bught,frisk,vejoz,xdmcp]
+% [alwyn,burgh,skift,vejoz,xdmcp]
+% ...
+% 
+go2 ?=>
+  garbage_collect(300_000_000),
+  N = 5,
+  File = "unixdict.txt", % 3161 5 letter words. 2095 distinct letter words
+  % File = "eng_dict.txt", % 9336 English 5 letter words, 6123 distinct letter words
+  % File = "words_lower.txt", % 21830 English 5 letter words, 13590 distinct letter words
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+
+  % It must be distinct only words and no strange characters...
+  Words = [W : W in read_file_lines(File), length(W) == N, W.remove_dups.len == N,not membchk('\'',W)],
+  NumWords = Words.len,  
+  println(numWords=NumWords),
+
+  % Add the first guess word
+  nth(StartIx,Words,"query"),
+
+  if nonvar(StartIx) then
+    println(startWord=Words[StartIx])
+  end,
+
+  Converted = [convert_word(W) : W in Words],
+  println(converted),
+
+  % Number of words to find
+  M = 4, % Easy
+  % M = 5, % Harder. Only for the largest wordlist.
+
+  println([n=N,m=M]),
+
+  % The words
+  X = new_array(M),
+  X :: 1..NumWords,
+
+  % The character matrix (all different)
+  Y = new_array(M,N),
+  Y :: 1..26,
+
+  % different words
+  all_different(X),
+  
+  % different letters
+  all_different(Y.vars), 
+
+  % Connect word and chars
+  foreach(I in 1..M)
+    foreach(J in 1..N)
+      matrix_element(Converted,X[I],J,Y[I,J])
+    end
+  end,
+
+  % If a start word
+  if nonvar(StartIx) then
+    X[1] #= StartIx,
+    increasing(X[2..M])
+  else
+    increasing(X)
+  end,
+
+
+  Vars = X ++ Y,
+  println(solve),
+  % solve($[degree,updown],Vars),
+  solve($[ff,split],Vars),
+  % solve($[min,updown],Vars),    
+
+  % println(x=X),
+  println([Words[X[I]] : I in 1..M]),
+
+  fail,
+
+  nl.
+go2 => true.
+
+
+%
+% We assume that all words are in lower case.
+%
+convert_word(Word) = Convert =>
+  Convert = [],
+  foreach(C in Word) 
+     Convert := Convert ++ [ord(C) - 96]
+  end.
+
+
+%
+% Return the words from the wordlist Words that has characters that is not
+% included in Guessword.
+%
+% Assumption: the words in the list Words only includes words that
+% has distinct characters.
+%
+check_distinct_words(Words,GuessWord) = Candidates =>
+  Candidates1 = [],
+  foreach(Word in Words)
+    OK = true,
+    foreach(C in Word, OK == true)
+      if membchk(C,GuessWord) then
+        OK := false
+      end
+    end,
+    if OK then
+      Candidates1 := Candidates1 ++ [Word]
+    end
+  end,
+  Candidates = Candidates1.
+

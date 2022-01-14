@@ -1,0 +1,909 @@
+/* 
+
+  The Shortest London Tube Journey that Ticks off the Alphabet in Picat.
+
+  From the last section of 
+  "The Shortest Tube Journey that Ticks off the Alphabet"
+  https://www.youtube.com/watch?v=rpY8Pi5aJ9k
+
+  Here we solve 3 problems:
+  - shortest journey, i.e. a proper path: go/0.
+  - smallest subset (not a path): go2/0
+  - fewest total number of letters (not a path): go3/0
+
+  The information about the stations (name and connections)
+  are from the graph of the Wolfram example on London Undergroup trip
+  planning:
+  https://reference.wolfram.com/language/example/TripPlanning.html
+  The graph includes 353 nodes and 410 edges.
+
+
+  * go/0: Shortest journey between stations that uses all the 
+          letters in the alphabet (a-z). I interpret "journey" as a plain path,
+           i.e. not a (Hamiltonaian) tour.
+ 
+  Here are the 4 optimal solutions, with Z=12, i.e. 12 stations.
+  Though it's really only two different solutions, two of them are reversals of
+  the other two.
+
+  Y contains the number of occurrences for each characters (a..z).
+  Note: We use a dummy node to be able to use the subcircuit/1 constraint.
+
+     z = 12
+     Belsize Park -> Chalk Farm
+     Camden Town -> Euston
+     Chalk Farm -> Camden Town
+     Euston -> Warren Street
+     Green Park -> Victoria
+     Leicester Square -> Piccadilly Circus
+     Oxford Circus -> Tottenham Court Road
+     Piccadilly Circus -> Green Park
+     St. James's Park -> Dummy node
+     Tottenham Court Road -> Leicester Square
+     Victoria -> St. James's Park
+     Warren Street -> Oxford Circus
+     Dummy node -> Belsize Park
+
+     y = {10,1,7,4,8,2,1,2,5,1,4,4,4,5,5,4,1,10,7,7,5,1,2,1,1,1}
+     path = [Belsize Park,Chalk Farm,Camden Town,Euston,Warren Street,Oxford Circus,Tottenham Court Road,Leicester Square,Piccadilly Circus,Green Park,Victoria,St. James's Park]
+
+
+     Find all solutions with Z = 12
+     y = {9,1,5,3,8,2,1,1,5,1,4,4,4,6,5,4,1,10,8,6,4,1,3,1,1,1}
+     path = [Belsize Park,Chalk Farm,Camden Town,Euston,Warren Street,Oxford Circus,Piccadilly Circus,Green Park,Westminster,St. James's Park,Victoria,Sloane Square]
+
+     y = {10,1,7,4,8,2,1,2,5,1,4,4,4,5,5,4,1,10,7,7,5,1,2,1,1,1}
+     path = [St. James's Park,Victoria,Green Park,Piccadilly Circus,Leicester Square,Tottenham Court Road,Oxford Circus,Warren Street,Euston,Camden Town,Chalk Farm,Belsize Park]
+
+     y = {9,1,5,3,8,2,1,1,5,1,4,4,4,6,5,4,1,10,8,6,4,1,3,1,1,1}
+     path = [Sloane Square,Victoria,St. James's Park,Westminster,Green Park,Piccadilly Circus,Oxford Circus,Warren Street,Euston,Camden Town,Chalk Farm,Belsize Park]
+
+     picat -log -g go london_underground_path.pi  39,79s user 0,07s system 99% cpu 39,856 total
+
+
+
+  * go2/0 Find the shortest subset of station names that contain all letters a-z, 
+          it don't have to be a tour.
+
+    z= 5
+    subset = [Belsize Park,Stepney Green,Vauxhall,Walthamstow Queen's Road,Watford Junction]
+
+    Find all solutions with Z = 5
+    subset = [Belsize Park,Covent Garden,Custom House for ExCeL,Dalston Junction,Queensway]
+    subset = [Belsize Park,Kensington (Olympia),Leicester Square,Vauxhall,Watford Junction]
+    subset = [Belsize Park,Clapham Junction,King George V,Oxford Circus,Queensway]
+    subset = [Belsize Park,Turnham Green,Vauxhall,Watford Junction,West India Quay]
+    subset = [Belsize Park,Custom House for ExCeL,Roding Valley,St. James's Park,Walthamstow Queen's Road]
+    subset = [Arnos Grove,Belsize Park,Custom House for ExCeL,Heron Quays,Norwood Junction]
+    subset = [Belsize Park,South Quay,Upminster Bridge,Vauxhall,Watford Junction]
+    ...
+
+   There are 365 different solutions and takes about 2min 20 seconds to print all of them.
+
+
+  * go3/0: Find the subset that has the fewest number of total letters and contains a..z
+
+    There is only one optimal solution with 42 characters (which happens to contain
+    5 stations):
+
+    subset = [Belsize Park,Moorgate,Surrey Quays,Vauxhall,Watford Junction]
+
+
+    Found (and proved) optimal solution in 53s.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp.
+import sat.
+
+main => go.
+
+%
+% Find the shortest proper journey
+%
+go ?=>
+  nolog,
+  garbage_collect(400_000),
+
+  % Data
+  edges(Edges),  
+
+  preprocess(Edges, NumNodes,M,NodeIdsRev,NodeLetters,UniqueLetters),
+
+  %
+  % Now we are - at last! - ready to solve the problem.
+  %
+  println("Find optimal Z:"),
+  find_shortest_path(NumNodes,M,NodeLetters,UniqueLetters, X,Y,Z),
+  print_solution(X,Y,Z,NumNodes,NodeIdsRev,true),
+
+  println("\nFind all other solutions with Z"=Z),
+  find_shortest_path(NumNodes,M,NodeLetters,UniqueLetters, X2,Y2,Z),
+  if X != X2 then
+    print_solution(X2,Y2,Z,NumNodes,NodeIdsRev,false)
+  end,
+  
+  fail, % find all optimal solutions
+  
+  nl.
+
+go => true.
+
+%
+% Find the smallest combination of station names to include all letters a..z
+%
+go2 ?=>
+  nolog,
+  garbage_collect(400_000),
+
+  % Data
+  edges(Edges),  
+
+  preprocess(Edges, NumNodes,_M,NodeIdsRev,NodeLetters,UniqueLetters),
+
+  %
+  % Now we are - at last! - ready to solve the problem.
+  %
+  Map = get_global_map(),
+  Map.put(count,0),
+  println("Find optimal Z:"),
+  find_smallest_subset(NumNodes,NodeLetters,UniqueLetters, X,Z),
+  print_solution2(X,NumNodes,NodeIdsRev),
+
+  println("\nFind all other solutions with Z"=Z),
+  find_smallest_subset(NumNodes,NodeLetters,UniqueLetters, X2,Z),
+  if X != X2 then
+    print_solution2(X2,NumNodes,NodeIdsRev)
+  end,
+  Map.put(count,Map.get(count)+1),
+  fail, % find all optimal solutions
+  
+  nl.
+
+go2 => println(count=get_global_map().get(count)).
+
+
+%
+% Find the smallest subset which has the fewest letters in total
+%
+go3 ?=>
+  nolog,
+  garbage_collect(400_000),
+
+  % Data
+  edges(Edges),  
+
+  preprocess(Edges, NumNodes,_M,NodeIdsRev,NodeLetters,UniqueLetters),
+
+  Map = get_global_map(),
+  Map.put(count,0),
+  println("Find optimal Z:"),
+  find_fewest_letters(NumNodes,NodeLetters,UniqueLetters, X,Z),
+  print_solution2(X,NumNodes,NodeIdsRev),
+
+  println("\nFind all other solutions with Z"=Z),
+  find_fewest_letters(NumNodes,NodeLetters,UniqueLetters, X2,Z),
+  if X != X2 then
+    print_solution2(X2,NumNodes,NodeIdsRev)
+  end,
+  Map.put(count,Map.get(count)+1),
+  fail, % find all optimal solutions
+  
+  nl.
+
+go3 => println(count=get_global_map().get(count)).
+
+
+
+%
+% Preprocessing the data.
+%
+preprocess(Edges, NumNodes,M,NodeIdsRev,NodeLetters,UniqueLetters) =>
+
+  println(num_edges=Edges.len),
+
+  % EdgesCLFacts = [],
+  % foreach([From,To] in Edges1)
+  %   EdgesCLFacts := EdgesCLFacts ++ $[edge(From,To),edge(To,From)]
+  % end,
+  % cl_facts_table(EdgesCLFacts),  
+
+  % Identify the nodes
+  NodesMap = new_map(),
+  foreach([From,To] in Edges)
+    NodesMap.put(From,1),
+    NodesMap.put(To,1)
+  end,
+  Nodes = [N : N=_ in NodesMap.to_list].sort,
+
+  % Translate to lower case and remove non alpha chars 
+  alpha(Alpha),
+  AlphaIx = new_map([A=I : {A,I} in zip(Alpha,1..Alpha.len)]),
+  Translate = new_map(),
+  NodeId = 1,
+  NodeIds = new_map(),
+  NodeIdsRev = new_map(),   
+  foreach(Node in Nodes)
+    % lowercase and remove non alpha chars
+    accept_alpha(to_lowercase(Node),Alpha,Node2),
+    Translate.put(Node,Node2.remove_dups.sort),
+    
+    NodeIds.put(Node,NodeId),
+    NodeIdsRev.put(NodeId,Node),    
+    NodeId := NodeId + 1
+  end,
+  NumNodes = NodeId - 1,
+  println(num_nodes=NumNodes),
+  
+  % Which letters has a node
+  NodeLetters = new_array(NumNodes,26), 
+  bind_vars(NodeLetters,0),
+  foreach(I in 1..NumNodes)
+    foreach(L in Translate.get(NodeIdsRev.get(I)))
+      NodeLetters[I,AlphaIx.get(L)] := 1
+    end
+  end,
+
+  % Some hints: Which nodes has the unique letters (occurrence 1)
+  % It's just Belsize Park which is the only name with a Z
+  UniqueLetters = [],
+  foreach(C in 1..26)
+    Ns = [Node : Node in 1..NumNodes, NodeLetters[Node,C] == 1],
+    if Ns.len == 1 then
+      UniqueLetters := UniqueLetters ++ [Ns.first]
+    end
+  end,
+  println(unique=UniqueLetters),
+  
+  NodeIdsRev.put(NumNodes+1,"Dummy node"),
+
+  % The connections between the nodes (as an adjacent matrix)
+  M = new_array(NumNodes,NumNodes),
+  bind_vars(M,0),
+  foreach([From,To] in Edges)
+     FromId = NodeIds.get(From),
+     ToId = NodeIds.get(To),
+     M[FromId,ToId] := 1,
+     M[ToId,FromId] := 1
+  end.
+
+
+
+%
+% Find the path.
+%
+% Here we use a dummy node (id: NumNodes+1) in order to use subcircuit.
+% We start and end the tour with this dummy node, which will give the
+% path of the proper nodes.
+%
+%
+find_shortest_path(NumNodes,M,NodeLetters,UniqueLetters, X,Y,Z) => 
+
+  NumLetters = 26,
+
+  % println("Dummy node:"=(NumNodes+1)),
+  X = new_array(NumNodes+1),
+  X :: 1..NumNodes+1,
+
+  % Occurrences of each letter, at least 1 occurrence
+  Y = new_array(NumLetters),
+  Y :: 1..NumNodes,
+
+  % Domains of X
+  foreach(I in 1..NumNodes)
+    X[I] :: [I,NumNodes+1] ++ [J : J in 1..NumNodes,M[I,J] == 1]
+  end,
+
+  foreach(Node in UniqueLetters)
+    X[Node] #!= Node
+  end,
+
+  % all_distinct(X),
+  all_different(X),
+
+  % Dummy node must have a connection, 
+  X[NumNodes+1] #!= NumNodes + 1,
+  % and there must be a connection to Dummy node
+  sum([X[I] #= NumNodes + 1 : I in 1..NumNodes]) #= 1,
+
+  % This is the work horse
+  subcircuit(X),
+
+  % Ensure that all letters are used
+  foreach(K in 1..NumLetters)
+     % sum([(X[I] #!= I)*NodeLetters[I,K] : I in 1..NumNodes]) #> 0
+     Y[K] #= sum([(X[I] #!= I)*NodeLetters[I,K] : I in 1..NumNodes])
+  end,
+
+  Z #= sum([X[I] #!= I : I in 1..NumNodes]),
+  
+  % println(solve),
+  Vars = X ++ Y,
+  if var(Z) then
+    % Z is a variable: find optimal value
+    solve($[ff,split,min(Z),report(printf("Z:%d\n",Z))],Vars)
+  else
+    % Z is a nonvar value: just find a solution
+    solve($[ff,split,report(printf("Z:%d\n",Z))],Vars)  
+  end.
+
+
+
+%
+% Find the smallest subset which contains all letters a..z
+%
+find_smallest_subset(NumNodes,NodeLetters,UniqueLetters, X,Z) => 
+
+  NumLetters = 26,
+
+  X = new_array(NumNodes),
+  X :: 0..1,
+
+  % Occurrences of each letter, at least 1 occurrence
+  Y = new_array(NumLetters),
+  Y :: 1..NumNodes,
+
+  foreach(Node in UniqueLetters)
+    X[Node] #= 1
+  end,
+
+  % Ensure that all letters are used
+  foreach(K in 1..NumLetters)
+     Y[K] #= sum([X[I]*NodeLetters[I,K] : I in 1..NumNodes])
+  end,
+
+  Z #= sum(X),
+  
+  % println(solve),
+  Vars = X ++ Y,
+  if var(Z) then
+    % Z is a variable: find optimal value
+    solve($[ff,split,min(Z),report(printf("Z:%d\n",Z))],Vars)
+  else
+    % Z is a nonvar value: just find a solution
+    solve($[ff,split,report(printf("Z:%d\n",Z))],Vars)  
+  end.
+
+
+
+%
+% Find the subset of stations that has the fewest letters and contains all letters a..z
+%
+%
+find_fewest_letters(NumNodes,NodeLetters,UniqueLetters, X,Z) => 
+
+  NumLetters = 26,
+
+  X = new_array(NumNodes),
+  X :: 0..1,
+
+  % Occurrences of each letter, at least 1 occurrence
+  Y = new_array(NumLetters),
+  Y :: 1..NumNodes,
+
+  foreach(Node in UniqueLetters)
+    X[Node] #= 1
+  end,
+
+  % Ensure that all letters are used
+  foreach(K in 1..NumLetters)
+     Y[K] #= sum([X[I]*NodeLetters[I,K] : I in 1..NumNodes])
+  end,
+
+  Z #= sum(Y),
+  
+  % println(solve),
+  Vars = X ++ Y,
+  if var(Z) then
+    % Z is a variable: find optimal value
+    solve($[ff,split,min(Z),report(printf("Z:%d\n",Z))],Vars)
+  else
+    % Z is a nonvar value: just find a solution
+    solve($[ff,split,report(printf("Z:%d\n",Z))],Vars)  
+  end.
+
+
+%
+% Print a solution of shortest path
+%
+print_solution(X,Y,Z,NumNodes,NodeIdsRev,PrintAll) =>
+  if PrintAll then
+    % println(x=X),
+    println(z=Z),
+    % println([I=X[I] : I in 1..NumNodes, X[I] != I]),
+    foreach(I in 1..NumNodes+1)
+      if X[I] != I then
+        printf("%w -> %w\n",NodeIdsRev.get(I),NodeIdsRev.get(X[I]))
+      end
+    end,
+    nl
+  end,
+  println(y=Y),  
+  % We start at dummy node
+  ThisNode = NumNodes + 1,
+  Path = [],
+  while (Path.len < Z)
+     ThisNode := X[ThisNode],
+     Path := Path ++ [NodeIdsRev.get(ThisNode)]
+  end,
+  println(path=Path),
+  nl.
+
+%
+% Print solution for smallest subset and fewest characters
+%
+print_solution2(X,NumNodes,NodeIdsRev) =>
+  Subset = [],
+  foreach(I in 1..NumNodes)
+    if X[I] == 1 then
+      Subset := Subset ++ [NodeIdsRev.get(I)]
+    end
+  end,
+  println(subset=Subset).
+
+
+/*
+% Old plain LP program (too slow)
+get_route(Nodes,Translate,Route,Len) ?=> 
+
+  Letters = new_map(),
+  member(From,Nodes),
+  % println(from=From),
+  Route = [From],  
+  while (Letters.to_list.len < 26)
+     foreach(L in Translate.get(From))
+       % println(l=L),
+       Letters.put(L,1)
+     end,
+     % println(letters_len=Letters.to_list.len),
+     edge(From,To),
+     not membchk(To,Route),
+     % println([From,To]),
+     Route := Route ++ [To],
+     From := To
+  end,
+  println(route=Route),
+  Len = Route.len,  
+  println(rounteLen=Len),
+  println(letters=Letters),
+  nl,
+  % fail,
+  nl.
+
+*/
+
+alpha("abcdefghijklmnopqrstuvwxyz").
+
+% Filter out all characters not in Valid
+accept_alpha(L,Valid,Out) :-
+  accept_alpha(L,Valid,[],Out).
+
+accept_alpha([],_Valid,L,L).
+accept_alpha([H|T],Valid,L0,L) :-
+   membchk(H,Valid) -> 
+     accept_alpha(T,Valid,L0++[H],L)
+   ;
+     accept_alpha(T,Valid,L0,L).
+
+
+%
+% The names and connections are from the graph at
+% https://reference.wolfram.com/language/example/TripPlanning.html
+% 
+edges(LondonUnderground) =>
+LondonUnderground =
+[
+["Acton Central","South Acton"], 
+["Acton Central","Willesden Junction"], 
+["Acton Town","Chiswick Park"], 
+["Acton Town","Ealing Common"], 
+["Acton Town","South Ealing"], 
+["Acton Town","Turnham Green"], 
+["Aldgate","Liverpool Street"], 
+["Aldgate","Tower Hill"], 
+["Aldgate East","Liverpool Street"], 
+["Aldgate East","Tower Hill"], 
+["Aldgate East","Whitechapel"], 
+["All Saints","Langdon Park"], 
+["All Saints","Poplar"], 
+["Alperton","Park Royal"], 
+["Alperton","Sudbury Town"], 
+["Amersham","Chaifont & Latimer"], 
+["Anerley","Norwood Junction"], 
+["Anerley","Penge West"], 
+["Angel","King's Cross St. Pancras"], 
+["Angel","Old Street"], 
+["Archway","Highgate"], 
+["Archway","Tufnell Park"], 
+["Arnos Grove","Bounds Green"], 
+["Arnos Grove","Southgate"], 
+["Arsenal","Finsbury Park"], 
+["Arsenal","Holloway Road"], 
+["Baker Street","Bond Street"], 
+["Baker Street","Edgware Road"], 
+["Baker Street","Finchley Road"], 
+["Baker Street","Great Portland Street"], 
+["Baker Street","Marylebone"], 
+["Baker Street","Regent's Park"], 
+["Baker Street","St. John's Wood"], 
+["Balham","Clapham South"], 
+["Balham","Tooting Bec"], 
+["Bank","Liverpool Street"], 
+["Bank","London Bridge"], 
+["Bank","Moorgate"], 
+["Bank","Shadwell"], 
+["Bank","St. Paul's"], 
+["Bank","Waterloo"], 
+["Barbican","Farringdon"], 
+["Barbican","Moorgate"], 
+["Barking","East Ham"], 
+["Barking","Upney"], 
+["Barking","Woodrange Park"], 
+["Barkingside","Fairlop"], 
+["Barkingside","Newbury Park"], 
+["Barons Court","Earl's Court"], 
+["Barons Court","Hammersmith"], 
+["Barons Court","West Kensington"], 
+["Bayswater","Notting Hill Gate"], 
+["Bayswater","Paddington"], 
+["Beckton","Gallions Reach"], 
+["Beckton Park","Cyprus"], 
+["Beckton Park","Royal Albert"], 
+["Becontree","Dagenham Heathway"], 
+["Becontree","Upney"], 
+["Belsize Park","Chalk Farm"], 
+["Belsize Park","Hampstead"], 
+["Bermondsey","Canada Water"], 
+["Bermondsey","London Bridge"], 
+["Bethnal Green","Liverpool Street"], 
+["Bethnal Green","Mile End"], 
+["Blackfriars","Mansion House"], 
+["Blackfriars","Temple"], 
+["Blackhorse Road","South Tottenham"], 
+["Blackhorse Road","Tottenham Hale"], 
+["Blackhorse Road","Walthamstow Central"], 
+["Blackhorse Road","Walthamstow Queen's Road"], 
+["Blackwall","East India"], 
+["Blackwall","Poplar"], 
+["Bond Street","Green Park"], 
+["Bond Street","Marble Arch"], 
+["Bond Street","Oxford Circus"], 
+["Borough","Elephant & Castle"], 
+["Borough","London Bridge"], 
+["Boston Manor","Northfields"], 
+["Boston Manor","Osterley"], 
+["Bounds Green","Wood Green"], 
+["Bow Church","Devons Road"], 
+["Bow Church","Pudding Mill Lane"], 
+["Bow Road","Bromley-by-Bow"], 
+["Bow Road","Mile End"], 
+["Brent Cross","Golders Green"], 
+["Brent Cross","Hendon Central"], 
+["Brixton","Stockwell"], 
+["Brockley","Honor Oak Park"], 
+["Brockley","New Cross Gate"], 
+["Bromley-by-Bow","West Ham"], 
+["Brondesbury","Brondesbury Park"], 
+["Brondesbury","West Hampstead"], 
+["Brondesbury Park","Kensal Rise"], 
+["Buckhurst Hill","Loughton"], 
+["Buckhurst Hill","South Woodford"], 
+["Burnt Oak","Colindale"], 
+["Burnt Oak","Edgware"], 
+["Bushey","Carpenders Park"], 
+["Bushey","Watford High Street"], 
+["Caledonian Road","Holloway Road"], 
+["Caledonian Road","King's Cross St. Pancras"], 
+["Caledonian Road & Barnsbury","Camden Road"], 
+["Caledonian Road & Barnsbury","Highbury & Islington"], 
+["Camden Road","Kentish Town West"], 
+["Camden Town","Chalk Farm"], 
+["Camden Town","Euston"], 
+["Camden Town","Kentish Town"], 
+["Camden Town","Mornington Crescent"], 
+["Canada Water","Canary Wharf"], 
+["Canada Water","Rotherhithe"], 
+["Canada Water","Surrey Quays"], 
+["Canary Wharf","Heron Quays"], 
+["Canary Wharf","North Greenwich"], 
+["Canary Wharf","West India Quay"], 
+["Canning Town","East India"], 
+["Canning Town","North Greenwich"], 
+["Canning Town","Royal Victoria"], 
+["Canning Town","West Ham"], 
+["Canning Town","West Silvertown"], 
+["Cannon Street","Mansion House"], 
+["Cannon Street","Monument"], 
+["Canonbury","Dalston Kingsland"], 
+["Canonbury","Highbury & Islington"], 
+["Canons Park","Queensbury"], 
+["Canons Park","Stanmore"], 
+["Carpenders Park","Hatch End"], 
+["Chaifont & Latimer","Chesham"], 
+["Chaifont & Latimer","Chorleywood"], 
+["Chancery Lane","Holborn"], 
+["Chancery Lane","St. Paul's"], 
+["Charing Cross","Embankment"], 
+["Charing Cross","Leicester Square"], 
+["Charing Cross","Piccadilly Circus"], 
+["Chigwell","Grange Hill"], 
+["Chigwell","Roding Valley"], 
+["Chiswick Park","Turnham Green"], 
+["Chorleywood","Rickmansworth"], 
+["Clapham Common","Clapham North"], 
+["Clapham Common","Clapham South"], 
+["Clapham Junction","Imperial Wharf"], 
+["Clapham North","Stockwell"], 
+["Cockfosters","Oakwood"], 
+["Colindale","Hendon Central"], 
+["Colliers Wood","South Wimbeldon"], 
+["Colliers Wood","Tooting Broadway"], 
+["Covent Garden","Holborn"], 
+["Covent Garden","Leicester Square"], 
+["Crossharbour","Mudchute"], 
+["Crossharbour","South Quay"], 
+["Crouch Hill","Harringay Green Lanes"], 
+["Crouch Hill","Upper Holloway"], 
+["Croxley","Moor Park"], 
+["Croxley","Watford"], 
+["Crystal Palace","Sydenham"], 
+["Custom House for ExCeL","Prince Regent"], 
+["Custom House for ExCeL","Royal Victoria"], 
+["Cutty Sark for Maritime Greenwich","Greenwich"], 
+["Cutty Sark for Maritime Greenwich","Island Gardens"],
+["Cyprus","Gallions Reach"], 
+["Dagenham East","Dagenham Heathway"], 
+["Dagenham East","Elm Park"], 
+["Dalston Junction","Dalston Kingsland"], 
+["Dalston Junction","Haggerston"], 
+["Dalston Kingsland","Hackney Central"], 
+["Debden","Loughton"], 
+["Debden","Theydon Bois"], 
+["Deptford Bridge","Elverson Road"], 
+["Deptford Bridge","Greenwich"], 
+["Devons Road","Langdon Park"], 
+["Dollis Hill","Neasden"], 
+["Dollis Hill","Willesden Green"], 
+["Ealing Broadway","Ealing Common"], 
+["Ealing Broadway","West Acton"], 
+["Ealing Common","North Ealing"], 
+["Earl's Court","Gloucester Road"], 
+["Earl's Court","High Street Kensington"], 
+["Earl's Court","Kensington (Olympia)"], 
+["Earl's Court","West Brompton"], 
+["Earl's Court","West Kensington"], 
+["East Acton","North Acton"], 
+["East Acton","White City"], 
+["Eastcote","Rayners Lane"], 
+["Eastcote","Ruislip Manor"], 
+["East Finchley","Finchley Central"], 
+["East Finchley","Highgate"], 
+["East Ham","Upton Park"], 
+["East Putney","Putney Bridge"], 
+["East Putney","Southfields"], 
+["Edgware Road","Marylebone"], 
+["Edgware Road","Paddington"], 
+["Elephant & Castle","Kennington"], 
+["Elephant & Castle","Lambeth North"], 
+["Elm Park","Hornchurch"], 
+["Elverson Road","Lewisham"], 
+["Embankment","Temple"], 
+["Embankment","Waterloo"], 
+["Embankment","Westminster"], 
+["Epping","Theydon Bois"], 
+["Euston","King's Cross St. Pancras"], 
+["Euston","Mornington Crescent"], 
+["Euston","South Hampstead"], 
+["Euston","Warren Street"], 
+["Euston Square","Great Portland Street"], 
+["Euston Square","King's Cross St. Pancras"], 
+["Fairlop","Hainault"], 
+["Farringdon","King's Cross St. Pancras"], 
+["Finchley Central","Mill Hill East"], 
+["Finchley Central","West Finchley"], 
+["Finchley Road","Swiss Cottage"], 
+["Finchley Road","Wembley Park"], 
+["Finchley Road","West Hampstead"], 
+["Finchley Road & Frognal","Hamstead Heath"], 
+["Finchley Road & Frognal","West Hampstead"], 
+["Finsbury Park","Highbury & Islington"], 
+["Finsbury Park","Manor House"], 
+["Finsbury Park","Seven Sisters"], 
+["Forest Hill","Honor Oak Park"], 
+["Forest Hill","Sydenham"], 
+["Fulham Broadway","Parsons Green"], 
+["Fulham Broadway","West Brompton"], 
+["Gants Hill","Newbury Park"], 
+["Gants Hill","Redbridge"], 
+["Gloucester Road","High Street Kensington"], 
+["Gloucester Road","South Kensington"], 
+["Golders Green","Hampstead"], 
+["Goldhawk Road","Hammersmith"], 
+["Goldhawk Road","Sheperd's Bush"], 
+["Goodge Street","Tottenham Court Road"], 
+["Goodge Street","Warren Street"], 
+["Gospel Oak","Hamstead Heath"], 
+["Gospel Oak","Kentish Town West"], 
+["Gospel Oak","Upper Holloway"], 
+["Grange Hill","Hainault"], 
+["Greenford","Northolt"], 
+["Greenford","Perivale"], 
+["Green Park","Hyde Park Corner"], 
+["Green Park","Oxford Circus"], 
+["Green Park","Piccadilly Circus"], 
+["Green Park","Victoria"], 
+["Green Park","Westminster"], 
+["Gunnesbury","Kew Gardens"], 
+["Gunnesbury","South Acton"], 
+["Gunnesbury","Turnham Green"], 
+["Hackney Central","Homerton"], 
+["Hackney Wick","Homerton"], 
+["Hackney Wick","Stratford"], 
+["Haggerston","Hoxton"], 
+["Hammersmith","Ravenscourt Park"], 
+["Hammersmith","Turnham Green"], 
+["Hanger Lane","North Acton"], 
+["Hanger Lane","Perivale"], 
+["Harlesden","Stonebridge Park"], 
+["Harlesden","Willesden Junction"], 
+["Harringay Green Lanes","South Tottenham"], 
+["Harrow-on-the-Hill","North Harrow"], 
+["Harrow-on-the-Hill","Northwick Park"], 
+["Harrow-on-the-Hill","West Harrow"], 
+["Harrow & Wealdstone","Headstone Lane"], 
+["Harrow & Wealdstone","Kenton"], 
+["Hatch End","Headstone Lane"], 
+["Hatton Cross","Heathrow Terminals 1],2],3"], 
+["Hatton Cross","Hounslow West"], 
+["Heron Quays","South Quay"], 
+["High Barnet","Totteridge & Whetstone"], 
+["Highbury & Islington","King's Cross St. Pancras"], 
+["High Street Kensington","Notting Hill Gate"], 
+["Hillingdon","Ickenham"], 
+["Hillingdon","Uxbridge"], 
+["Holborn","Russell Square"], 
+["Holborn","Tottenham Court Road"], 
+["Holland Park","Notting Hill Gate"], 
+["Holland Park","Shepherd's Bush"], 
+["Hornchurch","Upminster Bridge"], 
+["Hounslow Central","Hounslow East"], 
+["Hounslow Central","Hounslow West"], 
+["Hounslow East","Osterley"], 
+["Hoxton","Schreditch High Street"], 
+["Hyde Park Corner","Knightsbridge"], 
+["Ickenham","Ruislip"], 
+["Imperial Wharf","West Brompton"], 
+["Island Gardens","Mudchute"], 
+["Kennington","Oval"], 
+["Kennington","Waterloo"], 
+["Kensal Green","Queen's Park"], 
+["Kensal Green","Willesden Junction"], 
+["Kensal Rise","Willesden Junction"], 
+["Kensington (Olympia)","Shepherd's Bush"], 
+["Kensington (Olympia)","West Brompton"], 
+["Kentish Town","Tufnell Park"], 
+["Kenton","South Kenton"], 
+["Kew Gardens","Richmond"], 
+["Kilburn","West Hampstead"], 
+["Kilburn","Willesden Green"], 
+["Kilburn High Road","Queen's Park"], 
+["Kilburn High Road","South Hampstead"], 
+["Kilburn Park","Maida Vale"], 
+["Kilburn Park","Queen's Park"], 
+["King George V","London City Airport"], 
+["King George V","Woolwich Arsenal"], 
+["Kingsbury","Queensbury"], 
+["Kingsbury","Wembley Park"], 
+["King's Cross St. Pancras","Russell Square"], 
+["Knightsbridge","South Kensington"], 
+["Ladbroke Grove","Latimer Road"], 
+["Ladbroke Grove","Westbourne Park"], 
+["Lambeth North","Waterloo"], 
+["Lancaster Gate","Marble Arch"], 
+["Lancaster Gate","Queensway"], 
+["Latimer Road","Sheperd's Bush"], 
+["Leicester Square","Piccadilly Circus"], 
+["Leicester Square","Tottenham Court Road"], 
+["Leyton","Leytonstone"], 
+["Leyton","Stratford"], 
+["Leyton Midland Road","Leytonstone High Road"], 
+["Leyton Midland Road","Walthamstow Queen's Road"], 
+["Leytonstone","Snaresbrook"], 
+["Leytonstone","Wanstead"], 
+["Leytonstone High Road","Wanstead Park"], 
+["Limehouse","Shadwell"], 
+["Limehouse","Westferry"], 
+["Liverpool Street","Moorgate"], 
+["London Bridge","Southwark"], 
+["London City Airport","Pontoon Dock"], 
+["Maida Vale","Warwick Avenue"], 
+["Manor House","Turnpike Lane"], 
+["Mile End","Stepney Green"], 
+["Mile End","Stratford"], 
+["Monument","Tower Hill"], 
+["Moorgate","Old Street"], 
+["Moor Park","Northwood"], 
+["Moor Park","Rickmansworth"], 
+["Morden","South Wimbeldon"], 
+["Neasden","Wembley Park"], 
+["New Cross","Surrey Quays"], 
+["New Cross Gate","Surrey Quays"], 
+["North Acton","West Acton"], 
+["North Ealing","Park Royal"], 
+["Northfields","South Ealing"], 
+["North Harrow","Pinner"], 
+["Northolt","South Ruislip"], 
+["North Wembley","South Kenton"], 
+["North Wembley","Wembley Central"], 
+["Northwick Park","Preston Road"], 
+["Northwood","Northwood Hills"], 
+["Northwood Hills","Pinner"], 
+["Norwood Junction","West Croydon"], 
+["Notting Hill Gate","Queensway"], 
+["Oakwood","Southgate"], 
+["Oval","Stockwell"], 
+["Oxford Circus","Piccadilly Circus"], 
+["Oxford Circus","Regent's Park"], 
+["Oxford Circus","Tottenham Court Road"], 
+["Oxford Circus","Warren Street"], 
+["Paddington","Royal Oak"], 
+["Paddington","Warwick Avenue"], 
+["Parsons Green","Putney Bridge"], 
+["Penge West","Sydenham"], 
+["Pimlico","Vauxhall"], 
+["Pimlico","Victoria"], 
+["Plaistow","Upton Park"], 
+["Plaistow","West Ham"], 
+["Pontoon Dock","West Silvertown"], 
+["Poplar","Westferry"], 
+["Poplar","West India Quay"], 
+["Preston Road","Wembley Park"], 
+["Prince Regent","Royal Albert"], 
+["Pudding Mill Lane","Stratford"], 
+["Ravenscourt Park","Stamford Brook"], 
+["Rayners Lane","South Harrow"], 
+["Rayners Lane","West Harrow"], 
+["Redbridge","Wanstead"], 
+["Roding Valley","Woodford"], 
+["Rotherhithe","Wapping"], 
+["Royal Oak","Westbourne Park"], 
+["Ruislip","Ruislip Manor"], 
+["Ruislip Gardens","South Ruislip"], 
+["Ruislip Gardens","West Ruislip"], 
+["Schreditch High Street","Whitechapel"], 
+["Seven Sisters","Tottenham Hale"], 
+["Shadwell","Tower Gateway"], 
+["Shadwell","Wapping"], 
+["Shadwell","Whitechapel"], 
+["Shepherd's Bush","White City"], 
+["Shepherd's Bush","Willesden Junction"], 
+["Sloane Square","South Kensington"], 
+["Sloane Square","Victoria"], 
+["Snaresbrook","South Woodford"], 
+["Southfields","Wimbeldon Park"], 
+["South Harrow","Sudbury Hill"], 
+["Southwark","Waterloo"], 
+["Stamford Brook","Turnham Green"], 
+["Stepney Green","Whitechapel"], 
+["St. James's Park","Victoria"], 
+["St. James's Park","Westminster"], 
+["St. John's Wood","Swiss Cottage"], 
+["Stockwell","Vauxhall"], 
+["Stonebridge Park","Wembley Central"], 
+["Stratford","West Ham"], 
+["Sudbury Hill","Sudbury Town"], 
+["Tooting Bec","Tooting Broadway"], 
+["Totteridge & Whetstone","Woodside Park"], 
+["Turnpike Lane","Wood Green"], 
+["Upminster","Upminster Bridge"], 
+["Wanstead Park","Woodrange Park"], 
+["Waterloo","Westminster"], 
+["Watford High Street","Watford Junction"], 
+["Westferry","West India Quay"], 
+["West Finchley","Woodside Park"], 
+["Wimbeldon","Wimbeldon Park"]
+]
