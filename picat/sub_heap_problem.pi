@@ -1,0 +1,164 @@
+/* 
+
+  Sub heap problem in Picat.
+
+  From Adam Atkinson
+  http://ludicum.org/ev/rm/19/our-dearest-problems/my-favourite-problem
+  """
+  I give you a heap of n tokens (n is a positive integer).
+
+  You divide it into sub-heaps, as many as you like, any positive
+  integer sizes you like.
+
+  I multiply the sizes of the sub-heaps and pay you that many Euros.
+    
+
+  How do you maximise your reward for all positive n?
+
+  [Example: n = 11. 4 x 5 x 2 = 40]
+
+  """
+ 
+  The first 30 entries:
+  [1,2,3,4,6,8,12,15,24,30,40,60,72,120,144,180,240,360,420,720,840,1008,1260,1680,2520,2880,5040,5760,6720,8064]
+
+  There is one OEIS sequence that matches this:
+  https://oeis.org/A034893 "Maximum of different products of partitions of n into distinct parts."
+
+  Here are the detailed solutions to the first N=1..30 (from go2/0):
+     [n = 1,opt = 1,heaps = [1]]
+     [n = 2,opt = 2,heaps = [2]]
+     [n = 3,opt = 3,heaps = [3]]
+     [n = 4,opt = 4,heaps = [4]]
+     [n = 5,opt = 6,heaps = [2,3]]
+     [n = 6,opt = 8,heaps = [2,4]]
+     [n = 7,opt = 12,heaps = [3,4]]
+     [n = 8,opt = 15,heaps = [3,5]]
+     [n = 9,opt = 24,heaps = [2,3,4]]
+     [n = 10,opt = 30,heaps = [2,3,5]]
+     [n = 11,opt = 40,heaps = [2,4,5]]
+     [n = 12,opt = 60,heaps = [3,4,5]]
+     [n = 13,opt = 72,heaps = [3,4,6]]
+     [n = 14,opt = 120,heaps = [2,3,4,5]]
+     [n = 15,opt = 144,heaps = [2,3,4,6]]
+     [n = 16,opt = 180,heaps = [2,3,5,6]]
+     [n = 17,opt = 240,heaps = [2,4,5,6]]
+     [n = 18,opt = 360,heaps = [3,4,5,6]]
+     [n = 19,opt = 420,heaps = [3,4,5,7]]
+     [n = 20,opt = 720,heaps = [2,3,4,5,6]]
+     [n = 21,opt = 840,heaps = [2,3,4,5,7]]
+     [n = 22,opt = 1008,heaps = [2,3,4,6,7]]
+     [n = 23,opt = 1260,heaps = [2,3,5,6,7]]
+     [n = 24,opt = 1680,heaps = [2,4,5,6,7]]
+     [n = 25,opt = 2520,heaps = [3,4,5,6,7]]
+     [n = 26,opt = 2880,heaps = [3,4,5,6,8]]
+     [n = 27,opt = 5040,heaps = [2,3,4,5,6,7]]
+     [n = 28,opt = 5760,heaps = [2,3,4,5,6,8]]
+     [n = 29,opt = 6720,heaps = [2,3,4,5,7,8]]
+     [n = 30,opt = 8064,heaps = [2,3,4,6,7,8]]
+
+  * go3/0: Using a fast "closed form" version (ported from the Maple code at the OEIS page).
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+%
+% CP approach
+%
+go ?=>
+  member(N,1..20),
+
+  sub_heap_maximize(N,X,Z),
+
+  println(z=Z),
+  println(x=[I : I in 1..N, X[I] == 1]),
+  nl,
+  fail,
+  nl.
+go => true.
+
+
+%
+% Check is there are any multiple optimial solutions.
+% There don't seems to be any.
+%
+go2 ?=>
+  Opts = [],
+  ManySolutions = [],
+  foreach(N in 1..30)
+    % println(n=N),
+    sub_heap_maximize(N,_X,Z),
+    % println(opt=Z),
+    Opts := Opts ++ [Z],
+    All = find_all(X,sub_heap_maximize(N,X,Z)),
+    % println(all=All),    
+    foreach(A in All)
+       println([n=N,opt=Z,heaps=[I : I in 1..N, A[I] == 1]]),
+    end,
+    % println(len=All.len),
+    if All.len > 1 then
+      ManySolutions := ManySolutions ++ [N]
+    end
+    % ,nl
+  end,
+  println(opts=Opts),
+  println(manySolutions=ManySolutions),
+  nl.
+go2 => true.
+
+
+%
+% Using the "close" form
+% From
+% Tomislav Došlić: "Maximum Product Over Partitions Into Distinct Parts"
+% https://cs.uwaterloo.ca/journals/JIS/VOL8/Doslic/doslic15.html
+% 
+go3 ?=>
+  println([a(N) : N in 1..200]),
+  nl.
+go3 => true.
+
+
+%
+% CP approach
+%
+sub_heap_maximize(N,X,Z) =>
+  X = new_list(N),
+  X :: 0..1,
+
+  N #= sum([I*(X[I] #> 0) : I in 1..N]),
+  Z #= prod([cond(X[I]#>0,I,1) : I in 1..N]),
+
+  Vars = X,
+
+  solve($[ff,split,max(Z)],Vars).
+
+%
+% From https://oeis.org/A034893
+% (translation of the Maple code)
+%
+% table
+% b(N,I) = T =>
+%   if I*(I+1)/2 < N then
+%     T = 0
+%   else 
+%     if N==0 then
+%       T = 1
+%     else
+%       T = max(b(N, I-1), I*b(N-I, min(N-I, I-1)))
+%     end
+%   end.
+
+% Neater
+table
+b(N,I) = 0, I*(I+1)/2 < N => true.
+b(0,_) = 1.
+b(N,I) = max(b(N, I-1), I*b(N-I, min(N-I, I-1))).
+
+a(N) = b(N,N).

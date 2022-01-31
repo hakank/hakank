@@ -1,0 +1,269 @@
+/* 
+
+  Fair division in Picat.
+
+  See https://en.wikipedia.org/wiki/Thue%E2%80%93Morse_sequence
+  """
+  In their book on the problem of fair division, Steven Brams and Alan Taylor invoked the 
+  Thue–Morse sequence but did not identify it as such. When allocating a contested pile 
+  of items between two parties who agree on the items' relative values, Brams and Taylor 
+  suggested a method they called balanced alternation, or taking turns taking turns 
+  taking turns . . . , as a way to circumvent the favoritism inherent when one party 
+  chooses before the other. An example showed how a divorcing couple might reach a 
+  fair settlement in the distribution of jointly-owned items. The parties would take 
+  turns to be the first chooser at different points in the selection process: 
+  Ann chooses one item, then Ben does, then Ben chooses one item, then Ann does.
+  """
+
+  This model har two approaches:
+
+  - Thue-Morse sequence fair division.
+    (See also http://hakank.org/picat/thue_morse_sequence.pi)
+    
+    This sequence assigns (deterministically) who should take turn
+    in order to make it as fair as possible,
+
+  - CP version
+    This approach ensures:
+    - that the number of items is as fair as possible
+    - that the difference of A's and B's total values is as small as possible.
+    One can not that there is probably not a unique solution.
+
+  Example: N = 22
+
+  values = [22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]
+
+  Thue-Morse sequence:
+    valuesSum = 253
+    tm = [0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1]
+    a = [22,19,17,16,13,12,10,7,5,4,2]
+    aSum = 127
+    aLen = 11
+    b = [21,20,18,15,14,11,9,8,6,3,1]
+    bSum = 126
+    bLen = 11
+    diff = 1
+
+  CP_approach
+    x = {1,0,0,1,1,1,1,0,0,1,0,1,0,0,0,0,0,0,1,1,1,1}
+    a2 = [21,20,15,14,12,10,9,8,7,6,5]
+    a2Sum = 127
+    b2 = [22,19,18,17,16,13,11,4,3,2,1]
+    b2Sum = 126
+    z2 = 1
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+%
+% Fair division of N things (two person)
+%
+go =>
+  nolog,
+  N = 22,
+  % Values = [1: _ in 1..N],
+  Values = N..-1..1,
+  % _ = random2(),
+  % Values = [1+random() mod N : _ in 1..N].sort_down(),
+  println(values=Values),
+  println(valuesSum=sum(Values)),
+
+  % Thue-Morse sequence
+  TM = [thue2(I) : I in 0..N-1],
+  println(tm=TM),
+
+  A = [Values[I] : I in 1..N, TM[I] = 0],
+  ASum = sum(A),
+  B = [Values[I] : I in 1..N, TM[I] = 1],
+  BSum = sum(B),
+
+  println(a=A),
+  println(aSum=ASum),
+  println(aLen=A.len),
+  println(b=B),
+  println(bSum=BSum),
+  println(bLen=B.len),
+  println(diff=(ASum-BSum)),
+
+  nl,
+  % 
+  % CP/SAT approach: slower for larger N
+  % 
+  println(cp_approach),
+  fair_division_cp(Values,X,A2,B2,Z2),
+  println(x=X),
+  println(a2=A2),
+  println(a2Sum=sum(A2)),
+  println(b2=B2),
+  println(b2Sum=sum(B2)),
+  println(z2=Z2),
+
+  % fail,
+
+  nl.
+
+
+% Thue-Morse seq:
+% [0]
+% [0,1]
+% [0,1,1,0]
+% [0,1,1,0, 1,0,0,1]
+% [0,1,1,0, 1,0,0,1, 1,0,0,1,0,1,1,0]
+% [0,1,1,0, 1,0,0,1, 1,0,0,1,0,1,1,0, 1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1]
+% [0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0]
+% [0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1]
+
+
+%     [0,1,2]
+% s = [0,1,2,1,2,0]
+% s = [0,1,2,1,2,0, 1,2,0,0,1,2]
+% s = [0,1,2, 1,2,0, 1,2,0, 0,1,2, 1,2,0, 0,1,2, 0,1,2, 1,2,0]
+% s = [0,1,2, 1,2,0, 1,2,0, 0,1,2, 1,2,0, 0,1,2, 0,1,2, 1,2,0, 1,2,0, 0,1,2, 0,1,2, 1,2,0,0,1,2,1,2,0,1,2,0,0,1,2]
+
+
+% M person with M things with the values of M..-1..1
+%
+go2 =>
+  M = 14, % M persons
+  
+  % iterate on selecting M**I things
+  S = 0..M-1,
+  println(S),
+  while (true) 
+    % S := S ++ S.reverse(),
+    % S := S ++ S.rotate_right(S.len div M).reverse(),
+    Rot = S.len div M,
+    println(rot=Rot),
+    S := S ++ S.rotate_left(Rot).reverse(),
+    % S := S ++ S.inverse(N),
+    println(s=S),
+    Map2 = new_map(),
+    foreach(I in 1..M..S.len)
+      SS = [S[J] : J in I..I+M-1],
+      println(SS),
+      Map2.put(SS,Map2.get(SS,0)+1)
+    end,
+    println(map2=Map2),
+    Len = S.len,
+    Points = new_map([I=0 : I in 0..M-1]),
+    foreach(I in 1..S.len)
+       Points.put(S[I],Points.get(S[I])+1) % Value = 1
+       % Points.put(S[I],Map.get(S[I])+(Len-I+1)), % "Reversed value" = LenI+1
+       % println(points=Points)
+    end,
+    println(points=Points)
+  end,
+
+  nl.
+
+go3 => 
+    N = 13,
+    Order = 1..N,
+    InOut = out, % out is the "normal" shuffle
+    Perfect1 = perfect(N, InOut),
+    Perfect = copy_term(Perfect1),
+    println('order   '=Order),
+    println(perfect1=Perfect),
+    Count := 1,
+    while (Perfect != Order) 
+      Perfect := [Perfect1[Perfect[I]] : I in 1..N],
+      println(perfect2=Perfect),
+      Count := Count + 1
+    end,
+    println(count=Count),
+    nl.
+    
+
+
+%
+% Init: perfect shuffle 1..N
+%
+perfect(N,InOut) = Perfect => 
+  if InOut = out, N mod 2 = 1 then 
+    Top = 1..(N div 2)+1,
+    Bottom = (N div 2)+2..N
+  else
+    Top = 1..(N div 2),
+    Bottom = (N div 2)+1..N
+  end,
+  Perfect = perfect_faro(Top, Bottom, InOut).
+
+
+perfect_faro(Top, Bottom, InOut) = Deck =>
+  Len = Top.length + Bottom.length,
+  Deck = [],
+  TIx = 0,
+  BIx = 0,
+  Count = cond(InOut==in, 0, 1),
+  while (Deck.length < Len)
+     % println(deck=Deck),
+     % println(deckLen=Deck.len),
+     Pile = "",
+     Mod = Count mod 2,
+     if (TIx < Top.length && Mod == 1) then
+        % take from the top pile
+        TIx := TIx +1,
+        Deck := Deck ++ [Top[TIx]],
+        Pile := "top"
+     elseif (BIx < Bottom.length && Mod == 0) then 
+        % take from the bottom pile
+        BIx := BIx +1,
+        Deck := Deck ++ [Bottom[BIx]],
+        Pile := "bottom"
+     end,    
+     if Pile.length > 0 then
+       % println([count=Count, pile=Pile, tix=TIx, bix=BIx, deck=Deck]),
+       Count := Count + 1
+     end
+  end.
+
+
+inverse(L,N) = [L[N-I+1] : I in 1..N].
+
+fair_division_cp(Values, X,A,B,Z) =>
+  Sum = sum(Values),
+  N = Values.len,
+  X = new_array(N),
+  X :: 0..1, % A = 0, B = 1,
+  Z #= abs(sum([Values[I]*(X[I]#=0) : I in 1..N])-sum([Values[I]*(X[I]#=1) : I in 1..N])),
+  abs(sum([(X[I]#=0) : I in 1..N])-sum([X[I]#=1 : I in 1..N])) #<= 1,
+  if Sum mod 2 == 1 then
+    Z#>=1
+  end,
+  % solve($[ff,split,min(Z),report(printf("Z: %d\n",Z))],X),
+  solve($[degree,updown,min(Z)],X),
+
+  A = [Values[I] : I in 1..N, X[I] == 0],
+  B = [Values[I] : I in 1..N, X[I] == 1].
+
+
+  
+  
+
+
+%
+% See http://hakank.org/picat/thue_morse_sequence.pi
+%
+table
+thue2(0) = 0.
+thue2(N) = TM, N mod 2 = 0 => TM = thue2(N div 2).
+thue2(N) = TM, N mod 2 = 1 => TM = 1-thue2(N div 2).
+
+% rotate list L to the left N times
+rotate_left(L) = rotate_left(L,1).
+rotate_left(L,_) = L, not list(L) => true.
+rotate_left(L,N) = slice(L,N+1,L.length) ++ slice(L,1,N).
+
+% rotate list L to the right N times
+rotate_right(L) = rotate_right(L,1).
+rotate_right(L,N) = Rot =>
+  Len = L.length,
+  Rot=slice(L,Len-N+1,Len) ++ slice(L,1,Len-N).
+

@@ -13,6 +13,30 @@
   diagonally.
   """
 
+  Problem    CP        SAT     SMT/z3        SMT/cvc4
+            (forward/          (system time) (system time)
+             up)
+  --------------------------------------------------
+  1          0.001s   0.008s     0.095s       0.268s
+  2          0.014s   0.085s     4.94s       >12000s (>3h)  
+  3          0.008s   0.039s     0.495s      124.46s
+  4          0.002s   0.033s     0.419s       43.90s
+  5          0.015s   0.113s     2.27s       219.69s
+  6          0.037s   0.175s    25.05s        -
+  7       280.145s    1.461s   751.89s        -
+  8        97.114s    1.835s  5636.67s        -
+
+
+  As usual, CP tends to be faster on the smaller instances (1-6) and
+  SAT is (much) faster on the larger instances (7 and 8).
+  Also it's interesting that CP is much slower on problem 7 than problem
+  8 while SAT has the opposite behavior.
+
+  SMT/z3 is slow. SMT/cvc4 is very slow on the simple examples so I skipped 
+  the rest of the problems.
+  Note that the time for the SMT solvers is via the system time command since
+  the Picat's time/1 don't report the correct solve time (it's way too small).
+
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -20,29 +44,42 @@
 */
 
 import util.
-import sat.
+% import sat.
+import smt.
 
 main => go.
+
+main(Args) =>
+  statistics(runtime,_),
+  N = Args[1].to_int,
+  solveit(N),
+  statistics(runtime, [_,Time]),
+  println(time=Time),
+  nl.
 
 go =>
    time2($solveit(6)).
 
-go1 => 
-   time2($solveit(1)).
-
+%
+% Test all problems
+%
 go2 =>
-   % NumProblems = 8,
-   foreach(P in 1..8) time2($solveit(P)) end.
+   foreach(P in 1..8)
+     time2($solveit(P))
+   end.
 
-go3 => 
-   time2($solveit(7)).
-
+%
+% Solve the problem instance
+%
 solveit(Problem) =>
    printf("\nProblem %d\n", Problem),
    problem(Problem,X),
    hidato(X).
 
 
+%
+% Solve the Hidato puzzle
+%
 hidato(X) =>
 
    N = X.length,
@@ -90,7 +127,6 @@ hidato(X) =>
        IJ #= (I-1)*N + J,
        element(IJ, XList, K),
        
-
        % 2. Then, find the position of the next value, i.e.
        % K+1 #= X[I+A,J+B], % this don't work
        IA_JB #= (I-1+A)*N + JB,
@@ -102,11 +138,16 @@ hidato(X) =>
    end,
 
    % search
-   % Vars = XList ++ Extras ++ Connect,
-   % Vars = Extras ++ Connect ++ XList,
-   Vars = Connect ++ XList ++ Extras,
+   if membchk(sat,loaded_modules()) then
+     % This seems to be the best for the SAT solver
+     Vars = XList ++ Extras ++ Connect
+   else   
+     % Vars = Extras ++ Connect ++ XList,
+     % This seems to be the best for CP
+     Vars = Connect ++ XList ++ Extras 
+   end,
    % solve([inout,down],Vars),
-   solve([],Vars),
+   solve($[cvc4,forward,up],Vars),
    pretty_print(X).
 
 
@@ -198,7 +239,8 @@ problem(6,P) =>
 
 
 % Problem 156 (Master}
-% (This is harder to solve than the 12x12 prolem 188 below...%}
+% (This is harder to solve for CP than the 12x12 prolem 188 below.)
+%
 problem(7, P) => 
     P = {{88, _, _,100, _, _,37,_, _,34},
          { _,86, _,96,41, _, _,36, _, _},

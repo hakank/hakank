@@ -1,0 +1,162 @@
+/* 
+
+  Cutting stock problem - two stage programs  in Picat.
+
+  From https://en.wikipedia.org/wiki/Cutting_stock_problem
+  """
+  A paper machine can produce an unlimited number of master (jumbo) rolls, each 5600 mm wide. 
+  The following 13 items must be cut, in the table below.
+
+  The important thing about this kind of problem is that many different product units can be made 
+  from the same master roll, and the number of possible combinations is itself very large, in general, 
+  and not trivial to enumerate.
+
+  The problem therefore is to find an optimum set of patterns of making product rolls from the master 
+  roll, such that the demand is satisfied and waste is minimized.
+
+  Width	#Items
+  1380	22
+  1520	25
+  1560	12
+  1710	14
+  1820	18
+  1880	18
+  1930	20
+  2000	10
+  2050	12
+  2100	14
+  2140	16
+  2150	18
+  2200	20
+  """
+
+  See cutting_stock.pi for the first (and experimental) approach on this problem.
+  Using that program we discovered that the solvers behaved very different for the
+  two stages:
+
+   * CP (and SAT) was quite fast on solving the first stage, the pattern generating
+     problem, but very slow on solving the main optimization problem ,
+   * On the other hand, MIP (and SMT!) was slow on generating the patterns but fast
+     on solving the optimization problem,
+
+  Since Picat don't support two different solvers in the same run we now instead
+  combine these strengths by two different Picat programs for the two stages:
+
+  * stage 1: cutting_stock_stage1.pi 
+    This Picat program generates the pattern using CP (since it's fastest) and save the
+    patterns into a file and calls the stage 2 program.
+
+  * stage 2: cutting_stock_stage2.pi 
+    This program reads the saved information and solves the optimization problem.
+
+  Result for generating patterns and solving the optimization problem:
+  - minimizing rolls is now completely solved in 0.155s
+  - minimizing wastes is now completely solved in 0.151s
+
+  Compare this with the fastest time using the first approach (running cutting_stock.pi)
+  which - a little surprisingly - was using the SMT/z3 solver: 22.02s and 22.7s respectively.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp. 
+
+main => go.
+
+%
+% Stage 1:
+% * Generate the patterns and save to file (cutting_stock_info.pi)
+% * Call the second stage program
+%
+go ?=>
+  nolog,
+  File = "cutting_stock_data.pi",
+  Stage2Program = "cutting_stock_stage2.pi",
+
+
+  master_width(MasterWidth),
+  demand(Demand),
+  N = Demand.len,
+  MaxX = 20,
+ 
+  DemandWidths = [Demand[I,1] : I in 1..N],
+  time2([Patterns,Wastes] = patterns(MasterWidth,DemandWidths)),
+
+  % Type of problem: minimize number of rolls or waste
+  Type = "rolls",
+  % Type = "waste",
+
+  generate_file(File,MasterWidth,Demand,Patterns,Wastes,MaxX,Type),
+
+  % Next stage is done by cutting_stock_stage2.pi
+  _ = command("picat " ++ Stage2Program),
+  nl,
+  nl.
+go => true.
+
+%
+% Save data to the datafile
+%
+generate_file(File,MasterWidth,Demand,Patterns,Wastes,MaxX,Type) =>
+  % Save to file
+  Writer = open(File,write),
+  printf(Writer,"master_width(%w).\n",MasterWidth),
+  printf(Writer,"demand(%w).\n",Demand),    
+  printf(Writer,"patterns(%w).\n",Patterns),
+  printf(Writer,"wastes(%w).\n",Wastes),
+  printf(Writer,"max_x(%w).\n",MaxX),
+  printf(Writer,"type(%w).\n",Type),      
+  flush(Writer),
+  close(Writer),
+  println("Data is generated. Now solve the problem."),
+  nl.
+
+
+
+%
+% Generate all the possible patterns.
+%
+patterns(MasterWidth,Widths) = [PatternsS,WastesS] =>
+  N = Widths.len,
+  X = new_list(N),
+  X :: 0..10,
+  Z #= sum([X[I]*Widths[I] : I in 1..N]),
+  Z #<= MasterWidth,
+  Z #> 0,
+  
+  All = solve_all($[],X),
+  Patterns = [],
+  foreach(Pattern in All)
+    S = sum([Widths[I]*Pattern[I] : I in 1..N]),
+    Waste = MasterWidth - S,
+    Patterns := Patterns ++ [[Waste,Pattern]]
+  end,
+  % Sort the patterns
+  PatternsSorted = Patterns.sort,
+  PatternsS = [P[2] : P in PatternsSorted],
+  WastesS = [P[1] : P in PatternsSorted].
+
+
+%
+% Data
+%
+master_width(5600).
+demand(Demand) =>
+  Demand = [[1380,22],
+            [1520,25],
+            [1560,12],
+            [1710,14],
+            [1820,18],
+            [1880,18],
+            [1930,20],
+            [2000,10],
+            [2050,12],
+            [2100,14],
+            [2140,16],
+            [2150,18],
+            [2200,20]].
+
+

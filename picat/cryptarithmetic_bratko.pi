@@ -1,0 +1,152 @@
+/* 
+
+  Cryptartithmic problems (Bratko) in Picat.
+
+  From Bratko: Prolog Programming for AI, 4th edition, page 103f
+
+  This is a plain Prolog style approach. For faster implementations 
+  using CP, see the following:
+  * alphametic.pi
+  * alphametic2.pi
+  * alphametic3.pi
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => go.
+
+%
+% DONALD + GERALD = ROBERT using Bratko's approach
+%
+% 0.56s for first solution,
+% 1.062s for proving unicity
+%
+go ?=>
+  donald([D,O,N,A,L,G,E,R,B,T]),
+  println(result=[D,O,N,A,L,G,E,R,B,T]),
+  println(donald=[D,O,N,A,L,D]),
+  println(gerald=[G,E,R,A,L,D]),
+  println(robert=[R,O,B,E,R,T]),
+  % fail, % proving unicity
+  nl.
+go => true.
+
+%
+% DONALD + GERALD = ROBERT using arith/3
+% 1.331s for first solution
+% 2.716s for proving unicity
+%
+go2 ?=>
+  arith([D,O,N,A,L,D],[G,E,R,A,L,D],[R,O,B,E,R,T]),
+  println(donald=[D,O,N,A,L,D]),
+  println(gerald=[G,E,R,A,L,D]),
+  println(robert=[R,O,B,E,R,T]),
+  % fail, % proving unicity
+  nl.
+go2 => true.
+
+%
+% SEND + MORE = MONEY using Bratko's approach
+% 0.647s for first solution
+% 0.671s for proving unicity
+% Note that we have to add the temporary variables
+% T1 and T2 and add constraints in send_more_money/1.
+%
+go3 ?=>
+  send_more_money([S,E,N,D,M,O,R,Y,T1,T2]),
+  println(send=[S,E,N,D]),
+  println(more=[M,O,R,E]),
+  println(money=[M,O,N,E,Y]),
+  println([t1=T1,t2=T2]),
+  % fail, % proving unicity
+  nl.
+go3 => true.
+
+
+
+%
+% SEND + MORE = MONEY using arith/3
+% 1.048s for first solution
+% 1.082s for proving unicity
+%
+go4 ?=>
+  arith([S,E,N,D],[M,O,R,E],[M,O,N,E,Y]),
+  println(send=[S,E,N,D]),
+  println(more=[M,O,R,E]),
+  println(money=[M,O,N,E,Y]),
+  % fail, % proving unicity
+  nl.
+go4 => true.
+
+
+%
+% DONALD + GERALD = ROBERT
+% equational approach
+%
+donald([D,O,N,A,L,G,E,R,B,T]) :-
+  assign([0,1,2,3,4,5,6,7,8,9],[D,O,N,A,L,G,E,R,B,T]),
+  100000*D + 10000*O + 1000*N + 100*A + 10*L + D +
+  100000*G + 10000*E + 1000*R + 100*A + 10*L + D ==
+  100000*R + 10000*O + 1000*B + 100*E + 10*R + T.
+
+
+%
+% SEND + MORE = MONEY
+% equational approach
+%
+% Note that since the equation is underdetermined with the 8
+% variables S,E,N,D,M,O,R, and Y we have to add T1 and T2,
+% as well as state that M and S != 0.
+% 
+send_more_money([S,E,N,D,M,O,R,Y,T1,T2]) :-
+  assign([0,1,2,3,4,5,6,7,8,9],[S,E,N,D,M,O,R,Y,T1,T2]),
+  T1 < T2, % symmetry breaking
+            1000*S + 100*E + 10*N + D +
+            1000*M + 100*O + 10*R + E ==
+  10000*M + 1000*O + 100*N + 10*E + Y,
+  M != 0, S != 0.
+
+
+
+assign(_,[]).
+assign(Digs,[D|Vars]) :-
+  del(D,Digs,Digs1),
+  assign(Digs1,Vars).
+
+
+% del( X, L0, L): List L is equal to list L0 with X deleted
+%   Note: Only one occurrence of X is deleted
+%   Fail if X is not in L0 
+del(X,[X|Rest],Rest).  % Delete the head
+del(X,[Y| Rest0],[Y|Rest]) :-
+  del(X,Rest0,Rest). % Delete from tail
+
+%
+% hakank: I added this to simplifiy the
+% equations.
+% Note that it's quite slower than using
+% the equational approach.
+%
+arith(L1,L2,L3) :- 
+  L = (L1 ++ L2 ++ L3).remove_dups(),
+  assign([0,1,2,3,4,5,6,7,8,9],L),
+  L1[1] > 0, L2[1]>0, L3[1] > 0,
+  sum_digits(L1,L1Sum),
+  sum_digits(L2,L2Sum),
+  sum_digits(L3,L3Sum),
+  L1Sum + L2Sum == L3Sum.
+
+%
+% sum digits([1,2,3,4,5],12345).
+% This is not reversible.
+%
+sum_digits(L,Sum) :-
+  sum_digits(L,0,Sum).
+sum_digits([],Sum,Sum).
+sum_digits(L,Sum0,Sum) :-
+  L = [H|T],
+  Len = L.len,
+  sum_digits(T,Sum0+H*10**(Len-1),Sum).

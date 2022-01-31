@@ -1,0 +1,880 @@
+/*
+
+  Rectangle placement with area (2d) in Picat.
+
+  This is a generalization of the 2d rectangle placement problem where 
+  the input is the area instead of the width and height 
+  of the shapes. It is also a generalization of the rotation variant.
+
+
+  This of it as a task of V units - say 12 - that then can be done with some of these shapes:
+    - 1 person in 12 minutes
+    - 2 persons in 6 minutes
+    - 3 persons in 4 minutes
+    - 4 persons in 3 minutes
+    - 6 persons in 2 minutes
+    - 12 persons in 1 minute
+
+  For tasks with P (prime) units there are only two possible selections: 
+  [1,P] and [P,1].
+
+
+  (And we totally ignore all the problem of communication between the people for the task.)
+
+  Here's an example of the areas [1,2,3,4,5,6,7,8,9,10]. The possible shapes are
+
+    allShapes = [[[1,1]],
+                 [[1,2],[2,1]],
+                 [[1,3],[3,1]],
+                 [[1,4],[2,2],[4,1]],
+                 [[1,5],[5,1]],
+                 [[1,6],[2,3],[3,2],[6,1]],
+                 [[1,7],[7,1]],
+                 [[1,8],[2,4],[4,2],[8,1]],
+                 [[1,9],[3,3],[9,1]],
+                 [[1,10],[2,5],[5,2],[10,1]]]
+
+  Note that for prime numbers there is only two possible shapes, [1,p] and [p,1].
+
+  The weights for this instance is width = 7,height = 8
+
+  Here is one solution:
+    x = {1,1,3,2,5,6,7,4,3,5}
+    y = {1,2,1,2,1,1,1,2,3,2}
+    startX = {2,1,2,1,3,2,1,1,5,3}
+    startY = {5,4,6,1,5,4,3,7,6,1}
+    selection = {1,1,2,2,2,4,2,3,2,3}
+     4  4  7  2  2  _  8  8 
+     4  4  7  6  1  3  8  8 
+    10 10  7  6  5  3  8  8 
+    10 10  7  6  5  3  8  8 
+    10 10  7  6  5  9  9  9 
+    10 10  7  6  5  9  9  9 
+    10 10  7  6  5  9  9  9 
+    DDGBB_HH
+    DDGFACHH
+    JJGFECHH
+    JJGFECHH
+    JJGFEIII
+    JJGFEIII
+    JJGFEIII
+
+    num_empty = 1
+
+  The selection array shows that for the 3rd shape (area=3) the [3,1] shape 
+  variant was selected (x[3] = 3, y[3] = 1) and for the 6th shape (area=6) the 
+  4th shape ([6,1]) was selected, i.e. the vertical shape. For area 10,
+  the shape [5,2] was selected (the 3rd shape variant).
+
+  Another solution of this instance is the following where we can see, for example,
+  that now the 10th shape variant is [5,2]:
+
+   x = {1,2,1,1,1,2,1,1,3,2}
+   y = {1,1,3,4,5,3,7,8,3,5}
+   startX = {6,1,1,2,3,1,6,7,3,4}
+   startY = {1,1,6,5,4,2,2,1,1,4}
+   selection = {1,2,1,1,1,2,1,1,2,2}
+    2  6  6  6  _  3  3  3 
+    2  6  6  6  4  4  4  4 
+    9  9  9  5  5  5  5  5 
+    9  9  9 10 10 10 10 10 
+    9  9  9 10 10 10 10 10 
+    1  7  7  7  7  7  7  7 
+    8  8  8  8  8  8  8  8 
+   BFFF_CCC
+   BFFFDDDD
+   IIIEEEEE
+   IIIJJJJJ
+   IIIJJJJJ
+   AGGGGGGG
+   HHHHHHHH
+
+
+
+  We can also see that this is almost "perfect", with only 1 empty (unoccupied) slot.
+
+
+  Here is a solution to the 1..26 problem, i.e. the area are each of 
+  1..26. The width = 14, height=26. 
+  The list selection is which of the i'th shape that is selected for the i'th task.
+
+    vsum = 351
+    allShapes = [[[1,1]],[[1,2],[2,1]],[[1,3],[3,1]],[[1,4],[2,2],[4,1]],[[1,5],[5,1]],[[1,6],[2,3],[3,2],[6,1]],[[1,7],[7,1]],[[1,8],[2,4],[4,2],[8,1]],[[1,9],[3,3],[9,1]],[[1,10],[2,5],[5,2],[10,1]],[[1,11],[11,1]],[[1,12],[2,6],[3,4],[4,3],[6,2],[12,1]],[[1,13],[13,1]],[[1,14],[2,7],[7,2],[14,1]],[[1,15],[3,5],[5,3],[15,1]],[[1,16],[2,8],[4,4],[8,2],[16,1]],[[1,17],[17,1]],[[1,18],[2,9],[3,6],[6,3],[9,2],[18,1]],[[1,19],[19,1]],[[1,20],[2,10],[4,5],[5,4],[10,2],[20,1]],[[1,21],[3,7],[7,3],[21,1]],[[1,22],[2,11],[11,2],[22,1]],[[1,23],[23,1]],[[1,24],[2,12],[3,8],[4,6],[6,4],[8,3],[12,2],[24,1]],[[1,25],[5,5],[25,1]],[[1,26],[2,13],[13,2],[26,1]]]
+
+    [n = 26,width = 15,height = 24]
+    areas = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
+    x = {1,2,3,1,1,2,7,2,3,2,1,1,1,14,1,4,1,2,1,4,7,2,1,2,5,2}
+    y = {1,1,1,4,5,3,1,4,3,5,11,12,13,1,15,4,17,9,19,5,3,11,23,12,5,13}
+    startX = {13,12,1,15,12,6,6,2,6,13,6,4,1,2,14,1,15,2,11,1,8,7,5,9,6,12}
+    startY = {15,14,1,1,15,21,20,16,12,16,1,7,7,24,1,20,5,7,1,2,21,1,1,1,15,1}
+    selection = {1,2,2,1,1,2,2,2,2,2,1,1,1,4,1,3,1,2,1,3,3,2,1,2,2,2}
+     3 20 20 20 20 20 13 13 13 13 13 13 13 13 13 13 13 13 13 16 16 16 16  _ 
+     3 20 20 20 20 20 18 18 18 18 18 18 18 18 18  8  8  8  8 16 16 16 16 14 
+     3 20 20 20 20 20 18 18 18 18 18 18 18 18 18  8  8  8  8 16 16 16 16 14 
+     _ 20 20 20 20 20 12 12 12 12 12 12 12 12 12 12 12 12  _ 16 16 16 16 14 
+    23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 23 14 
+    11 11 11 11 11 11 11 11 11 11 11  9  9  9 25 25 25 25 25  7  6  6  6 14 
+    22 22 22 22 22 22 22 22 22 22 22  9  9  9 25 25 25 25 25  7  6  6  6 14 
+    22 22 22 22 22 22 22 22 22 22 22  9  9  9 25 25 25 25 25  7 21 21 21 14 
+    24 24 24 24 24 24 24 24 24 24 24 24  _  _ 25 25 25 25 25  7 21 21 21 14 
+    24 24 24 24 24 24 24 24 24 24 24 24  _  _ 25 25 25 25 25  7 21 21 21 14 
+    19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19  7 21 21 21 14 
+    26 26 26 26 26 26 26 26 26 26 26 26 26  2  5  5  5  5  5  7 21 21 21 14 
+    26 26 26 26 26 26 26 26 26 26 26 26 26  2  1 10 10 10 10 10 21 21 21 14 
+    15 15 15 15 15 15 15 15 15 15 15 15 15 15 15 10 10 10 10 10 21 21 21 14 
+     4  4  4  4 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17  _  _ 14 
+    CTTTTTMMMMMMMMMMMMMPPPP_
+    CTTTTTRRRRRRRRRHHHHPPPPN
+    CTTTTTRRRRRRRRRHHHHPPPPN
+    _TTTTTLLLLLLLLLLLL_PPPPN
+    WWWWWWWWWWWWWWWWWWWWWWWN
+    KKKKKKKKKKKIIIYYYYYGFFFN
+    VVVVVVVVVVVIIIYYYYYGFFFN
+    VVVVVVVVVVVIIIYYYYYGUUUN
+    XXXXXXXXXXXX__YYYYYGUUUN
+    XXXXXXXXXXXX__YYYYYGUUUN
+    SSSSSSSSSSSSSSSSSSSGUUUN
+    ZZZZZZZZZZZZZBEEEEEGUUUN
+    ZZZZZZZZZZZZZBAJJJJJUUUN
+    OOOOOOOOOOOOOOOJJJJJUUUN
+    DDDDQQQQQQQQQQQQQQQQQ__N
+
+    num_empty = 9
+
+
+    CPU time 1.431 seconds. Backtracks: 0
+
+  Here are the different experiments:
+  * go/0: Find all solutions for an instance
+  * go2/0: Time to find first solution of some 1..N problems.
+  * go3/0: Time to find the optimal width and height for 
+           some 1..N problems.
+  * go4/0: Number of solutions for the first 10 1..N problems.
+  * go5/0: Number of different optimal sizes for some of the
+           1..N problems.
+  * go6/0: Example when just some of the possible shapes are
+           used.
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+
+main => go.
+
+
+%
+% Find all solutions for a problem.
+% For small instances, use CP.
+%
+% Note: If there is a prime number in the areas then it must
+% be fully "extracted" in either weight or height.
+%
+go ?=>
+
+  Map = get_global_map(),
+  Map.put(count,0),
+
+  problem(10,Areas,Width,Height),
+
+  % Areas = [2,3,4,6,7,12,14],
+  % Max = max(Areas),
+  % println(areas=Areas),
+  VSum = sum(Areas),
+  println(vsum=VSum),
+  all_shapes(Areas,AllShapes),
+  println(allShapes=AllShapes),
+
+  % Width = 6,
+  % Height = 8,
+
+  % time2(solve_and_print(X,Y,Width,Height)),
+  time2(solve_and_print(Areas,AllShapes,Width,Height, X, _Y)),
+
+  flush(stdout),
+  (nonvar(X) -> Map.put(count,Map.get(count)+1) ; true),
+  println(count=Map.get(count)),
+
+  fail,
+
+  nl.
+go => true.
+
+
+%
+% Time for _first_ solution of the 1..N problems (see below).
+%
+% N  Width Height  Time (SAT)  Time (SAT, symmetry breaking)
+% ----------------------------------------------------------
+%  1	 1	 1	0.000s          0.000s
+%  2	 2	 2	0.000s          0.001s
+%  3	 2	 3	0.001s          0.000s
+%  4	 3	 4	0.001s          0.001s
+%  5	 3	 5	0.003s          0.000s
+%  6	 4	 6	0.004s          0.005s
+%  7	 4	 7	0.006s          0.006s
+%  8	 5	 8	0.009s          0.008s
+%  9	 5	 9	0.010s          0.015s
+% 10	 7	 8	0.015s          0.022s
+% 11	 6	11	0.041s          0.041s
+% 12	 7	12	0.029s          0.028s
+% 13	 7	13	0.060s          0.087s
+% 14	 8	14	0.086s          0.070s(*)
+% 15	 8	15	0.158s          0.150s
+% 16	10	14	0.179s          0.141s(*)
+% 17	 9	17	0.671s          0.631s(*)
+% 18	10	18	0.199s          0.179s(*)
+% 19	10	19	0.793s          0.670s(*)
+% 20	11	20	0.304s          0.316s
+% 21	11	21	0.996s          1.695s
+% 22	13	20	0.958s          0.375s(*)
+% 23	12	23	1.037s          3.578s
+% 24	13	24	0.998s          0.436s(*)
+% 25	13	25	2.524s          1.217s(*)
+% 26	15	24	1.493s          1.217s(*)
+% 30	16	30	2.259s          2.004s(*)
+% 35	18	35	14.829s        64.272s
+% 40	22	38	8.368s          8.884s
+% 45	23	45	162.098s      815.569s(!!!!)
+% 50	27	48	40.593s        31.915s(*)
+%
+% With symmetry breaking some of the results is better or slightly
+% better, but for N=35 and 45 the results are much worse!
+%
+go2 ?=>
+  Map = get_global_map(),
+
+  problem(N,Areas,Width,Height),
+  all_shapes(Areas,AllShapes),
+  Time = time2f($once(solve_and_print(Areas,AllShapes,Width,Height, X, _Y))),
+  println([n=N,width=Width,height=Height,time=Time]),
+  Map.put(N,[Width,Height,Time]),  
+  fail,
+
+  nl.
+go2 =>
+  L = get_global_map().to_list.sort,
+  println(l=L),
+  println("Result:"),
+  println("N\tWidth\tHeight\tTime(s)\n"),
+  foreach(N=[Width,Height,TimeMS] in L)
+    printf("%2d\t%2d\t%2d\t%0.3fs\n",N,Width,Height,TimeMS/1000)
+  end,
+  nl.
+  
+
+
+%
+% Find optimal width and height.
+% 
+% As usual, CP might be faster for smaller instances.
+%
+% This is the (runtime) time to FIND the OPTIMAL width and heights
+% for the 1..N problems. Note: This is not the same as the time
+% for solving the specific problem instance with fixed width and height.
+%
+% N  Width Height  Time (SAT)  Time (CP, ff/split)
+% ---------------------------------------
+% 1  1     1       0.033s      0.034s
+% 2  2     2       0.036s      0.034s
+% 3  2     3       0.038s      0.033s
+% 4  3     4       0.039s      0.036s
+% 5  3     5       0.036s      0.035s
+% 6  4     6       0.038s      0.035s
+% 7  4     7       0.042s      0.034s
+% 8  5     8       0.051s      0.035s
+% 9  5     9       0.051s      0.036s
+% 10 7     8       0.049s      0.039s
+% 11 6     11      0.076s      0.052s
+% 12 7     12      0.185s      0.040s
+% 13 7     13      0.101s      0.416s
+% 14 8     14      0.374s      0.044s
+% 15 8     15      0.201s     16.359s !
+% 16 10    14      0.213s      0.039s
+% 17 9     17      0.720s     >288s  !!
+% 18 10    18      0.530s      0.085s
+% 19 10    19      0.848s      >156s !
+% 20 11    20      0.996s      0.053s  % why are even N easy but odd N hard for CP?
+% 21 11    21      1.032s      -
+% 22 13    20      1.775s      0.054s
+% 23 12    23      1.076s
+% 24 13    24      3.638s      0.341s
+% 25 13    25      2.573s
+% 26 15    24      3.223s     27.178s
+% 30 16    30      5.577s      0.085s
+% 35 18    35     15.068s       
+% 40 22    38     12.486s     >193s
+% 45 23    45     167.26s
+% 50 27    48      64.90s
+% 55 ?
+
+go3 ?=>
+
+   Map = get_global_map(),
+   Map.put(count,0),
+
+   N = 40,
+   Areas = 1..N,
+
+   VSum = sum(Areas),
+   println(vSum=VSum),
+
+   % member(Width,1..N),
+   % Height = N,
+   % member(Height,1..N),   
+   % Width = 11,
+   % Height = 21,
+
+   All = [[W*H,W,H] : W in 1..N,H in 1..N, W*H >= VSum].sort,
+   member([_Size,Width,Height],All),
+
+   Width*Height >= VSum, % ensure it's possible
+   println(vh=(Width*Height)),   
+
+   all_shapes(Areas,AllShapes),
+   % println(allShapes=AllShapes),
+
+   % time2(solve_and_print(X,Y,Width,Height)),
+   time2(
+      (
+      % once(solve_and_print(Areas,AllShapes,Width,Height, _X,_Y))
+      solve_and_print(Areas,AllShapes,Width,Height, X, _Y)
+      ;
+       fail
+       )
+      ),
+
+   % rectangle_placement_area(Areas,AllShapes,Width,Height, X,Y,StartX,StartY,Selection),
+   % print_solution(Areas,X,Y,Width,Height, StartX,StartY,Selection),
+
+   flush(stdout),
+   Map.put(count,Map.get(count)+1),
+   println(count=Map.get(count)),
+
+   % Quit if we found a solution, else continue with next width and height
+   (var(X) -> fail ; true),
+   println(found=[n=N,width=Width,height=Height]),
+   nl.
+
+go3 => println(count=get_global_map().get(count)).
+
+
+%
+% Number of solutions.
+% For n to about 10 use CP:
+% N   #sols
+% -----------
+%  1        1
+%  2        8
+%  3        4
+%  4      408
+%  5       56
+%  6    38544
+%  7     1088
+%  8  5522220
+%  9    61040
+% 10  3997680
+% This is not in OEIS.
+% Interestingly, here we also see the different patterns of even and odd numbers.
+% However, the nice increasing series breaks down for N=10 since it's less than
+% for N=8.
+%
+% But note that the specific width/height might be one of many optimal sizes.
+%
+%  Odd  N: 1,4,56,1088,61040
+%  Even N: 8,408,38544,5522220,3997680
+%
+go4 ?=>
+  nolog,
+  foreach(P in 1..10)
+    problem(P,Areas,Width,Height),
+    all_shapes(Areas,AllShapes),
+    Count = count_all(rectangle_placement_area(Areas,AllShapes,Width,Height, _X,_Y,_StartX,_StartY,_Selection)),
+    println(P=Count)
+  end,
+  nl.
+
+go4 => true.
+
+
+/*  
+
+  Check the number of optimal sizes.
+  I'm trying to figure out if there is some pattern(s) for even/odd
+  since it seems that even Ns are easier than odd Ns.
+
+  1 = 1
+  2 = 3
+  3 = 4
+  4 = 4
+  5 = 2
+  6 = 6
+  7 = 4
+  8 = 4
+  9 = 4
+  10 = 4
+  11 = 4
+  12 = 6
+  13 = 2
+  14 = 6
+  15 = 10
+  16 = 6
+  17 = 2
+  18 = 10
+  19 = 4
+  20 = 4
+  21 = 4
+  22 = 4
+  23 = 4
+  24 = 6
+  25 = 2
+  26 = 12
+  30 = 12
+  35 = 12
+  40 = 6
+  45 = 4
+  50 = 9
+
+*/
+go5 ?=>
+  problem(N,_Areas,Width,Height),
+  Total = Width*Height,
+  % println([n=N,width=Width,height=Height,total=Total]),  
+  M = N*2,
+  All = [[W,H] : W in 1..M, H in 1..M, W*H == Total],
+  % println(All),
+  println(N=All.len),
+  % nl,
+  fail,
+  nl.
+go5 => true.
+
+
+%
+% Just pick some predefined shape variants (i.e. not all possible).
+%
+% Here is one solution of this:
+%   areas = [2,3,4,6,7,12,14]
+%   x = {1,1,2,6,1,2,2}
+%   y = {2,3,2,1,7,4,6}
+%   startX = {6,4,5,1,3,4,1}
+%   startY = {4,6,6,1,2,2,3}
+%   selection = {1,1,2,2,1,1,2}
+%    4  _  7  7  7  7  7  7 
+%    4  _  7  7  7  7  7  7 
+%    4  5  5  5  5  5  5  5 
+%    4  6  6  6  6  2  2  2 
+%    4  6  6  6  6  3  3  _ 
+%    4  _  _  1  1  3  3  _ 
+%   D_GGGGGG
+%   D_GGGGGG
+%   DEEEEEEE
+%   DFFFFBBB
+%   DFFFFCC_
+%   D__AACC_
+% num_empty = 6
+%
+go6 ?=>
+
+  Map = get_global_map(),
+  Map.put(count,0),
+
+
+  Areas = [2,3,4,6,7,12,14],
+  % Max = max(Areas),
+  % println(areas=Areas),
+  VSum = sum(Areas),
+  println(vsum=VSum),
+  % all_shapes(Areas,AllShapes),
+
+  % Pick just a few of the possible shapes
+  AllShapes = [ [[1,2]],
+                [[1,3]],
+                [[1,4],[2,2]],
+                [[2,3],[6,1]],
+                [[1,7],[7,1]],
+                [[2,4]],
+                [[1,12],[2,6]],
+                [[2,7]]
+              ],
+  println(allShapes=AllShapes),
+
+  Width = 6,
+  Height = 8,
+
+  % time2(solve_and_print(X,Y,Width,Height)),
+  time2(solve_and_print(Areas,AllShapes,Width,Height, X, _Y)),
+
+  flush(stdout),
+  (nonvar(X) -> Map.put(count,Map.get(count)+1) ; true),
+  println(count=Map.get(count)),
+
+  fail,
+
+  nl.
+go6 => true.
+
+
+%
+% Get all shapes for the areas
+%
+all_shapes(Areas,AllShapes) =>
+  AllShapes1 = [],
+  foreach(V in Areas)
+    Shapes = [[I,J] : I in 1..V, J in 1..V, I*J == V],
+    AllShapes1 := AllShapes1 ++ [Shapes]
+  end,
+  AllShapes = AllShapes1.
+
+
+
+
+%
+% Solve the problem:
+% Input:
+%  - Areas: The area for a shape
+%  - Width, Height: the size of the main grid
+%    must touch (left, right, up, down, or by diagonals)
+% Output:
+% - StartX, StartY: the coordinates of the start positions
+%
+rectangle_placement_areas(Areas,AllShapes,Width,Height, X,Y,StartX,StartY,Selection) =>
+
+   N = length(Areas),
+   println([n=N,width=Width,height=Height,total=(Width*Height)]),
+   println(areas=Areas),
+   MaxShapeLen = max([Shape.len : Shape in AllShapes]),
+   MaxLen = AllShapes.flatten.max,
+
+   StartX = new_array(N),
+   StartX :: 1..Width,
+     
+   StartY = new_array(N),
+   StartY :: 1..Height,
+
+   Selection = new_array(N),
+   Selection :: 1..MaxShapeLen, % Which shape variant to select
+
+   X = new_array(N),
+   X :: 1..MaxLen,
+   
+   Y = new_array(N),   
+   Y :: 1..MaxLen,
+   
+   foreach(I in 1..N)
+     % X[I] #<= Y[I], % symmetry breaking. Will break some examples!
+     Selection[I] :: 1..AllShapes[I].len,
+     matrix_element(AllShapes[I],Selection[I],1,X[I]),
+     matrix_element(AllShapes[I],Selection[I],2,Y[I])
+   end,
+
+   % CP seems to be faster with this, but SAT is slower
+   if membchk(cp, loaded_modules()) then
+     cumulative(StartX,X,Y,Height),
+     cumulative(StartY,Y,X,Width)
+   end,
+
+   % Experiment:
+   % This would be the requirement that job i must start before or at
+   % the same time as job i+1.
+   % However, it invalidates quite a few of the existing 1..N problem instances...
+   % println("increasing symmetry breaking"),
+   % increasing(StartY),
+   % increasing(StartX),   
+
+   diffn4(StartX,StartY,X,Y),
+
+   %% Tests (see below for implementations)
+   % diffn_me(StartX,StartY,X,Y),
+   % diffn_nonstrict(StartX,StartY,X,Y),     
+
+   foreach(I in 1..N)
+     StartX[I] + X[I] #=< Width+1
+   end,
+   foreach(J in 1..N)
+     StartY[J] + Y[J] #=< Height+1
+   end,
+
+   Vars = StartX ++ StartY ++ Selection ++ X ++ Y,
+
+   println(solve),
+
+   solve($[ff,split], Vars).   
+   
+%
+% Print solution
+%
+print_solution(Areas,X,Y,Width,Height,StartX,StartY,Selection) =>
+
+   N = length(X), % number of rectangles
+   println([n=N,width=Width,height=Height]),
+   println(areas=Areas),
+   println(x=X),
+   println(y=Y),
+   println(startX=StartX),
+   println(startY=StartY),
+   println(selection=Selection),
+   
+   % Print the grid
+   M = new_array(Width,Height), % bind_vars(M,0),
+   foreach(S in 1..N)
+     % println([s=S,x=X[S]..X[S]+A[S]-1,y=Y[S]..Y[S]+A[S]-1]),
+     foreach(I in StartX[S]..min(StartX[S]+X[S]-1,Width),J in StartY[S]..min(StartY[S]+Y[S]-1,Height))
+       % Debugging: Check that we got a proper solution, i.e. that there is no
+       % overlapping of values. 
+       if nonvar(M[I,J]) then
+          println([s=S,[I,J],already_defined,M[I,J]])
+          % , halt
+       end,
+       M[I,J] = S
+     end
+   end,
+
+   NumEmpty = 0,
+   % Numeric solution
+   foreach(I in 1..Width)
+     foreach(J in 1..Height)
+       V = M[I,J],
+       if var(V) then
+         print(" _ "),
+         NumEmpty := NumEmpty + 1
+       else
+         printf("%2d ",M[I,J])
+       end
+     end,
+     nl
+   end,
+
+   if N <= 26 then
+     % _ is the unoccupied slots
+     Alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+     foreach(I in 1..Width)
+       foreach(J in 1..Height)
+         V = M[I,J],
+         if var(V) then
+           print("_")
+         else
+           printf("%w",Alpha[M[I,J]])
+         end
+       end,
+       nl
+     end
+   end,
+   nl,
+   println(num_empty=NumEmpty),
+   nl.
+
+
+solve_and_print(Areas,AllShapes,Width,Height, X, Y) =>
+   rectangle_placement_areas(Areas,AllShapes,Width,Height, X,Y,StartX,StartY,Selection),
+   print_solution(Areas,X,Y,Width,Height, StartX,StartY,Selection).
+
+
+
+% This is from fzn_picat_cp.pi
+diffn4(VecX,VecY,VecDX,VecDY) =>
+    Rects = [[VecX[I],VecY[I],VecDX[I],VecDY[I]] : I in 1 .. length(VecX)],
+    diffn(Rects).
+
+
+%
+% From MiniZinc's diffn_nonstrict/4
+%
+diffn_nonstrict(X,Y,DX,DY) =>
+  N = X.len,
+  foreach(I in 1..N, J in I+1..N)
+    DX[I] #= 0 #\/
+    DX[J] #= 0 #\/
+    DY[I] #= 0 #\/
+    DY[J] #= 0 #\/
+    X[I] + DX[I] #=< X[J] #\/
+    Y[I] + DY[I] #=< Y[J] #\/
+    X[J] + DX[J] #=< X[I] #\/
+    Y[J] + DY[J] #=< Y[I]
+  end.
+
+/*
+From MiniZinc's diffn/4
+*/
+diffn_me(X,Y,DX,DY) =>
+  N = X.len,
+  foreach(I in 1..N, J in I+1..N)
+    X[I] + DX[I] #<= X[J] #\/
+    Y[I] + DY[I] #<= Y[J] #\/
+    X[J] + DX[J] #<= X[I] #\/
+    Y[J] + DY[J] #<= Y[I]
+  end.
+
+
+
+%
+% time2 + time_out as a function.
+%
+time2f(Goal) = Time =>
+    statistics(runtime,_),
+    statistics(backtracks, _Backtracks1),
+    call(Goal),
+    statistics(backtracks, _Backtracks2),
+    statistics(runtime, [_,Time]).
+
+
+
+problem(1,Areas,Width,Height) :-
+  Areas = [1],
+  Width = 1,
+  Height = 1.
+
+problem(2,Areas,Width,Height) :-
+  Areas = 1..2,
+  Width = 2,
+  Height = 2.
+
+problem(3,Areas,Width,Height) :-
+  Areas = 1..3,
+  Width = 2,
+  Height = 3.
+
+problem(4,Areas,Width,Height) :-
+  Areas = 1..4,
+  Width = 3,
+  Height = 4.
+
+problem(5,Areas,Width,Height) :-
+  Areas = 1..5,
+  Width = 3,
+  Height = 5.  
+
+problem(6,Areas,Width,Height) :-
+  Areas = 1..6,
+  Width = 4,
+  Height = 6.  
+
+problem(7,Areas,Width,Height) :-
+  Areas = 1..7,
+  Width = 4,
+  Height = 7.  
+
+problem(8,Areas,Width,Height) :-
+  Areas = 1..8,
+  Width = 5,
+  Height = 8.  
+
+problem(9,Areas,Width,Height) :-
+  Areas = 1..9,
+  Width = 5,
+  Height = 9.  
+
+
+problem(10,Areas,Width,Height) :-
+  Areas = 1..10,
+  Width = 7,
+  Height = 8.  
+
+problem(11,Areas,Width,Height) :-
+  Areas = 1..11,
+  Width = 6,
+  Height = 11.  
+
+problem(12,Areas,Width,Height) :-
+  Areas = 1..12,
+  Width = 7,
+  Height = 12.  
+
+problem(13,Areas,Width,Height) :-
+  Areas = 1..13,
+  Width = 7,
+  Height = 13.  
+
+problem(14,Areas,Width,Height) :-
+  Areas = 1..14,
+  Width = 8,
+  Height = 14.  
+
+problem(15,Areas,Width,Height) :-
+  Areas = 1..15,
+  Width = 8,
+  Height = 15.  
+
+problem(16,Areas,Width,Height) :-
+  Areas = 1..16,
+  Width = 10,
+  Height = 14.  
+
+problem(17,Areas,Width,Height) :-
+  Areas = 1..17,
+  Width = 9,
+  Height = 17.  
+
+problem(18,Areas,Width,Height) :-
+  Areas = 1..18,
+  Width = 10,
+  Height = 18.  
+
+problem(19,Areas,Width,Height) :-
+  Areas = 1..19,
+  Width = 10,
+  Height = 19.  
+
+problem(20,Areas,Width,Height) :-
+  Areas = 1..20,
+  Width = 11,
+  Height = 20.  
+
+problem(21,Areas,Width,Height) :-
+  Areas = 1..21,
+  Width = 11,
+  Height = 21.
+
+problem(22,Areas,Width,Height) :-
+  Areas = 1..22,
+  Width = 13,
+  Height = 20.
+
+problem(23,Areas,Width,Height) :-
+  Areas = 1..23,
+  Width = 12,
+  Height = 23.
+
+problem(24,Areas,Width,Height) :-
+  Areas = 1..24,
+  Width = 13,
+  Height = 24.
+
+problem(25,Areas,Width,Height) :-
+  Areas = 1..25,
+  Width = 13,
+  Height = 25.
+
+problem(26,Areas,Width,Height) :-
+  Areas = 1..26,
+  Width = 15,
+  Height = 24.
+
+problem(30,Areas,Width,Height) :-
+  Areas = 1..30,
+  Width = 16,
+  Height = 30.
+
+problem(35,Areas,Width,Height) :-
+  Areas = 1..35,
+  Width = 18,
+  Height = 35.
+
+problem(40,Areas,Width,Height) :-
+  Areas = 1..40,
+  Width = 22,
+  Height = 38.
+
+problem(45,Areas,Width,Height) :-
+  Areas = 1..45,
+  Width = 23,
+  Height = 45.
+
+problem(50,Areas,Width,Height) :-
+  Areas = 1..50,
+  Width = 27,
+  Height = 48.
+

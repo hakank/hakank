@@ -1,0 +1,197 @@
+/* 
+
+  A card trick, 1 in Picat.
+
+  From Peter Cameron's blog post
+  "A card trick, 1"
+  http://cameroncounts.wordpress.com/2011/08/20/a-card-trick-1/
+  """
+  Diamond Geezer's card puzzle 
+    [ http://diamondgeezer.blogspot.com/2011/08/diamond-puzzle.html
+     (a graeco latin square problem, cf
+      http://hakank.org/minizinc/latin_square_card_puzzle.mzn
+     )
+    ] 
+  reminded me of a more complicated puzzle, which was devised 
+  and solved by my colleague and co-author Donald Preece. He is very 
+  proud of this, and justifiably so. In this post I will simply set 
+  the problem; later I will describe the mathematical background, 
+  and maybe give the solution.
+
+  The problem is to take a regular pack of 52 playing cards, and lay them out in a 
+  rectangle with four rows of 13 cards, so as to satisfy the following conditions:
+
+   - Each suit is represented once in each column.
+   - Each face value is represented once in each row.
+   - Two cards with the same value never occur together in a column.
+   - Each row contains four cards of one suit and three of each of the others.
+   - Any two columns share eactly one value, and any two values occur together in 
+     exactly one column.
+
+  Some brief commentary. Condition 4 says that the suits are as near as 
+  possible to being balanced over the rows; since 4 doesn't divide 13, we can't 
+  have exactly the same number of cards of each suit in a row. This condition could 
+  also be stated in the equivalent form "Each suit has four cards in one row and 
+  three in each of the others."
+
+  Condition 5 is in some sense the hardest to satisfy. You may want to try 
+  to solve this condition, concentrating just on the values and the columns, and 
+  worry about the suits and the positions of the cards in the columns later.
+  """
+  
+
+  Also, see the following blog posts by Peter Cameron:
+  "A card trick, 2"
+  http://cameroncounts.wordpress.com/2011/08/22/a-card-trick-2/
+  "A card trick, 3"
+  http://cameroncounts.wordpress.com/2011/08/22/a-card-trick-3/
+  "A card trick, 4"
+  http://cameroncounts.wordpress.com/2011/08/23/a-card-trick-4/
+
+  Also, more about this can be found, for example, in Donald Preece's
+  "Combinatorial Designs",
+  http://www.maths.qmul.ac.uk/~fjw/goldsmiths/2009/DAP/combin.pdf
+
+
+  In "A card trick, 4"
+  http://cameroncounts.wordpress.com/2011/08/23/a-card-trick-4/
+  Peter Cameron writes this:
+
+  [hakank: I removed the fancy symbols and changed "10" to "T" for 
+   more compact output]
+
+  """
+  Here is Donald Preece's solution to his problem, taken from his paper 'Some partly 
+  cyclic 13x4 Youden "squares" and a balanced arrangement for a pack of cards', 
+  in Utilitas Math. 22 (1982), 255-263. (I hope I haven't made any typing mistakes!)
+
+  AS JC QH KD 5S 6S 7S 2D 3C 4H 8D 9C TH
+  2H AH 6C TS QD JD 4D 9H 8H KS 7C 3S 5C
+  3D 8S AD 7H 2C KC QC JS TD 9D 6H 5H 4S
+  4C 5D 9S AC KH 3H JH TC QS 8C 2S 7D 6D
+  """
+
+  Some solutions:
+
+  suites = {{1,2,1,1,1,3,4,3,4,4,2,2,3},{2,1,2,4,2,4,3,4,3,1,3,1,2},{3,4,4,2,3,1,2,2,1,3,1,3,4},{4,3,3,3,4,2,1,1,2,2,4,4,1}}
+  values = {{1,3,9,7,4,5,12,2,11,8,10,13,6},{11,2,4,9,12,6,3,1,10,5,13,8,7},{9,5,10,2,1,13,8,6,12,7,3,11,4},{3,4,8,12,13,9,6,10,5,1,7,2,11}}
+  HA S3 H9 H7 H4 C5 DQ C2 DJ D8 ST SK C6 
+  SJ H2 S4 D9 SQ D6 C3 DA CT H5 CK H8 S7 
+  C9 D5 DT S2 CA HK S8 S6 HQ C7 H3 CJ D4 
+  D3 C4 C8 CQ DK S9 H6 HT S5 SA D7 D2 HJ 
+
+  suites = {{1,3,4,4,1,3,2,3,2,1,2,4,1},{4,1,3,1,2,2,1,2,4,3,3,2,4},{2,4,1,3,3,4,3,4,3,2,1,1,2},{3,2,2,2,4,1,4,1,1,4,4,3,3}}
+  values = {{1,8,2,5,11,4,6,10,3,7,12,9,13},{10,5,3,4,8,7,2,13,6,11,9,1,12},{4,3,9,6,12,13,7,11,1,5,10,8,2},{2,10,11,9,4,3,8,6,12,1,7,13,5}}
+  HA C8 D2 D5 HJ C4 S6 CT S3 H7 SQ D9 HK 
+  DT H5 C3 H4 S8 S7 H2 SK D6 CJ C9 SA DQ 
+  S4 D3 H9 C6 CQ DK C7 DJ CA S5 HT H8 S2 
+  C2 ST SJ S9 D4 H3 D8 H6 HQ DA D7 CK C5 
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+
+main => go.
+
+go ?=>
+  NumSuites = 4,
+  NumValues = 13,
+  Rows = NumSuites,
+  Columns = NumValues,
+
+  ValuesS = ["A","2","3","4","5","6","7","8","9","T","J","Q","K"],
+  SuitesS = ["H","S","C","D"],
+
+
+  % decision variables
+  Suites = new_array(Rows,Columns),
+  Suites :: 1..NumSuites,
+
+  Values = new_array(Rows,Columns),
+  Values :: 1..NumValues,
+
+  % the values in columns as set representation
+  % ColumnSet = new_list(Columns)
+
+  % ensure 4 occurrence of each value
+  foreach(V in 1..NumValues)
+    sum([Values[I,J] #= V: I in 1..Rows, J in 1..Columns]) #= NumSuites
+  end,
+
+  % ensure 13 occurrence of each Suites
+  foreach(V in 1..NumSuites)
+    sum([Suites[I,J] #= V : I in 1..Rows, J in 1..Columns]) #= NumValues
+  end,
+   
+  % All 52 cards are distinct 
+  % all_different([1 + 13*(Suites[I,J]-1) + (Values[I,J]-1) : I in 1..Rows, J in 1..Columns]),
+  all_different([T : I in 1..Rows, J in 1..Columns, T #= 1 + 13*(Suites[I,J]-1) + (Values[I,J]-1)]),  
+
+  % The problem specific constraints
+
+  % "Each suit is represented once in each column"
+  foreach(J in 1..Columns) 
+    all_different([Suites[I,J] : I in 1..Rows])
+  end,
+
+  % "Each face value is represented once in each row"
+  foreach(I in 1..Rows) 
+    all_different([Values[I,J] : J in 1..Columns])
+  end,
+
+  % "Two cards with the same value never occur together in a column"
+  foreach(J in 1..Columns) 
+    all_different([Values[I,J] : I in 1..Rows])
+  end,
+
+  % "Each row contains four cards of one suit and three of each of the others."
+  foreach(I in 1..Rows)
+     Gcc = [],
+     foreach(K in 1..4)
+       if K == I then
+         Gcc := Gcc ++ $[K-4]
+       else
+         Gcc := Gcc ++ $[K-3]
+       end
+     end,
+     global_cardinality([Suites[I,J] : J in 1..Columns], Gcc)
+  end,
+
+  % "Any two Columns share eactly one value, ..."
+  foreach(C1 in 1..Columns, C2 in C1+1..Columns)
+    sum([Values[R1,C1] #= Values[R2,C2] : R1 in 1..Rows, R2 in 1..Rows]) #= 1
+  end,
+
+  % "... and any two Values occur together in exactly one column."
+  foreach(V1 in 1..NumValues, V2 in V1+1..NumValues)
+    sum([Values[R1,C] #= V1 #/\ Values[R2,C] #= V2 : R1 in 1..Rows, R2 in 1..Rows, C in 1..Columns]) #= 1
+  end,
+
+  % symmetry breaking
+  Values[1,1] #= 1,
+  Suites[1,1] #= 1,
+
+  Vars = Suites ++ Values,
+  println(solve),
+  solve($[degree,updown],Vars),
+
+  println(suites=Suites),
+  println(values=Values),
+
+  foreach(I in 1..Rows)
+    foreach(J in 1..Columns)
+      printf("%w%w ", SuitesS[Suites[I,J]],ValuesS[Values[I,J]])
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go => true.

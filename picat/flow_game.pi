@@ -1,0 +1,112 @@
+/* 
+
+  Flow game in Picat.
+
+  Port of the Z3 model in 
+  https://stackoverflow.com/questions/67412516/how-to-solve-flow-game-using-google-or-tools
+
+  From JohanC's answer (the one with the Z3 code)
+  """
+  - The initial board is represented by numbers for the end points, one number 
+    for each color. The idea is a bit similar to how Sudoku is represented.
+  - Each other cell on the board will get either a value for zero, or a number. 
+    This number should be equal to exactly two of its neighbors.
+  - The initial endpoints should have exactly one neighbor with its color.
+
+  """
+
+  See 
+  - https://www.bigduckgames.com/flowfree
+  - https://cs.stackexchange.com/questions/86674/algorithms-for-solving-flow-game
+
+  Hmm, I recognize this now and have solved a similar problem. 
+  What problem/model is that? Ah, of course, it's numberlink.pi
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  member(P,1..2),
+  println(problem=P),
+  board(P,Board),
+  % board(1,Board),
+  % board(2,Board),  
+  flow_game(Board,B),
+  foreach(Row in B)
+    println(Row.to_list)
+  end,
+  nl,
+  fail,
+  nl.
+go => true.
+
+
+flow_game(Board,B) =>
+  N = Board.len,
+  M = Board[1].len,
+  println([n=N,m=M]),
+  B = new_array(N,M),
+  B :: 0..max(Board.flatten),
+
+  foreach(I in 1..N, J in 1..M)
+    if Board[I,J] != 0 then
+      B[I,J] #= Board[I,J]
+    end
+  end,
+  foreach(I in 1..M)
+    foreach(J in 1..N)
+        SameNeighsIJ #= sum([B[I,J] #= B[K,L] :
+                              K in 1..M, L in 1..N, abs(K - I) + abs(L - J) == 1]),
+        Board[I,J] #> 0 #<=> SameNeighsIJ #= 1,
+        Board[I,J] #= 0 #<=> (SameNeighsIJ #= 2 #\/ B[I,J] #= 0)
+    end
+  end,
+
+  solve(B.vars).
+
+
+board(1,Board) =>
+ Board = [[1, 0, 0, 2, 3],
+          [0, 0, 0, 4, 0],
+          [0, 0, 4, 0, 0],
+          [0, 2, 3, 0, 5],
+          [0, 1, 5, 0, 0]].
+
+%
+% This have 2 different solutions.
+%
+% Note that this solution has some none labeled
+% cells. But is that correct? Shouldn't we require
+% that all cells are labeled?
+%
+% [1,1,2,2,2,2,2]
+% [1,3,4,4,3,5,2]
+% [0,3,3,4,3,5,2]
+% [2,2,3,4,3,5,2]
+% [2,0,3,3,3,5,2]
+% [2,5,5,5,5,5,2]
+% [2,2,2,2,2,2,2]
+%
+% [1,1,2,2,3,3,3]
+% [1,3,4,2,3,5,3]
+% [3,3,4,2,2,5,3]
+% [3,2,4,4,2,5,3]
+% [3,2,2,2,2,5,3]
+% [3,5,5,5,5,5,3]
+% [3,3,3,3,3,3,3]
+
+%
+board(2,Board) => 
+ Board = [[0, 1, 2, 0, 0, 0, 0],
+          [1, 3, 4, 0, 3, 5, 0],
+          [0, 0, 0, 0, 0, 0, 0],
+          [0, 2, 0, 4, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0],
+          [0, 5, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0]].

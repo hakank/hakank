@@ -1,0 +1,234 @@
+/* 
+
+  CP debugging with freeze/2 in Picat.
+
+  Using freeze to debug.
+
+  Tip from 
+
+  https://stackoverflow.com/questions/70267259/why-is-this-clpfd-constraint-solving-slowly-and-how-do-i-debug-it
+  """
+  A technique I learned from this great answer [
+   https://stackoverflow.com/questions/53671973/optimized-clpfd-solver-for-number-board-puzzle/53709389#53709389
+  ] is to add freeze/2 goals on your constraint variables. You will then get notified every time the solver tries 
+  to bind a variable to a concrete value.
+
+  For example:
+
+    cost_at_position(Nums, Pos, Cost) :-
+       ...
+       freeze(Pos, log('Pos', Pos)),
+       freeze(Cost, log('Cost', Cost)).
+    
+   log(Label, Value) :-
+       write(Label), write(': '), writeln(Value).
+
+   ?- lowest_cost([2,4,6,8], Cost).
+   Cost: 12
+   Pos: 2
+   Cost: 10
+   Pos: 3
+   Cost: 8
+   Pos: 4
+   Cost: 8
+   Pos: 4
+   Cost = 8.
+
+   I'm not sure it helps a lot in this particular case, though at least you can see that the solver tries 
+  position 3, which doesn't occur in the input positions, and which therefore (for this cost function) is useless.
+  """
+
+  Here is the output of the simple constraint model in go/0 using CP solver:
+
+    i = 2: 1
+    i = 3: 1
+    i = 4: 1
+    i = 5: 1
+    i = 6: 3
+    [1,1,1,1,1,3]
+
+    i = 5: 2
+    i = 6: 2
+    [1,1,1,1,2,2]
+
+    i = 5: 3
+    i = 6: 3
+    i = 4: 2
+    i = 4: 3
+    i = 5: 3
+    i = 6: 3
+    i = 3: 2
+    i = 3: 3
+    i = 4: 3
+    i = 5: 3
+    i = 6: 3
+    i = 2: 2
+    i = 2: 3
+    i = 3: 3
+    i = 4: 3
+    i = 5: 3
+    i = 6: 3
+    i = 2: 3
+    i = 3: 3
+    i = 4: 3
+    i = 5: 3
+    i = 6: 3
+
+
+  Using the SAT (and SMT) solver give this output:
+    i = 2: 1
+    i = 3: 1
+    i = 4: 1
+    i = 5: 1
+    i = 6: 3
+    [1,1,1,1,1,3]
+
+
+    i = 2: 1
+    i = 3: 1
+    i = 4: 1
+    i = 5: 2
+    i = 6: 2
+    [1,1,1,1,2,2]
+
+
+  * go2/0: For the model in the StackOverflow question we have almost the identical 
+    output (as in the answer):
+
+     CP solver:
+
+      Cost: 12
+      Pos: 2
+      Cost: 10
+      Pos: 3
+      Cost: 8
+      Pos: 4
+      Pos: 4
+      Cost: 8
+      foundCost = 8
+
+     SAT solver give the following output (note the missing first Cost):
+
+      Pos: 3
+      Cost: 10
+      Pos: 5
+      Cost: 8
+      Pos: 5
+      Cost: 8
+      foundCost = 8
+
+    SMT/z3 solver:
+      Cost: 10
+      Pos: 3
+      Pos: 6
+      Cost: 4
+      Cost: 8
+      Pos: 5
+      Cost: 8
+      Pos: 5
+      foundCost = 8
+
+   SMT/cvc4 solver:
+     Cost: 10
+     Pos: 7
+     Pos: 6
+     Cost: 4
+     Cost: 8
+     Pos: 6
+     Cost: 8
+     Pos: 6
+     foundCost = 8
+
+
+   MIP solver (cbc):
+     Pos: 5
+     Cost: 8
+     foundCost = 8
+
+   MIP solver (glpk):
+    Pos: 4
+    Cost: 8
+    foundCost = 8
+
+
+
+  Note: Another (and probably better) way of tracing the change of CP variables 
+  is to use one of these packages:
+   - trace_domains.pi
+   - trace_domains_ar.pi
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+import cp.
+% import sat.
+% import mip.
+% import smt.
+
+main => go.
+
+%
+% A simple CP model
+%
+go ?=>
+  nolog,
+  N = 6,
+  X = new_list(N),
+  X :: 1..N*2,
+
+  foreach(I in 2..N)
+    X[I] #>= X[I-1],
+    freeze(X[I], log(i=I, X[I]))
+  end,
+  nl,
+  sum(X) #= 8,
+
+  solve(X),
+  println(X),
+  nl,
+  fail,
+
+  nl.
+go => true.
+
+%
+% Testing the SO model.
+%
+go2 ?=>
+  nolog,
+  lowest_cost([2,4,6,8], Cost),
+  println(foundCost=Cost),
+  nl,
+  fail,
+  nl.
+go2 => true.
+
+
+log(Label, Value) :-
+    print(Label), print(': '), print(Value),nl.
+
+
+%
+% The model in the StackOverflow question, slightly
+% alterated to fit Picat
+%
+norm1(X, Y, N) :- N #= abs(X - Y).
+
+cost(Nums, Pos, Cost) :-
+    MaxX = max(Nums),
+    MinX = min(Nums),
+    Pos :: MinX..MaxX,
+    maplist($norm1(Pos), Nums, Costs),
+    % Costs #= [abs(Pos-Y) : Y in Nums], % More Picatese
+    sum(Costs) #= Cost,
+    freeze(Pos, log('Pos', Pos)),
+    freeze(Cost, log('Cost', Cost)).
+
+lowest_cost(Nums, Cost) :-
+    cost(Nums, X, Cost),
+    once(solve($[min(Cost),cvc4], [X, Cost])).

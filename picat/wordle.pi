@@ -1,0 +1,1752 @@
+/* 
+
+  Wordle (some investigations) in Picat.
+
+  Wordle daily puzzle: https://www.powerlanguage.co.uk/wordle/
+
+  What are good first guess words?
+
+  * go/0: Check all 5 letter words in a wordlist (of 21830 5 letter words) and check which is best.
+          Also checking this using a Swedish wordlist (10520 5 letter words).
+
+  * go2/0: Count the frequency of each character for each position.
+           Also checking this using a Swedish wordlist.
+
+  * go3/0: How many possible 5 letter strings are there? Answer: way too many
+           to even consider using them...
+
+  * wordle_sim/0: Given a target word solve the problem (automatically)
+
+  * wordle_sim2/0: Check which of all (distinct) words as first guess word
+                   give best scores. The best according to this are
+                   slant,spilt,splat,alert,slate
+
+  * wordle_trainer/0: Given a random target word, interact with the user.
+                      If PrintCandidates = true, then the candidate words 
+                      are printed.
+
+  * wordle_cheater/0: Given scores generates the candidate words.
+
+  * wordle_cheater/3: Command line cheater-
+
+  TODO: A list of second quess words if the first give no hints at all.
+        This has been implemented in distinct_ladder_words.pi
+
+  TODO? Reverse Wordle: Given the solution graphics and the known target word, 
+        can one figure out the words used? The first sketch is in go4/0
+
+  Related programs: 
+  * distinct_word_ladder.pi 
+    This program generates a list of words that are distinct. It's useful when there's 
+    no correct chars at all for the first (and second) guesses.
+
+  Related:
+  * https://medium.com/@tglaiel/the-mathematically-optimal-first-guess-in-wordle-cbcb03c19b0a
+  The author finds (given some other wordlist) that ROATE should be the best first word.
+  But this get a quite low score using the approach used here.
+
+  Some other writings about Wordle:
+  * https://www.nytimes.com/2022/01/03/technology/wordle-word-game-creator.html
+    (but I'm out of free readings for NYT now)
+  * https://www.nytimes.com/2022/01/03/technology/wordle-word-game-creator.html
+    """
+    An initial list of all of the five-letter words in the English language — about 12,000 — 
+    contained a lot of obscure words that would have been near impossible to guess.
+
+    So he created another game for Ms. Shah: This time, she would sort through those 12,000 
+    or so words, designating whether or not she knew them. That narrowed down the list of 
+    Wordle words to about 2,500, which should last for a few years. (Already, a few words 
+    have riled up the fans: Some were upset by REBUS and TAPIR, saying they were not familiar enough.)
+    """
+
+    Note: What is 12 000 limit of 5-letter words in English?
+
+  * https://www.theguardian.com/games/2022/jan/08/wordle-review-josh-wardle-free-word-guessing-game-simplicity-works-like-a-charm?utm_term=Autofeed&CMP=twt_gu&utm_medium&utm_source=Twitter#Echobox=1641649894
+  * https://slate.com/culture/2022/01/wordle-game-online-free-explained.html
+  * https://www.cnet.com/news/worldle-explained-tips-tricks-and-everything-you-need-to-know/
+  * https://www.aljazeera.com/news/2022/1/6/infographic-wordle-word-game-tips-and-tricks
+    This states that the most common letter anywhere in a word sare
+      seaoriltnu
+    Most common first letters of the words
+      sbcptamdrglfhkwneovjyizqx
+    [Compare with "sabctmpdlgrfhkenwoijuvyzqx" which I found. Not very unlike!)
+
+    And there's a list of the last 200 Wordle words. I think it's the list that @tglaiel used in his/her
+    C++ program.
+
+  * https://matt-rickard.com/wordle-whats-the-best-starting-word/
+    States that the best start word is SOARE
+
+    GitHub repo for a "similar game" Joust (but that's for 4 letter words)
+    https://github.com/r2d4/joust
+
+  * https://ido-frizler.medium.com/the-science-behind-wordle-67c8112ed0d1
+    
+  * And see ~/wordle/* for some implementations, though most I've not been able to 
+    compile/run.
+
+  Here is a fun variant:
+  * Absurdle: https://qntm.org/files/wordle/index.html
+    Information: https://qntm.org/wordle
+    This variant tried to make it as hard as possible for the user to get 
+    the word correct (using the same wordlists as Wordle what I understand).
+
+
+
+Some SAVED games:
+Notation:
+  <U> : upper, correct char in correct position
+  <c>*: lower + *. correct char in incorrect position
+  <c> : lower: char not in word
+ 
+
+Wordle 203 5/6 (2022-01-08)
+This was my second game. I've forgot the first one, except that I happen to use "above" 
+as first word for some reason. 
+
+    a*b o v e
+    s t r*a*p
+    g R A N d
+    f R A N K
+    C R A N K
+
+  2022-01-14: With my new algo that would have been
+   a* b o v e
+   s a*i n t
+   C R A N K
+
+   With saint as start word: saint,crane,crank
+
+Wordle 204 6/6 (2022-01-09)
+(Here I used a "magic" init word but should have used a word with unique letters.)
+
+  s a n e*s
+  l i t e*r*
+  p O k e*r*
+  f O R c E
+  b O R e*d
+  G O R G E
+
+I goofed the second and third words since I suddenly thought that yellow was correct and in place.
+And for the 4th word I missed the last E.
+
+    2022-01-14: With my new algo that would have been
+    s a n e*s
+    b O u l E
+    f O R c E
+    h O R d E
+    G O R G E
+
+    With SAINT as start word: saint,cruel,forge,gorge
+    With SLANT: slant,cried,forge,gorge
+
+Wordle 205 6/6 (2022-01-10)
+I used the new first word "slant" but I will change it since it's too few vowels. Perhaps "tares"?
+(Later: Nope, it seems just fine at least for the bot (wordle_cheater) so I keep it.)
+
+  s l a n t
+  g o r*g e*
+  c r*i e*d
+  f e*m u*r*
+  e v E R Y
+  Q U E R Y
+
+   2022-01-14: With my new algo that would have been
+   s l a n t 
+   c r*i e*d 
+   f o r*g e*
+   Q U E R Y
+ 
+   With saint as start word: saint,cruel,purge,query
+
+Wordle 206 4/6 (2022-01-11) 
+  But this was with cheating (so I didn't publish it)
+
+  t a r*e s
+  r u m o r*
+  b R I c K   % Here I used wordle_cheater
+  D R I N K   % and here
+
+  2022-01-14: With my new algo that would have been
+  t a r*e s
+  c R o N y
+  b R I N K
+  D R I N K
+
+  With saint as start word: saint,brine,grind,drink
+
+Wordle 207 4/6 (2022-01-12) Cheating
+
+  t A r*e s
+  m A c r*o*
+  l A b O R
+  F A V O R
+
+  2022-01-14: With my new algo that would have been
+  t A r*e s
+  r*A i n y
+  v A l O R
+  F A V O R
+
+  With SAINT as start word: 
+  s A i n t 
+  b A l e R 
+  F A V O R
+
+Wordle 208 4/6 2022-01-13 Cheating
+
+  t a*r E s
+  A l i E n
+  A c h E d
+  A B B E Y
+
+  2022-01-14: With my new algo that would have been
+  t a*r E s
+  A l i E n
+  A B B E Y
+
+  With saint as start word: saint,brace,abled,abbey
+
+Wordle 209 3/6 2022-01-14 Cheating
+
+T A r e s
+T A N G o
+T A N G Y
+
+   2022-01-14: With the new algorithm and the "official" target wordlist 
+               of 2314 words, this would have been
+
+    T A r e s
+    T A N G Y
+    (and I tweeted that :-))
+
+    With saint as start word: saint,tangy
+
+
+Wordle 210 3/6 2022-01-15 Cheating
+   s l a*n*t
+   c A i*r n*
+   P A N I C
+     
+    With the old first guess TARES it would have been
+    t A r e s
+    g A i*l y
+    c A b I n*
+    P A N I C
+
+Wordle 211 2/6 2022-01-16 Cheating
+   S l*a*n t
+   S O L A R
+
+    With the old first guess TARES it would have been
+    t a r*e s*
+    c r*a s*h
+    S O n A R
+    S O L A R
+
+
+Wordle 212 2/6 2022-01-17 Cheating
+   S l a n t
+   S H I R E
+
+   2/6 two days in a row.
+
+   With the old first guess TARES it would have been
+    t a r*e s*
+    p r*o s*e*
+    S H I R E
+
+Wordle 213 3/6 2022-01-18 Cheating
+
+  s l a n t
+  c R i e d
+  P R O X Y
+
+  (Before selecting the suggesed PROXY, I actually thought of manually select the second 
+   suggested word, GROUP. Glad I didn't!)
+
+    With the old first guess TARES, it would have been
+     t a r*e s 
+     c R O n Y
+     P R O X Y
+
+Wordle 214 2/6 2022-01-19 Cheating
+
+  s l a N T
+  P O I N T
+
+    With the old first guess TARES, it would have been
+    t*a r e s
+    P O I N T
+
+Wordle 215 2/6 2022-01-20 Cheating
+
+  s l a n t*
+  c O u r*t*
+  R O B O T
+
+      TARES: tares,print,court,robot
+
+Wordle 216 4/6 2022-01-21 Cheating
+
+   s l a n t
+   c*R I e d
+   b R I C K
+   P R I C K
+      
+       TARES: tares,crony,brick,prick
+
+Wordle 217 4/6 2022-01-22 Cheating
+
+   s l a n*t
+   b o N e*y
+   m I N C E
+   W I N C E
+
+Wordle 218 3/6 2022-01-23 Cheating
+  s l a n t
+  C R I e d
+  C R I M P
+
+
+Wordle 219 4/6 2022-01-24
+
+  s l*a n*t
+  l*i n*e r
+  n*o*b L y
+  K N O L L
+
+Wordle 220 4/6 2022-01-25
+
+  S l a*n t
+  S a*u*c e
+  S U G A R
+
+Wordle 221 3/6 2022-01-26
+
+  s l A n t
+  b r A C e
+  W H A C K
+
+Wordle 222 4/6 2022-01-27
+
+  s l a N T
+  p O i N T
+  c O U N T
+  M O U N T
+
+
+  2022-01-14:
+  Found two Wordle related wordlists: 
+  https://github.com/dlew/wordle-solver/tree/main/src/main/resources
+  - target: the small wordlist, 2314 words (here called wordle_small.txt)
+  - wordlist: the large wordlist, 12971 words (here called wordle_large.txt)
+  The small (target) list contain the words that Wordle pick from and the larger
+  are the words that are accepted as input words.
+
+  Note that TARES - my favorite start word - is not in the small target list
+  but it's in the larger (accepted) list.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import util.
+% import cp.
+import sat.
+
+main => go.
+
+
+%
+% Loop through all 5 letter words in the wordlist and check all (other) words
+%
+% - add 5 (2) points if a character match in correct position
+% - add 1 points if a character in incorrect position
+%
+%
+% For a wordlist of 21830 5 letter words
+%
+% After some testing I now decide that I'm only using init words that have distinct letters.
+% 5,1 points
+% [96808 = tares,96601 = lares,96255 = cares,95808 = bares,95017 = dares,94983 = mares,94939 = nares,
+%  94210 = pares,93841 = rales,93661 = lanes,93346 = tales,93315 = canes,93283 = hares,92928 = aires,
+%  92868 = banes,92346 = bales,92077 = danes,92043 = manes,91701 = fares,91555 = dales,91521 = males,
+%  91270 = panes,90928 = rates,90748 = pales,90716 = wares,89880 = cates,89821 = hales,89691 = gales,
+%  89510 = aotes,89433 = bates,89392 = kanes,89051 = saner,88938 = oates,88870 = kales,88827 = laris,
+%  88787 = solea,88761 = fanes,88744 = aures,88694 = tores,88642 = dates,88608 = mates,88564 = nates,
+%  88487 = lores,88141 = cores,88112 = tames,88074 = tades,88034 = baris,88023 = races,87988 = aries,
+%  87905 = lames,87867 = lades,87835 = pates,87776 = wanes,87720 = teras,87699 = earns,87696 = saire,
+%  87694 = bores,87559 = cames,87528 = taces,87521 = cades,87405 = earls,87321 = laces,87254 = wales,
+%  87209 = maris,87167 = ceras,87165 = naris,87142 = salet,86908 = hates,86869 = mores,86778 = gates,
+%  86754 = rapes,86741 = tabes,86729 = rages,86724 = vanes,86645 = arles,86597 = tarie,86589 = ranis,
+%  86585 = saite,86436 = paris,86421 = satie,86321 = dames,86314 = janes,86259 = tapes,86243 = names,
+%  86202 = vales,86096 = pores,86094 = tanis,86044 = carie,85979 = taros,85895 = meras
+%
+% This was also quite faster: 167.08s 2min47.23s
+%
+%
+% Older tests where the init word might contain duplicates:
+% For 5,1 points (5 points for char in correct position, 1 point for correct char not in correct position)
+%
+% [100562 = saree,100065 = sanes,99543 = sales,98117 = aeaea,97295 = rares,97027 = seres,96804 = tares,
+%  96629 = sates,96598 = lares,96432 = salas,96252 = cares,96015 = eanes,95805 = bares,95231 = saris,
+%  95014 = dares,94980 = mares,94979 = eases,94936 = nares,94886 = sores,94585 = seree,94309 = sanaa,
+%  94271 = sades,94207 = pares,94159 = tarea,94156 = laree,93834 = rales,93659 = lanes,93343 = tales,
+%  93320 = rases,93313 = canes,93280 = hares,93160 = barea,93141 = caras,93107 = aaren,92938 = sabes,
+%  92925 = aires,92866 = banes,92694 = baras,92623 = lases,92551 = saare,92444 = soree,92434 = aenea,
+%  92431 = sages,92344 = bales,92277 = cases,92175 = saros,92075 = danes,92066 = raias,92041 = manes,
+%  91997 = nanes,91947 = sones,91934 = sires,91914 = ranee,91869 = maras,91830 = bases,91775 = soras,
+%
+% It took 281,59s 4min:41.69s
+%
+% Note how this agree with the simpler approach in go2/0 which states that sares (or sarey) is the "best" word.
+%
+%
+% Here's another run which includes the word "ROATE" which is the best according to tglaiel's
+% Medium article (op.cit). But with our approach it get quite low score:
+%
+% [100570 = saree,100067 = sanes,99545 = sales,98126 = aeaea,97303 = rares,97030 = seres,96808 = tares,
+% 96632 = sates,96601 = lares,96434 = salas,96255 = cares,96018 = eanes,95808 = bares,95233 = saris,
+% 95017 = dares,94983 = mares,94982 = eases,94939 = nares,94893 = sores,94593 = seree,94312 = sanaa,
+% 94273 = sades,94210 = pares,94164 = tarea,94164 = laree,93841 = rales,93661 = lanes,93346 = tales,
+% 93327 = rases,
+% ---
+% 77645 = kolas,77642 = aoede,77639 = terre,
+% 77634 = roate, <--
+% 77633 = sirte,77628 = medea,77626 = dater,77622 = sixes,77622 = nemea,
+% ---
+%
+
+%
+% What about 2,1 points instead?
+% [p1 = 5,p2 = 1]
+% [61904 = aeaea,57485 = saree,56815 = aenea,56633 = eases,56632 = sanaa,56337 = aieee,56278 = saare,
+% 55609 = areae,55467 = eanes,55195 = seree,55043 = raiae,55032 = sanes,54992 = aaren,54978 = salas,
+% 54960 = sales,54814 = tarea,54772 = areas,54677 = rares,54537 = aeria,54517 = laree,54358 = seres,
+% 54227 = rases,54206 = raias,54001 = sarsa,53898 = ranee,53824 = saeta,53792 = aerie,53732 = sates,
+% 53726 = seana,53680 = lares,53625 = aires,53581 = naara,53550 = sarra,53489 = oases,53335 = easer,
+% 53254 = arara,53232 = tares,53230
+%
+% 273.37s (4min:33.50s)
+
+%
+% Here is a variant of 5,1 where 1 points are on Word2.remove_dups instead (which is slower):
+% 
+% [100562 = saree,100065 = sanes,99543 = sales,98117 = aeaea,97295 = rares,97027 = seres,96804 = tares,
+%  96629 = sates,96598 = lares,96432 = salas,96252 = cares,96015 = eanes,95805 = bares,95231 = saris,
+%  95014 = dares,94980 = mares,94979 = eases,94936 = nares,94886 = sores,94585 = seree,94309 = sanaa,
+%  94271 = sades,94207 = pares,94159 = tarea,94156 = laree,93834 = rales,93659 = lanes,93343 = tales,
+%  93320 = rases,93313 = canes,93280 = hares,93160 = barea,93141 = caras,93107 = aaren,92938 = sabes,
+%  92925 = aires,92866 = banes,92694 = baras,92623 = lases,92551 = saare,92444 = soree,92434 = aenea,
+%  92431 = sages,92344 = bales,92277 = cases,92175 = saros,92075 = danes,92066 = raias,92041 = manes,
+%  91997 = nanes,91947 = sones,91934 = sires,9191
+%
+% It's a little different but quite much the same words.
+%
+% It's quite much slower:
+% 394.35s 6min46.57s
+
+%
+% Swedish 5 letter words (for 10520 words)
+%
+% [54931 = saras,53491 = salas,50617 = sagas,50311 = rasas,49947 = kasas,49651 = talas,49648 = savas,
+% 49371 = ratas,49316 = sates,49261 = kalas,49177 = baras,49104 = kanas,48993 = senas,48659 = latas,
+% 48600 = suras,48526 = sonas,48471 = maras,48429 = sotas,48202 = varas,48166 = faras,48080 = paras,
+% 48050 = silas,47985 = salar,47845 = gasas,47737 = balas,47731 = satar,47699 = salts,47683 = säras,
+% 47580 = banas,47445 = satts,47412 = fasas,47316 = dalas,47285 = rakas,47160 = sulas,47159 = galas,
+% 47159 = danas,47115 = salta,47062 = datas,47031 = malas,46921 = kakas,46905 = gatas,46876 = radas,
+%
+% 63.32s 1min03.41s
+%
+% It's quite interesting that the best English and Swedish words are so similar even for
+% wordlists.
+%
+% 2022-01-14:
+% For the small wordle target list it takes only 1.9s!
+% 
+% [9636 = slate,9378 = stare,9357 = share,9304 = saner,9300 = snare,9298 = crane,
+%  9285 = saute,9248 = crate,9228 = stale,9207 = shale,9158 = roate,9133 = raise,
+%  9125 = arise,9113 = sauce,9100 = trace,9064 = arose,9033 = slice,9010 = scare,
+%  8992 = spare,8954 = suite,8926 = shire,8886 = store,8865 = shore,8860 = scale,
+%  8852 = saint,8808 = snore,8806 = crone,8795 = brace,8791 = irate,8768 = grate,
+%  8758 = shine,8741 = slave,8736 = stole,8731 = blare,8725 = teary,8718 = stone,
+%  8697 = shone,8690 = trade,8669 = trice,8623 = slide,8609 = slant,8602 = space,
+%  8596 = grace,8586 = brine,8586 = alone,8564 = parse,8561 = spire,8557 = shade,
+%  8547 = slime,8536 = stage,8532 = glare,8523 = flare,8518 = score,8518 = plane,
+%  8517 = cause,8505 = safer,8504 = prose,8500 = spore,8490 = suave,8481 = shame,
+%  8480 = prone,8468 = plate,8468 = cater,8462 = slope,8457 = shape,8453 = poise,
+%  8431 = since,
+%
+% ROATE is not very bad here, 12th place. SLATE is good!
+%
+go ?=>
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+  % File = "words_lower.txt",
+  % File = "eng_dict.txt", % smaller word list (9336 5 letter words)
+  % File = "sv_spelling_org_utf8.txt", % Swedish words  
+  N = 5,
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  Words := Words ++ ["roate"],
+  % println(words=Words),
+  println(len=Words.len),
+
+  P1 = 5, % 5,
+  P2 = 1,
+  println([p1=P1,p2=P2]),
+  Scores = new_map(),
+  % Update: I use only distinct letter words as init words
+  foreach(Word1 in Words, Word1.len == Word1.remove_dups.len)
+    Score = 0,
+    foreach(Word2 in Words, Word2 != Word1)
+      foreach(I in 1..N)
+        if Word1[I] == Word2[I] then
+          Score := Score + P1 % Correct positon
+        elseif membchk(Word1[I],Word2) then        
+          Score := Score + P2 % Correct character in some other position
+        end
+      end
+    end,
+    Scores.put(Word1,Score)
+
+  end,
+  println([V=K : K=V in Scores.to_list()].sort_down),
+  nl.
+go => true.
+
+
+
+%
+% Much simpler approach: What are the (isolated) most common characters in each position?
+%
+% For English 5 letter words: sares or for unique chars: sarey (neither are in the wordlist)
+% Position: frequency=character
+% 1 = [2186 = s,1686 = a,1554 = b,1506 = c,1258 = t,1219 = m,1171 = p,1128 = d,1040 = l,965 = g,940 = r,848 = f,839 = h,784 = k,691 = e,644 = n,596 = w,524 = o,461 = i,444 = j,416 = u,400 = v,225 = y,176 = z,93 = q,36 = x]
+%
+% 2 = [4080 = a,3060 = o,2851 = e,2228 = i,1818 = u,1536 = r,1184 = l,912 = h,670 = n,457 = y,395 = t,336 = s,333 = p,332 = c,327 = m,243 = d,226 = w,171 = b,139 = g,137 = k,126 = v,83 = x,72 = f,58 = z,31 = j,25 = q]
+%
+% 3 = [2193 = r,1950 = a,1752 = n,1650 = i,1602 = l,1413 = e,1408 = o,1040 = t,1018 = s,985 = u,877 = m,768 = d,700 = c,663 = b,611 = g,559 = p,415 = v,404 = k,375 = y,349 = w,331 = h,270 = f,217 = z,170 = x,80 = j,30 = q]
+%
+% 4 = [3240 = e,2197 = a,1947 = i,1383 = n,1377 = t,1290 = l,1277 = o,1215 = r,941 = s,887 = u,827 = d,768 = c,627 = k,611 = g,605 = m,523 = p,422 = b,421 = h,277 = f,269 = y,258 = v,192 = w,184 = z,61 = j,26 = x,5 = q]
+% 
+% 5 = [3758 = s,2665 = e,2349 = a,2094 = y,1511 = n,1279 = t,1185 = r,962 = l,914 = d,907 = i,852 = o,651 = h,498 = k,401 = m,297 = c,285 = p,258 = g,245 = u,145 = f,144 = x,128 = b,122 = w,121 = z,41 = v,10 = j,8 = q]
+
+% 0s513s
+
+% 2022-01-14: With wordle_small.txt wordlist.
+% The first letters are SAAEE. The first distinct letter word: SAIEY
+% 1 = [366 = s,198 = c,173 = b,149 = t,142 = p,141 = a,136 = f,115 = g,111 = d,107 = m,105 = r,88 = l,83 = w,72 = e,69 = h,43 = v,41 = o,37 = n,34 = i,33 = u,23 = q,20 = k,20 = j,6 = y,3 = z]
+% 2 = [304 = a,279 = o,267 = r,242 = e,202 = i,201 = l,186 = u,144 = h,87 = n,77 = t,61 = p,44 = w,40 = c,38 = m,23 = y,20 = d,16 = s,16 = b,15 = v,14 = x,12 = g,10 = k,8 = f,5 = q,2 = z,2 = j]
+% 3 = [307 = a,266 = i,244 = o,177 = e,165 = u,163 = r,139 = n,112 = l,111 = t,80 = s,75 = d,67 = g,61 = m,58 = p,57 = b,56 = c,49 = v,29 = y,26 = w,25 = f,12 = x,12 = k,11 = z,9 = h,3 = j,1 = q]
+% 4 = [318 = e,182 = n,171 = s,163 = a,162 = l,158 = i,152 = r,152 = c,139 = t,132 = o,82 = u,76 = g,69 = d,68 = m,55 = k,50 = p,46 = v,35 = f,28 = h,25 = w,24 = b,20 = z,3 = y,3 = x,2 = j]
+% 5 = [424 = e,364 = y,253 = t,212 = r,156 = l,139 = h,130 = n,118 = d,113 = k,64 = a,58 = o,56 = p,42 = m,41 = g,36 = s,31 = c,26 = f,17 = w,11 = i,11 = b,8 = x,4 = z,1 = u]
+%
+% And here are the first words that match these:
+% [scbtpafgdmrlwehvoniuqkjyz,aoreiluhntpwcmydsbvxgkfqzj,aioeurnltsdgmpbcvywfxkzhjq,ensalirctougdmkpvfhwbzyxj,eytrlhndkaopmgscfwibxzu]
+% saint  <--
+% sauna 
+% sauce
+% saucy
+% saute
+% saner
+% sandy
+% salsa
+% salad
+% sally
+% salty
+% salon
+% salve
+% salvo
+% satin
+% satyr
+% sassy
+% sadly
+% sappy
+% savoy
+% savor
+% savvy
+% safer
+% soapy
+% sooty
+% sooth
+%
+%
+% For Swedish 5 letter words: saras (or sarat for unique chars)
+% len = 10520
+% 1 = [1351 = s,827 = k,735 = b,652 = t,604 = l,550 = f,549 = r,527 = h,495 = m,478 = a,461 = g,456 = v,452 = d,447 = p,331 = o,285 = n,214 = e,212 = i,160 = j,141 = u,127 = ä,121 = å,115 = c,90 = ö,85 = y,22 = w,19 = z,13 = x,1 = q]
+% 
+% 2 = [1370 = a,973 = o,845 = i,825 = e,818 = r,790 = u,665 = l,630 = ä,451 = ö,416 = n,408 = å,402 = y,338 = t,290 = k,243 = v,172 = s,158 = j,150 = m,137 = p,98 = d,80 = g,56 = h,41 = f,40 = x,38 = b,31 = -,25 = c,13 = w,11 = z,2 = ü,2 = é,1 = q,1 = ']
+% 
+% 3 = [1047 = r,920 = l,835 = n,720 = t,694 = s,634 = a,497 = g,480 = d,471 = k,434 = i,409 = m,382 = e,365 = o,349 = v,321 = p,283 = ä,279 = u,221 = ö,217 = b,181 = j,167 = y,151 = c,144 = f,130 = å,114 = x,51 = h,10 = z,5 = w,3 = é,2 = è,2 = -,1 = ê,1 = q]
+% 
+% 4 = [1849 = a,1409 = e,921 = t,683 = n,557 = i,527 = k,505 = o,498 = l,493 = r,488 = d,410 = s,388 = g,276 = p,251 = m,186 = u,160 = v,143 = b,132 = j,114 = c,107 = ö,105 = å,89 = y,82 = f,65 = ä,26 = é,23 = h,14 = x,8 = z,6 = w,1 = ô,1 = ó,1 = í,1 = ë,1 = q]
+% 
+% 5 = [2316 = s,1911 = a,1210 = t,1104 = r,1019 = n,685 = e,436 = d,326 = l,316 = g,274 = k,147 = o,128 = m,107 = p,98 = i,78 = y,56 = å,54 = v,40 = b,35 = h,32 = é,30 = ö,29 = f,26 = x,21 = j,17 = u,7 = z,6 = c,5 = ä,4 = w,1 = ó,1 = í,1 = à]
+% 
+% 0.528s
+%
+go2 ?=>
+  N = 5,
+  % File = "words_lower.txt", % English words
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+  Words = [W : W in read_file_lines(File), length(W) == 5],
+  println(len=Words.len),
+
+  Map = new_list(N),
+  foreach(I in 1..N)
+    Map[I] = new_map()
+  end,
+  foreach(W in Words)
+    foreach(I in 1..N)
+      Map[I].put(W[I],Map[I].get(W[I],0)+1)
+    end
+  end,
+  Cs = new_list(N),
+  foreach(I in 1..N)
+    println(I=[V=K : K=V in Map[I].to_list()].sort_down),
+    Cs[I] := [K : V=K in [V=K : K=V in Map[I].to_list()].sort_down]
+  end,
+  println(Cs),
+  
+  % Which is the first word with distinct chars that matches these lists?
+  member(C1,Cs[1]),
+  member(C2,Cs[2]),
+  member(C3,Cs[3]),
+  member(C4,Cs[4]),
+  member(C5,Cs[5]),
+  CWord = [C1,C2,C3,C4,C5],
+  membchk(CWord, Words),
+  println(CWord),
+  flush(stdout),
+  fail,
+  nl.
+go2 => true.
+
+
+%
+% Here we generate all possible (distinct) 5 letter strings.
+% 
+% * Without checking duplicates it's 11 881 376 strings! (This takes 0.127s to count)
+%   And it's easy to count without loops:
+%   Picat> X= 26**5
+%   X = 11881376
+% 
+% * Without duplicates: 7 893 600 strings. (2.92s)
+%
+% But both are too huge to even try and I skip this since I would really like to
+% have a proper word as a starter.
+%
+go3 ?=>
+  Alpha = "abcdefghijklmnopqrstuvwxyz", % English
+  Count = 0,
+  % Generate the distinct 5 letter string  
+  foreach(C1 in Alpha,C2 in Alpha, C3 in Alpha, C4 in Alpha, C5 in Alpha,
+          C1 != C2, C1 != C3, C1 != C4, C1 != C5,
+          C2 != C3, C2 != C4, C2 != C5,
+          C3 != C4, C3 != C5,
+          C4 != C5)
+     % println([C1,C2,C3,C4,C5]),
+     Count := Count + 1
+  end,
+  println(count=Count),
+  
+  nl.
+go3 => true.
+
+%
+% Reverse Wordle:
+% Given a target word and the puzzle hints, can we guess what words that was used in the game?
+%    w, _: white (or black for dark mode), char not in word
+%    y: yellow: char correct but in wrong position
+%    G,g: green, correct position 
+%
+% Assumptions:
+%
+%  - One assumption is probably that the user is rational and don't make mistakes,
+%    such I did in the gorge problem when I forgot that yello mean correct
+%    letter in wrong position.
+%    For example that if a green is 
+%  - Another assumption is that all the words are in the wordlist. 
+% 
+% Let's start with "crank" problem 203 for which I had this progression:
+%
+% y _ _ _ _    a*b o v e
+% _ _ y y _    s t r*a*p
+% _ G G G_ _   g R A N d
+% _ G G G G    f R A N K
+% G G G G G    C R A N K
+
+% go4 ?=>
+%   N = 5,
+%   File = "eng_dict.txt", % smaller word list (9336 5 letter words)
+%   % File = "words_lower.txt", % English words
+%   % File = "sv_spelling_org_utf8.txt", % For Swedish words 
+%   Words = [W : W in read_file_lines(File), length(W) == N],
+
+
+%   Target = "crank",
+
+%   % Reverse hints
+%   HintsRev = ["ggggg", % crank
+%               "_gggg",
+%               "_ggg_",
+%               "__yy_",
+%               "y____"
+%              ],
+
+%   Hints = ["y____",
+%            "__yy_",
+%            "_ggg_",           
+%            "_gggg",
+%            "ggggg"  % crank
+%              ],
+
+
+%   % words2 = [brank,crank,drank,frank,prank,trank]
+%   % Words2 = [W : W in Words, W[2..5] == "rank",not membchk(W[1],Target)],
+%   % println(words2=Words2),
+%   % Words3 = [W : W in Words2, W[2..4] == "ran",not membchk(W[1],Target),not membchk(W[5],Target)],
+%   % println(words3=Words3),
+
+%   % But perhaps it's better to start from the beginning:
+%   foreach(Round in 1..Hints.len)
+%      println(round=Round),
+%      T = Hints[Round],
+%      println(t=T),
+%      foreach(I in 1..N)
+%        if T[I] == 'y' then
+%          println(I=T[I]="correct char but not in pos")
+%          % membchk(T[I],Target),
+%          % T[1] != Target[1]
+%        elseif T[I] == '_' then
+%          println(T[I]="not in word")
+%          % not membchk(T1[I],Target)
+%        else
+%          println(I=T[I]="correct position")
+%        end
+%     end
+%   end,
+%   nl.
+% go4 => true.
+
+%
+% 2022-01-14: From go2/0 I got the priorities for individual positions:
+% [scbtpafgdmrlwehvoniuqkjyz,
+%  aoreiluhntpwcmydsbvxgkfqzj,
+%  aioeurnltsdgmpbcvywfxkzhjq,
+%  ensalirctougdmkpvfhwbzyxj,
+%  eytrlhndkaopmgscfwibxzu]
+% This is fix for sort_candidates:
+%  - add the missing characters
+%  - reverse the strings
+% But since all chars are now in the strings and they should be reversed
+go5 ?=>
+  Alpha = "abcdefghijklmnopqrstuvwxyz",
+  Chars = [
+         "scbtpafgdmrlwehvoniuqkjyz".reverse,
+         "aoreiluhntpwcmydsbvxgkfqz".reverse,
+         "aioeurnltsdgmpbcvywfxkzhjq".reverse,
+         "ensalirctougdmkpvfhwbzyx".reverse,
+         "eytrlhndkaopmgscfwibxzu".reverse
+  ],
+
+  Cs2 = [],
+  foreach(I in 1..5)
+    Missing = [C : C in Alpha, not membchk(C,Chars[I])],
+    Cs = Chars[I] ++ Missing,
+    println(Cs.reverse),
+    Cs2 := Cs2 ++ [Cs]
+  end,
+  println(Cs2),
+  nl.
+go5 => true.
+
+
+%
+% Wordle simulator.
+% - Generates a random target word
+% - Solve the problem with a given first guess word
+%
+% SLANT is quite bad on these words, >= 6
+% [firstGuess = slant,targetWord = award,foundCount = 6]
+% [firstGuess = slant,targetWord = bezel,foundCount = 6]
+% [firstGuess = slant,targetWord = cinch,foundCount = 6]
+% [firstGuess = slant,targetWord = daddy,foundCount = 6]
+% [firstGuess = slant,targetWord = dandy,foundCount = 6]
+% [firstGuess = slant,targetWord = drawl,foundCount = 6]
+% [firstGuess = slant,targetWord = drill,foundCount = 6]
+% [firstGuess = slant,targetWord = drool,foundCount = 6]
+% [firstGuess = slant,targetWord = drown,foundCount = 6]
+% [firstGuess = slant,targetWord = elder,foundCount = 6]
+% [firstGuess = slant,targetWord = evade,foundCount = 6]
+% [firstGuess = slant,targetWord = fatty,foundCount = 10]
+% [firstGuess = slant,targetWord = fence,foundCount = 6]
+% [firstGuess = slant,targetWord = filly,foundCount = 6]
+% [firstGuess = slant,targetWord = flake,foundCount = 6]
+% [firstGuess = slant,targetWord = graze,foundCount = 6]
+% [firstGuess = slant,targetWord = happy,foundCount = 6]
+% [firstGuess = slant,targetWord = harry,foundCount = 6]
+% [firstGuess = slant,targetWord = haste,foundCount = 6]
+% [firstGuess = slant,targetWord = hatch,foundCount = 10]
+% [firstGuess = slant,targetWord = heave,foundCount = 6]
+% [firstGuess = slant,targetWord = hedge,foundCount = 6]
+% [firstGuess = slant,targetWord = hence,foundCount = 10]
+% [firstGuess = slant,targetWord = hilly,foundCount = 10]
+% [firstGuess = slant,targetWord = homer,foundCount = 10]
+% [firstGuess = slant,targetWord = hound,foundCount = 10]
+% [firstGuess = slant,targetWord = hover,foundCount = 10]
+% [firstGuess = slant,targetWord = jaunt,foundCount = 10]
+% [firstGuess = slant,targetWord = jazzy,foundCount = 10]
+% [firstGuess = slant,targetWord = jewel,foundCount = 6]
+% [firstGuess = slant,targetWord = joist,foundCount = 6]
+% [firstGuess = slant,targetWord = joker,foundCount = 10]
+% [firstGuess = slant,targetWord = jolly,foundCount = 6]
+% [firstGuess = slant,targetWord = kitty,foundCount = 6]
+% [firstGuess = slant,targetWord = krill,foundCount = 10]
+% [firstGuess = slant,targetWord = lapel,foundCount = 6]
+% [firstGuess = slant,targetWord = level,foundCount = 6]
+% [firstGuess = slant,targetWord = local,foundCount = 6]
+% [firstGuess = slant,targetWord = lowly,foundCount = 6]
+% [firstGuess = slant,targetWord = manga,foundCount = 6]
+% [firstGuess = slant,targetWord = merry,foundCount = 6]
+% [firstGuess = slant,targetWord = mound,foundCount = 6]
+% [firstGuess = slant,targetWord = mover,foundCount = 6]
+% [firstGuess = slant,targetWord = paper,foundCount = 6]
+% [firstGuess = slant,targetWord = rarer,foundCount = 6]
+% [firstGuess = slant,targetWord = refer,foundCount = 6]
+% [firstGuess = slant,targetWord = riper,foundCount = 6]
+% [firstGuess = slant,targetWord = roger,foundCount = 10]
+% [firstGuess = slant,targetWord = rover,foundCount = 10]
+% [firstGuess = slant,targetWord = rusty,foundCount = 6]
+% [firstGuess = slant,targetWord = sewer,foundCount = 6]
+% [firstGuess = slant,targetWord = shape,foundCount = 6]
+% [firstGuess = slant,targetWord = shave,foundCount = 10]
+% [firstGuess = slant,targetWord = slant,foundCount = 10]
+% [firstGuess = slant,targetWord = smear,foundCount = 6]
+% [firstGuess = slant,targetWord = staff,foundCount = 10]
+% [firstGuess = slant,targetWord = stash,foundCount = 6]
+% [firstGuess = slant,targetWord = state,foundCount = 6]
+% [firstGuess = slant,targetWord = stood,foundCount = 6]
+% [firstGuess = slant,targetWord = stoop,foundCount = 6]
+% [firstGuess = slant,targetWord = stuff,foundCount = 6]
+% [firstGuess = slant,targetWord = taste,foundCount = 10]
+% [firstGuess = slant,targetWord = tatty,foundCount = 6]
+% [firstGuess = slant,targetWord = taunt,foundCount = 10]
+% [firstGuess = slant,targetWord = tight,foundCount = 6]
+% [firstGuess = slant,targetWord = trite,foundCount = 6]
+% [firstGuess = slant,targetWord = tryst,foundCount = 6]
+% [firstGuess = slant,targetWord = vaunt,foundCount = 6]
+% [firstGuess = slant,targetWord = verge,foundCount = 6]
+% [firstGuess = slant,targetWord = vixen,foundCount = 6]
+% [firstGuess = slant,targetWord = watch,foundCount = 6]
+% [firstGuess = slant,targetWord = wheel,foundCount = 6]
+% [firstGuess = slant,targetWord = willy,foundCount = 10]
+% [firstGuess = slant,targetWord = wound,foundCount = 10]
+
+wordle_sim ?=>
+  CountMap = get_global_map(),
+  garbage_collect(300_000_000),
+  N = 5,
+  % File = "unixdict.txt", % smaller word list (3161 5 letter words)
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+  
+  % File = "eng_dict.txt", % 9336 5 letter words
+  % File = "words_lower.txt", % English words
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+  
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  
+  % NumWords = Words.len,
+  % println(len=Words.len),
+  % FirstGuess = "above",
+  % FirstGuess = "sanes",  
+  % FirstGuess = "roate",
+  % FirstGuess = "slant",
+  % FirstGuess = "astro",
+  % FirstGuess = "carne",
+  % FirstGuess = "slate",
+  % FirstGuess = "saint",
+  % FirstGuess = "splat",   
+  % FirstGuess = "tares",  
+  % FirstGuess = "slant", % New first guess word 2022-01-15
+  member(FirstGuess,["slant","slate","saint","sanes","tares","roate","astro","carne","soare"]),
+  % member(FirstGuess,["slant"]),
+  % member(FirstGuess,Words),
+  
+
+  % Results:
+  % Checking all words to compare the score on some different FirstGuess words.  
+  % [firstGuess = sanes,total = 42952,avg = 4.600685518423307] % 11min:04.48s
+  % [firstGuess = tares,total = 40393,avg = 4.326585261353899] % 10min39.90s
+  % Here I changed to just use the candidates in the next loops
+  % [firstGuess = roate,total = 39330,avg = 4.212724935732648] % 7min48.76s 
+
+  Print = true,  
+  _ = random2(), % No random   
+  % R = 1 + random() mod Words.len,
+  % TargetWord = Words[R],
+  % TargetWord := "crank",  
+  % TargetWord := "gorge",
+  % TargetWord := "basal",
+  % TargetWord := "query",
+  % TargetWord := "drink",
+  % TargetWord := "quick",
+  % TargetWord := "favor",
+  % TargetWord := "abbey",
+  % TargetWord := "tangy",
+  % TargetWord := "panic",
+  % TargetWord := "solar",
+  % TargetWord := "shire",
+  % TargetWord := "proxy",
+  % TargetWord := "roger",
+  % TargetWord := "point",
+  % TargetWord := "robot",
+  % TargetWord := "prick",
+  % TargetWord := "wince",
+  % TargetWord := "crimp",
+  TargetWord := "knoll",  
+  % member(TargetWord,["crank","gorge","basal","query","drink","quick","favor","tangy","panic","solar","shire","proxy"]),
+  % member(TargetWord,Words),
+
+  if not membchk(TargetWord,Words) then
+    println("Not in wordlist"=TargetWord),
+    fail
+  end,
+
+  if Print then
+    println(targetWord=TargetWord)
+  end,
+  
+  InitScores = [new_map(),new_map(),[]],  % No hints
+
+  FoundCount = wordle(Words,TargetWord,FirstGuess,InitScores,Print),
+
+  % Which target words cannot be reached?
+  % if FoundCount > 6 then
+  %   println([firstGuess=FirstGuess,targetWord=TargetWord,foundCount=FoundCount])
+  % end,
+  if Print then
+    println(foundCount=FoundCount),
+    println(targetWord=TargetWord)
+  end,
+  % Is there any relation between FoundCount and Levenshtein distance?
+  % Is there any relation between FoundCount and simple_score?
+  % If there is any relations they are not strong.
+  % println([foundCount=FoundCount,levenshtein=levenshtein(FirstGuess,TargetWord),simpleScore=simple_score(FirstGuess,TargetWord)]), 
+  
+  CountMap.put(FoundCount,CountMap.get(FoundCount,0)+1),
+  flush(stdout),
+  
+  fail,
+  nl.
+wordle_sim => println(map=get_global_map().to_list.sort).
+
+%
+% Wordle simulator II:
+%  - Check the scores of 'all' first guess words.
+%    We use the small unixdict word list and only distinct words.
+%
+% Note that this depends quite much in the candidate sort method.
+% Here we use sort_candidates/2.
+% 
+% Some results, lower score is better.
+% firstGuess = tares,total = 9854,avg = 3.117367921543815, time = ?]
+% [firstGuess = sanes,total = 10838,avg = 3.42866181588105, time = ?]
+% [firstGuess = roate,total = 10184,avg = 3.221765264156912, time = ?]
+%
+% Here we see that "tares" is slightly better than "roate" and "sanes".
+% But there are better words. So far I've found
+% [firstGuess = alert,total = 9665,avg = 3.057576716229041,time = 10.314]
+%
+% The result is saved in wordle_sim2_20220109.txt
+%
+%
+% [3.051882315722873 = slant,3.053780449224929 = spilt,3.056311293894337 = splat,3.057576716229041 = alert,
+%  3.06010756089845 = slate,3.065801961404619 = stile,3.071180006327112 = split,3.076241695665928 = least,
+%  3.082885162923126 = snarl,3.085099652008858 = saint,3.085099652008858 = salon,3.086048718759886 = brest,
+%  3.088579563429295 = alter,3.089528630180323 = santo,3.092375830433407 = stale,3.094906675102815 = alton,
+%  3.095539386270167 = arson,3.095539386270167 = siren,3.096488453021196 = blest,3.098070230939576 = stare,
+%  3.102815564694717 = brent,3.105346409364125 = satin,3.106611831698829 = sault,3.109459031951914 = slept,
+%  3.113255298956027 = latin,3.113255298956027 = tribe,3.113888010123379 = spite,3.114204365707055 = artie,
+%  3.114837076874407 = slice,3.115786143625435 = snort,3.116102499209111 = scant,3.116735210376463 = blast,
+%  3.117051565960139 = style,3.117367921543815 = slain,3.117367921543815 = talon,3.118316988294843 = senor,
+%  3.118949699462195 = plant,3.119898766213224 = built,3.120847832964252 = scalp,3.121164188547928 = snail,
+%  3.122429610882632 = smelt,3.12337867763366 = resin,3.12496045555204 = sepal,3.125909522303069 = snare,
+%  3.126225877886745 = tenor,3.126542233470421 = stole,3.128124011388801 = risen,3.128756722556153 = aries,
+%  3.128756722556153 = train,3.130654856058209 = table,3.132869345143942 = snore,3.133502056311294 = aires,
+%  3.13381841189497 = dealt,3.134451123062322 = stern,3.135716545397026 = stone,3.136665612148054 = aster,
+%  3.136665612148054 = bleat,3.137614678899082 = stair,3.138563745650111 = arlen,3.138880101233787 = april,
+%  3.138880101233787 = canst,3.139196456817463 = crest,3.141410945903195 = brine,3.141410945903195 = lares,
+%  3.142360012654223 = clasp,3.1426763682379 = trend,3.143941790572604 = steal,3.144574501739956 = salty,
+%  3.144574501739956 = sloan,3.144890857323632 = silty,3.145523568490984 = paint,3.146472635242012 = ernst,
+%  3.146788990825688 = inlet,3.147105346409364 = borne,3.147738057576716 = strap,3.148370768744068 = selma,
+%  3.148687124327744 = scorn,3.14900347991142 = slime,3.149636191078772 = sable,3.149636191078772 = trial,
+%  3.150585257829801 = trail,3.150901613413477 = alder,3.150901613413477 = spate,3.151534324580829 = acorn,
+%  3.151534324580829 = stain,3.152799746915533 = stahl,3.153116102499209 = bride,3.153432458082885 = later,
+%  3.153432458082885 = scale,3.153432458082885 = smith,3.154065169250237 = arise,3.154065169250237 = pleat,
+%  3.155646947168618 = tulip,3.155963302752294 = leapt,3.155963302752294 = store,3.15627965833597 = baste,
+%  3.15627965833597 = brant,3.156596013919646 = sedan,3.156596013919646 = smart,3.156912369503322 = olsen,
+%  3.157228725086998 = blare,3.157228725086998 = delta,3.15786143625435 = seton,3.158177791838026 = shale,
+%  3.158177791838026 = smile,3.158494147421702 = krebs,3.158810503005378 = blair,3.159126858589054 = plate,
+%  3.159126858589054 = strop
+%  ...
+
+% It took about 7h30min!
+
+%
+% It takes about 11s per firstGuess word (2104) so it will take about 6hours 30 minutes to run:
+% $ frink
+% 2104*11s -> [hour,min,s]
+% 6, 25, 44
+%
+%
+
+% Note: "slant" is probably not a good first word since it just have one wovel. Better would be
+% astro,tares, etc
+
+% Ah! "tares" is not in the small wordlist so I tested it again, but slant is better...
+%
+% [firstGuess = tares,total = 9298,avg = 2.94147421701993,time = 12.869]
+% [firstGuess = slant,total = 9238,avg = 2.922492881999367,time = 13.878]
+% [firstGuess = roate,total = 9441,avg = 2.986713065485606,time = 12.235]
+% [firstGuess = sanes,total = 10014,avg = 3.167984814931983,time = 15.420]
+% [2.922492881999367 = slant,2.94147421701993 = tares,2.986713065485606 = roate,3.167984814931983 = sanes]
+%
+% The difference is because the old run didn't sort the candidates so I have to run it again. Sigh!
+% Perhaps I should change sort_candidates/2 to boost words with many vowels? No, I wait with this.
+%
+% I'll do a new run which includes the candidate sorting: wordle_sim2_20220110.txt
+% [2.874090477696931 = carne,2.885162923125593 = drone,2.888959190129706 = alien,2.89022461246441 = learn,
+%  2.890540968048086 = loren,2.892439101550142 = prone,2.895602657386903 = crane,2.895919012970579 = crone,
+%  2.896868079721607 = cairn,2.901929769060424 = lance,2.90382790256248 = clare,2.905726036064537 = drain,
+%  2.906358747231889 = arlen,2.908889591901297 = brine,2.910155014236001 = clone,2.912369503321734 = inlet,
+%  2.912369503321734 = tried,2.914583992407466 = arden,2.914583992407466 = paine,2.917114837076874 = caine,
+%  2.91743119266055 = creon,2.917747548244226 = siren,2.918380259411578 = clean,2.918380259411578 = laden,
+%  2.918380259411578 = tenor,2.918696614995254 = alone,2.918696614995254 = lange,2.919645681746283 = alden,
+%  2.919962037329959 = tilde,2.920278392913635 = slate,2.920911104080987 = ripen,2.922176526415691 = elton,
+%  2.922176526415691 = renal,2.922492881999367 = slant,2.923441948750396 = trend,2.924391015501424 = monel,
+%  2.925972793419804 = latin,2.92628914900348 = slain,2.926605504587156 = inert,2.927554571338184 = marin,
+%  2.92787092692186 = alice,2.92787092692186 = borne,2.928503638089212 = melon,2.930401771591268 = notre,
+%  2.931350838342297 = maine,2.931350838342297 = snare,2.931667193925973 = brent,2.931667193925973 = galen,
+%  2.931983549509649 = cried,2.932616260677001 = talon,2.932932616260677 = andre,2.932932616260677 = inter,
+%  2.933248971844353 = glean,2.933881683011705 = price,2.93514710534641 = eldon,2.935463460930086 = baron,
+%  2.935463460930086 = range,2.935779816513762 = olden,2.93672888326479 = goren,2.937045238848466 = cadre,
+%  2.937045238848466 = clime,2.937045238848466 = snail,2.937045238848466 = snore,2.937361594432142 = alton,
+%  2.938627016766846 = dolan,2.938627016766846 = heron,2.940208794685226 = alert,2.940525150268902 = lemon,
+%  2.940841505852578 = radon,2.94147421701993 = rhine,2.941790572603606 = thine,2.941790572603606 = tonal,
+%  2.942106928187282 = angle,2.942423283770959 = marie,2.942423283770959 = prune,2.942739639354635 = reign,
+%  2.943055994938311 = artie,2.944005061689339 = plane,2.944005061689339 = rabin,2.944321417273015 = crime,
+%  2.945903195191395 = elgin,2.945903195191395 = reman,2.946219550775071 = salon,2.946535906358747 = noble,
+%
+% OK, so CARNE should be a good start word!? Let's try it some day...
+% 
+% Later: I've changed two things now:
+%  - Just score distinct word as + 1 (instead of + 10)
+%  - The score for a not solved puzzle is 100 instead of 10. But I'll play with this more...
+%
+% Yet another test: Note that carne is not in Wordle's wordlist! And we have a new winner: SIREN
+% wordle_sim2_2022011.out
+% [3.883897500790889 = siren,3.888959190129706 = carne,3.89180639038279 = drone,3.894020879468523 = prone,
+%  3.895286301803227 = slain,3.895919012970579 = crane,3.897817146472635 = drain,3.898766213223663 = learn,
+%  3.901297057893072 = salon,3.901613413476748 = alien,3.9022461246441 = loren,3.903195191395128 = plane,
+%  3.90382790256248 = snore,3.904460613729833 = clare,3.905093324897185 = sloan,3.906675102815565 = cairn,
+%  3.907307813982917 = crone,3.908573236317621 = tripe,3.908889591901297 = lance,3.910471369819677 = laden,
+%  3.910471369819677 = trend,3.911736792154382 = notre,3.911736792154382 = snail,3.91268585890541 = alden,
+%  3.91268585890541 = arlen,3.91268585890541 = rinse,3.913634925656438 = tried,3.91426763682379 = tenor,
+%  3.914900347991142 = elton,3.914900347991142 = slime,3.915216703574818 = latin,3.915216703574818 = slant,
+%  3.915533059158494 = paine,3.916482125909522 = resin,3.918380259411578 = plant,3.91901297057893 = spine,
+%  3.91901297057893 = tonal,3.919329326162607 = arden,3.919329326162607 = clean,3.919645681746283 = monel,
+%  3.919962037329959 = inlet,3.919962037329959 = plain,3.920278392913635 = tilde,3.920594748497311 = clone,
+%  3.921543815248339 = brine,3.921543815248339 = senor,3.921860170832015 = inert,3.922176526415691 = spire,
+%
+% 2022-01-14: I'm now testing the "official" (???) Wordle target list (wordle_small.txt)
+%             and also added an histogram of the counts. I've also change the sorting
+%             algorithm, hopefully to the better.
+%             Here are the scores of my favorite/previous first guess words:
+%
+% [firstGuess = slate,total = 8672,avg = 3.746004319654427,time = 8.743,hist = [2 = 146,3 = 860,4 = 918,5 = 298,6 = 73,10 = 20]]
+% [firstGuess = saint,total = 8771,avg = 3.788768898488121,time = 9.686,hist = [2 = 128,3 = 844,4 = 927,5 = 317,6 = 75,10 = 24]]
+% [firstGuess = carne,total = 8809,avg = 3.805183585313175,time = 8.939,hist = [2 = 142,3 = 803,4 = 936,5 = 336,6 = 72,10 = 26]]
+% [firstGuess = tares,total = 8866,avg = 3.829805615550756,time = 8.958,hist = [2 = 128,3 = 807,4 = 920,5 = 343,6 = 94,10 = 23]]
+% [firstGuess = roate,total = 8903,avg = 3.845788336933045,time = 8.405,hist = [2 = 126,3 = 826,4 = 904,5 = 333,6 = 92,10 = 34]]
+% [firstGuess = soare,total = 8973,avg = 3.876025917926566,time = 8.278,hist = [2 = 127,3 = 783,4 = 922,5 = 348,6 = 102,10 = 33]]
+% [firstGuess = slant,total = 8636,avg = 3.730453563714903,time = 9.445,hist = [2 = 130,3 = 879,4 = 945,5 = 287,6 = 54,10 = 20]]
+% [3.730453563714903 = slant,3.746004319654427 = slate,3.788768898488121 = saint,3.805183585313175 = carne,3.829805615550756 = tares,3.845788336933045 = roate,3.876025917926566 = soare]
+
+% SLATE is my current (very current) new favorite.
+%
+% The full list is in wordle_sim2_20220114.out:
+% [3.730453563714903 = slant,3.739956803455724 = splat,3.743844492440605 = spilt,
+%  3.746004319654427 = slate,3.747732181425486 = clasp,3.750323974082074 = split,
+%  3.752915766738661 = scant,3.763714902807775 = least,3.76414686825054 = stale,
+%  3.765010799136069 = blast,3.765874730021598 = train,3.768034557235421 = saint,
+%  3.773650107991361 = scalp,3.77451403887689 = plate,3.775377969762419 = smart,
+%  3.775377969762419 = trace,3.777537796976242 = clone,3.777537796976242 = stain,
+%  3.778401727861771 = pilot,3.778401727861771 = sport,3.779697624190065 = satin,
+%  3.780129589632829 = bloat,3.780129589632829 = plant,3.781425485961123 = slice,
+%  3.781857451403888 = shalt,3.782289416846652 = strap,3.782721382289417 = dealt,
+%  3.783585313174946 = crate,3.783585313174946 = trail
+%  ...
+% 
+% And SLANT it is!
+% Comparison of some other first guess words using worde_small.txt:
+%
+% [firstGuess = slant,total = 8636,avg = 3.730453563714903,time = 9.481,hist = [2 = 130,3 = 879,4 = 945,5 = 287,6 = 54,10 = 20]]
+% [firstGuess = tares,total = 8819,avg = 3.809503239740821,time = 8.886,hist = [2 = 128,3 = 819,4 = 938,5 = 322,6 = 84,10 = 24]]
+% 
+% [firstGuess = slate,total = 8672,avg = 3.746004319654427,time = 8.583,hist = [2 = 146,3 = 860,4 = 918,5 = 298,6 = 73,10 = 20]]
+% [firstGuess = saint,total = 8723,avg = 3.768034557235421,time = 9.632,hist = [2 = 128,3 = 872,4 = 910,5 = 311,6 = 71,10 = 23]]
+% [firstGuess = carne,total = 8814,avg = 3.807343412526998,time = 8.847,hist = [2 = 142,3 = 794,4 = 946,5 = 334,6 = 74,10 = 25]]
+% [firstGuess = roate,total = 8903,avg = 3.845788336933045,time = 8.382,hist = [2 = 126,3 = 826,4 = 904,5 = 333,6 = 92,10 = 34]]
+% [firstGuess = soare,total = 8973,avg = 3.876025917926566,time = 8.241,hist = [2 = 127,3 = 783,4 = 922,5 = 348,6 = 102,10 = 33]]
+%
+% 3.730453563714903 = slant,3.746004319654427 = slate,3.768034557235421 = saint,3.807343412526998 = carne,3.809503239740821 = tares,3.845788336933045 = roate,3.876025917926566 = soare]
+
+% Note: A nice first word is SPLAT which has only 10 not found words but worse 2 and 3 point solutions.
+% [firstGuess = splat,total = 8658,avg = 3.739956803455724,time = 11.158,hist = [2 = 116,3 = 845,4 = 979,5 = 315,6 = 50,10 = 10]]
+
+% 
+% Testing these words on the slighly larger unixdict.txt
+% numWords = 3161
+% numGuessWords = 2104
+% [firstGuess = slant,total = 12092,avg = 3.825371717810819,time = 17.367,hist = [2 = 141,3 = 1082,4 = 1346,5 = 468,6 = 100,10 = 24]]
+% [firstGuess = tares,total = 12287,avg = 3.887061056627649,time = 15.885,hist = [2 = 155,3 = 1053,4 = 1301,5 = 474,6 = 134,10 = 44]]
+%
+% [firstGuess = slate,total = 12127,avg = 3.836444163239481,time = 15.927,hist = [2 = 159,3 = 1080,4 = 1322,5 = 455,6 = 111,10 = 34]]
+% [firstGuess = saint,total = 12168,avg = 3.849414742170199,time = 17.289,hist = [2 = 143,3 = 1096,4 = 1323,5 = 440,6 = 122,10 = 37]]
+% [firstGuess = carne,total = 12308,avg = 3.893704523884847,time = 15.857,hist = [2 = 148,3 = 1026,4 = 1310,5 = 516,6 = 124,10 = 37]]
+% [firstGuess = roate,total = 12422,avg = 3.929769060423916,time = 15.494,hist = [2 = 139,3 = 1020,4 = 1298,5 = 528,6 = 127,10 = 49]]
+% [firstGuess = soare,total = 12489,avg = 3.950964884530212,time = 15.160,hist = [2 = 144,3 = 992,4 = 1301,5 = 539,6 = 131,10 = 54]]
+% [3.825371717810819 = slant,3.836444163239481 = slate,3.849414742170199 = saint,3.887061056627649 = tares,3.893704523884847 = carne,3.929769060423916 = roate,3.950964884530212 = soare]
+%
+wordle_sim2 ?=>
+  garbage_collect(300_000_000),
+  N = 5,
+  % File = "unixdict.txt", % smaller word list (3161 5 letter words)
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+
+  % File = "eng_dict.txt", % smaller word list (9336 5 letter words)
+  % File = "words_lower.txt", % English words
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+  
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  GuessWords = [W : W in Words, W.remove_dups.len == N],
+  NumWords = Words.len,
+
+  println(numWords=NumWords),
+  println(numGuessWords=GuessWords.len),
+
+  Map = new_map(),
+  Print = false,
+  % Only distinct letter words as first guess word
+  % foreach(FirstGuess in GuessWords)
+  foreach(FirstGuess in ["slant","splat","slate","saint","carne","tares","roate","soare","splat"])
+  % foreach(FirstGuess in ["slant"])
+  % foreach(FirstGuess in ["soare"])  
+    % println(firstGuess=FirstGuess),
+    garbage_collect(200_000_000),
+    statistics(runtime,_),
+
+    Total = 0,
+    CountHist = new_map(),
+    foreach(TargetWord in Words)
+    % foreach(TargetWord in ["tangy"])
+      garbage_collect(200_000_000),
+      % println(targetWord=TargetWord),
+      % if not membchk(TargetWord,Words) then
+      %   println("Not in wordlist"=TargetWord),
+      %   fail
+      % end,
+      InitScores = [new_map(),new_map(),[]], 
+      FoundCount = wordle(Words,TargetWord,FirstGuess,InitScores,Print),
+      % if FoundCount > 6 then
+      %   println(missing=TargetWord)
+      % end,
+      CountHist.put(FoundCount,CountHist.get(FoundCount,0)+1),
+      % println(foundCount=TargetWord=FoundCount),      
+      % println(totalSoFar=Total),
+      Total := Total + FoundCount
+    end,
+    statistics(runtime, [_,EndTimeMillis]),
+    Avg = Total/NumWords,
+    EndTimeSec = to_fstring("%0.3f",EndTimeMillis/1000),    
+    println([firstGuess=FirstGuess,total=Total,avg=Avg,time=EndTimeSec,hist=CountHist.to_list.sort]),
+    Map.put(FirstGuess,Avg),
+    flush(stdout)
+  end,
+
+  println([V=K : K=V in Map].sort),
+
+  nl.
+wordle_sim2 => true.
+
+
+%
+% Wordle trainer:
+% - Generate a random word and proceed with user input as the Wordle app.
+% - If ShowCandidates = true then all candidates are printed (cheating)
+% 
+% Find some sort method for the candidates.
+%   - prefer words with distinct letters
+%   - prefer words that contain common letter
+% 
+%
+wordle_trainer ?=>
+  N = 5,
+  % File = "unixdict.txt", % 3161 words 
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+
+  % File = "eng_dict.txt", % smaller word list (9336 5 letter words)
+  % File = "words_lower.txt", % English words
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+   _ = random2(),
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  NumWords = Words.len,
+  println(len=NumWords),
+
+  R = 1 + random() mod Words.len,
+  TargetWord = Words[R],
+  % TargetWord := "crank",
+  % TargetWord := "gorge",
+  % TargetWord := "query",
+  % TargetWord := "basal", % not a real target word
+  % TargetWord := "drink",
+  % TargetWord := "favor",
+  % TargetWord := "abbey",    
+  % TargetWord := "tangy",
+  % TargetWord := "panic",  
+  % TargetWord := "sally",
+  % TargetWord := "solar",
+  % TargetWord := "shire",
+  % TargetWord := "proxy",
+  % TargetWord := "fatty", % SLANT give > 6 guesses on this (not a real target word)
+  TargetWord := "point",
+
+  
+  if not membchk(TargetWord,Words) then
+    printf("TargetWord %w is not in Wordlist!\n",TargetWord),
+    fail
+  end,
+
+  garbage_collect(300_000_000),
+  % println(targetWord=TargetWord),
+  
+  % InitScores = [new_map(),new_map([4='e']),[]],
+  % InitScores = [new_map(),new_map(),[]],  % No hints
+  Scores = new_list(3),
+  Scores[1] = new_map(), % pos
+  Scores[2] = new_map(), % char
+  Scores[3] = [], % none
+
+  print("Type a 5 letter English word (1): "),
+  read_line() = Guess,
+  Count = 1,
+  Candidates = Words,
+  ShowCandidates = true,
+  
+  NotUsed = "sabctmpdlgrfhkenwoijuvyzqx", % From go2/0
+  Found = false,
+  UsedWords = [Guess],
+  while (Count < 6, Found == false, Candidates != [])
+     check_guess(TargetWord,Guess,Scores),
+     
+     print_scores(N,Scores),
+     NotUsed := [C : C in NotUsed,not membchk(C,Guess)],
+     NotUsedVowels = [C : C in NotUsed, membchk(C,"aeiouy")],
+     println("Not used letters"=NotUsed),
+     println("Not used vowels "=NotUsedVowels),
+     nl,
+     
+     Count := Count + 1,
+     
+     Candidates := find_candidate_words(Candidates,Scores),
+     Candidates := sort_candidates(Candidates),
+     if ShowCandidates then
+       println(candidates=Candidates)
+     end,
+     
+     printf("Type another 5 letter English word (%d): ",Count),
+     Guess := read_line(),
+     UsedWords := UsedWords ++ [Guess],
+     
+     if Guess == TargetWord then
+       Found := true
+     end
+  end,
+  nl,
+  if Found then
+    println(count=Count),
+    println("Great! Well done!")
+  else
+    println("Sorry, better luck next time!")
+  end,
+
+  println(targetWord=TargetWord),
+  println(usedWords=UsedWords),
+
+  flush(stdout),
+  nl.
+wordle_trainer => true.
+
+
+%
+% wordle_cheater/3: Wordle cheater - command line interface
+%
+% - Get some user input and scores and outputs candidates.
+% - Here we don't have any target word.
+%
+% Syntax:
+%   wordle_cheater(CorrectPos,CorrectChar,NotInWord) 
+%    - CorrectPos: correct character in correct position,
+%      Example: n is in position 4 and t is in position 5: "...nt": 
+%    - CorrectChar: correct character but in wrong position.
+%      Example: a is not in position 1, l is not in position 2: ["a","l","","",""]
+%    - NotInWord: characters not in word.
+%      Example: s, a, and t are not in the word: "sat"
+%
+% Note: Please use only lowercase characters.
+% 
+% Here is the procedure for getting the Wordle word KNOLL (Wordle 219 2022-01-24)
+% with the start word SLANT:
+%    s l*a n*t
+%    l*i n*e r
+%    n*o*b L y
+%    K N O L L
+%
+%
+% 1) Guess SLANT ->  s l*a n*t
+%    "l" and "n" are chars in wrong position:
+%    "s", "a", and "t" are not in the word:
+%   $ picat -g 'wordle_cheater(".....",["","l","","n",""],"sat")' wordle.pi
+%   ->
+%   candidates = [liner,felon,melon,lunge,login,lunch,lumen,noble,nobly,novel,lemon,lingo,liken,newly,lynch,uncle,vinyl,colon,linen,kneel,knoll,nylon]
+%
+% 2) Guess LINER -> l*i n*e r
+%    "l" is not in pos 1, "n" is not in pos 3
+%    "ier" are not in word
+%   $ picat -g 'wordle_cheater(".....",["l","l","n","",""],"satier")' wordle.pi
+%   ->
+%   candidates = [felon,melon,uncle,colon,kneel,knoll]
+%
+% 3) Guess NOBLY -> n*o*b L y
+%    l is in pos 4
+%    n not in pos 1, o not in pos 2,
+%    "by" not in word
+%   $ picat -g 'wordle_cheater("...l.",["ln","ol","n","",""],"satierby")' wordle.pi
+%   -> candidates = [knoll]
+% 
+% And KNOLL is the correct work. Good work!
+% 
+wordle_cheater(CorrectPos,CorrectChar,NotInWord) =>
+  N = 5,
+  CorrectPos := CorrectPos.to_lowercase,
+  Pos = $[I=CorrectPos[I] : I in 1..N, CorrectPos[I] != '.'],
+  writeln(correctPos=Pos),
+  
+  Char = [I=C : {I,C} in zip(1..N,CorrectChar),C!=""],
+  writeln(correctChar=Char),
+
+  NotInWord := NotInWord.to_lowercase,
+  writeln(notInWord=NotInWord),
+
+  garbage_collect(300_000_000),
+
+  % File = "unixdict.txt", % 3161 5 letter words. Is this the smallest word list?
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+  % File = "eng_dict.txt", % 9336 5 letter words
+  % File = "words_lower.txt", % 21830 English 5 letter words 
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  NumWords = Words.len,
+  println(len=NumWords),
+  nl,
+  
+  % The hints so far
+  Scores = new_list(3),
+  
+  Scores[1] = Pos, 
+  Scores[2] = Char,
+  Scores[3] = NotInWord, 
+  print_scores(N,Scores),
+
+  Candidates = Words,
+  Candidates := find_candidate_words(Candidates,Scores),
+  Candidates := sort_candidates(Candidates),
+  println(candidates=Candidates),
+  nl.
+
+
+%
+% Wordle cheater:
+% - Get some user input and scores and outputs candidates.
+% - Here we don't have any target word.
+%
+%
+wordle_cheater ?=>
+  garbage_collect(300_000_000),
+  N = 5,
+  % File = "unixdict.txt", % 3161 5 letter words. Is this the smallest word list?
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+  % File = "eng_dict.txt", % 9336 5 letter words
+  % File = "words_lower.txt", % 21830 English 5 letter words 
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  NumWords = Words.len,
+  println(len=NumWords),
+
+  % Type the hints so far
+  Scores = new_list(3),
+
+  % Testing the 203 game: CRANK (above,strap,grand,frank,crank)
+  % Example: 
+  % Scores[1] = new_map([2=r,3=a,4=n]), % correct pos
+  % Scores[2] = new_map([1=[a],3=[r],4=[a]]), % correct chars in wrong position
+  % Scores[3] = "gfdbovestp", % none
+
+  % Should be as [1=a,4=n] for a is in position 1, n is in position 4
+  Scores[1] = new_map([2=o,4=n,5=t]), % correct position: 
+  % Should be as: [1=[a,b,c]] for a, b, and c are not in position 1
+  Scores[2] = new_map(), % correct char in wrong
+  % Should be a plain string
+  Scores[3] = "slapci", % not in word
+
+  println(scores=Scores),
+  print_scores(N,Scores),
+
+  Candidates = Words,
+  Candidates := find_candidate_words(Candidates,Scores),
+  Candidates := sort_candidates(Candidates),
+  println(candidates=Candidates),
+  nl.
+wordle_cheater => true.
+
+
+%
+% Print the scores in a nice(r) way.
+%
+print_scores(N,Scores) =>
+  println(scores=Scores),
+  CorrectPositions = ['_' : _ in 1..N],
+  foreach(I=C in Scores[1])
+    CorrectPositions[I]:=to_uppercase(C)
+  end,
+  println('correct_positions  '=CorrectPositions),
+
+  IncorrectPositions = ['_' : _ in 1..N],
+  foreach(I=Cs in Scores[2])
+    IncorrectPositions[I] := Cs
+  end,
+  println(incorrect_positions=IncorrectPositions),
+  
+  foreach(I=Cs in Scores[2])
+    printf("%w is not in position %d\n",Cs,I)
+  end,
+  println("Not in word"=Scores[3]),
+  nl.
+     
+
+
+%
+% Sort candidates according to letter frequency etc.
+%
+% 2022-01-14: Sort according to probabilities of individual positions
+%             instead of just the characters of the first word.
+%  
+% From go2/0 I got the priorities for individual positions:
+% [scbtpafgdmrlwehvoniuqkjyz,
+%  aoreiluhntpwcmydsbvxgkfqzj,
+%  aioeurnltsdgmpbcvywfxkzhjq,
+%  ensalirctougdmkpvfhwbzyxj,
+%  eytrlhndkaopmgscfwibxzu]
+% go5/0 adds the missing chars and reverse the strings
+%
+% Note: The score terms has been found by some experiments 
+%       and are not proved to be optimal...
+%
+sort_candidates(Candidates) = Sorted =>
+  WordLen = Candidates[1].len,
+  Map = new_map(),
+  % Reversed and with missing chars
+  Cs2 = ["zyjkquinovhewlrmdgfaptbcsx",
+         "zqfkgxvbsdymcwptnhulieroaj",
+         "qjhzkxfwyvcbpmgdstlnrueoia",
+         "xyzbwhfvpkmdguotcrilasnejq",
+         "uzxbiwfcsgmpoakdnhlrtyejqv"
+  ],
+  CsLen = Cs2[1].len,  
+  foreach(Word in Candidates)
+    Score = 0,
+    if Word.remove_dups.len == WordLen then
+      % prefer distinct words
+      Score := Score + 100
+    end,
+    % Score according to letter frequency
+    foreach({C,Ix} in zip(Word,1..WordLen))
+      foreach(I in 1..CsLen)
+        if C == Cs2[Ix,I] then
+           % factor I/2 seems quite good
+           Score := Score + I/2
+        end
+      end
+    end,
+    Map.put(Word,Score)
+  end,
+  Sorted = [V : _=V in [V=K : K=V in Map].sort_down].
+
+%
+% The old version
+%
+sort_candidates_old(Candidates) = Sorted =>
+  WordLen = Candidates[1].len,
+  Map = new_map(),
+  Cs = "sabctmpdlgrfhkenwoijuvyzqx".reverse,
+  CsLen = Cs.len,
+  foreach(Word in Candidates)
+    Score = 0,
+    if Word.remove_dups.len == WordLen then
+      % distinct words
+      Score := Score + 10
+    end,
+    % Check letter frequency
+    foreach(C in Word)
+      foreach(I in 1..CsLen)
+        if C == Cs[I] then
+          Score := Score + I
+        end
+      end
+    end,
+    Map.put(Word,Score)
+  end,
+  Sorted = [V : _=V in [V=K : K=V in Map].sort_down].
+
+
+%
+% This simulates the complete search given some TargetWord and perhaps some InitScores
+%
+wordle(Words,TargetWord,FirstGuess,InitScores,Print) = FoundCount =>
+  if Print then println($wordle(words,TargetWord,FirstGuess,InitScores)) end,
+  N = TargetWord.len,
+  % File = "eng_dict.txt", % smaller word list (9336 5 letter words)
+  % File = "words_lower.txt", % English words
+  % File = "sv_spelling_org_utf8.txt", % For Swedish words
+
+  % Words = [W : W in read_file_lines(File), length(W) == N],
+
+  Guess = FirstGuess,
+
+  Scores = new_list(3),
+  Scores[1] = new_map(), % pos
+  Scores[2] = new_map(), % char
+  Scores[3] = [], % none
+  if InitScores[1].keys() != [] then
+    Scores[1] := InitScores[1]
+  end,
+  if InitScores[2].keys() != [] then
+    Scores[2] := InitScores[2]
+  end,
+  if InitScores[3] != [] then
+    Scores[3] := InitScores[3]
+  end,
+
+  if Print then
+    println(len=Words.len),
+    println(targetWord=TargetWord),
+    println(guess=Guess)
+  end,
+  
+  Count = 1,
+  Found = false,
+  Candidates = Words,
+  Guesses = [FirstGuess],
+  while (Count < 6, Guess != TargetWord, Candidates != [], Found == false)
+     Count := Count + 1,
+     if Print then
+       nl,
+       println(map=Scores),
+       println(count=Count)
+     end,     
+     check_guess(TargetWord,Guess,Scores),
+     if Print then
+       print_scores(N,Scores)
+     end,
+     
+     Candidates := find_candidate_words(Candidates,Scores),
+     if Candidates != [] then
+       Candidates := sort_candidates(Candidates),
+       % Candidates := sort_candidates_old(Candidates), % test the old algorihm
+       if Print then
+         println(candidates=Candidates)
+       end,
+       Guess := Candidates[1],
+       Guesses := Guesses ++ [Guess],
+       if Print then
+         println(newGuess=Guess)
+       end
+     else
+       println("No more candidates!"),
+       Guess := 'XXXXX'
+     end,
+     if Guess == TargetWord then
+       Found := true
+     end
+  end,
+  if Print then
+    nl
+  end,
+  % Note: This might change with experiments
+  FoundCount1 = 10, % Not Found
+  if Found then
+    if Print then
+      println(found=Guess),
+      println(count=Count)
+    end,
+    FoundCount1 := Count
+  else
+    if Print then
+      println("Not Found!"),
+      Guesses := Guesses ++ ['NOT_FOUND']
+    end
+    % Note: This might change with experiments
+    % FoundCount1 := 10
+  end,
+  if Print then
+    println(guesses=Guesses),
+    nl,nl
+  end,
+  FoundCount = FoundCount1.
+
+
+%
+% Checking the guess and add the hints to the Scores map.
+%
+check_guess(Word,Guess,Scores) =>
+  N = Word.len,
+  foreach(I in 1..N)
+    if Guess[I] == Word[I] then
+       Scores[1].put(I,Guess[I])
+    elseif membchk(Guess[I],Word) then
+       Scores[2].put(I,Scores[2].get(I,[])++[Guess[I]])    
+    else
+      if not membchk(Guess[I],Scores[3]) then
+        Scores[3] := Scores[3] ++ [Guess[I]]
+      end
+    end
+  end,
+  % remove duplicates for Scores[2]
+  foreach(I in 1..N)
+    if Scores[2].has_key(I) then
+      Scores[2].put(I,Scores[2].get(I,[]).remove_dups)
+    end
+  end.
+
+%
+% Find candidates for the next word to guess given the
+% hints in Scores.
+%
+find_candidate_words(Words,Scores) = Candidates =>
+  Candidates1 = [],
+  foreach(Word in Words)
+    Found = true,
+    foreach(I=P in Scores[1],Found==true)
+      if Word[I] != P then
+        Found := false
+      end
+    end,
+    if Found then
+      % Scores[2] includes a list of chars not in position I, e.g: 1=[a,b,c]
+      foreach(I=Cs in Scores[2],Found==true)
+        foreach(C in Cs, Found==true)
+          if not membchk(C,Word) then
+             Found := false
+          end,
+          if Word[I] == C then
+            Found := false
+          end
+        end
+      end
+    end,
+    if Found then
+      foreach(C in Scores[3],Found == true)
+        if membchk(C,Word) then
+          Found := false
+        end
+      end
+   end,
+   if Found then
+     Candidates1 := Candidates1 ++ [Word]
+   end
+  end,
+  Candidates = Candidates1.
+
+
+
+% Based on the algorithm at
+% http://en.wikipedia.org/wiki/Levenshtein_distance
+%
+% Note: Picat is 1-based so some adjustments are needed
+%
+levenshtein(S,T) = Dist =>
+  M = 1+S.length,
+  N = 1+T.length,
+  
+  % for all i and j, d[i,j] will hold the Levenshtein distance between
+  % the first i characters of s and the first j characters of t,
+  % note that d has (m+1)x(n+1) values
+  % set each element to zero
+  D = new_array(M,N),
+
+  % source prefixes can be transformed into empty string by
+  % dropping all characters 
+  foreach(I in 1..M)
+    D[I,1] := I-1
+  end,
+  
+  % target prefixes can be reached from empty source prefix
+  % by inserting every characters
+  foreach(J in 1..N) 
+    D[1,J] := J-1
+  end,
+  
+  foreach(J in 2..N, I in 2..M)
+    if S[I-1] == T[J-1] then
+      D[I,J] := D[I-1,J-1]            % no operation required
+    else 
+      D[I,J] := min([D[I-1,J  ] + 1,  % a deletion
+                     D[I  ,J-1] + 1,  % an insertion
+                     D[I-1,J-1] + 1]  % a substitution
+                    )
+    end
+  end,
+
+  Dist = D[M,N].
+
+
+%
+% Compare two words using a simple score:
+%  - char in correct position: +5 points
+%  - char in word but not in correct position: +1
+% 
+simple_score(Word1,Word2) = Score =>
+  N = Word1.len,
+  P1 = 15,
+  P2 = 5,
+  Score1 = 0,
+  foreach(I in 1..N)
+    if Word1[I] == Word2[I] then
+       Score1 := Score1 + P1 % Correct positon
+    elseif membchk(Word1[I],Word2) then        
+       Score1 := Score1 + P2 % Correct character in some other position
+    end
+  end,
+  Score = Score1.

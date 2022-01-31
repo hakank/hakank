@@ -1,0 +1,474 @@
+/* 
+
+  Crossword solver (Gecode's problems) in Picat.
+
+  This version of crossword solver was inspired by Ivan Bratko's Prolog solution
+  in his "Prolog Programming for Artificial Intelligence", 
+  (4th edition), page 27f 
+
+  The problem is to fill this crossword with words:
+     
+     L1   L2    L3   L4    L5   XXX
+     L6   XXX   L7   XXX   L8   XXX
+     L9   L10   L11  L12   L13  L14
+     L15  XXX   XXX  XXX   L16  XXX
+
+  Where the L<n> are letters to be identified.
+
+  The main idea is to figure out all the word segments and then use
+  the global constraint table_in/2 to place all words in the crossword.
+
+  (Also, see the crossword example in Picat Guide, section "11.2 Table constraint".)
+
+  See my blog post for more details about this approach (using MiniZinc): 
+  "Crossword construction in MiniZinc using table constraints - a small benchmark on '72 Gecode problems'"
+  http://www.hakank.org/constraint_programming_blog/2011/10/crossword_construction_in_minizinc_using_table_constraints_a_small_ben_1.html
+
+
+  This model supports puzzle files in the format of:
+  """
+  % 
+  % Gecode problem #3: 05.04, 5 x 5
+  %
+  _ _ _ * *
+  _ _ _ _ *
+  _ _ _ _ _
+  * _ _ _ _
+  * * _ _ _
+  """
+
+  Where "*" marks the blocks
+
+  The 72 Gecode grid puzzles that are used are here:
+    http://www.hakank.org/picat/crossword3/
+  
+  (Some more instances: http://www.hakank.org/minizinc/crossword3/ )
+
+  Here are the times for solving the 72 Gecode instances using the wordlist
+  /usr/share/dict/words (102 305 words) and with a 600s timeout:
+
+   Problem  0 (   5 x 5): 0.218s
+   Problem  1 (   5 x 5): 0.161s
+   Problem  2 (   5 x 5): 0.132s
+   Problem  3 (   5 x 5): 0.075s
+   Problem  4 (   5 x 5): 0.067s
+   Problem  5 (   5 x 5): 0.246s
+   Problem  6 (   5 x 5): 0.145s
+   Problem  7 (   5 x 5): 0.189s
+   Problem  8 (   5 x 5): 0.078s
+   Problem  9 (   5 x 5): 0.052s
+   Problem 10 ( 15 x 15): 32.468s
+   Problem 11 ( 15 x 15): 22.166s
+   Problem 12 ( 15 x 15): 11.987s
+   Problem 13 ( 15 x 15): 75.050s
+   Problem 14 ( 15 x 15): 5.669s
+   Problem 15 ( 15 x 15): 600.000s  Timeout
+   Problem 16 ( 15 x 15): 512.101s
+   Problem 17 ( 15 x 15): 8.595s
+   Problem 18 ( 15 x 15): 8.517s
+   Problem 19 ( 15 x 15): 320.159s
+   Problem 20 ( 19 x 19): 35.531s
+   Problem 21 ( 19 x 19): 172.384s
+   Problem 22 ( 19 x 19): 557.139s
+   Problem 23 ( 19 x 19): 43.015s
+   Problem 24 ( 19 x 19): 16.761s
+   Problem 25 ( 19 x 19): 20.509s
+   Problem 26 ( 19 x 19): 12.443s
+   Problem 27 ( 19 x 19): 18.675s
+   Problem 28 ( 19 x 19): 21.346s
+   Problem 29 ( 19 x 19): 7.245s
+   Problem 30 ( 21 x 21): 600.000s
+   Problem 31 ( 21 x 21): 87.046s
+   Problem 32 ( 21 x 21): 214.432s
+   Problem 33 ( 21 x 21): 600.000s
+   Problem 34 ( 21 x 21): 550.917s
+   Problem 35 ( 21 x 21): 523.814s
+   Problem 36 ( 21 x 21): 122.659s
+   Problem 37 ( 21 x 21): 44.085s
+   Problem 38 ( 21 x 21): 93.624s
+   Problem 39 ( 21 x 21): 600.000s
+   Problem 40 ( 23 x 23): -0.005s  No 23 length words in the wordlist
+   Problem 41 ( 23 x 23): 108.853s
+   Problem 42 ( 23 x 23): 600.000s
+   Problem 43 ( 23 x 23): 600.000s
+   Problem 44 ( 23 x 23): 306.912s
+   Problem 45 ( 23 x 23): 600.000s
+   Problem 46 ( 23 x 23): 600.000s
+   Problem 47 ( 23 x 23): 600.000s
+   Problem 48 ( 23 x 23): 352.303s
+   Problem 49 ( 23 x 23): 600.000s
+   Problem 50 (   2 x 2): 0.037s
+   Problem 51 (   3 x 3): 0.031s
+   Problem 52 (   4 x 4): 0.044s
+   Problem 53 (   5 x 5): 0.076s
+   Problem 54 (   5 x 5): 0.073s
+   Problem 55 (   5 x 5): 0.130s
+   Problem 56 (   6 x 6): 0.096s
+   Problem 57 (   7 x 7): 0.386s
+   Problem 58 (   7 x 7): 0.591s
+   Problem 59 (   7 x 7): 0.474s
+   Problem 60 (   7 x 7): 0.984s
+   Problem 61 (   8 x 8): 0.215s
+   Problem 62 (   9 x 9): 0.444s
+   Problem 63 ( 10 x 10): 1.378s
+   Problem 64 ( 11 x 11): 1.519s
+   Problem 65 ( 13 x 13): 2.868s
+   Problem 66 ( 15 x 15): 6.261s
+   Problem 67 ( 15 x 15): 4.306s
+   Problem 68 ( 15 x 15): 14.907s
+   Problem 69 (   9 x 9): 0.875s
+   Problem 70 ( 13 x 13): 1.969s
+   Problem 71 ( 13 x 13): 2.897s
+
+   Timeouts: 15 30 33 39 42 43 45 46 47 49
+
+   Note that problem 40 includes words of length 23 but there are non in the used wordlist.
+
+   Here is the problem instance 23 and a solution:
+
+    _ _ _ _ _ # _ _ _ _ _ _ _ # _ _ _ _ _ 
+    _ _ _ _ _ # _ _ _ _ _ _ _ # _ _ _ _ _ 
+    _ _ _ _ _ # _ _ _ _ _ _ _ # _ _ _ _ _ 
+    _ _ _ # _ _ _ # _ _ _ # _ _ _ # _ _ _ 
+    _ _ _ _ # _ _ _ # # # _ _ _ # _ _ _ _ 
+    # # # _ _ _ _ _ _ _ _ _ _ _ _ _ # # # 
+    _ _ _ _ _ _ # _ _ _ _ _ # _ _ _ _ _ _ 
+    _ _ _ # _ _ _ # _ _ _ # _ _ _ # _ _ _ 
+    _ _ _ _ # _ _ _ _ # _ _ _ _ # _ _ _ _ 
+    _ _ _ _ # _ _ _ # # # _ _ _ # _ _ _ _ 
+    _ _ _ _ # _ _ _ _ # _ _ _ _ # _ _ _ _ 
+    _ _ _ # _ _ _ # _ _ _ # _ _ _ # _ _ _ 
+    _ _ _ _ _ _ # _ _ _ _ _ # _ _ _ _ _ _ 
+    # # # _ _ _ _ _ _ _ _ _ _ _ _ _ # # # 
+    _ _ _ _ # _ _ _ # # # _ _ _ # _ _ _ _ 
+    _ _ _ # _ _ _ # _ _ _ # _ _ _ # _ _ _ 
+    _ _ _ _ _ # _ _ _ _ _ _ _ # _ _ _ _ _ 
+    _ _ _ _ _ # _ _ _ _ _ _ _ # _ _ _ _ _ 
+    _ _ _ _ _ # _ _ _ _ _ _ _ # _ _ _ _ _ 
+
+
+
+    Problem 23 ( 19 x 19): 43.015s
+    Solution: 
+    media_apostle_sonic
+    error_manlier_piano
+    crane_pleader_album
+    con_sue_spy_out_ore
+    arks_pro___urn_abet
+    ___upperclassman___
+    cabbie_beige_entomb
+    ape_erg_lee_end_car
+    pore_call_sent_hare
+    agar_lie___lei_aria
+    beta_ants_ammo_wins
+    lee_ass_ash_ani_net
+    essays_sties_altars
+    ___semipermeable___
+    rims_era___all_ashy
+    any_ani_eat_lei_lye
+    tunas_samurai_drama
+    track_emirate_lever
+    yeses_sprayed_evens
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+
+main => go.
+
+%
+% For running instance 4:
+%
+% $ picat -log crossword_gecode_problems.pi 4
+%
+main(Problem) =>
+  N = Problem[1].to_int(),
+  println(n=N),
+  run_problem(N),
+  nl.
+
+run_problem(N) =>
+  flush(stdout),
+  Words = get_words("/usr/share/dict/words"),
+  % Words = get_words("unixdict.txt"),
+  % See http://www.hakank.org/minizinc/crossword3/ for more on this
+  Path = "./crossword3/", 
+  println(problem=N),
+  flush(stdout),
+  File = Path ++ "gecode_grid" ++ N.to_string() ++ ".txt",
+  println(file=File),
+  Puzzle = read_problem(File),
+  print_crossword(Puzzle),
+  flush(stdout),
+  time2(crossword(Puzzle,Words)),
+  println(ok),
+  flush(stdout),
+  nl.
+
+
+%
+% Since the SAT solver don't handle timeout/3 well, we run each
+% instance as an external Picat program.
+%
+% Note that the runtime (via Linux `time` command) includes the time for reading 
+% the wordlist and converting the words to list of integers.
+% If that is to be ignored, then one can use Picat's time/1 instead.
+% 
+go ?=>
+  nolog,
+  TimeoutSec = 600,
+  foreach(F in 0..71)
+    println(problem=F),
+    flush(stdout),
+    Command = to_fstring("time /usr/bin/timeout -k %d -s 9 %d picat -log crossword_gecode_problems.pi %d 2>&1",TimeoutSec,TimeoutSec,F),
+    println(command=Command),
+    Ret = command(Command),
+    println(ret=Ret),
+    nl
+  end,
+  nl.
+go => true.
+
+
+
+%
+% Solve all 72 Gecode grid puzzles.
+%
+go1 ?=>
+  % nolog,
+  Words = get_words("/usr/share/dict/words"),
+  % Words = get_words("unixdict.txt"),  
+  Path = "/home/hakank/g12/me/crossword3/", % See http://www.hakank.org/minizinc/crossword3/
+  Files = [],
+  foreach(F in 0..71)
+    println(problem=F),
+    flush(stdout),
+    File = Path ++ "gecode_grid" ++ F.to_string() ++ ".txt",
+    Files := Files ++ [File]
+    % Puzzle = read_problem(File),
+    % print_crossword(Puzzle),
+    % flush(stdout),
+    % crossword(Puzzle,Words),
+    % flush(stdout),
+    % nl,nl,nl
+  end,
+  solve_problems(Files,Words),
+  nl.
+go1 => true.
+
+%
+% Testing failure driven loop
+%
+go2 ?=>
+  nolog,
+  TimeoutSec = 600,
+  Timeout = TimeoutSec*1000, % 600s = 10 min 
+  Words = get_words("/usr/share/dict/words"),
+  % Words = get_words("unixdict.txt"),  
+  Path = "/home/hakank/g12/me/crossword3/", % See http://www.hakank.org/minizinc/crossword3/
+  member(F,0..71),
+  println(problem=F),
+  File = Path ++ "gecode_grid" ++ F.to_string() ++ ".txt",
+  Puzzle = read_problem(File),
+  print_crossword(Puzzle),
+  flush(stdout),
+  % Handle cases which have missing word lengths with '; true')
+  % Note: The SAT solver might not timeout so prepare for a long night...  
+  once((time(time_out($crossword(Puzzle,Words),Timeout,Status)) ; Status = success, true)),
+  if Status == success then
+    println(ok)
+  else
+    println(timeout_or_not_ok)
+  end,  
+  nl,nl,nl,
+  flush(stdout),
+  fail,
+  nl.
+
+go2 => true.
+
+
+solve_problems([],_Words) => true.
+solve_problems([File|Files],Words) =>
+    println(File),
+    % garbage_collect(100_000_000),
+    Puzzle = read_problem(File),
+    print_crossword(Puzzle),
+    flush(stdout),
+    TimeoutSec = 600,
+    Timeout = TimeoutSec*1000, % 600s = 10 min
+    % Handle cases which have missing word lengths with '; true')
+    (time(time_out($crossword(Puzzle,Words),Timeout,Status)) ; true),
+    if Status == success then
+      println(ok)
+    else
+      println(timeout_or_not_ok)
+    end,
+    % flush(stdout),
+    nl,nl,nl,
+    solve_problems(Files,Words).
+
+
+%
+% Note: we assume words with chars a..z
+%
+crossword(Problem,Words) =>
+  Rows = Problem.len,
+  Cols = Problem[1].len,
+  println([rows=Rows,cols=Cols]),
+  % println(problem_len=Problem.flatten().len),
+  L = Problem.vars(),
+  L :: 1..26,
+  % println(l_len=L.len),  
+
+  % handle segments
+  Segments = get_segments(Problem) ++ get_segments(Problem.transpose()),
+  println(numSegments=Segments.length),
+  SegmentLens = new_map(),
+  MissingWordLength = false,
+  foreach(Segment in Segments) 
+    Len = Segment.length,
+    SegmentLens.put(Len, SegmentLens.get(Len,0) + 1),
+    if not(Words.has_key(Len)) then
+      printf("Sorry, the dictionary don't include words of length %d\n", Len),
+      MissingWordLength := true
+      % , halt
+    end,
+    MissingWordLength == false,
+    SegmentTuple = Segment.to_array(),
+    table_in( SegmentTuple, Words.get(Len)) % map of lists
+    % table_in( SegmentTuple, Words[Len]) % list of lists
+  end,
+  println(missingWordLength=MissingWordLength),
+  MissingWordLength == false,
+  println(segmentLens=SegmentLens),
+  % println(l=L),
+
+  println(solve),
+  Vars = L ++ Segments.vars.flatten,
+  % println(vars=Vars),
+  solve($[ff,split],Vars),
+  % solve_suspended,  %only for cp module
+  % time2(solve($[min,updown],L++Segments)),
+  % time2(solve($[ff,split],L++Segments)),
+
+  println(l=L),
+  % println(chars=[chr(C+96) : C in L]),
+  println("\nSolution:"),
+  LC = 1, % Counter in L
+  foreach(P in Problem)
+     % println([cond(C != 'x', chr(C+96), '_') : C in P]),
+     % println([C : C in P]),
+     foreach(C in P)
+       if C == x then
+         print('_')
+       else
+         print(chr(L[LC]+96)),
+         LC := LC+1
+       end
+     end,
+     nl
+  end,
+
+  println("\nUsed words:"),
+  foreach(S in Segments)
+     println([cond(C != x, chr(C+96), '_') : C in S])
+  end,
+
+  nl.
+
+/*
+  Read a problem of the following format
+ """
+ % 
+ % Gecode problem #3: 05.04, 5 x 5
+ %
+ _ _ _ * *
+ _ _ _ _ *
+ _ _ _ _ _
+ * _ _ _ _
+ * * _ _ _
+ """
+
+ Where "*" marks the blocks
+
+*/
+read_problem(File) = Problem => 
+  Problem1 = [],
+  foreach(Line in read_file_lines(File))
+     if Line != [], not(member('%',Line))  then
+        % println(Line),
+        Line2 = delete_all(Line,' ').replace('*',x),
+        foreach(I in 1..Line2.length)
+          if Line2[I] = '_' then
+             Line2[I] := new_dvar(),
+             Line2[I] :: 1..26
+          end
+        end,
+        Problem1 := Problem1 ++ [Line2]
+     end
+  end,
+  nl,
+  Problem = Problem1.
+
+%
+% return a map of words (list per length)
+%
+get_words(File) = Words =>
+  Words1 = [ W : W in read_file_lines(File), W.length > 1],
+  println(word_length=Words1.length),
+  WordsMap = new_map(),
+  foreach(Word in Words1) 
+     % remove words with "weird chars" (i.e. with chars not in 1..26)
+     Nice = true,
+     foreach(C in Word.convert(), Nice = true)
+       if C < 1 ; C > 26 then
+          Nice := false
+       end
+     end,
+     if Nice then
+        Len = Word.length,
+        % printf("t((%w)). %% %w\n", Word.convert().list_to_and(), Word),
+        WordsMap.put(Len, WordsMap.get(Len, []) ++ [Word.convert().to_array()])
+     end
+  end,
+  Words = WordsMap.
+
+  
+%
+% Identify all segments (i.e. words) of a crossword.
+%
+get_segments(Problem) = Segments =>
+  Segments1 = [],
+  foreach(P in Problem)
+    Split = split(P,"x"),
+    foreach(S in Split)
+      if length(S) > 1 then
+        Segments1 := Segments1 ++ [S]
+      end
+    end
+  end,
+  Segments1 = Segments.
+
+convert_list(L) = [ convert(W).list_to_and() : W in L].
+
+convert(W) = [ord(C)-96 : C in W].
+
+print_crossword(M) =>
+  foreach(Row in M)
+    foreach(R in Row)
+      if R == x then
+        print("# ")
+      else
+        print("_ ")
+      end
+    end,
+    nl
+  end,
+  nl.
+

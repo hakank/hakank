@@ -1,0 +1,118 @@
+/* 
+
+  Bratko: Placing Boxes problem in Picat.
+
+  From Bratko "Programming Prolog for Artifical Intelligence", 4th edition.
+  Translated from the Prolog+CLP(R) code from Figure 7.4.
+
+  Note: Using the following query in SWI Prolog generates 58 solutions:
+ 
+     ?- ensure_loaded(library(clpr)).
+     ?- findall([A,C,E,F,G],fit(A, C, E, F, G),L),length(L,Len).
+     ...
+     Len = 58
+
+  This Picat model yield 2064 solutionsbut that's since this is a FD model so
+  it generates all solutions whereas CLP(R) generates (float) intervals. 
+
+  We multiply all values by 10 so we can use the CP module and its solve_suspended/0
+  (and thus don't have to restrict all values explicitly).
+
+  Most comments below are Bratko's.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp.
+
+main => go.
+
+go ?=>
+  fit(BoxName, Block1, Block2, Block3, Block4),
+  println([BoxName, Block1, Block2, Block3, Block4]),
+  fail,
+  nl.
+
+go => true.
+
+
+%  Figure 7.4:  Fitting four blocks into a box.
+
+%  Placing blocks into a box 
+%  This is a planar version, all blocks and boxes are rectangles
+%  Blocks and boxes are to be aligned with x,y axes
+
+% block( BlockName, dim(Width, Length)): 
+%     specification of a block dimensions, height does not matter
+
+% hakank: All values are multplied with 10 (see above).
+
+block(b1, dim(50, 30)).
+block(b2, dim(20, 60)).
+block(b3, dim(10, 24)).
+block(b4, dim(10, 50)).
+
+box(box1, dim(60, 60)).     % Box box1 has size 6 by 6
+box(box2, dim(70, 50)).
+box(box3, dim(60, 50)).
+
+
+% Representation of rectangles:
+%    rect(pos(X,Y), dim(A,B)) represents a rectangle of size A by B at position pos(X,Y)
+
+% rotate(Rectangle, RotatedRectangle):
+%     Rotation of rectangle in X-Y plane , always aligned with X-Y axes 
+rotate(rect(Pos1, Dim1), rect(Pos2, Dim2)) ?=> 
+  Pos1 = Pos2,             % Zero rotation
+  Dim1 = Dim2.
+rotate(Rect1, Rect2 ) => 
+  Rect1 = $rect(Pos, dim(A, B)),
+  Rect2 = $rect(Pos, dim(B, A)) .	% Rotated by 90 degrees
+
+
+% block_rectangle(BlockName, Rectangle):
+%    Rectangle is a minimal rectangle that accommodates block BlockName
+block_rectangle(BlockName, Rect)  =>	        % Rectangle at any position
+   Rect = $rect(Pos, Dim),
+   block(BlockName, Dim0),			% Dimensions of BlockName
+   rotate($rect(Pos, Dim0), $rect(Pos, Dim)).	% Block possibly rotated 
+
+% inside(Rectangle1, Rectangle2): Rectangle1 completely inside Rectangle2
+inside(Rect1 , Rect2) =>
+  Rect1 = $rect(pos(X1, Y1), dim(Dx1, Dy1)),
+  Rect2 = $rect(pos(X2, Y2), dim(Dx2, Dy2)),
+  X1 #>= X2, Y1 #>= Y2, X1+Dx1 #=< X2+Dx2, Y1+Dy1 #=< Y2+Dy2.
+
+% no_overlap(Rect1, Rect2):  Rectangles Rect1 and Rect2 do not overlap
+no_overlap(Rect1, Rect2) =>
+   Rect1 = $rect(pos(X1,Y1), dim(Dx1,Dy1)), 
+   Rect2 = $rect(pos(X2,Y2), dim(Dx2,Dy2)),
+   (X1 + Dx1 #=< X2 #\/ X2 + Dx2 #=< X1 #\/	% Rectangles left or right of each other
+    Y1 + Dy1 #=< Y2 #\/ Y2 + Dy2 #=< Y1).	% Rectangles above or below of each other
+
+
+% fit(Box, Block1, Block2, Block3, Block4): 
+%    The 4 blocks, whose rectangles are Block1, Block2, ... fit into a box 
+fit(BoxName, Block1, Block2, Block3, Block4)  =>
+   box(BoxName, Dim), 
+   Box = $rect(pos(0, 0), Dim),
+   block_rectangle(b1, Block1),  inside(Block1, Box),	% Block b1 inside Box
+   block_rectangle(b2, Block2),  inside(Block2, Box),	% Block b2 inside Box
+   block_rectangle(b3, Block3),  inside(Block3, Box),
+   block_rectangle(b4, Block4),  inside(Block4, Box), 
+   no_overlap(Block1, Block2),			% No overlap between blocks b1 and b2
+   no_overlap(Block1, Block3),			% No overlap between b1 and b3
+   no_overlap(Block1, Block4),
+   no_overlap(Block2, Block3),
+   no_overlap(Block2, Block4),
+   no_overlap(Block3, Block4),
+   % hakank: I'm a little lazy here and use solve_suspended/0 instead
+   %         of stating all the domains.
+   %         The CP solver does a good job of finding the domain.
+   % println([block1=Block1,block2=Block2,block3=Block3,block4=Block4,box=Box]),
+   solve_suspended().
+
+

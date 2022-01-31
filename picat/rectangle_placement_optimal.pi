@@ -1,0 +1,244 @@
+/*
+
+  Optimal rectangle placement in Picat.
+
+  What is the optimal rectangle to place all rectangles of 
+  size MxM for M in 1..N?
+
+  See Richard E. Korf "Optimal Rectangle Packing: New Results"
+  for some discussions.
+  https://www.aaai.org/Papers/ICAPS/2004/ICAPS04-019.pdf
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+
+main => go.
+
+%
+% Show first solution.
+%
+go ?=>
+   nolog,
+   % N = 7,
+   member(N,1..15),
+   % N = 16,
+   println(n=N),
+   find_sizes(N,Widths,Heights),
+   println('widths '=Widths),
+   println(heights=Heights),
+   % time2(solve_and_print(N,Widths,Heights)),
+   rectangle_placement(N,Widths,Heights, Width,Height,StartX,StartY),
+   print_solution(N,1..N,1..N, Width,Height,StartX,StartY),   
+
+   flush(stdout),   
+   fail,
+   
+   nl.
+
+
+find_sizes(N,Widths,Heights) =>
+   RectangleSum = sum([I*I : I in 1..N]),
+   println(rectangleSum=RectangleSum),
+   
+   % Width :: 1..N*2+N,
+   % Height :: 1..N*2+N,
+   % Width #<= Height,
+
+   % Find possible sizes and sort in increasing order
+   % Size #= Width*Height,
+   % Size #>= RectangleSum,
+   % All = solve_all($[ff,split],[Size,Width,Height]).sort,
+   % member(Width,1..N*2+N),
+   % member(Height,1..N*2+N),
+   All = [[W*H,W,H] : W in 1..N*N,H in W..N*N, W*H >= RectangleSum].sort,
+   println(All),
+   Widths = [A[2] : A in All],
+   Heights = [A[3] : A in All].
+
+ 
+%
+% Solve the problem:
+rectangle_placement(N,Widths,Heights, Width,Height,StartX,StartY) =>
+   println(n=N),
+   NumWS = Widths.len,
+   MinWidth = min(Widths),
+   MaxWidth = max(Widths),
+   MinHeight = min(Heights),
+   MaxHeight = max(Heights),
+   println([widths=[MinWidth,MaxWidth],heights=[MinHeight,MaxHeight]]),
+
+   X = 1..N,
+   Y = 1..N,
+
+   SumXY = sum([I*I : I in 1..N]),
+   println([n=N,sumXY=SumXY]),
+
+   % Index in Widths and Heights which determine the Width and Height
+   WHIndex :: 1..NumWS,
+   
+   println(whIndex=WHIndex),
+   StartX = new_list(N),
+   StartX :: 1..MaxWidth,
+   println(startX=StartX),
+   
+   StartY = new_list(N),
+   StartY :: 1..MaxHeight,
+   println(startY=StartY),
+   
+   element(WHIndex,Widths,Width),
+   println(width=Width),
+
+   element(WHIndex,Heights,Height),
+   println(height=Height),
+
+   % CP seems to be faster with this, but SAT is slower
+   if membchk(cp, loaded_modules()) then
+     cumulative(StartX,X,Y,Height),
+     cumulative(StartY,Y,X,Width)
+   end,
+
+   diffn4(StartX,StartY,X,Y),
+
+   %% Tests (see below for implementations)
+   % diffn_me(StartX,StartY,X,Y),
+   % diffn_nonstrict(StartX,StartY,X,Y),     
+
+   foreach(I in 1..N)
+     StartX[I] + X[I] #=< Width+1
+   end,
+   foreach(J in 1..N)
+     StartY[J] + Y[J] #=< Height+1
+   end,
+
+   Z #= Width*Height,
+
+   Vars = StartX ++ StartY ++ [WHIndex,Z,Width,Height],
+
+   println(solve),
+   % println(vars=Vars),
+   solve($[min(WHIndex),degree,split,
+      report(printf("z:%d width:%d height:%d WHIndex:%d\n",
+                      Z,Width,Height,WHIndex))],
+                      Vars),
+   println(after=[size=Z,width=Widths[WHIndex],height=Heights[WHIndex]]).
+   % solve($[ff,split], Vars).   
+
+%
+% Print solution
+%
+print_solution(N,X,Y,Width,Height,StartX,StartY) =>
+
+   println([n=N,width=Width,height=Height]),
+   println(x=X),
+   println(y=Y),
+   println(startX=StartX),
+   println(startY=StartY),
+   
+   % Print the grid
+   M = new_array(Width,Height), % bind_vars(M,0),
+   foreach(S in 1..N)
+     % println([s=S,x=X[S]..X[S]+A[S]-1,y=Y[S]..Y[S]+A[S]-1]),
+     foreach(I in StartX[S]..min(StartX[S]+X[S]-1,Width),J in StartY[S]..min(StartY[S]+Y[S]-1,Height))
+       % Debugging: Check that we got a proper solution, i.e. that there is no
+       % overlapping of values. 
+       if nonvar(M[I,J]) then
+          println([s=S,[I,J],already_defined,M[I,J]])
+          % , halt
+       end,
+       M[I,J] = S
+     end
+   end,
+
+   NumEmpty = 0,
+   % Numeric solution
+   foreach(I in 1..Width)
+     foreach(J in 1..Height)
+       V = M[I,J],
+       if var(V) then
+         print(" _ "),
+         NumEmpty := NumEmpty + 1
+       else
+         printf("%2d ",M[I,J])
+       end
+     end,
+     nl
+   end,
+
+   if N <= 26 then
+     % _ is the unoccupied slots
+     Alpha = "ABCDEFGHIJKLMNOPQRSTUVXYZ",
+     foreach(I in 1..Width)
+       foreach(J in 1..Height)
+         V = M[I,J],
+         if var(V) then
+           print("_")
+         else
+           printf("%w",Alpha[M[I,J]])
+         end
+       end,
+       nl
+     end
+   end,
+   nl,
+   println(num_empty=NumEmpty),
+   println([n=N,width=Width,height=Height,size=Width*Height]),   
+   nl.
+
+
+solve_and_print(N,Width,Height) =>
+  rectangle_placement(N,Width,Height, StartX,StartY),
+  print_solution(N,Width,Height, StartX,StartY).
+
+
+% This is from fzn_picat_cp.pi
+diffn4(VecX,VecY,VecDX,VecDY) =>
+    Rects = [[VecX[I],VecY[I],VecDX[I],VecDY[I]] : I in 1 .. length(VecX)],
+    diffn(Rects).
+
+
+%
+% From MiniZinc's diffn_nonstrict/4
+%
+diffn_nonstrict(X,Y,DX,DY) =>
+  N = X.len,
+  foreach(I in 1..N, J in I+1..N)
+    DX[I] #= 0 #\/
+    DX[J] #= 0 #\/
+    DY[I] #= 0 #\/
+    DY[J] #= 0 #\/
+    X[I] + DX[I] #=< X[J] #\/
+    Y[I] + DY[I] #=< Y[J] #\/
+    X[J] + DX[J] #=< X[I] #\/
+    Y[J] + DY[J] #=< Y[I]
+  end.
+
+/*
+From MiniZinc's diffn/4
+*/
+diffn_me(X,Y,DX,DY) =>
+  N = X.len,
+  foreach(I in 1..N, J in I+1..N)
+    X[I] + DX[I] #<= X[J] #\/
+    Y[I] + DY[I] #<= Y[J] #\/
+    X[J] + DX[J] #<= X[I] #\/
+    Y[J] + DY[J] #<= Y[I]
+  end.
+
+
+
+%
+% time2 + time_out as a function.
+%
+time2f(Goal,Timeout) = [End,Backtracks,Status] =>
+    statistics(runtime,_),
+    statistics(backtracks, Backtracks1),
+    time_out(Goal,Timeout,Status),
+    statistics(backtracks, Backtracks2),
+    statistics(runtime, [_,End]),
+    Backtracks = Backtracks2 - Backtracks1.
+

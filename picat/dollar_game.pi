@@ -1,0 +1,222 @@
+/* 
+
+  Dollar game in Picat.
+
+  From https://gefei.gitlab.io/blog/post/thedollargame/
+  """
+          -2    -1          Nodes:    1     2
+          | \  /                      | \  /
+          |  2                        |  3
+          |   \                       |   \
+          5 _  -2                     4 _  5
+
+  Consider the numbers as amounts of money stored at each node. In the graph above, the node in the 
+  middle has 2 dollars, the node in the NW corner has -2 dollars, and so on.
+
+  If you click on a node, then it sends one dollar to each of its neighbors. For instance, if you 
+  click on node “5” in the above graph, then it will lose 2 dollars, while each of its neighbors 
+  will gain one dollar.
+
+  The goal of the game is to send money around between the nodes so that every node will end up 
+  with a non-negative amount.
+  """
+  
+  Also see https://thedollargame.io/
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import sat.
+import cp.
+% import mip.
+% import smt.
+
+main => go.
+
+%
+% The CP approach. Problem from the post op.cit.
+%   -2    -1          Nodes:    NW     NE        1    3
+%    | \  /                      | \  /          | \ /
+%    |  2                        |  Mid          |  5
+%    |   \                       |   \           |   \
+%    5 _  -2                    SW _  SE         2 _  4
+%
+% Here are all 51 solutions (the number after are the number of clicks).
+% What I can see they are all correct, but some of them are quite silly.
+% 
+% x = [0,3,0,1,1] = 5
+% x = [1,3,0,0,1] = 5
+% x = [1,3,0,1,1] = 6
+% x = [1,4,1,2,2] = 10
+% x = [2,4,0,2,2] = 10
+% x = [2,4,1,1,2] = 10
+% x = [2,4,1,2,2] = 11
+% x = [2,5,2,3,3] = 15
+% x = [3,5,1,3,3] = 15
+% x = [3,5,2,2,3] = 15
+% x = [3,5,2,3,3] = 16
+% x = [3,6,3,4,4] = 20
+% x = [4,6,2,4,4] = 20
+% x = [4,6,3,3,4] = 20
+% x = [4,6,3,4,4] = 21
+% x = [4,7,4,5,5] = 25
+% x = [5,7,3,5,5] = 25
+% x = [5,7,4,4,5] = 25
+% x = [5,7,4,5,5] = 26
+% x = [5,8,5,6,6] = 30
+% x = [6,8,4,6,6] = 30
+% x = [6,8,5,5,6] = 30
+% x = [6,8,5,6,6] = 31
+% x = [6,9,6,7,7] = 35
+% x = [7,9,5,7,7] = 35
+% x = [7,9,6,6,7] = 35
+% x = [7,9,6,7,7] = 36
+% x = [7,10,7,8,8] = 40
+% x = [8,10,6,8,8] = 40
+% x = [8,10,7,7,8] = 40
+% x = [8,10,7,8,8] = 41
+% x = [8,11,8,9,9] = 45
+% x = [9,11,7,9,9] = 45
+% x = [9,11,8,8,9] = 45
+% x = [9,11,8,9,9] = 46
+% x = [9,12,9,10,10] = 50
+% x = [10,12,8,10,10] = 50
+% x = [10,12,9,9,10] = 50
+% x = [10,12,9,10,10] = 51
+% x = [10,13,10,11,11] = 55
+% x = [11,13,9,11,11] = 55
+% x = [11,13,10,10,11] = 55
+% x = [11,13,10,11,11] = 56
+% x = [11,14,11,12,12] = 60
+% x = [12,14,10,12,12] = 60
+% x = [12,14,11,11,12] = 60
+% x = [12,14,11,12,12] = 61
+% x = [12,15,12,13,13] = 65
+% x = [13,15,11,13,13] = 65
+% x = [13,15,12,12,13] = 65
+% x = [13,15,12,13,13] = 66
+%
+%
+% Should the domains be 0..number of nodes? Are there problem instances when one have
+% to click many more times than the number of nodes?
+%
+% With the domain 0..5, CP solver yield these solutions: 
+% x = [0,3,0,1,1] = 5
+% x = [1,3,0,0,1] = 5
+% x = [1,3,0,1,1] = 6
+% x = [1,4,1,2,2] = 10
+% x = [2,4,0,2,2] = 10
+% x = [2,4,1,1,2] = 10
+% x = [2,4,1,2,2] = 11
+% x = [2,5,2,3,3] = 15
+% x = [3,5,1,3,3] = 15
+% x = [3,5,2,2,3] = 15
+% x = [3,5,2,3,3] = 16
+%
+go ?=>
+  nolog,
+  % This is renumbered compared to go2/0
+  L = [-2,5,-1,-2,2],
+  println(l=L),
+  N = L.len,
+  M = [[2,5],
+       [1,4],
+       [5],
+       [2,5],
+       [1,3,4]
+      ],
+
+  X = new_list(5),
+  X :: 0..15,
+  % X :: 0..N,  
+
+  % Original (MiniZinc) model:
+  % [A,B,C,D,E] = X,
+  % -2 - 2*A + B + E #>= 0,     % NW node (-2)    1
+  %  5 - 2*B + A + D #>= 0,     % SW node (5)     2
+  % -1 -   C + E     #>= 0,     % NE node (-1)    3
+  % -2 - 2*D + B + E #>= 0,     % SE node (-2)    4 
+  %  2 - 3*E + A + D + C #>= 0, % Middle node (2) 5
+
+  % The general approach
+  foreach(I in 1..N)
+    Ns = [X[J] : J in M[I] ] ,
+    L[I] - X[I]*Ns.len + sum(Ns) #>= 0
+  end,
+  % println(x_before=X),
+
+  solve($[],X),
+  NumClicks = sum(X),
+  println(x=X=NumClicks),
+  fail,
+  nl.
+go => true.
+  
+
+
+%
+% Non-deterministic approach, using member/2 to generate solutions.
+% Problem from op.cit.
+%
+go2 ?=>
+  A = [-2,-1,2,5,-2],
+  %     1 2 3 4 5
+  M = [[0,0,1,1,0], % node 1
+       [0,0,1,0,0], %      2
+       [1,1,0,0,1], %      3
+       [1,0,0,0,1], %      4
+       [0,0,1,1,0]  %      5
+      ],
+  N = A.len,      
+  println(neighbours),
+  foreach(I in 1..N)
+    println(I=[J : J in 1..N, M[I,J] == 1])
+  end,
+  println(aStart=A),
+  Z = sum([A[I] : I in 1..N,A[I] < 0]), % sum negative values
+  println(z=Z),
+  Count = 0,
+  println(start),
+  Picks = [],
+  while (Z < 0)
+     Count := Count + 1,
+     println(a=A),
+     Pos = [I : I in 1..N, A[I] > 0],
+     % P = argmax(Pos),
+     member(P,Pos),
+     Picks := Picks ++ [P],
+     println(pick=P),
+     Neighbours = [I : I in 1..N, M[P,I] == 1],
+     A[P] := A[P] - Neighbours.len,
+     foreach(NN in Neighbours)
+       A[NN] := A[NN] + 1
+     end,
+     Z := sum([A[I] : I in 1..N,A[I] < 0]), % sum negative values
+     println(z=Z),
+     nl
+  end,
+  println(finalA=A),
+  println(count=Count),  
+  println(picks=Picks),
+  PicksMap = new_map(),
+  foreach(I in 1..N)
+    PicksMap.put(Picks[I],PicksMap.get(Picks[I],0)+1)
+  end,
+  println(picks=PicksMap.to_list.sort),
+  nl,
+
+  nl.
+go2 => true.
+
+
+
+argmax(L) = L[Pick] =>
+  println($argmax(L)),
+  M = max(L),
+  Ix = [I : I in 1..L.len, L[I] == M],
+  member(Pick,Ix).
+
+
