@@ -1,0 +1,176 @@
+/* 
+
+  Hofstadter-Conway $10,000 sequence in Picat.
+
+  From Rosetta code:
+  http://rosettacode.org/wiki/Hofstadter-Conway_$10,000_sequence
+  """
+  The definition of the sequence is colloquially described as:
+
+   *  Starting with the list [1,1],
+   *  Take the last number in the list so far: 1, I'll call it x.
+   *  Count forward x places from the beginning of the list to find the 
+      first number to add (1)
+   *  Count backward x places from the end of the list to find the second number 
+      to add (1)
+   *  Add the two indexed numbers from the list and the result becomes the next 
+      number in the list (1+1)
+      This would then produce [1,1,2] where 2 is the third element of the sequence. 
+
+  Note that indexing for the description above starts from alternately the 
+  left and right ends of the list and starts from an index of one.
+
+  A less wordy description of the sequence is:
+
+     a(1)=a(2)=1
+     a(n)=a(a(n-1))+a(n-a(n-1))
+
+  The sequence begins:
+
+     1, 1, 2, 2, 3, 4, 4, 4, 5, ...
+
+  Interesting features of the sequence are that:
+
+   *  a(n)/n tends to 0.5 as n grows towards infinity.
+   *  a(n)/n where n is a power of 2 is 0.5
+   *  For n>4 the maximal value of a(n)/n between successive powers of 2 decreases. 
+
+  a(n) / n for n in 1..256
+
+  The sequence is so named because John Conway offered a prize of $10,000 to the 
+  first person who could find the first position, p in the sequence where
+
+     |a(n)/n| < 0.55 for all n > p.
+
+  It was later found that Hofstadter had also done prior work on the sequence.
+
+  The 'prize' was won quite quickly by Dr. Colin L. Mallows who proved the properties
+  of the sequence and allowed him to find the value of n. (Which is much smaller 
+  than the 3,173,375,556. quoted in the NYT article)
+
+
+  The task is to:
+
+   * Create a routine to generate members of the Hofstadter-Conway $10,000 sequence.
+   * Use it to show the maxima of a(n)/n between successive powers of two up to 2**20
+   * As a stretch goal: Compute the value of n that would have won the prize and 
+     confirm it is true for n up to 2**20 
+
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+%
+% Using a(N)/1: 1.166s
+%
+go ?=> 
+   println([a(I) : I in 1..120]),
+   println([a(I)/I : I in 1..120]),
+   foreach(N in 1..19)
+      % println((2**N,2**(N+1))=max({a(I)/I : I in 2**N..2**(N+1)}))
+      [Val,Ix] = argmax({a(I)/I : I in 2**N..2**(N+1)}),
+      println((2**N,2**(N+1))=[val=Val,ix=Ix+2**N])
+   end,
+   nl.
+go => true.
+
+%
+% Use a2/1. Much slower.
+%
+go2 ?=> 
+   println([a2(I) : I in 1..120]),
+   println([a2(I)/I : I in 1..120]),
+   foreach(N in 1..19)
+      println((2**N,2**(N+1))=max([a2(I)/I : I in 2**N..2**(N+1)]))
+   end,
+   nl.
+go2 => true.
+
+%
+% Mallows number: 1.07s
+%
+go3 ?=>
+   Mallow = _,   
+   foreach(M in 1..19)
+      println(m=M),
+      Min = 2**M,
+      Max = Min*2,
+      MaxRatio = 0,
+      NVal = 0,
+      foreach(N in Min..Max)
+         Ratio = a(N)/N,
+         if Ratio > MaxRatio then
+           MaxRatio := Ratio,
+           NVal := N
+         end,
+         if Ratio > 0.55 then
+           Mallow := N
+           % , println(mallow=Mallow)
+         end
+      end
+  end,
+  println(mallow=Mallow),
+  nl.
+go3 => true.
+
+
+%
+% Mallows number, alternative appraach: 1.24s
+%
+go4 ?=>
+   T = {a(I)/I : I in 1..2**20},
+   Mallow = false,
+   foreach(N in 1..19, Mallow == false)
+      println((2**N,2**(N+1))=N),
+      TT = {T[I] : I in 2**N..2**(N+1)},
+      if max(TT) < 0.55 then
+        % We know that this slot has max < 0.55 so
+        % now we can test the _previous_ slot.
+        TT2 = {T[I] : I in 2**(N-1)..2**N},
+        foreach(P in 1..TT.len, Mallow == false)
+          if max({TT2[I] : I in P+1..TT2.len}) < 0.55 then
+            Mallow := P+2**(N-1)-1
+          end
+        end
+      end
+   end,
+   println(mallow=Mallow),
+   nl.
+go4 => true.
+
+%
+% Functional
+%
+table
+a(1) = 1.
+a(2) = 1.
+a(N) = a(a(N-1))+a(N-a(N-1)).
+
+%
+% Imperative
+%
+table
+a2(N) = Last =>
+  S = {1,1},
+  Len = 2,
+  while (Len < N) 
+    X = last(S),
+    N1 = S[X],
+    N2 = S[Len-X+1],
+    S := S ++ {N1+N2},
+    Len := Len + 1
+  end,
+  Last = last(S).
+ 
+%
+% argmax:
+% find the index/indices for the max value(s) of L
+%
+argmax(L) = [Max,MaxIxFirst] =>
+  Max = max(L),
+  MaxIxFirst = {I : I in 1..L.length, L[I] == Max}.first.

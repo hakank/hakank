@@ -10,6 +10,19 @@
   - Gecode Sudoku model
   - SICStus Sudoku model
 
+  2022-02-02/hakank: 
+  I have now updated some of the benchmarks to more current versions
+  of the software tested:
+   - Picat v3.1#7, using SAT solver Kissat
+   - Gecode 6.2.0 (tested in go10/0 for the 25x25 instances)
+  These tests/benchmarks has been updated with new results
+  and most now use failure driven loops instead of foreach loops:
+   - go6/0: Norvig's 95 Sudoku's
+   - go7/0 and go7b/0: Solving Gordon Royle's 49151 17 hint Sudoku puzzles 
+   - go9/0: Gecode's 9x9 and 16x16 instances
+   - go10/0: Testing Gecode's 25x25 instances, time to first solution
+   - go10d/0: Testing Gecode's 25x25 instances, time to prove unicity
+  
 
   Model created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -17,8 +30,11 @@
 */
 
 import util.
+
+import sat. % (much) faster than cp on all instances.
 % import cp.
-import sat. % seems to be faster than cp on all instances.
+% import smt. % slower than sat and cp
+
 import os.
 
 main => go.
@@ -86,8 +102,16 @@ go5 => true.
 %
 % Solving Norvig's 95 Sudoku's
 % http://norvig.com/top95.txt
-% 
-go6 =>
+%
+% 2022-02-22:
+% Changed to a failure driven loop.
+%
+%  - CP solver: 0.680s (system time)
+%  - SAT solver: 0s418s (system time)
+%  - SMT/z3 solver: 28.439s (system time)
+%  - SMT/cvc4 solver: 28.372s (system time)
+%
+go6 ?=>
    nolog,
    File = "top95.txt",
    if not exists(File) then
@@ -96,25 +120,18 @@ go6 =>
    else 
       Sudokus = read_file_lines(File)
    end,
-   N = 1,
-   foreach(Line in Sudokus)
-       printf("Sudoku #%d\n", N),
-       Sudoku1 = [cond(C=='.',_,to_integer(C)) : C in Line], 
-       Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
-       print_board(Sudoku),
-       time2(All = findall(Sudoku, sudoku(3,Sudoku))),
-       if All.length != 1 then
-         printf("Sudoku #%d don't have a unique solution!", N),
-         halt
-       end,
-       foreach(S in All)
-         print_board(S)
-       end,
-       nl,
-       N := N + 1
-   end,
+   
+   member({N,Line}, zip(1..Sudokus.len,Sudokus)),
+   printf("Sudoku #%d\n", N),
+   Sudoku1 = [cond(C=='.',_,to_integer(C)) : C in Line], 
+   Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
+   print_board(Sudoku),
+   time2(sudoku(3,Sudoku)),
+   print_board(Sudoku),
+   nl,
+   fail,
    nl.
-  
+go6 => true. 
 
 % 
 % Solving Gordon Royle's 17 hint Sudoku puzzles
@@ -123,50 +140,73 @@ go6 =>
 % See
 % http://staffhome.ecm.uwa.edu.au/~00013890/sudokumin.php
 %
+% 2022-02-02: I changed to a failure driven loop which
+%             is better when testing many instances since
+%             it deallocates the constraint store etc
+%             and is generally faster.
+%             Using a foreach loop might give strange
+%             and spurious times since they include
+%             garbage collection etc.
+%
 % CP Solver:
 % Note: Some of the times are too large due to garbage collection
 %       interferes, see below for this.
 %
-% ffd/split:
-% 13:54min total runtime
-% 825.4s solve time (13:45min)
-% 
 % ffd/down:
-% 12:00min total runtime
-% 711.21s solve time (11:51min)
+% 15min18.0s total runtime
+% 420.749s solve time (7:0.75min) solve time
 %
-% The following problem took more than 1s to solve:
+% The solution times ranged from 0ms to 747ms.
 %
-% Sudoku #1977 Time: (1004 ms)  <- slow
-% Sudoku #14293 Time: (1172 ms) <- slow
-% Sudoku #14474 Time: (1956 ms) (<-- spurious, garbage collection)
-% Sudoku #16447 Time: (1084 ms) <- slow
-% Sudoku #30050 Time: (3821 ms) (<-- spurious, garbage collection)
-% Sudoku #41189 Time: (1008 ms) <- slow
-% Sudoku #42962 Time: (1224 ms) <- slow
+% Here is the distribution of the most common solve times (ms)
+%  1: 11293
+%  0: 9066
+%  2: 5440
+%  3: 3578
+%  4: 2577
+%  5: 1996
+%  6: 1627
+%  7: 1320
+%  8: 1089
+%  9: 923
+% 10: 821
+%
+%
+% The following problem took more than 0.5 to solve:
+%
+% Sudoku #14293 696 ms
+% Sudoku #16447 686 ms
+% Sudoku #41189 625 ms
+% Sudoku #42962 747 ms
+%
+% When running only these instances (in go7b/0) we got about the same times.
+% Sudoku #14293 694 ms) (cf reported: 696)
+% Sudoku #16447 685 ms) (cf reported: 686)
+% Sudoku #41189 580 ms) (cf reported: 625)
+% Sudoku #42962 738 ms) (cf reported: 747)
+%
+% This shows that running a failure driven loop is more stable
+% than using a foreach loop.
 % 
-% Another run:
-% Sudoku #1977 Time: (1000 ms) <- slow
-% Sudoku #7266 Time: (1036 ms) (<- spurious)
-% Sudoku #14293 Time: (1172 ms) <- slow
-% Sudoku #15630 Time: (2048 ms) (<- spurious)
-% Sudoku #16447 Time: (1084 ms) <- slow
-% Sudoku #32364 Time: (4012 ms) (<-- spurious)
-% Sudoku #42962 Time: (1212 ms) <- slow
+%
+% 2022-02-02: Picat's SAT solver (Kissat) in Picat v3.1#7.has a
+%             different behaviour from the CP solver.
+%
+% All instances are solved in 0-4ms, total solve time 118.42s,
+% about 2.4ms per instance.
+% The distribution of times (ms):
+%  1: 26781
+%  2: 20796
+%  0: 1546
+%  3: 23
+%  4: 5
+%
+% Total system time 2min03.41s.
 % 
-%
-% When running each instance isolated (via an external program),
-% then we don't get the very large times (>= 2000ms), these instances
-% seems to be the stable slow (>= 1s) ones.
-%
-% #1977 time: 1048ms
-% #14293 time: 1184ms
-% #16447 time: 1088ms
-% #41189 time: 1008ms
-% #42962 time: 1224ms
-%
-go7 =>
+go7 ?=>
    nolog,
+   Map = get_global_map(),
+   Map.put(total_time,0),
    File = "sudoku17",
    if not exists(File) then
       printf("The file %w don't exists.\nPlease donwload from http://staffhome.ecm.uwa.edu.au/~0001e3890/sudoku17\n", File),
@@ -175,26 +215,31 @@ go7 =>
       Sudokus = read_file_lines(File)
    end,
 
-   N = 1,
-   TotalTimes = 0,
-   foreach(Line in Sudokus)
-       Sudoku1 = [cond(C='0',_,to_integer(C)) : C in Line], 
-       Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
-       % print_board(Sudoku),
-       _ = statistics_all(),
-       statistics(runtime,_),
-       sudoku(3,Sudoku),
-       % time2(sudoku(3,Sudoku)),
-       statistics(runtime,[_,Time]),
-       TotalTimes := TotalTimes + Time,
-       Stat = statistics_all(),
-       printf("%% Sudoku #%d Time: (%d ms) Stat: %w\n", N, Time, Stat),
-       N := N + 1
-   end,
-   println(totalTimes=TotalTimes),
-   TotalSec = TotalTimes / 1000,
-   println(totalSec=TotalSec),
+   %
+   % failure driven loop
+   %
+   member({N,Line},zip(1..Sudokus.len,Sudokus)),
+   println(line=Line),
+   Sudoku1 = [cond(C='0',_,to_integer(C)) : C in Line], 
+   Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
+   print_board(Sudoku),
+   _ = statistics_all(),
+   sudoku(3,Sudoku),
+   statistics(runtime,[_,Time]),   
+   % time2(sudoku(3,Sudoku)),
+   print_board(Sudoku),
+   Map.put(total_time,Map.get(total_time)+Time),
+   Stat = statistics_all(),
+   printf("%% Sudoku #%d Time: (%d ms) Stat: %w\n", N, Time, Stat),
+   fail,
    nl.
+go7 =>
+  TotalTime = get_global_map().get(total_time),
+  println(totalTimes=TotalTime),
+  TotalSec = TotalTime / 1000,
+  println(totalSec=TotalSec),
+  nl.
+
 
 %
 % Checking the reported slow instances
@@ -202,14 +247,10 @@ go7 =>
 go7b =>
    nolog,
    % instance# = reported millis in go7
-   Slow = new_map([1977=1004,
-                   14293=1172, 
-                   14474=1956, 
-                   16447=1084, 
-                   30049=0000, 
-                   30050=3821,     
-                   41189=1008,
-                   42962=1224
+   Slow = new_map([14293=696, 
+                   16447=686, 
+                   41189=625,
+                   42962=747
                    ]),
 
    SlowIds = Slow.keys().sort(),
@@ -230,10 +271,12 @@ go7b =>
        Sudoku1 = [cond(C='0',_,to_integer(C)) : C in Line], 
        Sudoku = [slice(Sudoku1,1+I*9,9+I*9) : I in 0..8],
        if member(N,SlowIds) then
-         print_board(Sudoku),
+         % print_board(Sudoku),
+         statistics(runtime,_),         
          sudoku(3,Sudoku),
-         print_board(Sudoku),
-         statistics(runtime,[_,Time]),
+         statistics(runtime,[_,Time]),         
+         % print_board(Sudoku),
+         
          TotalTimes := TotalTimes + Time,
          println(time=Time),
          printf("%% Sudoku #%d Time: (%d ms) (cf reported: %d)\n", N, Time, Slow.get(N)),
@@ -264,57 +307,114 @@ go8 =>
 %
 % Gecode's problems of sizes 9x9 and 16x16.
 %
+% 2022-02-02:
+% Changed to failure driven loop and ran the benchmarks again.
+%
 % CP solver:
-% Most of these 73 problem are solved well within a second (most around 0.1s).
-% Exceptions:
-%   #36 (16x16): 3.7s
-%   #84 (16x16): 0.49s
-%   #87 (16x15): 0.9s
+% Most of these 73 problem are solved well within a second (most below 0.1s)
+% for finding first solution.
+%
+% Exceptions (all are 16x16):
+%  - 35: 0.198s
+%  - 36: 2.369s
+%  - 38: 0.262s
+%  - 84: 0.314s
+%  - 86: 0.237s
+%  - 87: 0.584s
+%  - 88: 0.222s
+%
+% Total system time: 4.644s
 %
 % SAT solver:
-% Each these 73 instances are solved well under 0.1s, most under 0.01s
-% Total time for running all instances: 1s
+% All 73 instances are solved between 0-5ms.
+% Total system time for running all instances: 0.676s.
+%
+% SMT/z3 solver:
+% Total system time: 1min01.40s
+%
+% SMT/cvc4 solver: Very slow on the 16x16s so I skipped this.
+% Total system time: - 
+%
 %
 % Note:
 % The 25x25 problems are tested in go10/0.
 %
-go9 =>
-    nolog,
-    Num = 0,
-    foreach(P in 0..90)
-      problem(P,X),
-      Size1 = length(X),
-      Size = ceiling(sqrt(Size1)),
-      if Size < 5 then
-        Num := Num + 1,
-        println(problem=P),
-        println(size=Size),
-        print_board(X),
-        time2(sudoku(Size, X)),
-        print_board(X),
-        nl
-      end
-    end,
-    println(num_problems=Num),
-    nl.
-
+go9 ?=>
+  nolog,
+  member(P,0..90),
+  problem(P,X),
+  Size1 = length(X),
+  Size = ceiling(sqrt(Size1)),
+  Size < 5,
+  println(problem=P),
+  println(size=Size),
+  print_board(X),
+  once(time2(sudoku(Size, X))),
+  once(print_board(X)),
+  nl,
+  fail,
+  nl.
+go9 => true.
 
 %
 % Gecode's 25x25 problems.
 %
-% These are harder than the 9x9 and 16x16 instances, so we add a timeout.
+% These 25x25 instance are (much) harder than the 9x9 and 16x16 instances,
+% so we add a timeout.
 %
 % CP solver: 
-% The CP solver didn't solve any of the instances within a 60 minutes timeout.
+% The CP solver didn't solve any of the 25x25 instances within a
+% 60 minutes timeout.
 %
-% SAT solver:
-% However, the SAT solver solves all of them in under 30s.
-% The hardest problems are
-%   - 18: 28.1s
-%   - 32: 20.1s
-%   - 33: 25.5s
+% Update 2022-02-02:
+% The earlier reports of this benchmark was for Picat's older SAT solver
+% (Maple), used in version earlier than Picat v3.1#1.
+% The current Kissat solver (with Picat v3.1#7) is (much) faster and
+% solves all instances (first solution) under 15s.
+% The old Maple solver took almost 30s to solve one of the instances
+% (first solution).
 %
-% Here's solution of problem #19 solved in about 4s
+% 2022-02-02:
+% Here is a table of the times for the Kissat solver whith
+% the time for first solution and total time for proving
+% unicity of the solution (the latter is tested in go10d/0 below).
+% 
+% Instance  Time first  Total time to
+%           solution     prove unicity
+% ----------------------------------------------------
+%   18      8.654s       23.109s
+%   19      0.614s        1.316s
+%   20      0.313s        0.752s
+%   21      1.931s        8.697s
+%   22      4.646s       11.015s
+%   23      0.338s        1.884s
+%   24      1.785s        3.566s
+%   25      1.328s        7.878s
+%   26      1.449s       31.728s
+%   27     14.939s       38.346s
+%   28      3.236s        6.725s
+%   29      0.658s        3.124s
+%   30      0.93s         2.846s
+%   31      1.121s        2.516s
+%   32      5.642s       17.645s
+%   33      7.024s       18.687s
+%   89      0.032s        0.081s
+%   90      0.044s        0.094s
+%
+% These instances takes longer than 5s (for first solution):
+%   - 18:  8.654s
+%   - 27: 14.939s
+%   - 32:  5.642s
+%   - 33:  7.024s
+%
+% These instances takes longer than 15s for proving unicity:
+%   - 18; 23.109s
+%   - 26: 31.728s
+%   - 27: 38.346s
+%   - 32: 17.645s
+%   - 33: 18.687s
+% 
+% As an examples, here's solution of problem #19 solved in 0.588s:
 %
 %  11 23 13 10 19 16  6  2 24  7  5  9  1 20 17 15  8 18 25  3  4 12 21 22 14
 %  15 16  4 22 18 11  8 21 20 10 25  2 14 13 24  7 12 19 23  9 17  5  6  1  3
@@ -342,94 +442,89 @@ go9 =>
 %   2 21  3 23  4 24  9  1  7 20 13  6 10 11 14  5 16  8 15 12 22 25 18 17 19
 %   8 15  1  7 17 21 25 12  5 14 24  3 18  2  4 13 22 10  9 19 16  6 11 23 20
 %
-% The full timing of the 25x25 instances (time to first solution)
 %
-% [p = 18,time_sec = 28.088999999999999]
-% [p = 19,time_sec = 4.124]
-% [p = 20,time_sec = 5.112]
-% [p = 21,time_sec = 10.811999999999999]
-% [p = 22,time_sec = 14.670999999999999]
-% [p = 23,time_sec = 7.599]
-% [p = 24,time_sec = 5.814]
-% [p = 25,time_sec = 14.442]
-% [p = 26,time_sec = 13.625]
-% [p = 27,time_sec = 8.904999999999999]
-% [p = 28,time_sec = 8.547000000000001]
-% [p = 29,time_sec = 8.676]
-% [p = 30,time_sec = 6.164]
-% [p = 31,time_sec = 6.628]
-% [p = 32,time_sec = 20.187999999999999]
-% [p = 33,time_sec = 25.521000000000001]
-% [p = 89,time_sec = 0.823]
-% [p = 90,time_sec = 0.765]
-
+% Gecode v6.2.0
+% --------------
+% Here are the time for Gecode (v 6.2.0) on the same machine with a
+% 60s timeout (time to first solution and the total time to prove
+% unicity), and using the default settings (search heuristics etc).
 %
-% Compare with Gecode (v 6.0.1) on the same machine with a 60s timeout
-% (time to first solution).
-% Running as
+% First solution:
+% $ sudoku time sudoku -time 60000 .solutions 1 #instance
+% Prove unicity:
+% $ sudoku time sudoku -time 60000 -solutions 0 #instance
 %
-%    $ sudoku time sudoku -time 60000 #instance =
-% 
-% p = 18,time_sec = timout
-% p = 19,time_sec = 6.179
-% p = 20,time_sec = 9.749
-% p = 21,time_sec = timeout
-% p = 22,time_sec = timeout
-% p = 23,time_sec = 35.506
-% p = 24,time_sec = 9.169
-% p = 25,time_sec = timeout 
-% p = 26,time_sec = timeout
-% p = 27,time_sec = timeout
-% p = 28,time_sec = 54.652
-% p = 29,time_sec = timeout
-% p = 30,time_sec = timeout
-% p = 31,time_sec = 57.996
-% p = 32,time_sec = timeout
-% p = 33,time_sec = timeout
-% p = 89,time_sec = 0.222
-% p = 90,time_sec = 0.155
+% The times reported is Gecode's "runtime".
 %
-go10 =>
+% Problem   Time to             Total time to 
+%           first solution      prove unicity
+% -------------------------------------------
+%  18       timeout             timeout
+%  19       4.992s              32.817s
+%  20       5.367s              11.508s
+%  21       timeout             timeout
+%  22       timeout             timeout
+%  23       36.193s             49.524s  
+%  24       3.812s              55.516s   
+%  25       timeout             timeout
+%  26       timeout             timeout 
+%  27       timeout             timeout 
+%  28       54.761s             timeout
+%  29       timeout             timeout 
+%  30       timeout             timeout 
+%  31       timeout             timeout 
+%  32       timeout             timeout 
+%  33       timeout             timeout 
+%  89       0.223s              0.346s
+%  90       0.174s              0.463s
+%
+go10 ?=>
     nolog,
+    Map = get_global_map(),
+    Map.put(successes,[]),
+    Map.put(misses,[]),    
     if member(cp,sys.loaded_modules()) then
       println("Please use the SAT solver for solving the 25x25 problems!")
     end,
     Timeout = 60_000, % millis
     println(timeout_seconds=(Timeout//1000)),
-    Successes = [],
-    Misses = [],
-    foreach(P in 0..90)
-      problem(P,X),
-      Size1 = length(X),
-      Size = ceiling(sqrt(Size1)),
-      if Size == 5 then
-        println(problem=P),
-        println(size=Size),
-        print_board(X),
-        flush(stdout),
-        [Time,_Backtracks,Status] = time2f($sudoku(Size, X),Timeout),
-        if Status == success then
-           print_board(X),
-           TimeSec = Time/1000,
-           println(time_sec=TimeSec),           
-           Successes := Successes ++ [[p=P,time_sec=TimeSec]]
-        else
-           println(timeout),
-           Misses := Misses ++ [P]
-        end,
-        nl,
-        flush(stdout)
-      end
-    end,
-    println("The following instances was solved"),
-    foreach(S in Successes)
-      println(S)
+
+    % failure driven loop
+    member(P, 0..90),
+    problem(P,X),
+    Size1 = length(X),
+    Size = ceiling(sqrt(Size1)),
+    Size == 5,
+    println(problem=P),
+    println(size=Size),
+    print_board(X),
+    flush(stdout),
+    [Time,_Backtracks,Status] = time2f($sudoku(Size, X),Timeout),
+    if Status == success then
+      print_board(X),
+      TimeSec = Time/1000,
+      println(time_sec=TimeSec),
+      Map.put(successes,Map.get(successes) ++ [[p=P,time_sec=TimeSec]])
+    else
+      println(timeout),
+      Map.put(misses,Map.get(misses) ++ [P])      
     end,
     nl,
-    println("The following instances was not solved"),
-    println(Misses),
-    
+    flush(stdout),
+    fail,   
     nl.
+go10 =>
+  Map = get_global_map(),
+  Successes = Map.get(successes),
+  println("Successes:"),
+  foreach(Success in Successes)
+    println(Success)
+  end,
+  Misses = Map.get(misses),
+  println(misses=Misses),
+  
+  nl.
+
 
 %%
 %% Checking #26 (no timeout).
@@ -443,19 +538,42 @@ go10b ?=>
   nl.
 
 %%
-%% Checking #19 to proving unicity: 6.2s
-%% (compare with 6.1s for first solution).
+%% Checking #19 to proving unicity: 11.714s
 %%
 go10c ?=>
   nolog,
   problem(19,X),
-  time(sudoku(5, X)),
+  time2(sudoku(5, X)),
   print_board(X),
   fail,
   nl.
 
 go10c => true.
 
+%
+% 2022-02-02 (Kissat solver, Picat v3.01#7)
+% The tests in go10/0 are for the first solution.
+% Here we test the time for proving unicity of the
+% solution (adding limit(2) in solve/2), and without
+% any timeout.
+%
+% The result is shown in go10/0 above.
+%
+go10d ?=>
+  nolog,
+  Ps = [18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,89,90],
+  member(P,Ps),
+  println(problem=P),
+  problem(P,X),
+  print_board(X),
+  flush(stdout),
+  time2(sudoku(5,X)), % prove unicity
+  print_board(X),nl,
+  flush(stdout),
+  nl,
+  fail,
+  nl.
+go10d => true.
 
 %
 % Misc: "hardest_ever"
@@ -524,7 +642,8 @@ sudoku(N, Board) =>
 
    % println(vars=Vars),
 
-   solve([ffd,down], Vars). % faster overall
+   % solve($[ffd,down,limit(2)], Vars). % for proving unicity
+   solve($[ffd,down], Vars). % faster overall   
 
    % solve([ffd], Vars). % faster on the slower instances
 
@@ -551,7 +670,7 @@ sudoku2(N, Board) =>
       Board.slice2([I+K:K in 0..N-1],[J+L:L in 0..N-1]).flatten().all_different()
    end,
 
-   solve([ff,down], Vars).
+   solve([ff,down,z3], Vars).
 
 
 print_board(Board) =>
