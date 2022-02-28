@@ -367,29 +367,32 @@ def scalar_product2(sol,a,x):
 # constraint(sol,x,path,n)
 # find a (Hamiltonian) circuit of x and its path path
 # n is the size of x and path
+# 
 def circuit(sol, x, z, n):
-    # z = Array('z',IntSort(), IntSort())
-    # for i in range(n):
-    #     sol.add(z[i] >= 1, z[i] <= n)
-
-    #
-    # The main constraint is that Z[I] must not be 1 
-    # until I = N, and for I = N it must be 1.
-    #
-
+  
     sol.add(Distinct([x[i] for i in range(n)])),
     sol.add(Distinct([z[i] for i in range(n)])),
+
+    #
+    # The main constraint is that z[i] must not be 0
+    # until i = n-1, and for i = n-1 it must be 0.
+    #
     
-    # first element of x[0] == z[0]
+    # first element is x[0] == z[0]
+    # (i.e. always start at x[0])
     sol.add(x[0] == z[0])
    
-    # The last element in z must be 1 (back to original spot)
-    sol.add(z[n-1] == 1)
+    # The last element in z must be 0 (back to original spot)
+    sol.add(z[n-1] == 0)
+
+    # Might speed up things, or not
+    # for i in range(n-1):
+    #   sol.add(z[i] != 0)
 
     # Get the orbit for Z.
     for i in range(1,n):
-        # I'm very happy that this element works! Z3 is cool. :-)
-        sol.add(x[z[i-1]] == z[i])
+      # I'm very happy that this element works! Z3 is cool. :-)
+      sol.add(x[z[i-1]] == z[i])
 
 
 # inverse(..f, invf, ..)
