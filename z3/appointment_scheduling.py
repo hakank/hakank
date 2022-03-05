@@ -65,7 +65,7 @@ from z3_utils_hakank import *
 #
 def appointment_scheduling1(m):
 
-    sol = Solver()
+    sol = SolverFor("QF_FD")
     
     n = len(m)
 

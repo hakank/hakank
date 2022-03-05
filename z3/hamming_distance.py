@@ -11,7 +11,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 def hamming_distance(sol, a, b, d):
   sol.add(d == Sum([If(a[i] != b[i],1,0) for i in range(len(a))]))

@@ -40,7 +40,7 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data

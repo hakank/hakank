@@ -20,7 +20,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 
 n = 5
 # m = 4 # number of distinct values

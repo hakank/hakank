@@ -36,7 +36,7 @@ from z3_utils_hakank import *
 def main(streams='', placed=''):
 
   # Create the solver.
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # default problem

@@ -50,7 +50,7 @@ default_puzzle = [
 
 def main(puzzle='', n=''):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
 

@@ -32,7 +32,7 @@ from z3_utils_hakank import *
 
 def main(show_all_max=0):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # data

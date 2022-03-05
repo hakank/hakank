@@ -30,7 +30,7 @@ def all_equal(sol,x):
     sol.add(And([x[i] == x[i-1] for i in range(len(x))]))
         
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 n = 4
 

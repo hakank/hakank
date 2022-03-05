@@ -39,7 +39,7 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   red = makeIntVar(sol, "red", 1, 5)
   green = makeIntVar(sol,"green", 1, 5)

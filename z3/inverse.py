@@ -10,7 +10,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 n = 6
 x = IntVector("x",n)
 y = IntVector("y",n)

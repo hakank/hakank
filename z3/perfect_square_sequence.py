@@ -33,7 +33,7 @@ from z3_utils_hakank import *
 
 def perfect_square_sequence(n=15):
     
-    sol = SolverFor("NIA")
+    sol = SolverFor("QF_FD")
     squares = [i*i for i in range(int(math.sqrt(n*n)))]
 
     # variables

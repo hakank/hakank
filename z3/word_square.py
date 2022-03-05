@@ -21,7 +21,10 @@ from z3_utils_hakank import *
 
 def main(words, word_len, num_answers=20):
 
-  sol = Solver()
+  sol = SolverFor("AUFLIA") # word_len 3 and 20 answers: 16.817s
+  # sol = Solver() # word_len 3 and 20 answers: 20.996s
+  # sol = SimpleSolver() # word_len 3 and 20 answers: 31.994s
+  # sol = SolverFor("QF_LIA") # word_len 3 and 20 answers: too slow
 
   # data
   num_words = len(words)
@@ -110,7 +113,7 @@ def read_words(word_list, word_len, limit):
 
 
 word_dict = "/usr/share/dict/words"
-word_len = 2
+word_len = 3
 limit = 1000000
 num_answers = 20
 

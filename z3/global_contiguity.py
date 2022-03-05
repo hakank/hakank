@@ -21,8 +21,8 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
-n = 4
+sol = SolverFor("QF_FD")
+n = 17
 x = makeIntVector(sol,"x",n,0,1)
 start = makeIntVar(sol,"start",0,n-1)
 end = makeIntVar(sol,"end",0,n-1)
@@ -35,6 +35,7 @@ while sol.check() == sat:
   mod = sol.model()
   print("[start,end]:", [mod.eval(start),mod.eval(end)])
   print([mod.eval(x[i]) for i in range(n)])
+  print()
   getDifferentSolution(sol,mod,x,[start,end])
 
 print("num_solutions:", num_solutions)

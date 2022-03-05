@@ -14,11 +14,7 @@
 # n    = 4
 # m    = base**n
 
-# much harder problem
-# base = 13
-# n = 4
-# m = 52
-
+#
 # for n = 4 with different value of base
 # base = 2  0.030 seconds  16 failures
 # base = 3  0.041         108
@@ -30,10 +26,16 @@
 # base = 9  16 seconds  11664
 # base = 10 42 seconds  18000
 #
-#  Compare with the the web based programs:                                                                   
-#    http://www.hakank.org/comb/debruijn.cgi                                                                  
-#    http://www.hakank.org/comb/debruijn_arb.cgi                                                              
-# 
+# This is a harder problem:
+#  $ python debruijn_binary.py 13 4 52
+# base = 13
+# n = 4
+# m = 52
+#
+# Compare with the the web based programs:
+# - http://www.hakank.org/comb/debruijn.cgi
+# - http://www.hakank.org/comb/debruijn_arb.cgi
+#
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
@@ -47,19 +49,16 @@ from z3_utils_hakank import *
 #   tlen = len(t)
 #   sol.add(s == Sum([(base**(tlen-i- 1))*t[i] for i in range(tlen)]))
 
-def debruijn(base=2, n=3, m=8,symm=False):
-    
-  sol = Solver()
-
-  # data
-
-  # if True then ensure that the number of occurrences of 0..base-1 is
-  # the same (and if m mod base = 0)
-  # check_same_gcc = False
+def debruijn(base=2, n=3, m=8, num_sols=0, symm=False,enforce_gcc=False):
 
   print("base: %i n: %i m: %i" % (base, n, m))
-  # if check_same_gcc:
-  #  print("Checks gcc")
+    
+  # sol = Solver()
+  # sol = SimpleSolver()
+  sol = SolverFor("QF_FD")
+  # sol = SolverFor("LIA")
+  # sol = SolverFor("QF_LIA")
+
 
   # declare variables
   # x = Array("x",IntSort(),IntSort())
@@ -108,30 +107,37 @@ def debruijn(base=2, n=3, m=8,symm=False):
   for i in range(m):
     sol.add(bin_code[i] == binary[(i,0)])
 
-  # Symmetry breaking
+  #
+  # Flag: symm: Symmetry breaking
+  #
   if symm == True:
-      sol.add(x[0] == 0)
+      sol.add(bin_code[0] == 0)
 
-  # extra: ensure that all the numbers in the de Bruijn sequence
-  # (bin_code) has the same occurrences (if check_same_gcc is True
-  # and mathematically possible)
-  # gcc = [solver.IntVar(0, m, "gcc%i" % i) for i in range(base)]
-  # solver.Add(solver.Distribute(bin_code, list(range(base)), gcc))
-  # if check_same_gcc and m % base == 0:
-  #   for i in range(1, base):
-  #     solver.Add(gcc[i] == gcc[i - 1])
+  #
+  # Flag: enforce_gcc (global cardinality count)
+  # Ensure that all the values in the de Bruijn sequence
+  # (bin_code) has the same number of occurrences
+  # (if mathematically possible).
+  #
+  if enforce_gcc and m % base == 0:
+    r = m // base # Number of occurrences of each value
+    print(f"gcc is enforced. There should be {r} occurrences of each value.")
+    gcc = [Int(f"gcc[{i}") for i in range(base)]
+    for i in range(base):
+      sol.add(gcc[i] == r)
+    global_cardinality_count(sol,list(range(base)), bin_code, gcc)
 
   # solution and search
-  # print(sol.check())
-  # print(sol)
   num_solutions = 0
   while sol.check() == sat:
       num_solutions += 1
       mod = sol.model()
       xx = [mod.eval(x[i]) for i in range(m)]
-      print("x:", xx,end=" ")
+      # print("x:", xx,end=" ")
       bin_code_s = [mod.eval(bin_code[i]) for i in range(m)]
       print(" seq:", bin_code_s)
+      if num_sols > 0 and num_solutions >= num_sols:
+        break
       sol.add(
           Or(
              Or([x[i] != xx[i] for i in range(m)]),
@@ -141,9 +147,12 @@ def debruijn(base=2, n=3, m=8,symm=False):
   print("num_solutions:", num_solutions)
 
 
+symmetry_breaking = True
+enforce_gcc = True
 base = 2
 n = 3
 m = base ** n
+num_sols = 0
 if __name__ == "__main__":
   if len(sys.argv) > 1:
     base = int(sys.argv[1])
@@ -151,6 +160,9 @@ if __name__ == "__main__":
     n = int(sys.argv[2])
   if len(sys.argv) > 3:
     m = int(sys.argv[3])
+  else:
+    m = base**n
+  if len(sys.argv) > 4:
+    num_sols = int(sys.argv[4])
 
-  debruijn(base, n, m,False)
-  # debruijn(base, n, m,True) # symmetry breaking
+  debruijn(base, n, m, num_sols, symmetry_breaking, enforce_gcc) 

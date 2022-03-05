@@ -32,8 +32,15 @@ from z3_utils_hakank import *
 
 def main(ranks, problem_name):
 
-  sol = Solver()
-
+  # sol = Solver() # 0.938s
+  # sol = SolverFor("QF_FD") # Don't work
+  sol = SimpleSolver() # 0.787s
+  # sol = SolverFor("LIA") # 0.865s
+  # sol = SolverFor("QF_LIA") # 1.387s
+  # sol = SolverFor("NIA") # 0.935s
+  # sol = SolverFor("QF_NIA") # 0.855s
+  
+  
   # data
   print("Problem name:", problem_name)
 

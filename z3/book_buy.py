@@ -14,7 +14,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 # fathers: 1 = Peter, 2 = Paul, 
 # sons: 1 = Tom, 2 = Dick

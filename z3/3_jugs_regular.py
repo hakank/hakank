@@ -26,7 +26,7 @@ from collections import defaultdict
 
 def main(n):
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   # the DFA (for regular)
   n_states = 14

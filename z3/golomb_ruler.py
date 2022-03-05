@@ -37,8 +37,13 @@ from z3_utils_hakank import *
 
 def golomb(size=8):
 
-  # sol = Optimize()
-  sol = Solver()
+  # sol = Optimize() # > 40s
+  # sol = Solver() # 17.4s
+  # sol = SimpleSolver() # 16.3s
+  # sol = SolverFor("QF_LIA") # 13.5s
+  sol = SolverFor("QF_FD") # 0.97s
+  # sol = SolverFor("LIA") # 16.7s
+  # sol = SolverFor("QF_NIA") # 13.5s
 
   var_max = size * size
   all_vars = list(range(0, size))

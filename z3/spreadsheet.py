@@ -24,7 +24,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SolverFor("QF_LIRA")
 
 x = makeRealVector(sol,"x", 9, 0, 1000)
 
@@ -46,7 +46,10 @@ num_solutions = 0
 while sol.check() == sat:
   num_solutions += 1
   mod = sol.model()
+  print(mod)
+  print("x:", [mod.eval(i) for i in x])    
   print("x:", [mod.eval(i).as_decimal(6) for i in x])
+  print()
   getDifferentSolution(sol,mod,x)
 
 print("num_solutions:", num_solutions)

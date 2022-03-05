@@ -40,19 +40,20 @@ def all_interval(n):
 
     # This model is slow, so I experiment a bit here
     
-    # sol = Solver()
+    # sol = Solver() # Faster
+    sol = SolverFor("QF_FD")
     # sol = SolverFor("LIA") # Faster
     # sol = SolverFor("LRA") # Faster than LIA
     # sol = SolverFor("NRA") # Faster than LIA
     # sol = SolverFor("NIA") # Slower
     # sol = SolverFor("BV") # Slower
-    sol = SolverFor("QF_LIA") # Faster
+    # sol = SolverFor("QF_LIA") # Faster
     # sol = SolverFor("QF_NIA") # Slower
     # sol = SolverFor("AUFLIRA") # Slow
    
     # series = Array("series", IntSort(), IntSort())
     # series = Array("series", BitVecSort(8), BitVecSort(8))
-    series = IntVector("series",n )
+    series = IntVector("series",n ) # <---
     # series = [BitVec("series%i" % i,8) for i in range(n)]
     # series = [Int("s%i" % i) for i in range(n)]
     for i in range(n):
@@ -60,7 +61,7 @@ def all_interval(n):
 
     # differences = Array("differences", IntSort(), IntSort())
     # differences = Array("differences", BitVecSort(8), BitVecSort(8))
-    differences = IntVector("differences",n-1)
+    differences = IntVector("differences",n-1) # <---
     # differences = [BitVec("differences%i" % i,8 ) for i in range(n-1)]
     # differences = [Int("d%i" % i) for i in range(n-1)]
     for i in range(n-1):
@@ -69,19 +70,20 @@ def all_interval(n):
     # C1: Each pitch class occurs exactly once
     # GCAD: Exploitation of alldifferent() global constraint
     sol.add(Distinct([series[i] for i in range(n)]))
+
+    # GCAD: Exploitation of alldifferent() global constraint
+    sol.add(Distinct([differences[i] for i in range(n-1)] ))
     
     # C2: Differences between neighbouring notes are all different
     # AUX: Addition of auxiliary predicates
     # Auxiliary predicate stores the interval between pairs of neighbouring notes
     for i in range(n-1):
         sol.add(differences[i] == Abs(series[i+1] - series[i]))
-
-    # GCAD: Exploitation of alldifferent() global constraint
-    sol.add(Distinct([differences[i] for i in range(n-1)] ))
    
     # SBSO: Symmetry-breaking by selective ordering
     # The first note is less than last one
     sol.add(series[0] < series[n-1])
+    sol.add(differences[0] < differences[1])    
 
     num_solutions = 0
     while sol.check() == sat:
@@ -91,9 +93,9 @@ def all_interval(n):
         print("series       : ", ss)
         dd = [mod.eval(differences[i]) for i in range(n-1)]
         print("differences  :   ", dd)
-        print("num_solutions: ", num_solutions)
         getDifferentSolution(sol,mod,series,differences)
         print()
+        
     print("num_solutions:", num_solutions)
     # print(sol.statistics())
 

@@ -318,8 +318,8 @@ problem8 = ["problem8",7,
 #         if s == -1, no seed is given
 
 # Default problem
-n = 4 # problem number
-problem = problem4
+n = 3 # problem number
+problem = problem8
 if __name__ == "__main__":
   if len(sys.argv) > 1:
     n = int(sys.argv[1])
@@ -331,6 +331,6 @@ if __name__ == "__main__":
     gen = [[random.randint(0,1) for j in range(n)] for i in range(n)]
     problem = ["random problem",n,gen]
   
-  # ormat_game(problem,1)
-  test_all_problems(4)
+  ormat_game(problem,1)
+  # test_all_problems(3)
 

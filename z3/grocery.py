@@ -1,7 +1,7 @@
 #!/usr/bin/python -u
 # -*- coding: latin-1 -*-
 # 
-# # Grocery problem in Google in Z3
+# Grocery problem (aka 7/11 puzzle) in Z3
 #
 # From  Christian Schulte, Gert Smolka, Finite Domain
 # http://www.mozart-oz.org/documentation/fdt/
@@ -13,6 +13,7 @@
 # instead of adding them; I'll try again; Hah, with adding them the
 # price still comes to $7.11'. What were the prices of the four items?
 # '''
+
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
@@ -23,7 +24,7 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # data

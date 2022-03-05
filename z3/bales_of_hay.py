@@ -23,7 +23,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 
 n = 5
 weights =  [80, 82, 83, 84, 85, 86, 87, 88, 90, 91]

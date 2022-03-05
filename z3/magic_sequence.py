@@ -23,7 +23,9 @@
 from z3_utils_hakank import *
   
 def magic_sequence(n):
-    sol = Solver()
+    
+    sol = SimpleSolver()
+    
     x = makeIntVector(sol,"x",n, 0,n)
     
     # This is the only constraint that is really needed

@@ -61,7 +61,9 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  # sol = Solver() # 25.140s
+  sol = SolverFor("QF_FD") # 1.56s
+  # sol = SolverFor("QF_LIA") # 10.67s
 
   #
   # data

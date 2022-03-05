@@ -30,7 +30,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 # variables
 A,B,C,D = Bools("A B C D") # Doors

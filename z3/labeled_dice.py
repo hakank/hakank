@@ -117,7 +117,7 @@ def building_blocks():
 
 def solve_it(n,m,letters,letters_s,num_words,words):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
     
   #
   # declare variables

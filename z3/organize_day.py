@@ -18,7 +18,7 @@ from z3_utils_hakank import *
 def main():
   # set_param(proof=True)
   
-  sol = Solver()
+  sol = SimpleSolver()
 
   # data
   n = 4

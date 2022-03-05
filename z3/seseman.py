@@ -44,7 +44,7 @@ from z3_utils_hakank import *
 def seseman(n=3):
     
   # Create the solver.
-  sol = Solver()
+  sol = SimpleSolver()
 
   # data
   border_sum = n * n

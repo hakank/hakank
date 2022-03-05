@@ -72,7 +72,7 @@ def calc(sol, cc, x, res):
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
 

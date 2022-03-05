@@ -48,7 +48,7 @@ default_puzzle = [
 
 def quasigroup_completion(puzzle="", n=0):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
   if puzzle == "":

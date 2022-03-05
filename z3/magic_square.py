@@ -1,25 +1,19 @@
-#!/usr/bin/python -u
-# -*- coding: latin-1 -*-
 # 
-# Magic square in Z3
+# Magic squares in Z3
 #
-# Magic square problem.
+# Times for n=2..10:
+# 
+# n: 2 : 0.008773565292358398
+# n: 3 : 0.006280183792114258
+# n: 4 : 0.07515954971313477
+# n: 5 : 0.1314847469329834
+# n: 6 : 0.47011852264404297
+# n: 7 : 0.735698938369751
+# n: 8 : 1.5421934127807617
+# n: 9 : 5.283749341964722
+# n: 10 : 44.89334321022034
 #
-# For n=5:
-# """
-# Testing  5
-# sat
-# Time to sat:  9.268678
-# s: 65
-#  3  6 15 19 22
-# 18 24  2  1 20
-# 25 11 12  7 10
-#  5 16 23 17  4
-#  14  8 13 21  9
-#  Time all:  18.497464
-# """
-# Why does it take 9 seconds to print?
-  
+#  
 #
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
@@ -37,20 +31,20 @@ def print_square(mod,x,n):
     
 
 def magic_square(n,all=0):
-    start = time.clock()
-    sol = Solver()
+    start = time.time()
+    
+    sol = SolverFor("QF_FD")
+    
     x = {}
     for i in range(n):
         for j in range(n):
             x[(i, j)] = Int("x(%i,%i)" % (i, j))
-            # x[(i, j)] = BitVec("x(%i,%i)" % (i, j), 32) # Slower
             sol.add(x[(i,j)] >= 1,  x[(i,j)] <= n*n)
         
     s = Int("s")
-    # s = BitVec("s",32)
-    # s =   n*(nn+1)//2 # magical sum
-
-    sol.add(s >= 1, s <= n*n*n)
+    sol.add(s >= 1, s <= n*n*n) # Strange that it's faster with this
+    sol.add(s == n*(n*n+1)//2 ) # since we set the value here
+    # s = n*(n*n+1)//2 # It's slower with a fixed value of s!
     sol.add(Distinct([x[(i, j)] for i in range(n) for j in range(n)])) # flattened
     [sol.add(Sum([x[(i, j)] for j in range(n)]) == s) for i in range(n)]
     [sol.add(Sum([x[(i, j)] for i in range(n)]) == s) for j in range(n)]
@@ -58,26 +52,33 @@ def magic_square(n,all=0):
     sol.add(Sum([x[(i, i)] for i in range(n)]) == s)  # diag 1
     sol.add(Sum([x[(i, n - i - 1)] for i in range(n)]) == s)  # diag 2
 
-    # symmetry breaking
-    sol.add(x[(0,0)] == 1)
+    # symmetry breaking (slower and might give no solution, e.g. for n=3)
+    # sol.add(x[(0,0)] == 1)
 
     print(sol.check())
-    end = time.clock()
+    end = time.time()
     value = end - start
     print("Time to sat: ", value)
     if sol.check() == sat:
         mod = sol.model()
         print("s:", mod.eval(s))
+        # print("s:", s)
         print_square(mod, x,n)
     else:
         print("No solution found!")
 
-    end = time.clock()
+    end = time.time()
     value = end - start
     print("Time all: ", value)
+    return value
 
-
-for n in [3,4,5]:
+times = {}
+for n in range(2,10+1):
     print("Testing ", n)
-    magic_square(n)
+    time_value = magic_square(n)
+    times[n] = time_value
     print()
+
+# Print the summary
+for n in times:
+    print("n:",n, ":", times[n])

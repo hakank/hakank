@@ -26,7 +26,7 @@ from z3_utils_hakank import *
 
 def main(values, lt):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
   size = len(values)

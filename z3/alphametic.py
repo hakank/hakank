@@ -35,7 +35,7 @@ from z3_utils_hakank import *
 def main(problem_str="SEND+MORE=MONEY", base=10):
 
 
-  sol = SolverFor("QF_NIA")
+  sol = SolverFor("QF_FD")
 
   # data
   print("\nproblem:", problem_str)

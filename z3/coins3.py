@@ -75,5 +75,5 @@ def main(type="optimize"):
           
 
 if __name__ == "__main__":
-  # main("optimize")
-  main("solver")
+  main("optimize") # 2.861s
+  # main("solver") # 13.322s

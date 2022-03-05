@@ -23,19 +23,24 @@
 # 'Intel Parallel Studio: Great for Serial Code Too (Episode 1)'
 # http://software.intel.com/en-us/blogs/2009/12/07/intel-parallel-studio-great-for-serial-code-too-episode-1/
 
+
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
 # 
 #
 from __future__ import print_function
-import sys
+import sys, time
 from z3_utils_hakank import *
 
 def main(base=10):
 
   # Create the solver.
-  sol = Solver()
+  # sol = Solver()
+  # sol = SimpleSolver()
+  # sol = SolverFor("QF_LIA")
+  # sol = SolverFor("LIA")  
+  sol = SolverFor("QF_FD")
 
   # data
   m = base ** (base - 1) - 1
@@ -87,5 +92,8 @@ if __name__ == "__main__":
   main(base)
 
 # for base in range(2, 17):
-#      main(base)
-#      print()
+#     t0 = time.time()
+#     main(base)
+#     t1 = time.time()
+#     print("Time: ", t1-t0)
+#     print()

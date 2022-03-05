@@ -23,7 +23,7 @@ def apart(sol, x, y, n):
     sol.add(Or(x >= y + n, y >= x + n))
 
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 n = 3
 

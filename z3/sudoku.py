@@ -3,6 +3,7 @@
 # 
 # Sudoku in Z3.
 #
+# SolverFor("QF_LIA")
 # Here are the times for first solution (i.e. prove_unicity = False):
 #  - world_hardest (9x9):   0.178s
 #  - another (9x9)      :   0.05s
@@ -15,7 +16,27 @@
 #  - problem_34 (16x16) :   0.69s
 #  - problem_89 (25x25) : 465.17s
 #
+#
+# QF_FD is slower than QF_LIA for finding first solution
+# but faster for proving unicity.
+# Time to first solution:
+#  - world_hardest (9x9):   0.10s
+#  - another (9x9)      :   0.049s
+#  - problem_34 (16x16) :   0.338s
+#  - problem_89 (25x25) : 205.10s
+#
+# Proving unicity:
+#  - world_hardest (9x9):   0.136s
+#  - another (9x9)      :   0.06s
+#  - problem_34 (16x16) :   0.439s
+#  - problem_89 (25x25) : 318.21s
+#
+#
+# Compare with sudoku_ip.py that uses (pseuso) boolean with AtLeast and AtMost constraints
+# which is slower on easy cases (9x9 and 16x16) but significantly faster on the 25x25 case:
+# It solves problem 89 (25x25) in 3.87 for first solution and 5,49s proving unicity.
 # 
+
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
 # 
@@ -24,10 +45,16 @@ import time
 from z3_utils_hakank import *
 
 def sudoku(init,m=3,prove_unicity=True):
+    
     # sol = Solver()
+    # sol = SimpleSolver()
     # sol = SolverFor("QF_LIA")
-    sol = SolverFor("LIA")  # faster
-    # m = 3
+    if prove_unicity:
+        sol = SolverFor("QF_FD")
+    else:
+        sol = SolverFor("LIA")
+        
+    
     n = m ** 2
     line = list(range(0, n))
     cell = list(range(0, m))
@@ -61,8 +88,6 @@ def sudoku(init,m=3,prove_unicity=True):
 
     # Check for unicity
     # (for just the first solution: change "while" to "if")
-    # - Prove unicity: 0.725
-    # - Just a solution: 0.503
     if prove_unicity:
         while sol.check() == sat:
             mod = sol.model()
@@ -78,9 +103,8 @@ def sudoku(init,m=3,prove_unicity=True):
 # "World's hardest sudoku: can you crack it?"
 # http://www.telegraph.co.uk/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html
 #
-# Tims to first solution: 0.37s
-# Time to ensure unicity: 0.54s
 # Note: Null time (i.e. just reading this model w/o any goal): 0.204s
+# 
 world_hardest = [[8,0,0, 0,0,0, 0,0,0],
                  [0,0,3, 6,0,0, 0,0,0],
                  [0,7,0, 0,9,0, 2,0,0],
@@ -96,7 +120,7 @@ world_hardest = [[8,0,0, 0,0,0, 0,0,0],
 # From https://ericpony.github.io/z3py-tutorial/guide-examples.htm
 # (another Z3 Sudoku model)
 # That z3 model solves this problem in 0.29s
-# This model: 0,27s (0.31s to prove uniciy)
+# This model: 0.04s (0.06s to prove uniciy)
 another = [[0,0,0,0,9,4,0,3,0],
            [0,0,0,5,1,0,0,0,7],
            [0,8,9,0,0,0,0,4,0],
@@ -187,7 +211,7 @@ problems = {
     }
     }
 
-prove_unicity = True
+prove_unicity = False
 for p in problems:
     problem = problems[p]["problem"]
     size = problems[p]["size"]

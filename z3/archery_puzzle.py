@@ -19,7 +19,7 @@
 from z3_utils_hakank import *
 
 
-sol = Solver()
+sol = SimpleSolver()
 
 targets = [16, 17, 23, 24, 39, 40]
 n = len(targets)

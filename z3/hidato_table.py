@@ -62,7 +62,11 @@ def main():
 def Solve(model):
   """Solve the given model."""
 
-  sol = Solver()
+  # sol = Solver() # Total time: 21.4s
+  sol = SolverFor("QF_FD") # 7.87s
+  # sol = SolverFor("QF_LIA") # 21.2s
+  # sol = SolverFor("LIA") # 9.18s
+  # sol = SimpleSolver() # 8.42s
 
   #
   # models, a 0 indicates an open cell which number is not yet known.

@@ -64,7 +64,7 @@ default_game = [
 
 def main(game="", r="", c=""):
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data

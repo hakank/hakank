@@ -16,7 +16,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 x = makeIntVector(sol, "x", 9, 1,9)
 [A,B,C,D,E,F,G,H,I] = x

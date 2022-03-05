@@ -29,7 +29,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 
 num_days = 5
 

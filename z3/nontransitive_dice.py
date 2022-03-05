@@ -51,7 +51,7 @@ from z3_utils_hakank import *
 
 def main(m=3, n=6, minimize_val=0):
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data
@@ -160,7 +160,7 @@ def main(m=3, n=6, minimize_val=0):
 
 m = 3             # number of dice
 n = 6             # number of sides of each die
-minimize_val = 0  # Minimizing max value (0: no, 1: yes)
+minimize_val = 1  # Minimizing max value (0: no, 1: yes)
 if __name__ == "__main__":
   if len(sys.argv) > 1:
     m = int(sys.argv[1])

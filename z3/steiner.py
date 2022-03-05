@@ -30,7 +30,8 @@ def union_card(sol,s1,s2,common):
 def steiner(n=7,num_sols=1):
   print("n:",n, "num_sols:", num_sols)
   # sol = Solver()
-  sol = SolverFor("LIA")
+  # sol = SolverFor("LIA")
+  sol = SolverFor("QF_FD")
   nb = int(n*(n-1) // 6)
 
   if not(n % 6 == 1 or n % 6 == 3):
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     steiner(n)
     print()
   else:
-    for n in range(3,10):
+    for n in range(3,20):
       if n % 6 == 1 or n % 6 == 3:
         steiner(n,1)
         print()

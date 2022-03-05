@@ -94,7 +94,7 @@ def test2():
 #
 def cumulative_test(duration,demand,max_num_resources,max_end_time):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   n = len(duration)
 

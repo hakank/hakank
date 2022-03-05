@@ -16,7 +16,7 @@ def tsp_circuit(distances):
   n = len(distances)
   print("n:",n)
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   # variables
   min_val = min([distances[i][j] for i in range(n) for (j) in range(n) if distances[i][j] > 0])

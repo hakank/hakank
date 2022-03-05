@@ -43,7 +43,7 @@ def minus(sol, x, y, z):
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # data

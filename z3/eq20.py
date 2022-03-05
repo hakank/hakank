@@ -14,7 +14,7 @@ from z3_utils_hakank import *
 def main():
 
   # Create the solver.
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data

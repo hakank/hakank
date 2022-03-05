@@ -29,7 +29,8 @@
 from z3_utils_hakank import *
 
 # sol = Solver() # 18.1s
-sol = SolverFor("QF_LIA") # 11.7s
+# sol = SolverFor("QF_LIA") # 11.7s
+sol = SolverFor("QF_FD") # 11.7s
 
 n = 20
 

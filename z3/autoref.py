@@ -39,29 +39,21 @@ def makeByteArray(sol,name, bitVec, size, min_val, max_val):
     a = [BitVec("%s_%i"% (name,i),bitVec) for i in range(size) ]
     return a
 
-
-sol = SolverFor("LIA")
-# sol = Solver() # slower
+sol = SolverFor("QF_FD")
 
 n = 27
 m = 5
 
-bitVec = 5 # size of BitVec
-
 # variables
 
-# s = makeIntVector(sol,"s",n+2,0,n) # n=27, m=5: 54min 51.5s
-s = makeIntArray(sol,"s",n+2,0,n) # n=27, m=5: 40.2s
-# s = makeByteArray(sol,"s",bitVec, n+2,0,n) # n=27, m=5: (BitVec(, 5) 51min 54s
-
-one = BitVecVal(1,bitVec)
-zero = BitVecVal(0,bitVec)
+s = [Int(f"s[{i}") for i in range(n+2)]
+for i in range(n+2):
+    sol.add(s[i] >= 0, s[i] <= n)
 
 # constraints
 
 sol.add(s[n+1]==m)
 for i in range(n+1):
-    # sol.add(s[i] == Sum([If(s[j] == i,one,zero) for j in range(n+2)])) # for BitVec
     sol.add(s[i] == Sum([If(s[j] == i,1,0) for j in range(n+2)]))    
 
 num_solutions = 0

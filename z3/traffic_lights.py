@@ -51,7 +51,7 @@ from z3_utils_hakank import *
 
 def main(base=10, start=1, len1=1, len2=4):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # data

@@ -31,7 +31,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 
 n = 5
 

@@ -14,7 +14,7 @@
 from z3_utils_hakank import *
 
 def devils_word(total, arr):
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   n = len(arr)
   max_val = max(arr)

@@ -55,7 +55,7 @@ def calc(sol,cc, x, res):
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("LIA")
 
   # data
 

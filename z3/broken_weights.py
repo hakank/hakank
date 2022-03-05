@@ -35,7 +35,7 @@ from z3_utils_hakank import *
 
 def main(m=40, n=4):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
   # sol = Optimize()
 
   # data

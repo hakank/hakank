@@ -39,7 +39,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SolverFor("QF_FD")
 
 # data
 n = 4

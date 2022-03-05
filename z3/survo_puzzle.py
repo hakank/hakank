@@ -43,7 +43,7 @@ from z3_utils_hakank import *
 
 def survo_puzzle(r=0, c=0, rowsums=[], colsums=[], game=[]):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
   if r == 0:

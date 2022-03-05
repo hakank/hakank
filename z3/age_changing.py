@@ -37,7 +37,7 @@ def check(sol,perm, old, new):
    sol.add(Implies(perm == 2, new == old - 3))
    sol.add(Implies(perm == 3, new == old * 7))
 
-sol = SolverFor("QF_NIA")
+sol = SimpleSolver() # SolverFor("QF_NIA")
 # sol = Solver()
 
 n = 4
@@ -85,7 +85,7 @@ for i in range(n):
   check(sol,perm2[i], mlist[i], mlist[i+1])
 
 # Symmetry breaking: I'm younger than husband
-sol.add(m < h)
+# sol.add(m < h)
 
 num_solutions = 0
 while sol.check() == sat:

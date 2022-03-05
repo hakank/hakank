@@ -18,8 +18,8 @@
 #  -----------------------------------------
 #  = G J E G A C D D H F A F J B F I H E E F
 # '''
-
-# Note: This is surprisingly slow...
+#
+# Note: This is surprisingly slow for most solver, but QF_FD is fast.
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
@@ -30,16 +30,26 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("QF_FD") # Proving uniqueness: 0.43s 
+  # sol = SolverFor("QF_NIA") # First solution in 0.5s, proving uniqueness: much longer
+  # sol = SolverFor("QF_AX") # ~26s
+  # sol = Solver() # slower
+  # sol = SolverFor("UFNIA")  # slower
+  # sol = SolverFor("QF_LIA") # slow
+  # sol = SolverFor("AUFLIA") # slow
+  # sol = SolverFor("AUFNIRA") # slow
+  # sol = SolverFor("QF_AUFLIA") # first solution in 21s
+  # sol = SolverFor("QF_IDL") # first solution in 7.4s
+  # sol = SolverFor("QF_UFIDL") # slow
+  # sol = SolverFor("QF_AX") # slow
+  
 
-  #
   # data
-  #
 
   #
   # variables
   #
-  LD = [makeIntVar(sol,"LD[%i]" % i, 0, 9) for i in range(0, 10)]
+  LD = makeIntVector(sol,"LD", 10, 0,9) # [makeIntVar(sol,"LD[%i]" % i, 0, 9) for i in range(0, 10)]
   A, B, C, D, E, F, G, H, I, J = LD
 
   Sr1 = makeIntVar(sol, "Sr1", 0, 1)
@@ -70,9 +80,10 @@ def main():
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    for (letter, val) in [(str[i], mod.eval(LD[i])) for i in range(len(LD))]:
+    for (letter, val) in [(str[i], mod.eval(LD[i]).as_long()) for i in range(len(LD))]:
       print("%s: %i" % (letter, val))
     print()
+    getDifferentSolution(sol,mod, LD)
 
   print()
   print("num_solutions:", num_solutions)

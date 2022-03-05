@@ -28,7 +28,8 @@ from z3_utils_hakank import *
 
 def langford(k=8, num_sol=0):
 
-    sol = Solver()
+    # sol = Solver() # 2.328s
+    sol = SolverFor("AUFLIA") # 1.253s
 
     # data
     print("k:", k)

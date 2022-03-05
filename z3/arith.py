@@ -21,7 +21,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 
 relops = ["<","<=","=",">=",">","!="]
 
@@ -42,7 +42,7 @@ while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
     print([mod[x[i]] for i in range(n)], relops[mod[relop].as_long()], mod[y])
-    getDifferentSolution(sol,mod,x)
+    getDifferentSolution(sol,mod,x+[relop,y])
 
 print("num_solutions:", num_solutions)
 

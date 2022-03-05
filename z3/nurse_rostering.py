@@ -21,7 +21,8 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = SolverFor("QF_NIA")
+  # sol = SolverFor("QF_NIA")
+  sol = SolverFor("QF_AUFLIA")
 
   # data
 

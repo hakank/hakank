@@ -45,7 +45,7 @@ def partition_sets(sol, x, num_sets, n):
 def main(n=16, num_sets=2):
 
   # Create the sol.
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # data

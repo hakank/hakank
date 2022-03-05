@@ -24,7 +24,7 @@ def knapsack(sol, values, weights, n):
 
 def main(values, weights, n):
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data

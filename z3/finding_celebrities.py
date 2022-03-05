@@ -45,7 +45,7 @@ def finding_celebrities(problem):
   graph = problem
   n = len(graph)
   
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # variables
   

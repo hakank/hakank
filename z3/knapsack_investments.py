@@ -63,7 +63,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = Solver()
+sol = SimpleSolver()
 
 num_projects = 15 # number of projects to select from
 max_budget = 225 # budget limit 

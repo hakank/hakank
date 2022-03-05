@@ -13,7 +13,7 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = Optimize() # SimpleSolver()
 
   # data
 
@@ -60,10 +60,10 @@ def main():
   for p in range(num_products):
     sol.add(inside[p] + outside[p] >= demand[p])
 
-  # sol.minimize(z)
+  sol.minimize(z)
 
   num_solutions = 0
-  while sol.check() == sat:
+  if sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
     print('z = ', mod.eval(z).as_decimal(5))  

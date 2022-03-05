@@ -51,7 +51,7 @@ def prec(sol, x, y, s, d):
    sol.add(s[x] + d[x] <= s[y])
 
 
-sol = SolverFor("QF_LIA")
+sol = SolverFor("LIA")
 
 
 # data
@@ -105,6 +105,10 @@ min_val = makespan # (then we ignore the z part)
 
 
 # constraints
+# This takes a long time to calculate
+# print("before cumulative")
+cumulative(sol, start, duration, height, limitx, 0, total_duration)
+# print("after cumulative")
 
 if min_val == z:
     sol.add(z ==
@@ -124,10 +128,6 @@ maximum(sol, makespan, end)
 for p in range(num_precedences):
     prec(sol,precedences[p][0], precedences[p][1], start, duration)
 
-# This takes a long time to calculate
-# print("before cumulative")
-cumulative(sol, start, duration, height, limitx, 0, total_duration)
-# print("after cumulative")
 
 
 # minimize makespan;

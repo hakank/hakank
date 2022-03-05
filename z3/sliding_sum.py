@@ -41,7 +41,7 @@ def sliding_sum(sol, low, up, seq, x):
     # sol.add(s >= low, s <= up)
 
 def main():
-  sol = Solver()
+  sol = SimpleSolver()
 
   n = 7
 

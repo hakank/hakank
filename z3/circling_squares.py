@@ -26,7 +26,8 @@ def s(sol, x1,x2,y1,y2):
   sol.add(x1*x1 + x2*x2 == y1*y1 + y2*y2)
 
 
-sol = SolverFor("QF_LIA") # 10.8s
+sol = SolverFor("QF_FD") # 0.430s
+# sol = SolverFor("QF_LIA") # 9.203s
 # sol = Solver() # 16.2s
 
 n = 10

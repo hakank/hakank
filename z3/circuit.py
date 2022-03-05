@@ -16,10 +16,10 @@
 from z3_utils_hakank import * 
 
 def test_circuit(n,print_all=True):
-    sol = Solver()
+    sol = SimpleSolver()
 
-    x = makeIntArray(sol, 'x',n, 1, n)
-    z = makeIntArray(sol, 'z',n, 1, n)
+    x = makeIntArray(sol, 'x',n, 0, n-1)
+    z = makeIntArray(sol, 'z',n, 0, n-1)
 
     # circuit is defined in z3_utils_hakank
     circuit(sol,x,z, n)
@@ -29,17 +29,18 @@ def test_circuit(n,print_all=True):
     while sol.check() == sat:
         m = sol.model()
         count += 1
-        xx = [m.eval(x[i]) for i in range(n)]
-        sol.add(Or([x[i] != xx[i] for i in range(n)]))
+        xx = [m.eval(x[i]) for i in range(n)]        
         if print_all:
             zz = [m.eval(z[i]) for i in range(n)]
             print("x: ", xx)
             print("z: ", zz)
             print()
+        sol.add(Or([x[i] != xx[i] for i in range(n)]))
     
     print("n=",n, " count:", count)
 
 
-test_circuit(4,True)    
+test_circuit(4,True)
+print()
 for n in range(1,8):
     test_circuit(n,False)

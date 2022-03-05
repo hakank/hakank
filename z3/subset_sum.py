@@ -25,7 +25,8 @@ from z3_utils_hakank import *
 
 def main(coins, total):
 
-  sol = Solver()
+  # sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
   print("coins:", coins)

@@ -21,7 +21,7 @@ from z3_utils_hakank import *
 # 
 def all_partitions(n):
 
-    sol = Solver()
+    sol = SimpleSolver()
     
     # part I: get all candidates
     x = makeIntVector(sol,"x",n,0,n)

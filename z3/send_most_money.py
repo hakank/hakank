@@ -11,49 +11,43 @@
 # 
 from z3_utils_hakank import *
 
-sol = Optimize()
 
-s,e,n,d,m,o,t,y,money = Ints("s e n d m o t y money")
-a = [s,e,n,d,m,o,t,y]
-alen = len(a)
+def send_most_money():
+    sol = Optimize()
 
-# domains
-for x in a:
-    sol.add(x >= 0),
-    sol.add(x <= 9)
+    s,e,n,d,m,o,t,y,money = Ints("s e n d m o t y money")
+    a = [s,e,n,d,m,o,t,y]
+    alen = len(a)
 
-sol.add(Distinct(a))
-sol.add(10000*m + 1000*o + 100*n + 10*e + y == money)
-sol.add(1000*s + 100*e + 10*n + d  +  1000*m + 100*o + 10*s + t  == money )
+    # domains
+    for x in a:
+        sol.add(x >= 0),
+        sol.add(x <= 9)
 
-sol.add(s > 0)
-sol.add(m > 0)
+    sol.add(Distinct(a))
+    sol.add(10000*m + 1000*o + 100*n + 10*e + y == money)
+    sol.add(1000*s + 100*e + 10*n + d  +  1000*m + 100*o + 10*s + t  == money )
 
-sol.maximize(money)
+    sol.add(s > 0)
+    sol.add(m > 0)
 
-if sol.check() == sat:
-    # First get the optimal value of MONEY
-    mod = sol.model()
-    print "money=", mod.evaluate(money)
-    print "All optimal solutions:"
-    ss = evalArray(mod,a) # [mod.evaluate(x) for x in a]
-    print ss 
-    sol.add(money == mod.evaluate(money))
-    # At least some element must be different from the others
-    getDifferentSolution(sol,mod,a)
-    while sol.check() == sat:
+    sol.maximize(money)
+
+    if sol.check() == sat:
+        # First get the optimal value of MONEY
         mod = sol.model()
-        print evalArray(mod, a) # [mod.evaluate(x) for x in a]
+        print("money=", mod.evaluate(money))
+        print("All optimal solutions:")
+        ss = evalArray(mod,a) # [mod.evaluate(x) for x in a]
+        print(ss )
+        sol.add(money == mod.evaluate(money))
+        # At least some element must be different from the others
         getDifferentSolution(sol,mod,a)
+        while sol.check() == sat:
+            mod = sol.model()
+            print(evalArray(mod, a)) # [mod.evaluate(x) for x in a]
+            getDifferentSolution(sol,mod,a)
         
-    # print sol.statistics()
+    # print(sol.statistics())
 
-else:
-    print("failed to solve")
-
-
-
-
-# if __name__ == '__main__':
-#        pass
-
+send_most_money()

@@ -43,7 +43,7 @@ from z3_utils_hakank import *
 
 def young_tableaux(n=5):
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
   print("n:", n)

@@ -42,7 +42,7 @@ from z3_utils_hakank import *
 def discrete_tomography(row_sums="", col_sums=""):
 
   # Create the sol.
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   # data
   if row_sums == "":

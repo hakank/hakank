@@ -62,7 +62,11 @@ def calc(sol,cc, x, res):
 
 def main():
 
-  sol = Solver()
+  # sol = Solver() # 1.213s
+  # sol = SimpleSolver() # 1.445s
+  sol = SolverFor("QF_FD") # 0.299s
+  # sol = SolverFor("LIA") # 1.233s
+  
 
   # data
 
