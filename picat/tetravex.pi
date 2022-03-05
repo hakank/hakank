@@ -20,8 +20,8 @@
 
 
 import util.
-% import common_sat_cp.
 import cp.
+% import sat.
 
 
 main => go.
@@ -52,27 +52,77 @@ go ?=> true.
 
 
 %
+% Solve all problem instances
+%
+go2 ?=>
+  member(Game,1..2),
+  println(game=Game),  
+  game(Game,Size,Pieces),
+
+  time2(tetravex(Pieces,Size, Solution)),
+  if nonvar(Solution) then
+    foreach(Sol in Solution) println(Sol) end,
+    nl,
+    print_board(Pieces,Solution, Size)
+  end,
+
+  % ensure unicity
+  fail,
+  
+  nl.
+go2 => true.
+
+%
 % Generate a random problem and solve it.
 %
 % Generation of large instances is fast, e.g. 30x30 takes 0.15s
 % (solving it takes much longer).
 %
-go2 ?=>
-  Size = 8,
+% Note: The sat solver does not generate good random instances since
+%       it doesn't support random strategy.
+% 
+go3 ?=>
+  Size = 10,
   printf("Generate a random problem instance of size %dx%d\n", Size,Size),
 
-  % _ = random2(), % "Real" random.
+  _ = random2(), % "Real" random.
 
-  time(once(tetravex_generate(Size,Pieces,Solution))),
+  MinVal = 0,
+  MaxVal = 36,
+
+  time(once(tetravex_generate(Size,MinVal,MaxVal, Pieces,Solution))),
   % println(pieces=Pieces),
+  println("This is the solution:"),
   print_board(Pieces,Solution, Size),
 
-  println("Shuffle pieces"),
+  println("\nShuffle pieces"),
   Pieces2 = shuffle(Pieces),
+
+  %
+  % Random rotation. TODO!
+  % Note this is not a normal rotate since we have a little strange representation.
+  % This is the "identity" represented as [1,2,3,4]
+  %      1
+  %   2    3
+  %      4
+  % Rotates = new_map([1=[2,4,3,1],2=[4,3,2,1],3=[3,1,4,3]]),
+  % PiecesRotated = [],
+  % foreach(P in Pieces2)
+  %   Rots = Rotates.get(random(1,3)),
+  %   println(origP=P),
+  %   println(rots=Rots),
+  %   T = [ P[R] : R in Rots],
+  %   println(t=T),
+  %   PiecesRotated := PiecesRotated ++ [T]
+  % end,
+  % Pieces2 := PiecesRotated,
+  %
 
   println("New problem:"),
   % foreach(Piece in Pieces2) printf("%d,%d,%d,%d,\n", Piece[1],Piece[2],Piece[3],Piece[4]) end,
   % print_dzn(Pieces2,Size),
+  % print_picat_instance(Pieces2,Size),
+  
   % print_board(Pieces2,Solution, Size),
 
   println("Solve problem"),
@@ -86,16 +136,37 @@ go2 ?=>
   fail,
   nl.
 
-go2 => true.
+go3 => true.
 
-
+% For MiniZinc
 print_dzn(Pieces,Size) =>
-  println("% Random instance via Picat's tetravex.pl model."),
+  println("% Random instance via Picat's tetravex.pi model."),
   printf("size = %d;\n", Size),
   println("Pieces = array2d(1..num_pieces, 1..4,\n["),
   foreach(Piece in Pieces) printf("%d,%d,%d,%d,\n", Piece[1],Piece[2],Piece[3],Piece[4]) end,
   printf("]);\n"),
   nl.
+
+% Generate a Picat instance
+print_picat_instance(Pieces,Size) =>
+  println("% Random instance via Picat's tetravex.pi model."),
+  print("puzzle(xxxx,Pieces,Size) => \n"),
+  printf("  Size = %d,\n", Size),
+  println("  Pieces = ["),
+  Len = Pieces.len,
+  foreach(I in 1..Len)
+      printf("\t[%d,%d,%d,%d]", Pieces[I,1],Pieces[I,2],Pieces[I,3],Pieces[I,4]),
+      if I != Len then
+         print(",")
+      end,
+      if I mod Size == 0 then
+        nl
+      end,
+      nl
+  end,
+  printf("].\n"),
+  nl.
+  
 
 % Shuffle a list
 shuffle(List) = List2 => 
@@ -122,8 +193,10 @@ swap(L,I,J) = L2 =>
 %
 tetravex(Pieces,Size,Solution) =>
 
-  println(pieces=Pieces),
-
+  % println(pieces=Pieces),
+  PiecesFlatten = Pieces.flatten,
+  MinVal = min(PiecesFlatten),
+  MaxVal = max(PiecesFlatten),
   % decision variables
   Solution = new_array(Size,Size),
   Solution :: 1..Size*Size,
@@ -133,16 +206,15 @@ tetravex(Pieces,Size,Solution) =>
   % constraints
   These = [],
   foreach(I in 1..Size, J in 1..Size)
-     % println([I,J]),
      This = new_array(4),
-     This :: 0..9,
+     This :: MinVal..MaxVal,
      These := These ++ [This],
 
      % The built-in matrix_element/4 works and is quite fast
-     matrix_element(Pieces,Solution[I,J],1,This1),
-     matrix_element(Pieces,Solution[I,J],2,This2),
-     matrix_element(Pieces,Solution[I,J],3,This3),
-     matrix_element(Pieces,Solution[I,J],4,This4),
+     matrix_element(Pieces,Solution[I,J],1,This[1]),
+     matrix_element(Pieces,Solution[I,J],2,This[2]),
+     matrix_element(Pieces,Solution[I,J],3,This[3]),
+     matrix_element(Pieces,Solution[I,J],4,This[4]),
 
      Neighbors = [[I+A,J+B] : A in -1..1, B in -1..1, 
                    I+A >= 1, I+A <= Size, J+B >= 1, J+B <= Size, 
@@ -150,26 +222,22 @@ tetravex(Pieces,Size,Solution) =>
      foreach([NI, NJ] in Neighbors) 
        % Ensure that the proper edges are the same
        if I == NI then
-         matrix_element(Pieces,Solution[NI,NJ],2,That2),
-         matrix_element(Pieces,Solution[NI,NJ],3,That3),
          % same row
          if J < NJ then
-           This3 #= That2
-         else 
-           This2 #= That3
+           matrix_element(Pieces,Solution[NI,NJ],2,This[3])
+         else
+           matrix_element(Pieces,Solution[NI,NJ],3,This[2])
          end
        elseif J == NJ then
-         matrix_element(Pieces,Solution[NI,NJ],1,That1),
-         matrix_element(Pieces,Solution[NI,NJ],4,That4),
          % same column
          if I < NI then
-           This4 #= That1
+           matrix_element(Pieces,Solution[NI,NJ],1,This[4])
          else 
-           This1 #= That4       
+           matrix_element(Pieces,Solution[NI,NJ],4,This[1])          
          end
        end
      end
-
+     
   end,
 
   % all_different(Vars),
@@ -177,7 +245,8 @@ tetravex(Pieces,Size,Solution) =>
 
   % solve
   % solve([constr,reverse_split], Solution).
-  solve([ffc,split], Vars ++ These). % faster
+  Vars2 = Vars ++ These,
+  solve([ffc,split], Vars2). % faster
   % solve_suspended([split]). %
   % solve([constr,split], Solution).
 
@@ -185,10 +254,12 @@ tetravex(Pieces,Size,Solution) =>
 %
 % Generate a TetraVex problem instance
 %
-tetravex_generate(Size,Pieces,Solution) =>
+tetravex_generate(Size,MinVal,MaxVal,Pieces,Solution) =>
 
+  % MinVal = 0,
+  % MaxVal = 119,
   Pieces = new_array(Size*Size,4).array_matrix_to_list_matrix(),
-  Pieces :: 0..9,
+  Pieces :: MinVal..MaxVal,
 
   % decision variables
   Solution = new_array(Size,Size),
@@ -199,6 +270,7 @@ tetravex_generate(Size,Pieces,Solution) =>
   all_different(Solution.vars()),
   % all_distinct(Solution.vars()), % slower
 
+  These = [],
   foreach(I in 1..Size, J in 1..Size)
      Neighbors = [[I+A,J+B] : A in -1..1, B in -1..1, 
                    I+A >= 1, I+A <= Size, J+B >= 1, J+B <= Size, 
@@ -206,39 +278,37 @@ tetravex_generate(Size,Pieces,Solution) =>
 
      % We must use hand made matrix_element*/4 since element/3 won't do 
      % and neither does the built-in matrix_element/4.
-     matrix_element6(Pieces,Solution[I,J],1,This1),
-     matrix_element6(Pieces,Solution[I,J],2,This2),
-     matrix_element6(Pieces,Solution[I,J],3,This3),
-     matrix_element6(Pieces,Solution[I,J],4,This4),
+     This = new_array(Size),
+     This :: MinVal..MaxVal,
+     matrix_element6(Pieces,Solution[I,J],1,This[1]),
+     matrix_element6(Pieces,Solution[I,J],2,This[2]),
+     matrix_element6(Pieces,Solution[I,J],3,This[3]),
+     matrix_element6(Pieces,Solution[I,J],4,This[4]),
+     These := These ++ This,
 
      foreach([NI, NJ] in Neighbors) 
        % Ensure that the proper edges are the same
        if I == NI then
          % same row
-         matrix_element6(Pieces,Solution[NI,NJ],2,That2),
-         matrix_element6(Pieces,Solution[NI,NJ],3,That3),
          if J < NJ then
-           This3 #= That2
-         else 
-           This2 #= That3
+           matrix_element6(Pieces,Solution[NI,NJ],2,This[3])
+         else
+           matrix_element6(Pieces,Solution[NI,NJ],3,This[2])
          end
        elseif J == NJ then
          % same column
-         matrix_element6(Pieces,Solution[NI,NJ],1,That1),
-         matrix_element6(Pieces,Solution[NI,NJ],4,That4),
          if I < NI then
-           This4 #= That1
-         else 
-           This1 #= That4       
+           matrix_element6(Pieces,Solution[NI,NJ],1,This[4])
+         else
+           matrix_element6(Pieces,Solution[NI,NJ],4,This[1])
          end
        end
      end
   end,
 
   _ = random2(), % Change the seed for rand_val
-
   % solve
-  Vars = Solution.vars() ++ Pieces.vars(),
+  Vars = Solution.vars() ++ Pieces.vars() ++ These,
   % solve([ffc,split], Vars).
   solve([constr,rand_val], Vars).
 
