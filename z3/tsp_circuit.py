@@ -11,6 +11,7 @@
 from z3_utils_hakank import *
 
 
+
 def tsp_circuit(distances):
 
   n = len(distances)
@@ -24,27 +25,23 @@ def tsp_circuit(distances):
 
   print("min_val:",min_val,"max_val:",max_val)
 
-  # Array version of distances (for element)
-  distances_a = Array("distances_a",IntSort(),IntSort())
-  for i in range(n):
-    for j in range(n):
-      sol.add(distances_a[i*n+j] == distances[i][j])
+  distances_flatten = [distances[i][j] for i in range(n) for j in range(n)]
 
-  x = makeIntArray(sol,"x",n, 0,n-1) # the circuit
-  path = makeIntArray(sol,"path",n, 0,n-1) # the circuit
+  x = makeIntVector(sol,"x",n, 0,n-1) # the circuit
+  path = makeIntVector(sol,"path",n, 0,n-1) # the circuit
 
-  d = makeIntArray(sol,"d",n,min_val,max_val)
+  d = makeIntVector(sol,"d",n,min_val,max_val)
   distance = Int("distance")
 
   # constraints
   sol.add(distance == Sum([d[i] for i in range(n)]))
 
   # sol.add(Distinct([x[i] for i in range(n)])) # done in circuit
-
-  circuit(sol,x, path, n)
+  circuit2(sol,x, path, n) 
 
   for i in range(n):
-    sol.add(d[i] == distances_a[i*n + x[i]])
+    # sol.add(d[i] == distances_a[i*n + x[i]])
+    element(sol,i*n + x[i], distances_flatten, d[i],n*n)
 
   print("solve")
   # print(sol)

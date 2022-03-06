@@ -12,7 +12,7 @@
 # diagonally.
 # '''
 #
-# Note: This model is VERY slow, except for the simple instances.
+# Note: This model is quite slow.
 # See hidato_table.py for a much faster model.
 #
 # 
@@ -25,14 +25,14 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data
   #
   #
   # Simple problem
-  #
+  # 0.224s
   # r = 3
   # c = r
   # puzzle = [
@@ -41,35 +41,37 @@ def main():
   #     [1,0,0]
   #     ]
 
-
-#     r = 7
-#     c = 7
-#     puzzle =  [
-#         [0,44,41, 0, 0, 0, 0],
-#         [0,43, 0,28,29, 0, 0],
-#         [0, 1, 0, 0, 0,33, 0],
-#         [0, 2,25, 4,34, 0,36],
-#         [49,16, 0,23, 0, 0, 0],
-#         [0,19, 0, 0,12, 7, 0],
-#         [0, 0, 0,14, 0, 0, 0]
-#         ]
+  # 3.673s
+  # r = 7
+  # c = 7
+  # puzzle =  [
+  #       [0,44,41, 0, 0, 0, 0],
+  #       [0,43, 0,28,29, 0, 0],
+  #       [0, 1, 0, 0, 0,33, 0],
+  #       [0, 2,25, 4,34, 0,36],
+  #       [49,16, 0,23, 0, 0, 0],
+  #       [0,19, 0, 0,12, 7, 0],
+  #       [0, 0, 0,14, 0, 0, 0]
+  #       ]
 
   # Problems from the book:
   # Gyora Bededek: "Hidato: 2000 Pure Logic Puzzles"
 
   # Problem 1 (Practice)
-  r = 5
-  c = r
-  puzzle = [
-     [ 0, 0,20, 0, 0],
-     [ 0, 0, 0,16,18],
-     [22, 0,15, 0, 0],
-     [23, 0, 1,14,11],
-     [ 0,25, 0, 0,12],
-     ]
+  # 0.499s
+  # r = 5
+  # c = r
+  # puzzle = [
+  #    [ 0, 0,20, 0, 0],
+  #    [ 0, 0, 0,16,18],
+  #    [22, 0,15, 0, 0],
+  #    [23, 0, 1,14,11],
+  #    [ 0,25, 0, 0,12],
+  #    ]
 
 
-#     # problem 2 (Practice)
+  # problem 2 (Practice)
+  # 0.474s
   # r = 5
   # c = r
   # puzzle = [
@@ -81,44 +83,43 @@ def main():
   # ]
 
   # problem 3 (Beginner)
-#     r = 6
-#     c = r
-#     puzzle =  [
-#         [ 0, 26,0, 0, 0,18],
-#         [ 0, 0,27, 0, 0,19],
-#         [31,23, 0, 0,14, 0],
-#         [ 0,33, 8, 0,15, 1],
-#         [ 0, 0, 0, 5, 0, 0],
-#         [35,36, 0,10, 0, 0]
-#         ];
+  # 1.511s
+  r = 6
+  c = r
+  puzzle =  [
+        [ 0, 26,0, 0, 0,18],
+        [ 0, 0,27, 0, 0,19],
+        [31,23, 0, 0,14, 0],
+        [ 0,33, 8, 0,15, 1],
+        [ 0, 0, 0, 5, 0, 0],
+        [35,36, 0,10, 0, 0]
+        ]
 
   # Problem 15 (Intermediate)
-  # Note: This takes very long time to solve...
-#     r = 8
-#     c = r
-#     puzzle = [
-#          [64, 0, 0, 0, 0, 0, 0, 0],
-#          [ 1,63, 0,59,15,57,53, 0],
-#          [ 0, 4, 0,14, 0, 0, 0, 0],
-#          [ 3, 0,11, 0,20,19, 0,50],
-#          [ 0, 0, 0, 0,22, 0,48,40],
-#          [ 9, 0, 0,32,23, 0, 0,41],
-#          [27, 0, 0, 0,36, 0,46, 0],
-#          [28,30, 0,35, 0, 0, 0, 0]
-#          ]
+  # 13.835s
+  # r = 8
+  # c = r
+  # puzzle = [
+  #        [64, 0, 0, 0, 0, 0, 0, 0],
+  #        [ 1,63, 0,59,15,57,53, 0],
+  #        [ 0, 4, 0,14, 0, 0, 0, 0],
+  #        [ 3, 0,11, 0,20,19, 0,50],
+  #        [ 0, 0, 0, 0,22, 0,48,40],
+  #        [ 9, 0, 0,32,23, 0, 0,41],
+  #        [27, 0, 0, 0,36, 0,46, 0],
+  #        [28,30, 0,35, 0, 0, 0, 0]
+  #        ]
 
   print_game(puzzle, r, c)
 
   #
   # declare variables
   #
-  x_flat = makeIntArray(sol,"x_flat",r*c, 1,r*c)
   x = {}
   for i in range(r):
     for j in range(c):
       x[(i, j)] = makeIntVar(sol, "x(%i,%i)" % (i, j), 1, r * c)
-      sol.add(x_flat[i*r +j] == x[(i,j)])
-  # x_flat = [x[(i, j)] for i in range(r) for j in range(c)]
+  x_flat = [x[(i, j)] for i in range(r) for j in range(c)]
 
   #
   # constraints
@@ -137,19 +138,19 @@ def main():
   # and then the position of k+1
   cc = 0
   for k in range(1, r * c):
-    i = makeIntVar(sol,"i_tmp_%i_%i" % (k,cc), 0, r)
-    j = makeIntVar(sol,"j_tmp_%i_%i" % (k,cc), 0, c)
+    i = makeIntVar(sol,"i_tmp_%i_%i" % (k,cc), 0, r-1)
+    j = makeIntVar(sol,"j_tmp_%i_%i" % (k,cc), 0, c-1)
     a = makeIntVar(sol,"a_tmp_%i_%i" % (k,cc), -1, 1)
     b = makeIntVar(sol,"b_tmp_%i_%i" % (k,cc), -1, 1)
     cc += 1
 
     # 1) First: fix "this" k
     # sol.add(k == x[(i,j)])
-    sol.add(k == x_flat[i * c + j])
+    element(sol,i * c + j,x_flat,k,r*c)
    
     # 2) and then find the position of the next value (k+1)
     # solver.add(k + 1 == x[(i+a,j+b)])
-    sol.add(k + 1 == x_flat[(i + a) * c + (j + b)])
+    element(sol,(i + a) * c + (j + b),x_flat, k + 1,r*c)
 
     sol.add(i + a >= 0)
     sol.add(j + b >= 0)

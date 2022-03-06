@@ -48,7 +48,8 @@ from z3_utils_hakank import *
 
 def main(singe=0):
 
-  sol = SimpleSolver()
+  sol = SimpleSolver() # 0.403s
+  # sol = Optimize() # 0.494s
 
   #
   # data
@@ -104,15 +105,10 @@ def main(singe=0):
     rounds = rounds_no_single
 
 
+  # flattened version of rounds
+  rounds_a = [rounds[i][j] for i in range(n) for j in range(n)]
+
   M = n + 1
-
-  # create an Array version of rounds because we have
-  # must use and element constraint below
-  rounds_a = makeIntArray(sol,"rounds_a",n*n,0,M)
-  for i in range(n):
-    for j in range(n):
-      sol.add(rounds_a[i*n+j] == rounds[i][j])
-
 
   persons = ['Noah', 'Ava', 'Ryan', 'Mia', 'Ella',
              'John', 'Lily', 'Evan', 'Single']
@@ -157,7 +153,8 @@ def main(singe=0):
 
   # optimize 'distance' to earlier rounds:
   for i in range(n):
-    sol.add(santa_distance[i] == rounds_a[i*n+santas[i]])
+    # sol.add(santa_distance[i] == rounds_a[i*n+santas[i]])
+    element(sol,i*n+santas[i],rounds_a, santa_distance[i],n*n)    
 
   # cannot be a Secret Santa for the same person
   # two years in a row.

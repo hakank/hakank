@@ -127,24 +127,17 @@ def check_rule(sol, rules, y):
   initial_state = 1
   accepting_states = [n_states]  # This is the last state
 
-  regular(sol, y, n_states, input_max, transition_fn,
+  # Here we use the regular th
+  regular2(sol, y, n_states, input_max, transition_fn,
           initial_state, accepting_states,len(y))
 
 
 def main(rows, row_rule_len, row_rules,
          cols, col_rule_len, col_rules):
 
-  sol = SolverFor("QF_NIA") # 3.2s (for the default instance)
-  # sol = Solver() # 21s 
-  # sol = SolverFor("NIA") # 21s
-  # sol = SolverFor("LIA") # 17.3s
-  # sol = SolverFor("QF_LIA") # 43.2s
-  # sol = SolverFor("UFNIA")  # 22.1s
-  # sol = SolverFor("AUFLIA") # 21.9s
-  # sol = SolverFor("AUFNIRA") # 19.5s
-  # sol = SolverFor("QF_AUFLIA") # 12.9s
-  # sol = SolverFor("QF_IDL") # no solution
-  # sol = SolverFor("QF_UFIDL") # 14.3s (time to first solution: 4.9s)
+  sol = SimpleSolver() # 1.016s
+  # sol = Solver() # 1.306s
+  # sol = SolverFor("QF_FD") # 1.221s
 
   # variables
   board = {}

@@ -11,7 +11,20 @@
 # horizontally, the same set of words can be read vertically.
 # '''
 #
-# See word_square2.py for a much faster version that doesn't use Arrays.
+# This is a variant of word_square.py with the difference that it don't
+# use an Array to handle the element constraints, but the explicit
+# element constraint.
+#
+# It takes longer to set up all the constraints, but the solving time
+# is significantly faster.
+#
+# Comparison with word_square.py
+#
+#  word_len   num_answers      time word_square.py  time word_square.2py
+#  -----------------------------------------------------------------------
+#  3          20                    16.8s                5.9s
+#  4          20               32min17,40s              54.2s
+#
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
@@ -23,11 +36,9 @@ from z3_utils_hakank import *
 
 def main(words, word_len, num_answers=20):
 
-  sol = SolverFor("AUFLIA") # word_len 3 and 20 answers: 16.817s, 4 words 20 answers: 32min17,40s
-  # sol = Solver() # word_len 3 and 20 answers: 20.996s
-  # sol = SimpleSolver() # word_len 3 and 20 answers: 31.994s
-  # sol = SolverFor("QF_LIA") # word_len 3 and 20 answers: 
-
+  sol = SimpleSolver() # word_len 3 and 20 answers: 6.1s   word_len 4 and 20 answers: 54,2s
+  # sol = SolverFor("QF_LIA") # # word_len 3 and 20 answers: 6.1s  word_len 4 and 20 answers_ 56,467
+  
   # data
   num_words = len(words)
   n = word_len
@@ -36,12 +47,12 @@ def main(words, word_len, num_answers=20):
   #
   # declare variables
   #
-  A_flat = makeIntArray(sol, "A_flat", num_words*word_len, 0, 29)
   A = {}
   for i in range(num_words):
     for j in range(word_len):
-      A[(i, j)] = A_flat[i*word_len + j]
-
+      A[(i, j)] = Int(f"A[{i},{j}")
+      sol.add(A[(i, j)] >= 0, A[(i,j)] <= 29)
+  A_flat = [A[(i,j)] for i in range(num_words) for j in range(word_len)]
   E = makeIntVector(sol,"E", n, 0,num_words-1)
 
   #
@@ -56,9 +67,13 @@ def main(words, word_len, num_answers=20):
 
   for i in range(word_len):
     for j in range(word_len):
-      sol.add(A_flat[E[i]*word_len+j] == A_flat[E[j]*word_len+i])
+      AEij = Int(f"AEij[{i}.{j}")
+      sol.add(AEij >= 0)
+      element(sol,E[i]*word_len+j,A_flat,AEij,num_words*word_len)
+      element(sol,E[j]*word_len+i,A_flat,AEij,num_words*word_len)      
 
   # solution
+  print("solve")
   num_solutions = 0
   while sol.check() == sat:
     num_solutions += 1
@@ -103,7 +118,6 @@ def read_words(word_list, word_len, limit):
   words = open(word_list).readlines()
   for w in words:
     w = w.strip().lower()
-    # if len(w) == word_len and not dict.has_key(w) and not re.search("[^a-zедц]",w) and count < limit:
     if len(w) == word_len and w not in dict and not re.search(
         "[^a-zедц]", w):
       dict[w] = 1
@@ -115,7 +129,7 @@ def read_words(word_list, word_len, limit):
 
 
 word_dict = "/usr/share/dict/words"
-word_len = 3
+word_len = 4
 limit = 1000000
 num_answers = 20
 

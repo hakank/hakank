@@ -51,16 +51,11 @@ def main():
   family = [1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 4, 4]
   num_families = max(family)
   n = len(family)
-  # Define an array for family since there's an element
-  # constraint on this.
-  family_a = makeIntArray(sol,"family_s", n,1,num_families)
-  for i in range(n):
-      sol.add(family_a[i] == family[i])
 
   #
   # declare variables
   #
-  x = makeIntArray(sol,"x", n,0,n-1) # [makeIntVar(sol, 'x[%i]' % i, 0, n - 1) for i in range(n)]
+  x = makeIntVector(sol,"x", n,0,n-1)
 
   #
   # constraints
@@ -74,7 +69,9 @@ def main():
 
   # No Secret Santa to a person in the same family
   for i in range(n):
-    sol.add(family[i] != family_a[x[i]])
+    family_xi = Int(f"family_x[{i}]")
+    element(sol, x[i], family, family_xi,n)
+    sol.add(family[i] != family_xi)
 
   num_solutions = 0
   while sol.check() == sat:

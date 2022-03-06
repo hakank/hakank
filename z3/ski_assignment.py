@@ -60,7 +60,7 @@ def ski_assignment():
   # constraints
   sol.add(Distinct([x[i] for i in range(num_skiers)]))
 
-  # Note: abs is defined in z3_hakank_utils.py
+  # Note: Abs is defined in z3_hakank_utils.py
   sol.add(z == Sum([Abs(ski_heights_a[x[i]] - skier_heights_a[i]) for i in range(num_skiers)] ))
 
   # objective

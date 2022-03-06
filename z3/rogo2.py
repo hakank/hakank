@@ -32,7 +32,7 @@ from z3_utils_hakank import *
 
 def main(problem, rows, cols, max_steps):
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   # data
   W = 0
@@ -47,12 +47,7 @@ def main(problem, rows, cols, max_steps):
   print()
 
   # variables
-
-  # an Array version of problem_flatten (for the element constraints)
-  problem_flatten_a = makeIntArray(sol,"problem_flatten_a", rows*cols, -1,max_point)
-  for i in range(rows*cols):
-    sol.add(problem_flatten_a[i] == problem_flatten[i])
-
+  
   # the coordinates
   x = [makeIntVar(sol, "x[%i]" % i, 0, rows - 1) for i in range(max_steps)]
   y = [makeIntVar(sol, "y[%i]" % i, 0, cols - 1) for i in range(max_steps)]
@@ -76,18 +71,20 @@ def main(problem, rows, cols, max_steps):
 
   # calculate the points (to maximize)
   for s in range(max_steps):
-    sol.add(points[s] == problem_flatten_a[x[s] * cols + y[s]])
+    element(sol,x[s]*cols + y[s], problem_flatten, points[s],rows*cols)
 
   sol.add(sum_points == sum(points))
 
   # ensure that there are not black cells in
   # the path
   for s in range(max_steps):
-    sol.add(problem_flatten_a[x[s] * cols + y[s]] != B)
+    vs = Int(f"vs{s}")
+    sol.add(vs > B)
+    element(sol,x[s]*cols + y[s],problem_flatten,vs,rows*cols)
 
   # get the path
   for s in range(max_steps - 1):
-    sol.add(Abs(x[s] - x[s + 1]) + Abs(y[s] - y[s + 1]) == 1)
+    sol.add(Abs(x[s]-x[s+1]) + Abs(y[s]-y[s+1]) == 1)
 
   # close the path around the corner
   sol.add(Abs(x[max_steps - 1] - x[0]) + Abs(y[max_steps - 1] - y[0]) == 1)

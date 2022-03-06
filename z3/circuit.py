@@ -16,13 +16,13 @@
 from z3_utils_hakank import * 
 
 def test_circuit(n,print_all=True):
-    sol = SimpleSolver()
+    sol = SolverFor("QF_FD")
 
-    x = makeIntArray(sol, 'x',n, 0, n-1)
-    z = makeIntArray(sol, 'z',n, 0, n-1)
+    x = makeIntVector(sol, 'x',n, 0, n-1)
+    z = makeIntVector(sol, 'z',n, 0, n-1)
 
     # circuit is defined in z3_utils_hakank
-    circuit(sol,x,z, n)
+    circuit2(sol,x,z, n)
 
     # Show all solutions
     count = 0

@@ -28,8 +28,7 @@ from z3_utils_hakank import *
 
 def langford(k=8, num_sol=0):
 
-    # sol = Solver() # 2.328s
-    sol = SolverFor("AUFLIA") # 1.253s
+    sol = SolverFor("QF_FD")
 
     # data
     print("k:", k)
@@ -38,12 +37,8 @@ def langford(k=8, num_sol=0):
     #
     # declare variables
     #
-    # Using Int or IntVector don't work with the element/3 construct, i.e.
-    # ( z = x[y] where y is a decision variable)
-    
-    # Using Array works, however.
-    position = makeIntArray(sol, "position", 2*k, 0, 2*k-1) 
-    solution = makeIntArray(sol, "solution", 2*k, 1, k)
+    position = makeIntVector(sol, "position", 2*k, 0, 2*k-1) 
+    solution = makeIntVector(sol, "solution", 2*k, 1, k)
 
     # constraints
     sol.add(Distinct([position[i] for i in p ]))
@@ -54,8 +49,8 @@ def langford(k=8, num_sol=0):
 
     for i in range(1, k+1):
         sol.add(position[i+k-1] == position[i-1]+i+1)
-        sol.add(solution[position[i-1]] == i)
-        sol.add(solution[position[k+i-1]] ==i)
+        element(sol,position[i-1], solution,i,2*k)
+        element(sol,position[k+i-1],solution,i,2*k)
 
     # symmetry breaking
     sol.add(solution[0] < solution[2 * k - 1])

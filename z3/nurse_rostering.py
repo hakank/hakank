@@ -21,8 +21,9 @@ from z3_utils_hakank import *
 
 def main():
 
-  # sol = SolverFor("QF_NIA")
-  sol = SolverFor("QF_AUFLIA")
+  sol = SolverFor("QF_FD")
+  # sol = SolverFor("QF_AUFLIA")
+  # sol = SimpleSolver()
 
   # data
 
@@ -82,7 +83,7 @@ def main():
   #
   for i in range(num_nurses):
     reg_input = [x[i, j] for j in range(num_days)]
-    regular(sol, reg_input, n_states, input_max, transition_fn,
+    regular2(sol, reg_input, n_states, input_max, transition_fn,
             initial_state, accepting_states, len(reg_input))
 
   #

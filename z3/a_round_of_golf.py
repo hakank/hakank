@@ -45,7 +45,7 @@
 # 
 from z3_utils_hakank import *
 
-sol = SolverFor("QF_FD")
+sol = SimpleSolver()
 
 n = 4
 

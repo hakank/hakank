@@ -68,6 +68,7 @@
 # - cumulative(sol, s, d, r, b,times_min,times_max1)
 # - global_contiguity(sol, x,start,end)
 # - regular(sol, x, Q, S, d, q0, F, x_len)
+# - regular2(sol, x, Q, S, d, q0, F, x_len) # no Array
 # - all_different_modulo(sol, x, m)
 # - among(sol,m,x,v)
 # - nvalue(sol, m, x, min_val,max_val)
@@ -222,6 +223,14 @@ def print_grid(mod,x,rows,cols):
         print()
     print()
 
+def print_grid2(mod,x,rows,cols):
+    for i in range(rows):
+        for j in range(cols):
+            print(mod.eval(x[i][j]), end=' ')
+        print()
+    print()
+
+
 #
 # Copy the (integer) array into an Array()
 #
@@ -291,10 +300,10 @@ def element(sol,ix,x,v,n):
 # Experimental!
 #
 def element_matrix(sol,ix,jx,x,v,rows,cols):
+  print(f"element_matrix({ix},{jx},{x},{v},{rows},{cols})")
   for i in range(rows):
     for j in range(cols):
       sol.add(Implies(And(i == ix, j == jx), v == x[(i,j)]))
-
 
 
 # increasing_strict/2
@@ -626,6 +635,60 @@ def regular(sol, x, Q, S, d, q0, F, x_len):
 
     # Determine a[i+1]: a[i+1] == d2[a[i], x[i]]
     sol.add(a[i + 1] == d2_flatten_a[(a[i] * S) + (x[i] - 1)])
+
+
+def regular2(sol, x, Q, S, d, q0, F, x_len):
+  """
+  This the same as regular() but without the Array.
+  Some solvers don't support Array, e.g. QF_FD so this version might
+  be faster than with the regular().
+  """
+
+  assert Q > 0, 'regular: "Q" must be greater than zero'
+  assert S > 0, 'regular: "S" must be greater than zero'
+
+  # d2 is the same as d, except we add one extra transition for
+  # each possible input;  each extra transition is from state zero
+  # to state zero.  This allows us to continue even if we hit a
+  # non-accepted input.
+
+  # d2[0..Q, 1..S]
+  d2 = []
+  for i in range(Q + 1):
+    row = []
+    for j in range(S):
+      if i == 0:
+        row.append(0)
+      else:
+        row.append(d[i - 1][j])
+    d2.append(row)
+
+  d2_flatten = [d2[i][j] for i in range(Q + 1) for j in range(S)]
+  d2_flatten_len = len(d2_flatten)
+
+  # If x has index set m..n, then a[m-1] holds the initial state
+  # (q0), and a[i+1] holds the state we're in after processing
+  # x[i].  If a[n] is in F, then we succeed (ie. accept the
+  # string).
+  x_range = list(range(0, x_len))
+  m = 0
+  # n = len(x)
+  n = x_len
+
+  a = [makeIntVar(sol,'a[%i]_%i' % (i,uuid.uuid4().int), 0, Q + 1) for i in range(m, n + 1)]
+
+  # Check that the final state is in F
+  member_of(sol,a[-1],F)
+  
+  # First state is q0
+  sol.add(a[m] == q0)
+  for i in x_range:
+    sol.add(x[i] >= 1)
+    sol.add(x[i] <= S)
+
+    # Determine a[i+1]: a[i+1] == d2[a[i], x[i]]
+    element(sol,(a[i] * S) + (x[i] - 1), d2_flatten,a[i + 1],d2_flatten_len)
+
 
 #
 # all_different_modulo(sol, x, m)

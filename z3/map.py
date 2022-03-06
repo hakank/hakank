@@ -17,7 +17,7 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SolverFor("QF_FD")
 
   #
   # data
@@ -33,7 +33,7 @@ def main():
   max_num_colors = 4
 
   # declare variables
-  color = makeIntArray(sol,"color", n, 1,max_num_colors)
+  color = makeIntVector(sol,"color", n, 1,max_num_colors)
 
   #
   # constraints

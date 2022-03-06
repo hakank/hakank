@@ -117,7 +117,7 @@ def main(n):
   #
   # constraints
   #
-  regular(sol, x, n_states, input_max, transition_fn,
+  regular2(sol, x, n_states, input_max, transition_fn,
           initial_state, accepting_states, len(x))
 
   num_solutions = 0

@@ -44,13 +44,13 @@ from z3_utils_hakank import *
 import random
 
 def check_clique(graph,type="all",card1=None):
-    sol = Solver()
+    sol = SimpleSolver()
     
     n = len(graph)
 
     # variables
 
-    x = makeIntArray(sol, "x", n, 0,1)
+    x = makeIntVector(sol, "x", n, 0,1)
     card = makeIntVar(sol,"card",0,n)
 
     # constraints
@@ -242,10 +242,10 @@ graph4 = [[0,0,1,0,1,0,1,0,0,1,0,1,0,1,1,1,1,0,1,0,0,1,0,1,1,0,1,0,0,0,1,0,1,1,0
 [1,0,1,0,0,0,0,0,1,1,0,1,1,0,0,1,0,1,1,0,0,0,1,0,1,0,1,0,1,1,1,1,1,0,1,1,1,0,0,0,0,1,0,1,0,1,0,0,0,0,1,1,1,0,1,0,0,1,0,1,1,1,1,1,0,0,0,1,1,1,0,1,1,0,1,0,1,1,1,1,0,0,1,1,1,0,1,0,0,1,0,0,1,1,1,0,0,1,0,0]]
 
 
-# graph = graph4
+graph = graph4
 
 
-graph = random_graph(100)
+# graph = random_graph(100)
 
 # print("all cliques and sub cliques")
 # check_clique(graph,"all")

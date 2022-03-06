@@ -14,12 +14,10 @@ from z3 import *
 import time
 
 def queens(n,all=0):
-    start = time.clock()
-    sol = Solver()
+    start = time.time()
+    sol = SolverFor("QF_FD")
 
-    # q = [Int("q_%s" % (i)) for i in range(n) ] # n=100: ???s
-    # q = IntVector("q", n) # this is much faster # n=100: 28.1s
-    q = Array("q", IntSort(), BitVecSort(8)) # n=100: ??s
+    q = IntVector("q", n) # this is much faster # n=100: 17.1s
 
     # Domains
     sol.add([And(q[i]>=0, q[i] <= n-1) for i in range(n)])
@@ -47,7 +45,7 @@ def queens(n,all=0):
     else:
         print("failed to solve")
 
-    end = time.clock()
+    end = time.time()
     value = end - start
     print("Time: ", value)
 

@@ -29,7 +29,7 @@ n = 5
 weights =  [80, 82, 83, 84, 85, 86, 87, 88, 90, 91]
 
 # variables
-bales = makeIntArray(sol,"bales",n,0,50)
+bales = makeIntVector(sol,"bales",n,0,50)
 
 # constraints
 increasing(sol,[bales[i] for i in range(n)])
@@ -39,7 +39,11 @@ for w in range(10):
   ii = makeIntVar(sol,"ii_%i_%i" % (w,cc), 0,n-1)
   jj = makeIntVar(sol,"jj_%i_%i" % (w,cc), 0,n-1)  
   sol.add(ii < jj)
-  sol.add(bales[ii] + bales[jj] == weights[w])
+  bales_ii = Int(f"bales_ii{w}")
+  bales_jj = Int(f"bales_jj{w}")
+  element(sol,ii,bales,bales_ii,n)
+  element(sol,jj,bales,bales_jj,n)
+  sol.add(bales_ii + bales_jj == weights[w])  
   cc += 1
 
 num_solutions = 0

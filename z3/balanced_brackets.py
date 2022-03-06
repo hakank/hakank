@@ -35,7 +35,7 @@
 from z3_utils_hakank import *
 
 def brackets(m,do_print=False):
-    sol = Solver()
+    sol = SimpleSolver()
     n = m*2
 
     s = ["[","]"]
@@ -43,7 +43,8 @@ def brackets(m,do_print=False):
     # For cumulative (c):
     # +1 if x[i] = "["
     # -1 if x[i] = "]"
-    t = makeIntArray(sol,"t", 2,-1,1) # must be Array since we use element
+    # t = makeIntArray(sol,"t", 2,-1,1) # must be Array since we use element
+    t = makeIntVector(sol,"t", 2,-1,1)
     sol.add(t[0] == 1)
     sol.add(t[1] == -1)
 
@@ -53,19 +54,21 @@ def brackets(m,do_print=False):
     
 
     # constraints
-
     sol.add(x[0] == 0)
     sol.add(c[0] == 1)
 
     # cumulative
     for i in range(1,n):
-        sol.add(c[i] == c[i-1] + t[x[i]])
+        # sol.add(c[i] == c[i-1] + t[x[i]])        
+        txi = Int(f"tx{i}")
+        element(sol,x[i],t,txi,2)
+        sol.add(c[i] == c[i-1] + txi)
 
     sol.add(x[n-1] == 1)
     sol.add(c[n-1] == 0) # end
 
     # Redundant constraint: This might make it faster (but it don't)
-    sol.add(Sum(x) == m)
+    # sol.add(Sum(x) == m)
 
 
     num_solutions = 0

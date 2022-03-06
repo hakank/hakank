@@ -30,7 +30,7 @@ from z3_utils_hakank import *
 
 def main():
 
-  sol = Solver()
+  sol = SimpleSolver()
 
   #
   # data
@@ -57,12 +57,13 @@ def main():
   #
 
   # We use 1..2 and subtract 1 in the solution
-  reg_input = makeIntArray(sol,"reg_input", n, 1,2)
+  reg_input = makeIntVector(sol,"reg_input", n, 1,2)
+
 
   #
   # constraints
   #
-  regular(sol, reg_input, n_states, input_max, transition_fn,
+  regular2(sol, reg_input, n_states, input_max, transition_fn,
           initial_state, accepting_states, n)
 
   num_solutions = 0

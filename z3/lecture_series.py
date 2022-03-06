@@ -45,14 +45,14 @@ days = range(n)
 [Monday, Tuesday, Wednesday, Thursday, Friday] = days
 
 # variables
-lectures = makeIntArray(sol,"lectures", n, 0,n-1)
+lectures = makeIntVector(sol,"lectures", n, 0,n-1)
 [choosing_a_college, physical_hygiene, modern_art, nutrition, study_habits] = [lectures[i] for i in range(n)]
 
 
-first_name = makeIntArray(sol,"first_name", n, 0,n-1)
+first_name = makeIntVector(sol,"first_name", n, 0,n-1)
 [Alice, Bernadette, Charles, Duane, Eddie] = [first_name[i] for i in range(n)]
 
-last_name = makeIntArray(sol,"last_name", n, 0,n-1)
+last_name = makeIntVector(sol,"last_name", n, 0,n-1)
 [Felicidad, Garber, Haller, Itakura, Jeffreys] = [last_name[i] for i in range(n)]
 
 # constraints
