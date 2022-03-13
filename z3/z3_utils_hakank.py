@@ -86,11 +86,12 @@
 # - all_equal(sol,x)
 # - arith(sol, x, relop, val)
 # - arith_relop(sol, a, t, b)
-#
+# - argmax(sol,x,ix,max_val)
+# - argmin(sol,x,ix,min_val)
+
 # 
 # TODO
 # lex_(le|lt|ge|gt)(sol,x,y)  : array x is lexicographic (equal or) less/greater than array y
-# diffn?
 # subcircuit???
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
@@ -401,7 +402,37 @@ def circuit(sol, x, z, n):
     # Get the orbit for Z.
     for i in range(1,n):
       # I'm very happy that this element works! Z3 is cool. :-)
+      # Note: It requires that x is an Array.
       sol.add(x[z[i-1]] == z[i])
+
+
+def circuit2(sol, x, z, n):
+    """
+    Same as circuit() but don't require that x and z are arrays.
+    """
+  
+    sol.add(Distinct([x[i] for i in range(n)])),
+    sol.add(Distinct([z[i] for i in range(n)])),
+
+    #
+    # The main constraint is that z[i] must not be 0
+    # until i = n-1, and for i = n-1 it must be 0.
+    #
+    
+    # first element is x[0] == z[0]
+    # (i.e. always start at x[0])
+    sol.add(x[0] == z[0])
+   
+    # The last element in z must be 0 (back to original spot)
+    sol.add(z[n-1] == 0)
+
+    # Might speed up things, or not
+    # for i in range(n-1):
+    #   sol.add(z[i] != 0)
+
+    # Get the orbit for Z.
+    for i in range(1,n):
+      element(sol, z[i-1], x, z[i],n)
 
 
 # inverse(..f, invf, ..)
@@ -639,8 +670,8 @@ def regular(sol, x, Q, S, d, q0, F, x_len):
 
 def regular2(sol, x, Q, S, d, q0, F, x_len):
   """
-  This the same as regular() but without the Array.
-  Some solvers don't support Array, e.g. QF_FD so this version might
+  This is the same as regular() but without the Array.
+  Some solvers don't support Array, e.g. QF_FD, so this version might
   be faster than with the regular().
   """
 
@@ -950,3 +981,34 @@ def diffn(sol,x,y,dx,dy):
                     y[j] + dy[j] <= y[i]]
                    )
                 )
+
+
+
+def argmax(s,x,ix,max_val):
+    """
+    Find the largest value in the array `x` as well as the index.
+    This assumes/ensures that there is a single maximum value in x.
+    """
+    n = len(x)
+    # max_val must be in x
+    s.add(Or([max_val == x[i] for i in range(n)]))
+    for i in range(n):
+      # Identify argmax (the index)
+      # s.add(Implies(ix != i, x[i] < max_val))
+      # s.add((ix != i) == (x[i] < max_val))
+      s.add((ix == i) == (x[i] == max_val))
+    
+def argmin(s,x,ix,min_val):
+    """
+    Find the smallest value in the array `x` as well as the index.
+    This assumes/ensures that there is a single minimum value in x.
+    """
+    n = len(x)
+    # max_val must be in x
+    s.add(Or([min_val == x[i] for i in range(n)]))
+    for i in range(n):
+      # Identify argmax (the index)
+      # s.add(Implies(ix != i, x[i] < max_val))
+      # s.add((ix != i) == (x[i] < max_val))
+      s.add((ix == i) == (x[i] == min_val))
+    

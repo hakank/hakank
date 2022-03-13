@@ -12,24 +12,50 @@
 # '''
 
 # This model is a port of Laurent Perron's faster version of my hidato.py
+# for Google OR-tools.
 #
 # My slow version
 # https://github.com/google/or-tools/blob/master/examples/python/hidato.py
 # Laurent's faster version
 # https://github.com/google/or-tools/blob/master/examples/python/hidato_table.py
 #
-# Also see my Z3 model hidato.py (port of the above hidato.py)
+# Also see my other Z3 models
+#  - hidato.py (port of the above mentioned hidato.py or-tools model)
+#  - hidato_function.py (using Function)
 #
 # This version use a (decomposition) of the table constraint
 # (called allowed_assignment)
-
+#
+# Time to first solution:
+# puzzle1 : 0.05265021324157715
+# puzzle2 : 2.107395648956299
+# puzzle3 : 0.4795820713043213
+# puzzle4 : 0.4804689884185791
+# puzzle5 : 1.0682592391967773
+# puzzle6 : 3.6846492290496826
+# puzzle7 : 9.88624906539917
+# puzzle8 : 20.58018469810486
+#
+# Time to prove unicity
+# puzzle1 : 0.04979300498962402
+# puzzle2 : 2.098351240158081
+# puzzle3 : 0.4976685047149658
+# puzzle4 : 0.48920130729675293
+# puzzle5 : 1.0961010456085205
+# puzzle6 : 3.738976001739502
+# puzzle7 : 10.018195390701294
+# puzzle8 : 20.63848328590393
+#
+# See hidato_function.py for a comparison of the Hidato solvers.
+#
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
 # 
 #
 from __future__ import print_function
+import time
 from z3_utils_hakank import *
-
+from hidato_instances import instances
 
 def BuildPairs(rows, cols):
   """Build closeness pairs for consecutive numbers.
@@ -48,83 +74,18 @@ def BuildPairs(rows, cols):
           for x in range(rows) for y in range(cols)
           for dx in (-1, 0, 1) for dy in (-1, 0, 1)
           if (x + dx >= 0 and x + dx < rows and
-              y + dy >= 0 and y + dy < cols and (dx != 0 or dy != 0))]
+              y + dy >= 0 and y + dy < cols and
+              (dx != 0 or dy != 0))]
 
 
-def main():
-  for model in range(1, 7):
-    print()
-    print(('----- Solving problem %i -----' % model))
-    print()
-    Solve(model)
-
-
-def Solve(model):
-  """Solve the given model."""
+def Solve(puzzle,num_sols=0):
+  """Solve the given puzzle."""
 
   # sol = Solver() # Total time: 21.4s
   sol = SolverFor("QF_FD") # 7.87s
   # sol = SolverFor("QF_LIA") # 21.2s
   # sol = SolverFor("LIA") # 9.18s
   # sol = SimpleSolver() # 8.42s
-
-  #
-  # models, a 0 indicates an open cell which number is not yet known.
-  #
-  #
-  puzzle = None
-  if model == 1:
-    # Simple problem
-    puzzle = [[6, 0, 9],
-              [0, 2, 8],
-              [1, 0, 0]]
-
-  elif model == 2:
-    puzzle = [[0, 44, 41, 0, 0, 0, 0],
-              [0, 43, 0, 28, 29, 0, 0],
-              [0, 1, 0, 0, 0, 33, 0],
-              [0, 2, 25, 4, 34, 0, 36],
-              [49, 16, 0, 23, 0, 0, 0],
-              [0, 19, 0, 0, 12, 7, 0],
-              [0, 0, 0, 14, 0, 0, 0]]
-
-  elif model == 3:
-    # Problems from the book:
-    # Gyora Bededek: "Hidato: 2000 Pure Logic Puzzles"
-    # Problem 1 (Practice)
-    puzzle = [[0, 0, 20, 0, 0],
-              [0, 0, 0, 16, 18],
-              [22, 0, 15, 0, 0],
-              [23, 0, 1, 14, 11],
-              [0, 25, 0, 0, 12]]
-
-  elif model == 4:
-    # problem 2 (Practice)
-    puzzle = [[0, 0, 0, 0, 14],
-              [0, 18, 12, 0, 0],
-              [0, 0, 17, 4, 5],
-              [0, 0, 7, 0, 0],
-              [9, 8, 25, 1, 0]]
-
-  elif model == 5:
-    # problem 3 (Beginner)
-    puzzle = [[0, 26, 0, 0, 0, 18],
-              [0, 0, 27, 0, 0, 19],
-              [31, 23, 0, 0, 14, 0],
-              [0, 33, 8, 0, 15, 1],
-              [0, 0, 0, 5, 0, 0],
-              [35, 36, 0, 10, 0, 0]]
-
-  elif model == 6:
-    # Problem 15 (Intermediate)
-    puzzle = [[64, 0, 0, 0, 0, 0, 0, 0],
-              [1, 63, 0, 59, 15, 57, 53, 0],
-              [0, 4, 0, 14, 0, 0, 0, 0],
-              [3, 0, 11, 0, 20, 19, 0, 50],
-              [0, 0, 0, 0, 22, 0, 48, 40],
-              [9, 0, 0, 32, 23, 0, 0, 41],
-              [27, 0, 0, 0, 36, 0, 46, 0],
-              [28, 30, 0, 35, 0, 0, 0, 0]]
 
   r = len(puzzle)
   c = len(puzzle[0])
@@ -153,7 +114,8 @@ def Solve(model):
   # Consecutive numbers much touch each other in the grid.
   # We use an allowed assignment constraint to model it.
   close_tuples = BuildPairs(r, c)
-  for k in range(1, r * c - 1):
+  
+  for k in range(r * c - 1):
     allowed_assignments(sol, [positions[k], positions[k + 1]],
                                          close_tuples)
 
@@ -166,6 +128,8 @@ def Solve(model):
     num_solutions += 1
     mod = sol.model()
     PrintOneSolution(mod, positions, r, c, num_solutions)
+    if num_sols > 0 and num_solutions >= num_sols:
+      break
     sol.add(Or([ positions[i] != mod.eval(positions[i]) for i in range(r*c) ]))
     
   print(('solutions : %i' % num_solutions))
@@ -194,13 +158,34 @@ def PrintMatrix(game):
     line = ''
     for j in range(cols):
       if game[i][j] == 0:
-        line += '  .'
+        line += '   .'
       else:
-        line += '% 3s' % game[i][j]
+        line += '% 4s' % game[i][j]
     print(line)
   print()
 
 
-if __name__ == '__main__':
-  main()
+def test_all(num_sols=0):
+  times = {}
+  for puzzle in instances:
+    print()
+    print(f"----- Solving problem {puzzle} -----")
+    print()
+    t0 = time.time()
+    Solve(instances[puzzle],num_sols)
+    t1 = time.time()
+    print("Time:", t1-t0)
+    times[puzzle] = t1-t0
+    print()
 
+  print("Times:")
+  for puzzle in times:
+    print(puzzle, ":", times[puzzle])
+
+print("\nTime to first solution:")
+num_sols = 1
+test_all(num_sols)
+
+print("Time to prove unicity:")
+num_sols = 0
+test_all(num_sols)

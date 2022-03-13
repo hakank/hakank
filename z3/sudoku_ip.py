@@ -30,10 +30,24 @@
 #  - problem_34 (16x16) : 1.448338508605957s
 #  - problem_89 (25x25) : 5.640852451324463s
 #
+# Using tactics simplify, qffd
+# Time to first solution:
+#  - world_hardest (9x9): 0.19869136810302734
+#  - another (9x9)      : 0.19490909576416016
+#  - problem_34 (16x16) : 1.0836825370788574
+#  - problem_89 (25x25) : 4.218194484710693
+#
+# Proving unicity:
+#  - world_hardest (9x9): 0.26691293716430664
+#  - another (9x9)      : 0.25827574729919434
+#  - problem_34 (16x16) : 1.434737205505371
+#  - problem_89 (25x25) : 5.597587823867798
+#
+#
 # Compare with sudoku.py which is faster on the simpler cases (9x9 and 16x16)
 # but slower on the instance 89 (25x25):
-# - 166.05s for finding first solution
-# - 318.21s for proving unicity.
+# - 16.46s for finding first solution
+# - 42.957ss for proving unicity.
 # 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
@@ -49,9 +63,14 @@ def sudoku_ip(init,prove_unicity=True):
     # sol = SimpleSolver()
     # sol = SolverFor("QF_LIA")
     # sol = SolverFor("QF_FD")
-    sol = SolverFor("LIA")
-        
-    
+    # sol = SolverFor("LIA")
+
+    t1 = Tactic('simplify')
+    t2 = Tactic('qffd')
+    # # t2 = Tactic('pqffd') # slightly slower
+    # # t2 = Tactic('smtfd')  # slightly slower
+    sol  = Then(t1, t2).solver()
+
     n = len(init)
     m = math.ceil(math.sqrt(n))
     line = list(range(n))

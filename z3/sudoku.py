@@ -3,6 +3,8 @@
 # 
 # Sudoku in Z3.
 #
+# Here are some experiments.
+#
 # SolverFor("QF_LIA")
 # Here are the times for first solution (i.e. prove_unicity = False):
 #  - world_hardest (9x9):   0.178s
@@ -19,6 +21,7 @@
 #
 # QF_FD is slower than QF_LIA for finding first solution
 # but faster for proving unicity.
+#
 # Time to first solution:
 #  - world_hardest (9x9):   0.10s
 #  - another (9x9)      :   0.049s
@@ -32,9 +35,26 @@
 #  - problem_89 (25x25) : 318.21s
 #
 #
+# But using Tactics is significantly faster:
+# 
+# Using tactics: simplify, qffd:
+# Time to first solution:
+#  - world_hardest (9x9):   0.063s
+#  - another (9x9)      :   0.049s
+#  - problem_34 (16x16) :   0.29s
+#  - problem_89 (25x25) :  16.46s
+#
+# Proving unicity:
+#  - world_hardest (9x9):   0.115s
+#  - another (9x9)      :   0.091s
+#  - problem_34 (16x16) :   0.524s
+#  - problem_89 (25x25) :  42.957s
+#
+
+#
 # Compare with sudoku_ip.py that uses (pseuso) boolean with AtLeast and AtMost constraints
 # which is slower on easy cases (9x9 and 16x16) but significantly faster on the 25x25 case:
-# It solves problem 89 (25x25) in 3.87 for first solution and 5,49s proving unicity.
+# It solves problem 89 (25x25) in 3.87s for first solution and 5,49s proving unicity.
 # 
 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
@@ -49,11 +69,17 @@ def sudoku(init,m=3,prove_unicity=True):
     # sol = Solver()
     # sol = SimpleSolver()
     # sol = SolverFor("QF_LIA")
-    if prove_unicity:
-        sol = SolverFor("QF_FD")
-    else:
-        sol = SolverFor("LIA")
-        
+    # if prove_unicity:
+    #     sol = SolverFor("QF_FD")
+    # else:
+    #     sol = SolverFor("LIA")
+
+    t1 = Tactic('simplify')
+    # t2 = Tactic('pqffd') # slower and yieling weird results
+    t2 = Tactic('qffd') 
+    # t2 = Tactic('smtfd') # strange results
+    sol  = Then(t1, t2).solver()
+
     
     n = m ** 2
     line = list(range(0, n))

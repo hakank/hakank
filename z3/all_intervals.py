@@ -33,37 +33,62 @@
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
 # 
-# 
+#
+import math
 from z3_utils_hakank import *
+
+#
+# Generate all solutions
+# 
+# From https://github.com/Z3Prover/z3/issues/5765
+#
+# (I thought that it would be faster than the while loop,
+# but it's not.)
+# 
+def all_smt(s, initial_terms):
+    def block_term(s, m, t):
+        s.add(t != m.evaluate(t, model_completion=True))
+    def fix_term(s, m, t):
+        s.add(t == m.evaluate(t, model_completion=True))
+    def all_smt_rec(terms):
+        if sat == s.check():
+           m = s.model()
+           yield m
+           for i in range(len(terms)):
+               s.push()
+               block_term(s, m, terms[i])
+               for j in range(i):
+                   fix_term(s, m, terms[j])
+               # for m1 in all_smt_rec(terms[i+1:]):
+               #     yield m1
+               # (From LeventErkok: more Python idiom)
+               # yield from all_smt_rec(terms[i+1:])
+               # And it should not be i+1, just i:
+               yield from all_smt_rec(terms[i:])
+               s.pop()
+    # for m1 in all_smt_rec(list(initial_terms)):
+    #     yield m1
+    yield from all_smt_rec(list(initial_terms))
+
 
 def all_interval(n):
 
-    # This model is slow, so I experiment a bit here
-    
-    # sol = Solver() # Faster
+    # sol = SimpleSolver()
     sol = SolverFor("QF_FD")
-    # sol = SolverFor("LIA") # Faster
-    # sol = SolverFor("LRA") # Faster than LIA
-    # sol = SolverFor("NRA") # Faster than LIA
-    # sol = SolverFor("NIA") # Slower
-    # sol = SolverFor("BV") # Slower
-    # sol = SolverFor("QF_LIA") # Faster
-    # sol = SolverFor("QF_NIA") # Slower
-    # sol = SolverFor("AUFLIRA") # Slow
-   
-    # series = Array("series", IntSort(), IntSort())
-    # series = Array("series", BitVecSort(8), BitVecSort(8))
-    series = IntVector("series",n ) # <---
-    # series = [BitVec("series%i" % i,8) for i in range(n)]
-    # series = [Int("s%i" % i) for i in range(n)]
+    # sol = SolverFor("QF_BV") # slower
+
+    # a little slower than QF_FD
+    # t1 = Tactic("simplify")
+    # t2 = Tactic("qffd")
+    # sol = Then(t1,t2).solver()
+    
+    bit_vec_size = math.ceil(math.log(n,2))+1
+    # print("bit_vec_size:", bit_vec_size)
+    series = [BitVec(f"s[{i}]",bit_vec_size) for i in range(n)]
     for i in range(n):
         sol.add(series[i] >= 0, series[i] <= n-1)
 
-    # differences = Array("differences", IntSort(), IntSort())
-    # differences = Array("differences", BitVecSort(8), BitVecSort(8))
-    differences = IntVector("differences",n-1) # <---
-    # differences = [BitVec("differences%i" % i,8 ) for i in range(n-1)]
-    # differences = [Int("d%i" % i) for i in range(n-1)]
+    differences = [BitVec(f"d[{i}]",bit_vec_size) for i in range(n-1)]
     for i in range(n-1):
         sol.add(differences[i] >= 1, differences[i] <= n-1)
 
@@ -85,18 +110,29 @@ def all_interval(n):
     sol.add(series[0] < series[n-1])
     sol.add(differences[0] < differences[1])    
 
+    var = differences + series
     num_solutions = 0
     while sol.check() == sat:
         num_solutions += 1
         mod = sol.model()
-        ss = [mod.eval(series[i]) for i in range(n)]
-        print("series       : ", ss)
-        dd = [mod.eval(differences[i]) for i in range(n-1)]
-        print("differences  :   ", dd)
-        getDifferentSolution(sol,mod,series,differences)
+        print("series       :", [mod.eval(series[i]) for i in range(n)])
+        print("differences  :", [mod.eval(differences[i]) for i in range(n-1)])
         print()
-        
+        getDifferentSolution(sol,mod,var)
+        # sol.add(Or([t != mod[t] for t in var]))
+
+    # This is not faster and not slower
+    # num_solutions = 0
+    # for solution in all_smt(sol, var):
+    #     # print(solution)
+    #     num_solutions += 1
+    #     print("series     :", [solution[series[i]] for i in range(n)])
+    #     print("differences:", [solution[differences[i]] for i in range(n-1)])
+    #     print()
+
+    
     print("num_solutions:", num_solutions)
+
     # print(sol.statistics())
 
 

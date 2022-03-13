@@ -12,36 +12,43 @@
 # diagonally.
 # '''
 #
-# Time to first solution:
-#
-# puzzle1 : 0.0412900447845459
-# puzzle2 : 3.2280960083007812
-# puzzle3 : 0.31029653549194336
-# puzzle4 : 0.26546549797058105
-# puzzle5 : 1.6768722534179688
-# puzzle6 : 11.532785654067993
-# puzzle7 : 86.42020177841187
-# puzzle8 : 356.0383880138397
+# This is a version of hidato.py that uses Function()
+# Also, see hidato_table.py
 
-# 
-# Time to prove unicity:
-# puzzle1 : 0.042975664138793945
-# puzzle2 : 3.936161994934082
-# puzzle3 : 0.340954065322876
-# puzzle4 : 0.26323676109313965
-# puzzle5 : 1.8561887741088867
-# puzzle6 : 13.294347524642944
-# puzzle7 : 92.71803569793701
-# puzzle8 : 414.0651047229767
-# 
+# Here is a comparison of solve times for the different
+# Hidato programs. '(*)' marks the best time.
+#
+# Time to first solution
+# ======================
+# Problem    hidato     hidato_table   hidato_function
+# ----------------------------------------------------
+# 1           0.041s    0.052s         0.023s(*)
+# 2           3.228s    2.107s         0.325s(*)
+# 3           0.310s    0.479s         0.179s(*)
+# 4           0.265s    0.480s         0.071s(*)
+# 5           1.676s    1.068s         0.156s(*)
+# 6          11.532s    3.684s         0.614s(*)
+# 7          86.420s    9.886s         5.056s(*)
+# 8         356.038s   20.580s         3.864s(*)
+#
+# Time to prove unicity
+# =====================
+# Problem    hidato     hidato_table   hidato_function
+# -----------------------------------------------------
+# 1          0.042s     0.049s         0.029s(*)
+# 2          3.936s     2.098s         0.586s(*)
+# 3          0.340s     0.497s         0.212s(*)
+# 4          0.263s     0.489s         0.151s(*)
+# 5          1.856s     1.096s         0.236s(*)
+# 6         13.294s     3.738s         1.245s(*)
+# 7         92.718s    10.018s(*)     14.849s
+# 8        414.065s    20.638s         7.405s(*)
 #
 #
-# Note: This model is quite slow.
-# See hidato_table.py and hidato_function.py for faster programs.
+# With one interesting exception (problem 7), this Hidato program with Function
+# is the fastest.
 #
-# See hidato_function.py for a comparison of the Hidato solvers.
 #
-# 
 # This Z3 model was written by Hakan Kjellerstrand (hakank@gmail.com)
 # See also my Z3 page: http://hakank.org/z3/
 # 
@@ -50,28 +57,22 @@ import time
 from hidato_instances import instances
 from z3_utils_hakank import *
 
+def hidato_function(puzzle,num_sols=0):
 
-def hidato(puzzle,num_sols=0):
-
-  sol = SimpleSolver()
+  sol = SolverFor("AUFLIA")
 
   r = len(puzzle)
   c = len(puzzle[0])
-
   print_game(puzzle, r, c)
 
   #
   # declare variables
   #
-  x = {}
-  for i in range(r):
-    for j in range(c):
-      x[(i, j)] = makeIntVar(sol, "x(%i,%i)" % (i, j), 1, r * c)
-  x_flat = [x[(i, j)] for i in range(r) for j in range(c)]
+  # x(int,int) -> int  
+  x = Function("x",IntSort(), IntSort(), IntSort()) 
+  x_flat = [x(i,j) for i in range(r) for j in range(c)]
 
-  #
   # constraints
-  #
   sol.add(Distinct(x_flat))
 
   #
@@ -80,7 +81,7 @@ def hidato(puzzle,num_sols=0):
   for i in range(r):
     for j in range(c):
       if puzzle[i][j] > 0:
-        sol.add(x[(i, j)] == puzzle[i][j])
+        sol.add(x(i, j) == puzzle[i][j])
 
   # From the numbers k = 1 to r*c-1, find this position,
   # and then the position of k+1
@@ -93,12 +94,10 @@ def hidato(puzzle,num_sols=0):
     cc += 1
 
     # 1) First: fix "this" k
-    # sol.add(k == x[(i,j)])
-    element(sol,i * c + j,x_flat,k,r*c)
+    sol.add(k == x(i,j))
    
     # 2) and then find the position of the next value (k+1)
-    # solver.add(k + 1 == x[(i+a,j+b)])
-    element(sol,(i + a) * c + (j + b),x_flat, k + 1,r*c)
+    sol.add(k + 1 == x(i+a,j+b))
 
     sol.add(i + a >= 0)
     sol.add(j + b >= 0)
@@ -114,13 +113,12 @@ def hidato(puzzle,num_sols=0):
   while sol.check() == sat:
     num_solutions += 1
     mod = sol.model()
-    xx_flat =  [mod.eval(x_flat[i*c+j]) for i in range(r) for j in range(c)]
-    print("\nSolution:", num_solutions)
+    print()
     print_board(mod, x, r, c)
     print()
     if num_sols > 0 and num_solutions >= num_sols:
       break
-    sol.add(Or([xx_flat[i*c+j] != x_flat[i*c+j] for i in range(r) for j in range(c) ]))
+    sol.add(Or([x(i,j) != mod.eval(x(i,j)) for i in range(r) for j in range(c) ]))
 
   print("num_solutions:", num_solutions)
 
@@ -128,14 +126,14 @@ def hidato(puzzle,num_sols=0):
 def print_board(mod, x, rows, cols):
   for i in range(rows):
     for j in range(cols):
-      print("% 3s" % mod.eval(x[i,j]), end=' ')
+      print("% 4s" % mod.eval(x(i,j)), end=' ')
     print("")
 
 
 def print_game(game, rows, cols):
   for i in range(rows):
     for j in range(cols):
-      print("% 3s" % game[i][j], end=' ')
+      print("% 4s" % game[i][j], end=' ')
     print("")
 
 
@@ -146,7 +144,7 @@ def test_all(num_sols=0):
     print(f"----- Solving problem {puzzle} -----")
     print()
     t0 = time.time()
-    hidato(instances[puzzle],num_sols)
+    hidato_function(instances[puzzle],num_sols)
     t1 = time.time()
     print("Time:", t1-t0)
     times[puzzle] = t1-t0
@@ -163,4 +161,3 @@ test_all(num_sols)
 print("Time to prove unicity:")
 num_sols = 0
 test_all(num_sols)
-

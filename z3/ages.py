@@ -34,15 +34,8 @@ from z3_utils_hakank import *
 sol = Solver()
 
 t,j,m,y,y1,y2,y3,y4,y5,y6,y7,y8 = Reals("t j m y y1 y2 y3 y4 y5 y6 y7 y8")
+tim,jane,mary = Reals("time jane mary")
 
-x = t,j,m,y,y1,y2,y3,y4,y5,y6,y7,y8
-
-for i in range(len(x)):
-  sol.add(x[i] >= 0, x[i] <= 100)
-
-tim = makeRealVar(sol,"tim",0,100)
-jane = makeRealVar(sol,"jane",0,100)
-mary = makeRealVar(sol,"mary",0,100)
 
 # constraints
 
