@@ -9,6 +9,7 @@
 */
 
 import util.
+% import sat.
 import cp.
 
 main => go.
@@ -23,26 +24,85 @@ go =>
   nl.
 
 %
-% Run for different sizes
-% 
-% ffd/updown solves N= 6 in 0.06s and 7099 backtracks (symmetry breaking)
-%        10 in 2.99s and 312671 backtracks (symmetry breaking)
-%
-% ff/inout (odd N):
-%        11 in 0.056s and 7847 backtracks (no symmetry breaking)
-%        13 in 0.8 and 137676 backtracks (no symmetry breaking)
-go2 =>
-  foreach(N in 3..2..15) 
-      time2(magic(N,Square)),
-      print_square(Square) 
-  end.
+% Some times for different sizes and different solvers/search heuristic.
+% (2022-03-15 using Picat v.3.2)
+% Note: I stopped testing when the time was > 1min.
 
+% ffc/inout is quite slow on even N, so I only tested odd N.
+%
+% No symmetry breaking
+% --------------------
+%  N   SAT       ff/updown    ff/inout   ffc/inout
+%  -----------------------------------------------
+%  3   0.003s    0.0s         0.0s       0.0
+%  4   0.041s    0.001s       0.0s       ?
+%  5   0.09s     0.023s       0.001s     0.003
+%  6   3.677s    0.007s       0.001s     ?
+%  7   5.007s    0.029s       0.0s       0.011
+%  8  37.87s     0.553s       0.05s      ?
+%  9   ?         ?            0.001s     0.02s
+% 10                          0.049s     ?
+% 11                          0.031s     0.211s
+% 12                          3.61s      ?
+% 13                          0.519s     0.091
+% 14                          ?          ?
+% 15                          >2hour     >2hour
+%
+%
+% Symmetry breaking (Frenicle)
+% ----------------------------
+%  N   SAT       ff/updown    ff/inout   ffc/inout
+%  -----------------------------------------------
+%  3   0.0043s   0.0s         0.001      0.001s
+%  4   0.029s    0.002s       0.005      0.003s
+%  5   0.342s    0.004s       0.035      0.011s
+%  6   0.559s    0.049s       0.005      0.054s
+%  7   1.212s    0.095s       0.023      0.077s
+%  8  11.84s     0.207s       0.265      ?
+%  9   ?         0.371s       0.003      ?
+% 10             0.001s       ?
+% 11             ?            ?
+% 12                          
+% 13                          
+% 14                          
+% 15                          
+
+
+%
+% Here is the solution for N=13 for ffc/inout.
+%
+% 121  44 128 120 119  61 118  98  68  54  66  43  65 
+% 139 138  40 137 136 135 103  49  48  47  42  46  45 
+% 149 148 147 151 146  84  25  23  22 150  21  20  19 
+% 161 160 159 158 163  82  14  12 162  10   9   8   7 
+%  85   5   3   1   2 169   4 168   6 164 165 166 167 
+%  11  13  15  16  17  18 157  88 152 153 154 155 156 
+%  24  26  27  28  29 145  30 144  86 140 141 142 143 
+%  50  51  52  53  41  72 122 124  39 123 125 126 127 
+%  69  87 109  36  70  62 102  71 113  38 115 116 117 
+%  89 132  35 106 104  64 110  91 108  56  37  99  74 
+% 114  34 130 105  96  67 112  80 107  57  76  32  95 
+%  33 134 131  94  92  83 111  79 101  58  81  77  31 
+
+%
+%
+
+go2 ?=>
+  member(N,3..2..25),
+  println(n=N),
+  garbage_collect(300_000_000),
+  if time2(magic(N,Square)) then
+     print_square(Square)
+  end,
+  fail,
+  nl.
+go2 => true.
 
 %
 % All solutions.
 %
 go3 =>
-  N = 4,
+  N = 3,
   L = findall(Square,magic(N,Square)),
   Len = length(L),
   printf("Len: %d\n",Len).
@@ -53,6 +113,37 @@ go4 =>
   Count = count_all(magic(N,_Square)),
   printf("Count: %d\n",Count).
 
+
+go5 ?=>
+
+  Square = {{1046, _   , 1050},
+            {_   , _   , _   },
+            {_   , 1049, _   }},
+  Square :: 1..100000,
+  N = Square.len,
+  all_different(Square),
+  Sum #> 0,
+  foreach(I in 1..N)
+  
+     Sum #= sum([T : J in 1..N, T = Square[I,J]]), % rows
+     Sum #= sum([T : J in 1..N, T = Square[J,I]])  % column
+  end,
+
+  % diagonal sums
+  Sum #= sum([Square[I,I] : I in 1..N]),
+  Sum #= sum([Square[I,N-I+1] : I in 1..N]),
+
+  % solve([ff,updown],Square),
+  solve([ff,inout],Square),  
+
+  println(sum=Sum),
+  foreach(Row in Square)
+    println(Row)
+  end,
+  nl,
+  fail,
+  nl.
+go5 => true.
 
 magic(N,Square) =>
 
@@ -86,9 +177,10 @@ magic(N,Square) =>
   % Square[1,1] #= min([Square[1,1], Square[1,N], Square[N,1], Square[N,N]]),
   % Square[1,2] #< Square[2,1],
 
-  % solve([ffd,updown],Square),
-  % solve([ffc,inout],Square),
-  solve([ff,split],Square).
+  % solve([ffd,updown],Square).
+  % solve([ff,updown],Square).
+  % solve([ffc,inout],Square).
+  solve([ff,inout],Square).
   
   % print_square(Square).
 

@@ -1,0 +1,143 @@
+/* 
+
+  DCG for propositional logic in Picat.
+
+  "DCG capable of reading a propositional logic expression"
+  https://stackoverflow.com/questions/65959974/dcg-capable-of-reading-a-propositional-logic-expression
+  """
+  As I said in the title, I am trying to do an exercise where I need to write a DCG capable 
+  of reading propositional logic, which are represented by lowercase letters, operators 
+  (not, and , and or), with the tokens separated by whitespace. So the expression:
+
+    a or not b and c
+
+  is parsed as
+
+   a or ( not b and c )
+
+  producing a parse tree that looks like:
+
+  or(
+    a,
+     and(
+       not(b),
+       c
+    )
+  )
+
+  To be completely honest I have been having a hard time understanding how to effectively 
+  use DCGs, but this is what I've got so far:
+
+  bexpr([T]) --> [T].
+  bexpr(not,R1) --> oper(not), bexpr(R1).
+  bexpr(R1,or,R2) --> bexpr(R1),oper(or), bexpr(R2).
+  bexpr(R1, and ,R2) --> bexpr(R1),oper(and), bexpr(R2).
+  oper(X) --> X.
+
+  I would appreciate any suggestions, either on the exercise itself, or on how to better 
+  understand DCGs.
+  """
+
+  I was curious if Picat could handle this DCG. And with just two adjustments it does.
+  - $ escaping expr/3 in primary/3
+  - change phrase/2 to expr/3 in the call.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+
+main => go.
+
+%
+% t = or(a,and(not b,c))
+%
+go ?=>
+  % phrase(expr(T),[a, or, not, b, and, c]),
+  expr(T,[a, or, not, b, and, c],[]),
+  println(t=T),
+  nl,
+  fail,
+  nl.
+go => true.
+
+%
+% Generate all solutions of length <= 5
+% 
+go2 ?=>
+  length(L,Len),
+  expr(T,L,[]),
+  println([t=T,l=L]),
+  (Len <= 5 -> fail ; true),
+  nl.
+go2 => true.
+
+
+
+% From Nicholas Carey's answer
+% """
+% ....
+% So, to actually DO something with the parse, you need to add a little extra.
+% We do this by adding extra arguments to the DCG, viz:
+% 
+% ...
+
+% And that is where the parse tree is constructed. One might note that one could just
+% as easily evaluate the expression instead of building the parse tree... and then you're
+% on you way to writing an interpreted language.
+% 
+% You can fiddle with it at this fiddle: https://swish.swi-prolog.org/p/gyFsAeAz.pl
+% 
+% where you'll notice that executing the goal
+%    phrase(expr(T),[a, or, not, b, and, c]).
+% yields the desired parse
+%  T = or(a, and(not(b), c)).
+%
+% """
+expr(       T        ) --> infix_OR(T).
+
+infix_OR(   T        ) --> infix_AND(T).
+infix_OR(   or(X,Y)  ) --> infix_AND(X), [or], infix_OR(Y).
+
+infix_AND(  T        )  --> unary_NOT(T).
+infix_AND(  and(X,Y) )  --> unary_NOT(X), [and], infix_AND(Y).
+
+unary_NOT(  T        )  --> primary(T).
+unary_NOT(  not(X)   )  --> [not], primary(X).
+
+primary(    ID       ) --> identifier(ID).
+primary(    T        ) --> ['(', $expr(T), ')' ]. % hakank
+
+identifier( ID       ) --> [X], { id(X), ID = X }.
+
+% hakank: Just 3 identifiers...
+id(a).
+id(b).
+id(c).
+/*
+id(d).
+id(e).
+id(f).
+id(g).
+id(h).
+id(i).
+id(j).
+id(k).
+id(l).
+id(m).
+id(n).
+id(o).
+id(p).
+id(q).
+id(r).
+id(s).
+id(t).
+id(u).
+id(v).
+id(w).
+id(x).
+id(y).
+id(z).
+*/

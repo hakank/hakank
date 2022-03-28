@@ -1,0 +1,350 @@
+/*
+    A port of my Perl/Java/Python/Julia (Prefix) MakeRegex in Picat.
+
+    make_regex(Words)
+    generates a (prefix) regex for words. It use a simple approach which 
+    combines common prefixes in generating the regexp. 
+
+    Some examples:
+    * words = ["a", "al", "all", "alla", "an", "ann", "anna", "annas", "ananas"]
+      regex: a(l(la?)?|n(anas|n(as?)?)?)?
+
+    * words: ["and", "at", "do", "end", "for", "in", "is", "not", "of", "or", "use"]
+      regex: (a(nd|t)|do|end|for|i[ns]|not|o[fr]|use)
+
+    There is a simple way of handling character classes
+    * words: ["price1", "price2", "price3", "price4"]
+      regex: price[1234]
+
+
+    If there is no common prefix then it just put '|' between the words 
+    * words: ["this", "is", "a", "very", "boring", "example", "with", "no", "common", "prefix"]
+      regex: (a|boring|common|example|is|no|prefix|this|very|with)
+
+
+    Also, see the (very old) page for my Perl package MakeRegex:
+    http://hakank.org/makeregex/index.html
+    The REAME file in that package states:
+    """
+    The Perl package MakeRegex composes a regex-expression from a list of
+    words. It had been inspired by the emacs elisp module make-regex.el,
+    by Simon Marshall.
+    """
+
+    See some other implementations:
+    - Perl: http://hakank.org/makeregex/index.html
+    - Julia: http://www.hakank.org/julia/make_regex.jl
+
+    And I should say that this is NOT a typical/paradigmatic Picat program,
+    it's a rather faithful port of the Julia program.
+    It should be completely re-written using some of the Picat specific 
+    features...
+
+
+    Some experiments
+    ----------------
+    Note that using just a few words might make the regexp larger than the concatenated words. 
+    But, as we see in go3/0, when using many words, the compression is quite good.
+
+    * go2/0: Some random words
+     - words = [fee,lorinda,second,splenetic,callaghan,airline,scene,cater,resident,cambric,cowry,apothegm,sinew,osgood,nine,ott,ejector,aurochs,diluent,morristown,sulfur,turin,inseminate,cog,interpol,1st,move,gerundial,endoderm,pauline,construct,origin,cornstarch,abyss,java,styli,lithography,seminar,liniment,eidetic,impelled,revery,fickle,downright,treat,interference,hurdle,rampart,audible,crystallography,fib,tyburn,chemisorb,fateful,ogress,checkout,father,revelatory,augite,optometry]
+       regexp: (1st|a(byss|irline|pothegm|u(dible|gite|rochs))|c(a(llaghan|mbric|ter)|he(ckout|misorb)|o(g|nstruct|rnstarch|wry)|rystallography)|d(iluent|ownright)|e(idetic|jector|ndoderm)|f(at(eful|her)|ee|i(b|ckle))|gerundial|hurdle|i(mpelled|n(seminate|ter(ference|pol)))|java|l(i(niment|thography)|orinda)|mo(rristown|ve)|nine|o(gress|ptometry|rigin|sgood|tt)|pauline|r(ampart|e(sident|ve(latory|ry)))|s(cene|e(cond|minar)|inew|plenetic|tyli|ulfur)|t(reat|urin|yburn))
+       wordsLen = 414
+       regexLen = 457
+
+     - words = [piscataway,total,kruger,enzyme,lafayette,touchstone,bromide,naked,transfer,reddish]
+       regex (bromide|enzyme|kruger|lafayette|naked|piscataway|reddish|t(o(tal|uchstone)|ransfer))
+       wordsLen = 73
+       regexLen = 85
+
+    - words = [desuetude,dialectic,solitary,safety,array,angeles,plutonium,somebody'll,north,racetrack,abort,disjunct,collateral,foamy,alleviate,sadden,nashua,yokuts,canoe,cancerous]
+    - regex = (a(bort|lleviate|ngeles|rray)|c(an(cerous|oe)|ollateral)|d(esuetude|i(alectic|sjunct))|foamy|n(ashua|orth)|plutonium|racetrack|s(a(dden|fety)|o(litary|mebody'll))|yokuts)
+      wordsLen = 147
+      regexLen = 170
+
+  
+   * go3/0: Generating all the words from some wordlists:
+     - /usr/share/dict/words (102305 words) takes 6.505s.
+        Compression: 868999 chars -> 439066 chars.
+
+     - Using a smaller wordlist (25104 words) takes 0.465s.
+       Comparession: 181299 chars -> 123515 chars
+
+
+
+    This Picat program was created by Hakan Kjellerstrand, hakank@gmail.com
+    See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go ?=>
+
+   %
+  % Test cases of the form:
+  %    [Words, Regexp]
+  %
+  Tests = [
+    [["all","alla"], "alla?"],
+
+    % A lot of Swedish words
+    [[ "all", "alla", "alle", "alls", "palle", "palla", "pelle", "perkele",
+      "ann", "anna", "annas", "anders", "håkan", "ångest", "ärlig", 
+      "solsken", "sture", "stina", "hörapparat", "hörsel", "hårig"],
+      "(a(ll[aes]?|n(ders|n(as?)?))|h(å(kan|rig)|ör(apparat|sel))|p(all[ae]|e(lle|rkele))|s(olsken|t(ina|ure))|ärlig|ångest)"],
+
+    [["alla", "palla", "balla", "kalla", "all", "pall", "ball", "kall"],
+      "(alla?|balla?|kalla?|palla?)"
+    ],
+
+    % "ananas" is the Swedish word for pineapple
+    [["a", "al", "all", "alla", "an", "ann", "anna", "annas", "ananas"],
+     "a(l(la?)?|n(anas|n(as?)?)?)?"],
+
+    [["a", "an", "ann", "anna", "annan", "annas", "annans", "ananas", "ananasens"],
+     "a(n(anas(ens)?|n(a(ns?|s)?)?)?)?"],
+
+    [["a", "ab", "abc", "abcd", "abcde", "abcdef", "b", "bc", "bcd", "bcde", "bcdef", 
+     "bcdefg", "abb", "abbc", "abbcc", "abbccdd"],
+      "(a(b(b(c(c(dd)?)?)?|c(d(ef?)?)?)?)?|b(c(d(e(fg?)?)?)?)?)"
+     ],
+
+    [["this", "is", "a", "very", "boring", "example", "with", "no", "common", "prefix"],
+     "(a|boring|common|example|is|no|prefix|this|very|with)"
+     ],
+
+    [["price1","price2","price3","price4"],
+     "price[1234]"],
+    
+
+    % This is from Marshall's make-regex.el
+    [["and", "at", "do", "end", "for", "in", "is", "not", "of", "or", "use"],
+      "(a(nd|t)|do|end|for|i[ns]|not|o[fr]|use)"
+     ],
+
+    % This is from Marshall's make-regex.el
+    [["cond", "if", "while", "let*?", "prog1", "prog2", "progn",
+     "catch", "throw", "save-restriction", "save-excursion", 
+     "save-window-excursion", "save-match-data", "unwind-protect", 
+     "condition-case", "track-mouse"],
+     "(c(atch|ond(ition-case)?)|if|let*?|prog[12n]|save-(excursion|match-data|restriction|window-excursion)|t(hrow|rack-mouse)|unwind-protect|while)"
+     ],
+  
+    % This is from Marshall's make-regex.el
+    [["abort", "abs", "accept", "access", "array",
+      "begin", "body", "case", "constant", "declare",
+      "delay", "delta", "digits", "else", "elsif", "entry",
+      "exception", "exit", "function", "generic", "goto",
+      "if", "others", "limited", "loop", "mod", "new",
+      "null", "out", "subtype", "package", "pragma",
+      "private", "procedure", "raise", "range", "record",
+      "rem", "renames", "return", "reverse", "select",
+      "separate", "task", "terminate", "then", "type",
+      "when", "while", "with", "xor"],
+     "(a(b(ort|s)|cce(pt|ss)|rray)|b(egin|ody)|c(ase|onstant)|d(e(clare|l(ay|ta))|igits)|e(ls(e|if)|ntry|x(ception|it))|function|g(eneric|oto)|if|l(imited|oop)|mod|n(ew|ull)|o(thers|ut)|p(ackage|r(agma|ivate|ocedure))|r(a(ise|nge)|e(cord|m|names|turn|verse))|s(e(lect|parate)|ubtype)|t(ask|erminate|hen|ype)|w(h(en|ile)|ith)|xor)"
+     ],
+
+     % This is from https://stackoverflow.com/questions/5365283/regular-expression-to-search-for-gadaffi
+     % Different spelling of Kadaffi
+     [["Gadaffi","Gadafi","Gadafy","Gaddafi","Gaddafy","Gaddhafi","Gadhafi","Gathafi","Ghadaffi","Ghadafi","Ghaddafi",
+     "Ghaddafy","Gheddafi","Kadaffi","Kadafi","Kaddafi","Kadhafi","Kazzafi","Khadaffy","Khadafy","Khaddafi","Qadafi",
+     "Qaddafi","Qadhafi","Qadhdhafi","Qadthafi","Qathafi","Quathafi","Qudhafi","Kadafi]"],"xxx"]
+
+
+   ], 
+
+
+  % Just testing first case
+  % Tests := [
+  %           ["all","alla"]
+  %           % alla?
+  %           % ["alla", "palla", "balla", "kalla", "all", "pall", "ball", "kall"]
+  %           % ["a", "al", "all", "alla", "an", "ann", "anna", "annas", "ananas"]
+  %          ],
+  Failed = [],
+  foreach([T,Check] in Tests)
+    println(words=T),
+    Regexp = make_regex(T),
+    println(regexp=Regexp),
+    if Regexp == Check then
+      println(ok)
+    else
+      println(not_ok),
+      Failed := Failed ++ [T],
+    end,
+    nl
+  end,
+  println(failed=Failed),
+  nl.
+go => true.
+
+
+%
+% Test some random words
+%
+go2 ?=>
+  garbage_collect(300_000_000),
+  _ = random2(),
+  NumWords = 10,
+  AllWords = read_file_lines("unixdict.txt"),
+  % AllWords = read_file_lines("/usr/share/dict/words"),
+  
+  AllWordsLen = AllWords.len,
+  println(allWordsLen=AllWordsLen),
+  % Pick about NumWords words
+  Words = [AllWords[R] : _ in 1..NumWords, R = random(1,AllWordsLen)],
+  println(words=Words),
+  WordsString = join(Words,''),    
+  Regex = make_regex(Words),
+  println(regex=Regex),
+
+  println(wordsLen=WordsString.len),
+  println(regexLen=Regex.len),
+
+  nl.
+go2 => true.
+
+
+%
+% Testing all the words in the wordlists.
+%
+go3 ?=>
+  garbage_collect(300_000_000),
+  % Words = read_file_lines("unixdict.txt"),
+  % Words = read_file_lines("/usr/share/dict/words"),
+  % Words = read_file_lines("words_lower.txt"),
+  Words = read_file_lines("wordle_small.txt"),
+  % Pick words of a certain length
+  % Words := [W.to_lowercase : W in Words, W.len == 3,not membchk('\'',W),not membchk(' ',W)],
+  % print(words=Words),
+  WordsString = join(Words,''),
+  WordsLen = Words.len,
+  println(wordsLen=WordsLen),
+  Regex = make_regex(Words),
+  println(Regex),
+
+  println(wordsLen=WordsString.len),
+  println(regexLen=Regex.len),
+  nl.
+go3 => true.
+
+
+
+
+
+
+make_regex(Words) = common_prefix("", sort(Words)).
+    % println($make_regex(Words)).
+    % replace.(words,r"([*?+])"=>s"\\\1") % replace meta characters
+    % Words := replace_string(Words,"(","\\("),
+    % Words := replace_string(Words,"[","\\["),
+    % Words := replace_string(Words,"*","\\*"),
+    % Words := replace_string(Words,"+","\\+"),
+    % Words := replace_string(Words,"]","\\]"),
+    % Words := replace_string(Words,")","\\)"),
+    % We sort the words to induce more common prefixes
+    % println(words=Words).
+
+
+% 
+% common_prefix(p,  list)
+% 
+% Here is where the main work is done. It's somewhat magically ported from my
+% Perl/Java/Python versions...
+% 
+common_prefix(P, List) = Ret =>
+    ListLen = List.len,
+    Ret1 = _,
+    if ListLen == 0 then
+        Ret1 := ""
+    end,
+    if var(Ret1), ListLen == 1 then
+        Ret1 := ([P] ++ join(List,'')).flatten
+    end,
+
+    %
+    % fix for some - as of now - unknown bug. To fix in later version!
+    % 
+    if var(Ret1), P == "", List[1] == "", List[2] == "" then
+        Ret1 := ""
+    end,
+    if var(Ret1) then
+      % Collect all the strings with the same prefix-char
+      Hash = new_map(),
+      foreach(Word in List.sort())
+        Prefix = "",
+        SuffixedWord = "",
+        if Word.len > 0 then
+          Prefix := Word[1],
+          SuffixedWord := [Word[I] : I in 2..Word.len] % Word[2..Word.len],
+        end,
+          % Put the suffix in the list of other suffixes for
+          % this prefix
+          Hash.put(Prefix, Hash.get(Prefix,"") ++ [SuffixedWord])
+      end,
+
+      % And recurse this list
+      All = [],
+      foreach(Key in Hash.keys().sort())
+        Comm = "",
+        Values = Hash.get(Key),
+        if Key.len > 0, Values != [] then
+            Values := sort(Values),
+            Comm := common_prefix(Key, Values)
+        end,
+
+        % hack to be able to use the '?' char . Should be re-written!
+        if Comm == "" then
+            Comm := " "
+        end,
+        All := All ++ [Comm]
+      end,
+      All := sort(All),
+
+      % paren: what to put in parenthesis ('()' or '[]') if anything
+      Paren = "",
+      AllLen = All.len,
+      if  AllLen == 1 then
+         Paren := join(All,'')
+      else
+        Len := max([A.len : A in All]),
+        JoinChar = cond(Len != 1,"|",""),
+            
+        % joins all entries except for " "
+        JoinStr = "",
+        Mark = "",
+        Count = 0,
+        foreach(W in All, W != ' ')
+            GotHackMark = cond(W == " ",true, false), % This is a hack for handling '?'
+            if W.len > 0, W != " ", W != ' ' then
+                JoinStr := JoinStr ++ W,
+                if Count < AllLen-1 then
+                    JoinStr :=  JoinStr ++ JoinChar
+                end
+            end,
+
+            if GotHackMark then
+                Mark := "?"
+            end,
+                    
+            Count := Count + 1
+        end,
+        Paren = "",
+        if JoinStr.len == 1 then
+            Paren := JoinStr ++ [Mark]
+        else
+            if Len == 1 then
+                Paren := "[" ++ JoinStr ++ "]" ++ Mark
+            else
+                Paren := "(" ++ JoinStr ++ ")" ++ Mark
+            end
+        end
+      end,
+      Ret1 := ([P] ++ Paren).flatten
+
+  end,
+  Ret = Ret1.flatten.

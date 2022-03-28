@@ -1,0 +1,167 @@
+/* 
+
+  Wordle solver in Picat.
+
+  This is a smaller version of Wordle solver than wordle.pi
+  just including the solver, not all the other experiments.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go ?=>
+
+  % wordle("...n.",["","","","",""],"slat"),
+  % ->  [crone,brine,crony,briny,prone,corny,borne,prune,drone,phone,brink,phony,bound,pound,grind,frond,found,bring,drink,being,whine,fiend,chunk,whiny,prong,mound,horny,urine,round,drunk,irony,doing,wound,hound,opine,wring,rhino,downy,wrong,wrung,ebony,ovine,dying,young,owing,eying,vying,eking,penne,penny,bunny,funny,going,ninny,ozone,icing]
+
+  % wordle(".r.n.",["","","","",""],"slatcoe"),
+  % -> [briny,brink,grind,bring,drink,drunk,wring,wrung]
+  
+  wordle("...st",["s","","","",""],"flancre"),
+  % -> [moist,hoist,ghost,midst,joist,joust,boost,twist]
+  
+  % wordle(".r.n.",["","","","",""],"slatcoe"),
+  % -> [briny,brink,grind,bring,drink,drunk,wring,wrung]
+  
+  % wordle(".r.n.",["","","","",""],"slatcoebiy"),
+  % -> [drunk,wrung]
+  
+  % wordle(".run.",["","","","",""],"slatcoebiydk"),
+  % ->  [wrung]
+
+  % wordle(".l...",["","","a","","t"],"sn"),
+  % -> [alter,ultra,altar]
+
+  % wordle(".....",["","","","",""],""),
+  % -> All words...
+  
+  nl.
+go => true.
+
+
+%
+%   wordle(Words,CorrectPos,CorrectChar,NotInWord)
+%    - Words: the wordlist/candidates
+%    - CorrectPos: correct character in correct position,
+%      Example: n is in position 4 and t is in position 5: "...nt": 
+%    - CorrectChar: correct character but in wrong position.
+%      Example: a is not in position 1, l is not in position 2: ["a","l","","",""]
+%    - NotInWord: characters not in word.
+%      Example: s, a, and t are not in the word: "sat"
+%
+wordle(CorrectPos, CorrectChar, NotInWord) =>
+  N = 5,
+  % File = "unixdict.txt", % 3161 5 letter words. Is this the smallest word list?
+  File = "wordle_small.txt", % 2314 words
+  % File = "wordle_large.txt", % 12971 words
+  % File = "eng_dict.txt", % 9336 5 letter words
+  % File = "words_lower.txt", % 21830 English 5 letter words 
+
+  Words = [W : W in read_file_lines(File), length(W) == N], 
+  NumWords = Words.len,
+  println(numWordsInDict=NumWords),
+
+  wordle(Words, CorrectPos, CorrectChar, NotInWord,[],Candidates),
+  println(candidates=Candidates),
+  println(len=Candidates.len),
+  (Candidates != [] -> println(suggestion=Candidates.first()) ; true),
+  
+  nl.
+
+%
+% The main engine:
+% Loop through all words and check if they are in the scope.
+% 
+wordle([], _CorrectPos, _CorrectChar, _NotInWord,AllWords,Sorted) :-
+  sort_candidates(AllWords,Sorted).
+wordle([Word|Words], CorrectPos, CorrectChar, NotInWord, AllWords0,AllWords) :-
+   ( (correct_pos(Word,CorrectPos),
+      correct_char(Word,Word,CorrectChar),
+      not_in_word(Word,NotInWord)) ->
+       AllWords1 = AllWords0 ++ [Word],
+       wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords1,AllWords)
+    ;
+     wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords0,AllWords)
+   ).
+
+%
+% Correct position.
+%
+% Ensure that all chars != "." are in correct position.
+% 
+correct_pos([],[]).
+correct_pos([C|Cs],[C2|CorrectPos]) :-
+  (C == C2 ; C2 == '.'),
+  correct_pos(Cs,CorrectPos).
+
+%
+% Correct char.
+% Ensure that the character is in the word, but not
+% in the given position.
+% 
+correct_char(_,_,[]).
+correct_char(Word,[W|WordRest],[CC|CorrectChars]) :-
+  correct_char_(Word,W,CC), % check each character in CorrectChars
+  correct_char(Word,WordRest,CorrectChars).
+
+%
+% Helper function for correct_char/2.
+% Check each character in CorrectChar against each
+% character in the candidate word.
+%
+correct_char_(_,_,[]).
+correct_char_(Word,W,[C|CorrectChars]) :-
+  W != C,
+  membchk(C,Word),
+  correct_char_(Word,W,CorrectChars).
+
+%
+% Characters not in word.
+% Ensure that the given chararacter are not in the
+% candidate word.
+% 
+not_in_word(_Word,[]).
+not_in_word(Word,[C|Cs]) :-
+  not membchk(C,Word),
+  not_in_word(Word,Cs).
+
+%
+% Sort the candidates.
+%
+sort_candidates(Candidates,Sorted) =>
+  % The probability order for each position in the word.
+  % Reversed and with missing chars.
+  % See wordle.pi (go2/0) for the method to get this.
+  Alphas = ["zyjkquinovhewlrmdgfaptbcsx",
+            "zqfkgxvbsdymcwptnhulieroaj",
+            "qjhzkxfwyvcbpmgdstlnrueoia",
+            "xyzbwhfvpkmdguotcrilasnejq",
+            "uzxbiwfcsgmpoakdnhlrtyejqv"
+  ],
+  score_words(Candidates,Alphas,[],Scores),
+  Sorted = [W : [_S=W] in Scores.sort_down].
+
+%
+% Score all words
+% 
+score_words([],_Alpha,Scores,Scores).
+score_words([Word|Words],Alphas,Scores0,[[Score=Word]|Scores]) :-
+  % We prefer words with distinct characters
+  Score1 = cond(Word.len==Word.remove_dups.len,100,0),
+  score_word(Word,Alphas,Score1,Score),
+  score_words(Words,Alphas,Scores0,Scores).
+
+% Score each character in a word
+score_word([],_Alpha,Score,Score).
+score_word([C|Cs],[Alpha|Alphas],Score0,Score) :-
+   nth(N,Alpha,C), % find the position of this character
+   S = N / 2,
+   Score1 = Score0 + S,
+   score_word(Cs,Alphas,Score1,Score).
+
+% Print an empty board
+empty() =>
+  println("wordle(\".....\",[\"\",\"\",\"\",\"\",\"\"],\"\")").

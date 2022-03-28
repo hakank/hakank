@@ -1,0 +1,478 @@
+/* 
+
+  Parsing texts with DCG - Advent of Code 2020/day4 in Picat.
+
+  This programming challenge is from the 2020 Advent of Code, Day4. 
+  Then I tried to parse the text for part 2 using DCGs (which was 
+  quite new in Picat v3 at the time), but that didn't work at all. 
+
+  And that has been nagging me for quite a long time.
+
+  Now is the time to do it the proper way, i.e. using DCGs. 
+  (It's a pity that Picat don't support regular expression since 
+  using regexes for this would have been quite easy. But, what's
+  the fun of easy. :-))
+
+  Perhaps I've overworked this a little, i.e. using DCG for 
+  almost everything. And I couldn't help doing some experiments, 
+  some for efficiency, some just for fun.
+
+  Apart from the main foreach loop, the only thing left to DCG-ify 
+  is to complete collect/split the lines on "\n\n". Using DCG for 
+  this is harder  than expected, so I've tested some different approaches
+  with and without DCGs, see the different split_lines* 
+  predicates/functions.
+  
+  The program is quite fast:
+  - The original Julia version (part 1 + part 2): 0.079..0.08s.
+  - This Picat program (part 1 + part 2): 0.005..0.011s.
+
+  Part 1: Should be 2 for the test file and 219 for challenge input.
+  Part 2: Should be 127 for the challenge input.
+
+
+  Here is the description of the challenge, from https://adventofcode.com/2020/day/4:
+  """
+  --- Day 4: Passport Processing ---
+  You arrive at the airport only to realize that you grabbed your North Pole Credentials instead of 
+  your passport. While these documents are extremely similar, North Pole Credentials aren't issued 
+  by a country and therefore aren't actually valid documentation for travel in most of the world.
+
+  It seems like you're not the only one having problems, though; a very long line has formed for 
+  the automatic passport scanners, and the delay could upset your travel itinerary.
+
+  Due to some questionable network security, you realize you might be able to solve both of these 
+  problems at the same time.
+
+  The automatic passport scanners are slow because they're having trouble detecting which passports 
+  have all required fields. The expected fields are as follows:
+
+  byr (Birth Year)
+  iyr (Issue Year)
+  eyr (Expiration Year)
+  hgt (Height)
+  hcl (Hair Color)
+  ecl (Eye Color)
+  pid (Passport ID)
+  cid (Country ID)
+
+  Passport data is validated in batch files (your puzzle input). Each passport is represented 
+  as a sequence of key:value pairs separated by spaces or newlines. Passports are separated 
+  by blank lines.
+
+  Here is an example batch file containing four passports:
+
+  ecl:gry pid:860033327 eyr:2020 hcl:#fffffd
+  byr:1937 iyr:2017 cid:147 hgt:183cm
+
+  iyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884
+  hcl:#cfa07d byr:1929
+
+  hcl:#ae17e1 iyr:2013
+  eyr:2024
+  ecl:brn pid:760753108 byr:1931
+  hgt:179cm
+
+  hcl:#cfa07d eyr:2025 pid:166559648
+  iyr:2011 ecl:brn hgt:59in
+
+  The first passport is valid - all eight fields are present. The second passport is 
+  invalid - it is missing hgt (the Height field).
+
+  The third passport is interesting; the only missing field is cid, so it looks like 
+  data from North Pole Credentials, not a passport at all! Surely, nobody would mind 
+  if you made the system temporarily ignore missing cid fields. Treat this "passport" 
+  as valid.
+
+  The fourth passport is missing two fields, cid and byr. Missing cid is fine, 
+  but missing any other field is not, so this passport is invalid.
+
+  According to the above rules, your improved system would report 2 valid 
+  passports.
+
+  Count the number of valid passports - those that have all required fields. Treat 
+  cid as optional. In your batch file, how many passports are valid?
+
+  To play, please identify yourself via one of these services:
+  """
+
+  Part 2:
+  """
+  The line is moving more quickly now, but you overhear airport security talking about 
+  how passports with invalid data are getting through. Better add some data validation, 
+  quick!
+
+  You can continue to ignore the cid field, but each other field has strict rules about what 
+  values are valid for automatic validation:
+
+    byr (Birth Year) - four digits; at least 1920 and at most 2002.
+    iyr (Issue Year) - four digits; at least 2010 and at most 2020.
+    eyr (Expiration Year) - four digits; at least 2020 and at most 2030.
+    hgt (Height) - a number followed by either cm or in:
+      If cm, the number must be at least 150 and at most 193.
+      If in, the number must be at least 59 and at most 76.
+    hcl (Hair Color) - a # followed by exactly six characters 0-9 or a-f.
+    ecl (Eye Color) - exactly one of: amb blu brn gry grn hzl oth.
+    pid (Passport ID) - a nine-digit number, including leading zeroes.
+    cid (Country ID) - ignored, missing or not.
+
+    Your job is to count the passports where all required fields are both present and 
+    valid according to the above rules. Here are some example values:
+
+      byr valid:   2002
+      byr invalid: 2003
+
+      hgt valid:   60in
+      hgt valid:   190cm
+      hgt invalid: 190in
+      hgt invalid: 190
+
+      hcl valid:   #123abc
+      hcl invalid: #123abz
+      hcl invalid: 123abc
+
+      ecl valid:   brn
+      ecl invalid: wat
+
+      pid valid:   000000001
+      pid invalid: 0123456789
+
+
+    Here are some invalid passports:
+
+      eyr:1972 cid:100
+      hcl:#18171d ecl:amb hgt:170 pid:186cm iyr:2018 byr:1926
+
+      iyr:2019
+      hcl:#602927 eyr:1967 hgt:170cm
+      ecl:grn pid:012533040 byr:1946
+
+      hcl:dab227 iyr:2012
+      ecl:brn hgt:182cm pid:021572410 eyr:2020 byr:1992 cid:277
+
+      hgt:59cm ecl:zzz
+      eyr:2038 hcl:74454a iyr:2023
+      pid:3556412378 byr:2007
+
+  Here are some valid passports:
+
+     pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980
+     hcl:#623a2f
+
+     eyr:2029 ecl:blu cid:129 byr:1989
+     iyr:2014 pid:896056539 hcl:#a97842 hgt:165cm
+
+     hcl:#888785
+     hgt:164cm byr:2001 iyr:2015 cid:88
+     pid:545766238 ecl:hzl
+     eyr:2022
+
+     iyr:2010 hgt:158cm hcl:#b6652a ecl:blu byr:1944 eyr:2021 pid:093154719
+
+  Count the number of valid passports - those that have all required fields and valid values. 
+  Continue to treat cid as optional. In your batch file, how many passports are valid?
+
+  Your puzzle answer was 127.
+  
+  Both parts of this puzzle are complete! They provide two gold stars: **
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import dcg_utils. % DCGs: any/0, digits/1, any_member/2, hex_digits/1.
+
+main => go.
+
+go ?=>
+
+  % text_test(Text1), % test case
+  text(Text1), % the real case
+
+  %
+  % Collect the entries for a record:
+  % - Split the entries on "\n\n"
+  % - Collect the different lines in a record
+  %   as one string
+  %
+  % Here are some different approaches.
+  %
+
+  % Using split/2: This doesn't work since "\n\n" == "\n"
+  % Text = split(Text1,"\n\n"), 
+
+  % Trying to do a DCG version. Don't work!
+  % split_lines1(Text,Text1,[]),
+
+  % Plain boring foreach loop. Very slow: 0.993s.
+  % time2(split_lines3(Text1,Text)),
+
+  % Recursive version: quite faster: 0.006..0.012s
+  % time(split_lines2(Text1,Text)), 
+
+  % Another approach: first replace "\n\n" -> '|' and
+  % then split/2 on "|".
+  % Sligthly faster than split_lines2/2 and split_lines5/1: 0.001..0.004s.
+  % And this is the one we use...
+  Text = split_lines4(Text1),
+
+  % Using replace_nlnl2 (DCG) and split
+  % Sligthly slower than split_lines4/1.
+  % Text = split_lines5(Text1),
+
+  % Using replace_string + replace + split
+  % Also slightly slower than split_lines4/1
+  % Text = split_lines6(Text1),
+
+
+  % println(textLen=Text.len),
+  % foreach(T in Text)
+  %   println(ttt=T),
+  % end,
+  % halt,
+
+  %
+  % Loop through and check/validate all records (passports).
+  % 
+  NumValidPassportsPart1 = 0, % Part 1
+  NumValidPassportsPart2 = 0, % Part 2
+  foreach(Line in Text)
+    parse(Items,Line,[]),
+    ItemsLen=Items.len,
+
+    % Count the number of valid passports
+    IsValid = true,
+    if ItemsLen < 7 then
+      IsValid := false  
+    else
+      % Check that we have the mandatory entries
+      % This is the only test for Part 1
+      Ids = [Id : [Id,_] in Items], % .remove_dups,
+      if Ids.len == 8 ; (Ids.len == 7, not membchk("cid",Ids)) then
+          NumValidPassportsPart1 :=  NumValidPassportsPart1 + 1
+      else
+         IsValid := false
+      end,
+
+      % Part 2: Validate the record.
+      foreach([Id,Item] in Items, break(IsValid == false) )
+      
+         % Create the validate predicate validate_<Id> and call it.
+         bp.atom_chars(Pred,"validate_" ++ Id),
+         if not call(Pred,_,Item,[]) then
+            % println(invalid=Id=Item),
+            IsValid := false
+         end
+         
+      end
+    end,
+    
+    if IsValid then
+      NumValidPassportsPart2 := NumValidPassportsPart2 + 1
+    end
+    
+  end,
+
+  println(numValidPassportsPart1=NumValidPassportsPart1),
+  println(numValidPassportsPart2=NumValidPassportsPart2),
+  nl.
+go => true.
+
+
+%
+% Read the files as a single string
+%
+
+% Test
+text_test(Text) =>
+   Text = read_file_chars("advent_of_code/day4/input_test").
+
+% Real deal
+text(Text) =>
+   Text = read_file_chars("advent_of_code/day4/input").
+
+
+%
+% Split lines (separated by "\n\n") and join the records into a single line.
+%
+
+%% TODO: This should be done completely with DCG...
+
+% This doesn't work!
+% split_lines1([Line|Lines]) -->  parse(Line), {println(split_lines1=Line)}, "\n\n", split_lines1(Lines), "\n\n".
+% split_lines1([Line]) --> parse(Line).
+% split_lines1([]) --> [].
+
+%
+% This is much faster than the foreach loop
+% version below (split_lines3): 0.006s
+%
+split_lines2(Lines,Splitted) :-
+  split_lines2(Lines,[],[],Splitted0),
+  % The lines are in a list so we have to fix that.
+  % Also strip final line
+  Splitted = [S[1].strip() : S in Splitted0].
+
+% Finished reading the text, place the final segment in the result.
+split_lines2([],Last,Splitted,[[Last]|Splitted]).
+% Found nlnl: Placed the current segment in result
+% and create a new current segment (Last).
+split_lines2(['\n','\n'|T],Last0,Splitted0,[[Last0|Splitted0]|Splitted]) :-
+  split_lines2(T,[],Splitted0,Splitted).
+% Found a single nl: Replace with " ".
+split_lines2(['\n'|T],Last0,Splitted0,Splitted) :-
+  split_lines2(T,Last0++[' '],Splitted0,Splitted).
+% Just add this character to "this" segment
+split_lines2([C|T],Last0,Splitted0,Splitted) :-
+  split_lines2(T,Last0++[C],Splitted0,Splitted).
+
+
+% This is way too slow, and is as remotely from 
+% elegant DCG as possible. It takes 0.993s.
+% split_lines3(Text,Lines) :-
+%   Lines1 = [],
+%   N = Text.len,
+%   Line = [],
+%   I = 1,
+%   while (I < N)
+%     if Text[I] == '\n',Text[I+1] == '\n' then
+%        Lines1 := Lines1 ++ [Line],
+%        Line := [],
+%        I := I + 2
+%     else
+%        if Text[I] == '\n' then
+%           Line := Line ++ " "
+%        else
+%           Line := Line ++ [Text[I]]
+%        end,
+%        I:=I+1
+%     end
+%   end,
+%   if Line != [] then
+%     Lines1 := Lines1 ++ [Line]
+%   end,
+%   Lines = Lines1.
+
+%
+% A faster version: 0.003s
+% - Replace "\n\n" with '|'
+% - replace the '\n' that are left with " "
+% - split on '|'
+%
+split_lines4(Text1) = split(replace(Text2,'\n',' '),"|") => 
+  replace_nlnl(Text1,Text2).
+
+% Replace "\n\n" -> '|'
+replace_nlnl(Lines,Splitted) :-
+  replace_nlnl(Lines,[],Splitted).
+replace_nlnl([],Splitted,Splitted).
+% Note: The following does not work: ["\n\n"|T] since it's a list: ['\n','\n'].
+% It must be two separate characters.
+replace_nlnl(['\n','\n'|T],Splitted0,['|'|Splitted]) :-
+  replace_nlnl(T,Splitted0,Splitted).
+replace_nlnl([C|T],Splitted0,[C|Splitted]) :-
+  replace_nlnl(T,Splitted0,Splitted).
+
+
+%
+% A fairly fast version of collecting/splitting: 0.003s
+% - Replace "\n\n" with '|' using DCG.
+% - replace the '\n' that are left with " "
+% - split on '|'
+%
+split_lines5(Text1) = split(Text2,"|") => 
+  replace_nlnl2(Text2,Text1,[]).
+
+% An (arguable) simpler version of replacing "\n\n" -> "|" and "\n" -> ' '.
+% It's slightly slower than using replace_nlnl/2.
+replace_nlnl2([C,'|'|Cs]) --> [C], "\n\n", replace_nlnl2(Cs).
+replace_nlnl2([C,' '|Cs]) --> [C], "\n",   replace_nlnl2(Cs).
+replace_nlnl2([C|Cs])     --> [C],         replace_nlnl2(Cs).
+replace_nlnl2([])         --> [].
+
+% Using replace_string + replace + split
+split_lines6(Text) = replace_string(Text,"\n\n","|").replace('\n',' ').split("|").
+
+
+%
+% DCGs
+% Also see dcg_utils.pi.
+% 
+
+%
+% Parse a string of one or more entries of <id>:<entry>
+%
+parse([IE|Parsed]) --> parse_item(IE), " ", parse(Parsed).  % pick the "first" entry
+parse([IE]) --> parse_item(IE). % single (last) entry
+parse([]) --> [].
+
+%
+% Parse a single entry of <id>:<item>
+% 
+parse_item([Id,Entry]) --> any_except(Id,":"), ":",
+                           any_except(Entry,": ").
+
+
+%
+% Check the validity of each record types.
+%
+
+% Generalized version of byr, iyr, eyr
+validate_interval(Key,Len,Lower,Upper) -->
+  digits(Key), {Key.len == Len, KeyInt = Key.to_int, KeyInt >= Lower, KeyInt <= Upper}.
+
+% byr (Birth Year) - four digits; at least 1920 and at most 2002.
+validate_byr(Byr) -->
+  validate_interval(Byr,4,1920,2002).
+
+% iyr (Issue Year) - four digits; at least 2010 and at most 2020.
+validate_iyr(Iyr) -->
+  validate_interval(Iyr,4,2010,2020).
+
+% eyr (Expiration Year) - four digits; at least 2020 and at most 2030
+validate_eyr(Eyr) -->
+  validate_interval(Eyr,4,2020,2030).
+
+% hgt (Height) - a number followed by either cm or in:
+%   If cm, the number must be at least 150 and at most 193.         
+%   If in, the number must be at least 59 and at most 76.
+validate_hgt(Height) -->
+   digits(Height),
+   (
+     "cm", {HeightInt = Height.to_int, HeightInt >= 150, HeightInt <= 193}
+   ;
+     "in", {HeightInt = Height.to_int, HeightInt >= 59, HeightInt <= 76}
+   ).  
+
+% Alternative approach
+validate_hgt2(Height) -->
+   digits(Height), any_member(Type,["cm","in"]),
+   { HeightInt = Height.to_int,
+     (
+      Type == "cm" ->
+         HeightInt >= 150, HeightInt <= 193
+      ; 
+         HeightInt >= 59, HeightInt <= 76
+      )
+   }.
+
+
+% ecl (Eye Color) - exactly one of: amb blu brn gry grn hzl oth.
+validate_ecl(Ecl) -->
+   any_member(Ecl, ["amb","blu","brn","gry","grn","hzl","oth"]).
+
+
+% hcl: hair color:
+% a # followed by exactly six characters 0-9 or a-f.
+validate_hcl(Hcl) --> "#", hex_digits(Hcl), {Hcl.len == 6}.
+
+% pid: a nine-digit number, including leading zeroes.
+validate_pid(Pid) --> digits(Pid), {Pid.len == 9}.
+
+% cid: Ignored.
+validate_cid(_Cid) --> any.
+
+

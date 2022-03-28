@@ -42,13 +42,24 @@
     unabstractedness
 
 
-  Statistics on testing words_lower.txt (415834 words) on 5 length patterns.
-  check3/2 (using "plain" recursion) is by far the fastest:
+  Here are some testing the wordlist words_lower.txt (with 415834 words) 
+  on 5 length patterns. check3/2 (quite simple and using "plain" recursion) 
+  is by far the fastest:
 
-   * check/2 (tested in go/0): 17.5s
-   * check2/2 (tested in go2/0): 17.5s
-   * check3/2 (tested in go3/0): 3.8s
-   * check3/2 (using list comprehension in go3b/0): 3.6s
+  Here are the tests:
+
+   * go/0, testing check/2: 8.664s
+   * go2/0, testing check2/2: 9.756s
+   * go3/0, testing check3/2:  1.51s (the fastest)
+   * go3b/0, testing check3/2 and list comprehension: 1.712ss
+   * go4/0, testing test_all/3 and check3/2: 21.297s
+   * go7/0, testing DCG approach:
+            - check_dcg3/3: 5.482s, 
+            - check_dcg4/3: 3.88s
+
+   * go5/0 is a simple DCG tests (check_dcg/3) on the pattern "abc".
+     go6 doesn't work correctly.
+
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -58,17 +69,18 @@
 
 import util.
 
-main => go.
+main => go3.
 
 %
-% using check/2: 17.5s
+% using check/2: 8.664s
 % [[26,abcde],[23,rstuv],[23,lmnop],[6,efghi],[3,klmno],[1,defgh]]
 % CPU time 17.5s seconds.
 %
 go =>
    Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("eng_dict.txt"),   
    % Words = read_file_lines("/usr/share/dict/words"),
-   % Words = read_file_lines("/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt"),
+   % Words = read_file_lines("sv_spelling_org_utf8.txt"),
    Alpha = lower(),
    Len = 5,
    AllMatch = [],
@@ -91,10 +103,15 @@ go =>
 
    nl.
 
+% Test pattern
+go1 ?=>
+  nl.
+
+go1 => true.
+
 %
-% using check2: 17.5s
+% using check2: 9.756s
 % [26,abcde],[23,rstuv],[23,lmnop],[6,efghi],[3,klmno],[1,defgh]]
-% CPU time 17.5 seconds.
 %
 go2 =>
    Words = read_file_lines("words_lower.txt"),
@@ -130,13 +147,14 @@ go2b =>
 
 
 %
-% using check3: 3.7s
+% using check3: 1.51s
 % [[26,abcde],[23,rstuv],[23,lmnop],[6,efghi],[3,klmno],[1,defgh]]
-% CPU time 3.7s seconds.
 %
 go3 =>
    Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("sv_spelling_org_utf8.txt"),   
    % Words = read_file_lines("/usr/share/dict/words"),
+   println(numWords=Words.len),
    Alpha = lower(),
    Len = 5,
    AllMatch = [],
@@ -160,11 +178,12 @@ go3 =>
    nl.
 
 %
-% Variant using list comprehension (and a slightly different presentation): 3.6s
+% Variant using list comprehension (and a slightly different presentation): 1.712s
 %
 go3b =>
-   Words = read_file_lines("words_lower.txt"),
+   % Words = read_file_lines("words_lower.txt"),
    % Words = read_file_lines("/usr/share/dict/words"),
+   Words = read_file_lines("/home/hakank/public_html/combograms/sv_spelling_org_utf8.txt"),   
    Alpha = lower(),
    Len = 5,
    Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
@@ -173,10 +192,148 @@ go3b =>
 
    nl.
 
-
-% much slower due to the overhead of call/n
+%
+% slower due to the overhead of call/3: 21.297s
+%
 go4 =>
   test_all("words_lower.txt",5,check3).
+
+% Just a test of check_dcg/3 with "abc"
+go5 ?=>
+  Words = read_file_lines("words_lower.txt"),
+  % Words = read_file_lines("sv_spelling_org_utf8.txt"),
+  foreach(Word in Words,check_dcg(Word,[])) 
+    println(Word)
+  end,
+  nl.
+
+go5 => true.
+
+%
+% Testing check_dcg2/3: This don't work correctly!
+%
+go6 ?=>
+  Len = 5,
+  Alpha = lower(),
+  % Words = read_file_lines("sv_spelling_org_utf8.txt"),
+  Words = read_file_lines("words_lower.txt"),
+  Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+  Counts = [],
+  foreach(Pattern in Patterns)
+    print(Pattern),
+    Matches = [],
+    foreach(Word in Words,check_dcg2(Pattern,Word,[]))
+       Matches := Matches ++ [Word]
+    end,
+    println(Matches),
+    MatchesLen = Matches.len,
+    println(len=MatchesLen),
+    if MatchesLen > 0 then
+      Counts := Counts ++ [Pattern=MatchesLen]
+    end
+  end,
+  println(Counts),
+  nl.
+
+go6 => true.
+
+%
+% check_gcd3: 5.482s
+% check_gcd4: 3.88s
+%
+go7 ?=>
+  Alpha = lower(),
+  Len = 5,  
+  Patterns = [ [Alpha[J] : J in I..I+Len-1] : I in 1..Alpha.length-Len+1],
+  Words = read_file_lines("words_lower.txt"),    
+  % Words = read_file_lines("unixdict.txt"),
+  % Words = read_file_lines("sv_spelling_org_utf8.txt"),
+  Counts = [],
+  foreach(Pattern in Patterns)
+    println(Pattern),
+    Matches = [],
+    % foreach(Word in Words,check_dcg3(Pattern,Word,[]))
+    foreach(Word in Words,check_dcg4(Pattern,Word,[]))    
+      Matches := Matches ++ [Word]
+    end,
+    println(Matches),
+    MatchesLen = Matches.len,
+    println(len=MatchesLen),
+    if MatchesLen > 0 then
+      Counts := Counts ++ [Pattern,MatchesLen]
+    end
+  end,
+  println(Counts),
+  nl.
+
+go7 => true.
+
+
+%
+% Here are some explorations on DCG.
+% gcd3/3 is the only that is reasonable fast.
+%
+alphabet(A) =>
+   A = [C : C in "abcdefghijklmnopqrstuvwxyzåäö"].
+
+alphabet() = "abcdefghijklmnopqrstuvwxyzåäö".
+
+% Just testing "*.a.*b.*c.*"
+check_dcg --> any_star, a, any_star, b, any_star, c, any_star, d, any_star.
+
+
+a --> ['a'].
+b --> ['b'].
+c --> ['c'].
+d --> ['d'].
+e --> ['e'].
+f --> ['f'].
+g --> ['g'].
+h --> ['h'].
+i --> ['i'].
+j --> ['j'].
+k --> ['k'].
+l --> ['l'].
+m --> ['m'].
+n --> ['n'].
+o --> ['o'].
+p --> ['p'].
+q --> ['q'].
+r --> ['r'].
+s --> ['s'].
+t --> ['t'].
+u --> ['u'].
+v --> ['v'].
+w --> ['w'].
+x --> ['x'].
+y --> ['y'].
+z --> ['z'].
+aa --> ['å'].
+ae --> ['ä'].
+oe --> ['ö'].
+
+any_star --> "" ; any_star1.
+
+any_star1 --> char, any_star.
+char --> [C], {membchk(C,alphabet())}.
+
+char(C) --> [C], {membchk(C,alphabet())}.
+
+
+% Another approach: Don't work correctly
+check_dcg2([H|Tail]) --> any_star, char(H), check_dcg2(Tail).
+check_dcg2([]) --> [].
+
+% Another approach: Quite fast.
+any_star3 --> [] ; ([C], { char(C) },  any_star3).
+check_dcg3([C|Cs]) --> any_star3, char(C), check_dcg3(Cs).
+check_dcg3([]) --> any_star3.
+
+% Same as check_dcg3, but without checking with char(C).
+% Faster than check_dcg3.
+any_star4 --> [] ; [_C],  any_star4.
+check_dcg4([C|Cs]) --> any_star4, [C], check_dcg4(Cs).
+check_dcg4([]) --> any_star4.
 
 
 lower() = [chr(I+96) : I in 1..26].
@@ -224,7 +381,7 @@ check2(String,Pattern) =>
 
 
 %
-% Plain recursive version.
+% check3/3: Plain recursive version.
 % Much faster - and smaller - than check/2 and check2/2.
 %
 
@@ -241,9 +398,10 @@ check3(_S,[]) =>
   true.
 
 
+%
 % General testing of the predicates. 
 % However the use of call/n slows it down considerably.
-% E.g. test_all("words_lower.txt",5,check3) takes 68s, compared to go3's 3.7s
+% E.g. test_all("words_lower.txt",5,check3) takes 21.297s, compared to go3's 1.5s
 %
 test_all(Dict,Len,CheckPred) =>
    Words = read_file_lines(Dict),
@@ -253,10 +411,8 @@ test_all(Dict,Len,CheckPred) =>
    foreach(Pattern in Patterns) 
       println(pattern=Pattern),
       Match = [],
-      foreach(Word in Words)
-         if call(CheckPred,Word,Pattern) then
-            Match := Match ++ [Word]
-         end
+      foreach(Word in Words,call(CheckPred,Word,Pattern))
+         Match := Match ++ [Word]
       end,
       println(Match),
       println(len=Match.length),
@@ -295,3 +451,4 @@ find2(String, Substring, From, To), char(Substring) =>
 
 find2(String, Substring, From, To) => 
   find(String, Substring, From, To).
+

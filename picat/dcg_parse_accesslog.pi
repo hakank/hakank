@@ -1,0 +1,139 @@
+/* 
+
+  Parse an Apache access log using DCG in Picat.
+
+  Well, it's not as fast as my Perl version, 
+  but it works and is not very slow.
+
+  Tested with an access.log file of 122253 lines (29Mb):
+  * go/0 uses read_file_lines/1 and takes 3.844s  with printing.
+  * go2/0 instead uses a while loop with read_line/1 and is quite faster: 1.914s.
+
+  parse_apachelog_list is - expectedly - faster than parse_apachelog_map.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import dcg_utils.
+
+main => go.
+
+/*
+  using list: w printing: 3.844s w/o printing: 3.283
+  using map: w printing: 5.108s w/o printing: 3.595s
+*/
+go ?=>
+  garbage_collect(300_000_000), % This helps a lot for the speed.
+  Lines = read_file_lines("access.log"), % 1.379s (reading 122253 lines)
+  NumLines = 0,
+  NumFailed = 0,
+  foreach(Line in Lines)
+     NumLines := NumLines + 1,
+     if parse_apachelog_list(List,Line,[]) then     
+     % if parse_apachelog_map(Map,Line,[]) then
+        % println(list=List)
+        % println(map=Map)
+        % true
+        println([List[5],List[6]])
+        % println([host=Map.get(host),method=Map.get(method),url=Map.get(url),http=Map.get(http),size=Map.get(size),http_code=Map.get(http_code)])
+     else
+       println(cannot_parse=Line),
+       NumFailed := NumFailed + 1
+     end
+  end,
+  nl,
+  println(num_lines=NumLines),
+  println(num_failed=NumFailed),
+  nl.
+go => true.
+
+/*
+  Using while read_line instead of read_file_lines
+  using list: w printing: 1.914s w/o printing: 1.839s
+  using map: w printing: 2.19s w/o printing: 2.007s
+*/
+go2 ?=>
+  garbage_collect(300_000_000),
+  Reader = open("access.log"),
+  NumLines = 0,
+  NumFailed = 0,
+  Line = read_line(Reader),
+  while(Line != end_of_file)
+     NumLines := NumLines + 1,
+     if parse_apachelog_list(List,Line,[]) then
+     % if parse_apachelog_map(Map,Line,[]) then     
+        % println(list=List)
+        % println(map=Map)
+        % true
+        println([List[5],List[6]])
+        % rintln([Map.get(http),Map.get(http_code)])
+        % true
+        % println([host=Map.get(host),method=Map.get(method),url=Map.get(url),http=Map.get(http),size=Map.get(size),http_code=Map.get(http_code)])
+     else
+       println(cannot_parse=Line),
+       NumFailed := NumFailed + 1
+     end,
+     Line := read_line(Reader)
+  end,
+  nl,
+  println(num_lines=NumLines),
+  println(num_failed=NumFailed),
+  nl.
+go2 => true.
+
+
+
+%
+% Check unparsable lines
+%
+go3 ?=>
+  % NewsBlur has a little strange Browser agent entry, it includes \\ + " which this parser cannot handle... Fixed
+  % Line = "147.182.172.176 - - [05/Mar/2022:17:35:29 +0100] \"GET /webblogg/atom.xml HTTP/1.1\" 200 33506 \"-\" \"NewsBlur Feed Fetcher - 3 subscribers - https://www.newsblur.com/site/2884331/hakankblogg (\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15\")",
+  % Same with some amazonaws.com. Fixed.
+  % ec2-52-90-165-211.compute-1.amazonaws.com - - [13/Mar/2022:11:27:18 +0100] "GET /webblogg/ HTTP/1.1" 200 53338 "https://www.google.com" "Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Google Chrome\";v=\"90"
+
+  % Of the 122253 entries in the current accesslog file, this is the only line that failed to parse.
+  % The reason is that it's not a correct URL: there is a \" after the URL and thus it give a 404.
+  Line = "msnbot-207-46-13-50.search.msn.com - - [01/Mar/2022:01:22:29 +0100] \"GET /constraint_programming/\" HTTP/1.1\" 404 489 \"-\" \"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)\"",
+
+  writeln(line=Line),
+  parse_apachelog_list(List,Line,[]),
+  println(list=List),
+  nl.
+go3 => true.
+
+% Note that everything returned is a string so conversion to integers have to be done by the caller
+% The format of the Apache access log file is
+%   Host Identd User [Date] "Method URL HTTP" HTTPCode Size "Referer" "BrowserAgent"
+% For my webserver, both Identd and User are always "-"
+%
+% (See https://httpd.apache.org/docs/2.4/logs.html)
+%
+parse_apachelog_list([Host,Date,Method, URL,HTTP,HTTPCode,Size,Referer,BrowserAgent]) -->
+                                               any_except(Host," "), 
+                                               " - - ", % Identd and User, always "-"
+                                               "[", any_except(Date,"]"), "]",
+                                               " ",
+                                               "\"",any_except(MethodURLHTTP,"\""),"\"",
+                                               % Fix for finding strange Method + URL + HTTP entries.
+                                               {( [1 : C in MethodURLHTTP, C==' '].len == 2 ->
+                                                     MethodURLHTTP.split() = [Method,URL,HTTP]
+                                                ;
+                                                    Method="?",URL="?",HTTP="?"
+                                               )},
+                                               " ",
+                                               digits(HTTPCode), " ",
+                                               digits(Size), " ",
+                                               "\"", any_except(Referer,"\""), "\"", " ",
+                                               % The browser agent entry might contain \" so I just take everything...
+                                               any(BrowserAgent).
+
+% Return a map with the entries
+parse_apachelog_map(Map) -->  parse_apachelog_list([Host,Date,Method,URL,HTTP,HTTPCode,Size,Referer,BrowserAgent]),
+                              {Map = new_map([host=Host,date=Date,method=Method,
+                                              url=URL,http=HTTP,http_code=HTTPCode,
+                                              size=Size,referer=Referer,browser_agent=BrowserAgent])}.
