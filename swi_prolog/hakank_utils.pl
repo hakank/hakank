@@ -599,6 +599,7 @@ diagonal1_slice(M,Slice) :-
 %%
 diagonal2_slice(M,Slice) :-
         length(M,N),
+        writeln(n=N),nl,
         findall([I,I2],
                 (between(1,N,I),
                  I2 #= N-I+1)
@@ -786,7 +787,7 @@ atleast(N,L,V) :-
 %%
 list_domain_disjunction([D|Ds],Disj) :-
         foldl(disj,Ds,D,Disj).
-disj(A,B,C) :-C = \/(A,B).
+disj(A,B,C) :-C = \/(B,A).
 
 
 %%
