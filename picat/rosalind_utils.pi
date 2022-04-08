@@ -1,0 +1,100 @@
+/* 
+
+  Utils for Rosalind problems in Picat.
+
+  http://rosalind.info/
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module rosalind_utils.
+
+import v3_utils.
+import dcg_utils.
+import util.
+
+
+% main => go.
+
+rosalind_utils_test ?=>
+  
+  
+  nl.
+rosalind_utils_test => true.
+
+
+%
+% Generate/parse a DNA string.
+% For generating strings this is too boring
+% except for shorter strings.
+% For larger strings use dna_gen*/k instead.
+%
+dna --> as ; cs ; gs ; ts.
+dna --> [].
+as --> ['A'], dna.
+cs --> ['C'], dna.
+gs --> ['G'], dna.
+ts --> ['T'], dna.
+
+%
+% Generate random DNA sequence.
+% Note, one cannot use fail directly since it's using random/2.
+% See examples in rosalind_dna.pi, rosalind_revc.pi, and rosalind_rna.pi.
+%
+dna_gen1([C|Cs]) --> {DNA = "ACGT", R = random(1,4), C = DNA[R]}, dna_gen1(Cs).
+dna_gen1([]) --> [].
+
+
+%
+% Parse a (Rosalind) FASTA file.
+% Returns a list of [FastaID, DNA]
+%
+parse_fasta(Fasta) = L =>
+   parse_fasta(L,Fasta,[]).
+parse_fasta1([Id,F]) --> ">", any_except(Id,"\n"), "\n",
+                        any_except(F1,">"),
+                        {F = delete_all(rstrip(F1),'\n')}.
+parse_fasta([F|Fs]) --> parse_fasta1(F), (parse_fasta(Fs) ; []).
+parse_fasta([]) --> [].
+
+% Also read the file.
+parse_fasta_file(File) = L =>
+   Fasta = read_file_chars(File),
+   parse_fasta(L,Fasta,[]).
+
+
+%
+% Used in rosalind_cons.pi
+%
+consensus_and_profile(Fs,Map, Consensus,Profile) =>
+  NumFasta = Fs.len,
+  StrLen = Fs[1].len,
+  
+  Profile = new_array(4,StrLen),
+  bind_vars(Profile,0),
+  foreach(I in 1..4)
+     Char = Map.get(I),
+     foreach(Pos in 1..StrLen)
+        Profile[I,Pos] :=  sum([1 : F in 1..NumFasta, Fs[F,Pos] == Char] )
+     end
+  end,
+
+  Consensus = new_array(StrLen),
+  foreach(Pos in 1..StrLen)
+     Consensus[Pos] = Map.get(argmax([Profile[C,Pos] : C in 1..4]))
+  end.
+
+
+%
+% pos is the position of the maximum element
+%
+argmax(X) = Pos =>
+  Pos1 = 1,
+  foreach(I in 2..X.len)
+    if X[I] > X[Pos1] then
+      Pos1 := I
+    end
+  end,
+  Pos = Pos1.

@@ -1,14 +1,42 @@
 /* 
 
-  Wordle solver in Picat.
+  Wordle solver using CP in Picat.
 
-  This is a smaller version of Wordle solver than wordle.pi
-  just including the solver, not all the other experiments.
+  This is a Wordle solver using constraint modelling.
+
+  It's a little strange to use CP here since it's
+  not really a CP problem. 
+
+  Compare with the faster wordle4.pi which use the same logic in accept_word,
+  but without the #=, #> constraints.
+
+  Compare with my other Wordle solvers:
+  Here are some times for one of the problems:
+       
+  - wordle.pi: The original model, foreach loops, quite fast solver.
+  - wordle2.pi: Prolog style. The fastest solver.
+  - wordle3.pi: using cl_facts and word/1. The slowest solver.
+  - wordle4.pi: Using forloops but more compact than wordle.pi. Quite fast solver
+  - wordle_cp.pi: (This model) Slower solver
+  - wordle_dcg.pi: Using DCGs, including generating the words with a DCG. Slowest in total.
+
+  Solver          Solve time      Total system time
+  -----------------------------------------
+  wordle.pi      0.001..0.002s    0.047..0.52s
+  wordle2.pi     0.0..0.001s(*)   0.035..0.038s(*)
+  wordle3.pi     0.016..0.025s    0.055..0.060s
+  wordle4.pi     0.001..0.002s    0.039..0.041s
+  wordle_cp.pi   0.014..0.017s    0.55s..0.54s
+  wordle_dcg.pi  0.0..0.001s      0.170..0.185s
+
+  (*) Marks the best times.
 
   This model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
+
+import cp.
 
 main => go.
 
@@ -52,19 +80,35 @@ go => true.
 %    - NotInWord: characters not in word.
 %      Example: s, a, and t are not in the word: "sat"
 %
-wordle(CorrectPos, CorrectChar, NotInWord) =>
+wordle(CorrectPos1, CorrectChar1, NotInWord1) =>
   N = 5,
+  println($wordle(CorrectPos1, CorrectChar1, NotInWord1)),
+  CorrectPos = [V : C in CorrectPos1, V = cond(C != '.', convert(C), 0)],
+  CorrectChar = [convert_list(Cs) : Cs in CorrectChar1],
+  NotInWord = convert_list(NotInWord1),
+
+  println(correctPos=CorrectPos),
+  println(correctChar=CorrectChar),
+  println(notIntWord=NotInWord),    
   % File = "unixdict.txt", % 3161 5 letter words. Is this the smallest word list?
   File = "wordle_small.txt", % 2314 words
   % File = "wordle_large.txt", % 12971 words
   % File = "eng_dict.txt", % 9336 5 letter words
-  % File = "words_lower.txt", % 21830 English 5 letter words 
+  % File = "words_lower.txt", % 21830 English 5 letter words
+  WordsAlpha = [W : W in read_file_lines(File), W.len == N],
+  Words = convert_words(WordsAlpha),
 
-  Words = [W : W in read_file_lines(File), length(W) == N], 
+  % Words = [W : W in read_file_lines(File), length(W) == N], 
   NumWords = Words.len,
   println(numWordsInDict=NumWords),
 
-  wordle(Words, CorrectPos, CorrectChar, NotInWord,[],Candidates),
+  Candidates = [],
+  foreach(I in 1..NumWords)
+    if accept_word(Words[I], CorrectPos, CorrectChar, NotInWord) then
+      Candidates := Candidates ++ [WordsAlpha[I]]
+    end
+  end,
+  Candidates := sort_candidates(Candidates),
   println(candidates=Candidates),
   println(len=Candidates.len),
   (Candidates != [] -> println(suggestion=Candidates.first()) ; true),
@@ -74,64 +118,30 @@ wordle(CorrectPos, CorrectChar, NotInWord) =>
 %
 % The main engine:
 % Loop through all words and check if they are in the scope.
-% 
-wordle([], _CorrectPos, _CorrectChar, _NotInWord,AllWords,Sorted) :-
-  sort_candidates(AllWords,Sorted).
-wordle([Word|Words], CorrectPos, CorrectChar, NotInWord, AllWords0,AllWords) :-
-   ( (correct_pos(Word,CorrectPos),
-      correct_char(Word,Word,CorrectChar),
-      not_in_word(Word,NotInWord)) ->
-       AllWords1 = AllWords0 ++ [Word],
-       wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords1,AllWords)
-    ;
-     wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords0,AllWords)
-   ).
+%
+accept_word(Word, CorrectPos, CorrectChar, NotInWord) =>
+  N = Word.len,
+  foreach(I in 1..N)
+    if CorrectPos[I] > 0 then
+      CorrectPos[I] #= Word[I]
+    end,
+    if CorrectChar[I] != [] then
+      foreach(C in CorrectChar[I])
+        Word[I] #!= C,
+        sum([Word[J] #= C : J in 1..N, J != I]) #> 0
+      end
+    end
+  end,
+  foreach(C in NotInWord)
+     sum([Word[I] #= C : I in 1..N]) #= 0
+  end.
+  % solve(Word).
 
-%
-% Correct position.
-%
-% Ensure that all chars != "." are in correct position.
-% 
-correct_pos([],[]).
-correct_pos([C|Cs],[C2|CorrectPos]) :-
-  (C == C2 ; C2 == '.'),
-  correct_pos(Cs,CorrectPos).
-
-%
-% Correct char.
-% Ensure that the character is in the word, but not
-% in the given position.
-% 
-correct_char(_,_,[]).
-correct_char(Word,[W|WordRest],[CC|CorrectChars]) :-
-  correct_char_(Word,W,CC), % check each character in CorrectChars
-  correct_char(Word,WordRest,CorrectChars).
-
-%
-% Helper function for correct_char/2.
-% Check each character in CorrectChar against each
-% character in the candidate word.
-%
-correct_char_(_,_,[]).
-correct_char_(Word,W,[C|CorrectChars]) :-
-  W != C,
-  membchk(C,Word),
-  correct_char_(Word,W,CorrectChars).
-
-%
-% Characters not in word.
-% Ensure that the given chararacter are not in the
-% candidate word.
-% 
-not_in_word(_Word,[]).
-not_in_word(Word,[C|Cs]) :-
-  not membchk(C,Word),
-  not_in_word(Word,Cs).
 
 %
 % Sort the candidates.
 %
-sort_candidates(Candidates,Sorted) =>
+sort_candidates(Candidates) = Sorted =>
   % The probability order for each position in the word.
   % Reversed and with missing chars.
   % See wordle.pi (go2/0) for the method to get this.
@@ -165,3 +175,9 @@ score_word([C|Cs],[Alpha|Alphas],Score0,Score) :-
 % Print an empty board
 empty() =>
   println("wordle(\".....\",[\"\",\"\",\"\",\"\",\"\"],\"\")").
+
+
+% Convert words to integers
+convert_words(Words) = [ convert_list(Word) : Word in Words].
+convert_list(W) = [convert(C) : C in W].
+convert(C) = ord(C)-96.

@@ -1,0 +1,151 @@
+/* 
+
+  Rosaling gc problem in Picat.
+
+  https://rosalind.info/problems/gc/
+  """
+  Computing GC Content
+
+  Problem
+  The GC-content of a DNA string is given by the percentage of symbols in the string that are 
+  'C' or 'G'. For example, the GC-content of "AGCTATAG" is 37.5%. Note that the reverse complement 
+  of any DNA string has the same GC-content.
+
+  DNA strings must be labeled when they are consolidated into a database. A commonly used method 
+  of string labeling is called FASTA format. In this format, the string is introduced by a line 
+  that begins with '>', followed by some labeling information. Subsequent lines contain the string 
+  itself; the first line to begin with '>' indicates the label of the next string.
+
+  In Rosalind's implementation, a string in FASTA format will be labeled by the ID "Rosalind_xxxx", 
+  where "xxxx" denotes a four-digit code between 0000 and 9999.
+
+  Given: At most 10 DNA strings in FASTA format (of length at most 1 kbp each).
+
+  Return: The ID of the string having the highest GC-content, followed by the GC-content of 
+  that string. Rosalind allows for a default error of 0.001 in all decimal answers unless otherwise 
+  stated; please see the note on absolute error below.
+
+  Sample Dataset
+     >Rosalind_6404
+     CCTGCGGAAGATCGGCACTAGAATAGCCAGAACCGTTTCTCTGAGGCTTCCGGCCTTCCC
+     TCCCACTAATAATTCTGAGG
+     >Rosalind_5959
+     CCATCGGTAGCGCATCCTTAGTCCAATTAAGTCCCTATCCAGGCGCTCCGCCGAAGGTCT
+     ATATCCATTTGTCAGCAGACACGC
+     >Rosalind_0808
+     CCACCCTCGTGGTATGGCTAGGCATTCAGGAACCGGAGAACGCTTCAGACCAGCCCGGAC
+     TGGGAACCTGCGGGCAGTAGGTGGAAT
+
+  Sample Output
+    Rosalind_0808
+    60.919540
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import dcg_utils.
+import rosalind_utils.
+
+main => go.
+
+go ?=>
+  File = "rosalind_gc_fasta_1.txt",
+  % File = "rosalind_gc_fasta_challenge.txt",
+  Fasta = read_file_chars(File),
+  println(fasta=Fasta),
+  nl,
+  parse_fasta_with_scores(F,Fasta,[]),
+  println(f=F),
+  nl,
+  Sorted = F.sort_down(),
+  printf("%w\n%0.6f\n",Sorted[1,2],Sorted[1,1]),
+
+  nl.
+go => true.
+
+%
+% Separate the score from the parsing.
+%
+go2 ?=> 
+  File = "rosalind_gc_fasta_1.txt",
+  % File = "rosalind_gc_fasta_challenge.txt",
+  Fasta = read_file_chars(File),
+  println(fasta=Fasta),
+  nl,
+  % parse_fasta(Fs,Fasta,[]),
+  Fs = parse_fasta(Fasta), % in rosalind_utils.pi
+  println(fs=Fs),
+  nl,
+  % Add the scores
+  Sorted = [ [Score,Id,F] : [Id,F] in Fs, Score = gc_score(F)].sort_down(),
+  printf("%w\n%0.6f\n",Sorted[1,2],Sorted[1,1]),
+
+  nl.
+go2 => true.
+
+
+%
+% Using split etc
+%
+go3 ?=>
+  % File = "rosalind_gc_fasta_1.txt",
+  File = "rosalind_gc_fasta_challenge.txt",
+  Fasta = read_file_chars(File),
+  Fs = split(Fasta,">"),
+  Scores = [],
+  foreach(F in Fs)
+    Lines = split(F,"\n"),
+    DNA = Lines.slice(2).join(''),
+    Score = gc_score(DNA),
+    Scores := Scores ++ [[Score,Lines[1]]]
+  end,
+  Best = Scores.sort_down.first.reverse,
+  printf("%w\n%0.6f\n",Best[1],Best[2]),
+  nl.
+go3 => true.
+
+/*
+  Here's the definition of any_except/2 (from my dcg_utils.pi)
+
+   % Accept any character except characters in the list Except.
+   any_except([C|Rest],Except) --> [C], { char(C), not membchk(C,Except) }, any_except(Rest,Except).
+   any_except([],_Except) --> [] .
+
+*/
+
+%
+% Parse a Rosalind FASTA file using DCG.
+% 
+% We place GCScore first so it can easily be sorted.
+% But perhaps I should have omitted the score here to use it
+% just as a fasta parser...
+%
+parse_fasta_with_scores1([GCScore,Id,F]) --> ">", any_except(Id,"\n"), "\n",
+                        any_except(F1,">"),
+                        {F = delete_all(rstrip(F1),'\n'), GCScore=gc_score(F)}.
+parse_fasta_with_scores([F|Fs]) --> parse_fasta_with_scores1(F), (parse_fasta_with_scores(Fs) ; []).
+parse_fasta_with_scores([]) --> [].
+
+
+%
+% Get the GC score.
+%
+gc_score(S) = Pct =>
+  Len = S.len,
+  gc_count(S,0,Count),
+  Pct = 100*Count/Len.
+% Count Gs and Cs.
+% Note: Here I could have used the counts from rosalind_dna.pi
+gc_count([],C,C).
+gc_count([C|Cs],Count0,Count) :-
+  (  (C == 'G' ; C == 'C') ->
+    Count1 = Count0 + 1
+   ;
+    Count1 = Count0 
+  ),
+  gc_count(Cs,Count1,Count).
+  

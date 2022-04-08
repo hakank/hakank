@@ -1,0 +1,243 @@
+/* 
+
+  Word Design for DNA Computing on Surfaces in Picat.
+
+  Port of SICStus Prolog model dna.pl
+  """
+  prob*: Word Design for DNA Computing on Surfaces
+  CSPlib problem 033
+  Mats Carlsson
+  """
+
+  Note: I removed a lot of different variants (that tests different search 
+  heuristics) from the SICStus Prolog model and just kept the 'plain' version.
+
+
+  From SICStus Prolog dna.pl:
+  """
+  | ?- dna(plain,86)
+     .
+  AAAACCCC
+  AAAAGGGG
+  AATTCCGG
+  ...
+  CCTTACTC
+  GAGATTCC
+  GCTAAACC
+  """
+
+  What I can see, this is the same result as when using [split] or [ff,split] 
+  as a search strategy in this Picat model.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import util.
+
+import cp.
+% import sat. % much slower
+
+
+main => go.
+
+go ?=>
+  % time2(dna(plain,86,[split])), % CPU time 1.955 seconds. Backtracks: 0
+  % time2(dna(plain,86,[ff])), %   CPU time 1.947 seconds. Backtracks: 1571
+  time2(dna(plain,86,[ff,split])), %   CPU time 1.925 seconds. Backtracks: 0
+  
+  nl,
+  % fail,
+  nl.
+go => true.
+
+go2 ?=>
+  dna(plain,86,[]),  
+  nl,
+  % fail,
+  nl.
+go2 => true.
+
+/*
+  Checking some instances (see below).
+
+  N    Picat        SICStus Prolog
+       model        model
+       [ff,split]   plain,N
+  ----------------------------------
+  40    0.065s      0.100s
+  60    0.183s      0.230s
+  70    0.276s      0.320s
+  80    0.381s      0.460s
+  81    0.387s      0.470s
+  82    0.409s      0.520s
+  83    0.424s      0.530s
+  85    0.481s      0.640s
+  86    0.507s      0.710s
+  87    6.682s     14.140s Note: For dna(sandwich,86) the SICStus Prolog is much faster:0.600s.
+
+
+*/
+go3 ?=>
+  Instances = [40,60,70,80,81,82,83,84,85,86,87,88],
+  member(N,Instances),
+  println(n=N),
+  garbage_collect(300_000_000),
+  once(time2(dna(plain,N,[ff,split]))),
+  nl,
+  fail,
+  nl.
+go3 => true.
+
+
+dna(plain, NbOctos,Lab) :-
+	system(NbOctos, Octos),
+	append(Octos, Vars),
+        println(solve),
+	solve(Lab, Vars),
+        display_each(Octos).
+
+display_each([]).
+display_each([Octo|Octos]) :-
+        String1 = [],
+        foreach(B in Octo)
+          acgt_map(B, C),
+          String1 := String1 ++ [C]
+        end,
+        String = String1,
+        println(String),
+	display_each(Octos).
+
+acgt_map(0, 'A').
+acgt_map(1, 'T').
+acgt_map(10, 'C').
+acgt_map(11, 'G').
+
+
+system(NbOctos, Octos) :-
+        Octos = new_array(NbOctos,8).array_matrix_to_list_matrix(),
+        Octos :: [0,1,10,11],
+
+        foreach(O2 in Octos)
+          Sum :: 40..48,
+          sum(O2) #= Sum
+        end,
+        
+        Pentas1 = [],
+        foreach([A,B,C,D,E,_,_,_] in Octos)
+          Pentas1 := Pentas1 ++ [[A,B,C,D,E]]
+        end,
+        Pentas = Pentas1,
+        lex_chain_less(Pentas), % saves runtime and backtracks
+
+	all_compl_local(Octos).
+
+/* Local handling of the all-diffs */
+
+all_compl_local([]).
+all_compl_local([O|Os]) :-
+	reverse(O, R),
+	all_differ4(Os, O),
+	all_cdiffer4([O|Os], R),
+	all_compl_local(Os).
+
+all_differ4([], _) :- !.
+all_differ4(Octos, RevOcto) :-
+	extend_vars(Octos, RevOcto, L1, L2, L3),
+	transpose([L1,L2,L3], Tuples1),
+        Tuples=[{L1x,L2x,L3x} : [L1x,L2x,L3x] in Tuples1],
+	extension(eqs, Extension),
+	table_in(Tuples, Extension).
+
+all_cdiffer4(Octos, RevOcto) :-
+	extend_vars(Octos, RevOcto, L1, L2, L3),
+	transpose([L1,L2,L3], Tuples1),
+        Tuples=[{L1x,L2x,L3x} : [L1x,L2x,L3x] in Tuples1],        
+	extension(eqcs, Extension),
+	table_in(Tuples, Extension).
+
+extend_vars([], _, [], [], []).
+extend_vars([O|Os], R, L1, L2, L3) :-
+	length(D, 8),
+	domain(D, 0, 1),
+	sumle4(D),
+	append(O, L1b, L1),
+	append(R, L2b, L2),
+	append(D, L3b, L3),
+	extend_vars(Os, R, L1b, L2b, L3b).
+
+% Z=1 iff X and Y are equal (eqs) or complementary (eqcs)
+extension(eqs , [ {0,0,1},  {0,1,0},  {0,10,0},  {0,11,0},
+		  {1,0,0},  {1,1,1},  {1,10,0},  {1,11,0},
+		 {10,0,0}, {10,1,0}, {10,10,1}, {10,11,0},
+		 {11,0,0}, {11,1,0}, {11,10,0}, {11,11,1}]).
+extension(eqcs, [ {0,0,0},  {0,1,1},  {0,10,0},  {0,11,0},
+		  {1,0,1},  {1,1,0},  {1,10,0},  {1,11,0},
+		 {10,0,0}, {10,1,0}, {10,10,0}, {10,11,1},
+		 {11,0,0}, {11,1,0}, {11,10,1}, {11,11,0}]).
+
+/* Utilities */
+% :- public sumeq4/1. % [PM] 4.3.1 suppress unused-predicate warning
+sumeq4([B1,B2,B3,B4,B5,B6,B7,B8]) :-
+% 	sum(Bs, #=<, 4).
+	sumeq4_ix(B1,B2,B3,B4,B5,B6,B7,B8).
+
+sumeq4_ix(B1,B2,B3,B4,B5,B6,B7,B8) :-
+	B1+B2+B3+B4+B5+B6+B7+B8 #= 4.
+
+sumle4([B1,B2,B3,B4,B5,B6,B7,B8]) :-
+% 	sum(Bs, #=<, 4).
+	sumle4_ix(B1,B2,B3,B4,B5,B6,B7,B8).
+
+sumle4_ix(B1,B2,B3,B4,B5,B6,B7,B8) :-
+	B1+B2+B3+B4+B5+B6+B7+B8 #=< 4.
+
+% hakank
+domain(FD,From,To) :-
+  FD :: From..To.
+
+lex_chain_less(X) =>
+  N = X.len,
+  M = X[1].len,
+  foreach(I in 2..N) 
+    lex_lt([X[I-1, J] : J in 1..M], [X[I, J] : J in 1..M])
+  end.
+
+
+
+% From the SICStus Prolog model.
+/*
+Version Size    Backtracks      Runtime [bonk]
+======= ====    ==========      =======
+plain     40           231          810
+plain     50           354         1500
+plain     60           426         2120
+plain     70           574         3300
+plain     80           758         4460
+plain     81           772         4660
+plain     82           809         5030
+plain     83           820         5630
+plain     84           903         5800
+plain     85          1091         6470
+plain     86          1146         6780
+plain     87         84202       419800
+
+#backtracks as function of discrepancy limit for plain 80:
+
+discrepancy backtracks
+=========== ==========
+     >= 197        758
+        196        765
+        195        781
+        194        883
+        193        996
+        192       2521
+        191       1729
+        190       3185
+        189       8426
+        188       4986
+        187      23036
+        186      41255
+*/

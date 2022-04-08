@@ -198,7 +198,8 @@ number_string(N,S), var(N) =>
 
 % From Clocksin & Mellish "Programming in Prolog Using the ISO Standard" 
 % 5th edition, page 223
-
+% Note: For more advanced usages of DCGs this will probably not work...
+%
 % phrase/2
 phrase(P,L) :-
     Goal =.. [P,L,[]],
@@ -455,11 +456,17 @@ write_string(String) :-
 % read(Stream,Term): This is equivalent to read term(Stream,Term),[]).
 % read(Term): This is equivalent to read term(Term,[]).
 %
+% Note: These are not available in Picat's bp module. Instead one have to
+% manually change to Picat's I/O functions such as
+%    read() = X
+%    read_term() = Term
+%    ...
 % read(Stream,Term) :-
 %   bp.read(Stream,Term).
 
 % read(Term) :-
 %   bp.read(Term).
+
 
 %
 % B-Prolog
@@ -605,11 +612,13 @@ portray_clause(Stream,Clause) :-
   assert($rich(hakank))
 */
 % Use bp's findall/3:
-% Picat> findall(X,$rich(X),L)
+% Picat> bp.findall(X,$rich(X),L)
 % L = [mary,hakank]
-% Or Picat's findall/2
-% Picat> L = findall(X,bp.rich(X))  
+% 
+% Or Picat's findall/2 (it should be $rich, not bp.rich or $bp.rich)
+% Picat> L = findall(X,$rich(X))  
 % L = [mary,hakank]
+%
 % Picat> Head = $happy(X), clause(Head,Body), portray_clause($(Head :- Body))
 % happy(A) :-
 %         rich(A),
@@ -862,7 +871,7 @@ flatten(L1,L2) :-
 % X = 3
 % Xs = [c]
 %
-% It also supports the Var^Term pattern (not the escapes)
+% It also supports the Var^Term pattern (note the $ escapes).
 % Picat> setof(X, $member(X-Y, [1-2, 2-2, 1-3]), Xs).  
 % Y = 2
 % Xs = [1,2] ?;
@@ -978,8 +987,9 @@ copy_term(T,C) :-
 % attributed variables can occur in Term1 or in Term2.
 % """
 %
-subsumes_term(Term1,Term2) :-
-  bp.subsumes_term(Term1,Term2).
+% This is define in Picat.
+% subsumes_term(Term1,Term2) :-
+%   bp.subsumes_term(Term1,Term2).
 
 
 %
@@ -1067,3 +1077,70 @@ unify_with_occurs_check(A,B) :-
 % For DCG etc
 is_digit(C) :- digit(C).
 
+
+%
+% Compile / load a BProlog program.
+%
+% Note: For this to work, the BProlog program
+% should be "rather pure" (whatever that means :-)).
+% Also, the program bp must be in the PATH.
+%
+% For standard Prolog programs, it might be easier to just port it to Picat.
+% Though one have to take care of ("$ quoting") function symbols.
+% 
+%
+% Example inspired from Learn Prolog Now, section on operators.
+% (http://www.let.rug.nl/bos/lpn//lpnpage.php?pagetype=html&pageid=lpn-htmlse40)
+% The B-Prolog file bp_operator.pl contains the following
+% """
+% :- op(500, xf, is_dead).
+%
+% test(X) :-
+%         X is_dead,
+%         writeln(dead=X).
+%
+% kill(marsellus,zed).
+% is_dead(X) :- kill(_,X).
+% """
+%
+% It can then be compiled and loaded with the following
+% Picat>  compile_load_bp(bp_operator)
+% and tested with 
+% Picat> bp.test(X)
+% dead=zed
+% X = zed
+% yes
+%
+% Picat> bp.is_dead(X)
+% X = zed
+%
+% However, using the defined operator is_dead in the "free" (prefix form) does not
+% work, it give a syntax error.
+% Picat> X bp.is dead
+% <syntax error>
+% Picat> bp(X is_dead)   
+% <syntax error>
+%
+% One should remember that this Prolog program works in Picat directly (except for
+% the 'X is_dead' feature), so it might be easier to just make it a Picat program
+% (modulo the op/3 directive) instead of loading the BProlog program.
+% 
+%
+% Note:
+% - as mentioned above, the B-Prolog program should be quite basic Prolog.
+%   For example, using B-Prolog's foreach loops or list comprehensions will not work.
+% - it might work to compile/load a B-Prolog program that use op/3, as the example above
+%   shows, but it's not possible to use the syntax sugar in Picat. However, using
+%   predicates that uses the syntax sugar might work.
+% - some BProlog predicates are not supported, e.g. read/1, read_term/1, and
+%   will yield an "Undefined procedure" error.
+% 
+compile_load_bp(File) => 
+  compile_bp_file(File),
+  bp.load(File).
+
+compile_bp_file(File) => 
+  Command = "bp -g \"compile(" ++ File.to_string() ++ "),halt.\"",
+  println(command=Command),
+  command(Command) = Ret,
+  println(ret=Ret).

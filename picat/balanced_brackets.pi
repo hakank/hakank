@@ -90,6 +90,162 @@ go2b =>
    println(B),
    nl.
 
+%
+% CP approach
+%
+% This generates all balanced brackets of size m*2.
+%
+go3 =>
+
+   % Generating all balanced brackets of length M*2
+   M = 4,
+   N = M*2,
+   S = "[]",
+   gen_cp(M,0,All),
+   writeln(len=All.length),
+
+   if M <= 6 then
+      foreach(X2 in All) 
+        % println(X2),
+        B = [S[X2[I]] : I in 1..N],
+        % println(B),
+        test_brackets(B)
+      end
+   end,
+   nl.
+
+%
+% The number of generated solutions for m using CP:
+%
+%  m        #
+%  ----------
+%   1       1
+%   2       2
+%   3       5
+%   4      14
+%   5      42
+%   6     132
+%   7     429
+%   8    1430
+%   9    4862
+%  10   16796
+%  11   58786
+%  12  208012
+%  13  742900
+% 
+%  This takes 2,675s
+% 
+% Which - of course - is the Catalan numbers.
+%
+% http://oeis.org/search?q=1%2C2%2C5%2C14%2C42%2C132%2C429%2C1430%2C4862%2C16796%2C58786%2C208012&language=english&go=Search
+% http://oeis.org/A000108
+%
+go4 =>
+  garbage_collect(64_000_000),
+  foreach(M in 1..13)
+     time2($gen_cp(M, 0, All)),
+     writeln([m=M, All.length])
+  end,
+  nl.
+
+
+
+%
+% Using DCGs
+%
+% The test cases
+% : ok
+% []: ok
+% [][]: ok
+% [[][]]: ok
+% ][: not_ok
+% ][][: not_ok
+% []][[]: not_ok
+% [][][][][][][][][][]: ok
+% [[[[[[[]]]]]]]: ok
+% [[[[[[[]]]]]]: not_ok
+% [][[]][]: ok
+% [[][]][]: ok
+% [][][[]][]: ok
+%
+go_dcg ?=>
+  Tests = ["","[]", "[][]", "[[][]]", "][",
+           "][][", "[]][[]", "[][][][][][][][][][]",
+           "[[[[[[[]]]]]]]", "[[[[[[[]]]]]]",
+           "[][[]][]","[[][]][]", "[][][[]][]"],
+  foreach(Test in Tests)
+    printf("%s: ", Test),
+    if balanced(Test,[]) then
+      println(ok)
+    else
+      println(not_ok)
+    end
+  end,
+
+  nl.
+go_dcg => true.
+
+
+%
+% Using a DCG to generate all valid strings.
+% Generating M = 1..13 (N=M*2) takes 0.934 using count_all/1
+% (Compare with the CP approach in go4/0 which takes 2.682, but it generates all solutions)
+% Generating M = 1..13 using findall/2 takes in total 2.146s.
+%
+go_dcg2 ?=>
+  garbage_collect(300_000_000),
+  member(M,1..13),
+  N = M*2,
+  L = new_list(N),
+  % All = findall(L,balanced(L,[])),
+  % println(M=All.len),
+  % nl,  
+  Count = count_all(balanced(L,[])),
+  println(M=Count),
+  fail,
+  nl.
+go_dcg2 => true.
+
+%
+% Print all solutions for M=0..7.
+%
+go_dcg3 ?=>
+  garbage_collect(300_000_000),
+  member(M,0..7),
+  N = M*2,
+  println(m=M),
+  L = new_list(N),
+  All = findall(L,balanced(L,[])),
+  println(All),
+  println(len=All.len),
+  nl,  
+  fail,
+  nl.
+go_dcg3 => true.
+
+
+
+% Generate a some "random" length N strings.
+% Or rather: get the first J strings.
+% Generating the first 3 strings of length 1_000_000 takes
+% - 1.130s with printing
+% - 0.815s witout printing.
+%
+go_dcg4 ?=>
+  C = 3,
+  Map = get_global_map(),
+  Map.put(count,0),
+  N = 1_000,
+  L = new_list(N),
+  balanced(L,[]),
+  println(L),
+  Map.put(count,Map.get(count)+1),
+  (Map.get(count) < C -> fail ; true),
+  nl.
+go_dcg4 => true.
+
+
+
 rosetta_brackets =>
    println("rosetta_brackets:"),
    test_brackets([]),
@@ -193,65 +349,6 @@ gen_bracket(N) = Brackets =>
    end.
 
 
-%
-% CP approach
-%
-% This generates all balanced brackets of size m*2.
-%
-% The number of generated solutions for m:
-%
-%  m        #
-%  ----------
-%   1       1
-%   2       2
-%   3       5
-%   4      14
-%   5      42
-%   6     132
-%   7     429
-%   8    1430
-%   9    4862
-%  10   16796
-%  11   58786
-%  12  208012
-%  13  742900
-%
-% 
-% Which - of course - is the Catalan numbers.
-%
-% http://oeis.org/search?q=1%2C2%2C5%2C14%2C42%2C132%2C429%2C1430%2C4862%2C16796%2C58786%2C208012&language=english&go=Search
-% http://oeis.org/A000108
-%
-go3 =>
-
-   % Generating all balanced brackets of length M*2
-   M = 4,
-   N = M*2,
-   S = "[]",
-   gen_cp(M,0,All),
-   writeln(len=All.length),
-
-   if M <= 6 then
-      foreach(X2 in All) 
-        % println(X2),
-        B = [S[X2[I]] : I in 1..N],
-        % println(B),
-        test_brackets(B)
-      end
-   end,
-   nl.
-
-%
-% The number of solutions for M = 1..13
-%
-go4 =>
-  garbage_collect(64_000_000),
-  foreach(M in 1..13)
-     time2($gen_cp(M, 0, All)),
-     writeln([m=M, All.length])
-  end,
-  nl.
-
 
 
 %
@@ -290,3 +387,7 @@ gen_cp(M, Sols, All) =>
      solve(X),
      All = X
    end.
+
+% DCG. Tested in go_dcg/0 and go_dcg2/0
+balanced --> "".
+balanced --> "[", balanced, "]", balanced.

@@ -1,0 +1,164 @@
+/* 
+
+  Rosalind problem fib in Picat.
+
+  https://rosalind.info/problems/fib/
+  """
+  Problem
+  A sequence is an ordered collection of objects (usually numbers), which are allowed to repeat. 
+  Sequences can be finite or infinite. Two examples are the finite sequence (π,−2–√,0,π) and 
+  the infinite sequence of odd numbers (1,3,5,7,9,…). We use the notation an to represent 
+  the n-th term of a sequence.
+
+  A recurrence relation is a way of defining the terms of a sequence with respect to the values of 
+  previous terms. In the case of Fibonacci's rabbits from the introduction, any given month 
+  will contain the rabbits that were alive the previous month, plus any new offspring. A key 
+  observation is that the number of offspring in any month is equal to the number of rabbits that 
+  were alive two months prior. As a result, if Fn represents the number of rabbit pairs alive 
+  after the n-th month, then we obtain the Fibonacci sequence having terms Fn that are defined by 
+  the recurrence relation Fn=Fn−1+Fn−2 (with F1=F2=1 to initiate the sequence). Although the 
+  sequence bears Fibonacci's name, it was known to Indian mathematicians over two millennia ago.
+
+  When finding the n-th term of a sequence defined by a recurrence relation, we can simply use 
+  the recurrence relation to generate terms for progressively larger values of n. This problem 
+  introduces us to the computational technique of dynamic programming, which successively builds 
+  up solutions by using the answers to smaller cases.
+
+  Given: Positive integers n≤40 and k≤5.
+
+  Return: The total number of rabbit pairs that will be present after n months, if we begin with 
+  1 pair and in each generation, every pair of reproduction-age rabbits produces a litter of 
+  k rabbit pairs (instead of only 1 pair).
+
+  Sample Dataset
+    5 3
+  Sample Output
+    19
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go ?=>
+  N = 135,
+  K = 3,
+  println("Tables recurrence:"),
+  println([ros_fib(I,K) : I in 1..N]),
+  
+  % member(M,1..N),
+  % println(ros_fib(M,K)),
+  % fail,
+  %
+  println("Closed form:"),
+  println([ros_fib_cf(I) : I in 1..N]),
+  nl.
+go => true.
+
+%
+% The challenge
+%
+go2 ?=>
+  N = 31,
+  K = 2,
+  println(ros_fib(N,K)),
+  nl.
+go2 => true.
+
+
+%
+% Some tests:
+% (666,13): <411 digits>
+% ros_fib: 0.003s
+% ros_fib2: 0.006s
+% ros_fib3: 0.001s <--
+% ros_fib4: 0.001s <--
+%
+% (1666,133): <1800 digits>
+% ros_fib: 0.031s  w/o printing: 0.018s
+% ros_fib2: 0.046s               0.038s
+% ros_fib3: 0.014s               0.005s <--
+% ros_fib4: 0.014s               0.006s <--
+%
+% (6666,613): <9348 digits>
+% ros_fib: 1.066s  w/o printing: 0.904s
+% ros_fib2: 0.964s               0.787s
+% ros_fib3: 0.862s               0.674s  (using list: 1.002s!)
+% ros_fib4: 0.331s               0.15s <--
+%
+go3 ?=>
+  N = 6666,
+  K = 613,
+  Print = true,
+  if Print then
+    time(println(ros_fib(N,K))),
+    time(println(ros_fib2(N,K))),
+    time(println(ros_fib3(N,K))),
+    time(println(ros_fib4(N,K)))
+  else 
+    time(_=ros_fib(N,K)),
+    time(_=ros_fib2(N,K)),
+    time(_=ros_fib3(N,K)),
+    time(_=ros_fib4(N,K))
+  end,
+  println(len=ros_fib3(N,K).to_string.len),
+  nl.
+go3 => true.
+
+
+%
+% Function with tabling
+%
+table
+ros_fib(1,_K) = 1.
+ros_fib(2,_K) = 1.
+% This is the only change we need.
+ros_fib(N,K) = ros_fib(N-1,K) + K * ros_fib(N-2,K).
+
+
+%
+% Foreach loop
+%
+ros_fib2(N,K) = Res =>
+  Res1 = 1,
+  Res2 = 1,
+  foreach(_ in 3..N)
+    Tmp = Res2,
+    Res2 := Res1*K + Res2,
+    Res1 := Tmp
+  end,
+  Res = Res2.
+
+
+%
+% Using an array.
+%
+ros_fib3(N,K) = A[N] =>
+  A = new_array(N), % array is much faster
+  A[1] = 1, A[2] = 1,
+  foreach(I in 3..N)
+    A[I] = A[I-1] + K*A[I-2]
+  end.
+
+%
+% Prolog style
+%
+ros_fib4(N,K) = Res =>
+    ros_fib4(N,K,0,1, Res).
+ros_fib4(0,_,A,_, A) :- !.
+ros_fib4(N,K,A,B,R) :- N > 0,
+    N0 = N - 1,
+    C = K*A + B,
+    ros_fib4(N0,K,B,C,R). 
+
+
+/*
+   Closed form from Mathematica
+In[3]:= FindSequenceFunction[{1, 1, 4, 7, 19, 40, 97, 217, 508, 1159, 2683, 6160, 14209, 32689, 75316}, n]
+
+Out[3]= -(((26 + 5 Sqrt[13]) ((1/2 - Sqrt[13]/2)^n - (1/2 + Sqrt[13]/2)^n))/(13 (5 + 2 Sqrt[13])))
+*/
+ros_fib_cf(N) = floor(-(((26 + 5*sqrt(13))*((1/2 - sqrt(13)/2)**N - (1/2 + sqrt(13)/2)**N))/(13*(5 + 2*sqrt(13))))).

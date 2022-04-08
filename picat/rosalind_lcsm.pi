@@ -1,0 +1,226 @@
+/* 
+
+  Rosalind problem Finding a Shared Motif in Picat.
+
+  https://rosalind.info/problems/lcsm/
+  """
+  Problem
+  A common substring of a collection of strings is a substring of every member of the collection. We say 
+  that a common substring is a longest common substring if there does not exist a longer common substring. 
+  For example, "CG" is a common substring of "ACGTACGT" and "AACCGTATA", but it is not as long as possible; 
+  in this case, "CGTA" is a longest common substring of "ACGTACGT" and "AACCGTATA".
+
+  Note that the longest common substring is not necessarily unique; for a simple example, "AA" and "CC" 
+  are both longest common substrings of "AACC" and "CCAA".
+
+  Given: A collection of k (k≤100) DNA strings of length at most 1 kbp each in FASTA format.
+
+  Return: A longest common substring of the collection. (If multiple solutions exist, you may 
+  return any single solution.)
+
+  Sample Dataset
+    >Rosalind_1
+    GATTACA
+    >Rosalind_2
+    TAGACCA
+    >Rosalind_3
+    ATACA
+  Sample Output
+    AC
+  """
+
+  go4/0 is the way to go! Takes about 36s
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import rosalind_utils.
+
+import cp.
+% import sat.
+
+main => go.
+
+%
+% This is too slow for the challenge.
+% Use go/4 instead.
+go ?=>
+  garbage_collect(300_000_000),
+  File = "rosalind_lcsm_fasta1.txt",
+  % File := "rosalind_lcsm_fasta_challenge.txt",
+  once(Fs = parse_fasta_file(File)),
+  Fs2 = [F[2] : F in Fs],
+
+  FsLen = Fs2.len,
+  println(num_fs=Fs2.len),
+  println(lens=[F.len : F in Fs2]),
+
+  longest_common_substring1(Fs2,Substr,_Len), 
+  
+  println(Substr),
+
+  nl.
+go => true.
+
+% Too slow for the Challenge
+go2 ?=>
+  File = "rosalind_lcsm_fasta1.txt",
+  once(Fs = parse_fasta(read_file_chars(File))),
+  % println(fs=Fs),
+
+  Fs2 = [F[2] : F in Fs],
+  println(fs2=Fs2),
+  % Find one of the longest common substrings
+  longest_common_substring1(Fs2,_Substr,Len),
+
+  % And generate all of them
+  All = findall(Substr2,common_substring1(Fs2,Substr2,Len)),
+  println(All),
+
+  nl.
+go2 => true.
+
+
+%
+% CP: Works for small file but not for the Challenge.
+%
+go3 ?=>
+  File = "rosalind_lcsm_fasta1.txt",
+  % File := "rosalind_lcsm_fasta_challenge.txt",
+  once(Fs = parse_fasta_file(File)),
+  Fs2 = [F[2] : F in Fs],
+
+  % convert to integers
+  Map = new_map(['A'=1,'C'=2,'G'=3,'T'=4]),
+  FsInt = [],
+  foreach(F in Fs2)
+    FsInt := FsInt ++ [[Map.get(C) : C in F]]
+  end,
+
+  lcs_cp(FsInt.sort(),Substr1,N),
+  println(substr1=Substr1),
+  ACGT = "ACGT",
+  Substr = [ACGT[I] : I in Substr1],
+  println(substr=Substr),
+  println(n=N),
+  
+  nl.
+go3 => true.
+
+%
+% Using a port from Python.
+%
+% This is reasonably fast (<5min): about 35s
+% 
+go4 ?=>
+  
+  % Strings = ["Oh, hello, my friend.",
+  %            "I prefer Jelly Belly beans.",
+  %            "When hell freezes over!"],
+  File = "rosalind_lcsm_fasta1.txt",
+  % File := "rosalind_lcsm_fasta_challenge.txt",  
+  once(Fs = parse_fasta(read_file_chars(File))),
+
+  Fs2 = [F[2] : F in Fs],
+  
+  % Substr = long_substr(Fs2.sort()), % with sort: 36.188s
+  Substr = long_substr(Fs2), % without sorting: 32.593s!
+  nl,
+  println(Substr),
+
+  nl.
+go4 => true.
+
+%
+% Works with small dataset but too slow for
+% the challange prolem.
+%
+lcs_cp(Fs,X,N) =>
+  NumFs = Fs.len,
+  Lens = [F.len : F in Fs],
+  println(lens=Lens),
+  MaxLen=max(Lens),  
+  MinLen=min(Lens),  
+  println(minLen=MinLen),
+  % TODO: binary search?
+  member(N,MinLen..-1..1),
+  nl,
+  println(n=N),
+  
+  % The substring
+  X = new_list(N),
+  X :: 1..4,
+
+  % Offset to substring
+  Ix = new_list(NumFs),
+  Ix :: 1..MaxLen,
+  
+  foreach(I in 1..NumFs)
+    println(i=I),
+    Ix[I] :: 1..Lens[I],
+    % Is the substring (X) in this string?
+    foreach(J in 1..N)
+      T #= Ix[I]+J,
+      element(T,Fs[I],X[J])
+    end
+  end,
+  println(solve),
+  solve($[ffc,split],X++Ix),
+  println(X=Ix).
+
+
+% Python code from
+% From https://stackoverflow.com/questions/2892931/longest-common-substring-from-more-than-two-strings
+long_substr(Data) = Substr =>
+    Substr1 = '',
+    if Data.len > 1, Data[1].len > 0 then
+        foreach(I in 1..Data[1].len)
+            foreach(J in 1..Data[1].len-I)
+                DD = Data[1,I..I+J-1],
+                if J > Substr1.len, is_substr(DD,Data) then
+                    Substr1 := DD,
+                    println(found1=Substr1)
+                end
+            end
+        end
+    end,
+    Substr = Substr1.
+
+is_substr(Find,Data) :-
+  foreach(D in Data)
+    once(find(D,Find,_,_))
+  end.
+
+%
+% These are from longest_common_substring.pi
+
+%
+% Find (one of) the longest common substring/sublist.
+% This is quite elegant, but too slow. Way too slow!
+%
+% (From longest_common_substring.pi)
+%
+table(+,-,max)
+longest_common_substring1(Ls,Substr,Len) =>
+  foreach(L in Ls) 
+    append(_,Substr,_,L),
+    Substr != []
+  end,
+  Len = Substr.length.
+
+%
+% Generate all substrings on backtrack.
+% For getting all longest substrings
+% it's assumed that Len is fixed
+% with the length of the longest substring.
+%
+common_substring1(Ls,Substr,Len) =>
+  foreach(L in Ls) 
+    append(_,Substr,_,L),
+    Substr != []
+  end,
+  Len = Substr.length.
+

@@ -1,0 +1,134 @@
+/* 
+
+  primesums square in Picat.
+
+  From SICStus Prolog modl primesums.pl
+  """
+  Fill an NxN square with integers 1..n such that the sum of every
+  row and column is a prime number.
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+% import sat.
+import cp.
+
+
+main => go.
+
+go ?=>
+  % N = 20,
+  Timeout = 3_000, % 3 sec
+  OK = [],
+  foreach(N in 2..25)
+    println(n=N),
+    time(time_out($primesums(N,X,Rows,Cols),Timeout,Status)),
+    println(status=Status),
+
+    if Status == success then
+      OK := OK ++ [N],
+      foreach(I in 1..N)
+        foreach(J in 1..N)
+           printf("%4d ", X[I,J])
+        end,
+        nl
+      end,
+      println(rows=Rows),
+      println(cols=Cols),
+      nl
+    end,
+    nl
+  end,
+
+  println(ok=OK),
+
+  % fail,
+  
+  nl.
+go => true.
+
+
+go2 ?=>
+  foreach(N in 2..10)
+     println(N=count_all(primesums(N, _X,_R,_C)))
+  end,
+  nl.
+go2 => true.
+
+primesums(N, X,RowSums,ColSums) :-
+  Primes = primes(N*N*N),
+  
+  X = new_array(N,N),
+  X :: 1..N*N,
+  XVars = X.vars,
+
+  RowSums = new_list(N),
+  RowSums :: Primes,
+  
+  ColSums = new_list(N),
+  ColSums :: Primes,
+  
+  all_different(XVars),
+     
+  foreach(I in 1..N)
+    RowSums[I] #= sum([X[I,J] : J in 1..N]),
+    ColSums[I] #= sum([X[J,I] : J in 1..N])
+  end,
+  
+ 
+  % symmetry breaking
+  % X[1,1] #= 1,
+  % increasing(RowSums),
+  % increasing(ColSums),  
+
+  % With lex2: min/up is stuck at N=11
+  % lex2(X),
+  % lex2(X.transpose),
+
+  Vars = XVars ++ RowSums ++ ColSums,
+  
+  println(solve),
+  
+  % fd/updown with lex2/1:
+  % [2,3,4,5,7]
+  % w/o lex2
+  % [2,3,4,5,6,7,14,15,16,17,18,19,20,21,24,25]
+  % solve($[ffd,updown],Vars).
+  solve($[inout,updown],Vars). 
+
+  % [] with lex2:
+  % ok (3s timeout):
+  % [2,3,4,5,6,7,8,9,10,12,13,15,18,20,23]
+  % w/o lex2:
+  % [2,3,4,5,6,7,8,9,10,12,13,15,18,20,23]
+  % solve($[],Vars).
+
+  % constr with lex2:
+  % [2,3,4,5,6,7,8,9,10,11,12,13,14]
+  % constr without lex2:
+  % [2,3,4,5,6,7,8,9,10,12,13]
+  % solve($[constr],Vars).
+
+  % ffc with lex2:
+  % [2,3,4,7,16]
+  % ffc w/o lex2:
+  % OK (3s timeout):
+  % [2,3,4,5,7,8,12,15,17,19,20,22,23]
+  % solve($[ffc],Vars).
+
+  % ffc/updown with lex2:
+  % [2,3,4,5,6,15,16,17,18,19,20,21,22,23,24,25]
+  % ffc/updpwn w/o lex2
+  % [2,3,4,5,6,7,14,15,16,17,18,19,21,22,23,24,25]
+  % solve($[ffcupdown],Vars).
+  
+
+lex2(X) =>
+  foreach(I in 2..X.length) 
+     lex_lt(X[I-1], X[I])
+  end.

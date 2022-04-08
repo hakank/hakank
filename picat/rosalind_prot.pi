@@ -1,0 +1,346 @@
+/* 
+
+  Rosalind problem: Translating RNA into Protein in Picat.
+
+  https://rosalind.info/problems/prot/
+  """
+  Problem
+  The 20 commonly occurring amino acids are abbreviated by using 20 letters from the English alphabet 
+  (all letters except for B, J, O, U, X, and Z). Protein strings are constructed from these 20 symbols. 
+  Henceforth, the term genetic string will incorporate protein strings along with DNA strings 
+  and RNA strings.
+
+  The RNA codon table dictates the details regarding the encoding of specific codons into the amino 
+  acid alphabet.
+
+  Given: An RNA string s corresponding to a strand of mRNA (of length at most 10 kbp).
+
+  Return: The protein string encoded by s.
+
+  Sample Dataset
+     AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA
+  Sample Output
+     MAMAPRTEINSTRING
+  """
+
+  https://rosalind.info/glossary/rna-codon-table/
+  """
+  UUU F      CUU L      AUU I      GUU V
+  UUC F      CUC L      AUC I      GUC V
+  UUA L      CUA L      AUA I      GUA V
+  UUG L      CUG L      AUG M      GUG V
+  UCU S      CCU P      ACU T      GCU A
+  UCC S      CCC P      ACC T      GCC A
+  UCA S      CCA P      ACA T      GCA A
+  UCG S      CCG P      ACG T      GCG A
+  UAU Y      CAU H      AAU N      GAU D
+  UAC Y      CAC H      AAC N      GAC D
+  UAA Stop   CAA Q      AAA K      GAA E
+  UAG Stop   CAG Q      AAG K      GAG E
+  UGU C      CGU R      AGU S      GGU G
+  UGC C      CGC R      AGC S      GGC G
+  UGA Stop   CGA R      AGA R      GGA G
+  UGG W      CGG R      AGG R      GGG G 
+  """
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import dcg_utils.
+
+main => go.
+
+go ?=>
+  translate_string(Tr),
+  Ts = chunks_of(delete_all(Tr,'\n').delete_all(' '),4),
+  % println(ts=Ts),
+  Map = new_map([T[1..3].flatten=T[4] : T in  Ts]),
+  % println(map=Map),
+
+  %% Print the code/2 table.
+  % foreach(K in Map.keys.sort)
+  %   V = Map.get(K),
+  %   printf("conv(\"%w\",\"%w\").\n",K,V)
+  % end,
+
+  RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  Res = [P : T in chunks_of(RNA,3), P = Map.get(T), break(P=='.')],
+  println(res=Res),
+
+  nl.
+go => true.
+
+%
+% The Challenge
+%
+go2 ?=>
+  RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  % RNA ="....,
+  Protein = [P : R in chunks_of(RNA,3), conv(R,P), break( P==".")],
+  % convert_rna(Protein,RNA,[]),
+  println(Protein),
+  nl.
+go2 => true.
+
+
+%
+% Alternative conversion
+% 
+go3 ?=>
+  RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  convert_rna(Protein,RNA,[]),
+  println(protein=Protein),
+  nl.
+go3 => true.
+
+%
+% Translade codons using DCG.
+%
+go4 ?=>
+  RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  Protein = convert_with_map(RNA),
+  println(protein=Protein),
+  nl.
+go4 => true.
+
+%
+% Both convert_rna/3 and convert_rna2/3 are reversible.
+%
+% E.g.
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGAUAA
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGAUAG
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGAUGA
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGA
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGCUAA
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGCUAG
+% MAMAPRTEINSTRING = AUGGCAAUGGCACCAAGAACAGAAAUAAACAGCACAAGAAUAAACGGCUGA
+% ...
+%
+% Here are all possible RNA that generates the protein string MAM
+% MAM = AUGGCAAUGUAA
+% MAM = AUGGCAAUGUAG
+% MAM = AUGGCAAUGUGA
+% MAM = AUGGCAAUG
+% MAM = AUGGCCAUGUAA
+% MAM = AUGGCCAUGUAG
+% MAM = AUGGCCAUGUGA
+% MAM = AUGGCCAUG
+% MAM = AUGGCGAUGUAA
+% MAM = AUGGCGAUGUAG
+% MAM = AUGGCGAUGUGA
+% MAM = AUGGCGAUG
+% MAM = AUGGCUAUGUAA
+% MAM = AUGGCUAUGUAG
+% MAM = AUGGCUAUGUGA
+% MAM = AUGGCUAUG
+% MAM = AUGGCAAUGUAA
+% MAM = AUGGCAAUGUAG
+% MAM = AUGGCAAUGUGA
+% MAM = AUGGCAAUG
+% MAM = AUGGCCAUGUAA
+% MAM = AUGGCCAUGUAG
+% MAM = AUGGCCAUGUGA
+% MAM = AUGGCCAUG
+% MAM = AUGGCGAUGUAA
+% MAM = AUGGCGAUGUAG
+% MAM = AUGGCGAUGUGA
+% MAM = AUGGCGAUG
+% MAM = AUGGCUAUGUAA
+% MAM = AUGGCUAUGUAG
+% MAM = AUGGCUAUGUGA
+% MAM = AUGGCUAUG
+
+
+%
+% And we play with generativity of this conversion in go6/0,
+% 
+go5 ?=>
+  % RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  % Protein = "MAMAPRTEINSTRING",
+  Protein = "MAM",  
+  convert_rna(Protein,RNA,[]),
+  println(Protein=RNA),
+  fail,
+  nl.
+go5 => true.
+
+%
+% Can we make the conversion generative?
+% Yes, both convert_rna/3 and convert2/3 are generative.
+%
+% Here's the number of possible conversions of protein length 1..4:
+% N   #solutions
+% ------------- 
+% 1 = 244
+% 2 = 14884
+% 3 = 907924
+% 4 = 55383364
+% 5 = 3378385204
+% It took about 30 minutes to generate this data. Using count_all took 24min30s.
+%
+go6 ?=>
+  Map = get_global_map(),
+  % RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  % Protein = "MAMAPRTEINSTRING",
+  member(N, 1..5),
+  % N = 3,
+  % N = 5,
+  println(n=N),
+  Protein = new_list(N),
+  convert_rna(Protein,RNA,[]),
+  println(Protein=RNA),
+  Map.put(N,Map.get(N,0)+1),
+  fail,
+  nl.
+go6 => println(get_global_map()).
+
+% Using count_all instead
+go6b ?=>
+  Map = get_global_map(),
+  % RNA = "AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA",
+  % Protein = "MAMAPRTEINSTRING",
+  member(N, 1..5),
+  println(n=N),
+  Protein = new_list(N),
+  Count = count_all(convert_rna(Protein,RNA,[])),
+  println(N=Count),
+  fail,
+  nl.
+go6b => true.
+
+
+% Get codon map
+codon_map() = new_map(Codons) =>
+   translate_string(Tr),
+   translate_dcg(Codons,Tr,[]).
+
+%
+% Convert RNA -> Protein using DCG
+%
+convert_with_map(RNA) = Protein =>
+  Map = codon_map(),
+  Protein1 = "",
+  foreach(R in chunks_of(RNA,3), P = Map.get(R), break(P=="."))
+    Protein1 := Protein1 ++ Map.get(R)
+  end,
+  Protein = Protein1.
+  
+
+%
+% Convert RNA to Protein using DCG.
+% Note: it is both reversible and generative (because of the backtrackable conv/2?)
+%
+convert_rna_1(P) --> [A,B,C], {conv([A,B,C], P)}.
+convert_rna([P|Ps]) --> convert_rna_1(P),
+                        {P != '.'},
+                        convert_rna(Ps).
+convert_rna([]) -->  convert_rna_1('.') ; [].
+
+
+%
+% A cleaner version using the proper symbols.
+%
+% Note: it is both reversible and generative.
+%
+convert_rna2_1(P) --> rna_symbol(A),rna_symbol(B),rna_symbol(C),{conv(A++B++C, P)}.
+convert_rna2([P|Ps]) --> convert_rna2_1(P),
+                        {P != '.'},
+                        convert_rna2(Ps).
+convert_rna2([]) -->  convert_rna2_1('.') ; [].
+
+rna_symbol("A") --> "A".
+rna_symbol("C") --> "C".
+rna_symbol("G") --> "G".
+rna_symbol("U") --> "U". % DNA: T
+
+
+%
+% Translate the codon "table" string to RNA->Protein
+%
+% translate_dcg1_1(RNA=Protein) --> any_except(RNA," ")," ", any_except(Protein," \n").
+% translate_dcg1([RNA=Protein|Ps]) --> translate_dcg1_1(RNA=Protein), space, translate_dcg1(Ps).
+% translate_dcg1([RNA=Protein]) --> translate_dcg1(RNA=Protein).
+% translate_dcg1([]) --> [].
+
+translate_dcg_1(RNA=Protein) --> any_except(RNA," ")," ", any_except(Protein," \n").
+translate_dcg([RNA=Protein|Ps]) --> translate_dcg_1(RNA=Protein),
+                                    space,
+                                    (translate_dcg(Ps) ; []).
+translate_dcg([]) --> [].
+
+
+
+
+% I replaced "Stop" with "."
+translate_string("UUU F      CUU L      AUU I      GUU V\nUUC F      CUC L      AUC I      GUC V\nUUA L      CUA L      AUA I      GUA V\nUUG L      CUG L      AUG M      GUG V\nUCU S      CCU P      ACU T      GCU A\nUCC S      CCC P      ACC T      GCC A\nUCA S      CCA P      ACA T      GCA A\nUCG S      CCG P      ACG T      GCG A\nUAU Y      CAU H      AAU N      GAU D\nUAC Y      CAC H      AAC N      GAC D\nUAA .      CAA Q      AAA K      GAA E\nUAG -      CAG Q      AAG K      GAG E\nUGU C      CGU R      AGU S      GGU G\nUGC C      CGC R      AGC S      GGC G\nUGA .      CGA R      AGA R      GGA G\nUGG W      CGG R      AGG R      GGG G").
+
+%
+% Created by go/0.
+%
+conv("AAA",'K').
+conv("AAC",'N').
+conv("AAG",'K').
+conv("AAU",'N').
+conv("ACA",'T').
+conv("ACC",'T').
+conv("ACG",'T').
+conv("ACU",'T').
+conv("AGA",'R').
+conv("AGC",'S').
+conv("AGG",'R').
+conv("AGU",'S').
+conv("AUA",'I').
+conv("AUC",'I').
+conv("AUG",'M'). % start
+conv("AUU",'I').
+conv("CAA",'Q').
+conv("CAC",'H').
+conv("CAG",'Q').
+conv("CAU",'H').
+conv("CCA",'P').
+conv("CCC",'P').
+conv("CCG",'P').
+conv("CCU",'P').
+conv("CGA",'R').
+conv("CGC",'R').
+conv("CGG",'R').
+conv("CGU",'R').
+conv("CUA",'L').
+conv("CUC",'L').
+conv("CUG",'L').
+conv("CUU",'L').
+conv("GAA",'E').
+conv("GAC",'D').
+conv("GAG",'E').
+conv("GAU",'D').
+conv("GCA",'A').
+conv("GCC",'A').
+conv("GCG",'A').
+conv("GCU",'A').
+conv("GGA",'G').
+conv("GGC",'G').
+conv("GGG",'G').
+conv("GGU",'G').
+conv("GUA",'V').
+conv("GUC",'V').
+conv("GUG",'V').
+conv("GUU",'V').
+conv("UAA",'.'). % stop
+conv("UAC",'Y').
+conv("UAG",'.'). % stop
+conv("UAU",'Y').
+conv("UCA",'S').
+conv("UCC",'S').
+conv("UCG",'S').
+conv("UCU",'S').
+conv("UGA",'.'). % stop
+conv("UGC",'C').
+conv("UGG",'W').
+conv("UGU",'C').
+conv("UUA",'L').
+conv("UUC",'F').
+conv("UUG",'L').
+conv("UUU",'F').

@@ -257,6 +257,19 @@ go10 ?=>
   nl.
 go10 => true.
 
+%
+% Same as go10/0 but any_except_string_test2 use any_except_string 
+% so we don't have to do the replace "END" -> "|END" hack.
+% 
+go10b ?=>
+  S = "BEGIN first END BEGIN sEcond END BEGIN third END",
+  any_except_string_test2(R,S,[]),  
+  println(R),
+  fail,
+  nl.
+go10b => true.
+
+
 /*
   "Generator version" if IP_test.
   This is not completely correct...
@@ -341,6 +354,149 @@ go14 ?=>
 
   nl.
 go14 => true.
+
+
+%
+% Generating possible string of Khadaffi/Ghadaffi given a DCG.
+% https://stackoverflow.com/questions/5365283/regular-expression-to-search-for-gadaffi
+% Translated the regexp
+%   \b[KGQ]h?add?h?af?fi\b
+% to a DCG.
+%
+% It generates the following 48 spellings:
+% [Kadafi,Kadaffi,Kadhafi,Kadhaffi,Kaddafi,Kaddaffi,Kaddhafi,Kaddhaffi,Khadafi,Khadaffi,Khadhafi,Khadhaffi,Khaddafi,Khaddaffi,Khaddhafi,Khaddhaffi,Gadafi,Gadaffi,Gadhafi,Gadhaffi,Gaddafi,Gaddaffi,Gaddhafi,Gaddhaffi,Ghadafi,Ghadaffi,Ghadhafi,Ghadhaffi,Ghaddafi,Ghaddaffi,Ghaddhafi,Ghaddhaffi,Qadafi,Qadaffi,Qadhafi,Qadhaffi,Qaddafi,Qaddaffi,Qaddhafi,Qaddhaffi,Qhadafi,Qhadaffi,Qhadhafi,Qhadhaffi,Qhaddafi,Qhaddaffi,Qhaddhafi,Qhaddhaffi]
+%
+%
+go15 ?=>
+  DCG = (("K";"G";"Q"),("";"h"),"ad",("";"d"),("";"h"),"a",("";"f"),"fi"),
+  All = dcg_generate(DCG),
+  println(All),
+  println(len=All.len),
+  nl.
+go15 => true.
+
+
+%
+% US State/Territory/Associate codes: https://www.regexlib.com/REDetails.aspx?regexp_id=471
+% """
+% The RE match U.S. state abbreviation used by the U.S. Post Office.
+% """
+% This also includes some Territory/Associate codes.
+% 
+% The regexp from this site:
+%   (?-i:A[LKSZRAEP]|C[AOT]|D[EC]|F[LM]|G[AU]|HI|I[ADLN]|K[SY]|LA|M[ADEHINOPST]|N[CDEHJMVY]|
+%      O[HKR]|P[ARW]|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY])$
+% is not correct. The first part should instead be
+%    A[LKSZR]
+%
+% Converting the original regepx generated the following 62 codes:
+% [AL,AK,AS,AZ,AR,AA,AE,AP,CA,CO,CT,DE,DC,FL,FM,GA,GU,HI,IA,ID,IL,IN,KS,KY,LA,MA,MD,ME,MH,MI,
+%  MN,MO,MP,MS,MT,NC,ND,NE,NH,NJ,NM,NV,NY,OH,OK,OR,PA,PR,PW,RI,SC,SD,TN,TX,UT,VA,VI,VT,WA,WI,WV,WY]
+% But:
+% - AA is not correct!
+% - AE is not correct!
+% - AP is not correct!
+%
+% This is fixed below.
+%
+go16 ?=>
+  % The codes from https://www.infoplease.com/us/postal-information/state-abbreviations-and-state-postal-codes  
+  CorrectCodes = ["AL","AK","AS","AZ","AR","CA","CO","CT","DE","DC","FL","FM","GA","GU","HI","ID","IL","IN",
+           "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MH","MP","MT","NE","NV","NH","NJ",
+           "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV",
+           "WI","WY","PW","PR","VI"], 
+  DCG = (
+          % this is not correct: it yields AA,AE,AP which is not in the list above
+          % ("A",("L";"K";"S";"Z";"R";"A";"E";"P")); 
+          ("A",("L";"K";"S";"Z";"R")); % corrected, skipping A, E, and P
+          ("C",("A";"O";"T"));
+          ("D",("E";"C")); ("F",("L";"M")); ("G",("A";"U")) ; "HI" ; ("I",("A";"D";"L";"N")) ; ("K",("S";"Y")) ;
+          "LA" ; ("M",("A";"D";"E";"H";"I";"N";"O";"P";"S";"T")) ; ("N", ("C";"D";"E";"H";"J";"M";"V";"Y"));
+          ("O",("H";"K";"R")) ; ("P",("A";"R";"W")) ; "RI"; ("S",("C";"D")) ; ("T",("N";"X")) ; "UT" ;
+          ("V",("A";"I";"T")); ("W",("A";"I";"V";"Y"))
+        ),
+  All = dcg_generate(DCG),
+  println(All),
+  println(len=All.len),
+  foreach(C in All)
+    if not membchk(C,CorrectCodes) then
+      println(incorrect=C)
+    end
+  end,
+  foreach(C in CorrectCodes)
+    if not membchk(C,All) then
+      println(missing=C)
+    end
+  end,
+  nl.
+go16 => true.
+
+% This is from an old Unicon program.
+% Given the text
+%    "Adam’s birthday is February 28, 1969. He is no spring chicken."
+% Identify the date.
+% I normalized to an ISO Date. ;-)
+% 
+go17 ?=>
+  S = "Adam’s birthday is February 28, 1969. He is no spring chicken.",
+  println(s=S),  
+  date_test([Year,Month,Day],S,[]),
+  println([year=Year,month=Month,day=Day]),
+  nl,
+
+  S2 = "Hakan’s birthday is 1957-01-12. He is no spring chicken.",
+  println(s2=S2),  
+  date_test([Year2,Month2,Day2],S2,[]),
+  println([year2=Year2,month2=Month2,day2=Day2]),
+  nl,
+
+  % DD/MM/YY
+  S3 = "Anna’s birthday is 1/16/57. She is no spring chicken.",
+  println(s3=S3),  
+  date_test([Year3,Month3,Day3],S3,[]),
+  println([year3=Year3,month3=Month3,day3=Day3]),
+  nl,
+
+  % DD/MM/YY or MM/DD/YY?
+  S4 = "Anna’s birthday is 1-16-57. She is no spring chicken.",
+  println(s4=S4),  
+  date_test([Year4,Month4,Day4],S4,[]),
+  println([year4=Year4,month4=Month4,day4=Day4]),
+  nl,
+
+  S5 = "Anna’s birthday is 1.16.57. She is no spring chicken.",
+  println(s5=S5),  
+  date_test([Year5,Month5,Day5],S5,[]),
+  println([year5=Year5,month5=Month5,day5=Day5]),
+  nl,
+
+
+  SFail = "Peter says his birthday is February 31, 1969. He is lying.",
+  println(sFail=SFail),  
+  if once(date_test([YearFail,MonthFail,DayFail],SFail,[])) then 
+     println([yearFail=YearFail,monthFail=MonthFail,dayFail=DayFail])
+  else
+     println("Cannot find a valid date.")
+  end,
+
+  % We got some repetition with fail,
+  % especially for SFail, but also for the DD MM YY.. formats
+  % fail,
+
+  nl.
+go17 => true.
+
+
+% DD/MM/YY or MM/DD/YY?
+go17b ?=>
+  S = "Petra’s birthday is 1/3/19. She is no spring chicken.",
+  println(s=S),  
+  date_test([Year,Month,Day],S,[]),
+  println([year=Year,month=Month,day=Day]),
+  fail,
+  nl.
+go17b => true.
+
 
 
 %
@@ -458,6 +614,20 @@ any_except_string_test([S]) --> "BEGIN", " ",
 any_except_string_test([]) --> [].
 
 
+%
+% Same as any_except_string_test/1 except that it uses any_except_string/2
+%
+any_except_string_test2_1(S) --> "BEGIN", " ",
+                                   any_except_string(S,"END"), 
+                                  " ",
+                                  "END".
+any_except_string_test2([S|Ss]) --> any_except_string_test2_1(S),
+                                   " ", any_except_string_test2(Ss).
+any_except_string_test2([S]) --> any_except_string_test2_1(S).
+any_except_string_test2([]) --> [].
+
+
+
 
 % Formal language a^nb^n
 an_bn_test --> [].
@@ -513,3 +683,85 @@ bal_test([Text|Texts]) --> any, bal_test_one(Text),
                            bal_test(Texts).
 bal_test([Text]) --> bal_test_one(Text).
 bal_test([]) --> [].
+
+
+% tested in go17
+% table
+date_test(Date) --> any, date(Date), any, ".".
+
+% "Original" date format: <Month> <Day>, Year
+date([Year,Month,Day]) --> month(Month), space,
+                           day(Day), ", ",
+                           year(Year), 
+                           {check_date(Year, Month, Day)}.
+
+% ISO date: YYYY-MM-DD
+date([Year,Month,Day]) --> year(Year), "-", 
+                           month_digits(Month), "-", 
+                           day(Day),
+                           {check_date(Year, Month, Day)}.
+
+% Not ISO: DD/MM/YY, DD-MM-YY, DD.MM.YY, no leading 0
+% Must be the same separator
+date([Year,Month,Day]) --> day2(Day), one_of(Sep,"-/."), month_digits(Month), [Sep], year2digits(Year),
+                           {check_date(Year, Month, Day)}.
+
+
+% Not ISO: MM/DD/YY, MM-DD-YY, MM.DD.YY, no leading 0
+% Must be the same separator
+date([Year,Month,Day]) --> month_digits(Month), one_of(Sep,"-/."),  day2(Day), [Sep], year2digits(Year),
+                           {check_date(Year, Month, Day)}.
+
+
+month(Month) --> any_member(Month,["January","February","March","April","May","June","July",
+                                   "August","September","October","November","December"]).
+month_digits(Month) --> digits(Month), {Month != "", membchk(Month.to_int,1..12)}.
+
+% 2 digits
+day(Day) --> digits(Day), {Day.len=2}.
+
+% No leading 0 (for the ././.. dates
+day2(Day) --> digits(Day), {Day != "", Day[1] != '0'}.
+
+year(Year) --> digits(Year), {Year.len == 4}.
+
+year2digits(Year) --> digits(Year), {Year.len == 2}.
+
+% Check the date.
+% Sorry, I couldn't resist....
+check_date(Year1,Month1,Day) :-
+  Year1 != "", Day != "", Month1 != "",
+  Month = cond(Month1.len>2, Month1.month_to_int, Month1.to_int),
+  if Year1.len == 2 then
+    % sigh!
+    Year = ("20"++Year1).to_int ; Year = ("19"++Year1).to_int
+  else
+    Year = Year1.to_int
+  end,
+  Day.to_int <= max_days_in_month(Year, Month).
+
+% Convert string version of month to an int (1 based)
+month_to_int(Month) = I => 
+  L = ["January","February","March","April","May","June","July",
+       "August","September","October","November","December"],
+  nth(I,L,Month).
+
+% Is Year a leap year?
+leap_year(Year) => 
+  (Year mod 4 == 0, Year mod 100 != 0) 
+  ; 
+  Year mod 400 == 0. 
+
+% How many days has a month?
+max_days_in_month(Year,Month) = Days => 
+  if member(Month, [1,3,5,7,8,10,12]) then 
+    Days = 31
+  elseif member(Month,[4,6,9,11]) then
+    Days = 30
+  else
+    if leap_year(Year) then
+     Days = 29
+   else
+     Days = 28
+   end
+  end.

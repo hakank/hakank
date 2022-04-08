@@ -44,8 +44,9 @@
   
   (Some more instances: http://www.hakank.org/minizinc/crossword3/ )
 
-  Here are the times for solving the 72 Gecode instances using the wordlist
-  /usr/share/dict/words (102 305 words) and with a 600s timeout:
+  SAT solver: Here are the times for solving the 72 Gecode instances 
+  using the wordlist /usr/share/dict/words (102 305 words) and with a 
+  600s timeout:
 
    Problem  0 (   5 x 5): 0.218s
    Problem  1 (   5 x 5): 0.161s
@@ -243,7 +244,7 @@ go1 ?=>
   % nolog,
   Words = get_words("/usr/share/dict/words"),
   % Words = get_words("unixdict.txt"),  
-  Path = "/home/hakank/g12/me/crossword3/", % See http://www.hakank.org/minizinc/crossword3/
+  Path = "crossword3/", % See http://www.hakank.org/minizinc/crossword3/
   Files = [],
   foreach(F in 0..71)
     println(problem=F),
@@ -270,7 +271,7 @@ go2 ?=>
   Timeout = TimeoutSec*1000, % 600s = 10 min 
   Words = get_words("/usr/share/dict/words"),
   % Words = get_words("unixdict.txt"),  
-  Path = "/home/hakank/g12/me/crossword3/", % See http://www.hakank.org/minizinc/crossword3/
+  Path = "crossword3/", % See http://www.hakank.org/minizinc/crossword3/
   member(F,0..71),
   println(problem=F),
   File = Path ++ "gecode_grid" ++ F.to_string() ++ ".txt",
@@ -321,10 +322,9 @@ crossword(Problem,Words) =>
   Rows = Problem.len,
   Cols = Problem[1].len,
   println([rows=Rows,cols=Cols]),
-  % println(problem_len=Problem.flatten().len),
+  println(problem_len=Problem.flatten().len),
   L = Problem.vars(),
   L :: 1..26,
-  % println(l_len=L.len),  
 
   % handle segments
   Segments = get_segments(Problem) ++ get_segments(Problem.transpose()),
@@ -337,33 +337,29 @@ crossword(Problem,Words) =>
     if not(Words.has_key(Len)) then
       printf("Sorry, the dictionary don't include words of length %d\n", Len),
       MissingWordLength := true
-      % , halt
     end,
     MissingWordLength == false,
     SegmentTuple = Segment.to_array(),
-    table_in( SegmentTuple, Words.get(Len)) % map of lists
+    table_in(SegmentTuple, Words.get(Len)) % map of lists    
     % table_in( SegmentTuple, Words[Len]) % list of lists
   end,
   println(missingWordLength=MissingWordLength),
   MissingWordLength == false,
-  println(segmentLens=SegmentLens),
   % println(l=L),
 
   println(solve),
-  Vars = L ++ Segments.vars.flatten,
-  % println(vars=Vars),
-  solve($[ff,split],Vars),
+  SegmentsFlatten = Segments.flatten,
+  Vars = L ++ SegmentsFlatten,
+  solve($[split],Vars),
+
   % solve_suspended,  %only for cp module
   % time2(solve($[min,updown],L++Segments)),
   % time2(solve($[ff,split],L++Segments)),
 
   println(l=L),
-  % println(chars=[chr(C+96) : C in L]),
   println("\nSolution:"),
   LC = 1, % Counter in L
   foreach(P in Problem)
-     % println([cond(C != 'x', chr(C+96), '_') : C in P]),
-     % println([C : C in P]),
      foreach(C in P)
        if C == x then
          print('_')
@@ -397,24 +393,26 @@ crossword(Problem,Words) =>
 
  Where "*" marks the blocks
 
+ Method:
+ - ignore all empty lines or lines containing '%' 
+ - delete all spaces, then replace '*' with 'x' 
+   and '_' with an anonymous variable (_),
+   (which will then be a decision variable).
+
 */
+
 read_problem(File) = Problem => 
   Problem1 = [],
   foreach(Line in read_file_lines(File))
      if Line != [], not(member('%',Line))  then
-        % println(Line),
-        Line2 = delete_all(Line,' ').replace('*',x),
-        foreach(I in 1..Line2.length)
-          if Line2[I] = '_' then
-             Line2[I] := new_dvar(),
-             Line2[I] :: 1..26
-          end
-        end,
-        Problem1 := Problem1 ++ [Line2]
+        NewLine = [cond(C == '*', 'x',_) : C in delete_all(Line,' ')],
+        Problem1 := Problem1 ++ [NewLine]
      end
   end,
   nl,
   Problem = Problem1.
+
+
 
 %
 % return a map of words (list per length)
@@ -454,6 +452,7 @@ get_segments(Problem) = Segments =>
     end
   end,
   Segments1 = Segments.
+
 
 convert_list(L) = [ convert(W).list_to_and() : W in L].
 

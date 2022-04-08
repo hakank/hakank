@@ -2,8 +2,12 @@
 
   Wordle solver in Picat.
 
-  This is a smaller version of Wordle solver than wordle.pi
-  just including the solver, not all the other experiments.
+  This is a little different approach compare to wordle2.pi
+  which is a smaller version than wordle.pi just including the solver, 
+  not all the other experiments.
+
+  The difference to wordle2.pi is that here the words as
+  word/1 using cl_facts. However, wordle2.pi is faster.
 
   This model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
@@ -52,41 +56,36 @@ go => true.
 %    - NotInWord: characters not in word.
 %      Example: s, a, and t are not in the word: "sat"
 %
-wordle(CorrectPos, CorrectChar, NotInWord) =>
+wordle(CorrectPos, CorrectChar, NotInWord) ?=>
   N = 5,
-  % File = "unixdict.txt", % 3161 5 letter words. Is this the smallest word list?
   File = "wordle_small.txt", % 2314 words
-  % File = "wordle_large.txt", % 12971 words
-  % File = "eng_dict.txt", % 9336 5 letter words
-  % File = "words_lower.txt", % 21830 English 5 letter words 
 
-  Words = [W : W in read_file_lines(File), length(W) == N], 
-  NumWords = Words.len,
-  println(numWordsInDict=NumWords),
+  % Create a global map
+  Map = get_global_map(),
+  Map.put(words,[]),
 
-  wordle(Words, CorrectPos, CorrectChar, NotInWord,[],Candidates),
-  println(candidates=Candidates),
-  println(len=Candidates.len),
-  (Candidates != [] -> println(suggestion=Candidates.first()) ; true),
+  % Read words and place them in the database
+  Words = [W : W in read_file_lines(File), length(W) == N],
+  cl_facts($[word(W) : W in Words]),
+  % cl_facts($[word(W) : W in Words],$word(-)), % with index. Not faster.
+
+  % Loop through the words
+  word(Word),
+  correct_pos(Word,CorrectPos),
+  correct_char(Word,Word,CorrectChar),
+  not_in_word(Word,NotInWord),
+  Map.put(words,Map.get(words) ++ [Word]),
+  fail,
   
   nl.
-
-%
-% The main engine:
-% Loop through all words and check if they are in the scope.
-% 
-wordle([], _CorrectPos, _CorrectChar, _NotInWord,AllWords,Sorted) :-
-  sort_candidates(AllWords,Sorted).
-wordle([Word|Words], CorrectPos, CorrectChar, NotInWord, AllWords0,AllWords) :-
-   ( (correct_pos(Word,CorrectPos),
-      correct_char(Word,Word,CorrectChar),
-      not_in_word(Word,NotInWord)) ->
-       AllWords1 = AllWords0 ++ [Word],
-       wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords1,AllWords)
-    ;
-     wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords0,AllWords)
-   ).
-
+% Print candidates
+wordle(_, _, _) =>
+  sort_candidates(get_global_map().get(words),Candidates),
+  println(Candidates),
+  println(len=Candidates.len),
+  println(suggestion=Candidates.first),
+  nl.
+  
 %
 % Correct position.
 %
