@@ -1,0 +1,328 @@
+/* 
+
+  Cryptogram crypto in Picat.
+
+  http://en.wikipedia.org/wiki/Cryptogram
+  """
+  A cryptogram is a type of puzzle that consists of a short piece of 
+  encrypted text. Generally the cipher used to encrypt the text is simple 
+  enough that cryptogram can be solved by hand. Frequently used are 
+  substitution ciphers where each letter is replaced by a different 
+  letter or number. To solve the puzzle, one must recover the original 
+  lettering. Though once used in more serious applications, they are now 
+  mainly printed for entertainment in newspapers and magazines.
+  """
+
+  The basic idea is to let Picat's unification + backtracking do the 
+  hard work. Here's an outline of the method:
+  - Create a dictionary (Vars) which maps the letters (here upppercase) 
+    to a unique variable. E.g. 'A'-> VA, 'B'->VB etc.
+
+  - Loops through all the words in the crypto and get the words that
+    matches its structure (isomorphic words). E.g.
+       121234
+       KRKRPL has the structure [1,2,1,2,3,4]
+
+       HAKANK has the structure [1,2,3,2,4,3]
+       ABCDE  has the structure [1,2,3,4,5]
+
+    Save all the words that matches the structure in a dictionary
+    (StructureWords).
+
+  - Sort the crypto words according the length of the matched words
+    and loop through the word in this order.
+
+ 
+  * go/0: Problem 1 is the example from the Wikipedia article:
+     "TGIAB FZU TGPHVGHPD FPB GSB BTTBZVB QR F CQQW OPBFG KUBFT FPB SQOLFTS"
+
+    ("Style and structure are the essence of a book; great ideas are hogwash.",
+     Vladimir Nabokov)
+
+    There is a huge number of solutions to this, mostly because there are many
+    words with unique letters (i.e. structure is 1..<N>).
+
+    - using /usr/share/dict/words give 4680 solutions. Here are some of them:
+
+       stage and structure are the essence of a Cook great ideas are hogwash
+       stake and structure are the essence of a Cook great ideas are hogwash
+       stale and structure are the essence of a Cook great ideas are hogwash
+       ...
+       stove and structure are the essence of a Moog great ideas are hogwash
+       style and structure are the essence of a Moog great ideas are hogwash
+       stage and structure are the essence of a Moon great ideas are hogwash
+       ...
+       stove and structure are the essence of a book great ideas are hogwash
+       style and structure are the essence of a book great ideas are hogwash  <--
+       stage and structure are the essence of a boom great ideas are hogwash
+       stake and structure are the essence of a boom great ideas are hogwash
+       ...
+
+
+       The map (Vars) for the correct decryption is
+           [A = l,B = e,C = b,D = e,E = _,F = a,G = t,H = u,I = y,J = _,
+            K = i,L = w,M = _,N = _,O = g,P = r,Q = o,R = f,S = h,T = s,
+            U = d,V = c,W = k,X = _,Y = _,Z = n]
+
+
+       Many of the words are the same in all decryptions, e.g. 
+           - structure
+           - essence
+           - great
+           - ideas
+           - hogwash
+
+
+  For more about word structures (isomorphic words), see 
+    - isomorphic_words.pi
+    - cryptogram.pi
+    - the online program http://www.hakank.org/isomorphic_words/index.html
+
+
+  This Picat program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+ 
+
+go ?=>
+   % Words = read_file_lines("words_lower.txt"), % 480_126 solutions on problem 1 (6min 16s)
+   Words = read_file_lines("/usr/share/dict/words"), % 4680 solutions on problem 1 (1.4s)
+   % Words = read_file_lines("unixdict.txt"), % no solution on problem1
+   % Words = read_file_lines("sv_spelling_org_utf8.txt"), % Swedish words:no solution on problem 1
+   
+   problem(1,Encrypted),
+   println(encrypted=Encrypted),
+   
+   decrypt(Encrypted,Words,Decrypted,Vars),
+   println(Decrypted),
+   % println(vars=Vars.to_list.sort),
+   % nl,
+   
+   % Count = count_all(decrypt(Encrypted,Words,Decrypted)),
+   % println(count=Count),
+
+   fail,
+   nl.
+
+go => true.
+
+go2 ?=>
+  problem(2,Crypto),
+  Extra = map(chr,[112,105,99,97,116]), % This word is not in the dictionaries
+  Words = read_file_lines("/usr/share/dict/words") ++ [Extra],
+  % Words = read_file_lines("unixdict.txt") ++ [Extra],
+  
+  println(crypto=Crypto),
+  decrypt(Crypto,Words,Decrypted,Vars),
+  println(decrypted=Decrypted),
+  % println(vars=Vars.to_list.sort),
+  % nl,
+  fail,
+  nl.
+go2 => true.
+
+
+%
+% Generate a random substitution and encrypt + decrypt a well known sentence.
+% 
+go3 ?=>
+  _ = random2(),
+  % Words = read_file_lines("unixdict.txt"),  
+  Words = read_file_lines("/usr/share/dict/words"),
+  % Words = read_file_lines("unixdict.txt"),
+  
+  Subst = random_substitution(alpha()),  
+  writeln(subst=Subst.to_list().sort()),
+  
+  Sentence = "Logic and functional programming is fun and rewarding for everyone. Backtracking is king.".to_uppercase.split(" ,.!?-\n\t_"),
+  Crypto = [[Subst.get(C) : C in Word] : Word in Sentence],
+  println(crypto=Crypto),
+  
+  decrypt(Crypto,Words,Decrypted,Vars),
+  println(decrypted=Decrypted),
+  print(vars=[C=cond(nonvar(V),V,'_') : C=V in Vars.to_list.sort]),
+  nl,
+  
+  fail,
+  nl.
+go3 => true.
+
+
+%
+% Count the number of solutions.
+%
+go4 ?=>
+   Extra = map(chr,[112,105,99,97,116]), % This word is not in the dictionaries
+
+   % 480_126 solutions on problem 1 (6min 16s), 48 solutions on problem 2 (2.538s)
+   % Words = read_file_lines("words_lower.txt") ++ [Extra],
+
+   % 4680 solutions on problem 1 (1.4s), no solution on problem 2
+   Words = read_file_lines("/usr/share/dict/words") ++ [Extra], 
+
+   % No solutions
+   % Words = read_file_lines("unixdict.txt") ++ [Extra], % no solution on problem1
+   
+
+   member(P,1..2),
+   problem(P,Encrypted),
+   println(problem=Encrypted),
+   
+   time(Count = count_all(decrypt(Encrypted,Words,_Decrypted,_Vars))),
+   println(count=Count),
+   nl,
+   
+   fail,
+   nl.
+
+go4 => true.
+
+
+
+%
+% Decrypt a list of encrypted words using the words in the
+% wordlist Words.
+% The decrypted solution is in Decrypted.
+% Vars is the substitution used.
+%
+decrypt(Encrypted,Words,Decrypted,Vars) =>
+  
+   % Characters -> Variables
+   % Vars = new_map(['A'=VA,'B'=VB,'C'=VC,'D'=VD,'E'=VE,'F'=VF,'G'=VG,'H'=VH,'I'=VI,'J'=VJ,
+   %                 'K'=VK,'L'=VL,'M'=VM,'N'=VN,'O'=VO,'P'=VP,'Q'=VQ,'R'=VR,'S'=VS,'T'=VT,
+   %                 'U'=VU,'V'=VV,'W'=VW,'X'=VX,'Y'=VY,'Z'=VZ]),
+   % Simpler
+   Vars = new_map([C=_ : C in alpha()]),
+
+
+   % Convert the crypto to variables
+   EncryptedVars = [[Vars.get(P) : P in PP] : PP in Encrypted],
+   % bp.portray_clause(EncryptedVars),
+
+   AlternativeLens = new_map(), % Structure and number of matched words
+   StructureWords = new_map(), % All words that matches a structure
+   foreach(Word in Encrypted)
+     S = structure2(Word),
+     SLen=S.len,
+     Words2 = [W : W in Words, W.len == SLen, structure2(W) == S],
+     AlternativeLens.put(Word,[Words2.len,S]),
+     if not StructureWords.has_key(S) then
+       StructureWords.put(S, Words2)
+     end
+   end,   
+
+   % Sort according the number of structure words
+   % (decreasing order). Fewest first.
+   Sorted = AlternativeLens.to_list.sort(2),
+   % NumWordsMatched = [S[2,1] : S in Sorted],
+   foreach(Word = [_N,S] in Sorted)
+     % Convert the word to variables
+     WordVars = [Vars.get(C) : C in Word],
+     % Find a word that unifies with this word
+     member(WordVars,StructureWords.get(S))
+   end,
+   Decrypted = [P.flatten : P in EncryptedVars].join(' ').
+
+
+alpha() = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".
+
+% Make a random substitution of Char -> Char
+% 
+random_substitution(Alpha) = new_map([A=T : {A,T} in zip(Alpha,random_perm(Alpha,Alpha.len))]).
+
+%
+% Random permutation
+%
+random_perm(L,N) = Perm => 
+  Perm = copy_term(L),
+  Len = L.length,
+  foreach(_ in 1..N) 
+     R1 = random(1,Len),
+     R2 = random(1,Len),
+     T = Perm[R1],
+     Perm[R1] := Perm[R2],
+     Perm[R2] := T
+  end.
+
+
+%
+% Match the structure of each words in a wordlist.
+% (Isomorphic words.)
+%
+check_wordlist2(Wordlist, Structure) = Words =>
+  Len = Structure.length,
+  Words = [Word : Word in read_file_lines(Wordlist), 
+           Word.length=Len, 
+          structure2(Word) = Structure].
+
+
+%
+% Convert a word to a word structure, i.e. where 
+% each character gets the index of its first occurrence.
+%
+% E.g.
+% 
+%  krkrpl has the structure [1,2,1,2,3,4]
+%
+%  121234
+%  krkrpl
+%
+%  hakank has the structure [1,2,3,2,4,3]
+%  abcde  has the structure [1,2,3,4,5]
+%
+structure(Word) = S =>
+  M = new_map(),
+  S1 = [],
+  Ix = 1,
+  foreach(W in Word) 
+    if not(M.has_key(W)) then
+      M.put(W,Ix),
+      Ix := Ix + 1
+    end,
+    S1 := S1 ++ [M.get(W)]
+  end,
+  
+  S = S1.
+
+%
+% Another approach.
+%
+% Though not as nice as in K (0-based):
+%     ,/&:'(?a)=/:a:"hakank"
+%  0 1 2 1 3 2
+% Or in J (also 0-based):
+%     (i.~~.)~'hakank'
+%  0 1 2 1 3 2
+%  
+structure2(Word) = S =>
+  U = Word.remove_dups(), 
+  M = new_map([C=I : {C,I} in zip(U, 1..U.length)]), 
+  S = [M.get(C) : C in Word].
+
+
+%
+% The example from the Wikipedia article cited above
+% "Style and structure are the essence of a book; great ideas are hogwash." 
+% -Vladimir Nabokov
+%
+problem(1,Problem) => 
+  Problem = ["TGIAB", "FZU", "TGPHVGHPD", "FPB", "GSB", "BTTBZVB", "QR", "F", "CQQW",
+             "OPBFG", "KUBFT", "FPB", "SQOLFTS"].
+
+
+%
+% This is a very well known sentence from a favorite book.
+% Hint: it's not Jane Austen, but still well written.
+%
+problem(2,Problem) =>
+  Problem = ["EYBJT","YX","J","QZRZWJL","EUWECXZ","LJRQUJQZ","TDJT","YRBCWECWJTZX",
+             "NZJTUWZX","NWCM","LCQYB","EWCQWJMMYRQ","NURBTYCRJL","EWCQWJMMYRQ",
+             "BCRXTWJYRT","EWCQWJMMYRQ","JRH","XBWYETYRQ","LJRQUJQZX"].

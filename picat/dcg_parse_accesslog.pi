@@ -8,6 +8,8 @@
   Tested with an access.log file of 122253 lines (29Mb):
   * go/0 uses read_file_lines/1 and takes 3.844s  with printing.
   * go2/0 instead uses a while loop with read_line/1 and is quite faster: 1.914s.
+  * go3/0 check unparsable lines
+  * go4/0 gets some statistics 
 
   parse_apachelog_list is - expectedly - faster than parse_apachelog_map.
 
@@ -69,9 +71,9 @@ go2 ?=>
         % println(list=List)
         % println(map=Map)
         % true
-        println([List[5],List[6]])
-        % rintln([Map.get(http),Map.get(http_code)])
-        % true
+        % println([List[5],List[6]])
+        % println([Map.get(http),Map.get(http_code)])
+        true
         % println([host=Map.get(host),method=Map.get(method),url=Map.get(url),http=Map.get(http),size=Map.get(size),http_code=Map.get(http_code)])
      else
        println(cannot_parse=Line),
@@ -105,6 +107,104 @@ go3 ?=>
   println(list=List),
   nl.
 go3 => true.
+
+%
+% A more realistic program: Get some statistics for each line.
+%
+% For the same access.log with 122_253 lines as before 
+% it takes about 2.3s. Cf just reading the lines: 1.9s.
+%
+go4 ?=>
+  % This helps a lot for the speed since the tables can be very large.
+  garbage_collect(300_000_000), 
+  Reader = open("access.log"),
+  NumLines = 0,
+  NumFailed = 0,
+  TotalVisited = 0,
+  TotalSize = 0,
+  Visitors = new_map(10_000),
+  VisitedDays = new_map(),
+  VisitedHours = new_map(),  
+  VisitedMonths = new_map(),
+  SizeDays = new_map(),
+  SizeMonths = new_map(),
+  
+  Line = read_line(Reader),
+  % positions in the list (slower approach)
+  Elements = [host,date,method,url,http,http_code,size,referer,brower_agent],
+  Pos = new_map([V=Pos : {V,Pos} in zip(Elements,1..Elements.len)]),
+  while(Line != end_of_file)
+     NumLines := NumLines + 1,
+     if parse_apachelog_list(List,Line,[]) then
+     % if parse_apachelog_map(Map,Line,[]) then      
+        TotalVisited := TotalVisited + 1,
+        
+        Host = List[Pos.get(host)],
+        % Host = Map.get(host),
+        Visitors.put(Host,Visitors.get(Host,0)+1),
+
+        Date = List[Pos.get(date)],
+        % Date = Map.get(date),
+        DateSplit = Date.split(":"),
+        [Day,Month,_Year] = DateSplit[1].split("/"),
+        Hour = DateSplit[2],
+        VisitedDays.put(Day,VisitedDays.get(Day,0)+1),
+        VisitedHours.put(Hour,VisitedHours.get(Hour,0)+1),        
+        VisitedMonths.put(Month,VisitedDays.get(Month,0)+1),
+        
+        Size = List[Pos.get(size)].to_int,
+        % Size = Map.get(size).to_int,
+        TotalSize := TotalSize + Size,
+        SizeDays.put(Day,SizeDays.get(Day,0)+Size),
+        SizeMonths.put(Month,SizeDays.get(Month,0)+Size)
+        
+     else
+       println(cannot_parse=Line),
+       NumFailed := NumFailed + 1
+     end,
+     Line := read_line(Reader)
+  end,
+  nl,
+  println(num_lines=NumLines),
+  println(num_failed=NumFailed),
+  println(num_visitors=TotalVisited),
+  println(num_unique_visitors=Visitors.keys.len),
+  nl,
+  println("Number of visitors per day:"),
+  foreach(Day in VisitedDays.keys.sort)
+    println(day=Day=VisitedDays.get(Day))
+  end,
+  nl,
+  println("Number of visitors per hour:"),
+  foreach(Hour in VisitedHours.keys.sort)
+    println(hour=Hour=VisitedHours.get(Hour))
+  end,
+  nl,
+  println(totalSize==TotalSize),  
+  println("Number of size per day:"),
+  foreach(Day in SizeDays.keys.sort)
+    println(day=Day=VisitedDays.get(Day))
+  end,
+  nl,
+  println("10 most active visitors:"),
+  foreach(Host=NumHits in Visitors.to_list.sort_down(2).take(10))
+    println(Host=NumHits)
+  end,
+  nl.
+go4 => true.
+
+%
+% take(List,N)= L
+% 
+% Return the N'th first elements in the list List
+% e.g. 
+%    L=take(1..10, 4)
+% -> [1,2,3,4]
+%
+take(_Xs,0) = [].
+take([],_N) = [].
+take([X|Xs],N) = [X] ++ take(Xs,N-1).
+
 
 % Note that everything returned is a string so conversion to integers have to be done by the caller
 % The format of the Apache access log file is

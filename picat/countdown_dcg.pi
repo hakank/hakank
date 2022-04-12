@@ -1,0 +1,247 @@
+/* 
+
+  Countdown DCG in Picat.
+
+  From Ruby Quiz #7
+  http://www.rubyquiz.com/quiz7.html
+  """
+  One of the longest-running quiz shows on UK TV is called Countdown, 
+  and has a "numbers round". There are some cards laid face down in 
+  front of the host - the top row contains 'large' numbers (from the 
+  set 25, 50, 75, 100), and the rest are 'small' (1 to 10). Six cards 
+  are picked and displayed: the choice is made by one of the contestants, 
+  who typically will ask for one large number and five small ones.
+  
+  Next, a machine called "Cecil" picks a target number between 100 and 
+  999 at random. The contestants then have 30 seconds to find a way of 
+  combining the source numbers using the normal arithmetic operators 
+  (+, -, *, /) to make the target number, or to get as close as possible.
+  
+  Each source card can be used no more than once. The same applies to any 
+  intermediate results, although of course you don't have to explicitly 
+  show the intermediate results.
+  
+  Example: source 100 5 5 2 6 8, target 522
+  
+  100 * 5 = 500
+  5 + 6 = 11
+  11 * 2 = 22
+  500 + 22 = 522
+  
+  or more succinctly, (5*100)+((5+6)*2) = 522
+  
+  Another solution is (100+6)*5-8 = 522
+  
+  Normal arithmetic rules apply, and in particular you are not allowed to 
+  use integer rounding. That is, 7 divided by 3 is 2 1/3, not 2.
+  
+  The quiz is to write a program which will accept one target number and 
+  a list of source numbers, and generate a solution which calculates 
+  the target or a number as close to the target as possible.
+  """
+
+
+  This Picat program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+% import util.
+import cp.
+
+
+main => go.
+
+%
+% Using the DCG from 
+% http://www.rabbitfarm.com/cgi-bin/blosxom/prolog
+% with some extensions.
+%
+% This is generator version. See go2/0 for a parser version.
+%
+% Note: some of the generated solutions are not correct
+% so we have to weed out them with parse_term + apply.
+%
+go =>
+  garbage_collect(300_000_000),
+  % Must we use all numbers
+  UseAllNumbers = false,
+  % Must we use each number atmost once?
+  UseUnique = true,
+  
+  % Target = 9,  Numbers = [1,2,3,10],
+  Target = 522, Numbers = [100, 5, 5, 2, 6, 8],
+  % Target = 24, Numbers = [4,4,4,4],
+
+  MinLen = 1,
+  MaxLen = 10,
+  countdown(Numbers,Target,UseAllNumbers,UseUnique,MinLen,MaxLen, X),
+  println(x=X),
+  flush(stdout),
+  fail,
+  nl.
+
+go => true.
+
+%
+% http://www.rabbitfarm.com/cgi-bin/blosxom/prolog
+% To make it a calculator (parser) we
+% have to add the numbers in the globel map (for operator/1)
+%
+go2 =>
+  % calculator([10, +, 20, -, 5], X),
+  Eq = [10, +, 20, -, 5],
+  % Eq = ['(', 10, +, 20, -, 5, ')', *, 2],
+  Numbers = [T : T in Eq, number(T)],
+  % Add the proper numbers
+  get_global_map().put(numbers,Numbers),
+
+
+  calculator(Eq, X),
+  println(x=X),  
+  fail,
+  nl.
+
+go2 => true.
+
+countdown(Numbers,Target,UseAllNumbers,UseUnique,MinLen,MaxLen, X2) :-
+  % Add the accepted numbers to the DCG
+  get_global_map().put(numbers,Numbers),
+
+  OccMap = new_map([Num=Occ : Num in Numbers.sort_remove_dups, count(Num,Numbers,Occ) ]),
+
+  % max length of the expression, including "(" and ")"
+  if UseAllNumbers then
+    member(Len,min(MinLen,Numbers.len)..MaxLen)
+  else
+     member(Len,MinLen..MaxLen)
+  end,
+  println(len=Len),
+  X = new_list(Len),
+  
+  calculator(X, Target), % Here's the DCG (drown by everything else :-))
+  
+  if UseAllNumbers ; UseUnique then
+    UsedNums = [T : T in X, number(T)],
+    if UseAllNumbers then
+      UsedNums.len == Numbers.len,
+      UsedNums.sort_remove_dups == Numbers.sort_remove_dups
+    end,
+    if UseUnique then
+      UMap = new_map([Num=Occ : Num in UsedNums.sort_remove_dups, count(Num,UsedNums,Occ) ]),
+      foreach(Num in OccMap.keys)
+        UMap.get(Num,0) <= OccMap.get(Num)
+      end      
+    end
+  end,
+  X2 = [C.to_string : C in X].flatten,
+  % Check the solution and remove incorrect candidates
+  PT = parse_term(X2).apply,
+  % if PT*1.0 != Target*1.0 then
+  %   println(not_correct=X2=PT=Target)
+  % end,
+  PT*1.0 == Target*1.0.
+
+
+
+% http://www.rabbitfarm.com/cgi-bin/blosxom/prolog
+/*
+main:-
+    calculator([10, (+), 20, (-), 5], AnswerA),
+    write(AnswerA), nl,
+    calculator(['(', 10, (+), 20, (-), 5, ')', (*), 2], AnswerB),
+    write(AnswerB), nl,
+
+Note: I've changed it to just a generator now....
+
+*/
+table
+expression(Answer) --> term(Answer).
+expression(Answer) --> term(Answer0), [+], expression(Answer1), {Answer = Answer0 + Answer1}.
+expression(Answer) --> term(Answer0), [-], expression(Answer1), {Answer = Answer0 - Answer1}.
+
+table
+term(Answer) --> operand(Answer).
+term(Answer) --> operand(Answer0), [*], term(Answer1), {Answer = Answer0 * Answer1}.
+% This tends to give out of memory error!
+% term(Answer) --> operand(Answer0), [**], term(Answer1), {Answer = Answer0 ** Answer1}. 
+
+% term(Answer) --> operand(Answer0), [/], term(Answer1), {Answer1 != 0, Answer1 != 0.0,
+%                                                         Answer = Answer0 / Answer1}.
+
+% We only allow proper integer division.
+term(Answer) --> operand(Answer0), {integer(Answer0)}, [/], term(Answer1), {
+                                                        integer(Answer1), 
+                                                        Answer1 != 0,
+                                                        Answer1 != 1,
+                                                        Answer0 mod Answer1 == 0,
+                                                        Answer = (Answer0 / Answer1).to_int}.
+
+% operand(X) --> [X], {number(X)}. % parser
+% operand(X) --> [X], {member(X,0..100)}. % generator
+operand(X) --> [X], {Numbers = get_global_map().get(numbers), member(X,Numbers)}.
+operand(Answer) --> ['('],  expression(Answer), [')'].
+
+% table
+calculator(Expression, Answer):-
+    % phrase(expression(Answer), Expression).
+    phrase(expression,Answer, Expression).    
+    % expression(Answer, Expression,Rest),
+    % println(answer=Answer=Rest). 
+
+% Don't work!
+/*
+% From https://code-examples.net/en/q/a2b6e4
+expr(Evaluable) --> {println(start)},
+    sum(Evaluable).
+
+sum(S) --> {println(sum=S)},
+    product(P), sum_1(P, S).
+sum_1(L, S) --> {println($sum_1(L, S))},
+    "+", product(P), sum_1(L + P, S);
+    "-", product(P), sum_1(L - P, S);
+    {L = S}.
+
+product(P) --> {println(product=P)},
+    value(V), product_1(V, P).
+product_1(V, P) --> {println($product_1(V, P))},
+    "*", value(U), product_1(V * U, P);
+    "/", value(U), product_1(V / U, P);
+    {V = P}.
+
+% Note: This was commented
+% value(V) --> {println(value=V)},
+%   % {var(V)} -> {between(0, 9, V)} ; {true}.
+%   {(var(V) -> between(0, 9, V) ; true)}.
+
+value(V) --> {println(value=V)},
+    "(", expr(V), ")" ;
+    numberx(V).
+
+% hakank:
+numberx(V) --> {println(numberx=V)}, {(integer(V) ; float(V))}.
+
+*/
+
+
+% Not correct!
+% From https://www.cs.rochester.edu/~brown/173/exercises/samples/PShem2.pdf
+% But this is not correct:
+% It yield strings as 0+1++2
+/*
+expr --> term, exprtail ; func, factor.
+exprtail --> [] ; (add_op, term, exprtail).
+term --> power, termtail.
+termtail --> [] ; (mult_op, power, termtail).
+power --> factor, powertail.
+powertail --> [] ; pow_op, factor, powertail.
+factor --> id ; number ; (add_op, factor) ; ("(", expr, ")"). 
+add_op --> "+" ; "-".
+mult_op --> "*"; "/". 
+pow_op --> "^". 
+func --> "tan" ; "sin" ; "cos".
+
+id --> [C], {member(C1,0..9), C=C1.to_string}.
+number --> [C], {member(C1,0..9), C=C1.to_string}.
+*/

@@ -1,0 +1,518 @@
+/* 
+
+  Pure Prolog in Picat.
+
+  Here we define predicates for 
+   - proving a predicate
+   - creating proof trees for a predicate
+   - trace a predicate
+
+  We just play here with some common predicates 
+  conc/3 (i.e. append/3), member/2, and shuffle/3.
+
+  Note that the predicates to use must be defined in clause/1 
+  as
+     clause( ( Head :- Body )).
+
+  For facts:
+     clause( ( Head )).
+     or
+     clause( ( Head :- true )).
+
+  The parenthesis are important, especially when using ':-'.
+
+  * go/0: Test of prove/1 and prove/2 
+  * go2/0: Tracing some predicates
+  * go3/0: Full trace with backtracking for shuffle/3.
+
+
+  Sources:
+  * prove/1 and prove/2:
+    From Pereira & Shieber "Prolog and Natural-Language Analysis",
+    page 160ff.
+
+  * trace/1 
+    from https://www.lix.polytechnique.fr/~liberti/public/computing/prog/prolog/prolog-tutorial.html
+
+  Cf: proof_append.pi 
+  Compared to proof_append.pi, here we don't have to use bp.assert/1
+  and bp.clause/1. Instead we can define the predicates directly in Picat,
+  though that must be done via clause/1.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+/*
+  prove/1
+  -------
+
+  Here is the full trace of   
+    prove( $conc([a,b],[c,d],A))
+
+  (without the println/1 statements)
+
+   Picat> trace
+   Picat> cl(pure_prolog_in_picat), go
+   Call: (1) go ?r
+   Call: (2) prove(conc([a,b],[c,d],_11310))
+   Call: (3) true = conc([a,b],[c,d],_11310)
+   Fail: (3) true = conc([a,b],[c,d],_11310)
+   Call: (4) clause(':-'(conc([a,b],[c,d],_11310),_11808))
+   Call: (5) var(':-'(conc([a,b],[c,d],_11310),_11808))
+   Fail: (5) var(':-'(conc([a,b],[c,d],_11310),_11808))
+   Call: (6) conc('[]',_11e10,_11e10) = conc([a,b],[c,d],_11310)
+   Fail: (6) conc('[]',_11e10,_11e10) = conc([a,b],[c,d],_11310)
+   Call: (7) conc([_11e00|_11e08],_11e30,[_11e00|_11e18]) = conc([a,b],[c,d],_11310)
+   Exit: (7) conc([a,b],[c,d],[a|_11e18]) = conc([a,b],[c,d],[a|_11e18])
+   Call: (8) conc([b],[c,d],_11e18) = _11808
+   Exit: (8) conc([b],[c,d],_11e18) = conc([b],[c,d],_11e18)
+?  Exit: (4) clause(':-'(conc([a,b],[c,d],[a|_11e18]),conc([b],[c,d],_11e18)))
+   Call: (9) prove(conc([b],[c,d],_11e18))
+   Call: (10) true = conc([b],[c,d],_11e18)
+   Fail: (10) true = conc([b],[c,d],_11e18)
+   Call: (11) clause(':-'(conc([b],[c,d],_11e18),_14230))
+   Call: (12) var(':-'(conc([b],[c,d],_11e18),_14230))
+   Fail: (12) var(':-'(conc([b],[c,d],_11e18),_14230))
+   Call: (13) conc('[]',_14818,_14818) = conc([b],[c,d],_11e18)
+   Fail: (13) conc('[]',_14818,_14818) = conc([b],[c,d],_11e18)
+   Call: (14) conc([_14808|_14810],_14838,[_14808|_14820]) = conc([b],[c,d],_11e18)
+   Exit: (14) conc([b],[c,d],[b|_14820]) = conc([b],[c,d],[b|_14820])
+   Call: (15) conc('[]',[c,d],_14820) = _14230
+   Exit: (15) conc('[]',[c,d],_14820) = conc('[]',[c,d],_14820)
+?  Exit: (11) clause(':-'(conc([b],[c,d],[b|_14820]),conc('[]',[c,d],_14820)))
+   Call: (16) prove(conc('[]',[c,d],_14820))
+   Call: (17) true = conc('[]',[c,d],_14820)
+   Fail: (17) true = conc('[]',[c,d],_14820)
+   Call: (18) clause(':-'(conc('[]',[c,d],_14820),_16c08))
+   Call: (19) var(':-'(conc('[]',[c,d],_14820),_16c08))
+   Fail: (19) var(':-'(conc('[]',[c,d],_14820),_16c08))
+   Call: (20) conc('[]',_17200,_17200) = conc('[]',[c,d],_14820)
+   Exit: (20) conc('[]',[c,d],[c,d]) = conc('[]',[c,d],[c,d])
+   Call: (21) true = _16c08
+   Exit: (21) true = true
+?  Exit: (18) clause(':-'(conc('[]',[c,d],[c,d]),true))
+   Call: (22) prove(true)
+   Call: (23) true = true
+   Exit: (23) true = true
+?  Exit: (22) prove(true)
+?  Exit: (16) prove(conc('[]',[c,d],[c,d]))
+?  Exit: (9) prove(conc([b],[c,d],[b,c,d]))
+?  Exit: (2) prove(conc([a,b],[c,d],[a,b,c,d]))
+   Call: (24) println(a = [a,b,c,d])
+a = abcd
+
+  Here's the printout running go/0 without trace:
+
+    prove(conc(ab,cd,_2900))
+    clause(:-(conc(ab,cd,[a|_2ac8]),conc(b,cd,_2ac8)))
+    prove(conc(b,cd,_2ac8))
+    clause(:-(conc(b,cd,[b|_2ff8]),conc([],cd,_2ff8)))
+    prove(conc([],cd,_2ff8))
+    clause(:-(conc([],cd,cd),true))
+    true
+    a = abcd
+    conc = proved
+
+
+    prove(member(c,abcdef))
+    clause(:-(member(c,abcdef),member(c,bcdef)))
+    prove(member(c,bcdef))
+    clause(:-(member(c,bcdef),member(c,cdef)))
+    prove(member(c,cdef))
+    clause(:-(member(c,cdef),true))
+    true
+    member = proved
+
+
+    prove(shuffle(ab,[1,2],_4af0))
+    clause(:-(shuffle(ab,[1,2],_4af0),(conc(_4d48,_4d70,ab),shuffle(_4d70,[2],_4d98),conc(_4d48,[1|_4d98],_4af0))))
+    prove((conc(_4d48,_4d70,ab),shuffle(_4d70,[2],_4d98),conc(_4d48,[1|_4d98],_4af0)))
+    prove((conc(_4d48,_4d70,ab),shuffle(_4d70,[2],_4d98),conc(_4d48,[1|_4d98],_4af0)))
+    prove(conc(_4d48,_4d70,ab))
+    clause(:-(conc([],ab,ab),true))
+    true
+    prove((shuffle(ab,[2],_4d98),conc([],[1|_4d98],_4af0)))
+    prove((shuffle(ab,[2],_4d98),conc([],[1|_4d98],_4af0)))
+    prove(shuffle(ab,[2],_4d98))
+    clause(:-(shuffle(ab,[2],_4d98),(conc(_6468,_6490,ab),shuffle(_6490,[],_64b8),conc(_6468,[2|_64b8],_4d98))))
+    prove((conc(_6468,_6490,ab),shuffle(_6490,[],_64b8),conc(_6468,[2|_64b8],_4d98)))
+    prove((conc(_6468,_6490,ab),shuffle(_6490,[],_64b8),conc(_6468,[2|_64b8],_4d98)))
+    prove(conc(_6468,_6490,ab))
+    clause(:-(conc([],ab,ab),true))
+    true
+    prove((shuffle(ab,[],_64b8),conc([],[2|_64b8],_4d98)))
+    prove((shuffle(ab,[],_64b8),conc([],[2|_64b8],_4d98)))
+    prove(shuffle(ab,[],_64b8))
+    clause(:-(shuffle(ab,[],ab),true))
+    true
+    prove(conc([],[2,a,b],_4d98))
+    clause(:-(conc([],[2,a,b],[2,a,b]),true))
+    true
+    prove(conc([],[1,2,a,b],_4af0))
+    clause(:-(conc([],[1,2,a,b],[1,2,a,b]),true))
+    true
+
+
+  Proof trees: prove/2
+  --------------------
+  (Using bp.portray_clause/1 for a nicer formatting.)
+
+  conc/3:
+  conc([a,b], [c,d], [a,b,c,d]) :-
+        (conc([b],[c,d],[b,c,d])':-'(conc('[]',[c,d],[c,d])':-'true)).
+  conc = proved
+
+  member/2:
+  member(c, [a,b,c,d,e,f]) :-
+        (member(c,[b,c,d,e,f])':-'(member(c,[c,d,e,f])':-'true)).
+  member = proved
+
+  shuffle/3:
+  s2 = [1,2,a,b]
+  shuffle([a,b], [1,2], [1,2,a,b]) :-
+        (conc('[]',[a,b],[a,b])':-'true),
+        (shuffle([a,b],[2],[2,a,b])':-'(conc('[]',[a,b],[a,b])':-'true),(shuffle([a,b],'[]',[a,b])':-'true),(conc('[]',[2,a,b],[2,a,b])':-'true)),
+        (conc('[]',[1,2,a,b],[1,2,a,b])':-'true).
+  shuffle = proved
+
+
+*/
+go ?=>
+  %
+  % prove/1
+  %
+  println("prove/1"),
+  
+  println("conc/3:"),
+  prove( $conc([a,b],[c,d],A)),
+  println(a=A),
+  println(conc=proved),
+  nl,
+  
+  println("member/2:"),
+  prove( $member(c,[a,b,c,d,e,f])),
+  println(member=proved),
+  nl,
+
+  println("shuffle/3:"),
+  prove( $shuffle([a,b],[1,2],S)),
+  println(s=S),
+  println(shuffle=proved),
+  
+  nl,
+
+  %
+  % prove/2
+  %
+  println("prove/2"),
+  nl,
+  println("conc/3:"),
+  prove( $conc([a,b],[c,d],A), ProofConc),
+  bp.portray_clause(ProofConc),
+  println(conc=proved),
+
+  nl,
+  println("member/2:"),  
+  prove( $member(c,[a,b,c,d,e,f]), ProofMember),
+  bp.portray_clause(ProofMember),
+  println(member=proved),
+
+  nl,
+  println("shuffle/3:"),
+  prove( $shuffle([a,b],[1,2],S2),ProofShuffle),
+  println(s2=S2),
+  bp.portray_clause(ProofShuffle),
+  println(shuffle=proved),
+
+  nl,
+  println("This should fail (prove):"),
+  ( prove( $conc([a,b],[c,d],[a,a,a,a]), ProveFailed ) ->
+    println(prove_not_failed=ProveFailed)
+    ;
+    println(prove_failed=ok)
+  ),
+  nl,
+  
+  println("This should fail (trace):"),
+  ( trace( $conc([a,b],[c,d],[a,a,a,a]) ) ->
+    println(trace_not_failed=not_ok)
+    ;
+    println(failed_trace=ok)
+  ),
+
+  nl,
+  println(last_ok),
+
+
+  nl.
+go => true.
+
+
+/*
+  trace/2
+  From https://www.lix.polytechnique.fr/~liberti/public/computing/prog/prolog/prolog-tutorial.html
+
+  Output:
+
+  conc/3: 
+  '>'conc([a,b],[c,d],[a|_26b0])
+  '>'conc([b],[c,d],[b|_28c0])
+  '>'conc('[]',[c,d],[c,d])
+  '<'conc('[]',[c,d],[c,d])
+  '<'conc([b],[c,d],[b,c,d])
+  '<'conc([a,b],[c,d],[a,b,c,d])
+  conc = traced
+
+  member/2:
+  '>'member(c,[a,b,c,d,e])
+  '>'member(c,[b,c,d,e])
+  '>'member(c,[c,d,e])
+  '<'member(c,[c,d,e])
+  '<'member(c,[b,c,d,e])
+  '<'member(c,[a,b,c,d,e])
+  member = traced
+
+  shuffle/3:
+  '>'shuffle([a,b],[1,2],_3db8)
+  '>'conc('[]',[a,b],[a,b])
+  '<'conc('[]',[a,b],[a,b])
+  '>'shuffle([a,b],[2],_3e60)
+  '>'conc('[]',[a,b],[a,b])
+  '<'conc('[]',[a,b],[a,b])
+  '>'shuffle([a,b],'[]',[a,b])
+  '<'shuffle([a,b],'[]',[a,b])
+  '>'conc('[]',[2,a,b],[2,a,b])
+  '<'conc('[]',[2,a,b],[2,a,b])
+  '<'shuffle([a,b],[2],[2,a,b])
+  '>'conc('[]',[1,2,a,b],[1,2,a,b])
+  '<'conc('[]',[1,2,a,b],[1,2,a,b])
+  '<'shuffle([a,b],[1,2],[1,2,a,b])
+  shuffle = traced
+
+*/
+go2 ?=>
+  trace( $conc([a,b],[c,d],A)),
+  println(a=A),
+  println(conc=traced),
+  nl,
+  trace( $member(c,[a,b,c,d,e])),
+  println(member=traced),
+  nl,
+  
+  trace( $shuffle([a,b],[1,2],S)),
+  println(s=S),
+  println(shuffle=traced),
+  
+  nl.
+go2 => true.
+
+%
+% shuffle/3 has many solutions:
+%   s = [1,2,a,b]
+%   s = [1,a,2,b]
+%   s = [1,a,b,2]
+%   s = [a,1,2,b]
+%   s = [a,1,b,2]
+%   s = [a,b,1,2]
+% 
+% Here we trace for all solutions (with backtracking, i.e. fail).
+% 
+go3 ?=>
+  trace( $shuffle([a,b],[1,2],S)),
+  println(s=S),
+  println(shuffle=traced),
+  nl,
+  fail,
+
+  nl.
+go3 => true.
+
+%
+% Same with prove/2.
+%
+go3b ?=>
+  prove( $shuffle([a,b],[1,2],S), ShuffleProof),
+  println(s=S),
+  bp.portray_clause(ShuffleProof),
+  println(shuffle=proved),
+  nl,
+  fail,
+
+  nl.
+go3b => true.
+
+
+%
+% Note: We cannot use arithmetical operators, e.g. +,-, is, mod, etc,
+% and must convert to Peano arithmetics...
+%
+go4 ?=>
+  % S1 + S2 = S3
+  N1 = 3,
+  succ2num(S1,N1),
+  println([n1=N1,s1=S1]),  
+  N2 = 4,
+  succ2num(S2,N2),
+  println([n2=N2,s2=S2]),
+  prove( $add(S1,S2,S3), AddProof),
+  succ2num(S3,N3),
+  println(n3=N3),
+  bp.portray_clause(AddProof),
+  nl,
+  
+  println(trace),
+  % S1 + S4 = S2 : S4 = S2 -S1
+  trace( $add(S1,S4,S2)),
+  succ2num(S4,N4),
+  println(n4=N4),
+
+  % S1 * S2 = S5
+  println("\nprod/3"),
+  prove( $prod(S1,S2,S5), ProdProof),
+  bp.portray_clause(ProdProof),
+  succ2num(S5,N5),
+  println(n5=N5),
+
+  nl.
+go4 => true.
+
+
+%
+% Proof of proof conc. This doesn't work as expected
+%
+% go_xxx ?=>
+%   prove( $(prove( $member(c,[a,b,c,d,e]), ProofMember)), ProofProve),
+%   println(ProofMember),
+%   println(ProofProve),  
+%   println(conc=proved),
+%   println(prove=proved),
+%   nl.
+% go_xxx => true.
+
+
+
+
+%
+% clause/1: Definition of the predicates.
+% 
+% All predicates is defined as
+%   clause( (Head :- Body)).
+% or (for facts):
+%   clause( (Head) ).
+% For the full predicate - with ':-' - the parenthesis 
+% must not be ommitted.
+%
+
+% conc/3
+clause( ( conc([],L,L) ) ).
+clause( ( conc([E|R],L,[E|RL]) :- conc(R, L, RL) )).
+
+% member/2
+clause( ( member(E,[E|_]) )).
+clause( ( member(E,[_|L]) :- member(E,L) ) ).
+
+% shuffle/3:
+% from Pereira & Shieber "Prolog and Natural-Language Analysis", page 56
+clause( ( shuffle(L, [], L) ) ).
+clause( ( shuffle(L, [E|Rrest], S) :-
+            conc(L1,Lrest,L),
+            shuffle(Lrest,Rrest,Srest),
+            conc(L1, [E|Srest], S)
+         ) ).
+
+% add/3: successor notation
+clause( ( add(0,Y,Y) ) ).
+clause( ( add(s(X),Y,s(Z)) :-
+             add(X,Y,Z) ) ).
+% prod/3: successor notation
+clause( ( prod(0,_M,0) ) ).
+clause( ( prod(s(N), M, P) :-
+    prod(N,M,K),
+    add(K,M,P) ) ) .
+
+
+%
+% prove/1 
+% from Pereira & Shieber "Prolog and Natural-Language Analysis",  page 160f.
+% 
+% hakank: I added the printing of the steps, otherwise one have to
+% use Picat's trace/0.
+%
+% Example:
+%   prove($conc([a,b,c],[d,e],F))
+% 
+prove(true) :- println(true).
+prove(Goal) :-
+  println($prove(Goal)),
+  aclause($(Goal :- Body)),
+  println($clause((Goal :- Body))),
+  prove(Body).
+
+prove((Body1,Body2)) :-
+  println($prove((Body1,Body2))),
+  prove(Body1),
+  prove(Body2).
+
+%
+% Allow to state facts/predicate without a body in clause/1.
+%
+% Pereira & Shieber "Prolog and Natural-Language Analysis", page 164f.
+%
+aclause((Head :- Body) ) :-
+  clause(Clause),
+  (Clause = $(Head :- Body) ->
+     true
+   ;
+     Clause = Head, Body = true
+  ).
+
+%
+% prove/2:
+% Create a proof tree.
+% From Pereira & Shieber "Prolog and Natural-Language Analysis",  page 163f
+%
+% Example:
+%   prove($conc([a,b,c],[d,e],F),ProofTree)
+% 
+prove(true,true).
+prove(Goal, (Goal :- BodyProof)) :-
+  aclause($(Goal :- Body)),  
+  prove(Body, BodyProof).
+prove((Body1,Body2), (Body1Proof,Body2Proof)) :-
+  prove(Body1,Body1Proof),
+  prove(Body2,Body2Proof).
+
+
+%
+% Trace facility for pure Prolog
+% From https://www.lix.polytechnique.fr/~liberti/public/computing/prog/prolog/prolog-tutorial.html
+% Example:
+%  trace($conc([a,b,c],[d,e],F)).
+%
+trace(true).
+trace((A,B)) :-
+  trace(A),
+  trace(B).
+trace(A) :-
+  aclause($(A:-B)),
+  downprint(A),
+  trace(B),
+  upprint(A).
+
+downprint(G) :-
+  print('>'), print(G), nl.
+upprint(G)   :-
+  print('<'), print(G), nl.
+
+
+%
+% Successor notation <=> Numbers.
+% Used in go4/0.
+%
+succ2num(0,0).
+succ2num(s(N),N2) :- succ2num(N,N1), N2=N1+1.
