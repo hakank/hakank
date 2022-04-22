@@ -15,6 +15,9 @@
 % through each node of G exactly once.
 % """
 
+% Note: Almost all comments below are from tsp.mod.
+
+
 % 
 % This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
@@ -74,6 +77,7 @@ constraint
 
    /\
 
+   % From tsp.mod:
    % """
    % Constraints above are not sufficient to describe valid tours, so we
    % need to add constraints to eliminate subtours, i.e. tours which have
@@ -84,10 +88,17 @@ constraint
    % car in each node, he will need to go through all nodes to satisfy
    % this requirement, thus, all subtours will be eliminated. 
    % 
-
+   % 
    % if arc (i,j) does not belong to the salesman's tour, its capacity
    % must be zero; it is obvious that on leaving a node, it is sufficient
    % to have not more than n-1 cars 
+   % """
+ 
+   % Later comment 2022-04-22)
+   % According to Ties Westendorp (https://github.com/hakank/hakank/discussions/14)
+   % """
+   % I would like to point out that though the model formulation was well found - it is by
+   % no means novel. This is in fact exactly the Gavish-Graves formulation for TSP.
    % """
    forall(k in 1..num_edges) (
       y[k] >= 0
@@ -126,6 +137,7 @@ output [
 % data
 % 
 
+% From tsp.mod
 % """
 % These data correspond to the symmetric instance ulysses16 from:
 % Reinelt, G.: TSPLIB - A travelling salesman problem library.
