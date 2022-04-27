@@ -36,7 +36,17 @@ import planner.
 main => go.
 
 
-% Cost = 15
+% Optimal solution
+% """
+% cross_bridge([move,[a,b],to_the_right,left = [c,d],right = [a,b],cost = 2])
+% cross_bridge([move,[b],to_the_left,left = [b,c,d],right = [a],cost = 2])
+% cross_bridge([move,[c,d],to_the_right,left = [b],right = [a,c,d],cost = 8])
+% cross_bridge([move,[a],to_the_left,left = [a,b],right = [c,d],cost = 1])
+% cross_bridge([move,[a,b],to_the_right,left = '[]',right = [a,b,c,d],cost = 2])
+%
+% plan_length = 5
+% cost = 15
+% """
 go => 
    People = [a,b,c,d],
    Costs = [1,2,5,8],
@@ -50,21 +60,26 @@ go =>
 go2 =>
    nolog,
    L = [ 
-         [[a,b,c,d],[1,2,5,8]],
-         [[a,b,c,d],[1,2,5,10]],
-         [[a,b,c,d,e],[1,2,5,10,12]],
-         [[a,b,c,d,e,f],[5,10,20,25,30,35]]
+         [[a,b,c,d],[1,2,5,8]], % 2 optimal solutions 
+         [[a,b,c,d],[1,2,5,10]], % 2 optimal solutions 
+         [[a,b,c,d,e],[1,2,5,10,12]], % 8 optimal solutions 
+         [[a,b,c,d,e,f],[5,10,20,25,30,35]] % 8 optimal solutions 
        ],
    MaxPick = 2,
    foreach([People,Costs] in L)
-      bridge_and_torch(People,MaxPick,Costs)
+      % Show all solutions
+      All = findall(_,bridge_and_torch(People,MaxPick,Costs)),
+      println(num_solutions=All.len),
+      nl
    end,
 
    nl.
 
 %
-% MaxPick=3
+% Testing MaxPick=3 (instead of 2)
 % Cost 80 (plan length 5)
+% There is 8 optimal solutions.
+% 
 % For MaxPick=2 (see above): Cost 120 (length 9)
 %
 go3 => 
@@ -77,10 +92,11 @@ go3 =>
    nl.
 
 % random 
-go4 => 
+go4 =>
+   _ = random2(),
    N = 12,
    People = [ I : I in 1..N],
-   Costs = [1+random2() mod 20 : _ in 1..N].sort(),
+   Costs = [random(1,20) : _ in 1..N].sort(),
    MaxPick = 2,
    bridge_and_torch(People,MaxPick,Costs),
    nl.
@@ -129,6 +145,62 @@ go8 =>
    nl.
 
 %
+% Zurg puzzle: https://web.engr.oregonstate.edu/~erwig/zurg/
+% https://web.engr.oregonstate.edu/~erwig/papers/Zurg_JFP04.pdf
+% (page 3)
+% """
+% Buzz, Woody, Rex, and Hamm have to escape from Zurg.a They merely have to cross
+% one last bridge before they are free. However, the bridge is fragile and can hold at most
+% two of them at the same time. Moreover, to cross the bridge a flashlight is needed to
+% avoid traps and broken parts. The problem is that our friends have only one flashlight
+% with one battery that lasts for only 60 minutes (this is not a typo: sixty). The toys need
+% different times to cross the bridge (in either direction):
+%    TOY      TIME
+%    Buzz      5 minutes
+%    Woody    10 minutes
+%    Rex      20 minutes
+%    Hamm     25 minutes
+% Since there can be only two toys on the bridge at the same time, they cannot cross the
+% bridge all at once. Since they need the flashlight to cross the bridge, whenever two have
+% crossed the bridge, somebody has to go back and bring the flashlight to those toys on
+% the other side that still have to cross the bridge.
+% The problem now is: In which order can the four toys cross the bridge in time (that
+% is, in 60 minutes) to be saved from Zurg?
+% (a) These are characters from the animation movie “Toy Story 2”.
+% """
+% Here are the two optimal solutions (using best_plan_nondet/4)
+% people = [buzz,woody,rex,hamm]
+% costs = [5,10,20,25]
+% maxCost = 60
+% init = [[buzz,woody,rex,hamm],left,'[]',(map)[hamm = 25,rex = 20,woody = 10,buzz = 5],2]
+% cross_bridge([move,[buzz,woody],to_the_right,left = [hamm,rex],right = [buzz,woody],cost = 10])
+% cross_bridge([move,[woody],to_the_left,left = [hamm,rex,woody],right = [buzz],cost = 10])
+% cross_bridge([move,[hamm,rex],to_the_right,left = [woody],right = [buzz,hamm,rex],cost = 25])
+% cross_bridge([move,[buzz],to_the_left,left = [buzz,woody],right = [hamm,rex],cost = 5])
+% cross_bridge([move,[buzz,woody],to_the_right,left = '[]',right = [buzz,hamm,rex,woody],cost = 10])
+% plan_length = 5
+% cost = 60
+%
+% cross_bridge([move,[buzz,woody],to_the_right,left = [hamm,rex],right = [buzz,woody],cost = 10])
+% cross_bridge([move,[buzz],to_the_left,left = [buzz,hamm,rex],right = [woody],cost = 5])
+% cross_bridge([move,[hamm,rex],to_the_right,left = [buzz],right = [hamm,rex,woody],cost = 25])
+% cross_bridge([move,[woody],to_the_left,left = [buzz,woody],right = [hamm,rex],cost = 10])
+% cross_bridge([move,[buzz,woody],to_the_right,left = '[]',right = [buzz,hamm,rex,woody],cost = 10])
+%
+% plan_length = 5
+% cost = 60
+%
+go9 => 
+   nolog,
+   People = [buzz,woody,rex,hamm],
+   Costs = [5,10,20,25],
+   MaxPick = 2,
+   bridge_and_torch(People,MaxPick,Costs),
+   fail,
+   nl.
+
+
+%
 % MaxCost defaults to sum(Costs)
 %
 bridge_and_torch(People,MaxPick,Costs) =>
@@ -150,8 +222,8 @@ bridge_and_torch(People,MaxPick,Costs,MaxCost) =>
    Init=[People,left,[],CostsMap,MaxPick],
    writeln(init=Init),
    % best_plan(Init,MaxCost,Moves,Cost),
-   % best_plan_nondet(Init,MaxCost,Moves,Cost),
-   best_plan_bb(Init,MaxCost,Moves,Cost),
+   best_plan_nondet(Init,MaxCost,Moves,Cost),
+   % best_plan_bb(Init,MaxCost,Moves,Cost),
    foreach(Move in Moves) writeln(Move) end,
    nl,
    writeln(plan_length=Moves.length),

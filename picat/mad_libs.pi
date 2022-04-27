@@ -28,6 +28,7 @@
 
 
 import util.
+import dcg_utils.
 
 main => go.
 
@@ -51,6 +52,42 @@ go3 =>
   println(replace_tags(S,Map)),
   nl.
 
+%
+% Another take on get_tags.
+%
+go4 =>
+  Story = "<name> went for a walk in the park. <he or she> 
+found a <noun>. <name> decided to take it home.",
+
+  % get_tags2(Story,[],Tags_),
+  % Tags = Tags_.remove_dups,
+
+  % get_tags2b(Story,Tags2b_),
+  % Tags2b = Tags2b_.remove_dups,
+  % println(tags2b=Tags2b),
+
+  % Neater approach but it's very bad on backtracking!
+  % get_tags_dcg(Tags_,Story,[]),
+  % Tags = Tags_.remove_dups,
+
+  % No problem with backtracking, so we take this.
+  Tags = get_tags3(Story),
+
+  println(tags=Tags),
+
+  % fail,
+
+  if Tags = ["<name>","<he or she>","<noun>"] then
+    println("Tags are OK so we skip the input step!"),
+    % Map = get_input(Tags),
+    Map = ["<name>"="Hakan","<he or she>"="He","<noun>"="computer"],
+    println(map=Map),
+    println(replace_tags(Story,Map))
+  else 
+    println("Bad tags!")
+  end,
+  nl.
+
 
 
 %
@@ -63,8 +100,78 @@ get_tags(S) = Tags =>
   EndPos   = [P: {C,P} in zip(S,1..Len), C = '>'],
   Tags = [slice(S,Start,End) : {Start,End}  in zip(StartPos,EndPos)].remove_dups().
 
+%
+% This identifies the tags.
+% It's a little better on backtracking than the DCG variant:
+% It give all combinations of the names.
+% With the ! it only give one solution.
+get_tags2([],Tags,Tags).
+get_tags2(['<'|Rest],Tags0,[TagS|Tags]) :-
+  get_end(Rest,[],Tag), !, % cut!
+  TagS = "<" ++ Tag ++ ">", % We want <tag>
+  get_tags2(Rest,Tags0,Tags).
+get_tags2([_C|Rest],Tags0,Tags) :-
+   get_tags2(Rest,Tags0,Tags).
 
+get_end([C|Rest],Tag0,[C|Tag]) :-
+  C != '>',
+  get_end(Rest,Tag0,Tag).  
+get_end(['>'|_Rest],Tag,Tag).
+
+% Another version: tags2b/2, i.e. tags2b/3 but without Tags0
+get_tags2b([],[]).
+get_tags2b(['<'|Rest],[TagS|Tags]) :-
+  get_end(Rest,[],Tag), !, % cut!
+  TagS = "<" ++ Tag ++ ">", % We want <tag>
+  get_tags2b(Rest,Tags).
+get_tags2b([_C|Rest],Tags) :-
+   get_tags2b(Rest,Tags).
+
+
+%
+% Using find/4.
+%
+get_tags3(S) = findall(Tag, Tag=slice_between(S,"<",">")).remove_dups.
+% get_tag3(S) = slice_between(S,"<",">").
+
+%
+% Get the slice between (and including) StartString and EndString in S.
+%
+slice_between(S,StartString,EndString) = Slice =>
+  find(S,StartString,Start1,_End1),
+  % Note: End2 is the position in the truncated string S.slice(...)
+  once(find(S.slice(Start1),EndString,_Start2,End2)),
+  Slice = S[Start1..Start1+End2-1].
+
+
+%
+% DCG approach: IMHO a little neater approach than get_tags2.
+% But it behaves bad on backtracking.
+%
+% Note: This behaves very badly on backtracking due to the any/0...
+% get_tags_dcg([Tag|Tags]) -->  any, tag(Tag), any, get_tags_dcg(Tags).
+% get_tags_dcg([]) --> [].
+% tag(Tag) --> "<", any_except(Tag1,">"), ">", {Tag = "<" ++ Tag1 ++ ">"}.
+%
+% This is slightly better. It backtracks many times,
+% though only with the full solution each time.
+% (I've tried with cuts but that doesn't help!)
+%
+get_tags_dcg([Tag|Tags]) -->  no_tag(_NoTag1), 
+                              tag(Tag),
+                              no_tag(_NoTag2), 
+                              get_tags_dcg(Tags).
+get_tags_dcg([]) --> [].
+no_tag([C|Cs]) --> [C], {not membchk(C,"<>")}, no_tag(Cs).
+no_tag([]) --> [].
+% We need to add the devoured "<>".
+tag(Tag) --> "<", any_except(Tag1,">"), ">", {Tag = "<" ++ Tag1 ++ ">"}.
+
+
+
+%
 % Get input from the user
+%
 get_input(Tags) = Map =>
   Map = new_map(),
   foreach(Tag in Tags) 

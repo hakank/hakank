@@ -1,0 +1,205 @@
+/* 
+
+  Is a married person looking at an unmarried person in Picat.
+
+  From
+  https://swi-prolog.discourse.group/t/specifying-a-simple-puzzle-in-clp/3892/1
+  """
+  I watched Vsauces’ recent Future of Reasoning video on YouTube 
+  (https://youtu.be/_ArVh3Cj9rw?t=590) where he presented his audience with a 
+  simple logical puzzle:
+
+  Paul is looking at Mary.
+  Mary is looking at Peter.
+  Paul is married.
+  Peter is unmarried.
+
+  Is a married person looking at an unmarried person?
+
+  I wanted to specify this puzzle in Prolog, naturally I turned to clp libraries for this.
+  I ended up using the following formulation:
+
+  :- use_module(library(clpfd)).
+
+  ?- [Paul, Peter, Mary] ins 0..1,
+     LookingAts = [Paul-Mary, Mary-Peter],
+     Paul #= 1, Peter #= 0,
+     member(1-0, LookingAts).
+
+  Paul = 1,
+  Peter = Mary, Mary = 0,
+  LookingAts = [1-0, 0-0] ;
+  Paul = Mary, Mary = 1,
+  Peter = 0,
+  LookingAts = [1-1, 1-0].
+
+  I encoded married as 1 and unmarried as 0, and placed looking at facts in a
+  list which I eventually query to find solutions for a married person looking at
+  an unmarried person with member(1-0, LookingAts)
+
+  I’m fairly inexperienced in clp and Prolog generally, but still I don’t find this
+  solution overly satisfactory. Is there perhaps a more elegant, perhaps more readable
+  or idiomatic way of expressing this puzzle?
+  """
+
+  The assumption is that Mary is either married or unmarried, but we don't know
+  which status it is. Then we have either of these solutions, both stating that
+  an unmarried person is looking at a married person:
+  * if Mary is unmarried: [married = paul,looking_at,unmarried = mary]
+       Paul (married) is looking at Mary (unmarried)
+
+  * if Mary is married: [married = mary,looking_at,unmarried = peter]
+       Mary (married) is looking at Peter (unmarried)
+
+  Compare with nilssons_elephants.pi which is basically the same problem.
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+%
+% My LP approach.
+%
+% [married = paul,looking_at,unmarried = mary]
+% [married = mary,looking_at,unmarried = peter]
+% 
+go ?=>
+  looking_at(P1,P2),
+  status(P1,married),
+  status(P2,unmarried),
+
+  println([married=P1,looking_at,unmarried=P2]),
+  fail,
+  nl.
+go => true.
+
+%
+% bladyjoker's CLP approach
+% (1: married, 0: unmarried)
+% This yield:
+% [paul = 1,peter = 0,mary = 0]
+% [paul = 1,peter = 0,mary = 1]
+% 
+go2 ?=>
+  [Paul, Peter, Mary] :: 0..1,
+  LookingAts = $[Paul-Mary, Mary-Peter],
+  Paul #= 1, Peter #= 0,
+  member($1-0, LookingAts),
+  println([paul=Paul,peter=Peter,mary=Mary]),
+  fail,
+  nl.
+go2 => true.
+
+
+%
+% JCR's approach
+% (which is not correct since we don't know the status of Mary)
+%
+go3 =>
+  married3(X),
+  p3(X, looksAt3, Y),
+  unmarried3(Y),
+  println([X,looksAt,Y]),
+  fail,
+  nl.
+go3 => true.
+
+%
+% Peter Ludemann's approach:
+% [married = mary,looking_at,unmarried = peter]
+% [married = paul,looking_at,unmarried = mary]
+
+go4 ?=>
+  query(P1,P2),
+  println([married=P1,looking_at,unmarried=P2]),
+  fail,
+  nl.
+go4 => true.
+
+
+%
+% My DCG approach:
+% 
+% The married Paul looks at the unmarried Mary.
+% The married Mary looks at the unmarried Peter.
+% 
+go5 ?=>
+  looking_at2(X,[]),
+  println(X),
+  fail,
+  nl.
+go5 => true.
+
+%
+% LP approach (my approach go/0)
+%
+% Who is looking at whom.
+% 
+looking_at(paul,mary).
+looking_at(mary,peter).
+
+%
+% Status of the persons. 
+% A person is either married or unmarried.
+% (This works in SWI-Prolog now.)
+%
+status(paul,Status) => Status = married.
+status(peter,Status) => Status = unmarried.
+status(_X,Status) => 
+    Status = married ;  Status = unmarried.
+
+% Using Prolog style we must use cut (!) since
+% otherwise a person can have be both married
+% and unmarried
+% status(paul,married) :- !.
+% status(peter,unmarried) :- !.
+% status(_X,Status) :-
+%    Status = married ; Status = unmarried.
+
+
+%
+% JCR's approach (go3)
+% which is not correct since there's
+% no information about mary's marriedness.
+% 
+p3(paul, looksAt, mary).
+p3(mary, looksAt, peter).
+married3(paul).
+unmarried3(peter).
+
+
+%
+% Peter Ludemann's approach.
+%
+married_state([paul-married,
+               peter-unmarried,
+               mary-M]) :-
+    M = married ; M = unmarried.
+
+query(P1, P2) :-
+    married_state(MarriedState),
+    looking_at(P1, P2),
+    member($P1-married, MarriedState),
+    member($P2-unmarried, MarriedState),
+    P1 \= P2.
+
+
+
+%
+% DCG approach (cf go2/0 in nilssons_elephants.pi)
+%
+looking_at2 --> "The married ", married(Married), " ", "looks at", " ", "the unmarried ", unmarried(Unmarried), ".", 
+             {looking_at(Married,Unmarried)}.
+
+% Mary is either married or unmarried (but we don't know which).
+married(paul)    --> "Paul".
+married(mary)    --> "Mary".
+unmarried(peter) --> "Peter".
+unmarried(mary)  --> "Mary".

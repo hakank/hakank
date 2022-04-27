@@ -1,0 +1,295 @@
+/* 
+
+  Fibonacci Primes in Picat.
+
+  From https://medium.com/math-simplified/computing-the-first-10-fibonacci-primes-this-time-in-less-than-0-01-seconds-f768840289b9
+  """
+  Fibonacci Primes are numbers that are BOTH Fibonacci and Prime. There are only 10 
+  of these less than 1 billion, namely: 2, 3, 5, 13, 89, 233, 1597, 28657, 514229, and 433494437.
+  """
+
+  The faster version uses pseudo primes instead of checking with a proper primality test.
+  Here we compare the fast Python version with 
+  - prime/1: the built-in 
+  - is_prime4/1: another implementation of (proper) primality test
+  - fermat_test: using psedo primes
+
+
+  $ picat -g go fibonacci_primes.pi  
+  2 3 5 13 89 233 1597 28657 514229 433494437
+
+  $ picat -g go2 fibonacci_primes.pi 
+  2 3 5 13 89 233 1597 28657 514229 433494437 2971215073 99194853094755497
+
+ 
+  Timing for Fibonacci Primes <= 10**9:
+
+  * Picat                       Reported time   total runtime
+                                (statistics/2, ms) 
+     * go/0 (fib3/1)
+       using built-in prime/1         1              0.040s
+       using is_prime4/1              2              0.040s
+       using fermat_test/1            0              0.030s
+
+     * go3/0 (fib4/1)
+       using built-in prime/1         1              0.042s
+       using is_prime4/1              1              0.042s
+       using fermat_test/1            0              0.040s
+
+
+                                    
+                                Reported time   Total runtime
+                                (time.time())
+  * Python                         8.297e-05s        0.042s
+
+
+  Timing for Fibonacci Primes <= 10**18:
+
+  * Picat                       Reported time   total runtime
+                                (statistics/2, ms) 
+     * go2/0
+       using built-in prime/1     10092              10.122s
+       using is_prime4/1          14269              14.317s
+       using fermat_test/1            6               0.036s
+
+     * go3/0 (fib4/1)                 
+       using built-in prime/1     10114              10.156s
+       using is_prime4/1          14732              14.781s
+       using fermat_test/1            6               0.037s
+                                    
+     * go4/0 (fib5/1)                 
+       using built-in prime/1     10100              10.131s
+       using is_prime4/1          14713              14.756s
+       using fermat_test/1            6               0.037s
+                                    
+                                Reported time   Total runtime
+                                (time.time())
+  * Python                       0.00031             0.044s
+  
+
+  fermat_test/1 is very fast but it's not completely correct since 
+  it might include pseudo primes, but that's what the Python program 
+  uses.
+
+  It seems that for Limit 10**18, Python has a little faster
+  reported time, but Picat (using fermat_test) is slightly
+  faster regarding total system time (0.036s vs 0.044s).
+
+  * go3/0 and go4/0 are both a version that mimick Python't yield
+    approach to be able to skip the counter variable I:
+       while (F = fib4(Limit) )
+         % ...
+       )
+
+    Interestingly, these "yield versions" of fib 
+    (fib4/1 and fib5/2) are as fast as the tabled fib function 
+    (fib3/1) both in the reported time (statistics/2) and system 
+    time.
+   
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+main => go.
+
+%
+% F <= 10**9
+%
+go ?=>
+  statistics(runtime,_),
+  I = 1,
+  F = fib3(I),
+  while (F < 10**9)
+     % using the built-in prime/1 is perhaps cheating
+     % if prime(F) then
+     % if is_prime4(F) then
+     
+     % fermat_test/1 is very fast but it's not completely
+     % correct since it might include pseudo primes, but that's
+     % what the Python program do...
+     if fermat_test(F) then
+       printf("%w ",F), flush(stdout)
+     end,
+     I := I + 1,
+     F := fib3(I)
+  end,
+  nl,
+  statistics(runtime,[_,Time]),
+  println(time=Time),
+  nl.
+go => true.
+
+%
+% F <= 10**18
+%
+go2 ?=>
+  statistics(runtime,_),
+
+  I = 1,
+  F = fib3(I),
+  while (F < 10**18)
+     % if prime(F) then
+     % This is _slightly_ faster than just using prime(F)
+     % if fermat_test(F), prime(F) then
+     % if fermat_test(F), is_prime4(F) then
+     
+     if fermat_test(F)  then          
+       printf("%w ",F),flush(stdout)
+     end,
+     I := I + 1,
+     F := fib3(I)
+  end,
+  nl,
+  statistics(runtime,[_,Time]),
+  println(time=Time),
+  nl.
+go2 => true.
+
+%
+% Using fib4 instead of fib3/1
+%
+go3 ?=>
+  Limit = 10**18,
+  statistics(runtime,_),
+  while (F = fib4(Limit) )
+     % if prime(F) then
+     % if is_prime4(F) then
+     if fermat_test(F)  then          
+       printf("%w ",F),flush(stdout)
+     end
+  end,
+  nl,
+  statistics(runtime,[_,Time]),
+  println(time=Time),
+  
+  nl.
+go3 => true.
+
+%
+% Using a plain map instead of get_global_map().
+%
+go4 ?=>
+  statistics(runtime,_),
+  Map = new_map(),
+  Limit = 10**18,  
+  while (F = fib5(Map,Limit) )
+     % if prime(F) then
+     % if is_prime4(F) then     
+     if fermat_test(F)  then          
+       printf("%w ",F),flush(stdout)
+     end
+  end,
+  nl,
+  statistics(runtime,[_,Time]),
+  println(time=Time),
+  
+  nl.
+go4 => true.
+
+
+%
+% Check fermat_test/1 vs prime/1, i.e.
+% the pseudo primes.
+%
+go_pseudo_prime_test ?=>
+  println("Pseudo primes:"),
+  foreach(N in 2..100_000)
+     if pseudo_prime_test(N) then
+       println(N)
+     end
+  end,
+  nl.
+go_pseudo_prime_test => true.
+
+% Is N a pseudo prime?
+pseudo_prime_test(N) =>
+   fermat_test(N), not prime(N).
+
+
+%
+% Tabled fib.
+% 
+table
+fib3(0) = 0.
+fib3(1) = 1.
+fib3(N) = fib3(N-1) + fib3(N-2).
+
+
+/*
+  Simulating Python's yield approach:
+   def fibonacci(limit):
+      a, b = 0, 1
+      while a < limit:
+        yield a
+        a, b = b, a+b
+
+   For this application there isn't much difference 
+   between in runtime or total system time when using
+   - get_global_map()
+   - get_heap_map()
+   - get_table_map()
+
+*/
+fib4(Limit) = Fib =>
+  Map = get_global_map(),
+  A = Map.get(a,1), % start values
+  B = Map.get(b,1),    
+  if A <= Limit then
+    Map.put(a,B),
+    Map.put(b,A+B)
+  else
+    fail
+  end,
+  Fib = Map.get(a).
+
+  
+%
+% Instead of using the global map, here we use a plain map
+% in the parameter
+% This is slightly faster than fib4/1 in term of system time
+% but not in the reported statistics/2 time.
+%
+fib5(Map,Limit) = Fib =>
+  A = Map.get(a,1), % start values
+  B = Map.get(b,1),    
+  if A <= Limit then
+    Map.put(a,B),
+    Map.put(b,A+B)
+  else
+    fail
+  end,
+  Fib = Map.get(a).
+
+
+  
+% From euler_utils.pi
+is_prime4(N) => 
+    V1 = 1,
+    if N < 2 then
+       V1 := 0
+    end,
+    if N == 2; N = 3 then
+        V1 := 1
+    elseif N mod 2 == 0; N mod 3 == 0 then
+        V1 := 0
+    else  
+       I = 5,
+       while (V1 == 1, I <= 1+round(sqrt(N)))
+       % while (V1 == 1, I <= 1+round(N div 2))
+          if N mod I == 0 then
+               V1 := 0
+          else
+              I := I + 2
+          end
+       end
+    end,
+    V1 == 1.
+
+
+fermat_test(N) =>
+   N > 1,
+   (N == 2 ; 
+   pow_mod(2,N-1,N) == 1).
