@@ -1,0 +1,175 @@
+# 
+# Wordle solver in Unicon.
+#
+# The basic idea of the scoring is to score the words
+# according the the frequency of each characters position.
+# The frequency table is created in create_frequenct_table(words).
+#
+# See comments below for example and how the scoring works.
+#
+# This program was written by Hakan Kjellerstrand (hakank@gmail.com)
+# See also my Icon/Unicon programs: http://hakank.org/unicon/ .
+# 
+
+procedure main()
+    wordlist := "wordle_small.txt"
+    words := readlines(wordlist)
+
+    cand := wordle(<.r.n.>,["","","","",""],"slatcoe",words)
+    # -> briny brink grind bring drink drunk wring wrung
+    
+    # cand := wordle(<.r.n.>,["","b","","","br"],"slatcoe",words)
+    # -> briny brink bring
+    
+    # cand := wordle(<.a...>,["","l","la","","r"],"sntbe",words)
+    # carol larva
+
+    # cand := wordle(<....>,["","","","",""],"",words)
+    # -> all words
+
+    write()
+    every writes(get(!cand), " ")
+    write()
+    write("len:", *cand)
+    write()
+end
+
+
+#
+# The Wordle solver.
+#
+# Syntax: wordle(correct_pos,correct_chars, not_in_word, words)
+#
+# - correct_pos: characters in correct position (regular expression)
+#   Example: <.r.n.>
+#     - "r" is in the second position, "n" is in the fourth position
+#     - The . means that we don't know that character.
+# 
+# - correct_chars: characters in the word but not in correct position
+#   Example: ["","l","la","","r"]
+#     - "l" is in the word but not in second or third position
+#     - "r" is in the word but not in the last position
+#     - "" means that there are no relevant character in this
+#       position
+#    
+# - not_in_word: characters not in the word
+#   Example: "slatcoe"
+#    - There is no "s", "l", "a", "t", "c", "o", nor "e" in the word
+# 
+# - words: the wordlist
+#
+procedure wordle(correct_pos,correct_chars, not_in_word, words)
+    write("Frequency table:")
+    freq := create_frequency_table(words)
+    every write(!freq)
+    
+    cand := []
+    every w := !words do {
+        if w ?? correct_pos & 
+            check_correct_chars(correct_chars,w) & 
+            check_not_in_word(not_in_word,w) then
+            put(cand,w)
+    }
+    
+    return sort_candidates(cand,freq)
+
+end
+
+#
+# The characters in the list correct_chars are
+# in the word but in the incorrect positions.
+# 
+procedure check_correct_chars(correct_chars,word)
+    every i := 1 to 5 do {
+        *correct_chars[i] > 0 &
+            every if (not find(c := !correct_chars[i] ,word))  | c == word[i] then 
+                return  fail
+    }
+    return true
+end
+
+
+#
+# Characters not in the word
+#
+procedure check_not_in_word(not_in_word,word)
+    *not_in_word > 0 & every find(!not_in_word,word) do
+        return fail
+    return true
+end
+
+#
+# Sort the candidates according to the frequency table.
+#
+procedure sort_candidates(words,freq)
+    # freq := ["xzyjkquinovhewlrmdgfaptbcs",
+    #          "zjqfkgxvbsdymcwptnhulieroa",
+    #          "qjhzxkfwyvcbpmgdstlnrueoia",
+    #          "qjxyzbwhfvpkmdguotrcilasne",
+    #          "vqjuzxbiwfcsgmpoakdnhlrtye"
+    #          ]
+    scores := table(0)
+    every scores[w:=!words] := score_word(w,freq)
+    return reverse(sort(scores,2))
+end
+
+#
+# Score the word.
+#
+# The score is the sum the positions of each character
+# in the word according to the position in the frequency
+# table.
+# We add 100 points if this is a word with 5 unique
+# characters.
+# 
+procedure score_word(word,freq)
+    n := 5
+    every i := 1 to n do 
+        (score := 0) +:= find(word[i],freq[i])
+
+    # Add 100 if it has unique characters
+    *word == n & score +:= 100
+    
+    return score
+end
+
+
+#
+# Create the frequencty table for the wordlist.
+# Each position of the word has a separate table.
+#
+procedure create_frequency_table(words)
+    # Create the list of empty tables
+    # freq := [table(0),table(0),table(0),table(0),table(0)]
+    # freq := []; every i := 1 to 5 do freq |||:= [table(0)]
+    # Neater version:
+    freq := [: (1 to 5) & table(0) :]
+
+    # Count the occurrencies of the characters in each position
+    every w := !words & i := 1 to 5 do 
+        freq[i,w[i]] +:= 1
+
+    # Create the final frequency table
+    t := []
+    every i := 1 to 5 do {
+        # Sort the frequency tables for each positions
+        every (s := "") ||:= get(!reverse(sort(freq[i],2)))
+        s ||:= &lcase -- s   # add the missing characters
+        s := reverse(s)      # reverse so the least common
+                             # characters are first
+        put(t,s)
+    }
+    return t
+
+end
+
+#
+# Read all lines from a file.
+#
+procedure readlines(file)
+    f := open(file,"r")
+    lines := []
+    while( put(lines, read(f)) )
+    return lines
+end
+
