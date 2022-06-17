@@ -65,8 +65,8 @@ def pandigital_numbers(base=10, start=1, len1=1, len2=4):
                   )
     
     model += [to_num([x[i] for i in range(len1)], num1, base)]
-    model += [to_num([x[i] for i in range(len1,len1+len2)], num2, base)]
-    model += [to_num([x[i] for i in range(len1+len2,x_len)], res, base)]
+    # model += [to_num([x[i] for i in range(len1,len1+len2)], num2, base)]
+    # model += [to_num([x[i] for i in range(len1+len2,x_len)], res, base)]
     
     model += [num1*num2 == res]
 
@@ -105,5 +105,6 @@ for len1 in range(1+math.floor(x_len / 3)+1):
           for s in sol:
               num_solutions += 1
               print_solution(s, len1, len2, x_len)
+              
 
 print("num_solutions:", num_solutions)

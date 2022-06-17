@@ -166,9 +166,9 @@ def queens_diversity(n=10):
   # ss.ort_solver.parameters.linearization_level = 0
   # ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  cb = solution_printer(ss.varmap,x,soft_cost,total_cost)
+  cb = solution_printer(ss._varmap,x,soft_cost,total_cost)
   ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
-  print(ss._after_solve(ort_status)) # post-process after solve() call...
+  # print(ss._after_solve(ort_status)) # post-process after solve() call...
   print(ss.status())
   print("Nr solutions:", cb.solcount)
   print("Num conflicts:", ss.ort_solver.NumConflicts())

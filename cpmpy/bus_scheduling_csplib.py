@@ -115,15 +115,16 @@ def bus_scheduling(problem,timeout=60):
 
     # constraints
     model = Model(tot_shifts == sum(x))
-    
+
     for j in range(num_work):
-       model += (1 == sum([x[i]*(sum([k == j for k in shifts[i]]) >= 1) for i in range(num_shifts)]))
+       model += [1 == sum([x[i]*(sum([k == j for k in shifts[i]]) >= 1) for i in range(num_shifts)])]
 
     model += (tot_shifts >= min_num_shifts)
 
     model.minimize(tot_shifts)
-    
+    print("before ss")
     ss = CPM_ortools(model)
+
     # ss.ort_solver.parameters.log_search_progress = True
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH

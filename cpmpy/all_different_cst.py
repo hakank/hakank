@@ -83,7 +83,7 @@ def all_different_cst_test():
   
   # ortools_wrapper(model,[x],print_solution)
   ss = CPM_ortools(model)
-  cb = solution_printer(ss.varmap,x,cst,0)
+  cb = solution_printer(ss._varmap,x,cst,0)
   
   # Flags to experiment with
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
@@ -93,7 +93,7 @@ def all_different_cst_test():
   # ss.ort_solver.parameters.cp_model_probing_level = 0
   
   ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-  ss._after_solve(ort_status)
+  # ss._after_solve(ort_status)
   print(ss.status())
   print("Nr solutions:", cb.solcount)
   print("Num conflicts:", ss.ort_solver.NumConflicts())

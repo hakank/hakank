@@ -40,7 +40,7 @@ def to_num_test(n=4,base=10):
     num_solutions += 1
     print("x:",x.value(), "a:",a.value(),flush=True)
     get_different_solution(ss,list(a)+[x])
-    ss.solution_hint(a,a.value())
+    # ss.solution_hint(a,a.value())
 
   print("num_solutions:", num_solutions)
 

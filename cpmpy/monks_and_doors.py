@@ -64,8 +64,8 @@ def monks_and_doors():
     M5 == (A & C),
 
     # Monk 6: Either Monk 4 or Monk 5 is telling the truth.
-    # M6 == (M4 ^ M5), # (xor) this yield the error "can not reify a reification"
-    M6 == (M4 + M5 == 1),    
+    M6 == (M4 ^ M5), 
+    # M6 == (M4 + M5 == 1), % alternative encoding
 
     # Monk 7: If Monk 3 is telling the truth, so is Monk 6.
     M7 == (M3.implies(M6)),

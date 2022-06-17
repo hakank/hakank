@@ -49,7 +49,7 @@ def get_overlays(n=3, debug=0):
 
     # all solution solving, with blocking clauses
     ss = CPM_ortools(model)
-    cb = ORT_collect_overlays(ss.varmap,x)
+    cb = ORT_collect_overlays(ss._varmap,x)
     # s.ort_solver.parameters.num_search_workers = 8 # not for SearchForAllSolutions!
     # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
     # s.ort_solver.parameters.cp_model_presolve = False

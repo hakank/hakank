@@ -55,16 +55,17 @@ def initial_pair_queue():
     ]
     )
   
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  cs = "ABCDE"
-  while ss.solve():
+  def print_sol():
     q = queue.value()
-    print("queue:\n", q)
+    print("queue:\n")
+    print(q)
     print("queue:\n", [ cs[q[i,0]]+cs[q[i,1]] for i in range(n)])
     print()
-    get_different_solution(ss,queue.flat)
-    
-  print("num_solutions:",num_solutions)  
+
+  cs = "ABCDE"
+  ss = SolverLookup.get('ortools', model)  
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
+  print(ss.status())
 
 initial_pair_queue()

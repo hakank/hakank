@@ -99,7 +99,7 @@ def sudoku(puzzle,num_sols=2,num_procs=1):
     else:
         ort_status = s.ort_solver.Solve(s.ort_model, cb)
 
-    print("After solve status:", s._after_solve(ort_status)) # post-process after solve() call...
+    # print("After solve status:", s._after_solve(ort_status)) # post-process after solve() call...
     print("s.status():", s.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", s.ort_solver.NumConflicts())

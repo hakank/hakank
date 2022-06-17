@@ -137,8 +137,23 @@ def Solve(model):
                [  0, 40, 42,  0, 56, 58,  0,  0, 72,  0,  0,  0],
                [  0, 39,  0,  0,  0,  0, 78, 73, 71, 85, 69,  0],
                [ 35,  0,  0, 46, 53,  0,  0,  0, 80, 84,  0,  0],
-               [ 36,  0, 45,  0,  0, 52, 51,  0,  0,  0,  0, 88]
-               ]
+               [ 36,  0, 45,  0,  0, 52, 51,  0,  0,  0,  0, 88]]
+
+  # elif model == 9:    
+  #   # From NFZ
+  #   # https://groups.google.com/g/picat-lang/c/899o44qEPZQ/m/5Yf9vlKLAgAJ
+  #   # This instance has a lot of solutions.
+  #   puzzle = [[  1,0,0,0,0, 0,0,0,0, 0],
+  #             [ 20,0,0,0,0,15,0,0,0,11],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [  0,0,0,0,0, 0,0,0,0, 0],
+  #             [100,0,0,0,0, 0,0,0,0, 0]]
+
 
   r = len(puzzle)
   c = len(puzzle[0])
@@ -167,7 +182,7 @@ def Solve(model):
   # Consecutive numbers much touch each other in the grid.
   # We use an allowed assignment constraint to model it.
   close_tuples = BuildPairs(r, c)
-  for k in range(1, r * c - 1):
+  for k in range(0, r * c - 1):
     model += [Table([positions[k], positions[k + 1]],
                                          close_tuples)]
 
@@ -179,6 +194,7 @@ def Solve(model):
   while ss.solve():
     num_solutions += 1
     PrintOneSolution(positions, r, c, num_solutions)
+    print(flush=True)
     get_different_solution(ss,positions)
     
   print(('solutions : %i' % num_solutions))

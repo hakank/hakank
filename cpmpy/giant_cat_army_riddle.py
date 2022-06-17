@@ -30,7 +30,6 @@ import sys
 import numpy as np
 from cpmpy import *
 from cpmpy.solvers import *
-from cpmpy_hakank import *
 
 
 def giant_cat_army_riddle(n=60):
@@ -69,9 +68,9 @@ def giant_cat_army_riddle(n=60):
 
   ss = CPM_ortools(model)
   # ss.ort_solver.parameters.search_branching = cp.PORTFOLIO_SEARCH
-  ss.ort_solver.parameters.cp_model_presolve = False # Slightly faster
+  # ss.ort_solver.parameters.cp_model_presolve = False # Slightly faster
   # ss.ort_solver.parameters.linearization_level = 0
-  ss.ort_solver.parameters.cp_model_probing_level = 0
+  # ss.ort_solver.parameters.cp_model_probing_level = 0
 
   if ss.solve():
     print("n:",n)

@@ -109,7 +109,7 @@ def ping_pong():
               sum(playedC) == num_played[2])
 
     ss = CPM_ortools(model)    
-    cb = solution_printer(ss.varmap,num_games,A,B,C)
+    cb = solution_printer(ss._varmap,num_games,A,B,C)
 
     # Flags to experiment with
     # ss.ort_solver.parameters.log_search_progress = True
@@ -120,7 +120,7 @@ def ping_pong():
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
     ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    print(ss._after_solve(ort_status)) # post-process after solve() call...
+    # print(ss._after_solve(ort_status)) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())

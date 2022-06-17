@@ -85,6 +85,9 @@ def hidato(problem,solver="CPM_ortools"):
     num_solutions = 0
     if solver == "CPM_ortools":
         ss = CPM_ortools(model)
+        # ss.ort_solver.parameters.linearization_level = 0
+        # ss.ort_solver.parameters.cp_model_probing_level = 0
+  
         while ss.solve():
             num_solutions += 1        
             print_board(x, r, c)
@@ -101,6 +104,8 @@ def hidato(problem,solver="CPM_ortools"):
             get_different_solution(ss,x.flat)
 
         print("number of solutions:", num_solutions)
+
+    assert num_solutions > 0, "The number of solutions should be > 0!"
         
 #
 # Print the mines
@@ -111,13 +116,14 @@ def print_board(x, rows, cols):
             print("% 3s" % x[i,j].value(),end=" ")
         print()
     print("\n")
+    print(flush=True)
 
 def print_game(game, rows, cols):
     for i in range(rows):
         for j in range(cols):
             print("% 3s" % game[i][j],end=" ")
         print()
-    print()
+    print(flush=True)
 
 
 problems = {
@@ -244,6 +250,24 @@ problems = {
                [ 36,  0, 45,  0,  0, 52, 51,  0,  0,  0,  0, 88]
                ]
     },
+
+
+    # # From NFZ
+    # #  https://groups.google.com/g/picat-lang/c/899o44qEPZQ/m/5Yf9vlKLAgAJ
+    # "problem_nfz" : {
+    # "r" : 10,
+    # "c" : 10,
+    # "puzzle" : [[  1,0,0,0,0, 0,0,0,0, 0],
+    #             [ 20,0,0,0,0,15,0,0,0,11],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [  0,0,0,0,0, 0,0,0,0, 0],
+    #             [100,0,0,0,0, 0,0,0,0, 0]]
+    # },
 
 }
 

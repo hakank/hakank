@@ -31,7 +31,7 @@ from cpmpy_hakank import *
 def crypta():
 
   model = Model()
-
+  
   # variables
   LD = intvar(0,9,shape=10,name="LD")
   A, B, C, D, E, F, G, H, I, J = LD

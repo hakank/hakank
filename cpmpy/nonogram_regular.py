@@ -43,6 +43,7 @@ import numpy as np
 from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
+import time
 
 class ORT_nonogram_printer(ort.CpSolverSolutionCallback):
   """
@@ -164,13 +165,13 @@ def check_rule(rules, y):
                     accepting_states)]
 
 
-def nonogram_regular(rows, row_rule_len, row_rules, cols, col_rule_len, col_rules,num_sols=2):
+def nonogram_regular(rows, row_rule_len, row_rules, cols, col_rule_len, col_rules,num_sols=2,minizinc_solver=None):
 
     #
     # variables
     #
     board = intvar(1,2,shape=(rows,cols),name="board")
-    board_flat = flatten_lists(board)
+    board_flat = board.flat
 
     model = Model()
 
@@ -185,29 +186,64 @@ def nonogram_regular(rows, row_rule_len, row_rules, cols, col_rule_len, col_rule
         model += [check_rule([col_rules[j][k] for k in range(col_rule_len)],
                              [board[i, j] for i in range(rows)])]
 
-
     print("Solve")
+    if minizinc_solver == None:
+      print("Solver: ortools from cpmpy")
+      # all solution solving, with blocking clauses
+      ss = CPM_ortools(model)    
+      cb = ORT_nonogram_printer(ss._varmap,board_flat,rows,cols,num_sols)
 
-    # all solution solving, with blocking clauses
-    ss = CPM_ortools(model)    
-
-    cb = ORT_nonogram_printer(ss.varmap,board_flat,rows,cols,num_sols)
-
-    # Flags to experiment with
-    if num_sols == 1:
+      # Flags to experiment with
+      if num_sols == 1:
         ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
+      # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+      ss.ort_solver.parameters.cp_model_presolve = False
+      ss.ort_solver.parameters.linearization_level = 0
+      ss.ort_solver.parameters.cp_model_probing_level = 0
+      
+      ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+      # print(ss._after_solve(ort_status)) # post-process after solve() call...
+      print(ss.status())
+      print("Nr solutions:", cb.solcount)
+      print("Num conflicts:", ss.ort_solver.NumConflicts())
+      print("NumBranches:", ss.ort_solver.NumBranches())
+      print("WallTime:", ss.ort_solver.WallTime())
 
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    print(ss._after_solve(ort_status)) # post-process after solve() call...
-    print(ss.status())
-    print("Nr solutions:", cb.solcount)
-    print("Num conflicts:", ss.ort_solver.NumConflicts())
-    print("NumBranches:", ss.ort_solver.NumBranches())
-    print("WallTime:", ss.ort_solver.WallTime())
+    else:
+      print("MiniZinc solver:", minizinc_solver)
+      ss = CPM_minizinc(model,minizinc_solver)
+      print("make_model:",ss.make_model(model)[0])    
+      num_solutions = 0
+      flags = {'verbose':True}
+      # -f (free_search) is not supported by all solvers!
+      if minizinc_solver in ["chuffed","or_tools","picat_sat","gecode"]:
+        print("Using -f")
+        flags['free_search'] = True
+      print("ss.solve():",ss.solve())
+      time1 = time.time()              
+      while ss.solve(**flags):
+        num_solutions += 1
+        print(board.value())
+        for i in range(rows):
+          row = [board[i,j].value() - 1 for j in range(cols)]
+          row_pres = []
+          for j in row:
+            if j == 1:
+                row_pres.append('#')
+            else:
+                row_pres.append(' ')
+          print('  ', ''.join(row_pres))
+        print(flush=True)
+        print('  ', '-' * cols)
+        print()
+        
+        # print("status:",ss.status())
+        if num_sols > 0 and num_solutions >= num_sols:
+          break
+        get_different_solution(ss,board.flat)
+
+      time2 = time.time()
+      print(f"WallTime: {time2-time1}") 
 
 
 #
@@ -229,7 +265,11 @@ col_rules = [[2, 1], [1, 3], [2, 4], [3, 4], [0, 4], [0, 3], [0, 3], [0, 3],
              [0, 2], [0, 2]]
 
 num_sols = 2
+minizinc_solver = None
 if len(sys.argv) > 1:
     file = sys.argv[1]
     exec(compile(open(file).read(), file, 'exec'))
-nonogram_regular(rows, row_rule_len, row_rules, cols, col_rule_len, col_rules,num_sols)
+if len(sys.argv) > 2:
+    minizinc_solver = sys.argv[2]
+
+nonogram_regular(rows, row_rule_len, row_rules, cols, col_rule_len, col_rules,num_sols,minizinc_solver)

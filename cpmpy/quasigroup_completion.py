@@ -72,7 +72,7 @@ def quasigroup_completion(puzzle="",n=0,num_sols=0,num_procs=1):
 
     s = CPM_ortools(model)
     # Note that we have to use a flattened version of x.
-    cb = ORT_simple_printer_matrix(s.varmap,x_flat,n,n,num_sols)
+    cb = ORT_simple_printer_matrix(s._varmap,x_flat,n,n,num_sols)
 
     if num_sols == 1:
         print("number of processes:", num_procs)
@@ -89,7 +89,7 @@ def quasigroup_completion(puzzle="",n=0,num_sols=0,num_procs=1):
     else:
         ort_status = s.ort_solver.SearchForAllSolutions(s.ort_model, cb)
         
-    print("After solve status:", s._after_solve(ort_status)) # post-process after solve() call...
+    # print("After solve status:", s._after_solve(ort_status)) # post-process after solve() call...
     print("s.status():", s.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", s.ort_solver.NumConflicts())

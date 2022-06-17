@@ -164,7 +164,7 @@ def miss_manners(problem,num_procs=1):
   print("Search")
   # ortools_wrapper_opt(model,[seating,common_hobbies])
   ss = CPM_ortools(model)    
-  cb = solution_printer(ss.varmap,seating,common_hobbies,gender,hobbies)
+  cb = solution_printer(ss._varmap,seating,common_hobbies,gender,hobbies)
 
   # Flags to experiment with
   if num_procs > 1:
@@ -179,7 +179,7 @@ def miss_manners(problem,num_procs=1):
  
   ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
     
-  ss._after_solve(ort_status) # post-process after solve() call...
+  # ss._after_solve(ort_status) # post-process after solve() call...
   print(ss.status())
   print("Nr solutions:", cb.solcount)
   print("Num conflicts:", ss.ort_solver.NumConflicts())

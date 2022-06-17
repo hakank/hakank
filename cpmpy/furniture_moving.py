@@ -42,7 +42,7 @@ def furniture_moving():
     # z = num_resources*10 + end_time
     # z = end_time
     # z = num_resources
-    z = sum(end_times) + num_resources * 10
+    z = sum(end_times) + num_resources * 10 
     # model = Model()
     model = Model(minimize=z)
 
@@ -68,11 +68,7 @@ def furniture_moving():
     # limitation of the number of people
     # model += [num_resources <= 3]
 
- 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    if ss.solve():
-        num_solutions += 1
+    def print_sol():
         print("num_resources:", num_resources.value())
         print("start_times  :", start_times.value())
         print("duration     :", [duration[i] for i in range(n)])
@@ -80,8 +76,19 @@ def furniture_moving():
         print("end_time     :", end_time.value())
         print("z            :", z.value())      
         print()
+        
+ 
+    ss = CPM_ortools(model)
+    num_solutions = 0    
+    opt_val = None
+    while ss.solve():
+        if opt_val == None:
+            opt_val = z.value()
+        if z.value() > opt_val:
+             break
+        num_solutions += 1         
+        print_sol()         
         get_different_solution(ss,list(start_times)+list(end_times)+list([end_time]))
-        # get_different_solution(ss,start_times)    
 
     print()
     print("num_solutions:", num_solutions)

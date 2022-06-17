@@ -200,7 +200,7 @@ def latin_square_card_puzzle(n=4,symmetry_breaking=True,num_sols=1,timeout=None,
 
   # Search
   ss = CPM_ortools(model)    
-  cb = solution_printer(ss.varmap,x_flat,n,as_original,num_sols)
+  cb = solution_printer(ss._varmap,x_flat,n,as_original,num_sols)
   
   if timeout != None and timeout != 0:
       ss.ort_solver.parameters.max_time_in_seconds = timeout
@@ -214,7 +214,7 @@ def latin_square_card_puzzle(n=4,symmetry_breaking=True,num_sols=1,timeout=None,
   ss.ort_solver.parameters.cp_model_probing_level = 0
   
   ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-  ss._after_solve(ort_status)
+  # ss._after_solve(ort_status)
   print(ss.status())
   print("Nr solutions:", cb.solcount)
   print("Num conflicts:", ss.ort_solver.NumConflicts())

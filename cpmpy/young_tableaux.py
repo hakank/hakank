@@ -83,7 +83,7 @@ def young_tableaux(n = 5):
 
     # OR-tools
     ss = CPM_ortools(model)
-    cb = ORT_arrays_printer(ss.varmap,[x,p])
+    cb = ORT_arrays_printer(ss._varmap,[x,p])
     
     # s.ort_solver.parameters.num_search_workers = 8 # not for SearchForAllSolutions!
     # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 

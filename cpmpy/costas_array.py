@@ -152,7 +152,7 @@ def costas_array(n=6,print_solutions=True):
                    differences[k-1,l-1] + differences[k-1,l]]
 
   ss = CPM_ortools(model)    
-  cb = solution_printer(ss.varmap,[costas,differences.flat],n,print_solutions)
+  cb = solution_printer(ss._varmap,[costas,differences.flat],n,print_solutions)
 
   # Flags to experiment with
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
@@ -162,7 +162,7 @@ def costas_array(n=6,print_solutions=True):
   ss.ort_solver.parameters.cp_model_probing_level = 0
   
   ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-  print(ss._after_solve(ort_status))
+  # print(ss._after_solve(ort_status))
   print("Nr solutions:", cb.solcount)
   if print_solutions:
     print(ss.status())

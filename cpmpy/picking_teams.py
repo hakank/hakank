@@ -40,7 +40,6 @@ def picking_teams(s):
     
     s_sum = sum(s)
 
-
     count = [n2,n2]
 
     print("s_sum:",s_sum)
@@ -68,8 +67,9 @@ def picking_teams(s):
     model += (x[0] == 1)
 
     # divisibility of the sum
-    model += ((s_sum % 2) == (d % 2))
-   
+    # model += ((s_sum % 2) == (d % 2)) # This throws an error!
+    model += (int(s_sum % 2) == (d % 2))    
+
     num_solutions = 0
     ss = CPM_ortools(model)
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions

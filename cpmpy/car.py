@@ -67,7 +67,7 @@ def car(num_sol=3):
 
   for o in Options:
     for s in Slots:
-      model += (setup[(o, s)] == Element(option[o],slot[s]))
+      model += setup[(o, s)] == Element(option[o],slot[s])
 
   for o in Options:
     for i in range(optionDemand[o]):
@@ -86,13 +86,13 @@ def car(num_sol=3):
     for o in Options:
       print("%i/%i:" % (capacity[o][0], capacity[o][1]), end=" ")
       for s in Slots:
-        print(setup[o, s].value(), end=" ")
+        print(int(setup[o, s].value()), end=" ")
       print()
     print()
-    if num_solutions >= num_sol:
+    if num_sol > 0 and num_solutions >= num_sol:
       break
     
-    get_different_solution(ss,list(slot.flat)+list(setup.flat))
+    get_different_solution(model,list(slot.flat)+list(setup.flat))
 
   print()
   print("num_solutions:", num_solutions)

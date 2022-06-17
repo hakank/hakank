@@ -88,7 +88,7 @@ def word_square(words, word_len, num_sols=20,num_procs=1):
 
     ss = CPM_ortools(model)
     # Note that we have to use a flattened version of x.
-    cb = ORT_word_square_printer(ss.varmap,E,num_sols)
+    cb = ORT_word_square_printer(ss._varmap,E,num_sols)
 
     if num_procs > 1:
         print("number of processes:", num_procs)
@@ -97,7 +97,7 @@ def word_square(words, word_len, num_sols=20,num_procs=1):
     # Flags to experiment with        
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
     if num_sols == 1:
@@ -106,7 +106,7 @@ def word_square(words, word_len, num_sols=20,num_procs=1):
         ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
 
 
-    print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
+    # print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
     print("s.status():", ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())

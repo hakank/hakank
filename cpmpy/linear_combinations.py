@@ -183,7 +183,7 @@ def linear_combinations(ds=[1,2,3],num_sols = 0):
       
       # This works and is faster
       # model += [ (x[i] & x[j])<=(sum([d==abs(i-j) for d in ds]) > 0) ]
-      model += [ (x[i] + x[j] == 2) <= (sum([d==abs(i-j) for d in ds]) > 0) ]
+      model += [ (x[i] + x[j] == 2) <= int(sum([d==abs(i-j) for d in ds]) > 0) ]
 
   ## model.minimize(z)
 

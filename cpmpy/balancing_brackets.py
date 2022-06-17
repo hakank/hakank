@@ -79,6 +79,8 @@ class solution_printer(ort.CpSolverSolutionCallback):
     if self.num_solutions > 0 and self.solcount >= self.num_solutions:
       self.StopSearch()
 
+
+
 def brackets(m,do_print=False,num_sols=0):
   
     model = Model() 
@@ -113,34 +115,36 @@ def brackets(m,do_print=False,num_sols=0):
     # Redundant constraint: This might make it faster (but it don't)
     model += (x.sum() == m)
 
+    def myprint():
+      s = ["[","]"]
+      n = len(x)
+      print("x:", x.value())
+      print("c:", c.value())
+      print("cc:", "".join([s[x[i].value()] for i in range(n)]))
+      print()
+
     
-    ss = CPM_ortools(model)    
-    cb = solution_printer(ss.varmap,x,c,do_print,num_sols)
-    
-    # Flags to experiment with
-    # ss.ort_solver.parameters.log_search_progress = True
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss = CPM_ortools(model)
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
+    ss.ort_solver.parameters.cp_model_presolve = False
     
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    ss._after_solve(ort_status) # post-process after solve() call...
+    num_solutions = ss.solveAll(myprint)    
+  
     if do_print:
       print(ss.status())
-      print("Nr solutions:", cb.solcount)
+      print("Nr solutions:", num_solutions)
       print("Num conflicts:", ss.ort_solver.NumConflicts())
       print("NumBranches:", ss.ort_solver.NumBranches())
       print("WallTime:", ss.ort_solver.WallTime())
     
-    return cb.solcount
+    return num_solutions
 
 brackets(3,True)
 # print_sols = True 
 print_sols = False
 num_sols = []
-for i in range(1,11):
+for i in range(1,11+1):
   nsols = brackets(i,print_sols)
   print(i, nsols)
   num_sols.append(nsols)

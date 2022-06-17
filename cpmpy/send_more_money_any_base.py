@@ -53,7 +53,7 @@ def send_more_money_any_base(base=10,num_sols=0,num_procs=1):
 
     # Use OR-tools CP-SAT for speeding up the program.
     ss = CPM_ortools(model)
-    cb = ORT_simple_function_printer(ss.varmap,xs,print_solution,num_sols)
+    cb = ORT_simple_function_printer(ss._varmap,xs,print_solution,num_sols)
 
     if num_procs > 1:
         print("number of processes:", num_procs)
@@ -70,7 +70,7 @@ def send_more_money_any_base(base=10,num_sols=0,num_procs=1):
     else:
         ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
 
-    print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
+    # print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
     print("s.status():", ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())

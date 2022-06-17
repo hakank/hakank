@@ -57,7 +57,7 @@ def partition_into_subsets_of_equal_values(s,num_subsets,num_sols=0):
                    ])
 
     for k in range(num_subsets):
-        model += [partition_sum == sum([s[i]*(x[i]==k) for i in range(n)])]
+        model += [sum([s[i]*(x[i]==k) for i in range(n)]) == partition_sum]
 
     ss = CPM_ortools(model)    
     # ss.ort_solver.parameters.max_time_in_seconds = timeout

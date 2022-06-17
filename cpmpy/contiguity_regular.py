@@ -32,7 +32,7 @@ def print_solution(x):
     for a in x:
         print([val -1 for val in a.value()])
 
-def contiguity_regular(n=7,num_sols=0):
+def contiguity_regular(n=7,num_sols=0,minizinc_solver=None):
     #
     # data
     #
@@ -58,16 +58,34 @@ def contiguity_regular(n=7,num_sols=0):
     # We use domain 1..2 and then subtract 1 in the solution
     reg_input = intvar(1,2,shape=n,name="reg_input")
 
-    model = Model() 
+    model = Model()
+    
     #
     # constraints
     #
-    model += [regular(reg_input, n_states, input_max, transition_fn, initial_state,
+    model += [regular_table(reg_input, n_states, input_max, transition_fn, initial_state,
                       accepting_states)]
 
 
-    ortools_wrapper(model, [reg_input],print_solution,num_sols)
+    if minizinc_solver == None:
+        ortools_wrapper(model, [reg_input],print_solution,num_sols)
+    else:
+        print("MiniZinc solver:", minizinc_solver)
+        ss = CPM_minizinc(model,minizinc_solver)
+        # print("make_model:",ss.make_model(model)[0])    
+        num_solutions = 0
+        flags = {'verbose':True}
+        while ss.solve(**flags):
+            num_solutions += 1
+            print(reg_input.value()-1)
+            get_different_solution(ss,reg_input)
+
+        print("num_solutions:",num_solutions)
 
 
+num_sols = 0
+minizinc_solver = None
+contiguity_regular(7,num_sols,minizinc_solver)
 
-contiguity_regular(7)
+minizinc_solver = "chuffed"
+contiguity_regular(7,num_sols,minizinc_solver)

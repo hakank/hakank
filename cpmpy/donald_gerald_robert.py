@@ -25,14 +25,7 @@ def donald_gerald_robert_v1():
                    r > 0,
                    ])
     
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print(x.value())
-        print(ss.status())
-        get_different_solution(ss,x)
-
+    num_solutions = model.solveAll(display=x)
     print("num_solutions:", num_solutions)
 
 
@@ -58,15 +51,11 @@ def donald_gerald_robert_v2():
                    c6 == 0, # must be 0 since R is the first digit
                    ])
     
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print(x.value())
-        print(ss.status())
-        get_different_solution(ss,list(x)+list(carries))
-
+    ss = SolverLookup.get('ortools', model)
+    num_solutions=ss.solveAll(display=x)
     print("num_solutions:", num_solutions)
+    print(ss.status())
+
 
 donald_gerald_robert_v1()
 donald_gerald_robert_v2()

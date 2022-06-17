@@ -85,7 +85,7 @@ def nqueens_v2(n=8,num_sols=0):
             break
         else:
             ss += [ any(queens != queens.value()) ]
-            ss.solution_hint(queens, queens.value())
+            # ss.solution_hint(queens, queens.value())
 
     print("num_solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -107,7 +107,7 @@ def nqueens_v3(n=8,num_sols=0):
     # all solution solving, with blocking clauses
     ss = CPM_ortools(model)    
 
-    cb = ORT_simple_printer(ss.varmap,queens,num_sols)
+    cb = ORT_simple_printer(ss._varmap,queens,num_sols)
 
     # Flags to experiment with
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
@@ -117,7 +117,7 @@ def nqueens_v3(n=8,num_sols=0):
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
     ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    print(ss._after_solve(ort_status)) # post-process after solve() call...
+    # print(ss._after_solve(ort_status)) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -141,7 +141,7 @@ def nqueens_naive(n=8,num_sols=0):
                   ]            
 
     ss = CPM_ortools(model)    
-    cb = ORT_simple_printer(ss.varmap,queens,num_sols)
+    cb = ORT_simple_printer(ss._varmap,queens,num_sols)
 
     # Flags to experiment with
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
@@ -151,7 +151,7 @@ def nqueens_naive(n=8,num_sols=0):
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
     ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    print(ss._after_solve(ort_status)) # post-process after solve() call...
+    # print(ss._after_solve(ort_status)) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())

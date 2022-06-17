@@ -22,8 +22,9 @@ See also my CPMpy page: http://www.hakank.org/cpmpy/
 
 """
 from cpmpy import *
-import numpy as np
-from cpmpy_hakank import *
+from cpmpy.solvers import *
+from ortools.sat.python import cp_model as ort
+
 
 class solution_printer(ort.CpSolverSolutionCallback):
   """
@@ -39,18 +40,12 @@ class solution_printer(ort.CpSolverSolutionCallback):
   def on_solution_callback(self):
     self.solcount += 1 # I always start at 1. :-) 
 
-    # populate values before printing
-    # For array of arrays (Tias' original)
-    # for wm in self.vars:
-    #     for cpm_var in wm:
-    #         cpm_var._value = self.Value(self.varmap[cpm_var])
-    
-    # # For single arrays:
-    # for cpm_var in self.vars:
-    #   cpm_var._value = self.Value(self.varmap[cpm_var])
+    # Convert to cpmpy vars
+    for cpm_var in self.vars:
+      cpm_var._value = self.Value(self.varmap[cpm_var])      
       
-    # (a) = self.vars            
-    # print(f"#{self.solcount}: {a.value()}")
+    (a) = self.vars
+    print(f"#{self.solcount}: {a.value()}")
 
     if self.num_solutions > 0 and self.solcount >= self.num_solutions:
       self.StopSearch()
@@ -65,23 +60,10 @@ def euler31():
    model = Model(200 == sum(coins*x))
 
    ss = CPM_ortools(model)
-   cb = solution_printer(ss.varmap,x,0)
-
-   # Flags to experiment with
-   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-   # ss.ort_solver.parameters.cp_model_presolve = False
    ss.ort_solver.parameters.linearization_level = 0
    ss.ort_solver.parameters.cp_model_probing_level = 0
    
-   ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-   ss._after_solve(ort_status)
-   # print(ss.status())
-   print("Nr solutions:", cb.solcount)
-   # print("Num conflicts:", ss.ort_solver.NumConflicts())
-   # print("NumBranches:", ss.ort_solver.NumBranches())
-   # print("WallTime:", ss.ort_solver.WallTime())
-
-
+   num_solutions = ss.solveAll(x)
+   print("Nr solutions:", num_solutions)
 
 euler31()

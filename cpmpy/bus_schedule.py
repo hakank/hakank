@@ -46,7 +46,7 @@ def bus_schedule(num_buses_check=0):
         print("num_buses: ", num_buses.value())
         print("x:", x.value())
         if num_buses_check > 0:
-            cb = ORT_simple_printer(s.varmap,x,0)
+            cb = ORT_simple_printer(s._varmap,x,0)
             ort_status = s.ort_solver.SearchForAllSolutions(s.ort_model, cb)
             print("Nr solutions:", cb.solcount)
     else:

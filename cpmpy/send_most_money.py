@@ -10,7 +10,7 @@ from cpmpy import *
 import numpy
 from cpmpy_hakank import *
 
-def send_most_money(MONEY=0):
+def send_most_money(MONEY=None):
     x = intvar(0,9,shape=8)
     s,e,n,d,m,o,t,y = x
     money = intvar(0,99999)
@@ -20,7 +20,7 @@ def send_most_money(MONEY=0):
                    s > 0,m > 0,
                    AllDifferent(x)]
 
-    if MONEY == 0:
+    if MONEY == None:
         model = Model(constraints, maximize=money)
         ss = CPM_ortools(model)
         if ss.solve():
@@ -61,7 +61,6 @@ def send_most_money2():
         num_solutions += 1
         print(x.value(), "money:",money.value() )        
         if MONEY == None:
-            # This is the optimal value
             MONEY = money.value()
             ss += [money == MONEY]
         get_different_solution(ss,x)
@@ -69,7 +68,7 @@ def send_most_money2():
     
 
 
-max_money = send_most_money(0)
+max_money = send_most_money(None)
 print("MONEY:", max_money)
 print("\nAll optimal solutions:")
 send_most_money(max_money)

@@ -62,10 +62,12 @@ def finding_celebrities(problem):
   # and the celebrities only know celebrities.
   for i in range(n):
     # All persons know the celebrities 
-    model += ((celebrities[i] == 1) == (sum([graph[j][i] for j in range(n)]) == n))
+    # model += ((celebrities[i] == 1) == (sum([graph[j][i] for j in range(n)]) == n))
+    
     # The celebrities only know each other
-    model += ((celebrities[i] == 1) == (sum([graph[i][j] for j in range(n)]) == num_celebrities))
+    # model += ((celebrities[i] == 1) == (sum([graph[i][j] for j in range(n)]) == num_celebrities))
 
+    model += celebrities[i] == ((sum([graph[j][i] for j in range(n)]) == n) & (sum([graph[i][j] for j in range(n)]) == num_celebrities))
 
   ss = CPM_ortools(model)
   num_solutions = 0

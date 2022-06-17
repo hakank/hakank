@@ -395,7 +395,7 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0,num
     
     """
     ss = CPM_ortools(model)    
-    cb = ORT_function_printer_arrays(ss.varmap,var_array,print_solution,num_sols)
+    cb = ORT_function_printer_arrays(ss._varmap,var_array,print_solution,num_sols)
 
 
     # Flags to experiment with    
@@ -410,7 +410,7 @@ def ortools_wrapper(model,var_array,print_solution=print_solution,num_sols=0,num
       ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
     else:
       ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    ss._after_solve(ort_status)
+    # ss._after_solve(ort_status)
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -447,7 +447,7 @@ def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0,nu
     
     """
     ss = CPM_ortools(model)    
-    cb = ORT_function_printer_arrays2(ss.varmap,var_array,print_solution,num_sols)
+    cb = ORT_function_printer_arrays2(ss._varmap,var_array,print_solution,num_sols)
 
     # Flags to experiment with
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -462,7 +462,7 @@ def ortools_wrapper2(model,var_array,print_solution=print_solution,num_sols=0,nu
       ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
       
     print()
-    ss._after_solve(ort_status) # post-process after solve() call...
+    # ss._after_solve(ort_status) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -492,7 +492,7 @@ def ortools_wrapper_opt(model,var_array,print_solution=print_solution,num_sols=1
     - num_sols : number of solutions. Default 0, all solutions.
     """
     ss = CPM_ortools(model)    
-    cb = ORT_function_printer_arrays(ss.varmap,var_array,print_solution,1)
+    cb = ORT_function_printer_arrays(ss._varmap,var_array,print_solution,1)
 
     # Flags to experiment with
     if num_procs > 1:
@@ -509,7 +509,7 @@ def ortools_wrapper_opt(model,var_array,print_solution=print_solution,num_sols=1
     # ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
     ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
     
-    ss._after_solve(ort_status) # post-process after solve() call...
+    # ss._after_solve(ort_status) # post-process after solve() call...
     print(ss.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
@@ -531,7 +531,7 @@ def ortools_wrapper_count_solutions(model,var_array):
     
     """
     ss = CPM_ortools(model)    
-    cb = ORT_simple_solution_counter(ss.varmap,var_array)
+    cb = ORT_simple_solution_counter(ss._varmap,var_array)
 
     # Flags to experiment with
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
@@ -541,7 +541,7 @@ def ortools_wrapper_count_solutions(model,var_array):
     ss.ort_solver.parameters.cp_model_probing_level = 0
     
     ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    ss._after_solve(ort_status)
+    # ss._after_solve(ort_status)
     return cb.solcount
 
 
