@@ -59,23 +59,20 @@ def volsay3(obj_value=None):
   # objective to minimize
   model += (obj == sum([Profit[p]*Production[p] for p in range(num_products)]))
 
-  ss = CPM_ortools(model)
-  if obj_value == None:
-    if ss.solve():
-      print("obj:", obj.value())
-      for i in range(num_products):
-        print(products[i], '=', Production[i].value())
-      return obj.value()
-  else:
-    num_solutions = 0
-    while ss.solve():
-      num_solutions += 1
+  def print_sol():
       print("obj:", obj.value())
       for i in range(num_products):
         print(products[i], '=', Production[i].value())
       print()
-      get_different_solution(ss,Production)
-      
+    
+
+  ss = CPM_ortools(model)
+  if obj_value == None:
+    if ss.solve():
+      print_sol()
+      return obj.value()
+  else:
+    num_solutions = ss.solveAll(display=print_sol)      
     print("num_solutions:",num_solutions)
 
 obj = volsay3(None)

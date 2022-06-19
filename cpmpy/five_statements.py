@@ -34,7 +34,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 from itertools import combinations
 
-
 def five_statements(n=5):
 
     print("n:",n)
@@ -49,14 +48,13 @@ def five_statements(n=5):
     for i in range(n):
         print(statements[i])
     print()
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve() is not False:
-        num_solutions += 1
+
+    def print_sol():
         print("x:",x.value())
         print("x:",[statements[i] for i in range(n) if x[i].value()])
-        get_different_solution(ss,x)
-
+    
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)    
     print("number of solutions:", num_solutions)
     print()
 

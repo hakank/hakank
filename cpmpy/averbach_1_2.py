@@ -62,17 +62,14 @@ def averbach_1_2():
                  x == 0
                  ])
 
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("women :", women.value())
     print("xtable:", xtable.value())
     print("seating:", [women_s[j] for i in range(n) for j in range(n) if women[j].value() == i ])    
     print()
-    get_different_solution(ss,[x,y,z,american,english,french])
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

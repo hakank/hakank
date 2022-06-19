@@ -35,16 +35,15 @@ def subset_sum(values, total):
 
     return model, x, ss
 
-def print_solution(a):
-    print("ss:", a[0][0].value())
-    print("x:", a[1].value())
-
-
 def subset_sum_model(coins, total):
 
     model, x, ss = subset_sum(coins, total)
 
-    ortools_wrapper(model,[[ss],x],print_solution)
+    def print_sol():
+        print("ss:",ss.value())
+        print("x:",x.value())
+
+    model.solveAll(display=print_sol)
 
 
 coins = [16, 17, 23, 24, 39, 40]

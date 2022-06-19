@@ -70,51 +70,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-
-class solution_printer(ort.CpSolverSolutionCallback):
-  """
-  Solution printer.
-  """
-  def __init__(self, varmap, seating,common_hobbies,gender,hobbies,num_solutions=0):
-    super().__init__()
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars_seating = seating
-    self.vars_common_hobbies = common_hobbies
-    self.gender = gender
-    self.hobbies = hobbies
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-    for vs in [[self.vars_seating],[self.vars_common_hobbies]]:
-      for wm in vs:
-        for cpm_var in wm:
-          cpm_var._value = self.Value(self.varmap[cpm_var])
-
-    n = len(self.vars_seating)
-    seating = self.vars_seating.value()
-    print("seating:",seating )
-    common_hobbies = self.vars_common_hobbies.value()
-    print("common_hobbies:",common_hobbies)
-    print("num_common_hobbies:",sum(common_hobbies))
-    gender = self.gender
-    hobbies = self.hobbies
-    gender_s = ["M","F"]
-    for i in range(n):
-      si = seating[i]
-      hs = " ".join([str(h) for h in hobbies[si] if h > 0])
-      print(f"Place {i:3} person:{si:3} gender:{gender_s[gender[si]-1]} hobbies:{hs:10} (common w next:{common_hobbies[i]})")
-    print()
-    print("num_common_hobbies:",sum(common_hobbies))      
-    print("\n")
-
-    
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
-
-
 def match_hobbies(hobbies_flat,h1,h2,num_hobbies,num_matches):
   """
   Match hobbies between two persons seating next to each other.
@@ -160,11 +115,26 @@ def miss_manners(problem,num_procs=1):
 
   if run_type == "maximize":
     model.maximize(num_common_hobbies)
+
+  def print_sol():
+    n = len(seating)
+    seating_val = seating.value()
+    print("seating:",seating_val)
+    common_hobbies_val = common_hobbies.value()
+    print("common_hobbies:",common_hobbies_val)
+    print("num_common_hobbies:",sum(common_hobbies))
+    gender_s = ["M","F"]
+    for i in range(n):
+      si = seating_val[i]
+      hs = " ".join([str(h) for h in hobbies[si] if h > 0])
+      print(f"Place {i:3} person:{si:3} gender:{gender_s[gender[si]-1]} hobbies:{hs:10} (common w next:{common_hobbies[i]})")
+    print()
+    print("num_common_hobbies:",sum(common_hobbies_val))      
+    print("\n")
+    
     
   print("Search")
-  # ortools_wrapper_opt(model,[seating,common_hobbies])
   ss = CPM_ortools(model)    
-  cb = solution_printer(ss._varmap,seating,common_hobbies,gender,hobbies)
 
   # Flags to experiment with
   if num_procs > 1:
@@ -177,11 +147,8 @@ def miss_manners(problem,num_procs=1):
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
  
-  ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
-    
-  # ss._after_solve(ort_status) # post-process after solve() call...
-  print(ss.status())
-  print("Nr solutions:", cb.solcount)
+  num_solutions = ss.solveAll(solution_limit=1,display=print_sol)
+  print("Nr solutions:", num_solutions)
   print("Num conflicts:", ss.ort_solver.NumConflicts())
   print("NumBranches:", ss.ort_solver.NumBranches())
   print("WallTime:", ss.ort_solver.WallTime())

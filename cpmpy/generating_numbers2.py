@@ -146,7 +146,7 @@ def generating_numbers(m=20):
 
 
     ss = CPM_ortools(model)
-    ss.ort_solver.parameters.log_search_progress = True
+    # ss.ort_solver.parameters.log_search_progress = True
     # ss.ort_solver.parameters.num_search_workers = 8
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve=False

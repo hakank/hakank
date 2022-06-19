@@ -132,18 +132,15 @@ def four_islands():
     |
     ((ice_skating_rink == C) & (jai_alai_stadium == B))
     ]
-  
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("island:",island.value())
     print("export:",export.value())
     print("attraction:",attraction.value())
     print()
-    get_different_solution(ss,list(island)+list(export)+list(attraction))
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

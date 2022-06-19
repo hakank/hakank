@@ -50,48 +50,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-class solution_printer(ort.CpSolverSolutionCallback):
-  """
-  A simple printer callback for printing a matrix.
-  """
-  def __init__(self, varmap, vars, n, print_solutions=True, num_solutions=0):
-    super().__init__()
-
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (vars)
-    self.n = n
-    self.print_solutions = print_solutions
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-
-    for wm in self.vars:
-      for cpm_var in wm:
-        cpm_var._value = self.Value(self.varmap[cpm_var])
-    
-    (a) = self.vars
-    costas = a[0]
-    differences = a[1]
-
-    if self.print_solutions:
-      print("costas:", costas.value())
-      print("differences:")
-      for i in range(self.n):
-        for j in range(self.n):
-          v = differences[i*n+j].value()
-          if v == -self.n + 1:
-            print("  ", end=" ")
-          else:
-            print("%2d" % v, end=" ")
-        print()
-      print()
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
-
 def costas_array(n=6,print_solutions=True):
 
   model = Model()
@@ -151,9 +109,22 @@ def costas_array(n=6,print_solutions=True):
         model += [differences[k-2,l-1] + differences[k,l] ==
                    differences[k-1,l-1] + differences[k-1,l]]
 
-  ss = CPM_ortools(model)    
-  cb = solution_printer(ss._varmap,[costas,differences.flat],n,print_solutions)
+  def print_sol():
+    if print_solutions:
+      print("costas:", costas.value())
+      print("differences:")
+      for i in range(n):
+        for j in range(n):
+          v = differences[(i,j)].value()
+          if v == -n + 1:
+            print("  ", end=" ")
+          else:
+            print("%2d" % v, end=" ")
+        print()
+      print()
 
+
+  ss = CPM_ortools(model)    
   # Flags to experiment with
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -161,16 +132,15 @@ def costas_array(n=6,print_solutions=True):
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-  # print(ss._after_solve(ort_status))
-  print("Nr solutions:", cb.solcount)
+  num_solutions = ss.solveAll(display=print_sol)
+  print("Nr solutions:", num_solutions)
   if print_solutions:
     print(ss.status())
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())
 
-  return cb.solcount
+  return num_solutions
 
 n = 6
 print_solutions=True

@@ -21,16 +21,12 @@ def minimum_except_0_test(n):
                 ])
   
   print("model:", model)
-  num_solutions = 0
 
-  # ortools_wrapper(model,[x,[z]])
-  
+  def print_sol():
+      print("x:",x.value(),"z:",z.value(),flush=True)
+      
   ss = CPM_ortools(model)
-  while ss.solve() is not False:
-    num_solutions += 1
-    print("x:",x.value(),"z:",z.value(),flush=True)
-    get_different_solution(ss,x)
-
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

@@ -54,10 +54,7 @@ def just_forgotten():
   for r in range(rows):
     model += [sum([x[c] == a[r][c] for c in range(cols)]) == 4]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     xval = [x[j].value() for j in range(cols)]
     print("Account number:")
     for j in range(cols):
@@ -72,9 +69,10 @@ def just_forgotten():
         print("%i%s" % (a[i][j], check), end=" ")
       print()
     print()
-    get_different_solution(ss,x)
-  print()
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

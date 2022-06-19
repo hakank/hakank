@@ -15,6 +15,7 @@ This model is a port of (and improved) the Z3 model in
 https://g-ar.github.io/posts/solving-mastermind-like-problems-using-z3-theorem-prover/
 Solving Mastermind-like Problems Using Z3 Theorem Prover
 
+Solution: [6, 5, 0, 3, 2]
 
 Cf number_lock.py.
 
@@ -64,21 +65,8 @@ def mastermind_like_problem():
               ]
 
     ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        xval = x.value()
-        print(xval)
-        # hakank: This is moved above
-        # if len(set(xval) & set(a[0])) == 1 and\
-        #    len(set(xval) & set(a[1])) == 1 and\
-        #    len(set(xval) & set(a[2])) == 2 and\
-        #    len(set(xval) & set(a[3])) == 2:
-        #    num_solutions += 1
-        #    print(xval)
-        get_different_solution(ss,x)
-
-    print("#solutions: ", num_solutions)
+    num_solutions = ss.solveAll(display=x)
+    print("num_solutions: ", num_solutions)
     print()    
 
 #
@@ -100,19 +88,9 @@ def mastermind_like_problem2(a,correct_position,correct_number):
         model += [sum([x[c] == a[i][d] for c in range(cols) for d in range(cols)]) == correct_number[i]]
 
     ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print(x.value())
-        get_different_solution(ss,x)
-
-    print("#solutions: ", num_solutions)
+    num_solutions = ss.solveAll(display=x)
+    print("num_solutions: ", num_solutions)
     print()
-
-'''
-[6, 5, 0, 3, 2]
-#solutions:  1
-'''
 
 mastermind_like_problem()
 

@@ -79,17 +79,7 @@ def furniture_moving():
         
  
     ss = CPM_ortools(model)
-    num_solutions = 0    
-    opt_val = None
-    while ss.solve():
-        if opt_val == None:
-            opt_val = z.value()
-        if z.value() > opt_val:
-             break
-        num_solutions += 1         
-        print_sol()         
-        get_different_solution(ss,list(start_times)+list(end_times)+list([end_time]))
-
+    num_solutions = ss.solveAll(display=print_sol)
     print()
     print("num_solutions:", num_solutions)
     

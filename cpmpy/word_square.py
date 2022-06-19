@@ -21,33 +21,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-class ORT_word_square_printer(ort.CpSolverSolutionCallback):
-  """
-  A simple printer callback for single array printing.
-  """
-  def __init__(self, varmap, a, num_solutions=0):
-    super().__init__()
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (a)
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-
-    # For single arrays:
-    for cpm_var in self.vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-      
-    (a) = self.vars            
-    print(f"#{self.solcount}")
-    for w in a:
-        print(words[w.value()])
-    print(flush=True)
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
 #
 # convert a character to integer
 #
@@ -86,29 +59,21 @@ def word_square(words, word_len, num_sols=20,num_procs=1):
         for j in range(word_len):
             model += [A[E[i],j] == A[E[j],i]]
 
+
+    def print_sol():
+      for w in E:
+        print(words[w.value()])
+      print(flush=True)
+
     ss = CPM_ortools(model)
-    # Note that we have to use a flattened version of x.
-    cb = ORT_word_square_printer(ss._varmap,E,num_sols)
-
-    if num_procs > 1:
-        print("number of processes:", num_procs)
-        ss.ort_solver.parameters.num_search_workers = num_procs
-
     # Flags to experiment with        
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
-    # ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    if num_sols == 1:
-        ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
-    else:
-        ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-
-
-    # print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
-    print("s.status():", ss.status())
-    print("Nr solutions:", cb.solcount)
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
+    print("Nr solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())
@@ -116,13 +81,7 @@ def word_square(words, word_len, num_sols=20,num_procs=1):
     return ss.ort_solver.WallTime()
 
 
-def print_solution(E):
-    print(E.value())
-    for e in E:
-        print(words[e.value()])
-    
-
-def read_words(word_list, word_len, limit):
+def read_words(word_list, word_len):
     dict = {}
     all_words = []
     count = 0
@@ -139,7 +98,6 @@ def read_words(word_list, word_len, limit):
 word_dict = "/usr/share/dict/words"
 # word_dict = "words_lower.txt"
 word_len = 5
-limit = 1000000
 num_sols = 3
 if len(sys.argv) > 1:
     word_dict = sys.argv[1]
@@ -150,7 +108,6 @@ if len(sys.argv) > 3:
 if len(sys.argv) > 4:
     num_sols = int(sys.argv[4])
 
-# Note: I have to use a limit, otherwise it seg faults
-words = read_words(word_dict, word_len, limit)
+words = read_words(word_dict, word_len)
 print("It was", len(words), "words")
 word_square(words, word_len,num_sols)

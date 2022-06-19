@@ -125,19 +125,16 @@ def kenken2():
   for (res, segment) in problem:
     model += [calc(segment, x, res)]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1    
+  def print_sol():
     for i in range(n):
       for j in range(n):
         print(x[i, j].value(), end=" ")
       print()
     print()
-    get_different_solution(ss,x.flat)
+    
 
-
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(solution_limit=0,display=print_sol)
   print("num_solutions:", num_solutions)
 
 

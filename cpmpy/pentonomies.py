@@ -31,47 +31,6 @@ from cpmpy_hakank import *
 
 from pentonomies_problems import all_pentonomies_instances
 
-
-class ORT_pentonomies_printer(ort.CpSolverSolutionCallback):
-  """
-  Solution printer for pentonomies.
-  """
-  def __init__(self, varmap, board, height,width, num_solutions=0):
-    super().__init__()
-
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (board)
-    self.height = height
-    self.width = width
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-
-    for cpm_var in self.vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-
-    alpha = list(string.ascii_lowercase)
-
-    (board) = self.vars
-    print("board:", board.value())
-    print(f"#{self.solcount}:")
-
-    height = self.height
-    width = self.width
-    for h in range(height):
-      for w in range(width-1):
-        print(alpha[board[h*width+w].value()-1],end="")
-      print()
-    print()
-
-    print(flush=True)        
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
-
 def pentonomies(problem,num_sols=0,timeout=10,num_procs=1):
 
   width  = problem["width"]
@@ -120,30 +79,27 @@ def pentonomies(problem,num_sols=0,timeout=10,num_procs=1):
     model += [regular_table(board,q,s,d,1,f)]
 
   ss = CPM_ortools(model)    
-  cb = ORT_pentonomies_printer(ss._varmap,board,height,width,num_sols)
-
-  # Flags to experiment with
-  if timeout != None and timeout != 0:
-    ss.ort_solver.parameters.max_time_in_seconds = timeout
-
-  if num_sols == 1:
-    print("Num proces:",num_procs)
-    # Don't work together with SearchForAllSolutions, use Solve(.) instead
-    ss.ort_solver.parameters.num_search_workers = num_procs 
 
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
   # ss.ort_solver.parameters.cp_model_presolve = False
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  if num_sols == 1:
-    ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
-  else:
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+  def print_sol():
+    # (board) = self.vars
+    print("board:", board.value())
+    alpha = list(string.ascii_lowercase)
+    for h in range(height):
+      for w in range(width-1):
+        print(alpha[board[h*width+w].value()-1],end="")
+      print()
+    print()
 
-  # ss._after_solve(ort_status)
-  # print(ss.status())
-  print("Nr solutions:", cb.solcount)
+    print(flush=True)        
+  
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
+  
+  print("Nr solutions:", num_solutions)
   print("Num conflicts:", ss.ort_solver.NumConflicts())
   print("NumBranches:", ss.ort_solver.NumBranches())
   print("WallTime:", ss.ort_solver.WallTime())
@@ -151,7 +107,7 @@ def pentonomies(problem,num_sols=0,timeout=10,num_procs=1):
 
 timeout = 60
 num_sols = 1
-num_procs = 12
+num_procs = 1
 print("timeout:",timeout,"num_sols:",num_sols,"num_procs:",num_procs)
 for p in all_pentonomies_instances:
   print(f"\nproblem {p}")

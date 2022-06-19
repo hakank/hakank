@@ -77,15 +77,14 @@ def traffic_lights():
       if j == (1 + i) % n:
         model += [Table((V[i], P[i], V[j], P[j]), allowed)]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1      
+  def print_sol():
     for i in range(n):
       print("%+2s %+2s" % (lights[V[i].value()], lights[P[i].value()]), end=" ")
     print()
-    get_different_solution(ss,list(P)+list(V))
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print()
   print("num_solutions:", num_solutions)
 

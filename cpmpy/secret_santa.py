@@ -71,6 +71,7 @@ def secret_santa():
     model += [family[i] != Element(family, x[i])]
     # model += [family[i] != family[x[i]]] # Don't work
 
-  ortools_wrapper(model,[x])
+  num_solutions = model.solveAll(display=x)
+  print("num_solutions:",num_solutions)
 
 secret_santa()

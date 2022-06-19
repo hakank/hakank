@@ -137,16 +137,12 @@ def domino(problem,num_sols=1):
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print(a.value())
         print_board2(a,d,rows,cols,dmap)
-        print("status:",ss.status())
-        if num_sols > 0 and num_solutions >= num_sols:
-            break
-        
-        get_different_solution(ss,a.flat)
+        print()
+
+    num_solutions = ss.solveAll(solution_limit=num_sols, display=print_sol)
     print("num_solutions:", num_solutions)
                          
 

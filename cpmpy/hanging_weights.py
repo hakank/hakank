@@ -87,14 +87,7 @@ def hanging_weights():
                    4 * (l + m + h + i + e + f) == 3 * (j + k + g + a + b + c + d)  
                    ])
 
-    ss = CPM_ortools(model)
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    while ss.solve() is not False:
+    def print_sol():
         print(x.value())
         print()
         # print(total.value())
@@ -116,8 +109,15 @@ def hanging_weights():
 "                          |                    |"+ "\n" +
 "              +--+--+--+--+--+  +--+--+--+--+--+--+"+ "\n" +
 "              "+show(a)+"              "+show(b)+" "+show(c)+"                 "+show(d)+"\n")
-
-        get_different_solution(ss,x)
         
+
+    ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+
+    ss.solveAll(display=print_sol)
 
 hanging_weights()

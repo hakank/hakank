@@ -66,16 +66,7 @@ def perfect_square_sequence(n=15, print_solutions=True, show_num_sols=0):
     if n > 1:
         model + (x[0] < x[n-1])
 
-    ss = CPM_ortools(model)
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    # ss.ort_solver.parameters.linearization_level = 0
-    # ss.ort_solver.parameters.cp_model_probing_level = 0
-    
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         if print_solutions:
             x_val = x.value()
             print("x:", x_val)
@@ -83,11 +74,16 @@ def perfect_square_sequence(n=15, print_solutions=True, show_num_sols=0):
             for i in range(1, n):
                 print((x_val[i-1]+x_val[i]),end=" ")
             print()
-        if show_num_sols > 0 and num_solutions >= show_num_sols:
-            break
-        get_different_solution(ss,x)
+        
+
+    ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    # ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.cp_model_probing_level = 0
     
-    print()
+    num_solutions = ss.solveAll(solution_limit=show_num_sols,display=print_sol)
     print("num_solutions:", num_solutions)
     
     return num_solutions

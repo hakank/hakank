@@ -310,17 +310,7 @@ def crossfigure():
     model += (D26 == 5 * A24)
     model += (D28 == D21 + 27)
 
-   
-    ss = CPM_ortools(model)
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 1
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-    
-    num_solutions = 0    
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         Mval = M.value()
         print(Mval)
         for i in range(n):
@@ -333,11 +323,20 @@ def crossfigure():
         print()
         print("AList:",[AList[i].value() for i in range(len(AList))])
         print("DList:",[DList[i].value() for i in range(len(DList))])
-        print("Num conflicts:", ss.ort_solver.NumConflicts())
-        print("NumBranches:", ss.ort_solver.NumBranches())
-        print("WallTime:", ss.ort_solver.WallTime())
-        print()    
-        get_different_solution(ss,M.flat)
+   
+    ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 1
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+    
+    num_solutions = ss.solveAll(display=print_sol)
+    print()
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
+    print()    
 
 
 crossfigure()

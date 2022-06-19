@@ -26,19 +26,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-
-def print_solution(a):
-  x = a[0]
-  p = a[1]
-  y = a[2]
-  print("x:",x.value())
-  print("p:",p.value())
-  print("y:",y.value())
-  for i in range(len(x)):
-    print(f"i:{i} y[{i}] = x[p[{i}]] = x[{p[i].value()}] = {x[p[i]].value()}")
-  print()
-
-
 def permutation3_test(n=5):
 
   # variables
@@ -62,12 +49,19 @@ def permutation3_test(n=5):
                  # permutation(x,y) # no explicit permutation array p
                  ])
 
+  def print_sol():
+    print("x:",x.value())
+    print("p:",p.value())
+    print("y:",y.value())
+    for i in range(len(x)):
+      print(f"i:{i} y[{i}] = x[p[{i}]] = x[{p[i].value()}] = {x[p[i]].value()}")
+    print()
+    
+  num_sols=0
   if n >= 100:
-    ortools_wrapper2(model,[x,p,y],print_solution,1)
-  else:
-    ortools_wrapper2(model,[x,p,y],print_solution)
-  # ortools_wrapper(model,[x,y])  
-  
+    num_sols = 1
+    
+  num_solutions = model.solveAll(solution_limit=num_sols,display=print_sol)
 
 n = 4
 permutation3_test(n)

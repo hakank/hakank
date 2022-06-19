@@ -30,15 +30,12 @@ def remainder_problem():
         X == D*6 + 4,
         ])
 
-    ss = CPM_ortools(model)
-    num_solutions = 0
     xs = []
-    while ss.solve():
-        num_solutions += 1
-        # print(v.value())
+    def print_sol():
         xs.append(v[0].value())
-        get_different_solution(ss,v)
 
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print(xs)
     print("len:",len(xs))
 
@@ -52,15 +49,12 @@ def remainder_problem2():
     for (i,k) in zip(range(1,4+1),[A,B,C,D]):
         model += (X == k*(i+2) + i)
 
-    ss = CPM_ortools(model)
-    num_solutions = 0
     xs = []
-    while ss.solve():
-        num_solutions += 1
-        # print(v.value())
+    def print_sol():
         xs.append(v[0].value())
-        get_different_solution(ss,v)
-
+        
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print(xs)
     print("len:",len(xs))
 

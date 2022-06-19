@@ -22,7 +22,7 @@ from collections import defaultdict
 
 
 
-def nurse_rostering():
+def nurse_rostering(num_sols=2):
 
   model = Model()
 
@@ -141,10 +141,7 @@ def nurse_rostering():
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-
+  def print_sol():
     for i in range(num_nurses):
       print('Nurse%i: ' % i, end=' ')
       this_day_stat = defaultdict(int)
@@ -164,11 +161,10 @@ def nurse_rostering():
         print(day_stat[j, t].value(), end=' ')
       print()
     print()
-    get_different_solution(ss,x_flat)
-    # We just show 2 solutions
-    if num_solutions >= 2:
-      break
 
+
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
   print('num_solutions:', num_solutions)
 
-nurse_rostering()
+num_sols = 2
+nurse_rostering(num_sols)

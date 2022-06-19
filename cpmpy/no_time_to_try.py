@@ -62,15 +62,12 @@ def no_time_to_try_cp(buttons):
   else:
       model += [nvalue(3,x)]
 
+  def print_sol():
+    print(x.value(),end=" ")    
+
   ss = CPM_ortools(model) 
 
-  num_solutions = 0
-  opt = None
-  while ss.solve() is not False:
-      num_solutions += 1
-      print(x.value(),end=" ")
-      get_different_solution(ss,x)
- 
+  num_solutions = ss.solveAll(display=print_sol)
   print()
   print("num_solutions:", num_solutions)  
 

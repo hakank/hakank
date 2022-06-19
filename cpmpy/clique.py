@@ -83,7 +83,7 @@ def check_clique(graph,type="all",card1=None):
       if type == "max":
         return max_card
       else:
-        get_different_solution(ss,x) # all cliques (including sub cliques)
+        ss += [any([t.value() != t for t in x])]
 
     print("num_solutions:", num_solutions)
     return max_card

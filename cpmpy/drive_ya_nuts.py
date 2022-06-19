@@ -212,8 +212,6 @@ def drive_ya_nuts(problem):
   # symmetry breaking: 
   model += [start_ix[0] == 0]
 
-  # print(model)
-
   print("\nSolution:")
   ss = CPM_ortools(model)
   # ss.ort_solver.parameters.log_search_progress = True
@@ -223,9 +221,7 @@ def drive_ya_nuts(problem):
   # ss.ort_solver.parameters.linearization_level = 0
   # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("nuts (in order)")
     for i in range(m):
       pinv = pos_inv[i].value()      
@@ -235,7 +231,6 @@ def drive_ya_nuts(problem):
     for i in range(m):
       print(x[i].value())
     print()
-
     
     # This was fun. :-) :-)
     print(f"                      {pp(x[0,0])}")
@@ -275,8 +270,8 @@ def drive_ya_nuts(problem):
     print("pos_inv:",pos_inv.value())
     print("start_ix:",start_ix.value())
     print(flush=True)
-    get_different_solution(ss,list(x.flat)+list(pos)+list(start_ix))
-    
+
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:",num_solutions)
   
 

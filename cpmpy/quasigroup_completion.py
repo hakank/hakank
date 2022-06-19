@@ -70,31 +70,16 @@ def quasigroup_completion(puzzle="",n=0,num_sols=0,num_procs=1):
         ]
 
 
-    s = CPM_ortools(model)
-    # Note that we have to use a flattened version of x.
-    cb = ORT_simple_printer_matrix(s._varmap,x_flat,n,n,num_sols)
+    def print_sol():
+        print(x.value())
+        print()
 
-    if num_sols == 1:
-        print("number of processes:", num_procs)
-        s.ort_solver.parameters.num_search_workers = num_procs
-
-    # Flags to experiment with        
-    # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # s.ort_solver.parameters.cp_model_presolve = False
-    s.ort_solver.parameters.linearization_level = 0
-    s.ort_solver.parameters.cp_model_probing_level = 0
-
-    if num_sols == 1:
-        ort_status = s.ort_solver.Solve(s.ort_model, cb)
-    else:
-        ort_status = s.ort_solver.SearchForAllSolutions(s.ort_model, cb)
-        
-    # print("After solve status:", s._after_solve(ort_status)) # post-process after solve() call...
-    print("s.status():", s.status())
-    print("Nr solutions:", cb.solcount)
-    print("Num conflicts:", s.ort_solver.NumConflicts())
-    print("NumBranches:", s.ort_solver.NumBranches())
-    print("WallTime:", s.ort_solver.WallTime())
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
+    print("Nr solutions:", num_solutions)    
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
     print()
 
 

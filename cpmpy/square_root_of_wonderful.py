@@ -41,16 +41,13 @@ def square_root_of_wonderful():
 
   print_model_and_variables(model)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve() is not False:
-      num_solutions += 1
-      print("wonderful:",wonderful.value())
-      print("ooddf:",ooddf.value())      
-      print()
-      get_different_solution(ss,x)
+  def print_sol():
+    print("wonderful:",wonderful.value())
+    print("ooddf:",ooddf.value())      
+    print()
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = model.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 

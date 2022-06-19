@@ -82,28 +82,27 @@ def hidato(problem,solver="CPM_ortools"):
             ((a != 0) | (b != 0))
             ] 
 
+    def print_sol():
+        print_board(x, r, c)
+
     num_solutions = 0
     if solver == "CPM_ortools":
         ss = CPM_ortools(model)
         # ss.ort_solver.parameters.linearization_level = 0
-        # ss.ort_solver.parameters.cp_model_probing_level = 0
-  
-        while ss.solve():
-            num_solutions += 1        
-            print_board(x, r, c)
-            get_different_solution(ss,x.flat)
-
+        # ss.ort_solver.parameters.cp_model_probing_level = 0  
+        num_solutions = ss.solveAll(display=print_sol)
         print("number of solutions:", num_solutions)
+        print("Num conflicts:", ss.ort_solver.NumConflicts())
+        print("NumBranches:", ss.ort_solver.NumBranches())
+        print("WallTime:", ss.ort_solver.WallTime())
+        print()
+
     else:
         ss = CPM_minizinc(model)
         # ss = CPM_minizinc(model,"gecode") # Test a specific FlatZinc model
         # print("MiniZinc model:\n",ss.make_model(model)[0]) # Print the MiniZinc model
-        while ss.solve():
-            num_solutions += 1        
-            print_board(x, r, c)
-            get_different_solution(ss,x.flat)
+        num_solutions = ss.solveAll(display=print_sol)
 
-        print("number of solutions:", num_solutions)
 
     assert num_solutions > 0, "The number of solutions should be > 0!"
         

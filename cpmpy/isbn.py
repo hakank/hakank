@@ -79,13 +79,7 @@ def isbn(isbn_init):
   # print(model)
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-      num_solutions += 1
-      print(isbn.value())
-      get_different_solution(ss,isbn)
-
-  print()
+  num_solutions = ss.solveAll(display=isbn)
   print("num_solutions:", num_solutions)
   print()
 

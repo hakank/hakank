@@ -43,13 +43,11 @@ def torn_numbers():
                    sumx*sumx == x3 * 1000 + x2 * 100 + x1 * 10 + x0
                    ])
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("x:",x.value(),"sum:",sumx.value())
-        get_different_solution(ss,x)
-
+        
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)    
     print("number of solutions:", num_solutions)
 
 

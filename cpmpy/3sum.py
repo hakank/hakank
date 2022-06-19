@@ -36,17 +36,16 @@ def three_sum(nums):
   model += (sum([nums[i]*x[i] for i in range(n)]) == 0)
   model += (sum(x) == m)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-      num_solutions += 1
-      xs = x.value()
-      # print("x:",xs)
-      print("indices:",[i for i in range(n) if xs[i]])
-      print("nums:",[nums[i] for i in range(n) if xs[i]])
-      print()
-      get_different_solution(ss,x)
+  def print_sol():
+    xs = x.value()
+    # print("x:",xs)
+    print("indices:",[i for i in range(n) if xs[i]])
+    print("nums:",[nums[i] for i in range(n) if xs[i]])
+    print()
 
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 sat_nums = [-1, 6, 8, 9, 10, -100, 78, 0, 1] # SAT

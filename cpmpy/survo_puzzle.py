@@ -38,12 +38,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-    rows = len(a)
-    cols = len(a[0])
-    print_board(a,rows,cols)
-    
-
 def survo_puzzle(r=0, c=0, rowsums=[], colsums=[], game=[]):
 
     if r == 0:
@@ -71,7 +65,11 @@ def survo_puzzle(r=0, c=0, rowsums=[], colsums=[], game=[]):
           if game[i][j] > 0:
               model += [x[i,j] == game[i][j]]
 
-    ortools_wrapper(model,x,print_solution)
+    def print_sol():
+        print_board(x,r,c)        
+
+    model.solveAll(display=print_sol)
+
 
 
 #

@@ -57,27 +57,20 @@ def knights_path(n=4,num_sols=0):
             ] 
 
 
-    num_solutions = 0
     ss = CPM_ortools(model)
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    ss.ort_solver.parameters.cp_model_presolve = False
+    # ss.ort_solver.parameters.cp_model_presolve = False
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    while ss.solve():
-        num_solutions += 1        
-        print(x.value())
-        print()
-        if num_sols > 0 and num_solutions >= num_sols:
-            print("Num conflicts:", ss.ort_solver.NumConflicts())
-            print("NumBranches:", ss.ort_solver.NumBranches())
-            print("WallTime:", ss.ort_solver.WallTime())
-            print()
-            break
-        get_different_solution(ss,x.flat)
-
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=x)
     print("number of solutions:", num_solutions)
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
+    print()
+
 
 for n in range(2,9):
      print("\nn:",n)

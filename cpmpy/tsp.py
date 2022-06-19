@@ -106,7 +106,6 @@ def tsp(n,num_edges,E,c):
     print("x:",x.value())
     print("visited:",[i for i in range(num_edges) if x[i].value() == 1])
     print("y:",y.value())    
-    # get_different_solution(ss,[t,w])
     
   print()
   print("num_solutions:", num_solutions)  

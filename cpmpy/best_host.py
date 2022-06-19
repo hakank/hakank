@@ -132,17 +132,14 @@ def best_host():
         # model += [sum([prefs[x[i],j] == x[(i-1) % n] for j in range(2)])>0]
         # model += [sum([prefs[x[i],j] == x[(i+1) % n] for j in range(2)])>0]                  
 
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print(x.value())
         print(" ".join([name_str[x[i].value()] for i in range(n)]))
         print()
-        get_different_solution(ss,x)
-    
+        
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)  
 
-    
 
 best_host()

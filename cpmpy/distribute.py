@@ -56,15 +56,14 @@ def distribute_test():
 
   model += (distribute(card, value, base))
    
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
+  def print_sol():
     print("card :", card.value())
     print("value:", value.value())
     print("base :", base.value())
     print()
-    get_different_solution(ss,list(card)+list(value)+list(base))
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 distribute_test()

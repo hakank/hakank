@@ -81,16 +81,7 @@ def appointment_scheduling1(m,num_sols=0):
         model += (sum([x[(j,i)] for j in range(n)]) == 1)
 
     ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print(x.value())
-        print()
-        if num_sols > 0 and num_solutions >= num_sols:
-            break        
-        get_different_solution(ss,x.flat)
-
-    print()
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=x)
     print("num_solutions:", num_solutions)  
 
 
@@ -115,15 +106,7 @@ def appointment_scheduling2(m,num_sols=0):
         model += (member_of(m[i],x[i]))
 
     ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print(x.value())
-        print()
-        if num_sols > 0 and num_solutions >= num_sols:
-            break
-        get_different_solution(ss,x)
-    
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=x)
     print("num_solutions:", num_solutions)  
 
 def convert_to_sets(m):

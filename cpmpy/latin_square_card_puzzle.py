@@ -112,46 +112,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 import time
 
-class solution_printer(ort.CpSolverSolutionCallback):
-  """
-  Solution printer.
-  """
-  def __init__(self,varmap,x,n,as_original,num_solutions=0):
-    super().__init__()
-
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars_x = (x)
-    self.n = n
-    self.as_original = as_original
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-   
-    for cpm_var in self.vars_x:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-
-    original_val = {0:'J',1:'Q',2:'K',3:'A'}
-    original_suit = {0:'H',1:'S',2:'C',3:'D'}    
-
-    n = self.n
-    m = math.floor((n*(n+1)) / 2)
-    (x) = self.vars_x
-    for i in range(n):
-      for j in range(n):
-        v = x[i*n+j].value()
-        if self.as_original:
-            print(f"{original_val[v//m]}/{original_suit[v%m]}", end=" ")
-        else:
-            print(f"{v//m}/{v%m}", end=" ")
-      print()
-    print()
-    print()
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
 
 def latin_square_card_puzzle(n=4,symmetry_breaking=True,num_sols=1,timeout=None,as_original=False):
 
@@ -197,10 +157,24 @@ def latin_square_card_puzzle(n=4,symmetry_breaking=True,num_sols=1,timeout=None,
                 increasing([x[0,j] % m for j in range(n)]),
                 ]
 
+  def print_sol():
+    original_val = {0:'J',1:'Q',2:'K',3:'A'}
+    original_suit = {0:'H',1:'S',2:'C',3:'D'}    
+
+    for i in range(n):
+      for j in range(n):
+        v = x[(i,j)].value()
+        if as_original:
+            print(f"{original_val[v//m]}/{original_suit[v%m]}", end=" ")
+        else:
+            print(f"{v//m}/{v%m}", end=" ")
+      print()
+    print()
+    print()
+
 
   # Search
   ss = CPM_ortools(model)    
-  cb = solution_printer(ss._varmap,x_flat,n,as_original,num_sols)
   
   if timeout != None and timeout != 0:
       ss.ort_solver.parameters.max_time_in_seconds = timeout
@@ -213,10 +187,8 @@ def latin_square_card_puzzle(n=4,symmetry_breaking=True,num_sols=1,timeout=None,
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-  # ss._after_solve(ort_status)
-  print(ss.status())
-  print("Nr solutions:", cb.solcount)
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
+  print("Nr solutions:", num_solutions)
   print("Num conflicts:", ss.ort_solver.NumConflicts())
   print("NumBranches:", ss.ort_solver.NumBranches())
   print("WallTime:", ss.ort_solver.WallTime())

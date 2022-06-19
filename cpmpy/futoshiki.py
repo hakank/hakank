@@ -64,17 +64,16 @@ def futoshiki(values, lt):
     model += [
         field[lt[i][0]-1, lt[i][1]-1] < field[lt[i][2]-1, lt[i][3]-1]]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for i in RANGE:
       for j in RANGE:
         print(field[i, j].value(), end=" ")
       print()
     print()
-    get_different_solution(ss,field.flat)
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

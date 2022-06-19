@@ -63,21 +63,6 @@ from cpmpy_hakank import *
 import time
 
 
-def print_solution(a):
-  x = a[0]
-  y = a[1]
-  print("x:")
-  print(x.value())
-  n = len(x)
-  print("y:")
-  for i in range(n):
-    for j in range(n):
-      print(y[i*n+j].value(),end=" ")
-    print()
-  print()
-  print()
-  
-
 #
 # The formula for calulating the distinct solution of X
 # (the number of shaken hands) for a certain N and with symmetry breaking:
@@ -155,12 +140,26 @@ def handshaking(n=10,symmetry=False,num_sols=0,print_solutions=True):
               # [x[2+2*i] < x[2+2*i+1] for i in range(ndiv2-2)]
               ]
 
-  if print_solutions:
-      ortools_wrapper(model,[x,y_flat],print_solution,num_sols)
-          
-  else:
-      num_solutions = ortools_wrapper_count_solutions(model,[x,y_flat])
-      print("num_solutions:",num_solutions)
+  def print_sol():
+    if print_solutions:
+      print("x:")
+      print(x.value())
+      n = len(x)
+      print("y:")
+      for i in range(n):
+        for j in range(n):
+          print(y[(i,j)].value(),end=" ")
+        print()
+      print()
+      print()
+
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+  ss.ort_solver.parameters.linearization_level =  0
+  
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
+  print("num_solutions:",num_solutions)
+
 
 n = 10
 handshaking(n)

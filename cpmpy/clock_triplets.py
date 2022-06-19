@@ -33,21 +33,6 @@ from cpmpy_hakank import *
 def show(x):
   return x.value()
 
-def print_solution(a):
-  x = a[0]
-  triplet_sum = a[1][0]
-  # print("x:",x.value())
-  print("triplet_sum:",triplet_sum.value())
-  print("       ", show(x[0]), "\n")
-  print("     ", show(x[11]), "    ", show(x[1]), "\n")
-  print("   ", show(x[10]), "       ", show(x[2]), "\n")
-  print("  ", show(x[9]), "         ", show(x[3]), "\n")
-  print("   ", show(x[8]), "        ",show(x[4]), "\n")
-  print("     ",  show(x[7]), "    ", show(x[5]), "\n")
-  print("       ", show(x[6]), "\n")
-
-  
-
 def clock_triplets():
 
   n = 12
@@ -63,7 +48,19 @@ def clock_triplets():
                  [(x[i%12] + x[(i%12)-1] + x[(i%12)-2]) <= triplet_sum for i in range(n)],
                  ])
 
-  ortools_wrapper2(model,[x,[triplet_sum]],print_solution)
+  def print_sol():
+    print("triplet_sum:",triplet_sum.value())
+    print("       ", show(x[0]), "\n")
+    print("     ", show(x[11]), "    ", show(x[1]), "\n")
+    print("   ", show(x[10]), "       ", show(x[2]), "\n")
+    print("  ", show(x[9]), "         ", show(x[3]), "\n")
+    print("   ", show(x[8]), "        ",show(x[4]), "\n")
+    print("     ",  show(x[7]), "    ", show(x[5]), "\n")
+    print("       ", show(x[6]), "\n")
+
+  
+  num_solutions = model.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 
 clock_triplets()

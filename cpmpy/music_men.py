@@ -76,16 +76,15 @@ def music_men():
         Mark != Jazz,
         ])
 
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print("Names   :", Names.value())
         print("Surnames:", Surnames.value())
         print("Music   :", Music.value())
         print()
-        get_different_solution(ss,list(Names)+list(Surnames)+list(Music))
 
+
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)
 
 

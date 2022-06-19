@@ -108,29 +108,27 @@ def big_bang2(minimize_val=True):
         # added later by Thore:
         model += (comp[c,0] + comp[c,1] == n*n) # make sure there are no ties
 
-
-    ss = CPM_ortools(model)
-    if minimize_val:
-        ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-    
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1        
+    def print_sol():
         print("max_val:", max_val.value())
         print("dice:\n",dice.value())
         print("comp:\n",comp.value())
         print()
-        if minimize_val == True:
-            break
-        get_different_solution(ss,list(dice.flat) + list(comp.flat))
+        
+    ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    print()
-    print("num_solutions:", num_solutions)
-
+    if minimize_val:
+        ss.ort_solver.parameters.num_search_workers = 8        
+        ss.solve()
+        print_sol()
+    else:
+        num_solutions = ss.solveAll(display=print_sol)
+        print()
+        print("num_solutions:", num_solutions)
+        
 minimize_val = True  # Minimizing max value (0: no, 1: yes)
 if len(sys.argv) > 1:
     minimize_val = int(sys.argv[1])

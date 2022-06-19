@@ -64,6 +64,11 @@ def regexp_test(n, res):
     model += [regular(x, n_states, input_max, transition_fn,
                       initial_state, accepting_states)]
 
+    def print_sol():
+        x_val =  [1] + [x[i].value() for i in range(n)]
+        sstr = ''.join([str(s[i-1]) for i in x_val])
+        res.append(sstr)
+
     ss = CPM_ortools(model)
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -71,18 +76,7 @@ def regexp_test(n, res):
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        # Note: 1 is the start state which is not included in the
-        #       state array (x)
-        x_val =  [1] + [x[i].value() for i in range(n)]
-        sstr = ''.join([str(s[i-1]) for i in x_val])
-        res.append(sstr)
-        get_different_solution(ss,x)
-        
-
-    # print('num_solutions:', num_solutions)
+    num_solutions = ss.solveAll(display=print_sol)
 
 
 res = []

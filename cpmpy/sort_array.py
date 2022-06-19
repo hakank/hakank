@@ -27,11 +27,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-    print("x:",a[0].value())
-    print("y:",a[1].value())
-    print()
-    
  
 def sort_array_test(n=5):
 
@@ -45,7 +40,13 @@ def sort_array_test(n=5):
                    # AllDifferent(x) 
                   ])
 
-    ortools_wrapper(model,[x,y],print_solution)
+    def print_sol():
+        print("x:",x.value())
+        print("y:",y.value())
+        print()
+    
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
 
 n = 4
 sort_array_test(n)

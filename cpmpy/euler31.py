@@ -25,32 +25,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from ortools.sat.python import cp_model as ort
 
-
-class solution_printer(ort.CpSolverSolutionCallback):
-  """
-  A simple printer callback for single array printing.
-  """
-  def __init__(self, varmap, a, num_solutions=0):
-    super().__init__()
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (a)
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1 # I always start at 1. :-) 
-
-    # Convert to cpmpy vars
-    for cpm_var in self.vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])      
-      
-    (a) = self.vars
-    print(f"#{self.solcount}: {a.value()}")
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
-
 def euler31():
 
    coins = [200,100,50,20,10,5,2,1]

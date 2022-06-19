@@ -59,14 +59,11 @@ def contracting_costs():
   # Alternative encoding:
   model = Model([sum(costs[i][:2]) == costs[i][2] for i in range(n)])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve() is not False:
-    num_solutions += 1
+  def print_sol():
     [print(f"{people[i]:15s}: ${x[i].value():5}") for i in range(n)]
-    get_different_solution(ss,x)
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:",num_solutions)
 
 contracting_costs()

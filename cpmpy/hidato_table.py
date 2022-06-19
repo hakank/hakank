@@ -24,11 +24,11 @@ import sys
 import numpy as np
 from cpmpy import *
 from cpmpy.solvers import *
-from cpmpy_hakank import *
+# from cpmpy_hakank import *
 
 
 
-def BuildPairs(rows, cols):
+def build_pairs(rows, cols):
   """Build closeness pairs for consecutive numbers.
 
   Build set of allowed pairs such that two consecutive numbers touch
@@ -159,7 +159,7 @@ def Solve(model):
   c = len(puzzle[0])
 
   print(('Initial game (%i x %i)' % (r, c)))
-  PrintMatrix(puzzle)
+  print_matrix(puzzle)
 
   #
   # declare variables
@@ -181,41 +181,26 @@ def Solve(model):
 
   # Consecutive numbers much touch each other in the grid.
   # We use an allowed assignment constraint to model it.
-  close_tuples = BuildPairs(r, c)
+  close_tuples = build_pairs(r, c)
   for k in range(0, r * c - 1):
     model += [Table([positions[k], positions[k + 1]],
                                          close_tuples)]
 
-  #
-  # solution and search
-  #
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    PrintOneSolution(positions, r, c, num_solutions)
-    print(flush=True)
-    get_different_solution(ss,positions)
-    
+  def print_sol():
+    board = []
+    for unused_i in range(r):
+      board.append([0] * c)
+    # Fill board with solution value.
+    for k in range(r * c):
+      position = positions[k].value()
+      board[position // c][position % c] = k + 1
+    print_matrix(board)
+
+  num_solutions = model.solveAll(display=print_sol)
   print(('solutions : %i' % num_solutions))
 
 
-def PrintOneSolution(positions, rows, cols, num_solution):
-  """Print a current solution."""
-  print(('Solution %i:' % num_solution))
-  # Create empty board.
-  board = []
-  for unused_i in range(rows):
-    board.append([0] * cols)
-  # Fill board with solution value.
-  for k in range(rows * cols):
-    position = positions[k].value()
-    board[position // cols][position % cols] = k + 1
-  # Print the board.
-  PrintMatrix(board)
-
-
-def PrintMatrix(game):
+def print_matrix(game):
   """Pretty print of a matrix."""
   rows = len(game)
   cols = len(game[0])

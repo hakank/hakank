@@ -73,18 +73,16 @@ def solve(param):
 
     matrix, model = get_model(N)
 
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print(matrix.value())
-
         print("Degree sequence:",end= " ")
         for row in matrix:
             print(sum([x.value() for x in row]),end=" ")
         print()
-        get_different_solution(ss,matrix.flat)
         print()
+
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
 
 default = {'N': 10}

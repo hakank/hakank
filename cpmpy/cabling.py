@@ -43,22 +43,6 @@ from cpmpy_hakank import *
 def diff(x, y):
     return abs(x-y)
 
-#
-# for showing all optimal solutition in cabling_2
-#
-def print_solution(a):
-  a_s = ["A","B","C","D","E","F","G","H"]
-  x = a[0]
-  t = a[1]
-  final_sum = a[2][0]
-  n = len(x)
-  print("x:", x.value())
-  print("t:",t.value())
-  print("final_sum:", final_sum.value())
-  order = [a_s[x[i].value()] for i in range(n)]
-  print("order:","".join(order))
-  print()
-
 # This is a port of the original Z3 model
 def cabling_1():
   
@@ -128,20 +112,17 @@ def cabling_1():
   
   model.minimize(final_sum)
 
-  a_s = ["A","B","C","D","E","F","G","H"]
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  if ss.solve():
-    num_solutions += 1
+  def print_sol():
+    a_s = ["A","B","C","D","E","F","G","H"]
     print("x:", x.value())
     print("diffs:",diffs.value())
     print("final_sum:", final_sum.value())
     order = [a_s[x[i].value()] for i in range(n)]
-    print("order:","".join(order))
-    
+    print("order:","".join(order))    
     print()
-    get_different_solution(ss,x)
-
+      
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 
@@ -190,22 +171,25 @@ def cabling_2(min_val=None):
   else:
     model += [final_sum == min_val]
 
-  if min_val == None:
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    a_s = ["A","B","C","D","E","F","G","H"]
-    if ss.solve():
-      num_solutions += 1
+  def print_sol():
+      a_s = ["A","B","C","D","E","F","G","H"]
       print("x:", x.value())
       print("t:",t.value())
       print("final_sum:", final_sum.value())
       order = [a_s[x[i].value()] for i in range(n)]
       print("order:","".join(order))
       print()
-      return final_sum.value()
+
+
+  if min_val == None:
+    ss = CPM_ortools(model)
+    num_solutions = ss.solve()
+    print_sol()
+    return final_sum.value()
   else:
-    
-    ortools_wrapper(model,[x,t,[final_sum]],print_solution)
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 print("cabling_1:")
 cabling_1()

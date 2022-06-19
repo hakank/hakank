@@ -72,14 +72,12 @@ def babysitting():
                  Otto != Hall,
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("last:",last.value())
-    print("age:",age.value())
-    get_different_solution(ss,flatten_lists([last,age]))
+    print("age:",age.value())  
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 babysitting()

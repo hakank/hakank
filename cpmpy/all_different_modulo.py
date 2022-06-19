@@ -35,16 +35,10 @@ def all_different_modulo_test(n=4,m=5):
   # constraints
   model = Model([all_different_modulo(x, m)])
 
-  ortools_wrapper(model,[x])
-  # ss = CPM_ortools(model)
-  # num_solutions = 0
-  # while ss.solve():
-  #   num_solutions += 1
-  #   print("x:", x.value())    
-  #   get_different_solution(ss,x)
-
-  # print()
-  # print("num_solutions:", num_solutions)
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=x)
+  print()
+  print("num_solutions:", num_solutions)
 
 
 n=4

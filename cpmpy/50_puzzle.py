@@ -40,15 +40,13 @@ def main():
                  sum([v[i]*x[i] for i in range(n)]) == 50
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("x:", [v[i] for i in range(n) if x[i].value() > 0])
     print("sumX:", sumX.value())
-    get_different_solution(ss,x)
 
-  print()
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 main()

@@ -23,11 +23,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-def print_solution(a):
-    print("x: ", a[0].value())
-    print("cost: ", a[1][0].value())    
-    
-
 def diet1():
 
     n = 4
@@ -53,6 +48,11 @@ def diet1():
         minimize=cost
         )
 
-    ortools_wrapper_opt(model,[x,[cost]],print_solution)
+    def print_sol():
+        print("x:",x.value())
+        print("cost:",cost.value())
+        print()
+
+    model.solveAll(display=print_sol)
 
 diet1()

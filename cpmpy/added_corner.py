@@ -39,17 +39,15 @@ def added_corner():
                  g == f + h,
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-      num_solutions += 1
+  def print_sol():
       print(a.value(),b.value(),c.value())
       print(d.value()," ", e.value())
       print(f.value(),g.value(),h.value())
       print()
-      get_different_solution(ss,x)
+    
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 

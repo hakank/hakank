@@ -36,10 +36,7 @@ def birthday_coins():
 
   
   ss = CPM_ortools(model)
-  while ss.solve():
-    print("x: ", x.value())
-    get_different_solution(ss,x)
-
+  ss.solveAll(display=x)
 
 birthday_coins()
 

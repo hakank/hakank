@@ -86,10 +86,7 @@ def photo_problem(z_val=0):
   #   Fred is somewhere left of Betty
   model += [positions[3] < positions[0]]
 
-  num_solutions = 0
-  ss = CPM_ortools(model)
-  while ss.solve():
-    num_solutions += 1      
+  def print_sol():
     print("z:", z.value())
     p = [positions[i].value() for i in range(n)]
     print("p:",p)
@@ -102,14 +99,16 @@ def photo_problem(z_val=0):
         if preferences[i][j] == 1 and abs(p[i] - p[j]) == 1:
           print("\t", persons[i], persons[j])
     print()
-    if z_val > 0:
-        get_different_solution(ss,positions)
-    else:
-        return z.value()
+    
 
-
-  print()
-  print("num_solutions:", num_solutions)
+  num_solutions = 0
+  ss = CPM_ortools(model)
+  if z_val == 0:
+    ss.solve()
+    return z.value()
+  else:
+    num_solutions = ss.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
 
 
 z = photo_problem(0)

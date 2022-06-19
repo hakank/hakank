@@ -88,13 +88,7 @@ def remarkable_sequence():
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("a:", a.value())
-    # print("js:",[j.value() for j in js])
-    get_different_solution(ss,a)
-    
+  num_solutions = ss.solveAll(display=a)
   print("num_solutions:", num_solutions)
 
 

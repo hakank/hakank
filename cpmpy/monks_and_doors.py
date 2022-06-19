@@ -78,16 +78,15 @@ def monks_and_doors():
     ])
 
   print(model)
-  
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+
+  def print_sol():
     print("monks:", monks.value(), "exits doors:",[d for d in doors if d.value() == 1] )
     print("doors:", doors.value(), "telling truth:", [m for m in monks if m.value() == 1])
     print()
-    get_different_solution(ss,list(monks)+list(doors))
 
+  
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

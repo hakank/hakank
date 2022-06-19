@@ -38,7 +38,8 @@ def g():x=intvar(3,5,shape=18);m=Model(sum(x)==72);ortools_wrapper2(model,[x])
 def eighteen_hole_golf():
     x = intvar(3,5,shape=18,name="x")
     model = Model(sum(x) == 72)  
-    ortools_wrapper2(model,[x])
+    num_solutions = model.solveAll(display=x)
+    println("num_solutions:", num_solutions)
 
 eighteen_hole_golf()
 

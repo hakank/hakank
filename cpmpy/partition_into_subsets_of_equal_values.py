@@ -59,17 +59,7 @@ def partition_into_subsets_of_equal_values(s,num_subsets,num_sols=0):
     for k in range(num_subsets):
         model += [sum([s[i]*(x[i]==k) for i in range(n)]) == partition_sum]
 
-    ss = CPM_ortools(model)    
-    # ss.ort_solver.parameters.max_time_in_seconds = timeout
-    # ss.ort_solver.parameters.num_search_workers = num_procs 
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    num_solutions = 0
-    while ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         xs = x.value()
         print(xs)
         for i in range(num_subsets):
@@ -80,19 +70,23 @@ def partition_into_subsets_of_equal_values(s,num_subsets,num_sols=0):
                     p.append(s[j])
             print("p:",p,"sum:", sum(p))
         print()
-        if num_sols == 1:
-            print(ss.status())
-            print("Num conflicts:", ss.ort_solver.NumConflicts())
-            print("NumBranches:", ss.ort_solver.NumBranches())
-            print("WallTime:", ss.ort_solver.WallTime())
-            break
-          
-        if num_sols > 0 and num_solutions >= num_sols:
-          break
 
-        get_different_solution(ss,x)
-        
+    ss = CPM_ortools(model)    
+    # ss.ort_solver.parameters.max_time_in_seconds = timeout
+    # ss.ort_solver.parameters.num_search_workers = num_procs 
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
     print("num_solutions:",num_solutions)
+    if num_sols == 1:
+        print(ss.status())
+        print("Num conflicts:", ss.ort_solver.NumConflicts())
+        print("NumBranches:", ss.ort_solver.NumBranches())
+        print("WallTime:", ss.ort_solver.WallTime())
+    
     print()
 
 instances = {

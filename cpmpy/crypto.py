@@ -87,16 +87,15 @@ def crypto():
                 V + I + O + L + I + N == VIOLIN,
                 W + A + L + T + Z == WALTZ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
+    str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"    
     for (letter, val) in [(str[i], LD[i].value()) for i in range(num_letters)]:
       print("%s: %i" % (letter, val))
     print()
-    get_different_solution(ss,LD)
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

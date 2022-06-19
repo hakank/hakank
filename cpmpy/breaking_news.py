@@ -105,22 +105,17 @@ def breaking_news():
     ( (bayonne == corey) | (bayonne == whale) )
     ])
 
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     # print("reporters:",reporters)
     print("locations:",locations.value()+1, "locations_inv:", locations_inv.value())
     print("news     :",news.value()+1,      "news_inv     :", news_inv.value())
     for i in range(n):
       print(f"{reporters_s[i]:10s} {locations_s[locations_inv[i].value()]:14s} {news_s[news_inv[i].value()]:10s}")
-          
-    
     print()
-    get_different_solution(ss,list(locations)+list(news))
+    
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 breaking_news()

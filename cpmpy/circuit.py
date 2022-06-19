@@ -24,10 +24,6 @@ from cpmpy.solvers import *
 import numpy as np
 from cpmpy_hakank import *
 
-def print_solution(a):
-    for x in a:
-        print("x:", x.value())
-
 def circuit_test(n=5):
 
     x = intvar(0, n-1,n,name='x')    
@@ -35,14 +31,8 @@ def circuit_test(n=5):
         my_circuit(x),
         )
 
-    ortools_wrapper(model,[x],print_solution,0)
-    # num_solutions = 0
-    # while model.solve():
-    #     print("x:", x.value())
-    #     num_solutions += 1
-    #     get_different_solution(model,x)
-    #
-    # print(f"num_solutions: {num_solutions}")
+    num_solutions = model.solveAll(display=x)
+    print(f"num_solutions: {num_solutions}")
 
 
 circuit_test(5)

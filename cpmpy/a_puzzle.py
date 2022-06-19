@@ -126,16 +126,13 @@ def puzzle(problem=1):
     
     model += (x2+x5+x8+x1 == x)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
   xs = []
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("all:",all.value(), "x:",x.value())
     xs.append(x.value())
-    get_different_solution(ss,list(all)+[a])
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
   print("xs:",xs)
   print()

@@ -104,7 +104,7 @@ def test_bin_packing_min_capacity(weights,capacity1=None):
       return ss.status()
       break
     else:
-      get_different_solution(ss,bins)
+      ss += any([b != b.value() for b in bins])
       
   print("num_solutions:", num_solutions)
 

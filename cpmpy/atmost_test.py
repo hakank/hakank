@@ -24,7 +24,9 @@ def atmost_test(n=4):
         )
 
     print("model:",model)
-    ortools_wrapper(model,[x])
+
+    num_solutions = model.solveAll(display=x)
+    print("num_solutions:",num_solutions)
 
 atmost_test(4)
 

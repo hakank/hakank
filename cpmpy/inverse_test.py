@@ -70,9 +70,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-def print_solution(a):
-    print("x: ", a[0].value(), " inv: ", a[1].value())
-    
 def inverse_test(n=4):
     
     x = intvar(0,n-1,shape=n,name="x")
@@ -86,13 +83,11 @@ def inverse_test(n=4):
 
     # print(model)
 
-    # ortools_wrapper(model,[x,x_inv],print_solution,0)
+    def print_sol():
+        print("x:",x.value()+1,"x_inv:",x_inv.value()+1,)        
+
     ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print("x:",x.value()+1,"x_inv:",x_inv.value()+1,)
-        get_different_solution(ss,x)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
 
 inverse_test()

@@ -40,7 +40,11 @@ def sliding_sum_test(n=7,seq=4,low=3,up=7):
   
   model = Model(sliding_sum(low,up,seq,x))
 
-  ortools_wrapper(model,[x])
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+  num_solutions = ss.solveAll(display=x)
+  print("num_solutions:", num_solutions)
 
 
 sliding_sum_test()

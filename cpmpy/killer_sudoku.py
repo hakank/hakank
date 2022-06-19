@@ -54,8 +54,6 @@ from cpmpy_hakank import *
 # Ensure that the sum of the segments
 # in cc == res
 #
-
-
 def calc(cc, x, res):
   constraints = []
   
@@ -120,13 +118,7 @@ def killer_sudoku():
     model += [calc(segment, x, res)]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print(x.value())
-    print()
-    get_different_solution(ss,x.flat)
-
+  num_solutions = ss.solveAll(display=x)
   print("num_solutions:", num_solutions)
 
 

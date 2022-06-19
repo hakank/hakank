@@ -19,14 +19,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-    x = a[0]
-    lbound = a[1][0]
-    ubound = a[1][1]    
-    print("x:", x.value(),"xsum:",sum(x.value()))
-    print("lbound:",lbound.value(),"ubound:",ubound.value())
-
-
 def sequence_test():
 
     n = 11
@@ -52,17 +44,12 @@ def sequence_test():
                    lbound == ubound,
       ])
 
-    ortools_wrapper(model,[x,[lbound,ubound]],print_solution)
-    # ss = CPM_ortools(model)
-    # num_solutions = 0
-    # while ss.solve() is not False:
-    #     num_solutions += 1
-    #     print("sol:",num_solutions)
-    #     print("x:", x.value(),"xsum:",xsum.value())
-    #     print("lbound:",lbound.value(),"ubound:",ubound.value(),"seq_length:",seq_length)
-    #     print()
-    #     get_different_solution(ss,list(x)+[lbound,ubound])
+    def print_sol():
+        print("x:", x.value(),"xsum:",xsum.value())
+        print("lbound:",lbound.value(),"ubound:",ubound.value(),"seq_length:",seq_length)
+        print()
 
-    # print("num_solutions:",num_solutions)
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 sequence_test()

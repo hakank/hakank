@@ -67,11 +67,7 @@ def TUCTF2017_future_solver():
   # Create a solver and solve
   model = Model(equations)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-
+  def print_sol():
     # Map the solved values to the flag
     # Create a mapping dictionary based on genMatrix()
     mapper = {}
@@ -83,8 +79,10 @@ def TUCTF2017_future_solver():
     
     solution = [mapper[ix] for ix in range(25)]
     print("solution:", ''.join(chr(int(i)) for i in solution))
-    get_different_solution(ss,[mat[i][j] for i in range(5) for j in range(5)] )
     
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 TUCTF2017_future_solver()

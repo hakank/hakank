@@ -78,10 +78,7 @@ def marathon2():
   model += [Ignace != 4]
   model += [Dominique != 4]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     runners_val = runners.value()
     print('runners:', runners_val)
     print('Places:')
@@ -90,8 +87,10 @@ def marathon2():
         if runners_val[j] == i:
           print('%i: %s' % (i, runners_str[j]))
     print()
-    get_different_solution(ss,runners)
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print('num_solutions:', num_solutions)
 
 

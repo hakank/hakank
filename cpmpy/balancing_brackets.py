@@ -36,51 +36,6 @@ from cpmpy_hakank import *
 from cpmpy.solvers import *
 from ortools.sat.python import cp_model as ort
 
-
-class solution_printer(ort.CpSolverSolutionCallback):
-  """
-  Solution printer
-  """
-  def __init__(self, varmap, x, c, print_solutions=True,num_solutions=0):
-    super().__init__()
-    self.solcount = 0
-    self.varmap = varmap
-    self.x_vars = (x)
-    self.c_vars = (c)
-    self.print_solutions=print_solutions    
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-
-    # populate values before printing
-    # For array of arrays (Tias' original)
-    # for wm in self.vars:
-    #   for cpm_var in wm:
-    #     cpm_var._value = self.Value(self.varmap[cpm_var])
-   
-    # For single arrays:
-    for cpm_var in self.x_vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-
-    for cpm_var in self.c_vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-
-    (x) = self.x_vars
-    (c) = self.c_vars
-    if self.print_solutions:
-      s = ["[","]"]
-      n = len(x)
-      print("x:", x.value())
-      print("c:", c.value())
-      print("cc:", "".join([s[x[i].value()] for i in range(n)]))
-      print()
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
-
-
 def brackets(m,do_print=False,num_sols=0):
   
     model = Model() 

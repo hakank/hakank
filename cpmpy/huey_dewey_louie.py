@@ -40,15 +40,13 @@ def huey_dewey_louie():
     ~(dewey & louie)
     ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("huey:", huey.value() )
     print("dewey:", dewey.value() )
     print("louie:", louie.value() )        
-    get_different_solution(ss,p)
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

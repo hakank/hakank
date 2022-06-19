@@ -66,13 +66,7 @@ def giant_cat_army_riddle(n=60):
   model += [10 == x[ix10]]            
   model += [ix2 < ix10]
 
-  ss = CPM_ortools(model)
-  # ss.ort_solver.parameters.search_branching = cp.PORTFOLIO_SEARCH
-  # ss.ort_solver.parameters.cp_model_presolve = False # Slightly faster
-  # ss.ort_solver.parameters.linearization_level = 0
-  # ss.ort_solver.parameters.cp_model_probing_level = 0
-
-  if ss.solve():
+  def print_sol():
     print("n:",n)
     xval = x.value()
     print("x:",xval)
@@ -87,18 +81,21 @@ def giant_cat_army_riddle(n=60):
           print("(sqrt)", end=" ")
       print(xval[i],end=" ")
     print()
-    print(ss.status())
 
-    return True
+  ss = CPM_ortools(model)
+  # ss.ort_solver.parameters.search_branching = cp.PORTFOLIO_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False # Slightly faster
+  # ss.ort_solver.parameters.linearization_level = 0
+  # ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  else:
-    return None
+  num_solutions = ss.solveAll(solution_limit=1,display=print_sol)
+  return num_solutions
 
 
 # Try different sequence lengths
 for n in range(5,60):
   sol = giant_cat_army_riddle(n)
-  if sol != None:
+  if sol != 0:
     min_len = n 
     break
 print("\nmin_len:",min_len)

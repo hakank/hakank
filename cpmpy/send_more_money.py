@@ -74,15 +74,10 @@ def send_more_money2():
     model += [send + more == money]
 
     # Prove that it's a unique solution.
-    num_solutions = 0
     ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1
-        print(x.value())
-        get_different_solution(ss,x)
-        print("status:", ss.status())
-
+    num_solutions = ss.solveAll(display=x)    
     print(f"num_solutions: {num_solutions}")
+    print(ss.status())
 
 
 send_more_money()

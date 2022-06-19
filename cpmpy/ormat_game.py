@@ -11,31 +11,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-class ORT_collect_overlays(ort.CpSolverSolutionCallback):
-  """
-  A simple printer callback for single array printing.
-  """
-  def __init__(self, varmap, a):
-    super().__init__()
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (a)
-    self.overlays = []
-
-  def on_solution_callback(self):
-    self.solcount += 1 # I always start at 1. :-) 
-
-    # populate values before printing
-    # For array of arrays (Tias' original)
-    for wm in self.vars:
-        for cpm_var in wm:
-            cpm_var._value = self.Value(self.varmap[cpm_var])
-    
-    (a) = self.vars            
-    # print(f"overlay #{self.solcount}")
-    self.overlays  += [a.value()]
-
-
 #
 # Generate all the overlays for a specific size (n).
 #
@@ -49,7 +24,6 @@ def get_overlays(n=3, debug=0):
 
     # all solution solving, with blocking clauses
     ss = CPM_ortools(model)
-    cb = ORT_collect_overlays(ss._varmap,x)
     # s.ort_solver.parameters.num_search_workers = 8 # not for SearchForAllSolutions!
     # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
     # s.ort_solver.parameters.cp_model_presolve = False
@@ -57,16 +31,14 @@ def get_overlays(n=3, debug=0):
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
     print("\nFind overlay ", end="",flush=True)
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    
-    # print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
-    # print("s.status():", ss.status())
-    # print("Nr solutions:", cb.solcount)
-    # print("Num conflicts:", ss.ort_solver.NumConflicts())
-    # print("NumBranches:", ss.ort_solver.NumBranches())
-    # print("WallTime:", ss.ort_solver.WallTime())
 
-    return cb.overlays
+    overlays = []
+    def print_sol():
+      overlays.append(x.value())
+
+    ss.solveAll(display=print_sol)
+
+    return overlays
 
 
 
@@ -154,11 +126,12 @@ def ormat_game(problem, overlays, n, debug=0):
     if debug:
         print(model)
 
+     
     print("Solve")
+
+    
     # all solution solving, with blocking clauses
     s = CPM_ortools(model)
-
-    # s.ort_solver.parameters.num_search_workers = 8 # not for SearchForAllSolutions!
 
     # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
     # s.ort_solver.parameters.cp_model_presolve = False

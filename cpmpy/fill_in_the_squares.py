@@ -184,20 +184,19 @@ def fill_in_the_squares():
   
     # 17. E1 + E3 = E2 + E4 + E5
     model += (e[0] + e[2] == e[1] + e[3] + e[4])
-    
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+
+    def print_sol():
         print("a:",a.value())
         print("b:",b.value())
         print("c:",c.value())
         print("d:",d.value())
         print("e:",e.value())        
         print()
-        print(ss.status())
-        get_different_solution(ss,ALL)
-
+        
+    
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)
+    print(ss.status())
 
 fill_in_the_squares()

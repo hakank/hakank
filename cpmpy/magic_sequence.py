@@ -21,9 +21,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-# def print_solution(a):
-#   print(a[0].value())
-
 def magic_sequence(n=10, num_sols=0):
   print("n:",n)
   model = Model()
@@ -37,7 +34,7 @@ def magic_sequence(n=10, num_sols=0):
   model += [sum(x) == n]
   model += [sum([x[i]*i for i in range(n)]) == n]  
 
-  ortools_wrapper(model,[x])
+  model.solveAll(display=x)
 
 
 num_sols = 0

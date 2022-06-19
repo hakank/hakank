@@ -48,9 +48,8 @@ def bowls_and_oranges():
             if i < j and j < k:
                 model += ((x[j]-x[i]) != (x[k]-x[j]))
 
-  # ortools_wrapper(model,[x]) # Print the solutions
-  # Just count the solutions
-  num_solutions = ortools_wrapper_count_solutions(model,[x])
+  # num_solutions = model.solveAll(display=x)
+  num_solutions = model.solveAll()  
   print("num_solutions:", num_solutions)
 
 bowls_and_oranges()

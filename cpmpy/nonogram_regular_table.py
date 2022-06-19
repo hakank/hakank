@@ -49,45 +49,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 import time
 
-class ORT_nonogram_printer(ort.CpSolverSolutionCallback):
-  """
-  A simple printer callback for printing a matrix.
-  """
-  def __init__(self, varmap, board, rows,cols, num_solutions=0):
-    super().__init__()
-
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (board)
-    self.rows = rows
-    self.cols = cols
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1
-
-    for cpm_var in self.vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-
-    (board) = self.vars
-    print(f"#{self.solcount}:")
-
-    for i in range(self.rows):
-        row = [board[i*cols+ j].value() - 1 for j in range(cols)]
-        row_pres = []
-        for j in row:
-            if j == 1:
-                row_pres.append('#')
-            else:
-                row_pres.append(' ')
-        print('  ', ''.join(row_pres))
-
-    print(flush=True)        
-    print('  ', '-' * cols)
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
 #
 # Make a transition (automaton) matrix from a
 # single pattern, e.g. [3,2,1]
@@ -192,42 +153,8 @@ def nonogram_regular_table(rows, row_rule_len, row_rules, cols, col_rule_len, co
 
 
     print("Solve")
-    
-    if minizinc_solver == None:
-      print("Solver: ortools from cpmpy")
-      # all solution solving, with blocking clauses
-      ss = CPM_ortools(model)    
-      cb = ORT_nonogram_printer(ss._varmap,board_flat,rows,cols,num_sols)
 
-      # Flags to experiment with
-      if num_sols == 1:
-        ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-      # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-      ss.ort_solver.parameters.cp_model_presolve = False
-      ss.ort_solver.parameters.linearization_level = 0
-      ss.ort_solver.parameters.cp_model_probing_level = 0
-
-      ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-      # print(ss._after_solve(ort_status)) # post-process after solve() call...
-      print(ss.status())
-      print("Nr solutions:", cb.solcount)
-      print("Num conflicts:", ss.ort_solver.NumConflicts())
-      print("NumBranches:", ss.ort_solver.NumBranches())
-      print("WallTime:", ss.ort_solver.WallTime())
-        
-    else:
-      print("MiniZinc solver:", minizinc_solver)
-      ss = CPM_minizinc(model,minizinc_solver)
-      print("make_model:",ss.make_model(model)[0])    
-      num_solutions = 0
-      flags = {}
-      # -f (free_search) is not supported by all solvers!
-      if minizinc_solver in ["chuffed","or_tools","picat_sat","gecode"]:
-        print("Using -f")
-        flags = {'free_search':True}
-      time1 = time.time()        
-      while ss.solve(**flags):
-        num_solutions += 1
+    def print_sol():
         for i in range(rows):
           row = [board[i,j].value() - 1 for j in range(cols)]
           row_pres = []
@@ -240,11 +167,39 @@ def nonogram_regular_table(rows, row_rule_len, row_rules, cols, col_rule_len, co
         print(flush=True)
         print('  ', '-' * cols)
         print()
+
+    
+    if minizinc_solver == None:
+      print("Solver: ortools from cpmpy")
+      ss = CPM_ortools(model)    
+
+      # Flags to experiment with
+      if num_sols == 1:
+        ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+      # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+      # ss.ort_solver.parameters.cp_model_presolve = False
+      ss.ort_solver.parameters.linearization_level = 0
+      ss.ort_solver.parameters.cp_model_probing_level = 0
+
+      # ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
+      num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
+      print(ss.status())
+      print("Nr solutions:", num_solutions)
+      print("Num conflicts:", ss.ort_solver.NumConflicts())
+      print("NumBranches:", ss.ort_solver.NumBranches())
+      print("WallTime:", ss.ort_solver.WallTime())
         
-        # print("status:",ss.status())
-        if num_sols > 0 and num_solutions >= num_sols:
-          break
-        get_different_solution(ss,board.flat)
+    else:
+      print("MiniZinc solver:", minizinc_solver)
+      ss = CPM_minizinc(model,minizinc_solver)
+      num_solutions = 0
+      flags = {}
+      # -f (free_search) is not supported by all solvers!
+      if minizinc_solver in ["chuffed","or_tools","picat_sat","gecode"]:
+        print("Using -f")
+        flags = {'free_search':True}
+      time1 = time.time()
+      num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
 
       time2 = time.time()
       print(f"WallTime: {time2-time1}") 
@@ -267,7 +222,7 @@ col_rules = [[2, 1], [1, 3], [2, 4], [3, 4], [0, 4], [0, 3], [0, 3], [0, 3],
              [0, 2], [0, 2]]
 
 num_sols = 2
-minizinc_solver = None
+minizinc_solver = None # "chuffed"
 if len(sys.argv) > 1:
     file = sys.argv[1]
     exec(compile(open(file).read(), file, 'exec'))

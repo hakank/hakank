@@ -41,7 +41,7 @@ def warehouse_location():
   # variables
   open_warehouse = boolvar(shape=num_warehouses,name="open_warehouse")
   supply = boolvar(shape=(num_stores, num_warehouses),name="supply")
-  z = intvar(1,1000,name="z")
+  z = intvar(0,1000,name="z")
 
   # constraints
   model = Model()
@@ -67,9 +67,10 @@ def warehouse_location():
   if ss.solve():
     print("z:", z.value())
     open_res = open_warehouse.value()
-    print("open_warehouse:", open_res)
-    supply_res = supply.value()
-    print("supply:", supply_res)    
+    print("open_warehouse:", open_res*1)
+    supply_res = supply.value()*1
+    print("supply:")
+    print(supply_res)    
     for w in range(num_warehouses):
       if open_res[w]:
         print(warehouses[w],": stores :", [s for s in range(num_stores) if supply_res[s,w] == 1])          

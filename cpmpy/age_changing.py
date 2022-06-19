@@ -50,8 +50,6 @@ from cpmpy import *
 import numpy as np
 from cpmpy_hakank import *
 
-
-
 def check(perm, old, new):
     return [
         (perm == 0).implies(new == old + 2),
@@ -60,7 +58,6 @@ def check(perm, old, new):
         (perm == 2).implies(new == old - 3),
         (perm == 3).implies(new == old * 7)
         ]
-
 
 def age_changing():
 
@@ -110,20 +107,16 @@ def age_changing():
                  # m < h
                  ])
 
-  ss = CPM_ortools(model)
-
-  num_solutions = 0
-  while ss.solve():
-      num_solutions += 1
+  def print_sol():
       print("m:", m.value(), "h:",h.value())        
       print("hlist:", hlist.value())
       print("mlist:", mlist.value())
       print("perm1:", [perms[perm1[i].value()] for i in range(n)])
       print("perm2:", [perms[perm2[i].value()] for i in range(n)])
-      get_different_solution(ss,flatten_lists([hlist,mlist,perm1,perm2,[m,h]]))
       print()
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 

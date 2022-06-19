@@ -41,8 +41,6 @@ an optimal sequence is 3, 8, 2, 7, 1, 6, 5, 4, 9.
 
 '''
 
-  
-
 Model created by Hakan Kjellerstrand, hakank@hakank.com
 See also my cpmpy page: http://www.hakank.org/cpmpy/
 
@@ -104,19 +102,7 @@ def rehearsal_model(rehearsal,duration,timeout=None,num_procs=1):
     # symmetry breaking
     model += (rehearsal_order[0] < rehearsal_order[num_pieces-1])
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    if timeout != None:
-        ss.ort_solver.parameters.max_time_in_seconds = timeout # seconds
-    ss.ort_solver.parameters.num_search_workers = num_procs # Don't work together with SearchForAllSolutions
-    ss.ort_solver.parameters.log_search_progress = True
-    ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    # ss.ort_solver.parameters.linearization_level = 0
-    # ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    if ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("rehearsal_order:\n", rehearsal_order.value())        
         print("waiting_time:", waiting_time.value())
         print("total_waiting_time:", total_waiting_time.value())
@@ -125,7 +111,18 @@ def rehearsal_model(rehearsal,duration,timeout=None,num_procs=1):
         print("rehearsal schedule in order:")
         print(rehearsal[:,rehearsal_order.value()])
         print(flush=True)
-    print()
+        
+    ss = CPM_ortools(model)
+    if timeout != None:
+        ss.ort_solver.parameters.max_time_in_seconds = timeout # seconds
+    # ss.ort_solver.parameters.num_search_workers = num_procs # Don't work together with SearchForAllSolutions
+    # ss.ort_solver.parameters.log_search_progress = True
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    # ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+
+    num_solutions = ss.solveAll(solution_limit=1,display=print_sol)
     print("number of solutions:", num_solutions)    
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())

@@ -56,7 +56,6 @@ def among_seq_test(xval=None):
     # high = 2
     seqlen = 4
 
-
     # constraints
 
     if xval == None:
@@ -71,19 +70,12 @@ def among_seq_test(xval=None):
         model = Model([x == xval,
                        among_seq(low,high,seqlen,x,v),
                        ])
-
       
-
-    # ortools_wrapper2(model,[x,[low,high]])
-
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("x:", x.value())
         print("low:",low.value(),"high:",high.value(),"seqlen:",seqlen)
-        get_different_solution(ss,list(x)+[low,high])
 
+    num_solutions = model.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
 
 print("No fixed x but fixed low=1, high=2, and seqlen=4:")

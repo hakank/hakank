@@ -63,12 +63,6 @@ default_r = 8
 default_c = 8
 
 
-def print_solution(mines):
-    # print(mines.value())
-    rows = len(mines)
-    cols = len(mines[0])
-    print_mines(mines, rows, cols)
-
 #
 # Solve the Minesweeper problem
 #
@@ -110,9 +104,16 @@ def minesweeper(game="", r="", c=""):
             else:
                 model += [mines[i,j] >= 0]
 
-    # print(model)
-    ortools_wrapper(model,mines,print_solution)
+    def print_sol():
+        # print(mines.value())
+        rows = len(mines)
+        cols = len(mines[0])
+        print_mines(mines, rows, cols)
 
+
+    # print(model)
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 #
 # Read a problem instance from a file
@@ -154,6 +155,7 @@ def print_game(game, rows, cols):
             else:
                 print(game[i][j],end=" ")
         print()
+    print()
             
 
 # file = "minesweeper1.txt"

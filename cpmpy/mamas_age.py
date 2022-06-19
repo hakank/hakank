@@ -43,13 +43,15 @@ def mamas_age():
                  p2 == p / 12,
                  t2 == t / 12
                  ])
-  
-  ss = CPM_ortools(model)
-  while ss.solve():
+
+  def print_sol():
     print("mamma's age:", m2.value())
     print("papa's age:", p2.value())
     print("tommy's age:", t2.value())
-    get_different_solution(ss,[m2,p2,t2])
+    
+  
+  ss = CPM_ortools(model)
+  ss.solveAll(display=print_sol)
       
 
 mamas_age()

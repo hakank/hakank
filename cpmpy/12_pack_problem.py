@@ -73,8 +73,8 @@ def n_pack_problem(target,given,max_val):
     ss = CPM_ortools(model)
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
     # ss.ort_solver.parameters.cp_model_presolve = False
-    # ss.ort_solver.parameters.linearization_level = 0
-    # ss.ort_solver.parameters.cp_model_probing_level = 0
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
 
     num_solutions = 0
     opt = None
@@ -85,7 +85,7 @@ def n_pack_problem(target,given,max_val):
         print("x:",x.value(), "total:",total_val, "exact!" if diff == 0 else f"diff {diff}", flush=True)
         if opt == None:
             ss += [total == total_val]
-        get_different_solution(ss,x)
+        ss += [x != x.value()]
 
     # print()
     # print("num_solutions:", num_solutions)

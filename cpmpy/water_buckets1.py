@@ -196,7 +196,7 @@ def water_buckets1(start,goal,capacity,max_step=10):
     num_solutions += 1
     goal_step_val = goal_step.value()
     state_val = state.value()
-    change_val = change.value()        
+    change_val = change.value()*1
     print("goal_step:", goal_step_val)
     print("state:")
     print(state_val[0:goal_step_val])
@@ -223,13 +223,14 @@ def comb(capacity=[8,5,3],m=8):
                  [x[i] <= capacity[i] for i in range(n)]
                  ])
 
-  ss = CPM_ortools(model)
   sols = []
-  while ss.solve() is not False:
-    xval = x.value()
+  def print_sol():
+    xval = x.value()*1
     sols.append(xval)
-    get_different_solution(ss,x)
-  
+    
+  ss = CPM_ortools(model) 
+  ss.solveAll(display=print_sol)
+    
   return sols
 
 
@@ -263,8 +264,8 @@ for goal in goal_list:
 
 print(f"The following {len(no_solutions)} goals has no solution with {max_step} steps:")
 print(no_solutions)
-print("\n\nAnother problem:")
 
+# print("\n\nAnother problem:")
 # Another problem
 # The solution:
 # step 0: [9 0 0 0]

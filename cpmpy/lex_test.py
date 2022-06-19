@@ -29,7 +29,13 @@ def lex_less_test():
 
     print(model)
 
-    ortools_wrapper(model,[x,y])
+    def print_sol():
+        print("x:",x.value())
+        print("y:",y.value())
+        print()
+
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 
 lex_less_test()

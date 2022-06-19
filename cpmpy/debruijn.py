@@ -62,18 +62,18 @@ def debruijn(base=2, n=3, m=0):
     # symmetry breaking: x[1] is the minimum number
     model += [[x[0] < x[i] for i in range(1,m)]]
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print("x: ", x.value())
         print("binary:\n", binary.value())
         print("bin_code:\n", bin_code.value())
         print()
-        get_different_solution(ss,x)
+        
 
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)    
     print()
     print("number of solutions:", num_solutions)
+
 #
 # Print the mines
 #

@@ -44,13 +44,7 @@ def solve(param):
     model += lex2(matrix)
 
     ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
-        print(matrix.value())
-        print()
-        get_different_solution(ss,matrix.flat)
-
+    num_solutions = ss.solveAll(display=matrix)
     print("num_solutions:",num_solutions)
 
 

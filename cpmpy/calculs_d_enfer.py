@@ -30,11 +30,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-def print_solution(a):
-    print("a_max:",a[0][0].value())
-    print("A:",a[1].value())
-    print("A_abs:",a[2].value())
-
 def calculs_d_enfer():
 
     N = 26
@@ -67,7 +62,13 @@ def calculs_d_enfer():
                   minimize=a_max
                   )
 
-    ortools_wrapper_opt(model,[[a_max],A,A_abs],print_solution,1)
+    def print_sol():
+        print("a_max:", a_max.value())        
+        print("A:", A.value())
+        print("A_abs:", A_abs.value())
+
+    ss = CPM_ortools(model)
+    ss.solveAll(display=print_sol)
 
 
 calculs_d_enfer()

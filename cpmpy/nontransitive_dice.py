@@ -110,10 +110,7 @@ def nontransitive_dice(m=3,n=6,given_dice=""):
     if given_dice == "":
         model += [lex_less(dice[i],dice[i+1]) for i in range(m-1)]
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    if ss.solve():
-        num_solutions += 1
+    def print_sol():
         print("dice:\n", dice.value())       
         print("comp:\n", comp.value())
         print("probabilities:\n", [(comp[i,0].value()/(n*n*1.0),comp[i,1].value()/(n*n*1.0))  for i in range(m)])
@@ -122,8 +119,10 @@ def nontransitive_dice(m=3,n=6,given_dice=""):
         print("max_val:", max_val.value())
         print("max_win:", max_win.value())
         print()
-        # get_different_solution(ss,dice.flat)
 
+
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(solution_limit=1,display=print_sol)
     print("num_solutions:", num_solutions)
     print("status:", ss.status())
 

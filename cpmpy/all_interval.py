@@ -36,11 +36,6 @@ from cpmpy_hakank import *
 
 
 
-def print_solution(a):
-    print("x    :", a[0].value())
-    print("diffs:", a[1].value())
-
-
 def all_interval(n=12,num_sols=0):
 
   # data
@@ -65,7 +60,13 @@ def all_interval(n=12,num_sols=0):
   model += [x[0] < x[n - 1]]
   model += [diffs[0] < diffs[1]]
 
-  ortools_wrapper(model,[x,diffs],print_solution,num_sols)
+  def print_sol():
+      print("x:",x.value())
+      print("diffs:", diffs.value())
+      print()
+
+  num_solutions = model.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 
 n = 12

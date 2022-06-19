@@ -81,19 +81,8 @@ def young_tableaux(n = 5):
     for i in range(1, n):
         model += [p[i - 1] >= p[i]]
 
-    # OR-tools
-    ss = CPM_ortools(model)
-    cb = ORT_arrays_printer(ss._varmap,[x,p])
-    
-    # s.ort_solver.parameters.num_search_workers = 8 # not for SearchForAllSolutions!
-    # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
-    # s.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print("p:", p.value())
         print("x:")
         for i in range(n):
@@ -104,8 +93,14 @@ def young_tableaux(n = 5):
             if p[i].value() > 0:
                 print()
         print()
-        get_different_solution(ss,list(x_flat)+list(p))
+        
+    ss = CPM_ortools(model)   
+    # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
+    # s.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
 
+    num_solutions = ss.solveAll(display=print_sol)
     print("number of solutions:", num_solutions)
 
 #

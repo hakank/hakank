@@ -106,25 +106,14 @@ def a_round_of_golf():
   # 5. None of the four scored exactly 81 strokes.
   model += [score != 81]
 
-  # Tip for debugging constraints.
-  # From https://github.com/CPMpy/cpmpy/issues/126#issuecomment-1150465387
-  # from cpmpy.transformations.flatten_model import flatten_constraint
-  # for c in model.constraints:
-  #       print("Trying",c)
-  #       print("Flat:",flatten_constraint(c))
-  #       Model([c]).solve()
-  #       print()
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1  
+  def print_sol():
     print("last_name:", last_name.value())
     print("job      :", job.value())
     print("score    :", score.value())
     print()
-    get_different_solution(ss,list(last_name)+list(job)+list(score))
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

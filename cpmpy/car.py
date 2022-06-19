@@ -77,10 +77,7 @@ def car(num_sol=3):
       if len(setup_s) > 0 and cc >= 0:
         model += (sum(setup_s) >= cc)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("slot:%s" % ",".join([str(slot[i].value()) for i in Slots]))
     print("setup:")
     for o in Options:
@@ -89,11 +86,9 @@ def car(num_sol=3):
         print(int(setup[o, s].value()), end=" ")
       print()
     print()
-    if num_sol > 0 and num_solutions >= num_sol:
-      break
-    
-    get_different_solution(model,list(slot.flat)+list(setup.flat))
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(solution_limit=num_sol,display=print_sol)
   print()
   print("num_solutions:", num_solutions)
 

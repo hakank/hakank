@@ -81,17 +81,7 @@ def alphametic(problem_str="SEND+MORE=MONEY", base=10):
   # the last number is the sum of the previous numbers
   model += (sum([sums[i] for i in range(p_len - 1)]) == sums[-1])
 
-  ss = CPM_ortools(model)
-  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-  # ss.ort_solver.parameters.cp_model_presolve = False
-  ss.ort_solver.parameters.linearization_level = 0
-  ss.ort_solver.parameters.cp_model_probing_level = 0
-
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("\nsolution #%i" % num_solutions)
+  def print_sol():
     for i in range(n):
       print(a[i], "=", x[i].value())
     print()
@@ -104,11 +94,19 @@ def alphametic(problem_str="SEND+MORE=MONEY", base=10):
       for p in prob:
         print(x[lookup[p]].value(), end=" ")
       print()
-
     print("sums:", [sums[i].value() for i in range(p_len)])
     print()
-    get_different_solution(ss,x)
 
+
+  ss = CPM_ortools(model)
+  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+
+
+  num_solutions = ss.solveAll(display=print_sol)
   print("\nnum_solutions:", num_solutions)
 
 

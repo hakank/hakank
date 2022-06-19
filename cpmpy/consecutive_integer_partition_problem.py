@@ -81,20 +81,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-
-def print_solution(a):
-  x = a[0].value()
-  print("x:",x)
-  maxes = a[1].value()
-  print("maxes:",maxes)
-  n = len(x)
-  m = len(maxes)
-  print("n:",n,"m:",m)  
-  for g in range(m):
-      print(f"group {g}: {[i for i in range(n) if x[i] == g]}")
-          
-      
-
 def consecutive_integers_problem(n=12,m=None,symmetry_breaking=True,num_sols=0,print_solutions=True):
     if print_solutions:
         print("\nn:",n,"m:",m)
@@ -115,11 +101,19 @@ def consecutive_integers_problem(n=12,m=None,symmetry_breaking=True,num_sols=0,p
         model += [value_precede_chain(range(m),x)]
         model += [maxes[m-1]==n]
 
-    if print_solutions:
-        ortools_wrapper(model,[x,maxes],print_solution,num_sols)
-    else: 
-        num_solutions = ortools_wrapper_count_solutions(model,[x,maxes])
-        return num_solutions
+    def print_sol():
+      if print_solutions:
+        xval = x.value()
+        print("x:",xval)
+        print("maxes:",maxes.value())
+        print("n:",n,"m:",m)  
+        for g in range(m):
+          print(f"group {g}: {[i for i in range(n) if xval[i] == g]}")
+        print()
+          
+    num_solutions = model.solveAll(display=print_sol)
+
+    return num_solutions
 
 # For N = 12 there are 3 solutions with symmetry breaking
 print("N=12")

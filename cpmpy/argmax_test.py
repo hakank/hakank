@@ -39,10 +39,7 @@ def argmax_test():
                  atleast(x,n,1), # at least some n
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve() is not False:
-    num_solutions += 1
+  def print_sol():
     print("x:",x.value())
     print("z_max:",z_max.value())
     print("z_min:",z_min.value())
@@ -53,8 +50,10 @@ def argmax_test():
     print("x[z_min_except_0]:",x[z_min_except_0.value()].value())
     print("x[z_max_except_n]:",x[z_max_except_n.value()].value())            
     print(flush=True)
-    get_different_solution(ss,list(x)+[z_min,z_max,z_min_except_0,z_max_except_n])
 
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

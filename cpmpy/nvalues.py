@@ -44,19 +44,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 from itertools import combinations
 
-
-def print_solution(a):
-    x = a[0].value()
-    op = a[1][0].value()
-    val = a[1][1].value()
-    n2 = a[1][2].value()
-    print("x:",x)
-    relops = ["<","<=","=",">=",">","!="]
-    print(f"op:{op} ({relops[op]}) val:{val} n2:{n2}")
-    print(f"The number of distinct values in x is {relops[op]} {val} (# distinct values: {n2})")
-    print()
-
-
 def nvalues_test(n):
 
     relops = ["<","<=","=",">=",">","!="]
@@ -69,7 +56,15 @@ def nvalues_test(n):
                    nvalue(n2,x)
                    ])
 
-    ortools_wrapper2(model,[x,[op,val,n2]],print_solution)
+    def print_sol():
+        print("x:",x.value())
+        relops = ["<","<=","=",">=",">","!="]
+        print(f"op:{op.value()} ({relops[op.value()]}) val:{val.value()} n2:{n2.value()}")
+        print(f"The number of distinct values in x is {relops[op.value()]} {val.value()} (# distinct values: {n2.value()})")
+        print()
+
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 
 n = 4

@@ -37,13 +37,11 @@ def abbots_puzzle():
                  M * 5 == W
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("M:",M.value(),"W:",W.value(),"C:",C.value())
-    get_different_solution(ss,[M,W,C])
+  def print_sol():
+    print("M:",M.value(),"W:",W.value(),"C:",C.value())    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 abbots_puzzle()

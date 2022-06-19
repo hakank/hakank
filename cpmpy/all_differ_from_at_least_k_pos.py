@@ -113,7 +113,11 @@ def all_differ_from_at_most_k_pos_test():
 
     print("model:",model)
 
-    ortools_wrapper(model,x)
+    def print_sol():
+        print(x.value())
+        print()
+
+    model.solveAll(display=print_sol)
 
 
 all_differ_from_at_most_k_pos_test()

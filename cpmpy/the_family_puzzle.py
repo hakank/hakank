@@ -78,7 +78,13 @@ def the_family_puzzle():
                  (Luisa == Locker).implies(Doris != Albert),
                  ])
 
-  # ortools_wrapper(model,sets,print_solution,num_sols)
+  def print_sol():
+    print("men  :", men)
+    print("women:", [women[i].value() for i in range(n)])
+    print("sons :", [sons[i].value() for i in range(n)])
+    print()
+   
+
   ss = CPM_ortools(model)
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -86,16 +92,7 @@ def the_family_puzzle():
   # ss.ort_solver.parameters.linearization_level = 0
   # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = 0
-  while ss.solve() is not False:
-    num_solutions += 1
-    print(f"Solution #{num_solutions}")
-    print("men  :", men)
-    print("women:", [women[i].value() for i in range(n)])
-    print("sons :", [sons[i].value() for i in range(n)])
-    print()
-    get_different_solution(ss,list(women)+list(sons))
-
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions  )
 
 

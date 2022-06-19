@@ -205,20 +205,9 @@ def perfect_squares(base,sides,num_sols=0):
                    [squares[s][2] for s in range(squares_len)],
                    base)]
 
-
-    ss = CPM_ortools(model)
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    num_solutions = 0
-    fmt = "%%%ii" % len(str(base))
-    alpha = "abcdefghijklmniopqrstuvwxyz"
-    while ss.solve():
-        num_solutions += 1
-        print("Solution #%i" % num_solutions)
+    def print_sol():
+        fmt = "%%%ii" % len(str(base))
+        alpha = "abcdefghijklmniopqrstuvwxyz"
         print("s:", [ squares[i][2] for i in range(squares_len) ])
         print("x:", [ squares[i][0].value() for i in range(squares_len) ])
         print("y:", [ squares[i][1].value() for i in range(squares_len) ])
@@ -275,15 +264,19 @@ def perfect_squares(base,sides,num_sols=0):
                 print("%s" % alpha[res[i,j]-1],end="")
             print()
         print("------\n")
+        
 
-        if num_sols > 0 and num_solutions >= num_sols:
-            print("status:",ss.status())
-            return ss.status()
-            break
-        get_different_solution(ss,squares_flat)
-           
+    ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
     print()
     print("num_solutions:", num_solutions)
+    return ss.status()    
 
 problems = {
     

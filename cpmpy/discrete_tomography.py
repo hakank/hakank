@@ -59,14 +59,11 @@ def discrete_tomography(row_sums="", col_sums=""):
         ]
         )
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1        
+    def print_sol():
         print_board(x, r, c, row_sums, col_sums)
-        get_different_solution(ss,x.flat)
-        print()
 
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)    
     print("number of solutions:", num_solutions)
 
 #

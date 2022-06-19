@@ -27,7 +27,6 @@ from cpmpy_hakank import *
 from collections import defaultdict
 
 
-
 def allergy():
 
   n = 4
@@ -54,16 +53,15 @@ def allergy():
                  eggs != Janet,
                  mold != Janet])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("friends :", [friends_s[friends[i]] for i in range(n)])
     print("foods   :", [(foods_s[i],friends_s[foods[i].value()]) for i in range(n)])
     print("surnames:", [(surnames_s[i],friends_s[surnames[i].value()]) for i in range(n)])
     print()
-    get_different_solution(ss,list(foods)+list(surnames))
-    
+
+
+  ss = CPM_ortools(model)
+  num_solutions = model.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 allergy()

@@ -51,14 +51,11 @@ def regular_table_test():
                       accepting_states)]
 
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1
-        # Note: here we subract 1 from the solution
+    def print_sol():
         print("reg_input:", reg_input.value() - 1)
-        get_different_solution(ss, reg_input)
-        
+    
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)    
     print('num_solutions:', num_solutions)
 
 

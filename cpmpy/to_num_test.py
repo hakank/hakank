@@ -34,17 +34,11 @@ def to_num_test(n=4,base=10):
   # ss.ort_solver.parameters.cp_model_presolve = False
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
-  
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+
+  def print_sol():
     print("x:",x.value(), "a:",a.value(),flush=True)
-    get_different_solution(ss,list(a)+[x])
-    # ss.solution_hint(a,a.value())
-
+  
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
-
-
-
 
 to_num_test(4,10)

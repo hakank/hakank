@@ -38,16 +38,16 @@ def book_buy():
                  x[1]*x[1] + (1-w)*y[0]*y[0] + w*y[1]*y[1] == 65
                  ])
 
-
-  ss = CPM_ortools(model)
-  while ss.solve():
+  def print_sol():
     ww = w.value()
     print("w:", ww)
     print(["Peter","Paul"][ww], "is Dick's father")
     print("x:", x.value())
     print("y:", y.value())
 
-    get_different_solution(ss,list(x)+list(y))
+
+  ss = CPM_ortools(model)
+  ss.solveAll(display=print_sol)
 
 
 book_buy()

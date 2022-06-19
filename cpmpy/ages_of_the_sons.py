@@ -56,13 +56,12 @@ def ages_of_the_sons():
                  BS == B1 + B2 + B3,
                  AS == BS
                 ])
-  
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+
+  def print_sol():
     print([A1.value(),A2.value(),A3.value()])
-    get_different_solution(ss,[A1,A2,A3,B1,B2,B3,AS,BS])
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:",num_solutions)
   
 ages_of_the_sons()

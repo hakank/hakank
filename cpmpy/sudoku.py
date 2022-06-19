@@ -35,6 +35,7 @@ Compare with the 'plain' OR-Tools CP-SAT model
 https://github.com/hakank/hakank/blob/master/google_or_tools/sudoku_sat.py
 which - unsurprisingly - give about the same times.
 
+
 Model created by Hakan Kjellerstrand, hakank@hakank.com
 See also my CPMpy page: http://www.hakank.org/cpmpy/
 
@@ -47,7 +48,7 @@ from cpmpy_hakank import *
 from sudoku_problems import all_sudoku_problems
 
 
-def sudoku(puzzle,num_sols=2,num_procs=1):
+def sudoku(puzzle,num_sols=1,num_procs=1):
     n = len(puzzle[0])
     
     x = intvar(1,n,shape=(n,n), name="x")
@@ -78,13 +79,21 @@ def sudoku(puzzle,num_sols=2,num_procs=1):
         for j in range(reg):
             model += [AllDifferent([x[r,c] for r in range(i*reg,i*reg+reg) for c in range(j*reg,j*reg+reg)])]
 
+    def print_sol():
+        for i in range(n):
+            for j in range(n):
+                print(f"{x[i][j].value():3}", end=" ")
+            print()
+        print()
+
     s = CPM_ortools(model)
     # Note that we have to use a flattened version of x.
-    cb = ORT_simple_printer_matrix(s.varmap,x_flat,n,n,num_sols)
+    cb = ORT_simple_printer_matrix(s._varmap,x_flat,n,n,num_sols)
 
-    if num_procs > 1:
-        print("number of processes:", num_procs)
-        s.ort_solver.parameters.num_search_workers = num_procs
+    # if num_procs > 1:
+    #     print("number of processes:", num_procs)
+    #     s.ort_solver.parameters.num_search_workers = num_procs
+    s.ort_solver.parameters.num_search_workers = num_procs
 
     # Flags to experiment with        
     # s.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -99,8 +108,7 @@ def sudoku(puzzle,num_sols=2,num_procs=1):
     else:
         ort_status = s.ort_solver.Solve(s.ort_model, cb)
 
-    # print("After solve status:", s._after_solve(ort_status)) # post-process after solve() call...
-    print("s.status():", s.status())
+    # print("s.status():", s.status())
     print("Nr solutions:", cb.solcount)
     print("Num conflicts:", s.ort_solver.NumConflicts())
     print("NumBranches:", s.ort_solver.NumBranches())

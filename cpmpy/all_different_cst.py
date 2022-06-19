@@ -30,43 +30,6 @@ import cpmpy.solvers
 import numpy as np
 from cpmpy_hakank import *
 
-
-class solution_printer(ort.CpSolverSolutionCallback):
-  """
-  A simple printer callback for single array printing.
-  """
-  def __init__(self, varmap, x, cst, num_solutions=0):
-    super().__init__()
-    self.solcount = 0
-    self.varmap = varmap
-    self.vars = (x)
-    self.cst = cst    
-    self.num_solutions=num_solutions
-
-  def on_solution_callback(self):
-    self.solcount += 1 # I always start at 1. :-) 
-
-    # populate values before printing
-    # For array of arrays (Tias' original)
-    # for wm in self.vars:
-    #     for cpm_var in wm:
-    #         cpm_var._value = self.Value(self.varmap[cpm_var])
-    
-    # For single arrays:
-    for cpm_var in self.vars:
-      cpm_var._value = self.Value(self.varmap[cpm_var])
-      
-    (x) = self.vars
-
-    xx = x.value()
-    print("x:", xx, "cst:", self.cst, "y:", xx + self.cst)    
-    # print(f"#{self.solcount}: {x.value()}")
-
-    if self.num_solutions > 0 and self.solcount >= self.num_solutions:
-      self.StopSearch()
-
-
-
 def all_different_cst_test():
   # data
 
@@ -80,11 +43,13 @@ def all_different_cst_test():
 
   model = Model(all_different_cst(x,cst))
 
-  
-  # ortools_wrapper(model,[x],print_solution)
-  ss = CPM_ortools(model)
-  cb = solution_printer(ss._varmap,x,cst,0)
-  
+  sol_count = [0]
+  def print_sol():
+    sol_count[0] += 1
+    xx = x.value()
+    print(f"sol #{sol_count[0]} x {xx} cst: {cst} y: {xx + cst}")
+    
+  ss = CPM_ortools(model) 
   # Flags to experiment with
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -92,10 +57,8 @@ def all_different_cst_test():
   # ss.ort_solver.parameters.linearization_level = 0
   # ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-  # ss._after_solve(ort_status)
-  print(ss.status())
-  print("Nr solutions:", cb.solcount)
+  num_solutions = ss.solveAll(display=print_sol)
+  print("Nr solutions:", num_solutions)
   print("Num conflicts:", ss.ort_solver.NumConflicts())
   print("NumBranches:", ss.ort_solver.NumBranches())
   print("WallTime:", ss.ort_solver.WallTime())

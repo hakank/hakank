@@ -41,12 +41,6 @@ from cpmpy import *
 import numpy as np
 from cpmpy_hakank import *
 
-def print_solution(args):
-    x = args[0]   
-    print(x[0].value(), x[1].value(), x[1].value())
-    print(x[3].value()," ", x[4].value())
-    print(x[5].value(), x[6].value(), x[7].value())
-    print("rowsum: ", x[8].value(), " totalsum: ", x[9].value())
 
 def seseman():
     n = 8
@@ -67,19 +61,15 @@ def seseman():
                    ]
         )
 
-    vs = [a,b,c,d,e,f,g,h,rowsum,totalsum]
-    ortools_wrapper(model,[vs],print_solution)
+    def print_sol():
+        print(a.value(), b.value(), c.value())
+        print(d.value()," ", e.value())
+        print(f.value(), g.value(), h.value())
+        print("rowsum: ", rowsum.value(), " totalsum: ", totalsum.value())
+        print()
 
-    # This is way too slow!
-    # num_solutions = 0
-    # while model.solve():
-    #     num_solutions += 1        
-    #     print(f"\nSolution #{num_solutions}")
-    #     print("rowsum: ", rowsum.value(), " totalsum: ", totalsum.value())
-    #     print(a.value(), b.value(), c.value())
-    #     print(d.value()," ", e.value())
-    #     print(f.value(), g.value(), h.value())
-    #     get_different_solution(model,x)
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 seseman()
 

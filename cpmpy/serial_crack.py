@@ -61,17 +61,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-def print_solution(a):
-    first  = a[0].value()
-    second = a[1].value()
-    third  = a[2].value()
-    fourth = a[3].value()
-    for g in [first, second, third, fourth]:          
-        print("{}{}{}{}".format(g[0], g[1], g[2], g[3]),end=" ")
-    print()
-    print()
-
-
 def serial_crack():
 
     n = 4
@@ -112,8 +101,16 @@ def serial_crack():
                    sum([second[i] == third[i] for i in range(n)]) == 0,
                    ])
 
-    ortools_wrapper(model,[first,second,third,fourth,[avg_sums,sum_first,sum_second,sum_third,sum_fourth]],print_solution)
-    # ortools_wrapper_count_solutions(model,[first,second,third,fourth,[avg_sums,sum_first,sum_second,sum_third,sum_fourth]])    
+    def print_sol():
+        for g in [first.value(), second.value(), third.value(), fourth.value()]:          
+            print("{}{}{}{}".format(g[0], g[1], g[2], g[3]),end=" ")
+        print()
+
+    ss = CPM_ortools(model)
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
 
 
 serial_crack()

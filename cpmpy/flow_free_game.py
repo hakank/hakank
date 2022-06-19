@@ -70,19 +70,18 @@ def flow_free(board):
       else:
         model += [(same_neighs_ij == 2) | (B[i][j] == 0)]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print(B.value())
-    print("Num conflicts:", ss.ort_solver.NumConflicts())
-    print("NumBranches:", ss.ort_solver.NumBranches())
-    print("WallTime:", ss.ort_solver.WallTime())
-    plot_solution(board,B.value())
     print()
-    get_different_solution(ss,B.flat)
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:",num_solutions)
+  print("Num conflicts:", ss.ort_solver.NumConflicts())
+  print("NumBranches:", ss.ort_solver.NumBranches())
+  print("WallTime:", ss.ort_solver.WallTime())
+  plot_solution(board,B.value())
+  
 
 board1 = [[1, 0, 0, 2, 3],
           [0, 0, 0, 4, 0],
@@ -100,7 +99,7 @@ board2 = [[0, 1, 2, 0, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0]]
 
 
-print("Board1. Close the window to see the the instance.")
+print("Board1. Close the window to see the next instance.")
 flow_free(board1)
 
 print("\nBoard2")

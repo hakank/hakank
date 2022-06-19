@@ -41,22 +41,20 @@ def number_square():
     model = Model([n == x*x, 100000000+n ==y*y]
                   )
 
-    num_solutions = 0
+    def print_sol():
+        print("n:",n.value())        
+        print("x:", x.value())
+        print("y:", y.value())        
+        print()
+
+
     ss = CPM_ortools(model)
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
     # ss.ort_solver.parameters.linearization_level = 0
     # ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    while ss.solve():
-        num_solutions += 1
-        print("n:",n.value())        
-        print("x:", x.value())
-        print("y:", y.value())        
-        print()
-        get_different_solution(ss,[n,x,y])
-    print()
+    num_solutions = ss.solveAll(display=print_sol)
     print("number of solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())

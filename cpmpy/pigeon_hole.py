@@ -35,14 +35,12 @@ def pigeon_hole(n=3,m=10):
   for i in range(n):
     model += (sum([p[(i,j)] for j in range(m)]) == 1)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print(p.value())
     print()
-    get_different_solution(ss,p.flat)
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 n = 3

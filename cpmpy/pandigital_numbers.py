@@ -45,9 +45,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-
-
-
 def pandigital_numbers(base=10, start=1, len1=1, len2=4):
 
     max_d = base-1
@@ -65,8 +62,8 @@ def pandigital_numbers(base=10, start=1, len1=1, len2=4):
                   )
     
     model += [to_num([x[i] for i in range(len1)], num1, base)]
-    # model += [to_num([x[i] for i in range(len1,len1+len2)], num2, base)]
-    # model += [to_num([x[i] for i in range(len1+len2,x_len)], res, base)]
+    model += [to_num([x[i] for i in range(len1,len1+len2)], num2, base)]
+    model += [to_num([x[i] for i in range(len1+len2,x_len)], res, base)]
     
     model += [num1*num2 == res]
 
@@ -80,11 +77,14 @@ def pandigital_numbers(base=10, start=1, len1=1, len2=4):
 
     solutions = []
     ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    # ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.cp_model_probing_level = 0
     while ss.solve():
-        # print_solution(x, len1, len2, x_len)
         solutions.append(x.value())
-        get_different_solution(ss,x)
-                
+        ss += any(x != x.value())
+               
     return solutions
 
 
@@ -104,7 +104,6 @@ for len1 in range(1+math.floor(x_len / 3)+1):
           sol = pandigital_numbers(base, start, len1, len2)
           for s in sol:
               num_solutions += 1
-              print_solution(s, len1, len2, x_len)
-              
+              print_solution(s, len1, len2, x_len)             
 
 print("num_solutions:", num_solutions)

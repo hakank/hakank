@@ -49,24 +49,22 @@ def smugglers_knapsack1():
 
     print(model)
 
-    ss = CPM_ortools(model)    
-    # ss.ort_solver.parameters.max_time_in_seconds = timeout
-    # ss.ort_solver.parameters.num_search_workers = num_procs 
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    num_solutions = 0
-    if ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("whisky:",whisky.value())
         print("perfume:",perfume.value())
         print("cigarettes:",cigarettes.value())
         print("profit:",profit.value())
         print()
-        get_different_solution(ss,x)
         
+    ss = CPM_ortools(model)    
+    # ss.ort_solver.parameters.max_time_in_seconds = timeout
+    # ss.ort_solver.parameters.num_search_workers = num_procs 
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    # ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.cp_model_probing_level = 0
+
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
     print()
 
@@ -89,15 +87,13 @@ def smugglers_knapsack2(units,values,max_val):
 
     print(model)
 
-    ss = CPM_ortools(model)    
-    num_solutions = 0
-    if ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("x:",x.value())
         print("profit:",profit.value())
         print()
-        get_different_solution(ss,x)
         
+    ss = CPM_ortools(model)    
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
     print()
     

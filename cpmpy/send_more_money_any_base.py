@@ -51,33 +51,25 @@ def send_more_money_any_base(base=10,num_sols=0,num_procs=1):
           m,o,r,e, 
           m,o,n,e,y]
 
+    def print_sol():
+        print(x.value())
+
     # Use OR-tools CP-SAT for speeding up the program.
     ss = CPM_ortools(model)
-    cb = ORT_simple_function_printer(ss._varmap,xs,print_solution,num_sols)
-
-    if num_procs > 1:
-        print("number of processes:", num_procs)
-        ss.ort_solver.parameters.num_search_workers = num_procs
 
     # Flags to experiment with        
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    ss.ort_solver.parameters.cp_model_presolve = False
+    # ss.ort_solver.parameters.cp_model_presolve = False
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    if num_sols == 1:
-        ort_status = ss.ort_solver.Solve(ss.ort_model, cb)
-    else:
-        ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-
-    # print("After solve status:", ss._after_solve(ort_status)) # post-process after solve() call...
-    print("s.status():", ss.status())
-    print("Nr solutions:", cb.solcount)
+    num_solutions = ss.solveAll(display=print_sol)
+    print("Nr solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())
 
-    return cb.solcount
+    return num_solutions
 
 b = 10
 send_more_money_any_base(b)

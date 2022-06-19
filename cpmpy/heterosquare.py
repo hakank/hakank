@@ -28,23 +28,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-    diag1 = a[0][0]
-    diag2 = a[0][1]
-    row_sums = a[1]
-    col_sums = a[2]
-    n = len(row_sums)
-    x = a[3]
-    print("diag1:",diag1.value(),"diag2:",diag2.value())
-    print("row_sums:",row_sums.value())
-    print("col_sums:",col_sums.value())
-    for i in range(n):
-      for j in range(n):
-        print(x[i*n+j].value(),end=" ")
-      print()
-    print()
-
-
 def heterosquare(n=3):
   model = Model()
 
@@ -83,10 +66,21 @@ def heterosquare(n=3):
   model += [frenicle(x,n)]
 
   # print(model)
+  def print_sol():
+    print("diag1:",diag1.value(),"diag2:",diag2.value())
+    print("row_sums:",row_sums.value())
+    print("col_sums:",col_sums.value())
+    for i in range(n):
+      for j in range(n):
+        print(x[(i,j)].value(),end=" ")
+      print()
+    print()
 
-  ortools_wrapper(model,[[diag1,diag2],row_sums,col_sums,x.flat],print_solution)
-
-
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0  
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 n = 3
 heterosquare(n)

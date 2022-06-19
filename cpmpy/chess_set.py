@@ -30,24 +30,21 @@ def chess_set():
 
     model.maximize(z)
 
+    def print_sol():
+        print("small_set:",small_set.value())
+        print("large_set:",large_set.value())        
+        print("z:",z.value())
+        print()
 
     ss = CPM_ortools(model)    
     # ss.ort_solver.parameters.max_time_in_seconds = timeout
     # ss.ort_solver.parameters.num_search_workers = num_procs 
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
+    # ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = 0
-    if ss.solve() is not False:
-        num_solutions += 1
-        print("small_set:",small_set.value())
-        print("large_set:",large_set.value())        
-        print("z:",z.value())
-        print()
-        get_different_solution(ss,[small_set,large_set])
-        
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
     print()
 

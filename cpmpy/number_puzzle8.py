@@ -88,27 +88,25 @@ def number_puzzle8(num_sols=0):
                    ]
                   )
 
-    num_solutions = 0
+    def print_sol():
+      print("z:",z.value())        
+      print("a:", a.value(),"\nb:",b.value(), "\na+b:",a_plus_b.value(),"\na-b:",a_minus_b.value())
+      print("sols:",sols.value())
+      print("solution: z is",[sols_s[i] for i in range(len(sols)) if sols[i].value()==1][0])
+      print()
+
     ss = CPM_ortools(model)
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
     # ss.ort_solver.parameters.linearization_level = 0
     # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    while ss.solve():
-        num_solutions += 1
-        print("z:",z.value())        
-        print("a:", a.value(),"\nb:",b.value(), "\na+b:",a_plus_b.value(),"\na-b:",a_minus_b.value())
-        print("sols:",sols.value())
-        print("solution: z is",[sols_s[i] for i in range(len(sols)) if sols[i].value()==1][0])
-        print()
-        print("Num conflicts:", ss.ort_solver.NumConflicts())
-        print("NumBranches:", ss.ort_solver.NumBranches())
-        print("WallTime:", ss.ort_solver.WallTime())
-        get_different_solution(ss,list(all_nums)+list(sols))
-    print()
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
     print("number of solutions:", num_solutions)
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
+    
 
 num_sols = 0
 number_puzzle8(num_sols)

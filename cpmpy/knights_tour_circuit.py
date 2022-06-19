@@ -60,7 +60,13 @@ def knights_tour_circuit(n=4,num_sols=0):
                     ]
             model += [member_of(dom,x[i,j])]
 
-    num_solutions = 0
+    def print_sol():
+        x_val = x.value()
+        print(x_val)
+        extract_tour(x_val)
+        print()
+        
+
     ss = CPM_ortools(model)
     # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -68,25 +74,15 @@ def knights_tour_circuit(n=4,num_sols=0):
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    while ss.solve():
-        num_solutions += 1
-        x_val = x.value()
-        print(x_val)
-        extract_tour(x_val)
-        print()
-        if num_sols > 0 and num_solutions >= num_sols:
-            print("Num conflicts:", ss.ort_solver.NumConflicts())
-            print("NumBranches:", ss.ort_solver.NumBranches())
-            print("WallTime:", ss.ort_solver.WallTime())
-            print()
-            break
-        get_different_solution(ss,x_flat)
-
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
     print("number of solutions:", num_solutions)
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
+    print()
 
 
-
-# Not this only works for even n
+# Note: this only works for even n
 for n in range(6,10+1):
     if n % 2 == 0:
         print("\nn:",n)

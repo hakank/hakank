@@ -73,13 +73,7 @@ def mr_smith_v1():
   model += [Matt - (John * Mr_Smith) <= 0]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("x:", x.value())
-    get_different_solution(ss,x)
-
-  print()
+  num_solutions = ss.solveAll(display=x)
   print('num_solutions:', num_solutions)
 
 #
@@ -127,15 +121,10 @@ def mr_smith_v2():
   model += [Matt.implies(John & Mr_Smith)]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("x:", x.value())
-    get_different_solution(ss,x)
-
-  print()
+  num_solutions = ss.solveAll(display=x)
   print('num_solutions:', num_solutions)
 
 
 mr_smith_v1()
+print()
 mr_smith_v2()

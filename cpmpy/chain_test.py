@@ -68,7 +68,8 @@ def chain_test(n):
   
   print(model)
 
-  ortools_wrapper2(model,[x])
+  num_solutions = model.solveAll(display=x)
+  print("num_solutions:",num_solutions)
   
 
 n = 5

@@ -34,12 +34,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-def print_solution(a):
-    print('x:',a[0].value())
-    print('nb:',a[1][0].value())
-    print('s:', a[1][1].value())
-    
-
 def dudeney(n=6):
     x  = intvar(0, 9,shape=n,name="x")
     nb = intvar(1,10**n-1, name="nb")
@@ -51,7 +45,17 @@ def dudeney(n=6):
         sum(x) == s,
         )
 
-    ortools_wrapper(model,[x,[nb,s]],print_solution)
+    def print_sol():
+        print('x:',x.value())
+        print('nb:',nb.value())
+        print('s:', s.value())
+        print()
+
+    ss = CPM_ortools(model)
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+    ss.solveAll(display=print_sol)
+
 
 n = 6
 dudeney(n)

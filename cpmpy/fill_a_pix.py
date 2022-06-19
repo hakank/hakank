@@ -90,11 +90,7 @@ def fill_a_pix(puzzle='', n=''):
                                        j + b < n
         ])]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  print('Solution:')
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for i in range(n):
       row = [str(pict[i, j].value()) for j in range(n)]
       for j in range(n):
@@ -104,8 +100,9 @@ def fill_a_pix(puzzle='', n=''):
           row[j] = '#'
       print(''.join(row))
     print()
-    get_different_solution(ss,pict.flat)
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print('num_solutions:', num_solutions)
 
 

@@ -53,15 +53,13 @@ def all_different_on_intersection_test():
   # constraints
   model += [all_different_on_intersection(x,y)]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("x:", x.value())
     print("y:", y.value())    
     print()
-    get_different_solution(ss,list(x)+list(y))
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

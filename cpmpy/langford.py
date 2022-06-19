@@ -65,10 +65,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-def print_solution(a):
-    print("position:", a[0].value())
-    print("solution:", a[1].value())
-
 def langford(k=8, num_sols=0):
 
   model = Model()
@@ -98,8 +94,13 @@ def langford(k=8, num_sols=0):
   # symmetry breaking
   model += [solution[0] < solution[2 * k - 1]]
 
-  ortools_wrapper(model,[position,solution],print_solution,num_sols)
+  def print_sol():
+      print("position:", position.value())
+      print("solution:", solution.value())
+      print()
 
+  num_solutions = model.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 def benchmark():
   """

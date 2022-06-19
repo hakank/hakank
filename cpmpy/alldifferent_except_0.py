@@ -30,17 +30,9 @@ def alldifferent_except_0_test(n,solver=None):
   ])
   
   print("model:", model)
-  num_solutions = 0
-
-  ortools_wrapper2(model,[x])
-  # ss = CPM_ortools(model)
-  # print("ss:",ss)
-  # while ss.solve():
-  #   # print("stat:", model.status())
-  #   num_solutions += 1
-  #   print(x.value())
-  #   get_different_solution(ss,x)
-  # print("num_solutions:", num_solutions)
+  
+  num_solutions = model.solveAll(display=x)
+  print("num_solutions:", num_solutions)
 
 # Testing the different solvers
 print("solvers:", get_supported_solvers())

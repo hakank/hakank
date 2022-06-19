@@ -45,11 +45,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-    print("x1:", a[0].value())
-    print("x2:", a[1].value())
-    print()   
-
 def sicherman_dice(min_val=0):
 
     n = 6
@@ -70,7 +65,12 @@ def sicherman_dice(min_val=0):
         [x1[i] <= x2[i] for i in range(n-1)],                        
         )
 
-    ortools_wrapper(model,[x1,x2],print_solution,0)
+    def print_sol():
+        print("x1:", x1.value())
+        print("x2:", x2.value())
+        print()   
+
+    model.solveAll(display=print_sol)
 
 
 print("Min val: 1")

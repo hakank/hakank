@@ -26,8 +26,7 @@ See also my CPMpy page: http://hakank.org/cpmpy/
 import math, sys
 import numpy as np
 from cpmpy import *
-from cpmpy.solvers import CPM_ortools
-from cpmpy_hakank import *
+from cpmpy.solvers import *
 import sys
 
 
@@ -61,10 +60,14 @@ def stable_marriage(problem,num_sols=0,num_procs=1):
       model += [(rankMen[m,o] < rankMen[m, wife[m]]).implies\
                 (rankWomen[o,husband[o]] < rankWomen[o,m]) for o in range(n)]
 
-    print("Solve")
+    def print_sol():
+        print("wife   :", wife.value())
+        print("husband:", husband.value())
+        print()
 
-    # Use OR-tools CP-SAT for speeding up the program.
-    ortools_wrapper(model,[wife,husband],print_function,0)
+    ss = CPM_minizinc(model,"gecode")
+    num_solutions = ss.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
 
 
 

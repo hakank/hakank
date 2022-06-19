@@ -21,13 +21,6 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-  x = a[0]
-  s = a[1]
-  num_conflicts = a[2][0]
-  print("x:",x.value(),"s:",s.value(),"num_conflicts:",num_conflicts.value())
-
-
 def all_different_explain_test(n=4):
 
     x = intvar(1,n,shape=n,name="x")
@@ -44,7 +37,13 @@ def all_different_explain_test(n=4):
                    # num_conflicts <= 1, #  we accept atmost 1 duplicated value
                    ])
   
-    ortools_wrapper(model,[x,s,[num_conflicts]],print_solution)
+    def print_sol():
+      print("x:",x.value(),"s:",s.value(),"num_conflicts:",num_conflicts.value())
+      
 
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
+    
+                   
 n=4
 all_different_explain_test(n)

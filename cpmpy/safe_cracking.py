@@ -55,12 +55,7 @@ def safe_cracking():
     model += [LD[i] != i + 1]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print('LD:', LD.value())
-    get_different_solution(ss,LD)
-
+  num_solutions = ss.solveAll(display=LD)
   print()
   print('num_solutions:', num_solutions)
 

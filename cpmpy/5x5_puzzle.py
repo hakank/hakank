@@ -90,6 +90,7 @@ import random
 from cpmpy import *
 import numpy as np
 from cpmpy_hakank import *
+import copy
 
 def five_by_five_puzzle():
 
@@ -115,27 +116,24 @@ def five_by_five_puzzle():
                  )
               ]
 
-  model.minimize(the_sum)
+  model_opt = copy.copy(model)
+  model_opt.minimize(the_sum)
 
-  # ss = CPM_ortools(model) # Doesn't give the correct solution in v0.9.5
-  ss = CPM_minizinc(model) # This works
+  model_opt.solve()
+  opt = the_sum.value()
+  print("Optimal value:",opt)
 
-  num_solutions = 0
-  opt = None
-  while ss.solve() is not False:
-      num_solutions += 1
-      print("x:")
-      print(1*x.value())
-      print("d:")
-      print(d.value())
-      print("the_sum:",the_sum.value())
-      print()
-      if opt == None:
-          opt = the_sum.value()
-          ss += [the_sum == opt]
-      get_different_solution(ss,list(x.flat)+list(d.flat))
+  model += [the_sum == opt]
 
-  print()
+  def print_sol():
+    print("x:")
+    print(1*x.value())
+    print("d:")
+    print(d.value())
+    print("the_sum:",the_sum.value())
+    print()
+
+  num_solutions = model.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 

@@ -54,15 +54,13 @@ def organize_day():
   # special task
   model += [begins[work] >= 11]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("begins:", begins.value())
     print("ends:", ends.value())
     print()
-    get_different_solution(ss,list(begins)+list(ends))
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print('num_solutions:', num_solutions)
 
 

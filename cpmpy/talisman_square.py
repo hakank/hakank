@@ -39,7 +39,17 @@ def talisman_square(n=5,k=2):
   # symmetry breaking
   model += (x[0,0] == 1)
 
-  ortools_wrapper(model,x)
+  def print_sol():
+    print(x.value())
+    print()
+
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
+
   
 
 n = 4

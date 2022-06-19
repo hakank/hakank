@@ -53,17 +53,15 @@ def all_different_pairs_test(n=5):
   for k in range(m):
     model += [x[(k,0)] != x[(k,1)]]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for i in range(m):
         for j in range(2):
             print(x[i,j].value(),end=" ")
         print()
     print()
-    get_different_solution(ss,x.flat)
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

@@ -100,7 +100,8 @@ def map_coloring(use_value_precede_chain=False):
     if use_value_precede_chain:
         model += [value_precede_chain(list(range(1,max_num_colors+1)),color)]
 
-    ortools_wrapper2(model,[color])
+    num_solutions = model.solveAll(display=color)
+    print("num_solutions:",num_solutions)
                 
 
 use_value_precede_chain=False

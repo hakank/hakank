@@ -90,18 +90,15 @@ def exodus():
              ((Age[BurningBush] == Age[Kazakhstan] + 2) | (Age[BurningBush] == Age[Kazakhstan] + 3))
              ])
 
- 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("People :", people)
     print("Story  :", Story.value())
     print("Country:", Country.value())
     print("Age    :", Age.value())
     print()
-    get_different_solution(ss,list(Story)+list(Age)+list(Country))
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 exodus()

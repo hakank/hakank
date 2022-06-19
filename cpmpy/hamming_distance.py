@@ -51,18 +51,17 @@ def hamming_distance_model(a_given="",n=6):
   model += [diffs == hamming_distance2(a, b)]
   
   # model += (diffs == 2)
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  
+  def print_sol():
     print("a:", a.value())
     print("b:", b.value())    
     print("diffs:", diffs.value())
     print()
-    get_different_solution(ss,list(a)+list(b))
-  
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
+
 
 a_given = [1,1,1,1,0,0]
 n=len(a_given)

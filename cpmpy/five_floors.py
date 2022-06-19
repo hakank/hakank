@@ -54,14 +54,12 @@ def five_floors():
                    abs(Fletcher-Cooper) > 1,
                    ])
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("x:",x.value())
         print("floors:",[xs[j] for i in range(n) for j in range(n) if x[j].value()-1 == i ])
-        get_different_solution(ss,x)
-
+        
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("number of solutions:", num_solutions)
 
 

@@ -59,7 +59,8 @@ def five_brigands():
         E3 <= 66,
         ])
 
-    ortools_wrapper(model,[x])
+    num_solutions = model.solveAll(display=x)
+    print("num_solutions:",num_solutions)
 
 #
 # Show the possible values for each brigands over all 45 solutions.
@@ -84,20 +85,19 @@ def five_brigands2():
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = 0
+
     d = {}
     for i in range(5):
         d[i] = []
-    while ss.solve():
-        num_solutions += 1
+
+    def print_sol():
         xval = x.value()
         print("x:", xval)
         for i in range(n):
             if not xval[i] in d[i]:
                 d[i].append(xval[i])
         
-        get_different_solution(ss,x)
-
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)
     print("Possible values for each brigands:")
     for i in range(5):

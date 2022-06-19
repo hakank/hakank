@@ -21,7 +21,7 @@ def xkcd(price,z):
         )
     print("model:\n", model)
 
-    ortools_wrapper(model,[x])
+    model.solveAll(display=x)
 
 
 price = [215, 275, 335, 355, 420, 580]

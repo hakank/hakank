@@ -50,13 +50,11 @@ def stuckey_seesaw():
 
     ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print([(p,p.value()) for p in people])
-    get_different_solution(ss,people)
+  def print_sol():
+    print([(p,p.value()) for p in people])    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 stuckey_seesaw()

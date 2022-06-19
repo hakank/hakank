@@ -75,12 +75,7 @@ def olympic():
   model += [minus(X9, X10, X6)]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print('Vars:', Vars.value())
-    get_different_solution(ss,Vars)
-
+  num_solutions = ss.solveAll(display=Vars)
   print('num_solutions:', num_solutions)
 
 olympic()

@@ -24,8 +24,6 @@ from cpmpy_hakank import *
 
 #
 # This is a simple version without any fancy OR-tools stuff.
-# This is very slow even for n=8 due to the get_different_solution
-# approach.
 #
 def nqueens_v1(n=8,num_sols=0):
     print(f"nqueens_v2(n={n},num_sols={num_sols})")
@@ -37,18 +35,11 @@ def nqueens_v1(n=8,num_sols=0):
         AllDifferent([queens[i] - i for i in range(n)]),
         AllDifferent([queens[i] + i for i in range(n)]),
     ])
-    
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1
-        print([queens[i].value() for i in range(n)])
-        
-        if num_sols > 0 and num_solutions >= num_sols:
-            break
-        else:
-            get_different_solution(ss,queens)
 
+    def print_sol():
+       print([queens[i].value() for i in range(n)])
+
+    num_solutions = model.solveAll(solution_limit=num_sols,display=print_sol)
     print("num_solutions:", num_solutions)
 
 #
@@ -73,8 +64,8 @@ def nqueens_v2(n=8,num_sols=0):
 
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH 
     # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
+    # ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.cp_model_probing_level = 0
 
     num_solutions = 0
     while(ss.solve()):

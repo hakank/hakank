@@ -188,18 +188,9 @@ def linear_combinations(ds=[1,2,3],num_sols = 0):
   ## model.minimize(z)
 
   print("solve")
-  ss = CPM_ortools(model)
-  # ss.ort_solver.parameters.log_search_progress = True
-  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-  # ss.ort_solver.parameters.cp_model_presolve = False
-  ss.ort_solver.parameters.linearization_level = 0
-  ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = 0
   x_restored_a = []
-  while ss.solve():
-    num_solutions += 1
-    print(f"solution #{num_solutions}")
+  def print_sol():
     xval = x.value()
     # print("x:", xval)
     print("z:", z.value())
@@ -208,16 +199,21 @@ def linear_combinations(ds=[1,2,3],num_sols = 0):
     x_restored_a.append(x_restored)
     diffs_restored = pair_differences(x_restored)
     print("diffs(x_restored):", diffs_restored )
-    print()    
-    if num_sols > 0 and num_solutions >= num_sols:
-       break
-    get_different_solution(ss,x)
     
+  
+  ss = CPM_ortools(model)
+  # ss.ort_solver.parameters.log_search_progress = True
+  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
   print("num_solutions:", num_solutions)
   print("WallTime:", ss.ort_solver.WallTime())
   print("NumBranches:", ss.ort_solver.NumBranches())
   print("NumConflicts:", ss.ort_solver.NumConflicts())
-  # print("Stats:", ss.ort_solver.ResponseStats())
+  print("Stats:", ss.ort_solver.ResponseStats())
   print()
 
   return x_restored_a

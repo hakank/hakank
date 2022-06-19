@@ -42,13 +42,7 @@ def grocery():
   model += [increasing(item)]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1    
-    print("item:", item.value())
-    print()
-    get_different_solution(ss,item)
-
+  num_solutions = ss.solveAll(display=item)
   print("num_solutions:", num_solutions)
 
 

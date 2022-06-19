@@ -59,8 +59,17 @@ def k4p2gracefulgraph2():
            )
 
   print(model)
+  # from cpmpy.transformations.flatten_model import flatten_constraint, flatten_model
+  # from cpmpy.transformations.get_variables import print_variables
+  # mf = flatten_model(model)
+  # print_variables(mf)
+  # print(mf)
 
-  ortools_wrapper(model,[nodes])    
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+  num_solutions = ss.solveAll(display=nodes)
+  print("num_solutions:",num_solutions)
 
 k4p2gracefulgraph2()
   

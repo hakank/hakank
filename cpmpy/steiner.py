@@ -25,15 +25,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-  # print(a.value())
-  nb = len(a)
-  # print("nb:",nb)
-  for i in range(nb):
-    print([j for j in range(n) if a[i,j].value() == 1], end=" ")
-  print()
-
-
 # number of common elements in two "sets"
 def union_card(s1,s2,common):
   return (common == sum([ss1 + ss2 == 2 for ss1,ss2 in zip(s1,s2)]))
@@ -68,7 +59,11 @@ def steiner(n=7,num_sols=1):
         model += [union_card(s1,s2,common)]
         # model += (common <= 1)
 
-  # ortools_wrapper(model,sets,print_solution,num_sols)
+  def print_sol():
+    for i in range(nb):
+      print([j for j in range(n) if sets[i,j].value() == 1], end=" ")
+    print()
+
   ss = CPM_ortools(model)
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -76,24 +71,11 @@ def steiner(n=7,num_sols=1):
   ss.ort_solver.parameters.linearization_level = 0
   # ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  num_solutions = 0 
-  while ss.solve():
-    num_solutions += 1
-    for i in range(nb):
-      print([j for j in range(n) if sets[i,j].value() == 1], end=" ")
-    print()
-    if num_sols == 1:
-      print("status:", ss.status())
-    if num_sols > 0 and num_solutions >= num_sols:
-      break
-
-    if num_solutions % 1000 == 0:
-        print("num_solutions:", num_solutions)
-    get_different_solution(ss,sets.flat)
-
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
   if num_sols != 1:
     print("num_solutions:", num_solutions  )
-
+  else:
+    print(ss.status)
                 
 n = 7
 if len(sys.argv) > 1:

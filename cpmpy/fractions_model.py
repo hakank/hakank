@@ -41,16 +41,14 @@ def fractions_problem():
                  3*G <= D2,
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("%s/(%s%s) + %s(%s%s) + %s(%s%s) = 1" %( A.value(),B.value(), C.value(),D.value(),
                                                    E.value(),F.value(),G.value(),H.value(),
                                                    I.value()))
     print()
-    get_different_solution(ss, x)
-
+   
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 fractions_problem()

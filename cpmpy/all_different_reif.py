@@ -24,13 +24,6 @@ from cpmpy_hakank import *
 from itertools import combinations
 
 
-def print_solution(a):
-    x = a[0]
-    b = a[1][0]
-    print("x:",x.value(), "b:",b.value(), "all different!" if b.value() else "")
-
-
-
 def all_different_reif_test(n):
 
     x = intvar(1,n,shape=n,name="x")
@@ -41,7 +34,11 @@ def all_different_reif_test(n):
                    # b == 1 # Force all to be different
                    ])
 
-    ortools_wrapper2(model,[x,[b]],print_solution)
+    def print_sol():
+        print("x:",x.value(), "b:",b.value(), "all different!" if b.value() else "")
+
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
 
 
 #
@@ -58,8 +55,11 @@ def all_different_reif_test2(n):
              # b == 1 # Force all to be different
              ]
 
-    ortools_wrapper2(model,[x,[b]],print_solution)
+    def print_sol():
+        print("x:",x.value(), "b:",b.value(), "all different!" if b.value() else "")
 
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
 
 
 n = 4

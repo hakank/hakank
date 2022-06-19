@@ -26,7 +26,7 @@ def pythagoras():
       increasing(x)
       ])
 
-  ortools_wrapper(model,[x])
+  model.solveAll(display=x)
 
 
 pythagoras()

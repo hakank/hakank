@@ -73,17 +73,8 @@ def twin_letters():
   model += (Q + 10*C3 == J + N + C2)
   model += (P         == M + C3)
 
-  ss = CPM_ortools(model)
-  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-  # ss.ort_solver.parameters.cp_model_presolve = False
-  ss.ort_solver.parameters.linearization_level = 0
-  ss.ort_solver.parameters.cp_model_probing_level = 0
-
-  letters = "ABCDEFGHIJKLMNOPQRST"
-  num_solutions = 0 
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
+    letters = "ABCDEFGHIJKLMNOPQRST"    
     xs = x.value()
     digits_map = {}
     print("x:",xs)
@@ -96,8 +87,16 @@ def twin_letters():
         digits_map[xs[i]] = [letters[i]]
     print([(t,"".join(digits_map[t])) for t in sorted(digits_map)])
     print()
-    get_different_solution(ss,x)
+    
 
+  ss = CPM_ortools(model)
+  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
   print()
 

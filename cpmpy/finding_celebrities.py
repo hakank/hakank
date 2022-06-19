@@ -69,15 +69,13 @@ def finding_celebrities(problem):
 
     model += celebrities[i] == ((sum([graph[j][i] for j in range(n)]) == n) & (sum([graph[i][j] for j in range(n)]) == num_celebrities))
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("num_celebrities :", num_celebrities.value())
     print("celebrities  :", [i for i in range(n) if celebrities[i].value() == 1])
     print()
-    get_different_solution(ss,celebrities)
-
+      
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
   print()
 

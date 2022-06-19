@@ -37,8 +37,8 @@ def value_precede_test(n):
   # constraints
   model = Model([value_precede(4,3,x)])
   
-
-  ortools_wrapper2(model,[x])
+  num_solutions = model.solveAll(display=x)
+  print("num_solutions:",num_solutions)
 
 
 #
@@ -54,8 +54,9 @@ def value_precede_chain_test(n):
   
   # constraints
   model = Model([value_precede_chain(cs,x)])
-  
-  ortools_wrapper2(model,[x])
+  num_solutions = model.solveAll(display=x)
+  print("num_solutions:",num_solutions)
+
 
 
 n = 4

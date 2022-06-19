@@ -17,18 +17,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-# This is little too messy...
-def print_solution(a):
-    x = a[0]
-    print("x:")
-    for i in range(3):
-        for j in range(3):
-            print(f"{x[i*3+j].value():3d}",end=" ")
-        print()
-    print('s:', a[1][0].value())
-    print("counts:", a[2].value())
-
-
 def magic_squares_and_cards():
 
     n = 3
@@ -55,8 +43,17 @@ def magic_squares_and_cards():
         maximize=s,
         )
 
-    ortools_wrapper_opt(model,[x_flat,[s],counts],print_solution)
-    
+    def print_sol():
+        print("x:")
+        print(x.value())
+        print("s:", s.value())
+        print("counts:", counts.value())
+        print()
+
+    num_solutions = model.solveAll(display=print_sol)
+    print("num_solutions:",num_solutions)
+
+
 magic_squares_and_cards()
 
 

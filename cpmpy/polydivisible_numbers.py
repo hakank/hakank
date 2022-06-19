@@ -75,9 +75,14 @@ def polydivisible_numbers(n=10):
     model += (to_num([x[j] for j in range(i)], t[i-1], n))
     model += (t[i-1] % i == 0) 
 
+  def print_sol():
+    print("x:",x.value())
+    print("t:",t.value())
+    print()
+    
   ss = CPM_ortools(model)
-
-  ortools_wrapper(model,[x,t])
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 
 base = 10

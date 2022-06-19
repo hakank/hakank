@@ -106,8 +106,7 @@ def zebra():
 
   print(model)
 
-  ss = CPM_ortools(model)
-  while ss.solve():
+  def print_sol():
       print("color      :",color.value())
       print("nationality:",nationality.value())
       print("animal     :",animal.value())
@@ -120,9 +119,10 @@ def zebra():
       zebra_owner = [
           p for p in people if p.value() == zebra.value()][0]
       print(f"The {zebra_owner} owns a zebra")
-      # Check for unique solution
-      get_different_solution(ss,list(color)+list(nationality)+list(animal)+list(drink)+list(smoke))
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
+  # print("num_solutions:",num_solutions)
 
 
 zebra()

@@ -55,19 +55,16 @@ def devils_word(total, arr):
   # ss.ort_solver.parameters.cp_model_presolve = False
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
-  
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print(f"solution #{num_solutions}")
+
+  def print_sol():
     print("total:", total)
     print("result:",result.value())
     print("plus :", plus.value())
     print("minus:", minus.value())
     print("num_minus:", num_minus.value())
-    print()
-    get_different_solution(ss,list(result)+list(plus)+list(minus))
-
+    print()   
+  
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
  
 

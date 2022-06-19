@@ -22,7 +22,7 @@ import numpy as np
 from cpmpy_hakank import *
 
 
-def crew(sols=1):
+def crew(num_sols=1):
 
   model = Model()
 
@@ -118,11 +118,7 @@ def crew(sols=1):
   # for i in range(num_persons):
   #     model += [sum([crew[f,i] for f in range(num_flights)]) >= 2]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("Solution #%i" % num_solutions)
+  def print_sol():
     print("Number working:", num_working.value())
     for i in range(num_flights):
       for j in range(num_persons):
@@ -148,10 +144,9 @@ def crew(sols=1):
       print()
     print()
 
-    if num_solutions >= sols:
-      break
-    get_different_solution(ss,crew.flat)
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
   print()
   print("num_solutions:", num_solutions)
 

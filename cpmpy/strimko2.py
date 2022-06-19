@@ -80,17 +80,15 @@ def strimko2(streams='', placed=''):
     # note: also adjust to 0-based
     model += [x[placed[i][0] - 1, placed[i][1] - 1] == placed[i][2]]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for i in range(n):
       for j in range(n):
         print(x[i, j].value(), end=' ')
       print()
     print()
-    get_different_solution(ss,x.flat)
     
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print('num_solutions:', num_solutions)
 
 

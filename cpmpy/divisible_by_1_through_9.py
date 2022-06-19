@@ -54,11 +54,7 @@ def divisible_by_1_through_9(base=10):
     model += (to_num([x[j] for j in range(i)], t[i-1], base))
     model += (t[i-1] % i == 0)
 
-  ss = CPM_ortools(model)
-  # solution and search
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     xx = x.value()
     tt = t.value()
     print("x: ", xx)
@@ -66,9 +62,10 @@ def divisible_by_1_through_9(base=10):
     print("number base 10: %i base %i: %s" % (tt[0],
                                               base,
                                               "".join([digits_str[xx[i]+1] for i in range(base)])))
-    get_different_solution(ss,list(x)+list(t))
     print()
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
   print()
 

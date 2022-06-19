@@ -93,16 +93,14 @@ def three_coins(init=[1,0,1]):
                     # last line: either all heads of all tails
                     ((last_val == 0) | (last_val == n)),
                     ])
-    
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    while ss.solve():
-        num_solutions += 1
+
+    def print_sol():
         print(f"({'all tails' if last_val.value() == 3 else 'all heads'})")
         print(x.value())
         print()
-        get_different_solution(ss,list(x.flat)+[last_val])
-
+    
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)
     print()
     return num_solutions

@@ -104,7 +104,7 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 from itertools import combinations
-
+import copy
 
 def football(budget,num_types,num_players,max_num_players,min_max,costs):
     
@@ -134,25 +134,22 @@ def football(budget,num_types,num_players,max_num_players,min_max,costs):
     model += [z <= budget]
     # model += [num_player_chosen >= 11] # I added this constraint for fun :-)
 
-    model.maximize(z)
-    
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    opt_z = None
-    # Show all optimal solutions
-    while ss.solve() is not False:
-        num_solutions += 1
+    model_opt = copy.copy(model)
+    model_opt.maximize(z)
+    model_opt.solve()
+    opt_z = z.value()
+    print("opt:", opt_z)
+    model += (z == opt_z)
+
+    def print_sol():
         print("x:")
         print(x.value())
         print("z:",z.value())
         print("num_player_chosen:",num_player_chosen.value())
         print()
-        if opt_z == None:
-            opt_z = z.value()            
-            ss += [z == opt_z]        
-        get_different_solution(ss,x.flat)
 
-        
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("number of solutions:", num_solutions)
     print()
 

@@ -64,11 +64,7 @@ def labeled_dice():
   for i in range(n):
     model += [sum([dice[j] == i for j in range(m)]) == 6]
 
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for d in range(n):
       print("die %i:" % d, end=" ")
       for i in range(m):
@@ -84,9 +80,10 @@ def labeled_dice():
             end=" ")
       print()
     print()
-    get_different_solution(ss,dice)
+  
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

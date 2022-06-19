@@ -49,7 +49,6 @@ def bales_of_hay():
   if ss.solve():
     num_solutions += 1
     print("bales:",bales.value())
-    print()
   print()
 
   print('num_solutions:', num_solutions)

@@ -1,7 +1,9 @@
 """
 17x17 challenge in cpmpy.
 
-From an OPL model by Karsten Konrad:
+From Karsten Konrad:
+http://lookforlight.tumblr.com/post/996786415/lets-do-real-cp-forbiddenassignment
+'''
 /*********************************************
  * The n x m grid is c-colorable if there is a way
  * to c-color the vertices of the n x m grid so that
@@ -17,6 +19,7 @@ From an OPL model by Karsten Konrad:
  * Author: karsten.konrad
  * Creation Date: 19.08.2010 at 10:39:14
  *********************************************/
+'''
 
 Model created by Hakan Kjellerstrand, hakank@hakank.com
 See also my cpmpy page: http://www.hakank.org/cpmpy/
@@ -27,10 +30,6 @@ import numpy as np
 from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
-
-def print_solution(a):
-    print(a.value())
-    
 
 def model_17_b(nb_rows=10,nb_columns=10,nb_colors=4,num_sols=0,num_procs=1):
     
@@ -53,9 +52,10 @@ def model_17_b(nb_rows=10,nb_columns=10,nb_colors=4,num_sols=0,num_procs=1):
 
     print("Search")
     
-    # ortools_wrapper(model,space,print_solution,num_sols,num_procs)
+    def print_sol():
+        print(space.value())
+        print()
 
-    # all solution solving, with blocking clauses
     ss = CPM_ortools(model)
 
     if num_sols == 1 and num_procs > 1:
@@ -67,15 +67,7 @@ def model_17_b(nb_rows=10,nb_columns=10,nb_colors=4,num_sols=0,num_procs=1):
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = 0
-    while(ss.solve()):
-        num_solutions += 1        
-        print(space.value())
-        print()
-        if num_sols > 0 and num_solutions >= num_sols:
-            break
-        get_different_solution(ss,space.flat)
-        
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
     print("num_solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())

@@ -82,12 +82,7 @@ def number_lock(problem):
 
   # search and solution
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print(x.value())
-    get_different_solution(ss,x)
-    
+  num_solutions = ss.solveAll(display=x)
   print("num_solutions:",num_solutions)
   print()
   

@@ -130,19 +130,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-
-# Print the solution
-def print_solution(a):
-    x = a[0].value()
-    pos = a[1].value()
-    visited = a[2].value()
-    print("x      :",x)
-    print("pos    :",pos)
-    print("visited:",visited)
-    print_clock(x)
-    print()
-
-
 def print_clock(x):
     n = len(x)
     print(f"      {x[0]:3d}")
@@ -255,10 +242,19 @@ def frog_circle(n=12,print_solutions=True,increasing_visits=False):
     model += [pos[n-1] == n // 2]
     model += [x[n // 2 ] == n]
 
-    if print_solutions:
-        ortools_wrapper(model,[x,pos,visited],print_solution)
-    else:
-        return ortools_wrapper_count_solutions(model,[x,pos,visited])
+    # Print the solution
+    def print_sol():
+        if print_solutions:
+            x_val = x.value()
+            pos_val = pos.value()
+            visited_val = visited.value()
+            print("x      :",x_val)
+            print("pos    :",pos_val)
+            print("visited:",visited_val)
+            print_clock(x_val)
+            print()
+
+    model.solveAll(display=print_sol)
 
 
 # Print all solutions for n=12

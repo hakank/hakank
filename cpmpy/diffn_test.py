@@ -37,8 +37,19 @@ def diffn_test():
         model += (x[i] + a[i] <= n+1)
         model += (y[i] + a[i] <= n+1)
 
-    ortools_wrapper(model,[x,y])
-
+    def print_sol():
+        print(x.value())
+        print(y.value())
+        print()
+    
+    ss = CPM_ortools(model)    
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+    
+    num_solutions = ss.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions)
     
 
 diffn_test()

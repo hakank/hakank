@@ -50,14 +50,11 @@ def timpkin(married_years_ago_fixed=0):
   model += (t - married_years_ago == 3 * (w - married_years_ago))
   model += (t == 2*w)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("t:",t.value(), "w:",w.value())
-    get_different_solution(ss,[t,w])
-    
-  print()
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
 
 

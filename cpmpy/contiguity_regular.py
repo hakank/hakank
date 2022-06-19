@@ -27,11 +27,6 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
-# Callback function for printing the solution
-def print_solution(x):
-    for a in x:
-        print([val -1 for val in a.value()])
-
 def contiguity_regular(n=7,num_sols=0,minizinc_solver=None):
     #
     # data
@@ -67,19 +62,16 @@ def contiguity_regular(n=7,num_sols=0,minizinc_solver=None):
                       accepting_states)]
 
 
+    def print_sol():
+        print([val-1 for val in reg_input.value()])
+
     if minizinc_solver == None:
-        ortools_wrapper(model, [reg_input],print_solution,num_sols)
+        # OR-tools
+        num_solutions = model.solveAll(solution_limit=num_sols,display=print_sol)
     else:
         print("MiniZinc solver:", minizinc_solver)
         ss = CPM_minizinc(model,minizinc_solver)
-        # print("make_model:",ss.make_model(model)[0])    
-        num_solutions = 0
-        flags = {'verbose':True}
-        while ss.solve(**flags):
-            num_solutions += 1
-            print(reg_input.value()-1)
-            get_different_solution(ss,reg_input)
-
+        num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
         print("num_solutions:",num_solutions)
 
 

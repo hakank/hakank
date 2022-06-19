@@ -48,12 +48,7 @@ def scheduling_speakers():
     model += [member_of(available[i],x[i])]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print('x:', x.value())
-    get_different_solution(ss,x)
-
+  num_solutions = ss.solveAll(display=x)
   print('num_solutions:', num_solutions)
 
 

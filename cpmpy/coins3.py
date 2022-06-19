@@ -50,20 +50,20 @@ def coins3(denominations=[1, 2, 5, 10, 25, 50],num_coins_val=0):
     model += [sum(tmp*denominations) == j]
     model += [tmp[i] <= x[i] for i in range(n)]
 
-  num_solutions = 0
-  ss = CPM_ortools(model)
-  while ss.solve():
+  def print_sol():
     print("num_coins:", num_coins.value())      
     print("x: ", x.value())
     print()
+    
+  num_solutions = 0
+  ss = CPM_ortools(model)
+  while ss.solve():
+    print_sol()
     num_solutions += 1
-    # print("status:", ss.status())
     if num_coins_val == 0:
-        return num_coins.value()
+      return num_coins.value()
     else:
-        get_different_solution(ss,x)
-
-
+      ss +=  any(x != x.value())
 
   print()
   print("num_solutions:", num_solutions)

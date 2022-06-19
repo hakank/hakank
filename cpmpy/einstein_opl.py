@@ -118,11 +118,7 @@ def einstein_puzzle():
                  abs(K[Blends] - D[Water]) == 1,
                  ])
 
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("S:", S.value())
     print("A:", A.value())
     print("D:", D.value())
@@ -135,9 +131,10 @@ def einstein_puzzle():
       KK = p(i,K,SmokesS)
       CC = p(i,C,ColorsS)
       print("House:",i,SS,AA,DD,KK,CC)
-      
-    get_different_solution(ss,list(S)+list(A)+list(D)+list(K)+list(C))
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:",num_solutions)
 
 einstein_puzzle()

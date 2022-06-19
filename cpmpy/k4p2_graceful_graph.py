@@ -66,7 +66,16 @@ def k4p2gracefulgraph2():
 
   print(model)
 
-  ortools_wrapper(model,[edges,nodes])  
+  def print_sol():
+    print("edges:", edges.value())
+    print("nodes:", nodes.value())
+    print()
+
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:",num_solutions)
 
 k4p2gracefulgraph2()
   

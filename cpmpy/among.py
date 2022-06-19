@@ -27,7 +27,11 @@ def among_test():
   # constraints  
   model = Model(among(m, x,v))
 
-  ortools_wrapper2(model,[x])
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+  num_solutions = ss.solveAll(display=x)
+  print("num_solutions:", num_solutions)
 
 
 among_test()

@@ -70,20 +70,18 @@ def golomb(size=8):
           if i < j and j < k and [i,j] < [k,l]:
             model += (marks[j] - marks[i] != marks[l] - marks[k])
 
-
-  ortools_wrapper_opt(model,[marks])
-  
-  # ss = CPM_ortools(model)
+ 
+  ss = CPM_ortools(model)
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-  # # ss.ort_solver.parameters.search_branching = ort.AUTOMATIC_SEARCH
-  # # ss.ort_solver.parameters.cp_model_presolve = False
-  # # ss.ort_solver.parameters.linearization_level = 0
-  # ss.ort_solver.parameters.cp_model_probing_level = 0
-  # 
-  # if ss.solve():
-  #   print("marks:",marks.value())
-  #   print("status:", ss.status())
-  # print()
+  # ss.ort_solver.parameters.search_branching = ort.AUTOMATIC_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+  ss.ort_solver.parameters.num_search_workers = 12
+  if ss.solve():
+    print("marks:",marks.value())
+    print("status:", ss.status())
+  print()
 
 
 size = 8

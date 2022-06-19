@@ -51,12 +51,7 @@ def map_model():
             color[Germany] != color[Denmark]]
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("color:", color.value())
-    get_different_solution(ss,color)
-
+  num_solutions = ss.solveAll(display=color)
   print("num_solutions:",num_solutions)
 
 map_model()

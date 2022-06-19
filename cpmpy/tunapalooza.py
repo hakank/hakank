@@ -98,18 +98,16 @@ def tunapalooza():
                  reggae != Korrupt,
                  reggae != information_booth,
                  ])
-  
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+
+  def print_sol():
     print("rockband :", rockband)
     print("genre    :", genre.value())
     print("rendevouz:", rendevouz.value())
     print()
-    get_different_solution(ss,list(genre)+list(rendevouz))
-    
-    print("num_solutions:", num_solutions)
+
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
+  print("num_solutions:", num_solutions)
 
 tunapalooza()
 

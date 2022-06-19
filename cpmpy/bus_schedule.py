@@ -40,23 +40,25 @@ def bus_schedule(num_buses_check=0):
     # The demand "around the clock"
     model += [x[time_slots-1] + x[0] == demands[time_slots-1]]
 
+    def print_sol():
+        print("num_buses: ", num_buses.value())
+        print("x:", x.value())
+        
 
-    s = CPM_ortools(model)    
-    if s.solve():
+    ss = CPM_ortools(model)    
+    if ss.solve():
         print("num_buses: ", num_buses.value())
         print("x:", x.value())
         if num_buses_check > 0:
-            cb = ORT_simple_printer(s._varmap,x,0)
-            ort_status = s.ort_solver.SearchForAllSolutions(s.ort_model, cb)
-            print("Nr solutions:", cb.solcount)
+            num_solutions = ss.solveAll(display=print_sol)
+            print("Nr solutions:", num_solutions)
     else:
         print("No solution")
 
     print()
-    print("Num conflicts:", s.ort_solver.NumConflicts())
-    print("NumBranches:", s.ort_solver.NumBranches())
-    print("WallTime:", s.ort_solver.WallTime())
-
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
     print()
     
     # And return the value for usage later

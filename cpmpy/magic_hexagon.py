@@ -61,7 +61,7 @@ def magic_hexagon():
         c < h
         )
 
-    ortools_wrapper(model,[LD])
+    model.solveAll(display=LD)
 
 
 magic_hexagon()

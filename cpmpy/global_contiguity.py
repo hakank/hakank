@@ -54,6 +54,9 @@ def global_contiguity_test(n=4):
 
   model = Model(global_contiguity(x,start,end))
 
+  def print_sol():
+    print("x:",x.value(), "start:",start.value(),"end:",end.value())    
+
   ss = CPM_ortools(model)
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
   # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
@@ -61,12 +64,7 @@ def global_contiguity_test(n=4):
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
   
-  num_solutions = 0 
-  while ss.solve():
-    num_solutions += 1
-    print("x:",x.value(), "start:",start.value(),"end:",end.value())
-    get_different_solution(ss,x)
-
+  num_solutions = ss.solveAll(display=print_sol) 
   print("num_solutions:", num_solutions  )
 
                 

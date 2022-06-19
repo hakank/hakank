@@ -77,10 +77,7 @@ def tourist_site_competition():
   #   for s in range(num_sites):
   #     model += [(x[s,j] == 1) == member_of(sol,s,judges_where[j]))
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for j in range(num_judges):
       print(judges_s[j], ":",end=" ")
       for s in range(num_sites):
@@ -88,8 +85,10 @@ def tourist_site_competition():
           print(sites_s[s],end=" ")
       print()
     print()
-    get_different_solution(ss,x.flat)
+   
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

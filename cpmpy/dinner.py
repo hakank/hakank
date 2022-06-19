@@ -41,16 +41,11 @@ def dinner():
     grandparents + parents + children == 20
     ])
 
+  def print_sol():
+    print("grandparents:",grandparents.value(), "parents:",parents.value(), "children:",children.value())    
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  xs = []
-  while ss.solve():
-    num_solutions += 1
-    print("grandparents:",grandparents.value(), "parents:",parents.value(), "children:",children.value())
-    get_different_solution(ss,[grandparents,parents,children])
-
-  print()
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)  
   print()
 

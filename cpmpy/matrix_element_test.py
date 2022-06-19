@@ -110,18 +110,15 @@ def matrix_element_test(problem,method="matrix_element"):
             ((a != 0) | (b != 0))
             ] 
 
-    num_solutions = 0
+
+    # ss = CPM_ortools(model)
     ss = CPM_ortools(model)
-    while ss.solve() is not False:
-        num_solutions += 1
-        print(x.value())
-        print("Num conflicts:", ss.ort_solver.NumConflicts())
-        print("NumBranches:", ss.ort_solver.NumBranches())
-        print("WallTime:", ss.ort_solver.WallTime())
-
-        get_different_solution(ss,x_flat)
-
+    num_solutions = ss.solveAll(display=x)    
     print("number of solutions:", num_solutions)
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
+    
     
 # This is a fairly simple Hidato instance
 # (See hidato.py for other instances)

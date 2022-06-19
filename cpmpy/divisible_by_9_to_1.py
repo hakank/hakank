@@ -54,11 +54,7 @@ def divisible_by_9_to_1(base=10,print_model=False):
   if print_model:
     print("model:", model)
 
-  # solution and search
-  num_solutions = 0
-  ss = CPM_ortools(model)
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     xx = x.value()
     tt = t.value()
     print("x: ", xx)
@@ -66,9 +62,11 @@ def divisible_by_9_to_1(base=10,print_model=False):
     print("number base 10: %i base %i: %s" % (tt[0],
                                               base,
                                               "".join([digits_str[xx[i]] for i in range(n)])))
-    get_different_solution(ss, x)
-    print()
 
+  ss = CPM_ortools(model)
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0  
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 # base 16 is the maximum allowed value

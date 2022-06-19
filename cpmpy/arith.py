@@ -25,10 +25,6 @@ from cpmpy.solvers import *
 from ortools.sat.python import cp_model as ort
 
 
-def print_solution(a):
-  relops = ["<","<=","=",">=",">","!="]
-  print(a[0].value(), relops[a[1][0].value()], a[1][1].value())
-
 def arith_test():
 
   relops = ["<","<=","=",">=",">","!="]
@@ -38,12 +34,18 @@ def arith_test():
   y = intvar(0,9,name="y")
   relop = intvar(0,len(relops)-1,name="relop")
 
+
   # constraints
   model = Model([y <= 3,
                  arith(x, relop, y)
                  ])
 
-  ortools_wrapper2(model,[x,[relop,y]],print_solution)
+  def print_sol():
+    relops = ["<","<=","=",">=",">","!="]
+    print(x.value(), relops[y.value()], y.value())
+
+  num_solutions = model.solveAll(display=print_sol)
+  print("num_solutions:", num_solutions)
 
 
 arith_test()

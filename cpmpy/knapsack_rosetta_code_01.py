@@ -96,10 +96,7 @@ def knapsack_rosetta_code_01(items,max_total_weight):
 
   model.maximize(total_value)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  if ss.solve() is not False:
-    num_solutions += 1
+  def print_sol(): 
     print("x:",x.value())
     print("We pick these items:")
     print(f"  {'Item':22s} {'Weight':7s} {'Value':6s}")
@@ -108,10 +105,12 @@ def knapsack_rosetta_code_01(items,max_total_weight):
     print("Total_weight:",total_weight.value())
     print("Total_value:",total_value.value())
     print()
-    get_different_solution(ss,x)
+  
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:",num_solutions)
+
 
 #          Item          Weight   Value
 items = [["map",           9,      150],

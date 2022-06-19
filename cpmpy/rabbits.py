@@ -26,15 +26,12 @@ def rabbit():
                  4*rabbits + 2 * pheasants == 24
                  ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("rabbits:", rabbits.value())
     print("pheasants:", pheasants.value())        
-    get_different_solution(ss,[rabbits,pheasants])
 
-  print()
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

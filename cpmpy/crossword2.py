@@ -50,6 +50,12 @@ import numpy as np
 from cpmpy_hakank import *
 from collections import defaultdict
 
+def print_solution(A, E, alpha, n, word_len):
+    for ee in range(n):
+        print(f"{ee:2d}: ({E[ee].value():2d})", end=" ")
+        for ii in range(word_len):
+            print(alpha[A[ee,ii].value()],end=" ")
+        print()
 
 def crossword():
 
@@ -115,21 +121,14 @@ def crossword():
     for I in range(num_overlapping):
         model += [A[E[overlapping[I][0]], overlapping[I][1]] ==  A[E[overlapping[I][2]], overlapping[I][3]]]
 
-    num_solutions = 0
-    ss = CPM_ortools(model)
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print(E.value())
         print_solution(A,E,alpha, n, word_len)
-        get_different_solution(ss,E)
 
+
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)    
     print("\nnumber of solutions:", num_solutions)
 
-def print_solution(A, E, alpha, n, word_len):
-    for ee in range(n):
-        print(f"{ee:2d}: ({E[ee].value():2d})", end=" ")
-        for ii in range(word_len):
-            print(alpha[A[ee,ii].value()],end=" ")
-        print()
 
 crossword()

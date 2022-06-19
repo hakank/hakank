@@ -61,16 +61,14 @@ def crypta():
              10 * A + 100 * G + 1000 * F + 10000 * H + 100000 * D + Sr2 == C +
              10 * A + 100 * G + 1000 * E + 10000 * J + 100000 * G]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
   str = "ABCDEFGHIJ"
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     for (letter, val) in [(str[i], LD[i].value()) for i in range(len(LD))]:
       print("%s: %i" % (letter, val))
     print()
-    get_different_solution(ss,LD)
-
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 crypta()

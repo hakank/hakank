@@ -68,16 +68,13 @@ def arch_friends():
             theshoepalace + 2 == suedesandals
             ]
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("shoes:",shoes.value())
     print("store:",store.value())
     print()
-    get_different_solution(ss,list(shoes)+list(store))
-
-  print()
+    
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 arch_friends()

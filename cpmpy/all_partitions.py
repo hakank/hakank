@@ -16,14 +16,7 @@ from cpmpy_hakank import *
 from collections import defaultdict
 
 
-def print_solution(a):
-  x = a[0]
-  n = len(x)-1
-  xs = x.value()
-  print([ i for i in range(1,n+1) for _ in range(xs[i]) if xs[i] > 0])
-  
-
-def all_partitions(n=4,print_sol=True):
+def all_partitions(n=4,print_solution=True):
   print("n:",n)
   
   # variables
@@ -33,15 +26,19 @@ def all_partitions(n=4,print_sol=True):
                  n == sum([i*x[i] for i in range(1,n+1)])
                  ])
 
-  if print_sol:
-    ortools_wrapper2(model,[x],print_solution)
+  def print_sol():
+    xs = x.value()
+    print([ i for i in range(1,n+1) for _ in range(xs[i]) if xs[i] > 0])
+
+  if print_solution:
+    num_solutions = model.solveAll(display=print_sol)
   else:
-    num_solutions=ortools_wrapper_count_solutions(model,[x])
-    print(f"{num_solutions} solutions")
+    num_solutions = model.solveAll()
+  print(f"{num_solutions} solutions")
 
 n = 10
 all_partitions(n,True)
-
+print()
 for n in range(10,41,3):
   all_partitions(n,False)
   print()

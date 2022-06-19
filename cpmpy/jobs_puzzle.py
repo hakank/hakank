@@ -89,15 +89,13 @@ def jobs_puzzle():
     ((actor == Steve) | (actor == Pete)),
     ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("jobs:",Jobs.value())
     print(["%s:%s" % (Jobs_s[i],person_names[Jobs[i].value()]) for i in range(2*n)])
-    get_different_solution(ss,Jobs)
+    
 
-
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

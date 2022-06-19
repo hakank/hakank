@@ -74,14 +74,8 @@ def place_number_puzzle():
         x[0] < x[n-1]
         )
 
-    num_solutions = 0
     ss = CPM_ortools(model)
-    while ss.solve(): 
-        num_solutions += 1
-        print(x.value())
-        print('Status', ss.status())
-        get_different_solution(ss,x)
-
+    num_solutions = ss.solveAll(display=x)    
     print('Number of solutions', num_solutions)
 
 

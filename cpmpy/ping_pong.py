@@ -108,27 +108,31 @@ def ping_pong():
               sum(playedB) == num_played[1],
               sum(playedC) == num_played[2])
 
-    ss = CPM_ortools(model)    
-    cb = solution_printer(ss._varmap,num_games,A,B,C)
+    lost_second_game = []
+    def print_sol():
+      for i in range(num_games):
+        print("Game {} A:{}, B:{}, C:{}".format(i+1, A[i].value(), B[i].value(), C[i].value()))
+      print()
+      # The looser of the game is the player with score == 1
+      lost_second_game.append("ABC"[[A[1].value(),B[1].value(),C[1].value()].index(1)])
 
+
+    ss = CPM_ortools(model)    
     # Flags to experiment with
     # ss.ort_solver.parameters.log_search_progress = True
-    # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
     # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
     # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
+    # ss.ort_solver.parameters.linearization_level = 0
+    # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    ort_status = ss.ort_solver.SearchForAllSolutions(ss.ort_model, cb)
-    # print(ss._after_solve(ort_status)) # post-process after solve() call...
-    print(ss.status())
-    print("Nr solutions:", cb.solcount)
+    num_solutions = ss.solveAll(display=print_sol)
+    print("Nr solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())
     print()
     
-    return cb.lost_second_game
+    return lost_second_game
 
 lost_second_game = ping_pong()
 print("lost_second_game:","".join(lost_second_game))

@@ -65,18 +65,9 @@ def four_numbers(nums,n,max_val=10,num_sols=0):
 
     model += [increasing(x)]
     
-    num_solutions = 0
     ss = CPM_ortools(model)
-    # Show all optimal solutions
-    while ss.solve() is not False:
-        num_solutions += 1
-        print("x:",x.value())
-        # print("tmp:",tmp.value())
-        if num_sols > 0 and num_solutions >= num_sols:
-            break
-        get_different_solution(ss,list(x)+list(tmp.flat))
 
-        
+    num_solutions = ss.solveAll(solution_limit=num_sols,display=x)
     print("number of solutions:", num_solutions)
     print()
 

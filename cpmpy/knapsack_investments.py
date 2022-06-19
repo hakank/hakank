@@ -136,37 +136,23 @@ def knapsack_investments(total_values_val=0):
         model += (x[not_with[i][0]-1] + x[not_with[i][1]-1] <= 1)
 
 
-    ss = CPM_ortools(model)
-    num_solutions = 0
-    if total_values == 0:
-        if ss.solve():
-            num_solutions += 1
-            print("x:", [i+1 for i in range(num_projects) if x[i].value() == 1])
-            print("total_values: ", total_values.value())
-            print("total_projects: ", total_projects.value())
-            print("total_persons: ", total_persons.value())
-            print("total_budget: ", total_budget.value())
-            print()
-            return total_values.value()
-    else:
-        # Question: Are there another solution with total_values = 2370?       
-        model += (total_values==total_value_val)
-        while ss.solve():
-            num_solutions += 1
-            # print("x:", [mod.eval(x[i]) for i in range(num_projects)])
-            print("x:", [i+1 for i in range(num_projects) if x[i].value() == 1])
-            print("total_values: ", total_values.value())
-            print("total_projects: ", total_projects.value())
-            print("total_persons: ", total_persons.value())
-            print("total_budget: ", total_budget.value())
-            print()
-            get_different_solution(ss,x)
+    def print_sol():
+        print("x:", [i+1 for i in range(num_projects) if x[i].value() == 1])
+        print("total_values: ", total_values.value())
+        print("total_projects: ", total_projects.value())
+        print("total_persons: ", total_persons.value())
+        print("total_budget: ", total_budget.value())
+        print()
         
-
+    ss = CPM_ortools(model)
+    ss.solve()
+    total_values_opt = total_values.value()
+    print("total_values_opt:", total_values_opt)
+    
+    print("All optimal solutions:")
+    ss += (total_values==total_values_opt)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)
 
-print("Get the optimal solution:")
-total_values = knapsack_investments()
-print(f"Total values is {total_values}. Are the any more optimal solutions?")
-knapsack_investments(total_values)
+knapsack_investments()
 

@@ -84,11 +84,6 @@ from cpmpy.solvers import *
 from cpmpy_hakank import *
 
 
-def print_solution(a):
-    tables = a[0]
-    z = a[1][0]
-    print("tables:",tables.value(), "z:", z.value())
-
 def wedding_optimal_chart(guest,names,names2,problem,opt_type="maximize"):
 
     max_num_tables = problem["max_num_tables"]
@@ -133,17 +128,7 @@ def wedding_optimal_chart(guest,names,names2,problem,opt_type="maximize"):
     
     # print(model)
 
-    ss = CPM_ortools(model)
-    # ss.ort_solver.parameters.log_search_progress = True
-    # ss.ort_solver.parameters.num_search_workers = 12 
-    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-    # ss.ort_solver.parameters.cp_model_presolve = False
-    ss.ort_solver.parameters.linearization_level = 0
-    ss.ort_solver.parameters.cp_model_probing_level = 0
-
-    num_solutions = 0
-    while ss.solve() is not False:
-        num_solutions += 1
+    def print_sol():
         print("tables:",tables.value())
         print("z:",z.value())
         print()
@@ -159,16 +144,20 @@ def wedding_optimal_chart(guest,names,names2,problem,opt_type="maximize"):
             print()
         print()
 
-        print(ss.status())
-        print("Num conflicts:", ss.ort_solver.NumConflicts())
-        print("NumBranches:", ss.ort_solver.NumBranches())
-        print("WallTime:", ss.ort_solver.WallTime())
-        print()
-        if opt_type != None:
-            break
-        get_different_solution(ss,list(tables)+[z])
 
+    ss = CPM_ortools(model)
+    # ss.ort_solver.parameters.log_search_progress = True
+    # ss.ort_solver.parameters.num_search_workers = 12 
+    # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+    # ss.ort_solver.parameters.cp_model_presolve = False
+    ss.ort_solver.parameters.linearization_level = 0
+    ss.ort_solver.parameters.cp_model_probing_level = 0
+
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:",num_solutions)
+    print("Num conflicts:", ss.ort_solver.NumConflicts())
+    print("NumBranches:", ss.ort_solver.NumBranches())
+    print("WallTime:", ss.ort_solver.WallTime())
     
 
 

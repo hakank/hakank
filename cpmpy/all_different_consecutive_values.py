@@ -33,7 +33,8 @@ def all_different_consecutive_values_test(n=4,m=10):
   
     model = Model(all_different_consecutive_values(x))
   
-    ortools_wrapper2(model,[x])
+    num_solutions = model.solveAll(display=x)
+    print("num_solutions:", num_solutions)
 
 
 all_different_consecutive_values_test()

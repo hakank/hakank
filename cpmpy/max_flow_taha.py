@@ -71,9 +71,7 @@ def max_flow_taha():
   if len(s2) > 0:
     model += (sum([x[end, j] for j in nodes if c[end][j] > 0]) == 0)
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  if ss.solve():
+  def print_sol():
     print("total:", total.value())
     print("in_flow:", in_flow.value())
     print("out_flow:", out_flow.value())
@@ -82,6 +80,10 @@ def max_flow_taha():
         print("%2i" % x[i, j].value(), end=" ")
       print()
     print()
+
+
+  ss = CPM_ortools(model)
+  ss.solveAll(display=print_sol)
 
 
 max_flow_taha()

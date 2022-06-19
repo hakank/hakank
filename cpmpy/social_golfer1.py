@@ -27,8 +27,6 @@ other golfer twice (i.e. maximum socialisation is achieved).
 This model is a translation of the OPL code from 
 http://www.dis.uniroma1.it/~tmancini/index.php?currItem=research.publications.webappendices.csplib2x.problemDetails&problemid=010
 
-
-
 This cpmpy model was written by Hakan Kjellerstrand (hakank@gmail.com)
 See also my cpmpy page: http://hakank.org/cpmpy/
   
@@ -90,24 +88,7 @@ def social_golfer1(weeks=4,groups=3,groupSize=3,num_sols=1):
   
   # print(model)
 
-  # Show all solution with simple presentation
-  if num_sols == 0:
-    ortools_wrapper(model,assign)
-    return
-
-  # This is for a nice presentation
-  ss = CPM_ortools(model)
-  # ss.ort_solver.parameters.log_search_progress = True
-  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-  ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-  # ss.ort_solver.parameters.cp_model_presolve = False
-  ss.ort_solver.parameters.linearization_level = 0
-  # ss.ort_solver.parameters.cp_model_probing_level = 0
-
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print(f"solution #{num_solutions}")
+  def print_sol():
     print("assign:")
     assign_val = assign.value()
     print(assign_val)
@@ -132,10 +113,17 @@ def social_golfer1(weeks=4,groups=3,groupSize=3,num_sols=1):
     for g in range(1,golfers+1):
       print(f"Golfer {g} meets:", sorted(meets[g]))
     print(flush=True)
-    if num_sols > 0 and num_solutions >= num_sols:
-      break
-    get_different_solution(ss,assign.flat)
 
+
+  ss = CPM_ortools(model)
+  # ss.ort_solver.parameters.log_search_progress = True
+  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+
+  num_solutions = ss.solveAll(solution_limit=num_sols,display=print_sol)
   print("num_solutions:", num_solutions)
   print("Num conflicts:", ss.ort_solver.NumConflicts())
   print("NumBranches:", ss.ort_solver.NumBranches())

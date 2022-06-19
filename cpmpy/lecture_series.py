@@ -96,18 +96,16 @@ def lecture_series():
                  ]
                  )
 
-
-  ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-      num_solutions += 1
+  def print_sol():
       print("days      :", list(days))
       print("lectures  :", lectures.value())
       print("first_name:", first_name.value())
       print("last_name :", last_name.value())
       print()
-      get_different_solution(ss,list(lectures)+list(first_name)+list(last_name))
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
 
 

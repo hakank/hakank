@@ -127,20 +127,6 @@ def weak_overlap(X1, X2, Y1, Y2):
   return [X1 <= Y2,
           Y1 <= X2]
 
-#
-# Pretty print the solutions.
-# 
-def print_solution(a):
-  All = a[0]
-  print([x.value() for x in All])
-  J1,J2,M1,M2,B1,B2,S1,S2,W1,W2 = All
-  print(f"Jones  : {J1.value()}..{J2.value()}")
-  print(f"Brown  : {B1.value()}..{B2.value()}")
-  print(f"Smith  : {S1.value()}..{S2.value()}")
-  print(f"White  : {W1.value()}..{W2.value()}")
-  print(f"Meeting: {M1.value()}..{M2.value()}")
-
-
 def temporal_reasoning(opt=True):
   
   # Coding:
@@ -206,23 +192,8 @@ def temporal_reasoning(opt=True):
 
   if opt:
     model.minimize(Z)
-  else:
-    # Print all actions and return
-    ortools_wrapper(model,[All],print_solution)
-    return
-    
-  # ortools_wrapper(model,sets,print_solution,num_sols)
-  ss = CPM_ortools(model)
-  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
-  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
-  # ss.ort_solver.parameters.cp_model_presolve = False
-  # ss.ort_solver.parameters.linearization_level = 0
-  # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = 0
-  if ss.solve() is not False:
-    num_solutions += 1
-    print(f"Solution #{num_solutions}")
+  def print_sol():
     print([a.value() for a in All])
     print(f"Jones  : {J1.value()}..{J2.value()}")
     print(f"Brown  : {B1.value()}..{B2.value()}")
@@ -232,6 +203,15 @@ def temporal_reasoning(opt=True):
     print("Z:",Z.value())
     print()
 
+    
+  ss = CPM_ortools(model)
+  # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions
+  # ss.ort_solver.parameters.search_branching = ort.PORTFOLIO_SEARCH
+  # ss.ort_solver.parameters.cp_model_presolve = False
+  ss.ort_solver.parameters.linearization_level = 0
+  ss.ort_solver.parameters.cp_model_probing_level = 0
+
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions  )
 
 

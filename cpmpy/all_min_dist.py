@@ -38,13 +38,7 @@ def all_min_dist_test(n=4,c=2):
   model += [increasing(x)] # symmetry breaking
 
   ss = CPM_ortools(model)
-  num_solutions = 0
-  while ss.solve():
-    num_solutions += 1
-    print("x:", x.value())
-    print()
-    get_different_solution(ss,x)
-
+  num_solutions = ss.solveAll(display=x)
   print("num_solutions:", num_solutions)
 
 n = 4

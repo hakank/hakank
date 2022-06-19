@@ -45,17 +45,16 @@ def cur_num():
  
       ])
 
-  ss = CPM_ortools(model)
-  num_solutions = 0
   cur_nums = []
-  while ss.solve():
-    num_solutions += 1
+  def print_sol():
     print("s:", s.value())
     x_val = x.value()
     if x_val != 48:
         cur_nums.append(x_val)
-    get_different_solution(ss,s)
+    
 
+  ss = CPM_ortools(model)
+  num_solutions = ss.solveAll(display=print_sol)
   print("num_solutions:", num_solutions)
   print("The other cur_nums (besides 48):", cur_nums)
 

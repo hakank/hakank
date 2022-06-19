@@ -66,18 +66,11 @@ def who_killed_agatha():
     print(model)
     print()
 
-    # Solve and print
-    num_solutions = 0
-    ss = CPM_ortools(model)    
-    while ss.solve():
-        num_solutions += 1
+    def print_sol():
         print("killer:",who[killer.value()])
-        vars = []
-        vars.append([hates[i,j] for i in range(n) for j in range(n)])
-        vars.append([richer[i,j] for i in range(n) for j in range(n)])
-        vars.append([killer])
-        get_different_solution(ss,list(hates.flat)+list(richer.flat)+[killer])
-
+        
+    ss = CPM_ortools(model)
+    num_solutions = ss.solveAll(display=print_sol)
     print("num_solutions:", num_solutions)
 
 
