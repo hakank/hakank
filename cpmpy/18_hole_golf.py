@@ -35,12 +35,13 @@ from cpmpy_hakank import *
 def g():x=intvar(3,5,shape=18);m=Model(sum(x)==72);ortools_wrapper2(model,[x])
 
 
-def eighteen_hole_golf():
+def eighteen_hole_golf(num_sols=0):
     x = intvar(3,5,shape=18,name="x")
     model = Model(sum(x) == 72)  
-    num_solutions = model.solveAll(display=x)
+    num_solutions = model.solveAll(solution_limit=num_sols, display=x)
     print("num_solutions:", num_solutions)
 
-eighteen_hole_golf()
+# eighteen_hole_golf(0) # Generate all solutions
+eighteen_hole_golf(123)
 
 
