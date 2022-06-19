@@ -39,7 +39,7 @@ def eighteen_hole_golf():
     x = intvar(3,5,shape=18,name="x")
     model = Model(sum(x) == 72)  
     num_solutions = model.solveAll(display=x)
-    println("num_solutions:", num_solutions)
+    print("num_solutions:", num_solutions)
 
 eighteen_hole_golf()
 
