@@ -1,0 +1,114 @@
+/* 
+
+  The 13-Link Chain Puzzle in Picat.
+
+  From
+  http://wordplay.blogs.nytimes.com/2012/10/29/chain/
+  """
+  The 13-Link Chain Puzzle
+  You have a balance scale and a single chain with thirteen 
+  links. Each link of the chain weighs one ounce. How many links 
+  of the chain do you need to break in order to be able to weigh 
+  items from 1 to 13 ounces in 1-ounce increments?
+  """
+
+  Discussion: 
+  http://ayecapitalist.com/2012/10/29/the-13-link-chain-puzzle-and-other-fun-posers/#comments
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+/*
+  opt = 4
+  weights = [0,1,2,4,6]
+    1: [0,1,0,0,0]
+    2: [0,0,1,0,0]
+    3: [0,1,1,0,0]
+    4: [0,0,0,1,0]
+    5: [0,1,0,1,0]
+    6: [0,0,1,1,0]
+    7: [0,1,1,1,0]
+    8: [0,0,1,0,1]
+    9: [0,1,1,0,1]
+   10: [0,0,0,1,1]
+   11: [0,1,0,1,1]
+   12: [0,0,1,1,1]
+   13: [0,1,1,1,1]
+
+*/
+go =>
+  nolog,
+  N = 13,
+  weights(N, Weights,X,Opt),
+  println(opt=Opt),
+  println(weights=Weights),
+  foreach(I in 1..N)
+    printf("%3d: %w\n",I, X[I].to_list)
+  end,
+  nl.
+
+go2 =>
+  nolog,
+  member(N,1..100),
+  println(n=N),
+  weights(N, Weights,X,Opt),
+  println(opt=Opt),
+  println(weights=Weights),
+  foreach(I in 1..N)
+    printf("%3d: %w\n",I, X[I].to_list)
+  end,
+  nl,
+  fail,
+  nl.
+
+
+
+weights(N, Weights,X,Opt) => 
+
+  M1 = cond(N >= 10, 1 + (ceiling(sqrt(N))), N),
+  M2 = cond(N >= 10, 1 + (N div 2), N),
+  M3 = cond(N >= 10, 1, 2), % domain of x
+ 
+  % the weights
+  Weights = new_list(M1),
+  Weights :: 0..M2,
+
+  X = new_array(N,M1),
+  X :: 0..M3,
+
+  T #= sum([Weights[J] #> 0 : J in 1..M1]),
+  T2 #= max([X[I,J] : I in 1..N, J in 1..M1]),
+
+  sum([max([X[I,J] : I in 1..N])*Weights[J] : J in 1..M1 ]) #= N,
+
+  N #= sum(Weights),
+
+  foreach(I in 1..N)
+    I #= sum([X[I,J]*Weights[J] : J in 1..M1])
+  end,
+
+  % different symmetry breaking and speed ups
+  increasing(Weights),
+  alldifferent_except_0(Weights),
+  
+  foreach(J in 1..M1)
+    Weights[J] #= 0 #<=> sum([X[I,J] : I in 1..N]) #= 0
+  end,
+
+  % Symmetry breaking for larger N
+  if N > 100 then
+    foreach(I in 2..M1)
+      Weights[I] #>= Weights[I-1]*2-1
+    end
+  end,
+
+  Opt #= T*T2,
+
+  Vars = X.vars ++ Weights,
+  solve($[min(Opt),degree,updown],Vars).

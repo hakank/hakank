@@ -1,0 +1,231 @@
+/* 
+
+  Shortest path problem (graph representation) in Picat.
+
+  Example from the 3 jugs problem (see 3_jugs.*pi).
+
+  This is a port of my MiniZinc model shortest_path_graph.mzn  
+
+  (Cf all_paths_graph.pi.)
+
+  
+  Here are the solutions for Start = 1 and Target = 1..15 (go2/0):
+
+  target = 1
+  path_length = 1
+  x = [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1]
+
+  target = 2
+  path_length = 2
+  x = [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2]
+
+  target = 3
+  path_length = 3
+  x = [1,2,3,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,3]
+
+  target = 4
+  path_length = 4
+  x = [1,2,3,4,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,3,4]
+
+  target = 5
+  path_length = 3
+  x = [1,9,5,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,9,5]
+
+  target = 6
+  path_length = 4
+  x = [1,9,5,6,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,9,5,6]
+
+  target = 7
+  path_length = 3
+  x = [1,9,7,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,9,7]
+
+  target = 8
+  path_length = 4
+  x = [1,9,7,8,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,9,7,8]
+
+  target = 9
+  path_length = 2
+  x = [1,9,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,9]
+
+  target = 10
+  path_length = 3
+  x = [1,2,10,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,10]
+
+  target = 11
+  path_length = 4
+  x = [1,2,10,11,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,10,11]
+
+  target = 12
+  path_length = 3
+  x = [1,2,12,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,12]
+
+  target = 13
+  path_length = 4
+  x = [1,2,12,13,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,12,13]
+
+  target = 14
+  path_length = 3
+  x = [1,2,14,0,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,14]
+
+  target = 15
+  path_length = 4
+  x = [1,2,14,15,0,0,0,0,0,0,0,0,0,0,0]
+  path = [1,2,14,15]
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go => 
+  data(1,N,Start,_Target,Graph),
+  shortest_path_solve(N,Start,Target,Graph, X,PathLength),
+  nl.
+
+% Checking all paths from Start = 1 and Target = 1..15
+go2 =>
+  data(1,N,Start,_Target,Graph),
+
+  member(Target,1..15),
+  println(target=Target),
+  shortest_path_solve(N,Start,Target,Graph, X,PathLength),
+  nl,
+  fail,
+  nl.
+
+%
+% Solve and show a shortest path problem.
+%
+shortest_path_solve(N,Start,Target,Graph, X,PathLength) =>
+  X = new_list(N),
+  X :: 0..N,
+
+  PathLength #= sum([X[I] #> 0 : I in 1..N]),
+  
+  all_different_except_0(X),
+  X[1] #= Start,
+  last_not_0(N,X, Target),
+  all_paths(X, Graph),
+
+  solve($[constr,split,min(PathLength)],X),
+
+  println(path_length=PathLength),
+  println(x=X),
+  println(path=[X[I] : I in 1..N, X[I] > 0]),
+  nl.
+
+%
+% y is the last element which is > 0. All elements after y is 0
+%
+last_not_0(N,X, Y) =>
+   sum([
+       X[I] #= Y
+       #/\
+       % all elements in x after y are 0
+       sum([(X[J] #= 0) : J in I+1..N]) #= N-I
+       #/\
+       % all elements in x before y are > 0
+       sum([X[J] #> 0 : J in 1..I]) #= I
+      : I in 1..X.len
+   ]) #> 0.
+
+
+%
+% all_paths
+% Ensure that all paths are considered.
+%
+all_paths(X, Graph) => 
+  foreach(I in 2..X.len) 
+     X[I] #= 0
+     #\/
+     (
+       X[I] #> 0
+       #/\
+       X[I-1] #> 0
+       #/\
+       sum([
+         (Graph[J,1] #= X[I-1] #/\ Graph[J,2] #= X[I])
+         #\/
+         (Graph[J,1] #= X[I]   #/\ Graph[J,2] #= X[I-1] )
+         : J in 1..Graph.len]) #> 0
+     )
+  end.
+
+% directed graph
+data(1,N,Start,Target,Graph) => 
+  N = 15,
+  Start = 1,
+  Target = 15,
+  % NumEdges = 21,
+  Graph = {
+     { 1,2},
+     { 1,9},
+     { 2,3},
+     { 3,4},
+     { 3,9},
+     { 4,5},
+     { 5,6},
+     { 5,9},
+     { 6,7},
+     { 7,8},
+     { 7,9},
+     { 8,15},
+     { 9,10},
+     {10,2},
+     {10,11},
+     {11,12},
+     {12,2},
+     {12,13},
+     {13,14},
+     {14,2},
+     {14,15}}.
+
+
+% Undirected graph (just testing)
+data(2,N,Start,Target,Graph) => 
+  N = 15,
+  % NumEdges = 42,
+  Start = 1,
+  Target = 15,
+  Graph = 
+     {{1,2}, {2,1},
+      {1,9}, {9,1},
+      {2,3}, {3,2},
+      {3,4}, {4,2},
+      {3,9}, {9,3},
+      {4,5}, {5,4},
+      {5,6}, {6,5},
+      {5,9}, {9,5},
+      {6,7}, {7,6},
+      {7,8}, {8,7},
+      {7,9}, {9,7},
+      {8,15}, {15,8},
+      {9,10}, {10,9},
+     {10,2}, {2,10},
+     {10,11}, {11,10},
+     {11,12}, {12,11},
+     {12,2},  {2,12},
+     {12,13}, {13,12},
+     {13,14}, {14,13},
+     {14,2},  {2,14},
+     {14,15}, {15,14}}.

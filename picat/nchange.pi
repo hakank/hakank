@@ -1,0 +1,123 @@
+/* 
+
+  Global constraint nchange in Picat.
+
+  From http://www.it.uu.se/research/group/astra/CTcourse03/Slides/Routing.pdf
+  page 48
+  """
+  NCHANGE is the number of times that CTR holds on
+  consecutive variables of the collection VARIABLES.
+  
+  nchange(3,[4,4,3,4,1])
+  """
+  since, 4 != 3, 3!=4,  4 != 1 (three changes)
+
+  See also  Global Constraint Catalogue 
+  http://www.emn.fr/x-info/sdemasse/gccat/Cchange.html
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 5, % size of arrays
+  
+  X = new_list(N),
+  X :: 0..9, 
+
+  % number of changes
+  NumChanges :: 0..N-1,
+
+  X = [4,4,3,4,1],
+
+  nchange(NumChanges, X),
+  % NumChanges = 3,
+
+  % symmetry breaking
+  % increasing(X),
+
+  % Vars = X ++ CPos ++ [NumChanges],
+  Vars = X ++ [NumChanges],  
+  solve(Vars),
+
+  println(x=X),
+  println(num_changes=NumChanges),
+  % println(c_pos=CPos),
+  nl,
+  fail,
+  
+  nl.
+
+%
+% Another experiment: Using the CPos array to locate / force the changes.
+%
+go2 =>
+  N = 5, % size of arrays
+  
+  X = new_list(N),
+  X :: 0..9, 
+
+  % Testing a "secondary" constraint to locate the changes.
+  CPos = new_list(N-1),
+  CPos :: 0..1, 
+
+  % number of changes
+  NumChanges :: 0..N-1,
+
+  foreach(I in 1..N-1)
+    CPos[I] #= 1 #<=> X[I] #!= X[I+1]
+  end,
+
+  NumChanges #= sum(CPos),
+
+  % X = [4,4,3,4,1],
+
+  nchange(NumChanges, X),
+  % NumChanges = 3,
+
+  % testing the positions of the changes
+  % CPos = [0,1,1,0],
+  % Let CPos be free as well
+  nchange(1, CPos),
+  % increasing(CPos),
+
+  Vars = X ++ CPos ++ [NumChanges],
+  solve(Vars),
+
+  println(x=X),
+  println(num_changes=NumChanges),
+  println(c_pos=CPos),
+  nl,
+  fail,
+  
+  nl.
+
+
+%
+% nchange: Default compare operator is !=
+%
+nchange(C, X) =>
+  nchange_cmp(C, X, 0).
+
+%
+% nchange with compare operators:
+%   0: !=
+%   -1: x[i-1] < x[i]
+%   1: x[i-1] > x[i]
+%
+nchange_cmp(C, X, Cmp) =>
+  if     Cmp == 0 then 
+     C #= sum([X[I-1] #!= X[I] : I in 2..X.len])
+  elseif Cmp == -1 then
+     C #= sum([X[I-1] #< X[I] : I in 2..X.len])
+  elseif Cmp == 1 then
+     C #= sum([X[I-1] #> X[I] : I in 2..X.len])
+  else
+    println("Unknown Cmp operator"=Cmp)
+  end.

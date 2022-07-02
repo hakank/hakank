@@ -1,0 +1,163 @@
+/* 
+
+  Seating plan problem in Picat.
+
+  From Daniel L. Dudley (The Nutcracker Suite)
+  http://home.chello.no/~dudley/
+  """
+  *  Seating plan    (Nut # 1)
+
+  A university was to hold an examination in 5 subjects: 
+  Norwegian, German, English, French and Spanish. In each of 
+  these languages there were 4 candidates. The examination room 
+  was therefore divided into 20 cells, as shown in the figure 
+  below:
+
+            X
+            X X X X X
+            X X X X
+            X X X X
+          X X X X X
+                  X
+
+  The university's administration wanted to secure themselves 
+  against cheating. Candidates in the same language were to be 
+  completely isolated from each other, so much so that their cells 
+  were not to coincide even at the corners.
+
+  A young lecturer was given the job of finding a solution to the 
+  problem, which he did—and justly received a pat on the back from 
+  the dean. Can you earn his acclamation, too?
+
+  Now it just so happens that the dean is an ardent Prolog programmer 
+  in his spare time (how else could he make dean?) and, realizing 
+  that there could be several solutions to the problem, used his skills 
+  to find all solutions. Can you do the same (in the programming 
+  language of your choice)?  Note: "several solutions" is a 
+  gross understatement!
+
+  Source: Daniel L. Dudley
+  """
+
+  Note: There are 3240 solutions. For example:
+
+     N        
+     S G E F N
+     E F N G  
+     G S F E  
+   S F E G N  
+           S  
+
+     N        
+     S G E F N
+     E F N G  
+     G S F E  
+   G F E S N  
+           S  
+
+  (N: Norwegian, G: German, E: English, F: French, S: Spanish)
+
+
+  With symmetry breaking that N is placed in the first placeable spot (X[1,2]) it's 
+  3240 / 5 = 648 solutions.
+
+  Another symmetry breaking is to ensure that the four "out sticking" spots
+  are different: 48 solutions (including the above symmetry breaking constraint). 
+  E.g.
+     N        
+     G E N F S
+     F S G E  
+     E N F S  
+   F S G E N  
+           G  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  data(1,Data,Subjects),
+
+  SymmetryBreaking = false,
+
+  N = Data.len,
+
+  X = new_array(N,N),
+  X :: 0..N-1,
+
+  foreach(I in 1..N, J in 1..N)
+    if Data[I,J] == 0 then
+       X[I,J] #= 0
+    else 
+       X[I,J] #> 0
+    end
+  end,
+
+  foreach(I in 1..N)
+    all_different([X[I,J] : J in 1..N, Data[I,J] == 1]),
+    all_different([X[J,I] : J in 1..N, Data[J,I] == 1]) 
+
+    % a variant (not faster)
+    % all_different_except_0([X[I,J] : J in 1..N]),
+    % all_different_except_0([X[J,I] : J in 1..N])
+  end,
+  
+  % check corners
+  foreach(I in 2..N-1, J in I+1..N-1) 
+     if Data[I,J] > 0 then
+        foreach(A in {-1,0,1}, B in {-1,0,1}, not(A==0, B==0))
+          X[I+A,J+B] #!= X[I,J]
+        end
+     end
+  end,
+  
+  % ensure that there are 4 of each subject (1..5)
+  global_cardinality($[X[I,J] : I in 1..N, J in 1..N, Data[I,J] == 1], $[I-4 : I in 1..N-1]),
+
+  if SymmetryBreaking then
+    % symmetry: Norwegian is in first seatable place 
+    X[1,2] #= 1,
+
+    % The 4 "out sticking" spots should be different
+    all_different([X[1,2],X[2,6],X[5,1],X[6,5]])
+  end,
+
+  solve($[constr],X),
+
+  println("Seating:"),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if X[I,J] > 0 then
+         printf("%2w", Subjects[X[I,J]])
+      else
+         print("  ")      
+      end
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+
+%
+% data:
+% 0 -> no seat
+% 1 -> 1..5
+%
+data(1,Data,Subjects) =>
+  Data = {{0,1,0,0,0,0},
+          {0,1,1,1,1,1},
+          {0,1,1,1,1,0},
+          {0,1,1,1,1,0},
+          {1,1,1,1,1,0},
+          {0,0,0,0,1,0}},
+  % Norwegian, German, English, French and Spanish..          
+  Subjects = "NGEFS".
+

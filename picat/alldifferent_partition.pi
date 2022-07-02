@@ -1,0 +1,113 @@
+/* 
+
+  Global constraint alldifferent_partition in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_partition.html
+  """
+  Enforce all variables of the collection VARIABLES to take values that 
+  belong to distinct partitions.
+  
+  Example
+     (
+     <6, 3, 4>,
+     <
+     p-<1, 3>,
+     p-<4>,
+     p-<2, 6>
+     >
+     )
+
+  Since all variables take values that are located within distinct partitions 
+  the alldifferent_partition constraint holds.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+
+  N = 3,
+
+  ValidValues = [1,2,3,4,6],
+  MaxVal = max(ValidValues),
+  X = new_list(N),
+  X :: ValidValues,
+
+  % The partition (as a 0/1 matrix)
+  S = new_array(N,MaxVal),
+  S :: 0..1,
+
+
+  % X = [6,3,4],
+
+  % The partitions
+  % S = [
+  %      [1,3],
+  %      [4],
+  %      [2,6]
+  %     ],
+  S = {{1,0,1,0,0,0}, % 1,3
+       {0,0,0,1,0,0}, % 4,
+       {0,1,0,0,0,1}  % 2,6
+      },
+      
+  partition_set(S,ValidValues),
+
+  all_disjoint(S),
+
+  all_different_partition(X, S),
+
+  Vars = X ++ S.vars,
+  solve(Vars),
+  
+  println(x=X),
+  println("Partitions:"),
+  foreach(Row in S)
+    println([I : I in 1..MaxVal, Row[I] == 1])
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+go => true.
+
+
+all_different_partition(X, S) =>
+  M = S[1].len,
+  N = X.len,
+  all_different(X),
+  
+  foreach(I in 1..N)
+    sum([ X[K] #= S[I,J]*J : J in 1..M, K in 1..N])  #= 1
+  end.
+
+
+%
+% Ensure that all values are disjoint
+% in the boolean matrix S.
+%
+all_disjoint(S) =>
+  foreach(J in 1..S[1].len)
+    sum([S[I,J] : I in 1..S.len]) #<= 1
+  end.
+
+%
+% Ensure that all values in Values are in some of the sets
+% in the partition S.
+% 
+% Note: This might not work as expected if Partitions (S) is hardcoded
+% (and does not include all the values in Values)
+% 
+partition_set(S,Values) =>
+  all_disjoint(S),
+  foreach(J in Values)
+    sum([S[I,J] : I in 1..S.len]) #= 1
+  end.

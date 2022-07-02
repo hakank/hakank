@@ -1,0 +1,575 @@
+/* 
+
+  Rubik's cube (finding optimal number of moves) using CP in Picat.
+
+  (This is a port of my MiniZinc CP model rubiks_cube.mzn)
+  This CP version should be considered as a proof-of-concept.
+
+  This Picat model searches for optimimal number of moves for a configuration
+  of Rubik's cube.
+  
+  The representations has been inspired by the analysis in GAP 
+  (by Martin Schönert) found at
+  http://www.gap-system.org/Doc/Examples/rubik.html
+  
+  Also, GAP has been used to generate some examples.
+  For more about GAP (Groups, Algorithms, Programming), see
+  http://www.gap-system.org/
+
+  Here is the layout with the numbers representing the elements:
+  
+                 +--------------+
+                 |              |
+                 |  1    2    3 |
+                 |              |
+                 |  4  top    5 |
+                 |              |
+                 |  6    7    8 |
+                 |              |
+  +--------------+--------------+--------------+--------------+
+  |              |              |              |              |
+  |  9   10   11 | 17   18   19 | 25   26   27 | 33   34   35 |
+  |              |              |              |              |
+  | 12  left  13 | 20 front  21 | 28 right  29 | 36  rear  37 |
+  |              |              |              |              |
+  | 14   15   16 | 22   23   24 | 30   31   32 | 38   39   40 |
+  |              |              |              |              |
+  +--------------+--------------+--------------+--------------+
+                 |              |
+                 | 41   42   43 |
+                 |              |
+                 | 44 bottom 45 |
+                 |              |
+                 | 46   47   48 |
+                 |              |
+                 +--------------+
+
+  
+  The generators are 
+
+  T (or U), move 1: ( 1, 3, 8, 6)( 2, 5, 7, 4)( 9,33,25,17)(10,34,26,18)(11,35,27,19)
+  L       , move 2: ( 9,11,16,14)(10,13,15,12)( 1,17,41,40)( 4,20,44,37)( 6,22,46,35)
+  F       , move 3: (17,19,24,22)(18,21,23,20)( 6,25,43,16)( 7,28,42,13)( 8,30,41,11)
+  R       , move 4: (25,27,32,30)(26,29,31,28)( 3,38,43,19)( 5,36,45,21)( 8,33,48,24)
+  E       , move 5: (33,35,40,38)(34,37,39,36)( 3, 9,46,32)( 2,12,47,29)( 1,14,48,27)
+  B (or D), move 6: (41,43,48,46)(42,45,47,44)(14,22,30,38)(15,23,31,39)(16,24,32,40)
+  
+  The group (cube) is generated in GAP with those generators:
+  
+  gap> cube := Group(
+    ( 1, 3, 8, 6)( 2, 5, 7, 4)( 9,33,25,17)(10,34,26,18)(11,35,27,19),
+    ( 9,11,16,14)(10,13,15,12)( 1,17,41,40)( 4,20,44,37)( 6,22,46,35),
+    (17,19,24,22)(18,21,23,20)( 6,25,43,16)( 7,28,42,13)( 8,30,41,11),
+    (25,27,32,30)(26,29,31,28)( 3,38,43,19)( 5,36,45,21)( 8,33,48,24),
+    (33,35,40,38)(34,37,39,36)( 3, 9,46,32)( 2,12,47,29)( 1,14,48,27),
+    (41,43,48,46)(42,45,47,44)(14,22,30,38)(15,23,31,39)(16,24,32,40));
+
+  cube.1 is the first generator (T), cube.2 is the second (L), etc.
+
+  To generate a problem in GAP for this MiniZinc model use ListPerm(..., 48) to
+  generate the list. E.g.
+  
+     gap> r := cube.1^2*cube.2^2*cube.3^2*cube.4^2*cube.5^2*cube.6^2; ListPerm(r,48);
+     (1,48,8)(2,47)(4,44)(5,45)(6,46,43)(7,42)(9,32,25)(10,15)(11,14,30)(13,29,28)(17,40,24)(18,23)(19,35,38)(20,36,21)(26,31)(34,39)
+     [ 48, 47, 3, 44, 45, 46, 42, 1, 32, 15, 14, 12, 29, 30, 10, 16, 40, 23, 35, 36, 20, 22, 18, 17, 9, 31, 27, 13, 28, 11, 26, 25, 33, 39, 38, 21, 37, 19, 34, 24, 41, 7, 6, 4, 5, 43, 2, 8 ]
+  
+
+  Notes:
+  * In this model we search for the minimum number of moves given a
+    specific problem to the 1..48 positions. This might be harder than necessary...
+
+  * We use only the 6 basic moves and theirs inverses (+ a no op move), 
+    but no special combined moves beside that (such as uses of commutators 
+    or special Cubist heuristics etc).
+  
+  * This is perhaps not the most effective way of solving a random setup. 
+    The interesting part is - IMHO - when one ask questions like: 
+     - Give me a legal (solvable) configuration that places "1" in position 
+       3, and "2" in position 4 and then solve it. See below for some examples.
+     - or - which is one of the advantages of most CP systems - when one want to 
+       see all possible solutions, e.g. for a given number of moves to a problem
+       instance.
+
+  * I'm not really a Cubist so some of the used terms might confuse.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util,datetime.
+% import sat.
+import cp.
+
+main => go.
+
+main(ARGS) =>
+  Problem = ARGS[1].to_int,
+  Problem != 2,
+  nolog,
+  nl,nl,nl,
+  flush(stdout),
+  problem(Problem,Init),
+  println(problem=Problem),
+  println(current_time()),
+  flush(stdout),
+  time(rubiks_cube(Init, X,Operations,CheckIx)),
+  flush(stdout),  
+  print_solution(Init,X,Operations,CheckIx),
+  nl,nl,nl,
+  flush(stdout),
+
+  nl.
+
+go =>
+  nolog,
+  Problem = 5,
+  println(problem=Problem),
+  problem(Problem,Init),
+
+  Timeout = 30_000, % 60s
+  % rubiks_cube(Init, X,Operations,CheckIx),
+  time_out(time(rubiks_cube(Init, X,Operations,CheckIx)),Timeout,Status),
+  println(status=Status),
+  if Status == success then
+    print_solution(Init,X,Operations,CheckIx)
+  end,
+  nl,
+  nl.
+
+
+go2 =>
+  nolog,
+  Timeout = 60000, % 60s timeout
+  % Timeout = 10_000, % 10s timeout  
+  problem(Problem,Init),
+  Problem != 2,
+  println(problem=Problem),
+  println(current_time()),
+  flush(stdout),
+  time_out(time(rubiks_cube(Init, X,Operations,CheckIx)),Timeout,Status),
+  println(status=Status),
+  if Status == success then
+    print_solution(Init,X,Operations,CheckIx)
+  end,
+  nl,
+  flush(stdout),
+  fail,
+
+  nl.
+
+/* 
+  Run via external command since SAT doesn't like time_out/3.
+
+  Timeout 60s
+  Instance          CP                       SAT
+                    constr/split             
+  ------------------------------------------------------------
+   1                0.77                     7.066    
+   #2               -                        -
+   3                0.756                    7.403    
+   4                0.958                    8.454
+   5                17.6                    23.321 
+   6                to                      to
+   7                0.753                    7.555
+   8                to                      to
+   9                to                      to
+  10 (unsat)        to                      to
+  11                1.093                   48.004
+  12                to                      to
+  13                to                      52.46     
+  14                to                      to
+  15                0.908                   32.948
+  16                1.064                   11.63
+  17                to                      to
+  18                to                      to
+  19                1.064                    7.42
+  20                to                      to
+  21                to                      to
+  22                to                      to
+  23                1.009                   49.26
+  24                to                      to
+
+
+  Timeout 20min
+
+                   CP 
+                   constr/split
+  ----------------------------------------------------------------------------
+
+   1               0.758   []
+   #2              -
+   3               0.732   Ti     
+   4               0.933   R2 F2 T
+   5              17.75    Ri Li T2 L T
+   6             211.303   Ri Li T2 R L T  
+   7               0.744   E2
+   8             234.835   B Li E2 F2 R Ti 
+   9              to
+  10 (unsat)      to
+  11              1.086    T L T2
+  12            488.803    T L F R E B
+  13            135.575    Bi Ei Ri Fi Li Ti
+  14            879.494    T2 L2 F2 R2 E2 B2
+  15              0.862    Ti Li
+  16              1.031    Bi Ri B
+  17              to 
+  18              to
+  19              0.773    R2 F2
+  20              to
+  21              to
+  22              to
+  23              1.013   B2 T2 F2
+  24              to
+
+*/
+go3 =>
+  foreach(Problem in 1..24, Problem != 2)
+    problem(Problem,_Init),
+    println(problem=Problem),
+    % TimeoutSec = 60, % 60s timeout. 1min
+    TimeoutSec = 1200, % 1200s timeout. 20min
+    Command = to_fstring("time /usr/bin/timeout -k %d -s 9 %d picat -log rubiks_cube.pi %d 2>&1",TimeoutSec,TimeoutSec,Problem),
+    println(command=Command),
+    Ret = command(Command),
+    println(ret=Ret),
+    nl
+  end,
+  nl.
+
+
+print_solution(_Init,X,Operations,CheckIx) => 
+  moves(_Moves,MovesStr),
+  printf("Operations: %w\n",operations_moves=[MovesStr[O] : O in Operations,O > 1].join(' ')),
+  println(checkIx=CheckIx),
+  foreach(I in 2..Operations.len)
+    O = Operations[I], 
+    if  O > 1 then
+      printf("%s: %w\n",MovesStr[O], X[I].to_list)
+    end
+  end,
+  flush(stdout),
+  nl.
+  
+rubiks_cube(Init, X, Operations, CheckIx) =>
+
+  N = 48, % number of elements
+
+  % The number of possible moves (rows)
+  % "God's Number" is 20, i.e. the maximal number of moves 
+  % that is needed. (See http://cube20.org/ for more about this.)
+  % int: rows = 41; 
+  Rows = 21,
+
+  moves(Moves,_MovesStr),
+  NumMoves = Moves.len,
+  
+  % The results of the operations, starting with the init as first row
+  X = new_array(Rows,N),
+  X :: 1..N,
+
+  % init array
+  Init = new_list(N),
+  Init :: 1..N,
+
+  % Index of the minimum number of moves
+  % Note: it's 1+number of moves.
+  CheckIx :: 1..Rows,
+
+  % the operations
+  Operations = new_list(Rows),
+  Operations :: 1..NumMoves,
+
+  % initialize the first row of matrix.
+  Operations[1] #= 1,  
+  foreach(J in 1..N)
+    X[1,J] #= Init[J],
+    X[Rows,J] #= J % ensure the solution is at last row
+  end,
+
+  foreach(I in 1..Rows)
+    all_different([X[I,J] : J in 1..N])
+  end,
+
+  % there must be some sequence where we find the goal sequence
+  foreach(J in 1..N)
+    % X[CheckIx,J] #= J
+    matrix_element(X,CheckIx,J,J)
+  end,
+
+  % Symmetry breaking: 
+  % all the further entries after check_ix steps must also be the solution.
+  foreach(K in 2..Rows)
+     K #> CheckIx #=> (sum([X[K,J] #= J : J in 1..N]) #= N  #/\ Operations[K] #= 1)
+  end,
+
+  % Symmetry breaking: this seems to be a good booster
+  % (checking for real moves)
+  foreach(K in 2..Rows) 
+    K #< CheckIx #<=> Operations[K] #> 1
+  end,
+
+  foreach(I in 2..Rows)
+    % Perm = new_list(N),
+    % Perm :: 1..N,
+    % foreach(K in 1..N)
+    %   matrix_element(Moves,Operations[I],K,Perm[K])      
+    % end,
+    % permutation3([X[I,K] : K in 1..N], Perm, [X[I-1,K] : K in 1..N])
+    permutation3([X[I,K] : K in 1..N],
+                 [T : K in 1..N, matrix_element(Moves,Operations[I],K,T) ],
+                 [X[I-1,K] : K in 1..N])
+  end,
+
+  println(solve),
+  Vars = Operations ++ X.vars,
+  % Vars = X.vars ++ Operations ,
+  % solve($[constr,split,min(CheckIx),report(printf("CheckIx: %d\n",CheckIx))],Vars).
+  solve($[constr,split,min(CheckIx),report(printf("CheckIx: %d\n",CheckIx))],Vars).  
+
+
+%
+% The permutation from A <-> B using the permutation P
+%
+permutation3(A,P,B) =>
+   foreach(I in 1..A.length)
+       %  B[I] #= A[P[I]]
+       PI #= P[I],
+       BI #= B[I],
+       element(PI, A, BI)
+   end.
+
+% 
+% Here are the 12 permutations (6 moves + their inverses + 1 no op).
+%
+moves(Moves,MovesStr) => 
+  % int: num_moves = 12;
+  % int: num_moves = 18; % added the 6 Move^2
+  Moves = chunks_of([
+
+   % No op: Move 0
+   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+
+  % Top (also called Upper): move 1, generator ( 1, 3, 8, 6)( 2, 5, 7, 4)( 9,33,25,17)(10,34,26,18)(11,35,27,19)
+   3, 5, 8, 2, 7, 1, 4, 6, 33, 34, 35, 12, 13, 14, 15, 16, 9, 10, 11, 20, 21, 22, 23, 24, 17, 18, 19, 28, 29, 30, 31, 32, 25, 26, 27, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+
+  % T inverse (Ti)
+  6, 4, 1, 7, 2, 8, 5, 3, 17, 18, 19, 12, 13, 14, 15, 16, 25, 26, 27, 20, 21, 22, 23, 24, 33, 34, 35, 28, 29, 30, 31, 32, 9, 10, 11, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+
+
+  % Left: move 2, generator ( 9,11,16,14)(10,13,15,12)( 1,17,41,40)( 4,20,44,37)( 6,22,46,35)
+   17, 2, 3, 20, 5, 22, 7, 8, 11, 13, 16, 10, 15, 9, 12, 14, 41, 18, 19, 44, 21, 46, 23, 24, 25, 26, 27, 28, 29,  30, 31, 32, 33, 34, 6, 36, 4, 38, 39, 1, 40, 42, 43, 37, 45, 35, 47, 48,
+
+  % Left inverse (Li)
+  40, 2, 3, 37, 5, 35, 7, 8, 14, 12, 9, 15, 10, 16, 13, 11, 1, 18, 19, 4, 21, 6, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 46, 36, 44, 38, 39, 41, 17, 42, 43, 20, 45, 22, 47, 48,
+
+
+  % Front: move 3, generator (17,19,24,22)(18,21,23,20)( 6,25,43,16)( 7,28,42,13)( 8,30,41,11)
+  1, 2, 3, 4, 5, 25, 28, 30, 9, 10, 8, 12, 7, 14, 15, 6, 19, 21, 24, 18, 23, 17, 20, 22, 43, 26, 27, 42, 29, 41, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 11, 13, 16, 44, 45, 46, 47, 48,
+
+  % F inverse (Fi)
+  1, 2, 3, 4, 5, 16, 13, 11, 9, 10, 41, 12, 42, 14, 15, 43, 22, 20, 17, 23, 18, 24, 21, 19, 6, 26, 27, 7, 29, 8, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 30, 28, 25, 44, 45, 46, 47, 48,
+
+
+  % Right: move 4, generator (25,27,32,30)(26,29,31,28)( 3,38,43,19)( 5,36,45,21)( 8,33,48,24)
+  1, 2, 38, 4, 36, 6, 7, 33, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 3, 20, 5, 22, 23, 8, 27, 29, 32, 26, 31, 25, 28, 30, 48, 34, 35, 45, 37, 43, 39, 40, 41, 42, 19, 44, 21, 46, 47, 24,
+
+  % R inverse (Ri)
+  1, 2, 19, 4, 21, 6, 7, 24, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 43, 20, 45, 22, 23, 48, 30, 28, 25, 31, 26, 32, 29, 27, 8, 34, 35, 5, 37, 3, 39, 40, 41, 42, 38, 44, 36, 46, 47, 33,
+
+
+  % E (Rear) move 5, generator (33,35,40,38)(34,37,39,36)( 3, 9,46,32)( 2,12,47,29)( 1,14,48,27)
+  14, 12, 9, 4, 5, 6, 7, 8, 46, 10, 11, 47, 13, 48, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 1, 28, 2, 30, 31, 3, 35, 37, 40, 34, 39, 33, 36, 38, 41, 42, 43, 44, 45, 32, 29, 27,
+
+  % E inverse (Ei)
+  27, 29, 32, 4, 5, 6, 7, 8, 3, 10, 11, 2, 13, 1, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 48, 28, 47, 30, 31, 46, 38, 36, 33, 39, 34, 40, 37, 35, 41, 42, 43, 44, 45, 9, 12, 14,
+
+
+  % B, Bottpm (also called D): move 6, generator (41,43,48,46)(42,45,47,44)(14,22,30,38)(15,23,31,39)(16,24,32,40)
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 17, 18, 19, 20, 21, 30, 31, 32, 25, 26, 27, 28, 29, 38, 39, 40, 33, 34, 35, 36, 37, 14, 15, 16, 43, 45, 48, 42, 47, 41, 44, 46,
+
+  % B inverse (Bi)
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 38, 39, 40, 17, 18, 19, 20, 21, 14, 15, 16, 25, 26, 27, 28, 29, 22, 23, 24, 33, 34, 35, 36, 37, 30, 31, 32, 46, 44, 41, 47, 42, 48, 45, 43,
+
+
+  % The 6 Move^2
+  % Move top^2
+  8,7,6,5,4,3,2,1,25,26,27,12,13,14,15,16,33,34,35,20,21,22,23,24,9,10,11,28,29,30,31,32,17,18,19,36,37,38,39,40,41,42,43,44,45,46,47,48,
+
+  % Move left^2
+  41,2,3,44,5,46,7,8,16,15,14,13,12,11,10,9,40,18,19,37,21,35,23,24,25,26,27,28,29,30,31,32,33,34,22,36,20,38,39,17,1,42,43,4,45,6,47,48,
+
+  % Move front^2
+  1,2,3,4,5,43,42,41,9,10,30,12,28,14,15,25,24,23,22,21,20,19,18,17,16,26,27,13,29,11,31,32,33,34,35,36,37,38,39,40,8,7,6,44,45,46,47,48,
+
+  % Move right^2
+  1,2,43,4,45,6,7,48,9,10,11,12,13,14,15,16,17,18,38,20,36,22,23,33,32,31,30,29,28,27,26,25,24,34,35,21,37,19,39,40,41,42,3,44,5,46,47,8,
+
+  % Move rear^2
+  48,47,46,4,5,6,7,8,32,10,11,29,13,27,15,16,17,18,19,20,21,22,23,24,25,26,14,28,12,30,31,9,40,39,38,37,36,35,34,33,41,42,43,44,45,3,2,1,
+
+  % Move bottom^2
+  1,2,3,4,5,6,7,8,9,10,11,12,13,30,31,32,17,18,19,20,21,38,39,40,25,26,27,28,29,14,15,16,33,34,35,36,37,22,23,24,48,47,46,45,44,43,42,41],
+   48),
+   
+  % Using GAP's notation (and ".i" for the inverse moves)
+  MovesStr = 
+  % ["-", "T", "Ti", "L", "Li", "F", "Fi", "R", "Ri","E", "Ei", "B", "Bi"]);
+  % 1    2    3     4     5    6    7     8    9   10    11   12    13    14   15   16   17  18    19
+   ["-", "T", "Ti", "L", "Li", "F", "Fi", "R", "Ri","E", "Ei", "B", "Bi", "T2","L2","F2","R2","E2","B2"].
+
+
+%
+% Problem instances. 
+% These are the initial settings.
+%
+
+% Skeleton
+problem(1,[ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+
+% From: http://www.gap-system.org/Doc/Examples/rubik.html
+% gap> ListPerm((17,19)(11,8)(6,25)(7,28)(18,21) , 48);
+% Is this solvable? CP didn't solve this in 6h.
+% I'll skip it for now
+% problem(2,[ 1, 2, 3, 4, 5, 25, 28, 11, 9, 10, 8, 12, 13, 14, 15, 16, 19, 21, 17, 20, 18, 22, 23, 24, 6, 26, 27, 7, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48 ]).
+
+
+% Find a setup where "1" is in the third position (and disregarding the other positions)
+% and then solve it.
+% init: [6, 4, 1, 7, 2, 8, 5, 3, 17, 18, 19, 12, 13, 14, 15, 16, 25, 26, 27, 20, 21, 22, 23, 24, 33, 34, 35, 28, 29, 30, 31, 32, 9, 10, 11, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]
+% Move: Ti
+problem(3,[ _, _, 1, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+
+% Find a setup where 1<->3 are swapped
+% init: [3, 4, 1, 42, 2, 41, 36, 38, 33, 23, 22, 12, 21, 8, 5, 24, 16, 29, 32, 28, 20, 30, 18, 17, 48, 34, 35, 13, 31, 11, 39, 40, 9, 10, 27, 45, 37, 14, 15, 19, 43, 7, 6, 26, 47, 25, 44, 46]
+% Moves: TiFiBFiR
+problem(4,[ 3, _, 1, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+% Swap 1<->3 and 2<->4
+% init: [3, 4, 1, 2, 7, 17, 20, 22, 33, 34, 6, 12, 29, 14, 15, 32, 11, 13, 16, 36, 5, 38, 23, 8, 41, 18, 35, 26, 31, 25, 28, 30, 9, 10, 27, 45, 37, 43, 39, 40, 48, 42, 19, 44, 21, 46, 47, 24]
+% 6 moves: TiLiTTLR
+problem(5,[ 3, 4, 1, 2, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+% swap 1<->3, 2<->4, and 5<->7
+% init: [3, 4, 1, 2, 7, 8, 5, 6, 33, 34, 19, 12, 29, 14, 15, 32, 25, 26, 11, 36, 21, 38, 23, 24, 17, 18, 35, 28, 13, 30, 31, 1, 9, 10, 27, 20, 37, 22, 39, 40, 48, 42, 43, 44, 45, 46, 47, 41]
+% 7 moves: TiRiLiTTLR
+problem(6,[ 3, 4, 1, 2, 7, _, 5, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+
+% swap 1<->48
+% Moves: EE or EiEi
+problem(7,[ 48, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 1]).
+
+
+% RLiFiFiEiEiLiR
+problem(8,[ 48, 47,46, 45, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 4, 3, 2, 1]).
+
+
+% reverse
+problem(9, [48,47,46,45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]).
+
+
+% swap 1<->2
+% No solution (it's not possible to swap a corner and a middle position)
+problem(10, [2, 1, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+
+% TLTL:
+% 4 moves: TLTL (or TLTiTi)
+problem(11, [ 6, 4, 1, 7, 2, 33, 20, 22, 17, 18, 3, 26, 15, 25, 12, 14, 27, 13, 16, 44, 21, 46, 23, 24, 41, 34, 35, 28, 29, 30, 31, 32, 9, 10, 11, 36, 5, 38, 39, 8, 40, 42, 43, 37, 45, 19, 47, 48 ]).
+  
+% TLFREB
+% Found: TLFREB
+problem(12,[ 33, 34, 25, 12, 26, 9, 18, 17, 27, 37, 1, 10, 23, 41, 44, 46, 35, 7, 6, 42, 31, 40, 20, 30, 11, 5, 8, 45, 39, 43, 28, 38, 19, 2, 3, 47, 4, 48, 36, 22, 14, 13, 24, 15, 21, 16, 29, 32 ]).
+
+% (TLFREB)^-1
+% Found: BiEiRiFiLiTi (only solution with 6 moves)
+problem(13,[ 11, 34, 35, 37, 26, 19, 18, 27, 6, 12, 25, 4, 42, 41, 44, 46, 8, 7, 33, 23, 45, 40, 13, 43, 3, 5, 9, 31, 47, 24, 21, 48, 1, 2, 17, 39, 10, 32, 29, 22, 14, 20, 30, 15, 28, 16, 36, 38 ]).
+
+
+% T^2*L^2*F^2*R^2*E^2*B^2
+% operations: [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 0, 0, 0, 0, 0, 0, 0]
+% ["-", "T", "T", "L", "L", "F", "F", "R", "R", "E", "E", "B", "B", "-", "-", "-", "-", "-", "-", "-"]
+problem(14, [ 48, 47, 3, 44, 45, 46, 42, 1, 32, 15, 14, 12, 29, 30, 10, 16, 40, 23, 35, 36, 20, 22, 18, 17, 9, 31, 27, 13, 28, 11, 26, 25, 33, 39, 38, 21, 37, 19, 34, 24, 41, 7, 6, 4, 5, 43, 2, 8 ]).
+
+% gap> ListPerm(t*t*t*l*l*l,48);
+% Found moves: TiLi
+problem(15, [ 35, 37, 40, 7, 2, 8, 5, 3, 1, 18, 19, 15, 10, 16, 13, 11, 25, 26, 27, 4, 21, 6, 23, 24, 33, 34, 46, 28, 29, 30, 31, 32, 14, 12, 9, 36, 44, 38, 39, 41, 17, 42, 43, 20, 45, 22, 47, 48 ]).
+
+% gap> ListPerm(b*b*b*r*r*r*b,48);
+% Found moves: BiRiB
+problem(16, [ 1, 2, 19, 4, 21, 6, 7, 32, 9, 10, 11, 12, 13, 3, 15, 16, 17, 18, 48, 20, 47, 22, 23, 24, 38, 28, 25, 39, 26, 30, 31, 46, 8, 34, 35, 5, 37, 40, 29, 27, 41, 42, 43, 44, 45, 33, 36, 14 ]).
+
+
+% gap> ListPerm(b*b*b*r*r*r*b*f*t*l*l*r,48);
+% Found moves: BiRiBFTLiLiR
+% All possible moves with 8 steps:
+%  BiRiBFTLiLiR
+%  BiRiBFTLiRLi
+%  BiRiBFTLLR
+%  BiRiBFTLRL
+%  BiRiBFTRLiLi
+problem(17, [ 38, 36, 8, 2, 23, 40, 26, 30, 48, 34, 46, 13, 44, 33, 10, 41, 14, 5, 24, 15, 47, 16, 37, 35, 43, 42, 19, 39, 18, 1, 28, 6, 25, 29, 32, 7, 20, 17, 31, 3, 22, 12, 9, 4, 21, 27, 45, 11 ]).
+
+% From A Mathematical Approach To Solving Rubik's Cube
+% http://www.math.ubc.ca/~cass/courses/m308/projects/rtran/rtran.pdf
+% page 4
+% """
+% The scrambled cube is created from the initial position
+% using the following moves:
+% U*L*D*R*F*B^-1*U^-1L^-1 (ie. Uclk, Lclk, Dclk, Rclk, Fclk, Bcnt, Ucnt, Lcnt).
+% """
+% 
+% There are two solutions with optimal 8 moves:
+%  - LTEFiRiBiLiTi
+%  - LTFiERiBiLiTi
+problem(18, [48,21,17,13,18,43,37,41,32,20,30,44,39,46,45,9,24,12,22,47,26,35,42,25,16,7,6,5,4,19,29,27,11,28,38,10,15,3,2,14, 1,23,8,31,36,40,34,33]).
+
+% 
+% change 18 <-> 23 (front) and 26 <-> 31 (right) and let other positions be whatever.
+% 
+% Here are the different 4 moves (with different inits)
+% - FiFiRR
+% - FiFiRiRi
+% - FFRR
+% - FFRiRi
+% - RRFF
+% - RRFiFi
+% - RiRiFF
+% 
+%            1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+problem(19, [ _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,23, _, _, _, _,18, _,
+
+            %25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48    
+              _,31, _, _, _, _,26, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]).
+
+% 
+% change 18 <-> 23 (front) and keep the other positions intact.
+% This is NOT possible.
+%          
+problem(20, [1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,23,19,20,21,22,18,24,
+             25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]).
+
+% 
+% change 18 <-> 23 (front) and 26 <-> 31 (right) and keep the other positions intact.
+% This is NOT possible.
+%         
+problem(21, [1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,23,19,20,21,22,18,24,
+             25,31,27,28,29,30,26,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]).
+
+
+% Make these 12 moves: TLEiLiRRiRiFEBTiBi
+% which generated this init:
+problem(22, [6, 23, 22, 34, 28, 14, 7, 33, 17, 2, 40, 47, 5, 24, 12, 38, 46, 18, 3, 26, 45, 48, 20, 35, 27, 21, 16, 31, 29, 1, 4, 25, 41, 42, 11, 36, 39, 19, 44, 43, 32, 13, 9, 37, 10, 30, 15, 8]).
+
+% Make these 3 moves: T2B2F2
+problem(23, [41, 42, 43, 5, 4, 3, 2, 1, 16, 26, 27, 12, 28, 11, 31, 32, 33, 34, 35, 21, 20, 38, 39, 40, 9, 10, 30, 13, 29, 14, 15, 25, 24, 23, 22, 36, 37, 19, 18, 17, 48, 47, 46, 45, 44, 6, 7, 8]).
+
+%                   13 18 15 3 7 17 2  11  
+% make these moves: T2 B2 F2 L R E2 Ti B
+problem(24, [9, 45, 27, 37, 20, 11, 44, 25, 35, 12, 17, 18, 34, 24, 28, 38, 6, 15, 8, 2, 42, 48, 10, 46, 19, 13, 33, 23, 39, 40, 29, 22, 3, 31, 1, 47, 7, 41, 26, 43, 32, 4, 14, 21, 36, 30, 5, 16]).
+
+

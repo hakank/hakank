@@ -1,0 +1,110 @@
+/* 
+
+  Global constraint sliding_time_window in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Csliding_time_window.html
+  """
+  sliding_time_window(WINDOW_SIZE,LIMIT,TASKS)
+  
+  Purpose
+
+  For any time window of size WINDOW_SIZE, the intersection of all the tasks 
+  of the collection TASKS with this time window is less than or equal to a 
+  given limit LIMIT.
+
+  Example
+      (
+      9,6, <
+      id-1 origin-10 duration-3,
+      id-2 origin-5  duration-1,
+      id-3 origin-6  duration-2,
+      id-4 origin-14 duration-2,
+      id-5 origin-2  duration-2
+      >
+      )
+
+  The lower part of Figure 4.255.1 indicates the different tasks on the 
+  time axis. Each task is drawn as a rectangle with its corresponding 
+  identifier in the middle. Finally the upper part of Figure 4.255.1 shows 
+  the different time windows and the respective contribution of the tasks 
+  in these time windows. A line with two arrows depicts each time window. 
+  The two arrows indicate the start and the end of the time window. At the 
+  right of each time window we give its occupation. Since this occupation 
+  is always less than or equal to the limit 6, the sliding_time_window 
+  constraint holds.
+  """
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 5,
+  MaxTime = 16,
+  WindowSize = 9,
+
+ 
+  Tasks = new_array(N,2),
+  Tasks :: 1..MaxTime,
+
+  Sums = new_list(MaxTime),
+  Sums :: 0..MaxTime*2,
+
+  Limit :: 0..MaxTime,
+
+  Limit = 6,
+  Tasks = {{10, 3},
+           { 5, 1},
+           { 6, 2},
+           {14, 2},
+           { 2, 2}},
+
+  %       1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6  
+  % Sums = [_,6,_,_,6,6,_,_,_,5,_,_,_,2,_,_], % the sums of the example
+
+  sliding_time_window(WindowSize, Limit, Tasks, Sums, MaxTime, Occupied),
+
+  Z #= sum(Occupied),
+
+  Vars = Tasks.vars ++ Sums ++ Occupied ++ [Limit],
+
+  solve($[max(Z)],Vars),
+
+  println(tasks=Tasks),
+  println(sums=Sums),
+  println(limit=Limit),
+  println(max_time=MaxTime),
+  println(occupied=Occupied),
+  println(z=Z),
+  nl,
+  fail,
+ 
+  nl.
+
+sliding_time_window(WindowSize,Limit,Tasks,Sums,MaxTime,Occupied) =>
+  UbT = Tasks.len,
+  Occupied = new_list(MaxTime),
+  Occupied :: 0..UbT,
+
+  % how many tasks occupies this time entry
+  foreach(I in 1..MaxTime) 
+    Occupied[I] #= sum([I #>= Tasks[J, 1] #/\ I #< Tasks[J, 1] + Tasks[J, 2]
+                        : J in 1..UbT])
+  end,
+  % sliding sum over occupied
+  foreach(I in 1..MaxTime) 
+    Sums[I] #= sum([Occupied[J] : J in I..I+WindowSize-1, J <= MaxTime]),
+    Sums[I] #<= Limit
+  end,
+  % all sums must be less or equal the limit
+  foreach(I in 1..UbT)
+    Tasks[I,1]+Tasks[I,2] #<= MaxTime
+  end.
+

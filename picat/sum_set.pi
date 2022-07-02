@@ -1,0 +1,125 @@
+/* 
+
+  Global constraint sum_set in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Csum_set.html
+  """
+  sum_set(SV, VALUES, CTR, VAR)
+  
+  Let SUM denote the sum of the coef attributes of the VALUES collection for which the 
+  corresponding values val occur in the set SV. Enforce the following constraint to 
+  hold: SUM CTR VAR.
+
+  Example
+   (
+    {2, 3, 6},
+    <
+     val-2 coef-7,
+     val-9 coef-1,
+     val-5 coef-7,
+     val-6 coef-2
+    >, =, 9
+    )
+
+  The sum_set constraint holds since the sum of the coef attributes 7+2 for which 
+  the corresponding val attribute belongs to the first argument SV = {2, 3, 6} is equal 
+  (i.e., since CTR is set to =) to its last argument VAR=9.
+  """
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util,cp.
+
+main => go.
+
+go =>
+  N = 4,
+
+  X = new_array(N,2),
+  X :: 1..9,
+
+  % Simulating a set
+  S = new_list(9),
+  S :: 0..1, 
+
+  Total #> 0,
+  % X = {{2, 7},
+  %      {9, 1},
+  %      {5, 7},
+  %      {6, 2}},
+  X = {{2, 7},
+       {9, 1},
+       {5, 7},
+       {_, 2}},
+
+  Set = [2,3,6],
+  S = set2list(Set,9),
+
+  Total #= 9,
+  CmpVal #>= 0,
+  sum_set(X, S, Total, 0, CmpVal),
+
+  % Careful with mixing arrays and lists
+  Vars = S ++ X.array_matrix_to_list_matrix ++ [Total,CmpVal],
+  solve(Vars),
+
+  println(x=X),
+  println(s=[J : J in 1..S.len, S[J] == 1]),
+  println(total=Total),
+  println(cmpVal=CmpVal),
+
+  nl,
+  fail,
+  nl.
+
+
+sum_set(A, SS, Tot, XOp, CmpVal) =>
+  ALen = A.len,
+  SLen = SS.len,
+  Tmp = new_list(ALen),
+  Tmp :: 0..SLen,
+  foreach(I in 1..ALen)
+    T #= sum([SS[J]*A[I,1] #= J : J in 1..SLen]) #>= 1,
+    T #= 1 #<=> (Tmp[I] #= A[I,2] #= 1),
+    T #= 0 #=> Tmp[I] #= 0
+  end,
+  cmp(Tot, CmpVal, XOp),
+  Tot #= sum(Tmp).
+
+
+% Convert a "set" to a list
+% set2list([2,3,6],9) -> [0,1,1,0,0,1,0,0,0]
+set2list(Set,Len) = [J : I in 1..Len, J = cond(membchk(I,Set),1,0)].
+  
+
+  
+%
+% Since Picat don't handle function variables we use the following
+% hack where t is the type of comparison operator.
+% t:
+%  - 2 :  a <  b
+%  - 1 :  a <= b
+%    0 :  a  = b
+%    1 :  a >= b
+%    2 :  a >  b
+% else : a != b
+%
+cmp(A, B, T) =>
+   if     T == -2 then
+     A #< B
+   elseif T == -1 then
+     a #<= b
+   elseif T ==  0 then
+     A #= B
+   elseif T ==  1 then
+     A #>= B
+   elseif T ==  2 then
+     A #> B
+   else
+     A #!= B
+   end.

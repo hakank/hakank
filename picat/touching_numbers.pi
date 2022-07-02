@@ -1,0 +1,103 @@
+/* 
+
+  Cihan Altay's Touching Numbers puzzle (Martin Chlond) in Picat.
+
+  Problem and XPress Mosel model from 
+  Martin J.Chlond "The Traveling Space Telescope Problem"
+  http://archive.ite.journal.informs.org/Vol3No1/Chlond/index.php
+  
+  XPress Mosel model:
+  http://archive.ite.journal.informs.org/Vol3No1/Chlond/altayxp.html
+  
+  More info about the puzzle:
+  http://www.mathpuzzle.com/0123456789.htm
+
+
+  Note: This model implements the formulation which are in the paper,
+        i.e. where the arrays is from 0..9 instead of 1..100
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import mip.
+
+main => go.
+
+/*
+  maxscore = 320
+  [0,0,0,0,0,0,0,1,0,0]
+  [0,0,0,0,0,0,0,0,0,0]
+  [0,1,0,0,0,0,0,0,0,0]
+  [0,0,0,0,1,0,0,0,0,0]
+  [0,0,0,0,0,0,0,0,0,1]
+  [0,0,0,1,0,0,0,0,0,0]
+  [0,0,1,0,0,0,0,0,0,0]
+  [0,0,0,0,0,1,0,0,0,0]
+  [0,0,0,0,0,0,1,0,0,0]
+  [0,0,0,0,0,0,0,0,1,0]
+  z = [0,9,8,3,4,2,7,1,6,5]
+
+*/
+go =>
+  Size = 9,
+
+  % N(i,j) = number of squares touching if digit (i-1) is to
+  %          the immediate left of digit (j-1)
+  N =  [[0,2,4,3,3,4,5,2,5,4],
+        [1,0,1,1,0,1,1,0,1,1],
+        [4,2,0,3,3,4,4,2,4,4],
+        [5,2,4,0,3,4,5,2,5,4],
+        [5,2,4,3,0,4,5,2,5,4],
+        [4,1,4,3,2,0,4,1,4,3],
+        [4,1,4,3,2,3,0,1,4,3],
+        [5,2,4,3,3,4,5,0,5,4],
+        [5,2,4,3,3,4,5,2,0,4],
+        [5,2,4,3,3,4,5,2,5,0]],
+            
+
+  % X(i,j) = 1 if digit (i-1) is to the immediate left of digit (j-1)
+  %          0 otherwise
+  X = new_array(Size+1,Size+1), % 0..Size, 0..Size
+  X :: 0..1,
+
+  % variables to avoid circular sets 
+  Z = new_list(Size+1), % 0..Size
+  Z :: 0..Size,
+
+  % Maximize score
+  Maxscore #= sum([(I+J-1)*N[I+1,J+1]*X[I+1,J+1] : I in 0..Size, J in 0..Size]),
+
+  sum(Z) #>= 1,
+
+  % Each digit to the immediate left of no more than one other
+  foreach(I in 0..Size)
+    sum([X[I+1,J+1] : J in 0..Size]) #<= 1 
+  end,
+
+  % Each digit to the immediate right of no more than one other
+  foreach(J in 0..Size) 
+     sum([X[I+1,J+1] : I in 0..Size]) #<= 1
+  end,
+  
+  % No circular sets
+  foreach(I in 0..Size, J in 0..Size)
+    Z[I+1] - Z[J+1] + (Size+1)*X[I+1,J+1] #<= Size
+  end,
+  
+  % Exactly nine adjacencies required
+  sum([X[I+1,J+1] : I in 0..Size, J in 0..Size]) #= 9,
+
+  Vars = X.vars ++ Z.vars,
+  solve($[max(Maxscore),report(printf("Maxscore: %d\n",Maxscore))],Vars),
+
+  println(maxscore=Maxscore),
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  println(z=Z),
+  nl,
+  fail,
+  
+  nl.

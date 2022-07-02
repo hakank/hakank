@@ -1,0 +1,158 @@
+/* 
+
+  Global constraint change_partition in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cchange_parition.html
+  """
+  NCHANGE is the number of times that the following constraint holds: 
+  X and Y do not belong to the same partition of the collection PARTITIONS. 
+  X and Y correspond to consecutive variables of the collection VARIABLES.
+  
+  Example
+   (
+      2,​<
+      var-6,
+      var-6,
+      var-2,
+      var-1,
+      var-3,
+      var-3,
+      var-1,
+      var-6,
+      var-2,
+      var-2,
+      var-2
+      >,
+      <
+      p-<1, 3>,
+      p-<4>,​
+      p-<2,6>
+      >
+      )
+
+  In the example we have the following two changes:
+  * One change between values 2 and 1 (since 2 and 1 respectively belong 
+    to the third and the first partition),
+  * One change between values 1 and 6 (since 1 and 6 respectively belong 
+    to the first and the third partition).
+
+  Consequently the change_partition constraint holds since its first 
+  argument NCHANGE is assigned to 2.
+  """
+
+  Note: Using set_partition/2 does not work as expected if both
+  Variables and Paritions are fixed. And without it the partitions
+  (if let free) does not necessarily convers all the values.
+
+  Consider this decomposition experimental or proof-of-comcept.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 11,
+  M = 3,
+  S = [1,2,3,4,6],
+  MaxVal = 6,
+
+  Variables = new_list(N),
+  Variables :: S,
+
+  % partition as booleans
+  Partitions = new_array(M,MaxVal),
+  Partitions :: 0..1,
+  
+  NChange :: 0.. N,
+
+          
+  Variables = [6,6,2,1,3,3,1,6,2,2,2],
+
+  % Partitions = [
+  %               {1,3},
+  %               {4},
+  %               {2,6}],
+
+  Partitions = {{1,0,1,0,0,0}, % 1,3
+                {0,0,0,1,0,0}, % 4
+                {0,1,0,0,0,1}  % 2,6
+               },
+
+  % for generating partitions: exclude empty partitions
+  foreach(I in 1..Partitions.len)
+    sum(Partitions[I]) #> 0
+  end,
+  
+  % NChange = 2,
+
+  % partition_set(Partitions,Variables), % see comment below
+
+  change_partition(NChange, Variables, Partitions),
+
+  Vars = Variables ++ Partitions.vars ++ [NChange],
+  solve(Vars),
+
+  println(variables=Variables),
+  println(nchange=NChange),
+  foreach(Row in Partitions)
+    println([I : I in 1..Row.len, Row[I] == 1])
+  end,
+
+  nl,
+
+  fail,
+ 
+  nl.
+
+%
+% change_partition(NCHANGE, VARIABLES, PARTITIONS)
+%
+change_partition(NChange, Variables, Partitions) =>
+  VLen = Variables.len,
+  PLen = Partitions.len,
+  P1Len = Partitions[1].len,
+  all_disjoint(Partitions),
+  % number of patition changes
+  NChange #= VLen - sum([
+             % variables[v-1] in partitions[p]
+             % /\
+             % variables[v] in partitions[p]
+             sum([ Variables[V-1] #= Partitions[P,K]*K : K in 1..P1Len]) #= 1
+             #/\
+             sum([ Variables[V] #= Partitions[P,K]*K : K in 1..P1Len]) #= 1             
+     : V in 2..Variables.len, P in 1..PLen]) - 1.
+  
+
+%
+% Ensure that all values are disjoint
+% in the boolean matrix S.
+%
+all_disjoint(S) =>
+  foreach(J in 1..S[1].len)
+    sum([S[I,J] : I in 1..S.len]) #<= 1
+  end.
+
+
+% This doesn't work as expected if both Variables
+% and Partitions (S) are hardcoded. In the example
+% 4 is in the partition but is not in the domain
+% of Variables.
+partition_set(S,Variables) =>
+  all_disjoint(S),
+  Dom = [fd_dom(V) : V in Variables].flatten.sort_remove_dups,
+  println(dom=Dom),
+  foreach(J in 1..S[1].len)
+    if membchk(J,Dom) then
+      sum([S[I,J] : I in 1..S.len]) #= 1
+    else
+      sum([S[I,J] : I in 1..S.len]) #= 0
+    end
+  end.
+  
+

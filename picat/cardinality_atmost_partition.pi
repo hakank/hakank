@@ -1,0 +1,132 @@
+/* 
+
+  Global constraint cardinality_atmost_partition in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Ccardinality_atmost_partition.html
+  """
+  ATMOST is the maximum number of time that values of a same partition of 
+  PARTITIONS are taken by the variables of the collection VARIABLES.
+  
+  Example
+   (
+    2, <2, 3, 7, 1, 6, 0>,
+   <
+     p-<1, 3>,
+     p-<4>,
+     p-<2, 6>
+   >
+  )
+  In this example, two variables of the collection 
+  VARIABLES = <2, 3, 7, 1, 6, 0> 
+  are assigned to values of the first partition, no variable is assigned to 
+  a value of the second partition, and finally two variables are assigned to 
+  values of the last partition. As a consequence, the 
+  cardinality_atmost_partition constraint holds since its first argument 
+  ATMOST is assigned to the maximum number of occurrences 2.
+  """
+
+  This should probably be considered experimental / proof-of-concept.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 6,
+  M = 3,
+  MaxVal = 7,
+
+  Variables = new_list(N),
+  Variables :: 1..MaxVal,
+
+
+  % As boolean matrix
+  Partitions = new_array(M, MaxVal),
+  Partitions :: 0..1,
+  
+  NVar :: 0..9,
+
+
+  Variables = [2, 3, 7, 1, 6, 5],
+
+  % Partitions
+  HardCodePartitions = true,
+  if HardCodePartitions then
+    Partitions = {{1,0,1,0,0,0,0}, % 1,3
+                  {0,0,0,1,0,0,0}, % 4,
+                  {0,1,0,0,0,1,0}} % 2,6
+  else
+    % Enforce that all values 1..MaxVal must be
+    % in the partition sets. 
+    % However, it doesn't work as expected if Partitions (S) is hardcoded.
+    % In the example some values are not in the partition, e.g. 5 and 6.
+    partition_set(Partitions,[I : I in 1..MaxVal]),
+    NVar = 2
+  end,
+
+
+  
+  all_disjoint(Partitions),
+  foreach(I in 1..M)
+    sum(Partitions[I]) #> 0
+  end,
+
+  cardinality_atmost_partition(NVar, Variables, Partitions),
+
+  Vars = Variables ++ Partitions.vars ++ [NVar],
+  solve(Vars),
+
+  println(variables=Variables),
+  foreach(Row in Partitions)
+    println([I : I in 1..Row.len, Row[I] == 1])
+  end,
+  println(nvar=NVar),
+  nl,
+  fail,
+ 
+  nl.
+
+% 
+% cardinality_atmost_partition
+% 
+cardinality_atmost_partition(NVar, Variables, Partitions) =>
+  VLen = Variables.len,
+  PLen = Partitions.len,
+  P1Len = Partitions[1].len,
+  
+  NVar #<= sum([
+                 sum([
+                      sum([Variables[I] #= Partitions[P,K]*K :  K in 1..P1Len]) #= 1
+                    :  I in 1..VLen]) #> 0
+
+              : P in 1..PLen]).
+
+  
+
+
+%
+% Ensure that all values are disjoint
+% in the boolean matrix S.
+%
+all_disjoint(S) =>
+  foreach(J in 1..S[1].len)
+    sum([S[I,J] : I in 1..S.len]) #<= 1
+  end.
+
+
+%
+% Enforce that all values in Universe must be in the set partition
+% See comment above.
+partition_set(S,Universe) =>
+  all_disjoint(S),
+  foreach(V in Universe)
+    sum([V #= S[I,J]*J : I in 1..S.len, J in 1..S[1].len]) #= 1
+  end.
+  
+

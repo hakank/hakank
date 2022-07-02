@@ -1,0 +1,121 @@
+/* 
+
+  Tank Attack Puzzle in Picat.
+
+  From http://www.informs.org/site/ITE/article.php?id=70
+  "Martin J Chlond Puzzle - A Tank Attack Puzzle"
+  Informs Transations on Educations, Volume 8, May 2008
+  PDF: http://www.informs.org/site/ITE/downloadfile.php?i=c0c7c76d30bd3dcaefc96f40275bdc0a
+  
+  This model was inspired by the original MathProg model (integer programming), 
+  with the following notice:
+  """
+  model name     : tank.mod
+  description    : tank puzzle (courtesy of Adam Atkinson G4G7)
+  written by     : Martin Chlond
+  date written   : 6/2/08
+  """
+
+  Here are the 4 solutions (with symmetry breaking):
+
+    [2,3,6,1,3,3,1,2]
+    [1,4,1,3,3,2,4,3]
+    [3,2,2,4,1,2,1,6]
+    [3,3,1,4,4,4,3,1]
+    [1,3,4,4,4,1,3,3]
+    [6,1,2,1,4,2,2,3]
+    [3,4,2,3,3,1,4,1]
+    [2,1,3,3,1,6,3,2]
+
+    [3,1,3,3,1,3,1,3]
+    [1,4,3,1,3,4,4,1]
+    [3,4,1,6,3,1,3,3]
+    [1,3,3,2,2,6,1,3]
+    [3,1,6,2,2,3,3,1]
+    [3,3,1,3,6,1,4,3]
+    [1,4,4,3,1,3,4,1]
+    [3,1,3,1,3,3,1,3]
+
+    [3,1,3,1,3,3,1,3]
+    [1,4,4,3,1,3,4,1]
+    [3,3,1,3,6,1,4,3]
+    [3,1,6,2,2,3,3,1]
+    [1,3,3,2,2,6,1,3]
+    [3,4,1,6,3,1,3,3]
+    [1,4,3,1,3,4,4,1]
+    [3,1,3,3,1,3,1,3]
+
+    [2,1,3,3,1,6,3,2]
+    [3,4,2,3,3,1,4,1]
+    [6,1,2,1,4,2,2,3]
+    [1,3,4,4,4,1,3,3]
+    [3,3,1,4,4,4,3,1]
+    [3,2,2,4,1,2,1,6]
+    [1,4,1,3,3,2,4,3]
+    [2,3,6,1,3,3,1,2]
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% Finding the four solutions:
+import sat. % 5.196s
+% import mip.
+% import cp. % 7.057s
+
+main => go.
+
+go =>
+  nolog,
+  N = 8,
+
+  % indices
+  Ns = 1..N,
+  Ms = 1..N-1,
+
+
+  % variables
+  X = new_array(N, N, N-1), % x[i,j,k] = 1 if number on tank {i,j} = k
+  X :: 0..1,
+  
+  Res = new_array(N, N), % the output result
+  Res :: 1..N*2-2,
+
+  % attacks on tank = number on tank
+  foreach(I in Ns, J in Ns)
+    (
+     sum([X[I,P,abs(J-P)] : P in Ns, P != J]) + 
+     sum([X[Q,J,abs(I-Q)] : Q in Ns, Q != I])
+    ) #= sum([K*X[I,J,K] : K in Ms]) 
+  end,
+
+  % one number on each tank
+  foreach(I in Ns, J in Ns) 
+    sum([X[I,J,K] : K in Ms]) #= 1
+  end,
+
+  % symmetry constraints - otherwise too slow
+  foreach(I in Ns, J in Ns, K in Ms) 
+    X[I,J,K] #= X[(N+1-I),(N+1-J),K],
+    X[I,J,K] #= X[J,(N+1-I),K]
+  end,
+
+  % for the output
+  foreach(I in Ns, J in Ns) 
+    Res[I,J] #= sum([K*X[I,J,K] : K in 1..N-1]) 
+  end,
+
+  Vars = X.vars ++ Res.vars,
+  % solve($[ff,split],Vars), % 27.646s
+  % solve($[degree,updown],Vars), % 10.650s
+  solve($[constr,updown],Vars), % 7.057s
+
+  foreach(Row in Res)
+    println(Row.to_list)
+  end,
+  nl,
+  fail,
+  
+  nl.

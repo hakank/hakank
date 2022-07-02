@@ -1,0 +1,170 @@
+/* 
+
+  Crew overlapping flights problem in Picat.
+
+  https://stackoverflow.com/questions/69753921/minizinc-constraint-formulation
+  Minizinc Constraint Formulation
+  """
+  I am a beginner to OR and Minizinc, I am trying to modify a example provided by 
+  Håkan Kjellerstrand, crew.mzn
+
+  I would like to add a constraint stating that a pilot can not start a flight if the previous one is 
+  not finished. I have created an array "FDP" containing for each flight, start timestamp, end timestamp, 
+  duration. (rest is considered included between start and end).
+
+  I am stuck writing my constraint and a bit lost linking flight done by a person to 
+  flight characteritics.
+
+  Could you please confirm if what I am trying to do is doable. 
+  Thanks !
+
+  NB: constraints @ line72
+  """
+
+  Here's the unique optimal solution:
+
+   1: [0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0]
+   2: [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]
+   3: [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]
+   4: [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+   5: [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]
+   6: [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]
+   7: [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]
+   8: [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0]
+   9: [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]
+  10: [0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+  z = 6
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+
+main => go.
+
+go =>
+  nolog,
+  data(1,NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP),
+
+  schedule(NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP, Crew,Z),
+  foreach(F in 1..NumFlights)
+    printf("%2d: %w\n", F, Crew[F].to_list)
+  end,
+  println(z=Z),
+  nl.
+
+% All optimal solutions: It's a unique solution
+go2 =>
+  nolog,
+  data(1,NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP),
+
+  schedule(NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP, _Crew,Z),
+  
+  printf("Found optimal value %d.\n\nFind all optimal solutions:\n",Z),
+  schedule(NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP, Crew,Z), 
+  foreach(F in 1..NumFlights)
+    printf("%2d: %w\n", F, Crew[F].to_list)
+  end,
+  println(z=Z),
+  nl,
+  fail,
+  nl.
+
+schedule(NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP, Crew,Z) => 
+
+  Crew = new_array(NumFlights, NumPersons),
+  Crew :: 0..1,
+
+  % objective to minimize
+  Z #= sum([  sum([Crew[F,P] : F in 1..NumFlights]) #> 0 : P in 1..NumPersons]),
+
+  foreach(F in 1..NumFlights)
+     % size of crew
+     sum([Crew[F,I] : I in 1..NumPersons]) #= RequiredCrew[F, 1],
+     % attribute and requirements
+     foreach(J in 1..2)
+       sum([Attributes[I,J]*Crew[F,I] : I in 1..NumPersons]) #>= RequiredCrew[F,J+1]
+     end
+  end,
+
+  % for each pilot doing a flight, end of flight i must not overlap beginning of flight i+1
+  % hakank: If two flights overlap, then a person cannot be assigned to both
+  foreach(F1 in 1..NumFlights, F2 in F1+1..NumFlights,
+           ( ( FDP[F1,1] >= FDP[F2,1], FDP[F1,2] <= FDP[F2,2] )
+             ;
+             ( FDP[F2,1] >= FDP[F1,1], FDP[F2,2] <= FDP[F1,2] )
+          ))
+      sum([Crew[F1,P] #= 1 #/\ Crew[F2,P] #= 1 : P in 1..NumPersons ]) #= 0
+  end,
+
+  solve($[ff,split,min(Z)],Crew).
+
+%
+% data
+%
+data(1,NumPersons,People,Attributes,NumFlights,RequiredCrew,FDP) => 
+
+  NumPersons = 20,
+  People = 1..NumPersons,
+  People = [Tom,David,Jeremy,Ron,Joe,Bill,Fred,Bob,Mario,Ed,
+             Carol,Janet,Tracy,Marilyn,Carolyn,Cathy,Inez,Jean,Heather,Juliet],
+
+  Attributes = chunks_of([
+                          % Capt First Officer
+                          1,0,   % Tom     = 1
+                          1,0,   % David   = 2
+                          1,0,   % Jeremy  = 3
+                          1,0,   % Ron     = 4
+                          1,0,   % Joe     = 5
+                          1,0,   % Bill    = 6
+                          0,1,   % Fred    = 7
+                          0,1,   % Bob     = 8
+                          0,1,   % Mario   = 9
+                          0,1,   % Ed      = 10
+                          0,1,   % Carol   = 11
+                          0,1,   % Janet   = 12
+                          0,1,   % Tracy   = 13
+                          0,1,   % Marilyn = 14
+                          0,1,   % Carolyn = 15
+                          0,1,   % Cathy   = 16
+                          0,1,   % Inez    = 17
+                          0,1,   % Jean    = 18
+                          0,1,   % Heather = 19
+                          0,1    % Juliet  = 20
+  ],2),
+
+  NumFlights = 10,                           % number of flights
+  % required crew per flight 
+  RequiredCrew = chunks_of([
+        % Number of pilots required, Capt, FO
+        2,1,1, % Flight 1
+        2,1,1, % Flight 2
+        2,1,1, % ..
+        2,1,1,
+        3,2,1,
+        2,1,1,
+        2,1,1,
+        3,1,2,
+        2,1,1,
+        2,1,1  % Flight 10
+       ],3),
+
+  % flight characteristics
+  FDP = chunks_of(
+                  % flight start , flight end, flown hours
+                 [44531.58333,44531.70833,1.2,
+                  44533.16667,44533.5,2,
+                  44534.33333,44534.54167,1.1,
+                  44258.33333,44533.45833,1.5,
+                  44536.72917,44536.79167,2.3,
+                  44534.33333,44534.54167,3.1,
+                  44258.33333,44533.45833,0.2,
+                  44538.75,44538.95833,1.5,
+                  44539.625,44539.79167,2.2,
+                  44534.33333,44534.54167,1.8
+                  ],3).
+

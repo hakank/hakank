@@ -1,0 +1,212 @@
+/* 
+
+  Tripuzzle in Picat.
+
+  Problem and OPL model in
+  Martin J Chlond "Tri-Puzzle: A Three-Cornered Conundrum"
+  http://ite.pubs.informs.org/Vol6No1/Chlond/index.php
+  
+  Note in the original OPL model:
+  """
+  Model name   : tripuzzle.mod
+  Author       : M J Chlond
+  Description  : tri-puzzle
+  Source       : Lagoon Games
+  Date written : 27/8/05 
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+
+  Trin = 16,
+  Posn = 16,
+  Orient = 3,
+  Spot = 3,  
+  Color = 6,
+  
+  T = 1..Trin,
+  P = 1..Posn,
+  O = 1..Orient,
+  S = 1..Spot,
+
+  % color code: 1 - red, 2 - green, 3 - white, 4 - blue, 5 - black, 6 - yellow
+  % each row describes a triangle in each of three possible orientations
+  Piece_col = [ 
+               [[1,2,3],[3,1,2],[2,3,1]],
+               [[1,2,5],[5,1,2],[2,5,1]],
+               [[1,2,6],[6,1,2],[2,6,1]],
+               [[1,3,6],[6,1,3],[3,6,1]],
+               [[1,5,2],[2,1,5],[5,2,1]],
+               [[1,5,2],[2,1,5],[5,2,1]],
+               [[2,4,6],[6,2,4],[4,6,2]],
+               [[2,5,5],[5,2,5],[5,5,2]],
+               [[2,5,6],[6,2,5],[5,6,2]],
+               [[2,6,3],[3,2,6],[6,3,2]],
+               [[2,6,3],[3,2,6],[6,3,2]],
+               [[3,3,4],[4,3,3],[3,4,3]],
+               [[3,4,4],[4,3,4],[4,4,3]],
+               [[3,4,5],[5,3,4],[4,5,3]],
+               [[3,4,5],[5,3,4],[4,5,3]],
+               [[4,6,5],[5,4,6],[6,5,4]]],
+
+
+  X = new_array(Trin,Posn,Orient),
+  X :: 0..1,
+  Y = new_array(Posn,Spot),
+ 
+  foreach(I in P, J in S)
+     Y[I,J] #>= 0
+  end,
+  % each position occupied by one triangle in one orientation
+  foreach(J in P)
+    sum([X[I,J,K] : I in T, K in O]) #= 1
+  end,
+
+  % each triangle in one position and one orientation
+  foreach(I in T) 
+    sum([X[I,J,K] : J in P, K in O]) #= 1
+  end,
+ 
+  % spot colours consistent with piece positions and orientations  
+  foreach(I in T, J in P, K in O, M in S) 
+    Y[J,M] #>= Piece_col[I,K,M] - Color*(1-X[I,J,K]),
+    Y[J,M] #<= Piece_col[I,K,M] + Color*(1-X[I,J,K])
+  end,
+  
+  % color matches (outer)
+  Y[1,1] #= 2, 
+  Y[2,1] #= 2, 
+  Y[5,1] #= 3, 
+  Y[10,1] #= 2, 
+  
+  Y[1,2] #= 6, 
+  Y[4,2] #= 3, 
+  Y[9,2] #= 1, 
+  Y[16,2] #= 3, 
+  
+  Y[10,3] #= 5, 
+  Y[12,3] #= 2, 
+  Y[14,3] #= 1, 
+  Y[16,3] #= 4, 
+  
+  % color matches (inner)
+  Y[1,3] #= Y[3,1], 
+  Y[2,3] #= Y[6,1], 
+  Y[4,3] #= Y[8,1], 
+  Y[5,3] #= Y[11,1], 
+  Y[7,3] #= Y[13,1], 
+  Y[9,3] #= Y[15,1], 
+   
+  Y[14,2] #= Y[15,3], 
+  Y[7,2] #= Y[8,3], 
+  Y[12,2] #= Y[13,3], 
+  Y[2,2] #= Y[3,3], 
+  Y[5,2] #= Y[6,3], 
+  Y[10,2] #= Y[11,3], 
+  
+  Y[15,2] #= Y[16,1], 
+  Y[8,2] #= Y[9,1], 
+  Y[13,2] #= Y[14,1], 
+  Y[3,2] #= Y[4,1],   
+  Y[6,2] #= Y[7,1],   
+  Y[11,2] #= Y[12,1],
+
+  Vars = Y,
+  solve(Vars),
+  foreach(Row in Y)
+    println(Row.to_list)
+  end,
+  fail,
+
+  nl.
+
+
+% Alternative (and a tad more general) version without the 
+% explicit hardcoded inner/outer color matches.
+go2 =>
+  problem(1,N,Color,Left,Right,Base,PieceCol),
+  Ns = 1..N,
+  P = 1..N*N, % picese and positions
+  S = 1..3, % spots and orientations
+
+  X = new_array(N*N,N*N,3),
+  X :: 0..1,
+  
+  Y = new_array(N*N,3),
+  foreach(I in P, J in S)
+    Y[I,J] #>= 0
+  end,
+
+  % each position occupied by one triangle in one orientation
+  foreach(J in P)
+    sum([X[I,J,K] : I in P, K in S]) #= 1
+  end,
+
+  % each triangle in one position and one orientation
+  foreach(I in P) 
+    sum([X[I,J,K] : J in P, K in S]) #= 1
+  end,
+
+  % spot colours consistent with piece positions and orientations  
+  foreach(I in P, J in P, K in S, M in S) 
+    Y[J,M] #>= PieceCol[I,K,M] - Color*(1-X[I,J,K]),
+    Y[J,M] #<= PieceCol[I,K,M] + Color*(1-X[I,J,K])
+  end,
+  
+  % color matches (outer)
+  foreach(I in Ns) 
+    Y[(I-1)*(I-1)+1,1] #= Left[I],
+    Y[I*I,2] #= Right[I],
+    Y[(N-1)*(N-1)+2*(I-1)+1,3] #= Base[I] 
+  end,
+
+  % color matches (inner)
+  foreach(I in 1..N-1, J in 1..I)
+    Y[-2*I+2*J+I*I,3] #= Y[2*J+I*I,1],
+    Y[-8*I+6*J+I*I+J*J-2*I*J+16,2] #= Y[-8*I+6*J+I*I+J*J-2*I*J+17,3],
+    Y[-8*I+6*J+I*I+J*J-2*I*J+17,2] #= Y[-8*I+6*J+I*I+J*J-2*I*J+18,1]
+  end,
+
+  Vars = Y,
+  solve(Vars),
+  
+  foreach(Row in Y)
+    println(Row.to_list)
+  end,
+  fail,
+
+  nl.
+
+problem(1,N,Color,Left,Right,Base,PieceCol) =>
+  N     = 4,
+  Color = 6,
+  Left  = [2,2,3,2],
+  Right = [6,3,1,3],
+  Base  = [5,2,1,4],
+  % color code: 1 - red, 2 - green, 3 - white, 4 - blue, 5 - black, 6 - yellow
+  % each row describes a triangle in each of three possible orientations  
+  PieceCol = [ 
+               [[1,2,3],[3,1,2],[2,3,1]],
+               [[1,2,5],[5,1,2],[2,5,1]],
+               [[1,2,6],[6,1,2],[2,6,1]],
+               [[1,3,6],[6,1,3],[3,6,1]],
+               [[1,5,2],[2,1,5],[5,2,1]],
+               [[1,5,2],[2,1,5],[5,2,1]],
+               [[2,4,6],[6,2,4],[4,6,2]],
+               [[2,5,5],[5,2,5],[5,5,2]],
+               [[2,5,6],[6,2,5],[5,6,2]],
+               [[2,6,3],[3,2,6],[6,3,2]],
+               [[2,6,3],[3,2,6],[6,3,2]],
+               [[3,3,4],[4,3,3],[3,4,3]],
+               [[3,4,4],[4,3,4],[4,4,3]],
+               [[3,4,5],[5,3,4],[4,5,3]],
+               [[3,4,5],[5,3,4],[4,5,3]],
+               [[4,6,5],[5,4,6],[6,5,4]]].  

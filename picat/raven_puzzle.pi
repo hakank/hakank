@@ -1,0 +1,141 @@
+/* 
+
+  Puzzle in Picat.
+
+  In the (Swedish) blog Raven writes the following (translation follows)
+  http://www.raven.nu/blog/2008/02/29/internationellt-pa-kontoret/
+  Translation:
+  """  
+  We had quite an international meeting at work today. We were seven participants. The meeting 
+  was in English which is more common than in Swedish. The fun part is when we sums which 
+  languages we know:
+
+  7 knows English  (language 1)
+  4 knows Swedish  (language 2)
+  2 knows Persian  (language 3)
+  1 knows Russian  (language 4)
+  1 knows Hindi    (language 5)
+
+  It wouldn't surprise me if we know even more languages. But this is enough, isn't it?
+  """
+
+  The problem is now to investigate which language each person knows, 
+  given the summary above. (Cf Venn diagram.)
+
+  There are 36015 solutions. If we add the symmetry constraint
+    increasing(NumLang)
+  then there are 565 different solutions.
+  
+  Here are three solutions with the constraint that the total number of languages 
+  known by person 1 and person 2 together is 8 (the maximum value):
+
+    [4,4,2,2,1,1,1]
+    Mat:
+    Person 1: [English,Swedish,Persian,Hindi]
+    Person 2: [English,Swedish,Persian,Russian]
+    Person 3: [English,Swedish]
+    Person 4: [English,Swedish]
+    Person 5: [English]
+    Person 6: [English]
+    Person 7: [English]
+
+    [4,4,2,2,1,1,1]
+    Mat:
+    Person 1: [English,Swedish,Persian,Russian]
+    Person 2: [English,Swedish,Persian,Hindi]
+    Person 3: [English,Swedish]
+    Person 4: [English,Swedish]
+    Person 5: [English]
+    Person 6: [English]
+    Person 7: [English]
+
+    [5,3,2,2,1,1,1]
+    Mat:
+    Person 1: [English,Swedish,Persian,Russian,Hindi]
+    Person 2: [English,Swedish,Persian]
+    Person 3: [English,Swedish]
+    Person 4: [English,Swedish]
+    Person 5: [English]
+    Person 6: [English]
+    Person 7: [English]
+ 
+  Note that the 2 first solutions are the same with symmetry (1<->2)
+
+  If this was a "real" puzzle, there would be a hint that one of the persons
+  knows more laguages than any other. :-)
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+%
+% Show all optimal solutions.
+%
+go =>
+  NumPersons   = 7,   % number of persons
+  NumPersonPerLanguage = [7,4,2,1,1],
+  Languages = ["English","Swedish","Persian","Russian","Hindi"],
+  
+  puzzle(NumPersons,NumPersonPerLanguage, _Mat,_NumLang,Z),
+  printf("Z: %d\n", Z),
+
+  println("All optimal solutions:"),
+  puzzle(NumPersons,NumPersonPerLanguage, Mat,NumLang,Z),
+  print_solutions(NumPersons,Languages, Mat,NumLang),
+  fail,
+  nl.
+
+print_solutions(NumPersons,Languages, Mat,NumLang) =>
+  NumLanguages = Languages.len,
+  println(num_lang=NumLang),
+  println("Mat:"),
+  foreach(P in 1..NumPersons)
+    printf("Person %d: %w\n", P, [Languages[L] : L in 1..NumLanguages, Mat[P,L] == 1])
+  end,
+  nl,
+  fail,
+ 
+  nl.
+
+puzzle(NumPersons,NumPersonPerLanguage, Mat,NumLang,Z) =>
+
+  NumLanguages = NumPersonPerLanguage.len,
+  
+  % the distribution matrix: what language does a person know
+  Mat = new_array(NumPersons,NumLanguages),
+  Mat :: 0..1,
+
+  % number of language each person knows
+  NumLang = new_list(NumPersons),
+  NumLang :: 0..NumLanguages,
+
+  foreach(L in 1..NumLanguages) 
+    NumPersonPerLanguage[L] #= sum([Mat[P,L]  : P in 1..NumPersons])
+  end,
+
+  % Symmetry breaking: Add number of language per person in the mat matrix
+  % ...
+  foreach(P in 1..NumPersons) 
+    NumLang[P] #= sum([Mat[P,L] : L in 1..NumLanguages]) 
+  end,
+
+  % ... and this array should be sorted in order
+  decreasing(NumLang),
+
+  Z #= NumLang[1] + NumLang[2],
+  % Z #= 8, % show all optimal solutions
+
+
+  Vars = Mat.vars ++ NumLang,
+  if var(Z) then
+    solve($[ff,split,max(Z)],Vars)
+  else
+    solve($[ff,split],Vars)
+  end.
+

@@ -1,0 +1,175 @@
+/* 
+
+  Life (simple) CP/SAT in Picat.
+
+  http://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+  """
+   1. Any live cell with fewer than two live neighbours dies, as if by loneliness.
+   2. Any live cell with more than three live neighbours dies, as if by overcrowding.
+   3. Any live cell with two or three live neighbours lives, unchanged, 
+      to the next generation.
+   4. Any dead cell with exactly three live neighbours comes to life.
+  """
+
+  For a non-CP/SAT version see conways_game_of_life.pi.
+  Also, compare with maximum_still_life.pi.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+  run_life(blinker),
+  nl.
+
+
+go2 =>
+  member(P, [blinker,glider,toad,glider16]),
+  run_life(P),
+  fail,
+  nl.
+
+
+run_life(Problem) =>
+  println(Problem),
+  problem(Problem,N,M,Start),
+
+  % the evolutions
+  X = new_array(M,N,N),
+  X :: 0..1, 
+ 
+  % initialize
+  foreach(I in 1..N, J in 1..N)
+    X[1,I,J] #= Start[I,J]
+  end,
+  % evolve
+  foreach(K in 2..M)
+    life(chunks_of([X[K-1,I,J] : I in 1..N, J in 1..N],N),
+         chunks_of([X[K,I,J] : I in 1..N, J in 1..N],N), N)
+  end,
+
+  solve(X),
+
+  print_evolution(N,M,X),
+  nl.
+
+print_evolution(N,M, X) =>
+  foreach(K in 1..M)
+    foreach(I in 1..N)
+      foreach(J in 1..N)
+        printf("%s ", cond(X[K,I,J] == 1, "X","_"))
+      end,
+      nl
+    end,
+    nl
+  end,
+  nl.
+
+
+
+%
+% life(from, to, n)
+% (8 neighbours)
+%
+life(S, T, NN) =>
+  Neigh = new_array(NN,NN),
+  Neigh :: 0..NN,
+  % calculate the neighbours
+  foreach(I in 1..NN, J in 1..NN)
+     Neigh[I,J] #= sum([S[I+A,J+B]
+                        : A in [-1,0,1], B in [-1,0,1],
+                          I+A > 0, J+B > 0,
+                          I+A <= NN, J+B <= NN])
+                       -  S[I,J]
+  end,
+
+  % calculate the life of the cells
+  foreach(I in 1..NN, J in 1..NN)
+    (
+     (S[I,J] #= 1 #/\ (Neigh[I,J] #= 3 #\/ Neigh[I,J] #= 2))
+     #\/
+     (S[I,J] #= 0 #/\ Neigh[I,J] #= 3)
+    )
+    #<=> T[I,J] #= 1    
+  end.
+
+
+
+%
+% data
+%
+
+% blinker
+problem(blinker,N,M,Start) => 
+  N = 8,
+  M = 20,
+  Start = chunks_of([ 
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,1,1,1,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0
+          ],N).
+
+% glider
+problem(glider,N,M,Start) => 
+  N = 8,
+  M = 20,
+  Start = chunks_of([ 
+           0,0,0,0,0,0,0,0,
+           0,0,0,0,0,0,0,0,
+           0,0,0,0,0,0,0,0,
+           0,0,0,0,0,0,0,0,
+           0,0,0,0,0,0,0,0,
+           0,0,0,0,0,1,1,1,
+           0,0,0,0,0,1,0,0,
+           0,0,0,0,0,0,1,0
+         ],N).
+
+% toad
+problem(toad,N,M,Start) => 
+  N = 8,
+  M = 20,
+  Start = chunks_of([ 
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,1,1,1,0,0,0,
+            0,1,1,1,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0
+          ],N).
+
+
+% glider on 16x16
+problem(glider16,N,M,Start) => 
+ N = 16,
+ M = 30,
+ Start = chunks_of([ 
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0
+          ],N).

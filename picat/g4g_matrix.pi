@@ -1,0 +1,121 @@
+/* 
+
+  Gathering 4 Garder matrix problem in Picat.
+
+  Problem by Bernardo Recamán
+
+  2013-10-21 via the G4G Hangout https://twitter.com/G4GCelebration
+  Here's the grid
+  http://ow.ly/i/3ukNk
+  """  
+  Place 1..20 so that there are exactly two numbers per each row and
+  two per each columns, such that either the sum or the product 
+  equals the value in the margins.
+  """
+
+  This is the unique solution:
+  
+  rows: [13, 26, 33, 36, 40, 42, 44, 48, 50, 72]
+  cols: [17, 20, 24, 25, 32, 57, 65, 66, 80, 84]
+  
+   1  0  0  0  0  0 13  0  0  0
+   0  0  0  0 14  0  0  0  0 12
+   0  0 15  0 18  0  0  0  0  0
+   0  0  0 17  0 19  0  0  0  0
+   0  2  0  0  0  0  0  0 20  0
+   0  0  0  0  0  0  0  6  0  7
+   0  0  0  0  0  0  0 11  4  0
+  16  0  0  0  0  3  0  0  0  0
+   0 10  0  0  0  0  5  0  0  0
+   0  0  9  8  0  0  0  0  0  0
+  
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 10,
+
+  Rows = [13,26,33,36,40,42,44,48,50,72],
+  Cols = [17,20,24,25,32,57,65,66,80,84],
+
+  % decision variables
+  X = new_array(N,N),
+  X :: 0..20,
+
+  all_different_except_0(X.vars),
+
+  RC = [],
+  foreach(I in 1..N)
+      sum([X[I,J] #> 0 : J in 1..N]) #= 2,
+      sum([X[J,I] #> 0 : J in 1..N]) #= 2,
+
+      Rs = new_list(2),
+      Rs :: 0..1,
+      sum(Rs) #= 1,
+
+      Cs = new_list(2),
+      Cs :: 0..1,
+      sum(Cs) #= 1,
+
+      product_except_0([X[I,J] : J in 1..N], Rows[I],Rs[2]),
+      product_except_0([X[J,I] : J in 1..N], Cols[I],Cs[2]),
+
+      (sum([X[I,J] : J in 1..N]) #= Rows[I] #<=> Rs[1]),
+      (sum([X[J,I] : J in 1..N]) #= Cols[I] #<=> Cs[1]),
+
+
+      RC := RC ++ Rs ++ Cs 
+      
+   end,
+
+   foreach(K in 1..20)
+     count(K, X.vars, 1) 
+   end,
+
+   Vars = X.vars ++ RC,
+   println(solve),
+   solve([ffd,updown],Vars),
+
+   foreach(I in 1..N)
+     foreach(J in 1..N)
+       printf("%2d ",X[I,J])
+     end,
+     nl
+   end,
+   nl,
+   fail,
+  
+  nl.
+
+go => true.
+
+
+% testing product_except_0
+go2 =>
+  X=new_list(4),
+  X::0..4,
+  X[1] #= 0,
+  X[2] #= 0,
+  P #= 4,
+  product_except_0xxx(X,P),
+  solve(X ++ [P]),
+  println(x=X),
+  println(p=P),
+  nl,
+  fail,
+  nl.
+  
+product_except_0xxx(X,P) => P #= prod([X[I] : I in 1..X.len, X[I] #> 0]).
+
+
+% product_except_0(X) = prod([X[I] : I in 1..X.len, X[I] #> 0]).
+product_except_0(X,P, B) =>
+  (P #= prod([cond(X[I]#=0,1,X[I]) : I in 1..X.len])) #<=> B #= 1.

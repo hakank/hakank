@@ -1,0 +1,166 @@
+/* 
+
+  Global constraint shift in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cshift.html
+  """
+  shift (MIN_BREAK, MAX_RANGE, TASKS)
+
+  Purpose
+  
+  The difference between the end of the last task of a shift and the origin 
+  of the first task of a shift should not exceed the quantity MAX_RANGE. 
+  Two tasks t1 and t2 belong to the same shift if at least one of the 
+  following conditions is true:
+
+   * Task t2 starts after the end of task t1 at a distance that is less 
+     than or equal to the quantity MIN_BREAK,
+   * Task t1 starts after the end of task t2 at a distance that is less 
+     than or equal to the quantity MIN_BREAK.
+   * Task t1 overlaps task t2.
+
+  Example
+      (
+      6, 8, <
+      id-1 origin-17 end-20, 
+      id-2 origin-7  end-10, 
+      id-3 origin-2  end-4, 
+      id-4 origin-21 end-22, 
+      id-5 origin-5  end.6
+      〉
+      )
+
+  Figure 4.249.1 represents the different tasks of the example. Each task 
+  is drawn as a rectangle with its corresponding id attribute in the middle. 
+  We indicate the distance between two consecutive tasks of a same shift and 
+  observe that it is less than or equal to MIN_BREAK=6. Since each shift has 
+  a range that is less than or equal to MAX_RANGE=8, the shift constraint 
+  holds (the range of a shift is the difference between the end of the last 
+  task of the shift and the origin of the first task of the shift).
+  
+  [See the figure at http://www.emn.fr/x-info/sdemasse/gccat/Cshift.html
+   which states the task ids of the shifts and their order
+
+       first shift             second shift
+       range = 8    break = 7   range = 5
+
+        3   5   2                 1     4
+        --  -   ---               ----  -
+  time: 2   5   7                 17    21
+   
+  ]
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N =  5,
+  NumShifts = 2,
+  MaxTime = 22,
+
+  % origin, end
+  Tasks = new_array(N,2),
+  Tasks :: 1..MaxTime,
+
+  % identify the shift for each task id
+  Shifts = new_list(N),
+  Shifts :: 1..NumShifts,
+  
+  MinBreak :: 0..MaxTime,
+  MaxRange :: 0..MaxTime,
+
+  Tasks = {{17, 20},  % task 1
+           { 7, 10},  % task 2 
+           { 2,  4},  % task 3 
+           {21, 22},  % task 4
+           { 5,  6}}, % task 5
+
+  MinBreak = 6,
+  MaxRange = 8,
+    
+  shift(MinBreak, MaxTime, MaxRange, Tasks, NumShifts, Shifts),
+
+  % the shifts in the example should be
+  %  tasks: 1 2 3 4 5 
+  %  shift: 2 1 1 2 1
+
+  Vars = Tasks.vars ++ Shifts ++ [MinBreak,MaxRange],
+  solve(Vars),
+
+  println(tasks=Tasks),
+  println(shifts=Shifts),
+  println(min_break=MinBreak),
+  println(max_range=MaxRange),
+  foreach(Shift in 1..NumShifts)
+    println(Shift=[[task=T,Tasks[T]] : T in 1..N, Shifts[T] == Shift])
+  end,
+  nl,
+  fail,
+
+  nl.
+
+%
+% I added num_shifts and shifts as a parameter
+%
+shift(MinBreak, MaxTime,MaxRange, Tasks, NumShifts, Shifts) =>
+  N = Tasks.len,
+  Ubt = Tasks.len,
+  % sanity check: task must start must before it ends
+  foreach(I in 1..Ubt)
+    Tasks[I,1] #< Tasks[I,2]
+  end,
+  MinBreak #> 0,
+  MaxRange #>= 0,
+  MaxRange #< max([V : T in 1..N, J in 1..2, V = fd_max(Tasks[T,J]) ]),
+
+  % * Task t2 starts after the end of task t1 at a distance that is less 
+  %   than or equal to the quantity MIN_BREAK,
+  % * Task t1 starts after the end of task t2 at a distance that is less 
+  %   than or equal to the quantity MIN_BREAK.
+  % * Task t1 overlaps task t2.
+  foreach(I in 1..Ubt, J in I+1..Ubt)
+    (Tasks[J,1]-Tasks[I,2] #>= 0 #/\ Tasks[J,1]-Tasks[I,2] #<= MinBreak)
+    #=> Shifts[I] #= Shifts[J],
+
+    (Tasks[I,1]-Tasks[J,2] #>= 0 #/\ Tasks[I,1]-Tasks[J,2] #<= MinBreak)
+    #=> Shifts[I] #= Shifts[J],
+              
+    % overlaps
+    ( (Tasks[I,2] #>= Tasks[J,1] #/\ Tasks[I,2] #<= Tasks[J,2])
+      #\/
+      (Tasks[J,2] #>= Tasks[I,1] #/\ Tasks[J,2] #<= Tasks[I,2])
+    )  #=> Shifts[I] #= Shifts[J]
+  end,
+
+  % the shift must have a range <= max_range 
+  foreach(K in 1..NumShifts)
+    MinStart :: 0..MaxTime,
+    MaxEnd :: 0..MaxTime,
+    TasksStart = new_list(N),
+    TasksStart :: 0..MaxTime,
+    TasksEnd = new_list(N),
+    TasksEnd :: 0..MaxTime,
+    foreach(T in 1..Ubt)
+      TasksStart[T] #= Tasks[T,1] #<=> Shifts[T] #= K,
+      TasksStart[T] #= MaxTime #<=> Shifts[T] #!= K,
+      TasksEnd[T] #= Tasks[T,2] #<=> Shifts[T] #= K,
+      TasksEnd[T] #= 0 #<=> Shifts[T] #!= K,
+      MinStart #= min(TasksStart),
+      MaxEnd #= max(TasksEnd),
+      MaxEnd #>= MinStart,
+      MaxEnd - MinStart #<= MaxRange
+    end
+   end,
+
+   % the task with the minimum start should have shift 1
+   MinIx :: 1..Ubt,
+   MinIx #= min([Tasks[J, 1] : J in 1..Ubt]),
+   element(MinIx,Shifts,1).

@@ -1,0 +1,115 @@
+/* 
+
+  Global constraint nclass in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cnclass.html
+  """
+  nclass​(NCLASS,​VARIABLES,​PARTITIONS)
+  
+  Purpose
+
+  Number of partitions of the collection PARTITIONS such that at least one 
+  value is assigned to at least one variable of the collection VARIABLES.
+  
+  Example
+   (
+    2, <3, 2, 7, 2, 6>,
+    <
+      p-<1, 3>,
+      p-<4>,
+      p-<2, 6>
+    >
+    )
+
+  Observe that the values of <3, 2, 7, 2, 6> occur within partitions 
+  p-<1, 3> and p-<2, 6> but not within p-<4>. Consequently, the nclass 
+  constraint holds since its first argument NCLASS is set to value 2.
+  """
+
+  This is a port of my MiniZinc model nclass.mzn which use var sets.
+  Picat doesn't support var sets so here we use boolean instead which
+  is not as elegant.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 5, % number
+  M = 7, % max value
+  X = new_list(N),
+  X :: 1..M,
+
+  % Number of satisfied partitions
+  NumClass :: 0..N,
+
+  % Binary version of the sets (since Picat doesn't support var sets)
+  NumSets = 3, % number of sets
+  S = new_array(NumSets,M),
+  S :: 0..1,
+
+  % The sets from the example
+  % SSet = {{1,3},
+  %         {4},
+  %         {2,6}
+  %        },  
+  % convert_set(M,SSet,S),
+  % println(s_set=SSet),
+  
+  X = [3,2,7,2,6],
+  NumClass = 2,
+
+  % Ensure that there are no empty sets.
+  foreach(I in 1..NumSets)
+    sum(S[I]) #> 0
+  end,
+
+  nclass(NumClass, X, S),
+  Vars = X ++ S.vars ++ [NumClass],
+  println(solve=Vars),
+  solve(Vars),
+
+  println(x=X),
+  println(s=S),
+  foreach(Row in S)
+    println(Row=[I : I in 1..Row.len, Row[I] == 1])
+  end,
+  println(num_class=NumClass),
+  nl,
+  fail,
+ 
+  nl.
+
+%
+% Converts a set (Set) to boolean representation (Bool)
+% Note: It only works one way Set -> Bool.
+%
+convert_set(M,Set,Bool) =>
+  foreach(S in 1..Set.len)
+    foreach(V in 1..M)
+      sum([Set[S,J] #= V : J in 1..Set[S].len]) #> 0 #<=> Bool[S,V] #= 1
+    end
+  end.
+  
+nclass(NC,V,S) =>
+  all_disjoint(S),
+  NC #= sum([
+           sum([V[J] #= K #/\ S[I,K] #= 1
+            : J in 1..V.len, K in 1..S[1].len
+            ]) #> 0
+      : I in 1..S.len]).
+
+%
+% Ensure that all values are disjoint
+% in the boolean matrix S.
+%
+all_disjoint(S) =>
+  foreach(J in 1..S[1].len)
+    sum([S[I,J] : I in 1..S.len]) #<= 1
+  end.

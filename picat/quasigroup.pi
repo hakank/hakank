@@ -1,0 +1,599 @@
+/* 
+
+  Quasigroup Existence problems (CSPLib #3) in Picat.
+
+  From CSPLib
+  http://csplib.org/Problems/prob003/
+  """
+  Proposed by Toby Walsh
+
+  An order m quasigroup is a Latin square of size m. That is, a m x m.
+  multiplication table in which each element occurs once in every row and column. 
+  For example,
+
+    1    2   3   4
+    4    1   2   3
+    3    4   1   2
+    2    3   4   1
+
+  is an order 4 quasigroup. 
+
+  A quasigroup can be specified by a set and a binary multiplication operator, * 
+  defined over this set. Quasigroup existence problems determine the existence or 
+  non-existence of quasigroups of a given size with additional properties. 
+  Certain existence problems are of sufficient interest that a naming scheme has been 
+  invented for them. We define two new relations, 
+   *321 and *312 by a∗321b=c iff c∗b=a and a∗312b=c iff b∗c=a
+
+
+  QG1.m problems are order m quasigroups for which if a∗b=c, 
+         a∗b=c∗d and a∗321b=c∗321d then a=c and b=d
+
+
+  QG2.m problems are order m quasigroups for which if a*b=c*d and 
+        a *312 b = c *312 d then a=c and b=d.
+
+  QG3.m problems are order m quasigroups for which (a∗b)∗(b∗a)=a
+
+  QG4.m problems are order m quasigroups for which (b∗a)∗(a∗b)=a
+
+  QG5.m problems are order m quasigroups for which ((b∗a)∗b)∗b=a
+
+  QG6.m problems are order m quasigroups for which (a∗b)∗b=a∗(a∗b)
+
+  QG7.m problems are order m quasigroups for which (b∗a)∗b=a∗(b∗a)
+
+  For each of these problems, we may additionally demand that the quasigroup is idempotent. 
+  That is, a*a=a for every element a.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat. % use for larger instance 
+% import cp.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 4,
+
+  quasigroup1(N,QuasiGroup),
+  % quasigroup3_non_idempotent(N,QuasiGroup),  
+  % quasigroup3_idempotent(N,QuasiGroup),  
+  % quasigroup4_non_idempotent(N,QuasiGroup),  
+  % quasigroup4_idempotent(N,QuasiGroup),  
+  % quasigroup5_non_idempotent(N,QuasiGroup),  
+  % quasigroup5_idempotent(N,QuasiGroup),  
+  % quasigroup6(N,QuasiGroup),
+  % quasigroup7(N,QuasiGroup),  
+
+  println(solution),
+  foreach(Row in QuasiGroup)
+    println(Row.to_list)
+  end,
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+
+/*
+  Numrber of solutions.
+  SAT is probably faster on this, especially the larger instances.
+
+  * quasigroup1
+   1: 1
+   2: 0
+   3: 1
+   4: 2
+   5: 6
+   6: 0
+   7: ?
+   8: ?
+   9: ?
+  10: ?
+
+
+  * quasigroup3_idempotent
+   1: 1
+   2: 0
+   3: 0
+   4: 2
+   5: 0
+   6: 0
+   7: 0
+   8: ?
+   9: ?
+  10: ?
+
+
+  * quasigroup3_non_idempotent
+   1: 1
+   2: 0
+   3: 0
+   4: 8
+   5: 0
+   6: 0
+   7: 0
+   8: ?
+   9: ?
+  10: ?
+
+
+
+  * quasigroup4_non_idempotent
+   1: 1
+   2: 0
+   3: 0
+   4: 10
+   5: 35
+   6: 0
+   7: 0
+   8: 4867
+   9: ?
+  10: ?
+
+
+  * quasigroup4_idempotent
+   1: 1
+   2: 0
+   3: 0
+   4: 0
+   5: 8
+   6: 0
+   7: 0
+   8: 0
+   9: 5734
+  10: a lot
+
+
+  * quasigroup5_non_idempotent
+   1: 1
+   2: 0
+   3: 3
+   4: 8
+   5: 0
+   6: 0
+   7: 174
+   8: 0
+   9: ?
+  10: ?
+
+
+  * quasigroup5_idempotent
+   1: 1
+   2: 0
+   3: 0
+   4: 2
+   5: 0
+   6: 0
+   7: 36
+   8: 0
+   9: 0
+  10: a lot
+
+
+  * quasigroup6
+   1: 1
+   2: 0
+   3: 0
+   4: 2
+   5: 0
+   6: 0
+   7: 0
+   8: 64
+   9: 88
+  10: 0
+
+  * quasigroup7
+   1: 1
+   2: 0
+   3: 0
+   4: 0
+   5: 8
+   6: 0
+   7: 0
+   8: 0
+   9: 64
+  10: 0
+
+*/
+go2 =>
+  nolog,
+  Qs = [quasigroup1,quasigroup3_non_idempotent,quasigroup3_idempotent,
+        quasigroup4_non_idempotent,quasigroup4_idempotent,quasigroup5_non_idempotent,
+        quasigroup5_idempotent,quasigroup6,quasigroup7],
+
+  foreach(Q in Qs)
+    println(Q),
+    foreach(N in 1..10)
+      F =.. [Q,N,_QuasiGroup],
+      Count = count_all(F),
+      printf("%2d: %d\n",N,Count)
+    end,
+    nl
+  end,
+  nl.
+
+
+%  QG1.m problems are order m quasigroups for which if a∗b=c, 
+%         a∗b=c∗d and a∗321b=c∗321d then a=c and b=d
+quasigroup1(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  QGDiagonal = new_list(N),
+  QGDiagonal :: NDomain,
+
+  latin_square(QuasiGroup),
+
+  foreach(I in NDomain)
+    QGDiagonal[I] #= QuasiGroup[I,I] 
+  end,
+
+  % Implied (from Colton,Miguel 01)
+  % All-diff diagonal
+  all_different(QGDiagonal),
+
+  %  a *321* b = c iff c*b = a
+  foreach(A in NDomain, B in NDomain, C in NDomain)
+      % quasiGroup[quasiGroup[a,b],quasiGroup[b,a]] = quasiGroup[c,a] <->
+      % equasiGroup[quasiGroup[b,a],quasiGroup[c,a]] = quasiGroup[a,b]
+
+      matrix_element(QuasiGroup,B,A,QBA),
+      matrix_element(QuasiGroup,A,B,QAB),
+      matrix_element(QuasiGroup,C,A,QCA),
+
+      matrix_element(QuasiGroup,QAB,QBA,QABBA),
+      matrix_element(QuasiGroup,QBA,QCA,QBACA),
+
+      QABBA #= QCA #<=> QBACA #= QAB
+
+  end,
+ 
+
+  idempotent(QuasiGroup),
+
+  solve($[ff,split],QuasiGroup).
+
+
+% QG3.m problems are order m quasigroups for which (a*b)*(b*a) = a. 
+quasigroup3_non_idempotent(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  latin_square(QuasiGroup),
+
+  % idempotent(QuasiGroup),
+
+  %  (j*i)*(i*j) = i
+  foreach(I in NDomain) 
+    foreach(J in NDomain)
+      % quasiGroup[quasiGroup[i,j],quasiGroup[j,i]] = i
+      matrix_element(QuasiGroup,J,I,Q1),
+      matrix_element(QuasiGroup,I,J,Q2),
+      matrix_element(QuasiGroup,Q2,Q1,I)
+    end
+  end,
+
+  solve($[ff,split],QuasiGroup).
+
+
+% QG3.m problems are order m quasigroups for which (a*b)*(b*a) = a. 
+quasigroup3_idempotent(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  % QGDiagonal = new_list(N),
+  % QGDiagonal :: NDomain,
+
+  % accessor for diagonal
+  % foreach(I in NDomain)
+  %   QGDiagonal[I] #= QuasiGroup[I,I] 
+  % end,
+
+  latin_square(QuasiGroup),
+
+  idempotent(QuasiGroup),
+
+  %  (j*i)*(i*j) = i
+  foreach(I in NDomain) 
+    foreach(J in NDomain)
+      % quasiGroup[quasiGroup[i,j],quasiGroup[j,i]] = i
+      matrix_element(QuasiGroup,J,I,Q1),
+      matrix_element(QuasiGroup,I,J,Q2),
+      matrix_element(QuasiGroup,Q2,Q1,I)
+    end
+  end,
+
+  solve($[ff,split],QuasiGroup).
+
+
+% QG4.m problems are order m quasigroups for which (b∗a)∗(a∗b)=a
+quasigroup4_non_idempotent(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  QGDiagonal = new_list(N),
+  QGDiagonal :: NDomain,
+
+  % accessor for diagonal
+  foreach(I in NDomain)
+   QGDiagonal[I] #= QuasiGroup[I,I]
+  end,
+
+  latin_square(QuasiGroup),
+  
+  % (j*i)*(i*j) = i
+  foreach(I in NDomain)
+    foreach(J in NDomain) 
+      % quasiGroup[quasiGroup[j,i],quasiGroup[i,j]] = i
+      matrix_element(QuasiGroup,I,J,Q1),
+      matrix_element(QuasiGroup,J,I,Q2),
+      matrix_element(QuasiGroup,Q2,Q1,I)
+      
+    end
+  end,
+
+  % idempotent(QuasiGroup),
+  
+  % Implied (from Colton,Miguel 01)
+  % All-diff diagonal
+  all_different(QGDiagonal),
+
+
+  % anti-Abelian
+  foreach(I in NDomain) 
+    foreach(j in NDomain, I != J) 
+      QuasiGroup[I,J] #!= QuasiGroup[J,I]
+    end
+  end,
+
+  % if (i*i)=j then (j*j) = i
+  foreach(I in NDomain)
+    foreach(J in NDomain) 
+      QuasiGroup[I,I] #= J  #=> QuasiGroup[J,J] #= I
+    end
+  end,
+  
+  symmetry_breaking(QuasiGroup),
+
+  solve($[ff,split],QuasiGroup).
+
+% QG4.m problems are order m quasigroups for which (b∗a)∗(a∗b)=a
+quasigroup4_idempotent(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  QGDiagonal = new_list(N),
+  QGDiagonal :: NDomain,
+
+  % accessor for diagonal
+  foreach(I in NDomain)
+   QGDiagonal[I] #= QuasiGroup[I,I]
+  end,
+
+  latin_square(QuasiGroup),
+  
+  % (j*i)*(i*j) = i
+  foreach(I in NDomain)
+    foreach(J in NDomain) 
+      % quasiGroup[quasiGroup[j,i],quasiGroup[i,j]] = i
+      matrix_element(QuasiGroup,I,J,Q1),
+      matrix_element(QuasiGroup,J,I,Q2),
+      matrix_element(QuasiGroup,Q2,Q1,I)
+      
+    end
+  end,
+
+  idempotent(QuasiGroup),
+  
+  % Implied (from Colton,Miguel 01)
+  % All-diff diagonal
+  all_different(QGDiagonal),
+
+
+  % anti-Abelian
+  foreach(I in NDomain) 
+    foreach(j in NDomain) 
+      if I != J then
+        QuasiGroup[I,J] #!= QuasiGroup[J,I]
+      end
+    end
+  end,
+
+  % if (i*i)=j then (j*j) = i
+  foreach(I in NDomain)
+    foreach(J in NDomain) 
+      QuasiGroup[I,I] #= J  #=> QuasiGroup[J,J] #= I
+    end
+  end,
+  
+  symmetry_breaking(QuasiGroup),
+
+  solve($[ff,split],QuasiGroup).
+
+
+% QG5.m problems are order m quasigroups for which ((b∗a)∗b)∗b=a
+quasigroup5_non_idempotent(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  latin_square(QuasiGroup),
+
+  % ((i*j)*j)*j = a
+  foreach(I in NDomain)
+    foreach(J in NDomain)
+       % quasiGroup[quasiGroup[quasiGroup[i,j],j],j] = i
+       Q1 :: 1..N,
+       Q1 #= QuasiGroup[I,J],
+       Q2 :: 1..N,       
+       matrix_element(QuasiGroup,Q1,J,Q2),
+       matrix_element(QuasiGroup,Q2,J,I)
+    end
+  end,
+  
+  % Idempotency
+  % idempotent(QuasiGroup),
+  
+  % Implied (from Colton,Miguel 01)
+  foreach(I in NDomain)
+    foreach(J in NDomain)
+      QuasiGroup[I,J] #= I #<=> QuasiGroup[J,I] #= I
+    end
+  end,
+
+  % Symmetry-breaking constraint	
+  symmetry_breaking(QuasiGroup),
+  
+  solve($[ff,split],QuasiGroup).
+
+
+% QG5.m problems are order m quasigroups for which ((b∗a)∗b)∗b=a
+quasigroup5_idempotent(N,QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), 
+  QuasiGroup :: NDomain,
+
+  latin_square(QuasiGroup),
+
+  % ((i*j)*j)*j = a
+  foreach(I in NDomain)
+    foreach(J in NDomain)
+       % quasiGroup[quasiGroup[quasiGroup[i,j],j],j] = i
+       Q1 :: 1..N,
+       Q1 #= QuasiGroup[I,J],
+       Q2 :: 1..N,
+       matrix_element(QuasiGroup,Q1,J,Q2),
+       matrix_element(QuasiGroup,Q2,J,I)
+    end
+  end,
+  
+  % Idempotency
+  idempotent(QuasiGroup),
+  
+  % Implied (from Colton,Miguel 01)
+  foreach(I in NDomain)
+    foreach(J in NDomain)
+      QuasiGroup[I,J] #= I #<=> QuasiGroup[J,I] #= I
+    end
+  end,
+
+  % Symmetry-breaking constraint	
+  symmetry_breaking(QuasiGroup),
+  
+  solve($[ff,split],QuasiGroup).
+
+
+% QG6.m problems are order m quasigroups for which (a*b)*b = a*(a*b).
+quasigroup6(N, QuasiGroup) =>
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N, N),
+  QuasiGroup :: NDomain,
+
+  QuasiGroupColumns = new_array(N,N),
+  QuasiGroupColumns :: NDomain,
+  
+  % assign the "reflected" quasigroup to qGColumns to access its columns
+  foreach(Row in NDomain, Col in NDomain) 
+    QuasiGroupColumns[Col,Row] #= QuasiGroup[Row,Col]
+  end,
+
+  latin_square(QuasiGroup),
+  latin_square(QuasiGroupColumns),
+
+  foreach(I in NDomain, J in NDomain)
+    % QuasiGroup[I, QuasiGroup[I,J]] #= QuasiGroupColumns[J,QuasiGroup[I,J]]
+    Q #= QuasiGroup[I,J],
+    matrix_element(QuasiGroup,I,Q,Val),
+    matrix_element(QuasiGroupColumns,J,Q,Val)
+  end,
+
+  % Implied constraint: Idempotency
+  idempotent(QuasiGroup),
+
+  % Symmetry-breaking constraint
+  symmetry_breaking(QuasiGroup),
+
+  Vars = QuasiGroup ++ QuasiGroupColumns,
+  solve($[ff,split],Vars).
+
+
+% QG7.m problems are order m quasigroups for which (b*a)*b = a*(b*a).
+quasigroup7(N, QuasiGroup) =>
+
+  NDomain = 1..N,
+
+  QuasiGroup = new_array(N,N), % 
+  QuasiGroup :: NDomain,
+
+  latin_square(QuasiGroup),
+
+  % all values in the diagonals
+  foreach(I in NDomain) 
+    QuasiGroup[I,I] #= I
+  end,
+
+  foreach(I in NDomain, J in NDomain)
+    % QuasiGroup[I, QuasiGroup[J,I]] #= QuasiGroup[QuasiGroup[J,I],J]
+    Q #= QuasiGroup[J,I],
+    matrix_element(QuasiGroup,I,Q,Val),
+    matrix_element(QuasiGroup,Q,J,Val)
+  end,
+
+  symmetry_breaking(QuasiGroup),
+  
+  solve($[ff,split],QuasiGroup).
+
+
+%
+% Ensure that QuasiGroup is a Latin square
+%
+latin_square(QuasiGroup) =>
+  % All rows have to be different
+  foreach(Row in QuasiGroup)
+    all_different(Row)
+  end,
+
+  % All cols have to be different
+  foreach(Col in QuasiGroup.transpose) 
+    all_different(Col)
+  end.
+
+
+% Ensure that QuasiGroup is idempotent
+idempotent(QuasiGroup) =>
+  foreach(I in 1..QuasiGroup.len) 
+    QuasiGroup[I,I] #= I
+  end.
+
+
+% Symmetry breaking
+symmetry_breaking(QuasiGroup) =>
+  N = QuasiGroup.len,
+  foreach(I in 1..N) 
+    QuasiGroup[I,N] + 2 #>= I
+  end.
+

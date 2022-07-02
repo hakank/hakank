@@ -1,0 +1,132 @@
+/* 
+
+  The Interns problem in Picat.
+
+  A classic theorem prover problem.
+  
+  From TPTP #18
+  http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Problems&Domain=PUZ&File=PUZ018_1.p
+  """
+  File     : PUZ018_1 : TPTP v6.1.0. Bugfixed v5.0.0.
+  Domain   : Puzzles
+  Problem  : The Interns
+  Version  : Especial.
+  English  : Three interns are residents of the same hospital. On only one day
+             of the week are all three interns on call. No intern is on call on
+             three consecutiveutive days. No two interns are off on the same
+             day more than once a week. The first intern is off on Sunday,
+             Tuesday, and Thursday. The second intern is off on Thursday and
+             Saturday. The third intern is off on Sunday.  Which day of the
+             week are all three interns on call?
+  """
+
+  This problem has a unique solution:
+
+             s m t w t f s
+   Intern 1: o w o w o w w 
+   Intern 2: w o w w o w o 
+   Intern 3: o w w o w w o 
+   Common day: 6
+
+
+  Without the specific info about when an intern is off, 
+  there are 1464 solutions.
+
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+
+  Days = 1..7,
+  [Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday] = Days,
+
+  % Note: This week setting yield two solutions.
+  % [Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday] = Days,
+
+  % Three interns are residents of the same hospital. 
+  N = 3, % number of interns
+  W = 7, % number of days in a week
+
+  % 0=o(ff), 1=w(ork)
+  D = ["o","w"], % 0..1
+
+  Interns = new_array(N,W),
+  Interns :: 0..1,
+
+  % On only one day of the week are all three interns on call. 
+  sum([
+      sum([Interns[I,J] : I in 1..N]) #= 3
+      : J in 1..W]) #= 1,
+
+  % No intern is on call on three consecutive days. 
+  foreach(I in 1..N) 
+    foreach(J in 1..W-2) 
+      sum([Interns[I,J+K] : K in 0..2 ]) #<= 2
+    end
+  end,
+
+  foreach(I in 1..N) 
+     % for each 3-slice there can be between 0 and 2 calls (1's)
+     sliding_sum(0,2,3, [Interns[I,J] : J in 1..W])
+  end,
+
+  % No two interns are off on the same day more than once a week. 
+  foreach(I1 in 1..N, I2 in I1+1..N) 
+    sum([Interns[I1,J] #= 0 #/\ Interns[I2,J] #= 0 : J in 1..W]) #= 1
+  end,
+
+  % The first intern is off on Sunday, Tuesday, and Thursday. 
+  Interns[1,Sunday]   #= 0,
+  Interns[1,Tuesday]  #= 0,
+  Interns[1,Thursday] #= 0,
+
+  % The second intern is off on Thursday and Saturday. 
+  Interns[2,Thursday] #= 0,
+  Interns[2,Saturday] #= 0,
+
+  % The third intern is off on Sunday.  
+  Interns[3,Sunday]   #= 0,
+
+  % Which day of the week are all three interns on call?
+
+  solve(Interns),
+
+  println("          s m t w t f s"),
+  foreach(I in 1..N)
+    printf("Intern %d: ", I),
+    foreach(J in 1..W)
+      print(D[Interns[I,J]+1]),
+      print(" ")
+    end,
+    nl
+  end,
+  foreach(J in 1..W)
+    if sum([Interns[I,J] : I in 1..N]) == 3 then
+      printf("Common day: %d\n",J)
+    end
+  end,
+  fail,
+
+  nl.
+
+
+%
+% Note: Seq must be instantiated, but neither Low or Up has
+% to be (the result may be weird unless they are, though).
+%
+sliding_sum(Low, Up, Seq, Variables) =>
+   foreach(I in 1..Variables.length-Seq+1)
+      Sum #= sum([Variables[J] : J in I..I+Seq-1]),
+      Sum #>= Low,
+      Sum #=< Up
+   end.
+
+

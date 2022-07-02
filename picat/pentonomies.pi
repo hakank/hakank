@@ -1,0 +1,264 @@
+/* 
+
+  Pentonomies in Picat.
+
+  https://en.wikipedia.org/wiki/Pentomino
+  '''
+  A pentomino (or 5-omino) is a polyomino of order 5, that is, a polygon in the
+  plane made of 5 equal-sized squares connected edge-to-edge. When rotations and
+  reflections are not considered to be distinct shapes, there are 12 different free
+  pentominoes. When reflections are considered distinct, there are 18 one-sided
+  pentominoes. When rotations are also considered distinct, there are 63 fixed pentominoes.
+  '''
+  
+  This is a port of the MiniZinc benchmark pentominoes_int.mzn 
+  https://github.com/MiniZinc/minizinc-benchmarks/blob/master/pentominoes/pentominoes-int.mzn
+
+  See https://github.com/MiniZinc/minizinc-benchmarks/tree/master/pentominoes
+  for instances.
+
+  See pentonomies_data.pi for the instances.
+
+  (Port of my Comet model http://www.hakank.org/comet/pentominoes_model.co)
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+% import sat. % sat is not fast
+import cp.
+import pentonomies_data. % The problem instances.
+
+main => go.
+
+/* 
+ 
+   First solution of instance 1
+   board = [1,1,2,2,6,3,1,4,5,6,3,1,3,5,6,3,3,3,5,6]
+   aabb
+   cade
+   cace
+   ccce
+*/
+go =>
+  problem(1,Width,Height,Filled,NTiles,_Size,Tiles,DFA),
+  pentonomies(Width,Height,Filled,NTiles,_Size,Tiles,DFA, Board),
+  print_solution(Width,Height,Board),
+  fail,
+  nl.
+go => true.
+
+
+/*
+
+  First solution for all instances:
+
+  problem = 1
+  [width = 5,height = 4]
+
+  CPU time 0.004 seconds.
+
+  board = [1,1,2,2,6,3,1,4,5,6,3,1,3,5,6,3,3,3,5,6]
+  AABB
+  CADE
+  CACE
+  CCCE
+
+
+  problem = 2
+  [width = 9,height = 8]
+
+  CPU time 0.263 seconds.
+
+  board = [1,1,1,2,4,4,4,4,11,1,1,1,2,7,7,7,4,11,1,1,8,2,2,2,7,4,11,5,5,8,8,8,2,7,10,11,5,5,5,5,5,2,10,10,11,3,3,9,9,9,9,10,10,11,3,3,9,9,9,9,6,6,11,3,3,3,3,6,6,6,6,11]
+  AAABDDDD
+  AAABGGGD
+  AAHBBBGD
+  EEHHHBGJ
+  EEEEEBJJ
+  CCIIIIJJ
+  CCIIIIFF
+  CCCCFFFF
+
+
+  problem = 3
+  [width = 11,height = 10]
+
+  CPU time 0.021 seconds.
+
+  board = [1,1,1,1,1,1,2,2,2,2,9,1,1,1,1,1,1,2,2,2,2,9,1,1,1,1,1,1,2,2,2,2,9,1,1,1,1,1,1,2,2,2,2,9,1,1,1,1,1,1,3,3,3,3,9,1,1,1,1,1,1,3,3,3,3,9,4,4,4,4,7,7,3,3,3,3,9,4,4,4,4,7,7,3,3,3,3,9,4,4,4,4,8,8,5,5,6,6,9,4,4,4,4,8,8,5,5,6,6,9]
+  AAAAAABBBB
+  AAAAAABBBB
+  AAAAAABBBB
+  AAAAAABBBB
+  AAAAAACCCC
+  AAAAAACCCC
+  DDDDGGCCCC
+  DDDDGGCCCC
+  DDDDHHEEFF
+  DDDDHHEEFF
+
+
+  problem = 4
+  [width = 21,height = 20]
+
+  CPU time 15.274 seconds.
+
+  board = [1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,11,11,11,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,11,11,11,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,11,11,11,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,12,12,12,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,12,12,12,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,12,12,12,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,14,14,16,18,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,14,14,17,18,1,1,1,1,1,1,1,1,1,13,13,13,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,15,15,13,13,13,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,15,15,13,13,13,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,5,5,5,5,5,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,5,5,5,5,5,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,5,5,5,5,5,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,5,5,5,5,5,3,3,3,3,3,3,3,3,18,4,4,4,4,4,4,4,5,5,5,5,5,3,3,3,3,3,3,3,3,18,8,8,8,8,9,9,9,9,10,10,10,10,6,6,6,6,7,7,7,7,18,8,8,8,8,9,9,9,9,10,10,10,10,6,6,6,6,7,7,7,7,18,8,8,8,8,9,9,9,9,10,10,10,10,6,6,6,6,7,7,7,7,18,8,8,8,8,9,9,9,9,10,10,10,10,6,6,6,6,7,7,7,7,18]
+  AAAAAAAAABBBBBBBBKKK
+  AAAAAAAAABBBBBBBBKKK
+  AAAAAAAAABBBBBBBBKKK
+  AAAAAAAAABBBBBBBBLLL
+  AAAAAAAAABBBBBBBBLLL
+  AAAAAAAAABBBBBBBBLLL
+  AAAAAAAAABBBBBBBBNNP
+  AAAAAAAAABBBBBBBBNNQ
+  AAAAAAAAAMMMCCCCCCCC
+  DDDDDDDOOMMMCCCCCCCC
+  DDDDDDDOOMMMCCCCCCCC
+  DDDDDDDEEEEECCCCCCCC
+  DDDDDDDEEEEECCCCCCCC
+  DDDDDDDEEEEECCCCCCCC
+  DDDDDDDEEEEECCCCCCCC
+  DDDDDDDEEEEECCCCCCCC
+  HHHHIIIIJJJJFFFFGGGG
+  HHHHIIIIJJJJFFFFGGGG
+  HHHHIIIIJJJJFFFFGGGG
+  HHHHIIIIJJJJFFFFGGGG
+
+
+  problem = 5
+  [width = 11,height = 6]
+
+  CPU time 1.615 seconds.
+
+  board = [1,1,11,4,4,3,3,3,2,2,13,1,11,11,11,4,4,3,2,2,5,13,1,10,11,10,12,4,3,7,2,5,13,1,10,10,10,12,7,7,7,5,5,13,9,9,12,12,12,7,8,8,8,5,13,9,9,9,6,6,6,6,6,8,8,13]
+  AAKDDCCCBB
+  AKKKDDCBBE
+  AJKJLDCGBE
+  AJJJLGGGEE
+  IILLLGHHHE
+  IIIFFFFFHH
+
+
+  problem = 6
+  [width = 13,height = 5]
+
+  CPU time 0.811 seconds.
+
+  board = [1,1,1,1,10,10,11,5,5,5,5,2,13,7,7,4,1,10,11,11,11,5,2,2,2,13,12,7,4,4,10,10,11,9,9,9,2,3,13,12,7,7,4,4,8,8,9,9,3,3,3,13,12,12,12,8,8,8,6,6,6,6,6,3,13]
+  AAAAJJKEEEEB
+  GGDAJKKKEBBB
+  LGDDJJKIIIBC
+  LGGDDHHIICCC
+  LLLHHHFFFFFC
+
+
+  problem = 7
+  [width = 16,height = 4]
+
+  CPU time 15.222 seconds.
+
+  board = [1,1,1,1,11,5,5,5,5,7,7,12,12,12,2,13,1,4,4,11,11,11,5,8,8,7,3,12,2,2,2,13,4,4,9,9,11,8,8,8,7,7,3,12,10,2,10,13,4,9,9,9,6,6,6,6,6,3,3,3,10,10,10,13]
+  AAAAKEEEEGGLLLB
+  ADDKKKEHHGCLBBB
+  DDIIKHHHGGCLJBJ
+  DIIIFFFFFCCCJJJ
+
+  CPU time 33.249 seconds. Backtracks: 22421
+
+*/
+
+go2 =>
+  foreach(P in 1..7)
+    println(problem=P),
+    problem(P,Width,Height,Filled,NTiles,_Size,Tiles,DFA),
+    println([width=Width,height=Height]),
+    time(pentonomies(Width,Height,Filled,NTiles,_Size,Tiles,DFA, Board)),
+    print_solution(Width,Height,Board),
+    nl
+  end,
+  nl.
+
+/*
+
+  Count the number of solutions for problems 1..3
+
+  problem = 1
+  [width = 5,height = 4]
+
+  CPU time 0.021 seconds.
+
+  count = 216
+
+  problem = 2
+  [waidth = 9,height = 8]
+
+  CPU time 20122.7 seconds.
+
+  count = 101792
+
+  problem = 3
+  [width = 11,height = 10]
+
+  CPU time 1.231 seconds.
+
+  count = 4608
+
+
+*/
+go3 =>
+  foreach(P in 1..7,P>4)
+    println(problem=P),
+    problem(P,Width,Height,Filled,NTiles,_Size,Tiles,DFA),
+    println([width=Width,height=Height]),
+    time(Count = count_all(pentonomies(Width,Height,Filled,NTiles,_Size,Tiles,DFA, _Board))),
+    println(count=Count),
+    nl
+  end,
+  nl.
+
+
+/*
+  Solve the pentonomies problem.
+*/
+pentonomies(Width,Height,Filled,NTiles,_Size,Tiles,DFA, Board) => 
+  Board = new_list(Width*Height),
+  Board :: Filled..NTiles+1,
+
+  foreach(H in 1..Height)
+    foreach(W in 1..Width-1)
+      Board[(H-1)*Width+W] #!= NTiles + 1
+    end
+  end,
+  foreach(H in 1..Height)
+    Board[(H-1)*Width+Width] #= NTiles + 1
+  end,
+  foreach(T in 1..NTiles)
+    [QQ,SS,FFStart,FFEnd,DDStart] = Tiles[T],
+    FF = FFStart..FFEnd,
+    TStart = DDStart+1,
+    TEnd = DDStart+QQ*SS,
+    DD := chunks_of(DFA[TStart..TEnd],SS),
+    regular(Board,QQ,SS,DD,1,FF)
+  end,
+
+  solve($[ff],Board).
+
+/*
+  Print a solution.
+*/
+print_solution(Width,Height,Board) =>
+  println(board=Board),
+  Alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  foreach(H in 1..Height)
+    foreach(W in 1..Width-1)
+      print(Alpha[Board[(H-1)*Width+W]])
+    end,
+    nl
+  end,
+  nl.
+

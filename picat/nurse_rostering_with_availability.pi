@@ -1,0 +1,202 @@
+/* 
+
+  Nurse rostering with availability in Picat.
+
+  (This is a port of my MiniZinc model nurse_rostering_with_availability.mzn)
+
+  From Reconciling Scheduled shifts with availabilities
+  http://stackoverflow.com/questions/22238698/reconciling-scheduled-shifts-with-availabilities
+  """
+  I'm writing a program to help schedule student employees at our university based on 
+  pre-defined shifts (time blocks) and student availabilities (also time blocks).
+  
+  This strikes me as similar to the Air Crew problem, except for modelling the constraint 
+  that an employee is not simply generally available: it depends on their schedule.
+  
+  What modelling strategies can a more seasoned constraint programmer recommend for 
+  solving this problem?
+  
+  (I'm using Gecode.)
+  """
+
+  My answer to the question: http://stackoverflow.com/a/22267889/195636
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+go =>
+  nolog,
+  test_nurse_rostering(1),
+  nl,
+  fail,
+  nl.
+
+
+test_nurse_rostering(Problem) =>
+  problem(Problem,NumNurses,NumDays,MinDayShift,MinNightShift,Available),
+
+  println(numNurses=NumNurses),
+  println(numDays=NumDays),
+  println(minDayShift=MinDayShift),
+  println(minNightShift=MinNightShift),
+  println("Available (nurses per day):"),
+  foreach(Row in Available)
+    println(Row.to_list)
+  end,
+  nl,
+  nurse_rostering(NumNurses,NumDays,MinDayShift,MinNightShift,Available, X, Stat),
+
+  ShiftString = "DN-",
+  println("Nurses rostering:"),
+  foreach(Nurse in 1..NumNurses)
+    printf("Nurse %2d: %w\n", Nurse, [ShiftString[X[Nurse,Day]] : Day in 1..NumDays])
+  end,
+  nl,
+  println("Nurses per day:"),
+  foreach(Day in 1..NumDays)
+    printf("Day %2d: %w\n", Day, [ShiftString[X[Nurse,Day]] : Nurse in 1..NumNurses])
+  end,
+
+  println("Stat:"),
+  foreach(J in 1..NumDays)
+    printf("Day %2d: Day:%2d, Night:%2d, Off:%2d\n", J, Stat[J,1],Stat[J,2],Stat[J,3])
+  end,
+  nl,
+
+  % Note: The "points" for the nurses are not evenly distributed.
+  Points = [1,2,0], % points per type of work
+  NursePoints = new_list(NumNurses),
+  foreach(Nurse in 1..NumNurses)
+    NursePoints[Nurse] = sum([Points[X[Nurse,Day]] : Day in 1..NumDays])
+  end,
+  println(nursePoints=NursePoints),
+
+  nl.
+
+
+
+nurse_rostering(NumNurses,NumDays,MinDayShift,MinNightShift,Available, X,Stat) =>
+
+  if MinDayShift + MinNightShift > NumNurses then
+    printf("Number of minimum nurses for the day shift (%d) and the night shift (%d) are larger than number of nurses (%d)\n", MinDayShift, MinNightShift, NumNurses),
+    halt
+  end,
+
+  % The DFA for the regular constraint.
+  % This handle the scheduling requirement for each nurse:
+  % """
+  % In each four day period a nurse must have at least one day off, and
+  % no nurse can be scheduled for 3 night shifts in a row.
+  % """
+  % 
+  % d: day shift, n: night shift, o:off
+  % State 0 is an error state, e.g. it's not possible to come to state 6 
+  % with d or n as input.
+  % 
+  % States:
+  % 
+  Transition = [ 
+      % d n o
+       [2,3,1], % state 1: start/off
+       [4,4,1], % state 2: day 2 in day shift: go to day 3 (state 4)
+       [4,5,1], % state 3: day 2 in night shift: go to state 4
+       [6,6,1], % state 4:
+       [6,0,1], % state 5: 
+       [0,0,1]  % state 6: go to off (day or night is not accepted as input)
+  ],
+  NStates = Transition.length, % number of states
+  InputMax = 3,  % 3 states
+  InitialState = 1, % start at state 1
+  AcceptingStates = 1..6, % all states are accepting states
+
+  DayShift   = 1,
+  NightShift = 2,
+  OffShift   = 3,
+
+  % decision variables
+  X = new_array(NumNurses,NumDays),
+  X :: DayShift..OffShift,
+
+  % summary of the shifts:
+  %   [day,night,off]
+  Stat = new_array(NumDays,3),
+  Stat :: 0..NumNurses,
+
+  % 
+  % constraints
+  %
+  foreach(Nurse in 1..NumNurses)
+    regular([X[Nurse,Day] : Day in 1..NumDays],NStates,InputMax,Transition,InitialState,AcceptingStates)
+  end,
+
+  % for each day there must be at least 3 nurses with day shift,
+  % and 2 nurses with night shift
+  foreach(Day in 1..NumDays)
+    % Also ensure that the availabile matrix is satisfied
+    sum([X[Nurse,Day] #= DayShift #/\ Available[Nurse,Day] #= 1 : Nurse in 1..NumNurses]) #>= 3,
+    sum([X[Nurse,Day] #= NightShift #/\ Available[Nurse,Day] #= 1 : Nurse in 1..NumNurses]) #>= 2
+  end,
+
+
+  % stats for each day
+  % and we can put the shift constrains here instead
+  foreach(Day in 1..NumDays)
+    foreach(T in 1..2) 
+      Stat[Day,T] #= sum([X[Nurse,Day] #= T #/\ Available[Nurse,Day] #= 1 : Nurse in 1..NumNurses])
+    end,
+    Stat[Day,OffShift] #= sum([X[Nurse,Day] #= OffShift : Nurse in 1..NumNurses]),
+    Stat[Day,DayShift] #>= MinDayShift,
+    Stat[Day,NightShift] #>= MinNightShift 
+  end,
+
+  Vars = X.vars() ++ Stat.vars(),
+  % Vars =  Stat.vars() ++ X.vars(),
+  if member(cp,sys.loaded_modules()) then
+    % cp module
+    solve($[degree,split],Vars)
+  else 
+    % sat module
+    solve($[],Vars)
+  end.
+
+
+%
+% Availability matrix (for the 7 nurses x 14 days problem instance)
+% Note: for this schedule there can be max 2 non-available
+% nurses per day.
+%
+available(Available) => 
+  Available = {
+    % days
+      {1,1,0,1,1,1,1, 1,1,1,0,1,1,1}, % nurses
+      {0,1,1,1,0,1,1, 0,1,1,1,1,1,1}, 
+      {1,0,1,1,0,1,1, 1,0,0,1,1,0,1}, 
+      {1,1,1,1,1,0,1, 1,0,1,1,1,1,0}, 
+      {1,1,1,0,1,1,1, 1,1,1,1,0,1,1}, 
+      {1,1,0,1,1,0,1, 1,1,0,1,1,1,0}, 
+      {1,1,1,0,1,1,1, 1,1,1,0,1,1,1}
+    }.
+
+
+
+
+problem(1,NumNurses,NumDays,MinDayShift,MinNightShift,Available) =>
+  NumNurses     = 7,
+  NumDays       = 14,
+  MinDayShift   = 3, % minimum number in day shift
+  MinNightShift = 2, % minimum number in night shift
+  available(Available).
+
+
+problem(2,NumNurses,NumDays,MinDayShift,MinNightShift,Available) =>
+  NumNurses     = 7,
+  NumDays       = 14,
+  MinDayShift   = 3, % minimum number in day shift
+  MinNightShift = 2, % minimum number in night shift
+  available(Available).

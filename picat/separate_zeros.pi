@@ -1,0 +1,128 @@
+/* 
+
+  Separate zeros in Picat.
+
+  This is a general solution for the problem in
+  "Minizinc array sorting"
+  http://stackoverflow.com/questions/33856233/minizinc-array-sorting
+  """
+  Lets say I have an array declaration looking like this
+  array[1..5] of int: temp = [1,0,5,0,3];
+
+  Is there a way to initiate a new array looking the same as temp but without the 0's? 
+  The result would look like the following
+  
+  [1,5,3]
+  
+  or sort the array in such a way that the 0's would be either in the beginning or 
+  in the end of the array, which would be
+  
+  [0,0,1,5,3]
+  
+  or
+  
+  [1,5,3,0,0]
+  """
+
+
+  This model solves the second problem for decision variables. Note that
+  this separation is stable, i.e. the values (!= 0) are in the same order
+  as in the source array.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  
+  N = 5,
+
+  % "original" array
+  S = new_list(N),
+  S :: 0..6,
+  
+  % place zeros first
+  S2 = new_list(N),
+  S2 :: 0..6,
+
+  % place the zeros last
+  S3 = new_list(N),
+  S3 :: 0..6,
+
+  S = [1,0,5,0,3],
+
+  % sum([S[I] #= 0 : I in 1..N]) #= 2,
+
+  separate_z_first(S,S2,0),
+  separate_z_last(S,S3,0),
+
+  Vars = S ++ S2 ++ S3,
+  solve(Vars),
+
+  println('s '=S),
+  println(s2=S2),
+  println(s3=S3),
+  nl,
+  fail,
+
+  nl.
+
+
+%
+% count the number of not y in the array "x", from position "from" to position "to"
+%
+count_not_y(X, Y, From, To, Count) =>
+   Count #= sum([X[J] #!= Y : J in From..To]).
+
+
+%
+% count the number of y in the array "x", from position "from" to position "to"
+%
+count_y(X, Y, From, To, Count) =>
+   Count #= sum([X[J] #= Y : J in From..To]).
+
+
+%
+% the array "y" is a copy of the values in "x", except that the value "z" is placed first.
+%
+separate_z_first(X, Y, Z) =>
+  Len = X.len,
+  count_y(X,0,1,Len,CountY),
+  foreach(I in 1..Len)    
+     count_not_y(X,0,1,I-1,CountNotY),     
+     CountYCountNotY1 #= min([CountY + CountNotY + 1,Len]),
+     element(CountYCountNotY1,Y,T1),
+
+     count_y(X,0,1,I-1,CountYI_1),
+     CountY2 #= min([CountYI_1 + 1,Len]),
+     element(CountY2,Y,T2),
+     X[I] #!= Z #=> T1 #= X[I], % y[count_y(x,0,1,len) + count_not_y(x,0,1,i-1) +1 ] = x[i]
+     X[I] #= Z #=> T2 #= 0 %  y[count_y(x,0,1,i-1) + 1] = 0
+  end.
+
+
+%
+% the array "y" is a copy of the values in "x", except that the value "z" is placed last.
+%
+separate_z_last(X, Y, Z) =>
+  Len = X.len,
+  count_not_y(X,0,1,Len,CountNotY),
+  foreach(I in 1..Len)
+     count_not_y(X,0,1,I-1,CountNotY1_1),
+     Ix1 #= min([CountNotY1_1 + 1,Len]),
+     element(Ix1,Y,T1),
+  
+     count_y(X,0,1,I-1,CountY1_1),
+     Ix2 #= min([CountNotY + CountY1_1 + 1,Len]),
+     element(Ix2,Y,T2),
+     X[I] #!= Z #=> T1 #= X[I], %  y[count_not_y(x,0,1,i-1) +1] = x[i]
+     X[I] #= Z #=> T2 #= 0 %  y[count_not_y(x,0,1,len) + count_y(x,0,1,i-1) +1] = 0
+  end.
+
+

@@ -1,0 +1,108 @@
+/* 
+
+  Global constraint distance change in Picat.
+
+  From Global Constraint Catalogue:
+  http://www.emn.fr/x-info/sdemasse/gccat/Cdistance_change.html
+  """
+  Constraint
+  
+      distance_change(DIST,VARIABLES1,VARIABLES2,CTR)
+  
+  ...
+  Purpose
+
+      DIST is equal to the number of times one of the following two 
+      conditions is true (1<=i<n):
+          * VARIABLES1[i].var CTR VARIABLES1[i+1].var holds and 
+            VARIABLES2[i].var CTR VARIABLES2[i+1].var does not hold,
+          * VARIABLES2[i].var CTR VARIABLES2[i+1].var holds and 
+            VARIABLES1[i].var CTR VARIABLES1[i+1].var does not hold.
+  Example
+      (
+      1, <3, 3, 1, 2, 2>,
+         <4, 4, 3, 3, 3>,!=
+      )
+
+      The distance_change constraint holds since the following 
+      condition (DIST=1) is verified: {
+        VARIABLES1[3].var=1 != VARIABLES1[4].var=2 /\
+        VARIABLES2[3].var=3 = VARIABLES1[4].var=3
+      }
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 5,
+
+  V1 = new_list(N),
+  V1 :: 1..3,
+  V2 = new_list(N),
+  V2 :: 1..4,
+
+  Dist :: 0..N,
+  Ctr = 4, % !=
+  
+  V1 = [3, 3, 1, 2, 2],
+  V2 = [4, 4, 3, 3, 3],
+  % Dist = 1,
+
+  distance_change(Dist, V1, V2, Ctr),
+
+  Vars = V1 ++ V2 ++ [Dist],
+  solve(Vars),
+
+  println(v1=V1),
+  println(v2=V2),
+  println(dist=Dist),
+  nl,
+  fail,
+ 
+  nl.
+
+go => true.
+
+distance_change(Dist, Var1, Var2, Ctr) =>
+   N = Var1.len,
+   C1 = [C : I in 1..N-1, cmp(Var1[I],Var1[I+1], Ctr, C)],
+   C2 = [C : I in 1..N-1, cmp(Var2[I],Var2[I+1], Ctr, C)],
+   Dist #= sum([
+            (C1[I] #/\ C2[I] #= 0)
+            #\/
+            (C2[I] #/\ C1[I] #= 0)
+            : I in 1..N-1]).
+
+%
+% Since MiniZinc don't handle function variables we use the following 
+% hack where t is the type of comparison operator.
+% t:
+%  - 2 :  a <  b
+%  - 1 :  a <= b
+%    0 :  a  = b
+%    1 :  a >= b
+%    2 :  a >  b
+% else : a != b
+%
+cmp(A, B, T,C) => 
+   if     T == -2 then
+     C #<=> A #< B
+   elseif T == -1 then
+     C #<=> A #<= B 
+   elseif T ==  0 then
+     C #<=> A #= B
+   elseif T ==  1 then
+     C #<=> A #>= B
+   elseif T ==  2 then
+     C #<=> A #> B
+   else 
+     C #<=> A #!= B
+   end.

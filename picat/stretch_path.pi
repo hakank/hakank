@@ -1,0 +1,177 @@
+/* 
+
+  Global constraint stretch_path in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cstretch_path.html
+  """
+  Let n be the number of variables of the collection VARIABLES.
+  Let Xi, ..., Xj  (1<=i<=j<=n)  be consecutive variables of the 
+  collection of variables VARIABLES such that the following conditions apply:
+
+  * All variables Xi, ..., Xj take a same value from the set of values 
+    of the val attribute,
+  * i=1 or Xi-1 is different from Xi,
+  * j=n or Xj+1 is different from Xj.
+
+  We call such a set of variables a stretch. The span of the stretch is 
+  equal to j-i+1, while the value of the stretch is Xi. 
+  An item  (val-v, lmin-s, lmax-t)  gives the minimum value s as well 
+  as the maximum value t for the span of a stretch of value v.
+  
+  Example
+      (
+      <
+      var-6, 
+      var-6, 
+      var-3, 
+      var-1, 
+      var-1, 
+      var-1, 
+      var-6, 
+      var-6
+      >, 
+      <
+      val-1	lmin-2	lmax-4, 
+      val-2	lmin-2	lmax-3, 
+      val-3	lmin-1	lmax-6, 
+      val-6	lmin-2	lmax-2
+      >
+      )
+
+  The stretch_path constraint holds since the sequence 6 6 3 1 1 1 6 6 contains 
+  four stretches 6 6, 3, 1 1 1, and 6 6 respectively verifying the following 
+  conditions:
+  
+  * The span of the first stretch 6 6 is located within interval  [2, 2]  
+     (i.e., the limit associated with value 6).
+  * The span of the second stretch 3 is located within interval  [1, 6]  
+    (i.e., the limit associated with value 3).
+  * The span of the third stretch 1 1 1 is located within interval  [2, 4]  
+    (i.e., the limit associated with value 1).
+  * The span of the fourth stretch 6 6 is located within interval  [2, 2]  
+    (i.e., the limit associated with value 6).
+  """
+
+  Originally defined by G. Pesant in 
+  "A Filtering Algorithm for the Stretch Constraint"
+
+
+  This is a port of my MiniZinc model stretch_path.mzn.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 8, % length of sequence
+  M = 4, % length of stretch constraints
+
+  S = [1,2,3,6],
+
+  X = new_list(N),
+  X :: S,
+
+  Val = new_list(M),
+  Val :: S,
+
+  LMin = new_list(M),
+  LMin :: 1..N,
+  
+  LMax = new_list(M),
+  LMax :: 1..N,
+  
+  % X = [6, 6, 3, 1, 1, 1, 6, 6])
+  Val =  [1,2,3,6],
+  LMin = [2,2,1,2],
+  LMax = [4,3,6,2],
+
+  stretch_path(X, Val, LMin, LMax),
+
+  Vars =  X ++ Val ++ LMin ++ LMax,
+  solve(Vars),
+
+  println(x=X),
+  println(val=Val),
+  println(lmin=LMin),
+  println(lmax=LMax),
+  nl,
+  fail,
+  nl.
+
+
+%
+% stretch_path(variables, val, lmin, lmax)
+%
+% Note:
+% The T1 and T2 variables below are needed since
+% the implications
+%   (I #> Lbx #=> X[I-1] #!= X[I])
+% and
+%   (J #< ubx #=> X[J+1] #!= X[J])
+% in the FirstPos[I] reification
+% yield out of range errors if "unprotected".
+% 
+stretch_path(X, Val, LMin, LMax) =>
+  Lbx = 1,
+  Ubx = X.len,
+  LbVal = 1,
+  UbVal = Val.len,
+
+  println([ibx=Lbx,ubx=Ubx,lbval=LbVal,ubval=UbVal]),
+
+  % first positions of a stretch  
+  FirstPos = new_list(Ubx),
+  FirstPos :: 0..1,
+
+  % sanity clause 
+  foreach(S in LbVal..UbVal)
+    LMin[S] #<= LMax[S]
+  end,
+  
+  % get the index for first positions of the stretches
+  FirstPos[1] #= 1,
+  foreach(I in Lbx+1..Ubx) 
+    FirstPos[I] #= 1 #<=> (X[I] #!= X[I-1])
+  end,
+  % check all values in x
+  foreach(I in Lbx..Ubx)
+    SIx :: LbVal..UbVal,  % index of the current value in the stretch   
+    element(SIx,Val, X[I]),
+
+    % ignore if we are inside a stretch
+    element(SIx,LMin, LMinSIx), % for the sum/1 below
+    element(SIx,LMax, LMaxSIx), % for the sum/1 below
+
+    % See comment above.
+    if I > Lbx then
+      T1 #<=> X[I-1] #!= X[I]
+    else
+      T1 #<=> 1
+    end,
+
+    FirstPos[I] #= 0 #\/
+    (
+      % when in first position in a stretch, then
+      % check that this stretch has is OK
+      FirstPos[I] #= 1 #<=>
+      (
+         sum([
+              J-I+1 #>= LMinSIx #/\
+              J-I+1 #<= LMaxSIx #/\
+              % all same values in the stretch 
+              (sum([X[K] #= X[I] : K in I+1..J]) #= J-I)
+              #/\               
+              % the neighbours of the stretch are different
+              (I #> Lbx #=> T1) % (I #> Lbx #=> X[I-1] #!= X[I]) See comment above
+              #/\
+              (J #< Ubx #=> T2) % (J #< ubx #=> X[J+1] #!= X[J]) See comment above
+         : J in I..Ubx, T2 = cond(J #< Ubx, X[J+1] #!= X[J], 1)]) #>= 1
+       )
+    )
+   end.

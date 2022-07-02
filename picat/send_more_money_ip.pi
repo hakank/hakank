@@ -1,0 +1,76 @@
+/* 
+
+  Send More Money - integer programming version in Picat.
+
+  This is an integer programming version of the SEND+MORE=MONEY problem.
+  It was "inspired" by (i.e. remodelled from) the GLPK model money.mod.
+
+  (Via my MiniZinc model send_more_money_ip.mzn)
+
+  Solution:
+   dig = [7,5,1,6,0,8,9,2]
+   9567 + 1085 = 10652
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+
+  DIGITS = 0..9,
+
+  % Constants for positon in dig
+  NN = 8,
+  
+  [D,E,M,N,O,R,S,Y] = [1,2,3,4,5,6,7,8],
+
+  % X[i,d] = 1 means that letter i is Digit d
+  % Note: 2nd index is 0..9. Adjusted in constraints below.
+  X = new_array(NN,10), 
+  X :: 0..1,
+
+  % Carry bits
+  Carry = new_list(3),
+  Carry :: 0..1,
+
+  % Dig[i] is a Digit corresponding to letter i
+  Dig = new_list(NN),
+  Dig :: DIGITS,
+
+  % Each letter must correspond eXactly to one Digit
+  foreach(II in 1..NN) 
+    sum([X[II,DD+1] : DD in DIGITS]) #= 1
+  end,
+
+  % different letters must correspond to different Digits, note that
+  % some Digits may not correspond to any letters at all
+  foreach(DD in DIGITS)
+    sum([X[II,DD+1] : II  in 1..NN]) #<= 1
+  end,
+
+  foreach(II in 1..NN)
+    Dig[II] #= sum([DD * X[II,DD+1] : DD in DIGITS])
+  end,
+
+  Dig[D] + Dig[E]            #= Dig[Y] + 10 * Carry[1],
+  Dig[N] + Dig[R] + Carry[1] #= Dig[E] + 10 * Carry[2],
+  Dig[E] + Dig[O] + Carry[2] #= Dig[N] + 10 * Carry[3],
+  Dig[S] + Dig[M] + Carry[3] #= Dig[O] + 10 * Dig[M],
+  Dig[M] #>= 1, % M must not be 0
+
+  Vars = X.vars ++ Dig,
+  solve(Vars),
+
+  println(dig=Dig),
+  printf("%d%d%d%d + %d%d%d%d = %d%d%d%d%d\n", Dig[S],Dig[E],Dig[N],Dig[D],
+                                             Dig[M],Dig[O],Dig[R],Dig[E],
+                                             Dig[M],Dig[O],Dig[N],Dig[E],Dig[Y]),
+  nl,
+  fail,
+  
+  nl.

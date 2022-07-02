@@ -1,0 +1,112 @@
+/* 
+
+  Rooks path problem in Picat.
+
+  Find a rook path (tour) on a N X N matrix.
+  The tours are only for even N.
+
+  Here is a Rook Tour of 8x8:
+
+   CPU time 0.19 seconds.
+
+   44  43  42  41  40  39  38  37 
+   45  30  31  32  33  34  35  36 
+   46  29  26  25  24  23  22  21 
+   47  28  27  58  59  60  61  20 
+   48  55  56  57   4   3  62  19 
+   49  54   7   6   5   2  63  18 
+   50  53   8  11  12   1  64  17 
+   51  52   9  10  13  14  15  16 
+
+  Rook Path of 9x9:
+
+   CPU time 41.921 seconds.
+
+   79  80  31  30  29  28  27  54  55 
+   78  81  32  23  24  25  26  53  56 
+   77  34  33  22  21  20  19  52  57 
+   76  35  36  13  14  15  18  51  58 
+   75  38  37  12  11  16  17  50  59 
+   74  39   2   1  10   9   8  49  60 
+   73  40   3   4   5   6   7  48  61 
+   72  41  42  43  44  45  46  47  62 
+   71  70  69  68  67  66  65  64  63 
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+
+main => go.
+
+go =>
+  nolog,
+  foreach(N in 2..10)
+    println(n=N),
+    time(rook_path(N, X)),
+    print_solution(N, X)
+  end,
+  nl.
+
+/*
+  Number of solutions (even: tour, odd: path)
+
+  2 = 8
+  3 = 40
+  4 = 192
+  5 = ?
+*/
+go2 =>
+  nolog,
+  foreach(N in 2..10)
+    Count = count_all(rook_path(N, _X)),
+    println(N=Count)
+  end,
+  nl.
+
+print_solution(N, X) =>
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%3d ", X[I,J])
+    end,
+    nl
+  end,
+  nl.
+
+
+rook_path(N, X) =>
+  X = new_array(N,N),
+  X :: 1..N*N,
+
+  all_different([X[I,J] : I in 1..N, J in 1..N]),
+  % the rook moves
+  foreach(K in 1..N*N-1)
+    next(X, K, K+1) 
+  end,
+  % make it a tour: only for even N
+  if N mod 2 == 0 then
+    next(X, 1, N*N) 
+  end,
+  
+  solve($[ffd,split],X).
+
+%
+% Find the next K
+%
+next(X,K1,K2) =>
+  N = X.len,
+  sum([K1 #= X[I,J] % fix this k
+       #/\ 
+       % find the next k
+       sum([K2 #= X[I+A,J+B]  
+            : A in [-1,0,1], B in [-1,0,1],
+              I+A >= 1, J+B >= 1,
+              I+A <= N, J+B <= N,
+              abs(A+B) == 1 % just move in exactly one direction
+             ]) #> 0
+        : I in 1..N, J in 1..N]) #> 0.
+

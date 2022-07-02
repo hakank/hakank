@@ -1,0 +1,140 @@
+/* 
+
+  Shortest Path Problem in Picat.
+
+  From GLPK example spp.mod
+  """
+  SPP, Shortest Path Problem 
+
+  Written in GNU MathProg by Andrew Makhorin <mao@mai2.rcnet.ru> 
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  member(P,1..2),
+  println(problem=P),
+  data(P,N,S,T,NumEdges,E,C),
+  spp(N,S,T,NumEdges,E,C, X, Z),
+  println(x=X),
+  println(z=Z),
+  Path = [E[I] : I in 1..NumEdges, X[I] == 1],
+  println(path=Path),
+  nl,
+  fail,
+  nl.
+
+% Playing with source and target for problem 1.
+% Showing only the possible routes.
+go2 =>
+  data(1,N,_,_,NumEdges,E,C),
+  foreach(S in 1..NumEdges)
+    foreach(T in 1..NumEdges, T != S)
+      if spp(N,S,T,NumEdges,E,C, X, Z) then
+        Path = [E[I] : I in 1..NumEdges, X[I] == 1],
+        if Path != [] then
+          println([source=S,target=T]),
+          println(x=X),
+          println(z=Z),
+          println(path=Path),
+          nl
+        end
+      end
+    end
+  end,
+  nl.
+
+
+% 
+% Given a directed graph G = (V,E), its edge lengths c(i,j) for all
+% (i,j) in E, and two nodes s, t in V, the Shortest Path Problem (SPP)
+% is to find a directed path from s to t whose length is minimal.
+% c[i,j] is length of edge (i,j); note that edge lengths are allowed
+%  to be of any sign (positive, negative, or zero)
+%
+spp(N,S,T,NumEdges,E,C, X, Z) =>
+
+  % """
+  % x[i,j] = 1 means that edge (i,j) belong to shortest path;
+  % x[i,j] = 0 means that edge (i,j) does not belong to shortest path;
+  % note that variables x[i,j] are binary, however, there is no need to
+  % declare them so due to the totally unimodular constraint matrix
+  % """
+  X = new_list(NumEdges),
+  X :: 0..1,
+
+
+  % objective function is the path length to be minimized 
+  Z #= sum([C[I] * X[I] : I in 1..NumEdges]),
+
+  % """
+  % conservation conditions for unity flow from s to t; every feasible
+  % solution is a path from s to t
+  % """
+  foreach(I in 1..N)
+     sum([X[K] :  K in 1..NumEdges, E[K,2] == I]) + cond(I #= S, 1, 0)
+    #=
+     sum([X[K] :  K in 1..NumEdges, E[K,1] == I]) + cond(I #= T, 1, 0)    
+  end,
+
+  solve($[min(Z)],X).
+
+
+
+% """
+% Optimal solution is 20 that corresponds to the following shortest
+% 
+% path: s = 1 -> 2 -> 4 -> 8 -> 6 = t
+% """
+% I.e. edges [1, 4, 11, 14] is the shortest path
+% 
+data(1, N,S,T,NumEdges,E,C) =>
+  N = 8,
+  S = 1, % source
+  T = 6, % target
+  NumEdges = 15,
+  E = [
+       [1, 2], % 1  *
+       [1, 4], % 2 
+       [1, 7], % 3
+       [2, 4], % 4  *
+       [3, 2], % 5
+       [3, 4], % 6
+       [3, 5], % 7
+       [3, 6], % 8
+       [4, 5], % 9
+       [4, 8], % 10 *
+       [5, 8], % 11
+       [6, 5], % 12
+       [7, 4], % 13
+       [8, 6], % 14 *
+       [8, 7]  % 15
+ ],
+ C = [1, 8, 6, 2, 14, 10, 6, 19, 8, 13, 12, 7, 5, 4, 10].
+
+% Topology/graph from: https://web.stanford.edu/class/cs97si/08-network-flow-problems.pdf
+data(2, N,S,T,NumEdges,E,C) =>
+  N = 6,    % No. of nodes
+  S = 4,    % Source node
+  T = 3,    % Target node
+  NumEdges = 10,
+  E = [
+        [1, 2],
+        [1, 4],
+        [2, 3],
+        [2, 4],
+        [3, 4],
+        [3, 6],
+        [4, 2],
+        [4, 5],
+        [5, 3],
+        [5, 6]],
+  % Link costs (assume all are same)
+  C = [1 : _ in 1..NumEdges].

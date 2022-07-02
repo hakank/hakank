@@ -1,0 +1,238 @@
+/* 
+
+  15-puzzle (n-puzzle) using CP/SAT in Picat.
+
+  The solution (moves) is in the second column of array moves.
+  The first column is just a helper.
+
+  This is not very efficient. For more efficient solvers 
+  see http://picat-lang.org/planner/15_puzzle.pi which use the planner module
+  or https://rosettacode.org/wiki/15_puzzle_game#Picat
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+
+main => go.
+
+go ?=>
+  nolog,
+  data(1,Size,Puzzle,MaxNumMoves),
+
+  % data(2,Size,Puzzle,MaxNumMoves),
+  % data(3,Size,Puzzle,MaxNumMoves),
+  % data(4,Size,Puzzle,MaxNumMoves), % impossible 
+
+  n_puzzle(Size,Puzzle,MaxNumMoves, Moves,X,Check,CheckIx),
+  print_solution(Size,Moves,X,Check,CheckIx),
+  nl.
+
+print_solution(Size,Moves,X,Check,CheckIx) => 
+  println(check=Check),
+  println(checkIx=CheckIx),
+  println("X:"),
+  NN = ceiling(sqrt(Size)),
+  foreach(S in 1..CheckIx)
+    println(move=S=Moves[S]),    
+    foreach(I in 1..NN)
+      foreach(J in 1..NN)
+        SS = X[S,(I-1)*NN+J],
+        if SS == Size then
+          print(" _ ")          
+        else
+          printf("%2d ",SS)
+        end
+      end,
+      nl
+    end,
+    nl
+  end,
+  nl,
+  println(moves=Moves),
+  nl.
+
+
+n_puzzle(Size,Puzzle,MaxNumMoves, Moves,X,Check,CheckIx) => 
+
+  valid_moves(Size,Valid),
+
+  % the moves, position of the empty space (as t)
+  Moves = new_array(MaxNumMoves,2),
+  Moves :: 0..Size, 
+
+  X = new_array(MaxNumMoves,Size),
+  X :: 1..Size,
+
+  % is this row the solution?
+  Check = new_list(MaxNumMoves),
+  Check :: 0..1,
+
+  % index of first solution
+  CheckIx :: 1..MaxNumMoves,
+
+  % initializations
+  Check[1] #= 0,
+  Moves[1, 1] #= 0,
+
+  % identify the empty block in the puzzle configuration
+  sum([X[1, J] #= Size #/\ Moves[1, 2] #= J : J in 1..Size]) #= 1,
+  
+  % Initialize first row in x with the puzzle
+  foreach(J in 1..Size)
+    X[1,J] #= Puzzle[J]
+  end,
+  
+  % Last (relevant) row should be 1..Size (this is the goal)
+  foreach(J in 1..Size)
+    % X[MaxNumMoves, J] #= J
+    matrix_element(X,CheckIx,J,J)
+  end,
+
+  % select the operations
+  foreach(I in 2..MaxNumMoves)
+     all_different([X[I,J] : J in 1..Size]),
+     % at most 2 changes of each move, or rather: exactly 0 or 2 moves:
+     Changes #= sum([X[I,J] #!= X[I-1,J]  : J in 1..Size]),
+     Changes :: [0,2],
+
+     % is this row a solution (i.e. 1..t)? Then we're done.
+     same(1..Size, [X[I,J] : J in 1..Size],Same1),    
+     Check[I] #= 1 #<=> Same1 #= 1,
+
+     % select operations
+     Same2 :: 0..1,
+     same([X[I-1,J] : J in 1..Size], [X[I,J] : J in 1..Size], Same2),
+     matrix_element(X,I-1,Moves[I,1],XI1MovesI1),
+     ValidMove1 :: 0..1,
+     matrix_element(Valid,Moves[I,1],Moves[I,2],ValidMove1),
+     matrix_element(X,I,Moves[I,2],XIMovesI2),
+     
+      ( % either the row is same as last line
+        Same2 #= 1
+        #/\
+        Moves[I,1] #= 0 % dummy move
+        #/\
+        Moves[I,2] #= 0
+        #/\
+        Changes #= 0
+      )
+      #\/
+      ( % or we move a piece
+        Moves[I-1, 2] #= Moves[I, 1]
+        #/\
+        % X[I-1,Moves[I,1]] #= Size % find the blank
+        XI1MovesI1 #= Size
+        #/\
+        % Valid[Moves[I,1], Moves[I,2]] #= 1
+        ValidMove1 #= 1
+        #/\
+        % X[I, Moves[I,2]] #= Size
+        XIMovesI2 #= Size
+        #/\
+        Moves[I,1] #> 0 
+        #/\
+        Moves[I,2] #> 0 
+        #/\
+        Moves[I,1] #!= Moves[I,2]
+        #/\
+        Changes #= 2
+      )
+     
+   end,
+
+   % CheckIx is the first index where we have a solution
+   sum([CheckIx #= I #/\ Check[I] #= 1 #/\
+       sum([Check[J] #= 0  : J in 2..I-1]) #= I-2 
+       : I in 2..MaxNumMoves]) #= 1,
+
+
+  Vars = Moves.vars ++ X.vars ++ Check ++ [CheckIx],
+  println(solve),
+  solve($[min(CheckIx),degree,updown,report(printf("CheckIx: %d\n",CheckIx))],Vars).
+
+
+% 
+% predicate same: array y is the same as array x
+%
+same(X, Y,B) =>
+  N = X.len,
+  B :: 0..1,
+  sum([Y[I] #= X[I] : I in 1..N]) #= N #<=> B #= 1.
+
+
+
+
+%
+% For 15-puzzle
+%
+valid_moves(16,Valid) =>
+ Valid = {
+   % 1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6
+    {0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0},  % 1
+    {1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0},  % 2
+    {0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0},  % 3
+    {0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0},  % 4
+    {1,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0},  % 5
+    {0,1,0,0,1,1,0,0,0,1,0,0,0,0,0,0},  % 6
+    {0,0,1,0,0,1,0,1,0,0,1,0,0,0,0,0},  % 7
+    {0,0,0,1,0,0,1,0,0,0,0,1,0,0,0,0},  % 8
+    {0,0,0,0,1,0,0,0,0,1,0,0,1,0,0,0},  % 9
+    {0,0,0,0,0,1,0,0,1,0,1,0,0,1,0,0},  % 10
+    {0,0,0,0,0,0,1,0,0,1,0,1,0,0,1,0},  % 11
+    {0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,1},  % 12
+    {0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0},  % 13
+    {0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,0},  % 14
+    {0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1},  % 15
+    {0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0}}. % 16
+
+
+
+%
+% data
+%
+
+% Simple problem: 7 moves
+data(1,Size,Puzzle,MaxNumMoves) =>
+ Size = 16,
+ MaxNumMoves = 22,
+ Puzzle = {16, 2, 3, 4,
+           1, 6, 7, 8,
+           5,10,11,12,
+           9,13,14,15}.
+
+
+% MaxNumMoves = 16
+data(2,Size,Puzzle,MaxNumMoves) =>
+ Size = 16,
+ MaxNumMoves = 22,
+ Puzzle = {1, 2, 3, 4,
+           5, 6, 8,12,
+           11,16, 7,15,
+           10, 9,13,14}.
+
+
+% From http://www.javaonthebrain.com/java/puzz15/ (Java applet)
+% Harder problem
+data(3,Size,Puzzle,MaxNumMoves) =>
+  Size=16,
+  MaxNumMoves = 80,
+  Puzzle = { 9, 2,12, 6,
+            5, 7,14,13,
+            3, 4, 1,11,
+           15,10, 7,16}.
+
+
+% Sam Loys unsolvable configuration.
+% See http://en.wikipedia.org/wiki/N-puzzle
+data(4,Size,Puzzle,MaxNumMoves) =>
+  Size = 16,
+  MaxNumMoves = 22,
+  Puzzle = {1,2,3,4,
+            5,6,7,8,
+            9,10,11,12,
+           13,15,14,16}.
+

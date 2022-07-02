@@ -1,0 +1,107 @@
+/* 
+
+  The Logical Labyrinth (Smullyan) in Picat.
+
+  From Martin Chlond Integer Programming Puzzles:
+  http://www.chlond.demon.co.uk/puzzles/puzzles4.html, puzzle nr. 3
+  Description  : The Logical Labyrinth
+  Source       : Smullyan, R., (1991), The Lady or The Tiger, Oxford University Press
+
+  This model was inspired by the XPress Mosel model created by Martin Chlond.
+  http://www.chlond.demon.co.uk/puzzles/sol4s3.html
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  Door  = 9,
+  Prize = 3, % 1 = Lady, 2 = Tiger, 3 = Empty
+
+  % x(i,j) = 1 if door i hides prize j, else 0
+  X = new_array(Door, Prize),
+  X :: 0..1,
+
+  % t(i) = 1 if statement on door i is true, else 0
+  T = new_list(Door),
+  T :: 0..1,
+
+  % if statement on door 1 is true [i.e. x[1,1]+x[3,1]+x[5,1]+x[7,1]+x[9,1] = 1 ] 
+  %                                       then t[1] = 1, else t[1] = 0
+  T[1] #= X[1,1]+X[3,1]+X[5,1]+X[7,1]+X[9,1],
+
+  % if statement on door 2 is true [i.e. x[2,3]=1] then t[2] = 1, else t[2] = 0
+  T[2] #= X[2,3],
+
+  % if statement on door 3 is true [i.e. t[5]+x[1,1] > 1 ] then t[3] = 1, else t[3] = 0
+  T[5]+X[1,1]-2*T[3] #<= 0, 
+  T[5]+X[1,1]-T[3] #>= 0,
+
+  % if statement on door 4 is true [i.e. t[1] = 0] then t[4] = 1, else t[4] = 0
+  T[4] #= 1-T[1] 
+
+ , % if statement on door 5 is true [i.e. t[2]+t[4] > 1] then t[5] = 1, else t[5] = 0
+  T[2]+T[4]-2*T[5] #<= 0, 
+  T[2]+T[4]-T[5] #>= 0, 
+
+  % if statement on door 6 is true [i.e. t[3] = 0 ] then t[6] = 1, else t[6] = 0
+  T[6] #= 1-T[3], 
+
+  % if statement on door 7 is true [i.e. x[1,1] = 0] then t[7] = 1, else t[7] = 0
+  T[7] #= 1-X[1,1], 
+
+  % if statement on door 8 is true [i.e. x[8,2]+x[9,3] = 2 ] then t[8] = 1, else t[8] = 0
+  X[8,2]+X[9,3]-2*T[8] #<= 1, 
+  X[8,2]+X[9,3]-2*T[8] #>= 0, 
+
+  % if statement on door 9 is true [i.e. x[9,2]+t[3] = 2] then t[9] = 1, else t[9] = 0
+  X[9,2]+T[3]-2*T[9] #<= 1, 
+  X[9,2]+T[3]-2*T[9] #>= 0, 
+
+  % each door hides 1 prize
+  foreach(I in 1..Door)
+    sum([X[I,J] : J in 1..Prize]) #= 1 
+  end,
+  
+  % only one room contains lady
+  sum([X[I,1] : I in 1..Door]) #= 1,
+
+  % sign on lady's door is true
+  foreach(I in 1..Door)
+    T[I] #>= X[I,1] 
+  end,
+
+  % sign on tigers' doors are false
+  foreach(I in 1..Door)
+    T[I] #<= 1 - X[I,2]
+  end,
+
+
+  % if room 8 is empty then not enough information to pinpoint lady
+  % min and max x[7,1] give different results
+  % room 8 is empty
+  % X[8,3] #= 1,
+
+  % if room 8 is not empty then enough information
+  % min and max x[7,1] gives same results
+  % if the prisoner was able to deduce where the lady was then
+  % room 8 must not have been empty
+
+  % room 8 is not empty
+  X[8,3] #= 0,
+
+  Vars = X.vars ++ T,
+  solve(Vars),
+
+  println(x=X),
+  println(t=T),
+  nl,
+  fail,
+  
+  
+  nl.

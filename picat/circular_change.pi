@@ -1,0 +1,88 @@
+/* 
+
+  Global constraint circular change in Picat.
+
+  From Global Constraint Catalogue:
+  http://www.emn.fr/x-info/sdemasse/gccat/Ccircular_change.html
+  """
+  NCHANGE is the number of times that  CTR  holds on consecutive variables of 
+  the collection VARIABLES. The last and the first variables of the 
+  collection VARIABLES are also considered to be consecutive.
+  
+  Example
+  (4, <4, 4, 3, 4, 1>, !=)
+  
+  In the example the changes within the VARIABLES = <4, 4, 3, 4, 1> collection 
+  are located between values 4 and 3, 3 and 4, 4 and 1, and 1 and 4 (i.e., 
+  since the third argument CTR of the circular_change constraint is set to 
+  !=, we count one change for each disequality constraint between two 
+  consecutive variables that holds). Consequently, the corresponding 
+  circular_change constraint holds since its first argument NCHANGE is 
+  fixed to 4.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 5,
+  X = new_list(N),
+  X :: 1..4,
+
+  C :: 0..N*N,
+
+  X = [4,4,3,4,1],
+
+  % C = 4,
+  Op = 3, % !=
+  circular_change(C, X, Op),
+
+  Vars = X ++ [C],
+  solve(Vars),
+
+  println(x=X),
+  println(c=C),
+  nl,
+  fail,
+
+   
+  nl.
+
+
+%
+% Since Picat don't handle function variables we use the following 
+% hack where t is the type of comparison operator.
+% t:
+%  - 2 :  a <  b
+%  - 1 :  a <= b
+%    0 :  a  = b
+%    1 :  a >= b
+%    2 :  a >  b
+% else : a != b
+%
+cmp(A, B, T, C) =>
+  if     T == -2 then
+    A #< B #<=> C
+  elseif T == -1 then
+    A #<= B  #<=> C
+  elseif T ==  0 then
+    A #= B #<=> C
+  elseif T ==  1 then
+    A #>= B #<=> C
+  elseif T ==  2 then
+    A #> B #<=> C
+  else
+    A #!= B #<=> C
+  end.
+
+
+circular_change(Changes, X, XOp) =>
+  N = X.len,
+  cmp(X[N],X[1], XOp, CN1),
+  Cs #= sum([C  : I in 2..N, cmp(X[I-1], X[I], XOp, C)]),
+  Changes #= CN1 + Cs.

@@ -1,0 +1,156 @@
+/* 
+
+  Relief Mission (PuzzlOR) in Picat.
+
+  From PuzzlOR
+  Relief Mission
+  http://www.analytics-magazine.org/september-october-2010/122-the-puzzlor-relief-mission.html
+  """
+  Coordinating relief efforts after catastrophes such as civil unrest and 
+  natural disasters can be a logistically complex challenge. Delivering 
+  relief to people in need is the immediate focus of any disaster management plan.
+  
+  The map in Figure 1 shows the locations of 20 villagers, each represented by 
+  a "hut" icon. The villagers are in need of relief supplies contained in 
+  the crates attached to parachutes. There are two identical relief packages 
+  available. The only delivery option is by air drop. Each package can be dropped 
+  on any cell.
+  
+  After the crates are dropped, each villager will walk to the nearest drop 
+  location to pick up relief supplies. Use a direct line between cells to calculate 
+  travel distance. For example, the distance between A1 and A2 is 1km and the 
+  distance between A1 to B2 is 1.41 km. Assume that each crate contains an 
+  unlimited amount of relief supplies.
+  
+  Figure 1: Where should the two relief packages be dropped?
+  [
+    1 2 3 4 5 6 7 8 9 10
+    0,0,0,0,1,0,0,0,0,0,   A
+    0,0,0,0,1,0,0,0,1,1,   B
+    1,0,0,0,0,1,0,1,1,1,   C
+    0,1,0,0,0,0,1,0,0,1,   D
+    0,0,0,0,0,0,0,0,1,0,   E
+    0,0,0,0,0,0,0,1,0,0,   F
+    0,1,0,0,0,0,0,0,0,0,   G
+    0,1,0,0,0,1,0,0,0,0,   H
+    0,0,0,0,0,0,0,0,0,0,   I
+    0,0,0,0,0,0,0,1,0,1,   J
+  ]
+  
+  Question: Which two drop locations will minimize the total distance 
+  that all villagers must travel?
+  """
+  
+
+  Solution:
+    total_dist = 178
+    p1 = [4,3]
+    p2 = [5,9]
+    Distances to the points:
+    0  0  0  0 13  0  0  0  0  0 
+    0  0  0  0  8  0  0  0  9 10 
+    5  0  0  0  0 10  0  5  4  5 
+    0  1 P1  0  0  0  5  0  0  2 
+    0  2  0  0  0  0  0  0 P2  0 
+    0  0  0  0  0  0  0  2  0  0 
+    0 10  0  0  0  0  0  0  0  0 
+    0 17  0  0  0 18  0  0  0  0 
+    0  0  0  0  0  0  0  0  0  0 
+    0  0  0  0  0  0  0 26  0 26 
+
+
+  Note: the are two solutions (by symmetry). The other 
+  one is p1=[5, 9] and p2=[4, 3],
+  i.e. where the cells are swapped. The latter
+  solution has been removed by symmetry breaking.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+  N = 10,
+  Huts = chunks_of([% 1 2 3 4 5 6 7 8 9 10
+                      0,0,0,0,1,0,0,0,0,0, % A
+                      0,0,0,0,1,0,0,0,1,1, % B
+                      1,0,0,0,0,1,0,1,1,1, % C
+                      0,1,0,0,0,0,1,0,0,1, % D
+                      0,1,0,0,0,0,0,0,1,0, % E
+                      0,0,0,0,0,0,0,1,0,0, % F
+                      0,1,0,0,0,0,0,0,0,0, % G
+                      0,1,0,0,0,1,0,0,0,0, % H
+                      0,0,0,0,0,0,0,0,0,0, % I
+                      0,0,0,0,0,0,0,1,0,1  % J
+            ],N),  
+
+  % the two cells to drop the packages
+  X = new_array(2,2),
+  X :: 1..N,
+
+  % all the distances (squared) from each cell to 
+  % the nearest package
+  Distances = new_array(N,N),
+  Distances :: 0..N*N,
+
+
+  % total distance (to be minimized)
+  TotalDist #= sum(Distances.vars),
+
+  foreach(I in 1..N, J in 1..N, Huts[I,J] == 1)
+    % check the distances to the two package cells
+    % and pick the nearest.
+    Dist1 :: 0..N*N,
+    Dist2 :: 0..N*N,
+      
+    dist(X[1,1], X[1,2], I, J, Dist1),
+    dist(X[2,1], X[2,2], I, J, Dist2),
+
+    % assign to the nearest package cell
+    Distances[I,J] #= min([Dist1, Dist2]) 
+  end,
+
+  % assign 0 distance to cells with no hut
+  foreach(I in 1..N, J in 1..N, Huts[I,J] == 0)
+     Distances[I,J] #= 0
+  end,
+
+  % symmetry breaking
+  X[1,1] #<= X[2,1],
+
+  Vars = X.vars ++ Distances.vars,
+  solve($[degree,updown,min(TotalDist)],Vars),
+
+  println(total_dist=TotalDist),
+  P1 = X[1],
+  P2 = X[2],
+  println(p1=P1.to_list),
+  println(p2=P2.to_list),  
+  % Place the two points in the matrix
+  Distances2 = copy_term(Distances),
+  Distances2[P1[1],P1[2] ] := 'P1',
+  Distances2[P2[1],P2[2] ] := 'P2',
+  println("Distances to the points:"),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%2w ", Distances2[I,J])
+    end,
+    nl
+  end,
+
+  nl.
+
+% 
+% Calculate the distance between two cells.
+% 
+% Note: D is the _squared_ distance since Picat's
+% CP solver doesn't support sqrt(DecisionVariable)
+% 
+dist(I1, J1, I2, J2, D) =>
+      D #= abs(I1-I2)**2 + abs(J1-J2)**2.

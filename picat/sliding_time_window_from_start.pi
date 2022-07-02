@@ -1,0 +1,92 @@
+/* 
+
+  Global constraint sliding_time_window_from_start in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Csliding_time_window_from_start.html
+  """
+  sliding_time_window_from_start(WINDOW_SIZE,LIMIT,TASKS,START)
+
+  Purpose
+
+  The sum of the intersections of all the tasks of the TASKS collection 
+  with interval​[START, START+WINDOW_SIZE-1] is less than or equal to LIMIT.
+  
+  Example
+      (
+      9,6,<
+      id-1 origin-10 duration-3,
+      id-2 origin-5  duration-1,
+      id-3 origin-6  duration-2
+      >,5
+      )
+
+  The intersections of tasks id-1 origin-10 duration-3, 
+   id-2 origin-5 duration-1, and id-3 origin-6 duration-2 with interval 
+  [START, START+WINDOW_SIZE-1] = [5, 5+9-1] = [5, 13] are respectively 
+  equal to 3, 1, and 2 (i.e., the three tasks of the TASKS collection are 
+  in fact included within interval [5, 13]). Consequently, the 
+  sliding_time_window_from_start constraint holds since the sum 3+1+2 
+  of these intersections does not exceed the value of its second 
+  argument LIMIT=6.
+  """
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 3,
+  MaxTime = 13,
+  WindowSize = 9,
+  Start = 5,
+  
+  Tasks = new_array(N,2),
+  Tasks :: 1..MaxTime,
+
+  % array[start..start+window_size-1] of var 0..n: occupied,
+  Occupied = new_list(WindowSize), % Note the offset!
+  Occupied ::0..N,
+
+  SumOccupied #= sum(Occupied),
+
+  Limit :: 0..MaxTime,
+ 
+  Limit = 6,
+  % SumOccupied = 5,
+  Tasks = {{10,3},
+           { 5,1},
+           { 6,2}},
+           
+  sliding_time_window_from_start(WindowSize,Limit,Tasks,Start,Occupied),
+
+  Vars = Tasks.vars ++ Occupied ++ [Limit], 
+  solve(Vars),
+
+  println(max_time=MaxTime),
+  println(window_size=WindowSize),
+  println(start=Start),
+  println(tasks=Tasks),
+  println(occupied_from_start=Occupied),
+  println(sum_occupied=SumOccupied),
+  println(limit=Limit),
+  nl,
+  fail,
+  
+  nl.
+
+sliding_time_window_from_start(WindowSize, Limit, Tasks, Start, Occupied) =>
+  % how many tasks occupies this time entry
+  foreach(I in Start..Start+WindowSize-1)
+     % Fix the offset in Occupied
+     Occupied[I-Start+1] #= sum([I #>= Tasks[J,1] #/\ I #< Tasks[J,1]+Tasks[J,2]
+                                 : J in 1..Tasks.len])
+  end,
+  sum(Occupied) #<= Limit.
+

@@ -1,0 +1,103 @@
+/* 
+
+  Urban planning problem (PuzzlOR) in Picat.
+
+  http://puzzlor.editme.com/urbanplanning
+  """
+  Urban planning requires careful placement and distribution of commercial 
+  and residential lots.  Too many commercial lots in one area leave no room 
+  for residential shoppers.  Conversely, too many residential lots in one 
+  area leave no room for shops or restaurants.
+  
+  The 5x5 grid in Figure 1 shows a sample configuration of residential and 
+  commercial lots.  Your job is to reorder the 12 Residential green lots 
+  and 13 Commercial red lots to maximize the quality of the layout.  The 
+  quality of the layout is determined by a points system.  Points are awarded as follows:
+      Any column or row that has 5 Residential lots = +5 points
+      Any column or row that has 4 Residential lots = +4 points
+      Any column or row that has 3 Residential lots = +3 points
+      Any column or row that has 5 Commercial lots = -5 points
+      Any column or row that has 4 Commercial lots = -4 points
+      Any column or row that has 3 Commercial lots = -3 points
+  
+  For example, the layout displayed in Figure 1 has a total of 9 points:
+  Points for each column, from left to right = -3, -5, +3, +4, +3
+  Points for each row, from top to bottom = +3, +3, +3, +3, -5
+
+  Question:  What is the maximum number of points you can achieve for the layout?
+  """
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import cp. % 1.0s
+% import sat. % 1.2s
+
+main => go.
+
+go =>
+   nolog,
+   N = 5,
+   
+   Residential = 1,
+   Commercial = 2,
+   
+   % Score table
+   % Residential scores, for 0..5 occurrences (offset fixed in scores/3)
+   ScoreTable = [-5,-4,-3,3,4,5],
+
+   % decision variables
+   X = new_array(N,N),
+   X :: 1..2,
+
+   RowScores = new_list(5),
+   RowScores :: -5..5,
+
+   ColScores = new_list(5),
+   ColScores :: -5..5,
+
+   Z :: 0..50, % to maximize
+
+   % constraints
+   Z #= sum(RowScores) + sum(ColScores),
+
+   foreach(I in 1..N)
+      scores([$X[I,J] : J in 1..N], ScoreTable, RowScores[I]),
+      scores([$X[J,I] : J in 1..N], ScoreTable, ColScores[I])
+   end,
+
+   % It's 12 residential buildings
+   count(Residential,[X[I,J] : I in 1..N, J in 1..N],#=,12),
+
+   % symmetry breaking
+   X[1,1] #= Commercial,
+
+   Vars = X.to_list(), 
+   solve($[max(Z),updown,report(printf("z: %d\n",Z))], Vars),
+
+   writeln(z=Z),
+   writeln(rowScores=RowScores),
+   writeln(colScores=ColScores),
+
+   println("X:"),
+   M = ["R","C"],
+   foreach(I in 1..N) 
+      foreach(J in 1..N)
+         printf("%s ", M[X[I,J]])
+      end,
+      nl
+   end,
+
+   nl.
+
+
+% count the number of residents in this row/column
+% and get it's score.
+scores(RC, ScoreTable,Scores) => 
+   count(1,RC,#=,CC), % count the number of Residential (1)
+   CC2 #= CC+1, % adjust for 0-index
+   element(CC2,ScoreTable,Scores).

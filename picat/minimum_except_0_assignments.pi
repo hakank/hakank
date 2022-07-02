@@ -1,0 +1,125 @@
+/* 
+
+  Mininum except 0 with assignments constraint in Picat.
+
+  Symmetry breaking constraint:
+  Ensure that workers are assigned in order.
+
+  Channeling an assignment matrix (A) with a list (X)
+  of the first assigned worker. Using the constraint 
+  value_precede_chain/2.
+
+  Some solutions:
+  
+  A:
+  [1,0,0,0]
+  [1,0,1,0]
+  [1,0,1,0]
+  [1,0,0,1]
+  first_assigned_worker = [1,1,1,1]
+
+  A:
+  [1,0,0,0]
+  [1,0,0,0]
+  [0,1,0,0]
+  [0,0,1,0]
+  first_assigned_worker = [1,1,2,3]
+
+  A:
+  [1,0,0,0]
+  [0,1,0,0]
+  [0,0,1,0]
+  [1,1,0,0]
+  first_assigned_worker = [1,2,3,1]
+
+  A:
+  [1,1,1,1]
+  [0,1,1,1]
+  [0,0,1,1]
+  [0,0,0,1]
+  first_assigned_worker = [1,2,3,4]
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go ?=>
+
+  NumJobs = 4,
+  NumWorkers = 4,
+
+  A = new_array(NumJobs,NumWorkers),
+  A :: 0..1,
+
+  FirstAssignedWorker = new_list(NumJobs),
+  FirstAssignedWorker :: 1..NumWorkers,
+
+  % Testing
+  % FirstAssignedWorker = [1,2,1,3],
+  % sum([A[J,W] : J in 1..NumJobs, W in 1..NumWorkers]) #= 6,
+
+  % Channel between the assignment in A and the first assigned worker
+  foreach(J in 1..NumJobs)
+    min_except_0_assignments(1..NumWorkers,[A[J,W] : W in 1..NumWorkers],FirstAssignedWorker[J])
+  end,
+  % Ensure that the worker W is assigned before worker W+1
+  value_precede_chain(1..NumWorkers,FirstAssignedWorker),
+ 
+  Vars = FirstAssignedWorker ++ A.vars,
+  solve(Vars),
+
+  println("A:"),
+  foreach(Row in A)
+    println(Row.to_list)
+  end,
+  println(first_assigned_worker=FirstAssignedWorker),
+ 
+  nl,
+
+  fail,
+
+  nl.
+
+go => true.
+
+
+min_except_0_assignments(V,A,MinVal) =>
+  MinVal :: V,
+  % sum([V[J]*A[J] : J in 1..V.len]) #> 0,
+  % element(_I,V,MinVal), % min val must be a value in X
+  foreach(J in 1..V.len)
+    A[J] #= 1 #=> MinVal #<= V[J],
+    A[J] #= 0 #=> MinVal #!= V[J]
+  end.
+
+
+%
+% value_precede_chain
+%
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+% This definition is inspired by 
+% MiniZinc definition value_precede_int.mzn
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+

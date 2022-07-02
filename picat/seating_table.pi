@@ -1,0 +1,136 @@
+/* 
+
+  Table seating problem in Picat.
+
+  From problem formulation from
+  Fei Dai, Mohit Dhawan, Changfu Wu and Jie Wu
+  "On Solutions to a Seating Problem", page 1
+  """
+  A classical [...] seating problem is the following: 
+  n couples are seated around a table in such a way
+  that two neighbors of each person k are the different gender
+  of k and they are not the spouse of k. 
+  """
+
+  Coding of a couple I:
+    Female: 2*(i-1)+1
+    Male  : 2*(i-1)+2
+
+  For 3 couples (6 persons) there are 12 solutions, e.g.
+
+    couples = [[1,2],[3,4],[5,6]]
+
+    x      = [ 1, 4, 5, 2, 3, 6]
+    couple = [ 1, 2, 3, 1, 2, 3]
+    gender = [ w, h, w, h, w, h]
+
+    x      = [ 1, 4, 5, 2, 6, 3]
+    couple = [ 1, 2, 3, 1, 3, 2]
+    gender = [ w, h, w, h, w, h]
+
+    x      = [ 1, 4, 5, 3, 2, 6]
+    couple = [ 1, 2, 3, 2, 1, 3]
+    gender = [ w, h, w, h, w, h]
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 3, % number of couples
+  M = 2*N, % number of persons
+  GenderStr = ["h","w"],
+  println(couples=couples(N)),
+  nl,
+  table_seating(N,M,Couples, X,Gender),
+  println('x     '=[to_fstring("%2d",X[I]) : I in 1..M]),
+  println('couple'=[to_fstring("%2d",(X[I]+1) div 2) : I in 1..M]),
+  println(gender=[to_fstring("%2w",GenderStr[G]) : G in Gender]),
+  nl,
+  fail,  
+  nl.
+
+/* 
+  Count the number of solutions
+
+
+  * With symmetry breaking (fixing first person)
+     1: 0
+     2: 2
+     3: 12
+     4: 312
+     5: 10656
+     6: 674880
+     7: 50019840
+
+     0,2,12,312,10656,674880,50019840
+     Not in OEIS.
+
+  * Without symmetry breaking
+     1: 0
+     2: 0
+     3: 4
+     4: 24
+     5: 624
+     6: 19200
+     7: 833760
+
+    0,0,4,24,624,19200,833760
+*/
+go2 =>
+  foreach(N in 1..7)
+    Count = count_all(table_seating(N, _M,_Couples,_X,_Gender)),
+    printf("%d: %d\n",N,Count)
+  end,
+  nl.
+
+couples(N) = [[2*(I-1)+1, 2*(I-1)+2] : I in 1..N]. 
+
+table_seating(N,M,Couples, X,Gender) =>
+  M = 2*N,
+  Couples = couples(N),
+
+  % the seating
+  X = new_list(M),
+  X :: 1..M,
+   
+  % the gender
+  Gender = new_list(M),
+  Gender :: 1..2, 
+
+  all_different(X),
+
+  % The gender of a person
+  foreach(I in 1..M)
+    Gender[I] #= 1+X[I] mod 2
+  end,
+
+  % The neighbours must be
+  %  - of the different gender
+  %  - not the spouse  
+  foreach(I in 1..M)
+    I1 = 1+(I mod M),
+    I2 = 1+(I-1 mod M),
+    Gender[I1] #!= Gender[I2],
+    not_is_couple(N, X[I1], X[I2], Couples)
+  end,
+
+  % symmetry breaking
+  X[1] #= 1 #\/ X[1] #= 2,
+
+  Vars = X ++ Gender,
+  solve(Vars).
+
+
+not_is_couple(N, A, B, C) =>
+  sum([
+       A :: C[J] #/\ B :: C[J]
+       : J in 1..N]) #= 0.
+
+

@@ -1,0 +1,178 @@
+/* 
+
+  Sports Scheduling in Picat.
+
+  This model was inspired by the ESSENCE' model in the Minion Translator examples:
+  http://www.cs.st-andrews.ac.uk/~andrea/examples/sportsScheduling/sportsScheduling.eprime
+
+  (It's ported from my MiniZinc model sportScheduling.mzn.)
+
+  Here's the 6 solutions for 3 teams:
+
+  Schedule: 
+  Week 1 Period=1: 1 vs 2 game: 1
+  Week 2 Period=1: 1 vs 3 game: 2
+
+  Schedule: 
+  Week 1 Period=1: 1 vs 2 game: 1
+  Week 2 Period=1: 2 vs 3 game: 3
+
+  Schedule: 
+  Week 1 Period=1: 1 vs 3 game: 2
+  Week 2 Period=1: 1 vs 2 game: 1
+
+  Schedule: 
+  Week 1 Period=1: 1 vs 3 game: 2
+  Week 2 Period=1: 2 vs 3 game: 3
+
+  Schedule: 
+  Week 1 Period=1: 2 vs 3 game: 3
+  Week 2 Period=1: 1 vs 2 game: 1
+
+  Schedule: 
+  Week 1 Period=1: 2 vs 3 game: 3
+  Week 2 Period=1: 1 vs 3 game: 2
+
+  (Note the constraint that 
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 4, % number of players
+  make_schedule(N),
+  fail,
+  
+  nl.
+
+/*
+  Number of solutions for the number of teams
+
+  N  #solutions
+  ------------
+  1        0
+  2        1
+  3        6
+  4       36
+  5    24048
+  6  2877120
+  
+  This is not in OEIS.
+
+*/
+go2 =>
+  foreach(N in 2..7)
+    Count = count_all(sport_scheduling(N, _Schedule,_Game)),
+    println(N=Count)
+  end,
+  nl.
+
+
+make_schedule(N) =>
+  println(n=N),
+  
+  sport_scheduling(N, Schedule, Game) ,
+
+  % println(schedule=Schedule),
+  % println(game=Game),
+  println("Schedule: "),
+  Weeks = 1..N-1,
+  Periods = 1..N div 2,
+  foreach(W in Weeks)
+     foreach(P in Periods)
+       printf("Week %d Period=%d: %w vs %w game: %d\n",W, P,Schedule[W, P, 1],Schedule[W, P, 2],Game[W,P])  
+     end,
+     nl
+  end,
+  nl.
+
+
+sport_scheduling(N, Schedule,Game) =>
+  Teams = 1..N,
+  NumGames = N*(N-1) div 2,
+  Games = 1..NumGames,
+  NumWeeks = N-1,
+  Weeks = 1..NumWeeks,
+
+  NumPeriods = N div 2,
+  Periods = 1..NumPeriods,
+ 
+  HomeAway = 1..2,
+
+  Schedule = new_array(NumWeeks,NumPeriods, 2),
+  Schedule :: Teams,
+
+  Game = new_array(NumWeeks,NumPeriods),
+  Game :: Games,
+
+  % All teams play once a week
+  foreach(W in Weeks) 
+    all_different([Schedule[W,P,H] : P in Periods, H in HomeAway])
+  end,
+   
+  % Every team plays at most twice in the same period
+  foreach(P in Periods)
+    at_most(2, [Schedule[W,P,H] : W in Weeks, H in HomeAway], P)
+  end,
+
+  % Distinct games via alldiff on game array
+  all_different([Game[W,P] : W in Weeks, P in Periods]),
+
+  % Channelling between schedule and game
+  % (assumes home/away symmetry broken)
+  allowed(N, Allowed),  
+  foreach(W in Weeks, P in Periods)
+    table_in({ Schedule[W,P,1], Schedule[W,P,2], Game[W,P]},Allowed)
+  end,
+
+  Vars = Schedule.vars ++ Game.vars,
+
+  solve(Vars).
+
+
+% Get the allowed game configurations
+allowed(N, Allowed) =>
+  L = [ [I,J] : I in 1..N, J in I+1..N],
+  Allowed = [{I,J,C} : {[I,J],C} in zip(L,1..L.len)].
+
+
+%
+% data
+%
+
+% 
+% The channeling matrix allowed should really be generated online, but until I figure out how
+% to do that, here's a Perl one-liner to create the matrix. Change the value of $n.
+%
+% perl -e '$c=1,$n=4,print "n=$n,allowed=array2d(1..num_games,1..3,[ \n",for $i (1..$n) { for $j (1..$n) { print "$i,$j,$c,    " and $c++ if $i < $j } }, print "\n]),\n"'
+
+
+% n=2,
+% allowed=array2d(1..num_games,1..3,[
+% 1,2,1,
+% ]),
+
+% n=3,
+% allowed=array2d(1..num_games,1..3,[
+% 1,2,1,    1,3,2,    2,3,3,
+% ]),
+
+
+% For 4 teams (6 matches)
+data(4,N,Allowed) =>
+  N = 4,
+  % channeling game <-> schedule. 
+  Allowed = [
+             [1, 2, 1],
+             [1, 3, 2],
+             [1, 4, 3],
+             [2, 3, 4],
+             [2, 4, 5],
+             [3, 4, 6]].

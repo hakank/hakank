@@ -1,0 +1,111 @@
+/* 
+
+  Global constraint change_pairs in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Cchange_pair.html
+  """
+  NCHANGE is the number of times that the following disjunction holds:
+   (X1 CTRX X2) \/ (Y1 CTRY Y2) , where (X1, Y1) and (X2, Y2) correspond to 
+  consecutive pairs of variables of the collection PAIRS.
+  
+  Example
+   (
+      3, <
+      x-3 y-5,​
+      x-3 y-7,​
+      x-3 y-7,​
+      x-3 y-8,​
+      x-3 y-4,​
+      x-3 y-7,​
+      x-1 y-3,​
+      x-1 y-6,​
+      x-1 y-6,​
+      x-3 y-7
+      >,​!=,​>
+      )
+
+  In the example we have the following 3 changes:
+   * One change between pairs x-3 y-8 and x-3 y-4 since 3 != 3 \/ 8 >​4,
+   * One change between pairs x-3 y-7 and x-1 y-3 since 3 != 1 \/ 7 > 3,
+   * One change between pairs x-1 y-6 and x-3 y-7 since 1 != 3 \/ 6 > 7.
+
+  Consequently the change_pair constraint holds since its first 
+  argument NCHANGE is assigned to 3.
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 10,
+  X = new_list(N),
+  X :: 1..3,
+
+  Y = new_list(N),
+  Y :: 1..8,
+
+  NChange :: 0..N,
+  
+  X = [3,3,3,3,3,3,1,1,1,3],
+  Y = [5,7,7,8,4,7,3,6,6,7],
+
+  % NChange = 3,
+  
+  Op1 = 2, % !=
+  Op2 = 2, % >
+  change_pairs(NChange, X, Y, Op1, Op2),
+
+  Vars = X ++ Y ++ [NChange],
+  solve(Vars),
+
+  println(x=X),
+  println(y=Y),
+  println(nchange=NChange),
+  nl,
+
+  fail,
+  
+  nl.
+
+%
+% Since Picat don't handle function variables we use the following 
+% hack where t is the type of comparison operator.
+% t:
+%  - 2 :  a <  b
+%  - 1 :  a <= b
+%    0 :  a  = b
+%    1 :  a >= b
+%    2 :  a >  b
+% else : a != b
+%
+cmp(A, B, T, C) =>
+  if     T == -2 then
+    A #< B #<=> C
+  elseif T == -1 then
+    A #<= B  #<=> C
+  elseif T ==  0 then
+    A #= B #<=> C
+  elseif T ==  1 then
+    A #>= B #<=> C
+  elseif T ==  2 then
+    A #> B #<=> C
+  else
+    A #!= B #<=> C
+  end.
+
+
+%
+% change_pairs(NCHANGE, X, Y, CTR1, CTR2)
+%
+change_pairs(NChange, X, Y, Ctr1, Ctr2) =>
+  XChange = [C : I in 2..X.len, cmp(X[I-1], X[I], Ctr1, C)],
+  YChange = [C : I in 2..Y.len, cmp(Y[I-1], Y[I], Ctr2, C)],
+  NChange #= sum([XChange[I] #= 1 #\/ YChange[I] #= 1
+                 : I in 1..XChange.len]).

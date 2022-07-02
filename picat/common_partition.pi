@@ -1,0 +1,148 @@
+/* 
+
+  Global constraint common_partition in Picat.
+
+  From Global Constraint Catalogue:
+  http://www.emn.fr/x-info/sdemasse/gccat/Ccommon_partition.html
+  """
+  Constraint
+
+  common_partition (NCOMMON1, NCOMMON2, VARIABLES1, VARIABLES2, PARTITIONS) 
+
+  Purpose
+
+  NCOMMON1 is the number of variables of the VARIABLES1 collection 
+  taking a value in a partition derived from the values assigned to 
+  the variables of VARIABLES2 and from PARTITIONS.
+
+  NCOMMON2 is the number of variables of the VARIABLES2 collection 
+  taking a value in a partition derived from the values assigned to 
+  the variables of VARIABLES1 and from PARTITIONS.
+
+  Example
+      (
+      3, 4, <2, 3, 6, 0>, 
+      <0, 6, 3, 3, 7, 1>, 
+      <
+      p-<1, 3>, 
+      p-<4>, 
+      p-<2, 6>
+      >
+      )
+
+  In the example, the last argument PARTITIONS defines the partitions 
+  p-<1, 3>, p-<4> and p-<2, 6>. As a consequence the first three items 
+  of collection <2, 3, 6, 0> respectively correspond to the partitions 
+  p-<2, 6>, p-<1, 3>, and p-<2, 6>. Similarly the items of collection 
+  <0, 6, 3, 3, 7, 1> (from which we remove items 0 and 7 since they do 
+  not belong to any partition) respectively correspond to the partitions 
+  p-<2, 6>, p-<1, 3>, p-<1, 3>, and p-<1, 3>. The common_partition 
+  constraint holds since:
+
+  * Its first argument NCOMMON1=3 is the number of partitions associated 
+    with the items of collection <2, 3, 6, 0> that also correspond to 
+    partitions associated with <0, 6, 3, 3, 7, 1>.
+
+  * Its second argument NCOMMON2=4 is the number of partitions associated 
+    with the items of collection <0, 6, 3, 3, 7, 1> that also correspond 
+    to partitions associated with <2, 3, 6, 0>.
+  """
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  NumPartitions = 3,
+  MaxPVal = 6,
+  XLen = 4,
+  YLen = 6,
+  
+  X = new_list(XLen),
+  X :: 1..6,
+
+  Y = new_list(YLen),
+  Y:: 1..7,
+
+  % boolean representation of the sets
+  Partitions = new_array(NumPartitions,MaxPVal), % index 1..MaxPVal
+  Partitions :: 0..1,
+
+  A :: 0..YLen,
+  B :: 0..XLen,
+
+  X = [2,3,6,5],
+  Y = [5,6,3,3,7,1],
+
+  % partitions
+  % [
+  %   {1,3},
+  %   {4},
+  %   {2,6}
+  % ], partitions)
+  % 0-based
+  Partitions = {{1,0,1,0,0,0},  % 1,3
+                {0,0,0,1,0,0},  % 4
+                {0,1,0,0,0,1}}, % 2,6
+
+  % The "reverse problem", i.e. letting x and y be unknown
+  % and fix a and b.
+  % A = 3,
+  % B = 4,
+
+  all_disjoint(Partitions),
+  foreach(P in 1..NumPartitions)
+    sum(Partitions[P]) #> 0
+  end,
+  
+  common_partition(A, B, X, Y, Partitions),
+
+  Vars = Partitions.vars ++ X ++ Y ++ [A,B],
+  solve(Vars),
+
+  println(x=X),
+  println(y=Y),
+  println(a=A),
+  println(b=B),
+  println("Partitions:"),
+  foreach(Row in Partitions)
+    println(Row.to_list=[I : I in 1..Row.len, Row[I] == 1])
+  end,
+  nl,
+
+  fail,
+  
+  nl.
+
+common_partition(A, B, X, Y, Partitions) =>
+  BLen = Partitions[1].len,
+  XCount = new_list(BLen),
+  XCount :: 0..Y.len,
+  YCount = new_list(BLen),
+  YCount :: 0..X.len,
+  % count the occurrences of each array in the partitions
+  foreach(P in 1..Partitions.len)
+    % Note: This is 0-based
+    XCount[P] #= sum([ sum([X[J] #= Partitions[P,K]*(K) : K in 1..Partitions[P].len]) #> 0 : J in 1..X.len]),
+    YCount[P] #= sum([ sum([Y[J] #= Partitions[P,K]*(K) : K in 1..Partitions[P].len]) #> 0 : J in 1..Y.len])
+  end,
+  % Count the number of occurrences in this
+  % slot if there are any occurrences in the other slot.
+  A #= sum([ XCount[I]*(YCount[I] #> 0) : I in 1..Partitions.len]),
+  B #= sum([ YCount[J]*(XCount[J] #> 0) : J in 1..Partitions.len]).
+
+
+%
+% Ensure that all values are disjoint
+% in the boolean matrix S.
+%
+all_disjoint(S) =>
+  foreach(J in 1..S[1].len)
+    sum([S[I,J] : I in 1..S.len]) #<= 1
+  end.

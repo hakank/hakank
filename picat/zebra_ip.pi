@@ -1,0 +1,227 @@
+/* 
+
+  Zebra problem, integer programming model in Picat.
+
+  This is an integer programming model of the Zebra problem.
+  It was remodelled from the GLPK example zebra.mod
+  """ 
+  The Zebra Puzzle is a well-known logic puzzle.
+  
+    It is often called "Einstein's Puzzle" or "Einstein's Riddle"
+    because it is said to have been invented by Albert Einstein as a boy,
+    with the common claim that Einstein said "only 2 percent of the
+    world's population can solve". It is also sometimes attributed to
+    Lewis Carroll. However, there is no known evidence for Einstein's or
+    Carroll's authorship.
+  
+    There are several versions of this puzzle. The version below is
+    quoted from the first known publication in Life International
+    magazine on December 17, 1962.
+  
+     1. There are five houses.
+     2. The Englishman lives in the red house.
+     3. The Spaniard owns the dog.
+     4. Coffee is drunk in the green house.
+     5. The Ukrainian drinks tea.
+     6. The green house is immediately to the right of the ivory house.
+     7. The Old Gold smoker owns snails.
+     8. Kools are smoked in the yellow house.
+     9. Milk is drunk in the middle house.
+    10. The Norwegian lives in the first house.
+    11. The man who smokes Chesterfields lives in the house next to the
+        man with the fox.
+    12. Kools are smoked in the house next to the house where the horse
+        is kept.
+    13. The Lucky Strike smoker drinks orange juice.
+    14. The Japanese smokes Parliaments.
+    15. The Norwegian lives next to the blue house.
+  
+    Now, who drinks water? Who owns the zebra?
+  
+    In the interest of clarity, it must be added that each of the five
+    houses is painted a different color, and their inhabitants are of
+    different national extractions, own different pets, drink different
+    beverages and smoke different brands of American cigarettes. One
+    other thing: In statement 6, right means your right.
+  
+    (From Wikipedia, the free encyclopedia.)
+  """
+
+  Answer:        
+  colors       : [5, 1, 4, 3, 2]
+  nationalities: [3, 5, 1, 4, 2]
+  drinks       : [5, 4, 2, 3, 1]
+  smokes       : [2, 1, 4, 3, 5]
+  pets         : [2, 3, 4, 1, 5]
+
+  Note: Some of the extensive for loops have been simplified,
+  e.g. with alldiff/1.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import mip. % 0.273s
+import cp. % 0.041s
+% import smt.  0.590s
+
+main => go.
+
+go =>
+
+   N = 5,
+   Ns = 1..N,
+
+   [Blue,Green,Ivory,Red,Yellow] = Ns,
+   [Englishman,Japanese,Norwegian,Spaniard,Ukranian] = Ns,
+   [Coffee,Milk,OrangeJuice,Tea,Water] = Ns,
+   [Chesterfield,Kools,LuckyStrike,OldGold,Parliament] = Ns,
+   [Dog,Fox,Horse,Snails,Zebra] = Ns,
+
+   % Setting up the array and all different constraints.
+
+   % color
+   Color = new_array(N,N),
+   Color :: 0..1, 
+   alldiff(Color),
+
+   % nationality
+   Nationality = new_array(N,N),
+   Nationality :: 0..1,
+   alldiff(Nationality),
+
+   % drink
+   Drink = new_array(N,N),
+   Drink :: 0..1, 
+   alldiff(Drink),
+
+   % smoke
+   Smoke = new_array(N,N),
+   Smoke :: 0..1,
+   alldiff(Smoke),
+
+   % pet
+   Pet = new_array(N,N),
+   Pet :: 0..1,
+   alldiff(Pet),
+
+   %
+   % The specific constraints
+   %
+
+   % the Englishman lives in the red house 
+   foreach(H in Ns)
+     Nationality[H,Englishman] #= Color[H,Red]
+   end,
+
+   % the Spaniard owns the dog 
+   foreach(H in Ns)
+     Nationality[H,Spaniard] #= Pet[H,Dog]
+   end,
+
+   % coffee is drunk in the green house 
+   foreach(H in Ns)
+     Drink[H,Coffee] #= Color[H,Green]
+   end,
+
+   % the Ukrainian drinks tea 
+   foreach(H in Ns)
+     Nationality[H,Ukranian] #= Drink[H,Tea]
+   end,
+
+   % the green house is immediately to the right of the ivory house 
+   foreach(H in Ns)
+     if H = 1 then
+       Color[H,Green] #= 0
+     else 
+       Color[H,Green] #= Color[H-1,Ivory] 
+     end
+   end,
+
+   % the Old Gold smoker owns snails 
+   foreach(H in Ns)
+     Smoke[H,OldGold] #= Pet[H,Snails]
+   end,
+
+   % Kools are smoked in the yellow house 
+   foreach(H in Ns)
+     Smoke[H,Kools] #= Color[H,Yellow]
+   end,
+
+   % milk is drunk in the middle house 
+   Drink[3,Milk] #= 1,
+
+   % the Norwegian lives in the first house 
+   Nationality[1,Norwegian] #= 1,
+
+   % the man who smokes Chesterfields lives in the house next to the man
+   % with the fox 
+   foreach(H in Ns)
+      if H == 1 then T1 #= 0 else T1 #= Pet[H-1,Fox] end,
+      if H == 5 then T2 #= 0 else T2 #= Pet[H+1,Fox] end,
+      (1 - Smoke[H,Chesterfield]) + T1 + T2 #>= 1
+   end,
+
+   % Kools are smoked in the house next to the house where the horse is
+   % kept 
+   foreach(H in Ns)
+      if H == 1 then T1 #= 0 else T1 #= Pet[H-1,Horse] end,
+      if H == 5 then T2 #= 0 else T2 #= Pet[H+1,Horse] end,      
+      (1 - Smoke[H,Kools]) + T1 + T2 #>= 1
+   end,
+
+   % the Lucky Strike smoker drinks orange juice 
+   foreach(H in Ns)
+     Smoke[H,LuckyStrike] #= Drink[H,OrangeJuice]
+   end,
+
+   % the Japanese smokes Parliaments 
+   foreach(H in Ns)
+     Nationality[H,Japanese] #= Smoke[H,Parliament]
+   end,
+
+   % the Norwegian lives next to the blue house 
+   foreach(H in Ns)
+      if H == 1 then T1 #= 0 else T1 #= Color[H-1,Blue] end,
+      if H == 5 then T2 #= 0 else T2 #= Color[H+1,Blue] end,
+      (1 - Nationality[H,Norwegian]) + T1 + T2  #>= 1
+   end,
+
+   Colors = binmatrix2num(Color),
+   Nationalities = binmatrix2num(Nationality),
+   Drinks = binmatrix2num(Drink),
+   Smokes = binmatrix2num(Smoke),
+   Pets = binmatrix2num(Pet),
+   
+   Vars = Color ++ Nationality ++ Drink ++ Smoke ++ Pet,
+   solve($[],Vars),
+   println('colors       '=Colors),   
+   println('nationalities'=Nationalities),   
+   println('drinks       '=Drinks),
+   println('smokes       '=Smokes),
+   println('pets         '=Pets),
+   nl,
+   fail,
+   nl.
+go => true.
+
+% All entries in matrix X in different,
+% i.e. exactly one 1 in each row and in each column.
+alldiff(X) =>
+  N = X.len,
+  foreach(I in 1..N)
+     sum([X[I,J] : J in 1..N]) #= 1,
+     sum([X[J,I] : J in 1..N]) #= 1
+  end.
+
+ 
+
+% Converts a binary matrix to a number array.
+binmatrix2num(X) = Nums =>
+  N = X.len,
+  Nums = new_list(N),
+  Nums :: 1..N,
+  foreach(I in 1..N, J in 1..N) 
+    Nums[I] #= J #<=> X[I,J] #= 1
+  end.

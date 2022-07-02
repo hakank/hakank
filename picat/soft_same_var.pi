@@ -1,0 +1,104 @@
+/* 
+
+  Global constraint soft_same_var in Picat.
+
+  From Global Constraint Catalogue
+  http://www.emn.fr/x-info/sdemasse/gccat/Csoft_same_var.html
+  """
+  soft_same_var(C, VARIABLES1, VARIABLES2)
+
+  Purpose
+
+  C is the minimum number of values to change in the VARIABLES1 and VARIABLES2 collections 
+  so that the variables of the VARIABLES2 collection correspond to the variables of the 
+  VARIABLES1 collection according to a permutation.
+  
+  Example
+      (
+      4, <9, 9, 9, 9, 9, 1>,
+         <9, 1, 1, 1, 1, 8>
+      )
+
+  As illustrated by Figure 4.264.1 [see the URL above], there is a correspondence between two 
+  pairs of values of the collections <9, 9, 9, 9, 9, 1> and <9, 1, 1, 1, 1, 8>. Consequently, we 
+  must unset at least 6-2 items (6 is the number of items of the VARIABLES1 and VARIABLES2 
+  collections). The soft_same_var constraint holds since its first argument C is set to 6-2.
+  """
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 6,
+  Variables1 = new_list(N),
+  Variables1 :: 0..9,
+  
+  Variables2 = new_list(N),
+  Variables2 :: 0..9,
+  
+  C :: 0..N,
+
+  Variables1 = [9,9,9,9,9,1],
+  Variables2 = [9,1,1,1,1,8],
+  % C #= 4,
+  soft_same_var(C, Variables1, Variables2,GCC1,GCC2),
+
+  Vars = Variables1 ++ Variables2 ++ GCC1 ++ GCC2 ++ [C],
+  solve(Vars),
+  
+  println(variables1=Variables1),
+  println(variables2=Variables2),
+  println(c=C),
+  println(gcc1=GCC1),
+  println(gcc2=GCC2),  
+  nl,
+  fail,
+  
+  nl.
+
+%
+% Assumption:
+% The domains of Variables1 and Variables2 are non-negative.
+% 
+soft_same_var(C,Variables1,Variables2,GCC1,GCC2) =>
+   Lb1 = min([fd_min(V) : V in Variables1]),
+   Ub1 = max([fd_max(V) : V in Variables1]),
+   
+   Lb2 = min([fd_min(V) : V in Variables2]),
+   Ub2 = max([fd_max(V) : V in Variables2]),
+
+   Ub = max([Ub1,Ub2]),
+
+   GCC1 = new_list(Ub+1),
+   GCC1 :: 0..Variables1.len,
+   
+   GCC2 = new_list(Ub+1),
+   GCC2 :: 0..Variables2.len,   
+
+   global_cardinality2(Variables1,GCC1),
+   global_cardinality2(Variables2,GCC2),
+
+   % Count the total number of differences divided by 2
+   C #= sum([abs(GCC1[I+1]-GCC2[I+1]) : I in 0..Ub]) div 2.
+
+%
+% global_cardinality(A, Gcc)
+%
+% This version is bidirectional but limited:
+%
+% Both A and Gcc are (plain) lists.
+% We assume that Gcc is the list of values 0..Gcc.len-1.
+% 
+global_cardinality2(A,Gcc) =>
+   Len = length(A),
+   Ub = Gcc.len-1,
+   Gcc :: 0..Len,
+   foreach(I in 0..Ub) count(I,A,#=,Gcc[I+1]) end.

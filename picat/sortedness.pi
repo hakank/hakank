@@ -1,0 +1,100 @@
+/* 
+
+  Sortedness in Picat.
+
+  Inspired by the Comet code from
+  From https://www.ads.tuwien.ac.at/wiki/images/archive/f/f4/20110617214403!Sortedness.co
+
+  (This is a port of my MiniZinc model sortedness.mzn.)
+
+  The test with a fixed X gives the following solution  
+  (S is sorted and the permutation P):
+    x = [29,5,21,27,10,8,23,12,9,11]
+    s = [5,8,9,10,11,12,21,23,27,29]
+    p = [2,6,9,5,10,8,3,7,4,1]
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 10,
+
+  % decision variables
+
+  X = new_list(N),
+  X :: 1..30,
+  S = new_list(N),
+  S :: 1..30,
+  P = new_list(N),
+  P :: 1..N,
+
+  % X[2] #= 5,
+  % S[4] #= 10,
+
+  % Testing for a specific X
+  X = [29, 5, 21, 27, 10, 8, 23, 12, 9, 11],
+  all_different(X),
+  sortedness(X, S, P),
+
+  Vars = X ++ S ++ P,
+  solve(Vars),
+
+  println(x=X),
+  println(s=S),
+  println(p=P),
+  nl,
+  fail,
+  nl.
+
+
+%
+% From https://www.ads.tuwien.ac.at/wiki/images/archive/f/f4/20110617214403!Sortedness.co
+% """
+% * This function enforces the sortedness constraint, i.e., a channeling
+% * constraint between the arrays of integer variables x and s
+% * s is the sorted version of x, and the array p is the permutation of the 
+% * indices in x to obtain the ordered version.
+% * Notice that this function works only for arrays x, s, and p with range 1..n
+% * The function could be used in the solve/minimize statement as in the
+% * following example.
+% """
+%
+sortedness(X, S, P) =>
+  N = X.len,
+  R = 1..N,
+  Minval = 1,
+  Maxval = max([fd_max(X[I]) : I in R]),
+
+  OCC = new_list(Maxval),
+  OCC :: 0..N,
+  NBBefore = new_list(Maxval),
+  NBBefore :: 0..N,
+  foreach (I in 1..Maxval)
+    OCC[I] #= sum([X[J] #= I : J in R])
+  end,
+  foreach (I in 1..Maxval)
+    OCC[I] #= sum([S[J] #= I : J in R])
+  end,
+
+  NBBefore[Minval] #= 0,
+  foreach (I in (Minval + 1)..Maxval)
+    NBBefore[I] #= sum([OCC[J] :  J in Minval..I - 1])
+  end,
+  foreach(I in R) 
+    % NBBefore[S[I]] #< I
+    element(S[I],NBBefore,T),
+    T #< I
+  end,
+  foreach(I in R) 
+    % S[I] #= X[P[I]]
+    element(P[I],X,S[I])
+  end.
+
+
