@@ -1,0 +1,243 @@
+/* 
+
+  Bell numbers (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Bell_numbers
+  """
+  Bell or exponential numbers are enumerations of the number of different 
+  ways to partition a set that has exactly n elements. Each element of the 
+  sequence Bn is the number of partitions of a set of size n where order of 
+  the elements and order of the partitions are non-significant. 
+
+  E.G.: {a b} is the same as {b a} and {a} {b} is the same as {b} {a}.
+
+
+  So
+
+  * B0 = 1 trivially. There is only one way to partition a set with zero elements. { }
+  * B1 = 1 There is only one way to partition a set with one element. {a}
+  * B2 = 2 Two elements may be partitioned in two ways. {a} {b}, {a b}
+  * B3 = 5 Three elements may be partitioned in five ways {a} {b} {c}, {a b} {c}, 
+    {a} {b c}, {a c} {b}, {a b c}
+
+    and so on.
+
+
+   A simple way to find the Bell numbers is construct a Bell triangle, also known as 
+   an Aitken's array or Peirce triangle, and read off the numbers in the first column of 
+   each row. There are other generating algorithms though, and you are free to choose 
+   the best / most appropriate for your case.
+
+
+  Task
+
+  Write a routine (function, generator, whatever) to generate the Bell number sequence 
+  and call the routine to show here, on this page at least the first 15 and (if your 
+  language supports big Integers) 50th elements of the sequence.
+
+  If you do use the Bell triangle method to generate the numbers, also show the first 
+  ten rows of the Bell triangle.
+  """
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+import util.
+
+main => go.
+
+go =>
+  B50=b(50),
+  println(B50[1..18]),
+  println(b50=B50.last),
+  nl.
+
+
+% From the Sage solution https://oeis.org/A000110
+% Note: Picat is 1-based
+%
+% Returns the first M Bell numbers
+b(M) = R =>
+  A = new_array(M-1),
+  bind_vars(A,0),
+  A[1] := 1,
+  R = [1, 1],
+  foreach(N in 2..M-1)
+    A[N] := A[1],
+    foreach(K in N..-1..2)
+       A[K-1] := A[K-1] + A[K]
+    end,
+    R := R ++ [A[1]]
+  end.
+
+% Bell's Triangle
+% {{trans|D}}
+go2 =>
+  Tri = tri(50),
+  foreach(I in 1..10)
+    println(Tri[I].to_list)
+  end,
+  nl,
+  println(tri50=Tri.last.first),
+  nl.
+
+% Adjustments for base-1.
+tri(N) = Tri[2..N+1] =>
+  Tri = new_array(N+1),
+  foreach(I in 1..N+1)
+    Tri[I] := new_array(I-1),
+    bind_vars(Tri[I],0)
+  end,
+  Tri[2,1] := 1,
+  foreach(I in 3..N+1)
+    Tri[I,1] := Tri[I-1,I-2],
+    foreach(J in 2..I-1)
+      Tri[I,J] := Tri[I,J-1] + Tri[I-1,J-1]
+    end
+  end.
+
+
+% {{trans|Prolog}}
+go3:-
+    bell(49, Bell),
+    printf("First 15 Bell numbers:\n"),
+    print_bell_numbers(Bell, 15),
+    Number=Bell.last.first,
+    printf("\n50th Bell number: %w\n", Number),
+    printf("\nFirst 10 rows of Bell triangle:\n"),
+    print_bell_rows(Bell, 10).
+
+bell(N, Bell):-
+    bell(N, Bell, [], _).
+ 
+bell(0, [[1]|T], T, [1]):-!.
+bell(N, Bell, B, Row):-
+    N1 is N - 1,
+    bell(N1, Bell, [Row|B], Last),
+    next_row(Row, Last).
+ 
+next_row([Last|Bell], Bell1):-
+    Last=last(Bell1),
+    next_row1(Last, Bell, Bell1).
+ 
+next_row1(_, [], []):-!.
+next_row1(X, [Y|Rest], [B|Bell]):-
+    Y is X + B,
+    next_row1(Y, Rest, Bell).
+ 
+print_bell_numbers(_, 0):-!.
+print_bell_numbers([[Number|_]|Bell], N):-
+    printf("%w\n", Number),
+    N1 is N - 1,
+    print_bell_numbers(Bell, N1).
+ 
+print_bell_rows(_, 0):-!.
+print_bell_rows([Row|Rows], N):-
+    print_bell_row(Row),
+    N1 is N - 1,
+    print_bell_rows(Rows, N1).
+ 
+print_bell_row([Number]):-
+    !,
+    printf("%w\n", Number).
+print_bell_row([Number|Numbers]):-
+    printf("%w ", Number),
+    print_bell_row(Numbers).
+ 
+
+% Should be: 1,1,2,5,15,52,203,877,4140,21147
+% 3 elements:
+%   {a} {b} {c},
+%   {a b} {c}, 
+%   {a} {b c},
+%   {a c} {b},
+%   {a b c}
+%
+% The elements in All corresponds to what set the i'th
+% number belongs to.
+% [[1,1,1],[1,1,2],[1,2,1],[1,2,2],[1,2,3]]
+% The sets:
+% [[[1,2,3]],[[1,2],[3]],[[1,3],[2]],[[1],[2,3]],[[1],[2],[3]]]
+% This works and is not very slow!
+/*
+1 = 1
+{{{1}}}
+
+2 = 2
+{{{1,2}},{{1},{2}}}
+
+3 = 5
+{{{1,2,3}},{{1,2},{3}},{{1,3},{2}},{{1},{2,3}},{{1},{2},{3}}}
+
+4 = 15
+{{{1,2,3,4}},{{1,2,3},{4}},{{1,2,4},{3}},{{1,2},{3,4}},{{1,2},{3},{4}},{{1,3,4},{2}},{{1,3},{2,4}},{{1,3},{2},{4}},{{1,4},{2,3}},{{1},{2,3,4}},{{1},{2,3},{4}},{{1,4},{2},{3}},{{1},{2,4},{3}},{{1},{2},{3,4}},{{1},{2},{3},{4}}}
+
+5 = 52
+
+6 = 203
+
+7 = 877
+
+8 = 4140
+
+9 = 21147
+
+10 = 115975
+
+11 = 678570
+
+12 = 4213597
+
+
+*/
+go4 =>
+  garbage_collect(500_000_000),
+  member(N,1..12),
+  X = new_list(N),
+  X :: 1..N,
+  value_precede_chain(1..N,X),
+  solve_all($[ff,split],X)=All,
+  println(N=All.len),
+  if N <= 4 then
+    println(All),
+    % convert to sets
+    Set = {},
+    foreach(Y in All) 
+      L = new_array(N),
+      bind_vars(L,{}),
+      foreach(I in 1..N)
+        L[Y[I]] := L[Y[I]] ++ {I}
+      end,
+      Set := Set ++ { {E : E in L, E != {}} }
+    end,
+    println(Set)
+  end,
+  nl,
+  fail,
+  nl.
+
+%
+% Ensure that a value N+1 is placed in the list X not before
+% all the value 1..N are placed in the list.
+%
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.

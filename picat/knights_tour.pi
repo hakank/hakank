@@ -1,0 +1,149 @@
+/* 
+
+  Knight's tour (Rosetta Code) in Picat.
+
+  http://rosettacode.org/wiki/Knight%27s_tour
+  """
+  Problem: you have a standard 8x8 chessboard, empty but for a single knight 
+  on some square. Your task is to emit a series of legal knight moves that 
+  result in the knight visiting every square on the chessboard exactly once. 
+  Note that it is not a requirement that the tour be "closed"; that is, the 
+  knight need not end within a single move of its start position.
+
+  Input and output may be textual or graphical, according to the conventions 
+  of the programming environment. If textual, squares should be indicated in 
+  algebraic notation. The output should indicate the order in which the knight 
+  visits the squares, starting with the initial position. The form of the output 
+  may be a diagram of the board with the squares numbered ordering to visitation 
+  sequence, or a textual list of algebraic coordinates in order, or even an 
+  actual animation of the knight moving around the chessboard.
+
+  Input: starting square
+
+  Output: move sequence 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import sat.
+import cp.
+
+
+main => go.
+
+
+go =>
+  nolog,
+  M = 8,
+  knight_tour(M, [1,1], Solution),
+  [X,Y,Z] = Solution,
+  % println(x=X),
+  % println(y=Y),
+  println(z=Z),
+  foreach(I in 1..X.length)
+     % println([x=X[I],y=Y[I],z=Z[I]])
+     printf("%w(%d) ",get_coord(Z[I],M), I),
+     if (I < X.len) then
+       print(" -> ")
+     end
+     % println([i=I,z=Z[I], get_coord(Z[I], M)])
+  end,
+  nl,
+  print_tour(M,X,Y),
+  nl,
+  fail, % generating all solutions
+  nl.
+
+
+go2 =>
+  nolog,
+  foreach(M in 2..2..10)
+    println(m=M),
+    if time(knight_tour(M, [1,1], Solution)) then
+      [X,Y,_Z] = Solution,
+      print_tour(M,X,Y),
+      nl
+    end
+  end,
+  nl.
+
+get_coord(T,N) = [Row,Col] =>
+  Row = 1+((T-1) div N),
+  Col = 1+((T-1) mod N).
+  
+
+test_tour(M) =>
+  nolog,
+  knight_tour(M,[2,2], Solution),
+  [X,Y,Z] = Solution,
+  foreach(I in 1..X.length)
+     println([x=X[I],y=Y[I],z=Z[I]])
+  end,
+  print_tour(M,X,Y),
+  nl.
+
+print_tour(M,X,Y) =>
+   Matrix = new_array(M,M),
+   N = M*M,
+   foreach({I,J,K} in zip(X,Y,1..N))
+     Matrix[I,J] := K
+   end,
+   foreach(Row in Matrix)
+     foreach(V in Row)
+       printf("%4d ",V)
+     end,
+     nl
+   end,
+   nl.
+   
+
+knight_tour(M, Start, Solution) =>
+
+   N = M*M,
+
+   X = new_list(N),
+   Y = new_list(N),
+   X :: 1..M,
+   Y :: 1..M,
+
+   Z = new_list(N),
+   Z :: 1..N,
+
+   X[1] #= Start[1],
+   Y[1] #= Start[2],
+
+   % the tour
+   foreach(I in 2..N)
+      knight_move(X[I-1],Y[I-1],X[I],Y[I])
+   end,
+   % and back again
+   % knight_move(X[N],Y[N],X[1],Y[1]),
+
+
+   % alldifferent pairs
+   foreach(I in 1..N)
+     Z[I] #= (X[I]-1)*M+Y[I]
+   end,
+   all_different(Z),
+
+
+   Vars = X ++ Y ++ Z,
+   % Vars = Z ++ X ++ Y,   
+
+   solve([ffd,split],Vars),
+   Solution = [X,Y,Z].
+   
+
+% knight_move(X1,Y1,X2,Y2)  => 
+%    (abs(X1 - X2) #= 2 #/\ abs(Y1 - Y2) #= 1)
+%    #\/
+%    (abs(X1 - X2) #= 1 #/\ abs(Y1 - Y2) #= 2).
+
+knight_move(X1,Y1,X2,Y2)  =>
+   abs(X1 - X2) #> 0 #/\ abs(Y1 - Y2) #> 0 #/\
+   abs(X1 - X2) + abs(Y1 - Y2) #= 3.

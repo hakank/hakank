@@ -1,0 +1,150 @@
+/* 
+
+  Permutations (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Permutations
+  """
+  Write a program that generates all   permutations   of   n   different objects.   (Practically numerals!) 
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+/*
+  Picat has built-in permutations/1 and permutation/2
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  N = 3,
+  println(permutations=permutations(1..N)), % built in
+  println(permutation=findall(P,permutation([a,b,c],P))), % built-in
+  println(permutation_rec1=findall(P,permutation_rec1(1..N,P))),
+  println(permutation_rec2=findall(P,permutation_rec2(1..N,P))),
+  println(permutation_cp1=permutation_cp1(N)), % 1..N
+  println(permutation_cp2=findall(P,permutation_cp2(N,P))), % 1..N
+  println(permutation_cp_list=permutation_cp_list("abc")),
+  nl,
+  nl,
+  
+  nl.
+go => true.
+
+go2 ?=>
+  permutation_rec2("abcd",P),
+  println(P),
+  fail.
+go2 => true.
+
+% Benchmark
+go3 =>
+  N = 10,
+  % garbage_collect(300_000_000),
+  % time(P1=permutations(1..N)), % 3.855s
+  % println(p1=P1.len),
+  
+  % garbage_collect(300_000_000),
+  % time(P2=findall(P,permutation(1..N,P))), % 0.838s
+  % println(p2=P2.len),
+  
+  garbage_collect(300_000_000),
+  time(P3=findall(P,permutation_rec1(1..N,P))), % 0.429s
+  println(p3=P3.len),
+  
+  % garbage_collect(300_000_000),
+  % time(P4=findall(P,permutation_rec2(1..N,P))), % 0.747s
+  % println(p4=P4.len),
+  
+  % garbage_collect(300_000_000),
+  % time(P5=permutation_cp1(N)), % 1.102s
+  % println(p5=P5.len),
+  
+  % garbage_collect(300_000_000),
+  % time(P6=findall(P,permutation_cp2(N,P))), % 1.286s
+  % println(p6=P6.len),
+
+
+  nl.
+
+
+
+
+% Recursive approaches (standard Prolog)
+permutation_rec1([X|Y],Z) :-
+  permutation_rec1(Y,W),
+  select(X,Z,W).  
+permutation_rec1([],[]).
+
+permutation_rec2([], []).
+permutation_rec2([X], [X]) :-!.
+permutation_rec2([T|H], X) :-
+  permutation_rec2(H, H1),
+  append(L1, L2, H1),
+  append(L1, [T], X1),
+  append(X1, L2, X).
+
+% Constraint modelling: Only handles integers 1..N
+% Returns all permutations
+permutation_cp1(N) = solve_all(X) =>
+   X = new_list(N),
+   X :: 1..N,
+   all_different(X).
+
+% Find next permutation on backtracking
+permutation_cp2(N,X) =>
+   X = new_list(N),
+   X :: 1..N,
+   all_different(X),
+   solve($[ff],X).
+
+
+permutation_cp_list(L) = Perms =>
+  Perms = [ [L[I] : I in P] : P in permutation_cp1(L.len)].
+
+
+% This has problem with [a,b,c,a]!!!
+% Skip it!
+% Iterative version
+all_perms(P) = Perms =>
+  Perms = [P],
+  Rev = P.reverse, % the last permutation
+  while (P != Rev)
+    P := next_permutation(P),
+    Perms := Perms ++ [P]    
+  end.
+
+next_permutation(P) = Perm =>
+   Perm1 = copy_term(P),
+   N = Perm1.length,
+   K = N - 1,
+   while (Perm1[K] @> Perm1[K+1], K >= 0) 
+      K := K - 1
+   end,
+   if K > 0 then
+      J = N,
+      while (Perm1[K] @> Perm1[J])
+        J := J - 1
+      end,      
+      Tmp := Perm1[K],
+      Perm1[K] := Perm1[J],
+      Perm1[J] := Tmp,
+      R = N, 
+      S = K + 1,
+      while (R > S) 
+         Tmp := Perm1[R],
+         Perm1[R] := Perm1[S],
+         Perm1[S] := Tmp,
+         R := R - 1, 
+         S := S + 1
+      end
+   end,
+   Perm = Perm1.
+

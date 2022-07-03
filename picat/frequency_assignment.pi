@@ -1,0 +1,233 @@
+/* 
+
+  Frequency assignment in Picat.
+
+  From https://www.artelys.com/docs/kalis/11_constraintsExamples.html#constraint-distance-frequency-assignment
+  """
+  The area of telecommunications, and in particular mobile telecommunications, gives rise 
+  to many different variants of frequency assignment problems. We are given a network of cells 
+  (nodes) with requirements of discrete frequency bands. Each cell has a given demand for a number 
+  of frequencies (bands). Figure 11.2.1 shows the structure of the network. 
+  
+  Nodes linked by an edge are considered as neighbors. They must not be assigned the same frequencies 
+  to avoid interference. Furthermore, if a cell uses several frequencies they must all be different by 
+  at least 2. The objective is to minimize the total number of frequencies used in the network.
+
+  The following table lists the number of frequency demands for every cell:
+
+  Cell      1  2  3  4  5  6  7  8  9  10
+  Demand    4  5  2  3  2  4  3  4  3   2
+
+  ... 
+
+  An optimal solution to this problem uses 11 different frequencies. The model shown 
+  in the program listing prints out the following assignment of frequencies to nodes:
+  """
+
+  Here is one optimal solution (symmetry breaking Use[1] = 1)
+
+    nb_of_frequencies = 11
+    use = [1,4,6,8,1,4,6,9,11,3,11,2,7,10,7,10,2,5,7,9,3,5,8,2,4,6,9,4,6,8,3,8]
+    Number of frequencies: 11
+    Frequency assignment:
+    Node  1: 1 4 6 8 
+    Node  2: 1 4 6 9 11 
+    Node  3: 3 11 
+    Node  4: 2 7 10 
+    Node  5: 7 10 
+    Node  6: 2 5 7 9 
+    Node  7: 3 5 8 
+    Node  8: 2 4 6 9 
+    Node  9: 4 6 8 
+    Node 10: 3 8 
+
+  With symmetry breaking value_precede_chain on FirstUsedFrequency:
+
+    nb_of_frequencies = 11
+    use = [1,4,7,11,1,4,6,8,11,2,9,3,5,10,1,5,3,6,8,10,2,7,9,3,6,8,10,4,7,11,4,9]
+    Number of frequencies: 11
+    Frequency assignment:
+    Node  1: 1 4 7 11 
+    Node  2: 1 4 6 8 11 
+    Node  3: 2 9 
+    Node  4: 3 5 10 
+    Node  5: 1 5 
+    Node  6: 3 6 8 10 
+    Node  7: 2 7 9 
+    Node  8: 3 6 8 10 
+    Node  9: 4 7 11 
+    Node 10: 4 9 
+
+
+  See go3/0 for the number of optimal solutions.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import sat.
+import cp.
+
+main => go.
+
+go =>
+  nolog,
+  data(1,NodesDemands,Links),
+  frequency_assignment(NodesDemands,Links, DemandsIndex,Use,NbOfFrequencies),
+  print_solution(NodesDemands, DemandsIndex,Use,NbOfFrequencies),
+  nl.
+
+% All optimal solutions
+go2 =>
+  nolog,
+  data(1,NodesDemands,Links),
+  frequency_assignment(NodesDemands,Links, _DemandsIndex,_Use,NbOfFrequencies),
+  printf("Optimal value: %d\n", NbOfFrequencies),
+  println("\nAll optimal solutions:"),
+
+  frequency_assignment(NodesDemands,Links, DemandsIndex,Use,NbOfFrequencies),
+
+  print_solution(NodesDemands, DemandsIndex,Use,NbOfFrequencies),
+  nl,
+  fail,
+  nl.
+
+/*
+  Number of optimal solutions (with symmetry breaking Use[1] #= 1)
+
+   Optimal value: 11
+   count = 27736888
+
+   CPU time 10.389 seconds. Backtracks: 53389836
+
+  Number of optimal solutions with symmetry breaking value_precede_chain
+  on FirstUsedFrequency:
+
+   Optimal value: 11
+   count = 1108705
+
+   CPU time 0.531 seconds. Backtracks: 2317442
+
+
+*/
+go3 =>
+  nolog,
+  data(1,NodesDemands,Links),
+  frequency_assignment(NodesDemands,Links, _DemandsIndex,_Use,NbOfFrequencies),
+  printf("Optimal value: %d\n", NbOfFrequencies),
+
+  Count = count_all(frequency_assignment(NodesDemands,Links, DemandsIndex,Use,NbOfFrequencies)),
+  println(count=Count),
+  nl.
+
+
+
+print_solution(NodesDemands, DemandsIndex,Use,NbOfFrequencies) =>
+  println(nb_of_frequencies=NbOfFrequencies),
+  println(use=Use),
+  printf("Number of frequencies: %d\n", NbOfFrequencies),
+  println("Frequency assignment:"),
+  foreach(N in 1..NodesDemands.len)
+    printf("Node %2d: ", N),
+    foreach(D in DemandsIndex[N]..DemandsIndex[N] + NodesDemands[N]-1)
+      printf("%d ", Use[D])
+    end,
+    nl
+  end,
+  nl.
+
+
+frequency_assignment(NodesDemands,Links, DemandsIndexRet,Use,NbOfFrequencies) =>
+
+  % Set upper bound and total demand
+  NbDemands = sum(NodesDemands),
+  NbNodes = NodesDemands.len,
+  NbLinks = Links.len,
+  % Correspondance between demands and nodes
+  DemandsIndex = [1],
+  foreach(N in 2..NbNodes)
+    % demands_index.append(demands_index[n-1] + nodes_demands[n-1])
+    DemandsIndex := DemandsIndex ++ [DemandsIndex[N-1] + NodesDemands[N-1]]
+  end,
+  DemandsIndexRet = DemandsIndex, % for the return value
+  
+  %%% Creation of the variables
+  % One variable for each demand representing the id of the given frequency
+  Use = new_list(NbDemands),
+  Use :: 1..NbDemands,
+
+  % Variable for the objective value:
+  NbOfFrequencies :: 0..NbLinks,
+
+  % All frequencies attached to a node must be different by at least 2
+  foreach(N in 1..NbNodes)
+    foreach(D1 in DemandsIndex[N]..DemandsIndex[N] + NodesDemands[N]-1)
+      foreach(D2 in D1 + 1..DemandsIndex[N] + NodesDemands[N]-1)
+        Use[D2] #>= Use[D1] + 2
+      end
+    end
+  end,
+  
+  % Neighboring nodes take all-different frequencies
+  foreach(L in Links)
+     [N1,N2] = L,
+     D1 = [Use[D] : D in DemandsIndex[N1]..DemandsIndex[N1]+NodesDemands[N1]-1],
+     D2 = [Use[D] : D in DemandsIndex[N2]..DemandsIndex[N2]+NodesDemands[N2]-1],
+     all_different(D1 ++ D2)
+  end,
+
+  % symmetry breaking
+  % Use[1] #= 1,
+
+  % hakank: Added symmetry breaking on the first frequency used for each node.
+  FirstUsedFrequency = [Use[DemandsIndex[N]] : N in 1..NbNodes],
+  value_precede_chain(1..NbNodes,FirstUsedFrequency),
+
+
+  % Objective function: minimize the number of used frequencies, that is minimize the largest
+  % value assigned in the 'use' array.
+  NbOfFrequencies #= max(Use),
+
+  if var(NbOfFrequencies) then
+    solve($[min(NbOfFrequencies)],Use)
+  else
+    solve($[degree,updown],Use)  
+  end.
+
+
+
+data(1,NodesDemands,Links) => 
+  % Demand of nodes
+  NodesDemands = [4, 5, 2, 3, 2, 4, 3, 4, 3, 2],
+  % Neighboring nodes
+  Links = [[1, 3], [1, 4], [1, 6],
+           [2, 4], [2, 7],
+           [3, 4], [3, 6], [3, 8], [3, 9],
+           [4, 7], [4, 9], [4,10],
+           [5, 7], [5, 8], [5, 9],
+           [6, 9],
+           [7, 8],
+           [8,10]].
+
+
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+% This definition is inspired by 
+% MiniZinc definition value_precede_int.mzn
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+

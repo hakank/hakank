@@ -1,0 +1,219 @@
+/* 
+
+  9 billion names of god (Rosetta Code) in Picat.
+
+  http://rosettacode.org/wiki/9_billion_names_of_God_the_integer
+  """
+  This task is a variation of the short story by Arthur C. Clarke.
+
+  (Solvers should be aware of the consequences of completing this task.)
+
+  In detail, to specify what is meant by a   "name”:
+
+    The integer 1 has 1 name  "1”.
+    The integer 2 has 2 names "1+1”, and "2”.
+    The integer 3 has 3 names "1+1+1”, "2+1”, and "3”.
+    The integer 4 has 5 names "1+1+1+1”, "2+1+1”, "2+2”, "3+1”, "4”.
+    The integer 5 has 7 names "1+1+1+1+1”, "2+1+1+1”, "2+2+1”, "3+1+1”, "3+2”, "4+1”, "5”.
+
+
+  Task
+
+  Display the first 25 rows of a number triangle which begins:
+
+                                      1
+                                    1   1
+                                  1   1   1 
+                                1   2   1   1
+                              1   2   2   1   1
+                            1   3   3   2   1   1
+
+  Where row   n  corresponds to integer n, and each column C in row m  from left to right 
+  corresponds to the number of names beginning with C.
+
+  A function G(n) should return the sum of the n-th row.
+
+  Demonstrate this function by displaying: G(23) , G(123), G(1234), and G(12345).
+
+  Optionally note that the sum of the n-th row P(n)  is the integer partition function.
+
+  Demonstrate this is equivalent to G(n) by displaying: P(23), P(123), P(1234), and P(12345). 
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+go =>
+  foreach(N in 1..25)
+     P = integer_partition(N).reverse,
+     % println(N=len=P.len),
+     % T = P.map(sort_down).map(first),
+     G = P.map(sort_down).map(first).counts.to_list.sort.map(second),
+     println(N=G=G.sum)
+     % nl
+  end,
+  nl,
+  garbage_collect(400_000_000),
+  foreach(N in [23,123,1234,12345,123456])
+    % NP = num_partitions(N), 
+    % println(N=NP.last),
+    % p(N,NPP),
+    % println(N=NPP),
+    % NPP2 = p2(N),
+    % println(N=NPP2),
+
+    % This is fast
+    P = partition1(N),
+    println(N=P),
+    
+    % println(N=pc(N)), % slow and eats RAM
+    % println(N=num_partitions2(N)), % very slow
+    % NP2 = num_partitions2(N),
+    % println(N=NP2),
+    nl
+  end,
+  
+  nl.
+
+%
+% From http://oeis.org/A000041
+% (original Haskell code):
+% a000041 = p 1 where
+%    p _ 0 = 1
+%    p k m = if m < k then 0 else p k (m - k) + p (k + 1) m 
+% Too slow for 12345
+table
+pc(_,0) = 1.
+pc(1,1) = 1.
+pc(K,M) = cond(M < K, 0, pc(K, M-K) + pc(K + 1,M)).
+
+pc(N) = pc(1,N).
+
+
+% Counts the occurrences of the elements in L
+counts(L) = Map =>
+  Map = new_map(),
+  foreach(I in L)
+    Map.put(I,Map.get(I,0)+1)
+  end.
+
+% Using constraint modelling to get all partitions
+integer_partition(N) = find_all(X,integer_partition(N,X)).
+integer_partition(N,X) =>
+  member(Len,1..N),
+  X = new_list(Len),
+  X :: 1..N,
+  increasing(X),
+  sum(X) #= N,
+  solve($[split],X).
+
+
+% {{trans|Python}}
+num_partitions(N) = Out =>
+  Diffs = [],
+  K = 1,
+  S = 1,
+  while (K*(3*K-1) < 2*N)
+     Diffs := Diffs ++ [[2*K-1,S],[K,S]],
+     K := K + 1,
+     S := -S     
+  end,
+  Out = [1] ++ [0 : _ in 1..N],
+  foreach(P in 0..N)
+    X = Out[P+1],
+    foreach( [O,SS] in Diffs, break(P > N))
+      P := P + O,
+      if P <= N then
+        Out[P+1] := Out[P+1] + X*SS
+      end
+    end
+  end.
+
+
+% {{trans|Dart}}
+% quite slower than num_partitions/1
+num_partitions2(N) = Res =>
+  garbage_collect(500_000_000),
+  Cache = [[1]],
+  foreach(Length in Cache.len..N)
+    Row = [1],
+    foreach(Index in 1..Length)
+      PartAtIndex = Row[Row.len] + Cache[Length-Index+1,min(Index+1,Length-Index+1)],
+      Row := Row ++ [PartAtIndex]
+    end,
+    Cache := Cache ++ [Row]
+  end,
+  Res = Cache.last.last-Cache[N].last.
+
+
+/*
+% SWI-Prolog (see partition_function.pl)
+:- table p/2.
+p(0, 1) :- !.
+p(N, X) :-
+    aggregate_all(sum(Z), (between(1,inf,K), M is K*(3*K-1)//2,
+           (M>N, !, fail; L is N-M, p(L,Y), Z is (-1)^K*Y)), A),
+    aggregate_all(sum(Z), (between(1,inf,K), M is K*(3*K+1)//2,
+           (M>N, !, fail; L is N-M, p(L,Y), Z is (-1)^K*Y)), B),
+    X is -A-B.
+
+*/
+table
+p(0, 1) :- !.
+p(N, X) :-
+    A = sum(findall(Z, (between(1,N,K), M is K*(3*K-1)//2,
+           (M>N, !, fail; p(N-M,Y), Z is (-1)**K*Y)))),
+    B = sum(findall(Z, (between(1,N,K), M is K*(3*K+1)//2,
+           (M>N, !, fail; p(N-M,Y), Z is (-1)**K*Y)))),
+    X is -A-B.
+
+
+table
+p2(0)=1 => !.
+p2(N)=Z =>
+    Z=0, K=1,
+    M is K*(3*K-1)//2,
+    while(M=<N)
+        Z:=Z-(-1)**K*p2(N-M),
+        K:=K+1,
+        M:=K*(3*K-1)//2
+    end,
+    K:=1,
+    M:=K*(3*K+1)//2,
+    while(M=<N)
+         Z:=Z-(-1)**K*p2(N-M),
+         K:=K+1,
+         M:=K*(3*K+1)//2
+    end.
+
+
+% From my Picat solution at
+% http://rosettacode.org/wiki/Partition_function_P
+table
+partition1(0) = 1.
+partition1(N) = P =>
+  S = 0,
+  K = 1,
+  M = (K*(3*K-1)) // 2,  
+  while (M <= N)
+     S := S - ((-1)**K)*partition1(N-M),
+     K := K + 1, 
+     M := (K*(3*K-1)) // 2 
+  end,
+  K := 1,
+  M := (K*(3*K+1)) // 2,
+  while (M <= N)
+     S := S - ((-1)**K)*partition1(N-M),
+     K := K + 1,
+     M := (K*(3*K+1)) // 2  
+  end,
+  P = S.
+
+

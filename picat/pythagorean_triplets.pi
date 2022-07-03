@@ -1,0 +1,206 @@
+/* 
+
+  Pytagorean triplets (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Pythagorean_triples
+  """
+  A Pythagorean triple is defined as three positive integers ( a , b , c ) where a < b < c , 
+  and a^2 + b^2 = c^2.
+
+  They are called primitive triples if a , b , c  are co-prime, that is, if their pairwise greatest 
+  common divisors gcd(a,b) = gcd(a,c) = gcd(b,c) = 1.
+
+  Because of their relationship through the Pythagorean theorem, a, b, and c are co-prime if 
+  a and b are co-prime ( gcd(a,b) = 1.  
+
+  Each triple forms the length of the sides of a right triangle, whose perimeter is P = a + b + c.
+
+  Task
+
+  The task is to determine how many Pythagorean triples there are with a perimeter no larger than 100 
+  and the number of these that are primitive.
+
+
+  Extra credit
+
+  Deal with large values. Can your program handle a maximum perimeter of 1,000,000?   
+  What about 10,000,000?   100,000,000?
+
+  Note: the extra credit is not for you to demonstrate how fast your language is compared to others;   
+  you need a proper algorithm to solve them in a timely manner.
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+% import util.
+import cp.
+
+
+main => go.
+
+% This is NOT correct
+go_bad =>
+  MaxP = 100,
+  time(Sols = findall(P, (pyth(MaxP,A,B,C,P), gcd(A,B)==1, gcd(A,C) == 1,gcd(B,C) == 1)).remove_dups),
+  % time(Sols = findall([A,B,C,P], (pyth(MaxP,A,B,C,P), gcd(A,B)==1))),  
+  NumSols = Sols.len,
+  if NumSols < 30 then
+    foreach(Sol in Sols)
+      println(Sol)
+    end
+  end,
+  println(len=Sols.len),
+  nl,
+  fail,
+  nl.
+
+
+pyth(MaxP,A,B,C,P) =>
+  P :: 1..MaxP,
+  [A,B,C] :: 1..MaxP div 3,
+  P #= A**2 + B**2 + C**2,
+  A #< B, B #< C,
+  solve($[],[A,B,C,P]).
+
+
+
+/*
+The Picat program is quite faster than SWI-Prolog
+   
+upto 100, there are 17 Pythagorean triples (7 primitive.)
+upto 1000, there are 325 Pythagorean triples (70 primitive.)
+upto 10000, there are 4857 Pythagorean triples (702 primitive.)
+upto 100000, there are 64741 Pythagorean triples (7026 primitive.)
+upto 1000000, there are 808950 Pythagorean triples (70229 primitive.)
+upto 10000000, there are 9706567 Pythagorean triples (702309 primitive.)
+upto 100000000, there are 113236940 Pythagorean triples (7023027 primitive.)
+
+CPU time 4.812 seconds. Backtracks: 0
+  
+$ swipl -g "time(show)." pythagorean_triplets.pl 
+upto 100, there are 17 Pythagorean triples (7 primitive.)
+upto 1,000, there are 325 Pythagorean triples (70 primitive.)
+upto 10,000, there are 4,857 Pythagorean triples (702 primitive.)
+upto 100,000, there are 64,741 Pythagorean triples (7,026 primitive.)
+upto 1,000,000, there are 808,950 Pythagorean triples (70,229 primitive.)
+upto 10,000,000, there are 9,706,567 Pythagorean triples (702,309 primitive.)
+upto 100,000,000, there are 113,236,940 Pythagorean triples (7,023,027 primitive.)
+% 163,914,322 inferences, 16.757 CPU in 16.757 seconds (100% CPU, 9781571 Lips)
+
+
+*/
+% {{trans|Prolog}}
+go :-
+  garbage_collect(300_000_000),
+  Data = [100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000],
+  member(Max, Data),
+  count_triples(Max, Total, Prim),
+  printf("upto %d, there are %d Pythagorean triples (%d primitive.)%n", Max, Total, Prim),
+  fail,
+  nl.
+ 
+% div(A, B, C) :- C = A div B.
+ 
+count_triples(Max, Total, Prims) :-
+  Ps = findall(S, (triple(Max, A, B, C), S is A + B + C)),
+  Prims = Ps.len,
+  Total = sum([Max div P : P in Ps]).
+ 
+% - between_by/4
+between_by(A, B, N, K) :-
+  C = (B - A) div N,
+  between(0, C, J),
+  K = N*J + A.
+ 
+% - Pythagorean triple generator
+triple(P, A, B, C) :-
+  Max = floor(sqrt(P/2)) - 1,
+  between(0, Max, M),
+  Start = (M /\ 1) + 1,
+  Pm = M - 1,
+  between_by(Start, Pm, 2, N),
+  gcd(M, N) == 1,
+  X = M*M - N*N,
+  Y = 2*M*N,
+  C = M*M + N*N,
+  order2(X, Y, A, B),
+  (A + B + C) =< P.
+ 
+order2(A, B, A, B) :- A < B, !.
+order2(A, B, B, A).
+
+
+% {{trans|Go}}
+% Picat doesn't support global variables.
+% No global variables.
+% Slightly faster than the Prolog-based version for 2..8
+go2 =>
+  foreach(MaxPeri in [10**I : I in 2..8])
+    [Total, Prim] = newTri(MaxPeri,0,0,3, 4, 5),
+    printf("Up to %d:  %d triples, %d primitives\n", MaxPeri, Total, Prim)
+  end.
+
+newTri(MaxPeri,Prim,Total,S0, S1, S2) = [PrimRet,TotalRet] =>
+  P = S0 + S1 + S2,
+  % Prim2 = Prim,
+  % Total2 = Total,
+  if P <= MaxPeri then
+    Prim2 := Prim + 1,
+    Total2 := Total + MaxPeri div P,
+    [Prim3,Total3] = newTri(MaxPeri,Prim2,Total2, +1*S0-2*S1+2*S2, +2*S0-1*S1+2*S2, +2*S0-2*S1+3*S2),   
+    [Prim4,Total4] = newTri(MaxPeri,Prim3,Total3, +1*S0+2*S1+2*S2, +2*S0+1*S1+2*S2, +2*S0+2*S1+3*S2),    
+    [Prim5,Total5] = newTri(MaxPeri,Prim4,Total4, -1*S0+2*S1+2*S2, -2*S0+1*S1+2*S2, -2*S0+2*S1+3*S2),       
+    PrimRet = Prim5,
+    TotalRet = Total5
+  else
+    PrimRet = Prim,
+    TotalRet = Total
+  end.
+
+% With "global variables"
+% Slower.
+go3 =>
+  foreach(MaxPeri in [10**I : I in 2..8])
+    Map = new_map([max_peri=MaxPeri,prim=0,total=0]),    
+    newTri(Map,3,4,5),
+    printf("Up to %d:  %d triples, %d primitives\n", MaxPeri, Map.get(total), Map.get(prim))
+  end.
+
+newTri(Map,S0, S1, S2) =>
+  P = S0 + S1 + S2,
+  if P <= Map.get(max_peri) then
+    Map.put(prim, Map.get(prim)+1),
+    Map.put(total,Map.get(total) + Map.get(max_peri) div P),
+    newTri(Map,+1*S0-2*S1+2*S2, +2*S0-1*S1+2*S2, +2*S0-2*S1+3*S2),
+    newTri(Map,+1*S0+2*S1+2*S2, +2*S0+1*S1+2*S2, +2*S0+2*S1+3*S2),
+    newTri(Map,-1*S0+2*S1+2*S2, -2*S0+1*S1+2*S2, -2*S0+2*S1+3*S2)
+  end.
+ 
+
+go4 =>
+  foreach(MaxPeri in [10**I : I in 2..8])
+    Map = get_global_map(),
+    Map.put(max_peri,MaxPeri),
+    Map.put(prim,0),
+    Map.put(total,0),
+    newTri3(3,4,5),
+    printf("Up to %d:  %d triples, %d primitives\n", MaxPeri, Map.get(total), Map.get(prim))
+  end.
+
+newTri3(S0, S1, S2) =>
+  P = S0 + S1 + S2,
+  Map = get_global_map(),
+  if P <= Map.get(max_peri) then
+    Prim = Map.get(prim),
+    Total = Map.get(total),
+    Map.put(prim,Prim+1),
+    Map.put(total,Total + Map.get(max_peri) div P),
+    newTri3(+1*S0-2*S1+2*S2, +2*S0-1*S1+2*S2, +2*S0-2*S1+3*S2),
+    newTri3(+1*S0+2*S1+2*S2, +2*S0+1*S1+2*S2, +2*S0+2*S1+3*S2),
+    newTri3(-1*S0+2*S1+2*S2, -2*S0+1*S1+2*S2, -2*S0+2*S1+3*S2)
+  end.
+ 

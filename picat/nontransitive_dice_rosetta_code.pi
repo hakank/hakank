@@ -1,0 +1,215 @@
+/*
+
+  Nontransitive dice in Picat.
+
+  http://rosettacode.org/wiki/Non-transitive_dice
+  """
+  ...
+  Non-transitive dice
+
+  These are an ordered list of dice where the '>' operation between successive dice pairs applies 
+  but a comparison between the first and last of the list yields the opposite result, '<'.
+  (Similarly '<' successive list comparisons with a final '>' between first and last is also non-transitive).
+
+  Three dice S, T, U with appropriate face values could satisfy
+
+      S < T, T < U and yet S > U
+
+  To be non-transitive.
+
+  Notes
+
+  * The order of numbers on the faces of a die is not relevant. For example, three faced die described 
+     with face numbers of 1, 2, 3 or 2, 1, 3 or any other permutation are equivalent. For the purposes 
+     of the task show only the permutation in lowest-first sorted order i.e. 1, 2, 3 (and remove any of its perms).
+  * A die can have more than one instance of the same number on its faces, e.g. 2, 3, 3, 4
+  * Rotations: Any rotation of non-transitive dice from an answer is also an answer. You may optionally 
+    compute and show only one of each such rotation sets, ideally the first when sorted in a natural way. 
+    If this option is used then prominently state in the output that rotations of results are also solutions.
+
+
+  Task
+  ====
+
+  * Find all the ordered lists of three non-transitive dice S, T, U of the form S < T, T < U and yet S > U; 
+    where the dice are selected from all four-faced die , (unique w.r.t the notes), possible by having selections 
+    from the integers one to four on any dies face.
+
+    Solution can be found by generating all possble individual die then testing all possible permutations, 
+    (permutations are ordered), of three dice for non-transitivity.
+
+  Optional stretch goal
+
+  Find lists of four non-transitive dice selected from the same possible dice from the non-stretch goal.
+
+  Show the results here, on this page. 
+  """
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp. % faster for geting many solution (go/0).
+% import sat. % faster for go2/0.
+
+main => time2($go).
+
+
+%
+% 3 dice with values 1..6
+%
+go ?=>
+  nolog,
+  M = 6, % number of dice,
+  nl,
+  println(m=M),
+  N = 6, % numver of sides of each die
+  MinVal = 1,
+  MaxVal = N, % max value of dice
+  nontransitive_dice(M,N,MinVal,MaxVal, Dice,Comp),
+
+  print_solution(M,N,MinVal,MaxVal, Dice,Comp),
+  fail,
+  nl.
+go => true.
+
+
+%
+% Print the solution with a strategy.
+%
+print_solution(M,N,MinVal,MaxVal, Dice,Comp) => 
+
+  println([minVal=MinVal,maxVal=MaxVal]),
+  println("Dice:"),
+  foreach(DD in Dice)
+    println(DD.to_list)
+  end,
+  println("Comp:"),
+  foreach(C in Comp)
+    println(C.to_list)
+  end,
+  Wins = new_array(M,M),
+  bind_vars(Wins,0),
+  foreach(D1 in 1..M)
+    foreach(D2 in 1..M, D1 != D2)
+      Wins[D1,D2] := sum([1 : P in 1..N, Q in 1..N, Dice[D1,P] > Dice[D2,Q] ]),
+      Wins[D2,D1] := sum([1 : P in 1..N, Q in 1..N, Dice[D2,P] > Dice[D1,Q] ])
+    end
+  end,
+  println("Wins:"),
+  BetterThan = new_list(M),
+  bind_vars(BetterThan,[]),
+  WorseThan = new_list(M),
+  bind_vars(WorseThan,[]),   
+  BetterThanSimple = new_list(M),
+  bind_vars(BetterThanSimple,[]),
+  WorseThanSimple = new_list(M),
+  bind_vars(WorseThanSimple,[]),   
+  foreach(I in 1..M)
+    printf("Die %2d: ", I),
+    foreach(J in 1..M)
+       printf("%3d ", Wins[I,J]),
+       if Wins[I,J] > Wins[J,I] then
+         Win = Wins[I,J],
+         Loss = Wins[J,I],
+         Pct = to_fstring("%3.3f", Loss/Win).to_float,
+         BetterThan[I] := BetterThan[I] ++ [$(J=Win/Loss)=Pct],
+         BetterThanSimple[I] := BetterThanSimple[I] ++ [J]
+       end,
+       if Wins[I,J] < Wins[J,I] then
+         Win = Wins[J,I],
+         Loss = Wins[I,J],
+         Pct = to_fstring("%3.3f", Loss/Win).to_float,
+         WorseThan[I] := WorseThan[I] ++ [$(J=Win/Loss)=Pct],
+         WorseThanSimple[I] := WorseThanSimple[I] ++ [J]         
+       end     
+    end,
+    printf(" sum wins:%3d losses:%3d Better than: %w WorseThan: %w\n", sum(Wins[I]), sum([Wins[J,I] : J in 1..M]), BetterThanSimple[I], WorseThanSimple[I])
+  end,
+  println("\nBetter/Worse than:"),
+  foreach(D in 1..M)
+    printf("Die %d: BetterThan: %w WorseThan: %w\n", D, BetterThan[D], WorseThan[D])
+  end,
+  println("\nStrategy (best win):"),
+  println("Player A picks: Player B picks"),
+  WorsePct = 1,
+  foreach(I in 1..M)
+    println(a_picks=I),
+    BestProb = 0,
+    BestStrat = [],    
+    foreach(W in WorseThan[I])
+      W = $(J = Win / Loss = Prob),
+      if Prob == BestProb then
+         BestStrat := BestStrat ++ [[b_picks=J,wins_loss=$(Win/Loss),prob_win=Prob]]
+      elseif Prob > BestProb then
+         BestStrat := [b_picks=J,wins_loss=$(Win/Loss),prob_win=Prob],
+         BestProb := Prob
+      end
+    end,
+    printf("\tBest strategy: %w\n",BestStrat) ,
+    if BestProb < WorsePct then
+      WorsePct := BestProb
+    end
+  end,
+  println(worsePct=WorsePct),
+  nl.
+
+
+%
+% Generate a solution.
+%
+nontransitive_dice(M,N,MinVal,MaxVal, Dice,Comp) =>
+
+   % decision variables
+   % the dice
+   Dice = new_array(M,N),
+   Dice :: MinVal..MaxVal,
+
+   % the competitions: 
+   % (die 1 vs die 2, die 2 vs die 1), ... (die m vs die 1, die 1 vs die m)
+   % And the first die must beat the second in each round.
+   % Note the last wrap around which breaks the transitivity.
+   Comp = new_array(M, 2), % [0..M-1, 1..2] in 0..n*n,
+   Comp :: 0..N*N,
+
+   % order the number of each die (increasing)
+   foreach(D in 1..M)
+     increasing([Dice[D,J] : J in 1..N ])
+   end,
+
+   % The dice should not be identical
+   foreach(D1 in 1..M, D2 in 1..M, D1 != D2)
+     sum([Dice[D1,J] #!= Dice[D2,J] : J in 1..N]) #> 0
+   end,
+
+   % and now we roll...
+   % Number of wins for [A vs B, B vs A]
+   foreach(D in 0..M-1)
+      M1 = 1+(D mod M),
+      M2 = 1+((D+1) mod M),
+
+      Comp[D+1,1] #= sum([(Dice[M1, R1] #> Dice[M2, R2])
+                          : R1 in 1..N, R2 in 1..N]),
+      Comp[D+1,2] #= sum([(Dice[M2, R1] #> Dice[M1, R2]) 
+                          : R1 in 1..N, R2 in 1..N])
+   end,
+
+
+   % non-transitivity
+   % All dice 1..m-1 must beat the follower, and die m must beat die 1
+   foreach(D in 1..M) 
+       Comp[D,1] #> Comp[D,2]
+   end,
+   Comp[M,1] #> Comp[1,2],
+
+   Vars = Dice.to_list() ++ Comp.to_list(),
+   solve([constr,split], Vars).
+
+% symmetry breaking
+lex2(X) =>
+  foreach(I in 2..X.length) 
+     lex_lt(X[I-1], X[I])
+   end.

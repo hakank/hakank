@@ -1,0 +1,192 @@
+/* 
+
+  Compare a list of strings (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Compare_a_list_of_strings
+  """
+  Task
+
+  Given a   list   of arbitrarily many strings, show how to:
+
+  - test if they are all lexically equal
+  - test if every string is lexically less than the one after it 
+    (i.e. whether the list is in strict ascending order)
+
+
+  Each of those two tests should result in a single true or false value, which could be used as the 
+  condition of an   if   statement or similar.
+
+  If the input list has less than two elements, the tests should always return true.
+
+  There is no need to provide a complete program and output.
+
+  Assume that the strings are already stored in an array/list/sequence/tuple variable (whatever is most 
+  idiomatic) with the name   strings,   and just show the expressions for performing those two tests on 
+  it (plus of course any includes and custom functions etc. that it needs),   with as little distractions 
+  as possible.
+
+  Try to write your solution in a way that does not modify the original list,   but if it does then please 
+  add a note to make that clear to readers.
+
+  If you need further guidance/clarification,   see #Perl and #Python for solutions that use implicit 
+  short-circuiting loops,   and #Raku for a solution that gets away with simply using a built-in 
+  language feature.
+
+  """
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  sorted/1 is a built-in predicate.
+*/
+go =>
+  Lists = [["AA","BB","CC"],
+           ["AA","AA","AA"],
+           ["AA","CC","BB"],
+           ["AA","ACB","BB","CC"],
+           ["single_element"],
+           []],
+  foreach(L in Lists)
+    Same = all_same(L).cond(true,false),
+    Sorted = sorted(L).cond(true,false),   
+    printf("%-18w all_same:%-5w  sorted:%-5w\n",L,Same,Sorted)
+  end.
+
+all_same([]).
+all_same([_]).
+all_same([A,B|Rest]) :-
+  A == B,
+  all_same([B|Rest]).
+
+% sorted/1 is a built-in procedure
+sorted2([]).
+sorted2([_]).
+sorted2([A,B|Rest]) :-
+  A @<= B,
+  sorted2([B|Rest]).
+
+f([],_F).
+f([_],_F).
+f([A,B|Rest],F) :-
+  call(F,A,B),
+  f([B|Rest],F).
+
+
+% {{trans|Prolog}}
+go2 :-
+  los(List),
+  test_list(List),
+  fail.
+  
+los(["AA","BB","CC"]).
+los(["AA","AA","AA"]).
+los(["AA","CC","BB"]).
+los(["AA","ACB","BB","CC"]).
+los(["single_element"]).
+
+lexically_equal(S,S,S). 
+
+lexically_equal(S1,S2) = true => S1 == S2.
+lexically_equal(S1,S2) = false => S1 != S2.
+lexically_equal(S1,S2) = true => S1 == S2.
+lexically_equal(S1,S2) = false => S1 != S2.
+
+in_order(G,L,G) :- bp.compare(<,L,G).
+
+in_order(G,L) = true, bp.compare(<,L,G) => true.
+in_order(G,L) = false, not bp.compare(<,L,G) => true.
+
+
+in_order(G,L) = true, bp.compare(<,L,G) => true.
+in_order(G,L) = false, not bp.compare(<,L,G) => true.
+
+test_list(List) :- 
+    List = [L|T],
+    println([l=L,t=T]),
+    write('for list '), write(List), nl,
+    % fold/3 in Picat requires a function
+    (_=fold(lexically_equal, L, T) 
+        -> writeln('The items in the list ARE lexically equal') 
+        ; writeln('The items in the list are NOT lexically equal')),
+    (_=fold(in_order, L, T) 
+        -> writeln('The items in the list ARE in ascending order')
+        ; writeln('The items in the list are NOT in ascending order')),
+
+    % The ported foldl/4 works (see below)
+    (foldl(lexically_equal, L, T,_) 
+        -> writeln('The items in the list ARE lexically equal') 
+        ; writeln('The items in the list are NOT lexically equal')),
+    (foldl(in_order, L, T,_) 
+        -> writeln('The items in the list ARE in ascending order')
+        ; writeln('The items in the list are NOT in ascending order')),
+    nl.
+ 
+
+% From SWI-Prolog:
+foldl(Goal, List, V0, V) :-
+    foldl_(List, Goal, V0, V).
+
+foldl(Goal, List1, List2, V0, V) :-
+    foldl_(List1, List2, Goal, V0, V).
+
+foldl(Goal, List1, List2, List3, V0, V) :-
+    foldl_(List1, List2, List3, Goal, V0, V).
+
+foldl(Goal,
+            List1,
+            List2,
+            List3,
+            List4,
+            V0,
+            V) :-
+    foldl_(List1,
+           List2,
+           List3,
+           List4,
+           Goal,
+           V0,
+           V).
+
+
+foldl_([], _, V, V).
+foldl_([H|T], Goal, V0, V) :-
+    call(Goal, H, V0, V1),
+    foldl_(T, Goal, V1, V).
+
+foldl_([], [], _, V, V).
+foldl_([H1|T1],
+             [H2|T2],
+             Goal,
+             V0,
+             V) :-
+    call(Goal, H1, H2, V0, V1),
+    foldl_(T1, T2, Goal, V1, V).
+
+foldl_([], [], [], _, V, V).
+foldl_([H1|T1],
+             [H2|T2],
+             [H3|T3],
+             Goal,
+             V0,
+             V) :-
+    call(Goal, H1, H2, H3, V0, V1),
+    foldl_(T1, T2, T3, Goal, V1, V).
+
+foldl_([], [], [], [], _, V, V).
+foldl_([H1|T1],
+             [H2|T2],
+             [H3|T3],
+             [H4|T4],
+             Goal,
+             V0,
+             V) :-
+    call(Goal, H1, H2, H3, H4, V0, V1),
+    foldl_(T1, T2, T3, T4, Goal, V1, V).

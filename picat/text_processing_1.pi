@@ -14,41 +14,34 @@
 
 */
 
-
 import util.
 
-main => go.
-
-
 go =>
-  Readings = [ [Rec[1]] ++ [parse_term(Rec[I]) :  I in 2..49] : 
-                Rec in 
-                  [ split(Record) : Record in read_file_lines("readings.txt") ]
-             ],
-  Seen = new_map(),
-  NumDuplicates = 0,
+  File = "readings.txt",
+  Readings = [ [Rec[1]] ++ [to_float(Rec[I]) :  I in 2..49] : 
+               Rec in 
+                 [ split(Record) : Record in read_file_lines(File) ]
+            ],
   TotalSum = 0,
   TotalReadings = 0,
   foreach({Rec,Id} in zip(Readings,1..Readings.length))
-    Date=Rec[1],
-    if Seen.has_key(Date) then
-      println(duplicate=Date),
-      NumDuplicates := NumDuplicates + 1
-    else
-      R = [Rec[I] :  I in 2..2..49, Rec[I] >= 1], % check the good readings
-      SumR = sum(R), Sum = to_fstring("%2.3f", SumR),
-      RLen = R.length, NumBad = 24 - RLen,
-      TotalSum := TotalSum + SumR,
-      TotalReadings := TotalReadings + RLen,
-      Avg1 = cond(RLen > 0, SumR/RLen, 0.0), Avg = to_fstring("%2.3f", Avg1),
-      if Id < 16 then
-         println([date=Date,len=RLen,sum=Sum,avg=Avg,numBad=NumBad])
-      end
-    end,
-    Seen.put(Date,1)
+    Len = Rec.len,     
+    RAll = Rec[2..Len], % [to_float(Rec[I]) :  I in 2..Len],
+    RVal = [RAll[I] : I in 1..2..Len-1],    
+    RFlag = [RAll[I] : I in 2..2..Len],
+    RGoodVal = [RVal[I] : I in 1..RVal.len, RFlag[I] == 1.0],
+    TotalReadings := TotalReadings + RGoodVal.len,
+    TotalSum := TotalSum + sum(RGoodVal),
+    if Id < 4 then
+      NumGood = sum(RFlag),
+      NumBad = 24 - NumGood,
+      SumTot = sum(RGoodVal),
+      SumAvg = SumTot / RGoodVal.len,
+      println([date=Rec[1],numGood=NumGood,numBad=NumBad,sumTot=SumTot,sumAvg=SumAvg])
+    end
   end,
-
-  println(numDuplicates=NumDuplicates),
+  nl,
+  println(totalReadings=to_fstring("%d", TotalReadings)),
   println(totalSum=to_fstring("%3.3f", TotalSum)),
   println(totalAvg=to_fstring("%3.3f", TotalSum/TotalReadings)),
   nl,
@@ -68,10 +61,64 @@ go =>
   MaxPosEnd = ZeroPos[MaxIx*2+1],
 
   println(maxBadLen=Diff[MaxIx]),
-  println(badRunStart=[Readings[1+MaxPosStart div 24], startHour=MaxPosStart mod 24]),
-  println(badRunEnd=[Readings[1+MaxPosEnd div 24], endHour=(MaxPosEnd mod 24)-1]),
+  println(maxBadRunStart=[Readings[1+MaxPosStart div 24,1], startHour=MaxPosStart mod 24]),
+  println(maxBadRunEnd=[Readings[1+MaxPosEnd div 24,1], endHour=(MaxPosEnd mod 24)-1]),
 
   nl.
+
+% {{trans|Ruby}}
+
+go2  =>
+  File = "readings.txt",
+  Total = new_map([num_readings=0,num_good_readings=0,sum_readings=0.0]),
+  InvalidCount = 0,
+  MaxInvalidCount = 0,
+  InvalidRunEnd = "",
+
+  Id = 0,
+  foreach(Line in read_file_lines(File))
+    Id := Id + 1,
+    NumReadings = 0,
+    NumGoodReadings = 0,
+    SumReadings = 0,
+
+    Fields = Line.split,
+    Rec = Fields.tail.map(to_float),
+    foreach([Reading,Flag] in chunks_of(Rec,2))
+      NumReadings := NumReadings + 1,
+      if Flag > 0 then
+        NumGoodReadings := NumGoodReadings + 1,
+        SumReadings := SumReadings + Reading,
+        InvalidCount := 0
+      else
+        InvalidCount := InvalidCount + 1,
+        if InvalidCount > MaxInvalidCount then
+          MaxInvalidCount := InvalidCount,
+          InvalidRunEnd := Fields[1]
+        end
+      end
+    end,
+
+    Total.put(num_readings,Total.get(num_readings) + NumReadings),
+    Total.put(num_good_readings,Total.get(num_good_readings) + NumGoodReadings),
+    Total.put(sum_readings,Total.get(sum_readings) + SumReadings),
+    if Id <= 3 then
+      printf("date:%w accept:%w reject:%w sum:%w\n", Fields[1],NumGoodReadings,
+                                                     NumReadings-NumGoodReadings,
+                                                     SumReadings),
+    end
+  end,
+  nl,
+  printf("readings: %d good readings: %d sum: %0.3f avg: %0.3f\n",Total.get(num_readings),
+                                                       Total.get(num_good_readings),
+                                                       Total.get(sum_readings),
+                                                       Total.get(sum_readings) / Total.get(num_good_readings)),
+  nl,
+  println(maxInvalidCount=MaxInvalidCount),
+  println(invalidRunEnd=InvalidRunEnd),
+
+  nl.
+  
 
 argmax(L) = MaxIxs =>
   Max = max(L),

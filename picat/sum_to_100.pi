@@ -27,7 +27,7 @@
   which, of course, is not the lowest positive sum that can't be expressed.
 
 
-  *   (where   infinity   would be a relatively small   123,456,789)
+  *   (where infinity   would be a relatively small   123,456,789)
   """
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
@@ -38,6 +38,7 @@
 
 import util.
 import cp.
+import v3_utils.
 
 
 main => go.
@@ -75,11 +76,12 @@ go3 =>
   end,
   println(found=Found),
   nl.
+  
 
-% Find first N not possible to create with these rules
+% Find the first N not possible to create with these rules
 go4 =>
    Found = false,
-   foreach(N in 1..10000,Found == false)
+   foreach(N in 1..100000,Found == false)
      % println(n=N),
      % find_goal/3 use get_global_map(tt) so we clear it first     
      clear(get_global_map(tt)), 
@@ -97,24 +99,84 @@ go4 =>
 
 
 % Find all solutions for N in 1..100
+% and check for maximum number of solutions
 go5 =>
+   MaxSols = 0,
+   MaxN    = 0,
+   Sols = [],
    foreach(N in 1..100)
      println(n=N),
+     flush(stdout),
+     
      % find_goal/3 use get_global_map(tt) so we clear it first     
      clear(get_global_map(tt)), 
      if All = findall(SS,find_goal(1..9,N,SS)) then
        println(All),
-       println(len=All.len),
+       Len = All.len,
+       println(len=Len),
+       Sols := Sols ++ [Len],
+       if Len > MaxSols then
+          MaxSols := Len,
+          MaxN := N
+       end,
        nl
      else
        println(not_ok)
      end,
      nl
    end,
+   println(sols=Sols),
+   println([maxN=MaxN,maxSols=MaxSols]),
    nl.
 
+%
+% go6/0..go9/0 are for the port of kunstkrit's solutions
+%
+go6 ?=>
+  sumto(100,Solution),
+  println(Solution),
+  fail,
+  nl.
+go6=>true.
+
+go6b ?=>
+  member(N,1..100),
+  nl,
+  println(n=N),
+  sumto(N,Solution),
+  println(Solution=sum(Solution)),
+  fail,
+  nl.
+go6b => true.
+
+go7 ?=>
+  % highest_sol(X),
+  % println(X),
+  lowest_non_sol(X),
+  println(lowest=X),
+  nl.
+go7 => true.
+
+go8 ?=>
+  highest_sol(X),
+  println(X),
+  nl.
+go8 => true.
+
+go9 ?=>
+  ten_highest_sol(X),
+  println(X),
+  nl.
+go9 => true.
+
+
+go10 ?=>
+  find_goal3(1..9,100),
+  nl.
+go10 => true.
 
 get_all_segments(L) = findall(S,get_segment(L,S)).remove_dups().
+get_all_segments2(L) = findall(S,get_segment2(L,S)).remove_dups().
 
 get_segment(L,S) =>
   N = L.len,
@@ -125,6 +187,16 @@ get_segment(L,S) =>
   solve([split],Segments),
   % split into the segments and collect the digits into numbers (as strings)
   S = [ [L[J].to_string() : J in 1..N, Segments[J] = I].join('') : I in Segments.remove_dups()].
+
+get_segment2(L,S) =>
+  N = L.len,
+  % find all increasing segments
+  Segments = new_list(N),
+  Segments :: 1..N,
+  increasing(Segments),
+  solve([split],Segments),
+  % split into the segments and collect the digits into numbers (as strings)
+  S = [ [L[J].to_string() : J in 1..N, Segments[J] = I].join('').to_int : I in Segments.remove_dups()].
 
 
 find_goal(L,Goal, SSRes) =>
@@ -190,4 +262,78 @@ find_goal2(L,Goal) =>
   end,
   fail,
   nl.
+
+
+find_goal3(L,Goal) =>
+  Segments = get_all_segments2(L),
+  Res = [],
+  foreach(S in Segments)
+    if solve3(S,Goal,X) then
+      Res := Res ++ [X],
+      println(X)
+    end
+  end,
+  println(Res),
+  
+  println(len=Res.len),
+  nl.
+
+
+solve3(S,Goal,Z) =>
+   Len = S.len,
+   X = new_list(Len),
+   X :: [-1,1],
+   sum([S[I]*X[I] : I in 1..Len]) #= Goal,
+   solve(X),
+   Z = [ X[I]*S[I] : I in 1..Len].
+
+%
+% This is a port of ḱunstkritik's second variant
+% https://www.reddit.com/r/prolog/comments/fcpuuc/weekly_coding_challenge_5_sum_to_100/
+%
+sumto(X, Solution):-
+    sumto("123456789", Solution,X).
+    
+sumto("",[],0).
+sumto(L, [H|SolT],X):-
+    append(A,Rest,L),
+    length(A,Len),
+    Len != 0,
+    number_string(N,A),
+    ( X1 #= X + N, sumto(Rest, SolT ,X1), H is -N
+    ;
+      X2 #= X - N, sumto(Rest, SolT ,X2), H is N
+    ).
+
+highest_sol(X):-
+    highest_sol(0, -1,0, X).
+
+% solution must be smaller 45, because we need
+% as many single digits as possible
+% that can change their sign. 
+% The greatest sum we can build is adding 1 up to 9 which is 45
+highest_sol(N, _, R, R):- N > 45,!.
+highest_sol(N, M, A, R):-
+    S = findall(T, sumto(N,T)),
+    length(S,M1),
+    succ(N, N1),
+    (M1 > M -> highest_sol(N1, M1, N,R); highest_sol(N1,M, A, R)).
+
+lowest_non_sol(X):-
+    between(0, 123456789, X),
+    \+ sumto(X, _), !.
+
+% L = [123456789, 23456790, 23456788, 12345687, 12345669, 3456801, 3456792, 3456790, 3456788, 3456786]
+get_keys([],[]).
+get_keys([K-_|T],[K|T2]):-
+    get_keys(T,T2).
+   
+ten_highest_sol(L):-
+    R = findall($X-Sol, sumto(X, Sol)),
+    println(r=R),
+    println(len=R.len),   
+    Sorted = sort_down(R), % sort(0, @>, R, Sorted),
+    length(Pairs,10),
+    append(Pairs, _, Sorted),
+    get_keys(Pairs, L).
 

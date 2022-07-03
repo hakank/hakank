@@ -1,0 +1,148 @@
+/* 
+
+  Disarium numbers (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Disarium_numbers
+  """
+  A Disarium number is an integer where the sum of each digit raised to 
+  the power of its position in the number, is equal to the number.
+
+
+  E.G.
+
+  135 is a Disarium number:
+
+  1^1 + 3^2 + 5^3 == 1 + 9 + 125 == 135
+
+  There are a finite number of Disarium numbers.
+
+
+  Task
+
+    Find and display the first 18 Disarium numbers.
+
+
+  Stretch
+
+  Find and display all 20 Disarium numbers.
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+go ?=>
+  Limit = 19,
+  D = [],
+  N = 0,
+  printf("The first %d Disarium numbers are:\n",Limit),  
+  while (D.len < Limit)
+     if disarium_number(N) then
+       % println(n=N),
+       D := D ++ [N]
+     end,
+     N := N + 1,
+     if N mod 10_000_000 == 0 then
+       println(test=N)
+     end
+  end,
+  println(D),
+  nl.
+go => true.
+
+% Using constraint model
+% The first 19 Disarius numbers in base 10:
+% [0,1,2,3,4,5,6,7,8,9,89,135,175,518,598,1306,1676,2427,2646798]
+% 0.591s
+% 
+% It's faster in base 11:
+% The first 23 Disarius numbers:
+% [0,1,2,3,4,5,6,7,8,9,A,25,36,9A,105,438,488,609,85A,86A,2077,40509,43789]
+% 0.015s
+%
+% Note that the domain of Picat's constraint variables is -2**56..2**56
+% which mean that it cannot handle numbers of length 20.
+%
+go2 ?=>
+  nolog,
+  D = [],
+  Limit = 20,
+  Base = 10,
+  foreach(Len in 1..20, D.len < Limit)
+     println(len=Len),
+     Nums = disarium_number_cp(Len,Base),
+     if Nums.len > 0 then
+       foreach(Num in Nums)
+         println(num=Num),
+         B = to_radix_string(Num,Base),
+         D := D ++ [B]
+       end
+     end
+  end,
+  printf("The first %d Disarius numbers in base %d:\n",D.len, Base),
+  println(D[1..Limit]),
+  nl.
+go2 => true.
+
+
+go3 ?=>
+  Base = 36,
+  Limit = 36,
+  D = [],  
+  foreach(Len in 1..20, D.len < Limit)
+     Nums = disarium_number_cp(Len,Base),
+     if Nums.len > 0 then
+       foreach(Num in Nums)
+         println(Num),
+         B = to_radix_string(Num,Base),
+         D := D ++ [B]
+       end
+     end
+  end,
+  printf("The first %d Disarius numbers in base %d:\n",D.len, Base),
+  println(D[1..Limit]),
+  nl,
+  fail,
+  nl.
+go3 => true.
+
+
+
+
+% {{trans|Python}}
+disarium_number(N) =>
+  Sum = 0,
+  Digits = N.to_string.len,
+  X = N,
+  while (X != 0, Sum <= N)
+    Sum := Sum + (X mod 10) ** Digits,
+    Digits := Digits - 1,
+    X := X div 10
+  end,
+  Sum == N.
+
+% Slower
+disarium_number2(N) =>
+  S = N.to_string.map(to_int),
+  N == sum([K**I : {K,I} in zip(S,1..S.len)]).
+
+
+% Constraint modelling
+disarium_number_cp(Len,Base) = findall(N,disarium_number_cp(Len,Base,N)).sort.
+disarium_number_cp(Len,Base,N) =>
+  X = new_list(Len),
+  X :: 0..Base-1,
+  N :: Base**(Len-1)-1..Base**Len-1,
+  N #= sum([X[I]**I : I in 1..Len]),  
+  to_num(X,Base,N), % convert X <=> N
+  solve($[],X++[N]).
+
+% converts a number Num to/from a list of integer List given a base Base
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).

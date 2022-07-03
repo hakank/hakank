@@ -1,0 +1,163 @@
+/* 
+
+  Word break (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Word_break_problem
+  """
+  Task
+  Given an input string and a dictionary of words, segment the input 
+  string into a space-separated sequence of dictionary words if possible.
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+/*
+  Using non-determinism (backtracking).
+  Here are three versions of increasing efficiency.
+
+*/
+
+go =>
+  Tests = [["aab", ["a", "aa", "b", "ab", "aab"]],
+           ["abba", ["a", "aa", "b", "ab", "aab"]],
+           ["aa b", ["a", "aa", "b", "ab", "aab"]],
+           ["abcd", ["abc", "a", "ac", "b", "c", "cb", "d"]],
+           ["abbc", ["abc", "a", "ac", "b", "c", "cb", "d"]],
+           ["abcbcd", ["abc", "a", "ac", "b", "c", "cb", "d"]],
+           ["acdbc", ["abc", "a", "ac", "b", "c", "cb", "d"]],
+           ["abcdd", ["abc", "a", "ac", "b", "c", "cb", "d"]]
+           ],
+  foreach([String,Dict] in Tests)
+    println([string=String,dict=Dict]),
+    All = findall(S, S = s3(Dict,String)),
+    println(All),
+    nl
+  end,
+  nl.
+
+%
+% Testsing all combinations.
+%
+s(Dict,String) = S =>
+  S = [],
+  while(S.flatten != String, S.flatten.len < String.len)
+    member(D,Dict), % pick some element in Dict
+    S := S ++ [D]
+  end,
+  S.flatten==String.
+
+%
+% More efficient
+% Note: member/2 before append/3 is a little faster
+%       than append/3 before member/2
+%       (which makes sense since all prefixes of a string
+%        is not in the dict)
+%
+s2(Dict,String) = S =>
+  String2 = copy_term(String),
+  S = [],
+  while(S.flatten != String, S.flatten.len < String.len)
+    % Pick an element from Dict
+    member(D,Dict),
+    
+    % Check that it fits and remove it from the string.
+    % If not: backtrack
+    append(D,String3,String2),
+    
+    % ok!
+    String2 := String3,
+    S := S ++ [D]
+  end,
+  S.flatten==String.
+
+% Same idea as s2/2 but neater, and faster
+s3(Dict,String) = S =>
+  s3(Dict,String,S).
+
+s3(_Dict,[],[]).
+s3(Dict,String,[E|S]) :-
+   member(E,Dict),
+   append(E,String2,String),
+   s3(Dict,String2,S).
+
+% Perl's examples
+go2 =>
+  Dict = ["a", "o", "is", "pi", "ion", "par", "per", "sip", "miss", "able"],
+  Strings = ["a","aa","amiss","parable","opera","operable","inoperable","permission","mississippi"],
+  foreach(String in Strings)
+    println([string=String,dict=Dict]),
+    All = findall(S, S = s3(Dict,String)),
+    println(All),
+    nl
+  end,
+  nl.
+
+
+/*
+dict = [a,aa,b,ab,aab]
+string = abbaabba
+[[a,b,b,a,a,b,b,a],[a,b,b,a,ab,b,a],[a,b,b,aa,b,b,a],[a,b,b,aab,b,a],[ab,b,a,a,b,b,a],[ab,b,a,ab,b,a],[ab,b,aa,b,b,a],[ab,b,aab,b,a]]
+len = 8
+
+s: 0.012s
+s2: 0.0s
+s3: 0.0
+
+Dict = ["a", "aa", "b", "ab", "aab"],  
+string = babbbbaabbababb
+[[b,a,b,b,b,b,a,a,b,b,a,b,a,b,b],[b,a,b,b,b,b,a,a,b,b,a,b,ab,b],[b,a,b,b,b,b,a,a,b,b,ab,a,b,b],[b,a,b,b,b,b,a,a,b,b,ab,ab,b],[b,a,b,b,b,b,a,ab,b,a,b,a,b,b],[b,a,b,b,b,b,a,ab,b,a,b,ab,b],[b,a,b,b,b,b,a,ab,b,ab,a,b,b],[b,a,b,b,b,b,a,ab,b,ab,ab,b],[b,a,b,b,b,b,aa,b,b,a,b,a,b,b],[b,a,b,b,b,b,aa,b,b,a,b,ab,b],[b,a,b,b,b,b,aa,b,b,ab,a,b,b],[b,a,b,b,b,b,aa,b,b,ab,ab,b],[b,a,b,b,b,b,aab,b,a,b,a,b,b],[b,a,b,b,b,b,aab,b,a,b,ab,b],[b,a,b,b,b,b,aab,b,ab,a,b,b],[b,a,b,b,b,b,aab,b,ab,ab,b],[b,ab,b,b,b,a,a,b,b,a,b,a,b,b],[b,ab,b,b,b,a,a,b,b,a,b,ab,b],[b,ab,b,b,b,a,a,b,b,ab,a,b,b],[b,ab,b,b,b,a,a,b,b,ab,ab,b],[b,ab,b,b,b,a,ab,b,a,b,a,b,b],[b,ab,b,b,b,a,ab,b,a,b,ab,b],[b,ab,b,b,b,a,ab,b,ab,a,b,b],[b,ab,b,b,b,a,ab,b,ab,ab,b],[b,ab,b,b,b,aa,b,b,a,b,a,b,b],[b,ab,b,b,b,aa,b,b,a,b,ab,b],[b,ab,b,b,b,aa,b,b,ab,a,b,b],[b,ab,b,b,b,aa,b,b,ab,ab,b],[b,ab,b,b,b,aab,b,a,b,a,b,b],[b,ab,b,b,b,aab,b,a,b,ab,b],[b,ab,b,b,b,aab,b,ab,a,b,b],[b,ab,b,b,b,aab,b,ab,ab,b]]
+
+len = 32
+s: 22.513s
+s2: 0s
+s3: 0s
+
+Dict = ["a", "aa", "b", "ab", "aab"],  
+string = babbbbaabbababbaaaaababbaaabbb
+len = 6144
+s2: 0.088s
+s3: 0.012s
+
+Dict = [a,aa,b,ab,aab]
+string = babbbbaabbababbaaaaababbaaabbbbaaabbbaba
+len = 73728
+s2: 1.466s
+s3: 0.341
+
+sdict = [a,aa,b,ab,aab]
+string = aabababbbaaabaababaaabababaaabbabbaabbba
+len = 884736
+s2: 19.431 seconds
+s3: 3.81 seconds
+
+
+
+*/
+go3 =>
+  garbage_collect(300_000_000),
+  _ = random2(),
+  Chars = "ab",
+  Dict = ["a", "aa", "b", "ab", "aab"],  
+  % Dict = [P : P in power_set(Chars), P != []].sort,
+  println(dict=Dict),
+  String = [Chars[random(1,Chars.len)] : _ in 1..11],
+  % String := "abbaabba",
+  String := "babbbbaabbababb",
+  % String := "babbbbaabbababbaaaaababbaaabbb",
+  % String := "babbbbaabbababbaaaaababbaaabbbbaaabbbaba",
+  % String := "aabababbbaaabaababaaabababaaabbabbaabbba",
+  println(string=String),
+  All = findall(S, S = s3(Dict,String)),
+  Len = All.len,
+  if Len < 100 then
+    println(All)
+  end,
+  println(len=All.len),
+  nl.
+
+

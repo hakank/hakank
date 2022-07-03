@@ -1,0 +1,283 @@
+/* 
+
+  Fibonacci sequence (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Fibonacci_sequence
+  """
+  Fibonacci sequence
+
+  The Fibonacci sequence is a sequence   Fn   of natural numbers defined recursively:
+
+      F0 = 0 
+      F1 = 1 
+      Fn = Fn-1 + Fn-2, if n>1 
+
+
+  Task
+
+  * Write a function to generate the   nth   Fibonacci number.
+
+  * Solutions can be iterative or recursive (though recursive solutions are generally considered too 
+    slow and are mostly used as an exercise in recursion).
+
+  The sequence is sometimes extended into negative numbers by using a straightforward inverse of the 
+  positive definition:
+
+      Fn = Fn+2 - Fn+1, if n<0   
+
+  support for negative n in the solution is optional. 
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+% import util.
+import cp.
+
+
+main => go.
+
+go0 =>
+  N = 10**4,
+  % time(F1=fib_fun(N)),
+  time(F1=fib_loop(N)),  
+  nl.
+
+go ?=>
+  println("fib_fun:"),
+  println([fib_fun(I) : I in 1..10]),
+  println("Timing fib(1024):"),
+  time(F1=fib_fun(2**10)),
+  println(f1=F1),
+  nl,
+
+  println("fib_array:"),
+  fib_array(10,A10),
+  println(a10=A10),
+  println("Timing fib_array(1024):"),
+  time(fib_array(2**10,F2)),
+  % println(f2=F2.last),
+  nl,
+  println("fib_loop:"),
+  println([fib_loop(N) : N in 1..10]),
+  println("Timing fib_loop(1024):"),
+  time(F3=fib_loop(2**10)),
+  % println(f3=F3),
+  nl,
+  % println("Larger:"),
+  % time(_=fib_loop(10**5)),
+
+  % The formula version differs from n=71
+  println("fib_formula:"),
+  println([fib_formula(N) : N in 1..10]),
+  println("Timing fib_formula(1024):"),
+  time(F4=fib_formula(70)),
+  println(f4=F4),
+  % OK = true,
+  % foreach(N in 68..100, OK == true)
+  %    FF1 = fib_fun(N),
+  %    FF2 = fib_formula(N),
+  %    Diff = FF2-FF1,
+  %    println([n=N,ff1=FF1,ff2=FF2,diff=Diff]),
+  %    if Diff > 1 then
+  %      OK := false
+  %    end
+  % end,
+
+  nl,
+  println("fib_mat"),
+  println([F[1]  : I in 1..10, F = fib_mat(I)]),
+  time(F5=fib_mat(2**10)),
+  println(f5=F5),
+
+  % println(larger),
+  % time(F5=fib_mat(10**6)),
+
+  nl,
+  
+  nl.
+go => true.
+
+%
+% Reversible using CP:
+% - Find F give N
+% - Find N given F
+% This works for N=1..81  F=1,...,61305790721611591
+% Picat only supports CP domains only beteeen -2**56. 2**56
+% 
+go2 =>
+  % N1 = 30,
+  N1 = 30,
+  fib_rev(30,F1),
+  println([n1=N1,fib1=F1]),
+  
+  F2 #= 20365011074,
+  fib_rev(N2,F2),
+  println([n2=N2,f2=F2]),
+  
+  F3 = 61305790721611591,
+  fib_rev(N3,F3),
+  println([n3=N3,F3]),
+
+  % foreach(NN in 1..82)
+  %    fib_rev(NN,FF),
+  %    println([NN,FF]),
+  %    if fib_rev(N,FF2) then
+  %      println("Find N for "=FF),     
+  %      println([f=FF2,n=N])
+  %    else
+  %      println(failed)
+  %    end,
+  %    nl
+  % end,
+
+  % nl,
+  % println("Test a non Fib number (12345)"),
+  % if fib_rev(NX,12345) then
+  %    println(nx=NX)
+  % else
+  %    println(not_a_fib)
+  % end,
+
+  nl.
+go2 => true.
+
+% Prolog:
+% - "lazy list" approach
+% - Generators idion
+% - ("Efficient implementation")
+go3 =>
+  println("Lazy list:"),
+  fib_lazy(X),
+  % bp.length(A,15),
+  A = new_list(15),
+  append(A,_,X),
+  writeln(A),
+
+  println("Generators idiom:"),
+  take(15, $fib_gen(0,1), $T-[], _G),
+  writeln(T),
+
+  % This is not as efficient in Picat as in SWI-Prolog
+  println("Prolog Efficent implementation:"),
+  time(fib_eff(30,XE)),
+  println(x=XE),
+
+
+  time(fib_eff(1000_000,_)),
+  % time(fib_eff(1_000_000_000,_)). 
+  
+  nl.
+  
+
+% function
+table
+fib_fun(0) = 0.
+fib_fun(1) = 1.
+fib_fun(N) = fib_fun(N-1) + fib_fun(N-2).
+
+% Array
+% This creates an array of size N which
+% might exhaust memory or max arity size.
+% 
+fib_array(0,[0]).
+fib_array(1,[0,1]).
+fib_array(N,A) :-
+   N > 1,
+   A = new_array(N),
+   A[1] = 1,
+   A[2] = 1,
+   foreach(I in 3..N)
+     A[I] = A[I-1] + A[I-2]
+   end.
+
+% Loop
+fib_loop(N) = Curr =>
+  Curr = 0,
+  Prev = 1,
+  foreach(_I in 1..N)
+    Tmp = Curr,
+    Curr := Curr + Prev,
+    Prev := Tmp
+  end.
+
+
+% Formula
+% {{trans|Tcl}}
+fib_formula(N) = round((0.5 + 0.5*sqrt(5))**N / sqrt(5)).
+
+% {{trans|Prolog}}
+% Lazy lists
+fib_lazy([0,1|X]) :-
+    ffib(0,1,X).
+ffib(A,B,X) :-
+    freeze(X, (C is A+B, X=[C|Y], ffib(B,C,Y)) ).
+
+
+% {{trans|Prolog}}
+% Generators idio,
+take( 0, Next, Z-Z, Next).
+take( N, Next, [A|B]-Z, NZ):- N>0, !, next( Next, A, Next1),
+  N1 is N-1,
+  take( N1, Next1, $B-Z, NZ).
+ 
+next( fib_gen(A,B), A, fib_gen(B,C)):- C is A+B.
+
+
+
+% {{trans|Prolog}}
+% Efficient implementation
+% This is not as fast in Picat (or B-Prolog) as in (SWI)Prolog
+b(0,Bs,Bs).
+b(N,Bs,Res):- N > 0, B is mod(N,2), M is div(N,2), b(M,[B|Bs],Res).
+
+f([],A,_,_,A).
+f([X|Xs],A,B,C,Res):- AA is A**2, BB is B**2, A_ is 2*BB-3*AA-C, B_ is AA+BB,
+    (X =:= 1 -> T is A_+B_, f(Xs,B_,T,-2,Res); f(Xs,A_,B_,2,Res)).
+ 
+fib_eff(N,F):- b(N,[],Bs), f(Bs,0,1,2,F), !.
+
+
+% {{trans|Unicon}}
+% table
+fib_mat(N) = F =>
+   if N <= 0 then
+      F = [0,0]
+   elseif N == 1 then
+      F = [1,0]
+   else
+      FP = fib_mat(N//2),
+      C = FP[1]*FP[1] + FP[2]*FP[2],
+      D = FP[1]*(FP[1]+2*FP[2]),
+      if N mod 2 == 1 then
+         F = [C+D, D]
+      else 
+         F = [D, C]
+      end
+   end.
+
+
+%
+% reversible
+%
+% This is the reversible version of Fibonacci using CP,
+% i.e.
+%   * find F given N (the "normal" case
+%   * find N given F, the reverse case
+% Table is much faster (as expected)
+%
+table
+fib_rev(0,1).
+fib_rev(1,1).
+fib_rev(N,F) :-
+  N #> 0,
+  F #> 0,
+  N1 #= N-1, 
+  N2 #= N-2,
+  fib_rev(N1,F1), 
+  fib_rev(N2,F2),  
+  F #= F1+F2.
+

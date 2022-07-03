@@ -1,0 +1,172 @@
+/* 
+
+  Word wheel (Rosetta code) in Picat.
+  
+  http://rosettacode.org/wiki/Word_wheel
+  """
+  A "word wheel" is a type of word game commonly found on the "puzzle" 
+  page of newspapers. You are presented with nine letters arranged in a circle 
+  or 3×3 grid. The objective is to find as many words as you can using only the 
+  letters contained in the wheel or grid. Each word must contain the letter in 
+  the centre of the wheel or grid. Usually there will be a minimum word length 
+  of 3 or 4 characters. Each letter may only be used as many times as it appears 
+  in the wheel or grid.
+
+
+  An example
+
+     N D E
+     O K G
+     E L W 
+
+  Task
+
+  Write a program to solve the above "word wheel" puzzle.
+
+  Specifically:
+
+  - Find all words of 3 or more letters using only the letters in the string   ndeokgelw.
+  - All words must contain the central letter   K.
+  - Each letter may be used only as many times as it appears in the string.
+  - For this task we'll use lowercase English letters exclusively.
+
+  A "word" is defined to be any string contained in the file located at
+  http://wiki.puzzlers.org/pub/wordlists/unixdict.txt.
+  If you prefer to use a different dictionary, please state which one you have used.
+
+  Optional extra
+
+  Word wheel puzzles usually state that there is at least one nine-letter word to be found. 
+  Using the above dictionary, find the 3x3 grids with at least one nine-letter solution that 
+  generate the largest number of words of three or more letters.
+  """
+
+  Cf combograms.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+% import util.
+% import cp.
+
+
+main => go.
+
+/*
+  [eke,elk,keel,keen,keg,ken,keno,knee,kneel,knew,know,knowledge,kong,leek,week,wok,woke]
+  len = 17
+
+
+  Using a dictionary of 354373 words of length 3..9
+  [deek,dek,deke,dekle,dekow,delk,denk,denko,dkg,dkl,doek,doke,donk,eek,egk,eke,eked,ekg,eko,elek,elk,elke,elko,enke,ewk,ewked,geek,genk,gleek,godek,goedken,goeke,goeken,gok,gondek,gonk,gowk,gowked,ked,kedge,kee,keel,keen,keg,kegel,kel,keld,keldon,kele,kelwen,ken,kend,kendle,kendo,keno,keo,keon,keown,kew,klee,kleen,kleon,kln,klone,klong,knee,kneed,kneel,knew,knode,knodel,knodle,know,knowe,knowed,knowle,knowledge,kod,koe,koegel,koel,koen,kogel,kol,kolden,kole,koleen,koln,kon,kond,konde,kone,kong,kow,kwon,kwong,leek,lek,leke,lenk,lenke,lgk,lok,loke,loken,lonk,nek,ngk,oelke,okd,oke,oked,okee,oken,oklee,olenek,olk,olnek,owk,week,weeklong,welk,welke,welked,wenk,wenke,wnek,wok,woke,woken,wolk,wolke,wolken,wonk]
+  len = 134
+
+*/
+
+go =>
+  MinLen = 3,
+  MaxLen = 9,
+  Chars = "ndeokgelw",
+  MustContain = 'k',
+
+  WordList = "unixdict.txt",
+  Words = read_file_lines(WordList),
+  Res = word_wheel(Chars,Words,MustContain,MinLen, MaxLen),
+  println(Res),
+  println(len=Res.len),
+  nl.
+go => true.
+
+/*
+maxLen = 9
+maxWord = [[word = claremont,char = a],[word = spearmint,char = a]]
+
+*/
+go2 =>
+  garbage_collect(300_000_000),
+  WordList = "unixdict.txt",
+  MinLen = 3,
+  MaxLen = 9,
+  Words = [Word : Word in read_file_lines(WordList), Word.len >= MinLen, Word.len <= MaxLen],
+  TargetWords = [Word : Word in Words, Word.len == MaxLen],
+  println(maxResWords=MaxResWords),
+  MaxResWord = [],
+  MaxResLen = 0,
+  foreach(Word in TargetWords)
+    println([word=Word,maxReLen=MaxResLen,maxResWord=MaxResWord,lenWords=MaxResWord.len]),
+    foreach(MustContain in Word.remove_dups)
+       Res = word_wheel(Word,Words,MustContain,MinLen, MaxLen),
+       Len = Res.len,
+       if Len >= MaxResLen then
+         garbage_collect,
+         println([word=Word,mustContain=MustContain,res=Res,len=Res.len]),
+         if Len == MaxResLen then
+            MaxResWord := MaxResWord ++ [[word=Word,char=MustContain]]
+         else
+            MaxResWord := [[word=Word,char=MustContain]],
+            MaxResLen := Len
+         end
+       end
+    end
+  end,
+  println(maxResLen=MaxResLen),  
+  println(maxWord=MaxResWord),
+  nl.
+
+max_word_wheel(TargetWords,Words,MinLen,MaxLen) = MaxResWords =>
+  max_word_wheel(TargetWords,Words,MinLen,MaxLen,0,_MaxResLen,[],MaxResWords).
+
+max_word_wheel([],_Words,_MinLen,_MaxLen,
+               MaxResLen,MaxResLen,MaxResWords,MaxResWords).
+max_word_wheel([TargetWord|TargetWords],Words,MinLen,MaxLen,
+                MaxResLen0,MaxResLen,MaxResWords0,MaxResWords) :-
+  println(word=TargetWord=MaxResLen0),
+  foreach(Char in TargetWord.remove_dups)
+    Res = word_wheel(TargetWord,Words,Char,MinLen, MaxLen),
+    Len = Res.len,
+    if Len >= MaxResLen0 then
+      println([word=TargetWord,char=Char,res=Res,len=Res.len]),
+      if Len == MaxResLen0 then
+         MaxResWords1 = MaxResWords0 ++ [TargetWord=Char],
+         MaxResLen1 = MaxResLen0
+      else
+        MaxResWords1 = [TargetWord=Char],
+        MaxResLen1 = Len
+      end
+    else
+      MaxResWords1 = MaxResWords0,
+      MaxResLen1 = MaxResLen0
+    end
+  end,
+ max_word_wheel(TargetWords,Words,MinLen,MaxLen, MaxResLen1,MaxResLen,MaxResWords1,MaxResWords).
+
+
+word_wheel(Chars,Words,MustContain,MinLen,MaxLen) = Res.reverse => 
+  Chars := to_lowercase(Chars),
+  D = make_hash(Chars), 
+  Res = [],
+  foreach(W in Words, W.len >= MinLen, W.len <= MaxLen, membchk(MustContain,W))
+    WD = make_hash(W),
+    Check = true,    
+    foreach(C in keys(WD), break(Check == false))
+      if not D.has_key(C) ; WD.get(C,0) > D.get(C,0) then
+        Check := false
+      end
+    end,
+    if Check == true then
+      Res := [W|Res]
+    end
+  end.
+
+%
+% Returns a map of the elements and their occurences
+% in the list L.
+%
+make_hash(L) = D => 
+  D = new_map(),
+  foreach(E in L)
+    D.put(E,D.get(E,0)+1)
+  end.

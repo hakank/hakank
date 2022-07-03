@@ -1,0 +1,232 @@
+/* 
+
+  Round robin tournament schedule (Rosetta code) in Picat.
+
+  http://rosettacode.org/wiki/Round-robin_tournament_schedule
+  """
+  A round-robin tournament is also known as an all-play-all-tournament; 
+  each participant plays every other participant once.
+
+  For N participants the number of rounds is N-1 if N is an even number. 
+  When there are an odd number of participants then each round one contestor 
+  has no opponent (AKA as a "bye"). The number of rounds is N in that case.
+
+  Task
+
+  Write a program that prints out a tournament schedule for 12 participants 
+  (represented by numbers 1 to 12). 
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp.
+import sat.
+
+main => go.
+
+/*
+
+Round  1: ( 1 vs 11) ( 2 vs  5) ( 3 vs  6) ( 4 vs 12) ( 7 vs  9) ( 8 vs 10) 
+Round  2: ( 1 vs  5) ( 2 vs  4) ( 3 vs 10) ( 6 vs  7) ( 8 vs  9) (11 vs 12) 
+Round  3: ( 1 vs  6) ( 2 vs  8) ( 3 vs  5) ( 4 vs 11) ( 7 vs 10) ( 9 vs 12) 
+Round  4: ( 1 vs 12) ( 2 vs 11) ( 3 vs  7) ( 4 vs  6) ( 5 vs  8) ( 9 vs 10) 
+Round  5: ( 1 vs  9) ( 2 vs  6) ( 3 vs 12) ( 4 vs  5) ( 7 vs  8) (10 vs 11) 
+Round  6: ( 1 vs  4) ( 2 vs  3) ( 5 vs  7) ( 6 vs 10) ( 8 vs 12) ( 9 vs 11) 
+Round  7: ( 1 vs  2) ( 3 vs  4) ( 5 vs 10) ( 6 vs  9) ( 7 vs 12) ( 8 vs 11) 
+Round  8: ( 1 vs  3) ( 2 vs 12) ( 4 vs 10) ( 5 vs  9) ( 6 vs  8) ( 7 vs 11) 
+Round  9: ( 1 vs 10) ( 2 vs  7) ( 3 vs  8) ( 4 vs  9) ( 5 vs 11) ( 6 vs 12) 
+Round 10: ( 1 vs  8) ( 2 vs 10) ( 3 vs  9) ( 4 vs  7) ( 5 vs 12) ( 6 vs 11) 
+Round 11: ( 1 vs  7) ( 2 vs  9) ( 3 vs 11) ( 4 vs  8) ( 5 vs  6) (10 vs 12) 
+
+*/
+
+go ?=>
+  nolog,
+  N = 12,
+  tournament_cp(N, NumRounds,NumPairs,_,X,Bye),
+  print_tournament(X,NumRounds,NumPairs,Bye),
+  nl.
+go => true.
+
+/*
+
+  The constraint model is slower for larger number of
+  players. However when there are extra constraints
+  on the problem, this approach is quite neat.
+
+  Here are some extra constraints
+  - 1 vs 2 must be played the third round
+  - 5 vs 9 must be played in the 7th round
+  - 2 vs 3 must be played in the last round  
+  - 7 vs 12 must be played in the last round
+
+Round  1: ( 1 vs 11) ( 2 vs  4) ( 3 vs 12) ( 5 vs  8) ( 6 vs  9) ( 7 vs 10) 
+Round  2: ( 1 vs 12) ( 2 vs 11) ( 3 vs  9) ( 4 vs  7) ( 5 vs 10) ( 6 vs  8) 
+Round  3: ( 1 vs  2) ( 3 vs 10) ( 4 vs 12) ( 5 vs 11) ( 6 vs  7) ( 8 vs  9) 
+Round  4: ( 1 vs  4) ( 2 vs  6) ( 3 vs 11) ( 5 vs 12) ( 7 vs  8) ( 9 vs 10) 
+Round  5: ( 1 vs 10) ( 2 vs  7) ( 3 vs  5) ( 4 vs  6) ( 8 vs 12) ( 9 vs 11) 
+Round  6: ( 1 vs  6) ( 2 vs  5) ( 3 vs  4) ( 7 vs  9) ( 8 vs 11) (10 vs 12) 
+Round  7: ( 1 vs  3) ( 2 vs 12) ( 4 vs  8) ( 5 vs  9) ( 6 vs 10) ( 7 vs 11) 
+Round  8: ( 1 vs  7) ( 2 vs  8) ( 3 vs  6) ( 4 vs  5) ( 9 vs 12) (10 vs 11) 
+Round  9: ( 1 vs  8) ( 2 vs  9) ( 3 vs  7) ( 4 vs 10) ( 5 vs  6) (11 vs 12) 
+Round 10: ( 1 vs  9) ( 2 vs 10) ( 3 vs  8) ( 4 vs 11) ( 5 vs  7) ( 6 vs 12) 
+Round 11: ( 1 vs  5) ( 2 vs  3) ( 4 vs  9) ( 6 vs 11) ( 7 vs 12) ( 8 vs 10) 
+
+CPU time 0.085 seconds.
+
+*/
+go2 =>
+  nolog,
+  N = 12,  
+  Extras = [[1,2,3],
+            [5,9,7],
+            [2,3,N-1],
+            [7,12,N-1]],
+  tournament_cp(N, NumRounds,NumPairs,Extras,X,Bye),
+  print_tournament(X,NumRounds,NumPairs,Bye),
+  nl.
+
+
+go3 =>
+  nolog,
+  foreach(N in 1..12)
+    println(n=N),
+    tournament_cp(N, NumRounds,NumPairs,_,X,Bye),
+    print_tournament(X,NumRounds,NumPairs,Bye)
+  end,
+  nl.
+
+/*
+  Number of tournaments (with the given symmetry breaking constraints)
+
+2 = 1
+4 = 6
+6 = 720
+8 = 31449600
+
+https://oeis.org/A036981
+(2n+1) X (2n+1) symmetric matrices each of whose rows is a permutation of 1..(2n+1)
+
+Use CP for this!
+*/
+go4 =>
+  foreach(N in 2..2..12)
+    Count = count_all(tournament_cp(N, _NumRounds,_NumPairs,_Extras,_X,_Bye)),
+    println(N=Count)
+  end,
+  nl.
+
+
+% THIS IS NOT CORRECT!
+go5 =>
+  N = 12,
+  tournament2(N),
+  nl.
+
+
+%
+% Constraint model 
+%
+tournament_cp(N, NumRounds,NumPairs,Extras, X,Bye) =>
+
+  % Adjust for odd number of players.
+  % The bye (Dummy) player is N+1.
+  if N mod 2 == 1 then
+    N := N + 1,
+    Bye = N
+  end,
+
+  NumRounds = N-1,
+  NumPairs = N div 2,
+
+  X = new_array(NumRounds,NumPairs,2),
+  X :: 1..N,
+
+  % ensure that all players play each other
+  foreach(P1 in 1..N, P2 in P1+1..N)
+    sum([X[Round,P,1] #= P1 #/\ X[Round,P,2] #= P2 : Round in 1..NumRounds, P in 1..NumPairs]) #= 1
+  end,
+  
+  foreach(Round in 1..NumRounds)
+    % all_distinct([X[Round,I,J] : I in 1..NumPairs, J in 1..2]),
+    all_different([X[Round,I,J] : I in 1..NumPairs, J in 1..2]),    
+    
+    % symmetry breaking
+    % - all first players in increasing order
+    increasing_strict([X[Round,I,1] : I in 1..NumPairs]),
+    % - player 1 < player 2
+    foreach(P in 1..NumPairs)
+       X[Round,P,1] #< X[Round,P,2]
+    end
+  end,
+
+  if Extras != [] then
+    foreach([P1,P2,Round] in Extras)
+      sum([X[Round,P,1] #= P1 #/\ X[Round,P,2] #= P2 : P in 1..NumPairs]) #= 1
+    end
+  end,
+  
+  solve($[ff,split],X).
+
+
+%
+% Algorithmical approach
+% {{trans|Go}}
+% THIS IS NOT CORRECT
+tournament2(N) =>
+  Lst = new_list(N-1),
+  foreach(I in 1..N-1)
+    Lst[I] = I + 1
+  end,
+  
+  if N mod 2 == 1 then
+    Lst := Lst ++ [0], %  0 denotes a bye
+    N:= N+1
+  end,
+  foreach(R in 1..N-1)
+     % fmt.Printf("Round %2d", r)
+     printf("Round %2d:", R),
+     Lst2 = [1] ++ Lst.tail,
+     println(lst2=Lst2),
+     foreach(I in 1..(N div 2)-1)
+        printf(" (%2d vs %-2d)", Lst2[I], Lst2[N-1-I])
+     end,
+     nl,
+     Lst := rotate(Lst)
+  end.
+
+rotate(Lst) = Lst2 =>
+  Lst2 = copy_term(Lst),
+  Len = Lst2.len,
+  Last = Lst2.last,
+  foreach(I in Len..-1..2)
+    Lst2[I] := Lst[I-1]
+  end,
+  Lst2[1] := Last.
+
+
+
+print_tournament(X,NumRounds,NumPairs,Bye) =>
+  N = X[1].len,
+  foreach(Round in 1..NumRounds)
+    printf("Round %2d: ", Round),
+    if N > 10 then nl end,
+    foreach(P in 1..NumPairs)
+      P2Val = X[Round,P,2],
+      if var(Bye) ; P2Val != Bye then
+        printf("(%2w vs %2w) ",X[Round,P,1],P2Val),
+        if N > 10 then nl end
+      end
+    end,
+    nl
+  end,
+  nl.
+
+
+lex2(X) =>
+  foreach(I in 2..X.length) 
+     lex_lt(X[I-1], X[I])
+   end.
