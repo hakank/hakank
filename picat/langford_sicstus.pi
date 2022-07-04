@@ -1,0 +1,125 @@
+/* 
+
+  Langford problem in Picat.
+
+  Port of SICStus Prolog model langford.pl
+  """
+  Langford's Problem  (CSPlib problem 24)
+  """
+
+  This model is a generalized version of the problem, i.e. 
+  K can be >= 2.
+
+  Langford's number problem (CSP lib problem 24)
+  http://www.csplib.org/prob/prob024/
+  """
+  Arrange 2 sets of positive integers 1..k to a sequence,
+  such that, following the first occurence of an integer i, 
+  each subsequent occurrence of i, appears i+1 indices later
+  than the last. 
+  For example, for k=4, a solution would be 41312432
+  """
+  
+  * John E. Miller: Langford's Problem
+    http://www.lclark.edu/~miller/langford.html
+  
+  * Encyclopedia of Integer Sequences for the number of solutions for each k
+    http://www.research.att.com/cgi-bin/access.cgi/as/njas/sequences/eisA.cgi?Anum=014552
+
+
+  Note: For k=4 there are two different solutions:
+     solution:[4,1,3,1,2,4,3,2]
+     position:[2,5,3,1,4,8,7,6]
+  and
+     solution:[2,3,4,2,1,3,1,4]
+     position:[5,1,2,3,7,4,6,8]
+
+  Which this symmetry breaking
+
+     Solution[1] #< Solution[K2],
+
+  then just the second solution is shown.
+
+  Note: There are only solutions when K mod 4 == 0 or K mod 4 == 3.
+
+  See my other Langford models:
+  - For a version which only solve K=2, see langford.pi
+  - For a generalized version L(k,n) where k >= 2, see http://hakank.org/langford_generalized.pi
+  - For Nickerson's variant, see http://hakank.org/langford_nickerson.pi
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  K = 3,
+  N = 10,
+  langford(K,N, Seq),
+  println(seq=Seq),
+  fail,  
+  nl.
+go => true.
+
+
+go2 ?=>
+  member(K,2..4),
+  member(N,2..12),
+  garbage_collect(300_000_000),
+  % We first check if there is a solution.
+  % If so, then we count all solutions.
+  if langford(K,N, _Seq) then 
+    Count = count_all(langford(K,N, _Seq2)),
+    println([k=K,n=N,count=Count]),
+    % Just find some of the solutions.
+    if Count > 0, Count <= 4 then
+      println("All solutions:"),
+      Seqs = findall(Seq,langford(K,N, Seq)),
+      foreach(Seq in Seqs)
+         println([K,N]=Seq)
+      end,
+      nl
+    end
+  end,
+  fail,  
+  nl.
+go2 => true.
+
+langford(K, N, Seq) :-
+	NK is N*K,
+	length(Pos, NK),
+	Pos :: 1..NK,	% Pos[ns]: position of (number, set)
+			% pair in the sought sequence
+        all_different(Pos), % hakank: added this
+        foreach(I in 1..N, J in 1..K-1)
+           Ix1 = K*(I-1) + J+1,
+	   Ix2 = Ix1-1,
+	   I1 is I+1,
+	   element(Ix1, Pos, Pos1),
+   	   element(Ix2, Pos, Pos2),
+	   Pos1 - Pos2 #= I1
+        end,
+	length(Num, NK),
+	Num :: 1..NK,	% Num[p]: (number, set) pair at
+			% position p in the sought sequence
+        % all_different(Num), % hakank. Slower
+        
+	assignment(Pos, Num),
+
+	solve([degree], Num),
+        
+        % hakank: Create the sequence.
+        Seq = new_list(NK),
+        Chunks = chunks_of(Pos,K),
+        foreach(I in 1..N)
+            foreach(J in Chunks[I])
+               Seq[J] = I
+            end
+        end.

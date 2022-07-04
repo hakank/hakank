@@ -1,0 +1,214 @@
+/* 
+
+  Ideal circle seating in Picat.
+
+  https://www.reddit.com/r/compsci/comments/1m1a0m/an_algorithm_for_ideal_circle_seating/
+  """
+  Is there an efficient algorithm to solve this problem?
+
+  n seats are arranged in a circle for n people. Each person also has a set of people 
+  who they dislike. In one instance, n=5 and people 1 and 2 dislike 3 and everyone 
+  else doesn't dislike anyone. Obviously, you want to put 3 in between 4 and 5.
+
+  There are two variants: we want the number of happy people to be maximized or we want 
+  the fewest problematic adjacencies. The difference is if we have to make someone 
+  unhappy by putting someone they don't like on their right, is it even worse to put 
+  someone they don't like on their left? Or are they already unhappy so it doesn't matter?
+
+  My first impression is that this sounds like a graph problem, but I can't map it 
+  exactly. Thoughts? It also sounds like it may be NP-complete. A brute force method 
+  would be at least O(n!).
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+%
+% crisp approach
+%
+go ?=>
+
+  N = 5,
+  
+  % From https://www.reddit.com/r/compsci/comments/1m1a0m/an_algorithm_for_ideal_circle_seating/
+  % Dislike = [
+  %            [1,3],
+  %            [2,3],
+  %            [2,4]
+  %           ],  
+
+  % From
+  % http://www.cs.uni.edu/~wallingf/teaching/cs3530/sessions/session24.html
+  Dislike = [
+              [1,3],[1,5],
+              [2,4],[2,5],
+              [3,1],
+              [4,2],
+              [5,1],[5,2]
+
+            ],
+  println("Dislike:"),
+  foreach(D in Dislike) println(D) end,
+  nl,
+  println("All solutions:"),
+  place_circle_crisp(N,Dislike, X),
+
+  println(X),
+  fail,
+ 
+  nl.
+
+go => true.
+
+%
+% minimize the number of conflicts
+%
+go2 =>
+
+  N = 5,
+  
+  Dislike = [
+             [1,3]
+             ,[2,3]
+             ,[2,4]
+             ,[3,4]
+             ,[4,5]
+            ],  
+
+  println("Dislikes:"),
+  foreach(D in Dislike)
+    println(D)
+  end,
+  nl,
+  place_circle_min(N,Dislike, X,Conflicts,Z),
+  println(z=Z),
+  println(x=X),
+  println(conflicts=Conflicts),
+
+  println("\nFind all optimal:"),
+  place_circle_min(N,Dislike, X2,Conflicts2,Z),
+  println(x=X2),
+  println(conflicts=Conflicts2),
+  println(the_conflicted_dislikes=[ Dislike[I] : I in 1..Dislike.len, Conflicts2[I] = 1]),
+  nl,
+  fail,
+ 
+  nl.
+
+
+%
+% Random dislikes
+%
+go3 =>
+
+  N = 15,
+  
+  _ = random2(),
+  Dislike1 = [ [1 + random() mod N, 1 + random() mod N].sort()
+             : _ in 1..N*(N div 2)
+            ].sort_remove_dups(),  
+  Dislike = [ [A,B] : [A,B] in Dislike1, A != B ],
+
+  println("Dislikes:"),
+  foreach(D in Dislike)
+    println(D)
+  end,
+  AcceptableNeighbours = [ [J : J in 1..N, I != J, not member([I,J], Dislike)] : I in 1..N  ],
+  println(acceptableNeighbours=AcceptableNeighbours),
+  flush(stdout),
+
+  println(num_dislikes=Dislike.len),
+  nl,
+  place_circle_min(N,Dislike, X,Conflicts,Z),
+  println(z=Z),
+  println(x=X),
+  println(conflicts=Conflicts),
+
+  InOrder = [ [I,X[I]] : I in 1..N, X[I] == I],
+  println(inOrder=InOrder),
+  println(inOrderLen=InOrder.len),
+
+  % println("\nFind all optimal:"),
+  % place_circle_min(N,Dislike, X2,Conflicts2,Z),
+  % println(x=X2),
+  % println(conflicts=Conflicts2),
+  % println(the_conflicted_dislikes=[ Dislike[I] : I in 1..Dislike.len, Conflicts2[I] = 1]),
+  % fail,
+ 
+  nl.
+
+
+place_circle_crisp(N,Dislike, X) =>
+  X = new_list(N),
+  X :: 1..N,
+
+  all_different(X),
+  X[1] #= 1, % symmetry breaking
+  X[2] #< X[N],
+  foreach([A,B] in Dislike)
+    % find the placec of A and B
+    element(AP,X,A),
+    element(BP,X,B),
+    abs(AP - BP) #> 1,
+    abs(AP - BP) #< N-1
+  end,
+
+  solve(X).
+
+
+%
+% Minimize the number of conflicts
+%
+place_circle_min(N,Dislike, X, Conflicts,Z) =>
+
+  X = new_list(N),
+  X :: 1..N,
+
+  M = Dislike.len,
+  Conflicts = new_list(M),
+  Conflicts :: 0..1,
+
+  AcceptableNeighbours = [ [J : J in 1..N, I != J, not member([I,J], Dislike)] : I in 1..N  ],
+
+  all_different(X),
+
+  % symmetry breaking
+  X[1] #= 1, % fix first position
+  X[2] #< X[N], % mirror symmetry
+
+  % minimize the number of conflicts
+  % (and identify the active conflict(s))
+  Z #= sum(Conflicts),
+  foreach(I in 1..M)
+    [A,B] = Dislike[I],
+    element(AP,X,A), % find the places (AP,BP) of A and B in X
+    element(BP,X,B),
+    (Conflicts[I] #= 1) #<=> (abs(AP - BP) #= 1 #\/ abs(AP - BP) #= N-1)
+  end,
+
+  % Z #= sum([
+  %          (abs(AP - BP) #= 1 #\/ abs(AP - BP) #= N-1)
+  %          : [A,B] in Dislike, 
+  %          element(AP,X,A), element(BP,X,B)
+  %          ]
+  %         ),
+  println(z=Z),  
+
+
+  % Vars = Conflicts ++ X,
+  Vars = X ++ Conflicts,
+  if var(Z) then 
+    solve($[split,min(Z),report(printf("Z: %d\n",Z))],Vars)
+  else 
+    solve([split],Vars)
+  end.

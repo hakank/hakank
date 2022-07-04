@@ -1,0 +1,205 @@
+/* 
+
+  Protein in Picat.
+
+  Port of SICStus Prolog model protein.pl
+  (there is no description of the problem in the file)
+
+
+  Results:
+
+  * protein(15):
+    Energy = -8
+
+         9  10  11            
+
+     7   8  13  12            
+
+     6  15  14   1            
+
+     5   4   3   2            
+
+  * protein(20)
+
+    Energy = -12
+                                    
+
+    9  10  15  16  17                
+
+    8  11  14  19  18                
+
+    7  12  13  20   1                
+
+    6   5   4   3   2                
+
+                   
+  Times        CP        SAT (seq)
+  --------------------------------
+  protein(15)   0.516s    1.516s    
+  protein(20)  87.633s   60.545s
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import v3_utils.
+% import sat. % faster on protein(20).
+import cp. % faster on protein(15).
+
+main => go.
+
+go ?=>
+  nolog,
+  time(protein(15)),
+  time(protein(20)),  
+  
+  nl.
+go => true.
+
+
+
+protein(N) :-
+        Primary = [h : _ in 1..N],
+	constrain(Primary,Tertiary,NegErg),
+
+        if membchk(sat,loaded_modules()) then
+  	   solve($[seq,max(NegErg)],Tertiary) % SAT: seq is faster than split        
+        else
+           solve($[max(NegErg)],Tertiary)        
+        end,
+        
+	format('Energy = ~d\n', [-NegErg]),
+	plot(Tertiary, N).
+protein(_) :-
+	write('no solutions:'),nl.
+
+constrain(Primary,Tertiary,NegErg) :-
+        N = Primary.len,
+	M is 2*N,
+	Min is N - floor(sqrt(N)), 
+	Max is N + floor(sqrt(N)),
+	length(Tertiary,M),
+        Tertiary :: Min..Max,
+	starting_point(Tertiary,N),
+	avoid_self_loops(Tertiary),
+	next_constraints(Tertiary),
+	energy_terms(Primary, Tertiary, Terms, []),
+	sum(Terms) #= NegErg.
+
+starting_point(Tert, N) :-
+	N1 is N + 1,
+	Tert = [N,N,N,N1|_],
+	all_up(Tert, Up, N, N),
+	% lex_chain([Tert,Up]).	% Mats - break symmetry
+        lex_chain_less([Tert,Up]). % hakank
+
+all_up([], [], _, _).
+all_up([_,_|Tert], [X,Y|Up], X, Y) :-
+	Y1 is Y+1,
+	all_up(Tert, Up, X, Y1).
+
+avoid_self_loops(Tertiary):- !,
+	positions_to_rectangles(Tertiary, Rectanges),
+	disjoint2(Rectanges).
+
+positions_to_rectangles([],[]) :- !.
+positions_to_rectangles([X,Y|R], [r(X,1,Y,1)|S]):-
+	positions_to_rectangles(R,S).
+
+next_constraints([_,_]).
+next_constraints([X1,Y1,X2,Y2|C]) :-
+	next(X1,Y1,X2,Y2),
+	next_constraints([X2,Y2|C]).
+
+next(X1,Y1,X2,Y2):-
+        [Dx,Dy] :: -1..1,
+	Dx #= X1-X2,
+	Dy #= Y1-Y2,
+	moveone(Dx, Dy).
+
+%% Picat don't support this table syntax
+%% moveone(_Dx, _Dy) +:
+%%	table([[{-1,1},0],[0,{-1,1}]]).
+% hakank: Some variants
+% moveone(Dx, Dy) :-
+%         (Dy #= 0 #/\ (Dx #= -1 #\/ Dx #= 1))
+%         #\/
+%         (Dx #= 0 #/\ (Dy #= -1 #\/ Dy #= 1) ).
+moveone(Dx, Dy) :-
+  % Dx #!= Dy,
+  % table_in({Dx,Dy},[{*,0},{0,*}]).
+  if membchk(sat,loaded_modules()) then
+    table_in({Dx,Dy},[{-1,0},{0,-1},{0,1},{1,0}]) % faster for sat
+  else 
+    abs(Dx + Dy) #= 1 % faster for cp
+  end.
+
+energy_terms([_], _) --> !.
+energy_terms([A,B|Primary], [XA,YA,XB,YB|Tertiary]) -->
+	energy_contribution_of_A(0,A,XA,YA,Primary,Tertiary),
+	energy_terms([B|Primary],[XB,YB|Tertiary]).
+
+energy_contribution_of_A(_,_,_,_,[],[]) --> !.
+energy_contribution_of_A(0,A,XA,YA,[_|Primary],[_,_|Tertiary]) -->
+	energy_contribution_of_A(1,A,XA,YA,Primary,Tertiary).
+energy_contribution_of_A(1,A,XA,YA,[B|Primary],[XB,YB|Tertiary]) -->
+	energy(A,XA,YA,B,XB,YB),
+	energy_contribution_of_A(0,A,XA,YA,Primary,Tertiary).
+
+energy(h,XA,YA,h,XB,YB) --> !, [C],
+	{Delta #= abs(XA - XB) + abs(YA - YB)},
+	{Delta #= 1 #<=> C}.
+energy(_,_,_,_,_,_) --> [].
+
+plot(Tertiary, N) :-
+	Min is N - floor(sqrt(N)), 
+	Max is N + floor(sqrt(N)),
+	y_major(Tertiary, 0, Pairs1),
+	sort(Pairs1, Pairs2),
+	Min1 is Min-1,
+	plot(Min1, Max, Min1, Pairs2, []).
+
+plot(Max, Max, _) --> !.
+plot(Y0, Max, Min1) -->
+	{Y is Y0+1},
+	plot_row(Min1, Max, Y),
+	plot(Y, Max, Min1).
+
+plot_row(Max, Max, _) --> !, {nl,nl}.
+plot_row(X0, Max, Y) -->
+	{X is X0+1},
+	plot_element(X, Y),
+	plot_row(X, Max, Y).
+
+plot_element(X, Y) --> [(Y,X,J)], !,
+	{write4(J)}.
+plot_element(_, _) -->
+	{print('    ')}.
+
+write4(J) :- J<10, !, print('   '), print(J).
+write4(J) :- print('  '), print(J).
+
+y_major([], _, []).
+y_major([X,Y|XYs], I, [(Y,X,J)|YXs]) :-
+	J is I+1,
+	y_major(XYs, J, YXs).
+
+
+% hakank:
+lex_chain_less(X) =>
+  N = X.len,
+  M = X[1].len,
+  foreach(I in 2..N) 
+    lex_lt([X[I-1, J] : J in 1..M], [X[I, J] : J in 1..M])
+  end.
+
+% hakank
+% convert rectangles on the form
+%   r(X1.Length,Y1,Height)
+% to Picat's diffn/1 form.
+%
+disjoint2(Rects1) :-
+   Rects = [ [X1,X2,Len,Height] : $r(X1,Len,X2,Height) in Rects1],
+   diffn(Rects).

@@ -1,0 +1,189 @@
+/* 
+
+  Nondeterministic regular (regular_nfa) in Picat.
+
+  Nondeterministic Finite Automaton.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util,cp.
+
+
+main => go.
+
+go =>
+  Test = 2,
+  Len = 5,
+  All = findall([X,Path], test(Test,Len,X,Path)),
+  Map = new_map(),
+  foreach([X,Path] in All)
+    % println(X),
+    % println(Path),
+    Map.put(Path,Map.get(Path,[]) ++ [X])
+  end,
+  foreach(Path=Solutions in Map)
+    println(state_path=Path.to_list()),
+    println(solutions=Solutions),
+    nl
+  end,
+  nl.
+
+go2 ?=>
+  Map = get_global_map(),
+  Map.put(count,0),
+  problem(1,Transition,NStates,InputMax,InitialState,AcceptingStates,XDomain,AddNum),
+  % problem(2,Transition,NStates,InputMax,InitialState,AcceptingStates,XDomain,AddNum),
+  
+  X = new_list(10),
+  X :: XDomain,
+
+  % Translate to a 1..2 representation since regular don't accept "0" as a valid value.
+  RegInput = new_list(X.len),
+  RegInput :: 1..InputMax,
+  foreach(I in 1..X.len) RegInput[I] #= X[I]+AddNum end,
+
+  % Note: S is the state path
+  my_regular_nfa(RegInput,NStates,InputMax,Transition,InitialState, AcceptingStates,S),
+
+  solve(X ++ RegInput),
+
+  println(x=X),
+  println(s=S.to_list()),
+
+  Map.put(count,Map.get(count)+1),
+  
+  nl.
+
+% Show number of solutions
+go2 => 
+  println(solutions=get_global_map().get(count)),
+  nl.
+
+
+test(Problem,N,X,S) =>
+  problem(Problem,Transition,NStates,InputMax,InitialState,AcceptingStates,XDomain,AddNum),
+
+  X = new_list(N),
+  X :: XDomain,
+
+  % Translate to a 1..2 representation since regular don't accept "0" as a valid value.
+  RegInput = new_list(X.len),
+  RegInput :: 1..InputMax,
+  foreach(I in 1..X.len) RegInput[I] #= X[I]+AddNum end,
+
+  % Note: S is the state path
+  my_regular_nfa(RegInput,NStates,InputMax,Transition,InitialState, AcceptingStates,S),
+
+  solve(X ++ RegInput).
+
+
+%
+% Note: This is a mix of CP and traditional LP logic (member/2 and nth/3).
+%
+my_regular_nfa(X, Q, S, D, Q0, F,A) =>
+  % println($my_regular_nfa(X, Q, S, D, Q0, F,A)),
+  % """
+  % If x has index set m..n-1, then a[m] holds the initial state
+  % (q0), and a[i+1] holds the state we're in after  processing
+  % x[i].  If a[n] is in F, then we succeed (ie. accept the string).
+  % """
+
+  M = 1,
+  N2 = X.length+1,
+  A = new_array(N2),
+  A :: 1..Q,
+
+  X :: 1..S, % """Do this in case it's a var."""
+
+  A[M] #= Q0, % Set a[0], initial state
+  foreach(I in 1..X.length)  
+     % note: matrix_element5/4 use nth/3 + nth/3
+     matrix_element5(D, A[I], X[I], Val), 
+     % println([aI=A[I],xI=X[I],aI1=A[I+1],val=Val]),
+     member(A[I+1], Val)
+  end,
+  % println([f=F,aN2=A[N2]]),
+  % element(_,F,A[N2]).
+  % nth(_,F,A[N2]).
+  member(A[N2], F). % """Check the final state is in F."""
+  % A[N2] :: F. % """Check the final state is in F."""
+
+
+matrix_element1(X, I, J, Val) =>
+  element(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element2(X, I, J, Val) =>
+  nth(I, X, Row),
+  element(J, Row, Val).
+
+matrix_element3(X, I, J, Val) =>
+  freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+matrix_element4(X, I, J, Val) =>
+  freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+
+matrix_element5(X, I, J, Val) =>
+  nth(I, X, Row),
+  nth(J,Row,Val).
+
+
+% Inspired by the DFA for regexp 123*21
+% Transition = [
+%               [2, 0, 0], % transitions from state 1: -2-> state 2
+%               [0, 3, 0], % transitions from state 2: -3-> state 3 % 
+%               [0, 4, 3], % transitions from state 3: -3-> state 3, -2-> state 4
+%               [5, 0, 0], % transitions from state 4: -1-> state 5
+%               [0, 0, 0]  % transitions from state 5: (none)
+%               ],%
+%
+% This is a NFA variant with an added loop in state 1
+%
+problem(1,Transition,NStates,InputMax,InitialState,AcceptingStates,XDomain,AddNum) =>
+  Transition = [
+               % added loop in state 1
+               [[1,2], [], []], % transitions from state 1: -2-> state 2
+               [[], [3], []], % transitions from state 2: -3-> state 3 % 
+               [[], [4], [3]], % transitions from state 3: -3-> state 3, -2-> state 4
+               [[5,1], [], []], % transitions from state 4: -1-> state 5
+               [[], [], []]  % transitions from state 5: (none)
+               ],
+  NStates = 5,
+  InputMax = 3,
+  InitialState = 1,
+  AcceptingStates = [5],
+  XDomain = 1..3,
+  AddNum = 0.
+
+
+
+% From Hopcraft & Ullman: Introdutcion to Automata Theory, Languages and Computation, page 19.
+% This NFA accepts a string with either (at least) two consecutive 0's or (at last) 
+% two consecutive 1s. 
+% There are 6 paths through the states (for N=4)
+%    [1,1,1,2,3]
+%    [1,1,1,4,5]
+%    [1,1,2,3,3]
+%    [1,1,4,5,5]
+%    [1,2,3,3,3]
+%    [1,4,5,5,5]
+% 
+problem(2,Transition,NStates,InputMax,InitialState,AcceptingStates,XDomain,AddNum) =>
+  Transition = [
+     % 0 1
+     [[1,4],[1,2]], % q1 start
+     [[],[3]],      % q2
+     [[3],[3]],     % q3 accept
+     [[5],[]],      % q4
+     [[5],[5]]      % q5 accept
+  ],
+  NStates = 5,
+  InputMax = 2,
+  InitialState = 1,
+  AcceptingStates = [3,5],
+  XDomain = 0..1,
+  AddNum = 1.

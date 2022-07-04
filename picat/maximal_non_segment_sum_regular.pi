@@ -1,0 +1,122 @@
+/* 
+
+  Maximal non-segment sum in Picat.
+
+  From  Alex Engelberg and Mark Engelberg "Solving Problems with Automata"
+  https://www.youtube.com/watch?v=AEhULv4ruL4
+  (around time 2:50, slide 5/40)
+  """
+  Given a sequence s of integers, find the maximum sum you can get by adding
+  together a subsequence of numbers from s that do _not_ form a segment,
+  i.e. a contigous block.
+  """
+
+    This version use an automata (see video)
+     State     0    1
+     --------------------------
+     q0        q0   q1  %  start
+     q1        q2   q1
+     q2        q2   q3
+     q3        q3   q3
+     
+  In MiniZinc representation: 
+     State     0    1
+     --------------------------
+     1         1    2   % start
+     2         3    2
+     3         3    4
+     4         4    4   % accepting state
+ 
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+
+main => go.
+
+go ?=>
+  N = 5,
+  S = [-1,4,5,-3,-4],
+
+  X = new_list(N),
+  X :: 0..1,
+
+  Total #= sum([S[I]*X[I] : I in 1..N]),
+  
+  non_contiguity(X),
+  
+  solve($[max(Total),ff,split],X),
+
+  println(x=S),
+  println(total=Total),
+  println(x=X),
+  println(selected=[S[I] : I in 1..N, X[I] == 1]),  
+  nl,
+  fail,
+
+  nl.
+
+go => true.
+
+%
+% Random instances
+%
+go2 ?=>
+  nolog,
+  N = 300,
+
+  % _ = random2(),
+  S = [10 - (random() mod 20) : _ in 1..N],
+  println(s=S),
+
+  X = new_list(N),
+  X :: 0..1,
+
+  Total #= sum([S[I]*X[I] : I in 1..N]),
+  
+  non_contiguity(X),
+  
+  solve($[max(Total),ff,split],X),
+
+  println(total=Total),
+  println(x=X),
+  println(selected=[S[I] : I in 1..N, X[I] == 1]),  
+  nl,
+  fail,
+
+  nl.
+
+go2 => true.
+
+
+
+%
+% Decomposition of the contiguity constraint which ensure that
+% all 1's in a is consecutive (a.k.a. "consecutive ones").
+% It use the global constraint regular for this.
+%
+non_contiguity(A) =>
+  NStates = 4,
+  InputMax = 2,
+  InitialState = 1,
+  AcceptingStates = [4],
+  % the transition matrix
+  TransitionFn = [ 
+      [1,2], % start state
+      [3,2], 
+      [3,4], 
+      [4,4] % only accepting state
+    ],
+  Len = A.len,
+  % note: regular cannot handle 0 values, it must be > 0
+  RegInput = new_list(Len),
+  RegInput :: 1..2,
+  foreach(I in 1..Len)
+    RegInput[I] #= A[I] + 1
+  end,
+  regular(RegInput, NStates, InputMax, TransitionFn,
+                    InitialState, AcceptingStates).

@@ -1,0 +1,116 @@
+/* 
+
+  Muddle Management problem in Picat.
+
+  http://l4f.cecs.anu.edu.au/guide/and-yet-more-introduction
+  """
+  Six managers of Muddle and Company have to schedule a series of meetings on 
+  various aspects of the company’s activities. Not all of them are to attend 
+  every meeting, but each of them has to attend three or four meetings. 
+  The managers' names are 
+    Amy, Bernard, Chester, Dianne, Emma and Frank. 
+
+  The meetings concern 
+    marketing, networks, orders, production, quality control, revenue, sales and timetables. 
+  
+  These may take place in any order, except that 
+    the meeting on sales must happen before the one on marketing, 
+    and both production and quality control have to be discussed before the timetabling meeting 
+  can take place. The meetings they are required to attend are:
+  
+  Amy:  	networks 	quality 	revenue 	sales
+  Bernard: 	marketing 	orders 	revenue 	sales
+  Chester: 	networks 	production 	revenue 	timetables
+  Dianne: 	production 	quality 	timetables 	–
+  Emma: 	marketing 	orders 	quality 	timetables
+  Frank: 	marketing 	networks 	timetables 	–
+  
+  They want to schedule the meetings to fit into the smallest possible number of timeslots, 
+  so as to get to their golf game straight after lunch. They find it hard to decide 
+  how many timeslots they need and which meetings to hold in parallel with which.
+  
+  Can you help them out?
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+import cp.
+
+
+main => go.
+
+
+go =>
+  Marketing = 1,
+  Networks = 2,
+  Orders = 3,
+  Production = 4,
+  Quality = 5, % quality control
+  Revenue = 6,
+  Sales = 7,
+  Timetables = 8,
+
+  MeetingsS = [ marketing,
+                networks,
+                orders,
+                production,
+                quality,
+                revenue,
+                sales,
+                timetables
+                ],
+  NumMeetings = MeetingsS.length,
+
+  Required = 
+  [
+    [Networks,Quality,Revenue,Sales],         % Amy
+    [Marketing,Orders,Revenue,Sales],         % Bernard 
+    [Networks,Production,Revenue,Timetables], % Chester
+    [Production,Quality,Timetables], 	      % Dianne
+    [Marketing,Orders,Quality,Timetables],    % Emma
+    [Marketing,Networks,Timetables]           % Frank
+  ],
+
+  N = Required.length, % number of people
+
+  % decision variables
+  % the time slots for each meeting (time start at 0)
+  X = new_list(NumMeetings),
+  X :: 0..NumMeetings-1, 
+
+  Z #= max(X), % max timeslot, to minimize
+
+  foreach(P in 1..N) 
+    % find different timeslots for a person's meetings
+    foreach(M1 in Required[P], M2 in Required[P], M1 < M2) 
+       X[M1] #!= X[M2]
+    end
+  end,
+
+  % precedence constraints
+  X[Sales]      #< X[Marketing],
+  X[Production] #< X[Timetables],
+  X[Quality]    #< X[Timetables],
+ 
+  solve($[min(Z)], X),
+
+  println(z=Z),
+  println(x=X),
+
+  println("\nMeetings:"),
+  foreach(M in 1..NumMeetings),
+    printf("%-10w at %d\n", MeetingsS[M], X[M])
+  end,
+
+  println("\nTime schedule:"),
+  foreach(T in 0..Z)
+    printf("Time %d: %w\n", T, [MeetingsS[M] : M in 1..NumMeetings, X[M] == T])
+  end,
+  
+  nl.
+

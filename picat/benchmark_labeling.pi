@@ -1,0 +1,102 @@
+/* 
+
+  Benchmarking a CP model with different labeling in Picat.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module benchmark_labeling.
+
+import cp,util.
+
+main => go.
+
+
+go =>
+  
+  
+  nl.
+
+
+%
+% Benchmark the goal Goal with the variable select VariableSelect 
+% and value selection in ValueSelect, and a timeout (millis)
+%
+benchmark(VariableSelect,ValueSelect,Timeout,Goal1) =>
+  ValLen = ValueSelect.length,
+  VarLen = VariableSelect.length,
+  statistics(runtime,_),
+  statistics(backtracks,_),
+  Successes = [],
+  Timeouts = [],
+  SuccessCounterVar = new_map(),
+  SuccessCounterVal = new_map(),
+  VarSum = new_list(VarLen,0),
+  ValSum = new_list(ValLen,0),  
+  foreach(VarSel in VariableSelect, {ValSel,I} in zip(ValueSelect,1..ValLen))
+    
+     % garbage_collect(200_000_000),
+     statistics(backtracks,StartBacktracks),
+     statistics(runtime,[_,StartTime]),
+     % ensure that we not bind earlier solutions
+     Goal = copy_term(Goal1), 
+     time_out(call(Goal,VarSel,ValSel),Timeout,Status),
+     statistics(runtime,[_,EndTime]),
+     statistics(backtracks,EndBacktracks),
+     Time = EndTime - StartTime,
+     FTime = to_fstring("%0.3f", cond(Time >= 0, Time, 0) / 1000.0),
+     Backtracks = EndBacktracks - StartBacktracks,
+     if Status == success then
+        Successes := Successes ++ [[Time,VarSel,ValSel,Status,Backtracks]],
+        SuccessCounterVar.put(VarSel,SuccessCounterVar.get(VarSel,0)+1),
+        SuccessCounterVal.put(ValSel,SuccessCounterVal.get(ValSel,0)+1),
+        VarSum[I] := VarSum[I] + 1,
+        ValSum[I] := ValSum[I] + 1,
+        println(goal=Goal)
+     else 
+        FTime := "-",
+        Backtracks := "-",
+        Timeouts := Timeouts ++ [[Time,VarSel,ValSel,Status,Backtracks]]
+     end, 
+     % Status2 = cond(Status == time_out, "to", "ok"),
+     println([VarSel, ValSel, Status, FTime, Backtracks]),
+     flush(stdout)
+  end,
+  
+  println(varSum=VarSum),
+  println(valSum=ValSum),
+  nl,
+  println(successes=Successes.sort()),
+  nl,
+  println(timeouts=Timeouts),
+  println("Counter variable:"),
+  CounterOrderVar = [C=V : V=C in SuccessCounterVar].sort().reverse(),
+  foreach(C=V in CounterOrderVar) 
+    printf("%w: %d\n", V, C)
+  end,
+  nl,
+  println("Counter value:"),
+  CounterOrderVal = [C=V : V=C in SuccessCounterVal].sort().reverse(),
+  foreach(C=V in CounterOrderVal) 
+    printf("%w: %d\n", V, C)
+  end,
+
+  nl.
+
+replace_string(List,Old,New) = Res =>
+  Res = copy_term(List),
+  if (find(Res,Old,_,_)) then
+    once(append(Before,Old,After,Res)),
+    Res := Before ++ New ++ After
+  end.
+
+
+% Variable selection
+selection(Variable) => 
+  Variable = [backward,constr,degree,ff,ffc,ffd,forward,inout,leftmost,max,min,rand_var].
+
+% Value selection
+choice(Value) => 
+  Value = [down,reverse_split,split,up,updown,rand_val].

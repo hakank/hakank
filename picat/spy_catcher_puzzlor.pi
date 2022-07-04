@@ -1,0 +1,179 @@
+/* 
+
+  Spy catcher puzzle (PuzzlOR) in Picat.
+
+  http://www.puzzlor.com/2014-04_SpyCatcher.html
+  """
+  Your government has lost track of a high profile foreign spy and they have 
+  requested your help to track him down.  As part of his attempts to evade capture, 
+  he has employed a simple strategy.  Each day the spy moves from the country that 
+  he is currently in to a neighboring country. 
+
+  The spy cannot skip over a country (for example, he cannot go from Chile to Ecuador 
+  in one day).  The movement probabilities are equally distributed amongst the 
+  neighboring countries.  For example, if the spy is currently in Ecuador, there is a 
+  50% chance he will move to Colombia and a 50% chance he will move to Peru.  The spy 
+  was last seen in Chile and will only move about countries that are in South America.  
+  He has been moving about the countries for several weeks. 
+
+  Question:  Which country is the spy most likely hiding in and how likely is 
+  it that he is there?
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+main => go.
+
+
+% [[2031,brazil,0.2031],[1382,bolivia,0.1382],[1303,argentina,0.1303],[1190,peru,0.119],[873,chile,0.0873],[771,paraguay,0.0771],[633,colombia,0.0633],[501,uruguay,0.0501],[455,venezuela,0.0455],[437,ecuador,0.0437],[297,suriname,0.0297],[127,guana,0.0127]]
+
+go =>
+  
+  countries(Neighbours),
+
+  Countries = keys(Neighbours).sort(),
+  N = Countries.length,
+
+  Matrix = new_array(N,N), bind_vars(Matrix,0),
+  Map = new_map(),
+  RevMap = new_map(),
+  foreach({C1,I1} in zip(Countries,1..N), {C2,I2} in zip(Countries,1..N))
+    Map.put(C1,I1),
+    Map.put(C2,I2),
+    RevMap.put(I1,C1),
+    RevMap.put(I2,C2),
+    if membchk(C2,Neighbours.get(C1)) then
+      Matrix[I1,I2] := 1
+    end
+  end,
+
+  foreach(Row in Matrix) println(Row.to_list()) end,
+  % println(map=Map),
+
+  VisitTable = new_list(N,0),
+  foreach(_ in 1..10000)
+     Visit = Map.get(chile),
+     foreach(_ in 1..10)
+        Valid = [I : I in 1..N, Matrix[Visit,I] = 1],
+        % println(valid=Valid),
+        Visit := Valid[1 + random2() mod Valid.length] % ,
+        % println([visit=Visit,c=RevMap.get(Visit)])
+     end,
+     % println([end=Visit,RevMap.get(Visit)]),
+     VisitTable[Visit] := VisitTable[Visit] + 1
+  end,
+  
+  % println(visitTable=VisitTable),
+  Sum = sum(VisitTable),
+  println([VisitTable[C]=RevMap.get(C) : C in 1..N].sort_down()),
+  println([ [VisitTable[C],RevMap.get(C),VisitTable[C]/Sum] : C in 1..N].sort_down()),
+
+
+  nl.
+
+
+%
+% matrix multiplication
+%
+% [0.201498689308819=brazil,0.134939408114811=bolivia,0.131761974951235=argentina,0.118331141492864=peru,0.082923061986425=chile,0.078527612776812=paraguay,0.063262694286798=colombia,0.051539731153849=uruguay,0.046128385952215=venezuela,0.045398458944916=ecuador,0.030312712380515=suriname,0.015376128650738=guana]
+%
+%
+go2 =>
+
+  countries(Neighbours),
+
+  Countries = keys(Neighbours).sort(),
+  N = Countries.length,
+
+  Matrix = new_array(N,N), bind_vars(Matrix,0),
+  Map = new_map(),
+  RevMap = new_map(),
+  foreach({C1,I1} in zip(Countries,1..N), {C2,I2} in zip(Countries,1..N))
+    Map.put(C1,I1),
+    Map.put(C2,I2),
+    RevMap.put(I1,C1),
+    RevMap.put(I2,C2),
+    if membchk(C2,Neighbours.get(C1)) then
+      Matrix[I1,I2] := 1
+    end
+  end,
+
+  foreach(Row in Matrix) println(Row.to_list()) end,
+
+  Matrix2 = [],
+  foreach(I in 1..N)
+    S = sum([Matrix[I,J] : J in 1..N]),
+    Matrix2 :=  Matrix2 ++ [[Matrix[I,J]/S : J in 1..N]]
+  end,
+  println(matrix2),
+  print_matrix(Matrix2),
+
+  println(matrix3),
+  Matrix3 = list_matrix_to_array_matrix(Matrix2),
+  /*
+  %% This give a zero matrix after 69 rounds
+  Count = 0,
+  Changed = true,
+  while (Changed == true)
+    MatrixNew = matrix_multi(Matrix3,Matrix3),
+    if MatrixNew == Matrix3 then
+      Changed := false
+    end,
+    Matrix3 := MatrixNew,
+    Count := Count + 1
+  end,
+  println(count=Count),
+  */
+
+  foreach(I in 1..10)
+     Matrix3 := matrix_multi(Matrix3,Matrix3)
+  end,
+
+  print_matrix(Matrix3),
+
+  println([C=RevMap.get(C) : C in 1..N]),
+
+  FirstRow = Matrix3[1],
+  println([FirstRow[C]=RevMap.get(C) : C in 1..N].sort_down()),
+
+  nl.
+
+print_matrix(Mat) =>
+  N = Mat.length,
+  M = Mat[1].length,
+  println("{"),
+  foreach(I in 1..N)
+    print("{"),
+    foreach(J in 1..M)
+      printf("%0.7f,",Mat[I,J])
+    end,
+    print("},"),
+    nl
+  end,
+  println("}"),
+  nl.
+
+countries(Neighbours) =>
+  Neighbours = 
+new_map(
+[
+  venezuela=[guana,brazil,colombia],
+  guana=[venezuela,suriname,brazil],
+  suriname=[guyana,french_guiana,brazil],
+  brazil=[venezuela,guyana,suriname,french_guiana,colombia,peru,bolivia,paraguay,argentina,uruguay],
+  uruguay=[argentina,brazil],
+  argentina=[chile,bolivia,paraguay,brazil,uruguay], 
+  paraguay=[bolivia,brazil,argentina],
+  bolivia=[peru,brazil,paraguay,argentina,chile],
+  chile=[peru,bolivia,argentina],
+  peru=[ecuador,brazil,bolivia,chile],
+  ecuador=[colombia,peru],
+  colombia=[venezuela,brazil,peru,ecuador]
+]
+).

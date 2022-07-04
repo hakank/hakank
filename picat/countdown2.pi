@@ -1,0 +1,119 @@
+/* 
+
+  Countdown problem in Picat.
+
+  http://stackoverflow.com/questions/21461084/how-to-find-the-exact-set-of-operations-for-a-specific-number
+  """
+  I am trying to implement a program that answers this problem :
+
+    if you are given a specific number (for example : 268)
+    and another 6 numbers (for example : 2,4,5,25,75,100)
+
+  How can I find the operation that gives me the exact answer or the 
+  closest one to it?
+
+  You can answer the previous example by using this operation : 
+     75*4-25-5-2 = 268
+
+  Rules :
+
+    - you can use these arithmetic operations : +, -, *, / , ().
+    - when you use division the reminder must be equal to 0 
+      (6/3 is ok but 6/4 is not ok!).
+    - you can not use the same number more than once. Also, you can avoid 
+      using a number (for example : 100 in our previous example).
+
+  Is there is any better solution than writing the whole possibilities and taking 
+  the closest one? Because this answer would force me to write too many 
+  lines of code, thanks!
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+
+
+main => go.
+
+% small benchmark:
+%  countdown2(268, [2,4,5,25,75,100], true): 8.2s (144 solutions) 
+%  countdown2(268, [2,4,5,25,75,100], false): 52s (156 solutions)
+%
+go ?=>
+
+  L = [2,4,5,25,75,100],
+  % L = [1,5,10,25,50,100],
+  % L = [1,2,7,7],
+  % S = 124,
+  S = 268,
+  % S = 100,
+  % S = 100.5, % this works since we are dealing with floats in the check
+  % S = 1, 
+  % S = 2000,
+  % S = 1.23, % 6 solutions
+
+
+  UseAll = true, % using all numbers?
+  countdown2(S,L,UseAll),
+  fail,
+  nl.
+
+go =>
+  println(length=length(get_global_map().keys())).
+
+
+   
+
+%
+% Example:
+%     countdown2(100,[1,2,3,4,5,6,7],true)
+%
+countdown2(X,Nums,UseAll) =>
+
+  % Since we are using permutations, there can
+  % be duplicates (with different Selects).
+  % Map fixes that...
+
+  Ops = ["+","-","*","/"], % using integer division
+  OpsNoDiv = ["+","-","*"],
+
+  Len = Nums.length,
+  Op = new_list(Len-1),
+  permutation(Nums,Ns), % any given permutation of numbers
+  Selects = new_list(Len), % 1: select this number, 0: don't
+  foreach(I in 1..Len) 
+    if UseAll then
+       Selects[I] := 1
+    else
+       member(Selects[I], [0,1])
+    end
+  end,
+  S = "",
+  foreach(I in 1..Len-1)
+    if Selects[I] = 1 then
+      if Nums[I] = 0 then
+         member(Op[I], OpsNoDiv)
+      else
+         member(Op[I], Ops)
+      end,
+      S := S ++ Ns[I].to_string() ++ Op[I]
+    end
+  end,
+  S := S ++ Ns[Len].to_string(),
+  if sum(Selects) > 1 then
+     T = 1.0*S.flatten().parse_term().apply()
+  else 
+     T = S
+  end,
+  
+  1.0*X = T,
+
+  % if we haven't seen this solution
+  if not(get_global_map().has_key(S)) then
+     println([S.flatten(),T,get_global_map().keys().length]),
+     get_global_map().put(S,1)
+  end.

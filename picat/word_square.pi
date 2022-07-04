@@ -1,0 +1,250 @@
+/* 
+
+  Word square in Picat.
+
+  From http://en.wikipedia.org/wiki/Word_square
+  """
+  A word square is a special case of acrostic. It consists of a set of words,
+  all having the same number of letters as the total number of words (the
+  'order' of the square); when the words are written out in a square grid
+  horizontally, the same set of words can be read vertically.
+  """
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+
+go =>
+   Dict = "words_lower.txt",
+   % Dict = "unixdict.txt",
+   Len = 5,
+   writeln(len=Len),
+   Words = read_word_list3(Dict, Len),
+   % Words = [W : W in read_file_lines(Dict),length(W) = Len],
+   NumWords = Words.length,
+   Num = NumWords, % a random sample
+   writeln([numRandomWords=NumWords, num=Num]),
+   Selected = new_map(),
+   _ = random2(),
+   foreach(_I in 1..Num)
+     R = 1+random() mod NumWords,
+     Selected.put(Words[R],1)
+   end,
+   % println(Selected),
+   Words2 = [convert_word(W) : W in Selected.keys()],
+   % writeln(words=Words2),
+   % time2(word_square(Len,Words2.sort(),[ffd,updown])),
+   time2(word_square(Len,Words2.sort(),[ffd,split])),
+   nl.
+
+/*
+[ff,updown]
+numWords=21830
+solve
+[10915,1686,3240,14004,16024]
+labor
+azyme
+byzas
+omagh
+resht
+
+CPU time 5.84 seconds.
+
+[forward,updown]
+numWords=21830
+solve
+[10915,1686,3240,14004,16024]
+labor
+azyme
+byzas
+omagh
+resht
+
+CPU time 5.829 seconds.
+
+[leftmost,updown]
+numWords=21830
+solve
+[10915,1686,3240,14004,16024]
+labor
+azyme
+byzas
+omagh
+resht
+
+CPU time 5.881 seconds.
+
+[max,updown]
+numWords=21830
+solve
+[10915,1686,3240,14004,16024]
+labor
+azyme
+byzas
+omagh
+resht
+
+CPU time 5.857 seconds.
+
+[min,updown]
+numWords=21830
+solve
+[10915,1686,3240,14004,16024]
+labor
+azyme
+byzas
+omagh
+resht
+
+CPU time 5.852 seconds.
+
+*/
+go2 =>
+
+   Len = 5,
+   writeln(len=Len),
+   Words = read_word_list3("words_lower.txt", Len),
+   variable_selection(Variable),
+   value_selection(Value),
+
+   Timeout = 10000, % 10s
+   Success = [],
+   foreach(Var in Variable, Val in Value)
+        writeln([Var,Val]),
+        time(time_out(word_square(Len,Words,[Var,Val]), Timeout, Status)),
+        writeln(status=Status),
+        if Status == success then
+           Success := Success ++ [[Var,Val]]
+        end
+   end,
+   writeln(success=Success),
+   nl.
+
+%
+% Each single selection on its own.
+%
+go3 =>
+
+   Len = 5,
+   writeln(len=Len),
+   Words = read_word_list("words_lower.txt", Len),
+
+   variable_selection(Variable),
+   value_selection(Value),
+   All = Variable ++ Value,
+   Timeout = 7000, % 7s
+   Success = [],
+   foreach(A in All)
+        writeln([A]),
+        time(time_out(word_square(Len,Words,[A]), Timeout, Status)),
+        writeln(status=Status),
+        if Status == success then
+           Success := Success ++ [[A]]
+        end
+   end,
+   writeln(success=Success),
+   nl.
+
+
+% Variable selection
+variable_selection(Selection) => 
+  Selection = [backward,constr,degree,ff,ffc,forward,inout,leftmost,max,min].
+
+% Value selection
+value_selection(Selection) => 
+  Selection = [down,updown,split,reverse_split].
+
+word_square(Len,Words,Labeling) => 
+
+   Alpha = split("abcdefghijklmnopqrstuvwxyz","").flatten(),
+
+   NumWords = Words.length,
+   writeln(numWords=NumWords),
+
+   % decision variables
+   E = new_list(Len),
+   E :: 1..NumWords,
+
+   % constraints
+
+   all_different(E),
+
+   % check the overlapping positions
+   foreach(I in 1..Len, J in 1..Len)  
+       % Words[E[I], J] #= Words[E[J],I]
+       matrix_element(Words,E[I],J,Val),
+       matrix_element(Words,E[J],I,Val)
+   end,
+ 
+   writeln(solve),
+   solve(Labeling, E),
+
+   writeln(E),
+   foreach(V in E)
+     println([Alpha[C] : C in Words[V]])
+   end,
+
+   nl.
+   
+/*
+matrix_element(X, I, J, Val) =>
+  freeze(I, (nth(I, X, Row),freeze(J,nth(J,Row,Val)))).
+
+% matrix_element(X, I, J, Val) =>
+%   element(I, X, Row),
+%   element(J, Row, Val).
+
+% matrix_element(X, I, J, Val) =>
+%    freeze(I, (element(I, X, Row),freeze(J,element(J,Row,Val)))).
+*/
+
+
+read_word_list(File, Len) = Words =>
+    FD = open(File),    
+    % Words = new_map(),
+    Words = [],
+    while (not at_end_of_stream(FD)) 
+       Word := read_line(FD),
+       if Word.length == Len then
+          Words := Words ++ [convert_word(Word)]
+       end
+    end,
+    close(FD).
+
+read_word_list2(File, Len) = Words =>
+    FD = open(File),    
+    Words = [],
+    while (not at_end_of_stream(FD)) 
+       Word = read_line(FD),
+       if Word.length == Len then
+          Words := Words ++ [Word]
+       end
+    end,
+    close(FD).
+
+read_word_list3(File, Len) = [W : W in read_file_lines(File),length(W) == Len].
+
+    
+% We assume that the words are lower case
+convert_word(Word) = Convert =>
+  Convert = [],
+  foreach(C in Word) 
+     Convert := Convert ++ [ord(C) - 96]
+  end.
+
+
+random3(Max) = Rand =>
+   statistics(runtime,[A,B]), 
+   statistics(program,[C,D]), 
+   statistics(heap,[E,F]), 
+   Seed = 2*A+5*B+7*C+11*D+13*E+47*F,
+   % writeln(seed=Seed),
+   Rand = random(Seed) mod Max.
+   % Rand = Seed mod (Max).

@@ -1,0 +1,285 @@
+/* 
+
+  'Are you the one?' problem in Picat.
+
+  From
+  "'Are You The One?' Finding the matching through SAS Constraint Programming"
+  https://blogs.sas.com/content/operations/2018/08/14/are-you-the-one/
+  """
+  According to Wikipedia, "Are You The One?" is a reality TV show produced by MTV,
+  in which a group of men and women are secretly paired into male-female couples via
+  a matchmaking algorithm. Then, while living together, the contestants try to identify
+  all of these "perfect matches." If they succeed, the entire group shares a prize of up to $1 million.
+  
+  In each episode, the participants get two new pieces of information about the coupling:
+   - They get to choose one couple to go to the "truth booth" and ask if that couple
+     is a perfect match or not.
+   - They all pair up in a "matching ceremony" and get to know how many couples they
+     got right (not which ones though).
+  
+  This way, after each episode they have an increasing amount of information to find
+  their matches. If they don't find it by episode 10, they lose.
+  
+  The math
+  
+  This problem can be solved through constraint programming because we're attempting to
+  find all possible solutions (couples matches) that satisfy certain constraints (such
+  as "Pete and Lola are NOT a couple" or "out of these given 10 couples only 2 are correct").
+  The more information you get as the weeks go by, the more constrained your problem
+  is and the fewer feasible solutions you have - until you are left with only one
+  (hopefully at most by week 10).
+  """
+
+
+  This version is slightly faster than http://hakank.org/picat/are_you_the_one.pi 
+  due to a different method of searching all the solution: a fail loop instead 
+  of findall/3 in wrapper/10. 
+  This is noticeable in go3/0, especially for week 2 (which has 390046 solution).
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+
+
+main => go.
+
+%
+% First problem instance, 6 weeks. 
+% No fixed matching so we rely on the "heat map"
+%
+go =>
+  Problem = 1,
+  problem(Problem,N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs),
+  wrapper(N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs,_NumSolutions),
+  nl.
+
+%
+% Second problem instance, 8 weeks. We got a full matching.
+%
+go2 =>
+  Problem = 2,
+  problem(Problem,N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs),
+  wrapper(N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs,_NumSolutions),
+  nl.
+
+
+%
+% Show the progress of each week (using second problem instance, 8 weeks).
+% Number of solutions for weeks 2..8: [390046,105376,18980,2198,459,8,1]
+%
+go3 => 
+  Problem = 2,
+  problem(Problem,N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs),
+
+  Solutions = [],
+  % Start at Week 2
+  foreach(W in 2..NumWeeks) 
+     println(week=W),
+     wrapper(N,Boys,Girls,BoysNames,GirlsNames,
+            W,
+            [CorrectMatches[C] : C in 1..W],
+            [TruthBooth[C] : C in 1..W],
+            CeremonyPairs,NumSolutions),
+     Solutions := Solutions ++ [NumSolutions]
+  end,
+  println(numSolutions=Solutions),
+  nl.
+
+
+%
+% Wrapper for everything.
+%
+wrapper(N,_Boys,_Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs, NumSolutions) => 
+ % translate CeremonyPairs to [Week,Boy,Girl]
+ Pairs = [],
+ foreach({W,G} in zip(1..NumWeeks,CeremonyPairs.transpose()))
+   foreach(I in 1..N) 
+     Pairs := Pairs ++ [[W,I,G[I]]]
+   end
+ end,
+
+ %
+ % Note: This is where this model differs from http://hakank.org/picat/are_you_the_one.pi
+ %
+ % Get all solutions to create a "heat map" of the probable matches.
+ % Here we create a global map to contain the matrix M for direct 
+ % updating the matrix (heat map).
+ %
+ Map = get_global_map(),
+ M = new_array(N,N),
+ bind_vars(M,0),
+ Map.put(m,M),
+ Map.put(count,0),
+ are_you_the_one(N,NumWeeks,CorrectMatches,TruthBooth, Pairs, Assign),
+ if nonvar(Assign) then
+   MM = Map.get(m),
+   foreach(I in 1..N, J in 1..N)
+     MM[I,J] := MM[I,J] + Assign[I,J]
+   end,
+   Map.put(m,MM),
+   Map.put(count,Map.get(count)+1),
+   fail
+ else 
+   true
+ end,
+ M := Map.get(m),
+
+ % .. and now we're back to the old version. 
+
+ NumSolutions = Map.get(count),
+ println("Number of solutions"=NumSolutions),
+ println("The score matrix ('heat map'):\n"),
+ println("          " ++ [to_fstring("%7s", to_string(G)) : G in GirlsNames].join()),
+ foreach(I in 1..N)
+   printf("%-7s  ", to_string(BoysNames[I])),
+   foreach(J in 1..N)
+     printf("%8d", M[I,J])
+   end,
+   nl
+ end,
+
+ println("\nThe (max) 20 most probable couples:\n"),
+ foreach({C,T} in zip(1..N*N, sort([ [M[I,J],BoysNames[I],GirlsNames[J]] : I in 1..N, J in 1..N]).reverse()), T[1] > 0, C <= 20)
+   println(T)
+ end,
+
+ println("\nThe impossible couples:\n"),
+ println([ [BoysNames[I],GirlsNames[J]] : I in 1..N, J in 1..N, M[I,J] == 0]),
+ nl.
+
+
+%
+% One solution of the problem.
+%
+are_you_the_one(N,NumWeeks,CorrectMatches,TruthBooth, Pairs, Assign) ?=>
+  Assign = new_array(N,N),
+  Assign :: 0..1,
+
+  % Exactly one match per person
+  foreach(I in 1..N) 
+    sum([Assign[I,J] : J in 1..N]) #= 1,
+    sum([Assign[J,I] : J in 1..N]) #= 1
+  end,
+  
+  % Check the number of correct matches per week.
+  foreach(W in 1..NumWeeks)
+   sum([Assign[B,G] : [WW, B,G] in Pairs, W=WW]) #= CorrectMatches[W]
+  end,
+
+  % Handle the Truth Booth results.
+  foreach(W in 1..NumWeeks)
+     Assign[TruthBooth[W,1],TruthBooth[W,2]] #= TruthBooth[W,3]
+  end,
+
+  solve($[ffd,split],Assign).
+
+are_you_the_one(_N,_NumWeeks,_CorrectMatches,_TruthBooth, _Pairs, _M) => true.
+
+
+
+
+%
+% Problem 1: No full matching.
+%
+problem(1,N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs) =>
+  N = 11,
+  NumWeeks = 5,
+
+  % Boys
+  [Anthony,Clinton,Dimitri,Ethan,Joe,Kareem,Keith,Malcolm,Michael,Shad,Tyler] = [I : I in 1..N],
+  Boys = [Anthony,Clinton,Dimitri,Ethan,Joe,Kareem,Keith,Malcolm,Michael,Shad,Tyler],
+  BoysNames = [anthony,clinton,dimitri,ethan,joe,kareem,keith,malcolm,michael,shad,tyler],
+
+  % Girls
+  [Alexis,Alivia,Audrey,Diandra,Geles,Jada,Keyana,Nicole,Nurys,Uche,Zoe] = [I : I in 1..N],
+  Girls = [Alexis,Alivia,Audrey,Diandra,Geles,Jada,Keyana,Nicole,Nurys,Uche,Zoe],
+  GirlsNames = [alexis,alivia,audrey,diandra,geles,jada,keyana,nicole,nurys,uche,zoe],
+
+  % Number of correct matches for a specific week
+  CorrectMatches = [3,1,2,3,1],
+  % The Truth Booth result (1 if this couple matches, 0 if not)
+  TruthBooth = [
+     [Ethan,    Keyana,   0],
+     [Anthony,  Geles,    0],
+     [Malcolm,  Nurys,    0],
+     [Dimitri,  Nicole,   0],
+     [Clinton,  Uche,     0]
+  ],
+
+  % The pairing each week. Each line corresponds to one of the boys, Anthony, Clinton, Dimitri, etc
+  CeremonyPairs = [
+      [Geles, Diandra,  Jada,  Keyana,Nicole],
+      [Uche,  Uche,  Uche,  Uche,  Jada],
+      [Diandra,  Nicole,Nurys, Alexis,Uche],
+      [Jada,  Jada,  Alexis,Nicole,Geles],
+      [Zoe,Audrey,Zoe,Zoe,Zoe],
+      [Alivia,Alivia,Alivia,Diandra,  Alivia],
+      [Alexis,Alexis,Diandra,  Nurys, Alexis],
+      [Nurys, Nurys, Geles, Alivia,Diandra],
+      [Keyana,Keyana,Audrey,Geles, Nurys],
+      [Audrey,Geles, Keyana,Audrey,Audrey],
+      [Nicole,Zoe,Nicole,Jada,  Keyana]
+      ].
+
+%
+% Problem 2: A full matching.
+%
+%
+% """
+% Now use the following data (Season 6, Week 8) and my optimization and heat map code. Be ready for a surprise!
+% """
+%
+% The "surprise" is that now all the couples are matched:
+% [1,tyler,nicole]
+% [1,shad,audrey]
+% [1,michael,keyana]
+% [1,malcolm,alivia]
+% [1,keith,jada]
+% [1,kareem,diandra]
+% [1,joe,uche]
+% [1,ethan,zoe]
+% [1,dimitri,nurys]
+% [1,clinton,geles]
+% [1,anthony,alexis]
+%
+problem(2,N,Boys,Girls,BoysNames,GirlsNames,NumWeeks,CorrectMatches,TruthBooth,CeremonyPairs) =>
+  N = 11  ,
+  NumWeeks = 8,
+  [Anthony,Clinton,Dimitri,Ethan,Joe,Kareem,Keith,Malcolm,Michael,Shad,Tyler] = [I : I in 1..N],
+  Boys = [Anthony,Clinton,Dimitri,Ethan,Joe,Kareem,Keith,Malcolm,Michael,Shad,Tyler],
+  BoysNames = [anthony,clinton,dimitri,ethan,joe,kareem,keith,malcolm,michael,shad,tyler],
+
+  [Alexis,Alivia,Audrey,Diandra,Geles,Jada,Keyana,Nicole,Nurys,Uche,Zoe] = [I : I in 1..N],
+  Girls = [Alexis,Alivia,Audrey,Diandra,Geles,Jada,Keyana,Nicole,Nurys,Uche,Zoe],
+  GirlsNames = [alexis,alivia,audrey,diandra,geles,jada,keyana,nicole,nurys,uche,zoe],
+
+  CeremonyPairs = [
+    [Geles,Diandra,Jada,Keyana,Nicole,Keyana,Keyana,Alivia],
+    [Uche,Uche,Uche,Uche,Jada,Geles,Geles,Geles],
+    [Diandra,Nicole,Nurys,Alexis,Uche,Diandra,Diandra,Diandra],
+    [Jada,Jada,Alexis,Nicole,Geles,Jada,Zoe,Alexis],
+    [Zoe,Audrey,Zoe,Zoe,Zoe,Alexis,Uche,Jada],
+    [Alivia,Alivia,Alivia,Diandra,Alivia,Nurys,Nurys,Nurys],
+    [Alexis,Alexis,Diandra,Nurys,Alexis,Zoe,Jada,Audrey],
+    [Nurys,Nurys,Geles,Alivia,Diandra,Alivia,Alexis,Uche],
+    [Keyana,Keyana,Audrey,Geles,Nurys,Uche,Audrey,Keyana],
+    [Audrey,Geles,Keyana,Audrey,Audrey,Audrey,Alivia,Zoe],
+    [Nicole,Zoe,Nicole,Jada,Keyana,Nicole,Nicole,Nicole]
+  ],
+  TruthBooth = [
+    [Ethan,    Keyana,   0],
+    [Anthony,  Geles,    0],
+    [Malcolm,  Nurys,    0],
+    [Dimitri,  Nicole,   0],
+    [Clinton,  Uche,     0],
+    [Keith,    Alexis,   0],
+    [Keith,    Alivia,   0],
+    [Michael,  Audrey,   0]
+  ], 
+  CorrectMatches = [3,1,2,3,1,4,5,3].
