@@ -35,6 +35,7 @@
   See also his MiniZinc page: http://www.hakank.org/minizinc/
 """
 from collections import namedtuple
+
 from ortools.sat.python.cp_model import (
     CpModel,
     CpSolver,
