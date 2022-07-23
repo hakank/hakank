@@ -30,7 +30,7 @@
   "Discrete" Mathematics       2..7
   Calculated Bets             26..31
 
-  This model was ported to Google CP Solver by James Addison, jay@jp-hosting.net
+  Ported from MiniZinc to Google CP Solver by James Addison, jay@jp-hosting.net
   The MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
   See also his MiniZinc page: http://www.hakank.org/minizinc/
 """
