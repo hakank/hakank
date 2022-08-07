@@ -1,0 +1,1317 @@
+/* 
+
+  Symbolic function induction in Picat.
+
+  From https://www.doc.ic.ac.uk/~mpd37/teaching/2014/ml_tutorials/2014-10-15-wood-anglican.pdf
+  Page 34ff
+  """
+  Symbolic Function Induction
+  What’s the next value? And the function?
+
+  Input    Output
+  ---------------
+  1        5
+  2        3
+  3        1
+  4        ?
+  """
+
+  This program solves a integer sequence puzzles with symbolic solutions like the
+  one above. Some other examples, which are all solved by this program (see the
+  examples in the data section below):
+
+  * What number should replaced the question mark?
+    1 + 4 = 5
+    2 + 5 = 12
+    3 + 6 = 21
+    5 + 8 =  ?
+
+  * What number should replaced the question mark?
+    9 = 90
+    8 = 72
+    7 = 56
+    6 = 42
+    3 = ?
+
+  *  What number should replaced the question mark?
+        3         9       8
+       44        32      75
+     8   4      7  2    7  ? 
+
+  * Fibonacci sequence: 1,1,2,3,5,8,13,21,?
+
+  * 1,2,6,42,1806, ?
+
+
+  The power - and the drawback - of the program is that it brute forces 
+  (enumerates) all possible solution using Picat's non-determinism (backtracking
+  with fail/0). 
+
+  The program supports the following infix operators:
+  - +, -, *, /, //, **
+  - mod, div, /\, \/
+
+
+  Previously I have used these JGAP and Popper for solving sequence puzzles
+  to get alternative solutions:
+   - Symbolic Regression (JGAP): http://hakank.org/jgap
+     It randomly finds solutions using Genetic Programming, 
+     some solutions are quite unexpecting.
+
+   - Inductive programming (Popper): http://hakank.org/popper/
+     Popper, on the other hand, just find one solution (minimal number
+     of literats in the program), but it can solve much more complex problems 
+     that these kind of sequence puzzles, and it supports both recursive 
+     function as well as predicate invention. 
+     However, currently Popper struggles to find proper constants and one 
+     have to use "named constants" for this. 
+
+  Compared to these two programs, this Picat program is a little easier to 
+  use since it automatically generates alternative solutions. Though it
+  might take a while due to combinatorial explosion.
+
+
+  TODO:
+  - support of floats using some approximate calculation
+  - support of non-infix functions, e.g. user defined functions (e.g. f/2)
+  - a flag that all numbers must be used exactly once, such
+    as for number_puzzle_4 and number_puzzle_4b.
+  - some intelligence, such as symmetry breaking rules that 
+      (a + b) == (b + a)
+  - perhaps: support for recursion of the found function. 
+    This will probably require a major rewrite of the program.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+
+  % data(simple,Data,Vars,Unknown,Ops,Constants,MaxC), % 7-2x
+  
+  % data(power_test,Data,Vars,Unknown,Ops,Constants,MaxC),    
+  % data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxC),
+  
+  % data(number_puzzle_4,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(number_puzzle_4b,Data,Vars,Unknown,Ops,Constants,MaxC),    
+  
+  % data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(facebook_puzzle_b,Data,Vars,Unknown,Ops,Constants,MaxC),
+  
+  % data(facebook_puzzle2,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(facebook_puzzle2_b,Data,Vars,Unknown,Ops,Constants,MaxC),
+
+  % data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxC),
+ 
+  % data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxC),
+
+  % data(sequence_1,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(sequence_2,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(sequence_3,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(sequence_4,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(sequence_6,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(sequence_7,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(sequence_8,Data,Vars,Unknown,Ops,Constants,MaxC),
+  
+  % data(triangular,Data,Vars,Unknown,Ops,Constants,MaxC),
+
+  data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxC),
+
+  % data(mod_test,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(majority_on_3,Data,Vars,Unknown,Ops,Constants,MaxC), % ???
+  % data(if_then_else,Data,Vars,Unknown,Ops,Constants,MaxC), % ???
+  
+  %% Unsuccessful experiments
+  %% data(catalan,Data,Vars,Unknown,Ops,Constants,MaxC), % nope
+  %% data(leap_year,Data,Vars,Unknown,Ops,Constants,MaxC), % nope  
+  %% data(sequence_5,Data,Vars,Unknown,Ops,Constants,MaxC), % nope, floats
+  %% data(f_test,Data,Vars,Unknown,Ops,Constants,MaxC), % nope, non-inflix function
+
+
+  member(MaxCount,1..MaxC),
+  println(maxCount=MaxCount),
+  induce(Data,Unknown,Ops,Constants,Vars,MaxCount,_Res),
+  fail,
+  nl.
+
+
+induce(Data,Unknown,Ops,Constants,Vars,MaxCount,Res) =>
+  Count = 1,
+  Code = get_op(Count,MaxCount,Constants,Vars,Ops),
+  % println(code=Code),
+  All = [],
+  foreach([Vals,Y] in Data)
+    Y2 = check(Code, Vars,Vals),
+    % printf("code:%w vals: %w y: %w y2: %w\n",Code,Vals,Y,Y2),
+    % if abs(1.0*Y-1.0*Y2) <= 0.1 then % TESTING float
+    if 1.0*Y == 1.0*Y2 then
+      All := All ++ [[Vals,Y]]
+    else
+      fail
+    end
+  end,
+  if All.length == Data.length then
+    Check = check(Code,Vars,Unknown),  
+    println(code=Code=All=[Unknown=Check])
+    
+    %% This is for number_puzzle_4b to
+    %% make it simpler to identify the proper solutions,
+    %% i.e. that all numbers are used exactly once.
+    % , NumUsed = [C : C in Code, digit(C)].remove_dups,
+    % if NumUsed.len == Data[1,1].length then 
+    %   println(numUsed=NumUsed=len=NumUsed.len)
+    % end
+
+  end,
+  flush(stdout).
+
+%
+% Check the code using Vars -> Vals
+%
+check(Code,Vars,Vals) = Res =>
+  Code2 = Code,
+  foreach({Var,Val} in zip(Vars,Vals))
+    Code2 := replace_string(Code2,Var,Val.to_string)
+  end,
+  % catch division by 0 etc  
+  catch(Res = parse_term(Code2).apply(),_Error,fail).
+
+
+get_constant(Constants,Vars) = Constant.to_string =>
+  (member(Constant,Constants) ; member(Constant,Vars)).
+
+
+table
+get_op(Count,MaxCount,Constants,Vars,Ops) = Res =>
+  Count <= MaxCount,
+  member(Op,Ops),
+  V1 = get_constant(Constants,Vars),
+  (
+    V2 = get_op(Count+1,MaxCount,Constants,Vars,Ops) 
+   ;
+    V2 = get_constant(Constants,Vars)
+  ),
+  (Res = "(" ++ V1 ++ " " ++ Op ++ " " ++ V2 ++ ")"
+  ; 
+   Res = "(" ++ V2 ++ " " ++ Op ++ " " ++ V1 ++ ")"
+  ).
+
+
+% Create data for a sequence
+% Input:
+% - Seq: a list of input (integers)
+% - N: size of each slot
+% Output:
+% - Data: The data matrix
+% - Unknown: The unknown (the last data entry)
+% - Vars: "a","b", .... (of size N)
+% 
+% Example (see data(fibonacci,..))
+% *  make_seq([1,1,2,3,5,8,13,21],2,Data,Unknown,Vars),
+%    Generates: 
+%    data = [[[1,1],2],[[1,2],3],[[2,3],5],[[3,5],8],[[5,8],13],[[8,13],21]]
+%    Unknown = [8,13]
+%    Vars: ["a","b"]
+%
+% *  make_seq([1,1,2,3,5,8,13,21],3,Data,Unknown,Vars),
+%   generates the following
+%   Data:[[[1,1,2],3],[[1,2,3],5],[[2,3,5],8],[[3,5,8],13],[[5,8,13],21]]
+%    Unknown: [5,8,13]
+%    Vars: ["a","b","c"]
+% 
+make_seq(Seq,N,Data,Unknown,Vars) =>
+  Len = Seq.len,
+  Data1 = [],
+  foreach(I in 1..Len-N)
+    T = [ [Seq[I..I+N-1],Seq[I+N]] ],
+    Data1 := Data1 ++ T
+  end,
+  Unknown = Seq[Len-N+1..Len],
+  alpha(Alpha),
+  Vars = [C.to_string : C in Alpha[1..N]],
+  Data = Data1.  
+
+alpha("abcdefghijklmnopqrstuvwxyz").
+
+%
+% Given a sequence (Seq), this returns a "pointwise" puzzle.
+%
+% Data of the form
+%   [
+%     [[1],Seq[1]],
+%     [[2],Seq[2]],
+%     [[3],Seq[3]],
+%     ..
+%  ]
+% The assumption is that date values starts with 1.
+%
+% Unknown is Seq.len + 1
+% And Vars is simply ["a"].
+%
+% Example:
+%  make_point_seq([1,8,27,64,125,217],Data,Unknown,Vars),
+% Generates:
+%  Data: [[[1],1],[[2],8],[[3],27],[[4],64],[[5],125],[[6],216]]
+%  Unknown: [7]
+%  Vars = ["a"]
+%
+make_point_seq(Seq,Data,Unknown,Vars) =>
+  Data1 = [],
+  Len = Seq.len,
+  foreach(I in 1..Len)
+    Data1 := Data1 ++ [[[I],Seq[I]]]
+  end,
+  Data = Data1,  
+  Unknown = [Len+1],
+  Vars = ["a"].
+
+
+
+%
+% Generalized version of replacing a _string_ with a character or string
+% (which is not possible with Picat's replace/3).
+% Example:
+%   Picat> S=replace_string("xabc_nd_abc","abc","xyz")           
+%   S = [x,x,y,z,'_',n,d,'_',x,y,z]
+% 
+replace_string(String,From,To) = Result.flatten =>
+    replace_string(Result,From,To,String,[]).
+
+replace_string([To|Cs],From,To) --> some(From), replace_string(Cs,From,To), !. % First string
+replace_string([C,To|Cs],From,To) --> [C], some(From), replace_string(Cs,From,To), !.
+replace_string([C|Cs],From,To)    --> [C], replace_string(Cs,From,To).
+replace_string([],_From,_To)      --> [].
+
+% Maches anything (as much as possible) with capture.
+any([C|Rest]) --> [C], any(Rest).
+any([])  --> [].
+
+% Accept at least one character, with capture
+some(Cs) --> any(Cs), {Cs.len > 0}.
+
+
+%
+% Data
+%
+
+/*
+  This is the one that started/inspired this program.
+
+  From https://www.doc.ic.ac.uk/~mpd37/teaching/2014/ml_tutorials/2014-10-15-wood-anglican.pdf
+  Page 34ff
+  """
+  Symbolic Function Induction
+  What’s the next value? And the function?
+
+  Input    Output
+  ---------------
+  1        5
+  2        3
+  3        1
+  4        ?
+  """
+
+  Solutions:
+  
+  code = (7 - (x + x)) = [[[1],5],[[2],3],[[3],1]] = [[4] = -1]
+  code = (7 - (2 * x)) = [[[1],5],[[2],3],[[3],1]] = [[4] = -1]
+  code = (7 - (x * 2)) = [[[1],5],[[2],3],[[3],1]] = [[4] = -1]
+  code = ((7 - x) - x) = [[[1],5],[[2],3],[[3],1]] = [[4] = -1]
+
+  I.e. 7 - 2*x
+
+*/
+data(simple,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  % Data = [[[1],5],
+  %         [[2],3],
+  %         [[3],1]
+  %         ],
+  % Vars = ["x"],
+  % Unknown = [4],
+  
+  % Shorter:
+  make_point_seq([5,3,1],Data,Unknown,Vars),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  MaxC = 3.
+
+
+/*
+  X**2 - 1
+  solutions:
+  maxCount = 2
+  code = ((x * x) - 1) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  maxCount = 3
+  code = (0 + ((x * x) - 1)) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  code = (((x * x) - 1) + 0) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  code = (1 + ((x * x) - 2)) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  code = (((x * x) - 2) + 1) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  code = (2 + ((x * x) - 3)) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  code = (((x * x) - 3) + 2) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  code = (3 + ((x * x) - 4)) = [[[1],0],[[2],3],[[3],8]] = [[4] = 15]
+  ...
+*/
+data(power_test,Data,Vars,Unknown,Ops,Constants,MaxC) => 
+  % Data = [[[1],0],
+  %         [[2],3],
+  %         [[3],8]],
+  % Vars = ["x"], 
+  % Unknown = [4].
+  
+  make_point_seq([0,3,8],Data,Unknown,Vars),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  MaxC = 3.
+
+
+/*
+  Originally from Roger Alsing/Johans's blog post
+  "Genetic Programming: Code smarter than you"
+  https://rogerjohansson.blog/2010/02/14/genetic-programming-code-smarter-than-you/
+
+  Given the data table below, what is
+     9 7 ?
+  2 3 10
+  7 2 63
+  6 5 66
+  8 4 96
+  9 7 ?
+  
+  Solutions:
+  code = (x * (x + y)) = [[[2,3],10],[[7,2],63],[[6,5],66],[[8,4],96]] = [[9,7] = 144]
+  code = ((x + y) * x) = [[[2,3],10],[[7,2],63],[[6,5],66],[[8,4],96]] = [[9,7] = 144]
+  code = (x * (y + x)) = [[[2,3],10],[[7,2],63],[[6,5],66],[[8,4],96]] = [[9,7] = 144]
+  code = ((y + x) * x) = [[[2,3],10],[[7,2],63],[[6,5],66],[[8,4],96]] = [[9,7] = 144]
+
+  Cf:
+  - http://hakank.org/jgap/number_puzzle1.conf
+  - http://hakank.org/popper/number_puzzle1/
+
+*/
+data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[2,3],10],
+          [[7,2],63],
+          [[6,5],66],
+          [[8,4],96]
+          ],
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  Vars = ["x","y"],
+  MaxC = 3,  
+  Unknown = [9,7].
+  
+
+/*
+  From Richard Wiseman It's the Friday Puzzle 2010-02-26
+  http://richardwiseman.wordpress.com/2010/02/26/its-the-friday-puzzle-48/
+  """
+  Imagine that you have to make the number 8 from the numbers 4, 7, 6 and 3.  
+  The rules are simple.  You cannot join the numbers together (so 4 and 7 cannot become 47),  
+  have to use each number once and only once, and are only allowed to add, subtract, 
+  multiply or divide them.  You might do something like this.....
+  4+7 = 11
+  11-6=5
+  and 5+3=8
+   
+  So, here is the puzzle....can you make the number 24 with the number 5, 5, 5, and 1 
+  (again, you cannot join the numbers together, have to use each number once and only 
+  once, and are only allowed to add, subtract, multiply or divide them)?
+  """
+   
+  The answer involves some trickery
+  http://richardwiseman.wordpress.com/2010/03/01/answer-to-the-friday-puzzle-41/
+  """
+  Most people assume that the solution involves whole numbers.  
+  In fact, once you break that assumption, the puzzle becomes much easier.
+   
+     1 / 5 = .2
+     5 - .2 = 4.8
+     4.8 x 5 =24
+  
+  """ 
+  I.e.:
+   (5 - 1/5) x 5 = 24
+    
+  which is something like
+    (a - d/b) * c
+  
+  where a, b, and c all can change places.
+
+  Notes:
+  - Here we don't use any variables or unknowns and just use the given numbers.
+  - It takes a while to get the first proper solution, i.e. maxCount = 4.
+  - There is no way to enforce that we use the numbers exactly once.
+
+  Solutions (including some wrong):
+  ...
+  code = (5 * (5 - (1 / 5))) = [[[5,5.5,1],24]] = [[] = 24.0]  BAD
+  code = ((5 - (1 / 5)) * 5) = [[[5,5.5,1],24]] = [[] = 24.0]  GOOD!
+  code = (((5 * 5) - 1) / 1) = [[[5,5.5,1],24]] = [[] = 24.0]  BAD
+  maxCount = 4
+  code = (1 + (((5 * 5) - 1) - 1)) = [[[5,5.5,1],24]] = [[] = 24] BAD
+  code = ((((5 * 5) - 1) - 1) + 1) = [[[5,5.5,1],24]] = [[] = 24] BAD 
+  code = (5 + (((5 * 5) - 5) - 1)) = [[[5,5.5,1],24]] = [[] = 24] GOOD!
+  code = ((((5 * 5) - 5) - 1) + 5) = [[[5,5.5,1],24]] = [[] = 24] GOOD!
+  code = (5 + ((5 * (5 - 1)) - 1)) = [[[5,5.5,1],24]] = [[] = 24] GOOD!
+  code = (((5 * (5 - 1)) - 1) + 5) = [[[5,5.5,1],24]] = [[] = 24] BAD
+  code = (5 + (((5 - 1) * 5) - 1)) = [[[5,5.5,1],24]] = [[] = 24] BAD
+  code = ((((5 - 1) * 5) - 1) + 5) = [[[5,5.5,1],24]] = [[] = 24] BAD
+  code = (5 + (((5 * 5) - 1) - 5)) = [[[5,5.5,1],24]] = [[] = 24] GOOD!
+  ...
+
+
+  Cf http://hakank.org/jgap/number_puzzle4.conf
+*/
+data(number_puzzle_4,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[5,5.5,1],24] ],
+  Ops = ["+","-","*","/"],
+  Constants = [1,5],
+  Unknown = [], % No unknowns since we only use the numbers
+  Vars = [], % No variables, just use the given numbers
+  MaxC = 4.
+
+/*
+  From Richard Wiseman It's the Friday Puzzle 2010-02-26
+  http://richardwiseman.wordpress.com/2010/02/26/its-the-friday-puzzle-48/
+
+  (see number_puzzle_4 above)  
+
+  Same principle as number_puzzle_4 but with the original 
+  problem statement 
+  """
+  make the number 8 from the numbers 4, 7, 6 and 3.
+  """
+
+  As for number_puzzle_4, we must manually weed out the correct solutions,
+  i.e. those that contains all the numbers exactly once.
+  Here we use the (now commented) code in the last if clause in induce/7 
+  which counts the number of used numbers.
+
+  Solutions:
+  code = (4 + ((5 + 7) / 3)) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (((5 + 7) / 3) + 4) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (4 + ((7 + 5) / 3)) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (((7 + 5) / 3) + 4) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (4 * ((3 + 7) / 5)) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (((3 + 7) / 5) * 4) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (4 * ((7 + 3) / 5)) = [[[3,4,5,7],8]] = [[] = 8.0]
+  code = (((7 + 3) / 5) * 4) = [[[3,4,5,7],8]] = [[] = 8.0]
+  ...
+
+
+  Cf http://hakank.org/jgap/number_puzzle4.conf
+  which give a couple of solutions, e.g.
+    (d - c) + (b + a)
+    d - ((c - b) - a)
+    (c - a) * (b - d)
+    (b + a) - (c - d)
+
+*/
+data(number_puzzle_4b,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[3,4,5,7],8] ],
+  Ops = ["+","-","*","/"],
+  Constants = [3,4,5,7],
+  Unknown = [], % No unknowns since we only use the numbers
+  Vars = [], % No variables, just use the given numbers
+  MaxC = 4.
+
+  
+
+
+
+/*
+
+  http://hakank.org/jgap/facebook_puzzle.conf
+
+  https://www.facebook.com/Lustify/posts/1319105168505523?comment_id=1197501380680610&reply_comment_id=130654025754830&notif_id=1620035705731117&notif_t=comment_mention&ref=notif
+   1 + 4 = 5
+   2 + 5 = 12
+   3 + 6 = 21
+   5 + 8 = ??
+
+  Solutions:
+  code = (x + (x * y)) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = ((x * y) + x) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = (x + (y * x)) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = ((y * x) + x) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = (x * (1 + y)) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = ((1 + y) * x) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = (x * (y + 1)) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = ((y + 1) * x) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = (x * (4 + x)) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = ((4 + x) * x) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = (x * (x + 4)) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+  code = ((x + 4) * x) = [[[1,4],5],[[2,5],12],[[3,6],21]] = [[5,8] = 45]
+
+  Here we only get one solution: 45
+
+*/
+data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxC) =>  
+  Data = [[[1,4],5],
+          [[2,5],12],
+          [[3,6],21]
+          ],
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  Vars = ["x","y"],
+  MaxC = 3,  
+  Unknown = [5,8].
+
+
+/*
+  Same as facebook_puzzle but using a different representation
+  which generates a lot of different solutions.
+
+  http://hakank.org/jgap/facebook_puzzle_b.conf
+  https://www.facebook.com/Lustify/posts/1319105168505523
+   1 + 4 = 5
+   2 + 5 = 12
+   3 + 6 = 21
+   5 + 8 = ??
+  Here we "expand" the representation:
+  --> 
+  0 0 0  1 4 5
+  1 4 5  2 5 12
+  2 5 12 3 6 21
+  3 6 21 5 8 ?
+
+  Solutions: 
+  maxCount = 2
+  code = (c + (d + e)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = ((d + e) + c) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = (c + (e + d)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = ((e + d) + c) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = (d + (c + e)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = ((c + e) + d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = (d + (e + c)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = ((e + c) + d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = (d + (d * e)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = ((d * e) + d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = (d + (e * d)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = ((e * d) + d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = (e + (c + d)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = ((c + d) + e) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = (e + (d + c)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = ((d + c) + e) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 25]
+  code = (d * (1 + e)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = ((1 + e) * d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = (d * (e + 1)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = ((e + 1) * d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = (d * (4 + d)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = ((4 + d) * d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = (d * (d + 4)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = ((d + 4) * d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 45]
+  code = (d * (5 + a)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 40]
+  code = ((5 + a) * d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 40]
+  code = (d * (a + 5)) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 40]
+  code = ((a + 5) * d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 40]
+  ...
+  MaxCount 3
+  ...
+  code = (1 + (a + (c + e))) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 24]
+  code = (((a + a) + c) + 5) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 23]
+  code = (5 + (a * (2 + e))) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 35]
+  code = ((a * (6 + a)) + 5) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 32]
+  code = (a + (1 + (c + e))) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 24]
+  code = ((e + (e * a)) + d) = [[[0,0,0,1,4],5],[[1,4,5,2,5],12],[[2,5,12,3,6],21]] = [[3,6,12,5,8] = 37]
+  
+
+  Note that using this representation we get quite a few solutions:
+    25
+    45
+    40
+    24
+    23
+    35
+    32
+    24
+    37
+*/
+data(facebook_puzzle_b,Data,Vars,Unknown,Ops,Constants,MaxC) => 
+  Data = [[[0,0, 0,1, 4],5],
+          [[1,4, 5,2, 5],12],
+          [[2,5,12,3, 6],21]
+          ],
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  Vars = ["a","b","c","d","e"],
+  MaxC = 3,  
+  Unknown = [3,6, 12,5, 8].
+
+
+/* 
+
+  http://hakank.org/jgap/facebook_puzzle2.conf
+  https://www.facebook.com/Heavydsparks/photos/a.1432147377066939/2976473412634320/
+   9 = 90
+   8 = 72
+   7 = 56
+   6 = 42
+   3 = ?
+
+  Solutions:
+  maxCount = 2
+  code = (x + (x * x)) = [[[9],90],[[8],72],[[7],56],[[6],42]] = [[3] = 12]
+  code = ((x * x) + x) = [[[9],90],[[8],72],[[7],56],[[6],42]] = [[3] = 12]
+  code = (x * (1 + x)) = [[[9],90],[[8],72],[[7],56],[[6],42]] = [[3] = 12]
+  code = ((1 + x) * x) = [[[9],90],[[8],72],[[7],56],[[6],42]] = [[3] = 12]
+  code = (x * (x + 1)) = [[[9],90],[[8],72],[[7],56],[[6],42]] = [[3] = 12]
+  code = ((x + 1) * x) = [[[9],90],[[8],72],[[7],56],[[6],42]] = [[3] = 12]
+
+*/
+data(facebook_puzzle2,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[9],90],
+          [[8],72],
+          [[7],56],
+          [[6],42]
+          ],
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  Vars = ["x"],
+  MaxC = 3,  
+  Unknown = [3].
+
+
+/*
+  Same as facebook_puzzle2 but with an "expanded" representation
+  http://hakank.org/jgap/facebook_puzzle2_b.conf
+  https://www.facebook.com/Heavydsparks/photos/a.1432147377066939/2976473412634320/
+   9 = 90
+   8 = 72
+   7 = 56
+   6 = 42
+   3 = ?
+
+  Note: There is an implicit "10 1" for the first equation
+  10  1 9 90
+   9 90 8 72
+   8 72 7 56
+   7 56 6 42
+   6 42 3 ?
+
+  Again, using an expanded representation, generates many (and different) solutions:
+  Solutions:
+  maxCount = 1
+  code = (x * z) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = (z * x) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  maxCount = 2
+  code = (0 + (x * z)) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = ((x * z) + 0) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = (0 + (z * x)) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = ((z * x) + 0) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = (z + (z * z)) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 12]
+  code = ((z * z) + z) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 12]
+  code = ((x * z) - 0) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = ((z * x) - 0) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = ((x * x) - x) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 30]
+  code = (((x * x) - x) + 0) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 30]
+  ...
+  code = (((z * x) + 1) - 1) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 18]
+  code = ((x + (z * z)) - 1) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 14]
+  code = (((x * x) - 1) - z) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 32]
+  code = (x / ((x - z) / z)) = [[[10,1,9],90],[[9,90,8],72],[[8,72,7],56],[[7,56,6],42]] = [[6,42,3] = 6.0]
+
+*/
+data(facebook_puzzle2_b,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[10,1, 9],90],
+          [[9,90, 8],72],
+          [[8,72, 7],56],
+          [[7,56, 6],42]
+          ],
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  Vars = ["x","y","z"],
+  MaxC = 3,  
+  Unknown = [6,42,3].
+
+
+/*
+  
+  http://hakank.org/jgap/pickover_puzzle1.conf
+  https://twitter.com/pickover/status/1504602497280786435
+  Pickover puzzle: https://twitter.com/pickover/status/1504602497280786435
+  (https://gpuzzles.com/mind-teasers/very-easy-number-sequence-puzzle/ )
+  
+   What number should replaced the question mark?
+      3         9       8
+     44        32      75
+   8    4    7   2    7  ? 
+  
+  Encoded as
+     a
+     b
+   c  d 
+
+  i.e. d is the output variable (unknown)
+
+  Solutions:
+  maxCount = 2
+  code = (1 + (9 / a)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.125]
+  code = ((9 / a) + 1) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.125]
+  code = (5 - (a / 3)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.333333333333333]
+  code = (2 * (c - 6)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2]
+  code = ((c - 6) * 2) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2]
+  code = (4 / (9 - c)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.0]
+  code = ((9 + a) / a) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.125]
+  code = ((a + 9) / a) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.125]
+  code = (b / (a + c)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 5.0]
+  code = (b / (c + a)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 5.0]
+  maxCount = 3
+  ...
+  code = (1 + ((b / 4) - c)) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 12.75]
+  code = (((b - 8) / 6) - 2) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 9.166666666666666]
+  code = (b - (10 * (c - 4))) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 45]
+  code = (3 * (8 / (3 + a))) = [[[3,44,8],4],[[9,32,7],2]] = [[8,75,7] = 2.181818181818182]
+
+  The "intended" solution is (probably):
+    (b / (a + c)) = 5
+
+*/
+data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[3,44, 8],4],
+          [[9,32, 7],2]
+          ],
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  Vars = ["a","b","c"],
+  MaxC = 3,  
+  Unknown = [8,75,7].
+
+
+/*
+
+  Fibonacci "expanded" version
+  1,1,2,3
+  1,2,3,5
+  2,3,5,8
+  3,5,8,13
+  5,8,13,21
+  8,13,21,34
+  13,21,34,55
+  21,34,55,89
+  34,55,89,144
+  55,89,144,233
+  89,144,233,377
+
+  Solutions:
+  n = 2
+  data = [[[1,1],2],[[1,2],3],[[2,3],5],[[3,5],8],[[5,8],13],[[8,13],21]]
+  maxCount = 1
+  code = (a + b) = [[[1,1],2],[[1,2],3],[[2,3],5],[[3,5],8],[[5,8],13],[[8,13],21]] = [[8,13] = 21]
+  code = (b + a) = [[[1,1],2],[[1,2],3],[[2,3],5],[[3,5],8],[[5,8],13],[[8,13],21]] = [[8,13] = 21]
+  ...
+
+  Note: Just for demonstration, here we generate N=2..3 (2 is sufficient)
+
+*/
+data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  member(N,2..3),
+  println(n=N),
+  make_seq([1,1,2,3,5,8,13,21],N,Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  MaxC = 2.
+
+
+/*
+  See http://hakank.org/jgap/sequence_puzzle.conf
+  From 
+  "1/20-1/27 Quick Quiz Solution"
+  http://testplease.com/?p=1539
+  """
+  What number comes next in the sequence?
+  1, 8, 27, 64, 125, 216, ...
+  ... 
+  The answer is 343.
+  
+  The sequence was a series of cubed numbers.
+  """
+  Solution
+  maxCount = 1
+  code = (a ** 3) = [[[1],1],[[2],8],[[3],27],[[4],64],[[5],125],[[6],216]] = [[7] = 343]
+  
+*/
+data(sequence_1,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_point_seq([1,8,27,64,125,216],Data,Unknown,Vars),
+  println(data=Data),
+  println(unknown=Unknown),
+  println(vars=Vars),
+  Ops = ["+","-","*","/","**"],
+  Constants = 3..3,          
+  MaxC = 2.
+
+
+/*  
+  See http://hakank.org/jgap/sequence_puzzle.conf
+  From http://wiki.answers.com/Q/What_number_comes_next_in_the_sequence_1_2_6_42_1806
+  
+   1, 2, 6, 42, 1806, ?
+  
+  Solutions:
+  code = (a + (a * a)) = [[[1],2],[[2],6],[[6],42],[[42],1806]] = [[1806] = 3263442]
+  code = ((a * a) + a) = [[[1],2],[[2],6],[[6],42],[[42],1806]] = [[1806] = 3263442]
+  code = (a * (1 + a)) = [[[1],2],[[2],6],[[6],42],[[42],1806]] = [[1806] = 3263442]
+  code = ((1 + a) * a) = [[[1],2],[[2],6],[[6],42],[[42],1806]] = [[1806] = 3263442]
+  code = (a * (a + 1)) = [[[1],2],[[2],6],[[6],42],[[42],1806]] = [[1806] = 3263442]
+  code = ((a + 1) * a) = [[[1],2],[[2],6],[[6],42],[[42],1806]] = [[1806] = 3263442]
+
+*/
+data(sequence_2,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  % Note: Since we don't really know the type of sequence we
+  % test both a "point sequence" and a "recursive sequence".
+  % It's a "recursive" sequence (i.e. make_seq/5) 
+  ( make_point_seq([1,2,6,42,1806],Data,Unknown,Vars)
+    ; 
+    make_seq([1,2,6,42,1806],1,Data,Unknown,Vars)
+  ),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  MaxC = 2.
+
+/*
+
+  http://hakank.org/jgap/sequence_puzzle.conf
+  1.60,
+  2,30,
+  3,20,
+  4,15,
+  5,12
+  6, ?
+
+  Solutions:
+  maxCount = 1
+  code = (60 / a) = [[[1],60],[[2],30],[[3],20],[[4],15],[[5],12]] = [[6] = 10.0]
+
+*/
+data(sequence_3,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_point_seq([60, 30, 20, 15, 12],Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10 ++ [60],
+  MaxC = 2.
+
+
+/* 
+  From http://in.answers.yahoo.com/question/index?qid=20091119001407AAMWPf5
+  1,2,
+  2,12,
+  3,90,
+  4,104
+
+  Solutions:
+  maxCount = 3
+  code = (a * (a + (a ** a))) = [[[1],2],[[2],12],[[3],90],[[4],1040]] = [[5] = 15650]
+  code = ((a + (a ** a)) * a) = [[[1],2],[[2],12],[[3],90],[[4],1040]] = [[5] = 15650]
+  code = (a * ((a ** a) + a)) = [[[1],2],[[2],12],[[3],90],[[4],1040]] = [[5] = 15650]
+  code = (((a ** a) + a) * a) = [[[1],2],[[2],12],[[3],90],[[4],1040]] = [[5] = 15650]
+
+  Cf http://hakank.org/jgap/sequence_puzzle.conf
+
+*/
+data(sequence_4,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_point_seq([2,12,90,1040],Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/","**"],
+  Constants = 0..1,
+  MaxC = 3.
+
+
+/* 
+  http://answers.yahoo.com/question/index?qid=20090822191824AArEhO6
+   1/1 3/2 7/5 17/12 41/29,?
+   1., 1.500000000, 1.400000000, 1.416666667, 1.413793103,?
+  
+  Cf http://hakank.org/jgap/sequence_puzzle.conf
+ 
+  This does NOT work due to floats.
+
+*/
+data(sequence_5,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_point_seq([1/1, 3/2, 7/5, 17/12, 41/29],Data,Unknown,Vars), %
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,
+  MaxC = 4.
+
+
+/*
+  From https://www.purplemath.com/modules/nextnumb3.htm
+  1 4 8 13 19 26
+  19 26 ?
+  Next: 34
+
+  Solutions:
+  maxCount = 3
+  code = (1 + (b + (b - a))) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = ((b + (b - a)) + 1) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (1 + ((b - a) + b)) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (((b - a) + b) + 1) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (1 + ((b + b) - a)) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (((b + b) - a) + 1) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (1 + ((2 * b) - a)) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (((2 * b) - a) + 1) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (1 + ((b * 2) - a)) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (((b * 2) - a) + 1) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = (1 + (b - (a - b))) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+  code = ((b - (a - b)) + 1) = [[[1,4],8],[[4,8],13],[[8,13],19],[[13,19],26]] = [[19,26] = 34]
+
+  Cf http://hakank.org/jgap/sequence_puzzle_recursion.conf
+
+*/
+data(sequence_6,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_seq([1,4,8,13,19,26],2, Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,
+  MaxC = 3.
+
+
+/*
+
+  https://math.stackexchange.com/questions/1569860/how-to-find-formula-for-recursive-sequence-sum
+  1 3 6 10 15 21
+  15 21 ?
+
+  Solutions:
+  code = (1 + (b + (b - a))) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = ((b + (b - a)) + 1) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (1 + ((b - a) + b)) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (((b - a) + b) + 1) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (1 + ((b + b) - a)) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (((b + b) - a) + 1) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (1 + ((2 * b) - a)) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (((2 * b) - a) + 1) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  code = (1 + ((b * 2) - a)) = [[[1,3],6],[[3,6],10],[[6,10],15],[[10,15],21]] = [[15,21] = 28]
+  ...
+
+
+  Cf http://hakank.org/jgap/sequence_puzzle_recursion.conf
+
+*/
+data(sequence_7,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_seq([1,3,6,10,15,21],2, Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,
+  MaxC = 3.
+
+
+/* 
+  http://hakank.org/jgap/sequence_puzzle_recursion.conf
+
+  I'm not sure about the source of this puzzle; it's a 
+  Fibonacci variant:
+
+  3 2 5 7 12
+  7 12 ?
+
+  Solutions:
+  maxCount = 1
+  code = (a + b) = [[[3,2],5],[[2,5],7],[[5,7],12]] = [[7,12] = 19]
+  code = (b + a) = [[[3,2],5],[[2,5],7],[[5,7],12]] = [[7,12] = 19]
+
+*/
+data(sequence_8,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_seq([3,2,5,7,12],2, Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,
+  MaxC = 2.
+
+
+/*
+  Triangular numbers
+
+  http://www.research.att.com/~njas/sequences/A000217
+    a(n) = C(n+1,2) = n(n+1)/2 = 0+1+2+...+n
+ 
+  Solutions:
+  maxCount = 3
+  code = (a * ((1 + a) / 2)) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (((1 + a) / 2) * a) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (a * ((a + 1) / 2)) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (((a + 1) / 2) * a) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = ((a + (a * a)) / 2) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (((a * a) + a) / 2) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = ((a * (1 + a)) / 2) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (((1 + a) * a) / 2) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = ((a * (a + 1)) / 2) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (((a + 1) * a) / 2) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (a / (2 / (1 + a))) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+  code = (a / (2 / (a + 1))) = [[[1],1],[[2],3],[[3],6],[[4],10],[[5],15],[[6],21]] = [[7] = 28.0]
+
+
+  Cf http://hakank.org/jgap/triangular_numbers.conf
+*/
+data(triangular,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_point_seq([1,3,6,10,15,21],Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..2,
+  MaxC = 3.
+
+
+/*
+  Test of the modulo (mod/2) operator.
+
+  Solutions:
+
+  * Using make_point_seq(Seq,Data,Unknown,Vars),
+    maxCount = 2
+    code = (1 + (a mod 3)) = [[[1],2],[[2],3],[[3],1],[[4],2],[[5],3],[[6],1],[[7],2],[[8],3],[[9],1],[[10],2]] = [[11] = 3]
+    code = ((a mod 3) + 1) = [[[1],2],[[2],3],[[3],1],[[4],2],[[5],3],[[6],1],[[7],2],[[8],3],[[9],1],[[10],2]] = [[11] = 3]
+
+  * Using make_seq(Seq,1,Data,Unknown,Vars),
+    maxCount = 2
+    code = (1 + (a mod 3)) = [[[2],3],[[3],1],[[1],2],[[2],3],[[3],1],[[1],2],[[2],3],[[3],1],[[1],2]] = [[2] = 3]
+    code = ((a mod 3) + 1) = [[[2],3],[[3],1],[[1],2],[[2],3],[[3],1],[[1],2],[[2],3],[[3],1],[[1],2]] = [[2] = 3]
+    code = (7 mod (6 - a)) = [[[2],3],[[3],1],[[1],2],[[2],3],[[3],1],[[1],2],[[2],3],[[3],1],[[1],2]] = [[2] = 3]
+
+
+  Cf http://hakank.org/jgap/mod_test.conf
+*/
+data(mod_test,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Seq = [(I mod 3) + 1 : I in 1..10],
+  (
+    println("\nmake_point_seq:"), make_point_seq(Seq,Data,Unknown,Vars)
+    ;
+    println("\nmake_seq:"), 
+    make_seq(Seq,1,Data,Unknown,Vars)
+  ),
+  println(data=Data),
+  Ops = ["+","-","*","/","mod"],
+  Constants = 0..10,
+  MaxC = 2.
+
+
+
+/*
+  Boolean 3-majority on 
+
+  From John Koza's Lisp implementation
+  ftp://cs.ucl.ac.uk/genetic/ftp.io.com/code/koza-book-gp-implementation.lisp
+
+  Cf http://hakank.org/jgap/majority_on_3.conf
+  Here is one solution from JGAP:
+  ((a || (b && c)) && c) || ((b || b) && a)
+ 
+  Note: I stopped this after 30minutes without any solution.
+
+*/
+data(majority_on_3,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [[[1,1,1],1],
+          [[1,1,0],1],
+          [[1,0,1],1],
+          [[1,0,0],0],
+          [[0,1,1],1],
+          [[0,1,0],0],
+          [[0,0,1],0] % ,
+          % [[0,0,0],0] % -> Unknown
+      ],
+  Unknown = [0,0,0], 
+  Vars = ["a","b","c"],
+  % Ops = ["+","-","*","/","/\\","\\/","mod"],
+  % Ops = ["+","*","mod"],  
+  Ops = ["/\\","\\/"], % boolean and / or
+  Constants = 0..0,
+  MaxC = 6.
+
+
+/*
+  Multiplexer-3
+  
+  1 address + 2^1 data = 3
+
+  See John R. Koza 
+  Genetic Programming - On the programming of
+  computers by means of natural selection" 
+  (i.e. his first GP book)
+
+  This is the same as (boolean) IfElse:
+   If(A0) then (D1) else(D0)
+
+  Solutions:
+  maxCount = 3
+  code = (c + (a * (b - c))) = [[[0,0,0],0],[[0,0,1],1],[[0,1,0],0],[[0,1,1],1],[[1,0,0],0],[[1,0,1],0],[[1,1,0],1]] = [[1,1,1] = 1]
+  code = ((a * (b - c)) + c) = [[[0,0,0],0],[[0,0,1],1],[[0,1,0],0],[[0,1,1],1],[[1,0,0],0],[[1,0,1],0],[[1,1,0],1]] = [[1,1,1] = 1]
+  code = (c + ((b - c) * a)) = [[[0,0,0],0],[[0,0,1],1],[[0,1,0],0],[[0,1,1],1],[[1,0,0],0],[[1,0,1],0],[[1,1,0],1]] = [[1,1,1] = 1]
+  code = (((b - c) * a) + c) = [[[0,0,0],0],[[0,0,1],1],[[0,1,0],0],[[0,1,1],1],[[1,0,0],0],[[1,0,1],0],[[1,1,0],1]] = [[1,1,1] = 1]
+  code = (c - (a * (c - b))) = [[[0,0,0],0],[[0,0,1],1],[[0,1,0],0],[[0,1,1],1],[[1,0,0],0],[[1,0,1],0],[[1,1,0],1]] = [[1,1,1] = 1]
+  code = (c - ((c - b) * a)) = [[[0,0,0],0],[[0,0,1],1],[[0,1,0],0],[[0,1,1],1],[[1,0,0],0],[[1,0,1],0],[[1,1,0],1]] = [[1,1,1] = 1]
+
+  Cf http://hakank.org/jgap/multiplexer_3.conf
+
+*/
+data(if_then_else,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data =  [
+           [[0,0,0],0],
+           [[0,0,1],1],
+           [[0,1,0],0],
+           [[0,1,1],1],
+           [[1,0,0],0],
+           [[1,0,1],0],
+           [[1,1,0],1] % ,
+           % [[1,1,1],1] 
+  ],
+
+  Unknown = [1,1,1], 
+  Vars = ["a","b","c"],
+  Ops = ["+","-","*","/"],
+  Constants = 0..1,
+  MaxC = 3.
+
+
+
+/*
+  This is a TODO: Support user defined functions, or in general 
+  function that are not infix.
+  (f/2 is defined below this data section)
+
+*/
+data(f_test,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [ [[I,J],T] : I in 1..4, J in 1..4, T = ff(I,J)],
+  println(data=Data),
+  Unknown = [1,5],
+  Vars = ["a","b"],
+  Ops = ["+","-","*","/","ff"],
+  Constants = 0..10,
+  MaxC = 2.
+
+
+/*
+
+  The "infamous puzzle":
+   11x11=4
+   22x22=16
+   33x33=?
+
+  See
+  http://hakank.org/jgap/equation.conf
+  We represents this as
+  1 1 1 1 4 
+  2 2 2 2 16 
+  3 3 3 3 ?
+
+  Solutions:
+  maxCount = 1
+  code = (4 ** a) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 64]
+  code = (4 ** b) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 64]
+  code = (4 ** c) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 64]
+  code = (4 ** d) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 64]
+  maxCount = 2
+  code = (4 * (a * a)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 36]
+  code = ((a * a) * 4) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 36]
+  code = (4 * (a * b)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 36]
+  ...
+  code = (4 * (a ** a)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 108]
+  code = ((a ** a) * 4) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 108]
+  code = (4 * (a ** b)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 108]
+  code = (2 ** (2 ** a)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 256]
+
+  maxCount = 3
+
+  code = (2 * ((3 ** a) - 1)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 52]
+  code = (2 * (a * (2 ** a))) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 48]
+  code = (4 * ((3 * a) - 2)) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 28]
+  code = (4 * (a ** (4 - a))) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 12]
+  code = (4 * (a ** (4 / a))) = [[[1,1,1,1],4],[[2,2,2,2],16]] = [[3,3,3,3] = 17.306994843688898]
+
+
+  Compare with my Picat (CP) approach in equation.pi which has the following solutions
+  The constraint models above has 4 different models/interpretations and
+  finds four different solutions of the puzzle:
+    x1 = 36
+    x2 = 18
+    x3 = 64
+    x4 = 108
+
+  of which 18 is the only solution not found with this program.
+
+  Also see: 
+  MindYourDecision (Presh Talwalkar) has blogged/youtubed about it:
+   "Viral Puzzle 11 x 11 = 4. The Correct Answer Explained" 
+  - https://mindyourdecisions.com/blog/2016/09/21/viral-puzzle-11x11-4-the-correct-answer-explained/
+  - https://www.youtube.com/watch?v=IQd1oDsHVSc
+
+*/
+data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [ [[1,1,1,1],4],
+           [[2,2,2,2],16]
+          ],
+  Ops = ["+","-","*","/","**"],
+  Constants = 0..4,
+  Vars = ["a","b","c","d"],
+  MaxC = 3,  
+  Unknown = [3,3,3,3].
+
+
+
+/*
+  Catalan numbers
+  http://hakank.org/jgap/catalan.conf
+  Cf catalan.pi
+  table
+  catalan1(0) = 1.
+  catalan1(1) = 1.
+  catalan1(N) = sum([ catalan1(I)*catalan1(N-I) : I in 1..N-1]) => N > 1.
+  (Note the sum/1 in this function).
+
+  Nope: This does not work.
+  
+*/
+data(catalan,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  member(N,1..5),
+  println(n=N),
+  make_seq([1,1,2,5,14,42,132,429,1430,4862,16796,58786,208012],N,Data,Unknown,Vars),
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,          
+  MaxC = 2.
+
+
+% http://answers.yahoo.com/question/index?qid=20090822191824AArEhO6
+%  1/1 3/2 7/5 17/12 41/29,?
+%  1., 1.500000000, 1.400000000, 1.416666667, 1.413793103,?
+% 
+% Cf http://hakank.org/jgap/sequence_puzzle.conf
+%
+% This does NOT work since it use floats.
+% 
+data(sequence_5,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  make_point_seq([1/1, 3/2, 7/5, 17/12, 41/29],Data,Unknown,Vars), %
+  println(data=Data),
+  Ops = ["+","-","*","/"],
+  Constants = 0..10,
+  MaxC = 4.
+  
+
+
+/*
+  Leap year
+
+  Nope.
+*/
+data(leap_year,Data,Vars,Unknown,Ops,Constants,MaxC) =>
+  Data = [ [[Year], LeapYear] : Year in 1900..2020, LeapYear = cond(leap_year(Year),1,0)],
+  println(Data),
+  Ops = ["+","-","*","/","mod", "!="],
+  Constants = [0,4,100,400],
+  Vars = ["year"],
+  MaxC = 5,  
+  Unknown = [2022].
+  
+  
+leap_year(Year) => 
+  (Year mod 4 == 0, Year mod 100 != 0) 
+  ; 
+  Year mod 400 == 0. 
+
+% For f_test/2
+ff(X,Y) = 2*X + Y.
