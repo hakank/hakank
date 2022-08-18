@@ -1,0 +1,85 @@
+/* 
+
+  Game framework in Picat v3.
+
+  Inspired by the Prolog code in "Thinking as Computation",
+  page 216ff.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module gameplayer_v3.
+
+% This general game player needs these predicates to be defined:
+%     - player(Player)
+%     - game_over(State,Player,Winner)
+%     - legal_move(BeforeState,Player,Move,AfterState)
+
+%
+% Page 216
+%
+% label(S,P,W): state S with player P to move is labeled winner W.
+% table
+label(S,P,W) :- game_over(S,P,W).
+label(S,P,P) :- win_move(S,P,_).
+label(S,P,neither) :- \+ win_move(S,P,_), tie_move(S,P,_).
+label(S,P,Q) :- opp(P,Q), \+ tie_move(S,P,_), \+ game_over(S,P,_).
+
+% win_move(S,P,M):  P can win by making move M.
+win_move(S,P,M) :-
+   \+ game_over(S,P,_), 
+   opp(P,Q), 
+   legal_move(S,P,M,New), 
+   label(New,Q,P).
+
+% tie_move(S,P,M):  P can avoid losing by making move M.
+tie_move(S,P,M) :- 
+   \+ game_over(S,P,_), 
+   opp(P,Q), 
+   legal_move(S,P,M,New),
+   \+ label(New,Q,Q).
+
+opp(P,Q) :-
+  player(P), 
+  player(Q), 
+  P != Q.
+
+%
+% Page 221
+%
+% play_user(U): play entire game, getting moves for U from terminal.
+play_user(U) :-
+   initial_state(S,P), 
+   print("The first player is "), print(P), 
+   print(" and the initial state is "), write_state(S), 
+   play_from(S,P,U).
+
+% play_from(S,P,U): player P plays from state S with user U.
+% table
+play_from(S,P,_) :-                       % Is the game over?
+   game_over(S,P,W), 
+   print("-------- The winner is "), print(W), nl.
+play_from(S,P,U) :-                       % Continue with next move.
+   opp(P,Q), 
+   get_move(S,P,M,U), 
+   legal_move(S,P,M,New), 
+   print("Player "), print(P), print(" chooses move "), print(M),
+   print(" and the new state is "), write_state(New), 
+   play_from(New,Q,U).
+
+% write_state(S) :- nl, print("    "), print(S), nl.
+
+% Get the next move either from the user or from gameplayer.pl.
+% table
+get_move(S,P,M,U) :-
+   P != U,
+   win_move(S,P,M).       % Try to win.
+get_move(S,P,M,U) :-
+   P != U, 
+   tie_move(S,P,M).       % Try to tie.
+get_move(S,P,M,U) :-
+   P != U,
+   legal_move(S,P,M,_).   % Do anything.
+get_move(_,P,M,P)  :- print("Enter user move: "), M=read_int().

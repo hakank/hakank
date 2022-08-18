@@ -1,0 +1,96 @@
+/* 
+
+  Black-Scholes-Merton in Picat.
+
+  Original Prolog code from 
+  https://cseweb.ucsd.edu/~goguen/courses/130/SayBlackScholes.html
+  """
+  In the different implementations below we will use the symbols:
+  S= Stock price
+  X= Strike price
+  T= Years to maturity
+  r= Risk-free rate
+  v= Volatility
+
+  ... 
+  <CFSET CallPutFlag = 'c'>
+  <CFSET S='49.25'>
+  <CFSET X='50.00'>
+  <CFSET T='0.1'>
+  <CFSET r='0.35'>
+  <CFSET v='0.30'>
+  <cfoutput>
+  #BlackScholes(CallPutFlag,S,X,T,r,v)#
+  """
+
+  (Via https://github.com/jacobfriedman/logtalk-black-scholes-merton/blob/main/black-scholes-merton.pl)
+
+  Below is a refactored version of the Prolog code.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+/*
+  Output:
+
+  type = call
+  price = 2.37013706759727
+
+  type = put
+  price = -2.37013706759727
+
+*/
+go =>
+
+  member(Type,[call,put]),
+  println(type=Type),
+  Spot = 49.25,
+  Strike = 50.00,
+  Expiry = 0.1,
+  RiskFreeRate = 0.35,
+  Volatily = 0.30,
+
+  % price = 2.37013706759727
+  black_scholes(Type,Spot,Strike,Expiry,RiskFreeRate,Volatily,Price),
+  println(price=Price),
+  nl,
+  fail,
+  nl.
+
+
+%
+% hakank: Here's a refactored version, removing (most of the)
+% duplicated code in the Prolog version.
+%
+
+% Tyoe: call / put
+black_scholes(Type,S,X,T,R,V,Price) :-
+  D1 is (log(S/X) + (R+V*V/2)*T)/(V*sqrt(T)),
+  D2 is D1 - (V*sqrt(T)),
+  cumulative_normal(D1,CND1),
+  cumulative_normal(D2,CND2),
+  (Type == call ->
+     Price is S*CND1 - X*exp(-R*T)*CND2
+   ;
+     Price is X*exp(-R*T)*CND2 - S*CND1
+  ).
+
+% Cumulative Normal Distribution
+cumulative_normal(X,CND) :-
+  A1 is 0.31938153,
+  A2 is -0.356563782,
+  A3 is 1.781477937,
+  A4 is -1.821255978,
+  A5 is 1.330274429,
+  L is abs(X),
+  K is 1.0/(1.0 + (0.2316419 * L)),
+  T = (1.0/sqrt(2*pi))*exp(-L*L/2)*(A1*K + A2*K*K + A3*(K**3) + A4*(K**4) + A5*(K**5)),
+  (X < 0 -> 
+    CND is T
+   ; 
+    CND is 1.0 - T
+  ).

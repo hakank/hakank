@@ -1,0 +1,137 @@
+/* 
+
+  Project Euler #345 Matrix Sum in Picat.
+
+  https://projecteuler.net/problem=345
+  """
+  We define the Matrix Sum of a matrix as the maximum possible sum of matrix elements such that none of the selected elements share the same row or column.
+
+  For example, the Matrix Sum of the matrix below equals 3315 ( = 863 + 383 + 343 + 959 + 767):
+
+        7   53  183  439 |863|
+      497 |383| 563   79  973
+      287   63 |343| 169  583
+      627  343  773 |959| 943
+     |767| 473  103  699  303
+  """
+
+  Solution:
+    z = 13938
+    _    _    _    _    _    _    _    _    _  973    _    _    _    _    _ 
+    _    _    _    _    _    _    _    _    _    _  957    _    _    _    _ 
+    _    _    _    _    _    _    _  993    _    _    _    _    _    _    _ 
+    _    _    _    _  853    _    _    _    _    _    _    _    _    _    _ 
+    _    _    _  962    _    _    _    _    _    _    _    _    _    _    _ 
+  870    _    _    _    _    _    _    _    _    _    _    _    _    _    _ 
+    _    _    _    _    _    _    _    _    _    _    _    _    _  992    _ 
+    _    _  972    _    _    _    _    _    _    _    _    _    _    _    _ 
+    _    _    _    _    _    _    _    _    _    _    _    _    _    _  848 
+    _    _    _    _    _    _    _    _    _    _    _  976    _    _    _ 
+    _    _    _    _    _    _  969    _    _    _    _    _    _    _    _ 
+    _    _    _    _    _  901    _    _    _    _    _    _    _    _    _ 
+    _    _    _    _    _    _    _    _    _    _    _    _  823    _    _ 
+    _    _    _    _    _    _    _    _  966    _    _    _    _    _    _ 
+    _  883    _    _    _    _    _    _    _    _    _    _    _    _    _ 
+
+
+  MIP is the way to go for this problem. The SMT solvers is quite fast (but not as fast as MIP).
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import mip. % 0.052s
+% import sat. % > 2min
+% import cp. % % > 2min
+
+% Testing different logics for the SMT solvers
+% z3: 2.07s,
+% z3 logic("LIA"): 2,065s (default logic for z3)
+% z3 logic("NIA"): too slow
+% z3 logic("AUFLIA"): 1.38s <--
+% z3 logic("QF_AUFLIA"):2.06s
+% z3 logic("QF_FD"): too slow
+% 
+% cvc4: 7.041s
+% cvc4 logic("LIA"): 3.076s <--
+% cvc4 logic("NIA"): 7.041  (default logic for cvc4)
+% cvc4 logic("QF_LIA"): 2.724s  7,048
+% cvc4 logic("AUFLIA"): 5.84s
+% cvc4 logic("QF_AUFLIA"): 7.079s
+% import smt. 
+
+main => go.
+
+go =>
+  nolog,
+  % mat(test,Mat),
+  mat(problem,Mat),
+  % println(mat=Mat),
+  euler_345(Mat),
+  nl.
+
+
+euler_345(Mat) =>
+
+  N = Mat.length,
+  M = Mat[1].length,
+  
+  X = new_array(N,M),
+  X :: 0..1,
+
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..M]) #= 1
+  end,
+  foreach(J in 1..M)
+    sum([X[I,J] : I in 1..N]) #= 1
+  end,
+
+  Z #= sum([Mat[I,J]*X[I,J] : I in 1..N, J in 1..M]),
+
+  solve($[degree,updown,max(Z),report(printf("z:%d\n",Z))],X),
+ 
+  println(z=Z),
+  foreach(I in 1..N)
+    foreach(J in 1..M)
+      if X[I,J] == 1 then
+         printf("%4d ",Mat[I,J])
+      else
+         printf("%4s ","_")
+      end
+    end,
+    nl
+  end,
+
+  nl.
+
+
+mat(test,Mat) =>
+ Mat = chunks_of([
+                     7, 53,183,439,863,
+                   497,383,563, 79,973,
+                   287, 63,343,169,583,
+                   627,343,773,959,943,
+                   767,473,103,699,303
+  ],5).
+
+
+mat(problem,Mat) =>
+  Mat = chunks_of(
+    split("7  53 183 439 863 497 383 563  79 973 287  63 343 169 583
+           627 343 773 959 943 767 473 103 699 303 957 703 583 639 913
+           447 283 463  29  23 487 463 993 119 883 327 493 423 159 743
+           217 623   3 399 853 407 103 983  89 463 290 516 212 462 350
+           960 376 682 962 300 780 486 502 912 800 250 346 172 812 350
+           870 456 192 162 593 473 915  45 989 873 823 965 425 329 803
+           973 965 905 919 133 673 665 235 509 613 673 815 165 992 326
+           322 148 972 962 286 255 941 541 265 323 925 281 601  95 973
+           445 721  11 525 473  65 511 164 138 672  18 428 154 448 848
+           414 456 310 312 798 104 566 520 302 248 694 976 430 392 198
+           184 829 373 181 631 101 969 613 840 740 778 458 284 760 390
+           821 461 843 513  17 901 711 993 293 157 274  94 192 156 574
+           34 124   4 878 450 476 712 914 838 669 875 299 823 329 699
+           815 559 813 459 522 788 168 586 966 232 308 833 251 631 107
+           813 883 451 509 615  77 281 613 459 205 380 274 302  35 805").map(to_int),15).

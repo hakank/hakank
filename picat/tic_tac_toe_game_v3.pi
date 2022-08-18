@@ -1,0 +1,182 @@
+/* 
+
+  Tic-tac-toe game in Picat.
+
+  From "Thinking as computation", page 219.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import gameplayer_v3.
+import util.
+
+main => go.
+
+% The first game
+go =>
+   play,
+   nl.
+
+go => true.
+
+% All games (via backtracking)
+go2 ?=>
+   Count = count_all(play),
+   % fail,
+   println(count=Count),
+   nl.
+go2 => true.
+
+%
+% Play as x against the computer.
+% 
+go3 ?=>
+  play_x(),
+  nl.
+go3 => true.
+
+/*
+   Test of a situation:
+
+     x o -      1 2 3
+     x - -      4 5 6
+     - - -      7 8 9
+
+   What should o do?
+
+   Here's what the engine suggest:
+
+     start = [x,o,'-',x,'-','-','-','-','-']
+     The first player is o and the initial state is [x,o,'-',x,'-','-','-','-','-'] = 3
+
+     xo-
+     x--
+     ---
+
+     Player o chooses move 3 and the new state is [x,o,o,x,'-','-','-','-','-'] = 4
+
+     xoo
+     x--
+     ---
+
+   Which is a little strange: Why doesn't o block the win at position 7?
+   I guess that it's because o cannot find a guaranteed winning position
+   and just pick any move. See go4b for more on this.
+
+      
+*/
+go4 ?=>
+  Start1 = "
+x o - 
+x - -
+- - -",
+  println(Start1),
+  Start = Start1.split.join(''),
+  writeln(start=Start),
+  cl_facts($[initial_state(Start,o)]),
+  play_user(nobody),
+  % fail,
+  nl.
+go4 => true.
+
+%
+% Same situation as in go4: is there a winning move
+% for 0? Nope. And there is no tie move either.
+% 
+go4b ?=>
+  Start1 = "
+x o - 
+x - -
+- - -",
+
+  println(start1=Start1),
+  Start = Start1.split.join(''),
+  if win_move(Start,o,WinMove) then
+    println(winMove=WinMove)
+  else
+    println("No winning move for o!")
+  end,
+  if tie_move(Start,o,TieMove) then
+    println(tieMove=TieMove)
+  else
+    println("No tie move for o!")
+  end,
+  fail,
+  nl.
+go4b => true.
+
+
+%
+%  This is the tic-tac-toe game.
+%
+play() =>
+   println("\nNEW GAME!"),
+   initialize_table,
+   play_user(nobody),
+   initialize_table,   
+   nl.
+
+%
+% Play as user x
+%
+play_x() =>
+   println("\nNEW GAME!"),
+   print_layout(),
+   initialize_table,
+   play_user(x),
+   initialize_table,   
+   nl.
+
+
+% players
+% index(-)
+player(x).
+player(o).
+
+
+print_layout() =>
+  println("Layout:"),
+  X = [[1,2,3],[4,5,6],[7,8,9]],
+  foreach(Row in X)
+    println(Row)
+  end,
+  nl.
+
+% x moves first.
+initial_state([-,-,-,-,-,-,-,-,-], x).
+
+game_over(S,_,Q)       :- three_in_row(S,Q), !.        % A winner
+game_over(S,_,neither) :- not legal_move(S,_,_,_), !.  % A tie
+
+% table
+three_in_row([P,P,P,_,_,_,_,_,_],P) :- player(P). 
+three_in_row([_,_,_,P,P,P,_,_,_],P) :- player(P). 
+three_in_row([_,_,_,_,_,_,P,P,P],P) :- player(P). 
+three_in_row([P,_,_,P,_,_,P,_,_],P) :- player(P). 
+three_in_row([_,P,_,_,P,_,_,P,_],P) :- player(P). 
+three_in_row([_,_,P,_,_,P,_,_,P],P) :- player(P). 
+three_in_row([P,_,_,_,P,_,_,_,P],P) :- player(P). 
+three_in_row([_,_,P,_,P,_,P,_,_],P) :- player(P).
+
+% table
+legal_move([-,B,C,D,E,F,G,H,I],P,1,[P,B,C,D,E,F,G,H,I]).
+legal_move([A,-,C,D,E,F,G,H,I],P,2,[A,P,C,D,E,F,G,H,I]).
+legal_move([A,B,-,D,E,F,G,H,I],P,3,[A,B,P,D,E,F,G,H,I]).
+legal_move([A,B,C,-,E,F,G,H,I],P,4,[A,B,C,P,E,F,G,H,I]).
+legal_move([A,B,C,D,-,F,G,H,I],P,5,[A,B,C,D,P,F,G,H,I]).
+legal_move([A,B,C,D,E,-,G,H,I],P,6,[A,B,C,D,E,P,G,H,I]).
+legal_move([A,B,C,D,E,F,-,H,I],P,7,[A,B,C,D,E,F,P,H,I]).
+legal_move([A,B,C,D,E,F,G,-,I],P,8,[A,B,C,D,E,F,G,P,I]).
+legal_move([A,B,C,D,E,F,G,H,-],P,9,[A,B,C,D,E,F,G,H,P]).
+
+
+write_state(S) :-
+   printf("%w (move %d) ",S,[1 : M in S, (M = 'x' ; M = 'o') ].len),
+   nl,
+   foreach(C in chunks_of(S,3))
+      println(C)
+   end,
+   nl.
