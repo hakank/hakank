@@ -1,0 +1,250 @@
+/*
+   Port of PyMC3 model 
+   https://www.pymc.io/projects/examples/en/latest/case_studies/hierarchical_partial_pooling.html
+   """
+   Hierarchical Partial Pooling
+
+   Suppose you are tasked with estimating baseball batting skills for several players. One such 
+   performance metric is batting average. Since players play a different number of games and bat 
+   in different positions in the order, each player has a different number of at-bats. However, 
+   you want to estimate the skill of all players, including those with a relatively small number 
+   of batting opportunities.
+
+   So, suppose a player came to bat only 4 times, and never hit the ball. Are they a bad player?
+
+   As a disclaimer, the author of this notebook assumes little to non-existant knowledge about 
+   baseball and its rules. The number of times at bat in his entire life is around “4”.
+   
+   Data
+
+   We will use the baseball data for 18 players from Efron and Morris (1975).
+   [https://www.swarthmore.edu/NatSci/peverso1/Sports%20Data/JamesSteinData/Efron-Morris%20Baseball/EfronMorrisBB.txt
+   and it saved as EfronMorrisBB.txt.]
+   """
+
+  * With thetas per at_bats/hits:
+    [ [ 'phi', 0.2840928655902881 ],
+      [ 'kappa', 30.10174875587569 ],
+      [ 'theta_new', 0.24772636101181894 ],
+      [ 'v0', 0.35545834839357004 ],
+      [ 'v1', 0.34674161533793874 ],
+      [ 'v2', 0.3270042278607814 ],
+      [ 'v3', 0.31485487739020546 ],
+      [ 'v4', 0.30030570054616534 ],
+      [ 'v5', 0.2935117138685628 ],
+      [ 'v6', 0.2871936137276287 ],
+      [ 'v7', 0.27385040404216726 ],
+      [ 'v8', 0.2588942862691312 ],
+      [ 'v9', 0.25997193860086204 ],
+      [ 'v10', 0.24601036252871142 ],
+      [ 'v11', 0.24029584424030337 ],
+      [ 'v12', 0.24696122461346176 ],
+      [ 'v13', 0.24136962528932013 ],
+      [ 'v14', 0.2434604728148626 ],
+      [ 'v15', 0.23056053554375114 ],
+      [ 'v16', 0.22278748066578666 ],
+      [ 'v17', 0.20207051615148697 ] ]
+   Credible interval theta_new 0.93
+   [ 0.10398566398499282, 0.3766810184382662 ]
+
+   Credible intervals for each player (0.93)
+   Roberto Clemente : [ 0.24784878573661165, 0.47512925084797625 ]
+   Frank Robinson : [ 0.2375761968580048, 0.44213300852506066 ]
+   Frank Howard : [ 0.24046234832767974, 0.4260113621856717 ]
+   Jay Johnstone : [ 0.21016364466880724, 0.4070617413774921 ]
+   Ken Berry : [ 0.20876845879146955, 0.3778627091496258 ]
+   Jim Spencer : [ 0.2075155128152966, 0.37239311481987647 ]
+   Don Kessinger : [ 0.20968213783646059, 0.38853580878439586 ]
+   Luis Alvarado : [ 0.17791895098194585, 0.3661208067617415 ]
+   Ron Santo : [ 0.18441442828245758, 0.3609449766341318 ]
+   Ron Swaboda : [ 0.15712965792856706, 0.33158530177281975 ]
+   Rico Petrocelli : [ 0.12261119815771652, 0.33169624939719544 ]
+   Ellie Rodriguez : [ 0.17250744388404193, 0.33991677626278316 ]
+   George Scott : [ 0.16080144570529692, 0.329751130014826 ]
+   Del Unser : [ 0.16077197210220986, 0.326571903017451 ]
+   Billy Williams : [ 0.15251014920870717, 0.3314736096704872 ]
+   Bert Campaneri : [ 0.12945180818543825, 0.30896322981054625 ]
+   Thurman Munson : [ 0.14326582901180177, 0.30231979982618545 ]
+   Max Alvis : [ 0.12029747872078954, 0.2761703504698199 ]
+
+   This is about the same result as the forest plot in 
+   https://www.pymc.io/projects/examples/en/latest/case_studies/hierarchical_partial_pooling.html
+   i.e. the mean / interval for the players are in decreasing order.
+
+
+  Compare with my Turing.jl model baseball_hitting_skills.jl 
+  which uses a truncated Paret for kappa (and NUTS as sampler):
+
+    parameters      mean        std   naive_se      mcse          ess      rhat   ess_per_sec 
+        Symbol   Float64    Float64    Float64   Float64      Float64   Float64       Float64 
+
+          phi    0.2663     0.0211     0.0001    0.0002   10494.7537    1.0004      459.3694
+        kappa   96.6276   105.5640     0.7464    2.8380    1094.8665    1.0021       47.9238
+    theta_new    0.2476     0.0597     0.0004    0.0005   18715.5481    1.0000      819.2046
+
+
+*/
+
+// From 
+// https://math.stackexchange.com/questions/1777367/how-to-generate-a-random-number-from-a-pareto-distribution
+// Shape a, Scale b:
+// See pareto_dist.wppl
+var pareto = function(shape,scale) {
+    var u = uniform(0,1)  
+    var x = scale/Math.pow(1-u,1/shape)
+    return x;
+}
+
+
+var model = function() {
+    var at_bats = [45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45]
+    var hits    = [18, 17, 16, 15, 14, 14, 13, 12, 11, 11, 10, 10, 10, 10, 10, 9, 8, 7]
+
+    // We observe a player with 4 at bats and no hits
+    var obs_at_bats = 4
+    var obs_hits = 0 
+
+    var n = hits.length
+    
+    var phi = uniform(0,1)
+
+    // Comment from the PyMC model
+    // """
+    // We could use pm.Pareto('kappa', m=1.5), to define our prior on kappa, but the Pareto distribution has 
+    // very long tails. Exploring these properly is difficult for the sampler, so we use an equivalent 
+    // but faster parametrization using the exponential distribution. We use the fact that the log of a 
+    // Pareto distributed random variable follows an exponential distribution.
+    // """
+    var kappa_log = exponential(1.5)
+    var kappa = Math.exp(kappa_log)
+
+    // var kappa = pareto(1.5,1) // Testing pareto distribution 
+    
+    var thetas = mapN(function(i) { return beta(phi * kappa, (1.0 - phi) * kappa) }, n)
+    mapN(function(i) {
+        // condition(hits[i] == binomial(thetas[i],at_bats[i]))
+        // Note: using observe and Binomial is the way to go!
+        observe(Binomial({p:thetas[i],n:at_bats[i]}), hits[i]) // number of hits        
+    },n)
+
+    // Posterior
+    // Comment from the PyMC model
+    // """
+    // Recall our original question was with regard to the true 
+    // batting average for a player with only 4 at bats and no 
+    // hits. We can add this as an additional variable in the model.
+    // """
+    var theta_new = beta(phi * kappa, (1.0 - phi) * kappa)
+    // condition(obs_hits == binomial(theta_new,obs_at_bats)) // number of hits
+    observe(Binomial({p:theta_new,n:obs_at_bats}), obs_hits) // number of hits
+
+    return {
+        phi:phi,
+        kappa:kappa,
+        thetas:thetas,
+        theta_new:theta_new,
+        // Each player's theta
+        v0:thetas[0],
+        v1:thetas[1],
+        v2:thetas[2],
+        v3:thetas[3],
+        v4:thetas[4],
+        v5:thetas[5],
+        v6:thetas[6],
+        v7:thetas[7],
+        v8:thetas[8],
+        v9:thetas[9],
+        v10:thetas[10],
+        v11:thetas[11],
+        v12:thetas[12],
+        v13:thetas[13],
+        v14:thetas[14],
+        v15:thetas[15],
+        v16:thetas[16],
+        v17:thetas[17],        
+    }
+    
+}
+
+// var d = Infer(model)
+// samples:10000 makes the calculation of the player credible intervals quite slow
+// samples:1000 is much faster
+var d = Infer({method:"MCMC",samples:1000,burn:1000,lag:10},model)
+// SMC give  at lot of warnings
+//   "beta sample overflow, rounded to nearest representable support value
+// var d = Infer({method:"SMC",particles:10000},model)  
+// display(d)
+
+exp_map(d,["phi","kappa","theta_new",
+           "v0",
+           "v1",
+           "v2",
+           "v3",
+           "v4",
+           "v5",
+           "v6",
+           "v7",
+           "v8",
+           "v9",
+           "v10",
+           "v11",
+           "v12",
+           "v13",
+           "v14",
+           "v15",
+           "v16",
+           "v17"],
+          ["expectation"])
+
+var theta_new_samples = getSamples(d,"theta_new")
+console.log("\nCredible interval theta_new 0.93")
+display(credibleInterval(theta_new_samples,0.93))
+
+var names = ["Roberto Clemente",
+             "Frank Robinson",
+             "Frank Howard",
+             "Jay Johnstone",
+             "Ken Berry",
+             "Jim Spencer",
+             "Don Kessinger",
+             "Luis Alvarado",
+             "Ron Santo",
+             "Ron Swaboda",
+             "Rico Petrocelli",
+             "Ellie Rodriguez",
+             "George Scott",
+             "Del Unser",
+             "Billy Williams",
+             "Bert Campaneri",
+             "Thurman Munson",
+             "Max Alvis"]
+
+console.log("\nCredible intervals for each player (0.93)")
+var t = mapN(function(i) { var v = "v"+i;
+                   console.log(names[i],":", credibleInterval(getSamples(d,v),0.93))
+           }, 18)
+
+// This is a variant using transpose of the samples matrix.
+//
+// Transpose a matrix
+//
+var transpose = function(a) {
+    var n = a.length
+    var m = a[0].length
+    return mapN(function(i) {
+        return mapN(function(j) {
+            return a[j][i]
+        },n)
+    },m)
+}
+
+
+var thetas = getSamples(d,"thetas")
+var thetas_t = transpose(thetas)
+// var num_players = thetas_t.length
+// var tt = mapN(function(player) { console.log(names[player], credibleInterval(thetas_t[player],0.93)) },num_players)
+
+
+// viz(d)
+// viz(theta_new_samples)
+// viz(thetas)

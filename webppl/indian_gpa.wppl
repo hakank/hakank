@@ -1,0 +1,124 @@
+/* 
+  Indian GPA model 
+
+  From cplint http://cplint.ml.unife.it/example/inference/indian_gpa.pl
+  """
+  The Indian GPA Problem. From 
+  http://www.robots.ox.ac.uk/~fwood/anglican/examples/viewer/?worksheet=indian-gpa 
+  "This example was inspired by Stuart Russell...the problem is: if you observe 
+  that a student GPA is exactly 4.0 in a model of transcripts of students 
+  from the USA (GPA's from 0.0 to 4.0 and India (GPA's from 0.0 to 
+  10.0) what is the probability that the student is from India?... 
+  As we know from statistics, given the mixture distribution and given the 
+  fact that his/her GPA is exactly 4.0, the probability that the student 
+  is American must be 1.0.
+  (i.e. zero probability that the student is from India)."
+  Probabilistic logic program from 
+  https://github.com/davidenitti/DC/blob/master/examples/indian-gpa.pl
+  """
+
+  This is a port of my Turing.jl model indian_gpa.jl (inspired by the SPP model indian-pga.py).
+
+  * No condition:
+  nationality
+  Marginal:
+    "usa" : 0.5110000000000001
+    "india" : 0.48899999999999993
+  perfect
+  Marginal:
+    false : 0.864
+    true : 0.13600000000000004
+  expectation:
+  [ [ 'nationality', NaN ],
+    [ 'perfect', 0.13600000000000004 ],
+    [ 'gpa', 3.851177793614454 ] ]
+  MAP:
+  [ [ 'nationality', { val: 'usa', score: -0.6713856887784324 } ],
+    [ 'perfect', { val: false, score: -0.14618251017808145 } ],
+    [ 'gpa', { val: 4, score: -2.5133061243096977 } ] ]
+
+  * condition(gpa == 4.0)
+  nationality
+  Marginal:
+    "usa" : 1
+  perfect
+  Marginal:
+    true : 1
+  gpa
+  Marginal:
+    4 : 1
+  expectation:
+  [ [ 'nationality', NaN ], [ 'perfect', 1 ], [ 'gpa', 4 ] ]
+  MAP:
+  [ [ 'nationality', { val: 'usa', score: 0 } ],
+    [ 'perfect', { val: true, score: 0 } ],
+    [ 'gpa', { val: 4, score: 0 } ] ]
+
+  * condition(gpa > 4.0)
+  nationality
+  Marginal:
+    "india" : 1
+  perfect
+  Marginal:
+    false : 0.85
+    true : 0.15000000000000002
+  expectation:
+  [ [ 'nationality', NaN ],
+    [ 'perfect', 0.15000000000000002 ],
+    [ 'gpa', 7.446830576800445 ] ]
+  MAP:
+  [ [ 'nationality', { val: 'india', score: 0 } ],
+    [ 'perfect', { val: false, score: -0.16251892949777494 } ],
+    [ 'gpa', { val: 10, score: -1.8971199848858806 } ] ]
+
+  * condition(perfect == true)  
+  nationality
+  Marginal:
+    "usa" : 0.598
+    "india" : 0.402
+  perfect
+  Marginal:
+    true : 1
+  gpa
+  Marginal:
+    4 : 0.598
+    10 : 0.402
+  expectation:
+  [ [ 'nationality', NaN ],
+    [ 'perfect', 1 ],
+    [ 'gpa', 6.412000000000001 ] ]
+  MAP:
+  [ [ 'nationality', { val: 'usa', score: -0.5141645250315053 } ],
+    [ 'perfect', { val: true, score: 0 } ],
+    [ 'gpa', { val: 4, score: -0.5141645250315053 } ] ]
+
+*/
+
+
+var model = function() {
+    var nationality = categorical({ps:[0.5,0.5],vs:["india","usa"]})
+
+    var perfect = nationality == "india" ? flip(0.10) : flip(0.15);
+    var gpa = nationality == "india" ? (perfect ? 10.0 : uniform(0,10)) :
+                                     (perfect ? 4.0 : uniform(0,4))
+
+    condition(gpa == 4.0)
+    // condition(gpa == 3.0) // This is quite harder than gpa == 4.0
+    // condition(gpa > 4.0)
+    // condition(perfect == true)
+    
+    return {
+        nationality:nationality,
+        perfect:perfect,
+        // gpa:gpa,
+    }
+    
+}
+
+// var d = Infer(model)
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model)
+// var d = Infer({method:"SMC",samples:10000},model)
+// display(d)
+exp_map(d,["nationality","perfect","gpa"])
+
+viz.auto(d,{fileName:"indian_gpa.svg"}) // A little strange picture

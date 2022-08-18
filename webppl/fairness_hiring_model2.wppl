@@ -1,0 +1,72 @@
+/*
+  Port of SPPL model
+  https://github.com/probcomp/sppl/blob/master/examples/fairness-hiring-model-2.ipynb
+
+  The SPPL model gives the following exact probabilities:
+  p(hire): 0.911360805292618
+  p(hire|male):0.9777674365554804
+  p(hire|female):0.8449541740297555
+  p(hire|female)/p(hire|male): 0.8641668176293485
+
+
+  This WebPPL model:
+  is_male
+  Marginal:
+    false : 0.5025000000000002
+    true : 0.4974999999999999
+  hire
+  Marginal:
+    1 : 0.9066999999999997
+    0 : 0.09330000000000022
+  hire_male
+  Marginal:
+    [1,true] : 0.4852999999999995
+    [1,false] : 0.4213999999999998
+    [0,false] : 0.08110000000000067
+    [0,true] : 0.012200000000000056
+  expectation:
+  [ [ 'is_male', 0.4974999999999999 ],
+    [ 'hire', 0.9066999999999997 ],
+    [ 'college_rank', 24.992166678240437 ],
+    [ 'years_exp', 12.48711783867624 ],
+    [ 'hire_male', NaN ] ]
+
+  Post analysis:
+  hire_female: 4214 hire_male: 4853 female/male: 0.8683288687409849
+
+  (This is a port of my Turing.jl model fairness_hiring_model2.jl)
+
+*/
+
+var model = function() {
+    // Population model
+    var is_male = flip(0.5)
+    var college_rank = gaussian(25, 10)
+    var years_exp = is_male ? gaussian(15, 5) : gaussian(10,5)
+    
+    // Hiring decision.
+    var hire = ((college_rank <= 5) || (years_exp > 5)) ? 1 : 0
+
+    return {
+        is_male:is_male,
+        hire:hire,
+        college_rank:college_rank,
+        years_exp:years_exp,
+        // For post analysis
+        hire_male:[hire,is_male]
+    }
+    
+}
+
+// var d = Infer(model)
+var d = Infer({method:"rejection",samples:10000},model)
+// display(d)
+
+exp_map(d,["is_male","hire","college_rank","years_exp","hire_male"],["expectation","marginals"])
+
+console.log("\nPost analysis:")
+var hires       = getSamples(d,"hire_male")
+var hire_male   = sum(mapN(function(i) { return _.isEqual(hires[i], [1, true]) ? 1 : 0 },hires.length))
+var hire_female = sum(mapN(function(i) { return _.isEqual(hires[i], [1,false]) ? 1 : 0 },hires.length))
+console.log("hire_female:",hire_female,"hire_male:",hire_male, "female/male:", hire_female / hire_male)
+

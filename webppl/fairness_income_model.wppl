@@ -1,0 +1,125 @@
+/*
+  Port of SPPL model fairness-income-model-2.ipynb
+
+  The (original) SPPL model gives the following exact probabilities:
+  female_prior: 0.33066502427854466
+  female_given_no_hire: 0.33412533774074804
+  p_female_given_no hire / p_female: 1.046470962495416
+
+  However, the range of age in the SPPL model is really strange:
+  age has a mean of 178 years and the values of capital_gain is way too large: mean = 42765784.8959
+  (the decision model checks for capital_gain in the range of 4000...9000).
+  
+  I guess that second parameter to Normal in the SPPL model is the variance, but it should be std. 
+  After sqrt'ing all the second parameters of capital_gain and age, the quantiles are for:
+  * age: between 19..65
+  * capital gain: between about 500..21000
+  
+  With adjusted sigma, the SPPL model gives this:
+    female_prior: 0.3307616495624872
+    female_given_no_hire: 0.21962121326454134
+    p_female_given_no hire / p_female:  -33.60136716120389
+
+
+  I filed an issue about this at the SPPL repo: https://github.com/probcomp/sppl/issues/115
+  and the answer was that the data is machine generated so it might not be realistic...
+
+
+
+  Here I only model the fixed model, with adjusted sigmas:sqrt value of SPPL's Normal.
+
+  sex
+  Marginal:
+    "male" : 0.7565
+    "female" : 0.2435
+  Marginal:
+    2 : 0.5012999999999994
+    3 : 0.26680000000000037
+    1 : 0.1757000000000001
+    0 : 0.04690000000000005
+    4 : 0.00930000000000002
+  t
+  Marginal:
+    0 : 1
+  sex_prior
+  Marginal:
+    "male" : 0.6671000000000002
+    "female" : 0.33289999999999975
+  sex_female_prior
+  Marginal:
+    false : 0.6671000000000002
+    true : 0.33289999999999975
+  sex_female_given_no_hire
+  Marginal:
+    false : 0.7565
+    true : 0.2435
+  expectation:
+  [ [ 'sex', NaN ],
+    [ 'capital_gain', 9689.555060297856 ],
+    [ 'age', 40.213820545401525 ],
+    [ 'relationship', 2.0159000000000002 ],
+    [ 't', 0 ],
+    [ 'sex_prior', NaN ],
+    [ 'sex_female_prior', 0.33289999999999975 ],
+    [ 'sex_female_given_no_hire', 0.2435 ] ]
+
+  sex_female_prior: 0.3329 sex_female_given_no_hire: 0.2435
+  posterior_check: (100*(sex_female_given_no_hire) / sex_female_prior - 1) -26.85491138480024
+
+*/
+
+var model = function() {
+    
+    var sex = categorical({ps:[0.3307, 0.6693],vs:["female","male"]}) 
+    
+    var capital_gain = sex == "female" ? gaussian(568.4105, Math.sqrt(24248365.5428)) : gaussian (1329.3700, Math.sqrt(69327473.1006))
+    var age = sex == "female" && capital_gain < 7298.0000 ? gaussian(38.4208, Math.sqrt(184.9151)) : gaussian(38.6361, Math.sqrt(187.2435))
+    condition(age > 18)
+    var relationship = sex == "female" && capital_gain < 7298.0000 ?  categorical({ps:[0.0491, 0.1556, 0.4012,0.2589, 0.0294, 0.1058], vs:[0,1,2,3,4,5]} ) : categorical({ps:[0.0416, 0.1667, 0.4583,0.2292, 0.0166, 0.0876], vs:[0,1,2,3,4,5]})
+    
+    
+    // Decision model.
+    // (What I understand is that t is hire (1) / no hire (0)
+    var t = relationship == 1 ? ( capital_gain < 5095.5 ? 1 : 0) :
+    relationship == 2 ? ( capital_gain < 4718.5 ? 1 : 0) :
+    relationship == 3 ? ( capital_gain < 5095.5 ? 1 : 0) :
+    relationship == 4 ? ( capital_gain < 8296   ? 1 : 0) :
+    relationship == 5 ? 1 :
+    capital_gain < 4668.5 ? 1 : 0
+
+    // Observation: No hire
+    condition(t == 0) 
+
+    // Prior and posterior
+    var sex_prior = categorical({ps:[0.3307, 0.6693],vs:["female","male"]})
+    var sex_female_prior = sex_prior == "female"
+    var sex_female_given_no_hire = sex == "female" // posterior from the model
+    
+    return {
+        sex:sex,
+        capital_gain,
+        age:age,
+        relationship:relationship,
+        t:t,
+        sex_prior:sex_prior,
+        sex_female_prior:sex_female_prior,
+        sex_female_given_no_hire:sex_female_given_no_hire,
+    }
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"SMC",particles:10000},model)
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,burn:10000},model)
+// display(d)
+
+exp_map(d,["sex","capital_gain","age","relationship","t",
+           "sex_prior","sex_female_prior",
+           "sex_female_given_no_hire"],
+           ["expectation","marginals"])
+
+// Post analysis
+var sex_female_given_no_hire = listMean(getSamples(d,"sex_female_given_no_hire"))
+var sex_female_prior = listMean(getSamples(d,"sex_female_prior"))
+console.log("\nsex_female_prior:",sex_female_prior,"sex_female_given_no_hire:",sex_female_given_no_hire)
+var posterior_check = 100*( (sex_female_given_no_hire / sex_female_prior) - 1)
+console.log("posterior_check: (100*(sex_female_given_no_hire) / sex_female_prior - 1)", posterior_check)

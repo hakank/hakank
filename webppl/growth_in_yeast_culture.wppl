@@ -1,0 +1,116 @@
+/*
+ Growth in Yeast Culture in Turing.jl.
+
+  From A First Course in Mathematical Modeling, 4th edition,
+  page 10ff
+
+  Δp[n] = p[n+1] - p[n] = k * (capacity - p[n]) * p[n]
+  p[n+1] = p[n] + k * (capacity - p[n])*p[n] 
+  capacity ~ 665
+  k        ~ 0.00082
+
+
+  This model:
+
+  expectation:
+  [ [ 'k', 0.0007873844623993351 ],
+    [ 'capacity', 664.879448123086 ],
+    [ 'v', 7.171136097093735 ],
+    [ 'post1', 14.619825620985193 ],
+    [ 'post2', 27.461927286901005 ],
+    [ 'post3', 43.65620256717589 ],
+    [ 'post4', 70.09402180327724 ],
+    [ 'post5', 104.12686825970393 ],
+    [ 'post6', 170.23596582053807 ],
+    [ 'post7', 241.88607813465788 ],
+    [ 'post8', 340.15263639461335 ],
+    [ 'post9', 437.4589817248945 ],
+    [ 'post10', 518.3596145486786 ],
+    [ 'post11', 574.7050970572453 ],
+    [ 'post12', 606.1184798336667 ],
+    [ 'post13', 627.7683064552655 ],
+    [ 'post14', 646.8900302689847 ],
+    [ 'post15', 653.5100075461158 ],
+    [ 'post16', 658.2840090867885 ],
+    [ 'post17', 660.7743455280871 ],
+    [ 'post18', 662.6790868718329 ] ]
+  Credible interval capacity 93%: [ 656.6659957638925, 677.9036126415458 ]
+  Credible interval k 93%: [ 0.0007873653302177264, 0.0007873653302177264 ]
+  Credible interval v 93%: [ 5.84328128408017, 7.475241104400743 ]
+  Credible interval post18 93%: [ 647.8043441759863, 676.2143695680173 ]
+
+  (This is a port of my Turing.jl model growth_in_yeast_culture.jl)
+
+*/
+
+var model = function() {
+    // In hours
+    var yeast = [9.6, 18.3, 29.0, 47.2, 71.1, 119.1, 174.6, 257.3, 350.7, 441.0,
+                 513.3, 559.7, 594.8, 629.4, 640.8, 651.1, 655.9, 659.6, 661.8]
+    var yeast_mean = listMean(yeast)
+    var n = yeast.length
+
+    var k = uniform(0,1)
+    var capacity = uniform(0,1000)
+    var v = gaussian(5,1) 
+    condition(v >= 0) // truncated
+    // var v = uniform(0,10)
+  
+    mapN(function(t) {
+        if (t > 0) {
+            observe(Gaussian({mu:yeast[t-1] + k * (capacity - yeast[t-1])*yeast[t-1],sigma:v}), yeast[t])            
+        }
+    },n)
+
+    // Posterior check
+    var post = mem(function(t) {
+        if (t > 0) {
+            return gaussian(yeast[t-1] + k * (capacity - yeast[t-1])*yeast[t-1],v)
+        }
+    })
+
+    return {
+        k:k,
+        capacity:capacity,
+        v:v,
+        // Posterior
+        post1:post(1),
+        post2:post(2),
+        post3:post(3),
+        post4:post(4),
+        post5:post(5),
+        post6:post(6),
+        post7:post(7),
+        post8:post(8),
+        post9:post(9),
+        post10:post(10),
+        post11:post(11),
+        post12:post(12),
+        post13:post(13),
+        post14:post(14),
+        post15:post(15),
+        post16:post(16),
+        post17:post(17),
+        post18:post(18),
+        
+    }
+
+    
+}
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// display(d)
+exp_map(d,["k","capacity","v",
+           "post1","post2","post3","post4","post5","post6","post7","post8","post9","post10",
+           "post11","post12","post13","post14","post15","post16","post17","post18",
+          ],
+        ["expectation"])
+
+console.log("Credible interval capacity 93%:", credibleInterval(getSamples(d,"capacity"),0.93))
+console.log("Credible interval k 93%:", credibleInterval(getSamples(d,"k"),0.93))
+console.log("Credible interval v 93%:", credibleInterval(getSamples(d,"v"),0.93))
+console.log("Credible interval post18 93%:", credibleInterval(getSamples(d,"post18"),0.93))
+
+// var v = getSamples(d,"v")
+// viz(v)

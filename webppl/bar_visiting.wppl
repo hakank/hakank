@@ -1,0 +1,206 @@
+/*
+  Bar probabilities in WebPPL
+
+  I saw this problem in some Swedish Facebook (?) group but 
+  cannot find it now.
+
+  The basic problem is this:
+   - A visits the bar 3 times during a period, say 10 weeks
+   - Each time A visit the bar he sees B.
+   What it the chance of this? 
+   
+  In the Facebook (?) post there was also some information about 
+  number of people at the bar etc, but I don't care about that.
+   
+  What is the probability that this happened? 
+
+  * Model 1
+  The model model1 below is based on the following reasoning:
+  - The probability that a person visits a bar is a 
+    Poisson distribution with some probability
+  - A visits the bar exactly 3 times
+  - B visits the bar at least 3 times
+
+  prob1
+  Marginal:
+    true : 0.681
+    false : 0.319
+  prob2
+  Marginal:
+    true : 0.681
+    false : 0.319
+  expectation:
+  [ [ 'n', 3.123 ],
+    [ 'p1', 3 ],
+    [ 'p2', 4.100999999999998 ],
+    [ 'prob1', 0.681 ],
+    [ 'prob2', 0.681 ] ]
+
+    So the probability that this happens is 68.1% This
+    seems to be quite high. 
+
+  * Model 2
+    Well, perhaps it's better to make the visits more explicit.
+    Say we study this over 30 days instead, and let A and B
+    visit the bar with some probability and check if they 
+    visit the bar the same day.
+
+    [The period stated in the original problem was over a period
+     of 10 weeks, but let's reformulate this to only consider
+     3 bardays per week = 30 days.
+    ]
+
+    Without any restrictions how many visits B does we get
+    quite a high probability: 0.59739.  
+    But this is probably since B visits the bar about 25 of the 30 days, which
+    is probably not reasonable.
+
+  sum2
+  Marginal:
+    29 : 0.1293
+    28 : 0.1078
+    27 : 0.09979999999999993
+    30 : 0.0961
+    23 : 0.06980000000000003
+    22 : 0.06669999999999998
+    25 : 0.06440000000000003
+    24 : 0.06069999999999993
+    20 : 0.05709999999999999
+    21 : 0.05660000000000004
+    26 : 0.054799999999999974
+    19 : 0.04589999999999997
+    18 : 0.027699999999999978
+    17 : 0.02449999999999998
+    16 : 0.011999999999999997
+    14 : 0.006100000000000001
+    15 : 0.006100000000000001
+    12 : 0.0056000000000000025
+    11 : 0.004400000000000001
+    13 : 0.003499999999999998
+    10 : 0.0010999999999999992
+  visits_same_day
+  Marginal:
+    3 : 0.5973999999999998
+    2 : 0.2755
+    1 : 0.11710000000000009
+    0 : 0.010000000000000005
+  expectation:
+  [ [ 'p', 0.5973999999999998 ],
+    [ 'p1', 0.1150363641033789 ],
+    [ 'p2', 0.8127147310587104 ],
+    [ 'sum1', 3 ],
+    [ 'sum2', 24.568899999999992 ],
+    [ 'visits_same_day', 2.4602999999999997 ] ]
+
+   * Variant: Let's instead restrict the number of bar hops for B to atmost 10.
+     Then the probability (p) is much smaller: 0.013800 and the mean number 
+     of visits for B is now only 6.46 times during these 30 days. And now it's 
+     quite probable that A doesn't see B at all: 0.4559.
+
+  sum2
+  Marginal:
+    6 : 0.1581999999999999
+    7 : 0.14620000000000005
+    8 : 0.13050000000000012
+    4 : 0.1273
+    5 : 0.12239999999999995
+    9 : 0.12070000000000013
+    3 : 0.10039999999999993
+    10 : 0.09430000000000005
+  visits_same_day
+  Marginal:
+    0 : 0.4559999999999993
+    1 : 0.4025000000000006
+    2 : 0.12770000000000006
+    3 : 0.013800000000000005
+  expectation:
+  [ [ 'p', 0.013800000000000017 ],
+    [ 'p1', 0.10897399995328833 ],
+    [ 'p2', 0.22177968979245102 ],
+    [ 'sum1', 3 ],
+    [ 'sum2', 6.468300000000002 ],
+    [ 'visits_same_day', 0.6993000000000007 ] ]
+
+
+*/
+
+// This is a quite simple (simplistic) model.
+var model1 = function() {
+    var n = 1+randomInteger(20)
+    
+    var p1 = 1+poisson(n)
+    var p2 = 1+poisson(n)
+
+    condition(p1 == 3)
+    
+    var prob1 = p1 == 3 && p2 >= 3
+    var prob2 = p2 >= p1
+
+    return {
+        n:n,
+        p1:p1,
+        p2:p2,
+        prob1:prob1,
+        prob2:prob2
+        
+    }
+}
+
+// var d1 = Infer(model1)
+// display(d1)
+// exp_map(d1,["n","p1","p2","prob1","prob2"])
+
+
+// A little more realistic approach
+// Here we study what happens each day for a couple of days, say 30.
+var model2 = function() {
+    var n = 30 // number of days
+
+    // Probabilities of visiing a bar at each day
+    var p1 = beta(1,1)
+    var p2 = beta(1,1)
+
+    // Person p (1 or 2) visits the bar at day day
+    var visits = mem(function(p, day) {
+        if (p == 1) {
+            return flip(p1)
+        } else {
+            return flip(p2)
+        }
+    })
+
+    // How many visiting days?
+    var sum1 = sum(mapN(function(i) { return visits(1,i) ? 1 : 0 }, n))
+    var sum2 = sum(mapN(function(i) { return visits(2,i) ? 1 : 0 }, n))
+
+    // Visited the same day
+    var visits_same_day = sum( mapN(function(i) { return visits(1,i) && visits(2,i) ? 1 : 0},n))
+
+    // What is the probability that person 1 see person B during all his 3 visits.
+    var p = visits_same_day == 3
+    
+    // Person 1 visits exactly 3 times
+    condition(sum1 == 3)
+    // Person 2 visits at least 3 times
+    condition(sum2 >= 3)
+
+    // Restrict the number of visits for person 2, to - say - atmost 10 visits
+    condition(sum2 <= 10)
+    
+    return {
+        p:p,
+        p1:p1,
+        p2:p2,
+        sum1:sum1,
+        sum2:sum2,        
+        visits_same_day:visits_same_day,
+    }
+}
+
+
+// var d2 = Infer(model2)
+var d2 = Infer({method:"MCMC",kernel:"MH",samples:100000},model2)
+// var d2 = Infer({method:"rejection",samples:1000},model2)
+// display(d2)
+
+exp_map(d2,["p","p1","p2","sum1","sum2","visits_same_day"])

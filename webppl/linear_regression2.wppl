@@ -1,56 +1,70 @@
 /*
   Linear regression
 
-  cf ~/blog/linear_regression2.blog
+  (This is originally a WebPPL example (example/linearRegression.wppl) but translated via my 
+  BLOG model linear_regression2.blog.)
 
-  This is actually a webppl example (example/linear_regression.wppl) but translated via BLOG.
+  * {method:"MCMC",kernel:"MH",sample:100000,lag:10,burn:10000}
+    expectation:
+    [ [ 'm', 1.958754336112793 ],
+      [ 'b', 0.12027266324493295 ],
+      [ 'sigma', 0.1229830657704106 ],
+      [ 'y4', 7.986462432613743 ],
+      [ 'y5', 9.910867954721965 ] ]
+    Credible interval for m (94%): [ 1.9331221350242127, 2.009310592084168 ]
+    Credible interval for b (94%): [ 0.07986877843704142, 0.20301109489655902 ]
+    Credible interval for y5 (94%): [ 9.563080814602708, 10.264366986689275 ]
+
+
+  * {method:"SMC",particles:1000,rejuvSteps:5}
+    expectation:
+    [ [ 'm', 2.014555041075026 ],
+      [ 'b', -0.024662523685574384 ],
+      [ 'sigma', 0.08101130649224943 ],
+      [ 'y4', 8.031995362629706 ],
+      [ 'y5', 10.044474330553118 ] ]
+    Credible interval for m (94%): [ 1.9866702158869514, 2.0223995183675747 ]
+    Credible interval for b (94%): [ -0.08531245457217758, 0.027892383307779253 ]
+    Credible interval for y5 (94%): [ 9.842085437030647, 10.248203195412659 ]
+
 
 */
 
 var model = function() {
 
-    var xs = [0,1,2,3];
-    var ys = [0,1,4,6];
+    var xs = [0,1,2,3,4]
+    var ys = [0,2,4,6,8]
     
-    var m = gaussian(0,2);
-    var b = gaussian(0,2);
-    var sigma = gamma(1,1);
+    var m = gaussian(0,2)
+    var b = gaussian(0,2)
+    var sigma = gamma(1,1)
     
-    var y = function(i) {
-        return Gaussian({mu:m*sample(x(i)) + b, sigma:sigma});
-    }
-    
-    var x = function(i) {
-        return Uniform({a:0,b:4});
-    }
-
     mapN(function(i) {
-        observe(y(i),ys[i]) &&
-        observe(x(i),xs[i])
-    },xs.length);
+        observe(Gaussian({mu:b + m*xs[i], sigma:sigma}),ys[i])
+    },xs.length)
+
+    var post = function(i) {
+        var mu = b + m*i
+        return gaussian(mu, sigma)
+    }
     
     return {
         m:m,
         b:b,
         sigma:sigma,
-        y4:sample(y(4)),
-        y5:sample(y(5)),
+        y4:post(4),
+        y5:post(5),
     }
 
 }
 
 
-var d = Infer({method:"MCMC",kernel:"MH",sample:10000,lag:10},model);
+// var d = Infer({method:"MCMC",kernel:"MH",sample:100000,lag:10,burn:10000},model);
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model);
 // display(d);
 
+exp_map(d,["m","b","sigma","y4","y5"],["expectation"]);
 
-var exp_map = function(d,arr) {
-    display("Marginals:");
-    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) {[a,expectation(marginalize(d, a))]}, arr));
-    // display("MAP:");
-    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
-
-exp_map(d,["m","b","sigma","y4","y5"]);
+showCredibleInterval(d,"m",0.94)
+showCredibleInterval(d,"b",0.94)
+showCredibleInterval(d,"y5",0.94)

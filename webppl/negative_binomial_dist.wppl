@@ -9,6 +9,37 @@
    and to sum them."
    """
 
+   Compare with Mathematica:
+
+    d = NegativeBinomialDistribution[3, 0.7]
+    Table[PDF[d, k], {k, 0, 10}]
+    -> {0.343, 0.3087, 0.18522, 0.09261, 0.0416745, 0.0175033, 0.00700132, 0.00270051, 0.00101269, 0.00037132, 0.000133675}
+
+    Probability[d >= 4, d \[Distributed] heads4]
+    -> 0.07047
+
+    This model:
+    d
+    Marginal:
+    0 : 0.34356
+    1 : 0.30824999999999997
+    2 : 0.18412
+    3 : 0.09461999999999998
+    4 : 0.041589999999999995
+    5 : 0.01682
+    6 : 0.006800000000000002
+    7 : 0.002639999999999999
+    8 : 0.0009199999999999999
+    9 : 0.00035999999999999986
+    10 : 0.00022
+    11 : 0.00007
+    12 : 0.000029999999999999977
+
+    p
+    Marginal:
+    false : 0.92703
+    true : 0.07297
+
 */
 
 // From Handbook on probability distributions
@@ -29,6 +60,10 @@ var geometric = function(p) {
 // From Handbook on probability distributions
 // page 23
 // Expectation: m*(1-p)/p
+// """
+// The algorithm to simulate a negative binomial distribution NB(m,p) is simply
+// to generate m random variables geometrically distributed and to sum them.
+// """
 var negative_binomial = function(m,p) {
     var g = mapN(function() { return geometric(p)}, m);
     return sum(g);
@@ -41,36 +76,20 @@ var model = function() {
     // See negative_binomial_test.wppl
     var d = negative_binomial(3,0.7);
 
+
     return {
-        d:d
+        d:d,
+        p:(d >= 4),
     }
 }
 
 
-var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000000},model);
+var d = Infer({method:"rejection",samples:10000},model);
 // var d = Infer(model);
 // display(d);
 
-var exp_map = function(d,arr) {
-    display("Marginals:");
-    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    display("MAP:");
-    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
+exp_map(d,["d","p"]);
 
-exp_map(d,["d"]);
-
-
-var stat = function(v) {
-    console.log("Stat for v:",v);
-    var m = marginalize(d, v);
-    var s = m.supp;
-    var mean = listMean(s);
-    var stdev = listStdev(s,mean);
-    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
-    
-}
-
-stat("d");
+stat2(d,"d")
+stat2(d,"p")

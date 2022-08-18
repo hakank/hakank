@@ -1,0 +1,101 @@
+/*
+  Port of SPPL model
+  https://github.com/probcomp/sppl/blob/master/examples/fairness-hiring-model-1.ipynb
+
+  The SPPL model gives the following exact probabilities:
+    p_hire_given_minority:0.007131626828051439
+    p_hire_given_majority:0.01945024229170891
+    min/maj: 0.3666600508668959
+
+  This WebPPL model:
+  ethnicity
+  Marginal:
+    2 : 0.8493599999999981
+    1 : 0.15064000000000186
+  ethnicity
+  Marginal:.8493599999999981
+    2 : 0.84935999999999816
+    1 : 0.15064000000000186
+  years_experience
+  Marginal:
+    8 : 0.20221000000000106
+    7 : 0.19624999999999926
+    6 : 0.15009000000000017
+    9 : 0.14790000000000034
+    10 : 0.09451999999999965
+    5 : 0.09050999999999995
+    11 : 0.041979999999999816
+    4 : 0.04095999999999975
+    12 : 0.01532000000000009
+    3 : 0.014029999999999961
+    13 : 0.0028399999999999927
+    2 : 0.002639999999999985
+    14 : 0.0004099999999999996
+    1 : 0.0003300000000000004
+    0 : 0.000009999999999999999
+  hire
+  Marginal:
+    0 : 0.9772000000000001
+    1 : 0.022800000000000008
+  hire_ethnicity
+  Marginal:
+    [0,2] : 0.8280599999999976
+    [0,1] : 0.14914000000000205
+    [1,2] : 0.02130000000000029
+    [1,1] : 0.0015000000000000113
+  expectation:
+  [ [ 'ethnicity', 1.8493599999999981 ],
+    [ 'years_experience', 7.520640000000001 ],
+    [ 'college_rank', 20.732680683043537 ],
+    [ 'hire', 0.022800000000000008 ],
+    [ 'hire_ethnicity', NaN ] ]
+
+  Post analysis:
+  hire_minority: 150 hire_majority: 2130 min/maj: 0.07042253521126761
+
+  (This is a port of my Turing.jl model fairness_hiring_model1.jl)
+
+*/
+
+var model = function() {
+    var minority = 1
+    var majority = 2
+
+    var ethnicity = categorical({ps:[0.15,0.85],vs:[minority,majority]})
+    var years_experience = binomial(0.5,15)
+    var college_rank = ethnicity == minority ? laplace(25,5) : laplace(20,5)
+    
+    // Top 50 colleges and at most 20 years of experience.
+    condition(college_rank <= 50)
+    condition(years_experience <= 20)    
+
+    // We combine this in hire_ethnicity
+    // condition(ethnicity == minority) 
+    // condition(ethnicity == majority)   
+    
+    // Hiring decision (from the underlying decision tree)
+    var hire = college_rank <= 5 ? 1 : (years_experience - 5) > college_rank ? 1 : 0
+    
+    return {
+        ethnicity:ethnicity,
+        years_experience:years_experience,
+        college_rank:college_rank,
+        hire:hire,
+        hire_ethnicity:[hire,ethnicity]
+    }
+
+}
+
+// var d = Infer(model)
+var d = Infer({method:"MCMC",samples:100000,burn:1000},model)
+// var d = Infer({method:"SMC",particles:100000},model)
+// display(d)
+
+exp_map(d,["ethnicity","years_experience","college_rank","hire","hire_ethnicity"],
+        ["expectation","marginals"])
+
+console.log("\nPost analysis:")
+var hire_ethnicity = getSamples(d,"hire_ethnicity")
+var hire_minority = sum(mapN(function(i) { return _.isEqual(hire_ethnicity[i], [1,1]) ? 1 : 0 },hire_ethnicity.length))
+var hire_majority = sum(mapN(function(i) { return _.isEqual(hire_ethnicity[i], [1,2]) ? 1 : 0 },hire_ethnicity.length))
+console.log("hire_minority:",hire_minority,"hire_majority:",hire_majority, "min/maj:", hire_minority / hire_majority)

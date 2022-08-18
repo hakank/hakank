@@ -1,0 +1,109 @@
+/*
+  From HAL-ProbLog example examples/appears_tall.pl  
+  (https://bitbucket.org/pedrozudo/hal_problog/src/master/examples/appears_tall.pl)
+  """
+  2/5::male;3/5::female.
+
+  normal(180,8)~height:-male.
+  normal(160,8)~height:-female.
+  is_tall:-male, height~=Height, conS(180<Height).
+  is_tall:-female, height~=Height, conS(170<Height).
+  appears_tall:- is_tall.
+  3/10::appears_tall:-male.
+
+  query(is_tall).
+  query(appears_tall).
+  """
+
+  * No conditions/observation:
+  gender
+  Marginal:
+    "female" : 0.6028999999999989
+    "male" : 0.3971000000000011
+  is_tall
+  Marginal:
+    false : 0.7246000000000019
+    true : 0.27539999999999815
+  appears_tall
+  Marginal:
+    false : 0.6669000000000007
+    true : 0.3330999999999994
+  expectation:
+  [ [ 'gender', NaN ],
+    [ 'height', 168.393204088531 ],
+    [ 'is_tall', 0.27539999999999815 ],
+    [ 'appears_tall', 0.3330999999999994 ] ]
+  MAP:
+  [ [ 'gender', { val: 'female', score: -0.506003933486779 } ],
+    [ 'height',
+    { val: 162.20918317007028, score: -6.812445099177811 } ],
+    [ 'is_tall', { val: false, score: -0.3221355005211576 } ],
+    [ 'appears_tall', { val: false, score: -0.40511516934387537 } ] ]
+  Creditble interval height 0.93
+  [ 147.83431430420052, 190.46925513810416 ]
+
+
+
+  * With condition(appears_tall == true)
+  gender
+  Marginal:
+    "male" : 0.7682
+    "female" : 0.23180000000000006
+  is_tall
+  Marginal:
+    true : 0.8020000000000005
+    false : 0.19799999999999943
+  appears_tall
+  Marginal:
+    true : 1
+  expectation:
+  [ [ 'gender', NaN ],
+    [ 'height', 180.91897676188722 ],
+    [ 'is_tall', 0.8020000000000005 ],
+    [ 'appears_tall', 1 ] ]
+  MAP:
+  [ [ 'gender', { val: 'male', score: -0.26370516307033265 } ],
+    [ 'height',
+    { val: 171.30483160797328, score: -5.713832810509705 } ],
+    [ 'is_tall', { val: true, score: -0.22064667111562195 } ],
+    [ 'appears_tall', { val: true, score: 0 } ] ]
+  Creditble interval height 0.93
+  [ 169.78734137001138, 195.03746480080926 ]
+
+*/
+
+var model = function() {
+
+    var genderList = ["male","female"];
+    var gender = categorical({ps:[2/5,3/5],vs:genderList});
+    var height = gender == "male" ? gaussian(180,8) : gaussian(160.8,8);
+
+    var is_tall = gender == "male" ? height >= 180 : height >= 170;
+    var appears_tall = is_tall ? true : gender == "male" ? flip(3/10) : false; 
+
+    condition(appears_tall == true)
+
+    return {
+        gender:gender,
+        height:height,
+        is_tall:is_tall,
+    }
+        
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"rejection",samples:10000},model)
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+// display(d)
+
+exp_map(d,["gender","height","is_tall","appears_tall"])
+
+display("Creditble interval height 0.93")
+display(credibleInterval(getSamples(d,"height"), 0.93))
+
+// viz.auto(d,{fileName:"appears_tall.svg"})
+// viz.density(d) // only shows gender
+// viz.marginals(d) // three images: height density, gender frequency, is_tall frequency
+// viz.density(getSamples(d,"height"),{fileName:"appears_tall_density_height.svg"})
+// viz.bar(getSamples(d,"height"),{fileName:"appears_tall_height_bar.svg"}) // Empty image!
+ 

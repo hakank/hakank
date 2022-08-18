@@ -1,0 +1,79 @@
+/*
+   Port of Pyro's Weight scale model
+   """
+   Suppose we are trying to figure out how much something weighs, but the scale we're using 
+   is unreliable and gives slightly different answers every time we weigh the same object. 
+   We could try to compensate for this variability by integrating the noisy measurement 
+   information with a guess based on some prior knowledge about the object, like its 
+   density or material properties. The following model encodes this process:
+
+     weight | guess ~ Normal(guess,1)
+     measurement | guess, weight ~ Normal(weight,0.75)
+
+  Note that this is a model not only for our belief over weight, but also for the result 
+  of taking a measurement of it. The model corresponds to the following stochastic function: 
+     def scale(guess):
+        weight = pyro.sample("weight", dist.Normal(guess, 1.0))
+        return pyro.sample("measurement", dist.Normal(weight, 0.75))
+
+  """
+
+  expectation:
+  [ [ 'weight', 9.455997326670198 ],
+    [ 'measurement', 9.431049480486037 ] ]
+
+
+  Credible interval for weight (94%): [ 8.117025735253037, 10.939917755264489 ]
+  Credible interval for weight (50%): [ 9.185331818999693, 10.244255864864478 ]
+  Credible interval for measurement (94%): [ 7.569940668242213, 11.541034671589385 ]
+  Credible interval for measurement (50%): [ 8.90957011814142, 10.229952958429394 ]
+  
+  Stat for v: weight
+  min: 6.796636125562905 mean: 9.458151471278686 max: 12.112923887493942 stdev: 0.7739045080936724
+  
+  Stat for v: measurement
+  min: 6.2381647577103205 mean: 9.454010529155362 max: 12.711754455741097 stdev: 1.0491557830910045
+
+
+*/
+
+var run = function(guess_val) {
+    
+    var model = function() {
+        var guess = guess_val
+        var weight = gaussian(guess, 1.0)
+        var measurement = gaussian(weight, 0.75)
+
+        observe(Gaussian({mu:weight,sigma:1}),guess)
+        // factor(Gaussian({mu:weight,sigma:1}).score(guess))
+        
+        return {
+            weight:weight,
+            measurement:measurement
+        }
+        
+    }
+
+
+    // var d  = Infer(model)
+    // var d = Infer({method:"MCMC",kernel:"HMC",samples:1000},model)
+    var d = Infer({method:"SMC",particles:1000},model)
+    // console.log(d)
+
+    exp_map(d,["weight","measurement"],["expectation"])
+
+    showCredibleInterval(d,"weight",0.94)
+    showCredibleInterval(d,"weight",0.5)
+    showCredibleInterval(d,"measurement",0.94)
+    showCredibleInterval(d,"measurement",0.5)    
+
+    console.log()
+    stat2(d,"weight")
+    stat2(d,"measurement")
+    
+    // viz(d)
+    
+}
+
+
+run(9.5)

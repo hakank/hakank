@@ -1,0 +1,120 @@
+/*
+  https://mathematica.stackexchange.com/questions/256381/what-is-the-probability-that-there-are-three-or-more-consecutive-numbers-in-thes
+  """
+  What is the probability that there are three or more consecutive numbers in these six cards?
+
+  52 poker cards (except the red and black jokers), 6 cards are drawn from them. What is the probability 
+  that there are three or more consecutive numbers in these six cards?
+
+  The problem have been solved by @BGM in mathematics site. But how to solve this general problem 
+  if using mathematica program?
+  """
+
+  According to
+  https://math.stackexchange.com/questions/4264826/what-is-the-probability-that-there-are-three-or-more-consecutive-numbers-in-thes/4265011#4265011
+
+  the answer is 924163/2544815 ~ 0.363155.
+
+  Let's check that.
+
+  * MCMC/MH:
+c
+Marginal:
+    0 : 0.66764
+    1 : 0.24711000000000002
+    2 : 0.07051000000000002
+    3 : 0.012749999999999994
+    4 : 0.001989999999999999
+p
+Marginal:
+    false : 0.6676399999999999
+    true : 0.33235999999999993
+expectation:
+[ [ 'c', 0.43434000000000006 ], [ 'p', 0.33235999999999993 ] ]
+
+  * rejection samples:1000000
+
+c
+Marginal:
+    0 : 0.671106
+    1 : 0.245118
+    2 : 0.06963199999999999
+    3 : 0.012581000000000005
+    4 : 0.0015629999999999997
+p
+Marginal:
+    false : 0.6711060000000001
+    true : 0.32889399999999996
+expectation:
+[ [ 'c', 0.428377 ], [ 'p', 0.32889399999999996 ] ]
+
+*/
+
+// Draw n values from array a without replacements
+// Run as
+//   draw_without_replacements(n,a,[])
+//
+var draw_without_replacement = function(n,a,res) {
+    if (n == 0) {
+        return res
+    } else {
+        var d = uniformDraw(a)
+        var new_a = _.difference(a,[d])
+        return draw_without_replacement(n-1,new_a, res.concat(d))
+    }
+}
+
+// Difference of the values in array a
+var difference = function(a) {
+    return mapN(function(i) {
+        return a[i+1]-a[i]
+    },a.length-1)
+}
+
+var model = function() {
+    var n = 52 
+    var m = 6 // Draw 6 cards
+    
+    // Values in the deck: 1..13 x 4
+    var deck = _.flatten(repeat(4, function() { return _.range(1,14) } ))
+
+    // Draw 6 integers from 0..51 without replacement
+    var values52 = _.range(52)
+    var drawFrom52 = draw_without_replacement(m, values52, [])
+    // convert to the values in (and sort)
+    var draw6 = sort(mapN(function(i) { return deck[drawFrom52[i]] }, m ))
+
+    /*
+    // The differences
+    var diffs = difference(draw6)
+    // How many entries in diffs have the pattern [1,1]
+    var c = sum(mapN(function(i) {
+        return diffs[i] == 1 && diffs[i+1] == 1
+    },diffs.length-1))
+    */
+    // Skipping the diffs array
+    var c = sum(mapN(function(i) {
+        draw6[i+1]-draw6[i] == 1 && draw6[i+2]-draw6[i+1] == 1
+    },m-2))
+
+    // So, does it have 3 consecutive values?
+    var p = c > 0
+    
+    // console.log("drawFrom52:", drawFrom52, " draw6:",draw6," c:", c, " p:",p)
+    return {
+        c:c,
+        p:p,
+    }
+
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"enumerate",maxRuntimeInMS: 600000},model) // Let's run for 10 minutes. Nope!
+// var d = Infer({method:"enumerate",maxExecutions:10000},model) // stack trace
+// var d = Infer({method:"rejection",samples:1000000},model) 
+var d = Infer({method:"MCMC",kernel:"MH", samples:10000},model)
+// display(d)
+
+exp_map(d,["c","p"])
+
+// viz(d)

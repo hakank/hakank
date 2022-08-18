@@ -1,0 +1,133 @@
+/*
+  Port of PyMC3 Drug trial evaluation model in
+  https://docs.pymc.io/pymc-examples/examples/case_studies/BEST.html
+  """
+  Example: Drug trial evaluation¶
+
+  To illustrate how this Bayesian estimation approach works in practice, we will use a 
+  fictitious example from Kruschke (2012) concerning the evaluation of a clinical trial for 
+  drug evaluation. The trial aims to evaluate the efficacy of a "smart drug" that is 
+  supposed to increase intelligence by comparing IQ scores of individuals in a treatment 
+  arm (those receiving the drug) to those in a control arm (those recieving a placebo). 
+  There are 47 individuals and 42 individuals in the treatment and control arms, respectively.
+  """
+
+  (Ref: Kruschke JK. Bayesian estimation supersedes the t test. 
+     J Exp Psychol Gen. 2013;142(2):573-603. doi:10.1037/a0029146.))
+
+
+  Point estimates for the PyMC3 model (via the graphs):
+  - group1_mean: 102
+  - group1_std: 2.1
+  - group2_mean: 101
+  - group2_std: 1,2
+  ~ v: 0.97
+  ~ difference_of_means: 1  (1.3% < 0 < 98.7%)
+
+  Note: This is a port of my Turing.jl port of the PyMC3 model.
+
+  The PyMC3 model (as well as the Turing.jl model) uses StudentT for the
+  observations. Since WebPPL does not support StudentT we use Gaussian instead.
+
+  expectation:
+  [ [ 'group1_mean', 101.85742366016972 ],
+    [ 'group2_mean', 100.26276951897611 ],
+    [ 'group1_std', 4.7746318644587555 ],
+    [ 'group2_std', 5.539589054424096 ],
+    [ 'v', 1.033243536853897 ],
+    [ 'lambda_1', 0.044580281882210915 ],
+    [ 'lambda_2', 0.10363657600729576 ],
+    [ 'diff_of_means', 1.5946541411936501 ],
+    [ 'diff_of_stds', -0.7649571899653381 ],
+    [ 'effect_size', 0.32799257292008455 ] ]
+
+  Credible interval v 94%: [ 1.0000010478778862, 1.0909045820442704 ]
+  Credible interval group1_mean 94%: [ 100.90632228847336, 103.04082473794215 ]
+  Credible interval group1_std 94%: [ 4.0876678621352625, 5.377658930885395 ]
+  Credible interval group2_mean 94%: [ 98.77741142648658, 101.78886803923601 ]
+  Credible interval group2_std 94%: [ 1.0255620222621613, 9.435733801116754 ]
+  Credible interval diff_of_means 94%: [ 0.17452290678643578, 3.8254746367584715 ]
+  Credible interval effect_size 94%: [ -0.09098035439728731, 0.847635039373564 ]
+
+*/
+
+var model = function(i) {
+    var drug    = [101,100,102,104,102,97,105,105,98,101,100,123,105,103,100,95,102,106,
+                   109,102,82,102,100,102,102,101,102,102,103,103,97,97,103,101,97,104,
+                   96,103,124,101,101,100,101,101,104,100,101]
+    var placebo = [99,101,100,101,102,100,97,101,104,101,102,102,100,105,88,101,100,
+                   104,100,100,100,101,102,103,97,101,101,100,101,99,101,100,100,
+                   101,100,99,101,100,102,99,100,99]
+
+    var y = _.concat(drug,placebo)
+    var mu_m = listMean(y)
+    var mu_s = Math.pow(listStdev(y),2)
+    var group1_mean = gaussian(mu_m,mu_s)
+    var group2_mean = gaussian(mu_m,mu_s)
+
+    var sigma_low = 1
+    var sigma_high = 10
+    var group1_std = uniform(sigma_low,sigma_high)
+    var group2_std = uniform(sigma_low,sigma_high)    
+
+    var v = exponential(29.0) + 1
+
+    var lambda_1 = Math.pow(group1_std,-2)
+    var lambda_2 = Math.pow(group2_std,-2)
+
+    // Note: The PyMC3 model uses StudentT but this is not supported
+    //       in WebPPL. Let's do a Gaussian instead
+    mapN(function(i) {
+        observe(Gaussian({mu:v*lambda_1+group1_mean, sigma:group1_std}), drug[i])
+    },drug.length)
+    mapN(function(i) {
+        observe(Gaussian({mu:v*lambda_2+group2_mean, sigma:group1_std}), placebo[i])
+    },placebo.length)
+
+
+    var diff_of_means = group1_mean - group2_mean
+    var diff_of_stds = group1_std - group2_std
+    var effect_size = diff_of_means / Math.sqrt((Math.pow(group1_std,2) + Math.pow(group2_std,2)) / 2)
+
+    return {
+        group1_mean:group1_mean,
+        group2_mean:group2_mean,
+        group1_std:group1_std,
+        group2_std:group2_std,
+        v:v,
+        lambda_1:lambda_1,
+        lambda_2:lambda_2,
+        diff_of_means:diff_of_means,
+        diff_of_stds:diff_of_stds,
+        effect_size:effect_size,
+    }
+
+}
+
+
+// var d = Infer(model)
+// var d = Infer({method:"SMC",particles:1000},model)
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,burn:1000},model)
+// display(d)
+
+exp_map(d,["group1_mean",
+           "group2_mean",
+           "group1_std",
+           "group2_std",
+           "v",
+           "lambda_1",
+           "lambda_2",
+           "diff_of_means",
+           "diff_of_stds",
+           "effect_size",
+          ],
+        ["expectation"])
+
+// This takes a while to calculate...
+console.log("\nCredible interval v 0.94:", credibleInterval(getSamples(d,"v"),0.94))
+console.log("Credible interval group1_mean 0.94:", credibleInterval(getSamples(d,"group1_mean"),0.94))
+console.log("Credible interval group1_std 0.94:", credibleInterval(getSamples(d,"group1_std"),0.94))
+console.log("Credible interval group2_mean 0.94:", credibleInterval(getSamples(d,"group2_mean"),0.94))
+console.log("Credible interval group2_std 0.94:", credibleInterval(getSamples(d,"group2_std"),0.94))
+console.log("Credible interval diff_of_means 0.94:", credibleInterval(getSamples(d,"diff_of_means"),0.94))
+console.log("Credible interval effect_size 0.94:", credibleInterval(getSamples(d,"effect_size"),0.94))

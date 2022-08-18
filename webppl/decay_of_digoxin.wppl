@@ -1,0 +1,104 @@
+/*
+  Decay of Digoxin in Turing.jl
+
+  From A First Course in Mathematical Modeling, 4th edition,
+  page 14f:
+  """
+  Digoxin is used in the treatment of heart disease. Doctors must prescribe an amount of
+  medicine that keeps the concentration of digoxin in the bloodstream above an effective level
+  without exceeding a safe level (there is variation among patients). For an initial dosage of
+  0.5 mg in the bloodstream, Table 1.2 shows the amount of digoxin a n remain-
+  ing in the bloodstream of a particular patient after n days, together with the change Δa n
+  each day.
+  """
+  
+  From Table 1.2_
+  a[0..8]:    0.500, 0.345, 0.238, 0.164, 0.113, 0.078, 0.054, 0.037, 0.026
+
+  The book states the formula:
+
+     a[n] = a[n] - 0.31*a[n] = 0.69*a[n-1]
+     a[1] = 0.5
+
+
+  Note: v (sigma) must be truncated and is here fixed by Math.abs().
+
+  Model 1 (no intercept)
+  expectation:
+  [ [ 'slope', 0.6845321061839866 ], 
+    [ 'v', 0.0429937780784353 ] ]
+
+  Model 2 (with intercept)
+  expectation:
+  [ [ 'slope', 0.6970840053739932 ],
+    [ 'v', 0.03605723534305863 ],
+    [ 'intercept', -0.005228146441114273 ] ]
+
+
+
+*/
+
+
+// No intercept
+var model1 = function() {
+    var a = [0.500, 0.345, 0.238, 0.164, 0.113, 0.078, 0.054, 0.037, 0.026]
+
+    // var use_intercept = false
+    var n = a.length
+    
+    var slope = uniform(-1,1) 
+    // var v = Math.abs(gaussian(0,1)) // It should be truncated
+    var v = gaussian(0,1) // Another approach
+    condition(v >= 0)
+    mapN(function(i) {
+        if (i > 0) {
+            observe(Gaussian({mu:0 + a[i-1]*slope, sigma:v}), a[i])
+        }
+    }, n)
+
+    return {
+        slope:slope,
+        v:v
+    }
+
+}
+
+display("Model 1 (no intercept)")
+// var d1 = Infer(model1)
+var d1 = Infer({method:"MCMC",kernel:"MH",samples:1000},model1)
+// var d1 = Infer({method:"SMC",particles:1000},model1)
+// display(d1)
+
+exp_map(d1,["slope","v"],["expectation"])
+
+
+var model2 = function() {
+    var a = [0.500, 0.345, 0.238, 0.164, 0.113, 0.078, 0.054, 0.037, 0.026]
+    var n = a.length
+    
+    var slope = uniform(-1,1) 
+    var intercept = gaussian(2,1)
+    // var v = Math.abs(gaussian(0,1)) // It should be truncated
+    var v = gaussian(0,1)
+    condition(v >= 0)
+    mapN(function(i) {
+        if (i > 0) {
+            observe(Gaussian({mu:intercept + a[i-1]*slope, sigma:v}), a[i])
+        }
+    }, n)
+
+    return {
+        slope:slope,
+        intercept:intercept,
+        v:v
+    }
+
+}
+
+display("\nModel 2 (with intercept)")
+// var d2 = Infer(model2)
+var d2 = Infer({method:"MCMC",kernel:"MH",samples:10000},model2)
+// var d2 = Infer({method:"SMC",particles:1000},model2)
+// display(d2)
+
+exp_map(d2,["slope","v","intercept"],["expectation"])

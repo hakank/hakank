@@ -1,0 +1,76 @@
+/*
+  Testing for Proportionality in Turing.jl
+
+  From A First Course in Mathematical Modeling, 4th edition,
+  page 2:
+
+  This is a simple spring-mass system experiment with mass 
+  and the elongment:
+
+    mass =  [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550]
+    elong = [1.0, 1.875, 2.75, 3.25, 4.375, 4.875, 5.675, 6.5, 7.25, 8.0, 8.75]
+
+  In the book, the slope is calculated as 0.0163 (with an intercept of 0).
+
+
+  Here we have two models, without and with intercept.
+
+  * Without intercept:
+   expectation:
+   [ [ 'slope', 0.022216479801023228 ] ]
+
+   Credible interval for slope (94%): [ 0.012834086562599767, 0.03345207604655731 ]
+
+  * With intercept:
+    expectation:
+    [ [ 'slope', 0.013336919631346943 ],
+      [ 'intercept', 2.5840687715087745 ] ]
+
+   Credible interval for slope (94%): [ 0.008073154797151538, 0.038834364783345565 ]
+   Credible interval for intercept (94%): [ 1.0480157965131474, 3.2040428882619745 ]
+
+*/
+
+var mass =  [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550]
+var elong = [1.0, 1.875, 2.75, 3.25, 4.375, 4.875, 5.675, 6.5, 7.25, 8.0, 8.75]
+
+var run = function(use_intercept) {
+    var model = function() {
+        var n = mass.length
+        
+        var slope = gaussian(2,1)
+        // condition(slope >= 0)
+        var intercept = use_intercept ? gaussian(5,1) : 0
+        
+        mapN(function(i) {
+            observe(Gaussian({mu:intercept + mass[i]*slope, sigma:1}),elong[i])
+        },n)
+        
+        return {
+            slope:slope,
+            intercept:intercept
+        }
+    }
+
+    var d = Infer({method:"MCMC",samples:10000},model)
+    // display(d)
+
+    if (use_intercept) {
+        exp_map(d,["slope","intercept"],["expectation"])
+        
+        showCredibleInterval(d,"slope",0.94)
+        showCredibleInterval(d,"intercept",0.94)
+    } else {
+        exp_map(d,["slope"],["expectation"])
+        showCredibleInterval(d,"slope",0.94)
+        
+    }
+
+}
+
+console.log("Without intercept:")
+run(false)
+
+console.log("\nWith intercept:")
+run(true)
+

@@ -1,0 +1,167 @@
+/*
+  From Andreas Stuhlmüller 
+  "Modeling Cognition with Probabilistic Programs: Representations and Algorithms"
+  page 30f
+  """
+  We are presented with three opaque urns, each of which contains some unknown number of
+  red and black balls. We do not know the proportion of red balls in each urn, and
+  we don’t know how similar the proportions of red balls are between urns, but we
+  have reason to suspect that the urns could be similar, as they all were filled at the
+  same factory. We are asked to predict the proportion of red balls in the third urn
+  (1) before making any observations, 
+  (2) after observing 15 balls drawn from the first urn, 14 of which are red, and 
+  (3) after observing in addition 15 balls drawn from the second urn, only one 
+      of which is red.
+  """
+
+  Note: This model was written before I read the further in the text.
+
+  Assumptions:
+  - We replace the balls after each observation.
+
+  - We randomize the number of balls in each urn using poisson(15).
+    For urn1 and urn2 we add the condition >= 15; for urn 3 >= 1.
+
+    Though, below I add the variant that the number of balls in each urn are
+    the same (but unknown).
+
+  - The three urns share a common probability of the proportion of red balls
+    (p_red).
+
+
+  * 1) Number of red in urn 3 before any observations
+
+       expectation
+       [ 'urn3_red', 7.480000000000001 ],
+       [ 'num_balls3', 14.819999999999999 ],
+       [ 'p_red', 0.49719748124904606 ] ]
+       
+
+  * 2) After observing the number of red balls in urn 1
+       what is the proportion of red in urn 3 (p_urn3_red)?
+
+       We first assume that that the number of balls in each
+       urn can be different.
+
+       expectation:
+       [ [ 'urn1_red', 14 ],
+         [ 'urn3_red', 10.023000000000001 ],
+         [ 'num_balls1', 18.485999999999994 ],
+         [ 'num_balls3', 14.185999999999996 ],
+         [ 'p_red', 0.7277811644133737 ],
+         [ 'p_urn1_red', 0.7685972086594849 ],
+         [ 'p_urn3_red', 0.7122997283552809 ] ]
+
+
+       Here we assume that number of balls in urn 3 are - in fact -
+       the same as in urn 1.
+
+       expectation:
+       [ [ 'urn1_red', 14 ],
+         [ 'urn3_red', 13.749999999999995 ],
+         [ 'num_balls1', 17.671 ],
+         [ 'num_balls3', 14.587000000000005 ],
+         [ 'p_red', 0.7789644270948655 ],
+         [ 'p_urn1_red', 0.8058557538978426 ],
+         [ 'p_urn3_red', 0.7902423118436059 ] ]
+
+
+  * 3) After also observing the number of red balls in urn 2,
+       what is the proportion of red in urn 3 (p_urn3_red)?
+
+       a) First with different number of balls in each urn:
+
+       expectation:
+       [ [ 'urn1_red', 14 ],
+         [ 'urn2_red', 1 ],
+         [ 'urn3_red', 6.082999999999998 ],
+         [ 'num_balls1', 21.837000000000003 ],
+         [ 'num_balls2', 15.49 ],
+         [ 'num_balls3', 15.098000000000003 ],
+         [ 'p_red', 0.4055309657262307 ],
+         [ 'p_urn1_red', 0.6530374326338724 ],
+         [ 'p_urn2_red', 0.06473358703130375 ],
+         [ 'p_urn3_red', 0.40283650462031306 ] ]
+
+
+      The proportion of red ball is the same as the overall proportionality (40%)
+      which is - as expected - much lower than for scenario 1.
+
+      However, the number of balls in urn 3 urn are lower than in urn 1.
+
+      b) If we know that there is the same (but unknown) number of balls in each urn
+      (the same as for urn 1).
+
+      expectation:
+      [ [ 'urn1_red', 14 ],
+        [ 'urn2_red', 1 ],
+        [ 'urn3_red', 7.344999999999997 ],
+        [ 'num_balls1', 18.937 ],
+        [ 'p_red', 0.40168020705707463 ],
+        [ 'p_urn1_red', 0.7501133775838886 ],
+        [ 'p_urn2_red', 0.053579526970277756 ],
+        [ 'p_urn3_red', 0.3950401397879728 ] ]
+
+     The proportion of red balls in urn 3 is (almost) the same as for 3a,
+     but the total number of balls in urn 3 is now higher (15 vs 19).
+
+
+*/
+
+var model = function() {
+    var p_red = beta(1,1)
+
+    // Number of balls in each URN
+    var num_balls1 = poisson(15)
+    condition(num_balls1 >= 15)
+    
+    // var num_balls2 = poisson(15)
+    // condition(num_balls2 >= 15)
+    
+    // var num_balls3 = poisson(15)
+    // condition(num_balls3 >= 1)
+    
+    // number of red balls (== true)
+    var urn1_red = binomial(p_red,num_balls1)
+    var urn2_red = binomial(p_red,num_balls1)
+    var urn3_red = binomial(p_red,num_balls1)
+
+    // The proportion of red in each urn
+    var p_urn1_red = urn1_red/num_balls1
+    var p_urn2_red = urn2_red/num_balls1
+    var p_urn3_red = urn3_red/num_balls1
+    
+    condition(urn1_red == 14)
+    condition(urn2_red == 1)    
+    
+    return {
+        p_red:p_red,
+        
+        num_balls1:num_balls1,
+        // num_balls2:num_balls2,
+        // num_balls3:num_balls3,
+        
+        urn1_red:urn1_red,
+        urn2_red:urn2_red,        
+        urn3_red:urn3_red,
+        
+        p_urn1_red:p_urn1_red,
+        p_urn2_red:p_urn2_red,
+        p_urn3_red:p_urn3_red,
+        
+    }
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"rejection",samples:1000},model)
+var d = Infer({method:"MCMC",kernel:"HMC",samples:1000},model)
+// display(d)
+
+exp_map(d,["urn1_red","urn2_red","urn3_red",
+           "num_balls1","num_balls2","num_balls3",
+           "p_red",
+           "p_urn1_red",
+           "p_urn2_red",
+           "p_urn3_red",
+          ],
+        ["expectation"])

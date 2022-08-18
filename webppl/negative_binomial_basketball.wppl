@@ -1,0 +1,97 @@
+/*
+  From Mathematica (NegativeBinomialDistribution)
+  """
+  A basketball player shoots free throws until he hits 4 of them. His probability of scoring 
+  in any one of them is 0.7. Simulate the process:
+
+    4 + RandomVariate[NegativeBinomialDistribution[4, 0.7], 50]
+
+
+  Find the number of shots the player is expected to shoot:
+    Expectation[x + 4, x -> NegativeBinomialDistribution[4, 0.7]]
+    -> 
+    5.71429
+
+  Find the probability that the player requires 4 shots:
+    NProbability[x + 4 == 4, x -> NegativeBinomialDistribution[4, 0.7]]
+    -> 
+    0.2401
+
+  """
+
+  Note: Using "full" enumerate is too slow / give allocation failure. 
+  Instead we use enumerate with maxExecutions:100000
+
+  * Simulate the process
+    50 random shots:
+    6,6,6,4,5,5,5,4,4,7,6,6,5,6,5,5,8,7,5,5,6,4,6,6,7,5,4,5,5,4,5,5,4,5,4,4,7,4,7,6,5,6,7,4,5,5,5,5,6,10
+
+  * Expected shots:
+
+    Marginal:
+      {"v":5} : 0.2881200037291763
+      {"v":4} : 0.2401000031076469
+      {"v":6} : 0.21609000279688217
+      {"v":7} : 0.12965400167812935
+      {"v":8} : 0.06806835088101797
+      {"v":9} : 0.032672808422888604
+      {"v":10} : 0.014702763790299837
+      {"v":11} : 0.006301184481557068
+      {"v":12} : 0.0025992385986422883
+      {"v":13} : 0.001039695439456919
+      {"v":14} : 0.00040548122138819924
+      {"v":15} : 0.00015482010271185807
+      {"v":16} : 0.000058057538516946723
+      {"v":17} : 0.000021436629606257235
+      {"v":18} : 0.00000780905792799374
+      {"v":19} : 0.000002811260854077708
+      {"v":20} : 0.0000010015116792651882
+      {"v":21} : 3.534747103288932e-7
+      {"v":22} : 1.2371614861511117e-7
+      {"v":23} : 4.297508320314559e-8
+      {"v":24} : 9.585676026155944e-9
+
+    expectation:
+   [ [ 'v', 5.7142857142857135 ],
+     [ 'p_four_shots', 0.24009999999999998 ] ]
+
+
+
+*/
+
+// n: number of failures
+// p: probability of success
+var negative_binomial = function(n,p) {
+    return negative_binomial_tmp(n, p, 0, 0);
+};
+
+// helper function
+var negative_binomial_tmp = function(n, p, s, f) {
+    if (s == n) {
+        return f;
+    } else {
+        return flip(p) ? negative_binomial_tmp(n,p,s+1,f) :  negative_binomial_tmp(n,p,s,f+1);
+    }
+    
+};
+
+
+var model = function() {
+    var v = 4 + negative_binomial(4,0.7)
+    
+    // probability that the player requires 4 shots:
+    var p_four_shots = v == 4
+    return {
+        v:v,
+        p_four_shots:p_four_shots
+    }
+}
+
+// var d = Enumerate(model) // allocation failure
+var d = Infer({method:"enumerate",maxExecutions:100000},model)
+// display(d)
+
+exp_map(d,["v","p_four_shots"])
+
+console.log("\nSimulate the process (50 random shots)")
+console.log(_.join(repeat(50,function() {return 4+negative_binomial(4,0.7) }), ","))

@@ -1,0 +1,95 @@
+/*
+  This is a port of the R2 model SurveyResultUnbias2.cs
+  With the datafiles
+  - survey_result_unbias2_population.csv
+  - survey_result_unbias2_gender.csv
+  - survey_result_unbias2_person_gender.csv
+  - survey_result_unbias2_answer.csv
+  
+
+  Result from the R2 model:
+  ```
+  <0>[0] Mean: 0.590981              bias[0]
+  <0>[0] Variance: 0.0427666
+  
+  <0>[1] Mean: 0.472561              bias[1]
+  <0>[1] Variance: 0.0494528
+  
+  <1>[0] Mean: 591.075               votes[0]
+  <1>[0] Variance: 43109
+  
+  <1>[1] Mean: 944.156               votes[1]
+  <1>[1] Variance: 197880
+  ```
+
+
+  expectation:
+  [ [ 'bias0', 0.6091748179678412 ],
+    [ 'bias1', 0.5097405695878469 ],
+    [ 'pop_mean0', 609.1748179678414 ],
+    [ 'pop_mean1', 1019.4811391756941 ],
+    [ 'pop_variance0', 190.7292946866515 ],
+    [ 'pop_variance1', 404.04687847452857 ],
+    [ 'votes0', 609.4859899578438 ],
+    [ 'votes1', 1020.1294429053416 ] ]
+
+
+  Cf survey_result_unbias.wppl which is the same model but with different
+  input data.
+
+  (This is a port of my Turing.jl model survey_result_unbias2.wppl)
+
+*/
+
+var population = [1000,2000]
+var gender = [0,1]
+var person_gender = [0,1,0,1,0]
+var answer = [1,0,1,1,0]
+
+var model = function() {
+    var pop_len = population.length
+    var answer_len = answer.length
+
+    var bias = mapN(function(i) { return beta(1,1) }, pop_len)
+
+    var pop_mean = mapN(function(i) {return population[i] *  bias[i] }, pop_len)
+    var pop_variance = mapN(function(i) { return pop_mean[i] - pop_mean[i] * bias[i] }, pop_len)
+    var cov = T.diagonal(Vector(pop_variance)) // covariance matrix
+    var votes = multivariateGaussian(Vector(pop_mean), cov)
+    // var votes = mapN(function(i) {
+    //     // sigma is std dev not variance
+    //     return gaussian(pop_mean[i], Math.sqrt(pop_variance[i]))
+    // }, pop_len)
+    
+    mapN(function(i) {
+        var ansBias = bias[person_gender[i]]
+        observe(Bernoulli({p:ansBias}), answer[i] == 1 ? true : false)
+    }, answer_len)
+
+    return {
+        bias0:bias[0],
+        bias1:bias[1],
+        
+        pop_mean0:pop_mean[0],
+        pop_mean1:pop_mean[1],
+        
+        pop_variance0:pop_variance[0],
+        pop_variance1:pop_variance[1],
+        
+        votes0:votes.data[0],
+        votes1:votes.data[1],
+    }
+
+}
+
+// var d = Infer({method:"MCMC",samples:10000,lag:10,burn:1000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// var d = Infer({method:"rejection",samples:1000},model)
+// display(d)
+
+exp_map(d,["bias0","bias1",
+           "pop_mean0","pop_mean1",
+           "pop_variance0","pop_variance1",
+           "votes0","votes1"
+          ],
+        ["expectation"])

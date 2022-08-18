@@ -1,0 +1,105 @@
+/*
+   This is a port of the R2 model SurveyResultUnbias.cs
+
+   with the datafiles
+   - survey_result_unbias_population.csv
+   - survey_result_unbias_gender.csv
+   - survey_result_unbias_person_gender.csv
+   - survey_result_unbias_answer.csv
+
+    Output of the R2 model:
+    ```
+    <0>[0] Mean: 0.35699               bias[0]
+    <0>[0] Variance: 7.87941e-006
+
+    <0>[1] Mean: 0.573151              bias[1]
+    <0>[1] Variance: 4.22538e-005
+
+    <1>[0] Mean: 1121.3                mean[0]
+    <1>[0] Variance: 77.7373
+
+    <1>[1] Mean: 1557.82               mean[1]
+    <1>[1] Variance: 312.151
+
+    <2>[0] Mean: 720.986               variance[0]
+    <2>[0] Variance: 6.41627
+
+    <2>[1] Mean: 664.841               variance[1]
+    <2>[1] Variance: 7.56368
+
+    <3>[0] Mean: 1125.37               votes[0]
+    <3>[0] Variance: 28.9169
+
+    <3>[1] Mean: 1570.39               votes[1]
+    <3>[1] Variance: 53.9271
+    ```
+
+    This model give quite different output...
+   
+    * MCMC: samples: 1000, lag:10, burn:1000
+      expectation:
+      [ [ 'bias0', 0.8043361278980505 ],
+        [ 'bias1', 0.4727151502249699 ],
+        [ 'pop_mean0', 2526.419777727776 ],
+        [ 'pop_mean1', 1284.8397783114674 ],
+        [ 'pop_variance0', 423.3690311558461 ],
+        [ 'pop_variance1', 539.4950990859231 ],
+        [ 'votes0', 2526.388391105327 ],
+        [ 'votes1', 1284.6019832993584 ] ]
+
+   (This is a port of my Turing.jl model survey_result_unbias.wppl)
+
+*/
+
+var population = [3141,2718]
+var gender = [0,1]
+var person_gender = [0,1,0,0,1]
+var answer = [1,0,1,1,1]
+
+var model = function() {
+    var pop_len = population.length
+    var answer_len = answer.length
+
+    var bias = mapN(function(i) { return beta(1,1) }, pop_len)
+
+    var pop_mean = mapN(function(i) {return population[i] *  bias[i] }, pop_len)
+    var pop_variance = mapN(function(i) { return pop_mean[i] - pop_mean[i] * bias[i] }, pop_len)
+    var cov = T.diagonal(Vector(pop_variance)) // covariance matrix
+    var votes = multivariateGaussian(Vector(pop_mean), cov)
+    // var votes = mapN(function(i) {
+    //     // sigma is std dev not variance
+    //     return gaussian(pop_mean[i], Math.sqrt(pop_variance[i]))
+    // }, pop_len)
+    
+    mapN(function(i) {
+        var ansBias = bias[person_gender[i]]
+        observe(Bernoulli({p:ansBias}), answer[i] == 1 ? true : false)
+    }, answer_len)
+
+    return {
+        bias0:bias[0],
+        bias1:bias[1],
+        
+        pop_mean0:pop_mean[0],
+        pop_mean1:pop_mean[1],
+        
+        pop_variance0:pop_variance[0],
+        pop_variance1:pop_variance[1],
+        
+        votes0:votes.data[0],
+        votes1:votes.data[1],
+    }
+
+}
+
+// var d = Infer({method:"MCMC",samples:10000,lag:10,burn:1000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// var d = Infer({method:"rejection",samples:1000},model)
+// display(d)
+
+exp_map(d,["bias0","bias1",
+           "pop_mean0","pop_mean1",
+           "pop_variance0","pop_variance1",
+           "votes0","votes1"
+          ],
+        ["expectation"])

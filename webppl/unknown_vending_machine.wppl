@@ -1,0 +1,86 @@
+/*
+  Unknown vending machine
+
+  Port of the PSI model from PSense/examples/unknown_vending_machine.psi
+  """
+  The following program models the behavior of an unknown vending machine with two 
+  buttons a and b selling only bagels and cookies. We do not know which button is 
+  for bagels, but we observe Sally, who wants a cookie, presses button b. Suppose 
+  Sally knows the how the machine works, how can we infer the probability that b 
+  gives bagels from Sally’s action?
+  """
+
+  Exact solution from the PSI model::
+  𝔼[bEffects₀] = 5/12  (bEffects[0])  = 0.416666666666667
+
+  E[aEffects₀,aEffects₁,bEffects₀,bEffects₁,goal] = (5/12,7/12,5/12,7/12,1)
+  (0.416666666666667,0.583333333333333,0.416666666666667,0.583333333333333,1)
+
+
+  This WebPPL model:
+  expectation:
+  [ [ 'aEffects1', 0.4158603968047107 ],
+    [ 'aEffects2', 0.5841396031952871 ],
+    [ 'bEffects1', 0.41345463165228635 ],
+    [ 'bEffects2', 0.5865453683477142 ],
+    [ 'goal', 1 ],
+    [ 'ca', 1 ] ]
+
+*/
+
+var a = 0
+var b = 1
+var actionPrior = [0.5, 0.5]
+
+var chooseAction = function(goal, aEffects, bEffects,actionPrior,a,b) {
+
+    // Since we want to sample from this, everything are "proper"
+    // distributions
+    var vendingMachine = function(action, aEffects, bEffects,a,b) {
+        var v = action == a ? Categorical({ps:aEffects,vs:[0,1]}) :
+                action == b ? Categorical({ps:bEffects,vs:[0,1]}) :
+                Delta({v:3.0}) //  Unknown result (not really needed here)
+        return v
+    }
+
+    var action = Categorical({ps:actionPrior,vs:[0,1]})
+    var v = vendingMachine(sample(action), aEffects,bEffects, a,b)
+    
+    condition(goal == sample(v))
+    
+    return action
+}
+
+var model = function() {
+    var aEffects1 = beta(1,1)
+    var aEffects2 = 1.0 - aEffects1
+    var aEffects = [aEffects1, aEffects2]
+
+    var bEffects1 = beta(1,1)
+    var bEffects2 = 1.0 - bEffects1
+    var bEffects = [bEffects1, bEffects2]
+
+    var goal = discrete([1,1])
+    
+    // As in the PSI model where have to get a sample from the chooseAction model
+    var ca = sample(chooseAction(goal, aEffects, bEffects,actionPrior,a,b))
+
+    condition(goal == 1 && ca == b)
+
+    return {
+        aEffects1:aEffects1,
+        aEffects2:aEffects2,
+        bEffects1:bEffects1,
+        bEffects2:bEffects2,
+    }
+   
+}
+
+
+// var d = Infer({method:"rejection",samples:1000},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:1000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// display(d)
+
+exp_map(d,["aEffects1","aEffects2","bEffects1","bEffects2"],
+        ["expectation"])

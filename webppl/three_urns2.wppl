@@ -1,0 +1,121 @@
+/*
+  From Andreas Stuhlmüller 
+  "Modeling Cognition with Probabilistic Programs: Representations and Algorithms"
+  page 30ff
+  """
+  We are presented with three opaque urns, each of which contains some unknown number of
+  red and black balls. We do not know the proportion of red balls in each urn, and
+  we don’t know how similar the proportions of red balls are between urns, but we
+  have reason to suspect that the urns could be similar, as they all were filled at the
+  same factory. We are asked to predict the proportion of red balls in the third urn
+  (1) before making any observations, 
+  (2) after observing 15 balls drawn from the first urn, 14 of which are red, and 
+  (3) after observing in addition 15 balls drawn from the second urn, only one 
+      of which is red.
+  """
+  
+  This is a port of the Church code at page 35 for scenario 2 and 3: we observe 14 red balls and
+  1 black.
+  """
+  (query
+  ; ; model
+  (define bias (uniform 0 10) )
+  (define red-bias (uniform 0 bias ) )
+  (define black-bias (- bias red-bias ) )
+  (define urn->proportion-red
+    (mem
+      (λ (urn)
+      (beta (+ .4 red-bias ) (+ .4 black-bias ) ) ) ) )
+  (define (sample-urn urn )
+     (if (flip (urn-> proportion-red urn ) ) R B) )
+
+  ;; query expression
+  (urn->proportion-red 3)
+
+  ;; condition
+  (equal? (repeat 15 (λ () (sample-urn 1) ) )
+  (list R R R R R R B R R R R R R R R) ) )
+  """
+
+  * scenario 1: no observation
+    expectation:
+    [ [ 'urn_proportion_red3', 0.5106931643850127 ],
+      [ 'bias', 2.7264464624436244 ],
+      [ 'red_bias', 1.32265049888783 ],
+      [ 'black_bias', 1.4037959635557875 ] ]
+
+  * scenario 2: we observe 14 red balls and 1 black
+
+    expectation:
+    [ [ 'urn_proportion_red1', 0.8982050276567679 ],
+      [ 'urn_proportion_red3', 0.5278637631659764 ],
+      [ 'bias', 1.1223244278502569 ],
+      [ 'red_bias', 0.7999068249759537 ],
+      [ 'black_bias', 0.32241760287430227 ] ]
+
+  * scenario 3: for urn 2 we observe 14 black balls and 1 red
+
+    expectation:
+    [ [ 'urn_proportion_red1', 0.8885383302606372 ],
+      [ 'urn_proportion_red2', 0.10521905606575346 ],
+      [ 'urn_proportion_red3', 0.527007159918078 ],
+      [ 'bias', 0.7915625219861495 ],
+      [ 'red_bias', 0.3527768352000475 ],
+      [ 'black_bias', 0.43878568678610147 ] ]
+    
+
+  Cf three_urns.wppl which has a little different proportions of red balls, 
+  especially for scenario 3.
+
+*/
+
+
+var model = function() {
+    // observed urn 1: 14 red balls and 1 black
+    var observed1 = ['R','R','R','R','R','R','B','R','R','R','R','R','R','R','R']
+
+    // observed for urn 2: 14 black balls and 1 red
+    var observed2 = ['B','B','B','B','B','B','R','B','B','B','B','B','B','B','B']    
+    
+    var bias = uniform(0,10)
+    var red_bias = uniform(0,bias)
+    var black_bias = bias - red_bias
+
+    var urn_proportion_red = mem(function(urn) {
+        return beta(0.4 + red_bias, 0.4+black_bias)
+    })
+
+    var sample_urn = function(urn) {
+        if (flip(urn_proportion_red(urn))) {
+            return 'R'
+        } else {
+            return 'B'
+        }
+    }
+
+    // Observation urn 1
+    mapN(function(i) {
+        condition(sample_urn(0) == observed1[i])
+    },observed1.length)
+
+    // Observation urn 2
+    mapN(function(i) {
+        condition(sample_urn(1) == observed2[i])
+    },observed2.length)
+
+    return {
+        bias:bias,
+        red_bias:red_bias,
+        black_bias:black_bias,
+        urn_proportion_red1:urn_proportion_red(0),
+        urn_proportion_red2:urn_proportion_red(1),        
+        urn_proportion_red3:urn_proportion_red(2),
+    }
+}
+
+// var d = Infer({method:"rejection",samples:1000},model)
+var d = Infer({method:"MCMC",kernel:"HMC",samples:10000},model)
+// display(d)
+exp_map(d,["urn_proportion_red1","urn_proportion_red2","urn_proportion_red3",
+           "bias","red_bias","black_bias"],
+        ["expectation"])

@@ -1,0 +1,104 @@
+/*
+  From Mathematica (NegativeBinomialDistribution)
+  """
+  A coin was flipped 10 times and the 8^th head occurred at 
+  the 10^th flip. Find the probability of such an event if the coin is fair:
+
+    fairD = NegativeBinomialDistribution[8, 1/2];
+    Probability[x == 2, x fairD]]
+    -> 
+      9/256 (0.0351563)
+
+  Assuming the coin may not be fair, find the most likely value for p:
+    D = NegativeBinomialDistribution[8, p];
+    FindMaximum[PDF[D, 2], {p, 0.9}]
+    -> 
+    {0.241592, {p -> 0.8}}
+
+
+  """
+
+  * Problem 1
+    Marginals:
+    fair
+    Marginal:
+      6 : 0.1889191643960031
+      7 : 0.18891916439600306
+      5 : 0.17438692098092684
+      4 : 0.1453224341507724
+      3 : 0.10568904301874338
+      8 : 0.09812016624005733
+      2 : 0.0634134258112461  <--
+      1 : 0.02818374480499828
+      0 : 0.007045936201249568
+   p  
+   Marginal:
+     false : 0.9365865741887539
+     true : 0.0634134258112461
+
+
+  * Problem 2 
+    Using MCMC and onlyMAP:true
+    expectation:
+    [ [ 'fair', 2 ], [ 'p', 0.8000020959505287 ] ]
+
+    MAP:
+    [ [ 'fair', { val: 2, score: 0 } ],
+      [ 'p', { val: 0.8000020959505287, score: 0 } ] ]
+
+
+
+*/
+
+// n: number of failures
+// p: probability of success
+var negative_binomial = function(n,p) {
+    return negative_binomial_tmp(n, p, 0, 0);
+};
+
+// helper function
+var negative_binomial_tmp = function(n, p, s, f) {
+    if (s == n) {
+        return f;
+    } else {
+        return flip(p) ? negative_binomial_tmp(n,p,s+1,f) :  negative_binomial_tmp(n,p,s,f+1);
+    }
+    
+};
+
+// Assuming that the coin is fair
+var model1 = function() {
+    var fair = negative_binomial(8,1/2)
+    var p = fair == 2
+
+    return {
+        fair:fair,
+        p:p,
+    }
+}
+
+console.log("Assume that the coin is fair:\n")
+var d1 = Infer({method:"enumerate",maxExecutions:10000},model1)
+display(d1)
+
+exp_map(d1,["fair","p"])
+
+
+// Assuming that the coin is not fair
+// Because of beta, we cannot use enumerate
+var model2 = function() {
+    var p = beta(1,1)
+    var fair = negative_binomial(8,p)
+    condition(fair == 2)
+
+    return {
+        fair:fair,
+        p:p,
+    }
+}
+
+console.log("Assume that the coin is not fair:\n")
+var d2 = Infer({method:"MCMC",kernel:"HMC",samples:10000,onlyMAP:true},model2)
+exp_map(d2,["fair","p"],["expectation","MAP"])
+
+

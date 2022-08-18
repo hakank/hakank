@@ -1,0 +1,89 @@
+/*
+  Librarian or Farmer problem.
+
+  From Probabilistic Programming and Bayesian Methods for Hackers, page 7ff
+  """
+  Consider the following story, inspired by Thinking, Fast and Slow by Daniel Kahneman
+  (2011).  Steve is described as a shy individual, very helpful, but he has little interest in
+  other people. He likes things in their proper order, and is very detailed about his work. Do
+  you think Steve is more likely to be a librarian or a farmer? It may seem that Steve is more
+  likely to be a librarian, and most people would agree with this conclusion, but that’s
+  ignoring the background distribution of librarians and farmers: The ratio of male farmers
+  to male librarians is 20:1. Steve is statistically more likely to be a farmer!
+  """
+
+  (In the online version of the book, this example seems to have been replaced 
+  with a problem of finding bugs in a program.)
+
+  Exact probabilities.
+  
+  job
+  Marginal:
+    "farmer" : 0.9523809523809523
+    "librarian" : 0.047619047619047616
+  job_prior
+  Marginal:
+    "farmer" : 0.9523809523809523
+    "librarian" : 0.047619047619047596
+  librarian_desc
+  Marginal:
+    true : 0.5
+    false : 0.5
+  steve_librarian
+  Marginal:
+    false : 0.9285714285714286
+    true : 0.07142857142857144
+  steve_farmer
+  Marginal:
+    true : 0.9285714285714286
+    false : 0.07142857142857144
+
+  expectation:
+  [ [ 'job', NaN ],
+    [ 'job_prior', NaN ],
+    [ 'librarian_desc', 0.5 ],
+    [ 'steve_librarian', 0.07142857142857144 ],
+    [ 'steve_farmer', 0.9285714285714286 ] ]
+
+  MAP:
+  [ [ 'job', { val: 'farmer', score: -0.048790164169432056 } ],
+    [ 'job_prior', { val: 'farmer', score: -0.048790164169432056 } ],
+    [ 'librarian_desc', { val: true, score: -0.6931471805599453 } ],
+    [ 'steve_librarian',
+       { val: false, score: -0.07410797215372185 } ],
+    [ 'steve_farmer', { val: true, score: -0.07410797215372185 } ] ]
+
+
+  (This is a port of my Turing.jl model librarian_or_farmer.jl)
+
+*/
+
+var model = function() {
+    
+    // Being a farmer is 20 times more common than being a librarian.
+    var ps = simplex([1,20]) // simplex ensures that the probabilities sums to 1
+    var vs = ["librarian","farmer"]
+    var job_prior = categorical({ps:ps,vs:vs})    
+    var job = categorical({ps:ps,vs:vs})
+
+    var librarian_desc = flip(0.5)
+
+    // Is Steve a librarian?
+    var steve_librarian =  job == "librarian" && librarian_desc ? flip(0.95) : flip(0.05)
+    // Is Steve a farmer? The assumption is that there are only librarians and farmers in this world.
+    var steve_farmer = !steve_librarian
+    
+    return {
+        job:job,
+        job_prior:job_prior,
+        librarian_desc:librarian_desc,
+        steve_librarian:steve_librarian,
+        steve_farmer:steve_farmer,        
+    }
+}
+
+var d = Infer(model)
+// display(d)
+
+exp_map(d,["job","job_prior","librarian_desc","steve_librarian","steve_farmer"])
+

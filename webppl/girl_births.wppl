@@ -1,0 +1,110 @@
+/*
+  Girl births  
+
+  From Gelman et.al "Regression and Other Stories", 69f
+
+  Part 1 (page 69)
+  """
+  The probability that a baby is a girl or boy is approximately 48.8% or 51.2%, respectively, 
+  and these of births do not vary much across the world. Suppose that 400 babies are born in a 
+  hospital in a given year. How many will be girls?
+  """
+
+  Problem 1
+  expectation:
+  [ [ 'girl', 195.20000000000033 ] ]
+
+  Credible interval girl 50%: [ 188, 201 ]
+  Credible interval girl 90%: [ 179, 211 ]
+
+  Part 2 (page 70)
+  """
+  Accounting for twins
+  We can complicate the model in various ways. For example, there is a 1/125 chance that a 
+  birth event results in fraternal twins, of which each has an approximate 49.5% chance of being a girl,  
+  and a 1/300 chance of identical twins, which have an approximate 49.5% chance of being a pair of girls.
+  """
+
+  Problem 2
+  expectation:
+  [ [ 'girl', 195.23158484226283 ],
+    [ 'identical_twins', 0.0033067548467959882 ],
+    [ 'fraternal_twins', 0.00797354596122579 ],
+    [ 'p', 0.4880789621056561 ] ]
+
+  Credible interval girl 50%: [ 186, 199 ]
+  Credible interval girl 90%: [ 178, 210 ]
+
+
+  Note: For some reason, getSamples() goes not work when using enumerate!
+  The credible intervals above are from method:rejection.
+
+
+  (This is a port of my Turing.jl model girl_births.jl)
+
+*/
+
+/*
+Part 1
+"""
+The probability that a baby is a girl or boy is approximately 48.8% or 51.2%, respectively, 
+and these of births do not vary much across the world. Suppose that 400 babies are born in a 
+hospital in a given year. How many will be girls?
+"""   
+*/
+var model1 = function() {
+    var n = 400
+    var girl = binomial(0.488,n)
+    return {
+        girl:girl,
+    }
+}
+
+console.log("Problem 1")
+var d1 = Infer(model1)
+// var d1 = Infer({method:"rejection",samples:10000},model1)
+// display(d1)
+exp_map(d1,["girl"],["expectation"])
+// Use rejection for this
+console.log("Credible interval girl 50%:", credibleInterval(getSamples(d1,"girl"),0.5))
+console.log("Credible interval girl 90%:", credibleInterval(getSamples(d1,"girl"),0.9))
+
+
+/*
+Part 2
+"""
+We can complicate the model in various ways. For example, there is a 1/125 chance that a 
+birth event results in fraternal twins, of which each has an approximate 49.5% chance of being a girl,  
+and a 1/300 chance of identical twins, which have an approximate 49.5% chance of being a pair of girls.
+"""
+*/
+var model2 = function() {
+    var n = 400
+    var identical_twins = flip(1/300)
+    var fraternal_twins = flip(1/125)
+    
+    // Cannot be both identical_twins and fraternal_twins
+    condition(identical_twins + fraternal_twins <= 1)
+
+    // The probability of a girl:
+    var p = (identical_twins || fraternal_twins) ? 0.495 : 0.488
+
+    // Number of girls
+    var girl = binomial(p,n)
+
+    return {
+        girl:girl,
+        identical_twins:identical_twins,
+        fraternal_twins:fraternal_twins,
+        p:p,
+    }
+}
+
+console.log("\nProblem 2")
+var d2 = Infer({method:"enumerate"},model2)
+// var d2 = Infer({method:"rejection",samples:10000},model2) // for credible interval
+// display(d2)
+exp_map(d2,["girl","identical_twins","fraternal_twins","p"],["expectation"])
+// Use rejection for this
+console.log("Credible interval girl 50%:", credibleInterval(getSamples(d2,"girl"),0.5))
+console.log("Credible interval girl 90%:", credibleInterval(getSamples(d2,"girl"),0.9))

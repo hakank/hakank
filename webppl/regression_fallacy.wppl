@@ -1,0 +1,135 @@
+/*
+  Regression fallacy.
+
+  From Gelman et.al "Regression and other stories", page 88f
+  """
+  Regression to the mean can be confusing and it has led people to mistakenly attribute causality.
+  To see how this can happen, we move from heights of parents and children to the mathematically
+  equivalent scenario of students who take two tests.
+  [...]
+  Rather than using real data, we have simulated exam scores using the following simple process
+  representing signal and noise:6
+  1. Each student is assumed to have a true ability drawn from a distribution with 
+     mean 50 and standard deviation 10.
+  2. Each student’s score on the midterm exam is the sum of two components: the student’s true ability,
+     and a random component with mean 0 and standard deviation 10, reflecting that performance on
+     any given test will be unpredictable: a midterm exam is far from a perfect measuring instrument
+  3. Likewise, each student’s score on the final exam is his or her true ability, plus another, independent,
+     random component.
+  """
+
+  From my
+  1) We simulate with rand and Distributions.jl and then fit with lm(),
+     were we see that it's a "regression to the mean", i.e. slope < 1.
+
+    score_final ~ 1 + score_midterm
+
+    expectation:
+    [ [ 'intercept', 55.03049042672896 ],
+      [ 'slope', -0.00748809413321061 ],
+      [ 'sigma', 1.9486256873924614 ] ]
+
+  2) Then we try to the recover the parameters:
+      mu_ability = 50
+      sigma_ability = 10
+      mu_score = 0
+      sigma_score = 10
+
+    expectation:
+    [ [ 'mu_ability', 50.08419594240148 ],
+      [ 'sigma_ability', 9.538648034960316 ],
+      [ 'mu_score', 0.07107672808308368 ],
+      [ 'sigma_score', 10.265196988299875 ] ]
+
+
+    Credible interval for mu_ability (94%): [ 49.765170915073824, 50.43655495196754 ]
+    Credible interval for sigma_ability (94%): [ 9.141022543796863, 9.89998047010717 ]
+    Credible interval for mu_score (94%): [ 0.026113392621995857, 0.1338102198185087 ]
+    Credible interval for sigma_score (94%): [ 10.020518916425784, 10.389374725993122 ]
+
+      
+*/
+
+/*
+  Simulate data.
+*/
+var sim = function(n) {
+    var mu_ability = 50
+    var sigma_ability = 10
+
+    var mu_score = 0
+    var sigma_score = 10
+
+    var ability = mapN(function(i) { return gaussian(mu_ability,sigma_ability) }, n)
+    var score_midterm = mapN(function(i) { return gaussian(ability[i]+mu_score,sigma_score) }, n)
+    var score_final = mapN(function(i) { return gaussian(ability[i]+mu_score,sigma_score) }, n)    
+
+    return [ability,score_midterm,score_final]
+}
+
+var [ability,score_midterm,score_final] = sim(1000)
+
+/*
+  Linear regression
+    score_final ~ 1 + score_midterm
+*/
+var linear_regression = function() {
+    var n = score_final.length
+
+    var intercept = uniform(-100,100)
+    var slope = gaussian(-1,1)
+    var sigma = uniform(0,2)
+
+    mapN(function(i) {
+        observe(Gaussian({mu:intercept + slope*score_midterm[i],sigma:sigma}),score_final[i])
+    },n)
+
+    return {
+        intercept:intercept,
+        slope:slope,
+        sigma:sigma,
+    }
+}
+
+console.log("\nLinear regression:  score_final ~ 1 + score_midterm:")
+var lr = Infer({method:"SMC",particles:1000},linear_regression)
+exp_map(lr,["intercept","slope","sigma"],"expectation")
+
+
+/*
+  Recover the values from the simulation
+*/
+var model = function() {
+    var n = ability.length
+    
+    // Use uninformed priors so we are not accused of cheating. :-)
+    var mu_ability = uniform(1,1000)
+    var sigma_ability = uniform(1,50)
+
+    var mu_score = uniform(0,100)
+    var sigma_score = uniform(1,50)
+
+    mapN(function(i) {
+        observe(Gaussian({mu:mu_ability,sigma:sigma_ability}), ability[i])
+        observe(Gaussian({mu:ability[i]+mu_score,sigma:sigma_score}), score_midterm[i])
+        observe(Gaussian({mu:ability[i]+mu_score,sigma:sigma_score}), score_final[i])                
+    },n)
+
+    return {
+        mu_ability:mu_ability,
+        sigma_ability:sigma_ability,
+        mu_score:mu_score,
+        sigma_score:sigma_score, 
+    }
+}
+
+console.log("\nValues to recover: mu_ability=50  sigma_ability=10  mu_score=0 sigma_score=10")
+var d = Infer({method:"MCMC",samples:1000,lag:10,burn:1000},model)
+
+exp_map(d,["mu_ability","sigma_ability","mu_score","sigma_score"],
+       ["expectation"])
+
+showCredibleInterval(d,"mu_ability",0.94)
+showCredibleInterval(d,"sigma_ability",0.94)
+showCredibleInterval(d,"mu_score",0.94)
+showCredibleInterval(d,"sigma_score",0.94)

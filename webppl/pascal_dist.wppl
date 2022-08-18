@@ -2,19 +2,10 @@
    Generating Pascal distribution
 
    From Handbook on probability distributions
-   page 25
-   """
-   The negative binomial distribution can be constructed by summing 
-   m geometric distributed variables G(p). The Pascal distribution is 
-   got from summing n geometrically distributed G0(p) variables.
-   Thus possible values of the Pascal distribution are in {n, n+ 1, ...}.
-   
-   ...
-   
-   The link between Pascal distribution Pa(n,p) and the negative 
-   binomial distribution BN(n,p) is to substract the constant n, i.e. 
-   if X ~ Pa(n,p) then X-n ~ BN(n, p).
-   """
+   page 25.
+
+   The Pascal distribution gives the distribution of the number of trials 
+   with nonzero success probability p before n successes occur
 
 */
 
@@ -29,52 +20,93 @@ var geometric_zero_truncated = function(p) {
     return geometric_zero_truncated1(p,1);
 }
 
+/*
+  From Handbook on probability distributions
+  page 25
+  """
+  The negative binomial distribution can be constructed by summing 
+  m geometric distributed variables G(p). The Pascal distribution is 
+  got from summing n geometrically distributed G0(p) variables.
+  Thus possible values of the Pascal distribution are in {n, n+ 1, ...}.
 
-// From Handbook on probability distributions
-// page 23
-// Expectation: n/p
+  ...
+
+  The link between Pascal distribution Pa(n,p) and the negative 
+  binomial distribution BN(n,p) is to substract the constant n, i.e. 
+  if X ~ Pa(n,p) then X-n ~ BN(n, p).
+  """
+*/
 var pascal = function(m,p) {
     var g = mapN(function() { return geometric_zero_truncated(p)}, m);
     return sum(g);
-
 }
 
+/*
+  Here's a simple example from Mathematica PascalDistribution:
+  """
+  Find the probability of getting 3 heads in no more than 6 flips
 
+    heads3 = PascalDistribution[3, 1/2]
+    Probability[x <= 6, x -> heads3]
+    -> 
+    0.65625
+  """
+
+  d
+  Marginal:
+    4 : 0.18783000000000014
+    5 : 0.18714000000000014
+    6 : 0.1560200000000001
+    3 : 0.12456000000000007
+    7 : 0.11765000000000003
+    8 : 0.08290000000000006
+    9 : 0.05483000000000003
+    10 : 0.03506000000000001
+    11 : 0.021460000000000007
+    12 : 0.013290000000000014
+    13 : 0.008610000000000003
+    14 : 0.004590000000000004
+    15 : 0.0025600000000000037
+    16 : 0.0015900000000000011
+    17 : 0.0008700000000000005
+    18 : 0.00040000000000000045
+    19 : 0.0002900000000000001
+    20 : 0.00016000000000000004
+    21 : 0.00009000000000000005
+    22 : 0.000029999999999999977
+    23 : 0.000029999999999999977
+    26 : 0.000019999999999999998
+    25 : 0.000009999999999999999
+    29 : 0.000009999999999999999
+  p
+  Marginal:
+    true : 0.65555
+    false : 0.34445000000000003
+
+  expectation:
+  [ [ 'd', 5.998210000000004 ], [ 'p', 0.65555 ] ]
+
+  Stat for v: d
+  min: 3 mean: 14.708333333333334 max: 29 stdev: 7.271400407685503
+
+*/ 
 var model = function() {
-
-    // See negative_binomial_test.wppl
-    var d = pascal(3,0.7);
-
+    // Cf negative_binomial_test.wppl
+    var d = pascal(3,0.5);
+    var p = d <= 6
     return {
-        d:d
+        d:d,
+        p:p,
     }
 }
 
 
-var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model);
+// var d = Infer({method:"MCMC",samples:100000},model);
+var d = Infer({method:"rejection",samples:100000},model);
 // var d = Infer(model);
 // display(d);
 
-var exp_map = function(d,arr) {
-    display("Marginals:");
-    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    display("MAP:");
-    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
+exp_map(d,["d","p"],["expectation","marginals"])
 
-exp_map(d,["d"]);
-
-var stat = function(v) {
-    console.log("Stat for v:",v);
-    var m = marginalize(d, v);
-    var s = m.supp;
-    var mean = listMean(s);
-    var stdev = listStdev(s,mean);
-    console.log("min:",_.min(s),"mean:",mean,"max:",_.max(s),"stdev:",stdev);
-    
-}
-
-stat("d");
+stat2(d,"d")
 

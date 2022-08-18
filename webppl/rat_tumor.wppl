@@ -1,0 +1,108 @@
+/*
+  Port of PyMC3 hierachical binomial model: Rat Tumor example in
+  https://docs.pymc.io/pymc-examples/examples/generalized_linear_models/GLM-hierarchical-binominal-model.html
+  """
+  This short tutorial demonstrates how to [...] do inference for the rat tumour example found in chapter 
+  5 of Bayesian Data Analysis 3rd Edition.
+  """
+  
+  From the PyMC3 model:
+  """
+  # estimate the means from the samples
+  trace["ab"].mean(axis=0)
+  
+  array([ 2.3851397 , 14.18267752])
+  """
+
+  Note: The PyMC3 model has the following which is a little magical:
+       pm.Potential("p(a, b)", logp_ab(ab))
+
+  I think that it can translated to 
+     factor(logp_ab(ab))     
+
+
+  This WebPPL model:
+  expectation:
+  [ [ 'x', -1.814577610653279 ],
+    [ 'z', 2.149760071750139 ],
+    [ 'ab0', 1.2013701547232896 ],
+    [ 'ab1', 7.47098918410031 ] ]
+
+
+  Credible interval for x (94%): [ -2.117023132553151, -1.6226581105720417 ]
+  Credible interval for z (94%): [ 1.9449187271753245, 2.435710648466626 ]
+  Credible interval for ab0 (94%): [ 1.1527268675708402, 1.2078968551582299 ]
+  Credible interval for ab1 (94%): [ 5.840336618343324, 10.216037375571089 ]
+  
+
+  * Without factor(logprob(ab)):
+    expectation:
+    [ [ 'x', -1.680148673953808 ],
+      [ 'z', 3.0649217116288323 ],
+      [ 'ab0', 3.4518477878914777 ],
+      [ 'ab1', 18.074047128196288 ] ]
+
+
+    Credible interval for x (94%): [ -1.8750804545893314, -1.283064181002726 ]
+    Credible interval for z (94%): [ 2.9114514526236177, 3.197361535225744 ]
+    Credible interval for ab0 (94%): [ 2.633267735716781, 5.288228915373347 ]
+    Credible interval for ab1 (94%): [ 15.566919517917654, 19.992915402187492 ]
+
+*/
+
+// rat data (BDA3, p. 102)
+var y = [
+     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,
+     1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  2,  1,  5,  2,
+     5,  3,  2,  7,  7,  3,  3,  2,  9, 10,  4,  4,  4,  4,  4,  4,  4,
+    10,  4,  4,  4,  5, 11, 12,  5,  5,  6,  5,  6,  6,  6,  6, 16, 15,
+    15,  9,  4]
+var n = [
+    20, 20, 20, 20, 20, 20, 20, 19, 19, 19, 19, 18, 18, 17, 20, 20, 20,
+    20, 19, 19, 18, 18, 25, 24, 23, 20, 20, 20, 20, 20, 20, 10, 49, 19,
+    46, 27, 17, 49, 47, 20, 20, 13, 48, 50, 20, 20, 20, 20, 20, 20, 20,
+    48, 19, 19, 19, 22, 46, 49, 20, 20, 23, 19, 22, 20, 20, 20, 52, 46,
+    47, 24, 14]
+
+
+var logp_ab = function (val) {
+    return Math.pow(Math.log(sum(val)),(-5 / 2))
+}
+
+
+var model = function() {
+    var N = y.length
+    
+    var ab = mapN(function(i) { return uniform(0.5,20) }, 2)
+    // This should correspond to PyMC's Potential 
+    // factor(logp_ab(ab))
+    
+    var x = Math.log(ab[0]/ab[1])
+    var z = Math.log(sum(ab))
+
+    var theta = mapN(function(i) { return beta(ab[0],ab[1]) }, N)
+    mapN(function(i) {
+        observe(Binomial({p:theta[i],n:n[i]}), y[i])
+    },N)
+
+    return {
+        x:x,
+        z:z,
+        ab0:ab[0],
+        ab1:ab[1],
+    }
+    
+}
+
+
+var d = Infer({method:"MCMC",samples:1000,lag:10,burn:1000},model)
+// var d = Infer({method:"rejection",samples:1000},model)
+// var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// display(d)
+
+exp_map(d,["x","z","ab0","ab1"],["expectation"])
+
+showCredibleInterval(d,"x",0.94)
+showCredibleInterval(d,"z",0.94)
+showCredibleInterval(d,"ab0",0.94)
+showCredibleInterval(d,"ab1",0.94)

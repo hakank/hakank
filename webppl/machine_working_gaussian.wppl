@@ -1,0 +1,84 @@
+/*
+  
+  From https://pedrozudo.github.io/docs/20_thesis/thesis_final_online_compressed.pdf
+  page 85f
+  """
+  Example 6.1. In this example we model the temperature as a continuous random
+  variable distributed according to a normal distribution with mean 20 and standard
+  deviation 5 (Line 3).
+  1 machine(1). machine(2).
+  2
+  3 temperature ~ normal(20,5).
+  4 0.99::cooling(1).
+  5 0.95::cooling(2).
+  6
+  7 works(N):- machine(N), cooling(N).
+  8 works(N):- machine(N), temperature<25.0
+  evidence(works(2)).
+  query(works(1)).
+  """
+
+  cooling0
+  Marginal:
+    true : 0.9934000000000001
+    false : 0.006599999999999986
+  cooling1
+  Marginal:
+    true : 0.9563
+    false : 0.043699999999999954
+  works0
+  Marginal:
+    true : 0.9980999999999999
+    false : 0.001899999999999998
+  works1
+  Marginal:
+    true : 1
+  expectation:
+  [ [ 'temperature', 19.97411289616305 ],
+    [ 'cooling0', 0.9934000000000001 ],
+    [ 'cooling1', 0.9563 ],
+    [ 'works0', 0.9980999999999999 ],
+    [ 'works1', 1 ] ]
+  MAP:
+  [ [ 'temperature',
+    { val: 26.588432634026226, score: -6.2659013928097425 } ],
+    [ 'cooling0', { val: true, score: -0.006621876308886858 } ],
+    [ 'cooling1', { val: true, score: -0.044683607626640025 } ],
+    [ 'works0', { val: true, score: -0.0019018072895964425 } ],
+    [ 'works1', { val: true, score: 0 } ] ]
+
+  credibleInterval temperature 0.93
+  [ 10.709753429727261, 29.14982899726941 ]
+
+   Cf machine_working.wppl
+*/
+
+
+var model = function() {
+    var temperature = gaussian(20,5)
+
+    var cooling = [flip(0.99),flip(0.95)]
+    var works = function(m) {
+        return cooling[m] || temperature < 25
+    }
+
+    // Machine 2 works (0-based)
+    condition(works(1) == true)
+
+    return {
+        temperature:temperature,
+        cooling0:cooling[0],
+        cooling1:cooling[1],        
+        works0:works(0),
+        works1:works(1),
+    }
+}
+
+// var d = Infer(model)
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model)
+// display(d)
+
+exp_map(d,["temperature","cooling0","cooling1","works0","works1"]);
+
+display("\ncredibleInterval temperature 0.93")
+display(credibleInterval(getSamples(d,"temperature"), 0.93))

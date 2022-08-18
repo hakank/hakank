@@ -1,0 +1,197 @@
+/*
+  This is a port of the SPPL model student-interviews.pynb
+
+  Here is the output from the SPPL model of gpa_prior and gpa_posterior for gpa_student[1]:
+
+  gpa                   gpa_prior (cumsum < gpa)  gpa_posterior (cumsum < gpa)
+  -----------------------------------------------------------------------------
+  0.0                   0.0                    0.0
+  0.21052631578947367   2.9321229365490116e-08 3.938526167438616e-08
+  0.42105263157894735   3.399923850680484e-06  4.566892092513705e-06
+  0.631578947368421     5.235987400911553e-05  7.03315441989632e-05
+  0.8421052631578947    0.0003515966799506029  0.0004722764885157954
+  1.0526315789473684    0.0014935106089171875  0.0020061336928425886
+  1.263157894736842     0.004734542792041406   0.0063595971522462345
+  1.4736842105263157    0.012227795632612991   0.01642478644698973
+  1.6842105263157894    0.027098290512422067   0.03639933542542442
+  1.894736842105263     0.05325350529777253    0.07153189980839067
+  2.1052631578947367    0.09485332168120815    0.12741017262720986
+  2.3157894736842106    0.15542018995700252    0.20876562761532186
+  2.526315789473684     0.23665218641802727    0.31787917797401755
+  2.7368421052631575    0.3371086961787463     0.45281574132555596
+  2.9473684210526314    0.45107070187375614    0.6058933411522036
+  3.1578947368421053    0.5680350963535515     0.7630038505974432
+  3.3684210526315788    0.6734850651989842     0.9046477961757059
+  3.578947368421052     0.7517864026032522     0.983997710206192
+  3.789473684210526     0.7922926319251767     0.9970552758034202
+  4.0                   0.8                    0.9995398186972839
+
+  
+  The mean value of the prior is about: 3.050505050505051
+  The mean value of the posterior is about: 2.8080808080808084
+  (I am not sure how to get an exact value of the mean in SPPL. 
+  For continous distributions, SPPL requires that one work with 
+  intervals.)
+
+  * condition(student_offers(0) == 1 && num_recruiters > 30)
+
+    expectation:
+    [ [ 'num_recruiters', 32.28560000000001 ],
+      [ 'student_perfect_prior', 0.22539999999999982 ],
+      [ 'student_gpa_prior', 3.096853174976866 ],
+
+      [ 'student0_perfect', 0 ],
+      [ 'student0_gpa', 2.7180572269019985 ],
+      [ 'student0_interviews', 12.214899999999993 ],
+      [ 'student0_offers', 1 ],
+
+      [ 'student1_perfect', 0.1408000000000002 ],
+      [ 'student1_gpa', 2.926969935520171 ],
+      [ 'student1_interviews', 17.87400000000001 ],
+      [ 'student1_offers', 7.0944999999999965 ] ]
+
+    Given that student 0 only get one offer (and from quite many interviews) 
+    makes it probable that he/she get a worse GPA (2.82) than the gpa prior (about 3.07).
+
+    num_recruiters
+    Marginal:
+      31 : 0.38599999999999957
+      33 : 0.24820000000000023
+      32 : 0.23350000000000037
+      34 : 0.06950000000000009
+      36 : 0.03139999999999996
+      35 : 0.018199999999999997
+      40 : 0.011800000000000015
+      39 : 0.0014000000000000028
+
+  * Let's add some info about student 1 as well. He/she got 13 offers.
+       condition(student_offers(0) == 1 && num_recruiters > 30)
+       condition(student_offers(1) == 13)
+    
+    expectation:
+    [ [ 'num_recruiters', 32.5769 ],
+      [ 'student_perfect_prior', 0.19209999999999913 ],
+      [ 'student_gpa_prior', 3.015811284809978 ],
+
+      [ 'student0_perfect', 0 ],
+      [ 'student0_gpa', 2.7410659632116574 ],
+      [ 'student0_interviews', 12.991899999999996 ],
+      [ 'student0_offers', 1 ],
+
+      [ 'student1_perfect', 0.8361 ],
+      [ 'student1_gpa', 3.840585983739967 ],
+      [ 'student1_interviews', 28.103499999999997 ],
+      [ 'student1_offers', 13 ] ]
+
+    Unsurprisingly, student 1's GPA is quite high (3.84) and the number of interviews
+    are also higher than student 0's (20.1 vs 13).
+
+*/
+
+var beta_scale = function(a,b,scale) {
+    return beta(a,b)*scale
+}
+
+
+var model = function() {
+    var num_students = 2
+
+    // Did student get a perfect score?
+    var student_perfect = mapN(function(s) {
+        return flip(0.2)
+    },num_students)
+
+    // GPA.
+    var student_gpa = mapN(function(s) {
+        if (student_perfect[s]) {
+            return 4.0
+        } else {
+            // Note: The SPPL model has beta(a=7,b=3,scale=4), but this form is not directly supported in WebPPL
+            // so we write our own
+            // return beta(7, 3)*4
+            return beta_scale(7, 3, 4)
+        }
+    },num_students)
+        
+    // Number of recruiters, betwen 10 and 40
+    var num_recruiters = poisson(25) 
+    condition(num_recruiters >= 10 && num_recruiters <= 40) // truncated
+    // condition(num_recruiters >= 30 && num_recruiters <= 40) // Alternative version
+
+    // Number of interviews
+    var student_interviews = mapN(function(s) {
+        var interviews = student_gpa[s] == 4 ? binomial(0.9,num_recruiters) : 
+                          (3.5 < student_gpa[s] && student_gpa[s] < 4) ? binomial(0.6,num_recruiters) : 
+                          binomial(0.5,num_recruiters)
+        return interviews
+    },num_students)
+
+
+    // How many offers did a student got?
+    var student_offers = mapN(function(s) {
+        if (student_interviews[s] == 0) {
+            return 0
+        } else {
+            // binomial requires n > 0
+            return binomial(0.4,student_interviews[s])
+        }
+    },num_students)
+    
+    // Observations
+
+    // Student 0
+    condition(student_offers[0] == 1 && num_recruiters > 30)    
+    // condition(student_offers[0] == 1)
+
+    // Student 1
+    // condition(student_perfect[1] == true)
+    condition(student_offers[1] == 13)
+    // condition(student_interviews[1] == 20)
+
+    // Num recruiters
+    // condition(num_recruiters > 30)
+
+    // Priors
+    var student_perfect_prior = flip(0.2)
+    var student_gpa_prior = student_perfect_prior == false ? beta(7, 3)*4 : 4.0
+
+
+    return {
+        num_recruiters:num_recruiters,
+        student_perfect_prior:student_perfect_prior,
+        student_gpa_prior:student_gpa_prior,
+        
+        student0_perfect:student_perfect[0],
+        student0_gpa:student_gpa[0],
+        student0_interviews:student_interviews[0],
+        student0_offers:student_offers[0],
+        
+        student1_perfect:student_perfect[1],
+        student1_gpa:student_gpa[1],
+        student1_interviews:student_interviews[1],
+        student1_offers:student_offers[1],
+        
+    }    
+}
+
+// var d = Infer({method:"MCMC",samples:1000,lag:10,burn:1000,},model)
+var d = Infer({method:"MCMC",samples:1000,lag:10,burn:1000,},model)
+// display(d)
+
+exp_map(d,["num_recruiters",
+           "student_perfect_prior",
+           "student_gpa_prior",
+           
+           "student0_perfect",
+           "student0_gpa",
+           "student0_interviews",
+           "student0_offers",
+           
+           "student1_perfect",
+           "student1_gpa",
+           "student1_interviews",
+           "student1_offers"
+          ],
+        
+        ["expectation","marginals"]
+       )

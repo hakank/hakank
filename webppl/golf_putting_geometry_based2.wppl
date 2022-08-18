@@ -1,0 +1,168 @@
+/*
+  Golf putting (geometry based, version 2).
+
+  This is a port of the PyMC3 model (the second geometry based model)
+  https://docs.pymc.io/pymc-examples/examples/case_studies/putting_workflow.html
+  """
+  We use a data set from “Statistics: A Bayesian Perspective”, by Don Berry (1995). 
+  The dataset describes the outcome of professional golfers putting from a number of distances. 
+  """
+
+  expectation:
+  [ [ 'variance_of_shot', 0.0020870629845137767 ],
+    [ 'variance_of_distance', 0.3977317901269537 ],
+    [ 'post2', 916.4490000000011 ],
+    [ 'post3', 402.01233333333363 ],
+    [ 'post4', 230.6306666666667 ],
+    [ 'post5', 156.6180000000001 ],
+    [ 'post6', 106.5073333333333 ],
+    [ 'post7', 89.67533333333336 ],
+    [ 'post8', 75.68533333333338 ],
+    [ 'post9', 62.14933333333337 ],
+    [ 'post10', 52.30133333333333 ],
+    [ 'post11', 57.367000000000004 ],
+    [ 'post12', 45.23500000000003 ],
+    [ 'post13', 40.138333333333314 ],
+    [ 'post14', 34.16566666666667 ],
+    [ 'post15', 30.694666666666663 ],
+    [ 'post16', 34.66133333333332 ],
+    [ 'post17', 31.970000000000006 ],
+    [ 'post18', 29.595333333333343 ],
+    [ 'post19', 21.493333333333343 ],
+    [ 'post20', 21.158666666666676 ] ]
+
+  This is a actually a little worse than golf_putting_geometry_based.wppl.
+  Distance   Ground truth    golf_putting_geometry_based1.wppl   This model
+  -------------------------------------------------------------------------
+  2          1346             1384.5989999999997                 916.4490000000011
+  3           577              574.4569999999998                 402.01233333333363 
+  ...
+
+  Perhaps it's the simple erf function that causes this, or I might have
+  missed something...
+  
+
+
+  (This is a port of my Turing.jl model golf_putting_geometry_based2.jl)
+
+*/
+
+// Javascript/WebPPL misses erf (error function) so here we go...
+// Erf https://en.wikipedia.org/wiki/Error_function
+// (Abramowitz and Stegun)
+var erf = function(x) {
+    var a1 = 0.278393
+    var a2 = 0.230389
+    var a3 = 0.000972
+    var a4 = 0.078108
+    return 1 - 1/Math.pow((1+ a1*x + a2*Math.pow(x,2) + a3*Math.pow(x,3) + a4*Math.pow(x,4)),4)
+}
+
+/*
+Calculates the standard normal cumulative distribution function.
+*/
+var Phi = function(x) {
+    return 0.5 + 0.5 * erf(x / Math.sqrt(2.0))
+}
+
+// distance_feet, num_tries, num_successes
+var data = [
+    [2,1443,1346],
+    [3,694,577],
+    [4,455,337],
+    [5,353,208],
+    [6,272,149],
+    [7,256,136],
+    [8,240,111],
+    [9,217,69],
+    [10,200,67],
+    [11,237,75],
+    [12,202,52],
+    [13,192,46],
+    [14,174,54],
+    [15,167,28],
+    [16,201,27],
+    [17,195,31],
+    [18,191,33],
+    [19,147,20],
+    [20,152,24]]
+var data_len = data.length
+var distances = mapN(function(i) { return data[i][0] },data_len)
+var tries     = mapN(function(i) { return data[i][1] },data_len)
+var successes = mapN(function(i) { return data[i][2] },data_len)
+
+var BALL_RADIUS = (1.68 / 2) / 12
+var CUP_RADIUS = (4.25 / 2) / 12
+var OVERSHOT = 1.0
+var DISTANCE_TOLERANCE = 3.0
+
+var model = function() {
+    var n = distances.length
+    var variance_of_shot = uniform(0,1)
+    // condition(variance_of_shot >= 0)
+    
+    var variance_of_distance = uniform(0,1)
+    // condition(variance_of_distance >= 0)    
+
+    // This was p_goes_in in golf_putting_geometry_based1.wppl
+    var p_good_angle = mapN(function(i) {
+        var t = 2 * Phi(Math.asin((CUP_RADIUS - BALL_RADIUS) / distances[i]) / variance_of_shot) - 1
+        return t
+    },n)
+
+    var p_good_distance = mapN(function(i) {
+        var t = Phi((DISTANCE_TOLERANCE - OVERSHOT) / ((distances[i] + OVERSHOT) * variance_of_distance))
+            - Phi(-OVERSHOT / ((distances[i] + OVERSHOT) * variance_of_distance))
+        return t
+    },n)
+    
+    mapN(function(i) {
+        observe(Binomial({p:p_good_angle[i] * p_good_distance[i],n:tries[i]}),successes[i])
+    },n)
+    
+    // Posterior
+    var post = mapN(function(i) {
+        return binomial(p_good_angle[i] * p_good_distance[i],tries[i])
+    },n)
+    
+    return {
+        variance_of_shot:variance_of_shot,
+        variance_of_distance:variance_of_distance,
+        // Posterior successes for each distance
+        post2:post[0], // 2 feet
+        post3:post[1], // 3 feet
+        post4:post[2],
+        post5:post[3],
+        post6:post[4],
+        post7:post[5],
+        post8:post[6],
+        post9:post[7],
+        post10:post[8],
+        post11:post[9],
+        post12:post[10],
+        post13:post[11],
+        post14:post[12],
+        post15:post[13],
+        post16:post[14],
+        post17:post[15],
+        post18:post[16],
+        post19:post[17],
+        post20:post[18],
+        
+    }
+
+
+}
+
+// var d = Infer(model)
+var d = Infer({method:"MCMC",samples:10000,burn:1000},model)
+// var d = Infer({method:"SMC",particles:3000},model)
+
+// display(d)
+
+exp_map(d,["variance_of_shot","variance_of_distance",
+           "post2","post3","post4","post5","post6","post7","post8","post9","post10",
+           "post11","post12","post13","post14","post15","post16","post17","post18","post19","post20",          
+           
+          ],["expectation"])
+

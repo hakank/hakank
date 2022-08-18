@@ -1,0 +1,143 @@
+/*
+  Squid game
+  
+  From the PSI model squid.psi
+  """
+  tiles:=18;
+  people:=16;
+  def main(){
+        known:=0;
+        r:=[];
+        for i in 0..people{
+                alive := true;
+                while alive && known<tiles{
+                        alive = flip(1/2);
+                        known += 1;
+                }
+                r~=[Expectation(alive)];
+        }
+        return r; // expected: δ(1/262144,19/262144,43/65536,247/65536,253/16384,1577/32768,7795/65536,15751/65536,53381/131072,77691/131072,49785/65536,57741/65536,31191/32768,16131/16384,65289/65536,65493/65536)[r]
+  """
+  PSI model's expectation converted to float:
+  0.000003814697265625, 0.000072479248046875, 0.0006561279296875,   0.0037689208984375,  0.01544189453125,    
+  0.048126220703125,    0.1189422607421875,   0.2403411865234375,   0.40726470947265625, 0.5927352905273438,
+  0.7596588134765625,   0.8810577392578125,   0.951873779296875,    0.98455810546875,    0.9962310791015625,   
+  0.9993438720703125
+
+
+  * Probability that player p_i survives
+    enumerate give the same result as the PSI model (it takes about 6s)
+
+    expectation:
+    [ [ 'num_survived', 7.0000762939453125 ],
+      [ 'p1', 0.000003814697265625014 ],
+      [ 'p2', 0.00007247924804687538 ],
+      [ 'p3', 0.0006561279296875011 ],
+      [ 'p4', 0.0037689208984375156 ],
+      [ 'p5', 0.015441894531250243 ],
+      [ 'p6', 0.048126220703125944 ],
+      [ 'p7', 0.11894226074218979 ],
+      [ 'p8', 0.24034118652343875 ],
+      [ 'p9', 0.4072647094726567 ],
+      [ 'p10', 0.5927352905273434 ],
+      [ 'p11', 0.7596588134765614 ],
+      [ 'p12', 0.8810577392578102 ],
+      [ 'p13', 0.951873779296874 ],
+      [ 'p14', 0.9845581054687497 ],
+      [ 'p15', 0.9962310791015625 ],
+      [ 'p16', 0.9993438720703125 ] ]
+
+  * The expected number of players to survive
+
+     num_survived
+     Marginal:
+        7 : 0.1854705810546868
+        8 : 0.16692352294921786
+        6 : 0.16692352294921786
+        5 : 0.12139892578124901
+        9 : 0.12139892578124901
+        4 : 0.07081604003906382
+        10 : 0.07081604003906382
+        3 : 0.032684326171875694
+        11 : 0.032684326171875694
+        2 : 0.011672973632812722
+        12 : 0.011672973632812722
+        1 : 0.003112792968750014
+        13 : 0.003112792968750014
+        0 : 0.0006561279296874999
+        14 : 0.0005836486816406255
+        15 : 0.00006866455078125043
+        16 : 0.000003814697265625014
+
+*/
+
+var model = function() {
+    var num_tiles = 18
+    var num_people = 16
+
+    var this_person = function(known,alive,n) {
+        if (n == 0) {
+            return [known,alive]
+        } else {
+            if (known < num_tiles) {
+                var alive = flip(0.5)
+                if (alive) {
+                    return this_person(known+1,alive,n-1)
+                } else {
+                    return [known+1,false]
+                }
+            } else {
+                return [known,alive]
+            }
+        }        
+    }
+
+    // Get the successes for each person
+    var squid = function(p,n,known) {
+        if (n == 0) {
+            return p
+        } else {
+            var [known2,alive] = this_person(known,true,num_tiles)
+            return squid(p.concat(alive),n-1,known2)
+        }
+    }
+
+    var p = squid([],num_people,0) // did player p_(i-1) survive?
+    var num_survived = sum(p) // number of survived players
+   
+    return {
+        p:p,
+        // Probability that person <i> will make it
+        p1:p[0], // did pepson 1 make it?
+        p2:p[1],
+        p3:p[2],
+        p4:p[3],
+        p5:p[4],
+        p6:p[5],
+        p7:p[6],
+        p8:p[7],
+        p9:p[8],
+        p10:p[9],
+        p11:p[10],
+        p12:p[11],
+        p13:p[12],
+        p14:p[13],
+        p15:p[14],
+        p16:p[15], // did the last pepson make it?
+        num_survived:num_survived,
+    }
+}
+
+// var d = Infer(model)
+var d = Infer({method:"enumerate",maxRuntimeInMS:15000},model)
+// display(d)
+
+exp_map(d,["num_survived",
+           "p1","p2","p3","p4","p5","p6","p7","p8","p9",
+           "p10","p11","p12","p13","p14","p15","p16"
+          ],
+        ["expectation","marginals"]
+        // ["expectation"]
+       )
+
+

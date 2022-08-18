@@ -1,0 +1,125 @@
+/*
+  https://people.kth.se/~dbro/ppl-tutorial-part-1.pdf
+  page 34
+  """
+  Task. Suppose you have the following data: 
+     length = [55, 57, 52, 64, 53, 64] and 
+     age =    [4, 10, 2, 17, 6, 20], 
+  where the tuple (length[i], age[i]) represents the 
+  length in cm and age in weeks for a baby. Create a WebPPL script that infers a posterior 
+  distribution over the length of six months old babies by using Bayesian linear regression of 
+  the form , 
+       length[i] = N(alpha + beta*age[i], sigma)
+  where N is the normal distribution, length the length, age the age, and alpha beta, and sigma 
+  are random variables.  
+  Note: there is an example on webppl.org, but you need to write your own solution using a recursive 
+  function (not map) and using the observe construct (not factor).
+
+  A1. Visualize the result and compute the expected value using the function expectation(INF), 
+      where INF is the call to the Infer function. What is the uncertainty of the estimation? 
+      Describe and discuss the results.
+  A2. Discuss what reasonable priors for alpha, beta, and sigma can be. Test and explain how 
+      different priors affect the result.
+  A3. Suppose you extend the data set with one more data point, where the length is 100 cm, 
+      and the age is 5 weeks. How do the mean value and the uncertainty in 
+      the estimation change?
+  """
+
+  * Original data
+[ [ 'alpha', 50.61549580043476 ],
+  [ 'beta', 0.7025720156528354 ],
+  [ 'sigma', 1 ] ]
+MAP:
+[ [ 'alpha',
+    { val: 50.927971050795826, score: -4.456750180869817 } ],
+  [ 'beta',
+    { val: 0.6947127804209856, score: -5.878135861800981 } ],
+  [ 'sigma', { val: 1, score: 0 } ] ]
+
+credibleInterval alpha 0.93
+[ 49.074627555009506, 51.76838135683466 ]
+
+credibleInterval beta 0.93
+[ 0.5997877913306602, 0.8218622676119893 ]
+
+
+  * Adding a data point of 5 weeks and 100cm
+    It increases the alpha but it makes beta more uncertain:
+    It's probably positive but perhaps slightly negative.
+    It should probably be regarded an outlier...
+   
+[ [ 'alpha', 63.13948015893304 ],
+  [ 'beta', 0.045307347409233006 ],
+  [ 'sigma', 1 ] ]
+MAP:
+[ [ 'alpha',
+    { val: 63.279073633697955, score: -4.3428059215206 } ],
+  [ 'beta',
+    { val: 0.06187933293904235, score: -5.878135861800975 } ],
+  [ 'sigma', { val: 1, score: 0 } ] ]
+credibleInterval alpha 0.93
+[ 61.88966888501728, 64.23174758447603 ]
+
+credibleInterval beta 0.93
+[ -0.05955069772569166, 0.15376053544962698 ]
+
+
+
+
+*/
+
+var model = function() {  
+    var lengths1 = [55, 57, 52, 64, 53, 64]
+    var age1     = [ 4, 10,  2, 17,  6, 20]
+    // Adding 100cm and 5 weeks 
+    var lengths2 = [55, 57, 52, 64, 53, 64,100]
+    var age2     = [ 4, 10,  2, 17,  6, 20, 5]
+
+    var lengths = lengths1
+    var age = age1
+    
+
+    var N = age.length
+
+    var alpha = uniform(0,100)
+    var beta = uniform(-1,1)
+    // var sigma = uniform(0.1,4)
+    var sigma = 1
+    
+    mapN(
+        function(i) {
+            observe(Gaussian({mu:alpha+beta*age[i],sigma:sigma}),lengths[i])
+        },
+        N);
+
+    return {
+        alpha:alpha,
+        beta:beta,
+        // sigma:sigma
+    }
+        
+}
+
+// var d = Infer(model)
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:10,burn:1000},model)
+// display(d)
+
+exp_map(d,["alpha","beta","sigma"],["expectation","MAP"])
+
+display("credibleInterval alpha 0.93")
+display(credibleInterval(getSamples(d,"alpha"),0.93))
+
+display("\ncredibleInterval beta 0.93")
+display(credibleInterval(getSamples(d,"beta"),0.93))
+
+// var lengths = [55, 57, 52, 64, 53, 64]
+// var age     = [ 4, 10,  2, 17,  6, 20]
+// viz.scatter(age,lengths)
+
+// New point 100cm and 5 weeks
+// var lengths2 = [55, 57, 52, 64, 53, 64, 100]
+// var age2     = [ 4, 10,  2, 17,  6, 20,   5]
+// viz.scatter(age2,lengths2)
+
+// viz.marginals(d)
+// viz(d) // scatter/bubble plot of alpha vs beta

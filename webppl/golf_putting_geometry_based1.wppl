@@ -1,0 +1,164 @@
+/*
+  Golf putting (geometry based).
+
+  This is a port of the PyMC3 model (the geometry based model)
+  https://docs.pymc.io/pymc-examples/examples/case_studies/putting_workflow.html
+  """
+  We use a data set from “Statistics: A Bayesian Perspective”, by Don Berry (1995). 
+  The dataset describes the outcome of professional golfers putting from a number of distances. 
+  """
+
+  * SMC (1000 particles
+  expectation:
+  [ [ 'variance_of_shot', 0.026152186935631476 ],
+    [ 'post2', 1384.5989999999997 ],
+    [ 'post3', 574.4569999999998 ],
+    [ 'post4', 316.0980000000001 ],
+    [ 'post5', 206.78299999999993 ],
+    [ 'post6', 137.34899999999993 ],
+    [ 'post7', 113.01699999999991 ],
+    [ 'post8', 93.97699999999995 ],
+    [ 'post9', 76.097 ],
+    [ 'post10', 64.04300000000002 ],
+    [ 'post11', 68.94800000000004 ],
+    [ 'post12', 54.12099999999999 ],
+    [ 'post13', 47.28600000000001 ],
+    [ 'post14', 39.863000000000014 ],
+    [ 'post15', 35.76199999999998 ],
+    [ 'post16', 40.47399999999999 ],
+    [ 'post17', 37.134999999999984 ],
+    [ 'post18', 34.479000000000006 ],
+    [ 'post19', 25.125 ],
+    [ 'post20', 24.735000000000007 ] ]
+
+  * MCMC (10000 samples)
+  expectation:
+  [ [ 'variance_of_shot', 0.0442269099629066 ],
+    [ 'post2', 1136.3207000000014 ],
+    [ 'post3', 419.8719000000003 ],
+    [ 'post4', 219.3498999999999 ],
+    [ 'post5', 138.24640000000002 ],
+    [ 'post6', 90.93160000000003 ],
+    [ 'post7', 74.02049999999997 ],
+    [ 'post8', 61.79809999999999 ],
+    [ 'post9', 49.872699999999995 ],
+    [ 'post10', 40.369400000000006 ],
+    [ 'post11', 44.4532 ],
+    [ 'post12', 34.8876 ],
+    [ 'post13', 30.42790000000002 ],
+    [ 'post14', 25.499599999999987 ],
+    [ 'post15', 22.948999999999987 ],
+    [ 'post16', 25.050500000000007 ],
+    [ 'post17', 23.74239999999999 ],
+    [ 'post18', 22.0719 ],
+    [ 'post19', 15.840199999999994 ],
+    [ 'post20', 15.848500000000001 ] ]
+
+
+  (This is a port of my Turing.jl model golf_putting_geometry_based1.jl)
+
+*/
+
+// Javascript/WebPPL misses erf (error function) so here we go...
+// Erf https://en.wikipedia.org/wiki/Error_function
+// (Abramowitz and Stegun)
+var erf = function(x) {
+    var a1 = 0.278393
+    var a2 = 0.230389
+    var a3 = 0.000972
+    var a4 = 0.078108
+    return 1 - 1/Math.pow((1+ a1*x + a2*Math.pow(x,2) + a3*Math.pow(x,3) + a4*Math.pow(x,4)),4)
+}
+
+/*
+Calculates the standard normal cumulative distribution function.
+*/
+var Phi = function(x) {
+    return 0.5 + 0.5 * erf(x / Math.sqrt(2.0))
+}
+
+var BALL_RADIUS = (1.68 / 2) / 12
+var CUP_RADIUS = (4.25 / 2) / 12
+
+// distance_feet, num_tries, num_successes
+var data = [
+    [2,1443,1346],
+    [3,694,577],
+    [4,455,337],
+    [5,353,208],
+    [6,272,149],
+    [7,256,136],
+    [8,240,111],
+    [9,217,69],
+    [10,200,67],
+    [11,237,75],
+    [12,202,52],
+    [13,192,46],
+    [14,174,54],
+    [15,167,28],
+    [16,201,27],
+    [17,195,31],
+    [18,191,33],
+    [19,147,20],
+    [20,152,24]]
+var data_len = data.length
+var distances = mapN(function(i) { return data[i][0] },data_len)
+var tries     = mapN(function(i) { return data[i][1] },data_len)
+var successes = mapN(function(i) { return data[i][2] },data_len)
+
+var model = function() {
+    var n = distances.length
+    var variance_of_shot = gaussian(0,1)
+    condition(variance_of_shot >= 0)
+
+    var p_goes_in = mapN(function(i) {
+        var t = 2 * Phi(Math.asin((CUP_RADIUS - BALL_RADIUS) / distances[i]) / variance_of_shot) - 1
+        condition(t >= 0)
+        return t
+    },n)
+
+    mapN(function(i) {
+        observe(Binomial({p:p_goes_in[i],n:tries[i]}), successes[i])
+    },n)
+
+    // Posterior
+    var post = mapN(function(i) {
+        return binomial(p_goes_in[i],tries[i])
+    },n)
+    
+    return {
+        variance_of_shot:variance_of_shot,
+        // Posterior successes for each distance
+        post2:post[0], // 2 feet
+        post3:post[1], // 3 feet
+        post4:post[2],
+        post5:post[3],
+        post6:post[4],
+        post7:post[5],
+        post8:post[6],
+        post9:post[7],
+        post10:post[8],
+        post11:post[9],
+        post12:post[10],
+        post13:post[11],
+        post14:post[12],
+        post15:post[13],
+        post16:post[14],
+        post17:post[15],
+        post18:post[16],
+        post19:post[17],
+        post20:post[18],
+        
+    }
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"MCMC",samples:10000,burn:1000},model)
+var d = Infer({method:"SMC",particles:1000},model)
+// display(d)
+
+exp_map(d,["variance_of_shot",
+           "post2","post3","post4","post5","post6","post7","post8","post9","post10",
+           "post11","post12","post13","post14","post15","post16","post17","post18","post19","post20",          
+
+          ],["expectation"])

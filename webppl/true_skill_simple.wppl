@@ -1,0 +1,109 @@
+/*
+  This is a port of the R2 model TrueSkillSimple.cs
+
+  With the datafiles
+  - true_skill_simple_r2_players.csv
+  - true_skill_simple_r2_games.csv
+  
+  Output from the R2 model (skills):
+  ```
+  [0] Mean: 107.265          skills[0]
+  [0] Variance: 72.9736
+  
+  [1] Mean: 100.541          skills[1]
+  [1] Variance: 86.9287
+  
+  [2] Mean: 95.7907          skills[2]
+  [2] Variance: 84.9168
+  ```
+
+  * Using factor( ..., ? 0 : -1000)
+    expectation:
+    [ [ 'skills0', 108.7353835959338 ],
+      [ 'skills1', 100.6029710804198 ],
+      [ 'skills2', 93.1590252590075 ],
+      [ 'performance0v1', 112.28673158341478 ],
+      [ 'performance0v2', 96.29375059852978 ],
+      [ 'performance1v0', 105.05004292504424 ],
+      [ 'performance1v2', 88.56900301978328 ],
+      [ 'performance2v0', 112.08372465356436 ],
+      [ 'performance1v2', 88.56900301978328 ] ]
+
+  * Using condition(...)
+    expectation:
+    [ [ 'skills0', 104.11575124770278 ],
+      [ 'skills1', 100.01669192528328 ],
+      [ 'skills2', 94.36880394388311 ],
+      [ 'performance0v1', 111.71227826239841 ],
+      [ 'performance0v2', 92.11004361388473 ],
+      [ 'performance1v0', 107.49155810761667 ],
+      [ 'performance1v2', 87.09831952940048 ],
+      [ 'performance2v0', 110.6298425138836 ],
+      [ 'performance1v2', 87.09831952940048 ] ]
+
+
+
+
+*/
+
+// Data
+var players = [0, 1, 2]
+
+// Players games[g][0] vs games[g][1]: outcome games[g][2]
+//            p1 p2 result
+var games = [[0, 1, 1], // player 0 won over player 1
+             [1, 2, 1], // player 1 won over player 2
+             [0, 2, 1]] // player 0 won over player 2
+
+
+var model = function() {
+    var num_players = players.length
+    var num_games = games.length
+    var m = games[0].length
+
+    var skills = mapN(function(p) { return gaussian(100,10) }, num_players)
+    var performance = mapN(function(g) {
+        return mapN(function(p) {
+            return gaussian(skills[games[g][p]],15)
+        },2)
+    }, num_games)
+    
+    mapN(function(g) {
+        if (games[g][2] === 1) {
+            condition(performance[g][0] > performance[g][1])
+            // factor(performance[g][0] > performance[g][1] ? 0 : -1000)
+        } else if (games[g][2] === 0) {
+            condition(performance[g][0] == performance[g][1])
+            // factor(performance[g][0] == performance[g][1] ? 0 : -1000)
+        } else  {
+            condition(performance[g][0] < performance[g][1])
+            // factor(performance[g][0] < performance[g][1] ? 0 : -1000)
+        }        
+    }, num_games)
+
+    return {
+        skills0:skills[0],
+        skills1:skills[1],
+        skills2:skills[2],
+
+        performance0v1:performance[0][0], // game 0 player 0
+        performance0v2:performance[0][1], // game 0 player 1
+        performance1v0:performance[1][0],
+        performance1v2:performance[1][1],        
+        performance2v0:performance[2][0],
+        performance2v1:performance[2][1],        
+        
+    }
+ 
+}
+
+var d = Infer({method:"MCMC",samples:1000,lag:10,burn:1000},model)
+// var d = Infer({method:"rejection",samples:1000},model)
+// var d = Infer({method:"SMC",particles:1000},model)
+// display(d)
+
+exp_map(d,["skills0","skills1","skills2",
+           "performance0v1","performance0v2",
+           "performance1v0","performance1v2",
+           "performance2v0","performance1v2",
+          ],["expectation"])

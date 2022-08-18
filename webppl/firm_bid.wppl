@@ -1,0 +1,102 @@
+/*
+  Firm bidding example from Figaro tutorial, page 16
+  """
+  import com.cra.figaro.language._
+  import com.cra.figaro.library.atomic._
+  import com.cra.figaro.library.compound.If
+
+  class Firm {
+    val efficient = Flip(0.3)
+    val bid = If(efficient, continuous.Uniform(5, 15),
+                            continuous.Uniform(10, 20))
+  }
+
+  val firms = Array.fill(20)(new Firm)
+  val winner = discrete.Uniform(firms:_*)
+  val winningBid = Chain(winner, (f: Firm) => f.bid)
+  winningBid.setConstraint((d: Double) => 20 − d)
+
+  ... 
+  Finally, we introduce the constraint, which says that a winning bid
+  of d has weight 20 − d . This means that a winning bid of 5 is 15
+  times more likely than a winning bid of 19. The effect is to make
+  the winning bid more likely to be low. Note that in this model, the
+  winning bid is not necessarily the lowest bid. For various reasons,
+  the lowest bidder might not win the contract, perhaps because they
+  offer a poor quality service or they don’t have the right connections.
+  Using a constraint, the model is specified very simply using a discrete
+  uniform selection and a simple constraint.
+  """
+
+  expectation:
+  [ [ 'winner', 10.200499999999998 ],
+    [ 'winningBid', 11.458496480048924 ],
+    [ 'efficentWinner', 0.46949999999999914 ],
+    [ 'lowestBid', 6.555155293311788 ],
+    [ 'theFactor', 2.0534951914947337 ] ]
+
+  MAP:
+  [ [ 'winner', { val: 3, score: -2.2956094792576205 } ],
+    [ 'winningBid',
+      { val: 7.526196671158454, score: -4.166915255056935 } ],
+    [ 'efficentWinner', { val: false, score: -0.6339353209280976 } ],
+    [ 'lowestBid',
+      { val: 5.513908461118882, score: -4.605170185988091 } ],
+    [ 'theFactor',
+      { val: 2.5236307114926695, score: -4.166915255056935 } ] ]
+
+  Credible interval for winner (94%): [ 1, 19 ]
+  Credible interval for winningBid (94%): [ 5.07679348267956, 16.79150236119888 ]
+  Credible interval for lowestBid (94%): [ 5.022615821263804, 9.199237932766989 ]
+  Credible interval for theFactor (94%): [ 1.1753361685563557, 2.7060775055891444 ]
+
+
+*/
+
+var model = function() {
+    var n = 20
+    
+    var efficient = mem(function(firm) { return flip(0.3) })
+    var bid = mem(function(firm) { return efficient(firm) ? uniform(5,15) : uniform(10,20) })
+
+    var winner = 1+randomInteger(n)
+
+    var lowestBid = _.min(mapN(function(firm) { return bid(firm) },n))
+
+    // Note: I'm note sure how to interpret the setConstraint 20 - d.
+    // I _think_ that it means that we should factor with log(20-d)
+    // """
+    // .. which says that a winning bid of d has weight 20 − d . This means that
+    // a winning bid of 5 is 15 times more likely than a winning bid of 19.
+    // """
+    // I interpret this as setting a factor function with the log probability of 20 - d.
+    //
+    
+    // var winningBid = 20 - bid(winner)
+    var winningBid = bid(winner)
+    var theFactor = Math.log(20-winningBid)
+    factor(Math.log(20-winningBid))
+    // factor(20-winningBid)    
+    
+    return {
+        winner:winner,
+        winningBid:winningBid,
+        efficentWinner:efficient(winner),
+        lowestBid:lowestBid,
+        theFactor:theFactor,
+    }
+}
+
+// var d = Infer(model)
+var d = Infer({method:"MCMC",samples:10000},model)
+// display(d)
+
+exp_map(d,["winner","winningBid","efficentWinner","lowestBid","theFactor"],
+        ["expectation","MAP"])
+
+showCredibleInterval(d,"winner",0.94)
+showCredibleInterval(d,"winningBid",0.94)
+showCredibleInterval(d,"lowestBid",0.94)
+showCredibleInterval(d,"theFactor",0.94)
+
+// viz.marginals(d)

@@ -1,0 +1,78 @@
+/*
+  This is a port of the SPPL model disease-infection.pynb
+
+  The SPPL model give a value of 330 for num_met.
+
+  This model:
+
+  expectation:
+  [ [ 'num_people', 672.5460000000004 ],
+    [ 'num_met', 336.2519999999997 ],
+    [ 'num_infected', 100 ] ]
+  MAP:
+  [ [ 'num_people', { val: 656, score: -4.3428059215206 } ],
+    [ 'num_met', { val: 332, score: -3.575550768806933 } ],
+    [ 'num_infected', { val: 100, score: 0 } ] ]
+
+  credible interval num_people 0.94: [ 557, 775 ]
+  credible interval num_met 0.94: [ 287, 387 ]
+
+
+  * If we also estimate the probability of p for num_met (which was 
+    hardcoded to 0.5 in the SPPL model), the result give a quite larger
+    value of num_people (and larger credible interval: almost the full
+    range of the prior 500..1500)
+    
+  expectation:
+  [ [ 'num_people', 917.4040000000002 ],
+    [ 'num_met', 337.2769999999997 ],
+    [ 'num_infected', 100 ],
+    [ 'p', 0.40617248937241435 ] ]
+  MAP:
+  [ [ 'num_people', { val: 1050, score: -5.115995809754081 } ],
+    [ 'num_met', { val: 318, score: -3.9633162998156974 } ],
+    [ 'num_infected', { val: 100, score: 0 } ],
+    [ 'p', { val: 0.44203084771030055, score: -6.907755278982136 } ] ]
+
+  credible interval num_people 0.94: [ 502, 1412 ]
+  credible interval num_met 0.94: [ 289, 397 ]
+  credible interval p 0.94: [ 0.22536906607393248, 0.6680937876484201 ]
+
+
+*/
+
+var model = function() {
+    var num_infected = 100
+    
+    var num_people = 500 + randomInteger(1000)
+    
+    var num_met = binomial(0.5,num_people)
+    // The probability p for num_met is hardcoded to 0.5 in the SPPL model,
+    // but let's go crazy and estimate that as well.    
+    // var p = uniform(0,1)
+    // var num_met = binomial(p,num_people)    
+    condition(num_met > 0)
+    
+    // observe(Binomial({p:0.3,n:num_met}), num_infected)
+    condition(binomial(0.3,num_met) == num_infected)
+              
+    return {
+        num_people:num_people,
+        num_met:num_met,
+        num_infected:num_infected,
+        // p:p,
+    }
+
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"enumerate",maxRuntimeInMS: 60000},model)
+var d = Infer({method:"rejection",samples:1000},model)
+// var d = Infer({method:"MCMC",samples:1000},model)
+// display(d)
+
+exp_map(d,["num_people","num_met","num_infected","p"],["expectation","MAP"])
+
+console.log("\ncredible interval num_people 0.94:", credibleInterval(getSamples(d,"num_people"),0.94))
+console.log("credible interval num_met 0.94:", credibleInterval(getSamples(d,"num_met"),0.94))
+console.log("credible interval p 0.94:", credibleInterval(getSamples(d,"p"),0.94))

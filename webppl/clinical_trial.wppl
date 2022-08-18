@@ -1,0 +1,68 @@
+/*
+  This is a port of the Infer.Net model ClinicalTrial
+  https://dotnet.github.io/infer/userguide/Clinical%20trial%20tutorial.html 
+  """
+  Probability treatment has an effect = Bernoulli(0.7549)  
+  Probability of good outcome if given treatment = 0.7142857  
+  Probability of good outcome if control = 0.2857143
+  """
+
+  This WebPPL model
+
+  * SMC 1000 particles
+    expectation:
+    [ [ 'isEffective', 0.7631999999999997 ],
+      [ 'probControl', 0.3392010119798072 ],
+      [ 'probTreatment', 0.6637225337983361 ],
+      [ 'probAll', 0.5034206632702583 ] ]
+
+  *  MCMC/MH 10000 samples
+     expectation:
+     [ [ 'isEffective', 0.7580000000000009 ],
+       [ 'probControl', 0.33279408042553893 ],
+       [ 'probTreatment', 0.6607027544463482 ],
+       [ 'probAll', 0.4973636798651064 ] ]
+
+*/
+
+var control = [ false, false, true, false, false ]
+var treatment = [ true, false, true, true, true ]
+
+
+var model = function() {
+    
+    var n = treatment.length
+
+    var isEffective   = flip(0.5)
+    var probControl   = beta(1,1)
+    var probTreatment = beta(1,1)
+    var probAll       = beta(1,1)
+   
+    mapN(function(i) {
+        if (isEffective === true) {
+            observe(Bernoulli({p:probControl}), control[i])
+            observe(Bernoulli({p:probTreatment}), treatment[i])
+        }  else {
+            observe(Bernoulli({p:probAll}), control[i] )
+            observe(Bernoulli({p:probAll}), treatment[i] )
+        }
+
+    },n)
+
+    return {
+        isEffective:isEffective,
+        probControl:probControl,
+        probTreatment:probTreatment,
+        probAll:probAll,
+    }
+
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"rejection",samples:100},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:10000},model)
+// display(d)
+
+exp_map_all(d)
+

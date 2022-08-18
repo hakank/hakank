@@ -1,0 +1,83 @@
+/*
+  Cheating model.
+
+  The model is a port of the Cheating model (the first version)
+  https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/blob/master/Chapter2_MorePyMC/Ch2_MorePyMC_PyMC3.ipynb
+  """
+  Social data has an additional layer of interest as people are not always honest with responses, which 
+  adds a further complication into inference. For example, simply asking individuals "Have you ever cheated 
+  on a test?" will surely contain some rate of dishonesty. What you can say for certain is that the true 
+  rate is less than your observed rate (assuming individuals lie only about not cheating; I cannot 
+  imagine one who would admit "Yes" to cheating when in fact they hadn't cheated).
+
+  To present an elegant solution to circumventing this dishonesty problem, and to demonstrate Bayesian 
+  modeling, we first need to introduce the binomial distribution.
+
+  ...
+
+  We will use the binomial distribution to determine the frequency of students cheating during an exam. 
+  If we let N be the total number of students who took the exam, and assuming each student is interviewed 
+  post-exam (answering without consequence), we will receive integer X "Yes I did cheat" answers. We 
+  then find the posterior distribution of p, given N, some specified prior on p, and observed data X.
+
+  This is a completely absurd model. No student, even with a free-pass against punishment, would admit to 
+  cheating. What we need is a better algorithm to ask students if they had cheated. Ideally the algorithm 
+  should encourage individuals to be honest while preserving privacy. The following proposed algorithm 
+  is a solution I greatly admire for its ingenuity and effectiveness:
+
+    In the interview process for each student, the student flips a coin, hidden from the interviewer. 
+    The student agrees to answer honestly if the coin comes up heads. Otherwise, if the coin comes 
+    up tails, the student (secretly) flips the coin again, and answers "Yes, I did cheat" if the 
+    coin flip lands heads, and "No, I did not cheat", if the coin flip lands tails. This way, the 
+    interviewer does not know if a "Yes" was the result of a guilty plea, or a Heads on a second 
+    coin toss. Thus privacy is preserved and the researchers receive honest answers.
+  """
+
+  expectation:
+  [ [ 'p', 0.22379534575174503 ],
+    [ 'obs_prop', 0.35579000000000005 ] ]
+
+  Credible interval p 0.93: [ 0.015199965062503207, 0.424440258715548 ]
+  Credible interval obs_prop 0.93: [ 0.27, 0.43 ]
+
+  Cf cheating2.wppl for a variant of the PyMC3 model.
+
+*/
+
+
+var model = function() {
+    var N = 100
+    var yes_response = 35
+
+    var p = uniform(0,1) // freq cheating
+
+    var truths = mapN(function(i) {return flip(p)},N)
+    var first_flips = mapN(function(i) {return flip(0.5) },N)
+    var second_flips = mapN(function(i) {return flip(0.5) },N)        
+
+    var val = mapN(function(i) {return first_flips[i]*truths[i] + (1 - first_flips[i])*second_flips[i]}, N)
+    var obs_prop = sum(val) / N
+    observe(Binomial({p:obs_prop,n:N}), yes_response)
+
+    var p_prior = uniform(0,1)
+
+    return {
+        p:p,
+        obs_prop:obs_prop
+    }
+
+}
+
+// var d = Infer(model)
+// var d = Infer({method:"rejection",samples:10000},model)
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model)
+var d = Infer({method:"SMC",particles:10000},model)
+// display(d)
+
+exp_map(d,["p","obs_prop"],["expectation"])
+
+console.log("\nCredible interval p 0.93:",credibleInterval(getSamples(d,"p"),0.93))
+console.log("Credible interval obs_prop 0.93:",credibleInterval(getSamples(d,"obs_prop"),0.93))
+
+// viz(d)
+// viz.heatMap(d)

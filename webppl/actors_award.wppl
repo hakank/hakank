@@ -1,0 +1,139 @@
+/*
+  From "Figaro Tutorial", page 19f
+  """
+  There are three classes: actors, movies, and appearances relating actors to movies.
+  Whether an actor receives an award for an appearance depends on the fame of the actor 
+  and the quality of the movie.
+  """
+
+  With the two conditions:
+     famous("actor3") == true
+     quality("movie2") == "high"
+
+
+  Marginals:
+  famous1
+  Marginal:
+    false : 0.8903227412436111
+    true : 0.109677258756389
+  famous2
+  Marginal:
+    false : 0.8690895779787343
+    true : 0.13091042202126563
+  famous3
+  Marginal:
+    true : 1
+  quality1
+  Marginal:
+    "medium" : 0.49329753425790895
+    "low" : 0.2885721428854028
+    "high" : 0.2181303228566883
+  quality2
+  Marginal:
+    "high" : 1
+  award1
+  Marginal:
+    false : 0.938323838609456
+    true : 0.061676161390543986
+  award2
+  Marginal:
+    false : 0.795845859382043
+    true : 0.20415414061795692
+  award3
+  Marginal:
+    true : 0.7341696979914991
+    false : 0.2658303020085008
+  prob_award1
+  Marginal:
+    0.01 : 0.4696482099881056
+    0.001 : 0.2592191297611462
+    0.05 : 0.24381075201267588
+    0.2 : 0.0273219082380724
+  prob_award2
+  Marginal:
+    0.05 : 0.8690895779787343
+    0.2 : 0.13091042202126563
+  prob_award3
+  Marginal:
+    0.2 : 1
+
+  expectation:
+  [ [ 'famous1', 0.109677258756389 ],
+    [ 'famous2', 0.13091042202126563 ],
+    [ 'famous3', 1 ],
+    [ 'quality1', NaN ],
+    [ 'quality2', NaN ],
+    [ 'award1', 0.061676161390543986 ],
+    [ 'award2', 0.20415414061795692 ],
+    [ 'award3', 0.7341696979914991 ],
+    [ 'prob_award1', 0.022610620477890475 ],
+    [ 'prob_award2', 0.06963656330318985 ],
+    [ 'prob_award3', 0.2 ] ]
+
+
+*/
+
+var model = function() {
+    
+    var famous = mem(function(actor) { return flip(0.1) })
+
+    var quality = mem(function(movie) {
+        return categorical({ps:[0.3,0.5,0.2],vs:["low", "medium", "high"]})
+    })
+
+    var probAward = mem(function([actor,movie]) {
+        var famous_actor = famous(actor)
+        var quality_movie = quality(movie)
+        var t = [quality_movie,famous_actor]
+        var prob = _.isEqual(t,["low",false]) ? 0.001 :
+            _.isEqual(t, ["low", true]) ? 0.01 :
+            _.isEqual(t, ["medium", false]) ? 0.01 :
+            _.isEqual(t, ["medium", true]) ? 0.05 :
+            _.isEqual(t, ["high", false]) ? 0.05 :
+            _.isEqual(t, ["high", true]) ? 0.2 :
+            undefined
+        return prob
+    })
+    
+    var award = mem(function([actor,movie]) {
+        return flip(probAward([actor,movie]))
+    })
+
+    var appearance1 = ["actor1","movie1"]
+    var appearance2 = ["actor2","movie2"]
+    var appearance3 = ["actor3","movie2"]
+    var appearances = [appearance1,appearance2,appearance3]
+    
+
+    condition(famous("actor3") == true)
+    condition(quality("movie2") == "high")
+        
+    // Ensure that exactly one appearance gets an award.
+    condition(sum(map(function(appearance) {
+        return award(appearance) == true? 1: 0 },
+                      appearances)
+                 ) == 1
+             )
+    
+    return {
+        famous1:famous("actor1"),
+        famous2:famous("actor2"),
+        famous3:famous("actor3"),
+        quality1:quality("movie1"),
+        quality2:quality("movie2"),
+        award1:award(appearance1),
+        award2:award(appearance2),
+        award3:award(appearance3),
+        prob_award1:probAward(appearance1),
+        prob_award2:probAward(appearance2),
+        prob_award3:probAward(appearance3),
+        
+
+    }
+    
+}
+
+var d = Infer({method:"enumerate"},model)
+// display(d)
+
+exp_map_all(d,["marginals","expectation"])

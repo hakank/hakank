@@ -1,0 +1,141 @@
+/*
+  Game show probability problem 
+
+  From https://www.youtube.com/watch?v=WWAoh3XfWzA
+  "A fun game show probability problem | Bonus cash stop riddle"
+  """
+  A fun probability problem for you! You've just won a game show and it's time to 
+  play the bonus round for some extra cash! You play a random game where you open 
+  up boxes and get the prize money inside until you open up a stop sign. How much 
+  do you expect to make from playing this game?
+  """
+
+  There are 5 boxes with the following:
+  - 1 * $10 
+  - 2 * $1000
+  - 1 * $10000
+  - stop sign  
+
+  You can draw until the stop sign and then you earn all the money 
+  you picked. There is no penalty to draw until stop sign.
+
+  Answer: Estimated value is $6005
+  Calculated by:
+     10*0.5 + 1000*0.5 + 1000*0.5 + 10000*0.5 = 6005
+  where 0.5 is the probability that the value is to the left 
+  of the stop sign, i.e. is selected.
+  
+  Using Enumerate (exact calculation)
+
+  * Original problem: [10,1000,1000,10000,0]
+  total
+  Marginal:
+    0 : 0.19999999999999996
+    12010 : 0.1999999999999999
+    1000 : 0.10000000000000002
+    11010 : 0.10000000000000002
+    1010 : 0.0666666666666667
+    11000 : 0.0666666666666667
+    2010 : 0.05
+    10 : 0.05
+    12000 : 0.05
+    10000 : 0.05
+    2000 : 0.03333333333333335
+    10010 : 0.03333333333333335
+  expectation:
+  [ [ 'total', 6005 ] ]
+
+  Theoretical: 6005
+
+  * Another problem: [10,1000,1000,10000,12345,0]
+  total
+  Marginal:
+    0 : 0.16666666666666674
+    24355 : 0.16666666666666657
+    1000 : 0.06666666666666672
+    23355 : 0.06666666666666664
+    12345 : 0.03333333333333336
+    13345 : 0.03333333333333336
+    10000 : 0.03333333333333336
+    1010 : 0.03333333333333336
+    11000 : 0.03333333333333336
+    10 : 0.03333333333333336
+    11010 : 0.03333333333333335
+    13355 : 0.03333333333333335
+    23345 : 0.03333333333333335
+    14355 : 0.03333333333333333
+    12010 : 0.03333333333333333
+    24345 : 0.03333333333333333
+    14345 : 0.016666666666666687
+    10010 : 0.016666666666666687
+    22345 : 0.016666666666666687
+    22355 : 0.016666666666666687
+    2010 : 0.016666666666666687
+    2000 : 0.016666666666666687
+    12000 : 0.016666666666666687
+    12355 : 0.016666666666666687
+  expectation:
+  [ [ 'total', 12177.5 ] ]
+  Theoretical: 12177.5
+
+  
+  (This is a port of my Turing.jl model game_show_problem.jl)
+
+*/
+
+var game_show_problem_theoretical = function (boxes) {
+    return sum(boxes) / 2
+}
+
+var run = function(boxes) {
+    var model = function() {
+        var n = boxes.length
+        
+        // Pick a box and continue until the stop box (value = 0) is picked
+        // Note: Since we have duplicate values we use boxes indices
+        // instead of the values which makes it slightly more elaborate
+        var pick_a_box = function(boxes_ix_left,val_so_far) {
+            var len = boxes_ix_left.length
+            if (len == 0) {
+                return val_so_far
+            }
+            // Pick an _index_ 
+            var box_ix = randomInteger(len)
+            // Lookup the value of this selected index
+            var val = boxes[boxes_ix_left[box_ix]]
+            
+            // Stop if stop box is selected or just the stop box is left
+            // (If the length is 1 then it must be the stop box)
+            if (val == 0 || len == 1) {
+                return val_so_far
+            }
+
+            var new_boxes_ix = _.difference(boxes_ix_left,[boxes_ix_left[box_ix]])
+            return pick_a_box(new_boxes_ix, val_so_far+val)        
+        }
+        
+        var total = pick_a_box(_.range(n), 0)
+        
+        return {
+            total:total
+        }
+    }
+    
+    var d = Infer(model) // exact
+    // display(d)
+    
+    exp_map(d,["total"],["expectation","marginals"])
+
+}
+
+
+var boxes = [10,1000,1000,10000,0]
+console.log("Boxes:", boxes)
+run(boxes)
+console.log("Theoretical:", game_show_problem_theoretical(boxes))
+
+console.log("\n")
+var boxes2 = [10,1000,1000,10000,12345,0]
+console.log("Boxes2:", boxes2)
+run(boxes2)
+console.log("Theoretical:", game_show_problem_theoretical(boxes2))

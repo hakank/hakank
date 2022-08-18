@@ -1,0 +1,68 @@
+/*
+  Port of PyMC3 linear regression model in
+  https://docs.pymc.io/pymc-examples/examples/generalized_linear_models/GLM-linear.html    
+
+  The point estimates for the PyMC3 model is:
+  sigma: 0.5151059886166095 
+  intercept: 1.0588229549712969 
+  x_coeff: 2.0014015875200464
+
+  This is a port of my Turing.jl model linear_regression4.jl.
+
+  There are just a few changes compared to linear_regression3.wppl
+  - n is 200 here (vs n=50)
+  - sigma is (truncated) Cauchy(10,1) vs uniform(0,2)
+
+
+  true_intercept: 1 true_slope: 2
+  expectation:
+  [ [ 'intercept', 0.9357139085160963 ],
+    [ 'slope', 2.1717884470347872 ],
+    [ 'sigma', 0.6350554443994093 ] ]
+  Credible interval for intercept (94%): [ 0.5039878518306173, 1.1780859160375965 ]
+  Credible interval for slope (94%): [ 1.7276462309864165, 2.8290891298238416 ]
+  Credible interval for sigma (94%): [ 0.5161682100702123, 0.5668232563299007 ]
+
+
+*/
+
+// Generate some random values.
+// We are trying to detect true intercept and true slope
+var n = 200
+var true_intercept = 1
+var true_slope = 2
+console.log("true_intercept:",true_intercept,"true_slope:", true_slope)
+
+var x = _.range(0, 1,1/(n-1))
+var y = mapN(function(i) { return true_intercept + x[i] * true_slope + gaussian(0,0.5)} ,n)
+// console.log("x:",x)
+// console.log("y:",y)
+
+var model = function() {
+    var n = x.length
+    var intercept = gaussian(0,20)
+    var slope = gaussian(0,10)
+    var sigma = cauchy(10.0,1)
+    condition(sigma >= 0)
+    mapN(function(i) {
+        observe(Gaussian({mu:intercept + slope*x[i],sigma:sigma}),y[i])
+    },n)
+
+    return {
+        intercept:intercept,
+        slope:slope,
+        sigma:sigma
+    }
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,lag:10,burn:1000},model)
+// display(d)
+
+exp_map(d,["intercept","slope","sigma"],["expectation"])
+
+showCredibleInterval(d,"intercept",0.94)
+showCredibleInterval(d,"slope",0.94)
+showCredibleInterval(d,"sigma",0.94)
+
+// viz.marginals(d)
+// viz(d)

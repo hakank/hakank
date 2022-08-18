@@ -1,0 +1,59 @@
+/*
+  Port of PyMC3 first linear regression model in
+  https://docs.pymc.io/pymc-examples/examples/generalized_linear_models/GLM.html
+
+  (This is a port of my Turing.jl model linear_regression3.jl)
+
+  Note: The PyMC3 model(s) in that page use  GLM.from_formula which is not available
+  in WebPPL, so this is not a good port at all.
+
+  true_intercept: 1 true_slope: 2
+  expectation:
+  [ [ 'intercept', 0.8399042222205133 ],
+    [ 'slope', 2.257489391734796 ],
+    [ 'sigma', 0.5421353263208394 ] ]
+  Credible interval for intercept (94%): [ 0.5763702619047982, 0.9783463064773502 ]
+  Credible interval for slope (94%): [ 1.8977312284582901, 2.6855703576285745 ]
+  Credible interval for sigma (94%): [ 0.4364467294903256, 0.6420962245838147 ]
+
+*/
+
+// Generate some random values.
+// We are trying to detect true intercept and true slope
+var n = 50
+var true_intercept = 1
+var true_slope = 2
+console.log("true_intercept:",true_intercept,"true_slope:", true_slope)
+
+var x = _.range(0, 1,1/(n-1))
+var y = mapN(function(i) { return true_intercept + x[i] * true_slope + gaussian(0,0.5)} ,n)
+// console.log("x:",x)
+// console.log("y:",y)
+
+var model = function() {
+    var n = x.length
+    var intercept = gaussian(0,20)
+    var slope = gaussian(0,10)
+    var sigma = uniform(0,2)
+    mapN(function(i) {
+        observe(Gaussian({mu:intercept + slope*x[i],sigma:sigma}),y[i])
+    },n)
+
+    return {
+        intercept:intercept,
+        slope:slope,
+        sigma:sigma,
+    }
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:10,burn:1000},model)
+// display(d)
+
+exp_map(d,["intercept","slope","sigma"],["expectation"])
+
+showCredibleInterval(d,"intercept",0.94)
+showCredibleInterval(d,"slope",0.94)
+showCredibleInterval(d,"sigma",0.94)
+
+// viz.marginals(d)
+// viz(d)

@@ -1,0 +1,128 @@
+/*
+  Golf putting (logit).
+
+  This is a port of the PyMC3 model (the Logic model)
+  https://docs.pymc.io/pymc-examples/examples/case_studies/putting_workflow.html
+  """
+  We use a data set from “Statistics: A Bayesian Perspective”, by Don Berry (1995). 
+  The dataset describes the outcome of professional golfers putting from a number of distances. 
+  """
+
+  PyMC3 model:
+     mean      std 
+  - a: -0.255 	0.007
+  - b:  2.224 	0.060 	
+
+  expectation:
+  [ [ 'a', -0.20994718537591514 ],
+    [ 'b', 1.5983391507831535 ],
+    [ 'post2', 1332.0290000000002 ],
+    [ 'post3', 579.6965000000002 ],
+    [ 'post4', 337.27319999999986 ],
+    [ 'post5', 213.6893 ],
+    [ 'post6', 148.5439 ],
+    [ 'post7', 133.54629999999997 ],
+    [ 'post8', 110.12330000000001 ],
+    [ 'post9', 66.69869999999999 ],
+    [ 'post10', 69.64859999999999 ],
+    [ 'post11', 76.829 ],
+    [ 'post12', 50.25060000000002 ],
+    [ 'post13', 44.019999999999996 ],
+    [ 'post14', 57.4761 ],
+    [ 'post15', 26.757100000000005 ],
+    [ 'post16', 29.87170000000002 ],
+    [ 'post17', 27.3361 ],
+    [ 'post18', 34.18520000000001 ],
+    [ 'post19', 18.212799999999994 ],
+    [ 'post20', 24.23189999999999 ] ]
+
+*/
+
+// distance_feet, num_tries, num_successes
+var data = [
+    [2,1443,1346],
+    [3,694,577],
+    [4,455,337],
+    [5,353,208],
+    [6,272,149],
+    [7,256,136],
+    [8,240,111],
+    [9,217,69],
+    [10,200,67],
+    [11,237,75],
+    [12,202,52],
+    [13,192,46],
+    [14,174,54],
+    [15,167,28],
+    [16,201,27],
+    [17,195,31],
+    [18,191,33],
+    [19,147,20],
+    [20,152,24]]
+var data_len = data.length
+var distances = mapN(function(i) { return data[i][0] },data_len)
+var tries     = mapN(function(i) { return data[i][1] },data_len)
+var successes = mapN(function(i) { return data[i][2] },data_len)
+
+// From https://discourse.julialang.org/t/help-with-first-non-trivial-turing-example/38964
+// logit = x -> log(x / (1 - x))
+var invlogit = function(x) { return Math.exp(x)/(1 + Math.exp(x)) }
+
+var model = function() {
+    var n = distances.length
+    
+    var a = gaussian(0,1)
+    var b = gaussian(0,1)
+    var p = mapN(function(i) {
+        return logitNormal(a * distances[i] + b,1,0,1)
+        // return invlogit(a * distances[i] + b) // not great, but not very bad
+
+    },n)
+    
+    mapN(function(i) {
+        observe(Binomial({p:p[i],n:tries[i]}),successes[i])
+    },n)
+    
+    // Posterior
+    var post = mapN(function(i) {
+        return binomial(p[i],tries[i])
+    },n)
+
+    return {
+        a:a,
+        b:b,
+        post2:post[0],
+        post3:post[1],
+        post4:post[2],
+        post5:post[3],
+        post6:post[4],
+        post7:post[5],
+        post8:post[6],
+        post9:post[7],
+        post10:post[8],
+        post11:post[9],
+        post12:post[10],
+        post13:post[11],
+        post14:post[12],
+        post15:post[13],
+        post16:post[14],
+        post17:post[15],
+        post18:post[16],
+        post19:post[17],
+        post20:post[18],
+        
+    }
+         
+}
+
+var d = Infer({method:"MCMC",kernel:"MH",samples:10000,burn:1000},model)
+// var d = Infer({method:"SMC",particles:1000},model)
+// display(d)
+
+exp_map(d,["a","b",
+           "post2","post3","post4","post5","post6","post7","post8","post9","post10",
+           "post11","post12","post13","post14","post15","post16","post17","post18","post19","post20",           
+          ],
+        ["expectation"])
+
+// viz(d)
