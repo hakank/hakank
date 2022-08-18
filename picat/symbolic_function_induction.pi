@@ -2,29 +2,16 @@
 
   Symbolic function induction in Picat.
 
-  From https://www.doc.ic.ac.uk/~mpd37/teaching/2014/ml_tutorials/2014-10-15-wood-anglican.pdf
-  Page 34ff
-  """
-  Symbolic Function Induction
-  What’s the next value? And the function?
-
-  Input    Output
-  ---------------
-  1        5
-  2        3
-  3        1
-  4        ?
-  """
-
-  This program solves a integer sequence puzzles with symbolic solutions like the
-  one above. Some other examples, which are all solved by this program (see the
-  examples in the data section below):
+  This program solves integer sequence puzzles with symbolic solutions like the
+  the following, which are all solved by this program (see the examples in the data 
+  section below):
 
   * What number should replaced the question mark?
     1 + 4 = 5
     2 + 5 = 12
     3 + 6 = 21
     5 + 8 =  ?
+    (facebook_puzzle)
 
   * What number should replaced the question mark?
     9 = 90
@@ -32,29 +19,36 @@
     7 = 56
     6 = 42
     3 = ?
+    (facebook_puzzle2)
 
   *  What number should replaced the question mark?
         3         9       8
        44        32      75
      8   4      7  2    7  ? 
+     (pickover_puzzle1)
 
   * Fibonacci sequence: 1,1,2,3,5,8,13,21,?
+    (fibonacci)
 
   * 1,2,6,42,1806, ?
+     (sequence2)
 
   * What number should replaced the question mark?
     11x11 = 4
     22x22 = 16
     33x33 = ?
+     (infamous_equation)
 
 
-  The power - and the drawback - of the program is that it brute forces 
-  (enumerates) all possible solution using Picat's non-determinism (backtracking
-  with fail/0). 
+  The power - and the drawback - of the program is that it enumerates 
+  all possible solutions (functions/programs) using Picat's non-determinism 
+  (member/2 + backtracking with fail/0 if it finds that this function 
+  could not be a solution). 
 
   The program supports the following infix operators:
   - +, -, *, /, //, **, ...
-  - mod, div, /\, \/. ,,
+  - mod, div, /\, \/, ...
+
   It also supports non-infix functions, including user-defined functions 
   of arity 1, 2, and 3. See the definition of aval/2 below. 
 
@@ -121,7 +115,9 @@
       - arity 2
          user=["distance"]
       - arity 3
-         user3=["if_then_else"]
+         user3=["if_then_else","to_num"] 
+         Note: "if_then_else" must also have conditions in the conditions slot, e.g
+         conditions=["<","!"]
       
       - arity2 built-in infix operators are placed in
         infix=["+","-","*","mod"]
@@ -141,16 +137,25 @@
     Example: 
      * infamous_equation
 
-  TODO:
   - a flag that all numbers must be used exactly once, such
     as for number_puzzle_4 and number_puzzle_4b.
+    
+    There are some relevant flags for this:
+    * get_global_map().put("use_unique_digits",true) 
+      The digits used must be distinct
+    - get_global_map().put("use_all_variables",true) 
+      All variables in Vars must be used
+    - get_global_map().put("use_all_variable_remove_dupss",true) 
+      All variables in Vars must be used, variant.
 
+
+  TODO:
   - some intelligence, such as symmetry breaking rules that 
       (a + b) == (b + a)
 
   - perhaps: support for recursion of the found function. 
     This will probably require a major rewrite of the program.
-
+      
 
   Aside from the examples in this program, there are some
   more examples including tests of the user-defined functions,
@@ -211,7 +216,7 @@ go ?=>
   
   % data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxC),
   
-  data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxC),
+  % data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxC),
   % data(facebook_puzzle_b,Data,Vars,Unknown,Ops,Constants,MaxC),
   
   % data(facebook_puzzle2,Data,Vars,Unknown,Ops,Constants,MaxC),
@@ -219,7 +224,8 @@ go ?=>
 
   % data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxC),
   % data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxC),
-  % data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxC),
+  
+  data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxC),
 
   % data(sequence_1,Data,Vars,Unknown,Ops,Constants,MaxC),
   % data(sequence_2,Data,Vars,Unknown,Ops,Constants,MaxC),
@@ -237,9 +243,6 @@ go ?=>
   % data(equation3,Data,Vars,Unknown,Ops,Constants,MaxC),
   % data(equation3b,Data,Vars,Unknown,Ops,Constants,MaxC), % variant of equation3
   
-  % data(puzzle3,Data,Vars,Unknown,Ops,Constants,MaxC),  
-
-
   % EXPERIMENTAL: Using float variables
   % For this to work, set
   %     get_global_map().put(use_approx,MaxError)
@@ -265,7 +268,7 @@ induce(Data,Unknown,Ops,Constants,Vars,MaxCount,Map) =>
   Count = 0,
 
   % Get the induced function
-  Code = get_op(Count,MaxCount,Constants,Vars,Ops),
+  Code = get_code(Count,MaxCount,Constants,Vars,Ops),
   % Skip if we already seen this as a correct solution.
   if Map.has_key(Code) then
     fail
@@ -304,15 +307,35 @@ induce(Data,Unknown,Ops,Constants,Vars,MaxCount,Map) =>
       fail
     end,
     Map.put(Check,1),
-    println(code=Code=All=[Unknown=Check]),
 
     %% This is for number_puzzle_4b to
     %% make it simpler to identify the proper solutions,
     %% i.e. that all numbers are used exactly once.
-    % , NumUsed = [C : C in Code, digit(C)].remove_dups,
-    % if NumUsed.len == Data[1,1].length then 
-    %   println(numUsed=NumUsed=len=NumUsed.len)
-    % end
+    if get_global_map().has_key("use_uniqe_digits") then
+      % Check the number of used vars
+      NumUsed = [C : C in Code, digit(C)],
+      if NumUsed.len == Data[1,1].length then
+        println(code=Code=All=[Unknown=Check])
+        % println(numUsed=NumUsed.len)
+      end
+    elseif get_global_map().has_key("use_all_variables") then
+      % Chec the number of used single variable names
+      NumUsed = [C : C in Code, ascii_uppercase(C)],
+      if NumUsed.len == Data[1,1].length then
+        println(code=Code=All=[Unknown=Check])
+        % println(numUsed=NumUsed.len)
+      end
+    elseif get_global_map().has_key("use_all_variables_remove_dups") then
+      % Chec the number of used single variable names
+      NumUsed = [C : C in Code, ascii_uppercase(C)].remove_dups,
+      if NumUsed.len == Data[1,1].length then
+        println(code=Code=All=[Unknown=Check])
+        % println(numUsed=NumUsed.len)
+      end
+
+    else
+       println(code=Code=All=[Unknown=Check]),
+    end
   % else
   %   println(nope)
   end,
@@ -341,11 +364,10 @@ check(Code,Vars,Vals,Map) = Res =>
 %
 
 %
-% Generate a constant or a variable
+% Generate a constant: a value or a variable
 %
 get_constant(Constants,Vars) = Constant.to_string =>
   (member(Constant,Vars) ; member(Constant,Constants)).  
-
 
 %
 % Generate a (sub) function/program
@@ -361,15 +383,14 @@ get_val(Count,MaxCount,Constants,Vars,Ops) = V1 =>
     ; 
      V1 = get_user_op2(Count+1,MaxCount,Constants,Vars,Ops) % non infix, user defined arity 2
     ; 
-     V1 = get_user_op3(Count+1,MaxCount,Constants,Vars,Ops) % non infix, user defined arity 3
+     V1 = get_user_op3(Count+3,MaxCount,Constants,Vars,Ops) % non infix, user defined arity 3
     ).
-    
 
 %
 % User defined/built-in function of arity 1
 %
 get_op1(Count,MaxCount,Constants,Vars,Ops) = Res.to_string =>
-  Count <= MaxCount,
+  Count <= MaxCount,  
   member(Op,Ops.get(op1,[])),
   V1 = get_val(Count,MaxCount,Constants,Vars,Ops),
   Res = "" ++ Op ++ "(" ++ V1 ++ ")".
@@ -396,33 +417,64 @@ get_user_op2(Count,MaxCount,Constants,Vars,Ops) = Res.to_string =>
 get_user_op3(Count,MaxCount,Constants,Vars,Ops) = Res.to_string =>
   Count <= MaxCount,
   member(Op,Ops.get(user3,[])),
-  V1 = get_constant(Constants,Vars),
-  V2 = get_val(Count,MaxCount,Constants,Vars,Ops),
-  V3 = get_val(Count,MaxCount,Constants,Vars,Ops),  
-  Res = "" ++ Op ++ "(" ++ V1 ++ "," ++  V2 ++ "," ++ V3 ++ ")".
+  if Op == "if_then_else" then
+     % Special treatment for if_then_else: Require that the first argument
+     % must be a condition expression, e.g. <,>, != which should
+     % be stated in the conditions slot.
+     % 
+     member(Cond,Ops.get(conditions,[])),
+     VC1 = get_constant(Constants,Vars),
+     VC2 = get_constant(Constants,Vars),
+     V2 = get_val(Count,MaxCount,Constants,Vars,Ops),
+     V3 = get_val(Count,MaxCount,Constants,Vars,Ops),
+     V2 != V3,
+     Res = " if_then_else(" ++ VC1 ++ " " ++ Cond ++ " " ++ VC2 ++ ", " ++  V2 ++ "," ++ V3 ++ ")"
+     
+  else 
+    V1 = get_constant(Constants,Vars),
+    V2 = get_val(Count,MaxCount,Constants,Vars,Ops),
+    V3 = get_val(Count,MaxCount,Constants,Vars,Ops),
+    (
+     Res = "" ++ Op ++ "(" ++ V1 ++ "," ++  V2 ++ "," ++ V3 ++ ")"
+    ;
+     Res = "" ++ Op ++ "(" ++ V1 ++ "," ++  V3 ++ "," ++ V2 ++ ")"
+    )
+  end.
 
 %
-% This is the "main" function generator, calling
-% each variant using enumeration.
+% This is the "main" function generator, using
+% infix operators. 
+% Basically it finds solutions through enumeration
+% of all the possible functions.
 %
-table
+% table
 get_op(Count,MaxCount,Constants,Vars,Ops) = Res =>
+  % println(count_get_op=Count),
   Count <= MaxCount,
   (
    Res = get_val(Count,MaxCount,Constants,Vars,Ops)
    ;
    (
     V1 = get_constant(Constants,Vars),
-    % V1 = get_val(Count,MaxCount,Constants,Vars,Ops),  
     member(Op,Ops.get(infix,[])),
     V2 = get_val(Count+1,MaxCount,Constants,Vars,Ops),
+    if membchk(Op,["*","+"]) ; V1 == V2 then
+       % Infix operators + and * are symmetric
+       Res = "(" ++ V1 ++ " " ++ Op ++ " " ++ V2 ++ ")"
+    else
     (
       Res = "(" ++ V1 ++ " " ++ Op ++ " " ++ V2 ++ ")"
      ; 
       Res = "(" ++ V2 ++ " " ++ Op ++ " " ++ V1 ++ ")"
     )
+    end
   )
  ).
+
+table
+get_code(Count,MaxCount,Constants,Vars,Ops) = Res =>
+  Res = get_op(Count,MaxCount,Constants,Vars,Ops).
+
 
 
 %
@@ -501,9 +553,52 @@ make_point_seq(Seq,Data,Unknown,Vars) =>
   Unknown = [Len+1],
   Vars = ["A"].
 
+/*
+  Given a matrix (Rows x Columns), create
+  a representation suitable for this program.
+
+  Example:
+
+  Matrix =   [[2,4,7,6,1],
+              [3,1,2,5,9],
+              [5,5,9,11,_]
+              ],
+  Then
+    make_data_matrix(Matrix, Data, Unknown, Vars)  
+  generates:   
+    data = [[[2,4,7,6],1],[[3,1,2,5],9]]
+    vars = [A,B,C,D]
+    unknown = [5,5,9,11]
+
+  and 
+    make_data_matrix(Matrix.transp, Data, Unknown, Vars)  
+  generates:
+    data = [[[2,3],5],[[4,1],5],[[7,2],9],[[6,5],11]]
+    vars = [A,B]
+    unknown = [1,9]
+
+  (See symbolic_function_induction_triangles.pi )
+
+*/
+make_data_matrix(Matrix, Data, Unknown, Vars) =>
+  Data1 = [],
+  Rows = Matrix.len,
+  Cols = Matrix[1].len,
+  foreach(Row in 1..Rows-1)
+     Data1 := Data1 ++ [[ Matrix[Row,1..Cols-1], Matrix[Row,Cols] ]]
+  end,
+  Data = Data1,  
+  Unknown = Matrix[Rows,1..Cols-1].flatten,
+  alpha(Alpha),
+  Vars = [C.to_string : C in Alpha[1..Cols-1]].
+
+%
+% Wrapper for transpose so it can be used in data files without loading util.
+%
+transp(Mat) = transpose(Mat).
+
 
 /*
-
   Generalized version of replacing a _string_ with a character or string
   (which is not possible with Picat's replace/3).
   Example:
@@ -578,7 +673,7 @@ data(simple,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   https://rogerjohansson.blog/2010/02/14/genetic-programming-code-smarter-than-you/
 
   Given the data table below, what is
-     9 7 ?
+  9 7 ?
   2 3 10
   7 2 63
   6 5 66
@@ -695,11 +790,12 @@ data(facebook_puzzle_b,Data,Vars,Unknown,Ops,Constants,MaxC) :-
           [[1,4, 5,2, 5],12],
           [[2,5,12,3, 6],21]
           ],
-  % get_global_map().put("only_first_solution",true), % only unique solutions
   Ops = new_map([infix=["+","-","*","/"]]),
   Constants = 0..10,          
   Vars = ["A","B","C","D","E"],
-  MaxC = 5,  
+  MaxC = 5,
+  % only unique solutions for the unknown
+  % get_global_map().put("only_first_solution",true),
   Unknown = [3,6, 12,5, 8].
 
 
@@ -775,11 +871,12 @@ data(facebook_puzzle2_b,Data,Vars,Unknown,Ops,Constants,MaxC) :-
           [[8,72, 7],56],
           [[7,56, 6],42]
           ],
-  % get_global_map().put("only_first_solution",true), % only unique solutions        
   Ops = new_map([infix=["+","-","*","/"]]),
-  Constants = 0..10,          
+  Constants = 1..10,          
   Vars = ["X","Y","Z"],
-  MaxC = 3,  
+  MaxC = 3,
+  % only unique solutions for the Unknown
+  % get_global_map().put("only_first_solution",true),
   Unknown = [6,42,3].
 
 
@@ -832,11 +929,12 @@ data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   Data = [[[3,44, 8],4],
           [[9,32, 7],2]
           ],
-  % get_global_map().put("only_first_solution",true), % only unique solutions
   Ops = new_map([infix=["+","-","*","/"]]),
   Constants = 0..10,          
   Vars = ["A","B","C"],
-  MaxC = 5,  
+  MaxC = 5,
+  % only unique solutions for the Unknown
+  % get_global_map().put("only_first_solution",true),
   Unknown = [8,75,7].
 
 
@@ -934,14 +1032,17 @@ data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxC) :-
 data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   Data = [ [[1,1,1,1],4],
            [[2,2,2,2],16]
+           % , [[3,3,3,3],18] % force a solution
           ],
   Ops = new_map([infix=["+","-","*","/","**"]]),
-  % Show only solutions with different values for the unknown
-  % get_global_map().put("only_first_solution",true),
-  Constants = 0..4,
+  Constants = 1..4,
   Vars = ["A","B","C","D"],
-  MaxC = 6,  
+  MaxC = 6,
+  % get_global_map().put("debug",true),    
+  % Show only solutions with different values for the unknown
+  % get_global_map().put("only_first_solution",true),  
   Unknown = [3,3,3,3].
+  % Unknown = [3]. % Use only variable A
 
 
 
@@ -970,8 +1071,8 @@ data(sequence_1,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   println(unknown=Unknown),
   println(vars=Vars),
   Ops = new_map([infix=["+","-","*","/","**"]]),
-  Constants = 0..10,          
-  MaxC = 2.
+  Constants = 1..10,          
+  MaxC = 4.
 
 
 /*  
@@ -1019,7 +1120,7 @@ data(sequence_3,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   make_point_seq([60, 30, 20, 15, 12],Data,Unknown,Vars),
   println(data=Data),
   Ops = new_map([infix=["+","-","*","/"]]),
-  Constants = 0..10 ++ [60],
+  Constants = 1..6 ++ [60,30,20,15,12],
   MaxC = 3.
 
 
@@ -1067,7 +1168,7 @@ data(sequence_6,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   make_seq([1,4,8,13,19,26],2, Data,Unknown,Vars),
   println(data=Data),
   Ops = new_map([infix=["+","-","*","/"]]),
-  Constants = 0..10,
+  Constants = 0..1,
   MaxC = 5.
 
 
@@ -1088,7 +1189,7 @@ data(sequence_7,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   make_seq([1,3,6,10,15,21],2, Data,Unknown,Vars),
   println(data=Data),
   Ops = new_map([infix=["+","-","*","/"]]),
-  Constants = 0..10,
+  Constants = 0..1,
   MaxC = 5.
 
 
@@ -1166,7 +1267,8 @@ data(equation2,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   Ops = new_map([infix=["+","-","*","/"]]),
   Constants = 0..10,
   Vars = ["A","B"],
-  Unknown = [8,11],  
+  Unknown = [8,11],
+  % Unknown = [8],    
   MaxC = 3.  
 
 /*
@@ -1208,10 +1310,10 @@ data(equation2b,Data,Vars,Unknown,Ops,Constants,MaxC) :-
            [[1,4,5,2,5],12],
            [[2,5,12,3,6],21]
           ],
-  % get_global_map().put("only_first_solution",true),          
   Ops = new_map([infix=["+","-","*","/"]]),
   Constants = 0..10,
-  Vars = ["A","B","C","D","E"],
+  Vars = ["A","B","C","D","E"], 
+  % get_global_map().put("only_first_solution",true), 
   Unknown = [3,6,21,8,11],  
   MaxC = 5.  
 
@@ -1237,14 +1339,16 @@ data(equation2b,Data,Vars,Unknown,Ops,Constants,MaxC) :-
   
   So 3 should be 3*2 = 6.
   
-  It _could_ also be interpreted as
-   x* (x - the number above - 2):
-  3 * (5-2) = 3*3 = 9
-
   Solutions:
   maxCount = 3
   code = ((A * A) - A) = [[[9],72],[[8],56],[[7],42],[[6],30],[[5],20]] = [[3] = 6]
   code = (A * (A - 1)) = [[[9],72],[[8],56],[[7],42],[[6],30],[[5],20]] = [[3] = 6]
+
+  It _could_ also be interpreted as
+   x* (x - the number above - 2):
+  3 * (5-2) = 3*3 = 9
+  See equation3b for this and other solutions.
+
 
   Cf http://hakank.org/jgap/equation3.conf
 
@@ -1307,10 +1411,10 @@ data(equation3b,Data,Vars,Unknown,Ops,Constants,MaxC) :-
            [[7,42,6],30],
            [[6,30,5],20]                      
           ],
-  % get_global_map().put("only_first_solution",true),
   Ops = new_map([infix=["+","-","*","/"]]),
   Constants = 0..10,
   Vars = ["A","B","C"],
+  % get_global_map().put("only_first_solution",true),  
   Unknown = [5,20,3],
   MaxC = 5.  
 
@@ -1413,7 +1517,7 @@ data(planets_b,Data,Vars,Unknown,Ops,Constants,MaxC) :-
 
 %
 % To be able to use user-defined functions together with built-in functions,
-% we have to redefine the operators.
+% we have to redefine the operators / functions.
 %
 % (Thanks to Neng-Fa Zhou for inspiration.)
 %
@@ -1446,9 +1550,23 @@ eval('//'(X,Y)) = Val =>
     YVal != 0,
     Val = XVal//YVal.
 
+% See pow/2 for a restricted version
 eval('**'(X,Y)) = Val =>
     XVal = eval(X),
     YVal = eval(Y),
+    Val = XVal ** YVal.
+
+%
+% Restricted version of **
+% Set the limits of X and Y by
+%  get_global_map().put("pow_limit_x",6),
+%  get_global_map().put("pow_limit_y",6),
+%
+eval('pow'(X,Y)) = Val =>
+    XVal = eval(X),
+    XVal <= get_global_map().get("pow_limit_x",10),
+    YVal = eval(Y),
+    YVal <= get_global_map().get("pow_limit_y",10),
     Val = XVal ** YVal.
 
 eval('mod'(X,Y)) = Val =>
@@ -1462,6 +1580,12 @@ eval('rem'(X,Y)) = Val =>
     YVal = eval(Y),
     YVal != 0,
     Val = XVal rem YVal.
+
+eval('div'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    YVal != 0,
+    Val = XVal div YVal.
 
 eval('gcd'(X,Y)) = Val =>
     XVal = eval(X),
@@ -1566,7 +1690,14 @@ eval('prime'(X)) = Val =>
     XVal = eval(X),
     Val = cond(prime(XVal),1,0).
 
-% Note: True is 1, False if everything else
+%
+% Note: X must be an condition expression (e.g. <, >, !=)
+% which must be stated in the condition slot
+%   user3=["if_then_else"],
+%   conditions=["<","!="]
+%
+% See: symbolic_function_induction_if_then_else2.pi
+%
 eval('if_then_else'(X,Y,Z)) = Val =>
     XVal = eval(X),
     YVal = eval(Y),
@@ -1593,6 +1724,22 @@ eval('distance'(X,Y)) = Val =>
     YVal = eval(Y),
     Val = sqrt(XVal**2 + YVal**2).
 
+% X,Y -> XY
+% user=["to_num"]
+eval('to_num'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = 10*XVal + YVal.
+
+% X,Y,Z -> XYZ
+% user3=["to_num"]
+eval('to_num'(X,Y,Z)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    ZVal = eval(Z),    
+    Val = 100*XVal + 10*YVal + ZVal.
+
 
 eval(Number) = Number, number(Number) => true.
+
 eval(Exp) = apply(Exp). % for user-defined function

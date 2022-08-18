@@ -14,20 +14,24 @@
       and the task of finding blocks to make a tower exactly 30 units high.
   """
 
+  Note: It's not clear if one can reuse an already used height (number).
+  Here we assume that one cannot reuse numbers.
+
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
 
 
-% import util.
 import planner.
 import cp.
 
 
 main => go.
 
-
+%
+% Fixed final value, only the first found best plan
+%
 go =>
   Init = [0|[]],
   available(Available),
@@ -37,10 +41,34 @@ go =>
   foreach(Move in Plan)
     println(Move)
   end,
-
   nl.
 
-go2 => 
+%
+% Random final value and also showing all optimal solutions.
+%
+go2 =>
+  Init = [0|[]],
+  available(Available),
+  println(available=Available),
+  println(init=Init),
+  _ = random2(),
+  Final = random(min(Available),sum(Available)),
+  println(final=Final),
+  get_global_map().put(final,Final),
+  best_plan_nondet(Init,Plan),
+  foreach(Move in Plan)
+    println(Move)
+  end,
+  nl,
+  fail,
+  nl.
+
+
+%
+% CP variant: sumset sum problem.
+% Here we don't care about the order of the
+%
+go3 => 
   available(Available),
   final([Final|_]),
   println(available=Available),
@@ -48,12 +76,12 @@ go2 =>
 
   N = Available.length,
   X = new_list(N),
-  X :: 0..100,
+  X :: 0..1, % If we can only use a value once
+  % X :: 0..100, % We can reuse a value.
 
   sum([X[I] *Available[I] : I in 1..N]) #= Final,
   Z #= sum([X[I] : I in 1..N]),
   solve($[min(Z)], X),
-  % solve(X),
 
   println(x=X),
   println(z=Z),
@@ -62,20 +90,23 @@ go2 =>
   % fail,
   nl.
 
-final([S|_L]) => S = 130.
+final([S|_L]) => S = get_global_map().get(final,84).
 
 
 action([Sum1|From1],To,Move,Cost) =>
    % println($action([Sum1|From1],To,Move,Cost) ),
    available(Available),
-   member(H,Available), % not member(H,From1),
+   Available2 = [A : A in Available, not member(A,From1)],
+   member(H,Available2),
+   % not member(H,From1), % cannot pick a previous selected 
+   
    Sum2 = Sum1 + H,
    Move = [add,H,to,From1,giving,Sum2],
    To = [Sum2|From1++[H]],
    Cost = 1.
 
 
-index(-)
+% index(-)
 available([3,16,12,22,5,5,24,14,8,7,22,11]).
 
 % available(Available) => 
