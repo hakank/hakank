@@ -1,0 +1,225 @@
+/*
+   Duelling Cowboys in WebPPL.
+
+   http://cs.ioc.ee/ewscs/2020/katoen/katoen-slides-lecture1.pdf
+   """
+   int cowboyDuel(float a, b) { // 0 < a < 1, 0 < b < 1
+      int t := A [1] t := B; // decide who shoots first
+      bool c := true;
+      while (c) {
+         if (t = A) {
+            (c := false [a] t := B); // A shoots B with prob. a
+         } else {
+            (c := false [b] t := A); // B shoots A with prob. b
+         }
+      }
+      return t; // the survivor
+   }
+
+   Claim: Cowboy A wins the duel with probability a / (a+b-a*b)
+   """
+
+   Note: The above model assumes that A always starts.
+
+
+   Here we show the three cases. 
+
+   * a: 0.3 b: 0.7 starts: A
+     Marginals:
+     survivor
+     Marginal:
+       "B" : 0.6202531645569621
+       "A" : 0.3797468354430379
+     a_wins_if_starts_theoretical
+     Marginal:
+        0.37974683544303794 : 1
+
+    This confirms the theoretical value of A surviving = 
+           a / (a+b-a*b) = 0.37974683544303794
+
+  * a: 0.3 b: 0.7 starts: B
+    Marginals:
+    survivor
+    Marginal:
+      "B" : 0.8860759493670888
+      "A" : 0.11392405063291126
+    b_wins_if_starts_theoretical
+    Marginal:
+      0.8860759493670886 : 1
+
+    This confirms the theoretical value of A surviving = 
+           b / (a+b-a*b) = 0.8860759493670886     
+
+  * a: 0.3 b: 0.7 starts: Random
+    Marginals:
+    survivor
+    Marginal:
+      "B" : 0.7531645569620251
+      "A" : 0.24683544303797486
+
+
+  * If A and B are equally good (bad) shooters with hitting probability of 0.5. A starts.
+
+    a: 0.5 b: 0.5 starts: A
+    Marginals:
+    survivor
+    Marginal:
+      "A" : 0.6666666666666666
+      "B" : 0.3333333333333333
+    a_wins_if_starts_theoretical
+    Marginal:
+      0.6666666666666666 : 1
+
+  * Equally good with hitting probability of 0.7. A starts
+
+    a: 0.7 b: 0.7 starts: A
+    Marginals:
+    survivor
+    Marginal:
+      "A" : 0.769230769230769
+      "B" : 0.23076923076923084
+   a_wins_if_starts_theoretical
+   Marginal:
+      0.7692307692307693 : 1
+
+
+ * Theoretical formula for the random start. 
+
+   I haven't found any formula for the probability that A survives 
+   when A and B start with random probability (0.5).
+
+   However, my SymbolicRegression program http://hakank.org/jgap gives
+   a formula that seems to be fairly correct (using Mathematica to simplify
+   the actual formula that was given by the program):
+
+          0.5 a (-2. + b)
+         ------------------
+         a (-1. + b) - 1. b
+
+   I.e. 
+        0.5 * a * (b - 2) 
+        -----------------
+        a * (b - 1) - b
+
+   Here are some tests which gives almost exactly the same value as 
+   the model; the difference between the value given by the formula
+   and the (exact) value from the model is about 0.00000000000000005.
+
+    a: 0.2 b: 0.8 starts: Random
+    Marginals:
+    survivorA
+    Marginal:
+       false : 0.8571428571428571
+       true : 0.1428571428571429
+    a_wins_theoretical
+    Marginal:
+       0.14285714285714285 : 1
+
+    a: 0.5 b: 0.9 starts: Random
+    Marginals:
+    survivorA
+    Marginal:
+      false : 0.7105263157894737
+      true : 0.2894736842105264
+    a_wins_theoretical
+    Marginal:
+      0.2894736842105263 : 1
+
+    a: 0.3 b: 0.4 starts: Random
+    Marginals:
+    survivorA
+    Marginal:
+      false : 0.5862068965517236
+      true : 0.4137931034482764
+    a_wins_theoretical
+    Marginal:
+      0.4137931034482758 : 1
+
+
+   See http://hakank.org/jgap/duelling_cowboys.conf for the configuration file.
+
+*/
+
+
+var shoot = function(shooter,A,B,a,b) {
+    // A shoots B with prob. a
+    // B shoots A with prob. b
+    var c = shooter == A ? flip(a) : flip(b) // Did the shooter succeed?
+    if (c == true) {
+        // Yes, the shooter succeeded. Return the survivor.
+        return shooter
+    } else {
+        // Switch shooter and continue to next round
+        var next_shooter = shooter == A ? B : A
+        return shoot(next_shooter,A,B,a,b)
+    }
+}
+
+var run = function(a,b,starts) {
+    console.log("a:",a,"b:",b,"starts:",starts)
+    var model = function() {
+        var A = "A"
+        var B = "B"
+        if (starts === "A") {
+            var first = A // A always starts
+            var survivor = shoot(first,A,B,a,b)
+            return {
+                survivor:survivor,
+                a_wins_if_starts_theoretical:a/(a+b - a*b),
+            } 
+            
+        } else if (starts == "B") {
+            var first = B // B always starts
+            var survivor = shoot(first,A,B,a,b)
+            return {
+                survivor:survivor, 
+                b_wins_if_starts_theoretical:b/(a+b - a*b),               
+            }
+
+        } else {
+            // random first shooter
+            var first = categorical({ps:[0.5,0.5],vs:[A,B]}) // decide who shoots first
+            var survivor = shoot(first,A,B,a,b)
+            return {
+                survivorA:survivor == A,
+                a_wins_theoretical: (0.5*a*(-2. + b)) / (a*(-1. + b) - 1.*b)
+            }            
+        }
+        
+    }
+
+    var d = Infer({method:"enumerate",maxExecutions:100000},model) // Exact result
+    // var d = Infer({method:"rejection",samples:10000},model)
+    // var d = Infer({method:"MCMC",kernel:"MH",samples:100000},model)
+    // var d = Infer({method:"SMC",particles:1000},model)
+
+    // display(d)
+
+    exp_map_all(d,["marginals"])
+
+}
+
+var a = 0.3 // Probability that A hit B
+var b = 0.7 // Probability that B hit A
+run(a,b,"A")
+console.log()
+run(a,b,"B")
+
+console.log()
+run(a,b,"Random")
+
+// Equally good/bad shooters
+console.log()
+run(0.5,0.5,"A")
+console.log()
+run(0.7,0.7,"A")
+
+// Testing the formula for random
+console.log()
+run(0.2,0.8,"Random")
+
+console.log()
+run(0.5,0.9,"Random")
+
+console.log()
+run(0.3,0.4,"Random")

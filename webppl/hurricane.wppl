@@ -1,0 +1,95 @@
+/*
+  
+  From BLOG example/hurricane.blog
+  """
+  Hurricane 
+  Figure 4.2 in Milch's thesis
+
+  Number of samples: 1000000
+  Distribution of values for First
+	B	0.5000740737774813
+	A	0.4999259262225148
+  Distribution of values for Damage(A)
+	Severe	0.6304659440802821
+	Mild	0.36953405591971533
+  Distribution of values for Damage(B)
+	Severe	0.6298433239506385
+	Mild	0.3701566760493723
+  Distribution of values for Damage(NotFirst)
+	Mild	0.7396907319690265
+	Severe	0.2603092680309184
+  """
+
+  Note that Damage and Prep are mutully recursive, so 
+  one cannot use mem(). Using dp.cache() instead.
+
+  Rejection give this solution which is fairly
+  similar to the BLOG model:
+
+  Marginals:
+  First
+  Marginal:
+    "B" : 0.50223
+    "A" : 0.49777
+  damageA
+  Marginal:
+    "Severe" : 0.62967
+    "Mild" : 0.37033
+  damageB
+  Marginal:
+    "Severe" : 0.6309600000000001
+    "Mild" : 0.36904000000000003
+  damageNotFirst
+  Marginal:
+    "Mild" : 0.7393700000000001
+    "Severe" : 0.26063
+
+*/
+ 
+var model = function() {
+    var cities = ["A","B"];
+    var damageLevel = ["Severe","Mild"];
+    var prepLevel = ["High","Low"];
+    
+    var First = uniformDraw(cities);
+    var NotFirst = uniformDraw(_.difference(cities,[First]));
+   
+    var Prep = dp.cache(function(c) {
+        if (First == c) {
+            return categorical({ps:[0.5,0.5],vs:prepLevel})
+        } else {
+            var damageFirst = Damage(First);
+            var ret = 
+                (damageFirst=="Severe") ? categorical({ps:[0.9,0.1],vs:prepLevel}) :
+                (damageFirst=="Mild")   ? categorical({ps:[0.1,0.9],vs:prepLevel}) : "xxx";
+            return ret;
+        }
+    })
+
+    var Damage = dp.cache(function(c) {
+        var PrepC = Prep(c);
+        var ret =
+            (PrepC=="High") ? categorical({ps:[0.2,0.8],vs:damageLevel}) :
+            (PrepC=="Low")  ? categorical({ps:[0.8,0.2],vs:damageLevel}) : "zzz";
+        return ret;
+    })
+
+    condition(Damage(First) == "Severe");
+    
+    return {
+        First:First,
+        damageA:Damage("A"),
+        damageB:Damage("B"),
+        damageNotFirst:Damage(NotFirst),
+    }
+}
+
+
+// var d = Infer(model);
+var d = Infer({method:"rejection",samples:100000},model);
+// display(d);
+
+exp_map_all(d);
+
+
+

@@ -1,0 +1,174 @@
+/*
+   Murphy's Law of Queues
+   (The source of this is not available anymore. It was 
+    an article about Robert Matthews)
+   """
+   Murphy's law of queues - The line next to you will usually finish first - is 
+   also rooted in simple math.
+
+   If you're waiting behind a person with a two-months supply of groceries, it's 
+   hardly a surprise if you get through more slowly than your neighbours. But 
+   what about joining a line that's identical in length from the ones on either 
+   side of you. Is it all in your mind when you are the last one to get through?
+
+   Actually...NO.
+   Over time, it's true that on average the lines will move more or less at the 
+   same rate, says Matthews. Each will suffer random delays when for example the 
+   cashier runs out of change or a customer's cheque or bank card is declined. 
+   But when we're lined up at any one particular time, we don't care about 
+   averages, we care only about that one instance. In these cases, chances of you
+   picking the fastest moving line is one out of the number of lines there are in
+   the store. If there are 10 lines, you have a 1 in 10 chance (or 10%) of 
+   picking the fastest line. Even if you're only concerned about beating the 
+   lines on either side of you, you only have a 1 in 3 chance that you will. 
+   You're more likely to be in a slower line.
+   """
+
+   Here is a simulation of this. Some assumptions:
+   - There are 5 similar queues with 10 customers in each queue
+   - I am last in one of these queues (queue #0)
+   - The service takes between 1 to 5 minutes per customer (randomly
+     and indpendently of everything else).
+
+  My queue is #0. What is
+  - p: The probability that I'm in the fastest queue: about 20%
+  - p3: The probability that I'm in one of the three fastest queues.
+    About 60%
+  - diff: The difference in time between the slowest and the fastest
+          queues is about 8.5 minutes.
+
+  expectation:
+  [ [ 'p', 0.2057000000000001 ],
+    [ 'p3', 0.5970999999999996 ],
+    [ 'diff', 8.53677965707943 ] ]
+
+
+
+  Cf my (Swedish) page on simulation in R: http://www.hakank.org/sims/simulering.html
+
+*/
+
+// Return the "plain" values of an array
+var plainArray = function(array) {
+    return mapN(function(i) { return array[i] },array.length);
+}
+
+/*
+  Get the argmax of an array
+  Note: For dirichlet distributions or Vectors, use
+   argMax(d.data)
+  i.e. not just dargMax(d)
+*/
+var argMax = function(array) {
+    var m = mapIndexed(function(i,x) {return [x, i]}, plainArray(array));
+    var r = reduce(function(r, a) {return (a[0] > r[0] ? a : r)}, -1, m)[1];
+    return r;
+}
+
+var argMin = function(array) {
+    var m = mapIndexed(function(i,x) {return [x, i]}, plainArray(array));
+    var r = reduce(function(r, a) {return (a[0] < r[0] ? a : r)}, -1, m)[1];
+    return r;
+}
+
+
+
+var model = function() {
+    var num_queues = 5  // number of queues
+    var num_customers = 10 // number of customers in each queue
+    var max_service_time = 5 // maximum service time for a customer
+
+    // Total service time for each queue for these 10 customers
+    var total_service_time = mapN(function(q) {
+        sum(mapN(function(c) {
+            // 1+randomInteger(max_service_time)
+            uniform(1,max_service_time)
+        }, num_customers))
+    },num_queues)
+
+    var sorted_times = sort(total_service_time)
+    
+    // What is the probability that my queue (#0) is the fastest
+    var p = total_service_time[0] == sorted_times[0]
+
+    // What is the probability that my queue is one of the three fastest
+    // queues?
+    var p3 = sorted_times.slice(0,3).includes(total_service_time[0])
+
+    var diff = sorted_times[num_queues-1]-sorted_times[0]
+    
+    return {
+        p:p,
+        p3:p3,
+        diff:diff
+    }
+}
+
+console.log("Model 1: All queues are equal")
+// var d = Infer(model)
+var d = Infer({method:"rejection",samples:10000},model)
+// var d = Infer({method:"SMC",particles:1000},model)
+exp_map_all(d,["expectation"])
+
+
+/*
+  Variant: there are random number of customers in each queue.
+  I pick the one with the fewest customers.
+
+  Unsurprisingly, it's quite likely that I'm in the fastest queue: 83% 
+  (compared with 20%).
+
+  The difference between the slowest and fastest queues are now 21 minutes
+  (vs 8.5 minutes).
+
+  expectation:
+  [ [ 'p', 0.8320000000000001 ],
+    [ 'p3', 0.996 ],
+    [ 'diff_times', 21.131296199986696 ],
+    [ 'diff_customers', 6.602 ],
+
+  
+*/
+var model2 = function() {
+    var num_queues = 5  // number of queues
+    var max_num_customers = 10 // max number of customers in each queue
+    var max_service_time = 5 // maximum service time for a customer
+
+    var num_customers = mapN(function(q) {
+        1+randomInteger(max_num_customers)
+    }, num_queues)
+    
+    // Total service time for each queue for these 10 customers
+    var total_service_time = mapN(function(q) {
+        sum(mapN(function(c) {
+            // 1+randomInteger(max_service_time)
+            uniform(1,max_service_time)
+        }, num_customers[q]))
+    },num_queues)
+
+    var sorted_customers = sort(num_customers)
+    var sorted_times = sort(total_service_time)
+
+    var shortest_queue = argMin(num_customers)
+    
+    // What is the probability that my queue (#0) is the fastest
+    var p = total_service_time[shortest_queue] == sorted_times[0]
+
+    // What is the probability that my queue is one of the three fastest
+    // queues?
+    var p3 = sorted_times.slice(0,3).includes(total_service_time[shortest_queue])
+
+    var diff_times = sorted_times[num_queues-1]-sorted_times[0]
+    var diff_customers = last(sorted_customers)-first(sorted_customers)
+    
+    return {
+        p:p,
+        p3:p3,
+        diff_times:diff_times,
+    }
+}
+
+console.log("\nModel 2: Random number of customers, I stand last in the shortest queue.")
+var d2 = Infer({method:"rejection",samples:1000},model2)
+// var d2 = Infer({method:"SMC",particles:1000},model2)
+exp_map_all(d2,["expectation"])

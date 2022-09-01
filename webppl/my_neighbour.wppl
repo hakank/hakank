@@ -1,0 +1,133 @@
+/*
+
+  This is a "real world" problem.
+
+  My beautiful neighbour and I look out of our windows M and N times a day, respectively. 
+  How many times do we look out at the same time?
+
+  Say that there are 24*60 (=1440) timeslots a day, and we each look out 40 times a day
+  (independently of each other).
+  
+  Below are two model. Both gives that we look out at the same time about one
+  time per day.
+
+
+  Cf my (Swedish) page on simulation in R: http://www.hakank.org/sims/simulering.html
+
+*/
+
+/*
+  Approximately 40 times a day. Slower (9.5s)
+
+  Marginals:
+  s_me
+  Marginal:
+    40 : 0.07900000000000001
+    38 : 0.0709999999999999
+    37 : 0.05700000000000002
+    43 : 0.05599999999999996
+    42 : 0.05400000000000002
+    41 : 0.05199999999999995
+    39 : 0.05099999999999999
+    36 : 0.05000000000000003
+    ...
+  s_neighbour
+  Marginal:
+    44 : 0.06699999999999999
+    42 : 0.06300000000000001
+    41 : 0.06
+    43 : 0.05900000000000003
+    39 : 0.05900000000000003
+    38 : 0.059000000000000004
+    40 : 0.056999999999999995
+    37 : 0.05599999999999996
+  same_time
+  Marginal:
+    1 : 0.36700000000000005
+    0 : 0.334
+    2 : 0.2
+    3 : 0.08200000000000005
+    4 : 0.01500000000000001
+    5 : 0.0020000000000000026
+
+  expectation:
+  [ [ 's_me', 39.91899999999999 ],
+    [ 's_neighbour', 40.32000000000001 ],
+    [ 'same_time', 1.0830000000000002 ] ]
+
+*/
+var model = function() {
+    var mins = 24*60 // Number of minutes per day
+
+    var n = 40 // Number of times I look out
+    var m = 40 // Number of times my neighbour look out
+
+    // The time slots that we look out
+    var me = mapN(function(i) { flip(n/mins)   },mins)
+    var neighbour = mapN(function(i) { flip(m/mins)   },mins)
+
+    // Total number of looking out
+    var s_me = sum(me)
+    var s_neighbour = sum(neighbour)
+
+    // Do we look out at the same time?
+    var same_time = sum(mapN(function(i) { me[i] == true && neighbour[i] == true ? 1 : 0}, mins))
+
+    return {
+        s_me:s_me,
+        s_neighbour:s_neighbour,
+        same_time:same_time,
+    }
+}
+
+// var d = Infer({method:"SMC",particles:1000},model)
+// // var d = Infer({method:"rejection",samples:1000},model)
+// exp_map_all(d)
+
+
+/*
+  Faster version (5.2s).
+
+  Draw exactly n and m time slots via draw_without_replacement().
+
+  same_time
+  Marginal:
+    1 : 0.36800000000000005
+    0 : 0.3430000000000001
+    2 : 0.21700000000000003
+    3 : 0.05600000000000001
+    4 : 0.014999999999999996
+    5 : 0.0010000000000000002
+
+  expectation:
+  [ [ 'num_me', 40 ],
+    [ 'num_neighbour', 40 ],
+    [ 'same_time', 1.0350000000000001 ] ]
+
+*/
+var model2 = function() {
+    var mins = 24*60 // Number of minutes per day
+    var a = _.range(1,mins+1)
+    
+    var n = 40 // Number of times I look out
+    var m = 40 // Number of times my neighbour look out
+
+    // The time slots that we look out
+    var me = draw_without_replacement(n,a,[])
+    var neighbour = draw_without_replacement(m,a,[])    
+
+    // Do we look out at the same time?
+    var same_time = sum(mapN(function(i) { me.includes(i) && neighbour.includes(i) ? 1 : 0}, mins))
+
+    return {
+        num_me:_.uniq(me).length,
+        num_neighbour:_.uniq(neighbour).length,
+        same_time:same_time,
+    }
+}
+
+// var d2 = Infer({method:"SMC",particles:1000},model2)
+var d2 = Infer({method:"rejection",samples:1000},model2)
+// var d2 = Infer({method:"enumerate",maxRuntimeInMS: 60000},model2) // Timeout
+exp_map_all(d2)
+

@@ -1,0 +1,73 @@
+/*
+
+   Test of histogram...
+
+*/
+
+display("Run as:webppl histogram_test --require hakank_utils\n")
+
+var model = function() {
+    
+    var strength = mem(function(p) {
+        return Math.abs(gaussian(0,1));
+    })
+    
+    var pulls = mem(function(p) {
+        return Math.abs(gaussian(strength(p), 1));
+    })
+
+    // The Hakary/BLOG model had "pulls(a) < pulls(b) "
+    // which is a little strange so I change to return the winner.
+    var winner = function(a, b) {
+        return pulls(a) > pulls(b) ? a : b;
+    }
+    
+    var match1 = winner("alice", "bob");
+    var match2 = winner("bob", "carol");
+    var match3 = winner("alice", "carol");
+    
+    condition(match1 == "alice");
+    condition(match2 == "bob");
+    // condition(match3 == "carol"); // Don't use this...
+
+    return {
+        match1:match1,
+        match2:match2,
+        match3:match3,        
+        match1And2:match1 && match2,
+        strengthAlice:strength("alice"),
+        strengthBob:strength("bob"),
+        strengthCarol:strength("carol"),
+        pullsAlice:pulls("alice"),
+        pullsBob:pulls("bob"),
+        pullsCarol:pulls("carol"),
+        // pulls(alice) < pulls(bob),
+        // pulls(alice) < pulls(carol),
+        // pulls(bob) < pulls(carol),
+        // match1 & match2 & match3 == true,
+        // match1 & match2 & match3 == false,
+    }
+
+}
+
+// var d = Infer({method:"rejection",samples:1000},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000},model);
+// display(d);
+
+exp_map(d,["strengthAlice", "strengthBob", "strengthCarol",
+    "pullsAlice",
+    "pullsBob","pullsCarol",
+    "match1","match2","match3",
+    ],["expectation","MAP"]);
+
+var ps = [0,2.5,25,50,75,97.5,100]; // quantiles
+
+show_stats(d,"pullsAlice",ps);
+show_stats(d,"pullsBob",ps);
+show_stats(d,"pullsCarol",ps);
+show_stats(d,"strengthAlice",ps);
+show_stats(d,"strengthBob",ps);
+show_stats(d,"strengthCarol",ps);
+show_stats(d,"match1",ps);
+show_stats(d,"match2",ps);
+show_stats(d,"match3",ps);

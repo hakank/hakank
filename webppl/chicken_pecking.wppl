@@ -1,0 +1,82 @@
+/*
+
+  Chicken pecking.
+
+  From (PSI model) 
+  "HACSTFB - Probabilistic Programming Language ψ"
+  https://www.youtube.com/watch?v=COS5YThEm1A
+  About @10:04 ff
+
+  10 chicken are arranged in a ring. With probability 1/2 a chicken picks the 
+  chicken at left and probability 1/2 at right,
+  What is the probability of unpecked chickens?
+
+  From the PSI model, probabilities of number of unpecked chicken = 0,1,2,3,4,5,6,7,8,9,10;
+  E[r1_,r2_,r3_,r4_,r5_,r6_,r7_,r8_,r9_,r10_,r11_] = (1/256,5/64,55/128,25/64,25/256,0,0,0,0,0,0)
+  (0.00390625,0.078125,0.4296875,0.390625,0.09765625,0,0,0,0,0,0)
+
+  0: 0.00390625
+  1: 0.078125
+  2: 0.4296875
+  3: 0.390625
+  4: 0.09765625
+  5: 0,
+  6: 0,
+  7: 0
+  8: 0
+  9: 0
+  10 :0
+
+  This WebPPL model agrees with the PSI model:
+
+  unpecked
+  Marginal:
+    2 : 0.4296875000000001
+    3 : 0.39062499999999967
+    4 : 0.09765625000000017
+    1 : 0.07812500000000014
+    0 : 0.003906250000000008
+
+  expectation:
+  [ [ 'unpecked', 2.5 ] ]
+
+
+*/
+
+/*
+  Javascript doesn't handle modulo (%) as expected:
+   -1 mod 10 -> -1
+  but I want
+   -1 mod 10 -> 9
+
+  It would work if a[-1] would return the last element, but 
+  that feature is not in JS...
+
+*/
+var mod = function(i,m) {
+    return (i == -1 ? m-1 : i == m ? 0 : i) % m
+}
+
+var model = function() {
+    var n = 10
+
+    // This chicken picks (randomly) on either its left or right neighbour
+    var pecked_who = mapN(function(i) {
+        mod((i + (flip(0.5) ? -1 : 1)), n)
+    },n)
+    
+    // number of unpecked chickens
+    var unpecked = sum(mapN(function(c1) {
+        // Number of chicken that picked on chicken c1
+        sum(mapN(function(c2) {
+            return pecked_who[c2] == c1 ? 1 : 0
+        },n)) == 0  ? 1 : 0
+    }, n)) 
+   
+    return {
+        unpecked:unpecked,
+    }
+}
+
+var d = Infer({method:"enumerate",maxRuntimeInMS: 15000},model) // Exact
+exp_map_all(d)
