@@ -40,22 +40,36 @@
     false : 0.92703
     true : 0.07297
 
+
+    The 'exact' variant (model2 using enumerate) has a wider range of values and
+    has a probability closer to Mathematica's exact value.
+
+    d
+    Marginal:
+      0 : 0.3430000000000001
+      1 : 0.30870000000000014
+      2 : 0.1852200000000001
+      3 : 0.09261000000000007
+      4 : 0.0416745
+      5 : 0.017503289999999998
+      ...
+      34 : 3.603772193481015e-16
+      35 : 1.1429106099325628e-16
+      36 : 3.6192169314531057e-17
+      37 : 1.1444550837297696e-17
+      38 : 5.560105669942043e-19
+    p
+    Marginal:
+      false : 0.92953
+      true : 0.07046999999999998
+
+    expectation:
+    [ [ 'd', 1.285714285714286 ], [ 'p', 0.07046999999999998 ] ]
+
+
+
+
 */
-
-// From Handbook on probability distributions
-// page 19
-// Expectation: (1-p)/p
-// (See geometric_dist.wppl)
-var geometric1 = function(p,n) {
-    var u = uniform(0,1);
-    return u > p ? geometric1(p,n+1) : n;
-
-}
-
-var geometric = function(p) {
-    return geometric1(p,0);
-}
-
 
 // From Handbook on probability distributions
 // page 23
@@ -65,17 +79,27 @@ var geometric = function(p) {
 // to generate m random variables geometrically distributed and to sum them.
 // """
 var negative_binomial = function(m,p) {
-    var g = mapN(function() { return geometric(p)}, m);
+    var g = mapN(function() { return geometric_dist(p)}, m);
     return sum(g);
-
 }
 
 
+// This variant uses geometric 'exact' distribution so we can use
+// enumerate for this, though one have to use maxExecution since
+// it it use unlimited recursion.
+var negative_binomial_exact = function(m,p) {
+    var g = mapN(function() { return geometric_exact_dist(p)}, m);
+    return sum(g);
+}
+
+
+//
+// Using Rejection
+//
 var model = function() {
 
     // See negative_binomial_test.wppl
     var d = negative_binomial(3,0.7);
-
 
     return {
         d:d,
@@ -89,7 +113,25 @@ var d = Infer({method:"rejection",samples:10000},model);
 // var d = Infer(model);
 // display(d);
 
-exp_map(d,["d","p"]);
+exp_map_all(d);
 
 stat2(d,"d")
 stat2(d,"p")
+
+
+console.log("\nusing enumeration:")
+var model2 = function() {
+    var d = negative_binomial_exact(3,0.7);
+    return {
+        d:d,
+        p:(d >= 4),        
+    }
+}
+
+
+var d2 = Infer({method:"enumerate",maxExecutions:10000},model2);
+
+exp_map_all(d2);
+
+stat2(d2,"d")
+stat2(d2,"p")

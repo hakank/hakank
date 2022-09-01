@@ -61,48 +61,59 @@
 
 */
 
-var model = function() {
+var run = function(closed_world) {
+   var model = function() {
 
-    var day = _.range(365);
+      var day = _.range(365);
 
-    var birthday = mem(function(b) {
-        // return 1+randomInteger(day);
-        return uniformDraw(day);        
-    })
+       var birthday = mem(function(b) {
+           // return 1+randomInteger(day);
+           return uniformDraw(day);        
+       })
     
-    var numPeople = poisson(13);
-    
-    // "comment the following to try full open world model"
-    condition(numPeople == 23);
+       var numPeople = poisson(13);
+       
+       // "comment the following to try full open world model"
+       if (closed_world) {
+           condition(numPeople == 23);
+       }
 
-    // is there a duplicate of birthdays?
-    var b = sum(
-        mapN(function(x) {
-            sum(mapN(function(y) {
-                return x != y && birthday(x) == birthday(y)
-            }, numPeople))
-        }, numPeople)) > 0;
-    
-    return {
-        numPeople:numPeople,
-        b:b,
-        // birthday:sort(mapN(function(i) { return birthday(i) },numPeople))
-    }
+       // is there a duplicate of birthdays?
+       var b = sum(
+           mapN(function(x) {
+               sum(mapN(function(y) {
+                   return x != y && birthday(x) == birthday(y)
+               }, numPeople))
+           }, numPeople)) > 0;
+       
+       return {
+           numPeople:numPeople,
+           b:b,
+           // birthday:sort(mapN(function(i) { return birthday(i) },numPeople))
+       }
 
+   }
+
+    // var d = Infer({method:"rejection",samples:1000},model);
+    var d = Infer({method:"MCMC",kernel:"MH",samples:1000},model);
+    // var d = Infer({method:"SMC",particles:1000},model);
+    display(d);
+    
+    exp_map_all(d,["marginals","expectation"]);
+    
 }
 
+display("Open world:")
+run(false)
+
+display("\nClosed world:")
+run(true)
+
+/*
 // var d = Infer({method:"rejection",samples:1000},model);
-var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
+var d = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model);
 // var d = Infer({method:"SMC",particles:1000},model);
 display(d);
 
-var exp_map = function(d,arr) {
-    display("Marginals:");
-    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    // display("MAP:");
-    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
-
-exp_map(d,["numPeople","b"]);
+exp_map_all(d,["marginals","expectation"]);
+*/

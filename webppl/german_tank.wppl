@@ -3,11 +3,6 @@
 
   This is a real (float) version of German tank problem
 
-  See  ~/stan/german_tank.py
-      ~/blog/german_tank_int.blog
-
-  Cf german_tank_int.wppl and german_tank_int2.wppl
-
   The theoretical answer is 382.5 (see german_tank_int2.wppl for details).
   The advantage of this model using y as Uniform() is that we can use 
   NN = 10000 and it's still fast (the full integer version is much slower).
@@ -17,59 +12,107 @@
   which is almost exactly the same as the full integer version in german_tank_int2.wppl
   (which takes about 2min51s).
      
+  Note that when there are few data points, it can be quite sensitive to NN
+  (see locomotive_problem.wppl).
+
+  * Original problem:
+    ys: [ 10, 256, 202, 97 ] NN: 10000
+    expectation:
+    [ [ 'N', 383.0076434324275 ], [ 'theoret', NaN ] ]
+
+    MAP:
+    [ [ 'N', { val: 256, score: -4.452405919234976 } ],
+    [ 'theoret', { val: undefined, score: 0 } ] ]
+    
+
+  * From Wikipedia:
+    ys: [ 19, 40, 42, 60 ] NN: 1000
+    expectation:
+    [ [ 'N', 89.25315970560455 ], [ 'theoret', NaN ] ]
+
+    MAP:
+    [ [ 'N', { val: 60, score: -3.020695603818395 } ],
+    [ 'theoret', { val: undefined, score: 0 } ] ]
+
+
+  * Locomotive problem: 
+    ys: [ 60 ] NN: 1000
+    expectation:
+    [ [ 'N', 1939.776273516518 ], [ 'theoret', NaN ] ]
+
+    MAP:
+    [ [ 'N', { val: 60, score: -5.728338939395323 } ],
+    [ 'theoret', { val: undefined, score: 0 } ] ]
+
+
+  See  ~/stan/german_tank.py
+      ~/blog/german_tank_int.blog
+
+  Cf german_tank_int.wppl, german_tank_int2.wppl, and locomotive_problem.wppl
+
+
+
 */
 
 
-var model = function() {
-    var ys = [10,256,202,97];
-    var maxys = _.max(ys);
-    
-    var NN = 10000;
+var run = function(ys,NN) {
+    console.log("ys:", ys,"NN:",NN)
+    var model = function() {
+        // var ys = [10,256,202,97];
+        // var ys = [19, 40, 42, 60]; // From Wikipedia
+        // var ys = [60]; // locomotive problem
+        var maxys = _.max(ys);
+        
+        // var NN = 10000;
 
-    // var N = uniform(0,NN);  // Not as correct.
-    var N = randomInteger(NN); // Fast and correct...
-    
-    var y = mem(function(i) {
-        return Uniform({a:0,b:N});        
-    })
+        // var N = uniform(0,NN);  // Not as correct.
+        var N = randomInteger(NN); // Fast and correct...
+        
+        var y = mem(function(i) {
+            return Uniform({a:0,b:N});        
+        })
 
-    // "Theoretical" Bayesian mean
-    // https://en.wikipedia.org/wiki/German_tank_problem
-    var theoret = function(a) {
-        var m = _.max(a);
-        var len = a.length;
-        return (m-1)*(len-1)/(len-2);
+        // "Theoretical" Bayesian mean
+        // https://en.wikipedia.org/wiki/German_tank_problem
+        var theoret = function(a) {
+            var m = _.max(a);
+            var len = a.length;
+            return (m-1)*(len-1)/(len-2);
+        }
+
+        
+        mapN(
+            function(i) {
+                observe(y(i),ys[i])
+            },
+            ys.length);
+        
+        return {
+            N:N,
+            // theoret:theoret(ys)
+        };
+        
     }
 
-    
-    mapN(
-        function(i) {
-            observe(y(i),ys[i])
-        },
-        ys.length);
-    
-    return {
-        N:N,
-        theoret:theoret(ys)
-    };
-    
+    var d = Infer({method:"enumerate"},model);
+    // var d = Infer({method: 'MCMC',kernel:"MH",samples:100000},model);
+    // var d = Infer({method: 'MCMC',kernel:"MH",samples:1000000},model); // quite accurate ~ 15s
+    // var d = Infer({method: 'SMC',particles:10000},model);
+    // var d = Infer({model, method: 'rejection', samples: 1000});
+
+    // display(d);
+
+    exp_map(d,["N","theoret"],["expectation","MAP"]);
+
+    // viz.auto(d) // Skip theoret when using this
+
 }
 
-var d = Infer({method:"enumerate"},model);
-// var d = Infer({method: 'MCMC',kernel:"MH",samples:100000},model);
-// var d = Infer({method: 'MCMC',kernel:"MH",samples:1000000},model); // quite accurate ~ 15s
-// var d = Infer({method: 'SMC',particles:10000},model);
-// var d = Infer({model, method: 'rejection', samples: 1000});
+console.log("Original problem:")
+run([10,256,202,97],10000)
 
-// display(d);
+console.log("\nFrom Wikipedia:")
+run([19, 40, 42, 60],1000) // From Wikipedia
 
-var exp_map = function(d,arr) {
-    // display("Marginals:");
-    // map(function(a) {display(a);display(marginalize(d, a)) }, arr); 
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    display("MAP:");
-    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
-
-exp_map(d,["N","theoret"]);
+console.log("\nLocomotive problem:")
+run([60],1000)

@@ -23,16 +23,6 @@
 
 */
 
-var exp_map = function(d,arr) {
-    // display("Marginals:");
-    // map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    // display("MAP:");
-    // display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
-
-
 /*
   Model 1:
 
@@ -124,7 +114,7 @@ display("\nModel 2:");
 var d2 = Infer({method:"MCMC",kernel:"MH",samples:100000},model2);
 // display(d2);
 
-exp_map(d2,["height0","height1"]);
+exp_map(d2,["height0","height1"],["expectation"]);
 
 
 /*
@@ -210,7 +200,112 @@ var d3 = Infer({method:"rejection",samples:1000},model3);
 exp_map(d3,["height0","height1","height2","height3","height4","height5","height6",
             "height7","height8","height9"
             // ,"gender0","gender1"
-           ]);
+           ],["expectation"]);
 
 
 display(map(function(a) {display(a);display(marginalize(d3, a)) }, ["gender0","gender1"]));
+
+
+/*
+  Model 4:
+
+  This is a variant of model 3 in which all people are sorted according to height. 
+  Does this make any difference?
+
+  This takes much longer than model3 since ensuring ordering all people take a lot of 
+  time.
+  I changed from Rejection to MCMC/MH but it still takes a lot of time 
+  (in total 6min 45.27s).
+  
+  The height of A and B are not very different from A and B in model 3.
+
+  expectation:
+   [ [ 'height0', 185.52958008983265 ],
+     [ 'height1', 179.49032971903182 ],
+     [ 'height2', 174.94869363122393 ],
+     [ 'height3', 171.33820858967897 ],
+     [ 'height4', 168.38261105994934 ],
+     [ 'height5', 165.3543493064635 ],
+     [ 'height6', 162.57518924558252 ],
+     [ 'height7', 159.9171887796864 ],
+     [ 'height8', 157.6529497545641 ],
+     [ 'height9', 153.91087486647763 ] ]
+  gender0
+  Marginal:
+    "male" : 0.9390000000000002
+    "female" : 0.060999999999999804
+  gender1
+  Marginal:
+    "male" : 0.8839
+    "female" : 0.11609999999999984
+
+  Since it takes so long to run, and the sorting does not really add anything
+  I skip running this model.
+
+*/
+var model4 = function() {
+    var gender = mem(function(p) {
+        return categorical({ps:[0.49,0.51],vs:["male", "female"]});
+    })
+    var height = mem(function(p) {
+        if (gender(p) == "male") {
+            return gaussian(178,7.7);
+        } else {
+            return gaussian(163,7.3);
+        }
+    })
+    
+    condition(height(0) > height(1)); // A(=1) is second tallest    
+    condition(height(1) > height(2)); // 1 is taller than anyone else
+    condition(height(2) > height(3)); // now we order all people according to height
+    condition(height(3) > height(4));
+    condition(height(4) > height(5));
+    condition(height(5) > height(6));
+    condition(height(6) > height(7));
+    condition(height(7) > height(8));
+    condition(height(8) > height(9));
+    
+    return {
+        height0:height(0),
+        height1:height(1),
+        height2:height(2),
+        height3:height(3),
+        height4:height(4),
+        height5:height(5),
+        height6:height(6),
+        height7:height(7),
+        height8:height(8),
+        height9:height(9),        
+        
+        gender0:gender(0),
+        gender1:gender(1),
+    }
+
+
+}
+/*
+display("\nModel 4:");
+// The following methods are available:
+//   SMC, MCMC, PMCMC, asyncPF, rejection, enumerate, incrementalMH, forward, optimize, AIS, defaultInfer.
+// var d3 = Infer(model4);
+// var d4 = Infer({method:"rejection",samples:1000},model4);
+// var d4 = Infer({method:"SMC",particles:10000,rejuvKernel:"HMC"},model4);
+var d4 = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model4);
+// var d4 = Infer({method:"MCMC",kernel:"HMC",samples:100,lag:10,verbose:true},model4);
+// var d4 = Infer({method:"MCMC"},model4);
+// var d4 = Infer({method:"PMCMC",kernel:"MH",samples:10000,burn:1000},model4);
+// var d4 = Infer({method:"incrementalMH",samples:100,lag:10,verbose:true},model4);
+// var d4 = Infer({method:"asyncPF",numparticles:100000000,bufferSize:10000},model4); // Fast but strange result
+// var d4 = Infer({method:"AIS",numparticles:100000},model4);
+// var d4 = Infer({method:"defaultInfer"},model4);
+// var d4 = Infer({method:"optimize"},model4);
+// display(d4);
+
+exp_map(d4,["height0","height1","height2","height3","height4","height5","height6",
+            "height7","height8","height9"
+            // ,"gender0","gender1"
+           ],["expectation"]);
+
+display(map(function(a) {display(a);display(marginalize(d4, a)) }, ["gender0","gender1"]));
+*/
+

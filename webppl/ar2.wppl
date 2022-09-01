@@ -1,5 +1,15 @@
 /*
-   From BLOG example/ar2.blog
+  From BLOG example/ar2.dblog
+
+  expectation:
+  [ [ 'x2', -0.0001052700406399342 ],
+    [ 'x3', -0.00020469031400846853 ] ]
+
+  MAP:
+  [ [ 'x2',
+    { val: 0.17251966614203612, score: -9.210340371976184 } ],
+    [ 'x3',
+    { val: 0.15338009801607932, score: -9.210340371976184 } ] ]
 
 */
 
@@ -9,17 +19,12 @@ var model = function() {
     var sigma = 0.1;
     var x = function(t) {
         if (t == 0) {
-            return 0.0;
+            return Delta({v:0.0});
         } else if (t == 1) {
             return Gaussian({mu:0.0, sigma:sigma});
         } else {
-            // Note: we have to tweak since x(t-<n>) can be either Gaussian or a number
-            //       and we must sample the Gaussian
-            var xt1tmp = x(t-1);
-            var xt1 = typeof xt1tmp == "object" ? sample(xt1tmp) : xt1tmp;
-            var xt2tmp = x(t-2);
-            var xt2 = typeof xt2tmp == "object" ? sample(xt2tmp) : xt2tmp;
-            
+            var xt1 = sample(x(t-1));
+            var xt2 = sample(x(t-2))            
             return Gaussian({mu:Math.round(beta[0]) * xt2 + Math.round(beta[1]) * xt1, sigma:sigma});
         }
     }
@@ -28,22 +33,13 @@ var model = function() {
     
     return {
         x2:sample(x(2)),
-        x3:sample(x(3))
+        x3:sample(x(3)),
     }
 }
 
 // var d = Infer(model);
-var d = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model);
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000,verbose:true},model);
+var d = Infer({method:"SMC",particles:10000},model);
 // display(d);
 
-
-var exp_map = function(d,arr) {
-    display("Marginals:");
-    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    display("MAP:");
-    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
-}
-
-exp_map(d,["x2","x3"]);
+exp_map_all(d)
