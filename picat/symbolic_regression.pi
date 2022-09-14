@@ -1,0 +1,2204 @@
+/* 
+
+  Symbolic regression in Picat.
+
+  My goal is to implement as much as possible that included
+  in my JGAP SymbolicRegression system, perhaps skipping ADF?
+
+  Interestingly, without even doing any genetic operations,
+  this program finds many solutions...
+
+  Some comments / drawbacks:
+  - to add a function two things must be done:
+    * add it to arities/1
+    * add it to eval/n
+
+  - The variables (as well as the functions) must be
+    atoms, e.g.
+      Vars = ['A','B',C']
+
+  - ** might blow up (see infamous_equation)
+    Sometimes it works to use the restricted variants pow_mod2/2 or pow_mod/3.
+
+
+  - it's not possible to add guarding constraints,
+    e.g. that Y != 0 in X / Y. Doing that
+    just ends the prpgram since catch does not 
+    handle it. 
+    (Perhaps it could be fixed with some fail/0 or more checks?)
+
+  
+
+
+  Cf symbolic_function_induction.pi 
+  This program tries to solve similar problems but using an 
+  enumeration approach (via backtracking) which clearly does 
+  not solves all problems that JGAP SymbolicRegression can solve.
+  
+  On the other hand, I would like to be able to find all
+  solutions to a problem. This means that somehow fixing        
+  the random/2 function so it's backtrackable. But that might
+  be a moot goal...
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util,os.
+
+main => go.
+
+%
+% There are also some problems defined in a separate file.
+% See http://hakank.org/picat/ for examples, search for
+% "symbolic_function_induction_*.pi)
+%
+% Run as
+%  $ picat symbolic_function_induction.pi symbolic_function_induction_datafile.pi
+%
+main(ARGS) =>
+  File = ARGS[1],
+  println(file=File),
+  if file_exists(File) then
+    garbage_collect(500_000_000),
+    cl(File),
+    data(Experiment,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+    println(experiment=Experiment),
+    run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params)
+
+  else
+    printf("File %w does not exist!",File),
+    nl
+  end.
+
+
+
+go ?=>
+  garbage_collect(300_000_000),
+
+  % data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  data(facebook_puzzle_1b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),  
+  % data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(prime_test,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(gcd_test,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(to_num,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),  
+  % data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(triangular,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+
+  % data(equation3,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(equation3b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+
+  % data(planets,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+
+  % data(simple,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+
+
+
+  run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  nl.
+
+go => true.
+
+% Testing genetic operations.
+% A simple idea is to just manipulate with the parameters to the root braches
+% 
+go2 =>
+  Ops = [+,*,-,/,sin],
+  Constants = 1..4,
+  Vars = ['A','B','C','D'],
+  MaxSize = 13,
+  MutateRate = 0.05,
+  CrossoverRate = 0.9,
+  PickFromPct = 0.1,
+
+  Funs = gen_funs(Ops,Constants,Vars,MaxSize,10),
+  println(funs_len=Funs.len),
+  NewFuns = new_population(Funs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct),
+  println(newFuns=NewFuns),
+  println(newFunsLen=NewFuns.len),
+  println(oldFuns=Funs),  
+  println(ok),
+  nl.
+
+% Get the arities maps of the operations
+go3 =>
+  Ops = [+,*,-,/,pow2,if_then_else,mod,prime,even,odd,pow2,pow3,pow4,<<],
+  Arities = [[Op,Arity] : Op in Ops, Arity = arities(Op)],
+  println(Arities),  
+  AritiesMap = new_map(),
+  foreach([Op,Arity] in Arities)
+    AritiesMap.put(Arity,AritiesMap.get(Arity,[])++[Op])
+  end,
+  println(map=AritiesMap),
+  nl.
+
+% Trying to do a more fancy mutation / crossover
+go4 => 
+  % Fun = $'A' / (('B' + 9) * ('B' * 0 - -2 * 'B' - 'B')) * (5 - 'B' / -6 * 1),
+  Fun = $'A' / 'B' + 'A'**2.1,
+  println(fun=Fun),
+  Replace = $'B'**2 + sqrt('A'),
+  println(replace=Replace),
+  AtomicProb = 0.1,
+  NotAtomicProb = 0.7,
+  Fun =.. L,
+  flatten_tree(L,[],Tree),
+  println(tree=Tree),
+  % walk_tree(Fun,AtomicProb,NotAtomicProb,Replace,NewFun),
+  % Fun =.. L,
+  % NewL = replace_tree(L,2.1,'C'),
+  % NewFun =.. NewL,
+  println(ok),
+  flatten_tree(L2,Tree,[]),
+  println(l2=L2),
+  println(x=X),
+  println(ok2),
+  % println(new_fun=NewFun),
+  nl.
+
+
+% Flatten a function tree
+flatten_tree([],Tree,Tree).
+flatten_tree([H|T],Tree0,[H|Tree]) :-
+  atomic(H),
+  % println($flatten_tree([h=H|t=T],tree0=Tree0,tree=Tree)),  
+  % println(H=atom),
+  % println(lenT=length(T)),
+  flatten_tree(T,Tree0,Tree).
+flatten_tree([H|T],Tree0,[TreeH|Tree]) :-
+  not atomic(H),
+  % println($flatten_tree([h=H|t=T],tree0=Tree0,tree=Tree)),  
+  % println(H=not_atom),
+  H =.. L,
+  flatten_tree(L,[],TreeH),
+  % println(treeH=TreeH),
+  flatten_tree(T,Tree0,Tree).
+
+
+  
+
+
+
+
+/*
+walk_tree(Fun,_AtomicProb,_NotAtomicProb,_Replace,Fun) :-
+  println($walk_tree_atomic(Fun,_AtomicProb,_NotAtomicProb,_Replace,Fun)),
+  atomic(Fun).
+walk_tree(Fun,AtomicProb,NotAtomicProb,Replace,NewFun) :-
+  not atomic(Fun),
+  nl,
+  println($walk_tree2(Fun,NewFun)),  
+  println(not_atomic=Fun),
+  Fun =.. L,
+  ReplaceIx = _,
+  foreach(I in 1..L.len)
+    if atomic(L[I]) then
+       println(is_a_node=L[I]),
+       if I > 1, frand() < 0.9 then
+         println(change_atom_leave),
+         ReplaceIx := I
+       end
+    else
+       println(not_a_node=L[I]),
+       walk_tree(L[I],AtomicProb,NotAtomicProb,Replace,NewFun2)
+    end
+  end,
+  if nonvar(ReplaceIx) then
+    println(replace),
+    L2 = replace(L,ReplaceIx,Replace),
+    NewFun =.. L2
+  else
+    NewFun = Fun
+  end.
+*/  
+
+replace_tree([H|T],Old,New) = [NH|NT] => 
+    NH = replace_tree(H,Old,New), 
+    NT = replace_tree(T,Old,New).
+replace_tree(T,Old,New)=NT,struct(T) => 
+    NT = new_struct(T.name,T.length),
+    foreach(I in 1 .. T.length) 
+        NT[I] = replace_tree(T[I],Old,New) 
+    end.
+replace_tree(Old,Old,New) = New.
+replace_tree(T,_Old,_New) = T.
+
+
+  
+
+
+
+/*
+  Generate a new population NewFuns from the old population Funs.
+
+  Perhaps replaced by new_population2/8...
+
+*/
+new_population(Funs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct) = NewFuns =>
+  NewFuns1 = [],
+  % Pick only from the best PickFromPct of the (sorted) funs from previous generation
+  FunsLen = Funs.len,
+  FunIx = ceiling(FunsLen*PickFromPct),
+  Fs = [Funs[I] : I in 1..FunIx],  
+  foreach(Fun in Funs)
+    MRand = frand(),
+    if MRand <= MutateRate then
+      NewFun = mutate(Fun,Ops,Constants,Vars,MaxSize)
+    else 
+      CORand = frand(),
+      if CORand <= CrossoverRate then
+        oneof(Fs,Fun2),
+        NewFun = crossover(Fun,Fun2)
+      else
+        NewFun = Fun
+      end
+    end,
+    NewFuns1 := NewFuns1 ++ [NewFun]
+  end,
+  NewFuns = NewFuns1.
+
+/*
+  Changes from new_population/8
+  - crossover2/2 instead of crossover/2
+  - the loop is not over the function but the number of existing functions
+*/
+new_population2(Funs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct) = NewFuns =>
+  % Pick only from the best PickFromPct of the (sorted) funs from previous generation
+  FunsLen = Funs.len,
+  % FunIx = ceiling(FunsLen*PickFromPct),
+  % Fs = [Funs[I] : I in 1..FunIx],
+  NewFuns1 = [],  
+  I = 1,
+  while (I < FunsLen)
+    oneof(Funs,Fun1),
+    MRand = frand(),
+    if MRand <= MutateRate then
+      NewFun = mutate(Fun1,Ops,Constants,Vars,MaxSize),
+      NewFuns1 := NewFuns1 ++ [NewFun],
+      I := I + 1
+    else 
+      CORand = frand(),
+      if CORand <= CrossoverRate then
+        oneof(Funs,Fun2),
+        [NewFun1,NewFun2] = crossover2(Fun1,Fun2),
+        NewFuns1 := NewFuns1 ++ [NewFun1,NewFun2],
+        I := I + 2
+      else
+        NewFuns1 := NewFuns1 ++ [Fun1],
+        I := I + 1
+      end
+    end
+  end,
+  NewFuns = NewFuns1.
+  
+  
+
+
+/*
+  Mutation
+  
+  Replace a subtree in OldFun with a new generated function.
+
+  Note (and perhaps TODO): It's only the parameters of a function that is
+  mutated, not the function operator itself.
+*/
+mutate(OldFun,Ops,Constants,Vars,MaxSize) = NewFun =>
+    OldFun =.. L,
+    FunArity = L.len-1,
+    if frand() < 0.1 then
+      % Mutate the operator (head)
+      % Get one of the other ops with the same arities
+      AritiesMap = new_map(),
+      foreach([Op,Arity] in [[Op,Arity] : Op in Ops, Arity = arities(Op)])
+        AritiesMap.put(Arity,AritiesMap.get(Arity,[])++[Op])
+      end,
+      Arities = AritiesMap.get(FunArity,[]),
+      if Arities.len > 1 then
+        oneof(Arities.delete(L[1]),NewOp),
+        NewL = replace_at(L,1,NewOp),
+        NewFun =.. NewL
+      else
+        NewFun = OldFun
+      end
+    else
+      % Pick one of the parameters of OldFun
+      Ix = random(2,L.len), 
+      % Create a new subtree: constant, variable or a function
+      if ReplaceF = gen(Ops,Constants,Vars,0,MaxSize) then 
+        NewL = replace_at(L,Ix,ReplaceF),
+        NewFun =.. NewL
+      else
+        % println("Didn't found any function!"),
+        NewFun = OldFun
+      end
+   end.
+
+/*
+  Crossover 
+
+  Here we pick some random subtree of Fun2 and place it 
+  in Fun1.
+*/
+crossover(Fun1,Fun2) = NewFun =>
+    Fun1 =.. L1,
+    % Pick a random place of Fun1
+    Ix1 = random(2,L1.len),
+    % Pick a subtree in Fun2
+    Fun2 =.. L2,
+    Ix2 = random(2,L2.len),
+    Picked2 = L2[Ix2],
+    NewL = copy_term(L1),
+    % And place it in Fun1
+    NewL := replace_at(L1,Ix1,Picked2),
+    NewFun =.. NewL.
+
+% Here we swap some of the parameters/subtrees of Fun1 and Fun2
+crossover2(Fun1,Fun2) = [NewFun1,NewFun2] =>
+    Fun1 =.. L1,
+    % Pick a random place of Fun1
+    Ix1 = random(2,L1.len),
+    Picked1 = L1[Ix1],
+    
+    % Pick a subtree in Fun2
+    Fun2 =.. L2,
+    Ix2 = random(2,L2.len),
+    Picked2 = L2[Ix2],
+
+    NewL1 = copy_term(L1),
+    % And place it in Fun1
+    NewL1 := replace_at(L1,Ix1,Picked2),
+    NewFun1 =.. NewL1,
+
+    NewL2 = copy_term(L2),
+    NewL2 := replace_at(L2,Ix2,Picked1),
+    NewFun2 =.. NewL2.
+
+
+
+%
+% Generate N function
+%
+gen_funs(Ops,Constants,Vars,MaxSize,N) = Funs => 
+    Funs = [F : _ in 1..N, F=generate_function(Ops,Constants,Vars,MaxSize)].
+
+%
+% Run the simulation
+%
+run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
+  NumGens = Params.get(num_gens,10),
+  InitSize = Params.get(init_size,1000),
+  MutateRate = Params.get(mutate_rate,0.1),
+  CrossoverRate = Params.get(crossover_rate,0.9),
+  PickFromPct = Params.get(pick_from_pct,0.2), % cross over from the best PickFromPct functions
+  KeepProgramsPct = Params.get(keep_programs_pct,0.01), % Keep some of the good functions intact
+  StopCriteria = Params.get(stop_criteria,at_least_one_solution), % Or "loops"
+  ShowBest = Params.get(show_best,1),
+  ShowOnlyImprovements = Params.get(show_only_improvements,true),  
+  Debug = Params.get(debug,false),
+  % Limit for pow_mod2/2
+  PowModConstant = Params.get(pow_mod_constant,10**6),
+  get_global_map().put(pow_mod_constant,PowModConstant),
+  RemoveDups = Params.get(remove_dups,true), % remove duplicates after new generated population
+  InitFun = Params.get(init_fun,_), % initial function
+
+  % Random seed
+  RandomSeed = Params.get(random_seed,_),
+  if nonvar(RandomSeed) then
+    _ = random(RandomSeed)
+  else
+    println(random2),
+    _ = random2()
+  end,
+  
+
+  println(data=Data),
+  println(vars=Vars),
+  println(ops=Ops),  
+  println(unknown=Unknown),
+  println(constants=Constants),
+  println(params=Params),
+  println(maxSize=MaxSize),
+  nl,
+
+  statistics(runtime,_),
+  AllGood = new_map(),
+  Funs = gen_funs(Ops,Constants,Vars,MaxSize,InitSize),
+  if nonvar(InitFun) then
+    println(init_fun=InitFun),
+    Funs[1] := InitFun
+  end,
+  Gen = 1,
+  KeepRunning = true,
+  BestLast = _,
+  while (KeepRunning)
+    if Gen mod 100 == 0 then
+      garbage_collect
+    end,
+    [Good,All] = symbolic_regression(Funs,Data,Vars,Unknown,Params),
+    foreach(G in Good)
+      AllGood.put(G,AllGood.get(G,0)+1)
+    end,
+    if Debug then
+       println(results=All)
+    end,
+    % println(results_len=All.len),
+    % Next iteration
+    Programs = [F : [_,F,_] in All],
+    if All.len == 0 then
+      println("No found functions")
+    end,
+    if All.len > 0 then
+       ThisBest = All[1,1]
+    end,
+    if Good.len > 0; Gen == 1 ; ShowOnlyImprovements == false ; (ShowOnlyImprovements, nonvar(BestLast), ThisBest < BestLast) then
+      nl,
+      statistics(runtime,[TimeMs,_]),
+      TimeS = to_fstring("%0.3f",TimeMs/1000),
+      printf("gen = %w  (time: %ws)\n",Gen,TimeS),
+      println(results_best=[All[I] : I in 1..ShowBest]),
+      if Good.len > 0 then
+        println(good=Good)
+      end,
+      nl
+    end,
+
+    if Programs.len > 0, (Gen == 1; All.len > 0, All[1,1] < BestLast) then
+      % Save the best
+      BestLast := All[1,1]
+    end,
+
+    KeepNumPrograms = floor(All.len * KeepProgramsPct),
+    Keep =  Programs[1..KeepNumPrograms],
+    
+    % Remove duplicate programs or not
+    if RemoveDups then
+      % NewFuns = (Keep ++ new_population(Programs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct)).remove_dups,
+      NewFuns = (Keep ++ new_population2(Programs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct)).remove_dups
+    else
+      % NewFuns = (Keep ++ new_population(Programs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct))
+      NewFuns = (Keep ++ new_population2(Programs,Ops,Constants,Vars,MaxSize,MutateRate,CrossoverRate,PickFromPct))
+    end,
+    ToGenerate = InitSize - NewFuns.len,
+    if ToGenerate > 0 then
+      % We need to generate more functions
+      NewFuns := NewFuns ++ gen_funs(Ops,Constants,Vars,MaxSize,ToGenerate)
+    elseif ToGenerate < 0 then
+      NewFuns := NewFuns[1..InitSize]
+    end,
+    Funs := NewFuns,
+    Gen := Gen + 1,
+    if Gen >= NumGens, StopCriteria == at_least_one_solution then
+      if AllGood.size > 0 then
+        KeepRunning := false
+      end
+    elseif Gen >= NumGens then
+      printf("stop_criteria '%w' reached\n",StopCriteria),    
+      KeepRunning := false
+    end
+  end,
+  nl,
+  
+  println("AllGood:"),
+  ResultMap = new_map(), % Number of specific results
+  foreach(Good=Count in AllGood.to_list.sort_down(2))
+    Good = $(Program = Res),
+    ResultMap.put(Res,ResultMap.get(Res,0)+1),
+    println([program=Program,res=Res, count=Count])
+  end,
+  nl,
+  println(resultMap=ResultMap.to_list.sort_down(2)),
+  nl,
+  fail,
+  nl.
+
+%
+% The main check of a population (Funs)
+%
+symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
+  Approx = Params.get(approx,_),
+  TotalApprox = Params.get(total_approx,_),  
+  Debug = Params.get(debug,false),
+  Timeout = Params.get(timeout,1000), % Default Timeout 1s
+  ShowErrors = Params.get(show_errors,false),
+  ShowInstances = Params.get(show_instances,false),  
+  UniqueDigits = Params.get(unique_digits,false),
+  UniqueDigitsAll = Params.get(unique_digits_all,false),
+  UniqueVars = Params.get(unique_vars,false), % NOTE: only single atom vars!
+  UniqueVarsAll = Params.get(unique_vars_all,false),  % NOTE: only single atom vars!
+
+  Results = [],
+  Good = [],
+  foreach(F in Funs)
+    Failed := false,
+    if Debug ; ShowInstances then
+      nl,
+      println(f=F)
+    end,
+    R = [],
+
+    % Check if the function contains unique variables
+    CheckUniqueFailed = false,
+    if UniqueVars ; UniqueVarsAll then
+      % Convert the function to a flattened list
+      F =.. FL,
+      flatten_tree(FL,[],Flatten),
+      % Note: This only works for single char atoms.
+      VarsUsed = [V : V in Flatten.flatten, ascii_alpha(V)],
+      VarsUsedLen = VarsUsed.len,
+      VarsUsedRemoveDupsLen = VarsUsed.remove_dups.len,
+      if UniqueVarsAll then 
+         if VarsUsedLen != VarsUsedRemoveDupsLen ; VarsUsedLen != Unknown.len then
+           CheckUniqueFailed := true
+         end,
+      else
+        if VarsUsedLen != VarsUsedRemoveDupsLen then
+          CheckUniqueFailed := true        
+        end
+      end,
+    end,
+    foreach([Vals,Res] in Data,break(Failed == true))
+      if Debug then
+        nl,
+        println([vals=Vals,res=Res])
+      end,
+      X = replace_term(F,Vars,Vals),
+      if Debug then 
+        println(x=X)
+      end,
+      catch(Y = X.eval,Error,true),
+      % time_out(catch(Y = X.eval,Error,true),Timeout,Status), % This does not catch large ** /2
+      % if Status != success then
+      %    println(status=Status),
+      %    Failed := true
+      % end,
+      if nonvar(Error) then
+        if Debug ; ShowErrors then
+          printf("Error: Function: %w X: %w Error: %w\n",F, X, Error)
+        end,
+        Failed := true
+      else
+       
+        if Debug ; ShowInstances then
+          Diff = Res-Y,
+          println([vals=Vals,expected=Res,y=Y,diff=Diff])
+        end,
+        if nonvar(Approx) then
+           % R := R ++ [abs(Res-Y)]
+            if abs(Y-Res) <= Approx then
+             R := R ++ [0]
+           else
+             R := R ++ [abs(Res-Y)]
+           end
+        else
+        
+          if UniqueVars ; UniqueVarsAll then
+             % Check unique variables
+             % See symbolic_regression_puzzle4.pi
+             if CheckUniqueFailed == false, Y*1.0 == Res*1.0 then
+               R := R ++ [0]
+             else
+               R := R ++ [1]
+             end
+          elseif UniqueDigits ; UniqueDigitsAll then
+             % ensure that the digits used are distinct
+             % See symbolic_regression_puzzle4.pi
+             X =.. XL,
+             once flatten_tree(XL,[],FlattenX),
+             FlattenXFlatten = FlattenX.flatten,
+             NumUsed = [V : V in FlattenXFlatten, number(V)],
+             NumUsedLen = NumUsed.len,
+             NumUsedUniqueLen = NumUsed.remove_dups.len,
+             if UniqueDigitsAll then
+               if NumUsedLen == NumUsedUniqueLen, NumUsedLen == Unknown.len, Y*1.0 == Res*1.0  then
+                  R := R ++ [0]
+               else
+                  R := R ++ [abs(Vars.len-NumUsed.remove_dups.len)]
+               end
+             else
+               if NumUsed.len == NumUsed.remove_dups.len, Y*1.0 == Res*1.0  then
+                  R := R ++ [0]
+               else
+                  R := R ++ [1]
+               end
+             end
+          else
+            % This is is the normal check.
+            if Y*1.0 == Res*1.0 then
+              R := R ++ [0]
+            else
+              R := R ++ [abs(Res-Y)]
+            end
+          end
+       end
+      end
+    end,
+
+    if Failed == false, R.len > 0 then
+      S = sum([abs(T) : T in R]), % total diff
+      if Debug ; ShowInstances then
+        println([r=R,s=S])
+      end,
+      % Results := Results ++ [[abs(S),F]],
+      catch(Check = replace_term(F,Vars,Unknown).eval,CheckError,true),
+      if S*1.0 == 0.0 ; (nonvar(Approx), S <= Approx) ; (nonvar(TotalApprox), S <= TotalApprox) then
+        if Debug then
+          println(found=F)
+        end,
+        % catch(Check = replace_term(F,Vars,Unknown).eval,CheckError,true),
+        if nonvar(CheckError) then
+           println([error_when_checking,found_function=F, total_diff=S,check=Check]),        
+        else
+          println([found_function=F, total_diff=S,check=Check]),        
+          Good := Good ++ [F=Check]
+        end
+      end,
+      Results := Results ++ [[abs(S),F,check=Check]],
+    end
+  end,
+
+  ResultsSort = Results.sort.
+
+
+%
+% Generate a function given operator, constants, and variables
+%
+generate_function(OpAll,Constants,Vars,MaxSize) = Fun =>
+  generate_function(OpAll,Constants,Vars,0,MaxSize) = Fun.
+
+generate_function(Ops,Constants,Vars,Size,MaxSize) = Fun =>
+  Size <= MaxSize,
+  oneof(Ops,Op),
+  Arity = arities(Op),
+  gen(Ops,Constants,Vars,Size+1,MaxSize) = C1,
+  if Arity == 1 then
+    Fun =.. [Op,C1]
+  elseif Arity == 2 then
+     gen(Ops,Constants,Vars,Size+2,MaxSize) = C2,
+     Fun =.. [Op,C1,C2]
+  elseif Arity == 3 then
+     gen(Ops,Constants,Vars,Size+2,MaxSize) = C2,
+     gen(Ops,Constants,Vars,Size+3,MaxSize) = C3,
+     Fun =.. [Op,C1,C2,C3]
+  elseif Arity == 4 then
+     gen(Ops,Constants,Vars,Size+2,MaxSize) = C2,
+     gen(Ops,Constants,Vars,Size+3,MaxSize) = C3,
+     gen(Ops,Constants,Vars,Size+4,MaxSize) = C4,     
+     Fun =.. [Op,C1,C2,C3,C4]
+  else
+     gen(Ops,Constants,Vars,Size+2,MaxSize) = C2,
+     gen(Ops,Constants,Vars,Size+3,MaxSize) = C3,
+     gen(Ops,Constants,Vars,Size+4,MaxSize) = C4,
+     gen(Ops,Constants,Vars,Size+5,MaxSize) = C5,
+     Fun =.. [Op,C1,C2,C3,C4,C5]
+  end.
+
+%
+% Randomly generate some of ops, variables or constants
+%
+gen(Ops,Constants,Vars,Size,MaxSize) = X =>
+  if Size >= MaxSize then
+     oneof([const,vars], Pick)
+  else
+    oneof([ops,const,vars], Pick)
+  end,
+  if Pick == ops then
+    X = generate_function(Ops,Constants,Vars,Size+1,MaxSize)
+  elseif Pick = const then
+     oneof(Constants,X)
+  else 
+    oneof(Vars,X)
+  end.
+
+
+% Get one element of list L
+oneof(L,E) =>
+  L != [],
+  E = L[random(1,L.length)].
+  
+
+
+% Replace each Var -> Val in Term
+replace_term(Term,Vars,Vals) = X =>
+  Term =.. L1,
+  foreach(I in 1..Vars.len)
+    L1 := replace(L1,Vars[I],Vals[I])
+  end,
+  X =.. L1.
+
+
+% Note: This must be funtions
+arities(+) = 2.
+arities(-) = 2.
+arities(*) = 2.
+arities(/) = 2.
+arities(//) = 2.
+arities(**) = 2.
+arities(pow) = 2.
+arities(pow_restricted) = 2.
+arities(pow2) = 1.
+arities(pow3) = 1.
+arities(pow4) = 1.
+arities(pow5) = 1.
+arities(pow_mod2) = 2.
+arities(pow_mod) = 3.
+arities(mod) = 2.
+arities(mod_replace) = 2.
+arities(replace) = 3.
+arities('%') = 2.
+arities(div) = 2.
+arities(rem) = 2.
+arities(gcd) = 2.
+arities(^) = 2.
+arities(\/) = 2. % bitwise or
+arities(/\) = 2. % bitwise and
+arities(>>) = 2.
+arities(<<) = 2.
+arities(~) = 1.
+
+arities(min) = 1.
+arities(max) = 1.
+
+arities(and) = 2. % logical and
+arities(or) = 2. % logical or
+arities(=>) = 2. % logical implication
+arities(<=>) = 2. % logical equivalence
+arities(not) = 1. % logical not
+arities(sheffer) = 2. % logical sheffer bar (stroke)
+arities(nand) = 2. % logical nand
+arities(nor) = 2. % logical nor
+arities(xor) = 2. % logical xor
+
+arities(<) = 2.
+arities(=<) = 2.
+arities(>) = 2.
+arities(>=) = 2.
+arities(==) = 2.
+arities(!=) = 2.
+
+arities(sqrt) = 1.
+arities(sqrt_restricted) = 1.
+arities(exp) = 1.
+arities(log) = 1.
+arities(log2) = 1.
+arities(sin) = 1.
+arities(cos) = 1.
+arities(tan) = 1.
+arities(atan) = 1.
+arities(atan2) = 2.
+arities(cos) = 1.
+arities(logistic) = 1.
+
+arities(floor) = 1.
+arities(ceiling) = 1.
+arities(odd) = 1.
+arities(even) = 1.
+arities(prime) = 1.
+
+arities(if_then_else) = 3.
+arities(if_less) = 4.
+arities(if_less_equal) = 4.
+arities(factorial) = 1.
+arities(factorial_restricted) = 1.
+arities(!) = 1.
+
+arities(distance) = 2.
+arities(to_num2) = 2.
+arities(to_num3) = 3.
+arities(to_num4) = 4.
+
+arities(char_count) = 1. % Experimental
+
+arities(rec) = 3. % Experimental
+arities(sum_i) = 2. 
+
+% arities(length) = 1.
+
+arities(X) = 1, integer(X) => true.
+arities(X) = 1, float(X) => true.
+arities(X) = 1, nonvar(X) => true.
+
+%
+% Built-ins
+%
+eval('+'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal+YVal.
+
+eval('-'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal-YVal.
+
+eval('*'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal*YVal.
+
+eval('/'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal/YVal.
+
+eval('//'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal//YVal.
+
+% See pow/2 for a restricted version
+eval('**'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal ** YVal.
+
+%
+% Restricted version of **
+%
+eval('pow'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal ** YVal.
+
+%
+% Restricted version
+%
+% If either X or Y are > 10 then return 1 else return X**Y
+%
+eval('pow_restricted'(X,Y)) = Val =>
+    XVal = eval(X),
+    if XVal > 10 then
+      Val = 1
+    else 
+      YVal = eval(Y),
+      Val = cond(YVal > 10, 1, XVal ** YVal)
+    end.
+
+% A restricted version of power: power modulo some smaller value
+eval('pow_mod2'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    % This is set with the parameter pow_mod_constant
+    Mod = get_global_map().get("pow_mod_constant",10**6),
+    Val = pow_mod(XVal,YVal, Mod).
+
+eval('pow_mod'(X,Y,Mod)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    ModVal = eval(Mod),
+    Val = pow_mod(XVal,YVal,ModVal).
+
+eval('pow2'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** 2.
+
+eval('pow3'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** 3.
+
+eval('pow4'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** 4.
+
+eval('pow5'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** 5.
+
+
+eval('mod'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal mod YVal.
+
+% mod_replace:
+% if X mod Y != 0 then return X mod Y else return Z
+%
+eval('mod_replace'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Res = XVal mod YVal,
+    % The value to replace 0 with
+    ZVal = get_global_map().get(mod_replace_value,1),
+    Val = cond(Res != 0,Res, ZVal).
+
+% If X == Y return Z else X
+% (Trying to make mod_replace/2 a little more general.)
+eval('replace'(X,Y,Z)) = Val =>
+  XVal = eval(X),
+  YVal = eval(Y),
+  ZVal = eval(Z),
+  Val = cond(XVal == YVal,ZVal,XVal).
+
+eval('%'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal mod YVal.
+
+eval('rem'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal rem YVal.
+
+eval('div'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal div YVal.
+
+eval('gcd'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = gcd(XVal, YVal).
+
+eval('^'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal ^ YVal.
+
+% bitwise or
+eval('\\/'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal \/ YVal.
+
+% bitwise and
+eval('/\\'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal /\ YVal.
+
+eval('>>'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal >> YVal.
+
+eval('<<'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = XVal << YVal.
+
+eval('~'(X)) = Val =>
+    XVal = eval(X),
+    Val = ~XVal.
+
+eval('=<'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = cond(XVal =< YVal,1,0).
+
+eval('<'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = cond(XVal < YVal,1,0).
+
+eval('>'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = cond(XVal > YVal,1,0).
+
+eval('>='(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = cond(XVal >= YVal,1,0).
+
+eval('=='(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = cond(XVal == YVal,1,0).
+
+eval('!='(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = cond(XVal != YVal,1,0).
+
+eval('min'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = min(XVal,YVal).
+
+eval('max'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = max(XVal,YVal).
+
+
+% logical and
+% (from my JGAP implementation AndD)
+eval('and'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1,false,true),
+    B2 = cond(YVal < 1,false,true),
+    Val = cond((B1,B2),1, 0).
+
+% logical or
+% (from my JGAP implementation OrD)
+eval('or'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1,false,true),
+    B2 = cond(YVal < 1,false,true),
+    Val = cond((B1 ; B2),1, 0).
+
+
+% implication
+% (from my JGAP implementation ImplD)
+eval('=>'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1, false,true),
+    B2 = cond(YVal < 1, false,true),
+    Val = cond((XVal == true, YVal==false),0, 1).
+
+% equivalence
+% (from my JGAP implementation EquivD)
+eval('<=>'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1, false,true),
+    B2 = cond(YVal < 1, false,true),
+    Val = cond((B1 == B2),1, 0).
+
+% logic nand (not and)
+eval('nand'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1, false,true),
+    B2 = cond(YVal < 1, false,true),
+    Val = cond(not(B1,B2),1, 0).
+
+% logic nor (not or)
+eval('nor'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1, false,true),
+    B2 = cond(YVal < 1, false,true),
+    Val = cond(not(B1;B2),1, 0).
+
+% logic nor (not or)
+eval('xor'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1, 0,1),
+    B2 = cond(YVal < 1, 0,1),
+    Val = cond(B1+B2 == 1,1, 0).
+
+
+
+% logical not
+% (from my JGAP implementation NotD)
+eval('not'(X)) = Val =>
+    XVal = eval(X),
+    B = cond(XVal < 1, 0, 1),
+    Val = cond(B == 1, 0, 1).
+
+% Sheffer Bar (A | B)
+% Returns false if A == true and B == true, else true
+% From my JGAP implementation ShafferD (sic!)
+% "Inspired by the sample shaffer.rb from Ruby/GP" (sic!)
+eval('sheffer'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    B1 = cond(XVal < 1, false,true),
+    B2 = cond(YVal < 1, false,true),
+    Val = cond((B1 == true, B2 == true), 0, 1).
+
+
+eval('sin'(X)) = Val =>
+    XVal = eval(X),
+    Val = sin(XVal).
+
+eval('cos'(X)) = Val =>
+    XVal = eval(X),
+    Val = cos(XVal).
+
+eval('tan'(X)) = Val =>
+    XVal = eval(X),
+    Val = tan(XVal).
+
+eval('atan'(X)) = Val =>
+    XVal = eval(X),
+    Val = atan(XVal).
+
+eval('atan2'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = atan2(XVal,YVal).
+
+
+eval('exp'(X)) = Val =>
+    XVal = eval(X),
+    Val = exp(XVal).
+
+eval('log'(X)) = Val =>
+    XVal = eval(X),
+    Val = log(XVal).
+
+eval('log2'(X)) = Val =>
+    XVal = eval(X),
+    Val = log2(XVal).
+
+eval('sqrt'(X)) = Val =>
+    XVal = eval(X),
+    Val = sqrt(XVal).
+
+% Logistic
+eval('logistic'(X)) = Val =>
+    XVal = eval(X),
+    Val = 1.0/(1.0+exp(-XVal)).
+
+
+% Ensure that sqrt/1 don't yield error on negative values
+eval('sqrt_restricted'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(XVal < 0, 0, sqrt(XVal)).
+
+eval('floor'(X)) = Val =>
+    XVal = eval(X),
+    Val = floor(XVal).
+
+eval('ceiling'(X)) = Val =>
+    XVal = eval(X),
+    Val = ceiling(XVal).
+
+
+
+% There are many more built-in functions.
+% Add when they are needed!
+
+
+
+%
+% User defined function
+%
+eval('odd'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(odd(XVal),1,0).
+
+eval('even'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(even(XVal),1,0).
+
+eval('prime'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(prime(XVal),1,0).
+
+%
+% Note: True is then XVal == 1, everything else is false.
+%
+% See: symbolic_regression_if_then_else2.pi
+%
+eval('if_then_else'(X,Y,Z)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    ZVal = eval(Z),    
+    Val = cond(XVal==1,YVal,ZVal).
+
+
+eval('if_less'(X,Y,A,B)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    AVal = eval(A),
+    BVal = eval(B),    
+    Val = cond(XVal < YVal,AVal,BVal).
+
+eval('if_less_equal'(X,Y,A,B)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    AVal = eval(A),
+    BVal = eval(B),    
+    Val = cond(XVal <= YVal,AVal,BVal).
+
+
+% Be careful since this blows up!
+eval('factorial'(X)) = Val =>
+    XVal = eval(X),
+    Val = factorial(XVal).
+
+% Be careful since this blows up!
+eval('!'(X)) = Val =>
+    XVal = eval(X),
+    Val = factorial(XVal).
+
+
+% Restricted variant:
+% If XVal > 100 then return 1 else do the factorial.
+%
+eval('factorial_restricted'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(XVal > 100, 1, factorial(XVal)).
+
+% Distance between X and Y
+eval('distance'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = sqrt(XVal**2 + YVal**2).
+
+% X,Y -> XY
+% user=["to_num"]
+eval('to_num2'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = 10*XVal + YVal.
+
+% X,Y,Z -> XYZ
+% user3=["to_num"]
+eval('to_num3'(X,Y,Z)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    ZVal = eval(Z),    
+    Val = 100*XVal + 10*YVal + ZVal.
+
+eval('to_num4'(X,Y,Z,A)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    ZVal = eval(Z),
+    AVal = eval(A),        
+    Val = 1000*XVal + 100*YVal + 10*ZVal + AVal.
+
+% count the number of characters in the
+% string representation of the number  (via english/1).
+eval('char_count'(X)) = Val =>
+  XVal = eval(X),
+  Val = english(XVal).to_string.len.
+
+%
+% EXPERIMENTAL
+% If X <= 0 then return Y else rec(X-1,Y,Z)
+%
+% Note: This does NOT work!
+% 
+eval('rec'(X,Y,Z)) = Val =>
+  XVal = eval(X),
+  % println(xval=XVal),
+  YVal = eval(Y),
+  % println(yval=YVal),  
+  if XVal <= 0 then
+    % counter <= 0 return Y
+    Val = Y
+  else
+    % else: decrement x abd recurse
+    XVal1 = XVal - 1,
+    ZVal = eval(Z),
+    % println(zval=ZVal),
+    T = eval('rec'(XVal1,YVal,ZVal)),
+    % println(t=T),
+    Val = T
+  end.
+
+% Experimental
+% sum_i/2 sums the value of I for I in X..Y.
+% 
+% sum_i(X,Y):
+%    Sum = 0
+%    For I in X..Y
+%      Sum += I
+%    Return Sum
+%
+% Note that this might blow up so I added some
+% arbitrary limits:
+%  * if X > Y then return 1
+%  * if X or Y or abs(X-Y) are > Limit  then return 1
+% This might give some unexpected results.
+%
+eval('sum_i'(X,Y)) = Val =>
+  XVal = eval(X),
+  YVal = eval(Y),
+  Limit = 10**3,
+  if XVal > YVal ; XVal > Limit ; YVal > Limit ; abs(XVal - YVal) > Limit then
+    Val = 1
+  else 
+    Sum = 0,
+    foreach(I in XVal..YVal)
+      Sum := Sum + I
+    end,
+    Val = Sum
+  end.
+
+
+% eval('length'(X)) = Val =>
+%     println(length=X),
+%     XVal = eval(X), % eval(X.to_string),
+%     println(eval_first_xval=XVal),        
+%     Val = length(XVal).
+
+% eval(String) = String, string(String) => true.
+
+eval(Number) = Number, number(Number) => true.
+
+eval(Exp) = apply(Exp). % for user-defined function
+
+
+
+
+%
+% Utilities
+%
+
+/*
+  Create data for a sequence
+  Input:
+  - Seq: a list of input (integers)
+  - N: size of each slot
+  Output:
+  - Data: The data matrix
+  - Unknown: The unknown (the last data entry)
+  - Vars: "a","b", .... (of size N)
+  
+  Example (see data(fibonacci,..))
+  *  make_seq([1,1,2,3,5,8,13,21],2,Data,Unknown,Vars),
+     Generates: 
+     data = [[[1,1],2],[[1,2],3],[[2,3],5],[[3,5],8],[[5,8],13],[[8,13],21]]
+     Unknown = [8,13]
+     Vars: ['a','b']
+
+  *  make_seq([1,1,2,3,5,8,13,21],3,Data,Unknown,Vars),
+    generates the following
+    Data:[[[1,1,2],3],[[1,2,3],5],[[2,3,5],8],[[3,5,8],13],[[5,8,13],21]]
+     Unknown: [5,8,13]
+     Vars: ['a','b','c']
+*/  
+make_seq(Seq,N,Data,Unknown,Vars) =>
+  Len = Seq.len,
+  Data1 = [],
+  foreach(I in 1..Len-N)
+    T = [ [Seq[I..I+N-1],Seq[I+N]] ],
+    Data1 := Data1 ++ T
+  end,
+  Unknown = Seq[Len-N+1..Len],
+  alpha(Alpha),
+  Vars = [C : C in Alpha[1..N]],
+  Data = Data1.  
+
+% It's recommended to use uppercase variables
+% (it's also enforced in the call to induce in go/0.)
+alpha("ABCDEFGHIJKLMNOPQRSTUVWXYZ").
+
+/*
+
+  Given a sequence (Seq), this returns a "pointwise" dataset,
+  data of the form
+    [
+      [[1],Seq[1]],
+      [[2],Seq[2]],
+      [[3],Seq[3]],
+      ..
+   ]
+  The assumption is that the list starts with 1.
+
+  Unknown is Seq.len + 1
+  Vars is simply ["A"].
+
+  Example:
+   make_point_seq([1,8,27,64,125,217],Data,Unknown,Vars),
+  Generates:
+   Data: [[[1],1],[[2],8],[[3],27],[[4],64],[[5],125],[[6],216]]
+   Unknown: [7]
+   Vars = ['A']
+
+*/
+make_point_seq(Seq,Data,Unknown,Vars) =>
+  Data1 = [],
+  Len = Seq.len,
+  foreach(I in 1..Len)
+    Data1 := Data1 ++ [[[I],Seq[I]]]
+  end,
+  Data = Data1,  
+  Unknown = [Len+1],
+  Vars = ['A'].
+
+/*
+  Given a matrix (Rows x Columns), create
+  a representation suitable for this program.
+
+  Example:
+
+  Matrix =   [[2,4,7,6,1],
+              [3,1,2,5,9],
+              [5,5,9,11,_]
+              ],
+  Then
+    make_data_matrix(Matrix, Data, Unknown, Vars)  
+  generates:   
+    data = [[[2,4,7,6],1],[[3,1,2,5],9]]
+    vars = [A,B,C,D]
+    unknown = [5,5,9,11]
+
+  and 
+    make_data_matrix(Matrix.transp, Data, Unknown, Vars)  
+  generates:
+    data = [[[2,3],5],[[4,1],5],[[7,2],9],[[6,5],11]]
+    vars = [A,B]
+    unknown = [1,9]
+
+  (See symbolic_function_induction_triangles.pi )
+
+*/
+make_data_matrix(Matrix, Data, Unknown, Vars) =>
+  Data1 = [],
+  Rows = Matrix.len,
+  Cols = Matrix[1].len,
+  foreach(Row in 1..Rows-1)
+     Data1 := Data1 ++ [[ Matrix[Row,1..Cols-1], Matrix[Row,Cols] ]]
+  end,
+  Data = Data1,  
+  Unknown = Matrix[Rows,1..Cols-1].flatten,
+  alpha(Alpha),
+  Vars = [C : C in Alpha[1..Cols-1]].
+
+%
+% Wrapper for transpose so it can be used in data files without loading util.
+%
+transp(Mat) = transpose(Mat).
+
+% From euler17.
+% used by char_count/1
+% 
+english(N) = English =>
+    Divs      =  [1000000000, 1000000,  1000,       100],
+    Divnames  =  ["billion", "million", "thousand", "hundred"],
+    Prefixes  =  ["0", "twen", "thir", "for", "fif", "six", "seven", "eigh", "nine"],
+    _Ordinals  = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh",
+                  "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", 
+                  "fourteenth","fifteenth", "sixteenth", "seventeenth", 
+                  "eighteenth", "nineteenth"],
+    Cardinals =  ["one", "two", "three", "four", "five", "six", "seven",
+                  "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
+                  "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"],
+
+    Sstr = "",
+    Printed = 0,
+    if N < 0 then
+        Sstr := "minus" ++ Sstr,
+        N := -N
+    end,
+    foreach(I in 1..Divs.length) 
+        D = N div Divs[I],
+        N := N mod Divs[I],
+        if D != 0 then
+            Sstr := Sstr ++ english(D) ++ Divnames[I],
+            Printed := 1
+        end
+    end,
+    if N > 0, Printed = 1 then
+        Sstr := Sstr ++ "and"
+    end,
+    if N == 0 then      
+        1 == 1 % dummy
+    elseif N > 19 then
+        D = N div 10,
+        N := N mod 10,
+        Sstr := Sstr ++ Prefixes[D] ++ "ty" ++ english(N)
+    else 
+        Sstr := Sstr ++ Cardinals[N]
+    end,
+    English = Sstr.
+
+
+
+%
+% Data
+%
+
+/*
+  Facebook puzzle
+
+  [program = A * (4 + A),res = 45,count = 12]
+  [program = A + B * A,res = 45,count = 11]
+  [program = (A + 3) * A + A,res = 45,count = 5]
+  [program = (B / B + B) * A,res = 45.0,count = 5]
+  [program = (4 + A) * A,res = 45,count = 5]
+  [program = A + A * B,res = 45,count = 4]
+  [program = (3 + A + B / B) * A,res = 45.0,count = 4]
+  [program = (B + 1) * A,res = 45,count = 3]
+  [program = A * (B / B + B),res = 45.0,count = 3]
+  [program = A * (B + 1),res = 45,count = 3]
+  [program = A * (A + 3) + A,res = 45,count = 2]
+  [program = A * 1 * (4 + A),res = 45,count = 2]
+
+  resultMap = [45 = 9,45.0 = 3]
+
+*/ 
+data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[1,4],5],
+          [[2,5],12],
+          [[3,6],21]
+          ],
+  Vars = ['A','B'],
+  Unknown = [5,8],
+  Ops = [+,*,/],
+  Constants = 1..10,
+  MaxSize = 5,  
+  Params = new_map([init_size=200,
+                    stop_criteria=generation,
+                    num_gens=100
+                  ]).
+
+
+
+
+
+
+/*
+
+  Facebook puzzle 1b
+
+  [program = D * (A + 5),res = 40,count = 42]
+  [program = C + D + E,res = 25,count = 23]
+  [program = E * D + D,res = 45,count = 23]
+  [program = D * (E + 1),res = 45,count = 22]
+  [program = E + (D + C),res = 25,count = 21]
+  [program = (E + 1) * D,res = 45,count = 17]
+  [program = E + (C + D),res = 25,count = 16]
+  [program = D + D * E,res = 45,count = 15]
+  [program = D + C + E,res = 25,count = 14]
+  [program = E + C + D,res = 25,count = 11]
+  [program = (D * 1 + 4) * D,res = 45,count = 11]
+  [program = D + E * D,res = 45,count = 9]
+  [program = (A + 5) * D,res = 40,count = 7]
+  [program = (D + 4) * D,res = 45,count = 6]
+  [program = A + 5 + (C + A),res = 23,count = 2]
+  [program = 1 + A + E + C * 1,res = 24,count = 1]
+  [program = D * E + D,res = 45,count = 1]
+  [program = D + (C + E),res = 25,count = 1]
+
+  resultMap = [45 = 8,25 = 6,40 = 2,24 = 1,23 = 1]
+
+*/
+data(facebook_puzzle_1b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[0,0,  0,1, 4],5],
+          [[1,4,  5,2, 5],12],
+          [[2,5, 12,3, 6],21]
+          ],
+  Vars = ['A','B','C','D','E'],
+  Unknown = [3,6, 12,5, 8],
+  Ops = [+,*,/],
+  Constants = 1..10,
+  Params = new_map([num_gens=30]),
+  MaxSize = 15.
+
+/*
+
+  Pickover puzzle1
+  
+  http://hakank.org/jgap/pickover_puzzle1.conf
+  https://twitter.com/pickover/status/1504602497280786435
+  Pickover puzzle: https://twitter.com/pickover/status/1504602497280786435
+  (https://gpuzzles.com/mind-teasers/very-easy-number-sequence-puzzle/ )
+  
+   What number should replaced the question mark?
+      3         9       8
+     44        32      75
+   8    4    7   2    7  ? 
+  
+  Encoded as
+     a
+     b
+   c  d 
+
+  i.e. d is the output variable (unknown)
+
+  [program = B / (A + C),res = 5.0,count = 55]
+  [program = B / (C + A),res = 5.0,count = 49]
+  [program = 4 / (9 - C),res = 2.0,count = 29]
+  [program = (A + 9) / A,res = 2.125,count = 24]
+  [program = (9 + C / C * A) / A,res = 2.125,count = 15]
+  [program = 2 + (3 + (10 - 4 - A)) / A,res = 2.125,count = 14]
+  [program = (5 * 3 - A) / 9 * 3,res = 2.333333333333333,count = 7]
+  [program = C / (A + 5) * 4,res = 2.153846153846154,count = 5]
+  [program = (9 + A) / A,res = 2.125,count = 4]
+  [program = 4 * (C / (A + 5)),res = 2.153846153846154,count = 1]
+
+  resultMap = [2.125 = 4,5.0 = 2,2.153846153846154 = 2,2.333333333333333 = 1,2.0 = 1]
+
+*/
+data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[3,44, 8],4],
+          [[9,32, 7],2]
+          ],
+  Vars = ['A','B','C'], % The variables must be atoms!
+  Unknown = [8,75,7],  
+  Ops = [+,*,/,-],
+  Constants = 1..10,
+  Params = new_map([init_size=5000,num_gens=30]),
+  MaxSize = 21.
+
+
+/*
+  Prime test
+
+  [program = prime(X + 1 + X),res = 1,count = 5]
+  [program = prime(X + (1 + X)),res = 1,count = 3]
+  [program = prime(X + X + 1),res = 1,count = 1]
+
+  resultMap = [1 = 3]
+
+
+*/
+data(prime_test,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [ [[N],P] : N in 2..10, P = cond(prime(N*2+1),1,0)],
+  println(data=Data),
+  Unknown = [1],
+  Vars = ['X'],
+  Ops = [+,*,prime],
+  Constants = 1..4,
+  MaxSize = 5,
+  Params = new_map().
+
+
+
+/*
+  Test of gcd/2
+
+  [program = gcd(J,I) + gcd(gcd(I,1),3),res = 6,count = 8]
+  [program = 1 + gcd(J,I),res = 6,count = 5]
+  [program = gcd(J - I,J) + gcd(7,3),res = 6,count = 3]
+  [program = gcd(J,I) + 1,res = 6,count = 1]
+
+  resultMap = [6 = 4]
+
+*/
+data(gcd_test,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[I,J],T] : I in 1..5,J in 1..5, T = 1+gcd(I,J)],
+  println(data=Data),
+  Ops = [+,-,*,gcd],
+  Vars = ['I','J'],
+  Constants = 1..10,
+  Unknown = [10,5],
+  Params = new_map(),
+  MaxSize = 5.
+
+
+/*
+  This is correct, it should be 96.
+
+  [program = 10 * A + A + B,res = 96,count = 12]
+  [program = to_num2(A,A) + B,res = 96,count = 11]
+  [program = to_num2(A,A + B),res = 96,count = 8]
+  [program = B + to_num2(A,A),res = 96,count = 6]
+  [program = to_num2(A,A) + 1 * B,res = 96,count = 3]
+  [program = A + B + A * 10,res = 96,count = 3]
+  [program = A * to_num2(1,1) + B,res = 96,count = 2]
+
+  resultMap = [96 = 7]
+
+*/
+data(to_num,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[4,3],43+4],
+          [[3,1],31+3],
+          [[7,2],72+7]
+         ],
+  Unknown = [8,8], % 88 + 8 -> 96
+  Vars = ['A','B'],
+  Ops = [+,-,*,to_num2],
+  Constants = [1,2,10,100],
+  Params = new_map(),
+  MaxSize = 7.
+
+
+
+/*
+
+  The "infamous puzzle":
+   11x11=4
+   22x22=16
+   33x33=?
+
+  See
+  http://hakank.org/jgap/equation.conf
+  We represents this as
+  1 1 1 1 4 
+  2 2 2 2 16 
+  3 3 3 3 ?
+
+  Note: '**'/2 might blow up after a while.
+
+  Here are some solutions:
+
+  Compare with my Picat (CP) approach in equation.pi which has the following solutions
+  The constraint models above has 4 different models/interpretations and
+  finds four different solutions of the puzzle:
+    x1 = 36
+    x2 = 18
+    x3 = 64
+    x4 = 108
+
+  of which 18 is the only solution not found with this program.
+
+  * Using ** (but it might blow up in some runs).
+    Solutions:
+    [program = 4 ** A,res = 64,count = 28]
+    [program = 4 ** B,res = 64,count = 18]
+    [program = 4 ** C,res = 64,count = 14]
+    [program = 4 ** D,res = 64,count = 13]
+    [program = C * (D * 4),res = 36,count = 7]
+    [program = (A * B) ** (D / A) * 4,res = 36.0,count = 6]
+    [program = D ** C * 4,res = 108,count = 6]
+    [program = A ** B * (3 + 1),res = 108,count = 6]
+    [program = D * 4 * D,res = 36,count = 6]
+    [program = 4 * B ** A,res = 108,count = 6]
+    [program = 4 * (B * C),res = 36,count = 6]
+    [program = 4 * (1 * A ** A),res = 108,count = 5]
+    [program = 2 ** (2 * C),res = 64,count = 3]
+    [program = D * 4 * 1 * B,res = 36,count = 3]
+    [program = (2 ** B) ** 2,res = 64,count = 2]
+    [program = 4 ** (1 * C),res = 64,count = 2]
+    [program = D ** 2 * (1 + 3),res = 36,count = 2]
+    [program = 4 ** D / 1,res = 64.0,count = 1]
+    [program = C / (D / 4 ** D),res = 64.0,count = 1]
+    [program = A / (A / 4 ** B),res = 64.0,count = 1]
+    [program = 4 ** C - C + C,res = 64,count = 1]
+    [program = (A + A - ((4 - B) / C / B - 3) * (A - 2)) ** 2,res = 79.012345679012356,count = 1]
+    [program = (D + D) ** 2,res = 36,count = 1]
+    [program = (C + D) ** 2,res = 36,count = 1]
+    [program = (A + C) ** 2,res = 36,count = 1]
+    [program = (2 + 2) ** A,res = 64,count = 1]
+    [program = (1 + 3) ** A,res = 64,count = 1]
+    [program = ((4 / D) ** C) ** B,res = 13.318294975359438,count = 1]
+    [program = (4 ** 1) ** B,res = 64,count = 1]
+    [program = (4 ** 1) ** A,res = 64,count = 1]
+    [program = (2 ** 1) ** (D + D),res = 64,count = 1]
+    [program = (2 ** 1) ** (2 * C),res = 64,count = 1]
+    [program = (4 * 1) ** A,res = 64,count = 1]
+    [program = (1 * 4) ** B,res = 64,count = 1]
+    [program = 4 ** (B / 1),res = 64.0,count = 1]
+    [program = 4 ** B ** 1,res = 64,count = 1]
+    [program = 4 ** (D * 1),res = 64,count = 1]
+    [program = 2 ** (A + C),res = 64,count = 1]
+    [program = 2 ** 2 ** A,res = 256,count = 1]
+    [program = C * D * 4,res = 36,count = 1]
+    [program = 4 * A ** D,res = 108,count = 1]
+
+    resultMap = [64 = 19,36 = 9,108 = 5,64.0 = 4,256 = 1,79.012345679012356 = 1,36.0 = 1,13.318294975359438 = 1]
+
+
+  * Using pow_mod2/2 instead
+    [program = pow_mod2(4,B),res = 64,count = 9]
+    [program = B * (4 * D),res = 36,count = 9]
+    [program = B * (4 * A),res = 36,count = 9]
+    [program = 2 * (B * (D * 2)),res = 36,count = 9]
+    [program = 4 * (A * A / 1),res = 36.0,count = 8]
+    [program = 4 * (A * B),res = 36,count = 8]
+    [program = pow_mod2(4,D),res = 64,count = 7]
+    [program = pow_mod2(4,C),res = 64,count = 7]
+    [program = pow_mod2(4,A),res = 64,count = 6]
+    [program = A * (4 * A),res = 36,count = 6]
+    [program = D * (4 * A),res = 36,count = 5]
+    [program = pow_mod2(4,C) * (1 * 1),res = 64,count = 3]
+    [program = pow_mod2(4,C) * 1,res = 64,count = 3]
+    [program = D * (C * 4),res = 36,count = 3]
+    [program = B * (A * 4 / 1),res = 36.0,count = 3]
+    [program = 4 * (C * (D + D * (pow_mod2(1,4) / 1) - C)),res = 36.0,count = 3]
+    [program = pow_mod2(4,1 * A),res = 64,count = 2]
+    [program = pow_mod2(2,C + C),res = 64,count = 2]
+    [program = 4 * A * D,res = 36,count = 2]
+    [program = C * (pow_mod2(pow_mod2(4,1),A) * (1 / C)),res = 64.0,count = 2]
+    [program = 4 * (D * A),res = 36,count = 2]
+    [program = pow_mod2(pow_mod2(2,2),D),res = 64,count = 1]
+    [program = pow_mod2(pow_mod2(2,2),B),res = 64,count = 1]
+    [program = pow_mod2(A + D - (A - (C - B) - D),2),res = 36,count = 1]
+    [program = pow_mod2(C + C,2),res = 36,count = 1]
+    [program = pow_mod2(B + A,2),res = 36,count = 1]
+    [program = pow_mod2(3 + 1,D),res = 64,count = 1]
+    [program = pow_mod2(D * 2 * 1,2),res = 36,count = 1]
+    [program = pow_mod2(2 * 2,A),res = 64,count = 1]
+    [program = pow_mod2(4,pow_mod2(A,1)),res = 64,count = 1]
+    [program = pow_mod2(2,pow_mod2(2,A)),res = 256,count = 1]
+    [program = pow_mod2(2,A + C),res = 64,count = 1]
+    [program = pow_mod2(4,D) - C + C,res = 64,count = 1]
+    [program = pow_mod2(4,D) - C + B,res = 64,count = 1]
+    [program = pow_mod2(A,1) * (4 * D),res = 36,count = 1]
+    [program = pow_mod2(4,D) * 1,res = 64,count = 1]
+    [program = pow_mod2(4,1) * (A * A / 1),res = 36.0,count = 1]
+    [program = pow_mod2(D,4 - pow_mod2(3,1)) * 4 * pow_mod2(D,A - 1),res = 108,count = 1]
+    [program = D * 4 * C,res = 36,count = 1]
+    [program = D * (pow_mod2(pow_mod2(4,1),A) * (1 / C)),res = 64.0,count = 1]
+    [program = D * (4 * D),res = 36,count = 1]
+
+    resultMap = [64 = 17,36 = 16,36.0 = 4,64.0 = 2,256 = 1,108 = 1]
+
+  * Using pow_mod/3 also works:
+    [program = 4 * (A * D),res = 36,count = 8]
+    [program = 4 * (D * C),res = 36,count = 7]
+    [program = (D + B) / (2 / 4 / A),res = 36.0,count = 6]
+    [program = D * 4 * B,res = 36,count = 6]
+    [program = C * (1 + 3) * C,res = 36,count = 6]
+    [program = B * C * 4,res = 36,count = 6]
+    [program = D * (C * 4) / 1,res = 36.0,count = 5]
+    [program = (2 + 2) * (C - (2 - (C + C))),res = 28,count = 4]
+    [program = 4 * (B * D),res = 36,count = 4]
+    [program = pow_mod(D,2 * 4 * B,4 + D) * 4,res = 4,count = 2]
+    [program = C * (1 + 3) * D,res = 36,count = 2]
+    [program = pow_mod(4,D,A * 3 * (D + B)),res = 10,count = 1]
+    [program = 4 * B * D,res = 36,count = 1]
+
+    resultMap = [36 = 8,36.0 = 2,28 = 1,10 = 1,4 = 1]
+
+
+  Also see: 
+  MindYourDecision (Presh Talwalkar) has blogged/youtubed about it:
+   "Viral Puzzle 11 x 11 = 4. The Correct Answer Explained" 
+  - https://mindyourdecisions.com/blog/2016/09/21/viral-puzzle-11x11-4-the-correct-answer-explained/
+  - https://www.youtube.com/watch?v=IQd1oDsHVSc
+
+*/
+data(infamous_equation,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [ [[1,1,1,1],4],
+           [[2,2,2,2],16]
+           % , [[3,3,3,3],18] % force a solution
+          ],
+  % Ops = [+,-,*,/,**],
+  % Ops = [+,-,*,/,pow_mod2],
+  Ops = [+,-,*,/,pow_mod],  
+  Constants = 1..4,
+  Vars = ['A','B','C','D'],
+  MaxSize = 21,
+  Params = new_map([num_gens=10]),  
+  Unknown = [3,3,3,3].
+
+
+/*
+  Triangular numbers
+
+  http://www.research.att.com/~njas/sequences/A000217
+    a(n) = C(n+1,2) = n(n+1)/2 = 0+1+2+...+n
+ 
+  Solutions:
+  [program = (1 + A) * (A / 2 / 1),res = 28.0,count = 3]
+  [program = (1 + A) * (A / 2),res = 28.0,count = 3]
+  [program = A / 2 + A * A / 2,res = 28.0,count = 2]
+  [program = (1 + A) / 2 * A,res = 28.0,count = 2]
+
+  resultMap = [28.0 = 4]
+
+
+  Cf http://hakank.org/jgap/triangular_numbers.conf
+*/
+data(triangular,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  make_point_seq([1,3,6,10,15,21],Data,Unknown,Vars),
+  Ops = [+,-,*,/],
+  Constants = 1..2,
+  Params = new_map(),
+  MaxSize = 5.
+
+
+
+/*
+  https://medium.com/@themahfujur/17-can-you-solve-this-puzzle-many-people-fail-to-answer-this-viral-problem-78dfa1d017c6
+  """
+  9 = 72
+  8 = 56
+  7 = 42
+  6 = 30
+  5 = 20
+  3 = ?
+  """
+
+  The "most probable" formula would be
+    n * (n-1) = x
+   9 * 8      = 72
+   8 * 7      = 56
+   7 * 6      = 42
+   ...
+  
+  So 3 should be 3*2 = 6.
+  
+  Solutions:
+  [program = (A - A / A) * A,res = 6.0,count = 16]
+  [program = A * (A - 1),res = 6,count = 12]
+  [program = A + (A - A * (2 * 2 - A)) + A,res = 6,count = 8]
+  [program = (A - 1) * A,res = 6,count = 8]
+  [program = A * A - A,res = 6,count = 7]
+  [program = A + (A + (A - A * (2 * 2 - A))),res = 6,count = 6]
+  [program = A * (A - A / A),res = 6.0,count = 5]
+  [program = A * A - A + 0 * 0,res = 6,count = 3]
+  [program = 0 * (A / 8) + (A * A - A),res = 6.0,count = 3]
+  [program = A * A - 1 * A,res = 6,count = 1]
+
+  resultMap = [6 = 7,6.0 = 3]
+
+  It _could_ also be interpreted as
+   x* (x - the number above - 2):
+  3 * (5-2) = 3*3 = 9
+  See equation3b for this and other solutions.
+
+
+  Cf http://hakank.org/jgap/equation3.conf
+
+*/
+data(equation3,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [ [[9],72],
+           [[8],56],
+           [[7],42],
+           [[6],30],
+           [[5],20]
+          ],
+  Ops = [+,-,*,/],
+  Constants = 0..10,
+  Vars = ['A'],
+  Unknown = [3],
+  Params = new_map([num_gens=20]),
+  MaxSize = 21.  
+
+/*
+  https://medium.com/@themahfujur/17-can-you-solve-this-puzzle-many-people-fail-to-answer-this-viral-problem-78dfa1d017c6
+  """
+  9 = 72
+  8 = 56
+  7 = 42
+  6 = 30
+  5 = 20
+  3 = ?
+  """
+
+  Same as equation3 but as expanded representation.
+
+  Solutions:
+  [program = C * (C + 2 - 3),res = 6,count = 148]
+  [program = C * (A - 2),res = 9,count = 31]
+  [program = 2 + (A + (B / 3 - A) * 3),res = 12.0,count = 21]
+  [program = (C - 1) * C,res = 6,count = 8]
+  [program = C * C + 8 * (B * 0) - C,res = 6,count = 6]
+  [program = B - C * 2,res = 14,count = 6]
+  [program = (C + 2 - 3) * C,res = 6,count = 4]
+  [program = (A - 2) * C,res = 9,count = 4]
+  [program = B - C - (0 + C),res = 14,count = 1]
+  [program = B - C - C,res = 14,count = 1]
+  [program = B - 2 * C,res = 14,count = 1]
+  [program = B + (1 * 1 - (A + C)),res = 13,count = 1]
+  [program = (0 + C - 1) * C,res = 6,count = 1]
+
+  resultMap = [6 = 5,14 = 4,9 = 2,13 = 1,12.0 = 1]
+
+
+  Cf http://hakank.org/jgap/equation3.conf
+
+*/
+data(equation3b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [ [[9,72,8],56],
+           [[8,56,7],42],
+           [[7,42,6],30],
+           [[6,30,5],20]                      
+          ],
+  Ops = ['+','-','*','/'],
+  Constants = 0..10,
+  Vars = ['A','B','C'],
+  Unknown = [5,20,3],
+  Params = new_map([num_gens=30]),    
+  MaxSize = 9.  
+
+
+
+/*
+  Planets: Floats using approx
+
+  Kepler's third law is: 
+    Period^2 = Distance^3
+  i.e.
+    Period = sqrt(Distance)*Distance 
+
+  (From   (https://www.r-bloggers.com/2019/04/symbolic-regression-genetic-programming-or-if-kepler-had-r/ )
+
+  Note: For some runs, ** /2 might blow up.
+
+  * With sqrt
+    [program = X * sqrt(X),res = 83.473774324634448,count = 175]
+    [program = sqrt(X) * X,res = 83.473774324634448,count = 29]
+    [program = X * X / sqrt(X),res = 83.473774324634448,count = 5]
+    [program = X / (sqrt(X) / X),res = 83.473774324634448,count = 4]
+    [program = sqrt(X) * (X / 1),res = 83.473774324634448,count = 3]
+    [program = X / 1 * sqrt(X),res = 83.473774324634448,count = 2]
+    [program = X * sqrt(X / 1),res = 83.473774324634448,count = 2]
+    [program = sqrt(X) * X / 1,res = 83.473774324634448,count = 1]
+    [program = sqrt(X) * 2 / (2 / X),res = 83.473774324634462,count = 1]
+    [program = 3 * X / (3 / 1) * sqrt(X),res = 83.473774324634448,count = 1]
+    [program = (X - X + X) * sqrt(X),res = 83.473774324634448,count = 1]
+    [program = 1 * X * (X / X) * sqrt(X),res = 83.473774324634448,count = 1]
+    [program = sqrt(X) * X * 1,res = 83.473774324634448,count = 1]
+    [program = 1 * X * sqrt(X),res = 83.473774324634448,count = 1]
+    [program = sqrt(X / 1) * X,res = 83.473774324634448,count = 1]
+    [program = sqrt(X) * (X * 1),res = 83.473774324634448,count = 1]
+    [program = sqrt(X) * (1 * X),res = 83.473774324634448,count = 1]
+
+    resultMap = [83.473774324634448 = 16,83.473774324634462 = 1]
+
+  * Without sqrt
+    [program = X ** (3 / 2),res = 83.473774324634448,count = 53]
+    [program = (1 * X) ** (3 / 2),res = 83.473774324634448,count = 22]
+    [program = (X * 1) ** (3 / 2),res = 83.473774324634448,count = 1]
+
+    resultMap = [83.473774324634448 = 3]
+
+  * pow_mod2/2 or pow_mod/3 cannot be used since they require integers.
+
+  Cf http://hakank.org/jgap/planets.conf
+
+*/
+data(planets,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [ [[0.72],0.61],
+           [[1.00],1.00],
+           [[1.52],1.84],
+           [[5.20],11.90],
+           [[9.53],29.40],
+           [[19.10],83.50]
+        ],
+  println(data=Data),
+  % Ops = [+,*,-,/,sqrt],
+  Ops = [+,*,-,/,**], % Might blow up!
+  Vars = ['X'],
+  Unknown = [19.10],  
+  Constants = 1..3,
+  Params = new_map([init_size=1000, approx=0.1, num_gens=20,
+                    mutate_rate=0.1, crossover_rate=0.94,
+                    debug=false]),    
+  MaxSize = 4.
+
+
+/*
+
+  Fibonacci "expanded" version
+  1,1,2,3
+  1,2,3,5
+  2,3,5,8
+  3,5,8,13
+  5,8,13,21
+  8,13,21,34
+  13,21,34,55
+  21,34,55,89
+  34,55,89,144
+  55,89,144,233
+  89,144,233,377
+
+
+  Note: Just for demonstration, here we generate N=2..3 (2 is sufficient)
+
+  * For n = 2:
+    [program = A + B,res = 34,count = 79]
+    [program = B + A,res = 34,count = 35]
+    [program = (A + B) * 1,res = 34,count = 6]
+    [program = 1 * (B + A),res = 34,count = 2]
+    [program = (B + A) / 1,res = 34.0,count = 1]
+    [program = B / 1 + A,res = 34.0,count = 1]
+    [program = B + A + (A - A),res = 34,count = 1]
+    [program = A * (5 / 5) + B,res = 34.0,count = 1]
+    [program = A * 1 + B,res = 34,count = 1]
+    [program = B + A / 1,res = 34.0,count = 1]
+    [program = A + (1 * B + 7 - 7),res = 34,count = 1]
+
+    resultMap = [34 = 7,34.0 = 4]
+
+  * For n = 3
+    [program = B + C,res = 34,count = 69]
+    [program = A + (5 - 5 + B + B),res = 34,count = 20]
+    [program = C + B,res = 34,count = 14]
+    [program = C - A + C,res = 34,count = 4]
+    [program = B + A + B,res = 34,count = 3]
+    [program = B + (B + A),res = 34,count = 2]
+    [program = (C - (A - A - B)) / 1,res = 34.0,count = 1]
+    [program = (C + B) / 1,res = 34.0,count = 1]
+    [program = C - B + (5 - 5 + B + B),res = 34,count = 1]
+    [program = B - 7 + (7 + C),res = 34,count = 1]
+    [program = A - A + B + C,res = 34,count = 1]
+    [program = C / C * A + (5 - 5 + B + B),res = 34.0,count = 1]
+    [program = C + B * 3 / (1 * 3),res = 34.0,count = 1]
+
+    resultMap = [34 = 9,34.0 = 4]
+
+
+
+*/
+data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  % member(N,1..1), % For closed form. Nope.
+  member(N,2..3),  
+  println(n=N),
+  make_seq([1,1,2,3,5,8,13,21],N,Data,Unknown,Vars),
+  Ops = [+,-,*,/],
+  Constants = 1..10,          
+  MaxSize = 21,
+  Params = new_map([approx=0.1]).
+
+
+/*
+  Originally from Roger Alsing/Johans's blog post
+  "Genetic Programming: Code smarter than you"
+  https://rogerjohansson.blog/2010/02/14/genetic-programming-code-smarter-than-you/
+
+  Given the data table below, what is
+  9 7 ?
+  2 3 10
+  7 2 63
+  6 5 66
+  8 4 96
+  9 7 ?
+  
+  Solutions:
+  [program = X * (X + Y),res = 144,count = 22]
+  [program = X * (Y + X),res = 144,count = 15]
+  [program = (X + Y) * X,res = 144,count = 11]
+  [program = (Y + X) * X,res = 144,count = 9]
+  [program = X * Y + X * X,res = 144,count = 3]
+  [program = Y * X + X * X,res = 144,count = 1]
+  [program = X / 1 * (Y + X),res = 144.0,count = 1]
+  [program = (Y * 1 + X) * X,res = 144,count = 1]
+
+  resultMap = [144 = 7,144.0 = 1]
+
+
+
+  Cf:
+  - http://hakank.org/jgap/number_puzzle1.conf
+  - http://hakank.org/popper/number_puzzle1/
+
+*/
+data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[2,3],10],
+          [[7,2],63],
+          [[6,5],66],
+          [[8,4],96]
+          ],
+  Ops = [+,-,*,/],
+  Constants = 1..10,          
+  Vars = ['X','Y'],
+  Unknown = [9,7],  
+  MaxSize = 3,
+  Params = new_map().
+  
+/*
+  This is the problem that started/inspired this program.
+
+  From https://www.doc.ic.ac.uk/~mpd37/teaching/2014/ml_tutorials/2014-10-15-wood-anglican.pdf
+  Page 34ff
+  """
+  Symbolic Function Induction
+  What’s the next value? And the function?
+
+  Input    Output
+  ---------------
+  1        5
+  2        3
+  3        1
+  4        ?
+  """
+
+  Solutions:
+  [program = 7 - A - A,res = -1,count = 12]
+  [program = 7 - A - (A - A + A),res = -1,count = 6]
+  [program = 2 / (2 / 7) - A * (10 - 8),res = -1.0,count = 3]
+  [program = (4 - A) / A * A - (A - 2 - 1),res = -1.0,count = 3]
+  [program = 7 * 1 - (A + A),res = -1,count = 3]
+
+  resultMap = [-1 = 3,-1.0 = 2]
+
+
+  I.e. 7 - 2*A
+
+*/
+data(simple,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  make_point_seq([5,3,1],Data,Unknown,Vars),
+  Ops = [+,-,*,/],
+  Constants = 1..10,          
+  MaxSize = 8,
+  Params = new_map().
+
