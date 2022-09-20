@@ -1,0 +1,160 @@
+/* 
+
+  Dog Bunny puzzle in Picat.
+
+  http://www.dogbunnypuzzle.com/ 
+
+  The graph is
+           Bone
+          
+      House      Boat
+
+      Tree       Flower
+
+      Carrot    Well
+
+   See constraint/4 for the constraints from From to To.
+
+   Start positions:
+     Rabbit1 at House
+     Rabbit2 at Boat
+     Dog at Tree
+
+
+   Goal
+    Dog at Bone
+    Rabbit1 at Carrot
+    Rabbit2 at Carrot 
+
+
+  Here is one solution:
+len = 26
+[rabbit2,from,boat,to,house]
+[dog,from,tree,to,well]
+[dog,from,well,to,carrot]
+[rabbit1,from,house,to,bone]
+[dog,from,carrot,to,tree]
+[dog,from,tree,to,well]
+[dog,from,well,to,flower]
+[rabbit2,from,house,to,tree]
+[rabbit1,from,bone,to,boat]
+[rabbit1,from,boat,to,house]
+[dog,from,flower,to,boat]
+[dog,from,boat,to,house]
+[rabbit2,from,tree,to,well]
+[rabbit2,from,well,to,carrot]
+[dog,from,house,to,bone]
+[rabbit2,from,carrot,to,tree]
+[rabbit2,from,tree,to,well]
+[rabbit2,from,well,to,flower]
+[rabbit1,from,house,to,tree]
+[rabbit2,from,flower,to,well]
+[dog,from,bone,to,boat]
+[rabbit2,from,well,to,carrot]
+[dog,from,boat,to,house]
+[rabbit1,from,tree,to,well]
+[rabbit1,from,well,to,carrot]
+[dog,from,house,to,bone]
+
+  
+
+
+  (Thanks to Ryan S for letting me know of this puzzle.)
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go =>
+  init(Init),
+  
+  % best_plan(Init,Plan), % 0.047s
+  % best_plan_bb(Init,Plan), % 0.076s
+  best_plan_bin(Init,Plan),  % 0.046s
+  
+  println(plan=Plan),
+  println(len=Plan.length),
+  foreach(P in Plan)
+     println(P)
+  end,
+
+  nl.
+
+
+init([rabbit1(house),rabbit2(boat),dog(tree)]).
+
+final([rabbit1(carrot),rabbit2(carrot),dog(bone)]).
+
+%          From    To       Somebody at        Nobody at
+constraint(bone,   house,   [carrot],           _).
+constraint(bone,   boat,    _,                  _).
+constraint(house,  bone,    [carrot],           _).
+constraint(house,  boat,    [tree],             _).
+constraint(boat,   house,   [tree],             _).
+constraint(house,  tree,    [bone, flower],     _).
+constraint(tree,   house,   [bone, flower],     _).
+constraint(tree,   well,    _,                  _).
+constraint(flower, boat,    _,                  _).
+constraint(well,   tree,    _,                  _).
+constraint(well,   flower,  _,                  _).
+constraint(flower, well,    _,                  _).
+constraint(well,   carrot,  _,             [bone]).
+constraint(carrot, well,    _,             [bone]).
+constraint(carrot, tree,    _,                  _).
+
+
+action(From,To,Move,Cost) =>
+   From = $[rabbit1(Rabbit1),rabbit2(Rabbit2),dog(Dog)],
+   
+   % Pick one animal
+   select(Pick,From,[Other1,Other2]),
+   Pick =.. [PickAnimal,PickPlace],
+   Other1 =.. [Other1Animal,Other1Place],
+   Other2 =.. [Other2Animal,Other2Place],   
+
+   % Pick some valid path
+   constraint(PickPlace,PickPlaceTo,SomebodyAt,NobodyAt),
+   if nonvar(SomebodyAt) then
+      if SomebodyAt.len == 1 then
+        % either at SomebodyAt
+        (membchk(Other1Place,SomebodyAt) ; membchk(Other2Place,SomebodyAt))
+      else
+        % No other animal at the SomebodyAt places
+        (
+        (Other1Place == SomebodyAt[1], Other2Place == SomebodyAt[2])
+        ; 
+        (Other1Place == SomebodyAt[2], Other2Place == SomebodyAt[1])
+        )
+     end
+   end,
+   if nonvar(NobodyAt) then
+     % No other animal at NobodyAt
+     not membchk(Other1Place,NobodyAt), not membchk(Other2Place,NobodyAt)
+   end,
+   Cost = 1,
+   % The move (Move)
+   Move = [PickAnimal,from,PickPlace,to,PickPlaceTo],
+   % Next state (To)
+   if PickAnimal == rabbit1 then
+     Rabbit1To = PickPlaceTo,
+   else
+     Rabbit1To = Rabbit1 % stays
+   end,
+   if PickAnimal == rabbit2 then
+     Rabbit2To = PickPlaceTo
+   else
+     Rabbit2To = Rabbit2 % stays
+   end,
+   if PickAnimal == dog then     
+     DogTo = PickPlaceTo
+   else
+     DogTo = Dog % stays
+   end,
+   To = $[rabbit1(Rabbit1To),rabbit2(Rabbit2To),dog(DogTo)].
+
+

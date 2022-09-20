@@ -1,0 +1,245 @@
+/* 
+
+  Find five five-letter words that share no letter in Picat.
+
+  https://twitter.com/iamreddave/status/1571571771937005568
+  """
+  You might find this interesting. Find 5 words that share no letters. Initial 
+  program took a month to run 
+  https://docs.google.com/spreadsheets/d/11sUBkPSEhbGx2K8ah6WbGV62P8ii5l5vVeMpkzk17PI/edit#gid=0
+  now one millisecond
+  """
+
+  https://twitter.com/iamreddave/status/1571577145373392902
+  """
+  It came from a popular youtube channel https://youtube.com/watch?v=_-AfhLQfb6w
+  but its really impressive how/what people did to speed it up. When I heard his algorithm 
+  it seemed reasonable at the time
+  """
+
+  The five-letter words are from 
+  https://github.com/dwyl/english-words/blob/master/words_alpha.txt
+
+
+  * The first approach (go2/0) used all 10175 valid 5 letter words and it took 7 hours 5 minutes 33.29s
+
+  * The next approach (go/0) was to instead use the 5977 anagrams (the sorted version of 
+    the words). Then it first took 4min30s, and with some more tweaking down to 3min30s.
+
+
+  Cf my MiniZinc model: http.//hakank.org/minizinc/five_words_that_share_no_letter.mzn
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+% import sat.
+% import smt.
+import util.
+
+main => go.
+
+/*
+ * Using 5977 sorted word "anagrams" instead is quite faster. 
+   Using cp + ff/split on the the 5977 sorted words anagrams took 3 minutes 28s.
+
+   See the output http://hakank.org/picat/five_words_that_share_no_letter_anagram_approach.txt
+
+ * Testing sat on the 5977 sorted words
+   Much slower than cp ff/split (I interrupted after 4min30s)
+
+*/ 
+go ?=>
+  nolog,
+  Map = get_global_map(),
+  Map.put(count,0),
+  Map.put(count2,0),  
+  File = "words_alpha.txt",
+  % File = "unixdict.txt", % No solution!
+  N = 5,
+  WordsReal = [W : W in read_file_lines(File), length(W) == N, W.remove_dups.len==N],
+  println(num_words_orig=WordsReal.len),
+  % Collect words with the same sorted chars (anagram)
+  SortedMap = new_map(),
+  foreach(Word in WordsReal)
+    S = Word.sort,
+    SortedMap.put(S,SortedMap.get(S,[])++[Word])
+  end,
+  % Use the anagram as words
+  Words = SortedMap.keys.sort,
+  println(num_words=Words.len),
+
+  println(num_words=Words.len),
+  WordsConv = [convert_word(W) : W in Words],
+  X = get_words(N,WordsConv),
+  Map.put(count,Map.get(count)+1),
+  Ws = [Words[I] : I in X],
+  As = [SortedMap.get(W) : W in Ws],
+  AsLen = [W.len : W in As].prod, % The number of combinations
+  Map.put(count2,Map.get(count2)+AsLen),  
+  println(Ws=Map.get(count)=As=Map.get(count2)),
+  % print_sol(As), % print the exanded combinations
+  fail, 
+  nl.
+
+go =>
+ println(num_sols1=get_global_map().get(count)),
+ println(num_sols2=get_global_map().get(count2)).
+
+
+%
+% Full version, i.e. using all 10175 words. This is much slower.
+% This was actually the first test.
+% Using cp + constr/split on all 10175 valid 5-letter words.
+% It took 7 hours 5 minutes 33.29s to find the 831 different 5x5 word combinations.
+% (Note: The solution index starts with 0 which is only a presentation goof...)
+%
+% See the output http://hakank.org/picat/five_words_that_share_no_letter_full.txt
+%
+go2 ?=>
+  nolog,
+  Map = get_global_map(),
+  Map.put(count,0),
+  File = "words_alpha.txt",
+  % File = "wordle_small.txt", % No solution
+  % File = "wordle_large.txt", % 
+  % File = "unixdict.txt", % No solution!
+  N = 5,
+  Words = [W : W in read_file_lines(File), length(W) == N, W.remove_dups.len==N],
+  println(num_words=Words.len),
+  
+  WordsConv = [convert_word(W) : W in Words],
+  X = get_words(N,WordsConv),
+  Map.put(count,Map.get(count)+1),
+  Ws = [Words[I] : I in X],
+  println(Ws=Map.get(count)),
+  fail,
+ 
+  nl.
+
+go2 =>
+ println(num_sols1=get_global_map().get(count)).
+
+
+%
+% Convert all 5-letter words to MiniZinc format.
+%
+go_mzn =>
+  File = "words_alpha.txt",
+  N = 5,
+  Words = [W : W in read_file_lines(File), length(W) == N, W.remove_dups.len==N],
+  printf("num_words=%d;\n", Words.len),
+  println("words = array2d(1..num_words,1..5,["),
+  foreach(Word in Words)
+    [C1,C2,C3,C4,C5] = convert_word(Word),
+    printf("\t%d,%d,%d,%d,%d, %% %w\n",C1,C2,C3,C4,C5,Word)
+  end,
+  println("]);"),
+  println("words_s = ["),
+  foreach(Word in Words)
+    printf("\"%w\",\n",Word)
+  end,
+  println("];"),
+  nl.
+
+
+%
+% Convert the anagram representation to MiniZinc format
+%
+go_mzn2 =>
+  File = "words_alpha.txt",
+  N = 5,
+  WordsReal = [W : W in read_file_lines(File), length(W) == N, W.remove_dups.len==N],
+  println(num_words_orig=WordsReal.len),
+  % Collect words with the same sorted chars (anagram)
+  SortedMap = new_map(),
+  foreach(Word in WordsReal)
+    S = Word.sort,
+    SortedMap.put(S,SortedMap.get(S,[])++[Word])
+  end,
+  % Use the anagram as words
+  Words = SortedMap.keys.sort,
+
+  printf("num_words=%d;\n", Words.len),
+  println("words = array2d(1..num_words,1..5,["),
+  foreach(Word in Words)
+    [C1,C2,C3,C4,C5] = convert_word(Word),
+    printf("\t%d,%d,%d,%d,%d, %% %w\n",C1,C2,C3,C4,C5,Word)
+  end,
+  println("]);"),
+  println("words_s = ["),
+  foreach(Word in Words)
+    printf("\"%w\",\n",SortedMap.get(Word))
+  end,
+  println("];"),
+  nl.
+
+
+%
+% This is the CP model.
+%
+get_words(N,Words) = X =>
+  Len = Words.len,
+  
+  X = new_array(N),
+  X :: 1..Len,
+  
+  % all_distinct(X),  
+  all_different(X),
+  increasing_strict(X), % symmetry breaking
+
+  Y = new_array(N,N),
+  Y :: 1..26,
+
+  % Ensure that there are only distinct characters
+  % all_different(Y.vars),
+  all_distinct(Y.vars), % faster than all_different/1
+
+  % place the I'th word in Y
+  foreach(I in 1..N)
+    XI #= X[I],
+    println([i=I,xi=XI]),    
+    foreach(J in 1..N)
+      % Place the proper character of the I'th word in Y
+      matrix_element(Words,XI,J,Y[I,J])
+    end
+  end,
+
+  println(x=X),
+
+  println(y=Y),
+  println(solve),
+  
+  Vars = X.vars ++ Y.vars,
+  % Vars = Y.vars ++ X.vars,
+  
+  % solve($[constr,split],Vars).
+  solve($[ff,split],Vars).
+  % solve($[ffd,split],Vars).
+  % solve($[split],Vars).
+  % solve($[ffc,split],Vars).
+
+%
+% Convert a lower (in lower case) to integers.
+% a->1, b->2, etc
+% 
+convert_word(Word) = Convert =>
+  Convert = [],
+  foreach(C in Word) 
+     Convert := Convert ++ [ord(C) - 96]
+  end.
+
+
+%
+% Print all combinations of the solution.
+%
+print_sol(Ws) =>
+  member(W1,Ws[1]),
+  member(W2,Ws[2]),
+  member(W3,Ws[3]),
+  member(W4,Ws[4]),
+  member(W5,Ws[5]),
+  println([W1,W2,W3,W4,W5]).
+
