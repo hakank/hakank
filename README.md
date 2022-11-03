@@ -52,6 +52,7 @@ Here's a summary of the directories so far:
 * setlx: SETL and SetlX, high level set based programming language
 * sicstus: SICStus Prolog, constraint programming, logic programming, loops, etc.
 * swi_prolog: SWI-Prolog, constraint programming, logic programming, etc.
+* turbo_prolog: Some of my old Turbo Prolog programs (from 1989-1990)
 * unicon: Unicon/Icon, high level programming language
 * webppl: WebPPL, a probabilistic programming language (as subset of JavaScript)
 * weka: Weka, data mining/machine learning, Java files, HTML, and data files (ARFF and CSV)
