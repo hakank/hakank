@@ -1,0 +1,112 @@
+/* 
+
+  Hitori in Picat.
+
+  See https://en.wikipedia.org/wiki/Hitori
+  """
+  Hitori is played with a grid of squares or cells, with each cell initially containing a number. 
+  The game is played by eliminating squares/numbers and this is done by blacking them out. 
+  The objective is to transform the grid to a state wherein all three following rules are true:
+
+  - no row or column can have more than one occurrence of any given number
+  - black cells cannot be horizontally or vertically adjacent, although they can be diagonal 
+    to one another.
+  - the remaining numbered cells must be all connected to each other, horizontally or vertically.
+  """
+
+  Here's the instance from the Wikipedia page:
+   4 8 1 6 3 2 5 7 
+   3 6 7 2 1 6 5 4 
+   2 3 4 8 2 8 6 1 
+   4 1 6 5 7 7 3 5 
+   7 2 3 1 8 5 1 2 
+   3 5 6 7 3 1 8 4 
+   6 4 2 3 5 4 7 8 
+   8 7 1 4 2 3 5 6
+
+
+  The (unique) solution:
+   X 8 X 6 3 2 X 7 
+   3 6 7 2 1 X 5 4 
+   X 3 4 X 2 8 6 1 
+   4 1 X 5 7 X 3 X 
+   7 X 3 X 8 5 1 2 
+   X 5 6 7 X 1 8 X 
+   6 X 2 3 5 4 7 8 
+   8 7 1 4 X 3 X 6 
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat. % must use sat fpr scc/1
+
+main => go.
+
+go =>
+  nolog,
+  data(1,Data),
+  Rows = Data.len,
+  Cols = Data[1].len,
+  
+  Y = new_array(Rows,Cols),
+  Y :: 0..1, % 0: blocked, 1: not blocked
+
+  % * no row or column can have more than one occurrence of any given number
+  foreach(I in 1..Rows)
+    all_different_except_0([T : J in 1..Cols, T #= Data[I,J]*Y[I,J]])    
+  end,
+  foreach(J in 1..Cols)
+    all_different_except_0([T : I in 1..Rows, T #= Data[I,J]*Y[I,J]])
+  end,
+
+  % * black cells cannot be horizontally or vertically adjacent, although
+  %   they can be diagonal to one another.
+  foreach(I in 1..Rows)
+    foreach(J in 2..Cols-1)
+      Y[I,J] #= 0 #=> (Y[I,J-1] #!= 0 #/\ Y[I,J+1] #!= 0)
+    end
+  end,
+
+  foreach(J in 1..Cols)
+    foreach(I in 2..Rows-1)
+      Y[I,J] #= 0 #=> (Y[I-1,J] #!= 0 #/\ Y[I+1,J] #!= 0)
+    end
+  end,
+
+  % the remaining numbered cells must be all connected to each other,
+  % horizontally or vertically.  
+  scc_grid(Y),
+
+  solve(Y),
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      if Y[I,J] == 1 then
+        printf("%d ",Data[I,J])
+      else
+        printf("X ")
+      end
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  
+  nl.
+
+
+% From https://en.wikipedia.org/wiki/Hitori
+data(1,Data) =>
+  Data = chunks_of([
+4,8,1,6,3,2,5,7,
+3,6,7,2,1,6,5,4,
+2,3,4,8,2,8,6,1,
+4,1,6,5,7,7,3,5,
+7,2,3,1,8,5,1,2,
+3,5,6,7,3,1,8,4,
+6,4,2,3,5,4,7,8,
+8,7,1,4,2,3,5,6
+  ], 8).
