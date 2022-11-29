@@ -32,7 +32,7 @@
   Some timings of the anagram approach (538 solutions):
   * Gecode:
     - solve satisfy with -f and -p12: 3min22s
-    - int_search(x, first_fail,indomain_split) satisfy with -p12: 1min42.96s <---
+    - int_search(x, first_fail,indomain_split) satisfy with -p12: 1min42.96s <--- best for Gecode
     - int_search(x, max_regret,indomain_split) satisfy with -p12: 2min14.61s
     . int_search(x, most_constrained,indomain_split) satisfy with -p12: 1min45.77s.       
     - int_search(x, occurrence,indomain_split) satisfy with -p12: 3min35.32s
@@ -51,6 +51,11 @@
     Note: The -f (free search flag) does not work with -a (all solutions) 
    - solve satisfy with -p12: >4hours
    - int_search(x, first_fail,indomain_split) satisfy with -p12: >30minutes
+
+   * SICStus Prolog
+     - solve :: int_search(x, first_fail,indomain_split) satisfy; 7min46.79s
+     - solve satisfy: 1min28.82s <--- Overall best
+     - with -f: 1min30.92s
 
 
   The single threaded Picat model took 3min30s for this task.
@@ -86,8 +91,8 @@ constraint
   )
 ;
 
-% solve satisfy;
-solve :: int_search(x, first_fail,indomain_split) satisfy;
+solve satisfy;
+% solve :: int_search(x, first_fail,indomain_split) satisfy;
 % solve :: int_search(x, max_regret,indomain_split) satisfy;
 % solve :: int_search(x, first_fail,indomain_min) satisfy;
 % solve :: int_search(x, occurrence,indomain_split) satisfy;
