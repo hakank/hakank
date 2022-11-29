@@ -44,11 +44,11 @@
 
 
 %
-% Test the two given puzzles.
+% Test the given puzzles.
 % Note that we test for unicity of the solutions.
 %
 go :-
-        between(1,2,P),
+        between(1,5,P),
         writeln(problem=P),
         data(P,Data),
         maplist(writeln,Data),
@@ -270,3 +270,83 @@ data(2,Data) :-
     [[7,3,8],0,0], % - nothing is correct
     [[7,8,0],0,1]  % - one number is correct but in the wrong position
   ].
+
+
+
+/*
+  https://puzzling.stackexchange.com/questions/97032/5-digit-puzzle-code-looking-for-solution
+  """
+  Can somebody help me solve this, or can you teach me how?
+
+  4 7 2 9 1 - One number is correct but not in right position
+  9 4 6 8 7 - One number is correct but not in right position
+  3 1 8 7 2 - Two numbers are correct but only one is in right position
+  1 5 7 3 9 - Two numbers are correct and both in right position
+  """
+
+  Also see: 
+  https://g-ar.github.io/posts/solving-mastermind-like-problems-using-z3-theorem-prover/
+
+  Note: It has two solutions:
+    [1,5,8,0,0]
+    [6,5,0,3,2]
+
+  If we assume distinctness of the numbers then the answer is
+    [6,5,0,3,2]
+
+*/
+% This is also modelled in number_lock_5_digits.pi
+data(3,Data) :-
+  Data = [
+    [[4,7,2,9,1],0,1], % - One number is correct but not in right position
+    [[9,4,6,8,7],0,1], % - One number is correct but not in right position
+    [[3,1,8,7,2],1,2], % - Two numbers are correct but only one is in right position
+    [[1,5,7,3,9],2,2]  % - Two numbers are correct and both in right position
+  ].
+
+
+/* 
+  From https://twitter.com/sonukg4india/status/1591081634534936576
+  """
+  A padlock has a 4-digit key code.
+
+  2657: Has two correct digits but neither are in the correct place
+  0415: Has one correct digit but it's in the wrong place
+  4268: Has no correct digitss.
+  1749: Has two correct digits, both in the correct places.
+  All the 4 digits in the key are different. 
+  What is the code for the padlock?
+  """   
+
+*/
+data(4,Data) :-
+  Data = [
+    [[2,6,5,7],0,2], % - Two numbers are correct but not in right position
+    [[0,4,1,5],0,1], % - One number is correct but not in right position
+    [[4,2,6,8],0,0], % - No correct digit
+    [[1,7,4,9],2,2]  % - Two numbers are correct and both in right position
+  ].
+
+
+/* 
+  From https://twitter.com/sonukg4india/status/1591343310505115648
+  """
+  Can you crack the code
+
+  795  One number is correct and well placed
+  741  One number is correct but wrong place
+  463  Two numbers are correct but in wrong place
+  127  Nothing is correct
+  169  One number is correct but wrong place
+  """
+
+*/
+data(5,Data) :-
+  Data = [
+    [[7,9,5],1,1],
+    [[7,4,1],0,1],
+    [[4,6,3],0,2],
+    [[1,2,7],0,0],
+    [[1,6,9],0,1] 
+  ].
+

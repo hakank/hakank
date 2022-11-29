@@ -11,12 +11,13 @@
   See also my SWI Prolog page: http://www.hakank.org/swi_prolog/
 
 */
-% :- set_prolog_flag(double_quotes, string).  % default
 
+:- use_module(library(pairs)). % for pairs_keys_values/3
 
 /*
   Some realistic tests.
 */
+
 go :-
 
         wordle("...n.",["","","","",""],"slat"),
@@ -96,11 +97,11 @@ wordle([Word|Words],CorrectPos1,CorrectChar1,NotInWord1, AllWords0,AllWords) :-
         maplist(string_chars,CorrectChar1,CorrectChar),
 
         % connect Word + CorrectPos into pairs
-        zip(Word,CorrectPos,Zip1),
+        pairs_keys_values(Pairs1,Word,CorrectPos),
         % connect Word + CorrectChar into pairs        
-        zip(Word,CorrectChar,Zip2),
-        ( (correct_pos(Zip1,_,_),
-           correct_char(Word,Zip2,_,_),
+        pairs_keys_values(Pairs2,Word,CorrectChar),
+        ( (correct_pos(Pairs1,_,_),
+           correct_char(Word,Pairs2,_,_),
            not_in_word(Word,NotInWord,_,_)) ->
           append(AllWords0,[Word],AllWords1),
           wordle(Words, CorrectPos, CorrectChar, NotInWord, AllWords1,AllWords)
@@ -115,7 +116,7 @@ wordle([Word|Words],CorrectPos1,CorrectChar1,NotInWord1, AllWords0,AllWords) :-
 %
 % Ensure that all chars != "." are in correct position.
 % 
-correct_pos([[C,C2]|Cs]) --> {(C == C2 ; C2 == '.')}, correct_pos(Cs).
+correct_pos([C-C2|Cs]) --> {(C == C2 ; C2 == '.')}, correct_pos(Cs).
 correct_pos([]) --> [].
 
 %
@@ -123,7 +124,7 @@ correct_pos([]) --> [].
 % Ensure that the character is in the word, but not
 % in the given position.
 % 
-correct_char(Word,[[W,CC]|WCC]) --> { (CC == [] ; (member(C,CC), C \= W, memberchk(C,Word)) ) }, 
+correct_char(Word,[W-CC|WCC]) --> { (CC == [] ; (member(C,CC), C \= W, memberchk(C,Word)) ) }, 
                                     correct_char(Word,WCC).
 correct_char(_Word,[]) --> [].
 
@@ -177,17 +178,6 @@ score_word([C|Cs],[Alpha|Alphas],Score0,Score) :-
         S is N / 2,
         Score1 is Score0 + S,
         score_word(Cs,Alphas,Score1,Score).
-
-%
-% zip(L1,L2,Zip)
-% * zipping the lists L1 and L2 into pairs in Zip.
-% * extracts the first and second element into L1 and L2 of the list of lists Zip.
-%
-zip(L1,L2,Zip) :-
-        zip(L1,L2,[],Zip).
-zip([],[],Zip,Zip).
-zip([A|As],[B|Bs],Zip0,[[A,B]|Zip]) :-
-          zip(As,Bs,Zip0,Zip).
 
 
 % Print an empty board
