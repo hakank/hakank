@@ -51,3 +51,5 @@ circular_prime(Len1,Len,Is) :-
         is_prime(Num2),
         Len2 is Len1 + 1,
         circular_prime(Len2,Len,Is2).
+
+

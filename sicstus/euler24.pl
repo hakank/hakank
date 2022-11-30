@@ -43,7 +43,7 @@ euler24a :-
     writeln(Sol).
 
 %%
-%% 0.673s
+%% 1.336s
 %%
 euler24b :-
         N = 1000000,
@@ -69,16 +69,6 @@ find_permutation(I,N,P0,P) :-
         find_permutation(I1,N,P1,P).
 
 %%
-%% CP approach.
-%%
-permutation_clpfd(L, N) :-
-        length(L, N),
-        N1 #= N - 1,
-        domain(L,0,N1),
-        all_different(L),
-        labeling([step],L).
-
-%%
 %% next_higher_permutation/2
 %%
 %% From T. Van Le, "Techniques of Prolog Programming", page 100f
@@ -99,3 +89,13 @@ reverse3([],R,R).
 reverse3([H|T],R,L1) :-
         reverse3(T,[H|R],L1).
 
+
+%%
+%% CP approach.
+%%
+permutation_clpfd(L, N) :-
+        length(L, N),
+        N1 #= N - 1,
+        domain(L,0,N1),
+        all_different(L),
+        labeling([step],L).

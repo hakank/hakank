@@ -26,9 +26,9 @@
 
 go :- 
         L = [
-             % euler28a,
+             euler28a % ,
              % euler28b,
-             euler28c
+             % euler28c
             ],
         run_problems(L).
 

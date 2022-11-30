@@ -32,7 +32,7 @@ go :-
 
 
 %%
-%% 1.584s
+%% 0.038s
 %%
 euler44a :-
         M = 2500,
@@ -51,7 +51,9 @@ euler44a :-
         J #< K,
         A #= J+K,
         D #= abs(J-K),
-        labeling([max,bisect,down],Vars),
+        % labeling([max,bisect,down],Vars), % 1.504s
+        % labeling([min,bisect,down],Vars), %  1.243s
+        labeling([anti_first_fail,bisect,down],Vars), % 0.038s
         writeln(D).
 
 in2(Domain,Var) :-

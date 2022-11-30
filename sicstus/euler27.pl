@@ -42,15 +42,16 @@ go :-
         run_problems(L).
 
 %%
-%% 3.159s
+%% 2.290s
 %%
 euler27a :-
         T is 999,
         TNeg is -T,
+        new_mutdict(PrimeCache),
         findall([Len,AB,A,B],
                 (between(TNeg,T,A),
-                 between(TNeg,T,B),
-                 p27(A,B,Len),
+                 between(A,T,B),
+                 p27(PrimeCache,A,B,Len),
                  AB is A*B
                 ),
                 L),
@@ -58,26 +59,60 @@ euler27a :-
         reverse(LSorted1,LSorted),
         % samsort(@>,L,LSorted), % Slower: 5.209s
         matrix_nth1(LSorted,1,2,MaxValue),
-        writeln(MaxValue).
+        writeln(MaxValue),
+        mutdict_items(PrimeCache,Items),
+        writeln(items=Items).
                 
-
-p27(A,B,N) :-
+%%
+%% Testing different of caching:
+%% - is_prime3/1 (no cache): 0.834s
+%% - is_prime_memo/1 (assertz/1): 0.865s
+%% - is_prime_cache/1: (mutdict): 0.941s
+%% I.e. no caching is fastest.
+%%
+p27(PrimeCache,A,B,N) :-
         N0 is 0,
         PP is N0*N0 + A*N0 + B,
-        PP > 1,
-        p27_(PP,A,B,N0,N).
-
-p27_(_PP,_A,_B,N,N).
-p27_(PP,A,B,N0,N) :-
-        PP > 1,
-        is_prime3(PP), % 3.159s
-        % prime_cp(PP), % Much slower: 11.340s
-        % prime_cached(PP),
+        is_prime3(PP),
         % is_prime_memo(PP),
+        % is_prime_cache(PrimeCache,PP),
+        PP > 1,
+        PP < 1000,
+        p27_(PrimeCache,PP,A,B,N0,N).
+
+p27_(_PrimeCache,_PP,_A,_B,N,N).
+p27_(PrimeCache,PP,A,B,N0,N) :-
+        PP < 1000,    
+        PP > 1,
+        is_prime3(PP), 
+        % is_prime_memo(PP), 
+        % is_prime_cache(PrimeCache,PP), 
         N1 is N0+1,        
         PP1 is N1*N1 + A*N1 + B,
-        p27_(PP1,A,B,N1,N).
+        p27_(PrimeCache,PP1,A,B,N1,N).
 
 
-prime_cached(N) :-
-        is_prime3(N).
+is_prime_cache(PrimeCache,N) :-
+    (mutdict_get(PrimeCache,N,Val) ->
+        Val == true
+    ;
+        ( is_prime3(N) ->
+            mutdict_put(PrimeCache,N,true)
+        ;
+            mutdict_put(PrimeCache,N,false),
+            false            
+        )
+    ).
+
+:- dynamic is_prime/2.
+is_prime_memo(N) :-
+    (is_prime(N,Val) ->
+        Val == true
+    ;
+        (is_prime3(N) ->            
+            assertz(is_prime(N,true))
+        ;
+            assertz(is_prime(N,false)),
+            false
+        )
+    ).

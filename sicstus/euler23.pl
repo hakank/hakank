@@ -31,9 +31,10 @@
 
 go :- 
         L = [
-             euler23a % ,
+             % euler23a,
              % euler23b,
-             % euler23c
+            % euler23c
+            euler23d
             ],
         run_problems(L).
 
@@ -126,6 +127,45 @@ e23c(N,Domain, AB) :-
         AB #= A+B,
         AB #< N,
         labeling([ff,bisect],[A,B]).
+
+%%
+%% Much faster using foreach/2 loops: 0.831s
+%%
+euler23d :-
+        %% N = 28123, 
+        %% From http://mathworld.wolfram.com/AbundantNumber.html: 
+        %%  "Every number greater than 20161 can be expressed as a
+        %% sum of two abundant numbers."
+        N = 20161,
+        numlist(1,N,Is),
+
+        %% Get the Abundant numbers
+        include(abundant,Is,Abundant),
+
+        %% Find all numbers that can be
+        %% written as a sum of two Abundant numbers
+        (foreach(A,Abundant),
+         foreach(ABs1,ABSS),
+         param(N,Abundant) do
+        (foreach(B,Abundant),
+         fromto(ABs1,Out,In,[]),
+          param(A,N) do
+          ((A =< B, AB is A+B, AB < N) ->
+           Out = [AB|In]
+          ;
+           Out = In
+           )
+         )
+        ),
+        flatten(ABSS,ABs),
+        %% And now delete these from 1..N
+        %% ABs: 6257244 numbers (including duplicates)
+        %% ABsSorted: 18705 numbers
+        sort(ABs,ABsSorted),    % sort and remove duplicates
+        delete_all(Is,ABsSorted,L),
+        sum_list(L,Sum),
+        writeln(Sum).
+
 
 abundant(N) :-
         sum_proper_divisors(N,D),

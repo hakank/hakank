@@ -20,12 +20,13 @@
 
 go :- 
         L = [
-            euler39a
+            % euler39a,
+            euler39b
             ],
         run_problems(L).
 
 %%
-%% 3.579s
+%% 0.972s
 %%
 euler39a :-
         N = 1000,
@@ -39,20 +40,53 @@ euler39a :-
                  member(B,Squares),
                  A =< B,
                  AB is A+B,
-                 memberchk(AB,Squares),
                  C is round(sqrt(A) + sqrt(B) + sqrt(AB)),
-                 C =< 1000
+                 C =< 1000,
+                 memberchk(AB,Squares)
                 ),
                 Valid),
-        sort(Valid,Sorted),
         findall([Count-C],
-                (member(C,Sorted),
-                 % count_occurrences(Valid,C,Count) % slightly slower 3.5s
+                (member(C,Valid),
+                 % count_occurrences(Valid,C,Count) % slightly slower 
                  count_occ(Valid,C,Count)
                 ),
                 L),
-        sort(L,Counts1),
-        reverse(Counts1,Counts),
-        Counts = [[_MaxCount-Num]|_],
+        sort(L,Counts),
+        last(Counts,[_MaxCount-Num]),
+        writeln(Num).
+
+%%
+%% Using for-loops.
+%% 0.590s
+%%
+euler39b :-
+        N = 1000,
+        (for(I,1,N),
+         fromto(Squares,[I2|In],In,[]) do
+           I2 is I*I
+        ),
+        (foreach(A,Squares),
+         foreach(Valid1,Valid2),
+         param(Squares) do
+         (foreach(B,Squares),
+          fromto(Valid1,Out,In,[]),
+          param(A,Squares) do          
+          ((AB is A+B,C is round(sqrt(A) + sqrt(B) + sqrt(AB)),A =< B,
+            C =< 1000,
+            memberchk(AB,Squares)
+              ) ->
+               Out = [C|In]
+           ;
+               Out = In
+           )
+         )
+        ),
+        flatten(Valid2,Valid),
+        (foreach(CC,Valid),
+         fromto(L,[[Count-CC]|In],In,[]), param(Valid) do
+           count_occ(Valid,CC,Count)
+        ),
+        sort(L,Counts),
+        last(Counts,[_MaxCount-Num]),
         writeln(Num).
 
