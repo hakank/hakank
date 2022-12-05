@@ -106,13 +106,12 @@ get_rep_len(I,Found, Value0,Value,Position0,Position,FoundRemainders) :-
         nonvar(Value0),
         Value1 is Value0+1,
         nth1(Value1,FoundRemainders,FRV),
-        (nonvar(FRV)
-        ->
-         get_rep_len(I,true,Value0,Value,Position0,Position,FoundRemainders)        
+        (nonvar(FRV) ->
+            get_rep_len(I,true,Value0,Value,Position0,Position,FoundRemainders)        
         ;
-         var(FRV),
-         nth1(Value1,FoundRemainders,Position0),
-         Value2 is (Value0*10) mod I,
-         Position1 is Position0 + 1,
-         get_rep_len(I,Found,Value2,Value,Position1,Position,FoundRemainders)
+            % var(FRV),
+            nth1(Value1,FoundRemainders,Position0),
+            Value2 is (Value0*10) mod I,
+            Position1 is Position0 + 1,
+            get_rep_len(I,Found,Value2,Value,Position1,Position,FoundRemainders)
         ).

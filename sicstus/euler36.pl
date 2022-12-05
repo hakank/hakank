@@ -22,7 +22,8 @@
 
 go :- 
         L = [
-             euler36a
+            % euler36a,
+            euler36b
             ],
         run_problems(L).
 
@@ -39,4 +40,19 @@ euler36a :-
                 L),
         sum_list(L,Sum),
         writeln(Sum).
+
+%%
+%% 0.195s
+%%
+euler36b :-
+    (for(N,1,999999),
+     fromto(L,Out,In,[]) do
+      ( (palindromic2(N),dec_to_base_list(N,2,L2),palindromic(L2) ) ->
+          Out = [N|In]
+      ;
+          Out = In
+      )
+    ),
+    sum_list(L,Sum),
+    writeln(Sum).
         

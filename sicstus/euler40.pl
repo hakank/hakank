@@ -24,7 +24,8 @@
 
 go :- 
         L = [
-             euler40a
+            % euler40a,
+            euler40b
             ],
         run_problems(L).
 
@@ -39,6 +40,34 @@ euler40a :-
                  num_to_digit_list(I,S)
                 ),
                 L),
+        flatten(L,Ls),
+        findall(T,
+                (
+                 between(1,6,I),
+                 I2 is 10^I,
+                 nth1(I2,Ls,T)
+                ),
+                Ts),
+        prodlist(Ts,Prod),
+        writeln(Prod).
+
+%%
+%% 0.464s
+%%
+euler40b :-
+        N = 1000000,
+        %% Generate all digits for 1..10^6
+        /*
+        findall(S,
+                (between(1,N,I),
+                 num_to_digit_list(I,S)
+                ),
+                L),
+        */
+        (for(A,1,N),
+         fromto(L,[S|In],In,[]) do
+           num_to_digit_list(A,S)
+        ),
         flatten(L,Ls),
         findall(T,
                 (
