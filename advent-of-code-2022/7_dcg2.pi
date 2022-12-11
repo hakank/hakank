@@ -1,0 +1,82 @@
+/* 
+
+  Advent of Code 2022 - Day 7 in Picat.
+
+  https://adventofcode.com/2022/day/7
+
+  Using DCGs. Note the use of heap_map were changes are undone at backtracking.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go =>
+  % File = "7_test.txt",
+  File = "7.txt",
+
+  Map = get_heap_map(),
+  Map.put(fs,new_map()),
+  Map.put(dirs,[]),
+  
+  parse_lines(read_file_chars(File),[]),
+  Fs = Map.get(fs),
+
+  % Part 1
+  TotalPart1 = sum([Size : _Dir=Size in Fs, Size <= 100000]),
+  println(part1=TotalPart1),
+
+  % Part 2
+  TotalNeedToFree = 30000000 - (70000000 - Fs.get("//")),
+  println(part2=[ Size : _Dir=Size in Fs, Size >= TotalNeedToFree ].min),
+  
+  nl.
+
+
+push(L,E) = E ++ L, list(E) => true. % If E is a list
+push(L,E) = [E] ++ L. % E is an atom
+
+pop(L,E) = Rest, not empty(L) =>
+  L = [E|Rest].
+
+empty([]).
+
+
+%
+% DCG for parsing and calculations.
+%
+seq([])     --> [].
+seq([E|Es]) --> [E], seq(Es).
+
+% Accept string of digits 0..9
+digits([C|Rest]) --> [C], {ascii_digit(C)}, digits(Rest).
+digits([]) --> [].
+
+% Parse the lines
+parse_line --> "$ cd .." , { Map = get_heap_map(),  Dirs = Map.get(dirs),
+                             NewDirs = pop(Dirs,_CD), Map.put(dirs,NewDirs) }.
+parse_line --> "$ cd " , seq(Dir), { Map = get_heap_map(), Dirs = Map.get(dirs),
+                                     Parents = Dirs[1..Dirs.len-1].join("/"),
+                                     NewDirs = push(Dirs,[Parents ++ "/" ++ Dir]),
+                                     Map.put(dirs,NewDirs) }.
+parse_line --> "$ ls".
+parse_line --> "dir ", seq(_Dir).
+parse_line --> digits(Size), " ", seq(_Name), { SizeInt = Size.to_int, Map = get_heap_map(),
+                                                Fs = Map.get(fs),
+                                                add_size(Map.get(dirs),SizeInt,Fs),
+                                                Map.put(fs,Fs) }.
+
+parse_lines --> parse_line, "\n", parse_lines.
+parse_lines --> parse_line.
+parse_lines --> [].
+
+
+add_size([],_Size,_Fs).
+add_size([Dir|Dirs],Size,Fs) :-
+  Fs.put(Dir,Fs.get(Dir,0) + Size),
+  add_size(Dirs,Size,Fs).

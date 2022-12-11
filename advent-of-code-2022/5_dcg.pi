@@ -1,0 +1,76 @@
+/* 
+
+  Advent Of Code 2022 - Day 5 in Picat.
+
+  https://adventofcode.com/2022/day/5
+
+  DCG to parse the moves.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+  % File = "5_test.txt",
+  File = "5.txt",
+  Chars = read_file_chars(File),
+  
+  append(Starts,"\n\n",Moves1, Chars),
+
+  % Init stack
+  states(Stack1,Starts,[]),
+  Stack = [S.strip : S in Stack1[1..Stack1.len-1].transpose.map(flatten), S != " "],
+
+  % Process the moves
+  parse_moves(Moves,Moves1,[]),
+  member(Part,1..2),  
+  foreach(Move in Moves)
+    [Num,From,To] = Move.map(to_int),
+    if Part == 1 then
+      foreach(_ in 1..Num)
+         once(select(C,Stack[From],StackFromRest)),
+         Stack[From] := StackFromRest,
+         Stack[To] := [C] ++ Stack[To]
+      end
+    else
+      C = Stack[From,1..Num],
+      Stack[From] := Stack[From,Num+1..Stack[From].len],
+      Stack[To] := C ++ Stack[To]      
+    end
+  end,
+  println([S.first : S in Stack]),
+  fail,  
+  nl.
+
+
+%
+% DCG for parsing the init state
+%
+state([C2]) --> [_C1,C2,_C3].
+
+state_line([State|States]) --> state(State), " ", state_line(States).
+state_line([State]) --> state(State).
+state_line([]) --> [].
+
+states([StateLine|StateLines]) --> state_line(StateLine), "\n", states(StateLines).
+states([StateLine]) --> state_line(StateLine).
+states([]) --> [].
+
+%
+% DCG for parsing the moves.
+%
+
+seq([])     --> [].
+seq([E|Es]) --> [E], {E != ' '}, seq(Es).
+
+% move 1 from 8 to 1
+parse_move([What,From,To]) --> "move ", seq(What)," from ", seq(From), " to ", seq(To). 
+
+parse_moves([Move|Moves]) --> parse_move(Move), "\n", parse_moves(Moves).
+parse_moves([Move]) --> parse_move(Move).
+parse_moves([]) --> [].

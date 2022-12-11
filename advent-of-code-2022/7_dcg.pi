@@ -1,0 +1,94 @@
+/* 
+
+  Advent of Code 2022 - Day 7 in Picat.
+
+  https://adventofcode.com/2022/day/7
+
+  Another take on this using DCGs.
+
+  (I haven't - yet - got the calculations of Dirs and Fs in the DCG.)
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+go =>
+  % File = "7_test.txt",
+  File = "7.txt",
+
+  % Parse the input
+  parse_lines(Lines,read_file_chars(File),[]),
+
+  % "execute" the commands
+  Fs = new_map(),
+  Dirs = [],
+  check(Lines,Dirs,Fs),
+
+  % Part 1
+  TotalPart1 = sum([Size : _Dir=Size in Fs, Size <= 100000]),
+  println(part1=TotalPart1),
+
+  % Part 2
+  TotalNeedToFree = 30000000 - (70000000 - Fs.get("//")),
+  println(part2=[ Size : _Dir=Size in Fs, Size >= TotalNeedToFree ].min),
+  
+  nl.
+
+%
+% Execute the commands.
+% 
+check([],Dirs,Fs).
+check([[cd,".."]|Lines],Dirs,Fs)  :-
+  Dirs := pop(Dirs,_CD),
+  check(Lines,Dirs,Fs).
+check([[cd,Dir]|Lines],Dirs,Fs)  :-
+  Dir != "..",
+  Parents = Dirs[1..Dirs.len-1].join("/"),
+  Dirs := push(Dirs,[Parents ++ "/" ++ Dir]),
+  check(Lines,Dirs,Fs).
+check([[ls]|Lines],Dirs,Fs) :-
+  check(Lines,Dirs,Fs).
+check([[dir,_Dir]|Lines],Dirs,Fs) :-
+  check(Lines,Dirs,Fs).
+check([[size,Size,_Name]|Lines],Dirs,Fs) :-
+  SizeInt = Size.to_int,
+  foreach(D in Dirs)
+    Fs.put(D,Fs.get(D,0)+SizeInt)
+  end,
+  check(Lines,Dirs,Fs).
+  
+
+%
+% DCG for parsing the input.
+%
+seq([])     --> [].
+seq([E|Es]) --> [E], seq(Es).
+
+% Accept string of digits 0..9
+digits([C|Rest]) --> [C], {ascii_digit(C)}, digits(Rest).
+digits([]) --> [].
+
+parse_line([cd,Dir]) --> "$ cd ", seq(Dir).
+parse_line([ls]) --> "$ ls".
+parse_line([dir,Dir]) --> "dir ", seq(Dir).
+parse_line([size,Size,Name]) --> digits(Size), " ", seq(Name).
+
+parse_lines([Line|Lines]) --> parse_line(Line), "\n", parse_lines(Lines).
+parse_lines([Line]) --> parse_line(Line).
+parse_lines([]) --> [].
+
+
+push(L,E) = E ++ L, list(E) => true. % If E is a list
+push(L,E) = [E] ++ L. % E is an atom
+
+pop(L,E) = Rest, not empty(L) =>
+  L = [E|Rest].
+
+empty([]).
+
