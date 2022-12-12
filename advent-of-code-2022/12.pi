@@ -1,0 +1,105 @@
+/* 
+
+  Advent of Code 2022 - Day 12 in Picat.
+
+  https://adventofcode.com/2022/day/12
+
+  Using Picat's planner module.
+
+  Note: I'm not sure about Part 2 since I had to tweak the
+  representation of the value in MatrixC. 
+  Part 1 is correct though...
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go =>
+  % File = "12_test.txt",
+  File = "12.txt",
+  Matrix = read_file_lines(File),
+  Rows = Matrix.len,
+  Cols = Matrix[1].len,
+
+  % Convert to numbers instead of chars
+  alpha(Alpha),
+  Map = get_global_map(),
+  Map.put(min_len,Rows*Cols),
+  MatrixC = new_array(Rows,Cols),
+  
+  member(Part,1..2),
+  println(part=Part),  
+  foreach(I in 1..Rows, J in 1..Cols)
+    if Matrix[I,J] == 'S' then
+      MatrixC[I,J] := 1
+    elseif Matrix[I,J] == 'E' then
+       % This give correct values for Part 1 and Part 2
+       % But perhaps I've done something wrong somewhere...
+       MatrixC[I,J] = cond(Part == 1, 27, 26)
+    else
+      nth(MatrixC[I,J],Alpha,Matrix[I,J])
+    end
+  end,
+  
+  GoalState = [ [I,J] : I in 1..Rows, J in 1..Cols, Matrix[I,J] == 'E'].first,
+  cl_facts($[final([GoalState|_])]), % for final/1.
+  
+  if Part == 1 then 
+    best_plan_unbounded([[1,1],MatrixC,Rows,Cols],Plan), % Part 1: 0.177s
+    MinLen = Plan.len,
+    println(len=MinLen),
+    Map.put(min_len,MinLen)
+  else
+    nolog,
+    InitialStates = [ [I,J] : I in 1..Rows, J in 1..Cols, Matrix[I,J] == 'a'],
+    member([InitI,InitJ],InitialStates),
+    % Tweaking:
+    % Ensure that there's a 'b' in the neighbourhood. Small speedup for Part 2: 0.252s ->  0.177s
+    Neibs = get_neighbourhood(InitI,InitJ,Matrix), 
+    member([NI,NJ],Neibs), Matrix[NI,NJ] == 'b',
+    best_plan_unbounded([[InitI,InitJ],MatrixC,Rows,Cols],Map.get(min_len),Plan),
+    Len = Plan.len,
+    if Len < Map.get(min_len) then
+       Map.put(min_len,Len),
+       println(min_len=Len)
+    end,
+    fail
+  end,
+  Part == 2,
+  nl.
+
+alpha("abcdefghijklmnopqrstuvwxyz").
+
+%
+% The valid moves
+%
+table
+action([[ThisI,ThisJ],Matrix,Rows,Cols],To,Move,Cost) ?=>
+  PossibleMoves = get_neighbourhood(ThisI,ThisJ,Matrix), 
+  member([I,J], PossibleMoves),
+  Matrix[I,J] <= Matrix[ThisI,ThisJ] + 1, % rule for moving
+  To = [[I,J],Matrix,Rows,Cols],
+  Move=[move=(I,J),Matrix[I,J]],
+  Cost = 1.
+
+%
+% Check the final state.
+% Moved to cl_facts/1.
+%
+% final([[GoalI,GoalJ]|_]) =>
+%   goal_state([GoalI,GoalJ]).
+
+%
+% Get all valid neighbours for position [ThisI,ThisJ]
+%
+get_neighbourhood(ThisI,ThisJ,Matrix) = Neibs =>
+  Rows = Matrix.len,
+  Cols = Matrix[1].len,
+  Neibs = [[ThisI+A,ThisJ+B] : A in -1..1, B in -1..1, abs(A+B) == 1,
+                               ThisI+A >= 1, ThisI+A <= Rows,
+                               ThisJ+B >= 1, ThisJ+B <= Cols].
