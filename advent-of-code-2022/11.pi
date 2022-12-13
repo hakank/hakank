@@ -1,0 +1,94 @@
+/* 
+
+  Advent of Code 2022 - Day 11 in Picat.
+
+  https://adventofcode.com/2022/day/11
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+  % File = "11_test.txt",
+  File = "11.txt",
+
+  parse_items(Items,read_file_chars(File),[]),
+  Monkeys = new_map(),
+  foreach([Monkey,StartingItems1,[Op,Val1],Test1,True,False] in Items)
+    StartingItems = StartingItems1.map(to_int),
+    Val = cond(Val1 == "old",Val1,Val1.to_int),
+    M = new_map([items=StartingItems,test=Test1.to_int,op=Op,val=Val,true=True,false=False]),
+    Monkeys.put(Monkey,M)
+  end,  
+  Divs = [ M.get(test) : _=M in Monkeys].prod,
+  
+  member(Part,1..2),
+  Inspected = new_map([ M=0 : M in Monkeys.keys]),
+  Round = 1,  
+  while (Round <= cond(Part == 1, 20, 10_000))
+    foreach(Monkey in Monkeys.keys.sort)
+      M = Monkeys.get(Monkey),
+      ItemList = M.get(items,nope),
+      Op = M.get(op),
+      Val = M.get(val),
+      foreach(Item in ItemList)
+        Inspected.put(Monkey,Inspected.get(Monkey)+1),
+        Val2 = cond(Val == "old", Item, Val),
+        X1 = apply(Op,Item,Val2),
+        X = cond(Part == 1, X1 div 3, X1 mod Divs),
+        ThrowTo = M.get(cond(X mod M.get(test) == 0, true, false)),
+        M2 = Monkeys.get(ThrowTo),
+        M2.put(items,M2.get(items,[])++[X])
+      end,
+      M.put(items,[])
+    end,
+    Round := Round + 1
+  end,
+  println([ V : _K=V in Inspected].sort_down.take(2).prod),
+  Part == 2,
+  nl.
+
+
+/*
+  DCG to parse items
+
+Monkey 0:
+  Starting items: 79, 98
+  Operation: new = old * 19
+  Test: divisible by 23
+    If true: throw to monkey 2
+    If false: throw to monkey 3
+
+*/
+digits([C|Rest]) --> [C], {ascii_digit(C)}, digits(Rest).
+digits([]) --> [].
+
+digits_list([D|Ds]) --> digits(D), (", " ; " "), digits_list(Ds).
+digits_list([D]) --> digits(D).
+digits_list([]).
+
+seq([])     --> [].
+seq([E|Es]) --> [E], {E != '\n'}, seq(Es).
+
+op(Op) --> [Op], {membchk(Op,["+","*","-","/"])}.
+op([]) --> [].
+operation([Op,Val]) --> "new = old ", [Op], " ", seq(Val).
+operation([]) --> [].
+
+parse_item([Monkey,StartingItems,[Op,Val],Test,True,False]) -->
+   "Monkey ", digits(Monkey), {length(Monkey) > 0},":\n",
+   "  Starting items: ", digits_list(StartingItems),"\n",
+   "  Operation: ", operation([Op,Val]), "\n",
+   "  Test: divisible by ", digits(Test), "\n",   
+   "    If true: throw to monkey ", digits(True),"\n",
+   "    If false: throw to monkey ", digits(False),"\n".
+
+parse_items([Item|Items]) --> parse_item(Item), "\n", parse_items(Items).
+parse_items([Item]) --> parse_item(Item).
+parse_items([]) --> [].
+   
