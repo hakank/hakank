@@ -1,0 +1,129 @@
+/* 
+
+  Advent of Code 2022 - Day 21 in Picat.
+
+  https://adventofcode.com/2022/day/21
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+  part1,
+  part2.
+
+part1 =>
+  % File = "21_test.txt",
+  File = "21.txt",  
+  Chars = read_file_chars(File).map(to_uppercase),
+  parse_lines(Lines,Chars,[]),
+  Vars = [Var : Var in split(Lines.join(" \n")), ascii_uppercase(Var[1])].join(","),
+  Program = "import cp.\naoc_21_part1 => \n" ++
+            "Vars = [" ++ Vars ++ "],\n" ++ 
+            Lines.join(",\n") ++ ",\n" ++ 
+            "solve($[ff,split ],[" ++
+            Vars ++
+            "]),\nprintln(ROOT),nl.\n",
+  Exe = "21_part1_exe_gen.pi",
+  Writer = open(Exe,write),
+  println(Writer,Program),
+  close(Writer),
+  cl(Exe),
+  aoc_21_part1,
+
+  nl.
+
+
+% 
+% Part 2:
+%  - Comment the ROOT line
+%  - Comment HUMN line
+%  - Add the line HUMN #= ROOT - (PPPW + SJMN), For 21.txt: HUMN #= ROOT - (HSDB + MWRD)
+%  - Add the line PPPW #= SJMN  . For 21.txt HSDB #= MWRD
+%  - Print HUMN
+% 
+part2 ?=>
+  % File = "21_test.txt",
+  File = "21.txt",  
+  Chars = read_file_chars(File).map(to_uppercase),
+  parse_lines(Lines1,Chars,[]),
+  Lines = [Line : Line in Lines1, not append("ROOT",_,Line), not append("HUMN",_,Line)],
+  Vars = "ROOT," ++ [Var : Var in split(Lines.join(" \n")), ascii_uppercase(Var[1])].join(","),
+  Program = "import cp.\naoc_21_part2 => \n" ++
+            "Vars = [" ++ Vars ++ "],\n" ++
+            Lines.join(",\n") ++ ",\n" ++ 
+            cond(File == "21_test.txt", "HUMN #= ROOT - (PPPW + SJMN),\n", "HUMN #= ROOT - (HSDB + MWRD),\n") ++
+            cond(File == "21_test.txt", "PPPW #= SJMN,\n", "HSDB #= MWRD,\n") ++ 
+            "solve($[ff,split ],Vars),\n" ++
+            "println(HUMN),nl.\n",
+  ExeProgram = "21_part2_exe_gen.pi",
+  Writer = open(ExeProgram,write),
+  println(Writer,Program),
+  close(Writer),
+  cl(ExeProgram),
+  aoc_21_part2,
+
+  nl.
+
+
+%
+% Combining part1 and part 2. Well, it's not much better...
+%
+go2 =>
+  % File = "21_test.txt",
+  File = "21.txt",  
+  Chars = read_file_chars(File).map(to_uppercase),
+  member(Part,1..2),  
+  parse_lines(Lines1,Chars,[]),
+  Name = cond(Part == 1, aoc_part1, aoc_part2),
+  if Part == 1 then
+     Lines = Lines1,
+     Vars = [Var : Var in split(Lines.join(" \n")), ascii_uppercase(Var[1])].join(",")
+  else
+     Lines = [Line : Line in Lines1, not append("ROOT",_,Line), not append("HUMN",_,Line)],
+     Vars = "ROOT," ++ [Var : Var in split(Lines.join(" \n")), ascii_uppercase(Var[1])].join(",")  
+  end,
+  Extras = "",
+  if Part == 2 then
+     Extras := cond(File == "21_test.txt", "HUMN #= ROOT - (PPPW + SJMN),\n", "HUMN #= ROOT - (HSDB + MWRD),\n") ++
+               cond(File == "21_test.txt", "PPPW #= SJMN,\n", "HSDB #= MWRD,\n")
+  end,
+  Program = "import cp.\n " ++ Name.to_string ++ " => \n" ++
+            "Vars = [" ++ Vars ++ "],\n" ++
+            Lines.join(",\n") ++ ",\n" ++ 
+            Extras ++
+            "solve($[ff,split ],Vars),\n" ++
+            cond(Part == 1, "println(ROOT),nl.\n","println(HUMN),nl.\n",),
+  ExeProgram = "21_part" ++ Part.to_string ++ "_exe_gen.pi",
+  Writer = open(ExeProgram,write),
+  println(Writer,Program),
+  close(Writer),
+  cl(ExeProgram),
+  call(Name),
+  Part == 2,
+  nl.
+
+
+
+seq([])     --> [].
+seq([E|Es]) --> [E], {E != '\n'}, seq(Es).
+
+% The CP solver does not like division so we convert to multiplication instead
+parse_line(Line) --> seq(LHS), ":", seq(RHS), {
+                                               ( % Fix X = Y / Z -> X * Z #= Y
+                                                 append(Left,"/",Right,RHS) ->
+                                                   Line = LHS ++ " * " ++ Right ++ " #= " ++ Left
+                                                 ;
+                                                  Line = LHS ++ " #= " ++ RHS
+                                             )
+                                             }.
+
+parse_lines([Line|Lines]) --> parse_line(Line), "\n", parse_lines(Lines).
+parse_lines([Line]) --> parse_line(Line).
+parse_lines([]) --> [].
