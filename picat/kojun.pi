@@ -1,0 +1,212 @@
+/* 
+
+  Kojun in Picat.
+
+  https://www.janko.at/Raetsel/Kojun/index.htm
+  (Partly translated from German to English via Google Translate)
+  """
+  Kojun (コージュン) is a Japanese logic puzzle: A number must be entered in each field, 
+  whereby no two identical numbers may be adjacent.
+  ...
+  - Enter a number in each cell of the grid so that every region of size N 
+    contains each number from 1 to N exactly once.
+
+  - Numbers in orthogonally adjacent cells must be different.
+
+  - If two cells are vertically adjacent in the same region, the number in the upper 
+    cell must be greater than the number in the lower cell.
+  """
+
+  Hints:
+  ________
+  _13_____
+  _____3__
+  __3_____
+  _5_3____
+  _2______
+  ______3_
+  __53____
+
+  Groups:
+  [1,1,2,2,3,4,5,5]
+  [1,1,6,2,7,4,4,5]
+  [6,6,6,8,7,9,a,a]
+  [b,b,b,8,7,9,9,a]
+  [c,8,8,8,8,9,9,a]
+  [c,d,e,e,e,f,g,a]
+  [d,d,d,d,h,f,f,f]
+  [i,h,h,h,h,f,j,j]
+
+  Solution:
+  42131213
+  31323132
+  24162315
+  12341254
+  25132143
+  12321512
+  31452431
+  14531212
+
+
+  Here is Grid before solve (using CP solver)
+
+  * With all_different/1:
+
+    42131___
+    31323___
+    24162315
+    12341254
+    25132143
+    12321_12
+    3145__3_
+    1_53____
+    unknown = 15
+
+  * With all_distinct/1 Grid is better (pre)solved:
+
+    42131___
+    313231__
+    24162315
+    12341254
+    25132143
+    12321512
+    31452431
+    14531212
+    unknown = 15
+
+  The SAT solver just finds a few values, which is not really surprising since
+  it works different from the CP solver in the pre-solve phase:
+  
+    ____1___
+    _13_____
+    _____3__
+    __3_____
+    _5_3____
+    12____1_
+    ______3_
+    1_53____
+    unknown = 50
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  problem(1,Grid,Groups),
+  N = Grid.len,
+
+  println("Hints:"),
+  print_grid(Grid),
+  
+  println("Groups:"),
+  foreach(Row in Groups)
+    writeln(Row)
+  end,
+    
+  Occurrences = occurrences(Groups.flatten),
+  MaxVal = Occurrences.values.max,
+  Grid :: 1..MaxVal,
+
+  % The groups
+  Gs = Occurrences.keys.sort,
+
+  % """
+  % Enter a number in each cell of the grid so that every region of size N 
+  % contains each number from 1 to N exactly once.
+  % """
+  foreach(G in Gs)
+    GG = [Grid[I,J] : I in 1..N, J in 1..N, Groups[I,J] == G],
+    GG :: 1..GG.len,
+    % all_different(GG)
+    all_distinct(GG) % better presolve
+  end,
+  nl,
+
+  % """
+  % Numbers in orthogonally adjacent cells must be different.
+  % """
+  foreach(I in 1..N, J in 1..N)
+    Ns = [[I+A,J+B] : A in -1..1, B in -1..1, abs(A+B) == 1,
+                      I+A >= 1, I+A <= N, J+B >= 1, J+B <= N],
+    foreach([I2,J2] in Ns)
+      Grid[I,J] #!= Grid[I2,J2]
+    end
+  end,
+
+  % """
+  % If two cells are vertically adjacent in the same region, the number in the upper 
+  % cell must be greater than the number in the lower cell.
+  % """
+  foreach(G in Gs)
+    IJs = [[I,J] : I in 1..N, J in 1..N, Groups[I,J] == G],
+    % Identify the columns
+    Cols = [ J : [I,J] in IJs].sort_remove_dups,
+    foreach(Col in Cols)
+      Cs = [Grid[I,J] : [I,J] in IJs, J == Col],
+      decreasing_strict(Cs)
+    end
+  end,
+
+  println("Before solve:"),
+  print_grid(Grid),
+
+  solve(Grid),
+  println("\nSolution:"),
+  print_grid(Grid),
+  
+  fail, % ensure unique solution
+  
+  nl.
+
+
+print_grid(Grid) =>
+  Unknown = 0,
+  foreach(Row in Grid)
+    foreach(V in Row)
+      if var(V) then
+        print("_"),
+        Unknown := Unknown + 1 
+      else
+        print(V)
+      end
+    end,
+    nl
+  end,
+  println(unknown=Unknown),
+  nl.
+
+
+occurrences(L) = Map =>
+  Map1 = new_map(),
+  foreach(E in L)
+    Map1.put(E,Map1.get(E,0)+1)
+  end,
+  Map = Map1.
+
+
+% From https://www.janko.at/Raetsel/Kojun/index.htm
+problem(1,Grid,Groups) :-
+  Grid = [[_,_,_,_,_,_,_,_],
+          [_,1,3,_,_,_,_,_],
+          [_,_,_,_,_,3,_,_],
+          [_,_,3,_,_,_,_,_],
+          [_,5,_,3,_,_,_,_],
+          [_,2,_,_,_,_,_,_],
+          [_,_,_,_,_,_,3,_],
+          [_,_,5,3,_,_,_,_]
+        ],
+  Groups =[[1,1,2,2,3,4,5,5],
+           [1,1,6,2,7,4,4,5],
+           [6,6,6,8,7,9,a,a],
+           [b,b,b,8,7,9,9,a],
+           [c,8,8,8,8,9,9,a],
+           [c,d,e,e,e,f,g,a],
+           [d,d,d,d,h,f,f,f],
+           [i,h,h,h,h,f,j,j]
+        ].

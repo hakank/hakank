@@ -1,0 +1,174 @@
+/* 
+
+  Christmas Model in Picat.
+
+  https://dmcommunity.org/challenge-jan-2023/
+  """
+  Challenge Jan-2023
+
+  Christmas Model created by ChatGPT
+
+  This model defines a set of people, a set of gifts, and the happiness level and 
+  cost of each gift. The objective is to maximize the total happiness, subject to 
+  the budget constraint that the total cost of the gifts must be less than or equal 
+  to the budget, and the constraint that each person can only receive one gift.
+
+  Here is a sample of test data:
+
+  PEOPLE:  “Alice”, “Bob”, “Carol”, “Dave”, “Eve”
+  GIFTS: “Book”, “Toy”, “Chocolate”, “Wine”, “Flowers”
+  GIFT COSTS: 10, 20, 5, 15, 7
+  HAPPINESS:
+  “Book”: [3, 2, 5, 1, 4]
+  “Toy”: [5, 2, 4, 3, 1]
+  “Chocolate”: [1, 3, 4, 5, 2]
+  “Wine”: [2, 5, 3, 4, 1]
+  “Flowers”: [4, 3, 1, 2, 5]
+  BUDGET: 50
+  """
+
+  This problem (with a budget of 50) has the unique solution:
+
+    total_happiness = 24
+    total_cost = 44
+    Alice will get Flowers with happiness 4
+    Bob will get Wine with happiness 5
+    Carol will get Book with happiness 5
+    Dave will get Chocolate with happiness 5
+    Eve will get Flowers with happiness 5
+
+
+  The only person that will be a little disappointed is Alice
+  that only got Flowers instead of the Happiness 5 gift Toy,
+  but that would be a total cost of 57. 
+
+  Here we also show show other scenarious, with a budget of 52 and 
+  of 27, to show multiple optimimal solutions.
+
+  If we had a budget of 52 then there are two optimal solutions
+  with happiness 24, though with different total costs (44 and 52):
+
+    budget = 52
+    All optimal solutions with total happiness 24:
+    total_happiness = 24
+    total_cost = 52
+    Alice will get Toy with happiness 5
+    Bob will get Wine with happiness 5
+    Carol will get Chocolate with happiness 4
+    Dave will get Chocolate with happiness 5
+    Eve will get Flowers with happiness 5
+
+
+    total_happiness = 24
+    total_cost = 44
+    Alice will get Flowers with happiness 4
+    Bob will get Wine with happiness 5
+    Carol will get Book with happiness 5
+    Dave will get Chocolate with happiness 5
+    Eve will get Flowers with happiness 5
+
+
+  And for a budget of 27 we also have two optimal solutions
+  (with same total cost of 27):
+    budget = 27
+    All optimal solutions with total happiness 18:
+    total_happiness = 18
+    total_cost = 27
+    Alice will get Chocolate with happiness 1
+    Bob will get Chocolate with happiness 3
+    Carol will get Chocolate with happiness 4
+    Dave will get Chocolate with happiness 5
+    Eve will get Flowers with happiness 5
+
+    total_happiness = 18
+    total_cost = 27
+    Alice will get Flowers with happiness 4
+    Bob will get Chocolate with happiness 3
+    Carol will get Chocolate with happiness 4
+    Dave will get Chocolate with happiness 5
+    Eve will get Chocolate with happiness 2
+
+
+  Also see the write up of this (PDF): 
+  http://hakank.org/picat/Christmas%20model%20in%20Picat.pdf
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  people(People),
+  gifts(Gifts,Costs),
+  happiness(Happiness),
+  budget(Budget),
+  println(budget=Budget),
+  christmas(People,Gifts,Costs,Happiness,Budget, _X,_TotalCost,TotalHappiness),
+  printf("All optimal solutions with total happiness %d:\n", TotalHappiness),
+
+  % Get all optimal solutions
+  christmas(People,Gifts,Costs,Happiness,Budget, X,TotalCost,TotalHappiness),
+  println_gifts(People,Gifts,Costs,Happiness,Budget, X,TotalCost,TotalHappiness),
+  nl,
+  fail,
+  nl.
+
+go => true.
+
+println_gifts(People,Gifts,Costs,Happiness,Budget, X,TotalCost,TotalHappiness) =>
+  println(total_happiness=TotalHappiness),
+  println(total_cost=TotalCost),
+  foreach(I in 1..People.len)
+    printf("%w will get %w with happiness %d\n", People[I], Gifts[X[I]], Happiness[X[I],I] )
+  end,
+  nl.
+
+christmas(People,Gifts,Costs,Happiness,Budget, X,TotalCost,TotalHappiness) =>
+
+  NumPeople = People.len,
+  NumGifts = Gifts.len,
+
+  % What gift should Person X[I] get?
+  X = new_list(NumPeople),
+  X :: 1..NumGifts,
+
+  TotalCost #= sum([C : I in 1..NumPeople, element(X[I],Costs,C)]),
+  TotalCost #<= Budget,
+
+  % Note: Happiness is Gift (rows) / People (columns)
+  TotalHappiness #= sum([H : P in 1..NumPeople, matrix_element(Happiness,X[P],P,H)]),
+
+  Vars = X ++ [TotalCost],
+  if var(TotalHappiness) then
+    % Find maximum total happiness
+    solve($[max(TotalHappiness)],Vars)
+  else
+    % Show solution with the given TotalHappiness
+    solve($[],Vars)  
+  end.
+  
+
+people(["Alice", "Bob", "Carol", "Dave", "Eve"]).
+gifts(["Book", "Toy", "Chocolate", "Wine", "Flowers"],
+      [10,     20,    5,           15,     7]).
+
+%
+% Happiness for Gift (rows) / People (columns)
+%           A  B  C  D  E
+happiness([[3, 2, 5, 1, 4], % Book
+           [5, 2, 4, 3, 1], % Toy
+           [1, 3, 4, 5, 2], % Chocolate
+           [2, 5, 3, 4, 1], % Wine
+           [4, 3, 1, 2, 5]  % Flowers
+           ]). 
+  
+budget(50).
+
+% Some other budgets to test
+budget(52). % 2 optimal solutions with total happiness 24
+budget(27). % 2 optimal solutions with total happiness 18

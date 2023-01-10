@@ -1,0 +1,203 @@
+/* 
+
+  Nine to one equals 100 problem in Picat.
+
+  Martin Gardner (October 1962)
+
+  For the digits 9..1 (in this order), place a mathematical operator +/-
+  between the digits (or concatenate the digits) so the result is 100.
+  Minimize the number of operators (+/-) used.
+  
+  Digits may (should) be concatenated, e.g. the following solution is valid
+  for the 1..9 = 100 problem.
+     123 - 45 - 67 + 89 = 100
+
+  This model uses another - and slightly faster - approach than 
+  nine_to_one_equals_100.pi : the constrain number_slices/4.
+
+  See below for the solutions.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+
+/*
+  All solutions to the 9..1 problem:
+
+   +9 -8 +7 +65 -4 +32 -1 = 100
+   +9 -8 +76 -5 +4 +3 +21 = 100
+   +9 -8 +76 +54 -32 +1 = 100
+   +9 +8 +76 +5 -4 +3 +2 +1 = 100
+   +9 +8 +76 +5 +4 -3 +2 -1 = 100
+   +98 -76 +54 +3 +21 = 100
+   +98 -7 -6 -5 -4 +3 +21 = 100
+   +98 -7 -6 +5 +4 +3 +2 +1 = 100
+   +98 -7 +6 -5 +4 +3 +2 -1 = 100
+   +98 -7 +6 +5 -4 +3 -2 +1 = 100
+   +98 -7 +6 +5 +4 -3 -2 -1 = 100
+   +98 +7 -6 -5 +4 +3 -2 +1 = 100
+   +98 +7 -6 +5 -4 -3 +2 +1 = 100
+   +98 +7 -6 +5 -4 +3 -2 -1 = 100
+   +98 +7 +6 -5 -4 -3 +2 -1 = 100
+   len = 15
+*/
+
+go => 
+  Sum = 100,
+  L = 9..-1..1,
+  println(digits=L),  
+  Sols = findall(Ns,find_goal(L,Sum,_Ss,Ns)).sort_remove_dups,
+  foreach(Sol in Sols)
+    Sum = sum(Sol),
+    Vs = [V : S in Sol, SS = S.to_string,V = cond(S > 0, "+" ++ SS, SS)].join(" "),
+    println(Vs=Sum)
+  end,
+  println(len=Sols.len),
+  nl.
+
+/*
+  All solutions to the 1..9 problem:
+
+   +1 +2 +3 -4 +5 +6 +78 +9 = 100
+   +1 +2 +34 -5 +67 -8 +9 = 100
+   +1 +23 -4 +5 +6 +78 -9 = 100
+   +1 +23 -4 +56 +7 +8 +9 = 100
+   +12 -3 -4 +5 -6 +7 +89 = 100
+   +12 +3 -4 +5 +67 +8 +9 = 100
+   +12 +3 +4 +5 -6 -7 +89 = 100
+   +123 -45 -67 +89 = 100
+   +123 -4 -5 -6 -7 +8 -9 = 100
+   +123 +4 -5 +67 -89 = 100
+   +123 +45 -67 +8 -9 = 100
+   len = 11
+*/
+go2 => 
+  Sum = 100,
+  L = 1..9,
+  println(digits=L),
+  Sols = findall(Ns,find_goal(L,Sum,_Ss,Ns)).sort_remove_dups,
+  foreach(Sol in Sols)
+    Sum = sum(Sol),    
+    println([V : S in Sol, SS = S.to_string,V = cond(S > 0, "+" ++ SS, SS)].join(" ")=Sum)
+  end,
+  println(len=Sols.len),
+  nl.
+
+/*
+  Find minimum number of operations
+  (i.e. the minimum number of numbers used):
+
+  digits = [9,8,7,6,5,4,3,2,1]
+  opt = +98 -76 +54 +3 +21
+
+  digits = [1,2,3,4,5,6,7,8,9]
+  opt = +123 -45 -67 +89
+
+*/
+go3 =>
+  Sum = 100,
+  member(L,[9..-1..1,1..9]),  
+  println(digits=L),
+  Sols = findall([Ss,Ns],find_goal(L,Sum,Ss,Ns)).sort_remove_dups,
+  Ts = [],
+  foreach([Ss,Ns] in Sols)
+    NumNumbers = [S : S in Ss, S > 0].len,
+    Vs = [V : S in Ns, SS = S.to_string,V = cond(S > 0, "+" ++ SS, SS)].join(" "),
+    Ts := Ts ++ [[NumNumbers,Vs]]
+  end,
+  println(opt=Ts.sort.take(1).first.second),
+  nl,
+  fail,
+  nl.
+
+find_goal(L, Sum, Ss,Ns) =>
+
+  N = L.len,
+
+  Signs = new_list(N),
+  Signs :: [-1,1],
+
+  % First number is positive: we place +/- _between_ the numbers.
+  Signs[1] #= +1, 
+
+  number_slices(L,P,Ss,Bs),
+
+  foreach(I in 1..N)
+    Ss[I] #= 0 #=> Signs[I] #= 1  
+  end,
+
+  scalar_product(Signs,Ss,#=,Sum),
+
+  Vars = Ss ++ Signs ++ P ++ Bs,
+  solve($[ffd,split],Vars),
+
+  % The proper numbers
+  Ns = [Signs[I]*Ss[I] : I in 1..N, Ss[I] > 0].
+
+
+/*
+  Slice (partition) a list L into slices (partitions)
+
+  Example: The number 6724 can be written as [6,72,4] whis
+  is represented as follows:
+  
+     P = [1,  2,2,  3]   to which number slice does Digits[I] belong to?
+          6   7 2   4
+    Bs = [1,  2,    1,  0]   the length of each number slices
+        
+    Ss = [6,  72,   4,  0]  the calculated digits of the sliced numbers
+  
+*/
+number_slices(L,P,Ss,Bs) =>
+  N = L.len,
+  
+  % To which sliced/partitioned number does L[I] belongs to.
+  P = new_list(N),
+  P :: 1..N,
+
+  % 1 must be before 2, which must be before 3, etc
+  value_precede_chain(1..N,P),
+  increasing(P), 
+  
+  Ss = new_list(N), % The "sliced" numbers (the partitions)
+  Ss :: 0..10**N,
+  
+  Bs = new_list(N), % number of digits in the i'th number
+  Bs :: 0..N,
+
+  % Bs represents an integer partition of N
+  sum(Bs) #= N, 
+  
+  foreach(I in 1..N)
+    Bs[I] #= sum([P[J] #= I : J in 1..N]),
+    Ss[I] #= sum([ L[J]*(P[J]#=I)*10**(Bs[I]-sum([P[K]#=I : K in 1..J-1])) // 10  : J in 1..N])
+  end.
+
+
+%
+% Ensure that the number I is placed in X before number I+1.
+%
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.

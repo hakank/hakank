@@ -1,0 +1,112 @@
+/* 
+
+  Nine to one equals 100 problem in Picat.
+
+  Martin Gardner (October 1962)
+
+  For the digits 9..1 (in this order), place a mathematical operator +/-
+  between the digits (or concatenate the digits) so the result is 100.
+  Minimize the number of operators (+/-) used.
+  
+  Digits may (should) be concatenated, e.g. the following solution is valid
+  for the 1..9 = 100 problem.
+     123 - 45 - 67 + 89 = 100
+
+  This program uses DCGs to generate the possible combinations.
+
+  Cf these programs which uses CP in various ways:
+   * nine_to_one_equals_100.pi
+   * nine_to_one_equals_100_2.pi (pure CP)
+
+  This program is a little faster than nine_to_one_equals_100.pi, but slower
+  than nine_to_one_equals_100_2.pi.
+
+  This Picat program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+
+/*
+  All solutions to the 9..1 problem (as well as the 1..9 problem)
+
+    digits = 987654321
+    98 - 76 + 54 + 3 + 21
+    98 + 7 + 6 - 5 - 4 - 3 + 2 - 1
+    98 + 7 - 6 + 5 - 4 + 3 - 2 - 1
+    98 + 7 - 6 + 5 - 4 - 3 + 2 + 1
+    98 + 7 - 6 - 5 + 4 + 3 - 2 + 1
+    98 - 7 + 6 + 5 + 4 - 3 - 2 - 1
+    98 - 7 + 6 + 5 - 4 + 3 - 2 + 1
+    98 - 7 + 6 - 5 + 4 + 3 + 2 - 1
+    98 - 7 - 6 + 5 + 4 + 3 + 2 + 1
+    98 - 7 - 6 - 5 - 4 + 3 + 21
+    9 + 8 + 76 + 5 + 4 - 3 + 2 - 1
+    9 + 8 + 76 + 5 - 4 + 3 + 2 + 1
+    9 - 8 + 76 + 54 - 32 + 1
+    9 - 8 + 76 - 5 + 4 + 3 + 21
+    9 - 8 + 7 + 65 - 4 + 32 - 1
+
+    digits = 123456789
+    123 + 45 - 67 + 8 - 9
+    123 - 45 - 67 + 89
+    123 + 4 - 5 + 67 - 89
+    123 - 4 - 5 - 6 - 7 + 8 - 9
+    12 + 3 + 4 + 5 - 6 - 7 + 89
+    12 + 3 - 4 + 5 + 67 + 8 + 9
+    12 - 3 - 4 + 5 - 6 + 7 + 89
+    1 + 23 - 4 + 56 + 7 + 8 + 9
+    1 + 23 - 4 + 5 + 6 + 78 - 9
+    1 + 2 + 34 - 5 + 67 - 8 + 9
+    1 + 2 + 3 - 4 + 5 + 6 + 78 + 9
+
+*/
+
+go ?=> 
+  Sum = 100,
+  Map = get_global_map(),
+  member(Part,1..2),
+  L0 = cond(Part == 1, 9..-1..1, 1..9),
+  L = L0.map(to_string).flatten,
+  nl,
+  println(digits=L),
+  find_sol(Sol,L,[]),
+
+  % Only positive first term: it's _between_ 9 and 1.
+  Sol[1].to_int > 0,
+
+  P = parse_term(Sol.flatten),
+  % The first solution +987654321 is considered a number directly
+  Sum == cond(number(P),P, P.apply),
+  println(P),
+  
+  Map.put(Part,Map.get(Part,[])++[[Sol.len,P]]),
+  
+  fail,
+  
+  nl.
+
+% The smallest solutions
+go =>
+  nl,
+  println("Opts:"),
+  Map = get_global_map(),
+  foreach(Key in Map.keys.sort)
+    println(Map.get(Key).sort.first.second)
+  end,
+  nl.
+
+
+%
+% DCG
+%
+digits([C|Rest]) --> [C], {(ascii_digit(C) ; C == '-')}, digits(Rest).
+digits([]) --> "".
+
+find_sol([S|Ss]) --> digits(D), {D != []}, {(S = "+" ++ D ; S = "-" ++ D)}, find_sol(Ss).
+find_sol([])  --> [].

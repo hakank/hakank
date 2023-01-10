@@ -1,0 +1,120 @@
+/* 
+
+  Symmetric words in Picat.
+
+  Inspired by John D Cook: "Visually symmetric words"
+  https://www.johndcook.com/blog/2022/12/27/visually-symmetric-words/
+  """
+  Let’s look at upper case first. I will assume the following letters are symmetric: 
+    A, H, I, M, O, T, U, V, W, X, and Y. Then the following words are symmetric: 
+    A, AHA, HAH, HUH, I, MAAM, MUM, TAT, TIT, TOOT, TOT, TUT, WOW.
+
+  For lower case, I will assume the following letters are symmetric: 
+     i, l, m, o, u, v, w, x, y. 
+  And I will assume b and d are mirror images, as well as p and q.
+
+  With these assumptions, the following words are symmetric: bid, bud, dib, doob, dub, ulu, wow.
+  """
+  
+  The requirement of mirror chars (bd and pq) calls for a DCG:
+  - symmetric/2 for lower case
+  - symmetric_upper/2 for upper case 
+
+  * go/0 checks for symmetric words given a wordlist. 
+    Here are the symmetric upper/lower case words using /usr/share/dict/words:
+      [AVA]
+      [OTTO]
+      [TUT]
+      [AHA]
+      [bid]
+      [bud]
+      [HAH]
+      [HUH]
+      [mom,MOM]
+      [mum,MUM]
+      [OHO]
+      [TAT]
+      [TIT]
+      [TOOT]
+      [TOT]
+      [wow,WOW]
+
+  * In go2/0 we generates all possible symmetric strings for certain lengths.
+
+    Here are all 4 character symmetric strings:
+      [bbdd,bbdd,biid,blld,bmmd,bood,bpqd,bpqd,buud,bvvd,bwwd,bxxd,byyd,iiii,illi,immi,
+       iooi,iuui,ivvi,iwwi,ixxi,iyyi,liil,llll,lmml,lool,luul,lvvl,lwwl,lxxl,lyyl,miim,
+       mllm,mmmm,moom,muum,mvvm,mwwm,mxxm,myym,oiio,ollo,ommo,oooo,ouuo,ovvo,owwo,oxxo,
+       oyyo,pbdq,pbdq,piiq,pllq,pmmq,pooq,ppqq,ppqq,puuq,pvvq,pwwq,pxxq,pyyq,uiiu,ullu,
+       ummu,uoou,uuuu,uvvu,uwwu,uxxu,uyyu,viiv,vllv,vmmv,voov,vuuv,vvvv,vwwv,vxxv,vyyv,
+       wiiw,wllw,wmmw,woow,wuuw,wvvw,wwww,wxxw,wyyw,xiix,xllx,xmmx,xoox,xuux,xvvx,xwwx,
+       xxxx,xyyx,yiiy,ylly,ymmy,yooy,yuuy,yvvy,ywwy,yxxy,yyyy]
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+go =>
+  File = "words_lower.txt",
+  % File = "/usr/share/dict/words",
+  % File = "sv_spelling_org_utf8.txt", % Swedish
+  % File = "allwords3.txt",
+  % File = "unixdict.txt",
+  Words = read_file_lines(File),
+  foreach(Word in Words,length(Word) > 1, Word.remove_dups.len > 1)
+    Match = [],
+    (symmetric(Word,[]) ->  Match := Match ++ [Word] ; true),
+    WordUpper = Word.to_uppercase,
+    (symmetric_upper(WordUpper,[]) ->   Match := Match ++ [WordUpper] ; true),
+    if Match.len > 0 then
+      println(Match)
+    end
+  end,
+  
+  nl.
+
+% Generate symmetric "words"
+go2 =>
+  Ss = findall(Word,( member(Len,2..5), Word=new_list(Len),symmetric(Word,[]))),
+  println(Ss),
+  println(len=Ss.len),
+  nl.
+
+
+upper_symmetric() = "AHIMOTUVWXY". %  "AHIMOTUVWXYÅÄÖ".
+lower_symmetric() = "ilmouvwxy". % "ilmouvwxyö".
+lower_mirror() = ["bd","pq"].
+
+%
+% Using member/2 instead of membchk/2 for generating word (as well as recognition)
+%
+seq_lower([])     --> [].
+seq_lower([C|Cs]) --> [C], {member(C,"ilmouvwxy")}, seq_lower(Cs).
+
+seq_upper([])     --> [].
+seq_upper([C|Cs]) --> [C], {member(C,"AHIMOTUVWXY")}, seq_upper(Cs).
+
+reverse_all_symmetric(Word,Chars) =>
+  Word.reverse == Word,
+  % [C : C in Word, membchk(C,Chars)].len == Word.len.
+  [C : C in Word, member(C,Chars)].len == Word.len.  
+
+%
+% For the p.*q, b.*q stuff, a DCG is simpler
+%
+
+% Lower Case
+% * plain reverse (with the proper chars)
+symmetric --> seq_lower(Word), {reverse_all_symmetric(Word,lower_symmetric()) }.
+% * b.*d or p.*q
+symmetric --> ("b", symmetric, "d") ; ("p", symmetric, "q").
+symmetric --> "".
+
+% Upper: plain reverse with the proper chars
+symmetric_upper --> seq_upper(Word), {reverse_all_symmetric(Word,upper_symmetric()) }.
+symmetric_upper --> "".

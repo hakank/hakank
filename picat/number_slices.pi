@@ -1,0 +1,115 @@
+/* 
+
+  Slice / partition a number of a list in Picat.
+
+  For more examples of this, see:
+  - nine_to_1_equals_100_2.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 6,
+
+  Num :: 10**(N-1)..10**N-1,
+  X = new_list(N),
+  X :: 0..N,
+
+  all_different(X),
+
+  to_num(X,10,Num),
+
+  number_slices(X,P,Ss,Bs),
+
+  % prod([Ss[I]*(Ss[I] #> 0) : I in 1..N]) #= Num,
+
+  Vars = X ++ P ++ Ss ++ Bs ++ [Num],
+  solve($[ff,split],Vars),
+
+  println(num=Num),
+  println(x=X),
+  println(ss=Ss),
+  println(ns=[Ss[I] : I in 1..N,Bs[I] > 0] ),
+  println(p=P),
+  println(bs=Bs),
+  nl,
+  fail,
+  
+  nl.
+
+
+
+
+/*
+  Slice (partition) a list L into slices (partitions)
+
+  Example: 6724 = 82 = 6 + 72 + 4
+  
+   P = [1,  2,2,  3]   to which number slice does Digits[I] belong to?
+        6   7 2   4
+  Bs = [1,  2,    1,  0]   the length of each number slices
+        
+  Ss = [6,  72,   4,  0]  the calculated digits of the sliced numbers
+  
+*/
+number_slices(L,P,Ss,Bs) =>
+  N = L.len,
+  
+  % To which sliced/partitioned number does L[I] belongs to.
+  P = new_list(N),
+  P :: 1..N,
+
+  % 1 must be before 2, which must be before 3, etc
+  value_precede_chain(1..N,P),
+  increasing(P), 
+  
+  Ss = new_list(N), % The "sliced" numbers (the partitions)
+  Ss :: 0..10**N,
+  
+  Bs = new_list(N), % number of digits in the i'th number
+  Bs :: 0..N,
+
+  % Bs represents an integer partition of N
+  sum(Bs) #= N, 
+  
+  foreach(I in 1..N)
+    Bs[I] #= sum([P[J] #= I : J in 1..N]),
+    Ss[I] #= sum([ L[J]*(P[J]#=I)*10**(Bs[I]-sum([P[K]#=I : K in 1..J-1])) // 10  : J in 1..N])
+  end.
+
+
+%
+% Ensure that the number I is placed in X before number I+1.
+%
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+
+
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
