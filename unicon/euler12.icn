@@ -27,10 +27,12 @@
 # Also see my Icon/Unicon page http://www.hakank.org/icon/
 #
 
-link numbers
+link ximage, numbers, factors
 
 procedure main()
-   problem12()
+    # problem12() # 3.921s
+    problem12b() # 0.604s
+    # problem12c() # 1.332s
 end
 
 
@@ -40,22 +42,140 @@ procedure problem12()
     n := 500;
     m := 1;
     repeat {
-        # t := triangle_number(m) 
+        # t := traiangle_number(m) 
         # s := num_divisors(t)
         # if s > n then break;
         if num_divisors(t:=triangle_number(m)) > n  then break;
         m +:= 1
     }
     
-    # write(m, " (t: ", t, ") ", " s: ", s)
     write(t)  
 
 end
 
 #
+# Faster using factor_map instead:
+# 1) Get the factor
+# 2) The number of divisors is the product of the 
+#    number of each occurrences of the factor + 1
+#
+procedure problem12b()
+    local len, i, tnum, fmap
+
+    i := 0
+    tnum := 0
+    while true do {
+        i +:= 1
+        tnum +:= i
+        fmap := factor_map(tnum)
+        # every k:=key(fmap) & len *:= fmap[k]+1
+        # every k :=!fmap & len *:= k+1
+        every (len := 1) *:= !fmap +1
+        if len > 500 then {
+            write("i:", i, " len:", len, " tnum:", tnum)
+            fail
+        }
+    }
+
+end
+
+#
+# factor_map2 first factorise the numbers and then
+# collect these factors. Much slower than problem12b()
+#
+procedure problem12c()
+    local len, i, tnum, fmap
+
+    i := 0
+    tnum := 0
+    while true do {
+        i +:= 1
+        tnum +:= i
+        fmap := factor_map2(tnum)
+        len := 1
+        every k:=key(fmap) & len *:= fmap[k]+1
+        if len > 500 then {
+            write("i:", i, " len:", len, " tnum:", tnum)
+            fail
+        }
+    }
+
+end
+
+
+#
+# Get all the factors as map of
+#    factor and its multiplies
+#
+procedure factor_map(n)
+    local m := n
+    fmap := table(0)
+    while m % 2 == 0 do {
+        fmap[2] +:= 1
+        m /:= 2
+    }
+    t := 3
+    while m > 1 & t < integer(sqrt(m)+1) do {
+        while m % t == 0 do {
+            fmap[t] +:= 1
+            m /:= t
+        }
+        t +:= 2
+    }
+    if m > 1 then {
+        fmap[m] +:= 1
+    }
+    return fmap
+end
+
+#
+# Same as factor_map(n) but we first get the factors.
+# Surprisingly, this is quite slower than factor_map2!
+# 
+procedure factor_map2(n)
+    local m := n, fmap, fs
+    fmap := table(0)
+    fs := factors(n)
+    every f := !fs do {
+        fmap[f] +:= 1
+    }
+    return fmap
+end
+
+
+#
 # This procedure gives the number of divisors below sqrt(n).
 #
 procedure num_divisors(n)
+    local s, i
+
+    if n == 1 then return 1;
+
+    s := 0
+    every i := 1 to integer(sqrt(n)) & n % i = 0 do 
+        s +:= 1
+  
+    return 2*s
+end
+
+#
+# This procedure gives the number of divisors below sqrt(n).
+# Method:
+#  - Get all the (prime) factors of N
+#  - For each factor: get the exponent (number of occurrences) and add 1
+#  - Multiply these counts to get the number of divisors.
+# 
+#  Example: num_divisors(144,15)
+# 
+#  Step:
+# 
+#   D := factors(144)
+#   D = [2, 2, 2, 2, 3, 3].
+# 
+#   144 = 2^4 + 3^2
+#   The exponents are 4 and 2, respectively.
+#   The number of divisors is thus: (4+1) + (2+1) = 5 * 3 = 15
+procedure num_divisors2(n)
     local s, i
 
     if n == 1 then return 1;
