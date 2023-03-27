@@ -1,0 +1,163 @@
+/* 
+
+  One page Calendar in Picat.
+
+  Inspired by 
+  https://medium.com/starts-with-a-bang/this-one-page-calendar-will-change-how-you-view-the-year-b8ecad85eebd
+  """
+  This one-page calendar will change how you view the year
+  It's simpler, more compact, and reusable from year-to-year in a way that no other 
+  calendar is. Here’s both how it works and how to use it.
+  ...  
+  Simple but curious questions, such as:
+
+  - What date will American Thanksgiving fall on this year? [i.e. the fourth Thursday of November]
+  - Which months have a "Friday, the 13th" in them?
+  - What day of the week does July 4th fall on?
+  - Or which day of the week is Christmas Day?
+  """
+
+  Some examples:
+
+
+    2023
+    ====
+                     jan may aug feb jun sep apr 
+                     oct         mar     dec jul 
+                                 nov             
+    ____________________________________________
+     1  8 15 22 29 | sun mon tue wed thu fri sat
+     2  9 16 23 30 | mon tue wed thu fri sat sun
+     3 10 17 24 31 | tue wed thu fri sat sun mon
+     4 11 18 25    | wed thu fri sat sun mon tue
+     5 12 19 26    | thu fri sat sun mon tue wed
+     6 13 20 27    | fri sat sun mon tue wed thu
+     7 14 21 28    | sat sun mon tue wed thu fri
+
+    2024 (leap year)
+    ====
+                     sep jan oct may feb mar jun 
+                     dec apr         aug nov     
+                         jul                     
+    ____________________________________________
+     1  8 15 22 29 | sun mon tue wed thu fri sat
+     2  9 16 23 30 | mon tue wed thu fri sat sun
+     3 10 17 24 31 | tue wed thu fri sat sun mon
+     4 11 18 25    | wed thu fri sat sun mon tue
+     5 12 19 26    | thu fri sat sun mon tue wed
+     6 13 20 27    | fri sat sun mon tue wed thu
+     7 14 21 28    | sat sun mon tue wed thu fri
+
+    2025
+    ====
+                     jun sep apr jan may aug feb 
+                         dec jul oct         mar 
+                                             nov 
+    ____________________________________________
+     1  8 15 22 29 | sun mon tue wed thu fri sat
+     2  9 16 23 30 | mon tue wed thu fri sat sun
+     3 10 17 24 31 | tue wed thu fri sat sun mon
+     4 11 18 25    | wed thu fri sat sun mon tue
+     5 12 19 26    | thu fri sat sun mon tue wed
+     6 13 20 27    | fri sat sun mon tue wed thu
+     7 14 21 28    | sat sun mon tue wed thu fri
+
+
+  $ picat one_page_calendar.pi 1984
+1984 (leap year)
+====
+                 jan oct may feb mar jun sep 
+                 apr         aug nov     dec 
+                 jul                         
+____________________________________________
+ 1  8 15 22 29 | sun mon tue wed thu fri sat
+ 2  9 16 23 30 | mon tue wed thu fri sat sun
+ 3 10 17 24 31 | tue wed thu fri sat sun mon
+ 4 11 18 25    | wed thu fri sat sun mon tue
+ 5 12 19 26    | thu fri sat sun mon tue wed
+ 6 13 20 27    | fri sat sun mon tue wed thu
+ 7 14 21 28    | sat sun mon tue wed thu fri
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+main([Year]) =>
+  print_cal(Year.to_int),
+  nl.
+
+go =>
+  Year = 2023,
+  print_cal(Year),
+  nl.
+
+go2 =>
+  foreach(Year in 2000..2025)
+    print_cal(Year)
+  end,
+  nl.
+
+
+print_cal(Year) =>
+  printf("%4d%s\n",Year,cond(leap_year(Year)," (leap year)","")),
+  println("===="),
+  First = new_map([M=dow(Year,M,1) : M in 1..12]).to_list.sort,  
+  month_names(MonthNames),
+  Months = [ [ MonthNames[M] :  M=D in First  ] : D in 0..6  ],
+  MaxLen = max([M.length : M in Months]),
+  foreach(I in 1..MaxLen)
+    print([' ' : _ in 1..17]),
+    foreach(J in 1..7)
+      if Months[J].len >= I then
+        printf("%w ",Months[J,I])
+      else
+        printf("    ")
+      end
+    end,
+    nl
+  end,
+  println(['_' : _ in 1..44]),
+  cal(Dates,Days),
+  foreach({T,Y} in zip(Dates,Days))
+    printf("%s | %s\n",T.join(' '),Y.join(' '))
+  end,
+  nl.
+
+month_names([jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec]).
+
+cal(Dates,Days) =>
+  Dates = chunks_of([to_fstring("%2w",T): I in 1..35,T=cond(I <= 31,I,'  ')] ,7).transpose,
+  Days = rotate_left_all(["sun","mon","tue","wed","thu","fri","sat"]).
+
+
+%
+% rotate_left/1 and rotate_right/2:
+% rotate list L to the left N times
+%
+rotate_left(L) = rotate_left(L,1).
+rotate_left(L,N) = slice(L,N+1,L.length) ++ slice(L,1,N).
+
+rotate_left_all(L) = [ rotate_left(L,I-1): I in 1..L.len].
+
+
+%
+% Day of week, Sakamoto's method
+% http://en.wikipedia.org/wiki/Weekday_determination#Sakamoto.27s_Method
+%
+dow(Y, M, D) = R =>
+  T = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4],
+  if M < 3 then
+     Y := Y - 1
+  end,
+  R = (Y + Y // 4 - Y // 100 + Y // 400 + T[M] + D) mod 7.
+
+
+% Is Year a leap year?
+leap_year(Year) => 
+  (Year mod 4 == 0, Year mod 100 != 0) ; Year mod 400 == 0.

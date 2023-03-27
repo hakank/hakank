@@ -1,0 +1,250 @@
+/* 
+
+  Number of lockers in Picat.
+
+  From Chris Smith's math newsletter #624
+  """
+  The lockers at a school are labelled consecutively starting
+  with locker number one. The labels cost 50p for each digit.
+  The total cost for all the digits that are needed is equal to the
+  number of lockers. How many lockers are there?
+  """
+
+  The answer: 108 lockers (216 digits)
+
+  Cf book_pages.pi for a similar problem.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+
+main => go.
+
+/*
+
+ Brute force: [num_digits = 216,num_lockers = 108]
+
+*/
+go =>
+  member(NumLockers,1..1000),
+  NumDigits = [I.to_string : I in 1..NumLockers].flatten.length,
+  % NumDigits * 0.5 == NumLockers*1.0,
+  NumDigits  == NumLockers * 2,
+  println([num_digits=NumDigits,num_lockers=NumLockers]),
+  nl.
+
+
+/*
+
+  This is based on the CP model in book_pages.pi
+  which solves a related problem:
+  "A book's pages are numbered with 2989 digits. How many pages?"
+
+  The solution is 108 lockers (and 216 digits).
+      num_lockers = 108
+      num_digits = 216
+      x = [9,90,9]
+
+*/
+go2 =>
+  nolog,
+  member(N,1..14),
+  % The "bases", i.e. the number of digits for each digit length
+  S=[9*10**(I-1) : I in 1..N], 
+
+  % The number of lockers for each digit length
+  X = new_list(N),
+  X :: 0..sum(S),
+
+  sum([X[I]*I : I in 1..N]) #= NumDigits,
+  sum(X) #= NumLockers,
+
+  % The locker numbers starts at 1
+  NumLockers #>= 1,
+  % The labels cost 50p for each digit.  
+  NumDigits #= NumLockers * 2,
+
+  % Here's the special - and key - constraint:
+  % In order for X[I] to be > 0 we must have filled
+  % all slots (units) in X[I-1]
+  foreach(I in 2..N)
+     % X[I] :: 0..S[I], % restrict the domain (speeding up)
+     X[I] #> 0 #=> (X[I-1] #= S[I-1])
+  end,
+
+  Vars = X ++ [NumLockers,NumDigits],
+  solve($[ff,split],Vars),
+
+  println(num_lockers=NumLockers),
+  println(num_digits=NumDigits),
+  println(x=X),
+  nl.
+
+
+/* 
+  Checking with different costs: 1/mult (= mult)
+ 
+   [n = 2,mult = 1]
+   num_lockers = 9
+   num_digits = 9
+   x = [9,0]
+
+   [n = 3,mult = 2]
+   num_lockers = 108
+   num_digits = 216
+   x = [9,90,9]
+
+   [n = 4,mult = 3]
+   num_lockers = 1107
+   num_digits = 3321
+   x = [9,90,900,108]
+
+   [n = 5,mult = 4]
+   num_lockers = 11106
+   num_digits = 44424
+   x = [9,90,900,9000,1107]
+
+   [n = 6,mult = 5]
+   num_lockers = 111105
+   num_digits = 555525
+   x = [9,90,900,9000,90000,11106]
+
+   [n = 7,mult = 6]
+   num_lockers = 1111104
+   num_digits = 6666624
+   x = [9,90,900,9000,90000,900000,111105]
+
+   [n = 8,mult = 7]
+   num_lockers = 11111103
+   num_digits = 77777721
+   x = [9,90,900,9000,90000,900000,9000000,1111104]
+
+   [n = 9,mult = 8]
+   num_lockers = 111111102
+   num_digits = 888888816
+   x = [9,90,900,9000,90000,900000,9000000,90000000,11111103]
+
+   [n = 10,mult = 9]
+   num_lockers = 1111111101
+   num_digits = 9999999909
+   x = [9,90,900,9000,90000,900000,9000000,90000000,900000000,111111102]
+
+   [n = 11,mult = 10]
+   num_lockers = 11111111100
+   num_digits = 111111111000
+   x = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,1111111101]
+
+   [n = 12,mult = 11]
+   num_lockers = 111111111099
+   num_digits = 1222222222089
+   x = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,90000000000,11111111100]
+
+   [n = 13,mult = 12]
+   num_lockers = 1111111111098
+   num_digits = 13333333333176
+   x = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,90000000000,900000000000,111111111099]
+
+   [n = 14,mult = 13]
+   num_lockers = 11111111111097
+   num_digits = 144444444444261
+   x = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,90000000000,900000000000,9000000000000,1111111111098]
+
+  One can note that number of lockers for mult Mult is the same as the value of the 
+  "extra slot" in Mult+1. E.g.
+  - for Mult=1 there are 9 lockers and for Mult=2 the "extra slot" is 9
+  - for Mult=2 there are 108 lockers and for Mult=3 the "extra slot" is 108.
+  - for Mult=3 there are 1107 lockers and for Mult=4 the "extra slot" is 1107
+
+  Let's see if the number of lockers is a known OEIS sequence:
+    9,108,1107,11106,111105,1111104,11111103,111111102
+  And of course it is:
+  https://oeis.org/A099676
+  """
+  A099676		Partial sums of repdigits of A002283.		
+
+  a(n) is the maximal positive integer k such that the sequence 
+  1, 2, 3, 4, ..., k-1, k has a total of n*k digits. 
+
+
+  a(n) = (10/9)*(10^n-1)
+  """
+  
+  And A002283 is 
+  https://oeis.org/A002283
+  """
+  A002283		a(n) = 10^n - 1.
+  """
+
+  Picat> X=[ceiling((10/9)*(10**N-1)) - N:N in 1..20]
+  X = [9,108,1107,11106,111105,1111104,11111103,111111102,1111111101,11111111100,111111111099,1111111111098,11111111111097,111111111111096,1111111111111095,11111111111111096,111111111111111103,1111111111111111150,11111111111111110637,111111111111111114732]
+
+*/
+go3 =>
+  nolog,
+  foreach(N in 2..14)
+    nl,
+    Mult = N-1,
+    println([n=N,mult=Mult]),
+    % The "bases", i.e. the number of digits for each digit length
+    S=[9*10**(I-1) : I in 1..N], 
+
+    % The number of lockers for each digit length
+    X = new_list(N),
+    X :: 0..sum(S),
+
+    sum([X[I]*I : I in 1..N]) #= NumDigits,
+    sum(X) #= NumLockers,
+
+    % The locker numbers starts at 1
+    NumLockers #>= 1,
+    % The labels cost 1/N for each digit.  
+    NumDigits #= NumLockers * Mult,
+
+    % Here's the special (and key) constraint:
+    % In order for X[I] to be > 0 we must have filled
+    % all slots (units) in X[I-1]
+    foreach(I in 2..N)
+      X[I] :: 0..S[I], % restrict the domain (slightly faster with this)
+      X[I] #> 0 #=> (X[I-1] #= S[I-1])
+    end,
+
+    Vars = X ++ [NumLockers,NumDigits],
+    solve($[ff,split],Vars),
+
+    println(num_lockers=NumLockers),
+    println(num_digits=NumDigits),
+    println(x=X)
+  end,
+  nl.
+
+%
+% Using a lot of member/2 and some index manipulations.
+% This is the same general idea as go2/0 and go3/0
+% of filling the slots and add some extra number of lockers.
+%
+go4 =>
+  member(N,2..10), % for some length...
+  S=[9*10**(I-1):I in 1..N], % The bases
+
+  % Fill the first N-1 slots with lockers
+  member(Slots,1..N-1),
+  % And then add X lockers of digit length N
+  member(X,0..S[Slots+1]),
+  SS = S[1..Slots]++[X],
+  
+  NumLockers = sum(SS),
+  NumDigits = sum([I*SS[I] : I in 1..Slots+1]),
+  NumDigits == NumLockers * 2, % Each digit costs 0.5p
+  println(ss=SS),
+  println(x=X),
+  println(num_lockers=NumLockers),
+  println(num_digits=NumDigits),
+  nl,
+  flush(stdout),
+  % fail,
+  nl.
+
+asum(S) = [ sum([S[J] : J in 1..I]) : I in 1..S.len].

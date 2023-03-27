@@ -1,0 +1,99 @@
+/* 
+
+  Numbers not containing 7 in Picat.
+
+  From https://twitter.com/ChiefScientist/status/1622003813296279552
+  """
+  Can your programming language express, in ONE TWEET, a program to 
+  count the numbers under 1,000 that DO NOT contain a digit 7 in any position?
+  """
+
+  Here are some different approaches using some of Picat's features:
+  - list comprehension
+  - Logic programming/Prolog style: findall/2, membchk/2, recursive
+  - constriant programming
+  - imperative: foreach/1, if/1, re-assignments, while/1
+  - use cl_facts to create predicate facts num(Number,String)
+  - functions: t/1 and function chaining: I.to_string
+  - arrays with updates
+
+  All these are - separately - short enough for a tweet.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp,util.
+
+main => go.
+
+go =>
+  % List comprehension
+  writeln([I:I in 0..999,[1:C in I.to_string,C=='7'].sum==0].len),
+
+  % Logic programming
+  writeln(findall(I,(member(I,0..999),not(membchk('7',I.to_string)))).len),
+
+  % Logic programming using Prolog predicates from bp module
+  % (note: using bp.findall/3 does not work here so we use Picat's findall/2)
+  L=findall(I,(bp.between(0,999,I),bp.number_chars(I,C),not(bp.membchk('7',C)))),
+  bp.length(L,Len),
+  writeln(Len),
+
+  % Another Prolog inspired approach
+  c(0,999,0,C),
+  writeln(C),
+
+  % Using cl_facts/2 to add num(I,Chars) to the database,
+  % e.g. num(0,"0"). num(1,"1"). num(2,"2"). etc
+  cl_facts($[ num(I,I.to_string) : I in 0..999]),
+  % And find all that not containing and 7
+  println(findall(I,( num(I,Cs), not membchk('7',Cs)) ).len),
+
+  % Constraint programming
+  N = 3,
+  X = new_list(N),
+  X :: 0..6 ++ 8..9,
+  Y :: 0..999,
+  Y #= sum([X[I]*10**(N-I) : I in 1..N]),
+  println(solve_all(X++[N]).len),
+
+  % Imperative, using find/4 instead of membchk
+  Count = 0,
+  foreach(I in 0..999)
+    if not find(I.to_string,"7",_,_) then
+      Count := Count+1
+    end
+  end,
+  println(Count),
+
+  % Using arrays
+  A = new_array(1000),
+  bind_vars(A,0),
+  foreach(I in 0..999)
+     A[I+1] := t(I)
+  end,
+  println(A.sum),
+
+  % Using while
+  C2 = 0,
+  I2 = 0,
+  while (I2 <= 999)
+    if not membchk('7',I2.to_string) then
+      C2 := C2 + 1
+    end,
+    I2 := I2+1
+  end,
+  println(C2),
+
+  nl.
+
+% Another Prolog inspired approach
+c(N1,N,C,C) :- N1 > N.
+c(I,N,C0,C) :-
+  I1 is I+1, Cs = I.to_string, % or bp.numbers_chars(I,Cs)
+  (membchk('7',Cs) -> C1 is C0 ; C1 is C0 + 1 ), c(I1,N,C1,C).
+
+% Function: Returns 1 (is ok) or 0 (not ok)
+t(N) = cond(not membchk('7',N.to_string),1,0).

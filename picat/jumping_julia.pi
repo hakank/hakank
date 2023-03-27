@@ -1,0 +1,283 @@
+/* 
+
+  Jumping Julia (planning problem) in Picat.
+
+  https://jrmf.org/puzzle/jumping-julia/
+
+  Also see the Gathering For Gardner (G4G) talk:
+  "Daniel Kline - Playing with Puzzles: A Sample of What's New at the JRMF - G4G14 Apr 2022"
+  https://www.youtube.com/watch?v=tl7n2FEDb3I
+
+
+  Puzzle 1 consists of this grid:
+
+    [3,3,3,1]
+    [2,3,2,2]
+    [3,2,2,2]
+    [3,1,2,0]
+
+  The player (planner) always starts at position [1,1], the upper left cell.
+  The goal is to jump vertically or horizontally to the right lower cell 
+  (coded as 0 in the puzzles below).  
+  The number in the cell states the exact number of steps that is possible
+  to take each time.
+ 
+  The best_plan_nondet/3 returns all optimal plans and for two different
+  objectives:
+  * min_plan_steps: The total cost is the number of jumps 
+    (each step cost 1)
+  * min_total_steps: The total cost is the total number of steps taken,
+    i.e. a jump of 3 costs 3.
+
+  Here are the possible optimal plans for puzzle 1:
+
+    puzzle = 1
+    [3,3,3,1]
+    [2,3,2,2]
+    [3,2,2,2]
+    [3,1,2,0]
+
+    cost_type = min_plan_steps
+    sol = 1
+    [[1,1],to,[4,1],with,3,steps]
+    [[4,1],to,[4,4],with,3,steps]
+    cost = 2
+
+    cost_type = min_total_steps
+    sol = 1
+    [[1,1],to,[4,1],with,3,steps]
+    [[4,1],to,[4,4],with,3,steps]
+    cost = 6
+
+    sol = 2
+    [[1,1],to,[1,4],with,3,steps]
+    [[1,4],to,[2,4],with,1,steps]
+    [[2,4],to,[4,4],with,2,steps]
+    cost = 6
+
+
+  Some puzzles has several different plans. For example puzzle 6 
+  has 2 optimal min_plan_steps plans and 4 optimal min_total_steps.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go =>
+  nolog,
+  Puzzles = findall(P,puzzle(P,_)),
+  println(puzzles=Puzzles),
+  member(Puzzle,Puzzles),
+  println(puzzle=Puzzle),
+  puzzle(Puzzle,Grid),
+  foreach(Row in Grid)
+    println(Row)
+  end,
+  nl,
+
+  Init=[1,1], % Left upper cell
+  % Goal = [Rows,Cols], % Right lower cell
+
+  % Which objective type
+  member(CostType,[min_plan_steps,min_total_steps]),
+  
+  Map = get_global_map(), % The solution number
+  println(cost_type=CostType),
+  Map.put(num_sols,1),
+
+  % Solve the problem
+  best_plan_nondet([Init,CostType,Grid],Plan,Cost),
+  println(sol=Map.get(num_sols)),
+  foreach(P in Plan)
+    println(P)
+  end,
+  println(cost=Cost),
+  Map.put(num_sols,Map.get(num_sols,0)+1),
+  nl,
+  
+  fail, % Try to find next solution, or get to the next puzzle
+  nl.
+
+
+final([[I,J],_,Grid]) =>
+  Grid[I,J] == 0.
+
+
+action([[I,J],CostType,Grid],To,Action,Cost) =>
+  NumSteps = Grid[I,J],
+  Possible = next_steps(I,J,Grid,NumSteps), 
+  member(NewStep,Possible),
+  To = [NewStep,CostType,Grid],
+  Action = [[I,J],to,NewStep,with,NumSteps,steps],
+  Cost = cond(CostType == min_plan_steps,1, max(1,NumSteps)).
+
+
+%                                  
+% Which possible next steps are possible from
+% the possition [I,J] with NumSteps
+%
+table
+next_steps(I,J,Grid,NumSteps) = NextSteps =>
+  NextSteps = [[I+A*NumSteps,J+B*NumSteps] : A in -1..1, B in -1..1, abs(A)+abs(B) == 1, 
+                                  I+A*NumSteps >= 1, I+A*NumSteps <= Grid.len,
+                                  J+B*NumSteps >= 1, J+B*NumSteps <= Grid[1].len
+                                  ].
+
+  
+
+%
+% All puzzle instances are from https://jrmf.org/puzzle/jumping-julia/
+%
+% Except puzzle g4g (the first here) which is from the talk cited above:
+% https://www.youtube.com/watch?v=tl7n2FEDb3I
+%
+puzzle(g4g,Grid) :-
+  Grid =
+  [[3,2,3,2],
+   [2,1,2,1],
+   [2,2,2,2],
+   [1,3,1,0]].
+
+puzzle(1,Grid) :-
+  Grid =
+  [[3,3,3,1],
+   [2,3,2,2],
+   [3,2,2,2],
+   [3,1,2,0]].
+
+
+puzzle(2,Grid) :-
+  Grid =
+  [[1,2,3,3],
+   [2,1,2,3],
+   [3,2,1,2],
+   [3,3,2,0]].
+
+
+puzzle(3,Grid) :-
+  Grid =
+  [[1,2,1,3],
+   [3,2,2,2],
+   [3,2,3,3],
+   [1,1,2,0]].
+
+
+puzzle(4,Grid) :-
+  Grid =
+  [[2,3,2,3],
+   [2,3,2,3],
+   [3,2,3,2],
+   [3,2,3,0]].
+
+
+puzzle(5,Grid) :-
+  Grid =
+  [[1,3,2,3],
+   [3,3,1,1],
+   [2,1,2,3],
+   [2,1,3,0]].
+
+
+puzzle(6,Grid) :-
+  Grid =
+  [[3,2,2,1],
+   [3,2,1,3],
+   [1,1,1,1],
+   [1,3,1,0]].
+
+puzzle(7,Grid) :-
+  Grid =
+  [[2,1,2,3],
+   [1,2,3,2],
+   [2,3,1,2],
+   [2,3,2,0]].
+
+
+puzzle(8,Grid) :-
+  Grid =
+  [[3,2,2,1],
+   [2,1,1,3],
+   [3,2,2,1],
+   [2,1,2,0]].
+
+% ... Skipping some puzzles ...
+
+
+% 10 plan steps (20 total steps)
+puzzle(14,Grid) :-
+  Grid =
+  [[2,1,3,3],
+   [2,1,3,1],
+   [2,2,2,2],
+   [1,3,2,0]].
+
+
+% 11 plan steps (20 total steps)
+% [[1,1],to,[2,1],with,1,steps]
+% [[2,1],to,[4,1],with,2,steps]
+% [[4,1],to,[4,3],with,2,steps]
+% [[4,3],to,[1,3],with,3,steps]
+% [[1,3],to,[3,3],with,2,steps]
+% [[3,3],to,[3,1],with,2,steps]
+% [[3,1],to,[3,2],with,1,steps]
+% [[3,2],to,[3,4],with,2,steps]
+% [[3,4],to,[1,4],with,2,steps]
+% [[1,4],to,[2,4],with,1,steps]
+% [[2,4],to,[4,4],with,2,steps]
+% cost = 11
+puzzle(15,Grid) :-
+  Grid =
+  [[1,3,2,1],
+   [2,1,3,2],
+   [1,2,2,2],
+   [2,3,3,0]].
+
+
+% 5 x 5
+puzzle(16,Grid) :-
+  Grid =
+  [[2,4,2,2,4],
+   [2,4,2,4,4],
+   [1,3,3,1,3],
+   [3,3,4,1,1],
+   [3,4,4,2,0]].
+
+puzzle(17,Grid) :-
+  Grid =
+  [[1,4,2,3,2],
+   [1,3,4,3,3],
+   [4,2,4,1,1],
+   [2,4,3,4,3],
+   [1,1,1,3,0]].
+
+%
+% 15 plan steps 32 total steps
+% [[1,1],to,[1,2],with,1,steps]
+% [[1,2],to,[1,5],with,3,steps]
+% [[1,5],to,[4,5],with,3,steps]
+% [[4,5],to,[4,1],with,4,steps]
+% [[4,1],to,[5,1],with,1,steps]
+% [[5,1],to,[5,4],with,3,steps]
+% [[5,4],to,[1,4],with,4,steps]
+% [[1,4],to,[1,3],with,1,steps]
+% [[1,3],to,[2,3],with,1,steps]
+% [[2,3],to,[2,5],with,2,steps]
+% [[2,5],to,[3,5],with,1,steps]
+% [[3,5],to,[3,2],with,3,steps]
+% [[3,2],to,[3,3],with,1,steps]
+% [[3,3],to,[5,3],with,2,steps]
+% [[5,3],to,[5,5],with,2,steps]
+%
+puzzle(30,Grid) :-
+  Grid =
+  [[1,3,1,1,3],
+   [1,4,2,4,1],
+   [3,1,2,3,3],
+   [1,4,2,4,4],
+   [3,1,2,4,0]].
