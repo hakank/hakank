@@ -11,6 +11,12 @@
    3 = 900  (100..999 s:192..2889)
    4 = 9000 (1000..9999)
 
+   (In general 
+    X=asum([I*9*10**(I-1) : I in 1..10])
+    X = [9,189,2889,38889,488889,5888889,68888889,788888889,8888888889,98888888889]
+   )
+
+
    1) start: 2989
    2) 2889 < 2989 < 9999 so it must be a 4 digit number
    3) 2989-2889=100
@@ -33,6 +39,37 @@
    p = 1024
    num_digits = 2989
    num_pages = 1024
+
+
+   book_pages_numbers/3 is kind of reversible:
+   - Picat> book_page_numbers(2989,X,P)            
+     X = [9,90,900,25]
+     P = 1024
+
+
+   - Picat> book_page_numbers(D,X,1234567890123)
+     D = 14938271460501
+     X = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,90000000000,900000000000,234567890124]
+
+
+
+  Aside: 
+  The sequence of accumulating the sum of units 
+  Picat> X=[I*9*10**(I-1) : I in 1..10]      
+  X = [9,180,2700,36000,450000,5400000,63000000,720000000,8100000000,90000000000]
+
+  Picat X=asum([I*9*10**(I-1) : I in 1..10])
+  X = [9,189,2889,38889,488889,5888889,68888889,788888889,8888888889,98888888889]
+  is the OEIS sequence https://oeis.org/A033713 :
+  """
+  Number of zeros in numbers 1 to 999..9 (n digits).
+
+  ...
+  a(n) = (1/9)*((n-1)*(10^n)-n*10^(n-1)+1)
+
+  """
+
+  Cf number_of_lockers.pi for a similar problem.
 
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
@@ -62,11 +99,6 @@ go => true.
 
 %
 % Testing the variants of book_page_numbers/3
-%
-% Picat> book_page_numbers(D,X,1234567890123)
-% D = 14938271460501
-% X = [9,90,900,9000,90000,900000,9000000,90000000,900000000,9000000000,90000000000,900000000000,234567890124]
-
 %
 go2 ?=>
   % Fix number of digits
@@ -135,12 +167,12 @@ go4 => true.
 % 
 go5 ?=>
   NumDigits = 2989,
-  book_page_numbers_alg2(NumDigits,1,0,P),
+  book_page_numbers_alg2(NumDigits,P),
   println(numDigits=NumDigits),
   println(numPages=P),
   nl,
   NumDigits := 14938271460501, % 2989,
-  book_page_numbers_alg2(NumDigits,1,0,P2),
+  book_page_numbers_alg2(NumDigits,P2),
   println(numDigits=NumDigits),
   println(numPages=P2),
   
@@ -149,13 +181,77 @@ go5 ?=>
 go5 => true.
 
 
+go6 ?=>
+  _ = random2(),
+  % NumPagesRand = 1+ random() mod 1000000000,
+  NumPagesRand = 310444,
+  book_page_numbers(NumDigits,X,NumPagesRand),
+  println([numDigits=NumDigits,x=X,numpages=NumPagesRand, mod=(NumDigits div NumPagesRand) ]),
+  fail,  
+  nl.
+
+go6 => true.
+
+%
+% All solutions of length 5
+%
+go7 ?=>
+  N = 16,
+  X = new_list(N),
+  book_page_numbers(D,X,P),
+  println([D,X,P]),  
+  fail,
+  nl.
+go7 => true.
+
+%
+% Another way, from number_of_lockers.pi
+%
+go8 =>
+  member(N,2..10), % for some length...
+  S=[9*10**(I-1):I in 1..N], % The bases
+
+  % Fill the first N-1 slots with pages 
+  member(Slots,1..N-1),
+  % And then add X pages of digit length N
+  member(X,0..S[Slots+1]),
+  SS = S[1..Slots]++[X],
+  
+  NumPages = sum(SS),
+  NumDigits = sum([I*SS[I] : I in 1..Slots+1]),
+  NumDigits == 2989,
+  println(ss=SS),
+  println(x=X),
+  println(num_pages=NumPages),
+  println(num_digits=NumDigits),
+  nl.
+
+%
+% Brute force
+%
+go9 =>
+  NumDigits = 2989,
+  % There are more digits than pages so it's a legitimate limit
+  member(NumPages,1..NumDigits),
+  [Page.to_string() : Page in 1..NumPages].flatten.len == NumDigits,
+  println(num_pages=NumPages),
+  nl.
+
+
 number_len(N) = ceiling(log10(N+1)).
 
 asum(S) = [ sum([S[J] : J in 1..I]) : I in 1..S.len].
 
+%
+% Closed form for the sum of digits for a certain length of numbers
+% of length 1..N.
+%
+s(N) = ((N-1)*(10**N)-N*10**(N-1)+1) div 9.
+
 % 
 % book_page_numbers(NumDigits,X,NumPages)
-% 
+%
+% "Reversible" (kind of):
 % - Calculate the number of pages given the number of digits
 % - Calculate the number of digits given the number of pages
 % - Calculate the number of digits and pages given the length of X
@@ -181,16 +277,15 @@ book_page_numbers(NumDigits,X,NumPages) =>
   sum([X[I]*I : I in 1..N]) #= NumDigits,
   sum(X) #= NumPages,
 
-  % Restrict the domains for each slot
+  % Restrict the domains for each slot (unit)
   foreach(I in 1..N)
     X[I] :: 0..S[I]
   end,
 
   % In order for X[I] to be > 0 we must have filled
-  % all slots in X[I-1]
+  % all slots (units) in X[I-1]
   foreach(I in 2..N)
      X[I] #> 0 #=> (X[I-1] #= S[I-1])
-     
   end,
 
   solve(X).
@@ -235,9 +330,13 @@ book_page_numbers_alg(N,NumPages,Print) =>
 
 % Algorithmic approach using Horn clauses
 % Not reversible (just calculating number of pages given the number of digits).
+book_page_numbers_alg2(NumDigits,NumPages) :-
+   book_page_numbers_alg2(NumDigits,1,0,NumPages).
+  
 book_page_numbers_alg2(0,_Len,NumPages,NumPages).
 
 book_page_numbers_alg2(NumDigits,Len,NumPages1,NumPages) :-
+   NumDigits > 0,
    T = 9*10**(Len-1),
    NumDigits <= T,
    NumDigits mod Len == 0,
@@ -247,3 +346,4 @@ book_page_numbers_alg2(NumDigits,Len,NumPages1,NumPages) :-
    NumDigits > T,
    NumDigits1 = NumDigits - T*Len,
    book_page_numbers_alg2(NumDigits1,Len+1,NumPages1+T,NumPages).
+   
