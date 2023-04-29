@@ -24,39 +24,15 @@
 % * SICStus Prolog: http://www.hakank.org/sicstus/building_blocks.pl
 % * Gecode: http://www.hakank.org/gecode/building_blocks.cpp
 %
-% This MiniZinc model was created by Hakan Kjellerstrand, hakank@bonetmail.com
+% This MiniZinc model was created by Hakan Kjellerstrand, hakank@gmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
 %
 include "globals.mzn"; 
 
 int: n = 4;
-set of int: Cube = 1..n;
 int: num_words = 13;
 
-int: A = 1;
-int: B = 2;
-int: C = 3;
-int: D = 4;
-int: E = 5;
-int: F = 6;
-int: G = 7;
-int: H = 8;
-int: I = 9;
-int: J = 10;
-int: K = 11;
-int: L = 12;
-int: M = 13;
-int: N = 14;
-int: O = 15;
-int: P = 16;
-int: Q = 17;
-int: R = 18;
-int: S = 19;
-int: T = 20;
-int: U = 21;
-int: V = 22;
-int: W = 23;
-int: Y = 24;
+enum letters = {A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,Y};
 
 array[1..num_words, 1..n] of int: words = array2d(1..num_words, 1..n,
   [
@@ -76,7 +52,7 @@ array[1..num_words, 1..n] of int: words = array2d(1..num_words, 1..n,
   ]);
 
 % decision variable
-array[1..24] of var Cube: dice;
+array[1..24] of var 1..n: dice;
 
 solve satisfy;
 % solve :: int_search(x, first_fail, indomain_min, complete) satisfy;
@@ -90,7 +66,7 @@ constraint
   /\
   % there must be exactly 6 letters of each die
   forall(i in 1..n) (
-    sum(j in 1..24) (bool2int(dice[j] = i)) = 6
+    sum(j in 1..24) (dice[j] = i) = 6
   )
 
   /\
@@ -103,5 +79,14 @@ constraint
 
 output
 [
-  show(dice)
-];
+  "\(letters)\n\(dice)"
+]
+++
+[
+  if i == A then "\ndice: " ++ show(d) ++ ": " else "" endif ++
+  if fix(dice[i]) == d then
+    show(i) ++ " "
+  else ""
+  endif 
+  | d in 1..4, i in letters
+] ++ ["\n"];
