@@ -19,16 +19,45 @@
     2438195760
 
 
+  Comparison with two different constraints vs solver vs Picat version.
+
+  * Num mod I #= 0
+    Version   Solver    Time
+    -------------------------------------
+    3.3#3     CP        13.5s
+    3.4       CP        Stack overflow
+    3.3#3     SAT       338.8s
+    3.4       SAT       Stack overflow
+
+
+  * (Num div I)*I #= Num 
+    Version    Solver   Time
+    ------------------------
+    3.3#3      CP       465.6s
+    3,4        CP       463.4s
+    3.3#3      SAT      258.5s
+    3.4        SAT      164.6s
+
+
+
+
   This model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
 
-import cp.
+% Num mod I #= 0
+% import sat. % v3.4:Stack overflow v.3.4.1:280,45s  v3.3#3: 338.809s
+import cp. % v3.4: Stack overflow. v3.4.1: 10.1s  v3.3#3: 13.524s
+
+% (Num div I)*I#=Num
+% import sat. % v3.4: 164.594s  v3.3#3: 258.585s
+% import cp. % v3.4: 463.437  v3.3#3: 465.636s
 
 main => go.
 
 go ?=>
+  nolog,
   N = 10,
 
   X = new_list(N),
@@ -38,20 +67,32 @@ go ?=>
 
   X[1] #!= 0,
   foreach(I in 2..18)
-    Num mod I #= 0
+    Num mod I #= 0 % Stack overflow with v3.4. Fixed in v3.4.1
+    
+    % Note: This is based on the definition of X mod Y:
+    %    X - floor(X div Y)*Y -> X-(X div Y)*Y #= Mod
+    % (Num div I) * I #= Num % SAT is faster than CP on this (but slower than v3.3#3)
+    % my_mod(Num,I,0)
   end,
   
   to_num(X,10,Num),
   all_different(X),
-  
-  solve(X),  
+
+  Vars = X ++ [Num],
+  solve(Vars),  
   
   println(Num),
-  % fail,
+  fail,
 
   nl.
 go => true.
 
+
+% X mod Y #= Z
+% This is based on the definition of X mod Y (see Picat Guide, section 3)
+%    X - floor(X div Y)*Y -> X-(X div Y)*Y #= Mod
+my_mod(X,Y,Z) =>
+  X-(X div Y)*Y #= Z.
 
 %
 % converts a number Num to/from a list of integer List given a base Base

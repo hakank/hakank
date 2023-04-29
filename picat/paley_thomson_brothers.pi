@@ -1,0 +1,121 @@
+/* 
+
+  Paley Thomson brothers puzzle in Picat.
+
+  From Doug Edmunds in the Picat group:
+  https://groups.google.com/g/picat-lang/c/C6kEBrLPsg0/m/OyUmgoqdBAAJ
+  """
+  I've been able to encode this puzzle except for clue #1.  Without clue #1, 
+  I can get Picat to solve it down to 4 possible results, one of which is the 
+  correct one. I could use some help with clue #1.   
+  I can post my code but don't want to spoil it for you.
+
+  Puzzle:
+  Three Paley brothers and three Thomson brothers operate a company that manufactures 
+  lie detectors.
+  Three of these six men always tell the truth, and three always tell lies;
+  neither set of brothers consists exclusively of liars.
+  Some recent statements from the six men are recorded below.
+  Can you find the six men's full names, and tell which men tell the truth and 
+  which tell lies?
+
+  1. Alan: "Both my brothers tell lies."
+  2. Boris: "Both my brothers tell the truth."
+  3. Chuck: "Alan and Boris are both liars."
+  4. Dalman: "Chuck and I are brothers."
+  5. Edwin: "Boris and I are brothers."
+  6. Finney: "Edwin tells the truth."
+  7. Finney: "Boris is one of the Paleys."
+  """
+
+  This puzzle is from https://www.braingle.com/brainteasers/teaser.php?op=2&id=5160&comm=0
+  
+  Solution:
+
+    x = [2,1,2,1,1,2]
+    y = [0,0,1,0,1,1]
+    Alan Thomson lies
+    Boris Paley lies
+    Chuck Thomson tells truth
+    Dalman Paley lies
+    Edwin Paley tells truth
+    Finney Thomson tells truth
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import sat.
+import cp.
+
+main => go.
+
+go =>
+  N = 6, % number of men
+  L = [Alan,Boris,Chuck,Dalman,Edwin,Finney],
+  L = 1..N,
+
+  Paley = 1,
+  Thomson = 2,
+
+  % For presentation
+  First = ['Alan','Boris','Chuck','Dalman','Edwin','Finney'], 
+  Last = ['Paley','Thomson'],
+
+  % Which last name?
+  X = new_list(N),
+  X :: Paley..Thomson,
+
+  % Tells truth/lies: 0: lies 1: tells the truth
+  Y = new_list(N),
+  Y :: 0..1,
+
+  % Three Paley brothers and three Thomson brothers operate a company that manufactures 
+  % lie detectors.
+  count(Paley,X,#=,3),
+  count(Thomson,X,#=,3),
+
+  % Three of these six men always tell the truth, and three always tell lies;  
+  sum(Y) #= 3,
+  
+  % neither set of brothers consists exclusively of liars.  
+  sum([Y[I]*(X[I] #= Paley) : I in 1..N]) #>= 1, % Not needed
+  sum([Y[I]*(X[I] #= Thomson) : I in 1..N]) #>= 1, % Not needed
+  
+  % 1. Alan: "Both my brothers tell lies."
+  % Note that we have to exclude Alan from this check since he's not his own brother
+  Y[Alan] #<=> sum([ (X[I] #= X[Alan])*(Y[I]#=0) : I in 1..N, I != Alan ]) #= 2,
+  
+  % 2. Boris: "Both my brothers tell the truth."
+  Y[Boris] #<=> sum([ (X[I] #= X[Boris])*(Y[I]#=1) : I in 1..N, I != Boris ]) #= 2,  
+    
+  % 3. Chuck: "Alan and Boris are both liars."
+  Y[Chuck] #<=> (Y[Alan] #= 0 #/\ Y[Boris] #= 0),
+  
+  % 4. Dalman: "Chuck and I are brothers."
+  Y[Dalman] #<=> (X[Chuck] #= X[Dalman]),
+  
+  % 5. Edwin: "Boris and I are brothers."
+  Y[Edwin] #<=> (X[Boris] #= X[Edwin]),  
+  
+  % 6. Finney: "Edwin tells the truth."
+  Y[Finney] #<=> (Y[Edwin] #= 1),
+  
+  % 7. Finney: "Boris is one of the Paleys."
+  Y[Finney] #<=> (X[Boris] #= Paley),
+
+  Vars = X ++ Y,
+  solve(Vars),
+  
+  println(x=X),
+  println(y=Y),
+
+  foreach(I in 1..N)
+    printf("%w %w %w\n", First[I], Last[X[I]], cond(Y[I]==1,'tells truth',lies))
+  end,
+  nl,
+  nl,
+  fail,
+  nl.
