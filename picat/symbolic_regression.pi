@@ -58,7 +58,7 @@ main => go.
 % Run as
 %  $ picat symbolic_function_induction.pi symbolic_function_induction_datafile.pi
 %
-main(ARGS) =>
+main(ARGS) ?=>
   File = ARGS[1],
   println(file=File),
   if file_exists(File) then
@@ -73,6 +73,7 @@ main(ARGS) =>
     nl
   end.
 
+main(_) => true.
 
 
 go ?=>
@@ -139,24 +140,26 @@ go3 =>
 % Trying to do a more fancy mutation / crossover
 go4 => 
   % Fun = $'A' / (('B' + 9) * ('B' * 0 - -2 * 'B' - 'B')) * (5 - 'B' / -6 * 1),
-  Fun = $'A' / 'B' + 'A'**2.1,
+  Fun = $'A' / 'B' + 'A'**2,
   println(fun=Fun),
   Replace = $'B'**2 + sqrt('A'),
   println(replace=Replace),
   AtomicProb = 0.1,
   NotAtomicProb = 0.7,
   Fun =.. L,
-  flatten_tree(L,[],Tree),
-  println(tree=Tree),
+  % flatten_tree(L,[],Tree),
+  % println(tree=Tree),
   % walk_tree(Fun,AtomicProb,NotAtomicProb,Replace,NewFun),
   % Fun =.. L,
-  % NewL = replace_tree(L,2.1,'C'),
-  % NewFun =.. NewL,
+  NewL = replace_tree(L,2,'C'),
+  println(newL=NewL),
+  NewFun =.. NewL,
+  println(newFun=NewFun),
   println(ok),
-  flatten_tree(L2,Tree,[]),
-  println(l2=L2),
-  println(x=X),
-  println(ok2),
+  % flatten_tree(L2,Tree,[]),
+  % println(l2=L2),
+  % println(x=X),
+  % println(ok2),
   % println(new_fun=NewFun),
   nl.
 
@@ -397,33 +400,38 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
   KeepProgramsPct = Params.get(keep_programs_pct,0.01), % Keep some of the good functions intact
   StopCriteria = Params.get(stop_criteria,at_least_one_solution), % Or "loops"
   ShowBest = Params.get(show_best,1),
-  ShowOnlyImprovements = Params.get(show_only_improvements,true),  
+  ShowOnlyImprovements = Params.get(show_only_improvements,true),
+  ShowOnlyGood = Params.get(show_only_good,false),
   Debug = Params.get(debug,false),
   % Limit for pow_mod2/2
   PowModConstant = Params.get(pow_mod_constant,10**6),
   get_global_map().put(pow_mod_constant,PowModConstant),
   RemoveDups = Params.get(remove_dups,true), % remove duplicates after new generated population
   InitFun = Params.get(init_fun,_), % initial function
+  Timeout = Params.get(timeout,0), % Total timeout in seconds
+
 
   % Random seed
   RandomSeed = Params.get(random_seed,_),
   if nonvar(RandomSeed) then
     _ = random(RandomSeed)
   else
-    println(random2),
+    % println(random2),
     _ = random2()
   end,
   
-
-  println(data=Data),
-  println(vars=Vars),
-  println(ops=Ops),  
-  println(unknown=Unknown),
-  println(constants=Constants),
-  println(params=Params),
-  println(maxSize=MaxSize),
-  nl,
-
+  if not ShowOnlyGood then
+    println(data=Data),
+    println(data_len=Data.len),
+    println(vars=Vars),
+    println(ops=Ops),  
+    println(unknown=Unknown),
+    println(constants=Constants),
+    println(params=Params),
+    println(maxSize=MaxSize),
+    nl
+  end,
+  flush(stdout),
   statistics(runtime,_),
   AllGood = new_map(),
   Funs = gen_funs(Ops,Constants,Vars,MaxSize,InitSize),
@@ -454,16 +462,25 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
     if All.len > 0 then
        ThisBest = All[1,1]
     end,
+    statistics(runtime,[TimeMs,_]),
+    TimeS = TimeMs/1000, % convert time to seconds
     if Good.len > 0; Gen == 1 ; ShowOnlyImprovements == false ; (ShowOnlyImprovements, nonvar(BestLast), ThisBest < BestLast) then
-      nl,
-      statistics(runtime,[TimeMs,_]),
-      TimeS = to_fstring("%0.3f",TimeMs/1000),
-      printf("gen = %w  (time: %ws)\n",Gen,TimeS),
-      println(results_best=[All[I] : I in 1..ShowBest]),
-      if Good.len > 0 then
-        println(good=Good)
+      if not ShowOnlyGood then
+        nl
       end,
-      nl
+      TimeSString = to_fstring("%0.3f",TimeS),
+      if not ShowOnlyGood then
+        printf("gen = %w  (time: %ws)\n",Gen,TimeS),
+        println(results_best=[All[I] : I in 1..ShowBest])
+      end,
+      if Good.len > 0 then
+        if not ShowOnlyGood then
+          println(good=Good)
+        end
+      end,
+      if not ShowOnlyGood then
+        nl
+      end
     end,
 
     if Programs.len > 0, (Gen == 1; All.len > 0, All[1,1] < BestLast) then
@@ -491,6 +508,11 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
     end,
     Funs := NewFuns,
     Gen := Gen + 1,
+    if Timeout > 0, TimeS > Timeout then
+      printf("Timeout %w reached\n",Timeout),
+      KeepRunning := false
+    end,
+    
     if Gen >= NumGens, StopCriteria == at_least_one_solution then
       if AllGood.size > 0 then
         KeepRunning := false
@@ -500,7 +522,9 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
       KeepRunning := false
     end
   end,
-  nl,
+  if not ShowOnlyGood then
+    nl
+  end,
   
   println("AllGood:"),
   ResultMap = new_map(), % Number of specific results
@@ -512,6 +536,7 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
   nl,
   println(resultMap=ResultMap.to_list.sort_down(2)),
   nl,
+  flush(stdout),
   fail,
   nl.
 
@@ -522,9 +547,10 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
   Approx = Params.get(approx,_),
   TotalApprox = Params.get(total_approx,_),  
   Debug = Params.get(debug,false),
-  Timeout = Params.get(timeout,1000), % Default Timeout 1s
+  EvalTimeout = Params.get(eval_timeout,1000), % Default Timeout for eval 1s
   ShowErrors = Params.get(show_errors,false),
-  ShowInstances = Params.get(show_instances,false),  
+  ShowInstances = Params.get(show_instances,false),
+  ShowOnlyGood = Params.get(show_only_good,false),
   UniqueDigits = Params.get(unique_digits,false),
   UniqueDigitsAll = Params.get(unique_digits_all,false),
   UniqueVars = Params.get(unique_vars,false), % NOTE: only single atom vars!
@@ -553,12 +579,12 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
       if UniqueVarsAll then 
          if VarsUsedLen != VarsUsedRemoveDupsLen ; VarsUsedLen != Unknown.len then
            CheckUniqueFailed := true
-         end,
+         end
       else
         if VarsUsedLen != VarsUsedRemoveDupsLen then
           CheckUniqueFailed := true        
         end
-      end,
+      end
     end,
     foreach([Vals,Res] in Data,break(Failed == true))
       if Debug then
@@ -570,7 +596,7 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
         println(x=X)
       end,
       catch(Y = X.eval,Error,true),
-      % time_out(catch(Y = X.eval,Error,true),Timeout,Status), % This does not catch large ** /2
+      % time_out(catch(Y = X.eval,Error,true),EvalTimeout,Status), % This does not catch large ** /2
       % if Status != success then
       %    println(status=Status),
       %    Failed := true
@@ -644,19 +670,26 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
       end,
       % Results := Results ++ [[abs(S),F]],
       catch(Check = replace_term(F,Vars,Unknown).eval,CheckError,true),
+      if integer(Check) then
+        CheckF = Check
+      else
+        CheckF = to_fstring("%10.15f",Check)
+      end,
       if S*1.0 == 0.0 ; (nonvar(Approx), S <= Approx) ; (nonvar(TotalApprox), S <= TotalApprox) then
         if Debug then
           println(found=F)
         end,
         % catch(Check = replace_term(F,Vars,Unknown).eval,CheckError,true),
         if nonvar(CheckError) then
-           println([error_when_checking,found_function=F, total_diff=S,check=Check]),        
+           println([error_when_checking,found_function=F, total_diff=S,check=CheckF])    
         else
-          println([found_function=F, total_diff=S,check=Check]),        
+          if not ShowOnlyGood then
+            println([found_function=F, total_diff=S,check=CheckF])
+          end,
           Good := Good ++ [F=Check]
         end
       end,
-      Results := Results ++ [[abs(S),F,check=Check]],
+      Results := Results ++ [[abs(S),F,check=CheckF]]
     end
   end,
 
@@ -729,6 +762,15 @@ replace_term(Term,Vars,Vals) = X =>
   end,
   X =.. L1.
 
+% for eval('rec'(X,Y,Z))
+rec(X,Y,Z) = Val =>
+  % println($rec(X,Y,Z)),
+  if X <= 0 then
+    Val = Y
+  else
+    Val = rec(X-1,Y,Z)
+  end.
+
 
 % Note: This must be funtions
 arities(+) = 2.
@@ -784,12 +826,22 @@ arities(sqrt_restricted) = 1.
 arities(exp) = 1.
 arities(log) = 1.
 arities(log2) = 1.
+arities(log10) = 1.
+arities(log_2) = 2.
 arities(sin) = 1.
+arities(asin) = 1.
+arities(asinh) = 1.
 arities(cos) = 1.
+arities(acos) = 1.
+arities(acosh) = 1.
 arities(tan) = 1.
 arities(atan) = 1.
 arities(atan2) = 2.
-arities(cos) = 1.
+arities(asec) = 1.
+arities(csc) = 1.
+arities(acsc) = 1.
+arities(acot) = 1.
+
 arities(logistic) = 1.
 
 arities(floor) = 1.
@@ -1050,7 +1102,7 @@ eval('=>'(X,Y)) = Val =>
     YVal = eval(Y),
     B1 = cond(XVal < 1, false,true),
     B2 = cond(YVal < 1, false,true),
-    Val = cond((XVal == true, YVal==false),0, 1).
+    Val = cond((B1 == true, B2==false),0, 1).
 
 % equivalence
 % (from my JGAP implementation EquivD)
@@ -1110,9 +1162,35 @@ eval('sin'(X)) = Val =>
     XVal = eval(X),
     Val = sin(XVal).
 
+eval('asin'(X)) = Val =>
+    XVal = eval(X),
+    Val = asin(XVal).
+
+eval('asinh'(X)) = Val =>
+    XVal = eval(X),
+    Val = asinh(XVal).
+
+
 eval('cos'(X)) = Val =>
     XVal = eval(X),
     Val = cos(XVal).
+
+eval('acos'(X)) = Val =>
+    XVal = eval(X),
+    Val = acos(XVal).
+
+eval('acosh'(X)) = Val =>
+    XVal = eval(X),
+    Val = acosh(XVal).
+
+
+eval('cot'(X)) = Val =>
+    XVal = eval(X),
+    Val = cot(XVal).
+
+eval('csc'(X)) = Val =>
+    XVal = eval(X),
+    Val = csc(XVal).
 
 eval('tan'(X)) = Val =>
     XVal = eval(X),
@@ -1127,6 +1205,18 @@ eval('atan2'(X,Y)) = Val =>
     YVal = eval(Y),
     Val = atan2(XVal,YVal).
 
+eval('asec'(X)) = Val =>
+    XVal = eval(X),
+    Val = asec(XVal).
+
+eval('acsc'(X)) = Val =>
+    XVal = eval(X),
+    Val = acsc(XVal).
+
+eval('acot'(X,Y)) = Val =>
+    XVal = eval(X),
+    Val = acot(XVal).
+
 
 eval('exp'(X)) = Val =>
     XVal = eval(X),
@@ -1139,6 +1229,16 @@ eval('log'(X)) = Val =>
 eval('log2'(X)) = Val =>
     XVal = eval(X),
     Val = log2(XVal).
+
+eval('log10'(X)) = Val =>
+    XVal = eval(X),
+    Val = log10(XVal).
+
+eval('log_2'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),    
+    Val = log(XVal,YVal).
+
 
 eval('sqrt'(X)) = Val =>
     XVal = eval(X),
@@ -1271,22 +1371,17 @@ eval('char_count'(X)) = Val =>
 % Note: This does NOT work!
 % 
 eval('rec'(X,Y,Z)) = Val =>
+  % println($eval('rec'(X,Y,Z))),
   XVal = eval(X),
-  % println(xval=XVal),
+  %println(xval=XVal),
   YVal = eval(Y),
-  % println(yval=YVal),  
-  if XVal <= 0 then
-    % counter <= 0 return Y
-    Val = Y
-  else
-    % else: decrement x abd recurse
-    XVal1 = XVal - 1,
-    ZVal = eval(Z),
-    % println(zval=ZVal),
-    T = eval('rec'(XVal1,YVal,ZVal)),
-    % println(t=T),
-    Val = T
-  end.
+  %println(yval=YVal),  
+  ZVal = eval(Z),
+  %println(zval=ZVal),
+  T = rec(XVal,YVal,ZVal),
+  %println(t=T),
+  Val = T.
+
 
 % Experimental
 % sum_i/2 sums the value of I for I in X..Y.
@@ -1535,10 +1630,6 @@ data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
                     stop_criteria=generation,
                     num_gens=100
                   ]).
-
-
-
-
 
 
 /*

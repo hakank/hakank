@@ -1,0 +1,356 @@
+/* 
+
+  Aquarium puzzle in Picat.
+
+  https://www.puzzle-aquarium.com/
+  """
+  Aquarium is a logic puzzle with simple rules and challenging solutions.
+
+  The rules of Aquarium are simple:
+  - The puzzle is played on a rectangular grid divided into blocks called "aquariums"
+  - You have to "fill" the aquariums with water up to a certain level or leave it empty.
+  - The water level in each aquarium is one and the same across its full width
+  - The numbers outside the grid show the number of filled cells horizontally and vertically. 
+  """
+
+  For the puzzle from Aquarium Tutorial #1 Rules:
+  (https://www.youtube.com/embed/videoseries?list=PLH_elo2OIwaDlOE2Ej_z4R7S3AUffy-Ou )
+  the blocks/aquariums are represented with the "aquarium id" (1..6):
+
+    [1,1,2,2,2,2],
+    [1,1,1,1,3,3],
+    [1,4,1,5,5,3],
+    [6,4,4,4,4,3],
+    [6,4,6,4,3,3],
+    [6,6,6,4,4,3]
+
+  The solution is shown as 
+      2     2     3     5     4     4 
+  4:  1( )  1( )  2(#)  2(#)  2(#)  2(#) 
+  4:  1(#)  1(#)  1(#)  1(#)  3( )  3( ) 
+  4:  1(#)  4( )  1(#)  5(#)  5(#)  3( ) 
+  1:  6( )  4( )  4( )  4( )  4( )  3(#) 
+  4:  6( )  4(#)  6( )  4(#)  3(#)  3(#) 
+  3:  6( )  6( )  6( )  4(#)  4(#)  3(#) 
+
+  Where '#' marks that this cell should be filled.
+
+  And a simpler variant:
+  .  .  2  2  2  2 
+  1  1  1  1  .  . 
+  1  .  1  5  5  . 
+  .  .  .  .  .  3 
+  .  4  .  4  3  3 
+  .  .  .  4  4  3 
+
+  Where a number indicates that this cell should be filled 
+  ('.' thus means that the cells should not be filled).
+
+  So it's no fancy output...  
+ 
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+  % data(1,Grid,Rows,Cols),
+  % data(2,Grid,Rows,Cols),
+  data(3,Grid,Rows,Cols),
+  % data(4,Grid,Rows,Cols),  
+
+  aquarium(Grid,Rows,Cols, X),
+  print_solution(Grid,Rows,Cols, X),
+
+  fail,
+
+  nl.
+
+%
+% Solve all instances
+%
+go2 => 
+  data(N,Grid,Rows,Cols),
+  println(puzzle=N),
+  aquarium(Grid,Rows,Cols, X),
+  print_solution(Grid,Rows,Cols, X),
+
+  fail,
+
+  nl.
+
+go3 =>
+  % empty_grid(6,6),
+  empty_grid(10,10),  
+  nl.
+
+
+
+print_solution(Grid,Rows,Cols, X) =>
+  R = Rows.len,
+  C = Cols.len,
+  print("  "),
+  foreach(J in 1..C)
+    printf("%5d ", Cols[J])
+  end,
+  nl,
+  foreach(I in 1..R)
+    printf("% 3d: ", Rows[I]),
+    foreach(J in 1..C)
+      printf("%2d(%s) ", Grid[I,J], cond(X[I,J] == 1,"#"," "))
+    end,
+    nl
+  end,
+  nl,
+  println("Simpler:"),
+  foreach(I in 1..R)    
+    foreach(J in 1..C)
+      printf("%2s ",cond(X[I,J] == 1,Grid[I,J].to_string,"."))
+    end,
+    nl
+  end,
+  nl.
+
+
+
+aquarium(Grid,Rows,Cols, X) :-
+  R = Rows.len,
+  C = Cols.len,
+  N = max(Grid.flatten), % Number of blocks/aquariums
+
+  X = new_array(R,C),
+  X :: 0..1,
+
+  % The Rows and Cols constraints
+  foreach(I in 1..R)
+    sum([X[I,J] : J in 1..C]) #= Rows[I]
+  end,
+  foreach(J in 1..C)
+    sum([X[I,J] : I in 1..R]) #= Cols[J]
+  end,
+
+  % For each block (aquarium):
+  % - If a cell at a level is filled, then all the cells
+  %   in this aquarium at this level must be filled.
+  % - If an upper level is filled, then the lower level must
+  %   have been filled.
+  foreach(A in 1..N)
+    % Which cells belong to this aquarium?
+    Cells = [[I,J] : I in 1..R, J in 1..C, Grid[I,J] == A],
+    MaxI = max([I : [I,_] in Cells]), % Max row ids
+    foreach([I,J] in Cells)
+      % Which cells in this aquarium are at the same level as this cell?
+      T = findall(K, member([I,K],Cells)),
+      % If this cell is filled, all cells at this level must be filled.
+      X[I,J] #= 1 #<=> sum([X[I,K] : K in T]) #= T.len,
+
+      % If an upper level is filled, then the lower level must be filled
+      % ("lower level": higher indexed row)
+      if I < MaxI, membchk([I+1,J],Cells) then
+         X[I,J] #= 1 #=> X[I+1,J] #= 1
+      end
+    end
+  end,
+
+  solve($[ff,split],X).
+
+print_cells(R,C,Cells) =>
+  foreach(I in 1..R)
+    foreach(J in 1..C)
+      if membchk([I,J], Cells) then
+        print("#")
+      else
+        print(".")
+      end
+    end,
+    nl
+  end,
+  nl.
+  
+
+% Print an empty grid
+empty_grid(R,C) =>
+  println("["),
+  foreach(I in 1..R)
+    print("["),
+    foreach(J in 1..C)
+      print(" _"),
+      if J < C then
+        print(",")
+      end
+    end,
+    print("]"),
+    if I < R then
+      print(",")
+    end,
+    nl
+  end,
+  println("]"),
+  nl.
+
+
+%
+% Data
+%
+
+/*
+  From
+  Aquarium Tutorial #1 Rules:
+  https://www.youtube.com/embed/videoseries?list=PLH_elo2OIwaDlOE2Ej_z4R7S3AUffy-Ou
+
+  Solution:
+
+      2     2     3     5     4     4 
+  4:  1( )  1( )  2(#)  2(#)  2(#)  2(#) 
+  4:  1(#)  1(#)  1(#)  1(#)  3( )  3( ) 
+  4:  1(#)  4( )  1(#)  5(#)  5(#)  3( ) 
+  1:  6( )  4( )  4( )  4( )  4( )  3(#) 
+  4:  6( )  4(#)  6( )  4(#)  3(#)  3(#) 
+  3:  6( )  6( )  6( )  4(#)  4(#)  3(#) 
+
+  Simpler:
+  .  .  2  2  2  2 
+  1  1  1  1  .  . 
+  1  .  1  5  5  . 
+  .  .  .  .  .  3 
+  .  4  .  4  3  3 
+  .  .  .  4  4  3 
+
+*/
+data(1,Grid,Rows,Cols) :-
+   Rows = [4,4,4,1,4,3],
+   Cols = [2,2,3,5,4,4],
+   % The number indicates the id of the aquariums
+   Grid = [
+            [ 1, 1, 2, 2, 2, 2],
+            [ 1, 1, 1, 1, 3, 3],
+            [ 1, 4, 1, 5, 5, 3],
+            [ 6, 4, 4, 4, 4, 3],
+            [ 6, 4, 6, 4, 3, 3],
+            [ 6, 6, 6, 4, 4, 3]
+          ].
+
+/*
+
+  https://www.puzzle-aquarium.com/
+  Puzzle 6x6 Easy Aquarium Puzzle ID: 11,356,331
+  Solution:
+  
+        5     2     2     1     2     3 
+    3:  1(#)  1(#)  1(#)  2( )  2( )  2( ) 
+    2:  3( )  3( )  3( )  3( )  2(#)  2(#) 
+    2:  4(#)  4(#)  3( )  5( )  5( )  6( ) 
+    2:  4(#)  5( )  5( )  5( )  5( )  6(#) 
+    5:  4(#)  5( )  6(#)  6(#)  6(#)  6(#) 
+    1:  4(#)  5( )  5( )  5( )  5( )  5( ) 
+
+  Simpler:
+   1  1  1  .  .  . 
+   .  .  .  .  2  2 
+   4  4  .  .  .  . 
+   4  .  .  .  .  6 
+   4  .  6  6  6  6 
+   4  .  .  .  .  . 
+
+*/
+data(2,Grid,Rows,Cols) :-
+   Rows = [3,2,2,2,5,1],
+   Cols = [5,2,2,1,2,3],
+   Grid = [
+           [ 1, 1, 1, 2, 2, 2],
+           [ 3, 3, 3, 3, 2, 2],
+           [ 4, 4, 3, 5, 5, 6],
+           [ 4, 5, 5, 5, 5, 6],
+           [ 4, 5, 6, 6, 6, 6],
+           [ 4, 5, 5, 5, 5, 5]
+          ].
+
+
+/*
+  https://www.puzzle-aquarium.com/
+
+  6x6 Hard Aquarium Puzzle ID: 9,996,088
+
+  puzzle = 3
+      4     3     4     4     3     2 
+  1:  1( )  1( )  2( )  2( )  2( )  3(#) 
+  1:  4( )  5( )  5( )  6(#)  7( )  8( ) 
+  5:  4(#)  9(#)  9(#)  6(#)  7(#)  8( ) 
+  4: 10(#) 11(#) 12(#) 13( ) 13( )  8(#) 
+  4: 10(#) 14( ) 15(#) 15(#) 13(#) 16( ) 
+  5: 17(#) 14(#) 14(#) 18(#) 18(#) 16( ) 
+
+  Simpler:
+   .  .  .  .  .  3 
+   .  .  .  6  .  . 
+   4  9  9  6  7  . 
+   10 11 12  .  .  8 
+   10  . 15 15 13  . 
+   17 14 14 18 18  . 
+
+
+
+*/  
+data(3,Grid,Rows,Cols) :-
+   Rows = [1,1,5,4,4,5],
+   Cols = [4,3,4,4,3,2],
+   Grid = [
+           [ 1, 1, 2, 2, 2, 3],
+           [ 4, 5, 5, 6, 7, 8],
+           [ 4, 9, 9, 6, 7, 8],
+           [10,11,12,13,13, 8],
+           [10,14,15,15,13,16],
+           [17,14,14,18,18,16]
+          ].
+
+
+/*
+  From https://www.puzzle-aquarium.com
+  10x10 Normal Aquarium Puzzle ID: 41,724
+
+  Solution:
+        4     4     5     7     7     6     9     6     6     6 
+    5:  1( )  1( )  1( )  1( )  2(#)  3( )  4(#)  4(#)  5(#)  5(#) 
+    6:  1( )  6( )  1( )  2(#)  2(#)  3( )  5(#)  5(#)  5(#)  5(#) 
+    3:  7( )  6( )  6( )  3( )  3( )  3( )  8(#)  8(#)  8(#)  9( ) 
+    9:  7( )  6(#)  6(#) 10(#)  3(#)  3(#)  8(#)  9(#)  9(#)  9(#) 
+    6:  7( )  7( )  7( ) 10(#)  3(#)  8(#)  8(#)  9(#) 11( )  9(#) 
+    6:  7(#) 12(#) 12(#) 10(#) 10(#)  8(#) 11( ) 11( ) 11( ) 11( ) 
+    9: 13(#) 13(#) 13(#) 10(#)  8(#)  8(#) 14(#) 15( ) 11(#) 11(#) 
+    7: 13(#) 16(#) 16(#) 17(#) 17(#) 17(#) 14(#) 15( ) 18( ) 18( ) 
+    3: 19( ) 20( ) 17(#) 17(#) 15( ) 15( ) 14(#) 15( ) 15( ) 18( ) 
+    6: 19(#) 20( ) 20( ) 20( ) 20( ) 15(#) 15(#) 15(#) 18(#) 18(#) 
+  
+  Simpler:
+   .  .  .  .  2  .  4  4  5  5 
+   .  .  .  2  2  .  5  5  5  5 
+   .  .  .  .  .  .  8  8  8  . 
+   .  6  6 10  3  3  8  9  9  9 
+   .  .  . 10  3  8  8  9  .  9 
+   7 12 12 10 10  8  .  .  .  . 
+  13 13 13 10  8  8 14  . 11 11 
+  13 16 16 17 17 17 14  .  .  . 
+   .  . 17 17  .  . 14  .  .  . 
+  19  .  .  .  . 15 15 15 18 18 
+
+*/
+data(4,Grid,Rows,Cols) :-
+   Rows = [5,6,3,9,6,6,9,7,3,6],
+   Cols = [4,4,5,7,7,6,9,6,6,6],
+   Grid = [[ 1, 1, 1, 1, 2, 3, 4, 4, 5, 5],
+           [ 1, 6, 1, 2, 2, 3, 5, 5, 5, 5],
+           [ 7, 6, 6, 3, 3, 3, 8, 8, 8, 9],
+           [ 7, 6, 6,10, 3, 3, 8, 9, 9, 9],
+           [ 7, 7, 7,10, 3, 8, 8, 9,11, 9],
+           [ 7,12,12,10,10, 8,11,11,11,11],
+           [13,13,13,10, 8, 8,14,15,11,11],
+           [13,16,16,17,17,17,14,15,18,18],
+           [19,20,17,17,15,15,14,15,15,18],
+           [19,20,20,20,20,15,15,15,18,18]
+           ].
