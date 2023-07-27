@@ -2,7 +2,7 @@
 % Global constraint max_nvalue in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmax_nvalue.html
+% https://sofdem.github.io/gccat/gccat/Cmax_nvalue.html
 % """
 %     max_nvalue​(MAX,​VARIABLES)​
 %

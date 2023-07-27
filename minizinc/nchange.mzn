@@ -14,7 +14,7 @@
 % since, 4 != 3, 3!=4,  4 != 1 (three changes)
 %
 % See also  Global Constraint Catalogue 
-% http://www.emn.fr/x-info/sdemasse/gccat/Cchange.html
+% https://sofdem.github.io/gccat/gccat/Cchange.html
 % 
 % Model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
@@ -60,8 +60,8 @@ predicate nchange_cmp(var int: c, array[int] of var int: x, int: cmp) =
 solve satisfy;
 
 constraint
-  % x = [4,4,3,4,1] % for n = 5
-  % /\
+  x = [4,4,3,4,1] % for n = 5
+  /\
   forall(i in 1..n) (
     x[i] >= 1 
     /\ x[i] <= n % some arbitrary upper limit (otherwise the sky's the limit)
@@ -72,8 +72,8 @@ constraint
   )
   /\
   nchange(num_changes, x)
-  /\
-  num_changes = 2
+  % /\
+  % num_changes = 2
 
   %  /\ % symmetry breaking
   %  increasing(x)

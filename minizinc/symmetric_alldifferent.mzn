@@ -2,7 +2,7 @@
 % Global constraint symmetric_alldifferent in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csymmetric_alldifferent.html
+% https://sofdem.github.io/gccat/gccat/Csymmetric_alldifferent.html
 % """
 % All variables associated with the succ attribute of the NODES collection should be 
 % pairwise distinct. In addition enforce the following condition: if variable 

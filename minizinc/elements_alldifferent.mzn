@@ -2,7 +2,7 @@
 % Global constraint elements_alldifferent in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Celements_alldifferent.html
+% https://sofdem.github.io/gccat/gccat/Celements_alldifferent.html
 % """
 % Constraint
 %

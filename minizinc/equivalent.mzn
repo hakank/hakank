@@ -2,7 +2,7 @@
 % Global constraint equivalent in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cequivalent.html
+% https://sofdem.github.io/gccat/gccat/Cequivalent.html
 % """
 % Constraint
 %

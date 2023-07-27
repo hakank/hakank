@@ -2,7 +2,7 @@
 % Global constraint int_value_precede in MiniZinc.
 %  
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cint_value_precede.html
+% https://sofdem.github.io/gccat/gccat/Cint_value_precede.html
 % """
 % If value T occurs in the collection of variables VARIABLES then its first 
 % occurrence should be preceded by an occurrence of value S.

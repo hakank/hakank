@@ -2,7 +2,7 @@
 % Global constraint change_pairs in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cchange_pair.html
+% https://sofdem.github.io/gccat/gccat/Cchange_pair.html
 % """
 % NCHANGE is the number of times that the following disjunction holds:
 %  (X1 CTRX X2) \/ (Y1 CTRY Y2) , where (X1, Y1) and (X2, Y2) correspond to 
@@ -103,13 +103,13 @@ solve satisfy;
 
 constraint
 
-   cp1d([3,3,3,3,3,3,1,1,1,3], x)
-   /\
+   % cp1d([3,3,3,3,3,3,1,1,1,3], x)
+   % /\
    cp1d([5,7,7,8,4,7,3,6,6,7], y)
    /\ 
-   change_pairs(nchange, x, y, 10, 2)
-   /\
-   nchange = 3
+   change_pairs(nchange, x, y, 2, 2)
+   % /\
+   % nchange = 3
 ;
 
 output

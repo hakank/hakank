@@ -2,7 +2,7 @@
 % Global constraint sum_of_weights_of_distinct_values in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csum_of_weights_of_distinct_values.html
+% https://sofdem.github.io/gccat/gccat/Csum_of_weights_of_distinct_values.html
 % """
 % Constraint
 %

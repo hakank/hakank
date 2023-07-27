@@ -2,7 +2,7 @@
 % Global constraint nclass in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnclass.html
+% https://sofdem.github.io/gccat/gccat/Cnclass.html
 % """
 % nclass​(NCLASS,​VARIABLES,​PARTITIONS)
 % 

@@ -2,7 +2,7 @@
 % Global constraint alldifferent_partition in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_partition.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_partition.html
 % """
 % Enforce all variables of the collection VARIABLES to take values that 
 % belong to distinct partitions.
@@ -79,8 +79,8 @@ predicate cp1d(array[int] of set of int: x, array[int] of var set of int: y) =
 solve satisfy;
 
 constraint
-   cp1d([6,3,4], x)
-   /\
+   % cp1d([6,3,4], x)
+   % /\
    cp1d([{1,3}, {4}, {2,6}], s)
    /\
    all_different_partition(x, s, ss)

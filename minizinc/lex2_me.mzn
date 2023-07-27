@@ -2,7 +2,7 @@
 % Global constraint lex2 in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Clex2.html
+% https://sofdem.github.io/gccat/gccat/Clex2.html
 % """
 % lex2​(MATRIX)
 % 

@@ -2,7 +2,7 @@
 % Global constraint nvalue_common in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnvalue_common.html
+% https://sofdem.github.io/gccat/gccat/Cnvalue_common.html
 % """
 % Constraint
 %

@@ -2,7 +2,7 @@
 % Global constraint cond_lex_cost in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccond_lex_cost.html
+% https://sofdem.github.io/gccat/gccat/Ccond_lex_cost.html
 % """
 % cond_lex_cost​(VECTOR,​PREFERENCE_TABLE,​COST)
 % 

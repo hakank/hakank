@@ -2,7 +2,7 @@
 % Global constraint path_from_to in MiniZinc.
 %
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cpath_from_to.html
+% https://sofdem.github.io/gccat/gccat/Cpath_from_to.html
 % """
 % Select some arcs of a digraph G so that there is still a path 
 % between two given vertices of G.

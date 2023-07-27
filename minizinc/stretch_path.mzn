@@ -2,7 +2,7 @@
 % Global constraint stretch_path in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cstretch_path.html
+% https://sofdem.github.io/gccat/gccat/Cstretch_path.html
 % """
 % Let n be the number of variables of the collection VARIABLES.
 % Let Xi, ..., Xj  (1<=i<=j<=n)  be consecutive variables of the 

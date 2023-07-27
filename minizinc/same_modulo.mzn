@@ -2,7 +2,7 @@
 % Global constraint same_modulo in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csame_modulo.html
+% https://sofdem.github.io/gccat/gccat/Csame_modulo.html
 % """
 % same_modulo(VARIABLES1,VARIABLES2,M)
 %

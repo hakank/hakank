@@ -2,7 +2,7 @@
 % Global constraint balance_partition in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cbalance_partition.html
+% https://sofdem.github.io/gccat/gccat/Cbalance_partition.html
 % """
 %  balance_partition(BALANCE, VARIABLES, PARTITIONS)
 %

@@ -2,7 +2,7 @@
 % Global constraint shift in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cshift.html
+% https://sofdem.github.io/gccat/gccat/Cshift.html
 % """
 % shift (MIN_BREAK, MAX_RANGE, TASKS)
 %
@@ -38,7 +38,7 @@
 % holds (the range of a shift is the difference between the end of the last 
 % task of the shift and the origin of the first task of the shift).
 % 
-% [See the figure at http://www.emn.fr/x-info/sdemasse/gccat/Cshift.html
+% [See the figure at https://sofdem.github.io/gccat/gccat/Cshift.html
 %  which states the task ids of the shifts and their order
 %
 %      first shift             second shift

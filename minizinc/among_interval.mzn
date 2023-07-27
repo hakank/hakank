@@ -2,7 +2,7 @@
 % Global constraint among_interval in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Camong_interval.html
+% https://sofdem.github.io/gccat/gccat/Camong_interval.html
 % """
 % NVAR is the number of variables of the collection VARIABLES taking a 
 % value that is located within interval [LOW, UP].

@@ -2,7 +2,7 @@
 % Global constraint alldiffrent_same_value in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_same_value.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_same_value.html
 % """
 % All the values assigned to the variables of the collection VARIABLES1 
 % are pairwise distinct. 

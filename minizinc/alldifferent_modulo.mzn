@@ -2,7 +2,7 @@
 % Global constraint alldifferent_modulo in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_modulo.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_modulo.html
 % """
 % Enforce all variables of the collection VARIABLES to have a distinct 
 % rest when divided by M.

@@ -2,7 +2,7 @@
 % Global constraint in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/C/bipartite.html
+% https://sofdem.github.io/gccat/gccat/C/bipartite.html
 % """
 % bipartite​(NODES)
 % 
@@ -146,24 +146,24 @@ solve satisfy;
 
 constraint
 
-%   % for generating bipartitions
-%     forall(i in 1..n) (
-%       not(i in s[i]) 
-%       /\ 
-%       card(s[i]) >= 2
-%     ) 
-%    % /\
-%    % cp1d([{1,2,3,4}, {5,6}], b)
+  % for generating bipartitions
+    forall(i in 1..n) (
+      not(i in s[i]) 
+      /\ 
+      card(s[i]) >= 2
+    ) 
+   % /\
+   % cp1d([{1,2,3,4}, {5,6}], b)
 %
 %  /\
-   cp1d([
-         {2,3},    % 1
-         {1,4},    % 2
-         {1,4,5},  % 3
-         {2,3,6},  % 4
-         {3,6},    % 5
-         {4,5}     % 6
-       ],s)
+   % cp1d([
+   %       {2,3},    % 1
+   %       {1,4},    % 2
+   %       {1,4,5},  % 3
+   %       {2,3,6},  % 4
+   %       {3,6},    % 5
+   %       {4,5}     % 6
+   %     ],s)
 
    /\
    bipartite(s, b, 1..n)

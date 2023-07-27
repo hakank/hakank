@@ -2,7 +2,7 @@
 % Global constraint global_cardinality_no_loop in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_cardinality_no_loop.html
+% https://sofdem.github.io/gccat/gccat/Cglobal_cardinality_no_loop.html
 % """
 % Constraint
 %
@@ -94,8 +94,8 @@ constraint
                       5,0,
                       6,1
                    ]))
-   /\
-   cp1d(variables, [1,1,8,6])
+   % /\
+   % cp1d(variables, [1,1,8,6])
    /\
    global_cardinality_no_loop(nloop, variables, values)
   

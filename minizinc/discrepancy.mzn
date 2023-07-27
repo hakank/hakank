@@ -2,7 +2,7 @@
 % Global constraint discrepancy in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cdiscrepancy.html
+% https://sofdem.github.io/gccat/gccat/Cdiscrepancy.html
 % """
 % discrepancy(VARIABLES,​K)
 % 

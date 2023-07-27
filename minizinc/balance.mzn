@@ -2,7 +2,7 @@
 % Global constraint balance in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cbalance.html
+% https://sofdem.github.io/gccat/gccat/Cbalance.html
 % """
 % BALANCE is equal to the difference between the number of occurrence of the 
 % value that occurs the most and the value that occurs the least within the 

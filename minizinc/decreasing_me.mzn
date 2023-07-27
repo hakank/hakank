@@ -2,7 +2,7 @@
 % Global constraint decreasing in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cdecreasing.html
+% https://sofdem.github.io/gccat/gccat/Cdecreasing.html
 % """
 % The variables of the collection VARIABLES are decreasing.
 %

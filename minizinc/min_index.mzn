@@ -2,7 +2,7 @@
 % Global constraint min_index (and the extension min_index_val) in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmin_index.html
+% https://sofdem.github.io/gccat/gccat/Cmin_index.html
 % """
 % min_index​(MIN_INDEX,​VARIABLES)​
 % 

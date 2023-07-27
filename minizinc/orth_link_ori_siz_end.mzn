@@ -2,7 +2,7 @@
 % Global constraint orth_link_ori_siz_end in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Corth_link_ori_siz_end.html
+% https://sofdem.github.io/gccat/gccat/Corth_link_ori_siz_end.html
 % """
 % Constraint
 %

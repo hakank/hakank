@@ -5,7 +5,7 @@
 % on rows, columns, and regions.
 % 
 % Here we instead use of constraint global_cardinality:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_cardinality.html
+% https://sofdem.github.io/gccat/gccat/Cglobal_cardinality.html
 % 
 % 
 % For a discussion about this approach see my blog post:

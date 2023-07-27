@@ -2,7 +2,7 @@
 % Global constraint same in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csame.html
+% https://sofdem.github.io/gccat/gccat/Csame.html
 % """
 % The variables of the VARIABLES2 collection correspond to the variables of the VARIABLES1 
 % collection according to a permutation.

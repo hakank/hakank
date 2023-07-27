@@ -2,7 +2,7 @@
 % Global constraint cardinality_atmost_partition in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccardinality_atmost_partition.html
+% https://sofdem.github.io/gccat/gccat/Ccardinality_atmost_partition.html
 % """
 % ATMOST is the maximum number of time that values of a same partition of 
 % PARTITIONS are taken by the variables of the collection VARIABLES.

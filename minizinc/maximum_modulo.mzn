@@ -2,7 +2,7 @@
 % Global constraint maximum_modulo in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmaximum_modulo.html
+% https://sofdem.github.io/gccat/gccat/Cmaximum_modulo.html
 % """
 % Constraint
 %

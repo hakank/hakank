@@ -2,7 +2,7 @@
 % Global constraint symmetric in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csymmetric.html
+% https://sofdem.github.io/gccat/gccat/Csymmetric.html
 % """
 % Consider a digraph G described by the NODES collection. Select a subset of arcs 
 % of G so that the corresponding graph is symmetric (i.e., if there is an arc from 

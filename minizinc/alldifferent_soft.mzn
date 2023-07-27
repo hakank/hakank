@@ -5,7 +5,7 @@
 %   * soft_all_different_var
 %
 % soft_all_different_ctr: 
-% http://www.emn.fr/x-info/sdemasse/gccat/Csoft_all_different_ctr.html
+% https://sofdem.github.io/gccat/gccat/Csoft_all_different_ctr.html
 % 
 % """
 % Consider the disequality constraints involving two distinct variables of the collection 
@@ -23,7 +23,7 @@
 % 
 %
 % soft_alldifferent_var:
-% http://www.emn.fr/x-info/sdemasse/gccat/Csoft_alldifferent_var.html
+% https://sofdem.github.io/gccat/gccat/Csoft_alldifferent_var.html
 % """
 % C is the minimum number of variables of the collection VARIABLES for which the value 
 % needs to be changed in order that all variables of VARIABLES take a distinct value.

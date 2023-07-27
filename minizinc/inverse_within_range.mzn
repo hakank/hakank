@@ -2,7 +2,7 @@
 % Global constraint inverse within range in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cinverse_withing_range.html
+% https://sofdem.github.io/gccat/gccat/Cinverse_withing_range.html
 % """
 % inverse_within_range​(X,​Y)
 % 

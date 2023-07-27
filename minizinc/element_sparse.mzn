@@ -2,7 +2,7 @@
 % Global constraint element_sparse in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Celement_sparse.html
+% https://sofdem.github.io/gccat/gccat/Celement_sparse.html
 % """
 %  Constraint
 %

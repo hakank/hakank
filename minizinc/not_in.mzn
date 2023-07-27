@@ -2,7 +2,7 @@
 % Global constraint not_in in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnot_in.html
+% https://sofdem.github.io/gccat/gccat/Cnot_in.html
 % """
 % Constraint
 %

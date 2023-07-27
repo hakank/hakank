@@ -2,7 +2,7 @@
 % Global constraint stretch_circuit in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/sec4.273.html
+% https://sofdem.github.io/gccat/gccat/sec4.273.html
 % """
 % Let n be the number of variables of the collection VARIABLES and let i, j ​
 % (0<=i​<n,​0<=j​<n)​be two positions within the collection of variables VARIABLES 
@@ -123,8 +123,8 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 solve satisfy;
 
 constraint
-  cp1d(x, array1d(1..n, [6,6,3,1,1,1,6,6]))
-  /\
+  % cp1d(x, array1d(1..n, [6,6,3,1,1,1,6,6]))
+  % /\
   cp1d(val,  [1,2,3,6])
   /\
   cp1d(lmin, [2,2,1,4])

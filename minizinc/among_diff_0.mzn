@@ -2,7 +2,7 @@
 % Global constraint among_diff_0 in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Camong_diff_0.html
+% https://sofdem.github.io/gccat/gccat/Camong_diff_0.html
 % """
 % NVAR is the number of variables of the collection VARIABLES that take a 
 % value different from 0.

@@ -2,7 +2,7 @@
 % Global constraint counts (with relops) in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccounts.html
+% https://sofdem.github.io/gccat/gccat/Ccounts.html
 % """
 % counts​(VALUES,​VARIABLES,​RELOP,​LIMIT)
 % 

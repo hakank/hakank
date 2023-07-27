@@ -2,7 +2,7 @@
 % Global constraint alldifferent_on_intersection in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_on_intersection.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_on_intersection.html
 % """
 % The values that both occur in the VARIABLES1 and VARIABLES2 collections 
 % have only one occurrence.

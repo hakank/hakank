@@ -2,7 +2,7 @@
 % Global constraint all_different except 0 in MiniZinc.
 %
 % From Global constraint catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_except_0.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_except_0.html
 % """ 
 % Enforce all variables of the collection VARIABLES to take distinct 
 % values, except those variables that are assigned to 0.

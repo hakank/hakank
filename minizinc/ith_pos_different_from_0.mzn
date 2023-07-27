@@ -2,7 +2,7 @@
 % Global constraint ith pos different from 0 in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cith_pos_different_from_0.html
+% https://sofdem.github.io/gccat/gccat/Cith_pos_different_from_0.html
 % """
 % ith_pos_different_from_0​(ITH,​POS,​VARIABLES)
 %

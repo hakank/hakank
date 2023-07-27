@@ -2,7 +2,7 @@
 % Global constraint open_alldifferent in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Copen_alldifferent.html
+% https://sofdem.github.io/gccat/gccat/Copen_alldifferent.html
 % """
 % open_alldifferent(S, VARIABLES)
 % 
@@ -48,8 +48,8 @@ solve satisfy;
 constraint
 
    cp1d(x, [9,1,9,3])
-   /\
-   s = {2,3,4}
+   % /\
+   % s = {2,3,4}
 
    /\
    open_alldifferent(x, s)

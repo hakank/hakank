@@ -2,7 +2,7 @@
 % Global constraint in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Clex_greater.html
+% https://sofdem.github.io/gccat/gccat/Clex_greater.html
 % """
 % lex_greater​(VECTOR1,​VECTOR2)
 % 

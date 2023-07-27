@@ -2,7 +2,7 @@
 % Global constraint derangement in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cderangement.html
+% https://sofdem.github.io/gccat/gccat/Cderangement.html
 % """
 % Enforce to have a permutation with no cycle of length one. The permutation 
 % is depicted by the succ attribute of the NODES collection.

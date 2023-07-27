@@ -2,7 +2,7 @@
 % Global constraint nvalues_except_0 in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnvalues_except_0.html
+% https://sofdem.github.io/gccat/gccat/Cnvalues_except_0.html
 % """
 % Constraint
 %

@@ -2,7 +2,7 @@
 % Period constraint in MiniZinc.
 % 
 % Global constraint period
-% http://www.emn.fr/x-info/sdemasse/gccat/Cperiod.html
+% https://sofdem.github.io/gccat/gccat/Cperiod.html
 % """
 % Let us note V0, V1, ..., Vm−1 the variables of the VARIABLES collection. 
 % PERIOD is the period of the sequence V0 V1...Vm−1 according to constraint  

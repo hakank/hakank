@@ -9,7 +9,7 @@
 % From Global Constraint Catalogue:
 % 
 % common:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccommon.html
+% https://sofdem.github.io/gccat/gccat/Ccommon.html
 % """
 % NCOMMON1 is the number of variables of the collection of variables 
 % VARIABLES1 taking a value in VARIABLES2.
@@ -29,7 +29,7 @@
 % """
 % 
 % used_by:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cused_by.html
+% https://sofdem.github.io/gccat/gccat/Cused_by.html
 % """
 % All the values of the variables of collection VARIABLES2 are used by 
 % the variables of collection VARIABLES1.
@@ -141,5 +141,7 @@ constraint
  output
 [
   "x: " ++ show(x) ++ "\n" ++
-  "y: " ++ show(y) ++ "\n"
+  "y: " ++ show(y) ++ "\n" ++
+  "a: " ++ show(a) ++ "\n" ++
+  "b: " ++ show(b) ++ "\n" 
 ];

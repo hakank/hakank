@@ -2,7 +2,7 @@
 % Global constraint longest change in MiniZinc.
 %
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Clongest_change.html
+% https://sofdem.github.io/gccat/gccat/Clongest_change.html
 % """
 % SIZE is the maximum number of consecutive variables of the collection 
 % VARIABLES for which constraint CTR holds in an uninterrupted way. 

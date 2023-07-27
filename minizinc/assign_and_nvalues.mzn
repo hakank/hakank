@@ -2,7 +2,7 @@
 % Global constraint assign_and_nvalues in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cassign_and_nvalues.html
+% https://sofdem.github.io/gccat/gccat/Cassign_and_nvalues.html
 % """
 %Constraint
 %

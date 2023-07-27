@@ -2,7 +2,7 @@
 % Global constraint open_among in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Copen_among.html
+% https://sofdem.github.io/gccat/gccat/Copen_among.html
 % """
 % Constraint
 %

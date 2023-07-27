@@ -2,7 +2,7 @@
 % Global constraint element_greatereq in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Celement_greatereq.html
+% https://sofdem.github.io/gccat/gccat/Celement_greatereq.html
 % """
 % Constraint
 % 

@@ -2,7 +2,7 @@
 % Global constraint open_atleast in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Copen_atleast.html
+% https://sofdem.github.io/gccat/gccat/Copen_atleast.html
 % """
 % Constraint
 %

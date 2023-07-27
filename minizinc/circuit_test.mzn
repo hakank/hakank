@@ -1,7 +1,7 @@
 %
 % Implementation of the global constraint circuit in Minizinc
 %
-% Cf http://www.emn.fr/x-info/sdemasse/gccat/Ccircuit.html
+% Cf https://sofdem.github.io/gccat/gccat/Ccircuit.html
 %
 % This Minizinc program is written by Hakan Kjellerstrand and is commented in 
 % Constraint Programming: Minizinc, Gecode/flatzinc och ECLiPSe/minizinc
@@ -12,7 +12,7 @@
  
 
 include "globals.mzn";
-int: n = 4;
+int: n = 6;
 array[1..n] of var 1..n: x;
 
 
@@ -52,8 +52,8 @@ predicate mycircuit(array[int] of var int: x) =
 
 
 constraint
-  mycircuit(x)
-  % circuit(x)
+  % mycircuit(x)
+  circuit(x)
 ;
 output [
       show(x), "\n",

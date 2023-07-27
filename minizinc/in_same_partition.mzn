@@ -2,7 +2,7 @@
 % Global constraint in_same_partition in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cin_same_parition.html
+% https://sofdem.github.io/gccat/gccat/Cin_same_parition.html
 % """
 % in_same_partition​(VAR1,​VAR2,​PARTITIONS)
 % 
@@ -62,10 +62,10 @@ constraint
     {4},
     {2,6}
   ])
-  /\
-  var1 = 6
-  /\
-  var2 = 2
+  % /\
+  % var1 = 6
+  % /\
+  % var2 = 2
   /\
   in_same_partition(var1, var2, s)
 ;

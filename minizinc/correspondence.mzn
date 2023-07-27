@@ -2,7 +2,7 @@
 % Global constraint correspondence in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccorrespondence.html
+% https://sofdem.github.io/gccat/gccat/Ccorrespondence.html
 % """
 % The variables of the TO collection correspond to the variables of the FROM 
 % collection according to the permutation expressed by PERMUTATION.

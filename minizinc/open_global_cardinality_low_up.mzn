@@ -2,7 +2,7 @@
 % Global constraint global_cardinality_low_up in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Copen_global_cardinality_low_up.html
+% https://sofdem.github.io/gccat/gccat/Copen_global_cardinality_low_up.html
 % """
 % Constraint
 %

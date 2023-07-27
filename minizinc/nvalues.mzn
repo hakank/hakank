@@ -7,7 +7,7 @@
 %
 % Reference: 
 % Clobal Constraint Catalog
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnvalues.html
+% https://sofdem.github.io/gccat/gccat/Cnvalues.html
 % """
 % Purpose
 %

@@ -2,7 +2,7 @@
 % Global constraint range_ctr in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Crange_ctr.html
+% https://sofdem.github.io/gccat/gccat/Crange_ctr.html
 % """
 % Constraint
 %

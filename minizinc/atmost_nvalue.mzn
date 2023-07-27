@@ -2,7 +2,7 @@
 % Global constraint atmost_nvalue in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Catmost_nvalue.html
+% https://sofdem.github.io/gccat/gccat/Catmost_nvalue.html
 % """
 % The number of distinct values taken by the variables of the 
 % collection VARIABLES is less than or equal to NVAL.

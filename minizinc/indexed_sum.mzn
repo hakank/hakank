@@ -2,7 +2,7 @@
 % Global constraint indexed_sum in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cindexed_sum.html
+% https://sofdem.github.io/gccat/gccat/Cindexed_sum.html
 % """
 % indexed_sum​(ITEMS,​TABLE)
 % 

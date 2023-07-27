@@ -2,7 +2,7 @@
 % Global constraint next_element in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnext_element.html
+% https://sofdem.github.io/gccat/gccat/Cnext_element.html
 % """
 % Constraint
 %

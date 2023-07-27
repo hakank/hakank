@@ -1,8 +1,8 @@
 % 
-% Global constraint all_equal in MiniZinc.
+% Global constraint soft_all_equal_ctr in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csoft_all_equal_ctr.html
+% https://sofdem.github.io/gccat/gccat/Csoft_all_equal_ctr.html
 % """
 % Constraint
 %
@@ -66,4 +66,4 @@ constraint
   soft_all_equal_ctr(x, N)  
 ;
 
-output [show(x)];
+output ["x: \(x) n:\(N)"];

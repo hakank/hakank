@@ -2,7 +2,7 @@
 % Global constraint minimum_weight_alldifferent in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cminimum_weight_alldifferent.html
+% https://sofdem.github.io/gccat/gccat/Cminimum_weight_alldifferent.html
 % """
 % Constraint
 %
@@ -87,16 +87,16 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
      forall(i in index_set(x)) ( x[i] = y[i] ))
 ; 
 
-solve satisfy;
+solve minimize cost;
 
 constraint
-   cp1d(variables, [2,3,1,4]) /\
-   cp2d(matrix, array2d(1..n, 1..n, [
-                   4,1,7,0,
-                   1,0,8,2,
-                   3,2,1,6,
-                   0,0,6,5
-               ]))
+   cp1d(variables, [2,3,1,4]) % /\
+   % cp2d(matrix, array2d(1..n, 1..n, [
+   %                 4,1,7,0,
+   %                 1,0,8,2,
+   %                 3,2,1,6,
+   %                 0,0,6,5
+   %             ]))
    /\
    cost = 17
    /\
@@ -107,5 +107,6 @@ constraint
 output
 [
   "variables: " ++ show(variables) ++ "\n" ++
-  "cost: " ++ show(cost)
+  "cost: " ++ show(cost) ++ "\n" ++
+  "matrix: " ++ show(matrix) ++ "\n"
 ];

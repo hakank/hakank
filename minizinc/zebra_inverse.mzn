@@ -2,7 +2,7 @@
 % Zebra puzzle using the inverse constraint in MiniZinc.
 % 
 % From Global Constraint Catalog
-% http://www.emn.fr/x-info/sdemasse/gccat/Kzebra_puzzle.html
+% https://sofdem.github.io/gccat/gccat/Kzebra_puzzle.html
 %
 % This model uses the inverse constraint instead of all_different.
 

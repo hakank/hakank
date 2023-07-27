@@ -2,7 +2,7 @@
 % Global constraint in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_cardinality_with_costs.html
+% https://sofdem.github.io/gccat/gccat/Cglobal_cardinality_with_costs.html
 % """
 % Constraint
 %

@@ -1,7 +1,7 @@
 % 
 % Global constraint alldifferent_cst in MiniZinc.
 %
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_cst.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_cst.html
 % """
 % For all pairs of items​(VARIABLES[i], VARIABLES[j]) (i!=j) of the 
 % collection VARIABLES enforce 

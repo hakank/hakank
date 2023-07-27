@@ -2,7 +2,7 @@
 % Global constraint arith_or in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Carith_or.html
+% https://sofdem.github.io/gccat/gccat/Carith_or.html
 % """
 % Enforce for all pairs of variables var1i,​var2i of the 
 % VARIABLES1 and VARIABLES2 collections to have var1i 

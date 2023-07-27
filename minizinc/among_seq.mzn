@@ -2,7 +2,7 @@
 % Global constraint among_seq in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Camong_seq.html
+% https://sofdem.github.io/gccat/gccat/Camong_seq.html
 % """
 % Constrains all sequences of SEQ consecutive variables of the collection 
 % VARIABLES to take at least LOW values in VALUES and at most 

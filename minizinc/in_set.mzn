@@ -2,7 +2,7 @@
 % Global constraint in_set in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cin_set.html
+% https://sofdem.github.io/gccat/gccat/Cin_set.html
 % """
 % in_set​(VAL,​SET)
 % 

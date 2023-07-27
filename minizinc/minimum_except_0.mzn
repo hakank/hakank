@@ -2,7 +2,7 @@
 % Global constraint minimum_except_0 in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cminimum_except_0.html
+% https://sofdem.github.io/gccat/gccat/Cminimum_except_0.html
 % """
 % Constraint
 %
@@ -53,6 +53,7 @@ solve satisfy;
 predicate minimum_except_0(var int: t_min, 
                            array[int] of var int: variables,
                            var int: t_default) =
+    
     (
        forall(i in index_set(variables)) (
            variables[i] > 0 <-> t_min <= variables[i]
@@ -80,7 +81,7 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 
 constraint
     % t_min = 3 /\
-    % cp1d(variables, [3, 7, 6, 7, 4, 7]) /\
+    % variables = [3, 7, 6, 7, 4, 7] /\
 
     % t_min = 2 /\
     % cp1d(variables, [3, 2, 0, 7, 2, 6]) /\
@@ -88,7 +89,8 @@ constraint
     % t_min = 100000 /\
     % cp1d(variables, [0, 0, 0, 0, 0, 0]) /\
 
-    minimum_except_0(t_min, variables, 10000)
+
+    minimum_except_0(t_min, variables, 0)
 ;
 
 output [

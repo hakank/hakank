@@ -2,7 +2,7 @@
 % Global constraint cardinality_atleast in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccardinality_atleast.html
+% https://sofdem.github.io/gccat/gccat/Ccardinality_atleast.html
 % """
 % ATLEAST is the minimum number of time that a value of VALUES is taken by the 
 % variables of the collection VARIABLES.

@@ -2,7 +2,7 @@
 % Global constraint common_partition in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccommon_partition.html
+% https://sofdem.github.io/gccat/gccat/Ccommon_partition.html
 % """
 % Constraint
 %
@@ -55,8 +55,8 @@
 
 include "globals.mzn"; 
 
-array[1..4] of var 0..6: x;
-array[1..6] of var 0..7: y;
+array[1..4] of var 1..6: x;
+array[1..6] of var 1..7: y;
 array[1..3] of var set of 0..6: partitions;
 
 var int: a;
@@ -108,8 +108,8 @@ predicate cp1d(array[int] of set of int: x, array[int] of var set of int: y) =
 
 
 constraint
-   cp1d([2,3,6,0], x) /\
-   cp1d([0,6,3,3,7,1],y) /\
+   cp1d([2,3,6,5], x) /\
+   cp1d([5,6,3,3,7,1],y) /\
 
    cp1d(
    [

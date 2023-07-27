@@ -2,7 +2,7 @@
 % Global constraint cardinality_atmost in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccardinality_atmost.html
+% https://sofdem.github.io/gccat/gccat/Ccardinality_atmost.html
 % """
 % ATMOST is the maximum number of occurrences of each value of VALUES within 
 % the variables of the collection VARIABLES.

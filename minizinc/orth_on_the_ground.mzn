@@ -2,7 +2,7 @@
 % Global constraint orth_on_the_ground in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Corth_on_the_ground.html
+% https://sofdem.github.io/gccat/gccat/Corth_on_the_ground.html
 % """
 % Constraint
 %

@@ -2,7 +2,7 @@
 % Global constraint circular change in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccircular_change.html
+% https://sofdem.github.io/gccat/gccat/Ccircular_change.html
 % """
 % NCHANGE is the number of times that  CTR  holds on consecutive variables of 
 % the collection VARIABLES. The last and the first variables of the 

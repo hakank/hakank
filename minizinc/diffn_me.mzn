@@ -15,7 +15,8 @@
 %
 %
 %
-% From Global Constraint catalog;                                               % http://www.emn.fr/x-info/sdemasse/gccat/Cdiffn.html
+% From Global Constraint catalog;
+% https://sofdem.github.io/gccat/gccat/Cdiffn.html
 % """
 %
 % diffn​(ORTHOTOPES)

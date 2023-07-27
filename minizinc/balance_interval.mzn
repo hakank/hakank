@@ -2,7 +2,7 @@
 % Global constraint balance_interval in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cbalance_interval.html
+% https://sofdem.github.io/gccat/gccat/Cbalance_interval.html
 % """
 % Constraint
 %
@@ -117,15 +117,16 @@ solve satisfy;
 % solve :: int_search(x ++ [bal], first_fail, indomain_min, complete) satisfy;
 
 constraint
-  cp1d([6,4,3,3,4],x)
-  /\
-  balance_interval(bal, x, interval_size)
+  % cp1d([6,4,3,3,4],x)
   % /\
-  % bal = 3
+  balance_interval(bal, x, interval_size)
+  /\
+  bal = 3
 
 ;
 
 
 output [
-  "x: ", show(x), "\n"
+  "x: ", show(x), "\n",
+  "bal: ", show(bal), "\n"       
 ];

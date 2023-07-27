@@ -2,7 +2,7 @@
 % Global constraint min in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmin_n.html
+% https://sofdem.github.io/gccat/gccat/Cmin_n.html
 % """
 % Constraint
 %

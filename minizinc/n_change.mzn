@@ -14,7 +14,7 @@
 % since, 4 != 3, 3!=4,  4 != 1 (three changes)
 %
 % See also  Global Constraint Catalogue 
-% http://www.emn.fr/x-info/sdemasse/gccat/Cchange.html
+% https://sofdem.github.io/gccat/gccat/Cchange.html
 % 
 % Model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc

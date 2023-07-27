@@ -4,14 +4,14 @@
 % This constraint extracts the path from a circuit constraint.
 % 
 % The Global Constraint Catalog for circuit:
-%     http://www.emn.fr/x-info/sdemasse/gccat/Ccircuit.html
+%     https://sofdem.github.io/gccat/gccat/Ccircuit.html
 %
 % Model created by Hakan Kjellerstrand, hakank@bonetmail.com
 % See also my MiniZinc page: http://www.hakank.org/minizinc
  
 
 include "globals.mzn";
-int: n = 5;
+int: n = 150;
 
 array[1..n] of var 1..n: x;
 % the path to extract
@@ -65,12 +65,12 @@ predicate circuit_path(array[int] of var int: x,
   forall(i in 2..len) (
     p[i] = x[p[i-1]] 
   )
-
+  /\ circuit(x) 
 ; 
 
 constraint
-  mycircuit(x)
-  % circuit(x)
+  % mycircuit(x)
+  circuit(x)
   /\
   circuit_path(x, p)
 ;

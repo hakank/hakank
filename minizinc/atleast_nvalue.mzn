@@ -2,7 +2,7 @@
 % Global constraint atleast_nvalue in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Catleast_nvalue.html
+% https://sofdem.github.io/gccat/gccat/Catleast_nvalue.html
 % """
 % The number of distinct values taken by the variables of the collection 
 % VARIABLES is greater than or equal to NVAL.
@@ -71,5 +71,5 @@ constraint
 
 output
 [
-  show(x)
+  "x: \(x)\nnval: \(nval)\n"
 ];

@@ -2,7 +2,7 @@
 % Global constraint assign_and_counts in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cassign_and_counts.html
+% https://sofdem.github.io/gccat/gccat/Cassign_and_counts.html
 % """
 % Given several items (each of them having a specific colour that may not 
 % be initially fixed), and different bins, assign each item to a bin, 

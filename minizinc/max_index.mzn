@@ -2,7 +2,7 @@
 % Global constraint max_index (and the extension max_index_val) in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmax_index.html
+% https://sofdem.github.io/gccat/gccat/Cmax_index.html
 % """
 % max_index​(MAX_INDEX,​VARIABLES)
 % 

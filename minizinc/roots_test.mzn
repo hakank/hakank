@@ -2,7 +2,7 @@
 % Global constraint roots in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Croots.html
+% https://sofdem.github.io/gccat/gccat/Croots.html
 % """
 % roots​(S,​T,​VARIABLES)
 %

@@ -2,7 +2,7 @@
 % Global constraint elementn in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Celementn.html
+% https://sofdem.github.io/gccat/gccat/Celementn.html
 % """
 % Constraint
 %

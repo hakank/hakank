@@ -2,7 +2,7 @@
 % Global constraint smooth in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csmooth.html
+% https://sofdem.github.io/gccat/gccat/Csmooth.html
 % """
 % smooth(NCHANGE, TOLERANCE, VARIABLES)
 % 

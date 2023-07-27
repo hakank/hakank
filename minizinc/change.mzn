@@ -2,7 +2,7 @@
 % Global constraint change in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cchange.html
+% https://sofdem.github.io/gccat/gccat/Cchange.html
 % """
 % NCHANGE is the number of times that constraint CTR holds on consecutive 
 % variables of the collection VARIABLES.

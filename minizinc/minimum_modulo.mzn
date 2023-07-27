@@ -2,7 +2,7 @@
 % Global constraint minimum_modulo in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cminimum_modulo.html
+% https://sofdem.github.io/gccat/gccat/Cminimum_modulo.html
 % """
 % Constraint
 %

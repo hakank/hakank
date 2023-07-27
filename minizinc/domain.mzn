@@ -2,7 +2,7 @@
 % Global constraint domain in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cdomain.html
+% https://sofdem.github.io/gccat/gccat/Cdomain.html
 % """
 % domain​(VARIABLES,​LOW,​UP)
 % 

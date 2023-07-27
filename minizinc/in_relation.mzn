@@ -2,7 +2,7 @@
 % Global constraint in_relation in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cin_relation.html
+% https://sofdem.github.io/gccat/gccat/Cin_relation.html
 % """
 % in_relation​(VARIABLES,​TUPLES_OF_VALS)
 %

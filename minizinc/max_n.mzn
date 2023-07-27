@@ -2,7 +2,7 @@
 % Global constraint max_n in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmax_n.html
+% https://sofdem.github.io/gccat/gccat/Cmax_n.html
 % """
 % Constraint
 %

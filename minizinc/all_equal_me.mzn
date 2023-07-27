@@ -2,7 +2,7 @@
 % Global constraint allequal in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Call_equal.html
+% https://sofdem.github.io/gccat/gccat/Call_equal.html
 % """
 % Constraint
 %

@@ -2,7 +2,7 @@
 % Global constraint sliding_time_window in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csliding_time_window.html
+% https://sofdem.github.io/gccat/gccat/Csliding_time_window.html
 % """
 % sliding_time_window(WINDOW_SIZE,LIMIT,TASKS)
 % 

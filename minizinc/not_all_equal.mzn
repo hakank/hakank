@@ -2,7 +2,7 @@
 % Global constraint not_all_equal in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnot_all_equal.html
+% https://sofdem.github.io/gccat/gccat/Cnot_all_equal.html
 % """
 % Constraint
 %

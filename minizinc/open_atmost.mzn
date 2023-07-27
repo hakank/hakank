@@ -2,7 +2,7 @@
 % Global constraint open_atmost in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Copen_atmost.html
+% https://sofdem.github.io/gccat/gccat/Copen_atmost.html
 % """
 % Constraint
 %

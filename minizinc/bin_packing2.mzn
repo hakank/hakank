@@ -2,7 +2,7 @@
 % Global constraint bin_packing in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cbin_packing.html
+% https://sofdem.github.io/gccat/gccat/Cbin_packing.html
 % """
 % Given several items of the collection ITEMS (each of them having a specific 
 % weight), and different bins of a fixed capacity, assign each item to a bin 

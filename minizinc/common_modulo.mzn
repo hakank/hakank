@@ -2,7 +2,7 @@
 % Global constraint common_modulo in MiniZinc. 
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccommon_modulo.html
+% https://sofdem.github.io/gccat/gccat/Ccommon_modulo.html
 % """
 % Constraint
 %     common_modulo (NCOMMON1, NCOMMON2, VARIABLES1, VARIABLES2, M) 

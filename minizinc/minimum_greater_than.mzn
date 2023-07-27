@@ -2,7 +2,7 @@
 % Global constraint minimum_greater_than in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cminimum_greater_than.html
+% https://sofdem.github.io/gccat/gccat/Cminimum_greater_than.html
 % """
 % Constraint
 %

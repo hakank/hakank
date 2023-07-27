@@ -2,7 +2,7 @@
 % Global constraint sliding_sum in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csliding_sum.html
+% https://sofdem.github.io/gccat/gccat/Csliding_sum.html
 % """
 % sliding_sum(LOW,UP,SEQ,VARIABLES)
 % 
@@ -62,8 +62,8 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 solve satisfy;
 
 constraint
-  cp1d(variables, [1,4,2,0,0,3,3])
-  /\
+  % cp1d(variables, [1,4,2,0,0,3,3])
+  % /\
   low = 3
   /\
   up = 7

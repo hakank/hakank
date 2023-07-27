@@ -2,7 +2,7 @@
 % Global constraint alldifferent_interval in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Calldifferent_interval.html
+% https://sofdem.github.io/gccat/gccat/Calldifferent_interval.html
 % """
 % 
 % Enforce all variables of the collection VARIABLES to belong to 

@@ -2,7 +2,7 @@
 % Global constraint lex_different in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Clex_different.html
+% https://sofdem.github.io/gccat/gccat/Clex_different.html
 % """
 % lex_different​(VECTOR1,​VECTOR2)
 %

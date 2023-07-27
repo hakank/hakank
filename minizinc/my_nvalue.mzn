@@ -7,7 +7,7 @@
 %
 % Reference: 
 % Clobal Constraint Catalog
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnvalue.html
+% https://sofdem.github.io/gccat/gccat/Cnvalue.html
 % """
 % Purpose 
 %    NVAL is the number of distinct values taken by the variables of the collection VARIABLES
@@ -59,7 +59,7 @@ predicate mynvalue(var int: nv, array[int] of var int: x) =
 % atleast_nvalue 
 %
 % From Global Constraint Catalog
-% http://www.emn.fr/x-info/sdemasse/gccat/Catleast_nvalue.html
+% https://sofdem.github.io/gccat/gccat/Catleast_nvalue.html
 % """
 % The number of distinct values taken by the variables of the collection VARIABLES 
 % is greater than or equal to NVAL.
@@ -81,7 +81,7 @@ predicate atleast_nvalue(var int: nv, array[int] of var int: x) =
 % atmost_nvalue
 %
 % From Global Constraint Catalog
-% http://www.emn.fr/x-info/sdemasse/gccat/Catmost_nvalue.html
+% https://sofdem.github.io/gccat/gccat/Catmost_nvalue.html
 % """
 % The number of distinct values taken by the variables of the collection VARIABLES 
 % is less than or equal to NVAL.

@@ -2,7 +2,7 @@
 % Global constraint binary tree in MiniZinc.
 % 
 % From Global constraint catalog:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cbinary_tree.html
+% https://sofdem.github.io/gccat/gccat/Cbinary_tree.html
 % """
 % Constraint
 %
@@ -133,14 +133,14 @@ predicate cp1d(array[int] of int: x, array[int] of var int: y) =
 
 constraint
 
-     cp1d([1,3,5,7,1,3,7,5],tree) % the example from above
+     % cp1d([1,3,5,7,1,3,7,5],tree) % the example from above
      % cp1d([1,1,1,2,2,3,3,4],tree) % as binary as we can come with 8 nodes...
      % cp1d([1,1,1,1,2,5,6,7],tree) % 1 has three nodes, else is down from 2
      % The following has two cycles, 2<->3, 7<->8 which is shown 
      % in the parent matrix as alternating successors.
      % cp1d([1,3,2,4,5,6,8,7],tree) 
      % cp1d([1,2,3,4,5,7,8,6],tree)  % triple cycle 6->7->8
-     /\
+     % /\
 
      % binary_tree(num_trees, tree)
 
@@ -159,8 +159,8 @@ constraint
      )
     /\
     nvalue(num_trees, [parents[n,j] | j in index_set(tree)])
-    %/\ 
-    %num_trees = 7
+    /\ 
+    num_trees = 7
   
 ;
 

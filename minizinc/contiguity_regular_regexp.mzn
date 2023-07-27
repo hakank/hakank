@@ -4,7 +4,7 @@
 % This is the contiguity constraint using regular constraint.
 %
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cglobal_contiguity.html
+% https://sofdem.github.io/gccat/gccat/Cglobal_contiguity.html
 % """
 % Enforce all variables of the VARIABLES collection to be assigned to 0 or 1. 
 % In addition, all variables assigned to value 1 appear contiguously.

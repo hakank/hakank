@@ -2,7 +2,7 @@
 % Global constraint in_interval in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cin_interval.html
+% https://sofdem.github.io/gccat/gccat/Cin_interval.html
 % """
 % in_interval​(VAR,​LOW,​UP)​
 % 

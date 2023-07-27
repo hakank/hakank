@@ -2,7 +2,7 @@
 % Global constraint product_ctr in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cproduct_ctr.html
+% https://sofdem.github.io/gccat/gccat/Cproduct_ctr.html
 % """
 % Constraint
 %

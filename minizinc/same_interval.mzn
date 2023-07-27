@@ -2,7 +2,7 @@
 % Global constraint in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csame_interval.html
+% https://sofdem.github.io/gccat/gccat/Csame_interval.html
 % """
 % same_interval​(VARIABLES1,​VARIABLES2,​SIZE_INTERVAL)​
 %
@@ -28,7 +28,7 @@
 % [0, 2] and [6, 8] are respectively used 3 and 3 times. Consequently the same_interval 
 % constraint holds. Figure 4.244.1 illustrates this correspondence.
 % 
-%  [See the figure at http://www.emn.fr/x-info/sdemasse/gccat/Csame_interval.html]
+%  [See the figure at https://sofdem.github.io/gccat/gccat/Csame_interval.html]
 % 
 % Figure 4.244.1. Correspondence between the intervals associated with collection 
 % <1, 7, 6, 0, 1, 7> and with collection <8, 8, 8, 0, 1, 2>

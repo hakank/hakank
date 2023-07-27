@@ -2,7 +2,7 @@
 % Global constraint arith in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cand.html
+% https://sofdem.github.io/gccat/gccat/Cand.html
 % """
 % Let VARIABLES be a collection of 0-1 variables 
 % VAR1, VAR2, ..., VARn (n>=2). Enforce VAR=VAR1/\VAR2../\VARn.

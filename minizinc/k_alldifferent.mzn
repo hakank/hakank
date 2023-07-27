@@ -1,7 +1,7 @@
 % 
 % Global constraint k-alldifferent in MiniZinc.
 %
-% http://www.emn.fr/x-info/sdemasse/gccat/Ck_alldifferent.html
+% https://sofdem.github.io/gccat/gccat/Ck_alldifferent.html
 % """
 % For each collection of variables depicted by an item of VARS, enforce their corresponding 
 % variables to take distinct values.

@@ -2,7 +2,7 @@
 % Global constraint same_and_global_cardinality in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csame_and_global_cardinality.html
+% https://sofdem.github.io/gccat/gccat/Csame_and_global_cardinality.html
 % """
 % Constraint
 %

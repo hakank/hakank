@@ -2,7 +2,7 @@
 % Global constraint between_min_max in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cbetween_min_max.html
+% https://sofdem.github.io/gccat/gccat/Cbetween_min_max.html
 % """
 % VAR is greater than or equal to at least one variable of the collection 
 % VARIABLES and less than or equal to at least one variable of the 

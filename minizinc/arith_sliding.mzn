@@ -2,7 +2,7 @@
 % Global constraint arith_sliding in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Carith_sliding.html
+% https://sofdem.github.io/gccat/gccat/Carith_sliding.html
 % """
 %  Enforce for all sequences of variables var1, var2, ..., vari of the 
 % VARIABLES collection to have (var1+var2+...+vari) RELOP VALUE.

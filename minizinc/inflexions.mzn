@@ -2,7 +2,7 @@
 % Global constraint inflexions in MiniZinc.
 % 
 % Global constraint catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cinflexions.html
+% https://sofdem.github.io/gccat/gccat/Cinflexions.html
 % """
 % N is equal to the number of times that the following conjunctions of 
 % constraints hold:

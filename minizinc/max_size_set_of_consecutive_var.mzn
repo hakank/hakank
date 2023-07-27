@@ -2,7 +2,7 @@
 % Global constraint max_size_set_of_consecutive_var in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmax_size_of_consecutive_var.html
+% https://sofdem.github.io/gccat/gccat/Cmax_size_of_consecutive_var.html
 % """
 % Constraint
 %
@@ -44,7 +44,7 @@
 
 include "globals.mzn"; 
 int: n = 10;
-array[1..n] of var 1..8: variables;
+array[1..n] of var 1..9: variables;
 var 1..n: max_set;
 solve satisfy;
 
@@ -83,8 +83,9 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 constraint
     max_set = 6
     /\
-    cp1d(variables, [3,1,3,7,4,1,2,8,7,6])
-    /\
+    % cp1d(variables, [3,1,3,7,4,1,2,8,7,6])
+    % cp1d(variables,   [3,1,3,7,4,1,2,8,4,9])
+    % /\
     max_size_set_of_consecutive_var(max_set, variables)
 ;
 

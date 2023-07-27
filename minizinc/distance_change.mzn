@@ -2,7 +2,7 @@
 % Global constraint distance change in MiniZinc.
 % 
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cdistance_change.html
+% https://sofdem.github.io/gccat/gccat/Cdistance_change.html
 % """
 % Constraint
 % 

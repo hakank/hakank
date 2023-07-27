@@ -3,7 +3,7 @@
 % 
 % Global Constraints Catalogue
 % 
-% http://www.emn.fr/x-info/sdemasse/gccat/Cdistance_between.html
+% https://sofdem.github.io/gccat/gccat/Cdistance_between.html
 % """
 % Let Ui and Vi be respectively the ith and jth variables (i!=j) of 
 % the collection VARIABLES1. In a similar way, let Xi and Yi be 
@@ -116,5 +116,6 @@ constraint
 output
 [
   "x: " ++ show(x) ++ "\n" ++
-  "y: " ++ show(y) ++ "\n" 
+  "y: " ++ show(y) ++ "\n" ++
+  "d: " ++ show(d) ++ "\n"
 ];

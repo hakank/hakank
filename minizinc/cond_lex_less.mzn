@@ -9,7 +9,7 @@
 % in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccond_lex_less.html
+% https://sofdem.github.io/gccat/gccat/Ccond_lex_less.html
 % """
 % cond_lex_less​(VECTOR1,​VECTOR2,​PREFERENCE_TABLE)%
 %
@@ -38,13 +38,13 @@
 % The other three constraints are defined in the analogous way:
 %
 % cond_lex_greater:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccond_lex_greater.html
+% https://sofdem.github.io/gccat/gccat/Ccond_lex_greater.html
 %
 % cond_lex_greatereq:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccond_lex_greatereq.html
+% https://sofdem.github.io/gccat/gccat/Ccond_lex_greatereq.html
 %
 % cond_lex_lesseq:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccond_lex_lesseq.html
+% https://sofdem.github.io/gccat/gccat/Ccond_lex_lesseq.html
 
 
 

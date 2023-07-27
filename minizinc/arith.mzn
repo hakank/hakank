@@ -2,7 +2,7 @@
 % Global constraint arith in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Carith.html
+% https://sofdem.github.io/gccat/gccat/Carith.html
 % """
 % Enforce for all variables var of the VARIABLES collection to have 
 %    var RELOP VALUE.

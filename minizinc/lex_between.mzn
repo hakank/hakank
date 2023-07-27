@@ -2,7 +2,7 @@
 % Global constraint lex_between in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Clex_between.html
+% https://sofdem.github.io/gccat/gccat/Clex_between.html
 % """
 % lex_between​(LOWER_BOUND,​VECTOR,​UPPER_BOUND)
 %

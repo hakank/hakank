@@ -2,7 +2,7 @@
 % Global constraint imply in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cimply.html
+% https://sofdem.github.io/gccat/gccat/Cimply.html
 % """
 % imply​(VAR,​VARIABLES)​
 %

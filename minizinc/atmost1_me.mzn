@@ -2,7 +2,7 @@
 % Global constraint atmost1 in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Catmost1.html
+% https://sofdem.github.io/gccat/gccat/Catmost1.html
 % """
 % Given a collection of set variables s1, s2, ..., sn and their respective 
 % cardinality c1, c2, ..., cn, the atmost1 constraint enforces the following 

@@ -2,7 +2,7 @@
 % Global constraint count (with relops) in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccount_ctr.html
+% https://sofdem.github.io/gccat/gccat/Ccount_ctr.html
 % """
 % Let N be the number of variables of the VARIABLES collection assigned to 
 % value VALUE; Enforce condition N RELOP NVAR to hold.
@@ -76,10 +76,10 @@ predicate cp1d(array[int] of int: x, array[int] of var int: y) =
 
 constraint
    cp1d([4,5,5,4,5], x)
-   %/\
-   %al = 5
-   %/\
-   %nvar = 2
+   /\
+   val = 5
+   % /\
+   % nvar = 2
    /\
    count_ctr(val, x, 1, nvar)
 

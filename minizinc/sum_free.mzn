@@ -3,7 +3,7 @@
 %
 %
 % From the Global Constraint Catalog
-% http://www.emn.fr/x-info/sdemasse/gccat/Csum_free.html
+% https://sofdem.github.io/gccat/gccat/Csum_free.html
 % sum_free(S)
 % """
 % Impose for all pairs of values (not necessarily distinct) i, j of the 

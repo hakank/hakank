@@ -2,7 +2,7 @@
 % Global constraint in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cchange_parition.html
+% https://sofdem.github.io/gccat/gccat/Cchange_parition.html
 % """
 % NCHANGE is the number of times that the following constraint holds: 
 % X and Y do not belong to the same partition of the collection PARTITIONS. 
@@ -110,11 +110,11 @@ solve satisfy;
 
 constraint
   cp1d([6,6,2,1,3,3,1,6,2,2,2], variables)
-  /\
-  cp1d([
-    {1,3},
-    {4},
-    {2,6}], partitions)
+  % /\
+  % cp1d([
+  %   {1,3},
+  %   {4},
+  %   {2,6}], partitions)
   /\
   change_partition(nchange, variables, partitions)
   /\

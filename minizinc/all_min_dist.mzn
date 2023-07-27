@@ -2,7 +2,7 @@
 % Global constraint all_min_dist in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Call_min_dist.html
+% https://sofdem.github.io/gccat/gccat/Call_min_dist.html
 % """
 % Enforce for each pair (vari, varj)​ of distinct variables of the 
 % collection VARIABLES that 

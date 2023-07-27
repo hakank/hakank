@@ -2,7 +2,7 @@
 % Global constraint sliding_time_window_from_start in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csliding_time_window_from_start.html
+% https://sofdem.github.io/gccat/gccat/Csliding_time_window_from_start.html
 % """
 % sliding_time_window_from_start(WINDOW_SIZE,LIMIT,TASKS,START)
 %
@@ -91,5 +91,6 @@ output [
 "window_size: " ++ show(window_size) ++ "\n"++
 "limitx: " ++ show(limitx) ++ "\n"++
 "tasks: " ++ show(tasks) ++ "\n"++
-"start: " ++ show(start) ++ "\n"
+"start: " ++ show(start) ++ "\n" ++
+"occupied: " ++ show(occupied) ++ "\n"
 ];

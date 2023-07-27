@@ -2,7 +2,7 @@
 % Global constraint soft_same_var in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csoft_same_var.html
+% https://sofdem.github.io/gccat/gccat/Csoft_same_var.html
 % """
 % soft_same_var(C, VARIABLES1, VARIABLES2)
 %

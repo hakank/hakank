@@ -2,7 +2,7 @@
 % Global constraint in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cdiffer_from_at_least_k_pos.html
+% https://sofdem.github.io/gccat/gccat/Cdiffer_from_at_least_k_pos.html
 % """
 % Constraint
 %

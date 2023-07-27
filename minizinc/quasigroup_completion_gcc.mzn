@@ -12,7 +12,7 @@ n = 4;
 
 constraint
     % Example from Global Constraint Catalogue
-    % http://www.emn.fr/x-info/sdemasse/gccat/Klatin_square.html
+    % https://sofdem.github.io/gccat/gccat/Klatin_square.html
     %
     % 12 solutions.
     cp2d(x, array2d(1..n, 1..n, 

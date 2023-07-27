@@ -2,7 +2,7 @@
 % Global constraint clique in MiniZinc.
 %
 % From Global Constraint Catalogue:
-% http://www.emn.fr/x-info/sdemasse/gccat/Cclique.html
+% https://sofdem.github.io/gccat/gccat/Cclique.html
 % """ 
 % Consider a digraph G described by the NODES collection: to the ith item 
 % of the NODES collection corresponds the ith vertex of G; To each value 

@@ -2,7 +2,7 @@
 % Global constraint among_low_up in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Camong_low_up.html
+% https://sofdem.github.io/gccat/gccat/Camong_low_up.html
 % """
 % Between LOW and UP variables of the VARIABLES collection are assigned to 
 % a value of the VALUES collection.

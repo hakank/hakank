@@ -1,8 +1,8 @@
 % 
-% Global constraint sort_partition in MiniZinc.
+% Global constraint sort_permutation in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Csort_permutation.html
+% https://sofdem.github.io/gccat/gccat/Csort_permutation.html
 % """
 % sort_permutation(FROM,PERMUTATION,TO)
 % 

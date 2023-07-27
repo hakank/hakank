@@ -2,7 +2,7 @@
 % Global constraint min_nvalue in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cmin_nvalue.html
+% https://sofdem.github.io/gccat/gccat/Cmin_nvalue.html
 % """
 % Constraint
 %
@@ -51,8 +51,8 @@
 %
 
 include "globals.mzn"; 
-int: n = 10;
-array[1..n] of var 1..9: variables;
+int: n = 5;
+array[1..n] of var 1..n: variables;
 var 1..n: t_min;
 solve satisfy;
 
@@ -85,8 +85,8 @@ predicate cp1d(array[int] of var int: x, array[int] of var int: y) =
 ; 
 
 constraint
-   cp1d(variables, [9,1,7,1,1,7,7,7,7,9])
-   /\
+   % cp1d(variables, [9,1,7,1,1,7,7,7,7,9])
+   % /\
    t_min = 2
    /\
    min_nvalue(t_min, variables) 

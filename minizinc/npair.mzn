@@ -2,7 +2,7 @@
 % Global constraint npair in MiniZinc.
 % 
 % From Global Constraint Catalogue
-% http://www.emn.fr/x-info/sdemasse/gccat/Cnpair.html
+% https://sofdem.github.io/gccat/gccat/Cnpair.html
 % """
 %     npair​(NPAIRS,​PAIRS)​
 %

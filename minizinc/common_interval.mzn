@@ -2,7 +2,7 @@
 % Global constraint common_interval in MiniZinc.
 % 
 % From Global Constraint Catalog:
-% http://www.emn.fr/x-info/sdemasse/gccat/Ccommon_interval.html
+% https://sofdem.github.io/gccat/gccat/Ccommon_interval.html
 % """
 % common_interval (NCOMMON1, NCOMMON2, VARIABLES1, VARIABLES2, SIZE_INTERVAL) 
 %
@@ -124,7 +124,7 @@ predicate cp1d(array[int] of int: x, array[int] of var int: y) =
 
 constraint
    cp1d([8,6,6,7], x) /\
-   cp1d([7,3,3,3,3,7],y) /\
+   % cp1d([7,3,3,3,3,7],y) /\
 
    common_interval(a, b, x, y, interval_size)
 ;
