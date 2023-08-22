@@ -1,0 +1,85 @@
+% https://open.kattis.com/problems/owlandfox
+% 1s
+% 1.8 Easy
+
+% Picat. Testing some variants to compare with SWI-Prolog
+
+import util.
+
+main :-
+  go,
+  % go2,
+  nl.
+
+%
+% This is the brute force approach from owl_and_fox.pl
+% It takes ~0.96s on the 1..100000 instance (slightly faster than the Prolog program: 1.04s)
+% With garbage_collect/1 it's quite faster: 0.65s
+% It's not faster when tabling dsum/2
+go :-
+    garbage_collect(200_000_000),
+    Ns = read_file_lines().tail.map(to_int),
+    s(Ns).
+
+s([]).
+s([N|Ns]) :-
+    dsum(N,Sum),
+    Sum1 = Sum-1,
+    ( (Sum1 =:= 1 ; Sum1 =:= 0) ->
+        println(0)
+    ;
+        p(N,Sum1)
+    ),
+    s(Ns).
+
+p(-1,_).
+p(I,S) :-
+    (dsum(I,S) ->
+        println(I)
+    ;
+        p(I-1,S)
+    ).
+
+% table
+dsum(X, X) :- X<10.
+dsum(X, Y) :- X>=10, X1 is X // 10, X2 is X mod 10, dsum(X1, Y1), Y is Y1 + X2.
+
+% dsum(X,Y) :- Y=X.to_string.map(to_int).sum. % Much slower 1.7s to the 1..100000 instance
+
+%
+% This is the fast version (from owl_and_fox2.pl)
+% This is slower than SWI-Prolog (0.69s vs 0.36s).
+% With garbage_collect/1 it's a better: 0.38s, but still a little slower than SWI-Prolog!
+%
+go2 :-
+    garbage_collect(200_000_000),
+    Ns = read_file_lines().tail.map(to_int),
+    s2(Ns).
+
+m2(I,N,N2) :-
+    (N mod 10**I > 0 ->
+        N2 is N-(10**(I-1))
+    ;
+        m2(I+1,N,N2)
+    ).
+  
+s2([]). 
+s2([N|Ns]) :-
+    m2(1,N,N2),
+    println(N2),
+    s2(Ns).
+
+% Just testing: An imperative version.
+% Seems to be a bit faster than go2.
+go3 :-
+    garbage_collect(200_000_000),
+    foreach(N in read_file_lines().tail.map(to_int))
+      Found = false,
+      foreach(I in 1..6,break(Found==true))
+        if N mod 10**I > 0 then
+           println(N-(10**(I-1))),
+           Found := true
+        end
+      end
+    end,
+    nl.
