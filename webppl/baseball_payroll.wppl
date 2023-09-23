@@ -1,0 +1,155 @@
+/* 
+  From "Resampling Stats Illustrations" (http://www.statistics101.net/PeterBruce_05-illus.pdf)
+  Page 45
+  """
+  Baseball payroll—hypothesis test for correlation using the Pearson
+  correlation coefficient
+  (program “baseball”)
+  Is a baseball team’s performance directly related to its payroll? (In
+  technical terms, is there a correlation between two variables, or are
+  they independent?) Specifically, we want to know whether base-
+  ball teams with high payrolls also tend to be the better performing
+  teams.
+  The following data are from the Washington Post, March 27, 1998,
+  page F2, and were compiled by the Post according to the formula
+  of the Player Relations Council. Performance is ranked by the
+  teams’ won-loss records; note that good performance is denoted by
+  a low rank number.
+
+  TABLE 3. MAJOR LEAGUE PAYROLL AND WON-LOSS RANKS 1995–1997
+  Total          Payroll    Rank*
+  NY Yankees     192.7        3
+  Baltimore      179.5        4
+  Atlanta        164.8        1
+  Cleveland      155.7        2
+  Chicago WS     150.3       14
+  Cincinnati     143 9.       5
+  Texas          139.9       11
+  Colorado       138.3        8
+  Toronto        137.4       25
+  St. Louis      137.3       19.5
+  Seattle        137.1        6
+  Boston         131.8        7
+  Los Angeles    128.3        5
+  San Francisco  124         18
+  Chicago Cubs   123         21
+  Florida        122.8       12
+  Anaheim        116         15.5
+  Houston        115.4        9.5
+  Philadelphia   109.9       26
+  San Diego      104.5       13
+  NY Mets        104.2       17
+  Kansas City    101.1       22
+  Minnesota       94.6       27
+  Oakland         85.5       23.5
+  Detroit         84         28
+  Milwaukee       78.5       19.5
+  Pittsburgh      67.7       23.5
+  Montreal        67.6       15.5
+  * Rank in games won and lost over the 3-year period
+
+  ...
+  The Pearson correlation coefficient for these data is -.71. Is that statistically 
+  significant? Might a correlation coefficient this negative have occurred
+  just by chance? In other words, might there be no relationship
+  between the two variables and the apparent correlation be the
+  result of the “luck of the draw?”
+
+  ...
+  No shuffling produced a correlation coefficient as negative as the
+  observed value, -.71, so we conclude that there is significant
+  correlation between payroll and performance. The higher the
+  payroll, the lower the rank number (i.e. the better the perfor-
+  mance).
+  """
+
+  correlation_coefficient: -0.7108560103566262
+  expectation:
+  [ [ 'r2', -0.00449699925029391 ], 
+    [ 'p', 0 ] ]
+
+  Credible interval for r2 (95%): [ -0.3788162002900009, 0.3485922295221081 ]
+  Credible interval for r2 (99%): [ -0.4827932692045867, 0.5046907407759019 ]
+
+  See below for a model using sum of products estimate.
+
+*/
+
+var payroll = [192.7,179.5,164.8,155.7,150.3,143,139.9,138.3,137.4,137.3,137.1,131.8,128.3,124,
+               123,122.8,116,115.4,109.9,104.5,104.2,101.1,94.6,85.5,84,78.5,67.7,67.6]
+var rank = [3,4,1,2,14,9.5,11,8,25,19.5,6,7,5,18,21,12,15.5,9.5,26,
+            13,17,22,27,23.5,28,19.5,23.5,15.5,]
+
+var cc = correlation_coefficient(payroll,rank)
+console.log("correlation_coefficient:", cc)
+
+var model = function() {
+    var payroll_sample = draw_without_replacement2(payroll.length,payroll,[])
+    var rank_sample    = draw_without_replacement2(rank.length,rank,[])
+    var r2 = correlation_coefficient(payroll_sample,rank_sample)
+    var p = r2 <= cc // Probability that the sample coefficient is as low as the original
+    return {
+        r2:r2,
+        p:p,
+    }
+}
+
+var d = Infer({method:"rejection",samples:1000},model)
+exp_map_all(d,["expectation"])
+
+showCredibleInterval(d,"r2",0.95)
+showCredibleInterval(d,"r2",0.99)
+showCredibleInterval(d,"r2",0.999)
+
+
+/*
+  From "Resampling Stats Illustrations" (http://www.statistics101.net/PeterBruce_05-illus.pdf)
+  Page 45
+  """
+  Baseball payroll—testing for correlation using the sum-of-products statistic
+  (program “basebal2”)
+  We can also conduct this test with a statistic other than the correla-
+  tion coefficient, the calculation of which is not wholly transparent.
+  We will use the “sum of products” statistic.
+  ...
+  -> 
+  prob = .0001
+  """
+
+  Model 2:
+  sum_products: 44858.700000000004
+  expectation:
+  [ [ 'sum_products', 49769.32250000003 ], 
+    [ 'p', 0 ] ]
+
+  Credible interval for sum_products (95%): [ 47092.85, 52412.99999999999 ]
+  Credible interval for sum_products (99%): [ 46185.85, 53155.799999999996 ]
+  Credible interval for sum_products (99.9%): [ 45374.74999999999, 53573.74999999999 ]
+
+
+*/
+
+console.log("\nModel 2:")
+var sum_products_orig = sum(mapN(function(i) {payroll[i]*rank[i]},payroll.length))
+console.log("sum_products:", sum_products_orig)
+var model2 = function() {
+    var payroll_sample = draw_without_replacement2(payroll.length,payroll,[])
+    var rank_sample    = draw_without_replacement2(rank.length,rank,[])
+    var sum_products = sum(mapN(function(i) {payroll_sample[i]*rank_sample[i]},payroll.length))
+    // How often is the sum of products as low as in the original?
+    var p = sum_products <= sum_products_orig
+    
+    return {
+        sum_products:sum_products,
+        p:p,
+    }
+    
+}
+
+// var d2 = Infer({method:"rejection",samples:10000},model2)
+var d2 = Infer({method:"SMC",particles:1000},model2)
+exp_map_all(d2,["expectation"])
+
+showCredibleInterval(d2,"sum_products",0.95)
+showCredibleInterval(d2,"sum_products",0.99)
+showCredibleInterval(d2,"sum_products",0.999)

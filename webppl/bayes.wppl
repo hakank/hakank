@@ -1,0 +1,102 @@
+/*
+  From Statistics101 (Resampling Stats)
+  Program bayes.txt
+  """
+  Suppose 2 percent of the population has a particular disease.
+  There is a test for the disease, but it is not perfectly accurate,
+  as 3.2 percent of the population tests positive for the disease.
+  There is a 75 percent chance that a person with the disease will
+  test positive. Calculate the probability that a person who does 
+  test positive really does have the disease.
+  Solution: Out of 1000 people, 32 (3.2 percent) will test positive;
+  but only 20 (2 percent) actually have the disease.
+
+NAME hasDisease noDisease
+NAME truePositive falsePositive
+COPY 2#hasDisease 98#noDisease population
+COPY 20#truePositive 12#falsePositive testPopulation
+
+REPEAT 10000
+   SAMPLE 1 testPopulation testResult
+   IF testResult = truePositive
+      SAMPLE 1 population actualHealth
+      IF actualHealth = hasDisease
+         SCORE hasDisease results
+      ELSE
+         SCORE noDisease results
+      END
+   END
+END
+COUNT results = hasDisease truePositivesCount
+COUNT results = noDisease falsePositiveCount
+ADD truePositivesCount falsePositiveCount totalPositives
+DIVIDE truePositivesCount totalPositives probability
+PRINT probability
+
+-> probability: 0.019688790092092727
+
+  """
+
+  Marginal:
+    {"testResult":"true positive","actualHealth":"no disease"} : 0.6125
+    {"testResult":"false positive","actualHealth":"no disease"} : 0.36749999999999994
+    {"testResult":"true positive","actualHealth":"has disease"} : 0.012500000000000016
+    {"testResult":"false positive","actualHealth":"has disease"} : 0.007500000000000004
+  Marginals:
+  testResult
+  Marginal:
+    "true positive" : 0.625
+    "false positive" : 0.37499999999999994
+  actualHealth
+  Marginal:
+    "no disease" : 0.98
+    "has disease" : 0.020000000000000018
+
+  result.length: 2000
+  tp: 0.02
+  fp: 0.98
+
+*/
+
+// 2% of the population has the disease
+var population = _.flatten([rep(2,"has disease"),rep(98,"no disease")])
+
+// This is 0.625 and 0.375: Shouldn't it be 0.75 and 0.25?
+var testPopulation = _.flatten([rep(20,"true positive"),rep(12,"false positive")]) 
+// var testPopulation = _.flatten([rep(75,"true positive"),rep(25,"false positive")]) // 75% tests positive
+var result = [] // The one with true positive: has/n disease
+var all = [] // Count all the observations
+var model = function() {
+    var testResult = uniformDraw(testPopulation)
+    var actualHealth = uniformDraw(population)
+    all.push(1) 
+    testResult == "true positive" ?
+        (actualHealth == "has disease" ? result.push("has disease") : result.push("no disease")) : "xxx"
+    
+    return {
+        testResult:testResult,
+        actualHealth:actualHealth,
+    }
+}
+
+var d = Infer(model)
+// var d = Infer({method:"rejection",samples:10000},model)
+display(d)
+
+exp_map_all(d)
+var sim_len = 10000
+/*
+var tp = sum(repeat(sim_len,function() {sample(d)["result"] == "has disease" ? 1 : 0})) / sim_len
+console.log("tp:",tp)
+var fp = sum(repeat(sim_len,function() {sample(d)["result"] == "no disease" ? 1 : 0})) / sim_len
+console.log("fp:",fp)
+*/
+var result_len = result.length
+var all_len = all.length
+console.log("result.length:",result.length,"all.length:",all_len)
+var tp = sum(map(function(v) { return v == "has disease" ? 1 : 0 },result)) 
+var fp = sum(map(function(v) { return v == "no disease" ? 1 : 0 },result)) 
+
+console.log("tp:",tp, "pct:", tp/result_len)
+console.log("fp:",fp, "pct:", fp/result_len)
+console.log("tests positive (tp+fp):",tp+fp,"pct:",(tp)/all_len)

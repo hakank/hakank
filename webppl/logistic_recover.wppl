@@ -1,0 +1,80 @@
+/*
+  Logistic distribution, recovering parameters
+
+  From 
+  https://en.wikipedia.org/wiki/Logistic_distribution
+  """
+  Quantile function
+  The inverse cumulative distribution function (quantile function) of the 
+  logistic distribution is a generalization of the logit function. Its derivative is 
+  called the quantile density function. They are defined as follows:
+    Q(p;mu,s) = mu + s * ln(p/(1-p))
+    Q(p;s)    = s/(p*(1-p))
+  """
+
+  As for other parameter estimation of my versions of distributions, we have to rely on using
+  a "Gaussian wrapper".
+
+  This model tries to recover simulation of logistic(3,2).
+
+  expectation:
+  [ [ 'mu', 3.0952305983343575 ], [ 's', 0.4856518974746593 ] ]
+
+  expectation:
+  [ [ 'post', 3.0940814387234132 ] ]
+
+  Stat for v: mu
+  min: 0.04881226509990455 mean: 3.15391113188157 max: 6.431023281369428 stdev: 1.2483569641439374
+
+  Stat for v: s
+  min: 0.0007589938612695413 mean: 0.677613127023401 max: 2.5378156116244632 stdev: 0.4813679793235927
+
+  Stat for v: post
+  min: -6.233918706161413 mean: 3.0940814387234163 max: 14.674909301273882 stdev: 1.4747645755941374
+
+
+*/
+// Simulation
+var sim = function() {
+    return logistic_dist(3,2)
+}
+
+// Generate some data
+var data = mapN(function(i) {
+    sim()
+},100)
+
+// console.log("simulated data:",data)
+console.log("mean(data):",listMean(data))
+console.log("min:",_.min(data),"mean:",listMean(data),"max:",_.max(data))
+
+var model = function() {
+    var mu = uniform(0,20) // gaussian(listMean(data),1)
+    var s = uniform(0,10)
+   
+    mapN(function(i) {
+        // factor(logistic_dist(mu,s) == data[i] ? 0 : -100000) // Not good for parameter estimation        
+        observe(Gaussian({mu:logistic_dist(mu,s),sigma:10}),data[i])
+    }, data.length)
+
+    var post = logistic_dist(mu,s)
+    
+    return {
+        mu:mu,
+        s:s,
+        post:post,
+    }
+}
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000,burn:1000,verbose:true},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:1000,verbose:true},model)
+// var d = Infer({method:"SMC",rejuvKernel:"MH",particles:100},model)
+var d = Infer({method:"SMC",particles:10000,rejuvSteps:0},model)
+
+// exp_map_all(d)
+exp_map(d,["mu","s"],["expectation","marginals"])
+exp_map(d,["post"],["expectation"])
+stat2(d,"mu")
+stat2(d,"s")
+stat2(d,"post")
+

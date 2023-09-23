@@ -1,0 +1,188 @@
+/*
+   Cluster watching in birthday months
+
+   From 
+   John Brignell "Of birthdays and clusters"
+   https://www.numberwatch.co.uk/of_birthdays_and_clusters.htm
+   """
+   As we gratefully witness the dying fall of yet another silly season, it is interesting 
+   to note how often birthdays provide the basis of the most popular fallacies. In August 2001 
+   a classic of the genre appeared when the New Scientist announced that researchers in 
+   Scotland had established that anorexics are likely to be have been June babies. The team 
+   studied 446 women who had been diagnosed as anorexic and observed that 30% more than average 
+   were born in June. As the monthly average of births is about 37, we deduce that the June 
+   number must have been 48. At first sight this looks like a significant result (at least 
+   by epidemiological standards) since the probability of getting 48 or more in a random 
+   month is about 3%. But that is not what they are doing! They are making twelve such 
+   selections and then picking the biggest. Application of the theory of the statistics of 
+   extremes tells us that the probability of the largest of twelve such selections being 
+   48 or greater is 30%, which is not significant even by epidemiological standards.
+   """
+
+   Compare with my R code (with Swedish comments) at
+   http://www.hakank.org/sims/simulering.html "Cluster watching"
+
+   This model calculates the min, mean, and max value of 446 random months, as well as
+   two probabilities:
+   - p: what is the probability that the max value is more than 30% of the mean value
+   - p2: how many months has a value that is more than 30% of the mean value.
+     (There are 0.2% chance that as many as 3 months has such as value)
+
+  Marginals:
+  minValraise 
+  Marginal:
+    28 : 0.15200000000000002
+    29 : 0.14200000000000004
+    27 : 0.13900000000000007
+    30 : 0.10600000000000005
+    26 : 0.09800000000000002
+    31 : 0.09200000000000004
+    25 : 0.07800000000000001
+    24 : 0.057999999999999975
+    32 : 0.04599999999999999
+    23 : 0.028000000000000004
+    33 : 0.019999999999999993
+    22 : 0.017000000000000005
+    20 : 0.009
+    21 : 0.008000000000000004
+    34 : 0.004000000000000002
+    19 : 0.003000000000000002
+  meanVal
+  Marginal:
+    37.166666666666664 : 1
+  maxVal
+  Marginal:
+    46 : 0.129
+    47 : 0.12800000000000006
+    45 : 0.12500000000000003
+    48 : 0.10700000000000003
+    49 : 0.09400000000000006
+    44 : 0.09300000000000005
+    50 : 0.06400000000000002
+    43 : 0.06100000000000002
+    51 : 0.04900000000000003
+    52 : 0.04400000000000004
+    53 : 0.028000000000000004
+    42 : 0.021000000000000015
+    54 : 0.01900000000000001
+    41 : 0.011000000000000005
+    55 : 0.011000000000000005
+    56 : 0.005000000000000002
+    58 : 0.005000000000000002
+    57 : 0.0020000000000000005
+    59 : 0.0020000000000000005
+    60 : 0.0020000000000000005
+  p
+  Marginal:
+    false : 0.6749999999999999
+    true : 0.325
+  p2
+  Marginal:
+    0 : 0.675
+    1 : 0.2819999999999999
+    2 : 0.041000000000000016
+    3 : 0.0020000000000000026
+
+  expectation:
+  [ [ 'minVal', 27.740000000000002 ],
+    [ 'meanVal', 37.166666666666664 ],
+    [ 'maxVal', 47.38900000000002 ],
+    [ 'p', 0.325 ],
+    [ 'p2', 0.3699999999999999 ] ]
+
+  Stat for v: minVal
+  min: 19 mean: 26.5 max: 34 stdev: 4.6097722286464435
+
+  Stat for v: meanVal
+  min: 37.166666666666664 mean: 37.166666666666664 max: 37.166666666666664 stdev: 0
+
+  Stat for v: maxVal
+  min: 41 mean: 50.5 max: 60 stdev: 5.766281297335398
+
+  Credible interval for minVal (94%): [ 23, 32 ]
+  Credible interval for maxVal (94%): [ 42, 53 ]
+  Credible interval for maxVal (99%): [ 41, 57 ]
+
+  var maxVal
+  min: 40
+  listMean: 47.577
+  listVar: 10.958070999999984
+  listStdev: 3.310297720749598
+  max: 64
+  Percentiles:
+  [ [ 0, 40 ],
+  [ 2.5, 42 ],
+  [ 25, 45 ],
+  [ 50, 47 ],
+  [ 75, 50 ],
+  [ 97.5, 55 ],
+  [ 99, 57 ],
+  [ 100, 64 ] ]
+  Histogram:
+  bins: [ 1, 5, 27, 50, 80, 261, 131, 104, 85, 71, 97, 41, 12, 17, 4, 10, 2, 0, 0, 1, 1 ]
+
+  I.e. it's about 32% probability that the max value is more than 30% of the mean value.
+  As can be seen from the percentiles, we would probably require at least a value of 55 
+  (at 97.5% level) or perhaps 57 (at 99% level) to think that something is going on.
+
+*/
+
+//
+// Generate 446 random integers representing the 12 months (here 0..11)
+// and show the min, mean, and max values as well as the probability that
+// the max value is 30% larger the mean value.
+//
+var model = function() {
+    var n = 446 // number of women
+    var m = 12 // months
+
+    // For each of the 446 women, generate a random birth month (0..11)
+    var birthMonths = mapN(function(i) {
+        return randomInteger(12)
+    },n)
+
+    // The number of births of each month
+    var births = mapN(function(i) {
+        return _.sum(mapN(function(j) { birthMonths[j] == i ? 1 : 0 },n))
+    },12)
+
+    var minVal = _.min(births)
+    var meanVal = listMean(births)
+    var maxVal = _.max(births)
+
+    // What is the probability that the max value is larger than 30% of the mean value?
+    var p = maxVal > meanVal*1.3
+
+    // How many months has values larger than 30% of the mean value?
+    var p2 = _.sum(mapN(function(i) { births[i] > meanVal*1.3 },n))
+    
+    return {
+        // births:births,
+        minVal:minVal,
+        meanVal:meanVal,
+        maxVal:maxVal,
+        p:p,
+        p2:p2,
+    }
+}
+
+// var d = Infer({method:"enumerate",maxExecutions:100000},model)
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:0},model)
+// display(d)
+
+exp_map(d,["minVal","meanVal","maxVal","p","p2"],["marginals","expectation"])
+console.log("\n")
+stat2(d,"minVal")
+stat2(d,"meanVal")
+stat2(d,"maxVal")
+
+
+showCredibleInterval(d,"minVal",0.94)
+showCredibleInterval(d,"maxVal",0.94)
+
+showCredibleInterval(d,"maxVal",0.99)
+
+
+var ps = [0,1, 2.5,25,50,75,97.5,99,100]; // quantiles
+show_stats(d,"maxVal",ps);

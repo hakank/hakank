@@ -1,0 +1,234 @@
+/*
+   Generating Extreme value distribution
+
+   From https://www.randomservices.org/random/special/ExtremeValue.html
+   """
+   The distribution is also known as the standard Gumbel distribution in honor of Emil Gumbel. 
+   As we will show below in [13], it arises as the limit of the maximum of independent random 
+   variables, each with the standard exponential distribution (when this maximum is 
+   appropriately centered). This fact is the main reason that the distribution is special, 
+   and is the reason for the name. For the remainder of this discussion, suppose that random variable 
+   has the standard Gumbel distribution.
+
+   ...
+
+   The quantile function G^-1 of V given by 
+     G^-1(p) = -ln(-ln(p))  p in 0..1
+   """
+
+   This is implemented as extreme_value_dist1.
+
+   This seems to be about the same as Mathematica's ExtremeValueDistribution[0,1]
+
+   From Mathematica ExtremeValueDistribution
+   """
+   ExtremeValueDistribution[alpha,beta]
+   represents an extreme value distribution with location parameter alpha and scale parameter beta
+
+   --- 
+
+   The extreme value distribution gives the asymptotic distribution of the maximum value in a sample from a distribution such as the normal distribution.
+
+   ...
+   
+   Quantile[ExtremeValueDistribution[a,b], x]
+   -> 
+   a-b Log[-Log[x]]    0 < x < 1
+   -Infinity            x <= 0   if 0 <= x <= 1
+   Infinity             True
+   """
+
+   This is implemented as extreme_value_dist2.
+
+
+*/
+
+var extreme_value_dist1 = function() {
+    var u = uniform(0,1)
+    var x = -Math.log(-Math.log(u))
+    return x
+}
+
+
+var extreme_value_dist2 = function(a,b) {
+    var u = uniform(0,1)
+    var x = a-b*Math.log(-Math.log(u))
+    return x
+}
+
+
+/*
+expectation:
+[ [ 'd', 0.5655575849902614 ], [ 'p', 0.6251999999999996 ] ]
+
+Stat for v: d
+min: -2.4004090963356695 mean: 0.5655575849902642 max: 10.925768707832104 stdev: 1.2830507198772136
+  
+*/
+var model1 = function() {
+
+    var d = extreme_value_dist1()    
+    var p = d > 0
+
+    
+    return {
+        d:d,
+        p:p
+    }
+}
+
+
+// var d1 = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model1);
+var d1 = Infer({method:"SMC",particles:10000},model1);
+// var d1 = Infer(mode1);
+// display(d1);
+
+console.log("Model1:")
+exp_map(d1,["d","p"],["expectation"]);
+stat2(d1,"d")
+
+
+/*
+ Testing extreme_value_dist2(0,1)
+
+ expectation:
+ [ [ 'd', 0.546907617212892 ], [ 'p', 0.6258999999999997 ] ]
+
+ Stat for v: d
+ min: -2.261873852808442 mean: 0.5469076172128918 max: 12.333518984675838 stdev: 1.2625054465989316
+
+*/
+var model2 = function() {
+
+    var a = 0
+    var b = 1 
+    var d = extreme_value_dist2(a,b)    
+    var p = d > 0
+    
+    return {
+        d:d,
+        p:p
+    }
+}
+
+// var d2 = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model2);
+var d2 = Infer({method:"SMC",particles:10000},model2);
+// var d12 = Infer(mode2);
+// display(d2);
+
+console.log("\nModel2:")
+exp_map(d2,["d","p"],["expectation"]);
+stat2(d2,"d")
+
+
+/*
+   Testing with larger a and b: extreme_value_dist2(19,12)
+
+   expectation:
+   [ [ 'd', 25.898629310279677 ], [ 'p', 0.9924999999999999 ] ]
+
+*/ 
+
+var model2b = function() {
+
+    var a = 19
+    var b = 12
+    var d = extreme_value_dist2(a,b)    
+    var p = d > 0
+    
+    return {
+        d:d,
+        p:p
+    }
+}
+
+
+// var d2b = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model2b);
+var d2b = Infer({method:"SMC",particles:10000},model2b);
+// var d2b = Infer(mode2);
+// display(d2b);
+
+console.log("\nModel2b:")
+exp_map(d2b,["d","p"],["expectation"]);
+stat2(d2b,"d")
+
+
+//
+// Generate some random data 
+//
+var data = mapN(function(i) { return extreme_value_dist2(19,12)},30)
+console.log("Generate some values for extreme_value_dist2(19,12):")
+console.log(data)
+console.log("data.length:", data.length)
+console.log("min:",_.min(data),"mean:",listMean(data),"max:",_.max(data))
+
+console.log("\nRestoring parameters....")
+
+/*
+  Estimate the parameter from the generated data with
+  extreme_value_dist2(a,b).
+  Using observe(Gaussoan(..)) which gives a fairly good estimation:
+
+  expectation:
+  [ [ 'a', 21.553510797420103 ], [ 'b', 9.415154491775427 ] ]
+
+  expectation:
+  [ [ 'post', 26.985778117234346 ] ]
+
+  Stat for v: a
+  min: 15.14636716614759 mean: 22.89085390055074 max: 30.052431878489138 stdev: 3.8159216161837173
+
+  Credible interval for a (93%): [ 17.167814080862808, 25.847354833734613 ]
+  Stat for v: b
+  min: 4.278693896543251 mean: 9.329654044864762 max: 17.859171026333364 stdev: 3.510097781990843
+
+  Credible interval for b (93%): [ 5.1385178827555, 12.899731742555653 ]
+  Stat for v: post
+  min: -11.849540290281036 mean: 26.98577811723441 max: 119.13343729063803 stdev: 12.611508211952776
+
+  Credible interval for post (93%): [ 5.951772423483067, 48.304981841425985 ]
+
+  
+*/
+var model3 = function() {
+
+    var a = uniform(0,100)
+    var b = uniform(0,100)
+
+    mapIndexed(function(i,val) {
+        // factor(extreme_value_dist2(a,b) == data[i] ? 0 : -10000000) // Cannot recover the parameter
+        observe(Gaussian({mu:extreme_value_dist2(a,b),sigma:10}),data[i]) // This works better
+    }, data)
+    
+    var post = extreme_value_dist2(a,b)
+    
+    return {
+        a:a,
+        b:b,
+        post:post,
+        
+    }
+}
+
+
+// var d3 = Infer({method:"MCMC",kernel:"HMC",samples:1000},model3);
+// var d3 = Infer({method:"MCMC",kernel:"MH",samples:1000},model3);
+// var d3 = Infer({method:"MCMC",kernel:{HMC: {steps: 100, stepSize: 1}},samples:1000},model3);
+// var d3 = Infer({method:"rejection",samples:100,incremental:true},model3); // very slow
+var d3 = Infer({method:"SMC",particles:10000},model3);
+// var d3 = Infer({method:"SMC",particles:1000,rejuvKernel:"HMC",importance:"autoGuide"},model3);
+// var d3 = Infer(model3);
+// display(d3);
+
+exp_map(d3,["a","b",],["expectation","marginals"])
+exp_map(d3,["post"],["expectation"])
+
+stat2(d3,"a")
+showCredibleInterval(d3,"a",0.93)
+
+stat2(d3,"b")
+showCredibleInterval(d3,"b",0.93)
+
+stat2(d3,"post")
+showCredibleInterval(d3,"post",0.93)
+

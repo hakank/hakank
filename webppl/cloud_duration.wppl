@@ -1,0 +1,100 @@
+/*
+  From Mathematica (Probability)
+  """
+  Cloud duration approximately follows a beta distribution with parameters 0.3 and 0.4 for a particular location. 
+  Find the probability that cloud duration will be longer than half a day:
+
+  Probability[x > 0.5, x \[Distributed] BetaDistribution[0.3, 0.4]]
+  -> 0.421508
+
+  Find the average cloudiness duration for a day:
+  Mean[BetaDistribution[0.3, 0.4]]
+  -> 0.428571
+
+  Find the probability of having exactly 20 days in a month with cloud duration less than 10%:
+  p = Probability[x < 0.1, x \[Distributed] BetaDistribution[0.3, 0.4]];
+  -> 0.331541
+
+  Probability[k == 20, k \[Distributed] BinomialDistribution[30, p]]
+  -> 0.000137807
+
+  Find the probability of at least 20 days in a month with cloud duration less than 10%:
+  Probability[k >= 20, k \[Distributed] BinomialDistribution[30, p]]
+  0.000178284
+  
+  """
+
+  This model:
+  k
+  Marginal:
+    10 : 0.1531900000000005
+    9 : 0.14321000000000042
+    11 : 0.13928000000000063
+    8 : 0.11560999999999971
+    12 : 0.1140899999999998
+    7 : 0.08177999999999987
+    13 : 0.07894999999999988
+    14 : 0.048179999999999404
+    6 : 0.045359999999999644
+    15 : 0.027130000000000105
+    5 : 0.02189000000000013
+    16 : 0.01236000000000006
+    4 : 0.008339999999999978
+    17 : 0.004899999999999954
+    3 : 0.002159999999999983
+    18 : 0.001969999999999982
+    19 : 0.0006399999999999956
+    2 : 0.0006199999999999961
+    20 : 0.00017999999999999977
+    1 : 0.00008999999999999988
+    21 : 0.00003999999999999986
+    22 : 0.00002999999999999987
+
+  expectation:
+  [ [ 'p', 0.4278476001038293 ],
+    [ 'p1', 0.42120999999999875 ],
+    [ 'p2', 0.33157000000000014 ],
+    [ 'pp', 0.3362 ],
+    [ 'k', 10.08367 ],
+    [ 'p3', 0.00018000000000000362 ],
+    [ 'p4', 0.0002500000000000049 ] ]
+
+*/
+
+//
+// Calculate the mean of beta(0.3,0.4) < 0.1
+//
+var pp = expectation(marginalize(Infer({method:"rejection",samples:100000},function () {
+    var p = beta(0.3,0.4)
+    var p2 = p < 0.1
+
+    return {p2:p2}
+}),"p2"))
+
+console.log("pp:",pp)
+
+var model = function() {
+    var p = beta(0.3,0.4)
+    var p1 = p > 0.5
+    var p2 = p < 0.1 // This is pp calculated above
+    var k = binomial(pp,30) // from pp above
+    var p3 = k == 20
+    var p4 = k >= 20
+    return {
+        p:p,
+        p1:p1,
+        p2:p2,
+        pp:pp,
+        k:k,
+        p3:p3,
+        p4:p4,
+    }
+}
+
+// var d = Infer(model)
+var d = Infer({method:"rejection",samples:100000},model) // <-
+// var d = Infer({method:"SMC",particles:100000},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:100000},model) 
+// display(d)
+
+exp_map(d,["p","p1","p2","pp","k","p3","p4"])

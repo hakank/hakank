@@ -1,0 +1,176 @@
+/*
+  From "Resampling Stats Illustrations" (http://www.statistics101.net/PeterBruce_05-illus.pdf)
+  Page 40
+  """
+  Hypothesis test for a difference in means
+  (program “battery”)
+  Does one brand of car battery last longer than another? Here are
+  the figures on 10 randomly selected batteries each for brand A and
+  brand B. Is brand A’s apparent advantage significant?
+  TABLE 2. BATTERY LIFE TIMES
+  brand life (months) aveage
+  A 30 32 31 28 31 29 29 24 30 31 29.5
+  B 28 28 32 31 24 23 31 27 27 31 28.2
+  A’s advantage: 1.3 months
+  ...
+  We calculate the average life time of each group, and determine whether 
+  they differ by as much as the observed data.
+  ->
+  prob = .147
+  """
+
+  Here are three models which differs how the samples are generated.
+  "p" is the probability that type a batteries are better 
+  than type b + 1.3 (the original difference of means)
+
+  
+  Model 1:
+
+  type a mean: 29.5 type_b mean: 28.2 diff: 1.3000000000000007
+  expectation:
+  [ [ 'a_sample_mean', 28.860500000000005 ],
+    [ 'b_sample_mean', 28.832509090909102 ],
+    [ 'diff', 0.02799090909090913 ],
+    [ 'p', 0.10699999999999998 ],
+    [ 'p1', 0.5220000000000002 ],
+    [ 'p2', 0.46299999999999975 ] ]
+
+  Credible interval for a_sample_mean (95%): [ 27.29090909090909, 30.154545454545453 ]
+  Credible interval for b_sample_mean (95%): [ 27.272727272727273, 30.318181818181817 ]
+  Credible interval for diff (95%): [ -2.045454545454543, 2.18181818181818 ]
+
+*/
+
+
+var type_a = [30,32,31,28,31,29,29,24,30,31,29.5]
+var type_b = [28,28,32,31,24,23,31,27,27,31,28.2]
+var orig_diff = listMean(type_a)-listMean(type_b)
+console.log("type a mean:",listMean(type_a),"type_b mean:",listMean(type_b),"diff:",orig_diff)
+
+var both_types = type_a.concat(type_b)
+
+var model = function() {
+    // Draw 10 samples from the combined data
+    var a_sample_mean = listMean(resample(type_a.length,both_types))
+    var b_sample_mean = listMean(resample(type_b.length,both_types))
+    var diff = a_sample_mean - b_sample_mean
+    var p = diff >= orig_diff
+    var p1 = a_sample_mean > b_sample_mean
+    var p2 = b_sample_mean > a_sample_mean    
+
+    return {
+        a_sample_mean:a_sample_mean,
+        b_sample_mean:b_sample_mean,
+        diff:diff,
+        p:p,
+        p1:p1,
+        p2:p2,
+    }
+}
+
+var d = Infer({method:"rejection",samples:1000},model)
+exp_map_all(d,["expectation"])
+
+showCredibleInterval(d,"a_sample_mean",0.95)
+showCredibleInterval(d,"b_sample_mean",0.95)
+showCredibleInterval(d,"diff",0.95)
+
+/*
+
+  Alternative version: Drawing without replacement (see page 42f)
+
+  Model 2:
+  expectation:
+  [ [ 'a_sample_mean', 28.853536363636348 ],
+    [ 'b_sample_mean', 28.846463636363644 ],
+    [ 'diff', 0.007072727272727174 ],
+    [ 'p', 0.1370000000000001 ],
+    [ 'p1', 0.504 ],
+    [ 'p2', 0.49600000000000005 ] ]
+
+  Credible interval for a_sample_mean (95%): [ 27.772727272727273, 29.863636363636363 ]
+  Credible interval for b_sample_mean (95%): [ 27.836363636363636, 29.927272727272726 ]
+  Credible interval for diff (95%): [ -2.1545454545454525, 2.0272727272727273 ]
+
+*/
+console.log("\nModel 2:")
+var model2 = function() {
+    var a_len = type_a.length
+    var len = both_types.length
+    // Draw without replacement from the the concated array
+    var both_sample = draw_without_replacement2(len,both_types,[])
+    // Pick the first a_len elements -> a_sample
+    var a_sample_mean = listMean(mapN(function(i) {both_sample[i]},a_len))
+    // Pick the rest -> b_sample
+    var b_sample_mean = listMean(mapN(function(i) {both_sample[i+a_len]},a_len))
+    var diff = a_sample_mean - b_sample_mean
+    var p = diff >= orig_diff
+    var p1 = a_sample_mean > b_sample_mean
+    var p2 = b_sample_mean > a_sample_mean    
+
+    return {
+        a_sample_mean:a_sample_mean,
+        b_sample_mean:b_sample_mean,
+        diff:diff,
+        p:p,
+        p1:p1,
+        p2:p2,
+    }
+}
+
+var d2 = Infer({method:"rejection",samples:1000},model2)
+exp_map_all(d2,["expectation"])
+
+showCredibleInterval(d2,"a_sample_mean",0.95)
+showCredibleInterval(d2,"b_sample_mean",0.95)
+showCredibleInterval(d2,"diff",0.95)
+
+
+
+/*
+  Alternative version:
+  Instead of concatenating the data we keep the two types separately.
+
+  Using this approach, we see that type b have a small chance of being better
+  than type a.
+
+  Model 2:
+  expectation:
+  [ [ 'a_sample_mean', 29.519909090909074 ],
+    [ 'b_sample_mean', 28.199745454545493 ],
+    [ 'diff', 1.3201636363636375 ],
+    [ 'p', 0.5020000000000003 ],
+    [ 'p1', 0.903 ],
+    [ 'p2', 0.09699999999999998 ] ]
+
+  Credible interval for a_sample_mean (95%): [ 28.136363636363637, 30.454545454545453 ]
+  Credible interval for b_sample_mean (95%): [ 26.727272727272727, 29.836363636363636 ]
+  Credible interval for diff (95%): [ -0.5818181818181785, 3.2545454545454575 ]
+
+*/
+console.log("\nModel 3:")
+var model3 = function() {
+    var a_sample_mean = listMean(resample(type_a.length,type_a))
+    var b_sample_mean = listMean(resample(type_b.length,type_b))    
+    var diff = a_sample_mean - b_sample_mean
+    var p = diff >= orig_diff
+    var p1 = a_sample_mean > b_sample_mean
+    var p2 = b_sample_mean > a_sample_mean    
+
+    return {
+        a_sample_mean:a_sample_mean,
+        b_sample_mean:b_sample_mean,
+        diff:diff,
+        p:p,
+        p1:p1,
+        p2:p2,
+    }
+}
+
+var d3 = Infer({method:"rejection",samples:1000},model3)
+exp_map_all(d3,["expectation"])
+
+showCredibleInterval(d3,"a_sample_mean",0.95)
+showCredibleInterval(d3,"b_sample_mean",0.95)
+showCredibleInterval(d3,"diff",0.95)
+

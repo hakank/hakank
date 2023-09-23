@@ -1,0 +1,76 @@
+/*
+  From Statistics101 (Resample Stats)
+  File quakeProbability.txt
+  """
+  (From: http://www.physics.utah.edu/~p5720/assgn/a07.html)
+  Given: 
+  - The distribution of earthquakes is lognormal.
+  - The mean time between quakes in a certain region is 1200 years
+  - The standard deviation of the time between quakes is 120 years
+  - The last quake was 1200 years ago
+  Find: The probability that another quake will occur in the next 50 years.
+  mu: 121.12402989301995
+  sigma: 1200.2861533879125
+  probability: 0.1604
+  (another run: probability: 0.15739)
+  """
+
+  In Statistics101 LOGNORMAL seems to mean something else:
+  """
+  LOGNORMAL exp 1 1200 120 xxx
+  PRINT xxx"
+  -> 1124.5607506111548
+  """
+  What does "exp" indicates? It seems that it's just gaussian(mu,sigma).
+
+  Using plain gaussian() gives about the same probability (p):
+
+  expectation:
+  [ [ 'next_quake', 1199.807030373564 ],
+    [ 'y', -0.19296962641511015 ],
+    [ 'p', 0.161900000000001 ] ]
+
+  Mathematica:
+  """
+  Probability[x - 1200 <= 50 && x - 1200 >= 0 , x ~ NormalDistribution[1200, 120]] // N
+  -> 0.161539
+  """
+
+*/
+
+// Here's the definition of lognormal from
+// From https://web.physics.utah.edu/~p5720/assgn/a07.html
+//
+// Testing log_normal2(1200,120) -> 1231.5912119933946
+// So this is more like the expected behaviour (i.e. the Statistics101 model).
+// But it's not the log_normal distribution as Mathematica (and I) defines it.
+//
+var log_normal2 = function(mu,sd) {
+    var S = Math.sqrt(Math.log(sd*sd/(mu*mu)+1.0))
+    var M = Math.log(mu)-0.5*S*S
+    var x = Math.exp(S*gaussian(0,1)+M)
+    return x
+}
+
+// console.log("test:",log_normal2(1200,120))
+
+var model = function() {
+    var mu = 1200
+    var last_quake = 1200 // last quake was 1200 years ago
+    var sigma = 120
+    // var next_quake = gaussian(mu,sigma)
+    var next_quake = log_normal2(mu,sigma)     
+    var y = next_quake - last_quake
+    var p = y <= 50 && y >= 0 // next quake is within next 50 ye
+    return {
+        next_quake:next_quake,
+        y:y,
+        p:p,
+    }
+}
+
+// var d = Infer(model)
+var d = Infer({method:"SMC",particles:10000,rejuvSteps:15},model)
+// display(d)
+
+exp_map_all(d,["expectation"])

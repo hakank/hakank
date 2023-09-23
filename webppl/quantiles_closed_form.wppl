@@ -1,0 +1,366 @@
+/*
+   Quantiles in closed form.
+   Many are from Mathematica's Quantile[Dist[params],x] and/or
+   Wikipedia etc, (and occasionally with some help from ChatGPT).
+
+   They are collected in node_modules/hakank_utils/distributions.wppl
+
+   The following quantiles are supported (as of writing),
+   Most of these complies quite good to Mathematica's version
+   with the notable exception of gaussian which is only fairly ok,
+   and binomial which is sometimes a little off.
+
+
+   - bernoulli_dist_quantile  OK
+   - binomial_dist_quantile  OK / Fairly OK
+   - cauchy_dist_quantile OK
+   - exponential_dist_quantile OK 
+   - exponential_dist2_quantile <--
+   - inverse_exponential_dist_quantile <--
+   - shifted_exponential_dist_quantile <--
+   - gaussian_dist_quantile  Fairly OK 
+   - geometric_dist_quantile OK
+   - laplace_dist_quantile OK
+   - negative_binomial_dist_quantile OK
+   - pareto_dist_quantile OK
+   # - pareto_i_dist_quantile Not compliant with Mathematica
+   # - pareto_ii_dist_quantile Not compliant with Mathematica
+   # - pareto_iii_dist_quantile Not compliant with Mathematica
+   # - pareto_iv_dist_quantile Not compliant with Mathematica
+   - poisson_dist_quantile  OK
+   - weibull_dist_quantile OK
+   - gumbel_dist_quantile  OK
+   - kumaraswamy_dist_quantile OK
+   - logistic_dist_quantile OK 
+   - logistic1_dist_quantile <--
+   - extreme_value_dist1_quantile OK
+   - extreme_value_dist2_quantile OK
+   - frechet_dist_quantile  OK
+   - generalized_extreme_value_dist_quantile <--
+   - uniform_dist_quantile OK
+
+
+   Note than quite a few very common distributions does not have a closed form of 
+   the quantiles (at least according to Mathematica) so they are approximated
+   but are fairly exact.
+   - poisson
+   - geometric
+   - negative_binomial
+   - gaussian (fairly ok)
+   - binomial (fairly ok)
+   
+   TODO: 
+   - pascal
+   - gamma
+
+   Example
+     exponential_dist_quantile(1/10,0.99) -> 46.0517018598809
+  
+
+   * See the quantile() and quantiles() functions for getting the quantiles 
+     using simulation. These are tested in quantile_test.wppl.
+
+*/
+
+/*
+  Test all the distribution dist for the quantiles in q
+  Examples
+
+  quantiles_testall("geometric_dist:", 
+          function(q) { geometric_dist_quantile(0.5,q) },
+          [0.01,0.9,0.99,0.999,0.9999,0.99999])
+  -> geometric_dist:
+     [ [ 0.01, -0 ],
+       [ 0.9, 3 ],
+       [ 0.99, 6 ],
+       [ 0.999, 9 ],
+       [ 0.9999, 13 ],
+       [ 0.99999, 16 ] ]
+
+   quantiles_testall("gaussian_dist:", function(q) { gaussian_dist_quantile(100,15,q)},[0.01,0.9,0.99,0.999,0.9999,0.99999])
+   -> 
+   [ [ 0.01, 65.13865017656639 ],
+     [ 0.9, 119.22569348707862 ],
+     [ 0.99, 134.8613498234336 ],
+     [ 0.999, 146.269595580752 ],
+     [ 0.9999, 155.67772635407104 ],
+     [ 0.99999, 163.86817218368384 ] ]
+
+*/
+var quantiles_testall = function(desc,dist,qs) {
+    console.log(desc)
+    console.log(map(function(q) {
+        return [q,dist(q)]
+    },qs))
+
+}
+
+// The quantiles we want to test
+var qs = [0.01,0.9,0.99,0.999,0.9999,0.99999]
+
+//
+// Exponential: OK
+//
+// 46.0517018598809
+// Mathematica: 46.0517018598809
+console.log("exponential_dist_quantile(1/10,0.99):", exponential_dist_quantile(1/10,0.99))
+console.log("\n")
+
+// 0.1005033585350145,23.025850929940457,46.0517018598809,69.07755278982135,92.10340371976294,115.12925464974779
+// Mathematica: 0.100503, 23.0259, 46.0517, 69.0776, 92.1034, 115.129
+quantiles_testall("exponential_dist(1/10,q):",
+                  function(q) { exponential_dist_quantile(1/10,q)},qs)
+console.log("\n")
+
+//
+// Extreme value dist 2: OK
+//
+// 8.4728203741921,12.250367327312446,14.60014922677658,16.907255070523718,19.210290369892835,21.512920464953947
+// Mathematica: 8.47282, 12.2504, 14.6001, 16.9073, 19.2103, 21.5129
+quantiles_testall("extreme_value_dist2_quantile(10,1,q):",
+                  function(q) { extreme_value_dist2_quantile(10,1,q)},qs)
+console.log("\n")
+
+//
+// Extreme value dist1: OK
+// This is the same as extreme_value_dist2_quantile(0,1,q)
+//
+// -1.527179625807901,2.2503673273124454,4.600149226776579,6.907255070523716,9.210290369892835,11.512920464953947
+// Mathematica: -1.52718, 2.25037, 4.60015, 6.90726, 9.21029, 11.5129
+//
+quantiles_testall("extreme_value_dist1_quantile(q):",
+                  function(q) { extreme_value_dist1_quantile(q)},qs)
+
+console.log("\n")
+
+//
+// Uniform distribution: OK
+//
+// 1.51,46.900000000000006,51.489999999999995,51.949,51.9949,51.99949000000001
+// Mathematica: 1.51, 46.9, 51.49, 51.949, 51.9949, 51.9995
+quantiles_testall("uniform_dist_quantile(1,52,q):",
+                  function(q) { uniform_dist_quantile(1,52,q)},qs)
+console.log("\n")
+
+//
+// Bernoulli: OK
+//
+// 0,0,1,1,1,1
+// Mathematica: 0, 0, 1, 1, 1, 1
+quantiles_testall("bernoulli_dist_quantile(0.1,q):",
+                  function(q) { bernoulli_dist_quantile(0.1,q)},qs)
+console.log("\n")
+
+
+//
+// Logistic: OK
+//
+// 5.40488014986541,12.19722457733622,14.595119850134589,16.906754778648555,19.21024036697596,21.51291546492478
+// Mathematica: 5.40488, 12.1972, 14.5951, 16.9068, 19.2102, 21.5129
+quantiles_testall("logistic_dist_quantile(10,1,q):",
+                  function(q) { logistic_dist_quantile(10,1,q)},qs)
+console.log("\n")
+
+//
+// Frechet: OK
+//
+// 0.6514417228548778,28.473664743089714,298.4974874202662,2998.499749874918,29998.499975002054,299998.4999988653
+// Mathematica: 0.651442, 28.4737, 298.497, 2998.5, 29998.5, 299998.
+quantiles_testall("frechet_dist_quantile(1,3,q):",
+                  function(q) { frechet_dist_quantile(1,3,q)},qs)
+console.log("\n")
+
+//
+// Gumbel: OK
+// 
+// -12.800447680329736,3.502097335743868,5.581538877423703,6.797934201748196,7.660980419103575,8.330411073047355
+// Mathematica: -12.8004, 3.5021, 5.58154, 6.79793, 7.66098, 8.33041
+quantiles_testall("gumbel_dist_quantile(1,3,q):",
+                  function(q) { gumbel_dist_quantile(1,3,q)},qs)
+console.log("\n")
+
+//
+// Weibull: OK
+//
+// 8.265438839216525
+// Mathematica: 8.26544
+console.log("weibull_dist_quantile(9.11753, 6.99072,0.99):", weibull_dist_quantile(9.11753, 6.99072,0.99))
+
+console.log("\n")
+
+// 0.030151007560504352,6.907755278982138,13.81551055796427,20.723265836946407,27.63102111592888,34.53877639492434
+// Mathematica: 0.030151, 6.90776, 13.8155, 20.7233, 27.631, 34.5388
+quantiles_testall("weibull_dist_quantile(1,3,q):",
+                  function(q) { weibull_dist_quantile(1,3,q)},qs)
+console.log("\n")
+
+//
+// Laplace: OK
+//
+// 6.087976994571854,11.6094379124341,13.912023005428145,16.21460809842219,18.517193191416347,20.819778284414834
+// Mathematica: 6.08798, 11.6094, 13.912, 16.2146, 18.5172, 20.8198
+//
+quantiles_testall("laplace_dist_quantile(10,1,q):",
+                  function(q) { laplace_dist_quantile(10,1,q)},qs)
+console.log("\n")
+
+//
+// Pareto: OK
+// 
+
+// 3.002010740716127,3.4977432035394953,4.078069172635576,4.754679577383341,5.543549392266914,6.463304070097612
+// Mathematica ParetoDistribution[3,15]: 3.00201, 3.49774, 4.07807, 4.75468, 5.54355, 6.4633
+// Note that Mathematica has the reversed order of the parameters
+quantiles_testall("pareto_dist_quantile(15,3,q):",
+                  function(q) { pareto_dist_quantile(15,3,q)},qs)
+console.log("\n")
+
+//
+// Note: These Pareto dists does not comply with Mathematica
+//
+/*
+console.log("pareto_i_dist_quantile(15,3,0.99):", pareto_i_dist_quantile(15,3,0.99))
+console.log("pareto_ii_dist_quantile(10,1,1,0.99):", pareto_ii_dist_quantile(10,1,1,0.99))
+console.log("pareto_iii_dist_quantile(10,1,1,0.99):", pareto_iii_dist_quantile(10,1,1,0.99))
+console.log("pareto_iv_dist_quantile(10,2,1,1,0.99):", pareto_iv_dist_quantile(10,2,1,1,0.99))
+console.log("\n")
+*/
+
+
+//
+// These Pareto dists - pareto_*_dist2_quantile - _does_ comply with Mathematica
+// (I used Mathematica's Quantile function to generate them).
+//
+
+//
+// Pareto type I (v2): OK
+//
+// 1.0082044785276567,6.501418610174441,42.26844394472251,274.8048480853341,1786.6213535083118,11615.573317075923
+// Mathematica: 1.0082, 6.50142, 42.2684, 274.805, 1786.62, 11615.6
+quantiles_testall("pareto_i_dist2_quantile(1,1.23,q):",
+                  function(q) { pareto_i_dist2_quantile(1,1.23,q)},qs)
+console.log("\n")
+
+
+
+//
+// Pareto type II (v2): OK
+//
+// 3.2451704830922985,21.282158954601353,72.06076515514967,214.65805423684003,615.1020280855979,1739.6351606923495
+// Mathematica: 3.24517, 21.2822, 72.0608, 214.658, 615.102, 1739.64}
+quantiles_testall("pareto_ii_dist2_quantile(10,2.23,3.2,q):",
+                  function(q) { pareto_ii_dist2_quantile(10,2.23,3.2,q)},qs)
+console.log("\n")
+
+
+//
+// Pareto type III (v2): OK
+//
+// 12.314483407107101,96.52702602190891,208.6371015819768,441.1796160087814,932.9400751417057,1974.8155165689825
+// Mathematica: 12.3145, 96.527, 208.637, 441.18, 932.94, 1974.82
+quantiles_testall("pareto_iii_dist2_quantile(46.1666, 0.326152, 2.,q):",
+                  function(q) { pareto_iii_dist2_quantile(46.1666, 0.326152, 2.,q)},qs)
+console.log("\n")
+
+//
+// Pareto type IV (v2): OK
+//
+// 2.6687370078742667,5.935706029118697,6.934480932843715,7.632630762150512,8.187249026662776,8.65491156018571
+// Mathematica: 2.66874, 5.93571, 6.93448, 7.63263, 8.18725, 8.6549
+quantiles_testall("pareto_iv_dist2_quantile(46.1666, 4374., 0.326152, 2.,q):",
+                  function(q) { pareto_iv_dist2_quantile(46.1666, 4374.,0.326152, 2.,q)},qs)
+console.log("\n")
+
+
+
+
+//
+// Poisson: OK
+//
+// 0,5,8,10,11,13
+// Mathematica: 0,5,8,10,11,13
+quantiles_testall("poisson_dist_quantile(3.0,q):",
+                  function(q) { poisson_dist_quantile(3.0,q)},qs)
+console.log("\n")
+
+// 18,37,43,48,52,56
+// Mathematica: 18, 37, 43, 48, 52, 56}
+quantiles_testall("poisson_dist_quantile(30,q):",
+                  function(q) { poisson_dist_quantile(30,q)},qs)
+console.log("\n")
+
+
+//
+// Gaussian: Only fairly OK!!
+//
+// 65.13865017656639,119.22569348707862,134.8613498234336,146.269595580752,155.67772635407104,163.86817218368384
+// Mathematica: 65.1048,119.223,134.895,146.353,155.785,163.973
+quantiles_testall("gaussian_dist_quantile(100,15,q):",
+                  function(q) { gaussian_dist_quantile(100,15,q)},qs)
+console.log("\n")
+
+//
+// Binomial: OK / Fairly OK (one off!)
+// 
+// 2,10,12,12,14,15
+// (Mathematica: 3, 10,12,13,14,15]
+quantiles_testall("binomial_dist_quantile(0.5,15,q):",
+                  function(q) { binomial_dist_quantile(0.5,15,q)},qs)
+console.log("\n")
+
+// 38,55,61,64,67,70 (not same as Mathematica!)
+// Mathematica: 38, 56, 62, 65, 68, 71
+quantiles_testall("binomial_dist_quantile(0.5,100,q):",
+                  function(q) { binomial_dist_quantile(0.5,100,q)},qs)
+console.log("\n")
+
+// 49 (!)
+// Mathematica: 50
+console.log("binomial_dist_quantile(0.5,100,0.5):", binomial_dist_quantile(0.5,100,0.5))
+
+// 99 (!)
+// Mathematica: 100
+console.log("binomial_dist_quantile(0.1,1000,0.5):", binomial_dist_quantile(0.1,1000,0.5))
+console.log("\n")
+
+//
+// Geometric: OK
+// 
+// 0,3,6,9,13,16
+// Mathematica: 0,3,6,9,13,16
+quantiles_testall("geometric_dist_quantile(0.5,q):",
+                  function(q) { geometric_dist_quantile(0.5,q)},qs)
+console.log("\n")
+
+//
+// Negative Binomial: OK
+//
+// 5,22,30,36,42,47
+// Mathematica: 5, 22, 30, 36, 42, 47
+quantiles_testall("negative_binomial_dist_quantile(15,0.5,q):",
+                  function(q) { negative_binomial_dist_quantile(15,0.5,q)},qs)
+console.log("\n")
+
+//
+// Cauchy: OK
+//
+// -0.9102579768869266,16.538841768587627,30.910257976886925,174.15441949277078,1606.5493785584144,15930.49430398651
+// Mathematica: -0.910258, 16.5388, 30.9103, 174.154, 1606.55, 15930.5
+quantiles_testall("cauchy_dist_quantile(15,0.5,q):",
+                  function(q) { cauchy_dist_quantile(15,0.5,q)},qs)
+console.log("\n")
+
+//
+// Kumaraswamy: OK
+//
+// 0.3467464049018456,0.9267920340127743,0.9791483623609768,0.9935938923578883,0.997991951661426,0.9993667429467064
+// Mathematica: 0.346746, 0.926792, 0.979148, 0.993594, 0.997992, 0.99936
+quantiles_testall("kumaraswamy_dist_quantile(5,2,q):",
+                  function(q) { kumaraswamy_dist_quantile(5,2,q)},qs)
+console.log("\n")
+
+// 0.09367107347964714,0.41977799330679555,0.4333284753967811,0.43463763282338524,0.4347681154589104,0.434781159415459
+// Mathematica: 0.0936711, 0.419778, 0.433328, 0.434638, 0.434768, 0.434781
+quantiles_testall("power_dist_quantile(2.3,3,q):",
+                  function(q) { power_dist_quantile(2.3,3,q)},qs)
+console.log("\n")

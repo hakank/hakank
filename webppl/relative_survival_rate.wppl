@@ -1,0 +1,125 @@
+/*
+  Relative Survival Rate in WebPPL.
+
+  This is from Mathematica's MortalityData, 
+  more specificially for me (a 66 yo male in Sweden).
+
+  Here's the Mathematica code for finding out the distribution (via simulation):
+
+  dist = MortalityData[<|"Age" -> Quantity[66, "Years"], "Gender" -> "Male", "Country" -> "Sweden"|>, "DistributionDimensionless"]
+  data = RandomVariate[dist, 100000];
+  FindDistribution[data, 5]
+
+  -> {MixtureDistribution[{0.259614, 
+   0.740386}, {LogisticDistribution[68.7372, 9.35127], 
+   GammaDistribution[127.945, 0.66129]}], 
+ MixtureDistribution[{0.199834, 
+   0.800166}, {CauchyDistribution[64.9097, 5.39639], 
+   LogNormalDistribution[4.43461, 0.0872523]}], 
+ MixtureDistribution[{0.115708, 
+   0.884292}, {CauchyDistribution[60.7114, 6.01232], 
+   GammaDistribution[93.0262, 0.895315]}], 
+ MixtureDistribution[{0.0666283, 
+   0.933372}, {NormalDistribution[52.2537, 26.762], 
+   NormalDistribution[82.1081, 9.65312]}], 
+ StudentTDistribution[82.1917, 8.91029, 3.59799]}
+
+  Let's try the first alternative:
+    MixtureDistribution[{0.259614, 0.740386}, 
+        {LogisticDistribution[68.7372, 9.35127], 
+         GammaDistribution[127.945, 0.66129]
+        }]
+
+
+  * p = surv >= 71: No conditions
+    expectation:
+    [ [ 'log_dist', 68.73145748837898 ],
+      [ 'gamma_dist', 84.57128869206284 ],
+      [ 'surv', 80.45904675395003 ],
+      [ 'p', 0.9161999999999998 ] ]
+
+
+  * p = surv >= 71 | surv >= 66
+    expectation:
+    [ [ 'log_dist', 69.51435925410486 ],
+      [ 'gamma_dist', 84.82398649024532 ],
+      [ 'surv', 80.84939292496182 ],
+      [ 'p', 0.9296999999999997 ] ]
+  
+
+  * p = surv >= 76 | surv >= 66
+    [ [ 'log_dist', 69.44048291674777 ],
+      [ 'gamma_dist', 84.83256051441539 ],
+      [ 'surv', 80.83656168097455 ],
+      [ 'p', 0.7570999999999993 ] ]
+  
+
+   And my mother, who got 98 some month ago, what is the probability
+   she live to be 100?
+   * p = surv >= 100: No condition
+     expectation:
+     [ [ 'log_dist', 68.57941378955013 ],
+       [ 'gamma_dist', 84.64912075055696 ],
+       [ 'surv', 80.4771998475827 ],
+       [ 'p', 0.003899999999999996 ] ]
+
+   * p = surv >= 100 | surv >= 98
+     [ [ 'log_dist', 100.78693218297472 ],
+       [ 'gamma_dist', 101.04369780443572 ],
+       [ 'surv', 100.97703785438577 ],
+       [ 'p', 0.5540999999999998 ] ]
+
+
+  What's the probability that I will live to 100? Not large...
+  *  p = surv >= 100 | surv >= 66
+    [ [ 'log_dist', 69.0856329845846 ],
+      [ 'gamma_dist', 84.80695390857625 ],
+      [ 'surv', 80.72547889821517 ],
+      [ 'p', 0.003699999999999998 ] ]
+
+  And what the probability that I will _not_ reach 71 yo?
+  Quite low.
+  * p = surv < 71 | surv >= 66
+    [ [ 'log_dist', 69.69759057574015 ],
+      [ 'gamma_dist', 84.8984651109306 ],
+      [ 'surv', 80.95210526935178 ],
+      [ 'p', 0.06200000000000002 ] ]
+
+
+*/
+
+var model = function() {
+    var log_dist = logistic_dist(68.7372, 9.35127)
+    var gamma_dist = gamma(127.945, 0.66129)
+
+    var surv = 0.259614*log_dist + 0.740386*gamma_dist
+    // var surv = mixture({dists:[log_dist,gamma_dist],ps:[0.259614,0.740386]}) // Nope!
+    // var p = surv >= 100
+    var p = surv >= 71
+    // var p = surv >= 76
+    // var p = surv < 71
+    // var p = surv >= 80
+    // var p = surv >= 80.7
+
+    condition(surv >= 66)    
+    // condition(surv >= 98)
+    // condition(surv >= 70)    
+    
+    return {
+        log_dist:log_dist,
+        gamma_dist:gamma_dist,
+        surv:surv,
+        p:p,
+    }
+}
+
+
+// var d = Infer(model)
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000,lag:100,burn:1000},model);
+// var d = Infer({method:"MCMC",samples:10000},model);
+var d = Infer({method:"SMC",particles:10000},model);
+// var d = Infer({method:"rejection",samples:10000},model);
+
+exp_map_all(d,["expectation"])
+
+

@@ -1,0 +1,139 @@
+/*
+
+  Earthquake Extreme Value Theory using Gumbel distribution
+
+  Example and data from Mathematica GumbelDistribution: yearly maximum magnitude 
+  of earthquakes in the United States in the past 200 years:
+  """
+  mYdist = EstimatedDistribution[maxYearly, GumbelDistribution[Alpha, Beta]]
+  -> GumbelDistribution[7.03496, 0.745586]
+
+  ...
+  Find the probability of the annual maximum earthquake having a magnitude of at least 6:
+  Probability[x >= 6, x -> mYdist]
+  ->  0.779155
+
+  Simulate the magnitudes of the annual maximum earthquake for 30 years:
+  maxMag = RandomVariate[mYdist, 30]
+  -> 
+  {6.60781, 5.93618, 7.73324, 6.22724, 3.95527, 6.11688, 7.49837,
+  6.53918, 8.12725, 5.62827, 7.77249, 6.60604, 7.20895, 6.6224,
+  7.78966, 6.77433, 6.95503, 7.08528, 6.34501, 6.95825, 6.48127,
+  7.54685, 7.37537, 6.6997, 7.07498, 7.34062, 6.74814, 7.24383,
+  5.45639, 6.85268}
+
+  Max@%
+  -> 8.12725
+
+  """
+
+  SMC 2000 particles:
+  p
+  Marginal:
+    true : 0.7749999999999999
+    false : 0.22500000000000006
+
+  expectation:
+  [ [ 'mu', 6.385072821484685 ],
+    [ 'sigma', 0.6215435560162048 ],
+    [ 'p', 0.7749999999999999 ] ]
+
+  expectation:
+  [ [ 'post', 6.736545610555022 ], [ 'sigmaGauss', 10 ] ]
+
+  Stat for v: mu
+  min: 5.248087164744147 mean: 6.556467755878639 max: 7.720625129300698 stdev: 0.5274351750576447
+
+  Stat for v: sigma
+  min: 0.002089080416145528 mean: 0.5542488570415797 max: 1.6510535555155714 stdev: 0.402639216683018
+
+  Stat for v: post
+  min: 3.8693202879864383 mean: 6.736545610555025 max: 13.550289604052647 stdev: 1.089777293314362
+
+  Stat for v: sigmaGauss
+  min: 10 mean: 10 max: 10 stdev: 0
+
+  Credible interval for mu (94%): [ 5.354712094619386, 7.374602280746746 ]
+  Credible interval for sigma (94%): [ 0.006898562999506641, 1.1268342661109054 ]
+  Credible interval for post (94%): [ 4.778523723005372, 8.736274131881427 ]
+  Credible interval for sigmaGauss (94%): [ 10, 10 ]
+
+  max(post):  13.550289604052647
+
+
+*/
+
+// This is from Mathematica GumbelDistribution:
+// The yearly maximum value of earthquakes in USA the past 200 year
+var yearly_max = [6., 4.5, 5.3, 6.5, 4.4, 6., 7.2, 7.4, 5., 5.5, 4.6, 4.5, 6.8, 7.,
+                  4.6, 6., 4.2, 4.9, 6.5, 4.6, 6., 5.5, 7.6, 6.1, 6.3, 5.6, 5.9, 4.8, 
+                  5.9, 6.3, 5.8, 5.1, 7.9, 6.1, 6., 7., 7.3, 6.7, 5.8, 4.8, 6.2, 5.8, 
+                  6., 6.2, 6., 5.9, 6.2, 6.7, 6.3, 5.9, 6., 6.3, 5.5, 6.7, 5.5, 5.9, 
+                  5.9, 6., 6.4, 7.6, 8., 7.7, 7.1, 7., 7., 7.3, 7.4, 7.8, 7.4, 7., 7.4, 
+                  7., 7.1, 7.3, 7.2, 6.7, 7.7, 7.7, 7.9, 6.8, 6.1, 5.5, 5.2, 7.3, 7.2, 
+                  5.7, 6.7, 7., 7.1, 6.8, 7.8, 6.5, 6.2, 7.2, 6.9, 7.1, 7.1, 6.2, 7.3, 
+                  8.3, 6.2, 7.4, 6.7, 6.9, 7.4, 7.1, 6.7, 7.3, 7.2, 7.5, 6.9, 6.7, 7.1, 
+                  7.2, 7.1, 7.2, 7., 6.8, 8.1, 7.9, 7.7, 6.9, 6.7, 6.7, 6.7, 8.4, 8.2, 
+                  7., 6.7, 7.1, 6.5, 6.7, 7.1, 7.6, 6.7, 6.5, 7.6, 6.3, 6.7, 6.7, 7.1, 
+                  6.9, 7., 6.2, 7.2, 6.6, 6.5, 7.9, 7.8, 7.7, 7.1]
+console.log("mean(yearly_max):", listMean(yearly_max))
+
+var model = function() {
+
+    var mu = gaussian(listMean(yearly_max),listStdev(yearly_max)) // uniform(0,100)
+    var sigma = uniform(0,10)
+
+    var sigmaGauss = 10 // uniform(0,100) 
+    
+    var g = mapN(function(i) {
+        observe(Gaussian({mu:gumbel_dist(mu,sigma),sigma:sigmaGauss}),yearly_max[i]) // experimental
+        // factor(gumbel_dist(mu,sigma) == yearly_max[i] ? 0 : -2000000) // does not work well
+    },yearly_max.length)
+
+    var post = gumbel_dist(mu,sigma)
+    var p = post >= 6
+    
+    return {
+        mu:mu,
+        sigma:sigma,
+        post:post,
+        p:p,
+        sigmaGauss:sigmaGauss,
+    }
+}
+
+
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:10000,burn:1000,verbose:true},model); // Not good with observe(Gaussian(...))
+// var d = Infer({method:"MCMC",samples:10000,burn:1000,verbose:true},model); // 
+// var d = Infer({method:"rejection",samples:10},model);
+// var d = Infer({method:"SMC",particles:10000},model); // Quite good 
+var d = Infer({method:"SMC",particles:2000,rejuvSteps:0},model);
+// var d = Infer(model);
+// display(d);
+
+exp_map(d,["mu","sigma","p"],["expectation","marginals"])
+exp_map(d,["post","sigmaGauss"],["expectation"])
+
+stat2(d,"mu")
+stat2(d,"sigma")
+stat2(d,"post")
+stat2(d,"sigmaGauss")
+
+showCredibleInterval(d,"mu",0.94)
+showCredibleInterval(d,"sigma",0.94)
+showCredibleInterval(d,"post",0.94)
+showCredibleInterval(d,"sigmaGauss",0.94)
+
+var postVals = getSamples(d, "post")
+console.log("\nmax(post): ", _.max(postVals) )
+
+/*
+// Simulation
+console.log("\n")
+var muMean = listMean(getSamples(d,"mu"))
+var sigmaMean = listMean(getSamples(d,"sigma"))
+console.log("simulate 30 max values with mu:",muMean,"and sigma:",sigmaMean)
+var sim = mapN(function(i) { return gumbel_dist(muMean,sigmaMean)},30)
+console.log(sim)
+console.log("min:",_.min(sim),"mean:", listMean(sim),"max:", _.max(sim))
+*/

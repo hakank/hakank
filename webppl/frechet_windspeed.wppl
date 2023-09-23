@@ -1,0 +1,147 @@
+/*
+   Windspeed using Frechet distribution
+
+   From Mathematica (FrechetDistribution)
+   """
+   FrechetDistribution can be used to model annual maximum wind speeds:
+   maxWinds =  Table[Max[
+    DeleteMissing[
+     WeatherData["Boston", "WindSpeed", {year}, "Value"]]], {year, 
+    1938, 2009}] // QuantityMagnitude
+   -> 
+   {72.36, 64.8, 72.36, 68.4, 77.76, 55.44, 96.48, 96.48, 66.6, 72.36,
+   61.2, 55.8, 96.48, 74.16, 77.76, 88.92, 138.96, 77.76, 85.32, 66.6,
+   70.56, 63, 81.72, 66.6, 74.16, 77.76, 64.8, 57.6, 66.6, 77.76, 63,
+   64.8, 74.16, 74.16, 79.56, 77.76, 68.76, 59.4, 86.76, 84.96, 92.88,
+   81.72, 79.56, 81.72, 64.8, 105.48, 64.8, 85.32, 64.8, 63, 72.36,
+   100.08, 59.4, 75.96, 81.72, 87.12, 77.76, 68.76, 74.16, 68.4, 75.96,
+   63, 63, 64.8, 57.6, 61.2, 59.4, 66.6, 57.24, 63, 55.44, 59.4}
+
+   Fit the distribution to the data:
+   edist = EstimatedDistribution[maxWinds,FrechetDistribution[alpha, beta]]
+   -> FrechetDistribution[7.26626, 66.9224]
+
+   Find the probability of annual maximum wind exceeding 90 km/h:
+   Probability[x > 90, x in edist]
+   -> 0.109663
+
+   Find average annual maximum wind speed:
+   Mean[edist]
+   -> 73.6778
+
+   data = RandomVariate[edist, 1000];
+   MinMax[data]
+   -> {51.1608, 213.02}
+
+   """
+
+   This model uses my frechet_dist from distributions.wppl to 
+   recover the parameters alpha and beta.
+
+   Note that using 
+     factor(frechet_dist(alpha,beta) == data[i] ? 0 : -10000000)
+   does not work well. The recovered values of alpha and beta tends to be about
+   the mean of the values in the priors, here very large/uninformed priors (both
+   with uniform(0,100). And it gives very large credible intervals (about the full
+   range):
+      Credible interval for alpha (94%): [ 0.5386469467695942, 94.49436503864594 ]
+      Credible interval for beta (94%): [ 0.044110540993647085, 94.26380825026601 ]
+      Credible interval for post (94%): [ 2.5128863215931558e-21, 97.21085759758 ]
+
+
+   However, using observe with a Gaussian gives a better estimate:
+        observe(Gaussian({mu:frechet_dist(alpha,beta), sigma:sigm}), data[i])
+
+   The drawback is that it gives quite few accepted values for alpha and beta.
+   Below is the result using these large/uninformed priors
+     var alpha = uniform(0,100)
+     var beta = uniform(0,100)
+     var sigma = uniform(0,100)  // for Gaussian
+   As can be seen, the credible intervals are now much more reasonable.
+   
+  Here's the result for SMC/particles:1000/rejuvSteps:5 (44.3s) 
+
+  expectation:
+  [ [ 'alpha', 9.708392510684432 ],
+    [ 'beta', 68.12317591817943 ] ]
+
+  expectation:
+  [ [ 'post', 74.44049559086315 ],
+    [ 'p', 0.0943999999999999 ],
+
+  Stat for v: alpha
+  min: 6.472024502317719 mean: 13.801843008478931 max: 22.95317633315439 stdev: 4.997356170006229
+
+  Stat for v: beta
+  min: 62.752431675145026 mean: 69.67367705573514 max: 73.73249019278376 stdev: 2.410966232430759
+
+  Stat for v: post
+  min: 50.775967038216365 mean: 74.56764602094802 max: 179.86584012998804 stdev: 13.765359307145417
+
+  Credible interval for alpha (94%): [ 6.472024502317719, 20.64500151827966 ]
+  Credible interval for beta (94%): [ 63.26803744348909, 72.54613317202386 ]
+  Credible interval for post (94%): [ 54.173721784430846, 98.46162936724836 ]
+
+
+*/
+
+// Annual maximum wind speed in Boston 1938..2009
+// From Mathematica (FrechetDistribution, see above)
+var data = [72.36, 64.8, 72.36, 68.4, 77.76, 55.44, 96.48, 96.48, 66.6, 72.36,
+            61.2, 55.8, 96.48, 74.16, 77.76, 88.92, 138.96, 77.76, 85.32, 66.6,
+            70.56, 63, 81.72, 66.6, 74.16, 77.76, 64.8, 57.6, 66.6, 77.76, 63,
+            64.8, 74.16, 74.16, 79.56, 77.76, 68.76, 59.4, 86.76, 84.96, 92.88,
+            81.72, 79.56, 81.72, 64.8, 105.48, 64.8, 85.32, 64.8, 63, 72.36,
+            100.08, 59.4, 75.96, 81.72, 87.12, 77.76, 68.76, 74.16, 68.4, 75.96,
+            63, 63, 64.8, 57.6, 61.2, 59.4, 66.6, 57.24, 63, 55.44, 59.4]
+
+console.log("data.length:", data.length)
+console.log("mean(data):",listMean(data))
+
+
+var model = function() {
+
+    var alpha = uniform(0,100)
+    // var beta = uniform(0,100)
+    var beta = gaussian(listMean(data),10) // a more informed prior
+
+    // var sigma = uniform(0,100) // Letting sigma be free as well...
+    var sigma = 10
+    
+    mapIndexed(function(i,val) {
+        // does not work well for parameter estimation        
+        // factor(frechet_dist(alpha,beta) == data[i] ? 0 : -10000000) 
+        observe(Gaussian({mu:frechet_dist(alpha,beta), sigma:sigma}), data[i])
+    }, data)
+    
+    var post = frechet_dist(alpha,beta)
+    var p = post > 90
+    
+    return {
+        alpha:alpha,
+        beta:beta,
+        post:post,
+        p:p,
+        sigma:sigma,
+    }
+}
+
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:10000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+// var d = Infer(model)
+// display(d)
+
+exp_map(d,["alpha","beta"],["expectation","marginals"])
+exp_map(d,["post","p","sigma"],["expectation"])
+
+stat2(d,"alpha")
+stat2(d,"beta")
+stat2(d,"post")
+stat2(d,"sigma")
+
+showCredibleInterval(d,"alpha",0.94)
+showCredibleInterval(d,"beta",0.94)
+showCredibleInterval(d,"post",0.94)
+showCredibleInterval(d,"sigma",0.94)

@@ -1,0 +1,133 @@
+/* 
+  Model from https://mhtess.github.io/bdappl/chapters/03-simpleModels.html
+
+  This model also shows credible intervals and other statistics for
+  - prior
+  - priorPredictive
+  - posterior
+  - posteriorPredictive
+
+  Run as:
+  $ webppl credible_interval_test.wppl --require hakank_utils
+
+
+  Output:
+  expectation:
+  [ [ 'prior', 0.5153871702764076 ],
+    [ 'priorPredictive', 10.387999999999995 ],
+    [ 'posterior', 0.722597185001435 ],
+    [ 'posteriorPredictive', 14.506000000000002 ] ]
+
+  Stat for v: prior
+  min: 0.0006089241919040589 mean: 0.5153871702764079 max: 0.9991837280138745 stdev: 0.28952421716007637
+
+  Stat for v: priorPredictive
+  min: 0 mean: 10 max: 20 stdev: 6.0553007081949835
+
+  Stat for v: posterior
+  min: 0.3812712968497942 mean: 0.7071410454798596 max: 0.9395585148296408 stdev: 0.11336171352633277
+
+  Stat for v: posteriorPredictive
+  min: 5 mean: 12.5 max: 20 stdev: 4.6097722286464435
+
+
+  credibleInterval:
+  Credible interval for prior (1%): [ 0.8032879111221105, 0.806127313761668 ]
+  Credible interval for prior (5%): [ 0.7081948855029352, 0.7417096558567478 ]
+  Credible interval for prior (10%): [ 0.7246583997982865, 0.8049493489923019 ]
+  Credible interval for prior (25%): [ 0.7057205285873847, 0.9180582831118549 ]
+  Credible interval for prior (50%): [ 0.46105639322370684, 0.9271250542168161 ]
+  Credible interval for prior (75%): [ 0.269089817669544, 0.9969251731131388 ]
+  Credible interval for prior (90%): [ 0.018764808393041843, 0.9088310966169597 ]
+  Credible interval for prior (95%): [ 0.03685457001462655, 0.982047826331722 ]
+  Credible interval for prior (99%): [ 0.01123779338973252, 0.9991837280138745 ]
+
+
+  Credible interval for priorPredictive (1%): [ 0, 0 ]
+  Credible interval for priorPredictive (5%): [ 1, 1 ]
+  Credible interval for priorPredictive (10%): [ 1, 2 ]
+  Credible interval for priorPredictive (25%): [ 9, 13 ]
+  Credible interval for priorPredictive (50%): [ 8, 17 ]
+  Credible interval for priorPredictive (75%): [ 1, 16 ]
+  Credible interval for priorPredictive (90%): [ 0, 18 ]
+  Credible interval for priorPredictive (95%): [ 0, 19 ]
+  Credible interval for priorPredictive (99%): [ 0, 20 ]
+
+
+  Credible interval for posterior (1%): [ 0.7131011406242898, 0.713187921806743 ]
+  Credible interval for posterior (5%): [ 0.6963568146756998, 0.7027426098995593 ]
+  Credible interval for posterior (10%): [ 0.7688150378871337, 0.7841445497961159 ]
+  Credible interval for posterior (25%): [ 0.7340183514518919, 0.7841445497961159 ]
+  Credible interval for posterior (50%): [ 0.671138987106304, 0.7837383860519207 ]
+  Credible interval for posterior (75%): [ 0.6374065767625798, 0.8427136937557056 ]
+  Credible interval for posterior (90%): [ 0.5869363693787697, 0.8808341537120139 ]
+  Credible interval for posterior (95%): [ 0.5339298993235002, 0.8808341537120139 ]
+  Credible interval for posterior (99%): [ 0.4848603901871571, 0.9149777500226046 ]
+
+
+  Credible interval for posteriorPredictive (1%): [ 9, 9 ]
+  Credible interval for posteriorPredictive (5%): [ 11, 11 ]
+  Credible interval for posteriorPredictive (10%): [ 13, 13 ]
+  Credible interval for posteriorPredictive (25%): [ 14, 15 ]
+  Credible interval for posteriorPredictive (50%): [ 13, 16 ]
+  Credible interval for posteriorPredictive (75%): [ 11, 17 ]
+  Credible interval for posteriorPredictive (90%): [ 10, 18 ]
+  Credible interval for posteriorPredictive (95%): [ 9, 19 ]
+  Credible interval for posteriorPredictive (99%): [ 7, 20 ]
+
+*/
+
+
+// observed data
+var k = 15 // number of children who help
+var n = 20  // total number of children
+
+var PriorDistribution = Uniform({a: 0, b: 1});
+
+var model = function() {
+
+   // propensity to help, or true population proportion who would help
+   var propensity_to_help = sample(PriorDistribution);
+
+   // Observed k children who help
+   // Assuming each child's response is independent of each other
+   observe(Binomial({p : propensity_to_help, n: n}), k);
+
+   // predict what the next n will do
+   var posteriorPredictive = binomial(propensity_to_help, n);
+
+   // duplicate model structure and parameters but omit observe
+   var prior_propensity_to_help = sample(PriorDistribution);
+   var priorPredictive = binomial(prior_propensity_to_help, n);
+
+   return {
+       prior: prior_propensity_to_help,
+       priorPredictive : priorPredictive,
+       posterior : propensity_to_help,
+       posteriorPredictive : posteriorPredictive
+    };
+}
+
+// var d = Infer({model});
+var d = Infer({method:"SMC",particles:1000},model)
+
+// display(d)
+
+exp_map(d,["prior","priorPredictive","posterior","posteriorPredictive"],["expectation"])
+
+stat2(d,"prior")
+stat2(d,"priorPredictive")
+stat2(d,"posterior")
+stat2(d,"posteriorPredictive")
+
+display("\ncredibleInterval:")
+
+var pcts = [0.01,0.05,0.1, 0.25,0.5, 0.75, 0.90,0.95,0.99]
+mapIndexed(function(i,p) { showCredibleInterval(d, "prior",p) },pcts);
+console.log("\n")
+mapIndexed(function(i,p) { showCredibleInterval(d, "priorPredictive",p) },pcts);
+console.log("\n")
+mapIndexed(function(i,p) { showCredibleInterval(d, "posterior",p) },pcts);
+console.log("\n")
+mapIndexed(function(i,p) { showCredibleInterval(d, "posteriorPredictive",p) },pcts);
+

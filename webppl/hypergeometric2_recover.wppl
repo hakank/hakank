@@ -1,0 +1,139 @@
+/*
+   Recover hypergeometric2 distribution
+
+   Let's check for num_special (fixed num_draws=10, num_total=100).
+   Here are some different runs for different values of num_sims.
+   
+   * num_sims=10
+
+  expectation:
+  [ [ 'num_draws', 10 ],
+    [ 'num_special', 41.889 ],
+    [ 'num_total', 100 ] ]
+
+  MAP:
+  [ [ 'num_draws', { val: 10, score: 0 } ],
+    [ 'num_special', { val: 8, score: -3.4420193761824103 } ],
+    [ 'num_total', { val: 100, score: 0 } ] ]
+
+
+  Credible interval for num_special (50%): [ 22, 57 ]
+  Credible interval for num_special (93%): [ 2, 83 ]
+
+   * num_sims=100
+  Marginals:
+  num_draws
+  Marginal:
+    10 : 1
+  num_special
+  Marginal:
+    46 : 0.096
+    25 : 0.086
+    35 : 0.08300000000000002
+    48 : 0.07900000000000001
+    59 : 0.057999999999999996
+    37 : 0.056999999999999995
+    49 : 0.056999999999999995
+    40 : 0.05099999999999999
+    31 : 0.047
+    47 : 0.03900000000000001
+    52 : 0.03900000000000001
+    19 : 0.035
+    29 : 0.03200000000000001
+    43 : 0.030999999999999993
+    61 : 0.029999999999999995
+    27 : 0.025
+    33 : 0.023999999999999997
+    16 : 0.021000000000000005
+    39 : 0.019
+    44 : 0.014999999999999996
+    20 : 0.012999999999999998
+    41 : 0.011999999999999997
+    51 : 0.011999999999999997
+    38 : 0.009
+    17 : 0.009
+    4 : 0.005000000000000002
+    72 : 0.005000000000000002
+    57 : 0.002999999999999999
+    34 : 0.002999999999999999
+    12 : 0.0020000000000000005
+    62 : 0.0020000000000000005
+    23 : 0.0010000000000000002
+  num_total
+  Marginal:
+    100 : 1
+
+  expectation:
+  [ [ 'num_draws', 10 ],
+    [ 'num_special', 39.587999999999994 ],
+    [ 'num_total', 100 ] ]
+
+  Credible interval for num_special (50%): [ 35, 49 ]
+  Credible interval for num_special (93%): [ 17, 59 ]
+
+   * num_sims=1000 
+   Marginals:
+   num_draws
+   Marginal:
+    10 : 1
+  num_special
+  Marginal:
+    37 : 0.481
+    43 : 0.329
+    36 : 0.19
+  num_total
+  Marginal:
+    100 : 1
+
+  expectation:
+  [ [ 'num_draws', 10 ],
+    [ 'num_special', 38.784000000000006 ],
+    [ 'num_total', 100 ] ]
+
+  Credible interval for num_special (50%): [ 36, 37 ]
+  Credible interval for num_special (93%): [ 36, 43 ]
+
+ 
+
+*/
+
+// Let's simulate the following:
+// We have 100 different objects of which 40 are special.
+// We now draw 10 objects. How many of these are special?
+var num_sims = 100
+var data = repeat(num_sims,function() {hypergeometric2_dist(10, 40, 100)})
+console.log("num_sims:",num_sims,"mean:",listMean(data))
+// console.log("data:",data)
+
+
+var model = function() {
+    var num_draws = 10 // 1+randomInteger(100)
+    var num_special = 1+randomInteger(100)
+    var num_total = 100 // 1+randomInteger(1000)
+
+    mapIndexed(function(i,val) {
+        // condition(hypergeometric2_dist(num_draws, num_special, 100) == val)
+        observe(Gaussian({mu:hypergeometric2_dist(num_draws, num_special, num_total),sigma:10}),val)
+    },data)
+
+    var post = hypergeometric2_dist(num_draws, num_special, num_total)
+    return {
+        num_draws:num_draws,
+        num_special:num_special,
+        num_total:num_total,
+        post:post,
+    }
+}
+
+// This does not work: Error: Parameter "p" should be of type "real [0, 1]".
+// It's the p in flip() 
+// var d = Infer(model) 
+var d = Infer({method:"SMC",particles:1000},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:1000},model) // not good
+// var d = Infer({method:"rejection",samples:100},model) // very slow
+// display(d)
+exp_map_all(d)
+
+console.log("\n")
+showCredibleInterval(d,"num_special",0.5)
+showCredibleInterval(d,"num_special",0.93)

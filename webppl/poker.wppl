@@ -1,0 +1,228 @@
+/*
+
+  Poker hand calculations.
+
+  https://en.wikipedia.org/wiki/Poker_probability
+  """
+  Hand                Probability(%) Probability  1/Probability
+  --------------------------------------------------------------------------
+  Royal straight flush  0.000154%    0.00000154   ~649350.64935064935064935065
+  Straight flush        0.00139%     0.0000139    ~71942.44604316546762589928    (excluding royal flush)
+  Four of a kind        0.02401%     0.0002401    ~4164.93127863390254060808 
+  Full House            0.1441%      0.001441     ~693.96252602359472588480
+  Flush                 0.1965%      0.001965     ~508.90585241730279898219      (excluding royal flush and straight flush)
+  Straight              0.3925%      0.003925     ~254.77707006369426751592      (excluding royal flush and straight flush)
+  Three of a kind       2.1128%      0.021128     ~47.33055660734570238546
+  Two pair              4.7539%      0.047539     ~21.03536044090115484129
+  Pair                 42.2569%      0.422569     ~2.36647742735505917377
+  No pair              50.1177%      0.501177     ~1.9953030566047524128
+  """
+
+  Rejection/10000 (2.0s)
+  expectation:
+  [ [ 'no_hand', 0.4923 ],
+    [ 'pair', 0.4294 ],
+    [ 'two_pairs', 0.0496 ],
+    [ 'three_of_a_kind', 0.021399999999999995 ],
+    [ 'straight', 0.0038999999999999994 ],
+    [ 'flush', 0.0018999999999999996 ],
+    [ 'four_of_a_kind', 0.00019999999999999985 ],
+    [ 'straight_flush', 0 ],
+    [ 'royal_straight_flush', 0 ] ]
+
+
+  Rejection/100000 (6.7s)
+  expectation:
+  [ [ 'no_hand', 0.50258 ],
+    [ 'pair', 0.42393000000000003 ],
+    [ 'two_pairs', 0.04590999999999999 ],
+    [ 'three_of_a_kind', 0.02044 ],
+    [ 'straight', 0.0034300000000000008 ],
+    [ 'flush', 0.002209999999999999 ],
+    [ 'four_of_a_kind', 0.00014000000000000001 ],
+    [ 'straight_flush', 0.000009999999999999999 ],
+    [ 'royal_straight_flush', 0.000009999999999999999 ] ]
+
+
+  Rejection/400000 (21.6s)
+  expectation:
+  [ [ 'no_hand', 0.501235 ],
+    [ 'pair', 0.423255 ],
+    [ 'two_pairs', 0.047075 ],
+    [ 'three_of_a_kind', 0.021367500000000005 ],
+    [ 'straight', 0.0034300000000000008 ],
+    [ 'flush', 0.0019149999999999987 ],
+    [ 'four_of_a_kind', 0.0002375000000000001 ],
+    [ 'straight_flush', 0.000007500000000000006 ],
+    [ 'royal_straight_flush', 0 ] ]
+
+
+  SMC/1000 (1.6s):
+  expectation:
+  [ [ 'no_hand', 0.5349999999999999 ],
+    [ 'pair', 0.378 ],
+    [ 'two_pairs', 0.056999999999999995 ],
+    [ 'three_of_a_kind', 0.021000000000000005 ],
+    [ 'straight', 0.004000000000000002 ],
+    [ 'flush', 0.004000000000000002 ],
+    [ 'four_of_a_kind', 0 ],
+    [ 'straight_flush', 0 ],
+    [ 'royal_straight_flush', 0 ] ]
+
+
+  SMC/100000 (36.6s):
+  expectation:
+  [ [ 'no_hand', 0.50244 ],
+    [ 'pair', 0.42443 ],
+    [ 'two_pairs', 0.04578 ],
+    [ 'three_of_a_kind', 0.020600000000000004 ],
+    [ 'straight', 0.003570000000000001 ],
+    [ 'flush', 0.0017600000000000005 ],
+    [ 'four_of_a_kind', 0.0001800000000000001 ],
+    [ 'straight_flush', 0.000019999999999999998 ],
+    [ 'royal_straight_flush', 0 ] ]
+
+
+  MCMC/HMC/100000 (6.1s):
+  expectation:
+  [ [ 'no_hand', 0.49533 ],
+    [ 'pair', 0.42633999999999994 ],
+    [ 'two_pairs', 0.04877000000000003 ],
+    [ 'three_of_a_kind', 0.02214 ],
+    [ 'straight', 0.00348 ],
+    [ 'flush', 0.0019299999999999996 ],
+    [ 'four_of_a_kind', 0.0002900000000000001 ],
+    [ 'straight_flush', 0.000019999999999999998 ],
+    [ 'royal_straight_flush', 0 ] ]
+
+  MCMC/HMC/1000000 (48.9s):
+  expectation:
+  [ [ 'no_hand', 0.5020509999999999 ],
+    [ 'pair', 0.421644 ],
+    [ 'two_pairs', 0.04706199999999999 ],
+    [ 'three_of_a_kind', 0.022001999999999997 ],
+    [ 'straight', 0.0035350000000000004 ],
+    [ 'flush', 0.0019239999999999993 ],
+    [ 'four_of_a_kind', 0.00023700000000000018 ],
+    [ 'straight_flush', 0.000011000000000000006 ],
+    [ 'royal_straight_flush', 0.000006 ] ]
+
+*/
+
+
+var model = function() {
+
+    var n = 52;
+    var m = 5;
+
+    var card = mem(function(i) {
+        return randomInteger(n);
+    });
+
+    var value = function(i) {
+        return card(i) % 13;        
+    }
+
+    var suite = function(i) {
+        return card(i) % 4;
+    }
+
+    var cards = mapN(function(i) { return card(i); },m);
+    var values = mapN(function(i) { return value(i); },m);
+    var suites = mapN(function(i) { return suite(i); },m);    
+
+    // Ensure unicity
+    condition(cards.length == _.uniq(cards).length)
+    /*
+      mapN(function(i) {
+        sum(mapN(
+            function(j) {
+                if (i != j) {
+                    condition(cards[i] != cards[j])
+                }
+             },
+             i)
+            )
+    },m);
+    */
+
+    var num_unique_values = _.uniq(values).length
+    var num_unique_suites = _.uniq(suites).length
+
+    var min_val = _.min(values)
+    var max_val = _.max(values)    
+
+    // collect(values) converts to a hash map. Here we are only interested
+    // in the number of occurrences of the values.
+    var collect_values = hakank_utils.collect(values)
+    var count_values = sort(Object.values(collect_values))
+
+    var pair = _.isEqual(count_values,[1,1,1,2]) 
+    var three_of_a_kind = _.isEqual(count_values,[1,1,3])
+    var two_pairs = _.isEqual(count_values,[1,2,2])
+    var straight = num_unique_values == 5 && max_val - min_val == 4 && num_unique_suites > 1
+    var flush = num_unique_suites == 1 && !straight
+    var full_house = _.isEqual(count_values,[2,3])
+    var four_of_a_kind = _.isEqual(count_values,[1,4])
+    var straight_flush = num_unique_suites == 1 && max_val - min_val == 4 && max_val < 12
+    var royal_straight_flush = num_unique_suites == 1 && max_val - min_val == 4 && max_val == 12
+
+    var no_hand = _.isEqual(count_values,[1,1,1,1,1]) && !flush && !straight
+
+    // console.log("values:",values,"sort(values):", sort(values))
+
+    // condition(no_hand == true)    
+    // condition(pair == true)
+    // condition(two_pairs == true)
+    // condition(three_of_a_kind == true)
+    // condition(straight == true)    
+    // condition(flush == true)
+    // condition(four_of_a_kind == true)
+    // condition(straight_flush == true)
+    // condition(royal_straight_flush == true)
+
+    // console.log("cards:",cards,"values:",values,"count_values:",count_values)
+    // console.log("collect(values):",collect_values,"count values:",count_values)
+    
+    
+    return {
+        // cards:cards,
+        // values:values,
+        // suites:suites,
+        // // min_val:min_val,
+        // // max_val:max_val,
+        // num_unique_values:num_unique_values,
+        // num_unique_suites:num_unique_suites,
+
+        no_hand:no_hand,
+        pair:pair,        
+        two_pairs:two_pairs,
+        three_of_a_kind:three_of_a_kind,
+        straight:straight,
+        flush:flush,
+        full_house:full_house,
+        four_of_a_kind:four_of_a_kind,
+        straight_flush:straight_flush,
+        royal_straight_flush:royal_straight_flush,        
+    }
+
+    
+    
+}
+
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:1000000,verbose:true},model);
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:100000,verbose:true},model);
+// var d = Infer({method:"rejection",samples:1000},model);
+var d = Infer({method:"rejection",samples:10000},model);
+// var d = Infer({method:"rejection",samples:100000},model);
+// var d = Infer({method:"rejection",samples:400000},model);
+// var d = Infer({method:"SMC",particles:100000},model);
+// var d = Infer({method:"SMC",particles:1000},model);
+// var d = Infer({method:"enumerate",maxExecutions:100},model);
+// display(d);
+
+exp_map(d,[// "num_unique_values","num_unique_suites",
+           // "min_val","max_val",
+           "no_hand","pair","two_pairs","three_of_a_kind","straight","flush",
+           "four_of_a_kind","straight_flush","royal_straight_flush"],
+        ["expectation"])

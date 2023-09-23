@@ -1,0 +1,89 @@
+/*
+  Gumbel parameter estimation of gumbel_dist(12,3)
+
+  data.length: 100
+  min: 7.6691050676849954 mean: 13.951270218182854 max: 30.12412553624704
+  Marginals:
+  a
+  Marginal:
+    13.088664281538595 : 0.8460000000000001
+    12.251462336177866 : 0.075
+    10.283519956928373 : 0.07
+    14.89941935922507 : 0.009
+  b
+  Marginal:
+    2.326300088778634 : 0.8460000000000001
+    3.430509994895083 : 0.075
+    1.1063624224220243 : 0.07
+    3.133047579703512 : 0.009
+  post
+  Marginal:
+    11.71671724353731 : 0.8460000000000001
+    13.564852465719898 : 0.075
+    12.000253777963966 : 0.07
+    18.936319238329137 : 0.009
+
+  expectation:
+  [ [ 'a', 12.845810828613004 ],
+    [ 'b', 2.330980922510729 ],
+    [ 'post', 11.940151360563998 ] ]
+
+  Stat for v: a
+  min: 10.283519956928373 mean: 12.630766483467475 max: 14.89941935922507 stdev: 1.659058027666796
+
+  Stat for v: b
+  min: 1.1063624224220243 mean: 2.499055021449813 max: 3.430509994895083 stdev: 0.8998599715547413
+
+  Stat for v: post
+  min: 11.71671724353731 mean: 14.054535681387577 max: 18.936319238329137 stdev: 2.9050417181005344
+
+  Credible interval for a (94%): [ 10.283519956928373, 13.088664281538595 ]
+  Credible interval for b (94%): [ 1.1063624224220243, 3.430509994895083 ]
+  Credible interval for post (94%): [ 11.71671724353731, 13.564852465719898 ]
+
+*/
+
+var data = mapN(function(i) {
+    return gumbel_dist(12,3)
+},100)
+
+// console.log("data:", data)
+console.log("data.length:", data.length)
+console.log("min:",_.min(data),"mean:",listMean(data),"max:",_.max(data))
+
+var model = function() {
+
+    var a = uniform(1,100)
+    var b = uniform(1,100)
+    
+    var post = gumbel_dist(a,b)
+    
+    mapIndexed(function(i,val) {
+        // factor(y(i) == val ? 0 : -Infinity)
+        // factor(gumbel_dist(a,b) == data[i] ? 0 : -2000000)
+        observe(Gaussian({mu:gumbel_dist(a,b),sigma:10}),data[i])
+    }, data)
+
+    return {
+        a:a,
+        b:b,
+        post:post,
+    }
+}
+
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:1000},model)
+var d = Infer({method:"SMC",particles:1000,rejuvSteps:0},model)
+// var d = Infer(model)
+
+// display(d)
+
+exp_map(d,["a","b","post"]);
+
+stat2(d,"a");
+stat2(d,"b");
+stat2(d,"post");
+
+showCredibleInterval(d,"a",0.94)
+showCredibleInterval(d,"b",0.94)
+showCredibleInterval(d,"post",0.94)

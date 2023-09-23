@@ -1,0 +1,124 @@
+/*
+
+  From "Probabilistic programming", John Winn and Tom Minka, Machine Learning Summer School
+  (ProbabilisticProgramming_slides.pdf)
+
+  """
+  Suppose we take a woman at random and a man at random from the UK population
+  The woman turns out to be taller than the man.
+  - What is the probability of this event?
+  - What is the posterior distribution over the woman’s height?
+  - What is the posterior distribution over the man’s height?
+
+  ....
+
+  double heightMan = random(Gaussian(177,64));
+  double heightWoman = random(Gaussian(164,64));
+  Bernoulli dist = infer(heightWoman > heightMan);
+  constrain(heightWoman > heightMan);
+  Gaussian distWoman = infer(heightWoman);
+  Gaussian distMan = infer(heightMan);
+
+  """
+
+  I have split this into two questions:
+  - model1: What is the probability?
+  - model2: Posterior distributions
+
+*/
+
+
+/*
+  The woman turns out to be taller than the man.
+  - What is the probability of this event?
+
+  Note: Here we just check for
+    p(height_female > height_male)
+
+  expectation:
+  [ [ 'height_female', 163.89938844212688 ],
+    [ 'height_male', 176.95385737072831 ],
+    [ 'p', 0.124 ] ]
+
+  MAP:
+  [ [ 'height_female',
+    { val: 167.15371912997074, score: -6.645391014514647 } ],
+    [ 'height_male',
+    { val: 175.1503879809636, score: -6.50229017087397 } ],
+    [ 'p', { val: false, score: -0.13238918804574562 } ] ]
+
+  Credible interval for height_female (94%): [ 148.84001243944113, 178.38201445491407 ]
+  Credible interval for height_male (94%): [ 162.36301194199956, 192.41149940479727 ]
+
+*/
+var model1 = function() {
+    var height_male = gaussian(177,Math.sqrt(64));
+    var height_female = gaussian(164,Math.sqrt(64));
+
+    // condition(height_female > height_male);
+    return {
+        height_female:height_female,
+        height_male:height_male,
+        p:(height_female > height_male)
+    }
+    
+}
+
+console.log("\nmodel 1")
+var d1 = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:false},model1);
+// var d1 = Infer({method:"SMC",particles:100000},model1);
+// display(d1)
+
+exp_map(d1,["height_female","height_male","p"],["expectation","MAP"]);
+
+showCredibleInterval(d1,"height_female",0.94)
+showCredibleInterval(d1,"height_male",0.94)
+
+
+
+/*
+  The woman turns out to be taller than the man.
+  Here we observe (condition on) the fact.
+  
+  - What is the posterior distribution over the woman’s height?
+  - What is the posterior distribution over the man’s height?
+
+  expectation:
+  [ [ 'height_female', 173.438171595768 ],
+    [ 'height_male', 167.90831639493635 ] ]
+
+  MAP:
+  [ [ 'height_female',
+      { val: 185.16546088268854, score: -4.7444322533216 } ],
+    [ 'height_male',
+      { val: 163.10907071789185, score: -5.051457288616512 } ] ]
+
+  Credible interval for height_female (94%): [ 163.24391619127394, 185.16546088268854 ]
+  Credible interval for height_male (94%): [ 156.40463703846962, 178.66477566870992 ]
+
+*/
+var model2 = function() {
+    var height_male = gaussian(177,Math.sqrt(64));
+    var height_female = gaussian(164,Math.sqrt(64));
+
+    condition(height_female > height_male);
+
+    return {
+        height_female:height_female,
+        height_male:height_male,
+        // p:(height_female > height_male)
+    }
+    
+}
+
+console.log("\nmodel 2")
+var d2 = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:false},model2);
+// var d2 = Infer({method:"SMC",particles:100000},model2);
+// display(d2)
+
+exp_map(d2,["height_female","height_male"],["expectation","MAP"]);
+
+showCredibleInterval(d2,"height_female",0.94)
+showCredibleInterval(d2,"height_male",0.94)
+
+// viz(d2) // nice bubble chart height_female x height_male (size and color of bubble is the prob)

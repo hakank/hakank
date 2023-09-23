@@ -1,0 +1,98 @@
+/*
+  Italian murder mystery
+  From Bellodi et.al  "Nonground Abductive Logic Programming with Probabilistic Integrity Constraints"
+  https://arxiv.org/pdf/2108.03033.pdf
+  Page 2
+  """
+  Example 1
+  Several years ago, a murder in Italy captured the attention of the population: a woman was
+  murdered, and the main indicted person was her husband. The collected evidence included the
+  following facts: the woman was killed in the house where she lived with her husband (house1); a
+  pillow stained with the blood of the victim was found in another house (house2) some hundreds
+  of km away; the husband had the keys of this second house.
+
+  ... 
+  [Page 12]
+  This solution (the most likely) states that the husband was the killer with a chance of 91%.
+  ...
+  This solution(much less probable) states that some unknown person entered the two houses 
+  and committed the murder with a chance of 9%.
+  """
+
+  Output:
+  Marginals:
+  killed
+  Marginal:
+    [true,false] : 0.906669377795852
+    [false,true] : 0.09333062220414809
+  enter_husband
+  Marginal:
+    [true,true] : 0.9066693777958519
+    [true,false] : 0.03843025620170802
+    [false,true] : 0.03843025620170802
+    [false,false] : 0.01647010980073202
+  enter_other
+  Marginal:
+    [false,false] : 0.48820658804392025
+    [true,false] : 0.20923139487596581
+    [false,true] : 0.20923139487596581
+    [true,true] : 0.09333062220414809
+  husband_is_killer
+  Marginal:
+    true : 0.906669377795852
+    false : 0.09333062220414809
+  other_is_killer
+  Marginal:
+    false : 0.906669377795852
+    true : 0.09333062220414809
+
+  expectation:
+  [ [ 'killed', NaN ],
+    [ 'enter_husband', NaN ],
+    [ 'enter_other', NaN ],
+    [ 'husband', 0.906669377795852 ],
+    [ 'other', 0.09333062220414809 ] ]
+
+
+*/
+
+var model = function() {
+
+    // Note: We have to mem() the enter and killed functions.
+    
+    // The probability that a person (husband or some other) enters a house
+    // and did the killing
+    var enter = mem(function(person,house) {
+        if (person === "husband") {
+            // The husband has keys to both houses
+            return flip(0.7)
+        } else {
+            // Someone else had to do a break in to enter the house
+            return flip(0.3)
+        }
+    })
+
+    // Probability that a person (husband or some other) killed, i.e.
+    // entered both houses.
+    var killed = mem(function(person) {
+        return enter(person,"house1") && enter(person,"house2")
+    })
+   
+    // Exactly one person killed the wife, either the husband or somebody else.
+    // condition(( killed("husband") == true || killed("other") == true)
+    //           && !(killed("husband") == true && killed("other") == true))
+    // A little simpler to state:
+    condition( (killed("husband") == true ? 1 : 0) +  (killed("other") == true ? 1 : 0) == 1)
+
+    return {
+        killed:[killed("husband"),killed("other")],
+        enter_husband:[enter("husband","house1"),enter("husband","house2")],
+        enter_other:[enter("other","house1"),enter("other","house2")],                
+        husband_is_killer:killed("husband"),
+        other_is_killer:killed("other"),
+    }
+}
+
+var d = Infer(model)
+
+exp_map_all(d)

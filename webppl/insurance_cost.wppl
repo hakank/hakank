@@ -1,0 +1,197 @@
+/*
+  From Statistics101 (Resampling Stats)
+  File insuranceCosts.txt
+  """
+  From Julian Simon's book "Resampling: The New Statistics" page 410-411:
+  A mutual insurance company charges its members according to the risk of
+  having an auto accident. It is known that there are two classes of
+  people--80 percent of the population with good driving judgment and with a
+  probability of .06 of having an accident each year, and 20 percent with poor
+  judgment and a probability of .6 of having an accident each year. The
+  company's policy is to charge (in addition to a fee to cover overhead
+  expenses) $100 for each percent of risk, i.e., a driver with a probability
+  of .6 should pay 60*$100 = $6000. If nothing is known of a driver except
+  that he had an accident last year, what fee should he pay?
+  -> 
+  probability: 0.43101415094339623
+  insurancePremium: 4310.141509433962
+  """
+
+  Here are two models.
+  * The first model is a translation of the Statistics101/Resampling Stats program,
+    using "external" arrays to calculate (via simulation) probability and premium.
+
+    Note: When using Enumerate, the first approach of calculating the probability and
+    insurance does not work as expected. So here we use Rejection instead.
+
+
+  First model:
+  Marginals:
+  driverType
+  Marginal:
+    "good driver" : 0.7971999999999999
+    "bad driver" : 0.2028
+  firstAccidentRecord
+  Marginal:
+    "no accident" : 0.8333
+    "accident" : 0.16669999999999996
+  secondAccidentRecord
+  Marginal:
+    "no first accident" : 0.8333
+    "no accident" : 0.09059999999999999
+    "accident" : 0.07609999999999999
+  hadFirstAccident
+  Marginal:
+    false : 0.8333
+    true : 0.16669999999999996
+  hadSecondAccident
+Marginal:
+    "no first accident" : 0.8333
+    false : 0.09059999999999999
+    true : 0.07609999999999999
+  hasFirstAndSecondAccident
+  Marginal:
+    false : 0.9238999999999999
+    true : 0.07609999999999999
+
+  expectation:
+  [ [ 'driverType', NaN ],
+    [ 'firstAccidentRecord', NaN ],
+    [ 'secondAccidentRecord', NaN ],
+    [ 'hadFirstAccident', 0.16669999999999996 ],
+    [ 'hadSecondAccident', NaN ],
+    [ 'hasFirstAndSecondAccident', 0.07609999999999999 ] ]
+
+
+  Calculate insurance premium, first approach:
+  hadSecondAccidentA: 761
+  noSecondAccidentA: 906
+  probability: 0.45650869826034796
+  insurance premium: 4565.08698260348
+
+  Calculate insurance premium, second approach:
+  hadSecondAccidentA: 7502
+  noSecondAccidentA: 9112
+  probability: 0.4515468881666065
+  insurance premium: 4515.468881666065
+
+
+  * The second - exact - model is a neater variant without relying to "external" arrays.
+    It's using score() to get the proper probability.
+
+  Marginal:
+    false : 0.5542857142857143
+    true : 0.44571428571428573
+  prob: 0.445714 insurance premium: 4457.14
+
+*/
+
+var goodDriverUniverse = _.flatten([rep(6,"accident"),rep(94,"no accident")])
+var badDriverUniverse = _.flatten([rep(6,"accident"),rep(4,"no accident")])
+var driverJugdementUniverse = _.flatten([rep(2,"bad driver"),rep(8,"good driver")])
+var hadSecondAccidentA = []
+var noSecondAccidentA = []
+var model = function() {
+    var driverType = uniformDraw(driverJugdementUniverse)
+    var firstAccidentRecord = driverType == "bad driver" ? uniformDraw(badDriverUniverse) : uniformDraw(goodDriverUniverse)
+    var secondAccidentRecord = firstAccidentRecord == "accident" ?
+        (driverType == "bad driver" ? uniformDraw(badDriverUniverse) : uniformDraw(goodDriverUniverse) ) :
+        'no first accident'
+    var hadFirstAccident = firstAccidentRecord == "accident"
+    var hadSecondAccident = hadFirstAccident ? (secondAccidentRecord == "accident" ?
+                                                hadSecondAccidentA.push(1) && true :
+                                                noSecondAccidentA.push(1) && false
+                                                ) : "no first accident"
+
+    var hasFirstAndSecondAccident = firstAccidentRecord == "accident" && secondAccidentRecord == "accident"
+    
+    // condition(firstAccidentRecord == "accident")
+    // condition(hadSecondAccident == true)
+    
+    return {
+        driverType:driverType,
+        firstAccidentRecord:firstAccidentRecord,
+        secondAccidentRecord:secondAccidentRecord,
+        hadFirstAccident:hadFirstAccident,
+        hadSecondAccident:hadSecondAccident,
+        hasFirstAndSecondAccident:hasFirstAndSecondAccident,
+    }
+    
+}
+
+console.log("First model:")
+// var d = Infer(model) // does not give the proper solution. Why?
+// var d = Infer({method:"rejection",samples:10000},model)
+var d = Infer({method:"SMC",particles:10000},model)
+// display(d)
+
+exp_map_all(d,["expectation","marginals"])
+
+console.log("\nCalculate insurance premium, first approach:")
+// Using Infer(model) does not yield a correct solutions with this approach. Why?
+var yesCount = hadSecondAccidentA.length
+var noCount = noSecondAccidentA.length
+console.log("hadSecondAccidentA:",yesCount)
+console.log("noSecondAccidentA:",noCount)
+var totalCount = yesCount + noCount
+console.log("probability:",yesCount/totalCount)
+console.log("insurance premium:",100*100*(yesCount/totalCount))
+
+// Using this approach works with Infer(model)
+console.log("\nCalculate insurance premium, second approach:")
+var numSims = 100000
+var sims2 = repeat(numSims, function() { sample(d)["hadSecondAccident"] } )
+var yesCount2 = count(true,sims2)
+var noCount2 = count(false,sims2)
+console.log("hadSecondAccidentA:",yesCount2)
+console.log("noSecondAccidentA:",noCount2)
+var totalCount2 = yesCount2 + noCount2
+console.log("probability:",yesCount2/totalCount2)
+console.log("insurance premium:",100*100*(yesCount2/totalCount2))
+
+//
+// Another - and simpler - approach using categorical().
+// Here it is assumed that there has been a first accident.
+// Also, score is used to get the probability/insurance cost.
+//
+console.log("\n\nModel 2:")
+
+var model2 = function() {
+    var accidents_vs = ["accident","no accident"]
+    var driverType = categorical({ps:[2/10,8/10],vs:["bad driver","good driver"]})
+
+    var accident = function(driver) {
+        return driver == "bad driver" ?
+            categorical({ps:[6/10,4/10],vs:accidents_vs}) :
+            categorical({ps:[6/100,94/100],vs:accidents_vs})
+    }
+
+    var firstAccidentRecord = accident(driverType)
+    var secondAccidentRecord = accident(driverType)
+    
+    // What is the probability of a second accident (given that there's a first accident)
+    var p = secondAccidentRecord == "accident" 
+    
+    // And we are only interested in the cases when there has been a first accident
+    condition(firstAccidentRecord == "accident")
+
+    /*
+    return {
+        driverType:driverType,
+        firstAccidentRecord:firstAccidentRecord,
+        secondAccidentRecord:secondAccidentRecord,
+        p:p,
+    }
+    */
+    // Just return p so score() can be used
+    return p
+}
+
+var d2 = Infer(model2)
+// var d2 = Infer({method:"rejection",samples:10000},model2)
+// var d2 = Infer({method:"SMC",particles:10000},model2)
+display(d2)
+// exp_map_all(d2,["marginals","expectation"])
+var prob2 = Math.exp(d2.score(true))
+var prob2f = Math.round(prob2*1000000)/1000000
+console.log("prob:",prob2f, "insurance premium:",100*100*prob2f)

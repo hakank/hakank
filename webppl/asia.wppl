@@ -1,0 +1,118 @@
+/*
+  Asia in WebPPL.
+
+  Port of *Church model https://github.com/stuhlmueller/jschurch/blob/master/tests/asia.church
+
+  Run as
+   $ webppl asia.wppl --require hakank_utils
+
+
+
+*/
+
+/*
+// Church model:
+(define samps (mh-query 1000 10
+  (define smoker (flip 0.5))
+  
+  (define tb (flip (if smoker 0.05 0.01)))
+  (define cancer (flip (if smoker 0.1 0.01)))
+  
+  (define tb-or-cancer (or tb cancer))
+  
+  (define bronchitis (flip (if smoker 0.6 0.3)))
+  
+  (define xray (flip (if tb-or-cancer 0.98 0.05)))
+  
+  (define dyspnoea (flip
+    (if tb-or-cancer
+      (if bronchitis 0.9 0.7)
+      (if bronchitis 0.8 0.1)
+    )))
+  
+  bronchitis
+  
+  dyspnoea
+  
+  ))
+  
+(length (filter (lambda (x) x) samps))
+*/
+
+
+/*
+  For  bronchitis == true and dyspnoea == true:
+
+  Marginals:
+  smoker
+  Marginal:
+    true : 0.6700973677390694
+    false : 0.3299026322609307
+  tb
+  Marginal:
+    false : 0.9592758505793937
+    true : 0.04072414942060647
+  cancer
+  Marginal:
+    false : 0.9222538965606605
+    true : 0.07774610343933955
+  tb_or_cancer
+  Marginal:
+    false : 0.885268964495946
+    true : 0.11473103550405392
+  bronchitis
+  Marginal:
+    true : 1
+  xray
+  Marginal:
+    false : 0.8433001369812299
+    true : 0.15669986301877015
+  bronchitis
+  Marginal:
+    true : 1
+
+  expectation:
+  [ [ 'smoker', 0.6700973677390694 ],
+    [ 'tb', 0.04072414942060647 ],
+    [ 'cancer', 0.07774610343933955 ],
+    [ 'tb_or_cancer', 0.11473103550405392 ],
+    [ 'bronchitis', 1 ],
+    [ 'xray', 0.15669986301877015 ],
+    [ 'bronchitis', 1 ] ]
+
+*/
+var model = function() {
+
+    var smoker = flip(0.5)  
+    // var tb = smoker ? flip(0.05) : flip(0.01)
+    var tb = flip(smoker ? 0.05 : 0.01)
+    var cancer = flip(smoker ? 0.1 : 0.01)
+    var tb_or_cancer = tb || cancer
+    var bronchitis = flip(smoker ? 0.6 : 0.3)
+    var xray = flip(tb_or_cancer ? 0.98 : 0.05)
+    var dyspnoea = flip(
+        tb_or_cancer ? 
+            bronchitis ? 0.9 :0.7
+        : bronchitis ? 0.8 : 0.1)
+    
+    condition(bronchitis == true)
+    condition(dyspnoea == true)
+
+    return {
+        smoker:smoker,
+        tb:tb,
+        cancer:cancer,
+        tb_or_cancer:tb_or_cancer,
+        bronchitis:bronchitis,
+        xray:xray,
+        dyspnoea:dyspnoea
+    }
+    
+}
+  
+//(length (filter (lambda (x) x) samps))
+
+var d = Infer(model)
+display(d)
+
+exp_map(d,["smoker","tb","cancer","tb_or_cancer","bronchitis","xray","bronchitis"])

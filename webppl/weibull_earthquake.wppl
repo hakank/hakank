@@ -1,0 +1,100 @@
+/*
+
+  Earthquake Extreme Value Theory using Weibull distribution
+
+  Example and data from Mathematica WeibullDistribution: yearly maximum magnitude 
+  of earthquakes in the United States in the past 200 years:
+  """
+  mYdist = EstimatedDistribution[maxYearly, WeibullDistribution[Alpha, Beta]]
+  -> WeibullDistribution[9.11753, 6.99072]
+
+  Using the model, find the probability of the annual maximum earthquake of magnitude 
+  at least 6:
+  NProbability[x >= 6, x -> mYdist]
+  -> 0.780175
+
+  Find the average magnitude of the annual maximum earthquake:
+  Mean[mYdist]
+  -> 6.62384
+  """
+
+  This model:
+
+  p
+  Marginal:
+    true : 0.7880000000000001
+    false : 0.2119999999999999
+
+  expectation:
+  [ [ 'a', 13.593857795124288 ],
+    [ 'b', 6.933533675150759 ],
+    [ 'post', 6.681073537352417 ],
+    [ 'p', 0.7880000000000001 ] ]
+
+  Stat for v: a
+  min: 4.533787887853578 mean: 14.160638034279625 max: 19.635250085448313 stdev: 3.9112722734862317
+
+  Stat for v: b
+  min: 4.653019005237353 mean: 6.625517680784502 max: 8.187900700088623 stdev: 0.7884759070533721
+
+  Stat for v: post
+  min: 2.384990899959648 mean: 6.681073537352406 max: 9.44598161311473 stdev: 0.9181264736080853
+
+  Credible interval for a (94%): [ 8.328088420847637, 18.577926771046975 ]
+  Credible interval for b (94%): [ 5.852911094668616, 7.858600785776271 ]
+
+
+  Cf gumbel_earthquake.wppl
+
+*/
+
+// This is from Mathematica WeibullDistribution,
+// it the yearly maximum value of earthquaks in USA the past 200 year
+var yearly_max = [6., 4.5, 5.3, 6.5, 4.4, 6., 7.2, 7.4, 5., 5.5, 4.6, 4.5, 6.8, 7.,
+                  4.6, 6., 4.2, 4.9, 6.5, 4.6, 6., 5.5, 7.6, 6.1, 6.3, 5.6, 5.9, 4.8, 
+                  5.9, 6.3, 5.8, 5.1, 7.9, 6.1, 6., 7., 7.3, 6.7, 5.8, 4.8, 6.2, 5.8, 
+                  6., 6.2, 6., 5.9, 6.2, 6.7, 6.3, 5.9, 6., 6.3, 5.5, 6.7, 5.5, 5.9, 
+                  5.9, 6., 6.4, 7.6, 8., 7.7, 7.1, 7., 7., 7.3, 7.4, 7.8, 7.4, 7., 7.4, 
+                  7., 7.1, 7.3, 7.2, 6.7, 7.7, 7.7, 7.9, 6.8, 6.1, 5.5, 5.2, 7.3, 7.2, 
+                  5.7, 6.7, 7., 7.1, 6.8, 7.8, 6.5, 6.2, 7.2, 6.9, 7.1, 7.1, 6.2, 7.3, 
+                  8.3, 6.2, 7.4, 6.7, 6.9, 7.4, 7.1, 6.7, 7.3, 7.2, 7.5, 6.9, 6.7, 7.1, 
+                  7.2, 7.1, 7.2, 7., 6.8, 8.1, 7.9, 7.7, 6.9, 6.7, 6.7, 6.7, 8.4, 8.2, 
+                  7., 6.7, 7.1, 6.5, 6.7, 7.1, 7.6, 6.7, 6.5, 7.6, 6.3, 6.7, 6.7, 7.1, 
+                  6.9, 7., 6.2, 7.2, 6.6, 6.5, 7.9, 7.8, 7.7, 7.1]
+console.log("mean(yearly_max):", listMean(yearly_max))
+var model = function() {
+
+    var a = uniform(0,20)
+    var b = uniform(0,20) 
+    
+    var g = mapN(function(i) {
+        // factor(weibull_dist(a,b) == yearly_max[i] ? 0 : -100000) // not good for estimation
+        observe(Gaussian({mu:weibull_dist(a,b),sigma:10}),yearly_max[i]) // better
+    },yearly_max.length)
+
+    var post = weibull_dist(a,b)
+    var p = post >= 6
+    
+    return {
+        a:a,
+        b:b,
+        post:post,
+        p:p,
+    }
+}
+
+
+// var d = Infer({method:"MCMC",kernel:"MH",samples:10000},model);
+var d = Infer({method:"SMC",particles:1000},model);
+// var d = Infer(model);
+// display(d);
+
+exp_map_all(d,["expectation","marginals"])
+
+stat2(d,"a")
+stat2(d,"b")
+stat2(d,"post")
+
+showCredibleInterval(d,"a",0.94)
+showCredibleInterval(d,"b",0.94)
+
