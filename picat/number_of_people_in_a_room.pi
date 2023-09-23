@@ -1,0 +1,124 @@
+/* 
+
+  Number in a room puzzle in Picat.
+
+  From MindYourDecision
+  """
+  Seemingly Impossible Number Of People In The Room Puzzle
+
+  This puzzle appeared in a German newspaper.
+
+  Ann is late to a meeting in progress. After she joins the room, the average age of 
+  all people in the room increases by exactly 4 years. A few minutes later her twin 
+  sister Beth joins the meeting and the average age of all people in the room increases 
+  again by exactly 3 years. How many people were in the room before Ann entered?
+  """
+
+  Let's assume that Alice and Beth are of exactly the same age, and not some tricky
+  case such as one is born Dec 31 and the other Jan 1 and the meeting is at Dec 31 
+  (or Feb 29 and March 1), etc.
+
+  Here's a constrain modeling approach.
+
+  SAT: 0.06s
+  n = 6
+  y = [42,42,43,59,59,91]
+  alice = 84
+  beth = 84
+  mean = [56,60,63]
+
+  MIP: 0.3s
+  y = [1,1,1,1,1,1]
+  alice = 29
+  beth = 29
+  mean = [1,5,8]
+
+  SMT: 0.3s
+  n = 6
+  y = [1,1,1,1,1,1]
+  alice = 29
+  beth = 29
+  mean = [1,5,8]
+
+  CP (degree/updown): 20.8s
+  n = 6
+  y = [46,46,46,47,47,50]
+  alice = 75
+  beth = 75
+  mean = [47,51,54]
+
+  There are _many_ different solutions...
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import v3_utils.
+% import util.
+
+import sat. % 0.06s
+% import mip. % 0.3s
+% import smt. % 0.85s
+% import cp. % 20.8s
+
+main => go.
+
+go =>
+  nolog,
+  member(N,1..10),
+  println(n=N),
+  Y = new_list(N),
+  Y :: 1..100,
+
+  increasing(Y), % symmetry breaking
+
+  [Mean1,Mean2,Mean3] :: 1..100,
+  
+  mean(Y,Mean1), % Before Alice arrives
+
+  Alice :: 1..100,
+  Mean2 #= Mean1 + 4,
+  mean(Y ++ [Alice],Mean2), % After Aliced arrived
+
+  Beth :: 1..100,
+  Beth #= Alice,
+  Mean3 #= Mean2 + 3,
+  mean(Y ++ [Alice,Beth],Mean3), % After Beth arrived
+
+  % Z #= sum(Y),
+
+  % N = 6,
+
+  Vars = Y ++ [Alice,Beth,Mean1,Mean2,Mean3],
+  solve($[degree,updown],Vars),
+  
+  println(n=N),
+  println(y=Y),
+  println(alice=Alice),
+  println(beth=Beth),
+  println(mean=[Mean1,Mean2,Mean3]),
+  nl,
+  % Checking
+  Mean1Check = mean(Y),
+  Mean2Check = mean(Y++[Alice]),
+  Mean3Check = mean(Y++[Alice,Beth]),
+  println("Check:"),
+  println(mean1Check=Mean1Check),
+  println(mean2Check=Mean2Check),
+  println(mean3Check=Mean3Check),
+  if Mean1*1.0 == Mean1Check, Mean2*1.0 == Mean2Check, Mean3*1.0 == Mean3Check then
+    println(ok)
+  else
+    println(not_ok)
+  end,
+  % fail,
+  
+  nl.
+
+
+mean(X) = sum(X) / X.len.
+
+mean(X,Mean) =>
+  Mean*X.len #= sum(X).

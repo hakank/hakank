@@ -97,13 +97,13 @@ main => go.
 
 %
 % using permutations/1
-%
+% 9.863s with garbage_collect(200_000_000)
+% 5.731s with garbage_collect(900_000_000) 
 go =>
-  garbage_collect(200_000_000),
+  garbage_collect(900_000_000), % preallocate memory for the permutations
   N = 10,
   Count = 0,
-  Permutations = permutations("0123456789"),
-  foreach(Perm in Permutations) 
+  foreach(Perm in permutations("0123456789")) 
     Good = true,
     foreach(I in 2..N, Good == true)
       P = (Perm[I].to_integer()*Perm[I-1].to_integer()),
@@ -121,7 +121,8 @@ go =>
 
 %
 % Using next_permutation/2
-%
+% 15.636
+% 
 go2 =>
   garbage_collect(200_000_000),
   N = 10,
@@ -177,6 +178,7 @@ next_permutation(P) = Perm =>
 
 %
 % CP: 
+% 9.271s
 %
 go3 ?=>
    Map = get_global_map(),
@@ -191,6 +193,9 @@ go3 ?=>
    foreach(I in 1..N-1) 
       Y #= X[I]*X[I+1],
       sum([Y #>9 #=> X[J]*10 + X[J+1] #= Y : J in 1..N-1]) #> 0
+      % These are slower, as expected
+      % sum([X[J]*10 + X[J+1] #= Y #\/ X[J+1] #= Y #\/ X[J] #= Y: J in 1..N-1]) #> 0
+      % sum([ (X[J]*10 + X[J+1] #= Y)+(X[J+1] #= Y)+(X[J] #= Y): J in 1..N-1]) #> 0
    end,
 
    Vars = X,
@@ -205,8 +210,36 @@ go3 =>
 
 
 %
-% same approach as go3 but with logic programming only (+ all_distinct/1)
-% 
+% Using CP and solve_all/1
+% 9.272s
+%
+go3b ?=>
+   N = 10,
+   X = new_array(N),
+   X :: 0..N-1,
+
+   all_different(X),
+   % all_distinct(X), % slower
+   foreach(I in 1..N-1) 
+      Y #= X[I]*X[I+1],
+      sum([Y #> 9 #=> X[J]*10 + X[J+1] #= Y : J in 1..N-1]) #> 0
+      % These are slower, as expected
+      % sum([X[J]*10 + X[J+1] #= Y #\/ X[J+1] #= Y #\/ X[J] #= Y: J in 1..N-1]) #> 0
+      % sum([ (X[J]*10 + X[J+1] #= Y)+(X[J+1] #= Y)+(X[J] #= Y): J in 1..N-1]) #> 0
+   end,
+
+   Vars = X,
+   Sols = solve_all($[], Vars),
+   foreach(Sol in Sols) println(Sol) end,
+   println(count=Sols.len),
+   nl.
+
+
+
+%
+% Same approach as go3 but with logic programming only (+ all_distinct/1)
+% 15.578s
+%
 go4 ?=>
    Map = get_global_map(),
    Map.put(count,0),
@@ -234,3 +267,83 @@ go4 =>
   println(count=get_global_map().get(count)).
 
 
+%
+% Using permutation/2
+% 5.477s
+%
+go5 ?=>
+  % garbage_collect(200_000_000),
+  Map = get_global_map(),
+  Map.put(count,0),
+  N = 10,
+  permutation("0123456789",Perm),
+  Good = true,
+  foreach(I in 2..N, Good == true, break(Good == false))
+    P = (Perm[I].to_integer()*Perm[I-1].to_integer()),
+    if P > 9, not(find(Perm,P.to_string(),_,_)) then
+      Good := false
+    end
+  end,
+  if Good == true then 
+    println(found=Perm),
+    Map.put(count,Map.get(count)+1)
+  end,
+  fail,
+  nl.
+
+go5 =>
+  println(count=get_global_map().get(count)).
+
+%
+% Using permutation/2 and check_perm/4
+% 6.311s
+go6 ?=>
+  garbage_collect(200_000_000),
+  Map = get_global_map(),
+  Map.put(count,0),
+  permutation("0123456789",Perm),
+  Ds = [D.to_int : D in Perm],
+  check_perm(Ds,Perm,0,C),
+  if C == 9 then
+    println(found=Perm),
+    Map.put(count,Map.get(count)+1)
+  end,
+  fail,
+  nl.
+
+go6 =>
+  println(count=get_global_map().get(count)).
+
+%
+% Using zip: 23.859s
+% Using nextto: 26.53s
+go7 ?=>
+  garbage_collect(200_000_000),
+  Map = get_global_map(),
+  Map.put(count,0),
+  permutation("0123456789",Perm),
+  Ds = [D.to_int : D in Perm],
+  Zs  = [1 : {A,B} in zip(Ds,tail(Ds)), find(Perm,(A*B).to_string,_,_)], % 23.859s
+  % Zs  = [1 : [A,B] in findall([A,B],nextto(A,B,Ds)), find(Perm,(A*B).to_string,_,_)], % 26.53s
+  if Zs.len == 9 then
+    println(Perm),
+    Map.put(count,Map.get(count)+1)
+  end,
+  fail,
+  nl.
+
+go7 =>
+  println(count=get_global_map().get(count)).
+
+
+% Check that X*Y is in the permutation P
+check_perm([],_,C,C).
+check_perm([_],_,C,C).
+check_perm([X,Y|Rest],P,C0,C) :-
+  XY = (X*Y).to_string,
+  ( find(P,XY,_,_) ->
+     check_perm([Y|Rest],P,C0+1,C)
+   ;
+     check_perm([],_,0,C)
+  ).
+  
