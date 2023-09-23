@@ -43,6 +43,8 @@ from cpmpy import *
 from cpmpy.solvers import *
 from cpmpy_hakank import *
 
+def cross_sum(a,b):
+  return sum([u == v for u in a for v in b ])
 
 def check(model, a, b, pos, val):
   """
@@ -57,12 +59,12 @@ def check(model, a, b, pos, val):
 
   # number of entries in correct position (and correct values)
   for i in range(n):
-    model += (sum([a[j] == b[j] for j in range(n)]) == pos)
+    model += sum(a == b) == pos
 
   # number of entries which has correct values 
   # (regardless if there are in correct position or not)
   for i in range(n):
-      model += (sum([a[j] == b[k] for j in range(n) for k in range(n)]) == val)
+      model += cross_sum(a,b) == val
 
 
 def number_lock(problem):
