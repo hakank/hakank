@@ -48,11 +48,11 @@ def diet1():
         minimize=cost
         )
 
-    def print_sol():
+    if model.solve():
+        print(model.status())
         print("x:",x.value())
         print("cost:",cost.value())
         print()
-
-    model.solveAll(display=print_sol)
+    
 
 diet1()

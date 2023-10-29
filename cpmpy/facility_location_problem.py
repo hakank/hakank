@@ -110,7 +110,7 @@ def facility_location():
     ss = CPM_ortools(model)
     if ss.solve():
       print("total_cost:", total_cost.value())
-      print("open_warehouse:", open_warehouse.value())
+      print("open_warehouse:", 1*open_warehouse.value())
       print("ships:\n", ships.value())
       
 

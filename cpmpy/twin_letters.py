@@ -78,7 +78,7 @@ def twin_letters():
     xs = x.value()
     digits_map = {}
     print("x:",xs)
-    print("[C1,C2,C3]:",[C1.value(),C2.value(),C3.value()])
+    print("[C1,C2,C3]:",[1*C1.value(),1*C2.value(),1*C3.value()])
     for i in range(n):
       print(i,letters[i],xs[i])
       if xs[i] in digits_map:

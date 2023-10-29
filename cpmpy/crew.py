@@ -122,7 +122,7 @@ def crew(num_sols=1):
     print("Number working:", num_working.value())
     for i in range(num_flights):
       for j in range(num_persons):
-        print(crew[i, j].value(), end=" ")
+        print(1*crew[i, j].value(), end=" ")
       print()
     print()
 

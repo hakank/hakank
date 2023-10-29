@@ -222,9 +222,9 @@ def sat_problem():
     num_solutions = 0
     if ss.solve() is not False:
         num_solutions += 1
-        print("x:",x.value())
+        print("x:",1*x.value())
         print("x vars:",[i for i in range(n) if x[i].value()])
-        print("y:",y.value())
+        print("y:",1*y.value())
         print("y unsat:",[i for i in range(m) if y[i].value()])
         print("unsat:",unsat.value())
 

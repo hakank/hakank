@@ -72,7 +72,7 @@ def print_solution(x, overlays):
             print("overlay", o)
             for i in range(n):
                 for j in range(n):
-                    print( overlays[o][i][j], " ",end="")
+                    print( 1*overlays[o][i][j], " ",end="")
                 print()
             print()
 
@@ -141,9 +141,11 @@ def ormat_game(problem, overlays, n, debug=0):
     num_solutions = 0
     if s.solve(num_search_workers=12):
         num_solutions += 1
-        print("x:\n",x.value())
+        print("x:")
+        print(1*x.value())
         print("overlays:", [i for i in range(f) if x[i].value() == 1])
-        print("y:\n",y.value())
+        print("y:")
+        print(y.value())
         print("num_overlays:", num_overlays.value())
         print_solution(x, overlays)
 

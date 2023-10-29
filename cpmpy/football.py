@@ -143,7 +143,7 @@ def football(budget,num_types,num_players,max_num_players,min_max,costs):
 
     def print_sol():
         print("x:")
-        print(x.value())
+        print(1*x.value())
         print("z:",z.value())
         print("num_player_chosen:",num_player_chosen.value())
         print()

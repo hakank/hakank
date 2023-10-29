@@ -103,9 +103,11 @@ def tsp(n,num_edges,E,c):
   if ss.solve():
     num_solutions += 1
     print("total:",total.value())
-    print("x:",x.value())
+    print("x:")
+    print(1*x.value())
     print("visited:",[i for i in range(num_edges) if x[i].value() == 1])
-    print("y:",y.value())    
+    print("y:")
+    print(y.value())    
     
   print()
   print("num_solutions:", num_solutions)  

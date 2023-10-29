@@ -55,7 +55,7 @@ def global_contiguity_test(n=4):
   model = Model(global_contiguity(x,start,end))
 
   def print_sol():
-    print("x:",x.value(), "start:",start.value(),"end:",end.value())    
+    print("x:",1*x.value(), "start:",start.value(),"end:",end.value())    
 
   ss = CPM_ortools(model)
   # ss.ort_solver.parameters.num_search_workers = 8 # Don't work together with SearchForAllSolutions

@@ -1,7 +1,7 @@
 """
 Number puzzle #8 in cpmpy.
 
-From "Natural Blogarithms"
+From 'Natural Blogarithms'
 http://blog.drscottfranklin.net/2009/02/24/number-puzzle-8/
 '''
 The four numbers A, B, A+B and A-B are all prime.  The sum of these 
@@ -91,7 +91,7 @@ def number_puzzle8(num_sols=0):
     def print_sol():
       print("z:",z.value())        
       print("a:", a.value(),"\nb:",b.value(), "\na+b:",a_plus_b.value(),"\na-b:",a_minus_b.value())
-      print("sols:",sols.value())
+      print("sols:",1*sols.value())
       print("solution: z is",[sols_s[i] for i in range(len(sols)) if sols[i].value()==1][0])
       print()
 

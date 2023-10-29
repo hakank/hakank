@@ -75,7 +75,7 @@ def set_covering_skiena():
     num_solutions += 1
     print("z", z.value())
     print("tot_elements:", tot_elements.value())
-    print("x:", x.value())
+    print("x:", 1*x.value())
 
   print()
   print('num_solutions:', num_solutions)

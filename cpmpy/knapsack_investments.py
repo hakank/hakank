@@ -148,11 +148,19 @@ def knapsack_investments(total_values_val=0):
     ss.solve()
     total_values_opt = total_values.value()
     print("total_values_opt:", total_values_opt)
+    print_sol()
     
-    print("All optimal solutions:")
+    print("\nAll optimal solutions:")
     ss += (total_values==total_values_opt)
-    num_solutions = ss.solveAll(display=print_sol)
-    print("num_solutions:", num_solutions)
+    num_optimal_solutions = 0
+    while ss.solve():
+        print()
+        xres = x.value()
+        print_sol()
+        ss += sum([x[i] != xres[i] for i in range(num_projects)]) > 0
+        num_optimal_solutions += 1
+
+    print("num_optimal_solutions:", num_optimal_solutions)
 
 knapsack_investments()
 

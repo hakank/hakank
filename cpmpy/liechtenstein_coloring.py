@@ -195,7 +195,7 @@ def liechtenstein_coloring():
         num_solutions += 1
         print("n_colors:", n_colors.value())
         print("max_color_used:", max_color_used.value())                
-        print("color_used:", color_used.value())        
+        print("color_used:", 1*color_used.value())        
         print("color:", color.value())
         print("color_communes:", color_communes.value())
         print("status:", ss.status())

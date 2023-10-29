@@ -66,7 +66,7 @@ def capital_budget(cons=None):
 
   ss = CPM_ortools(model)
   if ss.solve() :
-    print("x:", x.value())
+    print("x:", 1*x.value())
     print("z:", z.value())
   print()
 

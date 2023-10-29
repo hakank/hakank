@@ -95,8 +95,9 @@ def knapsack_rosetta_code_bounded(items,max_total_weight):
     print()
     
   ss = CPM_ortools(model)
-  num_solutions = ss.solveAll(display=print_sol)
-  print("num_solutions:",num_solutions)
+  if ss.solve():
+    print(ss.status())
+    print_sol()
 
 #         Item          Weight   Value  Pieces
 items = [["map",            9,     150,    1],

@@ -211,8 +211,13 @@ def temporal_reasoning(opt=True):
   ss.ort_solver.parameters.linearization_level = 0
   ss.ort_solver.parameters.cp_model_probing_level = 0
 
-  num_solutions = ss.solveAll(display=print_sol)
-  print("num_solutions:", num_solutions  )
+  if opt:
+    if ss.solve():
+      print(ss.status())      
+      print_sol()
+  else: 
+    num_solutions = ss.solveAll(display=print_sol)
+    print("num_solutions:", num_solutions  )
 
 
 print("Generate all solutions:")

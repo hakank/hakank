@@ -80,7 +80,7 @@ def sonet_problem(r,n,demand,capacity_nodes):
 
     print("z:",z.value())
     print("rings:")
-    print(rings.value())
+    print(1*rings.value())
     print(flush=True)
 
   print("num_solutions:", num_solutions)

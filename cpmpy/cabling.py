@@ -122,8 +122,20 @@ def cabling_1():
     print()
       
   ss = CPM_ortools(model)
-  num_solutions = ss.solveAll(display=print_sol)
-  print("num_solutions:", num_solutions)
+  # num_solutions = ss.solveAll(display=print_sol)
+  
+  if ss.solve():
+      print("ss:",ss.status())      
+      a_s = ["A","B","C","D","E","F","G","H"]
+      print("x:", x.value())
+      print("diffs:",diffs.value())
+      print("final_sum:", final_sum.value())
+      order = [a_s[x[i].value()] for i in range(n)]
+      print("order:","".join(order))    
+      print()
+  else:
+      print("No solution found")
+
 
 
 #

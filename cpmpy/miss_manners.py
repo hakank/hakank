@@ -122,12 +122,12 @@ def miss_manners(problem,num_procs=1):
     print("seating:",seating_val)
     common_hobbies_val = common_hobbies.value()
     print("common_hobbies:",common_hobbies_val)
-    print("num_common_hobbies:",sum(common_hobbies))
+    print("num_common_hobbies:",sum(common_hobbies.value()))
     gender_s = ["M","F"]
     for i in range(n):
       si = seating_val[i]
       hs = " ".join([str(h) for h in hobbies[si] if h > 0])
-      print(f"Place {i:3} person:{si:3} gender:{gender_s[gender[si]-1]} hobbies:{hs:10} (common w next:{common_hobbies[i]})")
+      print(f"Place {i:3} person:{si:3} gender:{gender_s[gender[si]-1]} hobbies:{hs:10} (common w next:{common_hobbies[i].value()})")
     print()
     print("num_common_hobbies:",sum(common_hobbies_val))      
     print("\n")

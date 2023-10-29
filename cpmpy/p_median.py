@@ -73,10 +73,12 @@ def p_median():
   if ss.solve():
     num_solutions += 1
     print("z:", z.value())
-    print("open:", open.value())
+    print("open:")
+    print(1*open.value())
+    print("ship:")
     for c in customers:
       for w in warehouses:
-        print(ship[c, w].value(), end=' ')
+        print(1*ship[c, w].value(), end=' ')
       print()
     print()
 

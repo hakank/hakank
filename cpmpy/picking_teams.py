@@ -84,10 +84,11 @@ def picking_teams(s):
     # ss.ort_solver.parameters.cp_model_presolve = False
     # ss.ort_solver.parameters.linearization_level = 0
     # ss.ort_solver.parameters.cp_model_probing_level = 0
+    if ss.solve():
+        print(ss.status())
+        print_sol()
 
-    num_solutions = ss.solveAll(display=print_sol)
     print()
-    print("number of solutions:", num_solutions)
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())
@@ -98,6 +99,7 @@ picking_teams(s)
 
 # Randomize s
 n = 1000
+print("\nRandom problem of size", n)
 s = [random.randint(1,100) for _ in range(n)]
 picking_teams(s)
 

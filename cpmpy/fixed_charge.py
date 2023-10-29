@@ -90,7 +90,7 @@ def fixed_charge():
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
     if ss.solve():
-        print("rent:",rent.value())
+        print("rent:",1*rent.value())
         print("product:",produce.value())
         print("z:",z.value())
         print()

@@ -59,9 +59,9 @@ def devils_word(total, arr):
   def print_sol():
     print("total:", total)
     print("result:",result.value())
-    print("plus :", plus.value())
-    print("minus:", minus.value())
-    print("num_minus:", num_minus.value())
+    print("plus :", 1*plus.value())
+    print("minus:", 1*minus.value())
+    print("num_minus:", 1*num_minus.value())
     print()   
   
   num_solutions = ss.solveAll(display=print_sol)

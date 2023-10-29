@@ -50,7 +50,7 @@ def five_statements(n=5):
     print()
 
     def print_sol():
-        print("x:",x.value())
+        print("x:",1*x.value())
         print("x:",[statements[i] for i in range(n) if x[i].value()])
     
     ss = CPM_ortools(model)

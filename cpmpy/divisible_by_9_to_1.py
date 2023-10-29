@@ -70,7 +70,7 @@ def divisible_by_9_to_1(base=10,print_model=False):
   print("num_solutions:", num_solutions)
 
 # base 16 is the maximum allowed value
-for base in range(3,16+1):
+for base in range(3,15+1):
   divisible_by_9_to_1(base)
   print()
 

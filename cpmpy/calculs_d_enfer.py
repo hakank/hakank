@@ -68,7 +68,12 @@ def calculs_d_enfer():
         print("A_abs:", A_abs.value())
 
     ss = CPM_ortools(model)
-    ss.solveAll(display=print_sol)
+    if ss.solve():
+        print("a_max:", a_max.value())        
+        print("A:", A.value())
+        print("A_abs:", A_abs.value())
+    else:
+        print("No solution!")
 
 
 calculs_d_enfer()

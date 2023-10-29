@@ -50,9 +50,10 @@ def magic_squares_and_cards():
         print("counts:", counts.value())
         print()
 
-    num_solutions = model.solveAll(display=print_sol)
-    print("num_solutions:",num_solutions)
-
+    if model.solve():
+        print(model.status())
+        print_sol()
+        
 
 magic_squares_and_cards()
 

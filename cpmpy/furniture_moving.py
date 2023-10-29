@@ -68,7 +68,10 @@ def furniture_moving():
     # limitation of the number of people
     # model += [num_resources <= 3]
 
-    def print_sol():
+    ss = CPM_ortools(model)
+    
+    if ss.solve():
+        print(ss.status())
         print("num_resources:", num_resources.value())
         print("start_times  :", start_times.value())
         print("duration     :", [duration[i] for i in range(n)])
@@ -76,12 +79,6 @@ def furniture_moving():
         print("end_time     :", end_time.value())
         print("z            :", z.value())      
         print()
-        
- 
-    ss = CPM_ortools(model)
-    num_solutions = ss.solveAll(display=print_sol)
-    print()
-    print("num_solutions:", num_solutions)
     
 
 furniture_moving()

@@ -66,7 +66,7 @@ def fancy():
   if ss.solve():
     num_solutions += 1
     print("cost:",cost.value())
-    print("t:",t.value(),"h:",h.value(),"r:",r.value(),"s:",s.value(),"n:",n.value())
+    print("t:",1*t.value(),"h:",1*h.value(),"r:",1*r.value(),"s:",1*s.value(),"n:",1*n.value())
 
   print("num_solutions:", num_solutions)
 

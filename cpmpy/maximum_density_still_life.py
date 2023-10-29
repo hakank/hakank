@@ -136,7 +136,7 @@ def maximum_density_still_life(size=6,num_procs=1):
         num_solutions += 1
         print("z:",z.value())
         print("grid:")
-        print(grid.value())
+        print(1*grid.value())
         print()
         print("Num conflicts:", ss.ort_solver.NumConflicts())
         print("NumBranches:", ss.ort_solver.NumBranches())

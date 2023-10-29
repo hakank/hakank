@@ -83,7 +83,9 @@ def max_flow_taha():
 
 
   ss = CPM_ortools(model)
-  ss.solveAll(display=print_sol)
+  if ss.solve():
+    print(ss.status())
+    print_sol()
 
 
 max_flow_taha()

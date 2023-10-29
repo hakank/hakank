@@ -75,7 +75,7 @@ def steiner(n=7,num_sols=1):
   if num_sols != 1:
     print("num_solutions:", num_solutions  )
   else:
-    print(ss.status)
+    print(ss.status())
                 
 n = 7
 if len(sys.argv) > 1:

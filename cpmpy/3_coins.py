@@ -96,7 +96,7 @@ def three_coins(init=[1,0,1]):
 
     def print_sol():
         print(f"({'all tails' if last_val.value() == 3 else 'all heads'})")
-        print(x.value())
+        print(1*x.value())
         print()
     
     ss = CPM_ortools(model)

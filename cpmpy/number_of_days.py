@@ -58,7 +58,7 @@ def number_of_days(target_days=13):
   num_solutions = 0
   if ss.solve():
     num_solutions += 1
-    print("x :", x.value())
+    print("x :", 1*x.value())
     print("target_days (given)  :", target_days)
     print("total_cost:", total_cost.value())
     print()

@@ -80,8 +80,8 @@ def monks_and_doors():
   print(model)
 
   def print_sol():
-    print("monks:", monks.value(), "exits doors:",[d for d in doors if d.value() == 1] )
-    print("doors:", doors.value(), "telling truth:", [m for m in monks if m.value() == 1])
+    print("monks:", 1*monks.value(), "exits doors:",[d for d in doors if d.value() == 1] )
+    print("doors:", 1*doors.value(), "telling truth:", [m for m in monks if m.value() == 1])
     print()
 
   

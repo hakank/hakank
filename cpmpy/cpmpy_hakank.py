@@ -1355,7 +1355,7 @@ def assignment_model(cost, tasks=None,people=None,print_solution=None,opt="min")
     if ss.solve():
         print("total_cost: ", total_cost.value())
         print("x:")
-        print(x.value())
+        print(1*x.value())
         print()
 
         if tasks == None and people == None:

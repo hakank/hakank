@@ -38,7 +38,7 @@ def all_different_explain_test(n=4):
                    ])
   
     def print_sol():
-      print("x:",x.value(),"s:",s.value(),"num_conflicts:",num_conflicts.value())
+      print("x:",x.value(),"s:",1*s.value(),"num_conflicts:",num_conflicts.value())
       
 
     num_solutions = model.solveAll(display=print_sol)

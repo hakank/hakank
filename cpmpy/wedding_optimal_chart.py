@@ -153,8 +153,10 @@ def wedding_optimal_chart(guest,names,names2,problem,opt_type="maximize"):
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = ss.solveAll(display=print_sol)
-    print("num_solutions:",num_solutions)
+    if ss.solve():
+        print(ss.solve())
+        print_sol()
+        
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())

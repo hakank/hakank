@@ -64,9 +64,9 @@ def smugglers_knapsack1():
     # ss.ort_solver.parameters.linearization_level = 0
     # ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = ss.solveAll(display=print_sol)
-    print("num_solutions:",num_solutions)
-    print()
+    if ss.solve():
+        print(ss.status())
+        print_sol()
 
 #
 # General approach.
@@ -92,10 +92,10 @@ def smugglers_knapsack2(units,values,max_val):
         print("profit:",profit.value())
         print()
         
-    ss = CPM_ortools(model)    
-    num_solutions = ss.solveAll(display=print_sol)
-    print("num_solutions:",num_solutions)
-    print()
+    ss = CPM_ortools(model)
+    if ss.solve():
+        print(ss.status())
+        print_sol()
     
 print("smugglers_knapsack1:")
 smugglers_knapsack1()

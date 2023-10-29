@@ -53,8 +53,8 @@ def hamming_distance_model(a_given="",n=6):
   # model += (diffs == 2)
   
   def print_sol():
-    print("a:", a.value())
-    print("b:", b.value())    
+    print("a:", 1*a.value())
+    print("b:", 1*b.value())    
     print("diffs:", diffs.value())
     print()
 

@@ -74,7 +74,7 @@ def solve(param):
     matrix, model = get_model(N)
 
     def print_sol():
-        print(matrix.value())
+        print(1*matrix.value())
         print("Degree sequence:",end= " ")
         for row in matrix:
             print(sum([x.value() for x in row]),end=" ")

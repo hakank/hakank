@@ -37,7 +37,8 @@ def euler31():
    ss.ort_solver.parameters.linearization_level = 0
    ss.ort_solver.parameters.cp_model_probing_level = 0
    
-   num_solutions = ss.solveAll(x)
+   # num_solutions = ss.solveAll(x) # show the solutions
+   num_solutions = ss.solveAll() # just the count
    print("Nr solutions:", num_solutions)
 
 euler31()

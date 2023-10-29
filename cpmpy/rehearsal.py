@@ -1,5 +1,5 @@
 """
-Scheduling a Rehearsal in Comet.
+Scheduling a Rehearsal in CPMpy.
 
 From Barbara M. Smith: 
 'Constraint Programming in Practice: Scheduling a Rehearsal'
@@ -122,8 +122,11 @@ def rehearsal_model(rehearsal,duration,timeout=None,num_procs=1):
     # ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
 
-    num_solutions = ss.solveAll(solution_limit=1,display=print_sol)
-    print("number of solutions:", num_solutions)    
+    # num_solutions = ss.solveAll(solution_limit=1,display=print_sol)
+    if ss.solve():
+        print(ss.status())
+        print_sol()
+
     print("Num conflicts:", ss.ort_solver.NumConflicts())
     print("NumBranches:", ss.ort_solver.NumBranches())
     print("WallTime:", ss.ort_solver.WallTime())

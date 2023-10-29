@@ -72,7 +72,7 @@ def set_covering3():
   ss = CPM_ortools(model)
   if ss.solve():
     print("z:", z.value())
-    print("x:", x.value())
+    print("x:", 1*x.value())
     groups = np.array(list(range(num_groups)))+1
     for j in range(num_senators):
       if x[j].value() == 1:

@@ -46,12 +46,12 @@ def brackets(m,do_print=False,num_sols=0):
     # For cumulative (c):
     # +1 if x[i] = "["
     # -1 if x[i] = "]"
-    # t = cpm_array([-1,1]) # This don't work
     t = intvar(-1,1,shape=2,name="t")    
     model += (t[0] == 1,t[1] == -1)
 
     # 0: "[", 1: "]"
-    x = boolvar(shape=n,name="x")
+    # x = boolvar(shape=n,name="x") # boolvar doesn't work (anymore)
+    x = intvar(-1,1,shape=n,name="x")
     c = intvar(0,n,shape=n,name="c") # counter (cumulative)
     
     # constraints
@@ -62,7 +62,7 @@ def brackets(m,do_print=False,num_sols=0):
 
     # cumulative
     for i in range(1,n):
-        model += (c[i] == c[i-1] + t[x[i]])
+       model += (c[i] == c[i-1] + t[x[i]])
 
     model += (x[n-1] == 1)
     model += (c[n-1] == 0) # end sequence
@@ -71,19 +71,21 @@ def brackets(m,do_print=False,num_sols=0):
     model += (x.sum() == m)
 
     def myprint():
-      s = ["[","]"]
-      n = len(x)
-      print("x:", x.value())
-      print("c:", c.value())
-      print("cc:", "".join([s[x[i].value()] for i in range(n)]))
-      print()
+        if do_print:
+            s = ["[","]"]
+            n = len(x)
+            print("x:", x.value())
+            print("c:", c.value())
+            print("cc:", "".join([s[x[i].value()] for i in range(n)]))
+            print()
 
     
     ss = CPM_ortools(model)
     ss.ort_solver.parameters.linearization_level = 0
     ss.ort_solver.parameters.cp_model_probing_level = 0
     ss.ort_solver.parameters.cp_model_presolve = False
-    
+
+    # num_solutions = ss.solve()    
     num_solutions = ss.solveAll(myprint)    
   
     if do_print:
@@ -96,7 +98,6 @@ def brackets(m,do_print=False,num_sols=0):
     return num_solutions
 
 brackets(3,True)
-# print_sols = True 
 print_sols = False
 num_sols = []
 for i in range(1,11+1):
@@ -105,3 +106,4 @@ for i in range(1,11+1):
   num_sols.append(nsols)
 
 print(num_sols)
+

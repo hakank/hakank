@@ -50,7 +50,7 @@ def set_covering2():
   ss = CPM_ortools(model)
   if ss.solve():
     print("z:", z.value())
-    print("x:", x.value())
+    print("x:", 1*x.value())
 
 
 set_covering2()

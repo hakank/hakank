@@ -12,13 +12,8 @@ import cpmpy.solvers
 import numpy as np
 from cpmpy_hakank import *
 
-
-
-
-
 def set_covering():
-
-
+  
   # data
   min_distance = 15
   num_cities = 6
@@ -51,7 +46,7 @@ def set_covering():
   ss = CPM_ortools(model)
   if ss.solve():
     print("z:", z.value())
-    print("x:", x.value())
+    print("x:", 1*x.value())
     print()
 
 

@@ -74,8 +74,8 @@ def set_covering_deployment():
   ss = CPM_ortools(model)
   if ss.solve():
     print("num_armies:", num_armies.value())
-    print("X:", X.value())
-    print("Y:", Y.value())
+    print("X:", 1*X.value())
+    print("Y:", 1*Y.value())
 
     for i in range(n):
       if X[i].value() == 1:

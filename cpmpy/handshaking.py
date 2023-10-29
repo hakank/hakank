@@ -148,7 +148,7 @@ def handshaking(n=10,symmetry=False,num_sols=0,print_solutions=True):
       print("y:")
       for i in range(n):
         for j in range(n):
-          print(y[(i,j)].value(),end=" ")
+          print(1*y[(i,j)].value(),end=" ")
         print()
       print()
       print()

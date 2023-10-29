@@ -36,7 +36,7 @@ def pigeon_hole(n=3,m=10):
     model += (sum([p[(i,j)] for j in range(m)]) == 1)
 
   def print_sol():
-    print(p.value())
+    print(1*p.value())
     print()
 
   ss = CPM_ortools(model)
