@@ -35,6 +35,7 @@ Here's a summary of the directories so far:
 * julia/constraints: Julia ConstraintSolver.jl models (Constraint Programming)
 * julia/turing: Julia Turing.jl models (Probabilistic Programming)
 * k: K, array programming language  (note: index.html contains code etc)
+* kattis: Some of my entries for the Kattis competitive programming problems. Mostly in SWI-Prolog, but also in Python and Ruby.
 * mathematica: Mathematica, mathematical programming
 * minizinc: MiniZinc, constraint programming. Also G12 Zinc files.
 * numberjack: Numberjack, constraint programming
