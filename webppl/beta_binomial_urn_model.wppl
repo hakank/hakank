@@ -1,0 +1,147 @@
+/*
+  Beta Binomial Urn model
+
+  https://en.wikipedia.org/wiki/Beta-binomial_distribution
+  """
+  The beta-binomial distribution can also be motivated via an urn model for positive 
+  integer values of α and β, known as the Pólya urn model. Specifically, imagine an 
+  urn containing α red balls and β black balls, where random draws are made. If a red ball 
+  is observed, then two red balls are returned to the urn. Likewise, if a black ball is 
+  drawn, then two black balls are returned to the urn. If this is repeated n times, 
+  then the probability of observing x red balls follows a beta-binomial distribution 
+  with parameters n, α and β.
+
+  If the random draws are with simple replacement (no balls over and above the observed ball 
+  are added to the urn), then the distribution follows a binomial distribution and if 
+  the random draws are made without replacement, the distribution follows a 
+  hypergeometric distribution.
+  """
+
+  Here is a simple example: 
+  - number of white balls = number of black balls = 1
+  - number of balls to add if a white or black ball is drawn = 1 (of the same color)
+  - 10 draws
+  
+  expectation:
+  [ [ 'num_white_obs', 4.999999999999998 ],
+    [ 'num_black_obs', 5.000000000000002 ],
+    [ 'num_white_left', 5.999999999999997 ],
+    [ 'num_black_left', 6.000000000000001 ],
+    [ 'num_runs', 10 ],
+
+  expectation:
+  [ [ 'beta_binomial', 5.014659999999999 ],
+    [ 'polya_eggenberg', 4.98894 ],
+    [ 'polya', 4.987840000000003 ] ]
+
+
+  See urn_model_generalized.wppl for a generalized version of this, e.g. N number of balls etc.
+
+*/
+
+/*
+  A general Urn model (2 balls)
+  Given
+   - number of white balls
+   - number of black balls
+   - number of draws
+   - number of white balls to add if we draw a white ball
+   - number of black balls to add if we draw a black ball
+  Returns
+   - [number of observed white balls, number of observed black balls)
+   - [number of left white balls, number of left black balls)
+
+  If the number of balls to is negative, we stop if any of the balls reach 0 (or below).
+
+  This uses Enumerate, but it turns into Rejection if it takes too long (> 5s).
+
+*/
+var urn_model = function(num_white,num_black,num_draws,num_add_white,num_add_black) {
+    console.log("num_white:",num_white,"num_black:",num_black,"num_draws:",num_draws,"num_add_white:",num_add_white,"num_add_black:",num_add_black)
+    var model = function() {
+    
+        // Return the number of observed white and black balls and number of white/black
+        // balls that are left.
+        var f = function(num_white,num_black, num_white_observed,num_black_observed, i) {
+            if (i == num_draws || num_white <= 0 || num_black <= 0) {
+                return [[num_white_observed,num_black_observed],[Math.max(num_white,0),Math.max(num_black,0)],i]
+            } else {
+                var p_white = num_white/(num_white+num_black) // Probability of white ball
+                var pick = flip(p_white) 
+                if (pick) {
+                    return f(num_white+num_add_white, num_black,
+                             num_white_observed+1,num_black_observed, i+1)
+                } else {
+                    return f(num_white, num_black+num_add_black,
+                             num_white_observed, num_black_observed+1, i+1)
+                }
+            }
+        }
+
+        var [[num_white_obs,num_black_obs],[num_white_left,num_black_left],num_runs] = f(num_white,num_black,0,0,0)
+        return {
+            num_white_obs:num_white_obs,
+            num_black_obs:num_black_obs,
+            num_white_left:num_white_left,
+            num_black_left:num_black_left,
+            num_runs:num_runs,
+            all:[num_white_obs,num_black_obs,num_white_left,num_black_left],
+        }
+    }
+
+    var d = Infer(model)
+    // var d = Infer({method:"enumerate"},model)
+    // var d = Infer({method:"rejection",samples:10000},model)
+    // var d = Infer({method:"SMC",particles:10000,rejuvSteps:5},model)
+    exp_map_all(d,["marginals","expectation"])
+
+}
+
+/*
+  These "urn distribution" are all based on beta_binomial_dist().
+  They all give the number of observed white balls.
+
+*/
+var urn_model_dists = function(num_white,num_black,num_draws,num_add_white,num_add_black) {
+    var model = function() {
+    
+        // Check with beta_binomial_dist, only valid when both adds are 1.
+        var beta_binomial = num_add_white > 0 && num_add_white == num_add_black ?
+            beta_binomial_dist(num_draws,num_white/num_add_white,num_black/num_add_white) : undefined
+
+        // Polya Eggenberg distribution: only valid if num_add_white == num_add_black
+        var polya_eggenberg = num_add_white > 0 && num_add_white == num_add_black ?
+            polya_eggenberg_dist(num_draws,num_white,num_black,num_add_white) : undefined
+
+        // Polya distribution. Only valid if both add's are the same
+        var polya = num_add_white > 0 && num_add_white == num_add_black ?
+            polya_dist(num_draws,num_white,num_black,num_add_white) : undefined
+        
+        return {
+            beta_binomial:beta_binomial,
+            polya_eggenberg:polya_eggenberg,
+            polya:polya,
+        }
+    }
+
+    // var d = Infer(model)
+    // var d = Infer({method:"rejection",samples:10000},model)
+    var d = Infer({method:"SMC",particles:10000,rejuvSteps:5},model)
+    // exp_map_all(d,["expectation"])
+    exp_map_all(d,["marginals","expectation"])    
+}
+
+var num_white = 1 // Init
+var num_black = 1 // Init
+var num_draws = 10
+var num_add_white = 1
+var num_add_black = 1
+
+urn_model(num_white,num_black,num_draws,num_add_white,num_add_black)
+
+// The distributions assumes that num_add_white == num_add_black and/or that
+// both are 1.
+if (num_add_white > 0 && num_add_white == num_add_black) {
+    console.log("\nUrn distributions:")
+    urn_model_dists(num_white,num_black,num_draws,num_add_white,num_add_black)
+}

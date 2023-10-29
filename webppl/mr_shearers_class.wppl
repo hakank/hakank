@@ -1,0 +1,104 @@
+/*
+  https://minerva-demo.github.io/#category=Probability&index=2
+  """
+  Question
+  Three-fourths of the students in Mr. Shearer's class have brown hair and six-sevenths 
+  of his students are right-handed. If Mr. Shearer's class has 28 students, what is the 
+  smallest possible number of students that could be both right-handed and have brown hair?
+  ...
+  Reference answer
+  Mr. Shearer has 3/4(28)=21 students with brown hair and 6/7(28)=24 students who are 
+  right-handed. Since there are 28−24=4 left-handed students, at most 4 of the 
+  21 brown-haired students are left-handed. Therefore, at least 17 of them are 
+  right-handed. Final Answer: The final answer is 17.
+  ...
+  Problem source: MATH Counting & Probability Level 1
+  """
+
+  * With SMC onlyMAP:true and factor(-num_both)
+    Marginals:
+    num_both
+    Marginal:
+      17 : 1
+
+    expectation:
+    [ [ 'num_both', 17 ] ]
+
+    MAP:
+    [ [ 'num_both', { val: 17, score: 0 } ] ]
+
+  * With SMC onlyMAP:false and factor(-num_both)
+    num_both
+    Marginal:
+      17 : 0.6270000000000002
+      18 : 0.32000000000000006
+      19 : 0.048
+      20 : 0.005000000000000002
+
+    expectation:
+    [ [ 'num_both', 17.431000000000004 ] ]
+
+    MAP:
+    [ [ 'num_both', { val: 17, score: -0.466808738349216 } ] ]
+
+  * SMC onlyMap:false and no factor(-num_both)
+    Marginals:
+    num_both
+    Marginal:
+      18 : 0.487
+      17 : 0.295
+      19 : 0.17999999999999997
+      20 : 0.038000000000000006
+
+    expectation:
+    [ [ 'num_both', 17.961 ] ]
+
+    MAP:
+    [ [ 'num_both', { val: 18, score: -0.7194911558995473 } ] ]
+
+  * SMC, onlyMAP:true, and factor(-num_both) but without the two conditions:
+    [ [ 'num_both', 14 ] ]
+   which is clearly not correct
+
+   
+  Cf my Picat constraint model http://hakank.org/picat/mr_shearers_class.pi
+
+
+*/
+
+
+var model = function() {
+    var num_students = 28
+
+    // 3/4 of the class has brown hair
+    var brown_hair_p = 3/4
+    var has_brown_hair = mapN(function(i) { flip(brown_hair_p)}, num_students)
+    // Enforce the number of brown haired
+    condition(sum(has_brown_hair)*4==3*num_students)
+
+    // 6/7 of the class is right handed
+    var right_handed_p = 6/7
+    var is_right_handed = mapN(function(i) {flip(right_handed_p)}, num_students)
+    // Enforce the number of right handed    
+    condition(sum(is_right_handed)*7==6*num_students)
+
+    // How many has both brown hair and is right handed?
+    var both_brown_hair_and_right_handed = mapN(function(i) { has_brown_hair[i] && is_right_handed[i] },num_students)
+    var num_both = sum(both_brown_hair_and_right_handed)
+    
+    // We want to know the smallest possible number of num_both. Use with onlyMAP:true.
+    factor(-num_both)
+    
+    // console.log(sum(has_brown_hair),sum(is_right_handed),num_both)
+    
+    return {
+        num_both:num_both,
+        // num_has_brown_hair:sum(has_brown_hair),
+        // num_is_right_handed:sum(is_right_handed),
+    }
+}
+
+// var d = Infer({method:"enumerate"},model)
+// var d = Infer({method:"rejection",samples:1000},model)
+var d = Infer({method:"SMC",particles:1000,onlyMAP:true},model)
+exp_map_all(d)

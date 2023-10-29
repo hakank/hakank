@@ -1,0 +1,145 @@
+/*
+   Sultan's dowry
+   
+   https://mathworld.wolfram.com/SultansDowryProblem.html
+   """
+   A sultan has granted a commoner a chance to marry one of his n daughters. The 
+   commoner will be presented with the daughters one at a time and, when each 
+   daughter is presented, the commoner will be told the daughter's dowry (which 
+   is fixed in advance). Upon being presented with a daughter, the commoner must 
+   immediately decide whether to accept or reject her (he is not allowed to 
+   return to a previously rejected daughter). However, the sultan will allow the 
+   marriage to take place only if the commoner picks the daughter with the 
+   overall highest dowry. Then what is the commoner's best strategy, assuming he 
+   knows nothing about the distribution of dowries (B. Elbows)?
+
+   Since the commoner knows nothing about the distribution of the dowries, the 
+   best strategy is to wait until a certain number x of daughters have been 
+   presented, then pick the highest dowry thereafter. The exact number to skip is
+   determined by the condition that the odds that the highest dowry has already 
+   been seen is just greater than the odds that it remains to be seen and that if 
+   it is seen it will be picked. 
+   ....
+   The problem is most commonly stated with n = 100 daughters, which gives the 
+   result that the commoner should wait until he has seen 37 of the daughters, 
+   then pick the first daughter with a dowry that is bigger than any preceding 
+   one. With this strategy, his odds of choosing the daughter with the highest 
+   dowry are surprisingly high: about 37% 
+   (B. Elbows; Honsberger 1979, pp. 104-110, Mosteller 1987).
+   """
+   
+   The theoretical solution is 1/exp(1) ~ 37% (~0.36787944117144233).
+
+   Here is a variant to get the optimal skip_pct/skip_pos directly (unlike sultans_dowry.wppl
+   which tests a lot of skip_pcts).
+
+   It uses condition(p) to force that we get the max downry.
+
+   The optimal skip_pct depends on the size of the dowries (and on the number of dowries).
+
+   For a dowry with 10 * (1+randomInteger(100), the optimal skip_pct is around 42-43 according 
+   to this model. Here are for n=100.
+
+   expectation:
+   [ [ 'skip_pct', 0.4321362895569063 ],
+     [ 'skip_pos', 43.216600000000014 ],
+     [ 'best_before_skip', 970.5006000000001 ],
+     [ 'best_after_skip', 990.5692999999999 ],
+     [ 'max_val', 990.5692999999999 ],
+     [ 'p', 1 ] ]
+
+  For a random dowry of 1+randomInteger(100) we get the expected around 37%:
+
+  expectation:
+  [ [ 'skip_pct', 0.38003008613183814 ],
+    [ 'skip_pos', 37.99980000000001 ],
+    [ 'best_before_skip', 96.69380000000005 ],
+    [ 'best_after_skip', 99.41410000000002 ],
+    [ 'max_val', 99.41410000000002 ],
+    [ 'p', 1 ] ]
+
+  For draw_without_replacement() it's about 43-44%:
+  expectation:
+  [ [ 'skip_pct', 0.43927817310388523 ],
+    [ 'skip_pos', 43.9411 ],
+    [ 'best_before_skip', 97.1167 ],
+    [ 'best_after_skip', 99 ],
+    [ 'max_val', 99 ],
+    [ 'p', 1 ] ]
+
+  For n=10 and 1+randomInteger(10) it's a little lower: about 31%:
+  expectation:
+  [ [ 'skip_pct', 0.31403587483044204 ],
+    [ 'skip_pos', 3.1262999999999987 ],
+    [ 'best_before_skip', 6.509399999999999 ],
+    [ 'best_after_skip', 8.5531 ],
+    [ 'max_val', 8.5531 ],
+    [ 'p', 1 ] ]
+
+  (Cf my (Swedish) page on simulation in R: http://www.hakank.org/sims/simulering.html)
+
+*/
+
+var model = function() {
+
+    var n = 100
+
+    // The position to skip over
+    // (This version use skip_pos as the driver, not a uniform(0,1)'ed skip_pos))
+    var skip_pos = randomInteger(n)
+    var skip_pct = skip_pos/n     
+
+    // Each princess has some random dowry (1..n*v or 0..n-1)
+    // var s = draw_without_replacement2(n,_.range(n),[]) // 0..n-1
+    var s = resample(n,_.range(n)) // This is 0..n-1
+    /*
+    var s = mapN(function(i) {
+        1+randomInteger(n)
+        // 1+randomInteger(n)*2
+        // 1+randomInteger(n*10) 
+        // 1+randomInteger(n*100)        
+    },n)
+    */
+
+    var max_val = _.max(s)
+
+    // Best value before the skip position
+    var best_before_skip = _.max(mapN(function(i) {
+        i <= skip_pos ? s[i] : 0
+    },n))
+
+    // The values after skip position > best value before skip position
+    var ds = _.difference(mapN(function(i) {
+        i > skip_pos && s[i] > best_before_skip  ? s[i] : 0
+    },n),[0])
+
+    // Find the first value > best before skip position
+    var best_after_skip = ds.length > 0 ? _.first(ds) : 0
+    
+    // Did we get the best dowry?
+    var p = best_after_skip == max_val
+
+   
+    // Force that we get the best dowry to get the optimal skip_pct (and skip_pos)
+    condition(p == true)
+    // factor(p == true ? 0 : -2000000)
+
+    
+    return {
+        // n:n,
+        skip_pct:skip_pct,
+        skip_pos:skip_pos,
+        best_before_skip:best_before_skip,
+        best_after_skip:best_after_skip,
+        max_val:max_val,
+        p:p,
+        theoretical:1/Math.exp(1),
+    }
+}
+
+// var d = Infer({method:"enumerate"},model)
+// var d = Infer({method:"rejection",samples:10000},model)
+var d = Infer({method:"SMC",particles:10000,rejuvSteps:0},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:1000},model)
+
+var t = exp_map_all(d,["expectation","marginals","MAP"])

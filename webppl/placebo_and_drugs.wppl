@@ -1,0 +1,128 @@
+/*
+  From Dennis Shasha and Manda Wilson: Statistics is Easy!
+  https://cs.nyu.edu/~shasha/papers/StatisticsIsEasyExcerpt.html
+  """
+  Imagine we have given some people a placebo and others a drug. The measured 
+  improvement (the more positive the better) is:
+  Placebo: 54 51 58 44 55 52 42 47 58 46
+  Drug:    54 73 53 70 73 68 52 65 65
+  As you can see, the drug seems more effective on the average (the average measured 
+  improvement is nearly 63.7 (63 2/3 to be precise) for the drug and 50.7 for the 
+  placebo). But, is this difference in the average real?
+  ...
+  We repeat this shuffle-then-measure procedure 10,000 times and ask what fraction of time 
+  we get a difference between drug and placebo greater than or equal to the measured difference 
+  of 63.7 - 50.7 = 13. The answer in this case is under 0.001. That is less than 0.1%. Therefore, 
+  we conclude that the difference between the averages of the samples is real. 
+  This is what statisticians call significant. 
+  """
+
+  placebo_mean: 50.7 drug_mean: 63.666666666666664 diff_mean: 12.966666666666661
+  all: [ 54, 51, 58, 44, 55, 52, 42, 47, 58, 46, 54, 73, 53, 70, 73, 68, 52, 65, 65 ]
+  labels: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+  expectation:
+  [ [ 'sample_placebo', 56.85731000000001 ],
+    [ 'sample_drug', 56.825211111111074 ],
+    [ 'sample_diff', 3.584852222222217 ],
+    [ 'p', 0.0016000000000000007 ] ]
+
+  Stat for v: sample_diff
+  min: 0.08888888888888857 mean: 6.935368956743005 max: 14.444444444444443 stdev: 4.026395054173355
+
+  Credible interval for sample_diff (99%): [ 0.08888888888888857, 10.888888888888886 ]
+  Credible interval for sample_diff (99.9%): [ 0.08888888888888857, 13.211111111111116 ]
+
+*/
+
+var placebo = [54,51,58,44,55,52,42,47,58,46]
+var drug    = [54,73,53,70,73,68,52,65,65]
+var placebo_mean = listMean(placebo)
+var drug_mean = listMean(drug)
+var diff_mean = drug_mean - placebo_mean
+console.log("placebo_mean:", placebo_mean,"drug_mean:", drug_mean,"diff_mean:", diff_mean)
+// Collect data and labels
+var all = placebo.concat(drug)
+var labels = _.flatten([rep(placebo.length,0),rep(drug.length,1)])
+var len = labels.length
+var placebo_len = placebo.length
+console.log("all:",all)
+console.log("labels:",labels)
+var model = function() {
+    // var sample = draw_without_replacement2(len,all,[]) // shuffle the all array
+    var sample = shuffle2(all)
+    var sample_placebo = listMean(_.take(sample,placebo_len))
+    var sample_drug = listMean(_.drop(sample,placebo_len))   
+    var sample_diff = Math.abs(sample_drug - sample_placebo)
+    
+    // Did we see as great difference between the sample means?
+    var p = sample_diff >= diff_mean
+    
+    return {
+        sample_placebo:sample_placebo,
+        sample_drug:sample_drug,
+        sample_diff:sample_diff,
+        p:p,
+    }
+    
+}
+
+// var d = Infer({method:"rejection",samples:10000},model)
+var d = Infer({method:"SMC",particles:10000},model)
+// display(d)
+exp_map_all(d,["expectation"])
+
+stat2(d,"sample_diff")
+showCredibleInterval(d,"sample_diff",0.99)
+showCredibleInterval(d,"sample_diff",0.999)
+
+/*
+  Calculating confidence intervals, using resample (with replacement)
+
+  By resampling the placebo values and the drug value it is about 50%
+  probability that we see a difference of 13 (or more) between the 
+  two groups.
+
+  Model Using resample (with replacement)
+  expectation:
+  [ [ 'sample_placebo', 50.710269999999994 ],
+    [ 'sample_drug', 63.68971111111115 ],
+    [ 'sample_diff', 12.97944111111111 ],
+    [ 'p', 0.5093 ] ]
+
+  Stat for v: sample_diff
+  min: 1.87777777777778 mean: 12.913964600578762 max: 23.08888888888889 stdev: 4.436248762116351
+
+  Credible interval for sample_diff (90%): [ 7.788888888888884, 18.233333333333327 ]
+  Credible interval for sample_diff (95%): [ 6.700000000000003, 19.133333333333326 ]
+  Credible interval for sample_diff (99%): [ 4.977777777777781, 20.866666666666674 ]
+  Credible interval for sample_diff (99.9%): [ 3.0444444444444443, 22.644444444444446 ]
+
+*/
+console.log("\nModel Using resample (with replacement)")
+var model2 = function() {
+    var sample_placebo = listMean(resample(placebo.length,placebo))
+    var sample_drug = listMean(resample(drug.length,drug))   
+    var sample_diff = sample_drug - sample_placebo // Here we use the actual difference
+    
+    // Did we see as great difference between the sample means?
+    var p = sample_diff >= diff_mean
+    
+    return {
+        sample_placebo:sample_placebo,
+        sample_drug:sample_drug,
+        sample_diff:sample_diff,
+        p:p,
+    }    
+}
+
+// var d2 = Infer({method:"enumerate"},model)
+// var d2 = Infer({method:"rejection",samples:10000},model)
+var d2 = Infer({method:"SMC",particles:10000},model2)
+// display(d2)
+exp_map_all(d2,["expectation"])
+
+stat2(d2,"sample_diff")
+showCredibleInterval(d2,"sample_diff",0.90)
+showCredibleInterval(d2,"sample_diff",0.95)
+showCredibleInterval(d2,"sample_diff",0.99)
+showCredibleInterval(d2,"sample_diff",0.999)

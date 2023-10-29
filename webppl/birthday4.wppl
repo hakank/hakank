@@ -1,0 +1,121 @@
+/*
+  Birthday "paradox", two stage model.
+
+  https://en.wikipedia.org/wiki/Birthday_problem
+  """
+  In probability theory, the birthday problem asks for the probability that, in a set of 
+  n randomly chosen people, at least two will share a birthday. The birthday paradox refers 
+  to the counterintuitive fact that only 23 people are needed for that probability to exceed 50%.
+  """
+
+  The exact probability that at least two people have the same birthdat for 
+  23 people is about 0.507297.
+  
+
+  Here is a two stage version.
+  - the helper model (model1) checks the probability of getting any duplicates for a given n
+  - the main model (model) then checks the different n, and ensures that the 
+    probability is > 0.5. For SMC: it also minimizes the number n (factor(-n) + onlyMAP:true)
+  
+  We get that 23 people is the (minimum) hotspot for p>0.5.
+ 
+  To speed things up, the checks are only for n=1..30 in the second (main) model.
+
+  * With SMC/1000 in model1 and Enumerate in main model (2.1s):
+  n: 30 p: 0.728
+  n: 29 p: 0.694
+  n: 28 p: 0.634
+  n: 27 p: 0.613
+  n: 26 p: 0.578
+  n: 25 p: 0.571
+  n: 24 p: 0.545
+  n: 23 p: 0.537
+  Marginal:
+    {"n":23,"p":0.537} : 0.6323326828120418
+    {"n":24,"p":0.545} : 0.23262219398733283
+    {"n":25,"p":0.571} : 0.08557692272813486
+    {"n":26,"p":0.578} : 0.031481990510397954
+    {"n":27,"p":0.613} : 0.011581577075929848
+    {"n":28,"p":0.634} : 0.00426062410257706
+    {"n":29,"p":0.694} : 0.001567396013897621
+    {"n":30,"p":0.728} : 0.0005766127696870032
+  Marginals:
+  n
+  Marginal:
+    23 : 0.6323326828120424
+    24 : 0.23262219398733305
+    25 : 0.08557692272813493
+    26 : 0.03148199051039798
+    27 : 0.011581577075929859
+    28 : 0.004260624102577063
+    29 : 0.0015673960138976226
+    30 : 0.0005766127696870036
+  p
+  Marginal:
+    0.537 : 0.6323326828120424
+    0.545 : 0.23262219398733305
+    0.571 : 0.08557692272813493
+    0.578 : 0.03148199051039798
+    0.613 : 0.011581577075929859
+    0.634 : 0.004260624102577063
+    0.694 : 0.0015673960138976226
+    0.728 : 0.0005766127696870036
+
+  expectation:
+  [ [ 'n', 23.579292105262596 ], [ 'p', 0.5447110491444943 ] ]
+
+  MAP:
+  [ [ 'n', { val: 23, score: -0.4583396264790052 } ],
+    [ 'p', { val: 0.537, score: -0.4583396264790052 } ] ]
+
+
+  * With SMC/1000 in model1 and SMC/100/onlyMAP:true in main model (3.5s)
+  expectation:
+  [ [ 'n', 23 ], [ 'p', 0.504 ] ]
+
+  MAP:
+  [ [ 'n', { val: 23, score: 0 } ],
+    [ 'p', { val: 0.504, score: 0 } ] ]
+
+
+  Using this model, we can find the number of people for other percentages:
+  - > 0.75: 32 people
+  - > 0.90: 40 people
+  - > 0.95: 48 people
+
+*/
+
+// Check probability of duplicates for a specific n
+var model1 = function(n) {
+    var m = function() {
+        // var v = mapN(function() {randomInteger(365)},n)
+        // var t = _.uniq(v).length
+        // var p = t < n
+        // return p
+        // As a one-liner:
+        return _.uniq(mapN(function() {randomInteger(365)},n)).length < n
+    }
+    // var d = Infer(m) // To slow
+    // var d = Infer({method:"rejection",samples:1000},model)
+    var d = Infer({method:"SMC",particles:1000,rejuvSteps:0},m)
+    return Math.exp(d.score(true))    
+}
+
+// Get the minimum n where p > 0.5
+var model = function() {
+    var n = 1+randomInteger(30)
+    var p = model1(n)
+    condition(p > 0.5)
+    factor(-n) // We prefer n as small as possible n. It's essential when using SMC with onlyMAP:true
+    console.log("n:",n,"p:",p)        
+    return {
+        n:n,
+        p:p,
+    }
+}
+
+var d = Infer(model)
+// var d = Infer({method:"SMC",particles:100,rejuvSteps:0,onlyMAP:true},model) // minimize the number of n
+display(d)
+exp_map_all(d)
+

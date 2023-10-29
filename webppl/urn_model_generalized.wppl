@@ -1,0 +1,147 @@
+/*
+  Generalized Urn model, N-balls
+
+  This is based on the 2-ball model in beta_binomial_urn_model.wppl
+
+  Example:
+  var num_balls = [40,60]
+  var add_balls = [1,1]
+  var num_draws = 10
+
+  num_observed_0
+  Marginal:
+    4 : 0.23909265724376222
+    3 : 0.209702529941373
+    5 : 0.1942168046533943
+    2 : 0.1254470491613571
+    6 : 0.1137989089765983
+    7 : 0.04748072392674402
+    1 : 0.04623522679117768
+    8 : 0.01349754450336877
+    0 : 0.007975576621478148
+    9 : 0.0023602263612448166
+    10 : 0.00019275181950165993
+  num_observed_1
+  Marginal:
+    6 : 0.23909265724376227
+    7 : 0.20970252994137306
+    5 : 0.19421680465339436
+    8 : 0.1254470491613571
+    4 : 0.1137989089765983
+    3 : 0.04748072392674402
+    9 : 0.04623522679117768
+    2 : 0.01349754450336877
+    10 : 0.007975576621478148
+    1 : 0.0023602263612448166
+    0 : 0.00019275181950165993
+  num_runs
+  Marginal:
+    10 : 1
+
+
+  expectation:
+  [ [ 'num_observed_0', 3.9999999999999987 ],
+    [ 'num_observed_1', 6.000000000000001 ],
+    [ 'num_runs', 10 ] ]
+
+*/
+
+
+/*
+  A general Urn model, N balls
+  Given
+   - array of (N) initial balls
+   - array of (N) indicating how many balls to add if the i'th ball type is observed
+     If negative: remove that many balls of the color of the drawn ball. 
+     * > 1: Add some more balls of the same color
+     *  1: Add the draw ball back (draw with replacement)
+     *  0: Do not add any ball (draw without replacement)
+     * < 0: Draw without replacement and remove extra balls of the same color
+   - number of draws
+  Returns
+   - array of N observed balls
+   - array of N left balls
+   - number of runs (might be < N if the add number are negative)
+   - the progression of the draws (an array)
+
+  The runs are terminated (before the N number of runs) if any of the number of balls <= 0.
+ 
+  This uses Enumerate, but it might turn into Rejection if it takes too long.
+
+*/
+var urn_model = function(balls,add_balls,num_draws) {
+    console.log("balls:",balls,"add_balls:",add_balls,"num_draws:",num_draws)
+    var len = balls.length
+
+    var model = function() {
+        // Return the number of observed balls and number of balls that are left.
+        var f = function(num_balls,num_observed, progress,i) {
+            if (i == num_draws || find(function(v) {v <= 0 }, num_balls)) {
+                return [num_observed,num_balls,i,progress]
+            } else {
+                var ball = categorical({ps:num_balls,vs:_.range(len)})
+                // update
+                var new_num_balls = mapN(function(i) {
+                    if (ball == i) {
+                        num_balls[i] + add_balls[i] 
+                    } else {
+                        num_balls[i]
+                    }
+                },len)
+                
+                var new_num_observed = mapN(function(i) {
+                    if (ball == i) {
+                        num_observed[i] + 1
+                    } else {
+                        num_observed[i]
+                    }
+                },len)
+                return f(new_num_balls,new_num_observed,progress.concat([ball]),i+1)
+            }
+        }
+
+        var [num_observed,num_balls_left,num_runs,progress] = f(balls,rep(len,0),[],0)
+        var num_observed_mean = listMean(num_observed)
+        var num_balls_left_mean = listMean(num_balls_left)
+        
+        //
+        // "Explode" the lists into separate entries.
+        //
+        var ret1 = convert_array_to_hash(num_observed,"num_observed")
+        var ret2 = convert_array_to_hash(num_balls_left,"num_balls_left")
+        var ret3 = {
+            // num_observed:num_observed,
+            // num_balls_left:num_balls_left,
+            num_runs:num_runs,
+            // progress:progress,
+            // num_observed_mean:num_observed_mean,
+            // num_balls_left_mean:num_balls_left_mean,
+        }
+        var ret4 = convert_array_to_hash(progress,"progress")                
+        var ret = extend(ret1,ret2,ret3)
+        return ret
+        
+        /*
+        return {
+            num_observed:num_observed,
+            num_balls_left:num_balls_left,
+            num_observed_mean:num_observed_mean,
+            num_balls_left_mean:num_balls_left_mean,
+        }
+        */
+    }
+
+    var d = Infer(model)
+    // var d = Infer({method:"enumerate"},model)
+    // var d = Infer({method:"rejection",samples:10000},model)
+    // var d = Infer({method:"SMC",particles:10000,rejuvSteps:5},model)
+    exp_map_all(d,["marginals","expectation"])
+
+    show_stats(d,"num_observed_0")
+    show_stats(d,"num_observed_1")    
+}
+
+var num_balls = [1,1]
+var add_balls = [1,1]
+var num_draws = 10
+urn_model(num_balls,add_balls,num_draws)

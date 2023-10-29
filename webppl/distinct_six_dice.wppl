@@ -1,0 +1,134 @@
+/*
+  From https://www.quora.com/What-are-the-most-interesting-or-popular-probability-puzzles-in-which-the-intuition-is-contrary-to-the-solution/answer/Justin-Rising
+  """
+  I'm going to flip six standard dice, and count the number of distinct values that come up. 
+  So if the result is (6,5,1,2,4,6) I record a five, and if the result is (6,6,4,1,1,6) I 
+  record a three. What's the probability that I record a four?
+
+  I guarantee that unless you've worked out this puzzle before, your first answer is 
+  going to be pretty far off. See the comments for the right answer.
+
+  Answer:
+  ... 
+  And our final answer (including the extra factor from the first paragraph) is: 65×(64)×4!66≈0.501543209876543
+
+  """
+
+  Marginals:
+  c
+  Marginal:
+    4 : 0.5015432098765408
+    3 : 0.23148148148148262
+    5 : 0.23148148148148262
+    2 : 0.019933127572016592
+    6 : 0.015432098765432079
+    1 : 0.00012860082304526804
+  p
+  Marginal:
+    true : 0.5015432098765409
+    false : 0.4984567901234591
+
+  Here we timing two different approaches for n=6:
+  - model 1: the slower 1+randomInteger(n): 155ms
+  - model 2: the faster using multinomial: 27ms
+
+  
+  Timings for for n=10
+  - model 1: 5028ms (including time out 5s and then rejection/100)
+  - model 2: 1892ms
+
+  Model 1 1+randomInteger(n):
+  Enumerate timeout: max time was set to 5000..quit enumerate
+  Using "rejection"
+  Marginals:
+  c
+  Marginal:
+    7 : 0.369
+    6 : 0.34099999999999997
+    8 : 0.132
+    5 : 0.11800000000000002
+    4 : 0.022
+    9 : 0.017000000000000005
+    10 : 0.0010000000000000002
+  p
+  Marginal:
+    false : 0.978
+    true : 0.022
+
+  expectation:
+  [ [ 'c', 6.526000000000001 ], [ 'p', 0.022 ] ]
+
+  Model 1 time:  5028
+
+  Model 2 multinomial:
+  Marginals:
+  c
+  Marginal:
+    7 : 0.35562239999999945
+    6 : 0.34514424000000055
+    8 : 0.13607999999999942
+    5 : 0.12859560000000025
+    4 : 0.01718892000000045
+    9 : 0.016329599999999972
+    3 : 0.0006717600000000091
+    10 : 0.0003628799999999988
+    2 : 0.000004598999999999989
+    1 : 9.999999999999937e-10
+  p
+  Marginal:
+    false : 0.9828110799999995
+    true : 0.01718892000000045
+
+  expectation:
+  [ [ 'c', 6.513215598999997 ], [ 'p', 0.01718892000000045 ] ]
+
+
+
+*/
+
+var n = 6
+// var n = 10
+
+var start1 = Date.now()
+// This is too slow (and switches to Rejection).
+// It generates all the permutations n!
+//
+console.log("\nModel 1 1+randomInteger(n):")
+var model = function() {
+    var x = repeat(n,function() {1+randomInteger(n)})
+    var c = _.uniq(x).length
+    var p = c == 4
+    return {
+        // x:x,
+        c:c,
+        p:p,
+    }
+}
+
+var d = Infer(model)
+exp_map_all(d)
+
+var end1 = Date.now()
+console.log("Model 1 time: ", end1-start1)
+
+
+var start2 = Date.now()
+console.log("\nModel 2 multinomial:")
+// This is much faster, using multinomial
+var model2 = function() {
+    var x = multinomial(simplex(rep(n,1)),n)
+    var c = sum(map(function(v) { v > 0 }, x))
+
+    var p = c == 4
+    return {
+        // x:x,
+        c:c,
+        p:p,
+    }
+}
+
+var d2 = Infer(model2)
+exp_map_all(d2)
+
+var end2 = Date.now()
+console.log("Model 2 time:: ", end2-start2)

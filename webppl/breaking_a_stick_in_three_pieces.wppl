@@ -1,0 +1,89 @@
+/*
+  https://math.stackexchange.com/questions/3872156/uniformly-at-random-break-a-unit-stick-in-two-places-what-is-the-probability-t
+  """
+  Uniformly at random, break a unit stick in two places. What is the probability that the smallest piece is ≤1/5
+?
+
+  I was asked this in an interview and wasn't sure how to solve it:
+
+     Consider a stick of length 1
+     . Select two points independently and uniformly at random on the stick. Break the stick at these 
+       two points, resulting in 3 smaller pieces. What is the probability that the smallest of these 
+       pieces is <= 1/5?
+  """
+  
+  Answer: 21/25 = 0.84
+
+  expectation:
+  [ [ 'b1', 0.3380634282081289 ],
+    [ 'b2', 0.31500407324828034 ],
+    [ 'piece1', 0.16131011282180163 ],
+    [ 'piece2', 0.49175738863461 ],
+    [ 'piece3', 0.3469324985435933 ],
+    [ 'min_piece', 0.10986573129370528 ],
+    [ 'p', 0.8407999999999998 ] ]
+
+  And see below for a simpler version using Dirichlet distribution
+
+*/
+
+
+var model = function() {
+    var b1 = uniform(0,1) // break 1
+    var b2 = uniform(0,1) // break 2
+
+    var piece1 = Math.min(b1,b2)
+    var piece2 = Math.max(b1,b2)
+    var piece3 = 1-piece1-piece2
+    condition(piece3 >= 0)
+    var min_piece = _.min([piece1,piece2,piece3])
+    var p = min_piece <= 1/5
+
+    return {
+        b1:b1,
+        b2:b2,
+        piece1:piece1,
+        piece2:piece2,
+        piece3:piece3,
+        min_piece:min_piece,
+        p:p,
+        
+        
+    }
+}
+
+var d = Infer({method:"rejection",samples:1000},model)
+// var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+exp_map_all(d,["expectation"])
+
+
+/*
+  Model 2 using Dirichlet dist
+  expectation:
+  [ [ 'min_piece', 0.1105102225130279 ],
+    [ 'p', 0.8381999999999992 ] ]
+
+  Credible interval for min_piece (90%): [ 0.000018355018113749378, 0.2270746695777767 ]
+  Credible interval for min_piece (95%): [ 0.000018355018113749378, 0.25992480852834215 ]
+  Credible interval for min_piece (99%): [ 0.00004554546256753576, 0.2994057009026217 ]
+
+*/
+console.log("\nModel 2 using Dirichlet dist")
+var model2 = function() {
+    var sticks = dirichlet(Vector([1,1,1])) // Must be a Vector
+    var min_piece = _.min(sticks.data)
+    var p = min_piece <= 1/5
+    return {
+        min_piece:min_piece,
+        p:p,
+    }
+}
+
+// var d2 = Infer(model2)
+// var d2 = Infer({method:"rejection",sample:1000},model2)
+var d2 = Infer({method:"SMC",particles:1000,rejuvSteps:5},model2)
+exp_map_all(d2,["expectation"])
+
+showCredibleInterval(d2,"min_piece",0.90)
+showCredibleInterval(d2,"min_piece",0.95)
+showCredibleInterval(d2,"min_piece",0.99)

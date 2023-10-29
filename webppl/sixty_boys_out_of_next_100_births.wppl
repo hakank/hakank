@@ -1,0 +1,102 @@
+/*
+  From http://www.statistics101.net/statistics101web_000007.htm
+  """
+  From CliffsQuickReview Statistics, p. 60, example 4 
+  Assuming an equal chance of a new baby being a  
+  boy or a girl (that is pi=0.5), what is the 
+  likelihood that 60 or more out of the next 100 
+  births at a local hospital will be boys? 
+  The answer computed from the cumulative 
+  binomial distribution is 0.02844. The book's answer, 
+  0.0228, is based on the normal approximation to the  
+  binomial, and is therefore somewhat in error. 
+  """
+
+  Three methods:
+  - resampling
+  - binomial
+  - gaussian approximation
+
+  Resampling.
+
+  expectation:
+  [ [ 's', 50.0499 ], 
+    [ 'p', 0.028599999999999993 ] ]
+
+*/
+
+// Resampling
+var model = function() {
+    var sample = resample(100,[0,1]) // 0: girl, 1: boy
+    var s = sum(sample)
+    var p = s >= 60
+    return {
+        s:s,
+        p:p,
+    }
+}
+
+var d = Infer({method:"SMC",particles:10000},model)
+exp_map_all(d,["expectation"])
+
+/*
+  Using binomial, exact
+  p
+  Marginal:
+    false : 0.9715560331795108
+    true : 0.028443966820489202
+
+  expectation:
+  [ [ 's', 50.00000000000001 ], 
+    [ 'p', 0.028443966820489202 ] ]
+
+
+ */
+console.log("\nModel 2 using binomial (exact)")
+var model2 = function() {
+    var s = binomial(0.5,100)
+    var p = s >= 60
+    return {
+        s:s,
+        p:p,
+    }    
+}
+
+var d2 = Infer({method:"enumerate"},model2)
+exp_map_all(d2,["expectation"])
+
+/*
+  Model 3 using Gaussian
+  expectation:
+  [ [ 's', 49.97033616391796 ], 
+    [ 'p', 0.02479999999999992 ] ]
+
+*/
+console.log("\nModel 3 using Gaussian")
+var model3 = function() {
+    var mu = 100*0.5
+    var sigma = Math.sqrt(100*0.5*(1-0.5))
+    var s = gaussian(mu, sigma)
+    var p = s >= 60
+    return {
+        s:s,
+        p:p,
+    }    
+}
+
+var d3 = Infer({method:"SMC",particles:10000,rejuvSteps:5},model3)
+exp_map_all(d3,["expectation"])
+
+/*
+  Using CDF
+  According to ChatGPT-4 it should be 59.5 "for continuity correction", i.e. 
+  for compensating that we are using a continuous distribution to approximate
+  a the discrete binomial distribution.
+
+  1-gaussian_cdf(50,5,59.5): 0.028716493915579067
+  1-gaussian_cdf(50,5,60): 0.02275006288725634
+
+*/
+console.log("\nUsing Gaussian CDF:")
+console.log("1-gaussian_cdf(50,5,59.5):",1-gaussian_cdf(50,5,59.5))
+console.log("1-gaussian_cdf(50,5,60):",1-gaussian_cdf(50,5,60))

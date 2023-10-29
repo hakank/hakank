@@ -1,0 +1,125 @@
+/*
+  Pill puzzle
+
+  https://en.wikipedia.org/wiki/Pill_puzzle
+  """
+  The pill jar puzzle is a probability puzzle, which asks the expected value of the number of 
+  half-pills remaining when the last whole pill is popped from a jar initially containing n 
+  whole pills and the way to proceed is by removing a pill from the bottle at random. 
+  If the pill removed is a whole pill, it is broken into two half pills. One half pill is 
+  consumed and the other one is returned to the jar. If the pill removed is a half pill, 
+  then it is simply consumed and nothing is returned to the jar.
+  ...
+
+  The expected value is then given by, E(X1) + E(X2) + ... + E(Xn). 
+  Since E(Xk) = P(Xk = 1) = 1/(n − k + 1), the sought expected value is 
+  1/n + 1/(n − 1) + 1/(n − 2) + ... + 1 = Hn (the nth harmonic number).
+  """
+
+  Enumerate does not give the correct solution (Harmonic number).
+
+  Rejection/1000:
+  half
+  Marginal:
+    1 : 0.23860000000000006
+    2 : 0.23710000000000003
+    3 : 0.20040000000000002
+    4 : 0.14320000000000002
+    5 : 0.0942
+    6 : 0.0514
+    7 : 0.023399999999999997
+    8 : 0.009200000000000002
+    9 : 0.0022000000000000006
+    10 : 0.0003000000000000001
+  h
+  Marginal:
+    2.9289682539682538 : 1
+
+  expectation:
+  [ [ 'n', 10 ], 
+    [ 'half', 2.9264 ], 
+    [ 'h', 2.9289682539682538 ] ]
+
+  * Enumerate 
+    For small values, Enumerate can solve it in reasonable time. Here's for n= (2.2s)
+    half
+    Marginal:
+      1 : 0.3055388888888877
+      2 : 0.3055388888888877
+      3 : 0.22737222222222433
+      4 : 0.12315000000000025
+      5 : 0.03839999999999998
+    h
+    Marginal:
+      2.283333333333333 : 1
+
+    expectation:
+    [ [ 'n', 5 ],
+      [ 'half', 2.2833333333333368 ],
+      [ 'h', 2.283333333333333 ] ]
+
+  For n=6 it takes 37.7s
+  half
+  Marginal:
+    1 : 0.2842364197530893
+    2 : 0.2842364197530893
+    3 : 0.22032901234567043
+    4 : 0.1351191358024709
+    5 : 0.0606469135802479
+    6 : 0.015432098765432216
+  h
+  Marginal:
+    2.45 : 1
+
+  expectation:
+  [ [ 'n', 6 ], 
+    [ 'half', 2.4499999999999953 ], 
+    [ 'h', 2.45 ] ]
+
+
+*/
+
+var model = function() {
+    var n = 10 // Initial number of (whole) pills
+
+    var f = function(a) {
+        var w = count('w',a)
+        if (w == 0 ) {
+            // How many half pills are left?
+            return count('h',a)
+        } else {
+            // Pick a pill at random
+            var len = a.length
+            var pick = randomInteger(len)
+            var val = a[pick]
+            // Remove that pill (I don't know a pure functional way to do this).
+            // This is quite slow:
+            var v = _.range(len)            
+            var filtered = filter(function(i) { i !== pick},v)
+            var new_a = map(function(v) {a[v]}, filtered)
+            // Faster (but splice is inline)
+            // var new_a = a
+            // new_a.splice(pick,1)
+            if (val == 'w') {
+                // It was a whole pill: Add a half pill
+                return f(['h'].concat(new_a))
+            } else {
+                // Half pill: Just remove it
+                return f(new_a)
+            }
+        }
+    }
+    var init = rep(n,"w")
+    var half = f(init)
+    var h = harmonic_number(n)
+    return {
+        n:n,
+        half:half,
+        h:h,
+    }
+}
+
+// var d = Infer({method:"enumerate"},model) 
+var d = Infer({method:"rejection",samples:10000},model)
+// var d = Infer({method:"SMC",particles:10000,rejuvSteps:0},model)
+exp_map_all(d)

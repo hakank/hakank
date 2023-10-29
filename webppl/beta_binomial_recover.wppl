@@ -1,0 +1,83 @@
+/*
+  Beta binomial recovering parameters
+
+  Data and parameters from
+  https://en.wikipedia.org/wiki/Beta-binomial_distribution#Example
+
+  var x
+  min: 0
+  listMean: 6.1644
+  max: 12
+  listVar: 3.438172640000002
+  listStdev: 1.8542310104191446
+  Percentiles:
+  [ [ 0, 0 ],
+    [ 1, 2 ],
+    [ 2.5, 3 ],
+    [ 10, 4 ],
+    [ 25, 5 ],
+    [ 50, 6 ],
+    [ 75, 7 ],
+    [ 90, 9 ],
+    [ 97.5, 10 ],
+    [ 99, 10 ],
+    [ 100, 12 ] ]
+
+  hist: [ 1, 0, 31, 188, 567, 1104, 1694, 2089, 1921, 1372, 706, 260, 65, 2 ]
+  hist (adjusted): [ 1, 0, 19, 115, 347, 675, 1036, 1277, 1175, 839, 432, 159, 40, 1 ]
+  [ 'males:', 0, 'data:', 3, 'est:', 1, 'diff:', 2 ]
+  [ 'males:', 1, 'data:', 24, 'est:', 0, 'diff:', 24 ]
+  [ 'males:', 2, 'data:', 104, 'est:', 19, 'diff:', 85 ]
+  [ 'males:', 3, 'data:', 286, 'est:', 115, 'diff:', 171 ]
+  [ 'males:', 4, 'data:', 670, 'est:', 347, 'diff:', 323 ]
+  [ 'males:', 5, 'data:', 1033, 'est:', 675, 'diff:', 358 ]
+  [ 'males:', 6, 'data:', 1343, 'est:', 1036, 'diff:', 307 ]
+  [ 'males:', 7, 'data:', 1112, 'est:', 1277, 'diff:', -165 ]
+  [ 'males:', 8, 'data:', 829, 'est:', 1175, 'diff:', -346 ]
+  [ 'males:', 9, 'data:', 478, 'est:', 839, 'diff:', -361 ]
+  [ 'males:', 10, 'data:', 181, 'est:', 432, 'diff:', -251 ]
+  [ 'males:', 11, 'data:', 45, 'est:', 159, 'diff:', -114 ]
+  [ 'males:', 12, 'data:', 7, 'est:', 40, 'diff:', -33 ]
+
+*/
+
+var males    = [0, 1,  2,  3,  4,   5,  6,    7,  8,  9, 10,11,12]
+var families = [3,24,104,286,670,1033,1343,1112,829,478,181,45,7]
+var num_families = sum(families)
+var families_pct = map(function(v) { v/num_families}, families)
+console.log("families:",families)
+var model = function() {
+    // Note that using non integer value does not give proper pdf and cdf so it's
+    // probably not a good idea to use them when generating either...
+    var a = 34 // 34.09558 // 34.1350
+    var b = 32 // 31.5715 // 31.6085
+    var x = beta_binomial_dist(12,a,b)
+    return {
+        a:a,
+        b:b,
+        x:x,
+    }
+}
+
+// var d = Infer({method:"SMC",particles:1000,rejuvSteps:5},model)
+var d = Infer({method:"rejection",samples:10000},model)
+// var d = Infer({method:"MCMC",kernel:"HMC",samples:10000},model)
+exp_map_all(d,["marginals","expectation"])
+
+var qs = [0,1,2.5,10,25, 50, 75,90,97.5,99,100];
+show_stats1(d,"x",qs)
+
+// Get a histogram of the generated data and compare with families data
+var hist = histogram1(getSamples(d,"x"),13).bins
+console.log("hist:",hist)
+var num_hist = sum(hist)
+var hist_pct = map(function(v) { v / num_hist}, hist)
+console.log("hist (adjusted):",map(function(v) {Math.round(v*num_families)},hist_pct))
+var t = mapN(function(i) {
+    // Adjust for different number of samples
+    var f = families[i] // Math.round(families_pct[i]*num_families);
+    var est = Math.round(hist_pct[i]*num_families);
+    var diff = f-est;
+    console.log(["males:",i,"data:",f,"est:",est,"diff:",diff])
+},13);
+

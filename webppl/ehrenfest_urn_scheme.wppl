@@ -1,0 +1,142 @@
+/*
+  Ehrenfest urn scheme
+
+  From Polya Urn Models, page 21
+  """
+  An Ehrenfest urn starts out with one white and one blue ball. Balls are sampled from 
+  the urn. Whenever a ball of a certain color is picked, we discard that ball and replace 
+  in the urn a ball of the opposite color. The urn always returns to the initial state 
+  after an even number of draws, and is always out of that state after an odd number 
+  of draws. When it is out of the initial state, it can be in one of two equally 
+  probable states: A state with two white balls or a state with two blue balls.
+  """
+
+  Here we randomize the number of even and odd draws: 
+  (0..2..8) and (1..2..9) draws, respectively.
+
+  Enumerate:
+
+  Marginals:
+  num_white_even
+  Marginal:
+    1 : 1
+  num_blue_even
+  Marginal:
+    1 : 1
+  num_white_odd
+  Marginal:
+    0 : 0.5
+    2 : 0.5
+  num_blue_odd
+  Marginal:
+    0 : 0.5
+    2 : 0.5
+  even
+  Marginal:
+    [1,1] : 1
+  odd
+  Marginal:
+    [0,2] : 0.5
+    [2,0] : 0.5
+  even_draws
+  Marginal:
+    0 : 0.20000000000000015
+    2 : 0.20000000000000012
+    4 : 0.2
+    6 : 0.19999999999999993
+    8 : 0.1999999999999999
+  odd_draws
+  Marginal:
+    1 : 0.20000000000000015
+    3 : 0.20000000000000012
+    5 : 0.2
+    7 : 0.19999999999999993
+    9 : 0.1999999999999999
+
+  expectation:
+  [ [ 'num_white_even', 1 ],
+    [ 'num_blue_even', 1 ],
+    [ 'num_white_odd', 1 ],
+    [ 'num_blue_odd', 1 ],
+    [ 'even', NaN ],
+    [ 'odd', NaN ],
+    [ 'even_draws', 3.999999999999999 ],
+    [ 'odd_draws', 4.999999999999999 ] ]
+
+  If we start with 2 white and 2 blue balls the states are
+
+  even
+  Marginal:
+    [2,2] : 0.7999999999999999
+    [0,4] : 0.09999999999999998
+    [4,0] : 0.09999999999999998
+  odd
+  Marginal:
+    [3,1] : 0.5000000000000002
+    [1,3] : 0.49999999999999983
+
+  For [3,3]:
+  even
+  Marginal:
+    [3,3] : 0.7093735711019662
+    [5,1] : 0.14531321444901693
+    [1,5] : 0.14531321444901685
+  odd
+  Marginal:
+    [2,4] : 0.4757811309251642
+    [4,2] : 0.4757811309251634
+    [0,6] : 0.024218869074836172
+    [6,0] : 0.024218869074836172
+
+  For [1,2]
+  even
+  Marginal:
+    [1,2] : 0.8062490474013106
+    [3,0] : 0.19375095259868944
+  odd
+  Marginal:
+    [2,1] : 0.7312503175328964
+    [0,3] : 0.2687496824671038
+
+*/
+
+var model = function() {
+    var f = function(n,num_white,num_blue) {
+        if (n == 0) {
+            return [num_white,num_blue]
+        } else {
+            // Adjust for negative number of balls
+            var num_white2 = num_white <=  0 ? 0 : num_white 
+            var num_blue2 = num_blue <=  0 ? 0 : num_blue
+            if (flip(num_white2/(num_white2+num_blue2))) {
+                // White ball
+                return f(n-1,num_white2-1,num_blue2+1)
+            } else {
+                // Blue ball
+                return f(n-1,num_white2+1,num_blue2-1)
+            }
+        }
+    }
+
+    // Generate even and odd number of draws
+    var even_draws = 2*randomInteger(5)
+    var odd_draws = 2*randomInteger(5)+1
+
+    var white_init = 1
+    var blue_init = 2
+    var [num_white_even,num_blue_even] = f(even_draws,white_init,blue_init)
+    var [num_white_odd,num_blue_odd] = f(odd_draws,white_init,blue_init)    
+    return {
+        num_white_even:num_white_even,
+        num_blue_even:num_blue_even,
+        num_white_odd:num_white_odd,
+        num_blue_odd:num_blue_odd,
+        even:[num_white_even,num_blue_even],
+        odd:[num_white_odd,num_blue_odd],
+        even_draws:even_draws,
+        odd_draws:odd_draws,
+    }
+}
+
+var d = Infer({method:"enumerate"},model)
+exp_map_all(d)
