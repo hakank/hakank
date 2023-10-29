@@ -1,0 +1,156 @@
+/* 
+
+  Coin payments in Picat.
+
+  From https://dmcommunity.org/challenge/challenge-oct-2023/
+  """
+  Suppose you need to pay 1 Euro. In how many different ways you can do it via 
+  1c, 2c, 5c, 10c, 20c, 50c and 1 Euro coins?
+
+  Send your solutions to DecisionManagementCommunity@gmail.com.
+  """
+  
+  Here are three different approaches:
+  * go/0: Constraint modeling using scalar_product/3
+  * go2/0: Constraint modeling using list comprehension
+  * go3/0: Constraint modeling using named variables 
+  * go3/0: Brute force "Prolog" (Logic Programming) style using member/2 for
+           generating the candidate lists.
+
+  Output (last line is the total time)
+    go = 4563
+    CPU time 0.0 seconds.
+
+    go = 4563
+    CPU time 0.002 seconds.
+
+    go2 = 4563
+    CPU time 0.001 seconds.
+
+    go4 = 4563
+    CPU time 0.0 seconds.
+
+    go5 = 4563
+    CPU time 0.371 seconds.
+
+    CPU time 0.374 seconds. Backtracks: 15750
+
+
+  The three constraint modeling approaches takes about the same time (0.001-0.002s),
+  the dynamic programming approach tends to be slightly faster: 0.000-0.001s..
+  The brute force approach is - unsurprisingly - slower: about 0.38s
+
+  Personally, I tend to use one of the constraint modeling approaches, either the scalar product (go/0) 
+  or using list comprehensions (go2/0).
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main =>
+  time(go), % scalar product
+  time(go2), % list comprehension
+  time(go3), % individual named variables
+  time(go4), % dynamic programming (with tabling)
+  time(go5), % brute force with member/2 to generate the candidates
+  nl.
+
+%
+% Constraint programming
+% Using scalar_product/3
+% 
+go :-
+  coins(Coins),
+  X = new_list(Coins.length),
+  X :: 0..100,
+  scalar_product(Coins, X, 100),
+  println(go=solve_all($[degree,updown],X).length).
+
+%
+% Constraint programming
+% using list comprehension
+%
+go2 :-
+   coins(Coins),
+   N = Coins.len,
+   X = new_list(N),
+   X :: 0 .. 100,
+   sum([X[I]*Coins[I] : I in 1..N]) #= 100,
+   println(go3=solve_all($[degree,updown],X).length).
+
+
+%
+% Constraint programming
+% Separate variables for the denominations.
+% 
+go3 :- 
+   Coins = [A,B,C,D,E,F,G],
+   Coins :: 0 .. 100,
+   1*A + 2*B + 5*C + 10*D + 20*E + 50*F + 100*G #= 100,
+   println(go2=solve_all($[degree,updown],Coins).length).
+
+%
+% Dynamic programming
+%
+go4 :-
+  coins(Coins),
+  C = coins(Coins, 100, 1),
+  println(go4=C).
+
+
+%
+% "Prolog style", brute force.
+% Without the sanity check in the loop, it takes about 20s instead of about 0.4s
+% 
+go5 :-
+  Map = get_global_map(), 
+  Map.put(count,0),
+  
+  coins(Coins),
+  N = Coins.len,
+  V = new_list(N),
+  % Generate a list of the number of each coin
+  foreach(I in 1..N)
+    member(V[I],0..(100 div Coins[I])), 
+    sum([V[J]*Coins[J] : J in 1..I]) <= 100 % Sanity check
+  end,
+  100 = sum([V[J]*Coins[J] : J in 1..N]),
+
+  % Update the count
+  Map.put(count,Map.get(count)+1),
+  fail, % Generate a new solution
+  nl.
+
+% Print the count
+go5 :-
+  println(go5=get_global_map().get(count)).
+
+
+
+% For go4/0: Dynamic programming (with tabling)
+% without table: 0.048s
+% with table: 0.000s
+table
+coins(Coins, Money, M) = Sum =>
+  Sum1 = 0,
+  Len = Coins.length,
+  if M == Len then
+    Sum1 := 1
+   else 
+     foreach(I in M..Len)
+       if Money - Coins[I] == 0 then
+          Sum1 := Sum1 + 1
+       end,
+       if Money - Coins[I] > 0 then
+          Sum1 := Sum1 + coins(Coins, Money-Coins[I], I)
+       end
+     end
+  end,
+  Sum = Sum1.
+
+
+
+coins([1,2,5,10,20,50,100]).
