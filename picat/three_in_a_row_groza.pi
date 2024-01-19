@@ -1,0 +1,124 @@
+/* 
+
+  Three in a row puzzle (Groza) in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 92. Three in a row
+
+  Fill a 6 × 6 grid with Blue and White squares. When the puzzle is complete each
+  row and column has an equal number of Blue and White squares. There will be no
+  sequence of 3-In-A-Row squares of the same color (Fig. 9.5).
+  """  
+
+    _ w _ _ b _
+    b _ _ _ b _
+    _ _ _ _ _ _
+    _ _ _ _ _ w
+    b _ _ _ _ w
+    b _ _ _ _ _
+
+  Here is the unique solution:
+
+  w w b w b b
+  b b w w b w
+  w w b b w b
+  w b b w b w
+  b b w b w w
+  b w w b w b
+
+
+  See go2/0 for the number of solutions in the general case (without any hints).
+
+
+  Cf 
+   - 3_in_a_row.pi: Same problem but with a different hint matrix
+   - binoxxo.pi: Which has the additional constraint that each row and column must be unique
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+  
+  puzzle(1,X),
+  N = X.len,
+  three_in_a_row(N,X),
+  foreach(Row in X)
+    println([V : R in Row, V=cond(R==1,"b","w")].join(' '))
+  end,
+  nl,
+  fail,
+  nl.
+
+/*
+  Without any hints there are 11222 solutions for the 6x6 grid.
+
+  Some small N:
+
+  N     #sols
+  -----------
+  4        90
+  6     11222
+  8  12413918
+
+  (This is not in OEIS.)
+
+*/
+go2 => 
+  member(N,4..2..8),
+  time(println(N=count_all(three_in_a_row(N,_X)))),
+  fail,
+  nl.
+
+three_in_a_row(N,X) =>
+  X = new_array(N,N),
+  X :: 0..1, % 0: White 1: Blue
+
+  M = N div 2,
+
+  foreach(I in 1..N)
+    % Equal number of White and Blue in rows and columns
+    sum([X[I,J] : J in 1..N]) #= M,
+    sum([X[J,I] : J in 1..N]) #= M,
+
+    % No 3 of 0/1 in rows or columns
+    sliding_sum(1,2,3,[X[I,J] : J in 1..N]),
+    sliding_sum(1,2,3,[X[J,I] : J in 1..N])
+    
+  end,
+
+  solve(X.vars).
+
+
+puzzle(1,Puzzle) :-
+  W = 0,
+  B = 1,
+  Puzzle = {{_,W,_,_,B,_},
+            {B,_,_,_,B,_},
+            {_,_,_,_,_,_},
+            {_,_,_,_,_,W},
+            {B,_,_,_,_,W},
+            {B,_,_,_,_,_}}.
+
+%
+% From sliding_sum.pi
+%
+% Note: Seq must be instantiated, but neither Low or Up has
+% to be (the result may be weird unless they are, though).
+%
+sliding_sum(Low, Up, Seq, Variables) =>
+  foreach(I in 1..Variables.length-Seq+1)
+    Sum #= sum([Variables[J] : J in I..I+Seq-1]),
+    Sum #>= Low,
+    Sum #=< Up
+  end.
+
+

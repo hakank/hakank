@@ -1,0 +1,615 @@
+/* 
+
+  Additive numbers in Picat.
+
+  From https://theweeklychallenge.org/blog/perl-weekly-challenge-224/#TASK2
+  """
+  Task 2: Additive Number
+  Submitted by: Mohammad S Anwar
+
+  You are given a string containing digits 0-9 only.
+
+  Write a script to find out if the given string is additive number. An additive number 
+  is a string whose digits can form an additive sequence.
+
+  A valid additive sequence should contain at least 3 numbers. Except the first 2 numbers, 
+  each subsequent number in the sequence must be the sum of the preceding two.
+
+
+  Example 1:
+
+  Input: $string = "112358"
+  Output: true
+
+  The additive sequence can be created using the given string digits: 1,1,2,3,5,8
+  1 + 1 => 2
+  1 + 2 => 3
+  2 + 3 => 5
+  3 + 5 => 8
+
+  Example 2:
+
+  Input: $string = "12345"
+  Output: false
+
+  No additive sequence can be created using the given string digits.
+
+  Example 3:
+
+  Input: $string = "199100199"
+  Output: true
+
+  The additive sequence can be created using the given string digits: 1,99,100,199
+   1 +  99 => 100
+  99 + 100 => 199
+  """
+
+
+  Here are three versions:
+  - additive_numbers_cp/2: This was my first approach. Very slow.
+  - additive_numbers/1: Slow but much faster than additive_numbers_cp/2
+  - additive_numbers2/1: Much faster than additive_numbers/1 and is the one that's
+    used in go/0 for checking larger instances.
+
+  * go/0: General test of larger instances
+  * go2/0: Testing additive_numbers/1 (slow)
+  * go3/0: Testing additive_numbers2/1 (fast)
+  * go4/0: Testing invalid strings with additive_numbers2/2.
+  * go_cp/0: Testing additive_numbers_cp/2. Very slow.
+
+  Note: This is quite fast for valid additive strings. Checking an invalid string
+        might take some time since it have to test all possible solutions; for
+        additive_numbers2/1 this means checking all possible initial numbers.
+        See go4/0 for some tests on this.
+
+
+  See below for some examples. 
+
+  For an example of the [1,1] with a Limit 10**100, see http://hakank.org/picat/additive_numbers_1_1_10_pow_100.txt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+
+/*
+
+  Benchmarking additive_numbers2/1
+
+  Using [1,1] as init and different Limits (it the penultimate number in the generated list).
+  Note that Limit is the value of the penultimate number in the generated list (perhaps
+  it should be the length of the generated string, or the number of generated elements 
+  instead.)
+
+  Limit     #chars    #elements   Time (s)
+  ------------------------------------
+   10**100    24299    481         0.165
+   10**200    96347    959         1.230
+   10**300   216444   1438         4.093
+   10**400   384092   1916        13.448
+   10**500   599990   2395        25.223
+   10**600   863239   2873        43.230
+   10**700  1174938   3352        72.264
+   10**800  1533787   3830       111.570 
+   10**900  1941286   4309       164.986
+  10**1000  2395736   4787       224.085
+
+
+*/
+go =>
+  Print = true,
+  Print := false,
+  _ = random2(),
+  
+  % _ = random(112),
+  P = random(1,10**1000),
+  Q = random(P,10**1000),
+  garbage_collect(500_000_000),
+
+  % Generate instance
+  
+  % [SList,S] = make_seq(1,1,10**100), % 24299 chars (481 elements), 0.165s
+  % [SList,S] = make_seq(1,1,10**200), % 96347 chars (959 elements), 1.23s
+  % [SList,S] = make_seq(1,1,10**300), % 216444 chars (1438 elements), 3.977s
+  % [SList,S] = make_seq(1,1,10**400), % 384092 chars (1916 elements), 13.448s
+  % [SList,S] = make_seq(1,1,10**500), % 599990 chars (2395 elements), 25.223s
+  % [SList,S] = make_seq(1,1,10**600), % 863239 chars (2873 elements), 43.23s
+  % [SList,S] = make_seq(1,1,10**700), % 1174938 chars (3352 elements), 72.264s
+  % [SList,S] = make_seq(1,1,10**800), % 1533787 chars (3830 elements), 111.57s
+  % [SList,S] = make_seq(1,1,10**900), % 1941286 chars (4309 elements), 164.986s
+  % [SList,S] = make_seq(1,1,10**1000), %  2395736 chars (4787 elements), 224.085s
+  
+  % [SList,S] = make_seq(5,21,10**20),
+  % [SList,S] = make_seq(11,28,10**10),
+  % [SList,S] = make_seq(123456789012345,9876543210985,10**20),
+  % [SList,S] = make_seq(6425443760,2332203635,10**100),
+  
+  [SList,S] = make_seq(P,Q,10**100), % Random instance
+
+  % TEST (make an invalid string)
+  % S := S ++ "1",
+
+  if S.len < 200 then
+    Print := true
+  end,
+  if Print then println(s=S) end,
+  println(len=S.len),
+  println(init=SList[1..2]),
+  if time(Nums = additive_numbers2(S)) then
+    if Print then println(n=Nums) end,
+    println(len=Nums.len),
+    if Nums == SList then
+      println(ok),
+      println([init=Nums[1..2],last=Nums.last,string_len=S.len,solution_len=Nums.len])
+    else
+      println(not_ok)
+    end
+  else
+    println(no_solution)
+  end,
+  nl.
+
+/*
+  additive_numbers/1
+
+  For most of these instances, additive_numbers/1 is fast, but for larger instances it's 
+  much slower than additive_numbers2/1.
+  For examples, the last instance is solved in 0s using additive_number2/1 
+  (vs 5.1s using additive_numbers/1).
+
+  s = 112358
+
+  CPU time 0.0 seconds.
+
+  [1,1,2,3,5,8]
+
+  s = 12345
+
+  CPU time 0.0 seconds.
+
+  no_solution
+
+  s = 199100199
+
+  CPU time 0.0 seconds.
+
+  [1,99,100,199]
+
+  s = 99182745721171893064958011296
+
+  CPU time 0.0 seconds.
+
+  [9,9,18,27,45,72,117,189,306,495,801,1296]
+
+  s = 9918274572117189306495801129620973393549088831437323256376296088598514159399
+
+  CPU time 0.001 seconds.
+
+  [9,9,18,27,45,72,117,189,306,495,801,1296,2097,3393,5490,8883,14373,23256,37629,60885,98514,159399]
+
+  s = 11283967106173279452731118319143097501181081311921227343465557389919145492235411380903616314997217161353126107484224279683502711059306178943332895363946847972758016111226495831984511943211007775195519718406527481360204719220085746735610621865761919653932298183915084901492
+
+  CPU time 5.162 seconds.
+
+  [11,28,39,67,106,173,279,452,731,1183,1914,3097,5011,8108,13119,21227,34346,55573,89919,145492,235411,380903,616314,997217,1613531,2610748,4224279,6835027,11059306,17894333,28953639,46847972,75801611,122649583,198451194,321100777,519551971,840652748,1360204719,2200857467,3561062186,5761919653,9322981839,15084901492]
+
+*/
+go2 =>
+  member(S,["112358",
+            "12345",
+            "199100199",
+            "99182745721171893064958011296",
+            "9918274572117189306495801129620973393549088831437323256376296088598514159399",
+            "11283967106173279452731118319143097501181081311921227343465557389919145492235411380903616314997217161353126107484224279683502711059306178943332895363946847972758016111226495831984511943211007775195519718406527481360204719220085746735610621865761919653932298183915084901492"
+            ]),
+  println(s=S),
+  if time(T = additive_numbers(S)) then
+    println(T)
+  else
+    println(no_solution)
+  end,
+  nl,
+  fail,
+  nl.
+
+/*
+  additive_numbers2/1:
+  (Large instances has been edited.)
+
+s = 112358
+
+CPU time 0.0 seconds.
+
+[1,1,2,3,5,8]
+
+s = 12345
+
+CPU time 0.0 seconds.
+
+No solution
+
+s = 199100199
+
+CPU time 0.0 seconds.
+
+[1,99,100,199]
+
+s = 99182745721171893064958011296
+
+CPU time 0.0 seconds.
+
+[9,9,18,27,45,72,117,189,306,495,801,1296]
+
+s = 9918274572117189306495801129620973393549088831437323256376296088598514159399
+
+CPU time 0.0 seconds.
+
+[9,9,18,27,45,72,117,189,306,495,801,1296,2097,3393,5490,8883,14373,23256,37629,60885,98514,159399]
+
+s = 11283967106173279452731118319143097501181081311921227343465557389919145492235411380903616314997217161353126107484224279683502711059306178943332895363946847972758016111226495831984511943211007775195519718406527481360204719220085746735610621865761919653932298183915084901492
+
+CPU time 0.0 seconds.
+
+[11,28,39,67,106,173,279,452,731,1183,1914,3097,5011,8108,13119,21227,34346,55573,89919,145492,235411,380903,616314,997217,1613531,2610748,4224279,6835027,11059306,17894333,28953639,46847972,75801611,122649583,198451194,321100777,519551971,840652748,1360204719,2200857467,3561062186,5761919653,9322981839,15084901492]
+
+s = 1123456789012345987654321098513333333222333014320987543431527654320765764541975308309196069629629074960511160493738415651812345664591170292839503843273547407407030239057669135741456640124098764444805452007901218593718532488888630417730525679008163549158505678944677264513762469026312756022268147970990020536030616997302776558298764968292797094329381965595573515262814693388837052469575288994839440399585675833372314564654320473285625851046128880566228573016926720852990848315273880096586531340454431473051164398236071702740170297116405116017470681941098765
+
+CPU time 4.005 seconds.
+
+No solution
+
+s = 150376340935686127385072376147864098888513713365032223543539173606771894958422072866944897918151529118646812474016564964003135211776477151776731048028698850169574387652327437725753734439516451896718328902726911622805479165188060945064343042889998559949234994492033796638944776321288988889696652085627834472973374616724169625460244558642598834861282812211429510584145480231299671242670137425072965721816055504008998882979801130557106315853515314569945256515266201410084150504193471095367156568554851961108661610489562914175818179044414875284479789533977789460297968578392664744777758112370453120507572669076311719498534848031335703154929211493896687510478269629703025782597119077909269441336449460408795720121624206511878884145349887011159668413465661290762784572549191601608743812566837148214516371658292328
+
+CPU time 0.002 seconds.
+
+[1503763409,3568612738,5072376147,8640988885,13713365032,22354353917,36067718949,58422072866,94489791815,152911864681,247401656496,400313521177,647715177673,1048028698850,1695743876523,2743772575373,4439516451896,7183289027269,11622805479165,18806094506434,30428899985599,49234994492033,79663894477632,128898888969665,208562783447297,337461672416962,546024455864259,883486128281221,1429510584145480,2312996712426701,3742507296572181,6055504008998882,9798011305571063,15853515314569945,25651526620141008,41505041934710953,67156568554851961,108661610489562914,175818179044414875,284479789533977789,460297968578392664,744777758112370453,1205075726690763117,1949853484803133570,3154929211493896687,5104782696297030257,8259711907790926944,13364494604087957201,21624206511878884145,34988701115966841346,56612907627845725491,91601608743812566837,148214516371658292328]
+
+
+*/
+go3 =>
+  member(S,["112358",
+            "12345",
+            "199100199",
+            "99182745721171893064958011296",
+            "9918274572117189306495801129620973393549088831437323256376296088598514159399",
+            "11283967106173279452731118319143097501181081311921227343465557389919145492235411380903616314997217161353126107484224279683502711059306178943332895363946847972758016111226495831984511943211007775195519718406527481360204719220085746735610621865761919653932298183915084901492",
+            "1123456789012345987654321098513333333222333014320987543431527654320765764541975308309196069629629074960511160493738415651812345664591170292839503843273547407407030239057669135741456640124098764444805452007901218593718532488888630417730525679008163549158505678944677264513762469026312756022268147970990020536030616997302776558298764968292797094329381965595573515262814693388837052469575288994839440399585675833372314564654320473285625851046128880566228573016926720852990848315273880096586531340454431473051164398236071702740170297116405116017470681941098765", % invalid
+            "150376340935686127385072376147864098888513713365032223543539173606771894958422072866944897918151529118646812474016564964003135211776477151776731048028698850169574387652327437725753734439516451896718328902726911622805479165188060945064343042889998559949234994492033796638944776321288988889696652085627834472973374616724169625460244558642598834861282812211429510584145480231299671242670137425072965721816055504008998882979801130557106315853515314569945256515266201410084150504193471095367156568554851961108661610489562914175818179044414875284479789533977789460297968578392664744777758112370453120507572669076311719498534848031335703154929211493896687510478269629703025782597119077909269441336449460408795720121624206511878884145349887011159668413465661290762784572549191601608743812566837148214516371658292328"
+            ]),
+  println(s=S),
+  if time(T = additive_numbers2(S,false)) then
+    println(T)
+  else
+    println("No solution")
+  end,
+  nl,
+  fail,
+  nl.
+
+
+/*
+  Checking invalid (non additive) strings.
+  Here are the strings from go3/0, with an "1" at the beginning of the string (which makes them invalid).
+
+  For larger strings this is much slower than finding valid strings. For example,
+  the the correct version of the last string (i.e. without the initial "1") takes 0.0s 
+  to solve; for the incorrect version it takes about 4s to prove that there's no solution.
+
+s = 1112358
+
+CPU time 0.0 seconds.
+
+no_solution
+
+s = 112345
+
+CPU time 0.0 seconds.
+
+no_solution
+
+s = 1199100199
+
+CPU time 0.0 seconds.
+
+no_solution
+
+s = 199182745721171893064958011296
+
+CPU time 0.0 seconds.
+
+no_solution
+
+s = 19918274572117189306495801129620973393549088831437323256376296088598514159399
+
+CPU time 0.003 seconds.
+
+no_solution
+
+s = 111283967106173279452731118319143097501181081311921227343465557389919145492235411380903616314997217161353126107484224279683502711059306178943332895363946847972758016111226495831984511943211007775195519718406527481360204719220085746735610621865761919653932298183915084901492
+
+CPU time 0.263 seconds.
+
+no_solution
+
+s = 1123456789012345987654321098513333333222333014320987543431527654320765764541975308309196069629629074960511160493738415651812345664591170292839503843273547407407030239057669135741456640124098764444805452007901218593718532488888630417730525679008163549158505678944677264513762469026312756022268147970990020536030616997302776558298764968292797094329381965595573515262814693388837052469575288994839440399585675833372314564654320473285625851046128880566228573016926720852990848315273880096586531340454431473051164398236071702740170297116405116017470681941098765
+
+CPU time 3.961 seconds.
+
+no_solution
+
+
+*/
+go4 =>
+  % Note: All these strings are invalid.
+  member(S,["1112358",
+            "112345",
+            "1199100199",
+            "199182745721171893064958011296",
+            "19918274572117189306495801129620973393549088831437323256376296088598514159399",
+            "111283967106173279452731118319143097501181081311921227343465557389919145492235411380903616314997217161353126107484224279683502711059306178943332895363946847972758016111226495831984511943211007775195519718406527481360204719220085746735610621865761919653932298183915084901492",
+           "1123456789012345987654321098513333333222333014320987543431527654320765764541975308309196069629629074960511160493738415651812345664591170292839503843273547407407030239057669135741456640124098764444805452007901218593718532488888630417730525679008163549158505678944677264513762469026312756022268147970990020536030616997302776558298764968292797094329381965595573515262814693388837052469575288994839440399585675833372314564654320473285625851046128880566228573016926720852990848315273880096586531340454431473051164398236071702740170297116405116017470681941098765"
+           ]),
+  println(s=S),
+  % Note: false -> Don't print all the initial numbers that are tested.
+  if time(T = additive_numbers2(S,false)) then
+    println(T)
+  else
+    println(no_solution)
+  end,
+  nl,
+  fail,
+  nl.
+
+
+
+/*
+  CP approach, too slow for larger strings
+
+  CPU time 0.001 seconds.
+
+  112358 = [1,1,2,3,5,8]
+
+  CPU time 0.001 seconds.
+
+  12345 = no_solution
+
+  CPU time 0.012 seconds.
+
+  199100199 = [1,99,100,199]
+
+  CPU time 2.242 seconds.
+
+  571219315081131 = [5,7,12,19,31,50,81,131]
+
+
+*/
+go_cp =>
+  Ss = ["112358","12345","199100199","11235812","571219315081131"],
+  foreach(S in Ss)
+    if time(additive_numbers_cp(S,Nums)) then
+      println(S=Nums)
+    else
+      println(S=no_solution)
+    end
+  end.
+
+%
+% Make a "Fibonacci" (additive) sequence with the initial values of P and Q
+% and where the penultimate element < Limit
+%
+make_seq(P,Q,Limit) = [L,L.map(to_string).join('')] => 
+  L = [P,Q],
+  while(L.last < Limit)
+    append(_,[A,B],L),
+    % Len = L.length,
+    % A = L[Len],
+    % B = L[Len-1],
+    Next = A+B,
+    L := L ++ [Next]
+  end.
+
+
+%
+% Imperative style (much faster than the CP approach)
+% but much slower than additive_numbers2/1.
+%
+additive_numbers(S) = T =>
+  Len = S.len,
+  I = 0,
+  T = [],
+  Check1 = true,
+  while(I < Len, Check1 == true)
+    member(N,1..Len-I),
+    IN = I+N,
+    TT = S[I+1..IN],
+    TT[1] != '0',
+    T := T ++ [TT.to_int],
+    % Local sanity test
+    TLen = T.len,        
+    if TLen >= 3 then
+      % increasing(T[3..TLen]), % slower
+      % T[TLen] > T[TLen-1], % not faster
+      if T[TLen] != T[TLen-1] + T[TLen-2] then
+        Check1 := false
+      end
+    end,
+    I := IN
+  end,
+  Check1 == true,
+  % Global check
+  T.len >= 3,
+  Check = true,
+  foreach(J in 3..T.len, break(Check==false))
+    if T[J-1] + T[J-2] != T[J] then
+     Check := false
+    end
+  end,
+  Check == true.
+  
+
+%
+% Another approach
+%
+% Generate the first two initial numbers and then generate the sequence.
+% This is much faster than additive_numbers2/1.
+%
+additive_numbers2(S) = additive_numbers2(S,true).
+additive_numbers2(S,Print) = T =>
+  Len = S.len,
+  % We want the initial numbers in increasing order:
+  %  [1,1],[1,2],[2,1],[2,2],[1,3],[2,3],[3,1],[3,2],[3,3],...  
+  % member(Max,1..Len div 3), % There must be at least 3 numbers
+  % member(L1,1..Max),
+  % member(L2,1..Max),
+  % There should be at least 3 numbers and the 3rd number must be at least
+  % as large as the largest of the two.
+  % L1+L2+max(L1,L2) <= Len,
+  % check_seq(S,L1,L2,Print, T).
+  % check_seq2(S,L1,L2,Print, T). % TEST (not faster than check_seq/5)
+
+  %
+  % Faster version of the "increasing pair" loop (and we don't have to use tabling)
+  %
+  Max = Len div 3,
+  Found = false,
+  T = _,
+  foreach(Sum in 2..Max,
+          L1 in 1..Sum-1,
+          L2 = Sum - L1,
+          L1+L2+max(L1,L2) <= Len,
+          break(Found == true))
+      % if check_seq(S,L1,L2,Print, T1) then
+      if check_seq2(S,L1,L2,Print, T) then % TEST (not faster than check_seq/5)            
+        Found := true,
+        T = T1
+      end
+  end,
+  nonvar(T).
+  
+
+%
+% Generate the the sequence with the first two numbers
+% of length L1 and L2, respectively.
+% Print: if true: print the info on the initial numbers that is tested
+%
+% table
+check_seq(S,L1,L2,Print, T1) =>
+  N1 = S[1..L1].to_int,
+  N2 = S[L1+1..L1+L2].to_int,
+  if Print then
+     println([l1=L1,l2=L2,n1=N1,n2=N2,left_len=S.length-(L1+L2)])
+  end,
+  T = [N1,N2],
+  TS = T.map(to_string).join(''),
+  Check = true,
+  while (TS.len < S.len, Check == true)
+    TLen = T.len,
+    Next = T[TLen]+T[TLen-1],
+    % append(_,[A,B],T),
+    % Next = A+B,
+    T := T ++ [Next],
+    TS := TS ++ Next.to_string,
+    % Ensure that we have the correct sequence so far
+    if TS != S[1..TS.len] then
+      Check := false
+    end
+  end,
+  T.len >= 3,  
+  Check == true,
+  TS == S,
+  T1 = T.  
+
+%
+% Same approach as check_seq/5, but using recursion instead of a while loop.
+% Not faster than check_seq/5.
+%
+% table
+check_seq2(S,L1,L2,Print, T1) =>
+  N1 = S[1..L1].to_int,
+  N2 = S[L1+1..L1+L2].to_int,
+  if Print then
+    println([l1=L1,l2=L2,n1=N1,n2=N2,left_len=S.length-(L1+L2)])
+  end,
+  T0 = [N1,N2],
+  TS0 = T0.map(to_string).join(''),
+  check_seq2_(S,TS0,T0,T1).
+
+check_seq2_(S,S,T,T). % Found a solution: S == TS
+check_seq2_(S,TS0,T0,T) :-
+  TS0 == S[1..TS0.len], % OK so far?
+  append(_,[A,B],T0), % Last two values in T0
+  Next = A+B,
+  check_seq2_(S,TS0++Next.to_string,T0++[Next],T).
+
+  
+
+% 
+% CP approach (too slow for larger strings)
+%
+additive_numbers_cp(S,Nums) => 
+  N = S.len,
+  separate(S,X,C),
+  Vars = X ++ C,
+  
+  solve($[split],Vars),
+  
+  % Check this configuration (this is slow!)
+  Nums1 = [],
+  foreach(I in 1..N)
+    T = [S[J] : J in 1..N, X[J] == I],
+    if T != [] then
+       Nums1 := Nums1 ++ [T.to_int]
+    end
+  end,
+  foreach(I in 3..Nums1.len)
+    Nums1[I-2] + Nums1[I-1] == Nums1[I]
+  end,
+  Nums = Nums1.
+
+%
+% Here we should include the Fibonacci test but I've not implement that
+% (and that's the reason it's so slow)
+%
+separate(S,X,C) =>
+  N = S.len,
+  X = new_list(N),
+  X :: 1..N,
+
+  C = new_list(N),
+  C :: 0..N,
+
+  X[1] #= 1,
+  nvalue(NumVals,X),
+  NumVals #>= 3,
+  foreach(I in 1..N)
+    C[I] #= count(I,X)
+  end,
+  increasing(X),
+  increasing_except_0(C).
+
+  
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+        Len = length(List),
+        Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+to_num(List, Num) =>
+       to_num(List, 10, Num).
+
+
+%
+% Ensure that values != 0 is increasing
+%
+increasing_except_0(List) =>
+   Len = List.length,
+   foreach(I in 1..Len, J in 1..Len, I < J) 
+      (List[I] #!= 0 #/\ List[J] #!= 0) #=> List[I] #=< List[J] 
+   end.

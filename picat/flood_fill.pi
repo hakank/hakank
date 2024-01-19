@@ -1,0 +1,343 @@
+/* 
+
+  Flood fill in Picat.
+
+  From https://en.wikipedia.org/wiki/Flood_fill
+  """
+  Flood fill, also called seed fill, is a flooding algorithm that determines 
+  and alters the area connected to a given node in a multi-dimensional array 
+  with some matching attribute. It is used in the "bucket" fill tool of paint 
+  programs to fill connected, similarly-colored areas with a different color, 
+  and in games such as Go and Minesweeper for determining which pieces are cleared. 
+  A variant called boundary fill uses the same algorithms but is defined as the 
+  area connected to a given node that does not have a particular attribute.
+
+  ...
+  
+  Flood-fill (node):
+  1. Set Q to the empty queue or stack.
+  2. Add node to the end of Q.
+  3. While Q is not empty:
+  4.   Set n equal to the first element of Q.
+  5.   Remove first element from Q.
+  6.   If n is Inside:
+         Set the n
+         Add the node to the west of n to the end of Q.
+         Add the node to the east of n to the end of Q.
+         Add the node to the north of n to the end of Q.
+         Add the node to the south of n to the end of Q.
+  7. Continue looping until Q is exhausted.
+  8. Return. 
+  """
+
+  The matrix from https://en.wikipedia.org/wiki/Flood_fill
+
+   #########
+   #   #   #
+   #   #   #
+   #  #    #
+   ###   ###
+   #    #  #
+   #   #   #
+   #   #   #
+   #########
+
+  (This is in flood_fill_1.txt)
+
+  See below for some different experiments
+  - go/0: Color the area for a single node (Wikipedia example)
+  - go2/0: Color the areas for all nodes (Wikipedia example)
+  - go3/0: Color the areas for all nodes (a larger example, flood_fill_2.txt)
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  Test a cell that we know is inside some of the areas,
+  here we test the mid cell ([5,5]) and mode=four.
+
+   .  .  .  .  .  .  .  .  .
+   .  .  .  .  .  1  1  1  .
+   .  .  .  .  .  1  1  1  .
+   .  .  .  .  1  1  1  1  .
+   .  .  .  1  1  1  .  .  .
+   .  1  1  1  1  .  .  .  .
+   .  1  1  1  .  .  .  .  .
+   .  1  1  1  .  .  .  .  .
+   .  .  .  .  .  .  .  .  .
+
+
+*/
+go =>
+  File = "flood_fill_1.txt",
+  M = read_file_lines(File),
+  Rows = M.len,
+  Cols = M[1].len,
+
+  Inside = new_array(Rows,Cols),
+  bind_vars(Inside,'.'),
+
+  % Which node to check for
+  Node = [5,5], % the mid cell
+  println(node=Node),
+  
+  Seen = new_set(),
+  Mode = four,
+  Color = 1,
+  flood_fill(M,Rows,Cols,Inside,Node,Seen,Mode,Color),
+  println("Inside:"),
+  print_mat(Inside),
+  nl.
+
+
+/*
+  Test all cells (not '#') and color each area:
+
+  For flood_fill_1.txt (the one at the Wikipedia page, op.cit)
+   #########
+   #   #   #
+   #   #   #
+   #  #    #
+   ###   ###
+   #    #  #
+   #   #   #
+   #   #   #
+   #########
+
+
+  Here are the three areas for mode = four
+
+   .  .  .  .  .  .  .  .  .
+   .  1  1  1  .  2  2  2  .
+   .  1  1  1  .  2  2  2  .
+   .  1  1  .  2  2  2  2  .
+   .  .  .  2  2  2  .  .  .
+   .  2  2  2  2  .  3  3  .
+   .  2  2  2  .  3  3  3  .
+   .  2  2  2  .  3  3  3  .
+   .  .  .  .  .  .  .  .  .
+
+
+  Here's the single area for mode = eight
+   .  .  .  .  .  .  .  .  .
+   .  1  1  1  .  1  1  1  .
+   .  1  1  1  .  1  1  1  .
+   .  1  1  .  1  1  1  1  .
+   .  .  .  1  1  1  .  .  .
+   .  1  1  1  1  .  1  1  .
+   .  1  1  1  .  1  1  1  .
+   .  1  1  1  .  1  1  1  .
+   .  .  .  .  .  .  .  .  .
+
+
+*/
+go2 =>
+  File = "flood_fill_1.txt",
+  M = read_file_lines(File),
+  Rows = M.len,
+  Cols = M[1].len,
+  member(Mode,[four,eight]),
+  println(mode=Mode),
+  color_areas(M,Rows,Cols,Mode),
+  fail,
+  nl.
+
+/*
+
+  A larger instance (flood_fill_2.txt)
+
+   ##################################
+   #       #       ##               #
+   #       #       ##   ########    #
+   #       #    #####   #      #    #
+   #       #    #   #   #      #    #
+   #       #    #   #   #      #    #
+   #       #    #   #   #      #    #
+   #       #    #   #####      #    #
+   #########    #              #    #
+   #            ##########     #    #
+   #                     #     #    #
+   #            ##########     #    #
+   #            #              #    #
+   #            ###############     #
+   #                                #
+   ##################################
+
+
+  Mode = four (3 areas)
+  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 2 2 2 . . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 2 2 2 . . 2 2 2 . . . . . . . . 2 2 2 2 .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 . . . . . 2 2 2 . 3 3 3 3 3 3 . 2 2 2 2 .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 . 3 3 3 . 2 2 2 . 3 3 3 3 3 3 . 2 2 2 2 .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 . 3 3 3 . 2 2 2 . 3 3 3 3 3 3 . 2 2 2 2 .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 . 3 3 3 . 2 2 2 . 3 3 3 3 3 3 . 2 2 2 2 .
+  . 1 1 1 1 1 1 1 . 2 2 2 2 . 3 3 3 . . . . . 3 3 3 3 3 3 . 2 2 2 2 .
+  . . . . . . . . . 2 2 2 2 . 3 3 3 3 3 3 3 3 3 3 3 3 3 3 . 2 2 2 2 .
+  . 2 2 2 2 2 2 2 2 2 2 2 2 . . . . . . . . . . 3 3 3 3 3 . 2 2 2 2 .
+  . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 . 3 3 3 3 3 . 2 2 2 2 .
+  . 2 2 2 2 2 2 2 2 2 2 2 2 . . . . . . . . . . 3 3 3 3 3 . 2 2 2 2 .
+  . 2 2 2 2 2 2 2 2 2 2 2 2 . 3 3 3 3 3 3 3 3 3 3 3 3 3 3 . 2 2 2 2 .
+  . 2 2 2 2 2 2 2 2 2 2 2 2 . . . . . . . . . . . . . . . 2 2 2 2 2 .
+  . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 .
+  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+
+  Mode = eight (2 areas)
+   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 2 2 2 . . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 2 2 2 . . 2 2 2 . . . . . . . . 2 2 2 2 .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 . . . . . 2 2 2 . 2 2 2 2 2 2 . 2 2 2 2 .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 . 2 2 2 . 2 2 2 . 2 2 2 2 2 2 . 2 2 2 2 .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 . 2 2 2 . 2 2 2 . 2 2 2 2 2 2 . 2 2 2 2 .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 . 2 2 2 . 2 2 2 . 2 2 2 2 2 2 . 2 2 2 2 .
+   . 1 1 1 1 1 1 1 . 2 2 2 2 . 2 2 2 . . . . . 2 2 2 2 2 2 . 2 2 2 2 .
+   . . . . . . . . . 2 2 2 2 . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 . 2 2 2 2 .
+   . 2 2 2 2 2 2 2 2 2 2 2 2 . . . . . . . . . . 2 2 2 2 2 . 2 2 2 2 .
+   . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 . 2 2 2 2 2 . 2 2 2 2 .
+   . 2 2 2 2 2 2 2 2 2 2 2 2 . . . . . . . . . . 2 2 2 2 2 . 2 2 2 2 .
+   . 2 2 2 2 2 2 2 2 2 2 2 2 . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 . 2 2 2 2 .   <----
+   . 2 2 2 2 2 2 2 2 2 2 2 2 . . . . . . . . . . . . . . . 2 2 2 2 2 .   <----
+   . 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 .
+   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                                                         ^^
+                                                         || 
+
+   This has only two areas since the two marked cells are diagonal neigbours.
+
+*/ 
+go3 => 
+  File = "flood_fill_2.txt",
+  M = read_file_lines(File),  
+  Rows = M.len,
+  Cols = M[1].len,
+  member(Mode,[four,eight]),
+  println(mode=Mode),
+  color_areas(M,Rows,Cols,Mode),
+  fail,
+  nl.
+
+%
+% Random matrix
+%
+go4 =>
+  _ = random2(),
+  Rows = 70,
+  Cols = 20,
+  M = new_array(Rows,Cols),
+  foreach(I in 1..Rows, J in 1..Cols)
+    if (I == 1 ; I == Rows) ; (J == 1 ; J == Cols) then
+      M[I,J] = '#'
+    elseif random(1,100) < 70 then
+      M[I,J] = '#'
+    else
+      M[I,J] = ' '    
+    end
+  end,
+  print_mat(M),
+  member(Mode,[four,eight]),
+  println(mode=Mode),
+  color_areas(M,Rows,Cols,Mode),
+  fail,
+  nl.
+  
+
+%
+% Color all the areas.
+%
+color_areas(M,Rows,Cols,Mode) => 
+  Color = 1,
+  Colors = new_array(Rows,Cols),
+  bind_vars(Colors,'.'),
+  foreach(I in 1..Rows, J in 1..Cols, M[I,J] != '#', Colors[I,J] == '.')
+    Node = [I,J],
+    Seen = new_set(),
+    Inside = new_array(Rows,Cols),
+    bind_vars(Inside,0),
+    flood_fill(M,Rows,Cols,Inside,Node,Seen,Mode,Color),
+    foreach(A in 1..Rows, B in 1..Cols)
+      if Inside[A,B] != 0 then
+        Colors[A,B] := Color
+      end
+    end,
+    % New color for the area
+    Color := Color + 1
+  end,
+  print_mat(Colors).
+
+print_mat(M) =>
+  Rows = M.len,
+  Cols = M[1].len,
+  Max = [ M[I,J].to_string : I in 1..Rows, J in 1..Cols].max,
+  Format = "%" ++ (Max.to_string.len +2).to_string ++ "s",
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+    %  % println(Row.to_list.map(to_string).join('  '))
+       printf(Format,M[I,J].to_string)
+    end,
+    nl
+  end,
+  nl.
+
+
+/*
+  flood_fill(M,Rows,Cols,Inside,Node,Seen,Mode)
+  - M: The matrix. Here '#' is a limit, and ' ' represents
+       some interior (in some area)
+  - Rows, Cols: dimension of the matrix M
+  - Inside: a set
+  - Node: The position we want to start with [I,J]
+  - Seen: a set for caching the seen nodes
+  - Mode: four or eight (the number of neigbours) 
+  - Color: The color or the area
+
+*/
+
+flood_fill(M,Rows,Cols,Inside,Node,Seen,Mode,Color) =>
+  Q = [Node],
+  while (Q.len > 0)
+   [TI,TJ] = Q.first,
+   if not Seen.has_key([TI,TJ]), inside(M,TI,TJ) then
+      Inside[TI,TJ] := Color,
+      Ns = neibs(Rows,Cols,TI,TJ,Mode),
+      foreach(N in Ns, not membchk(N,Q))
+        Q := Q ++ [N]
+      end
+   end,
+   Seen.put([TI,TJ]),
+   Q := Q.tail
+  end.
+
+%
+% inside(M,I,J)
+% Is node M[I,J] inside the area?
+% 
+% Note: This is dependent on the problem.
+% Here we know that all nodes != '#' are inside
+% some area.
+%
+inside(M,I,J) =>
+  M[I,J] != '#'.
+
+
+/*
+  Neighbours:
+  - four neibours (Moore)
+  - eight (including with the diagonals, von Neumann)
+*/ 
+table % slightly faster with table/0
+neibs(Rows,Cols,I,J,four) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                              abs(A)+abs(B) == 1,
+                              I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols].
+
+neibs(Rows,Cols,I,J,eight) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                              not (A == 0, B == 0),
+                              I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols].
+
+

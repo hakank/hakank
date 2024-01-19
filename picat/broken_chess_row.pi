@@ -1,0 +1,330 @@
+/* 
+
+  Broken chess row in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"    
+  """
+  Puzzle 121. Broken chess row
+
+  This puzzle uses one monomino, two dominoes, and one tromino, for a total of eight
+  squares (Fig. 12.1). Group the four shapes in a chess line (i.e. 8 × 1 grid). How many
+  solutions are there?
+  """  
+
+  The pieces
+
+  - one monomino: [b]   
+  - two dominoes: [b|w],  [b|w]
+  - one tromino:[w|b|w]
+
+  (Which chess line? Does it start with white or black?)
+
+  * go/0: The first model assumes no rotation of the pieces.
+    Then there are 6 solutions:
+
+    chess_row = [1,0,1,0,1,0,1,0]
+    x         = [1,4,4,4,2,2,3,3]
+    start = [1,5,7,2]
+
+    chess_row = [1,0,1,0,1,0,1,0]
+    x         = [1,4,4,4,3,3,2,2]
+    start = [1,7,5,2]
+
+    chess_row = [1,0,1,0,1,0,1,0]
+    x         = [2,2,1,4,4,4,3,3]
+    start = [3,1,7,4]
+
+    chess_row = [1,0,1,0,1,0,1,0]
+    x         = [2,2,3,3,1,4,4,4]
+    start = [5,1,3,6]
+
+    chess_row = [1,0,1,0,1,0,1,0]
+    x         = [3,3,1,4,4,4,2,2]
+    start = [3,7,1,4]
+
+    chess_row = [1,0,1,0,1,0,1,0]
+    x         = [3,3,2,2,1,4,4,4]
+    start = [5,3,1,6]
+
+
+  * go2/0 adds rotations and gives 24 solutions. See below
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+/*
+  No rotation
+*/
+go =>
+  data(1,Pieces,N),
+  println(pieces=Pieces),
+  NumPieces = Pieces.len,
+
+  println(lens=[P.len : P in Pieces]),
+  println(totalLen=Pieces.flatten.len=N),
+  nl,
+  
+  % The pieces 
+  X = new_list(N),
+  X :: 1..NumPieces,
+
+  % The Chess row
+  % We assume that it start with Black (1)
+  Row = new_list(N),
+  foreach(I in 1..N)
+    Row[I] = I mod 2
+  end,
+
+  % Where does Piece P start
+  Start = new_list(NumPieces),
+  Start :: 1..N,
+  all_different(Start),
+  foreach(P in 1..NumPieces)
+    Len = Pieces[P].len,
+    foreach(J in 0..Len-1)
+      StartJ #= Start[P]+J,
+      % Pieces[P,J+1] = Row[Start[P]+J]
+      element(StartJ,Row,Pieces[P,J+1]),
+      element(StartJ,X,P)      
+    end,
+    sum([X[I] #= P : I in 1..N]) #= Len
+  end,
+
+  Vars = X ++ Start,
+  solve(Vars),
+
+  println(chess_row=Row),
+  println('x        '=X),
+  println(start=Start),
+  nl,
+  fail,
+  nl.
+
+/*
+  With rotations. 
+
+  Note: A monomino is rotateable in this model.
+
+  There are now 24 solutions, e.g.
+
+  chess_row = [1,0,1,0,1,0,1,0]
+  x         = [1,2,2,3,3,4,4,4]
+  rotation = [1,2,2,1]
+  start = [1,2,4,6]
+
+  chess_row = [1,0,1,0,1,0,1,0]
+  x         = [1,2,2,3,3,4,4,4]
+  rotation = [1,2,2,2]
+  start = [1,2,4,6]
+
+  chess_row = [1,0,1,0,1,0,1,0]
+  x         = [1,2,2,4,4,4,3,3]
+  rotation = [1,2,1,1]
+  start = [1,2,7,4]
+
+  chess_row = [1,0,1,0,1,0,1,0]
+  x         = [1,2,2,4,4,4,3,3]
+  rotation = [1,2,1,2]
+  start = [1,2,7,4]
+
+  chess_row = [1,0,1,0,1,0,1,0]
+  x         = [1,3,3,2,2,4,4,4]
+  rotation = [1,2,2,1]
+  start = [1,4,2,6]
+
+  ...
+
+
+
+*/
+go2 =>
+  data(1,Pieces1,N),
+  println(pieces1=Pieces1),
+  NumPieces = Pieces1.len,
+
+  println(lens=[P.len : P in Pieces1]),
+  println(totalLen=Pieces1.flatten.len=N),
+  nl,
+
+  % Include the rotations
+  Pieces = [[P,rotate(P)] : P in Pieces1],
+  println(pieces=Pieces),
+  nl,
+  
+  % The pieces 
+  X = new_list(N),
+  X :: 1..NumPieces,
+
+  % Which variant (1: orig, 2: rotation)
+  V = new_list(NumPieces),
+  V :: 1..2,
+
+  % I hereby decide that a monomino is not rotatable.
+  V[1] #= 1, 
+
+  % The Chess row
+  % We assume that it start with Black (1)
+  Row = new_list(N),
+  foreach(I in 1..N)
+    Row[I] = I mod 2
+  end,
+
+  % Where is this piece placed?
+  Start = new_list(NumPieces),
+  Start :: 1..N,
+  all_different(Start),
+  foreach(P in 1..NumPieces)
+    PP = Pieces[P],
+    Len = Pieces[P,1].len,
+    foreach(J in 0..Len-1)
+      StartPJ #= Start[P]+J,
+      
+      % This works, but uses nth/3 which is not good
+      % The issue seems to be the J+1 in  T[J+1] 
+      % nth(V[P],PP,PPT),
+      % element(StartPJ,Row,PPT[J+1]),
+      
+      J1 = J+1,
+      matrix_element(PP,V[P],J1,PPTJ1),
+      element(StartPJ,Row,PPTJ1),
+
+      element(StartPJ,X,P)      
+    end,
+    sum([X[I] #= P : I in 1..N]) #= Len
+  end,
+
+  Vars = X ++ Start ++ V ,
+  solve(Vars),
+
+  println(chess_row=Row),
+  println('x        '=X),
+  println(rotation=V),
+  println(start=Start),
+  
+  nl,
+  fail,
+  nl.
+
+
+/*
+  Non CP
+
+  [2,3,1,4] = [bw,bw,b,wbw]
+  [3,2,1,4] = [bw,bw,b,wbw]
+  [3,1,4,2] = [bw,b,wbw,bw]
+  [2,1,4,3] = [bw,b,wbw,bw]
+  [1,4,2,3] = [b,wbw,bw,bw]
+  [1,4,3,2] = [b,wbw,bw,bw]
+
+
+*/
+go3 ?=>
+  Y = [b,w,b,w,b,w,b,w],
+  data(2,Pieces,N),
+  println(pieces=Pieces),
+  NumPieces = Pieces.len,
+  
+  foreach(Perm in permutations(1..NumPieces))
+    X = [ Pieces[P] : P in Perm],    
+    if [P.map(atom_chars) : P in X].flatten == Y then
+      println(Perm=X)
+    end    
+  end,
+  
+  nl.
+go3 => true.
+
+% No foreach loop
+go3b ?=>
+  Y = [b,w,b,w,b,w,b,w],
+  data(2,Pieces,N),
+  println(pieces=Pieces),
+  NumPieces = Pieces.len,
+  
+  permutation(1..NumPieces,Perm),
+  X = [ Pieces[P] : P in Perm],    
+  [P.map(atom_chars) : P in X].flatten == Y,
+  println(Perm=X),
+  fail,
+  nl.
+go3b => true.
+
+/*
+  Non CP with rotation: 24 solutions
+
+  pieces = [[b],[bw,wb],[bw,wb],[wbw,wbw]]
+  x = [1,2,3,4] = [b,wb,wb,wbw]
+  x = [1,2,3,4] = [b,wb,wb,wbw]
+  x = [1,2,4,3] = [b,wb,wbw,bw]
+  x = [1,2,4,3] = [b,wb,wbw,bw]
+  x = [1,3,2,4] = [b,wb,wb,wbw]
+  x = [1,3,2,4] = [b,wb,wb,wbw]
+  x = [1,3,4,2] = [b,wb,wbw,bw]
+  x = [1,3,4,2] = [b,wb,wbw,bw]
+  x = [1,4,2,3] = [b,wbw,bw,bw]
+  x = [1,4,2,3] = [b,wbw,bw,bw]
+  x = [1,4,3,2] = [b,wbw,bw,bw]
+  x = [1,4,3,2] = [b,wbw,bw,bw]
+  x = [2,1,3,4] = [bw,b,wb,wbw]
+  x = [2,1,3,4] = [bw,b,wb,wbw]
+  x = [2,1,4,3] = [bw,b,wbw,bw]
+  x = [2,1,4,3] = [bw,b,wbw,bw]
+  x = [2,3,1,4] = [bw,bw,b,wbw]
+  x = [2,3,1,4] = [bw,bw,b,wbw]
+  x = [3,1,2,4] = [bw,b,wb,wbw]
+  x = [3,1,2,4] = [bw,b,wb,wbw]
+  x = [3,1,4,2] = [bw,b,wbw,bw]
+  x = [3,1,4,2] = [bw,b,wbw,bw]
+  x = [3,2,1,4] = [bw,bw,b,wbw]
+  x = [3,2,1,4] = [bw,bw,b,wbw]
+
+*/
+
+go4 ?=>
+  Y = [[b,w] : _ in 1..4].flatten,
+  data(2,Pieces1,N),
+  Pieces = [T: P in Pieces1, T = cond(P.len > 1, [P,rotate(P)],[P])],
+  println(pieces=Pieces),
+  NumPieces = Pieces.len,
+
+  permutation(1..NumPieces,Perm),
+  X = new_list(NumPieces),
+  foreach(P in 1..NumPieces)
+    member(X[P], Pieces[Perm[P]])
+  end,
+  [P.map(atom_chars) : P in X].flatten == Y,
+  println(x=Perm=X),
+  fail,
+  nl.
+go4 => true.
+  
+
+% Let's keep this simple: We rotate all pieces, even
+% the monomino.
+% 
+rotate(Piece) = Piece.reverse.
+  
+
+data(1,Pieces,N) =>
+  W = 0, B = 1,
+  N = 8,
+  Pieces =  [[B],
+             [B,W],[B,W],
+             [W,B,W]].
+
+
+data(2,Pieces,N) =>
+  N = 8,
+  Pieces =  [[b],
+             [b,w],[b,w],
+             [w,b,w]].
+
+  

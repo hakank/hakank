@@ -1,0 +1,229 @@
+/* 
+  Rectangle symmetries in Picat.
+
+  This module generates symmetries (4 rotational + 4 flips) for a rectangular matrix.
+
+  generate_symmetries(Shape, OnlyRotates, Symmetries)
+
+  With OnlyRotates = true only the four rotational symmetries are generated.
+  With OnlyRotates = false, all 8 symmetries are generated.
+  
+  For unregular shapes, e.g. polyominos, a tip is to represent empty spaces
+  as 0, and the filled space with an integer > 0. 
+
+  For example, the shape
+       x
+       x x
+
+  should thus be represented as 
+       [[1,0],
+        [2,3]]
+
+  or
+       [[1,0],
+        [1,1]]
+
+
+  Some examples on this.
+
+  * OnlyRotate = true:
+    go => 
+      Shape = [[1,0],[2,3]],
+      generate_symmetries(Shape, true, Symmetries),
+      foreach(S in Symmetries)
+        foreach(Row in S)
+          println(Row)
+         end,
+         nl
+      end,
+      nl.
+
+   Generates the folllowing:
+
+     [1,0]
+     [2,3]
+
+     [2,1]
+     [3,0]
+
+     [3,2]
+     [0,1]
+
+     [0,3]
+     [1,2]
+
+
+  * OnlyRotate = false
+    also generates these four symmetries
+
+    [2,3]
+    [1,0]
+
+    [0,1]
+    [3,2]
+
+    [1,2]
+    [0,3]
+
+    [3,0]
+    [2,1]
+
+
+  Note that generate_symmetries does not check for duplicates. 
+  For example for the shape [[1,2,3,4]] with OnlyRotate = false
+  generates these 8 shapes (with 4 duplicates):
+
+    [1,2,3,4]
+
+    [1]
+    [2]
+    [3]
+    [4]
+
+    [4,3,2,1]
+
+    [4]
+    [3]
+    [2]
+    [1]
+
+    [1,2,3,4]
+
+    [4,3,2,1]
+
+    [1]
+    [2]
+    [3]
+    [4]
+
+    [4]
+    [3]
+    [2]
+    [1]
+
+   With Symmetries.remove_dups these 4 shapes are generated.
+  
+   [1,2,3,4]
+
+   [1]
+   [2]
+   [3]
+   [4]
+
+   [4,3,2,1]
+
+   [4]
+   [3]
+   [2]
+   [1]
+
+  If [1,2,3,4] should be the same as [4,3,2,1] then use the same
+  integer in the list. I.e. for [1,1,1,1] and removing dups then
+  only these two are generated:
+
+    [1,1,1,1]
+
+    [1]
+    [1]
+    [1]
+    [1]
+
+  The function generate_distict_symmetries(Shape,OnlyRotates)  can be used
+  for removing dups.
+
+
+  See rectangle_symmetries_test.pi for some tests.
+
+
+*/
+
+module rectangle_symmetries.
+
+import util.
+
+
+generate_distinct_symmetries(Shape) = generate_distict_symmetries(Shape,false).
+generate_distinct_symmetries(Shape,OnlyRotates) = Symmetries.remove_dups =>
+  generate_symmetries(Shape, OnlyRotates, Symmetries).
+
+
+% Main function to generate all symmetries
+generate_symmetries(Shape, Symmetries) :-
+  generate_symmetries(Shape, false, Symmetries).
+generate_symmetries(Shape, OnlyRotates, Symmetries) :-
+    rotate90(Shape,Rotate90),
+    rotate180(Shape,Rotate180),
+    rotate270(Shape,Rotate270),
+    Symmetries0 = [
+        Shape,
+        Rotate90,
+        Rotate180,
+        Rotate270
+    ],
+    
+    if not OnlyRotates then
+      % The other four symmetries
+      horizontal_flip(Shape,HorizonalFlip),
+      vertical_flip(Shape,VerticalFlip),
+      diagonal_flip(Shape,DiagonalFlip),
+      anti_diagonal_flip(Shape,AntiDiagonal),   
+      Symmetries0 := Symmetries0 ++ [HorizonalFlip,VerticalFlip,DiagonalFlip,AntiDiagonal]
+    end,
+    Symmetries = Symmetries0.
+    
+
+% Rotate 90 degrees
+rotate90(Shape, Rotated) :-
+    transpose(Shape, Transposed),
+    reverse_each_row(Transposed, Rotated).
+
+% Rotate 180 degrees
+rotate180(Shape, Rotated) :-
+    reverse_each_row(Shape, Temp),
+    reverse(Temp, Rotated).
+
+% Rotate 270 degrees
+rotate270(Shape, Rotated) :-
+    transpose(Shape, Transposed),
+    reverse(Transposed, Rotated).
+
+% Horizontal Flip
+horizontal_flip(Shape, Flipped) :-
+    reverse(Shape, Flipped).
+
+% Vertical Flip
+vertical_flip(Shape, Flipped) :-
+    reverse_each_row(Shape, Flipped).
+
+% Diagonal Flip (across main diagonal)
+diagonal_flip(Shape, Flipped) :-
+    transpose(Shape, Flipped).
+
+% Anti-diagonal Flip (across anti-diagonal)
+anti_diagonal_flip(Shape, Flipped) :-
+    rotate180(Shape, Rotated),
+    transpose(Rotated, Flipped).
+
+% Helper function to reverse each row
+reverse_each_row([], []).
+reverse_each_row([Row|Rows], [ReversedRow|ReversedRows]) :-
+    reverse(Row, ReversedRow),
+    reverse_each_row(Rows, ReversedRows).
+
+transpose(Matrix,Transposed) :-
+  Transposed = [[Matrix[J,I] : J in 1..Matrix.len] : I in 1..Matrix[1].len].
+
+reverse(L,Rev) :-
+  bp.reverse(L,Rev).
+
+
+/*
+test =>
+  Shape = [[1,0],[2,3]],
+  generate_symmetries(Shape, true, Symmetries),
+  println(symmetries=Symmetries=Symmetries.len=Symmetries.remove_dups.len),
+  foreach(S in Symmetries)
+    println(s=S)
+  end,
+  nl.
+*/

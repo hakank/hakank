@@ -1,0 +1,170 @@
+/* 
+
+  A car tour puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 139. A car tour
+
+  A man started in a car from town A, and wished to make a complete tour of these
+  roads, going along every one of them once, and once only. How many different routes
+  are there from which he can select? It is puzzling unless you can devise some inge-
+  nious method. Every route must end at town A, from which you start, and you must go
+  straight from town to town never turning off at crossroads. (puzzle 425 from Dudeney
+  (2016))
+  """
+  
+  The roads consists of a complete connected graph of 5 nodes, A..E. The object is to visit
+  all the roads, i.e. an Eulerian tour.
+
+                   2    3
+              
+               1            4
+                    
+                     5
+
+  Here are the 10 (undirected) edges and the connected nodes:
+  1. 1-2   2-1
+  2. 1-3   3-1
+  3. 1-4   4-1
+  4. 1-5   5-1
+  5. 2-3   3-2
+  6. 2-4   4-2
+  7. 2-5   5-2
+  8. 3-4   4-5
+  9. 3-5   5-3
+  10. 4-5  5-4
+  
+  Here are the possible connections between these 10 edges. The possible connections
+  are those having a node that connects them.
+  Edge  Connected Edges
+  ---------------------
+  1     2,3,4,5,6,7
+  2     1,3,4,5,8,9
+  3     1,2,4,6,8,10
+  4     1,2,3,7,9,10
+  5     1,6,7,2,8,9
+  6     1,5,7,3,8,10
+  7     1,5,6,4,9,10
+  8     2,5,9,3,6,10
+  9     2,5,8,4,7,10
+  10    3,6,8,4,7,9
+
+
+  According to this model, there are 6432 possible circuits. 
+
+  Here are some of them, first the circuit (from circuit/1) then the path
+  (from circuit_path/2). The start edge is always from node 1 
+  and it's also the end node.
+
+   x = [2,3,4,7,1,5,9,6,10,8] = [2,3,4,7,9,10,8,6,5,1]
+   x = [2,3,4,7,1,5,9,10,8,6] = [2,3,4,7,9,8,10,6,5,1]
+   x = [2,3,4,7,1,5,10,6,8,9] = [2,3,4,7,10,9,8,6,5,1]
+   x = [2,3,4,7,1,8,6,10,5,9] = [2,3,4,7,6,8,10,9,5,1]
+   x = [2,3,4,7,1,8,9,5,10,6] = [2,3,4,7,9,10,6,8,5,1]
+   x = [2,3,4,7,1,8,10,9,5,6] = [2,3,4,7,10,6,8,9,5,1]
+   x = [2,3,4,7,1,10,6,5,8,9] = [2,3,4,7,6,10,9,8,5,1]
+   x = [2,3,4,7,1,10,6,9,5,8] = [2,3,4,7,6,10,8,9,5,1]
+   x = [2,3,4,7,6,1,9,5,10,8] = [2,3,4,7,9,10,8,5,6,1]
+   ...
+   x = [7,9,10,2,1,5,4,3,8,6] = [7,4,2,9,8,3,10,6,5,1]
+   x = [7,9,10,2,1,8,6,3,5,4] = [7,6,8,3,10,4,2,9,5,1]
+   x = [7,9,10,2,8,1,4,3,5,6] = [7,4,2,9,5,8,3,10,6,1]
+   x = [7,9,10,3,1,8,4,2,5,6] = [7,4,3,10,6,8,2,9,5,1]
+   x = [7,9,10,3,2,1,5,6,4,8] = [7,5,2,9,4,3,10,8,6,1]
+   x = [7,9,10,3,6,1,4,2,5,8] = [7,4,3,10,8,2,9,5,6,1]
+   x = [7,9,10,3,8,1,5,2,4,6] = [7,5,8,2,9,4,3,10,6,1]
+
+  (Groza states that there are much fewer solutions: his Mace 4 gives 264 solutions.)
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+/*
+   N    #sols
+   ------------
+   1          0
+   2          0
+   3          2
+   4         32
+   5      6 432
+   6 19 497 984
+
+   https://oeis.org/A129349
+   """
+   Number of directed Hamiltonian circuits in the n-triangular graph,
+   """
+*/
+go =>
+  N = 5,
+  NumEdges = N*(N-1) div 2,
+  X = new_list(NumEdges),
+  X :: 1..NumEdges,
+
+  all_different(X),
+
+  EId = 1, % The edge Id
+  Edges = [],
+  Map = new_map(),
+  foreach(I in 1..N, J in I+1..N)
+    Edges := Edges ++ [ [EId,I,J] ],
+    Map.put(I,Map.get(I,[])++[EId]),
+    Map.put(J,Map.get(J,[])++[EId]),    
+    EId := EId + 1
+  end,
+
+  foreach([E,I,J] in Edges)
+    T = (Map.get(I) ++ Map.get(J)).delete_all(E).remove_dups,
+    X[E] :: T % The connected edges
+  end,
+
+  % Ensure we have a circuit of the edges
+  circuit(X),
+  
+  solve(X),
+  
+  circuit_path(X,Path), % get the path from the circuit
+  println(x=X=Path),
+  fail,
+  
+  nl.
+
+%
+% circuit_path(Circuit,Path) is a circuit/1 constraint that is combined with
+% its path.
+%
+circuit_path(X,Z) =>
+   N = length(X),
+   Z = new_list(N),
+   Z :: 1..N,
+
+   %
+   % The main constraint is that Z[I] must not be 1 
+   % until I = N, and for I = N it must be 1.
+   %
+   all_different(X),
+   all_different(Z),
+
+   % put the orbit of x[1] in in z[1..n]
+   X[1] #= Z[1],
+   
+   % when I = N it must be 1
+   Z[N] #= 1,
+
+   % Redundant constraint. It is covered by the constraints
+   % X[N] = 1 and alldifferent.
+   % foreach(I in 1..N-1) Z[I] #\= 1 end,
+
+   %
+   % Get the orbit for Z.
+   %
+   foreach(I in 2..N)
+     element(Z[I-1],X,Z[I])
+   end.

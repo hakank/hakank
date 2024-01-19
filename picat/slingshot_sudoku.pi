@@ -1,0 +1,273 @@
+/* 
+
+  Slingshot Sudoku in Picat.
+
+  This is the Slingshot Sudoku from 
+  Cracking The Cryptic: "Please Find the Lost Toy!"
+  https://www.youtube.com/watch?v=lhPNZdEt2cA
+
+  It's the puzzle "Another Lost Toy" by Sandra & Nala: https://tinyurl.com/4ehptt9t 
+  """
+  Normal sudoku rules apply. Every digit that appears in a circle must also appear in at 
+  least one of its 4 surrounding cells. If an arrow is present in a cell, the digit in 
+  the cell the arrow comes from appears in the grid in the direction of the arrow at a distance 
+  of N cells, where N is the digit in the arrow's cell. (Not all arrows are necessarily given - 
+  there is not negative constraint.) 
+
+  Example: If R3C4 had an arrow pointing to the left and was a 3, and the digit below that arrow 
+  in R4C4 was a 5, then another 5 would be placed in R3C1. The grid is partially covered in 
+  fog. Placing correct digits will clear the fog from surrounding cells, possibly revealing 
+  more clues.
+  """
+
+  Here's the (unique) solution:
+   [3,8,9,5,7,6,4,2,1]
+   [6,7,5,1,2,4,9,3,8]
+   [2,4,1,3,9,8,5,7,6]
+   [1,3,4,2,5,7,6,8,9]
+   [9,2,6,4,8,1,7,5,3]
+   [8,5,7,9,6,3,1,4,2]
+   [7,1,8,6,3,5,2,9,4]
+   [5,6,2,8,4,9,3,1,7]
+   [4,9,3,7,1,2,8,6,5]
+
+
+  Thanks to Bo S for letting me know of this Sudoku variant.
+
+  * go/0 is my original version
+  * go2/0 is a variant using a different slingshot approach (inspired by Bo S' version). 
+    This is slightly faster than go2/0 (benchmarked by time_go/0 and time_go2/0).
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+% import sat.
+
+main => go.
+
+go =>
+  nolog,
+  N = 9,
+  X = new_array(N,N),
+  X :: 1..N,
+
+  sudoku(3,X),
+
+  % The Circle hints
+  circle([X[3,1],X[3,2],X[4,1],X[4,2]],1..4),  
+  circle([X[1,5],X[1,6],X[2,5],X[2,6]],[2,4,6,7]),
+  circle([X[2,8],X[2,9],X[3,8],X[3,9]],[3,6,7,8]),
+  circle([X[7,1],X[7,2],X[8,1],X[8,2]],[6,7]),
+  circle([X[8,5],X[8,6],X[9,5],X[9,6]],[4,9]),  
+
+  % The slingshot hints
+  slingshot(X,[4,3],[3,3],left), 
+  slingshot(X,[4,4],[3,4],left),
+  slingshot(X,[1,3],[1,2],down),
+  slingshot(X,[2,3],[2,4],up),
+  slingshot(X,[2,4],[1,4],right),  
+  slingshot(X,[2,7],[1,7],left),
+  slingshot(X,[1,8],[2,8],left),
+  slingshot(X,[7,2],[8,2],right),
+  slingshot(X,[7,6],[7,5],up),
+  slingshot(X,[8,7],[7,7],left),
+  slingshot(X,[9,7],[8,7],left),
+  slingshot(X,[9,2],[9,1],up),
+  slingshot(X,[9,4],[9,3],up),  
+
+  Vars = X.vars,
+  solve($[ff,updown],Vars),
+  
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl,
+  fail, % Check for unicity
+
+  nl.
+
+/*
+  Using an alternative slingshot (after an idea by Bo S).
+  This is slightly faster than go/0.
+*/
+go2 =>
+  nolog,
+  N = 9,
+  X = new_array(N,N),
+  X :: 1..N,
+
+  sudoku(3,X),
+
+  % The Circle hints
+  circle([X[3,1],X[3,2],X[4,1],X[4,2]],1..4),  
+  circle([X[1,5],X[1,6],X[2,5],X[2,6]],[2,4,6,7]),
+  circle([X[2,8],X[2,9],X[3,8],X[3,9]],[3,6,7,8]),
+  circle([X[7,1],X[7,2],X[8,1],X[8,2]],[6,7]),
+  circle([X[8,5],X[8,6],X[9,5],X[9,6]],[4,9]),  
+
+  % The slingshot hints (another approach)
+  slingshot2(X[1,3],X[1,2],[X[2,2],X[3,2],X[4,2],X[5,2],X[6,2],X[7,2],X[8,2],X[9,2]]),
+  slingshot2(X[2,4],X[1,4],[X[1,5],X[1,6],X[1,7],X[1,8],X[1,9]]),
+  slingshot2(X[2,7],X[1,7],[X[1,6],X[1,5],X[1,4],X[1,3],X[1,2],X[1,1]]),
+  slingshot2(X[1,8],X[2,8],[X[2,7],X[2,6],X[2,5],X[2,4],X[2,3],X[2,2],X[2,1]]),
+  slingshot2(X[2,3],X[2,4],[X[1,4]]), 
+  slingshot2(X[4,3],X[3,3],[X[3,2],X[3,1]]),
+  slingshot2(X[4,4],X[3,4],[X[3,3],X[3,2],X[3,1]]),
+  slingshot2(X[7,6],X[7,5],[X[6,5],X[5,5],X[4,5],X[3,5],X[2,5],X[1,5]]),
+  slingshot2(X[8,7],X[7,7],[X[7,6],X[7,5],X[7,4],X[7,3],X[7,2],X[7,1]]),
+  slingshot2(X[7,2],X[8,2],[X[8,3],X[8,4],X[8,5],X[8,6],X[8,7],X[8,8],X[8,9]]),
+  slingshot2(X[9,7],X[8,7],[X[8,6],X[8,5],X[8,4],X[8,3],X[8,2],X[8,1]]),
+  slingshot2(X[9,2],X[9,1],[X[8,1],X[7,1],X[6,1],X[5,1],X[4,1],X[3,1],X[2,1],X[1,1]]),
+  slingshot2(X[9,4],X[9,3],[X[8,3],X[7,3],X[6,3],X[5,3],X[4,3],X[3,3],X[2,3],X[1,3]]),
+
+
+  Vars = X.vars,
+  solve($[ffd,updown],Vars),
+  
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl,
+  fail, % Check for unicity
+
+  nl.
+
+%
+% Benchmarking 1000 runs (including printing the solution)
+%
+
+%
+% Testing go/0:
+% CP: 10.487s
+% SAT: 13.431s
+%
+time_go =>
+  time((between(1,1000,_), go, fail; true)).
+
+%
+% Testing go2/0:
+% CP: 7.489s
+% SAT: 11.362s
+%
+time_go2 =>
+  time((between(1,1000,_), go2, fail; true)).
+
+
+
+%
+% The circles
+%
+% The first hint
+%   circle([X[3,1],X[3,2],X[4,1],X[4,2]],1..4),
+% means that 
+%     X[3,1],X[3,2],
+%     X[4,1],X[4,2]
+% Must contain [1,2,3,4]
+%
+% Note: The vals can also be of length 2
+% 
+circle(Rect,Vals) =>
+  % Vals can be of length 2 or 4
+  foreach(V in Vals)
+    % Ensure that the value V is in Rect
+    element(_,Rect,V)
+  end,
+  all_different(Rect).
+
+% A variant
+circle2(Rect,Vals) =>
+  % Vals can be of length 2 or 4
+  foreach(V in Vals)
+    % Ensure that the value V is in Rect
+    sum([R #= V : R in Rect]) #= 1
+  end,
+  all_different(Rect).
+
+
+
+%
+% Slingshot rule
+%
+%  The value in X[FromI,FromJ] must be X[ValI,ValJ] steps from X[ValI,ValJ]
+%  in the direction Dir of the arrow.
+%  The directions are
+%    left
+%    right
+%    up
+%    down
+%
+% Example:
+%  slingshot(X,[4,3],[3,3],left),
+% The value in X[4,3] must also be in X[3,3] steps left of X[3,3]
+%
+% Note: One could be a little more intelligent and
+% reduce the value of Step since we know the position of X[ValI,ValJ]
+% but I'm lazy right now, and this is fairly fast anyway...
+%
+slingshot(X,[FromI,FromJ],[ValI,ValJ],Dir) =>
+  Steps #= X[ValI,ValJ], % The number of steps to take
+
+  %
+  % I and J are the new coordinates which must have the same value as X[FromI,FromJ]
+  % Step steps from X[FromI,FromJ]
+  %
+  I :: 1..9,
+  J :: 1..9,
+  if Dir == left then
+    % same row, new J to the left
+    I #= ValI,
+    J #= ValJ - Steps
+  elseif Dir == right then
+    % same row, new J to the right
+    I #= ValI,
+    J #= ValJ + Steps
+  elseif Dir == up then
+    % same column, new I less
+    I #= ValI - Steps,
+    J #= ValJ
+  else
+    % same column, new I larger
+    I #= ValI + Steps,
+    J #= ValJ
+  end,
+  matrix_element(X,I,J,X[FromI,FromJ]).
+  % Using indomain/1 and X[I,J] works instead of matrix_element/4,
+  % but it's quite slower 0.1s vs 0.014s
+  % Note: Only the CP solver supports indomain/1.
+  % indomain(I),
+  % indomain(J),
+  % X[I,J] #= X[FromI,FromJ].
+
+
+%
+% Alternative slingshot approach (based on an idea by Bo S).
+%
+% List is the explist list of the cells that are affected.
+% This is slightly faster than slingshot/4, much because
+% List contains only the cells that are affected by the constraint.
+%
+slingshot2(Stone,Index,List) =>
+  Index #<= List.len,
+  element(Index,List,Stone).
+  % This works as well (instead of element/3)) but is a little slower: 0.31ss vs 0.009s
+  % indomain(Index),
+  % List[Index] #= Stone.
+
+
+% Sudoku rules
+sudoku(N, Board) =>
+   N2 = N*N,
+
+   Vars = Board.vars(),
+   Vars :: 1..N2,
+
+   foreach(Row in Board) all_different(Row) end,
+   foreach(Column in transpose(Board)) all_different(Column) end,
+   foreach(I in 1..N..N2, J in 1..N..N2)
+      all_different([Board[I+K,J+L] : K in 0..N-1, L in 0..N-1])
+   end.

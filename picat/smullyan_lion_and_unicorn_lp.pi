@@ -1,0 +1,338 @@
+/* 
+
+  Smullyan's Lion and Unicorn problem in Picat.
+
+  Using plain logic programming (etc).
+
+  From Jan Burse:
+  https://groups.google.com/g/picat-lang/c/GvaKSTv1TxE/m/9Zot_Cr7BAAJ
+  """
+  Please solve this with logic:
+
+  When Alice entered the forest of forgetfulness, she did not
+  forget everything, only certain things. She often forgot her
+  name, and the most likely thing for her to forget was the day
+  of the week. Now, the lion and the unicorn were frequent
+  visitors to this forest. These two are strange creatures. The
+  lion lies on Mondays, Tuesdays, and Wednesdays and tells
+  the truth on the other days of the week. The unicorn, on the
+  other hand, lies on Thursdays, Fridays, and Saturdays, but tells
+  the truth on the other days of the week.
+
+  One day Alice met the lion and the unicorn resting under a tree.
+  They made the following statements:
+
+  Lion: Yesterday was one of my lying days.
+  Unicorn: Yesterday was one of my lying days.
+
+  From these statements, Alice, who was a bright girl, was able to
+  deduce the day of the week. What was it?
+
+  P.S.: Please no DC Proof solutions where animals outside
+  of the forest appear because of Russell Paradox.  
+  """
+
+  See Bruce D. Ramsey: "The Lion and the Unicorn Meet PROLOG"
+  https://dl.acm.org/doi/pdf/10.1145/382278.382395
+
+  Also, see Jan B's thread at SWI-Prolog Discourse on the same problem:
+  https://swi-prolog.discourse.group/t/autumn-challenge-2023-lion-and-unicorn/6949/17
+
+  And compare with my CP version smullyan_lion_and_unicorn.pi 
+  (which uses a little more general approach to this problem).
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util,cp.
+
+main :-
+  time((go_ramsey ; true)),
+  time((go ; true)),
+  time((go2 ; true)),
+  time((go3 ; true)),
+  time((go4 ; true)),
+  time((go5 ; true)),
+  time((go6 ; true)),
+  time((go7 ; true)), 
+  time((go8 ; true)),
+  time((go9 ; true)),
+  time((go10 ; true)),
+  time((go11 ; true)),
+  time((go12 ; true)),  
+  nl.
+
+go_ramsey :-
+  solve_for(Today),
+  println(Today),
+  fail.
+
+% This is a port of Bruce Ramsey's Prolog program
+% from https://dl.acm.org/doi/pdf/10.1145/382278.382395
+yesterday(sunday,saturday).
+yesterday(monday,sunday).
+yesterday(tuesday,monday).
+yesterday(wednesday,tuesday).
+yesterday(thursday,wednesday).
+yesterday(friday,thursday ).
+yesterday(saturday,friday).
+
+lying_day(lion,monday).
+lying_day(lion,tuesday).
+lying_day(lion,wednesday).
+
+lying_day(unicorn,thursday).
+lying_day(unicorn,friday).
+lying_day(unicorn,saturday).
+
+solve_for(Today) :-
+  yesterday(Today,Yesterday),
+  lying_day_lie_or_nonlying_day_truth(lion,Today,Yesterday),
+  lying_day_lie_or_nonlying_day_truth(unicorn,Today,Yesterday).
+  
+lying_day_lie_or_nonlying_day_truth(Speaker,When_said,Day_described) :-
+  not lying_day(Speaker,When_said),
+  lying_day(Speaker,Day_described).
+  
+lying_day_lie_or_nonlying_day_truth(Speaker,When_said,Day_described) :-
+  lying_day(Speaker,When_said),
+  not lying_day(Speaker,Day_described).
+
+
+%
+% Below are some of my own takes.
+%
+% Most programs use this observation:
+% - if today is a lying day, then yesterday was not a lying day
+% - if today is not a lying day, then yesterday was a lying day.
+% Which can be stated simpler:
+%   Today and Yesterday must have different "lying status".
+% 
+
+%
+% Using yesterday/2 and lying_day/1 from Ramsey
+%
+go :-
+  yesterday(Today,Yesterday),
+  check1(Today,Yesterday,lion),
+  check1(Today,Yesterday,unicorn),  
+  println([yesterday=Yesterday,today=Today]),
+  fail.
+
+% Check
+% If today is a lying day, then yesterday was not a lying day.
+% If today is not a lying day, then yesterday was a lying day.
+%
+check1(Today,Yesterday,Who) :-
+  (lying_day(Who,Today) -> not lying_day(Who,Yesterday) ; lying_day(Who,Yesterday)).
+
+
+% Using numbers (0 based)
+go2 :-
+  LyingDaysLion    = [1,2,3], % Lion lies on Mondays, Tuesdays, and Wednesdays
+  LyingDaysUnicorn = [4,5,6], % Unicorn lies on Thursdays,Fridays, and Saturdays
+  member(Today,0..6),
+  Yesterday = (Today-1) mod 7,
+  check2(Today,Yesterday,LyingDaysLion),
+  check2(Today,Yesterday,LyingDaysUnicorn),  
+  Days = days(),
+  println([yesterday=Yesterday,today=Today,today=Days[Today+1]]),
+  fail.
+
+% If today is a lying day, then yesterday was not a lying day.
+% If today is not a lying day, then yesterday was a lying day.
+check2(Today,Yesterday,LyingDays) :-
+  (membchk(Today,LyingDays) -> not membchk(Yesterday,LyingDays) ; membchk(Yesterday,LyingDays)).
+  
+
+%
+% Using CP instead.
+%
+go3 :-
+  lyingdayslion(LyingDaysLion), % Lion lies on Mondays, Tuesdays, and Wednesdays
+  lyingdaysunicorn(LyingDaysUnicorn), % Unicorn lies on Thursdays,Fridays, and Saturdays
+  
+  Today0 :: 0..6,
+  Today     #= 1+Today0,
+  Yesterday #= 1+(Today0-1) mod 7,
+  Yesterday :: 1..7,
+  
+  check3(Today,Yesterday,LyingDaysLion),
+  check3(Today,Yesterday,LyingDaysUnicorn),
+  solve([Today,Yesterday]),
+  Days = days(),
+  println([yesterday=Days[Yesterday],today=Days[Today]]),
+  fail.
+
+check3(Today,Yesterday,LyingDays) :-
+  element(Today,LyingDays,T), % Is today a Lying day?
+  element(Yesterday,LyingDays,Y), % Was yesterday a lying day?
+  T #= 1 #<=> Y #= 0. % Today and Yesterday must have different lying status.
+  % Or:
+  % T #!= Y.
+  % 1 #= T #^ Y.
+
+
+%
+% Observandum: The lying status of Today and Yesterday must be different.
+%
+go4 :-
+  lyingdayslion(LyingDaysLion), % Lion lies on Mondays, Tuesdays, and Wednesdays
+  lyingdaysunicorn(LyingDaysUnicorn), % Unicorn lies on Thursdays,Fridays, and Saturdays
+  
+  member(Today0,0..6),
+  Today     = 1 + Today0,
+  Yesterday = 1 + ((Today0-1) mod 7),
+  
+  LyingDaysLion[Today] != LyingDaysLion[Yesterday],
+  LyingDaysUnicorn[Today] != LyingDaysUnicorn[Yesterday],  
+  
+  Days = [sunday,monday,tuesday,wednesday,thursday,friday,saturday],
+  println([yesterday=Days[Yesterday],today=Days[Today]]),
+  fail.
+
+%
+% The lying status of Today and Yesterday must be different.
+%
+go5 :-
+  lyingdayslion(LyingDaysLion), % Lion lies on Mondays, Tuesdays, and Wednesdays
+  lyingdaysunicorn(LyingDaysUnicorn), % Unicorn lies on Thursdays,Fridays, and Saturdays
+  member(Today0,0..6),
+  Today     = 1 + Today0,
+  Yesterday = 1 + ((Today0-1) mod 7),
+  1 == LyingDaysLion[Today] + LyingDaysLion[Yesterday],
+  1 == LyingDaysUnicorn[Today] + LyingDaysUnicorn[Yesterday],
+  Days = days(),
+  println([yesterday=Days[Yesterday],today=Days[Today]]),
+  fail.
+
+
+%
+% Slightly shorter variant of go4/0: Use next/3 or append/3 to generate
+% Today and Yesterday.
+%
+go6 :-
+  lyingdayslion(LyingDaysLion), % Lion lies on Mondays, Tuesdays, and Wednesdays
+  lyingdaysunicorn(LyingDaysUnicorn), % Unicorn lies on Thursdays,Fridays, and Saturdays
+  % append(_,[Yesterday,Today],_,1..7 ++ [1]),
+  nextto(Yesterday,Today,1..7 ++ [1]), % Adding [1] is to ensure that we cover all days
+  LyingDaysLion[Today] != LyingDaysLion[Yesterday],
+  LyingDaysUnicorn[Today] != LyingDaysUnicorn[Yesterday],
+  Days = days(),
+  println([yesterday=Days[Yesterday],today=Days[Today]]),
+  fail.
+
+%
+% Another version that does not uses member/3 and modulo:
+% Extend to eight days.
+%
+go7 :-
+  %                  [s,m,t,w,t,f,s, s]
+  LyingDaysLion    = [0,1,1,1,0,0,0, 0], % Lion lies on Mondays, Tuesdays, and Wednesdays
+  LyingDaysUnicorn = [0,0,0,0,1,1,1, 0], % Unicorn lies on Thursdays,Fridays, and Saturdays
+  % append(_,[Yesterday,Today],_,1..LyingDaysLion.len),
+  nextto(Yesterday,Today,1..LyingDaysLion.len),
+  LyingDaysLion[Today]    != LyingDaysLion[Yesterday],
+  LyingDaysUnicorn[Today] != LyingDaysUnicorn[Yesterday],
+  Days = days(),
+  println([yesterday=Days[Yesterday],today=Days[Today]]),
+  fail.
+
+%
+% Same idea as go7/0 but using hash tables for the lying days.
+%
+go8 :-
+  Days = [sun,mon,tue,wed,thu,fri,sat, sun],
+  LyingDaysLion    = new_map([sun=0,mon=1,tue=1,wed=1,thu=0,fri=0,sat=0]),
+  LyingDaysUnicorn = new_map([sun=0,mon=0,tue=0,wed=0,thu=1,fri=1,sat=1]),
+  nextto(Yesterday,Today,Days),
+  LyingDaysLion.get(Today)    != LyingDaysLion.get(Yesterday),
+  LyingDaysUnicorn.get(Today) != LyingDaysUnicorn.get(Yesterday),
+  println([yesterday=Yesterday,today=Today]),
+  fail.
+
+
+%
+% The lying status of Today and Yesterday must be different
+%
+go9 :-
+  lyingdayslion(LyingDaysLion), % Lion lies on Mondays, Tuesdays, and Wednesdays
+  lyingdaysunicorn(LyingDaysUnicorn), % Unicorn lies on Thursdays,Fridays, and Saturdays
+  member(Today0,0..6),
+  Today     = 1 + Today0,
+  Yesterday = 1 + ((Today0-1) mod 7),
+  (
+    (LyingDaysLion[Today] == 1, LyingDaysLion[Yesterday] == 0)
+    ;
+    LyingDaysLion[Today] == 0, LyingDaysLion[Yesterday] == 1
+  ),
+  ( (LyingDaysUnicorn[Today] == 1, LyingDaysUnicorn[Yesterday] == 0)
+    ;
+    (LyingDaysUnicorn[Today] == 0, LyingDaysUnicorn[Yesterday] == 1)
+  ),
+  Days = days(),  
+  println([yesterday=Days[Yesterday],today=Days[Today]]),
+  fail.
+
+%
+% Using mod2/2 instead of mod/2.
+%
+
+% As mod/2 but when N mod M == 0 -> M
+mod2(N,M) = cond(N mod M == 0,M, N mod M).
+
+go10 :-
+  lyingdayslion(LyingDaysLion), % Lion lies on Mondays, Tuesdays, and Wednesdays
+  lyingdaysunicorn(LyingDaysUnicorn), % Unicorn lies on Thursdays,Fridays, and Saturdays
+
+  Days = days(),
+  N = Days.length,
+  member(Today,1..N),
+  Yesterday = mod2(Today-1,N),
+  
+  LyingDaysLion[Today]    != LyingDaysLion[Yesterday],
+  LyingDaysUnicorn[Today] != LyingDaysUnicorn[Yesterday],
+  println(Days[Today]),
+  fail,
+  nl.
+
+
+%
+% Using list comprehension.
+%
+go11 :-
+  %         [s,m,t,w,t,f,s, s]
+  Lion    = [0,1,1,1,0,0,0, 0], % Lion lies on Mondays, Tuesdays, and Wednesdays
+  Unicorn = [0,0,0,0,1,1,1, 0], % Unicorn lies on Thursdays,Fridays, and Saturdays
+  Days    = [sunday,monday,tuesday,wednesday,thursday,friday,saturday, sunday],
+  % For which day is the lying status of both the lion and the unicorn different?
+  A = [ Days[D] : D in 2..Days.length, Lion[D-1]!=Lion[D], Unicorn[D-1]!=Unicorn[D]],
+  println(A).
+
+%
+% Foreach loop
+%
+go12 :-
+  %         [s,m,t,w,t,f,s, s]
+  Lion    = [0,1,1,1,0,0,0, 0], % Lion lies on Mondays, Tuesdays, and Wednesdays
+  Unicorn = [0,0,0,0,1,1,1, 0], % Unicorn lies on Thursdays,Fridays, and Saturdays
+  Days    = [sunday,monday,tuesday,wednesday,thursday,friday,saturday, sunday],
+
+  N = Days.length,
+  foreach(I in 2..N)
+    if Lion[I] != Lion[I-1], Unicorn[I] != Unicorn[I-1] then
+      println(day=Days[I])
+    end
+  end,
+  fail,
+  nl.
+
+
+
+days() = [sunday,monday,tuesday,wednesday,thursday,friday,saturday].
+
+%             [s,m,t,w,t,f,s]
+lyingdayslion([0,1,1,1,0,0,0]).
+lyingdaysunicorn([0,0,0,0,1,1,1]).

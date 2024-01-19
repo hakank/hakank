@@ -1,0 +1,164 @@
+/*
+  From NFZ 2023-12-05
+  https://groups.google.com/g/picat-lang/c/XPxUFpuvBzY/m/JcUOal7-AAAJ
+  """
+  A comparison of Haskell, Julia and Picat on a Euler Project problem
+  """
+
+  Testing different other approaches than NFZ's (the one in main).
+  
+
+*/ 
+
+import cp.
+
+/*
+  This is Neng-Fa's original version.
+
+  CPU time 0.001 seconds.
+  picat -log -g "time(main)" euler206.pi  0,02s user 0,01s system 98% cpu 0,033 total
+
+*/
+main =>
+    Start = floor(sqrt(19293949596979899)),
+    between(-Start, 0, X),
+    to_string(X*X) = ['1',_,'2',_,'3',_,'4',_,'5',_,'6',_,'7',_,'8',_,'9'],
+    println(-X*10).
+
+/*
+  hakank: Here's I'm testing some approaches with loops.
+  Note that we have to use a breaking condition so the loops does not continue.
+
+  And last is a constraint model.
+
+*/
+
+/*
+ 
+ CPU time 0.001 seconds.
+ picat -log -g "time(hakank1)" euler206.pi  0,01s user 0,02s system 98% cpu 0,031 total
+
+*/
+hakank1 =>
+    Start = floor(sqrt(19293949596979899)),
+    X = Start,
+    Found = false,
+    while (X > 0, Found == false)
+      ( to_string(X*X) = ['1',_,'2',_,'3',_,'4',_,'5',_,'6',_,'7',_,'8',_,'9'] -> 
+         println(X*10),
+         Found := true
+       ;
+        X := X - 1
+      )
+    end,
+    nl.
+
+/*
+
+  CPU time 0.001 seconds.
+  picat -log -g "time(hakank2)" euler206.pi  0,02s user 0,01s system 98% cpu 0,033 total
+
+*/
+hakank2 =>
+    Start = floor(sqrt(19293949596979899)),
+    Found = false,
+    foreach(X in Start..-1..0, break(Found == true))
+      if to_string(X*X) = ['1',_,'2',_,'3',_,'4',_,'5',_,'6',_,'7',_,'8',_,'9'] then
+         println(X*10),
+         Found := true
+      end
+    end,
+    nl.
+
+/*
+  Way too slow: It's the construction of the range that takes a long time.
+  It's faster with pre allocation but still too slow:
+
+  CPU time 5.59 seconds.
+  picat -log -g "time(hakank3)" euler206.pi  5,60s user 1,16s system 99% cpu 6,761 total
+
+*/
+hakank3 =>
+    garbage_collect(300_000_000),
+    Start = floor(sqrt(19293949596979899)),
+    member(X, Start..-1..0), % The construction of the interval takes a long time
+    to_string(X*X) = ['1',_,'2',_,'3',_,'4',_,'5',_,'6',_,'7',_,'8',_,'9'],
+    println(X*10).
+
+
+/*
+  Constraint modeling:
+
+  * Using smt (z3): 
+
+    picat -log -g "time(hakank_cp)" euler206.pi  6,34s user 0,07s system 92% cpu 6,952 total
+
+  * Using sat:
+    CPU time 16.593 seconds.
+    picat -log -g "time(hakank_cp)" euler206.pi  16,61s user 0,04s system 99% cpu 16,661 total
+
+  * Using sat/seq:
+    CPU time 16.918 seconds.
+    picat -log -g "time(hakank_cp)" euler206.pi  16,93s user 0,07s system 99% cpu 17,080 total
+
+  * Using cp/down  
+    The winner of the constraint solvers is CP with the down strategy:
+
+    CPU time 0.001 seconds.
+    picat -log -g "time(hakank_cp)" euler206.pi  0,02s user 0,01s system 98% cpu 0,036 total
+
+
+*/
+hakank_cp =>
+    Max = floor(sqrt(19293949596979899)),
+    T = [1,_,2,_,3,_,4,_,5,_,6,_,7,_,8,_,9],
+    Len = T.len,
+    X :: 0..Max,
+    Y #= X*X,
+    A = new_list(Len),
+    A :: 0..9,
+    to_num(A,Y),
+    foreach(I in 1..Len)
+      if nonvar(T[I]) then
+        A[I] #= T[I]
+      end
+    end,
+    solve($[down], [X,Y] ++ A),
+    println((X*10)).
+
+% No need for an extra array A.
+hakank_cp_b =>
+    Max = floor(sqrt(19293949596979899)),
+    T = [1,_,2,_,3,_,4,_,5,_,6,_,7,_,8,_,9],
+    X :: 0..Max,
+    Y #= X*X,
+    to_num(T,Y),
+    solve($[down], [X,Y]),
+    println((X*10)).
+
+
+% From Neng-Fa
+hakank_cp2 =>
+    Max = floor(sqrt(19293949596979899)),
+    T = [1,_,2,_,3,_,4,_,5,_,6,_,7,_,8,_,9],
+    X :: 0..Max,
+    Y #= X*X,
+    T :: 0..9,
+    weighted_sum(T,0,Y),
+    solve([down],[X,Y]),
+    println((X*10)).
+
+weighted_sum([],Sum,V) => V #= Sum.
+weighted_sum([D|Ds],Sum,V) =>
+    Sum1 = $(10*Sum+D),
+    weighted_sum(Ds,Sum1,V).
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+        Len = length(List),
+        Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+to_num(List, Num) =>
+       to_num(List, 10, Num).

@@ -1,0 +1,236 @@
+/* 
+
+  Marriage in company puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 77. Marriage in company
+
+  In a certain company, Bob, Janet, and Shirley hold the positions of director, engineer,
+  and accountant, but not necessarily in that order. The accountant, who is an only child,
+  earns the least. Shirley, who is married to Bob's brother, earns more than the engineer.
+  What position does each person fill? (taken from Danesi (2018))
+  """  
+
+  names = [1,2,3]
+  positions = [2,1,3]
+  Bob: Engineer
+  Janet: Accountant
+  Shirley: Director
+
+  Here are three different approaches:
+  * go/0 a simple CP model
+  * go2/0 a more elaborate CP model showing how the solver can presolve the problem
+    (as well as the power of all_distinct)
+  * go3/0 A logic programming approach
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+/* 
+  Note that solve/1 is not needed since the solver finds the solution before
+  solve/1.
+*/
+go ?=>
+  N = 3,
+
+  Names = [Bob,_Janet,Shirley],
+  Names = 1..N,
+  NamesS = ["Bob","Janet","Shirley"],
+
+  Positions = [Accountant,Engineer,_Director],
+  Positions :: 1..N,
+  PositionsS = ["Accountant","Engineer","Director"],
+
+  all_different(Positions),
+
+  % The accountant, who is an only child, earns the least.
+  
+  % The accountant does not have any brother
+  % (Bob has a brother according to the next clue)
+  Accountant #!= Bob,
+
+  % Shirley, who is married to Bob’s brother, earns more than the engineer.
+  Shirley #!= Engineer,
+  % Since the accountant earns the least Shirley cannot be an accountant
+  Shirley #!= Accountant,
+  
+  % What position does each person fill?
+  solve(Positions), % solve/1 is not needed
+  
+  println(names=Names),  
+  println(positions=Positions),
+  foreach(I in 1..N)
+    element(Name,Names,I),
+    element(Pos,Positions,I),    
+    printf("%s: %s\n", NamesS[Name],PositionsS[Pos])
+  end,
+  nl,
+  fail,
+
+  nl.
+go => true.
+
+
+/* 
+
+  Another - and more complex - approach, using ordering of the positions,
+  and is a show case how the solver works.
+
+  With all the element/3 constraints (the one marked "not needed"), 
+  the solution is found faster. 
+
+  Here Positions is printed after each constraint (with all_different/1):
+
+  positions1 = [_029f8::[1 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions2 = [_029f8::[1 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions3 = [_029f8::[1 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions4 = [_029f8::[2 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions5 = [2,1,3]
+  positions6 = [2,1,3]
+
+  names = [1,2,3]
+  positions = [2,1,3]
+  Bob: Engineer
+  Janet: Accountant
+  Shirley: Director
+
+  Already after the fourth constraint (Accountant #!= Bob) the solver has 
+  found the solution.
+
+
+  If all the element/3 and the constraints that are commented as "not needed"
+  are commented AND all_different/1 is used, then solve/1 must be used:
+
+  positions1 = [_029f8::[1 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions2 = [_029f8::[1 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions3 = [_029f8::[1 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions4 = [_029f8::[2 ..3],_02a48::[1 ..3],_02a98::[1 ..3]]
+  positions5 = [_029f8::[2 ..3],_02a48::[1 ..3],_02a98::[2 ..3]]
+  positions6 = [_029f8::[2 ..3],_02a48::[1 ..2],_02a98::[2 ..3]]
+  names = [1,2,3]
+  positions = [2,1,3]
+  Bob: Engineer
+  Janet: Accountant
+  Shirley: Director
+
+  Note that the solver has reduced Janet's position to 1..2 and is the 
+  only one that has the 1 in their domain.
+
+
+  If, on the other hand, all the "not needed" constraints are commented,
+  and all_distinct/1 is used instead of all_different/1, then the solution 
+  is again found after the "position4" constraint (i.e. the same as with 
+  all constraints + all_different/1). This shows that all_distinct/1 is 
+  more powerful than all_different/1. 
+  Note that for larger problems all_distinct/1 tends to be slower than 
+  all_different/1.
+
+*/ 
+go2 ?=>
+  N = 3,
+
+  Names = [Bob,_Janet,Shirley],
+  Names = 1..N,
+  NamesS = ["Bob","Janet","Shirley"],
+
+  Positions = [Accountant,Engineer,_Director],
+  Positions :: 1..N,
+  PositionsS = ["Accountant","Engineer","Director"],
+
+  % all_different(Positions),
+  all_distinct(Positions), % more powerful than all_different/1
+
+  println(positions1=Positions),
+
+  % The accountant, who is an only child, earns the least.
+  element(Engineer,Positions,PositionsEngineer),
+  
+  % element(Accountant,Positions,PositionsAccountant), % not needed
+  % element(Director,Positions,PositionsDirector), % not needed
+
+  println(positions2=Positions),
+  
+  % PositionsAccountant #< PositionsEngineer, % not needed
+  % PositionsAccountant #< PositionsDirector, % not needed
+  % PositionsEngineer #< PositionsDirector, % not needed
+
+  println(positions3=Positions),
+
+  % The accountant does not have any brother
+  % (Bob has a brother according to the next clue)
+  Accountant #!= Bob,
+
+  println(positions4=Positions),
+
+  % Shirley, who is married to Bob’s brother, earns more than the engineer.
+  Positions[Shirley] #> PositionsEngineer,
+  println(positions5=Positions),
+  
+  Shirley #!= Engineer,
+  
+  println(positions6=Positions),
+  
+  % What position does each person fill?
+
+  solve(Positions),
+  
+  println(names=Names),  
+  println(positions=Positions),
+  foreach(I in 1..N)
+    element(Name,Names,I),
+    element(Pos,Positions,I),    
+    printf("%s: %s\n", NamesS[Name],PositionsS[Pos])
+  end,
+  nl,
+  fail,
+
+  nl.
+go2 => true.
+
+
+
+/*
+  Logic programming:
+
+  [bob = engineer,janet = accountant,shirley = director]
+
+*/
+go3 ?=>
+  job(bob) = Bob,
+  job(janet) = Janet,
+  job(shirley) = Shirley,
+
+  Bob != Janet,
+  Bob != Shirley,
+  Janet != Shirley,
+
+  % clues
+  Shirley != engineer,
+  Shirley != accountant,
+  Bob != accountant,
+  
+  println([bob=Bob,janet=Janet,shirley=Shirley]),
+  nl,
+  fail,
+  nl.
+go3 => true.
+
+p(bob).
+p(janet).
+p(shirley).
+
+j(accountant).
+j(engineer).
+j(director).
+
+job(X) = Y => 
+  p(X),
+  j(Y).

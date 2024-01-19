@@ -1,0 +1,130 @@
+/* 
+
+  The magisteral bench in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  See https://www.researchgate.net/publication/374588335_Measuring_reasoning_capabilities_of_ChatGPT
+  """
+  Puzzle 49. The magisterial bench
+
+  A bench of magistrates consists of two Englishmen, two Scotsmen, two Welshmen, one
+  Frenchman, one Italian, one Spaniard, and one American. The Englishmen will not sit
+  beside one another, the Scotsmen will not sit beside on another, and the Welshmen also
+  object to sitting together. In how many different ways may the ten men sit in a straight
+  line so that no two men of the same nationality shall ever be next to one another? (puz-
+  zle 447 from Dudeney (2016))
+  """
+
+  There are 1 895 040 different solutions.
+
+  * go/0: using a fail driven loop with permutation/2
+  * go2/0: using a foreach loop with permutations/1
+  * go3/0: using CP and some calculation for get the correct answer.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+/*
+  Using permutation/2 and a fail driven loop.
+  1 895 040 different solutions.
+  Time: 2.4s
+*/
+go ?=>
+   Map = get_global_map(),
+   Map.put(count,0),
+   L = [1,1,2,2,3,3,4,5,6,7],
+   N = L.len,   
+   permutation(L,P),
+   foreach(I in 1..N-1)
+     P[I] != P[I+1]   
+   end,
+   % println(x=P),
+   Map.put(count,Map.get(count)+1),
+   fail.
+go =>
+  println(get_global_map().get(count)).
+
+
+/*
+  Using permutations/1.
+  This is slower than go/0 since permutations/1 first generates a huge
+  list of all the 10! permutations
+  Time: 5.1s
+  Using table on check_perm/2 is slighly faster: 5.0s
+*/
+go2 =>
+   % Pre allocate memory for the huge list of permutations
+   garbage_collect(400_000_000),
+   Map = get_global_map(),
+   Map.put(count,0),
+   L = [1,1,2,2,3,3,4,5,6,7],
+   N = L.len,
+   C = 0,
+   foreach (P in permutations(L), check_perm(P,N))
+     C := C + 1
+   end,
+   println(C).
+
+% Since there's are a lot of duplicates it's slightly faster
+% using table.
+table
+check_perm(P,N) => 
+  OK = true,
+  foreach(I in 1..N-1, break(OK == false))
+    if P[I] == P[I+1] then
+      OK := false
+    end
+  end,
+  OK == true.
+
+
+/*
+  Using CP.
+
+  This CP model generates 236 880 unique solutions. 
+  But there are many repetitions for the positions of the 
+  two Englishmen (1), Scotsmen (2), and Welshmen (3), respectively. 
+
+  So we had to multiply with 2**3= 8: 
+    236880*(2**3) = 1 895 040.
+
+  Time: 0.4s
+
+
+  For 3 Englishmen, 3 Scotsmen, and 3 Welshmen there are
+  6093360 unique solutions and 164 520 720 total solutions.
+
+*/
+go3 ?=>
+  % 1: Englishmen (2), 2: Scotsmen (2), 3: Welshmen (2),
+  % 4: Frenshman (1), 5: Italian (1), 6: Spaniard (1), 7: American (1)
+  Cs = [2,2,2,1,1,1,1], % Occurrences of each landsmen
+  % Cs = [3,3,3,1,1,1,1], % Occurrences of each landsmen. 
+  N = Cs.sum,
+  X = new_list(N),
+  CsLen = Cs.len,
+  X :: 1..CsLen,
+
+  foreach(I in 1..CsLen)
+    count(I,X) #= Cs[I]
+  end,
+
+  foreach(I in 1..N-1)
+    X[I] #!= X[I+1]
+  end,
+
+  NumUnique = solve_all(X).len,
+  println(numUnique=NumUnique),
+  Dups = [V : V in Cs, V > 1],
+  println(NumUnique*Dups.prod),
+  nl.
+go3 => true.
+
+

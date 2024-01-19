@@ -1,0 +1,287 @@
+/* 
+
+  An ornament for a window puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 137. An ornament for a window
+
+  A store selling semiprecious stones used a five-pointed star made of circular spots held
+  together by a wire. The 15 spots hold from 1 through 15 stones (each number used
+  once). Each of the 5 circles holds 40 stones, and at the 5 ends of the star, there are 40
+  stones. (puzzle 326 from Kordemsky (1992))
+  """
+
+  Interpretation:
+  - There are 5 circles
+  - Each circle has 5 distinct numbers (from 1..15) 
+  - The sum of the numbers of each circle is 40
+  - For each circle it shares two numbers with the each of the two neigbouring circles
+  - Each circle has a unique number ("at the 5 ends of the stars)
+
+  Here is one solution (with symmetry breaking, see below), including the two helper matrices
+  Occ and Occ2 (calculated by global_cardinality2/2):
+
+   Circles:
+   Circle 1:  1  2  8 14 15 
+   Circle 2:  2  3  9 11 15 
+   Circle 3:  3  4 10 11 12 
+   Circle 4:  4  5  6 12 13 
+   Circle 5:  5  6  7  8 14 
+   occ1
+   {1,1,0,0,0,0,0,1,0,0,0,0,0,1,1}
+   {0,1,1,0,0,0,0,0,1,0,1,0,0,0,1}
+   {0,0,1,1,0,0,0,0,0,1,1,1,0,0,0}
+   {0,0,0,1,1,1,0,0,0,0,0,1,1,0,0}
+   {0,0,0,0,1,1,1,1,0,0,0,0,0,1,0}
+   occ2
+   {1,2,1,0,0,0,0,1,1,0,1,0,0,1,2}
+   {0,1,2,1,0,0,0,0,1,1,2,1,0,0,1}
+   {0,0,1,2,1,1,0,0,0,1,1,2,1,0,0}
+   {0,0,0,1,2,2,1,1,0,0,0,1,1,1,0}
+   {1,1,0,0,1,1,1,2,0,0,0,0,0,2,1}
+   starEnd = [1,7,9,10,13]
+
+
+
+  Here is the solution in Groza's book,
+  Note: comment the lex2/1 constraint (or set SymmetryBreaking to false) 
+  to see this solution
+  
+    Circles:
+    Circle 1:  1  5 10 11 13 
+    Circle 2:  2  3 10 12 13 
+    Circle 3:  2  3  6 14 15 
+    Circle 4:  4  6  7  9 14 
+    Circle 5:  5  7  8  9 11 
+    starEnd = [1,4,8,12,15]
+
+
+  With symmetry breaking (including lex2/1) there are 165 different solutions.
+  With symmetry breaking but without lex2/1 there are 1516 different solutions. 
+  Without any symmetry breaking there is a huge number of solutions.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  nolog,
+  
+  SymmetryBreaking = true,
+  % SymmetryBreaking = false, % A huge number of solutions
+
+  N = 5,
+  M = 15,
+  
+  L = new_array(N,N),
+  L :: 1..15,
+
+  % Occurrences of each circle, used by global_cardinality2/2
+  Occ1 = new_array(N,M),
+  Occ1 :: 0..1,
+
+  % Occurrences of each circle pairs
+  % used by global_cardinality2/2
+  Occ2 = new_array(N,M),
+  Occ2 :: 0..2,
+
+  % The star ends
+  StarEnd = new_list(M),
+  StarEnd :: 0..1,
+
+  % Symmetry breaking
+  if SymmetryBreaking then
+    L[1,1] #= 1,
+    StarEnd[1] #= 1
+  end,
+
+  foreach(C in 1..N)
+    all_different(L[C]), % A circle have distinct numbers
+    sum(L[C]) #= 40,     % and sums to 40
+    
+    if SymmetryBreaking then
+      increasing_strict(L[C]) % Symmetry breaking
+    end,
+
+    % Count the occurrences of the numbers,
+    % represented as 0/1 in an array of 0/1.
+    % It's used in the constraint below for identifying the star ends
+    global_cardinality2(L[C].to_list, Occ1[C])
+  end,
+  
+  foreach(C in 0..N-1)
+    % There are exactly 2 numbers in common between each neighbouring circles
+    sum([ L[1+(C mod N),A] #= L[1+((C+1) mod N),B] : A in 1..N, B in 1..N]) #= 2,
+    
+    % Count the number of occurrences of numbers, checked in the next foreach loop
+    T = L[1+(C mod N)].to_list ++ L[1+((C+1) mod N)].to_list,
+    global_cardinality2(T,Occ2[C+1])
+  end,
+
+  % Check the number of occurrences of neighbours
+  foreach(I in 1..M)
+    % Atmost one 2 (i.e. duplet)
+    sum([Occ2[C,I] #= 2 : C in 1..N]) #<= 1,
+    % There should be exactly two 1s 
+    sum([Occ2[C,I] #= 1 : C in 1..N]) #= 2
+  end, 
+
+  % Identify the star ends
+  % These are the one with a column with a single 1 in Occ1.
+  % (It's the same column which has no count of 2 in Occ2)
+  foreach(I in 1..M)
+    sum([Occ1[C,I] : C in 1..N]) #= 1 #<=> StarEnd[I] #= 1 
+  end,
+
+  sum(StarEnd) #= N,
+  scalar_product(1..M,StarEnd,#=,40),
+
+  % This is the example solution in Groza's book.
+  % Note: Set Symmetry breaking to false - or at least comment the lex2/1 constraint - 
+  % to see this solution.
+  % L[1] = {1,5,10,11,13},
+  % L[2] = {2,3,10,12,13},
+  % L[3] = {2,3,6,14,15},
+  % L[4] = {4,6,7,9,14},
+  % L[5] = {5,7,8,9,11},
+  % StarEnd = [1,0,0,1,0,0,0,1,0,0,0,1,0,0,1], % [1,4,8,12,15],
+
+  if SymmetryBreaking then
+    lex2(L)
+  end,
+
+  Vars = L.vars ++ Occ1.vars ++ Occ2.vars ++ StarEnd,
+  solve($[ff],Vars),
+
+  println("Circles:"),
+  foreach(C in 1..N)
+    printf("Circle %d: ",C),
+    foreach(J in 1..N)
+      printf("%2d ",L[C,J])
+    end,
+    nl
+  end,
+  println(occ1),
+  % println({I mod 10 : I in 1..M}),
+  foreach(O in Occ1)
+    println(O)
+  end,
+  println(occ2),
+  foreach(O in Occ2)
+    println(O)
+  end,
+  println(starEnd=[I : I in 1..M, StarEnd[I] == 1]),
+  nl,
+  fail,
+
+  nl.
+
+
+/*
+
+  Groza has a simpler model. Here's an adaption of that model.
+
+  This gives 949440 different solutions (1min25s).
+
+  With symmetry breaking increasing(StarEnds): 8224 solutions (0.9s)
+
+*/
+go2 =>
+  N = 15,
+  C = new_list(N),
+  C :: 1..N,
+  C = [C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15],
+  
+  all_different(C),
+  Circle1 = [C1, C2, C3, C5, C6],    % circles
+  Circle2 = [C2, C5, C9, C8, C4],
+  Circle3 = [C8, C9, C12, C13, C14],
+  Circle4 = [C10, C11, C12, C13, C15],
+  Circle5 = [C6, C7, C3, C10, C11],
+  StarEnds = [C1, C7, C15, C14, C4],   % values from the ends of the star
+  
+  sum(Circle1) #= 40,    % circles
+  sum(Circle2) #= 40,
+  sum(Circle3) #= 40,
+  sum(Circle4) #= 40,
+  sum(Circle5) #= 40,
+  sum(StarEnds) #= 40,
+
+  % Symmetry breaking:
+  % It only work for increasing(Circle1) and increasing(StarEnds).
+  % increasing(Circle1),
+  %% increasing(Circle2),
+  %% increasing(Circle3),
+  %% increasing(Circle4),
+  %% increasing(Circle5),
+  % increasing(StarEnds),
+
+  % The star ends in Groza's book
+  % StarEnds = [1,4,8,12,15],
+
+  solve(C),
+  println(c=C),
+  println("Circle 1"=Circle1),
+  println("Circle 2"=Circle2),
+  println("Circle 3"=Circle3),
+  println("Circle 4"=Circle4),
+  println("Circle 5"=Circle5),
+  println("Star ends"=StarEnds), 
+  nl,
+  fail,
+  nl.
+
+%
+% global_cardinality(A, Gcc)
+%
+% This version is bidirectional but limited:
+%
+% Both A and Gcc are (plain) lists.
+%  
+% The list A can contain only values 1..Max (i.e. the length of Gcc).
+% This means that the caller must know the max values of A.
+% Or rather: if A contains another values they will not be counted.
+% 
+global_cardinality2(A, Gcc) =>
+  Len = length(A),
+  Max = length(Gcc),
+  Gcc :: 0..Len,
+  foreach(I in 1..Max) count(I,A,#=,Gcc[I]) end.
+
+
+% From MiniZinc's lex2.mzn 
+% """
+%-----------------------------------------------------------------------------%
+% Require adjacent rows and adjacent columns in the array 'x' to be
+% lexicographically ordered.  Adjacent rows and adjacent columns may be equal.
+%-----------------------------------------------------------------------------%
+% """
+% This use lex_le/1
+lex2(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_le([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_le([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
+   end.
+
+% Note: This use lex_lt/1.
+lex2lt(X) =>
+   Len1 = X.len,
+   Len2 = X[1].length,
+   foreach(I in 2..Len1) 
+      lex_lt([X[I-1, J] : J in 1..Len2], [X[I, J] : J in 1..Len2])
+   end,
+   foreach(J in 2..Len2)
+      lex_lt([X[I ,J-1] : I in 1..Len1], [X[I, J] : I in 1..Len1])      
+   end.
+

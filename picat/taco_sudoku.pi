@@ -1,0 +1,106 @@
+/* 
+
+  Taco Sudoku in Picat.
+
+  Cracking the Cryptic: Sudoku Channel does Taco Tuesday
+  https://www.youtube.com/watch?v=76WIK0uMoP4
+  @4:15:
+  """
+  Taco Sudoky 
+  by DiMono
+
+  Normal sudoku rules apply.
+
+  Taco rules apply: A 2-digit Taco clue XY outside the grid
+  gives the sum of X + Y + the digits between X and Y in the indicated
+  row or column.
+
+  Example: A valid taco sum for 18 could be 8361.
+  """
+
+  Solution: (0.57 with SAT solver)
+    [7,9,4,2,3,6,1,8,5]
+    [3,8,2,1,5,7,9,4,6]
+    [6,5,1,9,4,8,3,7,2]
+    [8,1,3,6,9,4,2,5,7]
+    [4,7,6,5,2,1,8,9,3]
+    [9,2,5,8,7,3,4,6,1]
+    [1,4,7,3,8,5,6,2,9]
+    [5,6,9,4,1,2,7,3,8]
+    [2,3,8,7,6,9,5,1,4]
+
+  Proving unicity: 1.1s
+
+  Thanks to Bo S for letting me know of this Sudoku variant.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+% import cp. % Too slow
+% import smt.
+
+main => go.
+
+go =>
+  nolog,
+  N = 9,
+  hints(1,Upper,Lower,Left,Right),
+  
+  X = new_array(N,N),
+  X :: 1..N,
+
+  % Rows
+  do_hints(X, Left),
+  do_hints(X, Right),
+
+  % Columns
+  XT = X.transpose,
+  do_hints(XT, Upper),
+  do_hints(XT, Lower),  
+  
+  sudoku(ceiling(sqrt(N)),X),
+  
+  println(solve),
+  Vars = X.vars,  
+  solve($[],Vars),
+  
+  foreach(Row in X) println(Row.to_list) end,
+  nl,
+  % fail, % Check unicity
+  nl.
+
+/*
+  Note: This takes a "row perspective" on the matrix.
+*/
+do_hints(X,Hint) =>
+  N = X.len,
+  foreach({V,I} in zip(Hint,1..N),nonvar(V))
+    [V10,V1] = [V div 10, V mod 10],
+    Row = X[I],
+    [From,To] :: [V1,V10], % positions V1..V10 or positions V10..V1
+    FromPos #< ToPos,    
+    element(FromPos,Row,From), % position of From
+    element(ToPos,Row,To),     % position of To
+    % sum all numbers FromPos .. ToPos
+    V #= sum([Row[J]*(J #>= FromPos #/\ J #<= ToPos) : J in 1..N ])
+  end.
+
+sudoku(N, X) =>
+   N2 = N*N,
+   foreach(Row in X) all_different(Row) end,
+   foreach(Column in transpose(X)) all_different(Column) end,
+   foreach(I in 1..N..N2, J in 1..N..N2)
+     all_different([X[I+K,J+L] : K in 0..N-1, L in 0..N-1])
+   end.
+
+
+hints(1, Upper,Lower,Left,Right) =>
+      Upper = [31, _,15, _,38, _,13, _,45],
+      Lower = [14, _,38, _,_ , _,35, _,18],
+      Left  = [12, _,36, _,23, _, _, _,43],
+      Right = [25, _,24, _,24, _, _, _,26].    
+

@@ -1,0 +1,1152 @@
+/* 
+
+  Some Polyomino puzzles in Picat.
+
+  Some of the Polyomino puzzls from
+  From Adrian Groza "Modelling Puzzles in First Order Logic"    
+
+  Puzzles:
+  - Puzzle 122. A simple polyomino
+  - Puzzle 123. Rotating polyomino
+  - Puzzle 124. Ten-Yen
+  - Puzzle 125. Rotating Ten-Yen
+  - Puzzle 126. A 4 x 5 rectangle
+  (-  Puzzle 127. The 12 pentominoes)
+  - Puzzle 128. Importing six pentominoes
+  - Puzzle 129. Importing other six pentominoes
+
+  Puzzle 131. Five tetrominoes on a strange shape 
+
+
+  This is a fairly general model for solving (simple) 
+  polyomino puzzles.
+
+  The solution of a puzzle is as follows
+
+    4  3  1
+    2  3  1
+    2  2  1
+
+  where the numbers represents the piece id. 
+  I.e. here are 4 pieces (1..4).
+
+  Note:
+  * This a hybrid CP model with non-deterministic selection
+    of the rotational variants (using member/2).
+    This is too slow for the larger pentominoes puzzles.
+
+    It would be better with a "pure" CP/SAT model since it would
+    probably be faster. Perhaps using regular/6?
+
+
+  The function for generating symmetries uses the module rectangle_symmetries,
+  See http://hakank.org/picat/rectangle_symmetries.pi.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import rectangle_symmetries. % http://hakank.org/picat/rectangle_symmetries.pi
+import util.
+
+% import cp.
+import sat. % Tends to be faster than cp
+% import mip.
+% import smt.
+
+main => go.
+
+%
+% Show all solutions for the simplest puzzles.
+%
+go ?=>
+  nolog,
+  member(Puzzle,[a_simple_polyomino,
+                rotating_polyominos,
+                ten_yen,
+                rotating_ten_yen,
+                four_by_five_rectangle
+                ]),
+  println(puzzle=Puzzle),  
+  data(Puzzle,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go => true.
+
+
+go2 ?=>
+  nolog,
+  data(a_simple_polyomino,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go2 => true.
+
+
+
+go3 ?=>
+  nolog,
+  data(rotating_polyominos,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go3 => true.
+
+go4 ?=>
+  nolog,
+  data(ten_yen,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go4 => true.
+
+
+go5 ?=>
+  nolog,
+  data(rotating_ten_yen,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go5 => true.
+
+go6 ?=>
+  nolog,
+  data(four_by_five_rectangle,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go6 => true.
+
+
+go7 ?=>
+  nolog,
+  data(the_twelve_pentominoes,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go7 => true.
+
+go8 ?=>
+  nolog,
+  data(importing_six_pentominoes,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go8 => true.
+
+go8b ?=>
+  nolog,
+  data(importing_six_pentominoes_shape,Pieces,Shape),
+  polyomino_shape(Pieces,Shape),
+  fail,
+  nl.
+go8b => true.
+
+
+go9 ?=>
+  nolog,
+  data(importing_other_six_pentominoes,Pieces,Rows,Cols),
+  polyomino(Pieces,Rows,Cols),
+  fail,
+  nl.
+go9 => true.
+
+% Filling a non rectangular shape
+go10 ?=>
+  nolog,
+  data(five_tetrominoes_on_a_strange_shape,Pieces,Shape),
+  polyomino_shape(Pieces,Shape),
+  fail,
+  nl.
+go10 => true.
+
+
+
+/*
+  polyomino(Pieces,Rows,Cols)
+
+  Solve a polyomino configuration.
+
+*/
+polyomino(Pieces,Rows,Cols) =>
+  NumPieces = Pieces.len,
+
+  % The grid to fill
+  X = new_array(Rows,Cols),
+  X :: 1..NumPieces,
+
+  % Start row of this piece
+  StartRow = new_list(NumPieces),
+  StartRow :: 1..Rows,
+
+  % Start column of this piece
+  StartCol = new_list(NumPieces),
+  StartCol :: 1..Cols,
+  
+  foreach(P in 1..NumPieces)
+    Ps = Pieces[P],
+    member(PP,Ps), % select this variant
+    Ls = piece_dim(PP),
+    PLen = Ls.len, % Number of rows in this *mino
+    SR = StartRow[P],
+    SC = StartCol[P],
+    foreach(I in 1..PLen)
+      II #= SR + I - 1,
+      % Ignore the 0s in the rectangle
+      foreach(J in 1..Ls[I], PP[I,J] != 0)
+        JJ #= SC + J -1,
+        matrix_element(X,II,JJ,P)
+      end
+    end
+  end,
+  
+  Vars = X.vars ++ StartRow ++ StartCol,
+  solve($[ffd,split],Vars),
+
+  println(startRow=StartRow),
+  println(startCol=StartCol),
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      printf("%3d",X[I,J])
+    end,
+    nl
+  end,
+  nl. % end polyomino/3
+
+
+/*
+  Filling a non-rectangular shape and/or instances
+  with holes.
+
+*/
+polyomino_shape(Pieces,Shape) =>
+  Rows = Shape.len,
+  Cols = Shape[1].len,
+
+  println("Shape:"),
+  foreach(Row in Shape) println(Row) end,
+  nl,
+
+  NumPieces = Pieces.len,
+
+  % The grid to fill
+  X = new_array(Rows,Cols),
+  X :: 0..NumPieces,
+
+  foreach(I in 1..Rows,J in 1..Cols)
+    if Shape[I,J] == 0 then
+      X[I,J] #= 0
+    else
+      X[I,J] #> 0
+    end
+  end,
+
+  % Start row of this piece
+  StartRow = new_list(NumPieces),
+  StartRow :: 1..Rows,
+
+  % Start column of this piece
+  StartCol = new_list(NumPieces),
+  StartCol :: 1..Cols,
+
+  foreach(P in 1..NumPieces)
+    Ps = Pieces[P],
+    member(PP,Ps), % select this variant
+    Ls = piece_dim(PP),
+    PLen = Ls.len, % Number of rows in this *mino
+    SR = StartRow[P],
+    SC = StartCol[P],
+    foreach(I in 1..PLen)
+      II #= SR + I - 1,
+      % Ignore the 0s in the rectangle
+      foreach(J in 1..Ls[I], PP[I,J] > 0)
+        JJ #= SC + J -1,
+        matrix_element(X,II,JJ,P)
+      end
+    end,
+    count(P,X.vars,[ 1 : T in PP.flatten, T > 0].sum)
+  end,
+  
+  Vars = X.vars ++ StartRow ++ StartCol,
+  solve($[ffd,split],Vars),
+
+  println(startRow=StartRow),
+  println(startCol=StartCol),
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      printf("%3d",X[I,J])
+    end,
+    nl
+  end,
+  nl. % end polyomino_shape/2
+
+
+
+% Test a rotation
+test_rotation =>
+  % data(1,Pieces,Rows,Cols),
+  Pieces = [ [[1,0],  % Shape 2 
+              [2,3]]
+           ],
+
+  foreach(P in Pieces)
+    println(piece=P=piece_dim(P)),
+    print_mat(P),
+    PP = copy_term(P),
+    foreach(_ in 1..3)
+      PP := PP.rot(),
+      println(pp=PP),
+      print_mat(PP)
+    end,
+    nl
+  end,
+  nl.
+
+print_mat(M) => 
+  foreach(Row in M)
+    println(Row)
+  end,
+  nl.
+
+%
+% Rotate the matrix 1 step
+%
+rot(X) = Rot.array_matrix_to_list_matrix=>
+  N = X.len,
+  Rot = new_array(N,N),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      Rot[I,J] = X[N-J+1,I]
+    end
+  end.
+
+% Generate all 4 rotational variants
+% (which might be non-unique).
+all_rotations(X) = Rs =>
+  Rs = [],
+  T = copy_term(X),
+  foreach(_ in 1..4)
+    T := T.rot(),
+    Rs := Rs ++ [T]
+  end.
+
+
+piece_dim(Piece) = [P.len : P in Piece].
+
+
+/*
+  Here are the twelve pentonomies
+
+  t:
+      x x x 
+        x
+        x
+
+  u:
+      x   x 
+      x x x 
+
+  v:
+      x
+      x 
+      x x x 
+ 
+  w:
+     x
+     x x
+       x x
+
+  x:
+     x 
+   x x x
+     x
+
+  y:
+      x
+    x x
+      x
+      x 
+
+  z:
+    x x
+      x
+      x x
+ 
+  f:
+      x x
+    x x
+      x
+ 
+  i:
+      x
+      x
+      x
+      x
+      x
+ 
+  l:
+      x
+      x
+      x
+      x x
+
+  p:
+       x
+     x x
+     x x
+
+  n:
+       x
+       x
+     x x
+     x 
+*/
+pentominoes() = Map =>
+
+  Map = new_map([
+    
+   t = [[1,1,1],
+        [0,1,0],
+        [0,1,0]],
+        
+   u = [[1,0,1],
+        [1,1,1]],
+        
+   v = [[1,0,0],
+        [1,0,0],
+        [1,1,1]],
+   w = [[1,0,0],
+        [1,1,0],
+        [0,1,1]],
+
+   x = [[0,1,0],
+        [1,1,1],
+        [0,1,0]],
+
+   y = [[0,1],
+        [1,1],
+        [0,1],
+        [0,1]],
+
+   z = [[1,1,0],
+        [0,1,0],
+        [0,1,1]],
+
+   f = [[0,1,1],
+        [1,1,0],
+        [0,1,0]],
+
+   i = [[1],
+        [1],
+        [1],
+        [1],
+        [1]],
+
+   l = [[1,0],
+        [1,0],
+        [1,0],
+        [1,1]],
+
+   p = [[0,1],
+        [1,1],
+        [1,1]],
+
+   n = [[0,1],
+        [0,1],
+        [1,1],                                         
+        [1,0]]
+     ]).
+
+
+
+/*
+  Data.
+
+  The general idea is to list all the pieces in a master list 
+
+    [
+      % Piece 1 and it rotational variants
+
+      % Piece 2 and its rotational variants
+ 
+      % ...
+  
+    ]
+
+  A piece is represented as an rectangle where 0s are 
+  in place of the empty spaces for this pieces.
+
+  For simplification, the non-empty spaces has been numbered
+  from 1 and onward, but the important thing is that they are != 0.
+
+*/
+
+
+/*
+  """
+  Puzzle 122. A simple polyomino
+
+  This puzzle uses one monomino, one domino, and two trominoes, for a total of nine
+  squares. Assume that you cannot rotate the shapes. Group the four shapes in a 3 × 3
+  grid.
+  """
+
+  The shapes: 
+
+     x
+     x    x      x
+     x    x x    x    x
+         
+     1    2      3    4 (Id)
+
+  Note: The next puzzle ("Puzzle 123. Rotating polyomino" below)
+  also asks for rotations of the pieces.
+
+*/
+data(a_simple_polyomino,Pieces,Rows,Cols) :-
+  % Dimension of the grid to fill
+  Rows = 3,
+  Cols = 3,
+  Pieces = [
+            % 1
+            [
+            [[1],
+             [2],
+             [3]]
+            ],
+            
+            % 2
+            [
+             [[1,0], 
+              [2,3]]
+            ],
+
+            % 3
+            [
+             [[1], 
+              [2]]
+            ],
+
+            % 4
+            [
+             [[1]]
+            ]
+            ].
+
+
+/*
+  """
+  Puzzle 123. Rotating polyomino
+
+  This puzzle uses one monomino, one domino, and two trominoes, for a total of nine
+  squares. Assume that you cannot rotate the shapes. Group the four shapes in a 3 × 3
+  grid.
+  """
+
+  The shapes: 
+
+     x
+     x    x      x
+     x    x x    x    x
+         
+     1    2      3    4 (Id)
+
+  There are 48 solutions, for example
+
+
+   [1,4,3]
+   [1,2,3]
+   [1,2,2]
+
+   [4,3,1]
+   [2,3,1]
+   [2,2,1]
+
+   [1,2,4]
+   [1,2,2]
+   [1,3,3]
+
+   ...
+
+   [4,2,3]
+   [2,2,3]
+   [1,1,1]
+
+   [1,1,1]
+   [3,3,2]
+   [4,2,2]
+
+   [3,3,2]
+   [4,2,2]
+   [1,1,1]
+
+  
+ 
+  Note that the representation of the shapes only uses 0 and 1, to 
+  ensure that the shape 
+    x
+    x
+    x 
+
+  only has the variant
+    x x x
+
+  If it would be represented as [1,2,3] then [3,2,1] would be generated
+  as a variant.
+    
+  The parameter true is for just generating the 4 rotational symmetries,
+  and not the 4 flips
+
+*/
+data(rotating_polyominos,Pieces,Rows,Cols) :-
+  % Dimension of the grid to fill
+  Rows = 3,
+  Cols = 3,
+  Pieces = [
+             generate_distinct_symmetries([[1,1,1]],true), % 1
+             generate_distinct_symmetries([[1,0],[1,1]],true), % 2
+             generate_distinct_symmetries([[1,1]],true), % 3
+             generate_distinct_symmetries([[1]],true) % 5
+            ].
+
+
+/*
+  
+  """
+  Puzzle 124. Ten-Yen
+  Ten-yen puzzle consists of ten polyominoes as depicted below (Fig. 12.6). For
+  now, we assume that: shapes cannot be rotated and there are no constraints on the
+  colours of each shape. The task is to assemble the shapes in a 6 × 6 grid. (taken from
+  http://www.gamepuzzles.com/polycub3.htm and published in 1950 by Multiple Prod-
+  ucts Corporation and used here for educational purpose)
+  """
+
+  There are two solutions:
+
+  1  2  1  3  3  4
+  1  1  1  3  7  4
+  5  5  3  3  7  4
+  5  6  6  7  7  7
+  5  8  6  6 10 10
+  8  8  8  9  9 10
+
+
+  1  2  1  3  3  4
+  1  1  1  3  7  4
+  5  5  3  3  7  4
+  5  9  9  7  7  7
+  5  8  6  6 10 10
+  8  8  8  6  6 10
+ 
+*/
+data(ten_yen,Pieces,Rows,Cols) :-
+  Rows = 6,
+  Cols = 6,
+  Pieces = [
+             % 1
+             [ 
+               [[1,0,2],
+                [3,4,5]]
+             ],
+
+             % 2
+             [
+               [[1]]
+             ],
+
+             % 3)
+             [
+              [[0,1,2],
+               [0,3,0],
+               [4,5,0]]
+             ],
+
+             % 4)
+             [
+              [[1],
+               [2],
+               [3]]
+             ],
+
+             % 5)
+             [
+              [[1,2],
+              [3,0], 
+              [4,0]]
+             ],
+
+             % 6)
+            [
+             [[1,2,0],
+              [0,3,4]]
+            ],
+
+            % 7)
+            [
+             [[0,1,0],
+              [0,2,0],
+              [3,4,5]]
+            ],
+
+            % 8)
+           [
+            [[0,1,0],
+             [2,3,4]]
+           ],
+           
+           % 9)
+          [
+           [[1,2]]
+          ],
+
+          % 10)
+         [
+          [[1,2],
+           [0,3]]
+          ]   
+       ].
+
+
+
+/*
+  
+  """
+  Puzzle 125. Rotating Ten-Yen
+
+  Let us now rotate some of the polyominoes from the Ten-Yen puzzle. Namely, we can
+  rotate i2, r4, and b3. Which would be a new solution in this case? (adapted from the
+  Ten-Yen puzzle published in 1950 by Multiple Products Corporation and used here for
+  educational purpose)
+  """
+   
+
+  4 solutions:
+
+  1  2  1  3  3  4
+  1  1  1  3  7  4
+  5  5  3  3  7  4
+  5  6  6  7  7  7
+  5  8  6  6 10 10
+  8  8  8  9  9 10
+
+
+  1  2  1  3  3  4
+  1  1  1  3  7  4
+  5  5  3  3  7  4
+  5  9  9  7  7  7
+  5  8  6  6 10 10
+  8  8  8  6  6 10
+
+
+  9  5  5  8 10 10
+  9  5  8  8  8 10
+  1  5  1  3  3  4
+  1  1  1  3  7  4
+  6  6  3  3  7  4
+  2  6  6  7  7  7
+
+
+  1  2  1  3  3  4
+  1  1  1  3  7  4
+  5  5  3  3  7  4
+  5  6  6  7  7  7
+  5  8  6  6 10  9
+  8  8  8 10 10  9
+
+
+*/
+
+data(rotating_ten_yen,Pieces,Rows,Cols) :-
+  Rows = 6,
+  Cols = 6,
+  Pieces = [
+             % 1
+             [ 
+               [[1,0,2],
+                [3,4,5]]
+             ],
+
+             % 2
+             [
+               [[1]]
+             ],
+
+             % 3)
+             [
+              [[0,1,2],
+               [0,3,0],
+               [4,5,0]]
+             ],
+
+             % 4)
+             /*
+             [
+              [[1],
+               [2],
+               [3]],
+              % variant
+              [[1,2,3]]
+             ],
+             */
+             generate_distinct_symmetries([[1,1,1]],true),
+             
+             % 5)
+             [
+              [[1,2],
+               [3,0], 
+               [4,0]]
+             ],
+
+             % 6)
+            [
+             [[1,2,0],
+              [0,3,4]]
+            ],
+
+            % 7)
+            [
+             [[0,1,0],
+              [0,2,0],
+              [3,4,5]]
+            ],
+
+            % 8)
+           [
+            [[0,1,0],
+             [2,3,4]]
+           ],
+           
+           % 9)
+           /*
+          [
+           [[1,2]],
+
+           % variant
+           [[1],
+            [2]]
+          ],
+          */
+          generate_distinct_symmetries([[1,1]],true),
+          
+          % 10)
+          /*
+          [
+          [[1,2],
+           [0,3]],
+           
+          % variants
+          [[0,1],
+           [2,3]],
+
+          [[1,0],
+           [2,3]],
+
+          [[1,2],
+           [3,0]]
+         ]
+         */
+         generate_distinct_symmetries([[1,1],[0,1]],true)
+       ].
+
+
+/*
+  """
+  Puzzle 126. A 4 x 5 rectangle
+  
+  Use the following four pieces to fill a 4 × 5 grid. Each shape can be rotated (taken
+  from MCRuffy Pentomino Puzzle Book).
+  """
+
+  The four shapes used are
+
+    x
+    x
+    x
+    x x
+
+
+     x
+   x x
+   x x
+   x x
+
+     x
+   x x
+     x
+     x
+
+   x
+   x x 
+     x x
+
+
+  There are two solutions:
+
+  1  1  1  1  3
+  1  4  4  3  3
+  2  2  4  4  3
+  2  2  2  4  3
+
+  3  4  2  2  2
+  3  4  4  2  2
+  3  3  4  4  1
+  3  1  1  1  1
+
+
+*/ 
+data(four_by_five_rectangle,Pieces,Rows,Cols) :-
+  Rows = 4,
+  Cols = 5,
+
+  Pieces = [
+           generate_distinct_symmetries([[1,0],
+                                         [1,0],
+                                         [1,0],
+                                         [1,1]],true), % 1
+
+           generate_distinct_symmetries([[0,1],
+                                         [1,1],
+                                         [1,1]],true), % 2
+
+           generate_distinct_symmetries([[0,1],
+                                         [1,1],
+                                         [0,1],
+                                         [0,1]],true), % 3
+
+           generate_distinct_symmetries([[1,0,0],
+                                         [1,1,0],
+                                         [0,1,1]],true) % 4
+
+           ].
+
+
+
+
+/*
+  """
+  Puzzle 127. The 12 pentominoes
+
+  Show that the 12 pentominoes form a 3 × 20 rectangle. (taken from Golomb (1996))
+  """
+
+  In this instance we allow all 8 symmetries, including flips.
+
+*/
+data(the_twelve_pentominoes,Pieces,Rows,Cols) :-
+  Rows = 3,
+  Cols = 20,
+
+  Ps = pentominoes(),
+  Pieces1 = [],
+  foreach(Type in Ps.keys.sort)
+    P = generate_distinct_symmetries(Ps.get(Type),false),
+    Pieces1 := Pieces1 ++ [P]
+  end,
+  Pieces = Pieces1.
+
+
+/*
+  """
+  Puzzle 128. Importing six pentominoes
+
+  Find two solutions to fill a 5 × 6 rectangle with the following five pentonimoes: T, W,
+  Y, Z, I, and L. You can rotate and flip over each pentonimo. (adapted from Golomb
+  (1996))
+  """
+
+  This model gives 4 solutions:
+
+  5  5  5  5  5  1
+  3  4  4  1  1  1
+  3  3  4  2  2  1
+  3  6  4  4  2  2
+  3  6  6  6  6  2
+
+  3  6  6  6  6  2
+  3  6  4  4  2  2
+  3  3  4  2  2  1
+  3  4  4  1  1  1
+  5  5  5  5  5  1
+
+  2  6  6  6  6  3
+  2  2  4  4  6  3
+  1  2  2  4  3  3
+  1  1  1  4  4  3
+  1  5  5  5  5  5
+
+  1  5  5  5  5  5
+  1  1  1  4  4  3
+  1  2  2  4  3  3
+  2  2  4  4  6  3
+  2  6  6  6  6  3
+
+
+  But it's too slow: 
+  SAT: 115.3s
+  CP:  532.3s (8min52s)
+
+  Perhaps a pure constraint model would be faster....
+  
+*/
+data(importing_six_pentominoes,Pieces,Rows,Cols) :-
+  Rows = 5,
+  Cols = 6,
+
+  Ps = pentominoes(),
+  Pieces1 = [],
+  foreach(Type in [t,w,y,z,i,l])
+    P = generate_distinct_symmetries(Ps.get(Type),false),
+    Pieces1 := Pieces1 ++ [P]    
+  end,
+  Pieces = Pieces1.
+
+
+
+/*
+  """
+  Puzzle 129. Importing other six pentominoes
+
+  Find two solutions to fill a 5 × 6 rectangle with the following five pentominoes: U , V ,
+  X , F, P, and N . You can rotate and flip over each pentomino. (adapted from Golomb
+  (1996))
+  """
+
+  The following solutions are found
+
+  1  1  3  2  2  2
+  1  3  3  3  4  2
+  1  1  3  4  4  2
+  5  5  6  6  4  4
+  5  5  5  6  6  6
+
+
+  1  1  3  2  2  2
+  1  3  3  3  6  2
+  1  1  3  4  6  2
+  5  5  4  4  6  6
+  5  5  5  4  4  6
+
+
+  5  5  5  4  4  6
+  5  5  4  4  6  6
+  1  1  3  4  6  2
+  1  3  3  3  6  2
+  1  1  3  2  2  2
+
+
+  5  5  5  6  6  6
+  5  5  6  6  4  4
+  1  1  3  4  4  2
+  1  3  3  3  4  2
+  1  1  3  2  2  2
+
+
+  6  6  6  5  5  5
+  4  4  6  6  5  5
+  2  4  4  3  1  1
+  2  4  3  3  3  1
+  2  2  2  3  1  1
+
+
+  6  4  4  5  5  5
+  6  6  4  4  5  5
+  2  6  4  3  1  1
+  2  6  3  3  3  1
+  2  2  2  3  1  1
+
+
+  2  2  2  3  1  1
+  2  6  3  3  3  1
+  2  6  4  3  1  1
+  6  6  4  4  5  5
+  6  4  4  5  5  5
+
+
+  2  2  2  3  1  1
+  2  4  3  3  3  1
+  2  4  4  3  1  1
+  4  4  6  6  5  5
+  6  6  6  5  5  5
+
+  SAT: 185.8s
+
+
+*/
+data(importing_other_six_pentominoes,Pieces,Rows,Cols) :-
+  Rows = 5,
+  Cols = 6,
+
+  Ps = pentominoes(),
+  Pieces1 = [],
+  foreach(Type in [u,v,x,f,p,n])
+    P = generate_distinct_symmetries(Ps.get(Type),false),
+    Pieces1 := Pieces1 ++ [P]    
+  end,
+  Pieces = Pieces1.
+
+
+/*
+  """
+  Puzzle 131. Five tetrominoes on a strange shape
+
+  Fill the following shape with five distinct tetrominoes. You can rotate and flip over
+  each piece. (adapted from www.geogebra.org)
+  """
+
+  The shapes:
+    i) 
+        x x x x 
+
+    s)
+        x x
+        x x
+
+    t)
+        x x x
+          x
+
+    k)  
+         x x
+       x x
+
+    l)
+        x
+        x x x 
+
+
+  The shape to fill
+
+       x x x
+     x x x x x
+   x x x x x x x x
+     x x   x x  
+
+
+  The unique solution:
+    0  0  1  2  2  0  0  0
+    0  3  1  2  2  5  0  0
+    3  3  1  4  4  5  5  5
+    0  3  1  0  4  4  0  0
+
+  SAT: 2.2s
+  
+*/
+data(five_tetrominoes_on_a_strange_shape,Pieces,Shape) :-
+  Pieces = [
+             generate_distinct_symmetries([[1,1,1,1]],false), % i
+             generate_distinct_symmetries([[1,1],
+                                           [1,1]],false),     % s 
+             generate_distinct_symmetries([[1,1,1],
+                                           [0,1,0]],false),   % t
+             generate_distinct_symmetries([[0,1,1],
+                                           [1,1,0]],false),   % k
+             generate_distinct_symmetries([[1,0,0],
+                                           [1,1,1]],false)    % l
+           ],
+   Shape = [[0,0,1,1,1,0,0,0],
+            [0,1,1,1,1,1,0,0],
+            [1,1,1,1,1,1,1,1],
+            [0,1,1,0,1,1,0,0]
+            ].

@@ -1,0 +1,289 @@
+/* 
+
+  How many routes puzzle in Picat.
+
+  From Kordemsky:
+  """
+  In our Mathematics Circle we diagrammed 16 blocks of our city. How many different
+  routes can we draw from the bottom-left corner to the top-right corner moving only
+  upward and to the right? Different routes may, of course, have portions that coincide.
+  What answer should we give these students?
+   
+    ---------------
+    |              |
+    |  B  B  B  B  |
+    |  B  B  B  B  |
+    |  B  B  B  B  |
+    |  B  B  B  B  |
+    |              |
+    ---------------
+
+  """
+
+  Note: This is a 5x5 grid with 4x4 blocks.
+
+  Here is a sample route with 8 moves.
+
+
+                       7     8 ->      
+        B     B     B     B 
+                       6
+        B     B     B     B
+                 4     5
+        B     B     B     B
+                 3
+        B     B     B     B
+  -> 0     1     2   
+
+  
+  Below are some different approaches
+  * go/0: Dynamic programming
+  * go2/0: Constraint modelling
+  * go3/0 and go3b/0: Using planner modules
+  * go4/0: Using logic programming (path/4 and edge/3)
+
+  Cf going_to_church.pi for a similar problem.
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import planner.
+
+main => go.
+
+/*
+
+  This is from the Picat book, page 80
+  """
+  Starting in the top left corner of an N × N grid, one can either go rightward or downward. 
+  How many routes are there through the grid to the bottom right corner?
+  """
+
+  Adjusted for the problem of [N,1] -> [1,N] on an NxN grid
+
+  N = #solutions
+  1 = 1
+  2 = 2
+  3 = 6
+  4 = 20 
+  5 = 70 <-
+  6 = 252
+  7 = 924
+  8 = 3432
+  9 = 12870
+  10 = 48620
+
+  Thus, for an 5x5 grid there are 70 routes.
+
+  Note: for N in 1..10, tabling is not needed.
+  However, for N=1..15 we see the effect of tabling more clearly.
+  * without tabling: 2.2s
+  * with tabling: 0.05s
+
+  For N=1..100 it takes 0.3s with tabling, and will take many hours without.
+
+*/
+go ?=>
+  between(1,10,N),
+  println(N=route(N,N,1)),
+  fail,
+  nl.
+go => true.
+
+/*
+% From the Picat book, page 80: [1,1] -> [N,N]: moves are south or east
+% Tabling is not needed for 1..10
+table
+route(N,N,_Col) = 1.
+route(N,_Row,N) = 1.
+route(N,Row,Col) = route(N,Row+1,Col) + route(N,Row,Col+1).
+*/
+
+% Adjusted for Kordemsky's problem:
+% From [N,1] -> [1,N]: moves are north or east
+table
+route(N,1,_Col) = 1.
+route(N,_Row,N) = 1.
+route(N,Row,Col) = route(N,Row-1,Col) + route(N,Row,Col+1).
+
+
+/*
+  This is adapted from Croza: "Modelling Puzzles in First Order Logic"
+  See https://www.researchgate.net/publication/374588335_Measuring_reasoning_capabilities_of_ChatGPT
+  page 55f.
+  """
+  Observe that any route contains exactly 8 moves: 4 upward moves and 4 right moves. We
+  code the upward move with 1 and the right move with 0.  Hence the domain size is 2. As
+  there are 4 right moves and 4 left moves, the sum of the moves m_i should be exactly four
+     m1 + m2 + m3 + m4 + m5 + m6 + m7 + m8 = 4
+  Mace4 outputs 70 models for this equation.
+  """
+
+*/
+go2 =>
+  X = new_list(8),
+  X :: 0..1,
+  sum(X) #= 4,
+  println(solve_all(X).len),
+  nl.
+
+
+/*
+  Using the  Planner module.
+
+  This models the possible routes from [N,1] -> [1,N], i.e. north or east, for a 5x5 grid.   
+
+  Some of the 70 possible solutions:
+
+   #####
+   #....
+   #....
+   #....
+   #....
+
+   .####
+   ##...
+   #....
+   #....
+   #....
+
+   ..###
+   ###..
+   #....
+   #....
+   #....
+
+   ...##
+   ####.
+   #....
+   #....
+   #....
+
+   ....#
+   #####
+   #....
+   #....
+   #....
+
+   ...
+
+
+   ....#
+   ....#
+   ...##
+   ...#.
+   ####.
+
+   ....#
+   ....#
+   ....#
+   ...##
+   ####.
+
+   ....#
+   ....#
+   ....#
+   ....#
+   #####
+
+
+*/
+go3 ?=>
+  N = 5,
+  Start = [N,1],
+  End = [1,N],
+  Map = get_global_map(count),
+  Map.put(count,0),
+  best_plan_nondet([Start,End,N],Plan,_Cost),
+  M = new_array(N,N),
+  bind_vars(M,'.'),
+  M[N,1] := '#',
+  foreach([[_I1,_J1],to,[I2,J2]] in Plan)
+    M[I2,J2] := '#'
+  end,
+  foreach(Row in M) println(Row.to_list) end,
+  nl,
+  Map.put(count,Map.get(count)+1),
+  fail,
+  nl.
+go3 => println(get_global_map(count).get(count)).
+
+%
+% Simpler version, without any fancy output.
+% -> 70
+go3b =>
+  nolog,
+  N = 5,
+  println(count_all(best_plan_nondet([[N,1],[1,N],N],_Plan,_Cost))),
+  nl.
+
+final([End,End|_]).
+
+action([[I,J],End,N],To,Move,Cost) =>
+  Ns = neibs(N,I,J),
+  member([NewI,NewJ],Ns),
+  To = [[NewI,NewJ],End,N],
+  Move = [[I,J],to,[NewI,NewJ]],
+  Cost = 1.
+
+% Only move to south or to east
+neibs(N,I,J) = Ns =>
+   Ns = [ [I+A,J+B] : A in -1..0, B in 0..1, abs(A)+B == 1,
+                      I+A >= 1, I+A <= N, J+B >= 1, J+B <= N].
+
+
+%
+% Using logic programming path/4 and edge/3
+% 70 different routes.
+% 
+go4 ?=>
+  N = 5,
+
+  Start = [N,1],
+  End   = [1,N],
+
+  % Generate tha graph with $edge(From,To,1)
+  Graph = [],
+  foreach(I in 1..N, J in 1..N)
+    foreach(Nb in neibs(N,I,J))
+      Graph := Graph ++ $[edge([I,J],Nb,1)]
+    end
+  end,
+  cl_facts_table(Graph),
+
+  Map = get_global_map(),
+  Map.put(count,0),
+  
+  path(Start,End,Path,Cost),
+
+  if N == 5 then
+    % Print the path
+    M = new_array(N,N),
+    bind_vars(M,'.'),
+    M[N,1] := '#',
+    foreach([[_I1,_J1],to,[I2,J2]] in Path)
+      M[I2,J2] := '#'
+    end,
+    foreach(Row in M) println(Row.to_list) end,
+    nl,
+  end,
+  
+  Map.put(count,Map.get(count)+1),
+  fail,
+  nl.
+go4 => println(count=get_global_map().get(count)).
+
+
+table
+path(X,Y,Path,W) :-
+   Path=[[X,to,Y]],
+   edge(X,Y,W).
+path(X,Y,Path,W) :-
+   Path = [[X,to,Z]|PathR],
+   edge(X,Z,W1),
+   path(Z,Y,PathR,W2),
+   W = W1+W2.

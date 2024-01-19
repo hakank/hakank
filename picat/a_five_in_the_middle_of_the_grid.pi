@@ -1,0 +1,139 @@
+/* 
+
+  A five in the middle of a grid in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 85. A five in the middle of a grid
+
+  Here is an advertising trick that appeared in America many years ago. Place in the
+  empty squares such figures (different in every case, and no two squares containing the
+  same figure) so that they shall add up 15 in as many straight directions as possible. A
+  large prize was offered, but no correct solution was received. Can the reader guess the
+  trick? (puzzle 389 from Dudeney 2016)
+
+        _   _  _               c1  c2  c3
+       
+        _   5  _               c4  c5  c6
+  
+        _   _  _               c7  c8  c9
+
+  """
+
+  Groza give 8 solutions for this, but does not mention any trick why/how there
+  was no correct solution received. 
+
+  My own thought process of the trickery mentioned was the following, 
+  which - as Groza - assumed that there should be only integer values in the grid.
+
+  This is a twist of the classic magic square problem which has 8 solutions 
+  for the 3x3 matrix, all has 5 in the middle:
+    [[6,7,2],[1,5,9],[8,3,4]]
+    [[8,3,4],[1,5,9],[6,7,2]]
+    [[4,9,2],[3,5,7],[8,1,6]]
+    [[8,1,6],[3,5,7],[4,9,2]]
+    [[2,9,4],[7,5,3],[6,1,8]]
+    [[6,1,8],[7,5,3],[2,9,4]]
+    [[2,7,6],[9,5,1],[4,3,8]]
+    [[4,3,8],[9,5,1],[2,7,6]]
+
+  However, "in as many straight directions as possible" might include 
+  _all_ the possible diagonals, not just the to main diaginals. Here are 
+  all the n*2-1 diagonals (in [I,J] form):
+
+   [[1,1]]
+   [[3,1]]
+   [[1,2],[2,1]]
+   [[2,1],[3,2]]
+   [[1,3],[2,2],[3,1]]  <--
+   [[1,1],[2,2],[3,3]]  <- 
+   [[2,3],[3,2]]
+   [[1,2],[2,3]]
+   [[3,3]]
+   [[1,3]]
+
+  and only two of them (the one of length 3) does sum to 15.
+
+  If we allow negative values in the grid there are many more solutions.
+
+   
+    
+  The trickery according to Dudeney: The values in his grid are:
+      4.5   5  2.5
+        0    5   10
+       4.5   5  2.5
+      
+  and then there are expressions of unique integers in each cell, e.g((8x8)-8/8) + 8/(8+8) 
+  to represent 4.5.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+% import cp.
+import sat.
+
+main => go.
+
+go =>
+  N = 3,
+  X = new_array(N,N),
+  % X :: -100000..1000000,
+  X :: 1..N*N,
+
+  all_different(X.vars),
+
+  X[2,2] #= 5,
+
+  Rows = new_list(N),
+  Rows :: 0..1,
+  Cols = new_list(N),
+  Cols :: 0..1,
+
+  foreach(I in 1..N)
+    Rows[I] #= 1 #<=> sum([X[I,J] : J in 1..N]) #= 15,
+    Cols[I] #= 1 #<=> sum([X[J,I] : J in 1..N]) #= 15,    
+  end,
+
+  Diags = [],
+  foreach(D in all_diagonals(X),D.len > 1)
+    T :: 0..1,
+    T #= 1 #<=> sum(D) #= 15,
+    Diags := Diags ++ [T]
+  end,
+
+  Z #= sum(Rows) + sum(Cols) + sum(Diags),
+  Z #>= 8, % 
+  % Z #> 8, % There are no solutions with more than 8 different 15-sum.
+  
+
+  Vars = X.vars ++ Rows ++ Cols ++ Diags ++ [Z],
+  solve($[],Vars),
+  % solve($[max(Z)],Vars),  
+  println(z=Z),
+  println(x=X),
+  println(rows=Rows),
+  println(cols=Cols),
+  println(diags=Diags),
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl,
+  fail,
+  nl.
+
+all_diagonals(X) = Diagonals =>
+  N = X.len,
+  NumDiagonals = (N*2-1),
+  Diagonals = [],
+  C = 0,
+  foreach(K in 1..NumDiagonals)
+    println([[I,J] : I in 1..N, J in 1..N, I+J == K+1]),
+    println([[J,I] : I in 1..N, J in 1..N, I+(N-J+1) == K+1]),
+    Diagonals := Diagonals ++ [[X[I,J] : I in 1..N, J in 1..N, I+J == K+1]],
+    Diagonals := Diagonals ++ [[X[J,I] : I in 1..N, J in 1..N, I+(N-J+1) == K+1]],
+    C := C +2 
+  end.

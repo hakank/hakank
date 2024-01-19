@@ -1,0 +1,513 @@
+/* 
+
+  Boys and girls puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 8. Boys and girls
+
+  Nine boys and three girls agreed to share equally their pocket money. Every boy gave
+  an equal sum to every girl, and every girl gave another equal sum to every boy. Every
+  child then possessed exactly the same amount. What was the smallest possible amount
+  that each child then possessed? (puzzle 26 from Dudeney 2016)
+  """  
+
+  * go/0 and go2/0
+    My two models gives these two optimal solutions of final value of 9:
+    1) Boys start with 6 and gives 1 to every girl. 
+       Girls start with 18 and gives 2 to every boys.
+       They all end up with 9.
+    2) Boys start with 3 and gives 1 to every girl. 
+       Girls start with 27 and gives 3 to every boys.
+       They all end up with 9.
+
+   go/0 is a "full list version" keeping track of each boy and each girl.
+   go2/0 simplifies these calculations (and give the same results).
+
+  * go3/0: Groza
+    Groza's Mace4 model gives this solution.
+    Each boy has at the beginning 7 dollars and gives 1 dollar to each girl. 
+    Each girl has 19 dollars and gives 2 dollars to every boy. 
+    In the end, the boys and girls will have 10 dollars each.
+
+    My port of the model gives two optimal solutions.
+
+    As commented for go3/0, the difference between Groza's and my model(s) is
+    that I allow that boys and girls give away all their initial amount,
+    while Groza's model restrict them to keep at least one unit.
+
+
+  Dudeney: Every boy at the start possessed 12, and he gave 1 to every girl. Every
+           girl held 36, of which she gave 3 to every boy. Then every child would
+           have 18.
+
+           boys:  init =12  gives away 3*1=3   gets 3*3=9    = 12 - 3 + 9 = 18
+           girls: init= 36  gives away 9*3=27  gets 1*9=9    = 36 -27 + 9 = 18
+
+           As shown in go5/0, there are 10 different solutions which give a
+           final value of 18.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import mip.
+% import sat.
+import cp.
+
+main => go.
+
+/*
+
+  All optimal solutions:
+  z = 9
+  boysOrig = [6,6,6,6,6,6,6,6,6]
+  boysGives = [1,1,1,1,1,1,1,1,1]
+  boys = [9,9,9,9,9,9,9,9,9]
+  girlsOrig = [18,18,18]
+  girlsGives = [2,2,2]
+  girls = [9,9,9]
+
+
+  z = 9
+  boysOrig = [3,3,3,3,3,3,3,3,3]
+  boysGives = [1,1,1,1,1,1,1,1,1]
+  boys = [9,9,9,9,9,9,9,9,9]
+  girlsOrig = [27,27,27]
+  girlsGives = [3,3,3]
+  girls = [9,9,9]
+
+*/
+go ?=>
+  nolog,
+  boys_and_girls(Z),
+  println(z=Z),
+  println("All optimal solutions:"),
+  _ = findall(_,boys_and_girls(Z)),
+  nl.
+go => true.
+
+boys_and_girls(Z) =>
+
+  Max = 100,
+  B = 9,
+  G = 3,
+  BoysOrig = new_list(B),
+  BoysOrig :: 1..Max,
+  GirlsOrig = new_list(G),
+  GirlsOrig :: 1..Max,
+
+  BoysGives = new_list(B),
+  BoysGives :: 1..Max,
+  
+  GirlsGives = new_list(G),
+  GirlsGives :: 1..Max,
+
+  % The end result
+  Boys = new_list(B),
+  Boys :: 1..Max,
+  Girls = new_list(G),
+  Girls :: 1..Max,
+  
+  all_same(BoysOrig),
+  all_same(GirlsOrig),
+  all_same(BoysGives),
+  all_same(GirlsGives),  
+
+  % Different original amount
+  % BoysOrig[1] #!= GirlsOrig[1],
+
+  % They give different amounts
+  BoysGives[1] #!= GirlsGives[1],
+
+  % All boys and girls end up with the same amount
+  all_same(Boys ++ Girls),
+
+  % Same amount at start and end of the exchanges.
+  sum(Boys) + sum(Girls) #= sum(BoysOrig) + sum(GirlsOrig),
+
+  % Every boy gave an equal sum to every girl, 
+  foreach(I in 1..B)
+    G*BoysGives[I] #<= BoysOrig[I], % Cannot give away more than he got
+    Boys[I] #= BoysOrig[I] - G*BoysGives[I] + sum([GirlsGives[J] : J in 1..G])
+  end,
+  % and every girl gave another equal sum to every boy.
+  foreach(J in 1..G)
+    B*GirlsGives[J] #<= GirlsOrig[J],
+    Girls[J] #= GirlsOrig[J] - B*GirlsGives[J] + sum([BoysGives[I] : I in 1..B])
+  end,
+
+  Z #= Boys[1], % All boys and girls have the same amount in the end
+
+  % Z #> 9, % Testing
+
+  Vars =  BoysOrig ++ GirlsOrig ++ Boys ++ Girls ++ BoysGives ++ GirlsGives,
+  if var(Z) then
+    solve($[degree,updown,min(Z)],Vars)
+  else
+    solve($[degree,updown],Vars)
+  end,
+
+  println(z=Z),
+  println(boysOrig=BoysOrig),
+  println(boysGives=BoysGives),
+  println(boys=Boys),  
+  println(girlsOrig=GirlsOrig),  
+  println(girlsGives=GirlsGives),
+  println(girls=Girls),
+  nl.
+
+/*
+z = 9
+All optimal solutions:
+[3,27,1,3,9,9]
+boysOrig = 3
+boysGives = 1
+boys = 9
+girlsOrig = 27
+girlGives = 3
+girls = 9
+boys = [orig = 3,givesAway = 3,gets = 9,result = 9]
+girls = [orig = 27,givesAway = 27,gets = 9,result = 9]
+
+
+[6,18,1,2,9,9]
+boysOrig = 6
+boysGives = 1
+boys = 9
+girlsOrig = 18
+girlGives = 2
+girls = 9
+boys = [orig = 6,givesAway = 3,gets = 6,result = 9]
+girls = [orig = 18,givesAway = 18,gets = 9,result = 9]
+
+
+
+*/
+go2 =>
+  nolog,
+  boys_and_girls2(Z),
+  println(z=Z),
+  println("All optimal solutions:"),
+  _ = findall(_,boys_and_girls2(Z)),
+  nl.
+go2 => true.
+
+
+boys_and_girls2(Z) => 
+  Max = 1000,
+  B = 9,
+  G = 3,
+  BoysOrig :: 1..Max,
+  GirlsOrig :: 1..Max,
+
+  BoysGives :: 1..Max,
+  GirlsGives :: 1..Max,
+
+  Boys :: 1..Max,
+  Girls :: 1..Max,
+
+  BoysOrig #!= GirlsOrig,
+  BoysGives #!= GirlsGives,
+
+  % Cannot give away more than original amount
+  G*BoysGives #<= BoysOrig,
+  B*GirlsGives #<= GirlsOrig,  
+  Boys #= BoysOrig - G*BoysGives + G*GirlsGives,
+  Girls #= GirlsOrig - B*GirlsGives + B*BoysGives,  
+
+  Boys #= Girls,
+
+  % Boys #= 3,
+
+  Z #= Boys,
+
+  Vars = [BoysOrig,GirlsOrig,BoysGives,GirlsGives,Boys,Girls],
+  if var(Z) then
+    solve($[degree,updown,min(Z)],Vars)
+  else
+    solve($[degree,updown],Vars)
+  end,
+  
+  println(Vars),
+  println(boysOrig=BoysOrig),
+  println(boysGives=BoysGives),
+  println(boys=Boys),  
+  println(girlsOrig=GirlsOrig),
+  println(girlGives=GirlsGives),
+  println(girls=Girls),
+  println(boys=[orig=BoysOrig,givesAway=(G*BoysGives),gets=(G*GirlsGives),result=Boys]),
+  println(girls=[orig=GirlsOrig,givesAway=(B*GirlsGives),gets=(B*BoysGives),result=Girls]),  
+  
+
+  nl,
+  nl.
+
+/*
+  This is Groza's model.
+
+  There are two optimal solutions:
+
+  z = 10
+  All optimal solutions:
+  [4,28,1,3,10,10]
+  [boysOrig = 4,girlsOrig = 28,boysGives = 1,girlsGives = 3,boys = 10,girls = 10]
+  boys = [orig = 4,givesAway = 3,gets = 9,result = 10]
+  girls = [orig = 28,givesAway = 27,gets = 9,result = 10]
+
+  [7,19,1,2,10,10]
+  [boysOrig = 7,girlsOrig = 19,boysGives = 1,girlsGives = 2,boys = 10,girls = 10]
+  boys = [orig = 7,givesAway = 3,gets = 6,result = 10]
+  girls = [orig = 19,givesAway = 18,gets = 9,result = 10]
+
+  This models is almost the same as my model(s), except that Groza's model
+  has the constraint that a boy/girl have _more money initially_ than they 
+  give away, i.e. 
+    B #> 3*SB,
+    G #> 9*SG,
+
+  whereas in my models they can give away the complete initial amount, i.e.
+
+    B #>= 3*SB,
+    G #>= 9*SG
+
+  (Using that constraint in Groza's model give the same result as my models.)
+
+*/
+go3 =>
+  nolog,
+  boys_and_girls3(Z),
+  println(z=Z),
+  println("All optimal solutions:"),
+  _ = findall(_,boys_and_girls3(Z)),
+  nl.
+go3 => true.
+
+boys_and_girls3(Z) =>
+  [B,G,SB,SG,BAfter,GAfter] :: 1..1000,
+  
+  % We assume different init values  
+  B #> 0,
+  G #> 0,
+  B #!= G,
+
+  % Sum given by the boys / girls
+  SB #> 0,
+  SG #> 0,
+  
+  % Boys/girls have more money than given
+  B #> 3*SB,
+  G #> 9*SG,
+  % B #>= 3*SB, % Give the same result as my models
+  % G #>= 9*SG, % 
+
+  % Boys/girls sum after transaction
+  BAfter #= B - 3*SB + 3*SG,
+  GAfter #= G - 9*SG + 9*SB,
+  BAfter #= GAfter,
+
+  Z #= BAfter,
+
+  Vars = [B,G,SB,SG,BAfter,GAfter],
+  if var(Z) then
+    solve($[degree,updown,min(Z)],Vars)
+  else
+    solve($[degree,updown],Vars)
+  end,
+  
+  println(Vars),
+  println([boysOrig=B,girlsOrig=G,boysGives=SB,girlsGives=SG,boys=BAfter,girls=GAfter]),
+  println(boys=[orig=B,givesAway=(3*SB),gets=(3*SG),result=BAfter]),
+  println(girls=[orig=G,givesAway=(9*SG),gets=(9*SB),result=GAfter]),  
+  nl.
+
+/*
+  Here are the number of solutions for different final values (Z) 
+  (as well as the detailed output of the models).
+
+  It uses boys_and_girls2/1 which allows that boys and girls give away
+  all their initial amount.
+
+  count = 9 = 2
+  count = 10 = 2
+  count = 11 = 2
+
+  count = 12 = 3
+  count = 13 = 3
+  count = 14 = 3
+
+  count = 15 = 4
+  count = 16 = 4
+  count = 17 = 4
+
+  count = 18 = 10
+  count = 19 = 10
+  count = 20 = 10
+
+  count = 21 = 12
+  count = 22 = 12
+  count = 23 = 12
+  count = 24 = 14
+  count = 25 = 14
+  count = 26 = 14
+  count = 27 = 24
+  count = 28 = 24
+  count = 29 = 24
+  count = 30 = 27
+  count = 31 = 27
+  count = 32 = 27
+  count = 33 = 30
+  count = 34 = 30
+  count = 35 = 30
+  count = 36 = 44
+  count = 37 = 44
+  count = 38 = 44
+  count = 39 = 48
+  count = 40 = 48
+  ...
+  count = 135 = 660
+  count = 136 = 660
+  count = 137 = 660
+  count = 138 = 675
+  count = 139 = 675
+  count = 140 = 675
+
+*/
+go4 =>
+  member(Z,9..140),
+  println(z=Z),
+  Count = count_all(boys_and_girls2(Z)),
+  println(count=Z=Count),
+  nl,
+  fail,
+  nl.
+
+
+/*
+  Dudeney's answer is 18 (which is not the optimal as we've seen above).
+  Here are all the 10 solutions for the final value of 18.
+
+  [6,54,2,6,18,18]
+  boysOrig = 6
+  boysGives = 2
+  boys = 18
+  girlsOrig = 54
+  girlGives = 6
+  girls = 18
+  boys = [orig = 6,givesAway = 6,gets = 18,result = 18]
+  girls = [orig = 54,givesAway = 54,gets = 18,result = 18]
+
+
+  [3,63,1,6,18,18]
+  boysOrig = 3
+  boysGives = 1
+  boys = 18
+  girlsOrig = 63
+  girlGives = 6
+  girls = 18
+  boys = [orig = 3,givesAway = 3,gets = 18,result = 18]
+  girls = [orig = 63,givesAway = 54,gets = 9,result = 18]
+
+
+  [9,45,2,5,18,18]
+  boysOrig = 9
+  boysGives = 2
+  boys = 18
+  girlsOrig = 45
+  girlGives = 5
+  girls = 18
+  boys = [orig = 9,givesAway = 6,gets = 15,result = 18]
+  girls = [orig = 45,givesAway = 45,gets = 18,result = 18]
+
+
+  [6,54,1,5,18,18]
+  boysOrig = 6
+  boysGives = 1
+  boys = 18
+  girlsOrig = 54
+  girlGives = 5
+  girls = 18
+  boys = [orig = 6,givesAway = 3,gets = 15,result = 18]
+  girls = [orig = 54,givesAway = 45,gets = 9,result = 18]
+
+
+  [12,36,2,4,18,18]
+  boysOrig = 12
+  boysGives = 2
+  boys = 18
+  girlsOrig = 36
+  girlGives = 4
+  girls = 18
+  boys = [orig = 12,givesAway = 6,gets = 12,result = 18]
+  girls = [orig = 36,givesAway = 36,gets = 18,result = 18]
+
+
+  [9,45,1,4,18,18]
+  boysOrig = 9
+  boysGives = 1
+  boys = 18
+  girlsOrig = 45
+  girlGives = 4
+  girls = 18
+  boys = [orig = 9,givesAway = 3,gets = 12,result = 18]
+  girls = [orig = 45,givesAway = 36,gets = 9,result = 18]
+
+
+  [15,27,2,3,18,18]
+  boysOrig = 15
+  boysGives = 2
+  boys = 18
+  girlsOrig = 27
+  girlGives = 3
+  girls = 18
+  boys = [orig = 15,givesAway = 6,gets = 9,result = 18]
+  girls = [orig = 27,givesAway = 27,gets = 18,result = 18]
+
+
+  [12,36,1,3,18,18]
+  boysOrig = 12
+  boysGives = 1
+  boys = 18
+  girlsOrig = 36
+  girlGives = 3
+  girls = 18
+  boys = [orig = 12,givesAway = 3,gets = 9,result = 18]
+  girls = [orig = 36,givesAway = 27,gets = 9,result = 18]
+
+
+  [15,27,1,2,18,18]
+  boysOrig = 15
+  boysGives = 1
+  boys = 18
+  girlsOrig = 27
+  girlGives = 2
+  girls = 18
+  boys = [orig = 15,givesAway = 3,gets = 6,result = 18]
+  girls = [orig = 27,givesAway = 18,gets = 9,result = 18]
+
+
+  [21,9,2,1,18,18]
+  boysOrig = 21
+  boysGives = 2
+  boys = 18
+  girlsOrig = 9
+  girlGives = 1
+  girls = 18
+  boys = [orig = 21,givesAway = 6,gets = 3,result = 18]
+  girls = [orig = 9,givesAway = 9,gets = 18,result = 18]
+
+  Note: Using Groza's constraints (boys_and_girs3/1) only gives 4 solutions, 
+  removing the 6 solutions where any of the boys and girls give away all 
+  their initial amount.
+
+*/ 
+go5 =>
+  _ = findall(_,boys_and_girls2(18)),
+  nl.
+
+all_same(X) =>
+  foreach(I in 2..X.len)
+    X[I] #= X[I-1]
+  end.

@@ -1,0 +1,174 @@
+/* 
+
+  The clock problem in Picat.
+
+  From https://matmod.ch/
+  """
+  The clock problem
+
+  Divide the clock with a straight cut into two parts such that the sum of the 
+  numbers in both parts are equal?
+
+  (This problem seems particularly easy. It is not! Well by trying the reader get 
+  quickly a solution. But then the question arises: It this te unique solution? How 
+  can one find all? The resulting mathematical model uses binary variables and logical
+  conditions.
+  """
+
+  This is a clock.
+
+         12 
+      11    1 
+    10        2
+   9            3
+     8        4
+       7    5
+         6
+
+
+  Below are some different programs, all with the solution that
+  one part is 4..9 and thus the other part is 1..3 and 10..12.
+  I.e. the cut is between 3-4 and 9-10.
+
+  Some of the programs exploits that ee only need to identify 
+  one of the parts (From..To) and check that
+    (From..To).sum == (1..12).sum div 12
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+
+/*
+  $ hyperfine 'picat -g go the_clock_problem.pi' 
+  Benchmark 1: picat -g go the_clock_problem.pi
+    Time (mean ± σ):      29.8 ms ±   4.4 ms    [User: 13.2 ms, System: 16.7 ms]
+    Range (min … max):    13.6 ms …  33.0 ms    77 runs
+ 
+*/
+go =>
+  N = 12,
+
+  From :: 1..12,
+  To :: 1..12,
+  From #< To,
+
+  Part1 #= sum([I*(I#>=From #/\ I #<= To) : I in 1..N]),
+  Part2 #= sum([I*(I#<From #\/ I #> To) : I in 1..N]),
+  Part1 #= Part2,
+  Vars = [From,To,Part1,Part2],
+  solve(Vars),
+  println([from=From,to=To,part1=Part1,part2=Part2]),
+  fail,
+  nl.
+
+/*
+  Non CP, same idea
+
+  $ hyperfine '.picat -g go2 the_clock_problem.pi'
+  Benchmark 1: picat -g go2 the_clock_problem.pi
+    Time (mean ± σ):      31.6 ms ±   2.6 ms    [User: 16.2 ms, System: 15.4 ms]
+    Range (min … max):    19.8 ms …  35.0 ms    72 runs
+ 
+*/
+go2 =>
+  N = 12,
+
+  member(From,1..12),
+  member(To,From+1..12),
+
+  Part1 #= sum([I : I in 1..N, I >=From, I <= To]),
+  Part2 #= sum([I : I in 1..N, (I <From ;  I > To)]),
+  Part1 == Part2,
+  println([from=From,to=To,part1=Part1,part2=Part2]),
+  fail,
+  nl.
+
+/*
+  Using an array 
+
+  $ hyperfine 'picat -g go3 the_clock_problem.pi'      
+  Benchmark 1: picat -g go3 the_clock_problem.pi
+    Time (mean ± σ):      30.5 ms ±   3.4 ms    [User: 14.8 ms, System: 15.7 ms]
+    Range (min … max):    20.0 ms …  33.0 ms    72 runs
+ 
+*/
+go3 =>
+  N = 12,
+  X = new_list(N),
+  X :: 0..1, % The two parts
+
+  From :: 1..N,
+  To :: 1..N,
+  From #< To,
+
+  foreach(I in 1..N)
+    X[I] #= 0 #<=> (I #>= From #/\ I #<= To)
+  end,
+
+  % sum([I*(X[I] #= 0) : I in 1..N]) #= sum([I*(X[I] #= 1) : I in 1..N]),
+  sum([I*(X[I] #= 0) : I in 1..N]) #= (1..12).sum div 2,
+
+  Vars = X ++ [From,To],
+  solve(Vars),
+  println(x=X),
+  println([from=From,to=To]),
+  nl,
+  fail,
+  nl.
+
+/*
+  Simpler version
+   $ hyperfine 'picat -g go4 the_clock_problem.pi'
+   Benchmark 1: picat -g go4 the_clock_problem.pi
+    Time (mean ± σ):      31.4 ms ±   2.2 ms    [User: 17.2 ms, System: 14.2 ms]
+    Range (min … max):    22.1 ms …  33.5 ms    72 runs
+
+*/
+go4 =>
+  N = 12,
+  S = (1..12).sum div 2,
+  member(From,1..N),
+  member(To,From+1..N),
+  (From..To).sum = S,
+  println([from=From,to=To]),
+  fail,
+  nl.
+
+/*
+  $ hyperfine 'picat -g go5 the_clock_problem.pi'
+  Benchmark 1: picat -g go5 the_clock_problem.pi
+    Time (mean ± σ):      33.0 ms ±   4.4 ms    [User: 18.3 ms, System: 14.6 ms]
+    Range (min … max):    15.9 ms …  40.7 ms    75 runs
+ 
+*/
+go5 =>
+  N = 12,
+  S = (1..N).sum div 2,
+  foreach(From in 1..N, To in From+1..N, (From..To).sum == S)
+    println(From..To)
+  end,
+  nl.
+
+/*
+  Using indomain/1 to enumerate the domain (only CP solver).
+
+  $ hyperfine 'picat -g go6 the_clock_problem.pi'
+  Benchmark 1: picat -g go6 the_clock_problem.pi
+    Time (mean ± σ):      32.9 ms ±   5.3 ms    [User: 17.1 ms, System: 15.8 ms]
+    Range (min … max):    18.2 ms …  40.2 ms    66 runs
+ 
+*/
+go6 =>
+   N=12,
+   [From,To]::1..N,
+   indomain(From),indomain(To),
+   [I : I in From..To].sum #= (1..N).sum div 2,
+   println([from=From,to=To]),
+   fail,
+   nl.

@@ -18,6 +18,9 @@
     3785942160
     2438195760
 
+  Earlier comments: When I originally wrote this model there was 
+  a problem in the mod/2 constraint. This is fixed, but I let
+  the comparison stand.
 
   Comparison with two different constraints vs solver vs Picat version.
 
@@ -26,9 +29,10 @@
     -------------------------------------
     3.3#3     CP        13.5s
     3.4       CP        Stack overflow
+    3.4.1     CP        10.2s
     3.3#3     SAT       338.8s
     3.4       SAT       Stack overflow
-
+    3.4.1     SAT       280,45s
 
   * (Num div I)*I #= Num 
     Version    Solver   Time
@@ -38,23 +42,21 @@
     3.3#3      SAT      258.5s
     3.4        SAT      164.6s
 
-
-
+  Later, using v2.6, and testing in reverse order (18..2) and
+  the divisibility by 11 hint from Groza:
+  - CP: 0.76s
 
   This model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
 
-% Num mod I #= 0
-% import sat. % v3.4:Stack overflow v.3.4.1:280,45s  v3.3#3: 338.809s
-import cp. % v3.4: Stack overflow. v3.4.1: 10.1s  v3.3#3: 13.524s
+import util.
 
-% (Num div I)*I#=Num
-% import sat. % v3.4: 164.594s  v3.3#3: 258.585s
-% import cp. % v3.4: 463.437  v3.3#3: 465.636s
+import cp.
+% import sat.
+% import mip.
 
-main => go.
 
 go ?=>
   nolog,
@@ -66,20 +68,30 @@ go ?=>
   Num :: 10**9..10**10-1,
 
   X[1] #!= 0,
-  foreach(I in 2..18)
-    Num mod I #= 0 % Stack overflow with v3.4. Fixed in v3.4.1
+
+  % divisibility with 10
+  X[10] #= 0,
+
+  % divisibility by 11
+  % From Adrian Groza "Modelling Puzzles in First Order Logic"
+  abs(X[1] + X[3] + X[5] + X[7] + X[9] -X[2] - X[4] -X[6] - X[8] - X[10]) #= 11,
+  
+
+  % Testing in reverse order is faster 
+  foreach(I in 18..-1..2)
+    Num mod I #= 0
     
     % Note: This is based on the definition of X mod Y:
     %    X - floor(X div Y)*Y -> X-(X div Y)*Y #= Mod
     % (Num div I) * I #= Num % SAT is faster than CP on this (but slower than v3.3#3)
     % my_mod(Num,I,0)
   end,
-  
+
   to_num(X,10,Num),
   all_different(X),
 
   Vars = X ++ [Num],
-  solve(Vars),  
+  solve($[],Vars),  
   
   println(Num),
   fail,
@@ -101,3 +113,21 @@ to_num(List, Base, Num) =>
    Len = length(List),
    Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
 
+
+/*
+  Let's play with permutations instead.: 10.5s
+
+*/
+go2 ?=>
+  permutation(0..9,Perm),
+  Perm[1] > 0,
+  Num = [P.to_string : P in Perm].join('').to_int,
+  OK = true,
+  foreach(I in 18..-1..2, break(OK == false))
+    if Num mod I > 0 then OK := false end
+  end,
+  OK == true,
+  println(Num),
+  fail,
+  nl.
+go2 => true.

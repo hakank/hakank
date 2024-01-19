@@ -1,0 +1,236 @@
+/* 
+
+  Magic labyrinth in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"    
+  """
+  Puzzle 105. Magic labyrinth
+
+  Enter the numbers 1 to M into an n × n grid. Each number can appear only once in
+  each column and row. Following the labyrinth from the outside inwards, then the
+  given number sequence must be repeated continuously. (taken from Kleber (2013))
+  (Fig. 10.17)
+  """
+
+  Fig. 10.17: A magic 5 labyrinth to be fill with the sequence 1,2,3
+     _ _ _ 3 _ 
+     _ 3 _ _ 1
+     _ _ _ _ _
+     _ _ _ 2 _
+     3 _ _ _ _ 
+
+
+     Here is the order of the labyrinth (the spiral) with start at 1:
+     >  1  2  3  4  5
+       16 17 18 19  6
+       15 24 25 20  7
+       14 23 22 21  8
+       13 12 11 10  9
+
+
+  This is the unique solution for variant 1.
+    . 1 2 3 . 
+    2 3 . . 1 
+    . . 3 1 2 
+    1 . . 2 3 
+    3 2 1 . . 
+
+  The extra decision variables.
+    [0,1,2,3,0]
+    [2,3,0,0,1]
+    [0,0,3,1,2]
+    [1,0,0,2,3]
+    [3,2,1,0,0]
+    Positions of 1..3::
+    1 = [2,6,11,14,20]
+    2 = [3,7,12,16,21]
+    3 = [4,8,13,17,25]
+
+
+  Another version (Version = 2) uses the values 1..5 instead. 
+  This variant yields two versions, with the same solution of
+  the puzzle. The difference is the positions of 4 and 5 (which
+  are irrelevant for the puzzle):
+
+    Version = 2
+
+    . 1 2 3 . 
+    2 3 . . 1 
+    . . 3 1 2 
+    1 . . 2 3 
+    3 2 1 . . 
+
+    [4,1,2,3,5]
+    [2,3,5,4,1]
+    [5,4,3,1,2]
+    [1,5,4,2,3]
+    [3,2,1,5,4]
+    Positions of 1..3::
+    1 = [2,6,11,14,20]
+    2 = [3,7,12,16,21]
+    3 = [4,8,13,17,25]
+
+    . 1 2 3 . 
+    2 3 . . 1 
+    . . 3 1 2 
+    1 . . 2 3 
+    3 2 1 . . 
+
+    [5,1,2,3,4]
+    [2,3,4,5,1]
+    [4,5,3,1,2]
+    [1,4,5,2,3]
+    [3,2,1,4,5]
+    Positions of 1..3::
+    1 = [2,6,11,14,20]
+    2 = [3,7,12,16,21]
+    3 = [4,8,13,17,25]
+
+  Version 2 (using all_different/1) is sligthly faster than Version 1:
+  - Version 1: 0.062s
+  - Version 2. 0.021s
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go =>
+  N = 5,
+  X = [_,_,_,3,_,
+       _,3,_,_,1,
+       _,_,_,_,_,
+       _,_,_,2,_,
+       _,2_,_,_,_].chunks_of(N),
+
+  M = 3, % i.e. the sequence 1,2,3 must be in the same order during the spiral
+  
+  member(Version, 1..2),
+  
+  println('Version'=Version),
+  
+  magic_spiral(N,M,Version,X,Pos),
+
+  % Print the proper solution (only 1..3)
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if (Version == 1, X[I,J] > 0) ; (Version == 2, X[I,J] <= M) then
+        print(X[I,J])
+      else
+        print(".")
+      end,
+      print(" ")
+    end,
+    nl
+  end,
+  nl,
+  % The "raw" solution, including 4 and 5
+  foreach(Row in X)
+    println(Row)
+  end,
+  println("Positions of 1..3::"),
+  foreach(P in 1..M)
+    println(P=Pos[P].to_list)
+  end,
+  nl,
+  fail,
+  nl.  
+
+
+magic_spiral(N,M,Version,X,Pos) =>
+
+  if Version == 1 then
+  
+    X :: 0..N-1,
+    % "Latin square" for 1..3
+    % The 0 are just dummy values
+    foreach(I in 1..N)
+      Row = [X[I,J] : J in 1..N],
+      Col = [X[J,I] : J in 1..N],
+      all_different_except_0(Row),
+      all_different_except_0(Col),
+      % nvalue(4,Row), % slower than all_different_except_0/1
+      % nvalue(4,Col),
+    
+      count(0,Row) #= 2,
+      count(0,Col) #= 2      
+    end
+  else
+    % This is a proper Latin square with all_different/1
+    % which is a little faster than version 1
+    X :: 1..N,
+    foreach(I in 1..N)
+      all_different([X[I,J] : J in 1..N]),
+      all_different([X[J,I] : J in 1..N])
+    end
+  end,
+
+  % All spiral slices should have the same order of 1,2,3
+  XSpiral = spiralOrder(X),
+
+  % Positions of 1,2,3 in the spiral
+  NN = N*N,
+  Pos = new_array(M,N),
+  Pos :: 1..NN,
+  foreach(P in 1..M)
+    foreach(I in 0..N-1)
+      % Find the I'th position of P (the constraint means there must be I-1 occurrences before)
+      Pos[P,I+1] #= sum( [ J*(XSpiral[J] #= P)*(sum([ XSpiral[K] #= P : K in 1..J-1]) #= I)   : J in 1..NN] ),
+      
+      % The position of the I'th 1 < I'th position of 2 < I'th position of 3
+      if P > 1 then
+        Pos[P-1,I+1] #< Pos[P,I+1]
+      end
+    end
+  end,
+
+  % Ensure that the positions are in proper order, i.e. no overlaps
+  foreach(I in 2..N)
+    Pos[1,I] #> Pos[M,I-1]
+  end,
+
+  Vars = X.vars ++ Pos,
+  solve(Vars).
+
+
+%
+% https://www.enjoyalgorithms.com/blog/print-matrix-in-spiral-order
+% See spiral_order.pi
+%
+spiralOrder(X) = Spiral =>
+  M = X.len,
+  N = X[1].len,
+  RowStart = 1,
+  RowEnd = M,
+  ColStart = 1,
+  ColEnd = N,
+  Spiral = [],
+  while (RowStart <= RowEnd, ColStart <= ColEnd)
+    foreach(I in ColStart..ColEnd)
+      Spiral := Spiral ++ [X[RowStart,I]]
+    end,
+    RowStart := RowStart + 1,
+    foreach(I in RowStart..RowEnd)
+      Spiral := Spiral ++ [X[I,ColEnd]]
+    end,
+    ColEnd := ColEnd - 1,
+    if RowStart <= RowEnd then
+      foreach(I in ColEnd..-1..ColStart)
+        Spiral := Spiral ++ [X[RowEnd,I]]
+      end,
+      RowEnd := RowEnd - 1
+    end,
+    if ColStart <= ColEnd then
+      foreach(I in RowEnd..-1..RowStart)
+        Spiral := Spiral ++ [X[I,ColStart]]      
+      end,
+      ColStart := ColStart + 1
+    end
+
+  end.

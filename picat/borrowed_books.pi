@@ -1,0 +1,148 @@
+/* 
+
+  Borrowed books in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  See https://www.researchgate.net/publication/374588335_Measuring_reasoning_capabilities_of_ChatGPT
+  """
+  Puzzle 53. Borrowed books
+
+  Four children, borrowed a specific book from the library. Each book has a unique sub-
+  ject and number of pages. Find out in which month each child got the book and their
+  number of pages. You know that:
+
+  1. If Janet got a History book, then the Fantasy book has 350 pages.
+  2. The Thriller is 50 pages larger than the book borrowed in May, but 50 pages shorter
+     than Anthony's choice.
+  3. A girl borrowed a book in May, the other girl, Meredith, got a History book.
+  4. Janet didn't get the shortest book of 250 pages.
+  5. Exactly one of the customers shares the initial in the name and in the month he/she
+     got a book.
+  6. The fantasy is 50 pages larger than Mark's book.
+  7. In June a Fantasy book wasn't borrowed, nor a Romance one.
+  8. The largest book and the Romance one have been borrowed in consecutive months.
+  9. If Mark borrowed a book in the first month (i.e. April), then the Fantasy book is the
+     largest one with 400 pages long.
+
+  (taken from Brainzilla—www.brainzilla.com)
+  """
+
+  There are two possible solutions
+
+  Meredith History  June  250
+  Janet    Romance  May   300
+  Mark     Thriller July  350
+  Anthony  Fantasy  April 400
+  LargestBook = 400
+
+  Meredith History  July  250
+  Janet    Romance  May   300
+  Mark     Thriller June  350
+  Anthony  Fantasy  April 400
+  LargestBook = 400
+
+
+  The difference are the months for Meredith and Mark (June or July).
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go =>
+  N = 4,
+  
+  Names = new_list(N),
+  Names :: 1..N,
+  Names = [Anthony,Janet,Meredith,Mark],
+  NamesS = ["Anthony","Janet","Meredith","Mark"],
+
+  Subject = new_list(N),
+  Subject :: 1..N,
+  Subject = [History,Fantasy,Thriller,Romance],
+  SubjectS = ["History","Fantasy","Thriller","Romance"],  
+
+  % Keep pages constant for symmetry breaking
+  Pages = new_list(N),
+  Pages = 1..N, 
+  Pages = [P250,_P300,P350,P400],
+  PagesS = [250,300,350,400],
+
+  Month = new_list(N),
+  Month :: 1..N,
+  Month = [April,May,June,July],
+  MonthS = ["April","May","June","July"],
+
+  all_different(Names),
+  all_different(Subject),
+  all_different(Pages),
+  all_different(Month),
+
+  LargestBook #= max(Pages),
+
+  % 1. If Janet got a History book, then the Fantasy book has 350 pages.
+  (Janet #= History) #=> Fantasy #= P350,
+  
+  % 2. The Thriller is 50 pages larger than the book borrowed in May,
+  %    but 50 pages shorter than Anthony's choice.
+  May + 1 #= Thriller,
+  Thriller + 1 #= Anthony,
+
+  % 3. A girl borrowed a book in May, the other girl, Meredith, got
+  %    a History book.
+  May #= Janet,
+  Meredith #= History,
+  
+  % 4. Janet didn't get the shortest book of 250 pages.
+  Janet #!= P250,
+  
+  % 5. Exactly one of the customers shares the initial in the name and
+  %    in the month he/she got a book.
+  sum([April #= Anthony,May #= Meredith, May #= Mark, June #= Janet, July #= Janet]) #= 1,
+  
+  % 6. The fantasy is 50 pages larger than Mark's book.
+  Fantasy #!= Mark,
+  Fantasy #= Mark + 1,
+    
+  % 7. In June a Fantasy book wasn't borrowed, nor a Romance one.
+  June #!= Fantasy,
+  June #!= Romance,
+  
+  % 8. The largest book and the Romance one have been borrowed
+  %    in consecutive months.
+  Romance #!= LargestBook,
+
+  (LargestBook #= April #/\ Romance #= May)
+  #\/ (LargestBook #= May   #/\ Romance #= April) 
+  
+  % #\/ (LargestBook #= May   #/\ Romance #= June)  % Not possible, see clue 7
+  #\/ (LargestBook #= June  #/\ Romance #= May) 
+  
+  #\/ (LargestBook #= June  #/\ Romance #= July),
+  % #\/ (LargestBook #= July  #/\ Romance #= June), % Not possible, see clue 7
+
+
+  % 9. If Mark borrowed a book in the first month (i.e. April), then the
+  %    Fantasy book is the largest one with 400 pages long.
+  (Mark #= April) #=> (Fantasy #= LargestBook #/\ LargestBook #= P400),
+
+  Vars = Names ++ Subject ++ Pages ++ Month ++ [LargestBook],
+  solve(Vars),
+
+  foreach(I in 1..N),
+    element(Nn,Names,I),  
+    element(S,Subject,I),
+    element(M,Month,I),
+    element(P,Pages,I),
+    printf("%-8s %-8s %-5s %d\n",NamesS[Nn],SubjectS[S],MonthS[M],PagesS[P])
+  end,
+  println('LargestBook'=PagesS[LargestBook]),
+  nl,
+  fail,
+
+  nl.

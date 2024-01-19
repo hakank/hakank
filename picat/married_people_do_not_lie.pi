@@ -1,0 +1,133 @@
+/* 
+
+  Married people do not lie puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  Cited by Groza: Measuring reasoning capabilities of ChatGPT
+  https://www.researchgate.net/publication/374588335_Measuring_reasoning_capabilities_of_ChatGPT
+  """
+  Puzzle 74. Married people do not lie
+  Married people always tell the truth, while unmarried people always lie. There are four
+  friends staying on the couch in Central Perk: Ross, Monica, Rachel, and Chandler.
+
+  They made the following statements:
+  Ross: "Rachel and I have different marital status".
+  Rachel: "Chandler is not married".
+  Monica: "I am married to Chandler".
+  Chandler: "Monica is lying".
+
+  How many are married, and how many are unmarried?
+  """
+
+  The intended solution (by Mace4) is that Chandler and Ross are married.
+
+  This model give an alternative solution that Chandler is the
+  only one that is married.
+
+  The reason that Mace4 give only one solution is this interpretation of Ross' statement
+  in the Mace4 model (https://users.utcluj.ro/~agroza/puzzles/maloga/all_code/ch_07_love_mariage/friends1.in): 
+     m(ross)     <-> (married(rachel) -> -married(ross)). 
+  But I would interpret Ross' statement as this disjunction (one of Ross and Rachel is married
+  and the other is unmarried):
+     m(ross)     <->  ( married(rachel) & -married(ross) ) | ( married(ross) & -married(rachel) ).
+
+  And then Mace4 give the same two solutions as my model:
+  - Ross and Chandler are married
+  - Only Chandler is married.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+%
+% [ross = 1,monica = 0,rachel = 0,chandler = 1]
+% [ross = 0,monica = 0,rachel = 0,chandler = 1]
+%
+% (It's the same result as if Ross does not say anything at all.)
+%
+go =>
+  nolog,
+  People = [Ross,Monica,Rachel,Chandler],
+  People :: 0..1, % 1 married & tells truth, 0 unmarried and lies
+
+  % Ross: "Rachel and I have different marital status".
+  Ross #= 1 #<=> Ross #!= Rachel,
+  % Ross #= 1 #<=> ((Ross #= 1 #/\ Rachel #= 0) #\/ (Ross #= 0 #/\ Rachel #= 1)), % same result
+  % This is the encoding of Ross' statement in the Mace4 model: -> Ross and Chandler are married.
+  % See comment on this above.
+  % Ross #= 1 #<=>  (Rachel #= 1 #=> Ross #= 0), 
+    
+  % Rachel: "Chandler is not married".
+  Rachel #= 1 #<=> Chandler #= 0,
+  
+  % Monica:"I am married to Chandler".
+  % Translated: Both Monica and Chandler are married.
+  Monica #= 1 #<=> (Monica #= 1 #/\ Chandler #= 1),
+    
+  % Chandler: "Monica is lying".
+  Chandler #= 1 #<=> Monica #= 0,
+  % Chandler #= 1 #<=> #~(Monica #= 1 #/\ Chandler #= 1), % same result
+
+  
+  % How many are married, and how many are unmarried?
+
+  println(solve),
+  L = [ross=Ross,monica=Monica,rachel=Rachel,chandler=Chandler],
+  solve(L),
+  
+  println(L),
+  fail,
+
+  nl.
+
+%
+% Separate marital status and truth telling.
+% Same result as for go/0:
+%  married = [0,0,0,1]
+%  truth   = [0,0,0,1]
+%
+%  married = [1,0,0,1]
+%  truth   = [1,0,0,1]
+%
+go2 =>
+  nolog,
+  Married = [RossM,MonicaM,RachelM,ChandlerM],
+  Married :: 0..1, % 1 married & tells truth, 0 unmarried and lies
+
+  Truth = [RossT,MonicaT,RachelT,ChandlerT],
+  Truth :: 0..1, % 1 married & tells truth, 0 unmarried and lies
+
+  % Ross: "Rachel and I have different marital status".
+  RossT #= 1 #<=> RossM #!= RachelM,
+  
+  % Rachel: "Chandler is not married".
+  RachelT #= 1 #<=> ChandlerM #= 0,
+  
+  % Monica:"I am married to Chandler".
+  MonicaT #= 1 #<=> (MonicaM #= 1 #/\ ChandlerM #= 1),
+  
+  % Chandler: "Monica is lying".
+  ChandlerT #= 1 #<=> MonicaT #= 0, 
+   
+  % How many are married, and how many are unmarried?
+
+  foreach(I in 1..4)
+    Married[I] #=1 #<=> Truth[I] #= 1
+  end,
+
+  Vars = Truth ++ Married,
+  println(solve),
+  solve(Vars),
+  
+  println(married=Married),
+  println('truth  '=Truth),
+  nl,
+  fail,
+
+  nl.

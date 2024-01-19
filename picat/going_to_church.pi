@@ -1,0 +1,219 @@
+/* 
+
+  Going to Church puzzle in Picat.
+
+  From Dudeney
+  via Adrian Groza: "Measuring reasoning capabilities of ChatGPT"
+  https://www.researchgate.net/publication/374588335_Measuring_reasoning_capabilities_of_ChatGPT
+  """
+  Puzzle 33. Going to churc
+
+  A man living in the house wants to know what is the greatest number of different routes
+  by which he can go to the church. The house and the church are in a 5× 5 grid. The
+  house is on the bottom left (or SW) position (1,1). The church is on the top right (or NE)
+  position (5,5) The possible roads are indicated by the lines, and he always walks either to
+  the N, to the E, or NE; that is, he goes so that every step brings him nearer to the church.
+  Can you count the total number of diﬀerent routes from which he may select? (puzzle 417
+  from Dudeney (2016)
+  """
+
+  There are 321 different paths. Here are some of them 
+
+   #####
+   #....
+   #....
+   #....
+   #....
+
+   .####
+   #....
+   #....
+   #....
+   #....
+
+   .####
+   ##...
+   #....
+   #....
+   #....
+
+   ..###
+   ##...
+   #....
+   #....
+   #....
+
+   ....#
+   ...#.
+   ###..
+   #....
+   #....
+
+   ...##
+   ...#.
+   ###..
+   #....
+   #....
+
+  Below are two different approaches:
+  - go/0: Using dynamic programming
+  - go2/0: Explicitly counting the number of solutions. 
+           Great for checking the answers in go/0 (and vice versa).
+
+
+  Cf how_many_routes.pi
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import planner.
+
+main => go.
+
+/*
+
+  This is from the Picat book, page 80
+  """
+  Starting in the top left corner of an N × N grid, one can either go rightward or downward. 
+  How many routes are there through the grid to the bottom right corner?
+  """
+
+  Adjusted for the problem of [N,1] -> [1,N] on an NxN grid and and for the 
+  three directions north, east or north east
+
+  N = #solutions
+  -------------
+  1 = 1
+  2 = 3
+  3 = 13
+  4 = 63
+  5 = 321
+  6 = 1683
+  7 = 8989
+  8 = 48639
+  9 = 265729
+  10 = 1462563
+
+
+  Thus, for an 5x5 grid there are 321 routes.
+
+  Note: for N in 1..10, tabling is not needed.
+  However, for N=1..15 we see the effect of tabling more clearly.
+  * without tabling: 2.2s
+  * with tabling: 0.05s
+
+  For N=1..100 it takes 0.3s with tabling, and will take many hours without.
+  For 100x100 there are 354133039609265536846415517309219320565185505702928148184024525417873569343
+  solutions.
+
+*/
+go ?=>
+  between(1,10,N),
+  println(N=route(N,N,1)),
+  fail,
+  nl.
+go => true.
+
+% From [N,1] -> [1,N]: moves are north, east or north east
+table
+route(N,1,_Col) = 1.
+route(N,_Row,N) = 1.
+%                  north                east                 north east
+route(N,Row,Col) = route(N,Row-1,Col) + route(N,Row,Col+1) + route(N,Row-1,Col+1).
+
+
+/*
+  Generate all the possible routes from [N,1] -> [1,N], with the moves north, east or north east 
+  on a 5x5 grid. This uses edge/3 and path/4.
+
+  For N=5, here are the different path lengths
+
+  Number of different lengths:
+  4 = 1
+  5 = 20
+  6 = 90
+  7 = 140
+  8 = 70
+
+
+  Number of solutions for different N (cf go/0):
+
+  N  #sols
+  -------------
+  1       0
+  2       3
+  3      13
+  4      63
+  5     321
+  6    1683
+  7    8989
+  8   48639
+  9  265729
+ 10 1462563
+
+*/
+go2 ?=>
+  N = 5,
+
+  Start = [N,1],
+  End   = [1,N],
+
+  % Generate tha graph with $edge(From,To,1)
+  Graph = [],
+  foreach(I in 1..N, J in 1..N)
+    foreach(Nb in neibs(N,I,J))
+      Graph := Graph ++ $[edge([I,J],Nb,1)]
+    end
+  end,
+  cl_facts_table(Graph),
+
+  Map = get_global_map(),
+  Map.put(count,0),
+  
+  path(Start,End,Path,Cost),
+  % println(Path=Cost),
+
+  if N == 5 then
+    % Print the path
+    M = new_array(N,N),
+    bind_vars(M,'.'),
+    M[N,1] := '#',
+    foreach([[_I1,_J1],to,[I2,J2]] in Path)
+      M[I2,J2] := '#'
+    end,
+    foreach(Row in M) println(Row.to_list) end,
+    nl,
+  end,
+  
+  Map.put(count,Map.get(count)+1),
+  Map.put(Cost,Map.get(Cost,0)+1),
+  fail,
+  nl.
+go2 =>
+  Map = get_global_map(),
+  println(count=Map.get(count)),
+  println("Number of different lengths:"),
+  foreach(Key in Map.keys.sort, Key != count)
+    println(Key=Map.get(Key))
+  end.
+
+
+% Only move to north, east or northeast
+neibs(N,I,J) = Ns =>
+   Ns = [ [I+A,J+B] : A in -1..0, B in 0..1, abs(A)+B >= 1,
+                      I+A >= 1, I+A <= N, J+B >= 1, J+B <= N].
+
+
+table
+path(X,Y,Path,W) :-
+   Path=[[X,to,Y]],
+   edge(X,Y,W).
+path(X,Y,Path,W) :-
+   Path = [[X,to,Z]|PathR],
+   edge(X,Z,W1),
+   path(Z,Y,PathR,W2),
+   W = W1+W2.
