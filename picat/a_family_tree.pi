@@ -1,0 +1,227 @@
+/* 
+
+  A family tree puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 83. A family tree
+
+  I was going through some old family photos in the attic when I stumbled upon our
+  family tree. I studied it for a couple minutes then went back downstairs to tell my mom
+  about the family tree. The problem is I didn't study it long enough to remember the
+  whole thing. I only remembered a couple of things about it, and recent memories. Can
+  you help me figure out my family tree? There are two grandparents, who had two chil-
+  dren, who both got married and had 2 more children each. In total, there are 10 people:
+  Alex, Bob, Caty, David, Elton, John, Lincoln, Mary, Sonia, and Tina.
+  Clue 1 : One of Elton's ancestors was David.
+  Clue 2 : John's sister gave birth to Tina.
+  Clue 3 : Mary went bowling with her nephew last Saturday.
+  Clue 4 : Alex is cousin with one of the girls.
+  Clue 5 : Bob married Mary.
+  Clue 6 : Caty is not an ancestor, nor cousin of Tina.
+  Clue 7 : Lincoln's brother showed Bob's son his baseball cards.
+  (adapted from www.braingle.com/brainteasers)
+  """  
+
+
+  The family tree looks like this
+
+            1 2
+           /  \
+          3 4  5 6
+         /       \
+         7 8      9 10
+
+    1: Grandparent: 
+    2: Grandparent: 
+    3: Child of 1 and 2, sibling of 5, married to 4,
+    4: Married to 3 (not related to anyone else?)
+    5: Child of 1 and 2, sibling of 5, married to 6,
+    6: Married to 5 (not related to anyone else?)
+    7: Child of 3 and 4, sibling of 9, married to 8
+    8: Married to 7, (not related to anyone else?)
+    9: Child of 5 and 6, sibling of 7, married to 10
+   10: Married to 9 (not related to anyone else?)
+
+  Note that Groza's Mace4 model is 0-based.
+  This is converted to Picat's 1 base using the conversion
+  in assignment/2.
+
+
+  Without any assumtions (see tests below) there are 32 solutions, e.g.
+
+Family Tree:
+              David    Sonia   
+    Bob      Mary           John     Caty    
+Alex      Tina                  Elton    Lincoln 
+
+
+Family Tree:
+              David    Sonia   
+    Bob      Mary           John     Caty    
+Alex      Tina                  Lincoln  Elton   
+
+
+Family Tree:
+              Sonia    David   
+    Bob      Mary           John     Caty    
+Alex      Tina                  Elton    Lincoln 
+
+
+Family Tree:
+              Sonia    David   
+    Bob      Mary           John     Caty    
+Alex      Tina                  Lincoln  Elton   
+
+...
+
+  All solutions states the following:
+  - 1st generation: David and Sonia are the grandparents
+  - 2nd generation: Bob/Mary, John/Caty
+  - 3rd generation: Alex/Tina, Lincoln/Elton 
+
+  With this assumption (the first of the tests below):
+     John #= 3,   David #= 0,   Tina #= 8,
+  there are 4 solutions.
+
+Family Tree:
+              David    Sonia   
+    Caty     John           Mary     Bob     
+Alex      Lincoln               Tina     Elton   
+
+
+Family Tree:
+              David    Sonia   
+    Caty     John           Mary     Bob     
+Lincoln   Alex                  Tina     Elton   
+
+
+Family Tree:
+              David    Sonia   
+    Caty     John           Mary     Bob     
+Elton     Lincoln               Tina     Alex    
+
+
+Family Tree:
+              David    Sonia   
+    Caty     John           Mary     Bob     
+Lincoln   Elton                 Tina     Alex    
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+
+  Names = [Alex,Bob,Caty,David,Elton,John,Lincoln,Sonia,Mary,Tina],
+  N = Names.len,
+  Names :: 0..N-1,
+  NamesS = ["Alex","Bob","Caty","David","Elton","John","Lincoln","Sonia","Mary","Tina"],  
+
+  all_different(Names),
+
+  % gp(x) <-> x = 0 | x = 1.
+  GP = [0,1],
+  
+  % p(x)  <-> x = 2 | x = 3 | x = 4 | x = 5. 
+  P = [2,3,4,5],
+  
+  % c(x)  <-> x = 6 | x = 7 | x = 8 | x = 9.
+  C = [6,7,8,9],
+
+
+  % -gp(Elton) & -c(David) & Elton != 2 & Elton != 5.                    %Clue 1
+  Elton notin GP,
+  David notin C,
+  Elton #!= 2,
+  Elton #!= 5,
+  
+  % p(John) & c(Tina) & John != 2 & John != 5.                           %Clue 2
+  John :: P,
+  Tina :: C,
+  John #!= 2,
+  John #!= 5,
+
+  John #= 3 #=> (Tina #= 8 #\/ Tina #= 9),
+  John #= 4 #=> (Tina #= 6 #\/ Tina #= 7),
+  John #= 3 #=> (Mary #= 4 #\/ Elton #= 4 #\/ Caty #= 4 #\/ Sonia #= 4),
+  John #= 4 #=> (Mary #= 3 #\/ Elton #= 3 #\/ Caty #= 3 #\/ Sonia #= 3),
+
+  Mary #= 3 #\/ Mary #= 4,                                              %Clue 3
+
+  Alex :: C,                                                            %Clue 4
+  
+  Mary #= 3 #=> Bob #= 2,                                               %Clue 5
+  Mary #= 4 #=> Bob #= 5,
+  
+  Tina #= 6 #=> (Caty #= 4 #\/ Caty #= 5 #\/ Caty #= 7),                %Clue 6
+  Tina #= 7 #=> (Caty #= 4 #\/ Caty #= 5 #\/ Caty #= 6),
+  Tina #= 8 #=> (Caty #= 2 #\/ Caty #= 3 #\/ Caty #= 9),
+  Tina #= 9 #=> (Caty #= 2 #\/ Caty #= 3 #\/ Caty #= 8),
+
+  % -gp(Lincoln) & Lincoln != 2 & Lincoln != 5.                         %Clue 7
+  Lincoln notin GP, 
+  Lincoln #!= 2,
+  Lincoln #!= 5,
+ 
+  % -c(Bob) & c(Lincoln).
+  Bob notin C,
+  Lincoln :: C,
+ 
+  (Tina #= 8 #\/ Tina #= 9) #=> (Lincoln #!= 8 #/\ Lincoln #!= 9),
+  (Tina #= 6 #\/ Tina #= 7) #=> (Lincoln #!= 6 #/\ Lincoln #!= 7),
+
+ 
+  assignment([Name1 : Name in Names,Name1 #= Name+1],Tree),  
+
+  %
+  % Testing
+  % 
+
+  %% John = 3.   David = 0.   Tina = 8.  % assumptions to avoid isomorphisms
+  %% 4 solutions.
+  % John #= 3,   David #= 0,   Tina #= 8,  % assumptions to avoid isomorphisms
+  
+  %% Sonia != 1.                             % Sonia is not the grandmather
+  %% 16 solutions  
+  % Sonia #= 1,                             % Sonia is not the grandmather
+  
+  %% Mary  != 4.              % Mary is not the daughter of Sonia and David
+  % 16 solutions
+  % Mary #!= 4,
+  
+  %% Caty != 2.                               % Caty is not married to john
+  % 16 solutions
+  % Caty #!= 2,
+  
+  %% Lincoln != 6 & Lincoln != 7.          % Lincoln is not the son of John
+  % 16 solutions
+  Lincoln #!= 6 #/\ Lincoln #!= 7,
+
+  solve(Names),
+
+  % println(names=Names=Tree),
+
+  %
+  % The tree (1 based)
+  %       T1 T2
+  %    T3 T4  T5 T6
+  %  T7 T8     T9 T10
+  %
+  println("Family Tree:"),
+  printf("              %-8w %-8w\n",NamesS[Tree[1]],NamesS[Tree[2]]),
+  printf("    %-8w %-8w       %-8w %-8w\n",NamesS[Tree[3]], NamesS[Tree[4]],NamesS[Tree[5]],NamesS[Tree[6]]),
+  printf("%-8w  %-8w              %-8w %-8w\n",NamesS[Tree[7]],NamesS[Tree[8]],NamesS[Tree[9]],NamesS[Tree[10]]), 
+  nl,
+  nl,
+  fail,
+  
+  nl.
+go => true.

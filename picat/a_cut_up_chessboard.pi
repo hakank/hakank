@@ -1,0 +1,226 @@
+/* 
+
+  A cut-up chessboard puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"    
+  """
+  Puzzle 132. A cut-up chessboard
+
+  A merry chess player cuts his chessboard into 14 parts, as shown. Friends who wanted
+  to play chess with him first had to put the parts back together again. (In this version,
+  you cannot rotate the shapes) (adapted from Kordemsky (1992))
+  """
+
+  There are 2 pairs of pieces that are the same shape
+  which means that there are some (4) symmetric solutions:
+  - p1 and p2 are the same shape and
+  - p4 and p5 are the same shape
+
+  The first solution is found in 3.2s
+ 14 14  9  9 10 10  7  7
+ 14  3  3  9  9 10 10  7
+ 14 12  3 12 11 10 10  7
+ 12 12 12 12 11 11  5  6
+ 12  4 12 13 11  5  5  6
+  4  4 13 13 11  5  6  6
+  4  8  8 13 13  1  6  2
+  8  8 13 13  1  1  2  2
+
+
+  All 4 solutions are found in 2min:21.02s
+
+ 14 14  9  9 10 10  7  7
+ 14  3  3  9  9 10 10  7
+ 14 12  3 12 11 10 10  7
+ 12 12 12 12 11 11  4  6
+ 12  5 12 13 11  4  4  6
+  5  5 13 13 11  4  6  6
+  5  8  8 13 13  1  6  2
+  8  8 13 13  1  1  2  2
+
+ 14 14  9  9 10 10  7  7
+ 14  3  3  9  9 10 10  7
+ 14 12  3 12 11 10 10  7
+ 12 12 12 12 11 11  5  6
+ 12  4 12 13 11  5  5  6
+  4  4 13 13 11  5  6  6
+  4  8  8 13 13  1  6  2
+  8  8 13 13  1  1  2  2
+
+ 14 14  9  9 10 10  7  7
+ 14  3  3  9  9 10 10  7
+ 14 12  3 12 11 10 10  7
+ 12 12 12 12 11 11  4  6
+ 12  5 12 13 11  4  4  6
+  5  5 13 13 11  4  6  6
+  5  8  8 13 13  2  6  1
+  8  8 13 13  2  2  1  1
+
+ 14 14  9  9 10 10  7  7
+ 14  3  3  9  9 10 10  7
+ 14 12  3 12 11 10 10  7
+ 12 12 12 12 11 11  5  6
+ 12  4 12 13 11  5  5  6
+  4  4 13 13 11  5  6  6
+  4  8  8 13 13  2  6  1
+  8  8 13 13  2  2  1  1
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat. % The fastest solver
+% import cp.
+% import mip.
+% import smt.
+
+main => go.
+
+go ?=>
+  nolog,
+  data(1,Pieces,Shape),
+  Rows = Shape.len,
+  Cols = Shape[1].len,
+  NumPieces = Pieces.len,
+
+  % The grid to fill
+  X = new_array(Rows,Cols),
+  X :: 1..NumPieces,
+
+  % Start row of this piece
+  StartRow = new_list(NumPieces),
+  StartRow :: 1..Rows,
+
+  % Start column of this piece
+  StartCol = new_list(NumPieces),
+  StartCol :: 1..Cols,
+  
+  foreach(P in 1..NumPieces)
+    PP = Pieces[P],
+    Ls = piece_dim(PP),
+    PLen = Ls.len, % Number of rows in the *mino
+    SR = StartRow[P],
+    SC = StartCol[P],
+    foreach(I in 1..PLen)
+      II #= SR + I - 1,
+      foreach(J in 1..Ls[I],PP[I,J] > 0)
+        JJ #= SC + J -1,
+        matrix_element(X,II,JJ,P)
+      end
+    end
+  end,
+
+
+  % Vars = X.vars ++ StartRow ++ StartCol,
+  Vars = StartRow ++ StartCol ++ X.vars,  
+  println(solve),
+  solve($[],Vars),
+
+  println(startRow=StartRow),
+  println(startCol=StartCol),
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      printf("%3d", X[I,J])
+    end,
+    nl
+  end,
+  nl,  
+  fail,
+  nl.
+go => true.
+
+
+/*
+  The shapes
+
+
+*/
+data(1,Pieces,Shape) :-
+  B = 1, % Black
+  W = 2, % White  
+  Shape = [
+            [W,B,W,B,W,B,W,B],
+            [B,W,B,W,B,W,B,W],
+            [W,B,W,B,W,B,W,B],
+            [B,W,B,W,B,W,B,W],
+            [W,B,W,B,W,B,W,B],
+            [B,W,B,W,B,W,B,W],
+            [W,B,W,B,W,B,W,B],
+            [B,W,B,W,B,W,B,W]
+          ],
+  Pieces = [
+             % p1
+             [[0,B],
+              [B,W]],
+
+             % p2
+             [[0,B], 
+              [B,W]],
+
+             % p3
+             [[W,B],
+              [0,W]],
+
+             % p4
+             [[0,B],
+              [B,W],
+              [W,0]],
+
+             % p5
+             [[0,B],
+              [B,W],
+              [W,0]],
+
+             % p6
+             [[0,W],
+              [0,B],
+              [B,W],
+              [W,0]],
+
+             % p7
+             [[W,B],
+              [0,W],
+              [0,B]],
+
+             % p8
+             [[0,B,W],
+              [B,W,0]],
+
+             % p9
+             [[W,B,0],
+              [0,W,B]],
+
+             % p10
+             [[W,B,0],
+              [0,W,B],
+              [0,B,W]],
+
+             % p11
+             [[W,0],
+              [B,W],
+              [W,0],
+              [B,0]],
+
+             % p12
+             [[0,B,0,B],
+              [B,W,B,W],
+              [W,0,W,0]],
+
+             % p13
+             [[0,B,0],
+              [B,W,0],
+              [0,B,W],
+              [B,W,0]],
+
+             % p14
+             [[W,B],
+              [B,0],
+              [W,0]]
+
+            ].
+
+piece_dim(Piece) = [P.len : P in Piece].
+

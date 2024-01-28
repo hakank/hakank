@@ -1,0 +1,236 @@
+/* 
+
+  Sun and moon puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"    
+  """
+  Puzzle 108. Sun and moon
+
+  Enter exactly one star and one dark cloud in each row and each column of the grid, so
+  that the planets are illuminated as specified. The stars shine horizontally or vertically
+  arbitrarily far, but not through a planet or a dark cloud. (taken from Kleber (2013))
+  (Fig. 10.23)
+  """
+
+  The description of this puzzles is not clear from the problem description, and one have to 
+  read the Solution part for the details.
+
+  From what I understand the following assumptions are done:
+  - all planets are given in the problem instance
+  - there are exactly one planet in each row and column 
+    (page 253:
+     "A second modelling option is based on the observation that there is 
+      exactly one planet both on each row and each column"
+  - there are exactly one Star and exactly one Cloud in each row and column
+
+  Here's the encoding (light/darkness of a planet) my abbreviations as well as the 
+  names from Kleber ("A style file for typsetting logic puzzles", page 21).
+  Note that Groza calls it 'planets' and Kleber calls it 'moons'.
+
+  0: "_" empty space
+  1: "BR" MoonBR (Moon Bottom and Right light) 
+  2: "BL" MoonBL (Moon Bottom and Left light)
+  3: "TR" MoonTR (Moon Top and Right light)
+  4: "TL" MoonTL (Moon Top and Left light) 
+  5: "T" MoonT (Moon top light, bottom dark)
+  6: "B" MoonB (Moon bottom light, top dark)  (typo in Groza: it shows 5 as well)
+  7: "L" MoonL (Moon left light, right dark) 
+  8: "R" MoonR (Moon right light, left dark)
+  9: "FL" Fully lighted
+  10: "FD" Fully Dark
+
+  And
+  11: "S" Star
+  12: "C" Cloud
+
+  The problem instance 
+
+    _   _   _   _  FD
+    _   _  TL   _  _ 
+    FD  _   _   _  _      
+    _   R   _   _  _      
+    _   _   _   T  _      
+
+
+  This models finds 2 solutions, the same as Groza's two solutions.
+
+  The given planets are: FD, TL, R, and T, and the object is to 
+  place the Stars (S) and dark clouds (D) on each row and column.
+  The empty space is represented as  "_".
+
+  Solution:
+    _  _  S  C  FD
+    _  S  TL _  C 
+    FD C  _  S  _ 
+    C  R  _  _  S 
+    S  _  C  T  _ 
+
+
+  Solution:
+    _  _  S  C  FD
+    _  S  TL _  C 
+    FD C  _  _  S 
+    C  R  _  S  _ 
+    S  _  C  T  _ 
+
+
+  The alternative symbols of each cell:
+      [_ ]      [_ ]      [S ]      [C ]      [FD]
+      [_ ]      [S ]      [TL]      [_ ]      [C ]
+      [FD]      [C ]      [_ ]   [S ,_ ]   [_ ,S ]
+      [C ]      [R ]      [_ ]   [_ ,S ]   [S ,_ ]
+      [S ]      [_ ]      [C ]      [T ]      [_ ]
+
+
+
+  For more on this type of puzzle, see
+  * https://www.keepitsimplepuzzles.com/how-to-solve-a-sun-and-moon-puzzle/
+  * https://www.cross-plus-a.com/html/cros7snmn.htm
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+
+main => go.
+
+go ?=>
+  nolog,
+  data(1,Puzzle),
+  N = Puzzle.len,
+  % For showing the alternative object in each cell
+  GMap = get_global_map(),
+  GMap.put(dim,N),
+  
+  % See the listing above
+  Symbols = [BR,BL,TR,TL,Top,Bottom,Left,Right,FL,FD, Star,Cloud],
+  Symbols = 1..Symbols.len,
+  SymbolsS = ["BR","BL","TR","TL","T ","B ","L ","R ","FL ","FD","S ","C "],
+
+  LightAbove = [TR,TL,Top,FL],
+  LightBelow = [BR,BL,Bottom,FL],
+  LightLeft  = [BL,TL,Left,FL],
+  LightRight = [BR,TR,Right,FL],
+
+  DarkAbove = [Bottom,FD],
+  DarkBelow = [Top,FD],
+  DarkLeft  = [Right,FD],
+  DarkRight = [Left,FD],  
+
+  X = new_array(N,N),
+  X :: 0..12,
+
+  foreach(I in 1..N)
+    % Place the planets
+    foreach(J in 1..N)
+      if Puzzle[I,J] > 0 then
+        X[I,J] #= Puzzle[I,J]
+      end
+    end,
+    
+    % One star and one dark cloud in each row and each column
+    % Rows
+    sum([X[I,J] #= Star : J in 1..N])  #= 1,
+    sum([X[I,J] #= Cloud : J in 1..N]) #= 1,
+    % Columns
+    sum([X[J,I] #= Star : J in 1..N])  #= 1,
+    sum([X[J,I] #= Cloud : J in 1..N]) #= 1,
+
+    % One planet in row and column
+    sum([ X[I,J] #>= BR #/\ X[I,J] #<= FD : J in 1..N]) #= 1,
+    sum([ X[J,I] #>= BR #/\ X[J,I] #<= FD : J in 1..N]) #= 1,
+
+    % exactly one star, one dark cloud and one planet on row/column
+    % (redundant)
+    all_different_except_0([X[I,J] : J in 1..N]),
+    all_different_except_0([X[J,I] : J in 1..N])
+  end,
+
+  % Check the planets and identify the nearest star and dark cloud
+  foreach(I in 1..N, J in 1..N, Puzzle[I,J] > 0)
+
+    % Left
+    check(X[I,J],X[I,1..J-1],LightLeft,Star,Cloud,before,light), 
+    check(X[I,J],X[I,1..J-1],DarkLeft,Cloud,Star,before,darkness),    
+    
+    % Right
+    check(X[I,J],X[I,J+1..N],LightRight,Star,Cloud,after,light),
+    check(X[I,J],X[I,J+1..N],DarkRight,Cloud,Star,after,darkness),          
+
+    % Above
+    check(X[I,J],[X[I2,J] : I2 in 1..I-1],LightAbove,Star,Cloud,before,light),
+    check(X[I,J],[X[I2,J] : I2 in 1..I-1],DarkAbove,Star,Cloud,before,darkness),    
+
+    % Below
+    check(X[I,J],[X[I2,J] : I2 in I+1..N],LightBelow,Star,Cloud,after,light),    
+    check(X[I,J],[X[I2,J] : I2 in I+1..N],DarkBelow,Cloud,Star,after,darkness)    
+
+  end,
+
+  Vars = X.vars,
+  solve(Vars),
+  
+  Map = new_map([M=S : {M,S} in zip([0]++Symbols,["_ "] ++ SymbolsS)]),
+  println("Solution:"),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%3w",Map.get(X[I,J])),
+      GMap.put([I,J], GMap.get([I,J],[]) ++ [Map.get(X[I,J])])
+    end,
+    nl
+  end,
+  nl,
+  nl,
+  fail,
+  
+  nl.
+
+% Show the alternative
+go =>
+  GMap = get_global_map(),
+  N = GMap.get(dim),
+  println("The alternative symbols of each cell:"),  
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%10w",GMap.get([I,J],"").remove_dups)
+    end,
+    nl
+  end,
+  nl.
+
+%
+% Check the cell Cell and the X slice L for Type=before|after and Darkness=true|false
+%
+check(Cell,L,PlanetTypes,Want,NotWant,BeforeAfter,LightType) =>
+  Len = L.len,
+  % If this planet (Cell) in the planet types?
+  S #= sum([Cell #=V : V in PlanetTypes]),
+  % There should be a Want entity (Star|Cloud) without any blocking NotWant entity (Cloud|Star)
+  Ps #= sum([L[J2] #= Want  #/\ sum([L[J3] #= NotWant :
+                                            J3 in cond(BeforeAfter==before,J2+1..Len,1..J2-1)]) #= 0 : J2 in 1..Len]),
+  if LightType == darkness then
+    % Only implication
+    S #= 1 #=> ( sum(L) #= 0 #\/ Ps #= 1)
+  else
+    % Equivalence
+    S #= 1  #<=> Ps #= 1
+  end.
+
+
+%
+% Placing the planets.
+% This is the problem instance from Groza, page 249.
+%
+data(1,Puzzle) :-
+  % See above for the meaning of the symbols
+  Moons = [_BR,_BL,_TR,TL,Top,_Bottom,_Left,Right,_FL,FD],
+  Moons = 1..Moons.len,
+  Puzzle = [[    0,     0,    0,     0,    FD],
+            [    0,     0,   TL,     0,     0],
+            [   FD,     0,    0,     0,     0],
+            [    0, Right,    0,     0,     0],
+            [    0,     0,    0,   Top,     0]].

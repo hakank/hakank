@@ -1,0 +1,236 @@
+/* 
+
+  Uncles and aunts puzzle in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"    
+  """
+  Puzzle 84. Uncles and aunts
+
+  The family tree consists of two grandparents, who had three children, each of whom
+  got married and had two children. Males are Cole, Cristian, Jason, Neil, and Steve.
+  Females are Amanda, Ashley, Beth, Erin, Kaitlyn, Katherine, Makayla, Payton, and
+  Tammy. The clues are:
+  Clue 1: One of Makayla’s cousins is Jason’s son.
+  Clue 2: One of Ashley’s aunts is Tammy.
+  Clue 3: Tammy’s brother-in-law is Neil’s son.
+  Clue 4: Kaitlyn’s sister is Ashley’s cousin.
+  Clue 5: Ashley’s uncle, Steve, is Erin’s brother-in-law.
+  Clue 6: The three uncles are Payton’s dad, Cristian, and Katherine’s son.
+  Clue 7: The three aunts are Kaitlyn’s mom, Ashley’s mom, and Cristian’s sister-in-law.
+  Clue 8: Jason’s brother is Ashley’s dad.
+  Clue 9: Amanda’s sister is Steve’s niece.
+  Clue 10: Beth is not Cole’s aunt.
+  (taken from www.braingle.com/brainteasers)
+  """
+
+  This is a port of Groza's Mace4 encoding of this problem.
+
+
+  The family tree (0 based from Groza)
+
+            0 1 
+    2 5     3 6    4 7
+    8 9    10 11  12 13
+
+  And 1-based (for this Picat model)
+
+            1 2 
+    3 6     4 7    5 8
+    9 10    11 12  13 14
+
+
+  There are the 4 solutions:
+
+   Family tree:
+                             Katherine  Neil      
+   Steve      Tammy          Cristian   Erin            Jason      Beth      
+   Kaitlyn    Makayla        Amanda     Ashley          Payton     Cole        
+
+   Family tree:
+                             Katherine  Neil      
+   Steve      Tammy          Cristian   Erin            Jason      Beth      
+   Makayla    Kaitlyn        Amanda     Ashley          Payton     Cole        
+
+   Family tree:
+                             Katherine  Neil      
+   Steve      Tammy          Cristian   Erin            Jason      Beth      
+   Kaitlyn    Makayla        Ashley     Amanda          Payton     Cole        
+
+   Family tree:
+                             Katherine  Neil      
+   Steve      Tammy          Cristian   Erin            Jason      Beth      
+   Makayla    Kaitlyn        Ashley     Amanda          Payton     Cole        
+
+
+   Here are the list of alternative ways of assigning the people:
+
+   1 = [Katherine]
+   2 = [Neil]
+   3 = [Steve]
+   4 = [Cristian]
+   5 = [Jason]
+   6 = [Tammy]
+   7 = [Erin]
+   8 = [Beth]
+   9 = [Kaitlyn,Makayla]
+   10 = [Makayla,Kaitlyn]
+   11 = [Amanda,Ashley]
+   12 = [Ashley,Amanda]
+   13 = [Payton]
+   14 = [Cole]
+
+  Kaitlyn and Makayla can be either position 9 or 10.
+  Amanda and Ashley can be inter position 11 or 12.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  
+  People = [Cole,Cristian,Jason,Neil,Steve,Amanda,Ashley,Beth,Erin,Kaitlyn,Katherine,Makayla,Payton,Tammy],
+  PeopleS = ["Cole","Cristian","Jason","Neil","Steve","Amanda","Ashley","Beth","Erin","Kaitlyn","Katherine","Makayla","Payton","Tammy"],      
+  N = People.len,  
+  People :: 0..N-1, % 0-based to use Groza's Mace4 clues.
+
+  % Adjust for base 0 in the People list. PeopleA is 1-based
+  assignment([PP1 : PP in People, PP1 #= PP +1],PeopleA),
+  
+  all_different(People),
+
+  GMap = get_global_map(),
+  GMap.put(n,N),
+
+  % The comments below are from Groza's Mace4 code
+  
+  % grandparents are on the 1st layer
+  GP = [0,1],
+  % avoid isomorphisms
+  GM = [0],
+  GF = [1],
+  
+  % p on 2nd
+  P  = 2..7,
+  
+  % c on 3rd
+  C = 8..13,
+  
+  % children of 0 and 1
+  Family = [2,3,4],
+  
+  % spouses
+  InLaw = [5,6,7],
+  
+  UncleAunt = [{8,3},{9,3},{8,6},{9,6},{8,4},{9,4},{8,7},{9,7},
+               {10,2},{11,2},{10,5},{11,5},{10,4},{11,4},{10,7},{11,7},
+               {12,2},{13,2},{12,5},{13,5},{12,3},{13,3},{12,6},{13,6}], 
+
+  Cousin = [{8,10},{9,10},{8,11},{9,11},{8,12},{9,12},{8,13},{9,13},
+            {10,8},{11,8},{10,9},{11,9},{10,12},{11,12},{10,13},{11,13},
+            {12,8},{13,8},{12,9},{13,9},{12,10},{13,10},{12,11},{13,11}
+           ],
+
+  Man = [Cole,Cristian,Jason,Neil,Steve],
+  Woman = [Amanda,Ashley,Beth,Erin,Kaitlyn,Katherine,Makayla,Payton,Tammy],
+
+  % exactly one boy
+  sum([sum([B#=T1 #/\ B#=T2 : T1 in C, T2 in Man ]) #= 1 :  B in People]) #= 1, 
+
+  % Clue1: Makayla's cousins is Jason's son
+  uncle(People,Man,UncleAunt,Makayla,Jason),
+
+  % Clue2: One of Ashley's aunts is Tammy
+  aunt(People,Woman,UncleAunt,Ashley,Tammy),
+  
+  % Clue3: Tammy's brother-in-law is Neil's son
+  Tammy :: InLaw,
+  Neil :: GF,
+  
+  % Clue4: Kaitlyn's sister is Ashley's cousin
+  Kaitlyn :: C,
+  Ashley :: C,
+  
+  % Kaitlyn has a sister -> Jason is not her father
+  uncle(People,Man,UncleAunt,Kaitlyn,Jason),
+  
+  % Clue5: Ashley's uncle, Steve, is Erin's brother-in-law
+  uncle(People,Man,UncleAunt,Ashley,Steve),
+
+  (Steve :: Family #/\ Erin :: InLaw) #\/ ((Erin :: Family #/\ Steve :: InLaw)),
+  % avoid isomorphisms
+  Steve #= 2 #\/ Erin #= 2,
+  
+  % Clue6: The three uncles are Payton's dad, Cristian and Katherine's son 
+  Payton :: C,
+  Cristian :: P,
+  Katherine :: GM,
+  uncle(People,Man,UncleAunt,Payton,Cristian),
+
+  % Clue7: Aunts are Kaitlyn's mom, Ashley's mom, Cristian's sister-in-law
+  Kaitlyn :: C,
+  Ashley :: C,
+  Cristian :: P,
+  cousin(People,C,Cousin,Kaitlyn,Ashley),
+
+  % Clue 8. Jason's brother is Ashley's dad
+  uncle(People,Man,UncleAunt,Ashley,Jason),
+  Jason :: Family,
+  % avoid isomorphisms
+  Jason #= 4,
+  Cole #= 13,
+  
+  % Clue9: Amanda's sister is Steve's niece
+  Amanda :: C,
+  uncle(People,Man,UncleAunt,Amanda,Steve),
+  % Amanda is not the daughter of Jason
+  Amanda #!= 12,
+  
+  % Clue 10. Beth is not Cole's aunt
+  table_notin({Cole,Beth}, UncleAunt),
+
+  println(solve),
+  solve(People),
+
+  println("   Family tree:"),
+  printf("                             %-10w %-10w\n", PeopleS[PeopleA[1]], PeopleS[PeopleA[2]]), 
+  printf("   %-10w %-10w     %-10w %-10w      %-10w %-10w\n",PeopleS[PeopleA[3]],PeopleS[PeopleA[6]],
+                                                           PeopleS[PeopleA[4]],PeopleS[PeopleA[7]],
+                                                           PeopleS[PeopleA[5]],PeopleS[PeopleA[8]]),
+  printf("   %-10w %-10w     %-10w %-10w      %-10w %-10w  \n",PeopleS[PeopleA[9]],PeopleS[PeopleA[10]],
+                                                           PeopleS[PeopleA[11]],PeopleS[PeopleA[12]],
+                                                           PeopleS[PeopleA[13]],PeopleS[PeopleA[14]]),
+  nl,
+  
+  foreach(I in 1..N)
+    GMap.put(I, GMap.get(I,[]) ++ [PeopleS[PeopleA[I]] ])
+  end,
+  fail,
+  nl.
+go =>
+  println("Alternative assignments:"),
+  GMap = get_global_map(),
+  foreach(I in 1..GMap.get(n))
+    println(I=GMap.get(I).remove_dups)
+  end,
+  nl.
+
+
+uncle(Peope,Man,UncleAuntRel,A,B) =>
+  sum([M#=B : M in Man]) #= 1,
+  table_in({A,B},UncleAuntRel).
+
+aunt(Peope,Woman,UncleAuntRel,A,B) =>
+  sum([W#=B : W in Woman]) #= 1,  
+  table_in({A,B},UncleAuntRel).
+
+
+cousin(People,C,CousinRel,A,B) =>
+  A :: C,
+  B :: C,
+  table_in({A,B},CousinRel).

@@ -1,0 +1,152 @@
+/* 
+
+  Lady and Tiger: A logic labyrinth in Picat.
+
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 48. A logic labyrinth
+
+  There are nine rooms. Only one room contains the lady. Each of the other eight con-
+  tains a tiger or they are empty. The sign on the door containing a lady is true. The signs
+  on the doors containing tigers are false. The signs on the empty rooms can be either
+  true or false.
+  You studied the situation for a long while: "The problem is unsolvable!" "I know"
+  laughed the king. "Now, at least give me a decent clue: is Room 8 empty or not?". The
+  king was decent enough to tell whether Room 8 was empty or not, and you are then
+  able to deduce where the lady is. Which door to open in order to find the lady, marry
+  her, and get half of the kingdom as compensation? (Smullyan 2009)
+
+       Room 1:                 Room 2:           Room 3:
+       Lady is (in) and odd    This room         Either sign 5 is right
+       numbered room           is empty          or sign 7 is wrong
+
+       Room4:                  Room 5:           Room 6:
+       Sign 1 is wrong         Either sign 2     Sign 3 is wrong
+                               or sign 4
+                               is right
+
+       Room 7:                 Room 8:           Room 9:
+       Lady is not in          This room         This room contains a
+       room 1                  contains a        tiger and sign 6
+                               tiger and         is wrong
+                               room 9 is
+                               empty 
+                               
+  """  
+
+  The are two scenariois:
+  - a) Room 8 is empty
+  - b) Room 8 is not empty
+
+  This is handled by checking them both and see what's happening:
+      member(T,[Whos[8] #= Empty, Whos[8] #!= Empty]),
+
+  For the first scenario (Room 8 is empty) there are different solutions
+  were the lady is: Rooms 1, 3, 4, 5, 7.
+  For the second scenario (Room 8 is not empty), then there are 8 solutions, but in all
+  these the lady is located to room 7.
+  
+  Note: For two of the hints, for rooms 3 and 5, 
+  - Room 3: Either sign 5 is right or sign 7 is wrong
+  - Room 5: Either sign 2 or sign 4 is right
+  I would rather interpret these clues as XOR, but that does not give the unique 
+  solution of which room the lady was located.  But if they instead are interpreted 
+  as OR constraints then the intended solution are shown.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+% import sat.
+% import mip.
+% import smt.
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 9,
+  Empty = 0, Lady = 1, Tiger = 2,
+
+  % Is the message for this room true/false?
+  Rooms = [Room1,Room2,Room3,Room4,Room5,Room6,Room7,Room8,Room9],
+  Rooms :: 0..1,
+
+  % Who is in this room?
+  Whos = [Who1,Who2,Who3,Who4,Who5,Who6,Who7,Who8,Who9],
+  Whos :: [Empty,Lady,Tiger],
+
+  %
+  % Testing the two scenarios of Room8's emptyness
+  %
+  member(T,[Whos[8] #= Empty, Whos[8] #!= Empty]),
+  println(who8_scenario=T),
+  T, % Activate the Room 8 constraint
+
+  % Only one room contains the lady. 
+  count(Lady,Whos) #= 1,
+
+  % In which room is the lady?
+  % This is the only thing we care about...
+  element(LadyRoom,Whos,Lady),
+
+  foreach(I in 1..N)
+    % The sign on the door containing a lady is true. 
+    (Whos[I] #= Lady) #=> Rooms[I] #= 1,
+    % The signs on the doors containing tigers are false.  
+    (Whos[I] #= Tiger) #=> Rooms[I] #= 0
+  end,
+
+  % Room1: Lady is and odd numbered room
+  % Room1 #<=> sum( [ Whos[I] #= Lady : I in [1,3,5,7,9]] ) #= 1,
+  Room1 #<=> sum( [ Whos[I] #= Lady : I in 1..N, I mod 2 == 1] ) #= 1,
+  
+  % Room 2: This room is empty
+  Room2 #<=> (Who2 #= Empty),
+
+  % See comment above
+  % Room 3: Either sign 5 is right or sign 7 is wrong
+  % Room3 #<=> % ((Room5 #= 1) + (Room7 #= 0) #= 1),
+  % Room3 #<=> (Room5 #= 1 #^ Room7 #= 0),
+  Room3 #<=> (Room5 #= 1 #\/ Room7 #= 0),
+
+  % Room 4: Sign 1 is wrong
+  Room4 #<=> (Room1 #= 0),
+
+  % See comment above
+  % Room 5: Either sign 2 or sign 4 is right
+  % Room5 #<=> (Room2 + Room4 #= 1), % Room2 #= 1 #^ Room4 #= 1,
+  Room5 #<=> (Room2 #\/ Room4),
+
+  % Room 6: Sign 3 is wrong
+  Room6 #<=> (Room3 #= 0),
+
+  % Room 7: Lady is not in room 1
+  Room7 #<=> (Who1 #!= Lady),
+
+  % Room 8: This room contains a tiger and room 9 is empty
+  Room8 #<=> (Who8 #= Tiger #/\ Who9 #= Empty),
+
+  % Room 9: This room contains a tiger and sign 6 is wrong
+  Room9 #<=> (Who9 #= Tiger #/\ Room6 #= 0),
+
+
+  % Vars = Rooms ++ Whos ++ [LadyRoom],
+  Vars = [LadyRoom], % Just solving for the lady room (gives fewer solutions)
+  println(ladyRoom=LadyRoom),
+  solve(Vars),
+
+  println(Vars), 
+  println(ladyRoom=LadyRoom),
+  println(rooms=Rooms=[I : I in 1..N, Rooms[I] == 1]),
+  println(whos=Whos),
+  println(lady=[I : I in 1..N, Whos[I] == Lady]),
+  println(tigers=[I : I in 1..N, Whos[I] == Tiger]),
+  println(empty=[I : I in 1..N, Whos[I] == Empty]),      
+  nl,
+  fail,
+
+  nl.
+go => true.
