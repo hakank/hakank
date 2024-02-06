@@ -174,7 +174,7 @@ def cabling_2(min_val=None):
   model += [AllDifferent(x),
             final_sum == sum(t)]
 
-  for i in range(n):
+  for i in range(len(cable_struct)):
     a,b,num = cable_struct[i]
     model += [t[i] == abs(x[a]-x[b])*num]
 
