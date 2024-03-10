@@ -1,0 +1,234 @@
+/* 
+
+  Kuromasu grid puzzle (a.k.a. Kurodoku) in Picat.
+
+  https://en.wikipedia.org/wiki/Kuromasu
+  """
+  Where are the black cells? (...), abbreviated Kuromasu (...) or Kurodoko (...), is 
+  a binary-determination logic puzzle published by Nikoli. As of 2005, one book consisting 
+  entirely of Kuromasu puzzles has been published by Nikoli.
+
+  Rules
+
+  Kuromasu is played on a rectangular grid. Some of these cells have numbers in them. Each cell 
+  may be either black or white. The object is to determine what type each cell is.
+
+  The following rules determine which cells are which:
+
+  * Each number on the board represents the number of white cells that can be seen from that 
+    cell, including itself. A cell can be seen from another cell if both cells are within the 
+    same row or column, and there are no black cells between them in that row or column.
+  * Numbered cells must not be black.
+  * No two black cells must be horizontally or vertically adjacent.
+  * All the white cells must be connected horizontally or vertically.
+  """
+
+  Solution (*: black, .: white, number: white)
+
+  *  .  9  .  .  *  .  .  8  .  .
+  .  *  .  .  *  .  *  .  7  .  .
+  .  .  .  . 12  .  .  .  .  . 16
+  9  .  .  .  .  .  .  *  .  *  .
+  * 10  .  .  *  .  .  .  *  .  .
+  .  . 12  .  8  . 11  *  3  .  .
+  .  .  *  .  .  .  .  .  *  3  *
+  .  .  .  .  *  .  *  .  .  *  3
+  7  .  *  .  .  *  2  .  *  .  .
+  .  .  7  .  .  .  *  .  .  .  .
+  .  *  2  *  .  *  .  .  5  .  *
+
+
+  CPU time 0.207 seconds. Backtracks: 0
+
+
+  Cf sun_and_moon.pi for a similar (and more complex) grid puzzle.
+
+  Also see:
+  - https://www.nikoli.co.jp/en/puzzles/kurodoko/
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import util.
+
+% Time for proving unicity (i.e. with fail/0) of puzzle instance 1.
+import sat. % 0.29s
+% import mip. % (SCIP: 2.67s)
+% import smt. % z3: 4.3s cvc5: ??
+% import cp. % ??
+
+main => go.
+
+go ?=>
+  nolog,
+  puzzle(1,Grid),
+  kuromasu(Grid, X),
+  print_solution(Grid,X),
+  fail,
+  nl.
+go => true.
+
+% Solve all puzzles
+go2 ?=>
+  nolog,
+  puzzle(Puzzle,Grid),
+  println(puzzle=Puzzle),
+  kuromasu(Grid, X),
+  print_solution(Grid,X),
+  fail,
+  nl.
+go2 => true.
+
+
+kuromasu(Grid, X) =>
+
+  Black = 0,
+  White = 1,
+
+  Rows = Grid.len,
+  Cols = Grid[1].len,
+
+  X = new_array(Rows,Cols),
+  X :: [Black,White], % 0: black cell 1: white cell (connected)
+
+  foreach(I in 1..Rows, J in 1..Cols)
+    % * Numbered cells must not be black.
+    if Grid[I,J] > 0 then
+      X[I,J] #= White,
+      % Count the number of seen white neighbours (the hint)
+      check(X,Rows,Cols,I,J,Grid[I,J])
+    else 
+
+      % * No two black cells must be horizontally or vertically adjacent.
+      X[I,J] #= Black #=> sum([ X[I+A,J+B] #= 0 : A in -1..1, B in -1..1,
+                                                abs(A)+abs(B)==1,
+                                                I+A >= 1, I+A <= Rows,
+                                                J+B >= 1, J+B <= Cols]) #= 0
+    end
+  end,
+
+  % All the white cells must be connected horizontally or vertically.
+  scc_grid(X),
+
+  solve($[],X).
+
+%
+% * Each number on the board represents the number of white cells that can be seen from that 
+%   cell, including itself. A cell can be seen from another cell if both cells are within the 
+%   same row or column, and there are no black cells between them in that row or column.
+%
+check(X,Rows,Cols,I,J,G) =>
+  check2(X,Rows,Cols,I,J,[-1,0],North),
+  check2(X,Rows,Cols,I,J,[0,-1],West),
+  check2(X,Rows,Cols,I,J,[1,0],South),
+  check2(X,Rows,Cols,I,J,[0,1],East),
+  G #= North + West + South + East + 1. % and include the white cell X[I,J] 
+
+% Number of seen white cells the direction of [A,B]
+check2(X,Rows,Cols,I,J,[A,B], Val) =>
+  T = [],
+  AT = I,
+  BT = J,
+  % Collect all the possible cells in this direction
+  while(AT+A >= 1, AT+A <= Rows, BT+B >= 1, BT+B <= Cols)
+    AT := AT + A,
+    BT := BT + B,
+    T := T ++ [X[AT,BT]]
+  end,
+  Len = T.len,
+  if Len > 0 then
+    % Count the seen white cells, i.e. only those not interrupted by black cells
+    Val #= sum([T[P] #= 1 #/\ sum([T[Q] #= 0 : Q in 1..P-1]) #= 0 :   P in 1..Len])
+  else
+    Val #= 0
+  end.
+
+%
+% Pretty print the solution
+%
+print_solution(Grid,X) =>
+  Rows = Grid.len,
+  Cols = Grid[1].len,
+
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      if Grid[I,J] > 0 then
+        printf("%3w",Grid[I,J])
+      elseif X[I,J] == 0 then
+        printf("%3w","*")
+      else
+        printf("%3w",".")      
+      end
+    end,
+    nl
+  end,
+  nl.
+
+
+%
+% The problem instance from https://en.wikipedia.org/wiki/Kuromasu
+%
+puzzle(1,Grid) :-
+  Grid = [[ 0, 0, 9,  0, 0, 0,  0, 0, 8,  0, 0],
+          [ 0, 0, 0,  0, 0, 0,  0, 0, 7,  0, 0],
+          [ 0, 0, 0,  0,12, 0,  0, 0, 0,  0,16],
+
+          [ 9, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0],
+          [ 0,10, 0,  0, 0, 0,  0, 0, 0,  0, 0],
+          [ 0, 0,12,  0, 8, 0, 11, 0, 3,  0, 0],
+
+          [ 0, 0, 0,  0, 0, 0,  0, 0, 0,  3, 0],
+          [ 0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 3],
+          [ 7, 0, 0,  0, 0, 0,  2, 0, 0,  0, 0],
+
+          [ 0, 0, 7,  0, 0, 0,  0, 0, 0,  0, 0],
+          [ 0, 0, 2,  0, 0, 0,  0, 0, 5,  0, 0]].
+
+
+/*
+
+  From https://liacs.leidenuniv.nl/assets/Bachelorscripties/20-TimvanMeurs.pdf
+  page 5
+
+  Solution:
+
+  .  *  3  *  .
+  9  .  .  .  .
+  .  *  .  .  *
+  .  2  *  .  2
+  .  *  .  .  *
+
+*/
+puzzle(2,Grid) :-
+  Grid = [[0,0,3,0,0],
+          [9,0,0,0,0],
+          [0,0,0,0,0],
+          [0,2,0,0,2],
+          [0,0,0,0,0]].
+
+
+/*
+  From https://www.nikoli.co.jp/en/puzzles/kurodoko/
+
+  Solution:
+
+  .  3  *  .  .  .  .
+  .  .  .  .  *  2  *
+  .  *  5  .  .  *  2
+  .  .  . 13  .  .  .
+  8  .  *  .  5  .  *
+  .  7  .  .  *  .  .
+  .  .  .  .  .  9  *
+
+
+*/
+puzzle(3,Grid) :-
+  Grid = [[ 0, 3, 0, 0, 0, 0, 0],
+          [ 0, 0, 0, 0, 0, 2, 0],
+          [ 0, 0, 5, 0, 0, 0, 2],
+          [ 0, 0, 0,13, 0, 0, 0],
+          [ 8, 0, 0, 0, 5, 0, 0],
+          [ 0, 7, 0, 0, 0, 0, 0],
+          [ 0, 0, 0, 0, 0, 9, 0]].

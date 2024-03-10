@@ -1,0 +1,165 @@
+/* 
+
+  Light Up grid puzzle in Picat.
+
+  https://en.wikipedia.org/wiki/Light_Up_(puzzle)
+  """
+  Light Up (Japanese: ... bijutsukan, art gallery), also called Akari (..., light) is a 
+  binary-determination logic puzzle published by Nikoli. As of 2011, three books 
+  consisting entirely aof Light Up puzzles have been published by Nikoli.
+
+  Rules
+  Light Up is played on a rectangular grid of white and black cells. The player places light 
+  bulbs in white cells such that no two bulbs shine on each other, until the entire grid is 
+  lit up. A bulb sends rays of light horizontally and vertically, illuminating its entire 
+  row and column unless its light is blocked by a black cell. A black cell may have a 
+  number on it from 0 to 4, indicating how many bulbs must be placed adjacent to its 
+  four sides; for example, a cell with a 4 must have four bulbs around it, one on each side, 
+  and a cell with a 0 cannot have a bulb next to any of its sides. An unnumbered black 
+  cell may have any number of light bulbs adjacent to it, or none. Bulbs placed diagonally 
+  adjacent to a numbered cell do not contribute to the bulb count. 
+  """
+
+  The unique solution.
+
+  1  *  .  2  *  .  .  .  .  0
+  .  .  .  *  .  .  .  0  .  .
+  *  3  *  .  .  .  0  .  .  *
+  .  *  2  .  .  0  .  .  .  1
+  .  .  .  1  0  1  *  .  .  .
+  .  .  .  *  1  1  2  *  .  .
+  1  .  *  .  2  *  .  2  *  .
+  *  .  .  1  *  .  .  .  3  *
+  .  .  1  .  .  .  .  .  *  .
+  0  .  *  .  .  .  1  *  .  0
+
+  Note that the values of the U's (unknown black cells) are also 
+  shown.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  puzzle(1,Grid),
+  light_up(Grid, X,Ts),
+  print_solution(Grid,X,Ts),
+  fail,
+  
+  nl.
+go => true.
+
+print_solution(Grid,X,Ts) =>
+  foreach(I in 1..Grid.len)
+    foreach(J in 1..Grid[1].len)
+      G = Grid[I,J],
+      if nonvar(G) then
+        printf("%3w",cond(G == -1,Ts[I,J],G)) 
+      else
+        if X[I,J] == 1 then
+          printf("%3w","*")
+        else
+          printf("%3w",".")
+        end
+      end
+    end,
+    nl
+  end,
+  nl.
+    
+
+
+light_up(Grid, X,Ts) =>
+  Rows = Grid.len,
+  Cols = Grid[1].len,
+  
+  X = new_array(Rows,Cols),
+  X :: 0..1,
+
+  Ts = new_array(Rows,Cols),
+  Ts :: 0..4,
+  
+  foreach(I in 1..Rows, J in 1..Cols)
+    G = Grid[I,J],
+    if nonvar(G) then
+      % This is a black cell
+      X[I,J] #= 0,
+      S #=  sum([X[I+A,J+B] : A in -1..1, B in -1..1,
+                          abs(A) + abs(B) == 1,
+                          I+A >= 1, I+A <= Rows,
+                          J+B >= 1, J+B <= Cols]),
+      Ts[I,J] #= S,
+      if G >= 0 then
+        % Known value in the black cell
+        S #= G,
+        Ts[I,J] #= G
+      end
+    else
+      % Check this non black cell
+      check(X,Grid,Rows,Cols,I,J,Tot),
+      % All non light cell must be lit up by at least one light
+      X[I,J] #= 0 #=> Tot #>= 1,
+      % A light (1) is a cell can see no other lights
+      X[I,J] #= 1 #=> Tot #= 0,
+      Ts[I,J] #= 0
+    end
+  end,
+
+  Vars = X.vars ++ Ts.vars,
+  solve($[degree,updown],Vars).
+
+
+%
+% Check the number of 1s is all directions
+%
+check(X,Grid,Rows,Cols,I,J,Tot) =>
+  check2(X,Grid,Rows,Cols,I,J,[-1,0],North),
+  check2(X,Grid,Rows,Cols,I,J,[0,-1],West),
+  check2(X,Grid,Rows,Cols,I,J,[1,0],South),
+  check2(X,Grid,Rows,Cols,I,J,[0,1],East),
+  Tot #= North + West + South + East.
+
+% Number of seen white cells the direction of [A,B]
+check2(X,Grid,Rows,Cols,I,J,[A,B],Val) =>
+  AT = I,
+  BT = J,
+  T = [],  
+  % Collect all the possible cells in this direction (until a black cell)
+  OK = true,
+  while(AT+A >= 1, AT+A <= Rows, BT+B >= 1, BT+B <= Cols, OK == true)
+    if nonvar(Grid[AT+A,BT+B]) then
+      OK := false
+    else      
+      AT := AT + A,
+      BT := BT + B,
+      T := T ++ [X[AT,BT]]
+    end
+  end,
+  Len = T.len,
+  if Len > 0 then
+    % Count the seen light cells
+    Val #= sum([T[P] #= 1 #/\ sum([T[Q] #= 1 : Q in 1..P-1]) #= 0 :   P in 1..Len])    
+  else
+   Val #= 0
+  end.
+
+
+puzzle(1,Grid) :-
+  U = -1, % black but unknown number
+  Grid = [[U,_,_,U,_,_,_,_,_,U],
+          [_,_,_,_,_,_,_,U,_,_],
+          [_,3,_,_,_,_,0,_,_,_],
+          [_,_,2,_,_,U,_,_,_,1],
+          [_,_,_,1,0,U,_,_,_,_],
+          [_,_,_,_,1,U,U,_,_,_],
+          [U,_,_,_,2,_,_,2,_,_],
+          [_,_,_,U,_,_,_,_,U,_],
+          [_,_,1,_,_,_,_,_,_,_],
+          [0,_,_,_,_,_,1,_,_,0]].

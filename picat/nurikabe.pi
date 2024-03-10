@@ -1,0 +1,462 @@
+/* 
+
+  Nurikabe grid puzzle in Picat.
+
+  https://en.wikipedia.org/wiki/Nurikabe_(puzzle)
+  """
+  Nurikabe (hiragana: ...) is a binary determination puzzle named for Nurikabe, an 
+  invisible wall in Japanese folklore that blocks roads and delays foot travel. Nurikabe 
+  was apparently invented and named by Nikoli; other names (and attempts at localization) 
+  for the puzzle include Cell Structure and Islands in the Stream.
+
+  Rules
+
+  The puzzle is played on a typically rectangular grid of cells, some of which 
+  contain numbers. Cells are initially of unknown color, but can only be black or white. 
+  Two same-color cells are considered "connected" if they are adjacent vertically or 
+  horizontally, but not diagonally. Connected white cells form "islands", while connected 
+  black cells form the "sea".
+
+  The challenge is to paint each cell black or white, subject to the following rules:
+
+  * Each numbered cell is an island cell, the number in it is the number of cells in that island.
+  * Each island must contain exactly one numbered cell.
+  * There must be only one sea, which is not allowed to contain "pools", i.e. 2x2 areas of 
+    black cells.
+  """
+
+  Also see:
+  https://www.puzzle-nurikabe.com/
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+% import cp.
+
+main => go.
+
+go ?=>
+  nolog,
+  puzzle(Puzzle,Grid),
+  println(puzzle=Puzzle),
+  print_instance(Grid),
+  time(nurikabe(Grid,X,Islands)), % Does not backtrack with fail (time2/1 does that, though)
+  % nurikabe(Grid,X,Islands),
+  if nonvar(X) then
+    print_sol(X,Islands)
+  end,
+  fail,
+  nl.
+go => true.
+
+% Test a specific instance
+go2 ?=>
+  nolog,
+  puzzle(4,Grid),
+  print_instance(Grid),  
+  time(nurikabe(Grid,X,Islands)),
+  % nurikabe(Grid,X,Islands),
+  if nonvar(X) then
+    print_sol(X,Islands)
+  end,
+  fail,
+  nl.
+go2=> true.
+
+
+
+nurikabe(Grid, X,Islands) =>
+  Rows = Grid.len,
+  Cols = Grid[1].len,
+  % println([rows=Rows,cols=Cols]),
+
+  IslandCells = [[I,J] : I in 1..Rows, J in 1..Cols, Grid[I,J] > 0],
+  NumIslands = IslandCells.len,
+  TotalIslandCount = Grid.flatten.sum,
+
+  % The sea (connected)
+  X = new_array(Rows,Cols),
+  X :: 0..1,
+
+  % The islands
+  Islands = new_array(NumIslands,Rows,Cols),
+  Islands :: 0..1,
+
+  % Fill the islands (each island is connected)
+  foreach({[I,J],Island} in zip(IslandCells,1..NumIslands))
+    Islands[Island,I,J] #= 1,
+    scc_grid(Islands[Island],Grid[I,J]),
+    % If a cell belongs to an island then it cannot belong to the sea
+    foreach(II in 1..Rows, JJ in 1..Cols)
+      Islands[Island,II,JJ] #= 1 #=> X[II,JJ] #= 0
+    end
+  end,
+
+  % The different islands cannot be connected by row or column
+  % (it's OK to connect diagonally).
+  foreach(I1 in 1..NumIslands, I2 in I1+1..NumIslands )
+    foreach(I in 1..Rows, J in 1..Cols)
+      Ns = neibs(Rows,Cols,I,J),
+      foreach([IA,JB] in Ns)
+        Islands[I1,I,J] #= 1 #=> Islands[I2,IA,JB] #= 0
+      end
+    end
+  end,
+
+  % Sanity check (and speed up)
+  % connecting the islands and the sea
+  foreach(I in 1..Rows, J in 1..Cols)
+    % T :: 0..1,
+    T #= sum([Islands[Island,I,J] : Island in 1..NumIslands]),
+    T #<= 1,
+    T #= 0 #<=> X[I,J] #= 1
+  end,
+
+  % The connected sea must not contains "pools", i.e. 2x2 areas
+  % of black cells (1s)
+  foreach(I in 1..Rows, J in 1..Cols)
+    T = [X[P,Q] : P in I..I+1,Q in J..J+1, P <= Rows, Q <= Cols],
+    if T.len == 4 then    
+      sum(T) #< 4
+    end
+  end,
+
+  % Number of cells in the island (the 1s in X)
+  XK = Rows*Cols-TotalIslandCount,
+  scc_grid(X,XK),
+
+  % Vars = X.vars ++ Islands.vars,
+  Vars = Islands.vars ++ X.vars,
+  
+  % solve($[degree,updown],Vars).
+  println(solve),
+  solve($[degree,updown],Vars).
+
+
+%
+% Neighbours of a cell [I,J]
+%
+% table
+neibs(Rows,Cols,I,J) = [ [I+A,J+B] : A in -1..1, B in -1..1, abs(A)+abs(B) == 1,
+                                                  I+A >= 1,I+A <= Rows,
+                                                  J+B >= 1,J+B <= Cols].
+
+print_instance(Grid) => 
+  foreach(I in 1..Grid.len)
+    foreach(J in 1..Grid[1].len)
+      if Grid[I,J] > 0 then
+        printf("%3w",Grid[I,J])
+      else
+        printf("%3w",".")
+      end
+    end,
+    nl
+  end,
+  nl.
+
+%
+% Pretty print the solution
+%
+print_sol(X,Islands) => 
+  Rows = X.len,
+  Cols = X[1].len,
+  NumIslands = Islands.len,
+  println("X:"),
+  foreach(I in 1..Rows)
+    foreach(J in 1..Cols)
+      T = sum([ Island*Islands[Island,I,J] : Island in 1..NumIslands ]),
+      if T > 0 then
+        printf("%3w",T)
+      else
+        printf("%3w",".")
+      end
+    end,
+    nl
+  end,
+  nl,  
+  nl.  
+
+
+%
+% Puzzle instances
+%
+
+/*
+  From https://en.wikipedia.org/wiki/Nurikabe_(puzzle)
+
+X:
+  1  1  .  5  5  5  .  .  2  2
+  .  .  .  5  5  .  3  .  .  .
+  .  4  .  5  5  .  3  .  7  .
+  .  4  .  .  .  .  .  .  7  .
+  .  .  8  .  6  6  6  .  7  .
+ 10  .  8  .  .  .  .  9  .  .
+ 10  .  . 11 11  .  9  9  . 14
+  .  . 11 11  .  .  .  .  . 14
+  . 12  .  .  . 13 13  . 14 14
+
+  SAT: 0.534s
+  CP: 9.1s
+
+*/
+puzzle(1,Grid) :-
+  Grid = [[2,0,0,0,0,0,0,0,0,2],
+          [0,0,0,0,0,0,2,0,0,0],
+          [0,2,0,0,7,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,0,3,0,3,0],
+          [0,0,2,0,0,0,0,3,0,0],
+          [2,0,0,4,0,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0,0],
+          [0,1,0,0,0,0,2,0,4,0]].
+
+/*
+
+  From https://en.wikipedia.org/wiki/Nurikabe_(puzzle)
+
+X:
+  1  .  2  2  2  .  3  3  .  4
+  .  .  2  .  .  .  3  3  .  4
+  .  5  .  .  6  6  .  .  .  .
+  .  .  7  .  .  .  8  .  9  9
+ 10  .  .  . 11 11  .  .  .  .
+  .  . 12  . 11  .  . 13 13 13
+  . 12 12 12  .  . 13 13  .  .
+  . 12  .  .  . 14  .  .  . 15
+  . 12  . 16 16  . 17 17  . 15
+  .  .  .  .  .  .  .  .  .  .
+
+  SAT: 0.449s
+  CP: 0.855s
+
+
+*/
+puzzle(2,Grid) :-
+  Grid = [[1,0,0,0,4,0,0,4,0,2],
+          [0,0,0,0,0,0,0,0,0,0],
+          [0,1,0,0,0,2,0,0,0,0],
+          [0,0,1,0,0,0,1,0,0,2],
+          [1,0,0,0,0,3,0,0,0,0],
+          [0,0,6,0,0,0,0,0,0,5],
+          [0,0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,1,0,0,0,2],
+          [0,0,0,0,2,0,0,2,0,0],          
+          [0,0,0,0,0,0,0,0,0,0]].
+
+/*
+  https://www.puzzle-nurikabe.com/
+  5x5 Easy Nurikabe Puzzle ID: 291,953
+
+X:
+  1  .  2  2  2
+  1  .  2  .  .
+  1  .  .  3  .
+  .  4  .  3  .
+  .  .  .  .  .
+
+
+  SAT: 0.073s
+  CP: 0.061s
+
+*/
+puzzle(3,Grid) :-
+  Grid = [[3,0,0,0,4],
+          [0,0,0,0,0],
+          [0,0,0,2,0],
+          [0,1,0,0,0],
+          [0,0,0,0,0]].
+
+
+/*
+  https://www.puzzle-nurikabe.com/
+  15x15 Hard Nurikabe Puzzle ID: 2,456,362
+
+X:
+  5  .  1  1  .  2  2  .  .  .  3  . 11 11 11
+  5  .  .  .  .  .  .  4  4  .  .  . 11  .  .
+  5  5  5  5  5  .  6  .  .  .  7  . 11  .  8
+  .  .  .  .  .  .  .  . 13  .  7  . 11  .  8
+  9  . 10 10 10 10 10  . 13 13  .  . 11  .  .
+  .  .  .  .  .  .  . 12  . 13 13  .  .  . 14
+  . 15 15 15  . 16  . 12  .  . 13 13 13  . 14
+  . 15  .  .  . 16  . 12  . 17  .  .  . 18  .
+ 19  . 20 20 20  .  .  .  .  .  . 21  . 18  .
+  .  .  .  . 20 20  . 21 21 21 21 21  .  .  .
+ 24  . 22 22  . 20 20  .  .  .  . 21 21  . 23
+ 24  .  .  .  .  . 20  . 26 26  .  . 21  . 23
+  .  . 25 25 25  .  .  . 26  . 27  . 21  . 23
+  . 25 25  .  . 29  . 28  .  .  .  .  .  . 23
+  .  .  .  . 29 29  .  . 30  . 31 31  . 23 23
+
+  SAT: 5.658s
+  CP: ???
+
+*/
+puzzle(4,Grid) :-
+%          1  2   3  4  5   6  7   8  9  0   1  2   3  4  5
+  Grid = [[0, 0,  0, 2, 0,  0, 2,  0, 0, 0,  1, 0,  0, 0, 0],  % 1
+          [0, 0,  0, 0, 0,  0, 0,  2, 0, 0,  0, 0,  0, 0, 0],  % 2
+          
+          [0, 0,  0, 0, 7,  0, 1,  0, 0, 0,  2, 0,  0, 0, 0],  % 3
+          [0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 2],  % 4
+          [1, 0,  5, 0, 0,  0, 0,  0, 0, 0,  0, 0,  7, 0, 0],  % 5
+          
+          [0, 0,  0, 0, 0,  0, 0,  3, 0, 0,  0, 0,  0, 0, 0],  % 6
+          [0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  8, 0, 2],  % 7
+          
+          [0, 4,  0, 0, 0,  2, 0,  0, 0, 1,  0, 0,  0, 2, 0],  % 8
+          [1, 0,  8, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0],  % 9
+          [0, 0,  0, 0, 0,  0, 0, 10, 0, 0,  0, 0,  0, 0, 0],  % 10
+          
+          [0, 0,  2, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 6],  % 11
+          [2, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0],  % 12
+          
+          [0, 0,  0, 0, 5,  0, 0,  0, 3, 0,  1, 0,  0, 0, 0],  % 13
+          [0, 0,  0, 0, 0,  0, 0,  1, 0, 0,  0, 0,  0, 0, 0],  % 14
+          [0, 0,  0, 0, 3,  0, 0,  0, 1, 0,  0, 2,  0, 0, 0]   % 15
+          ].
+
+/*
+
+  https://github.com/Engelberg/PicatProjects/nurikabe.pi
+  
+X:
+  .  .  .  .  1  .  .  .  2  2  .  3  3  .  4  4  4
+  .  5  5  .  1  .  6  6  .  2  .  3  3  .  4  .  .
+  7  .  5  .  1  .  .  .  .  .  .  .  .  .  4  .  9
+  7  .  .  .  1  1  . 10 10 10  .  8  8  8  .  .  9
+  .  . 14  .  .  .  . 10  .  .  .  .  .  .  . 11  .
+  . 14 14 14 14  . 16  . 12 12 12 12  . 11 11 11  .
+  . 14  .  .  .  . 16  .  .  .  .  . 13  .  .  .  .
+  . 14  . 15 15  . 16 16 16  . 19  . 13  . 18 18 18
+ 17  .  . 15  .  .  .  . 16  . 19 19  .  .  .  . 18
+  . 15 15 15  . 22 22  . 16  . 19 19  . 20  . 21  .
+  .  .  .  . 22 22  .  .  .  .  .  .  . 20  . 21  .
+  . 24  . 22 22 22  . 23 23  . 25 25  . 20  .  .  .
+  . 24  .  .  .  .  . 23  . 25 25  .  . 20 20 20  .
+ 26  .  . 27  . 33  .  .  .  .  . 30  .  .  .  . 28
+  . 27 27 27  . 33 33  . 29 29  . 30 30 30 30  . 28
+  .  .  .  .  .  . 33  .  . 29  .  .  .  . 30 30  .
+  . 31  . 32 32  . 33 33 33  .  . 34 34  .  .  .  .
+
+
+  SAT: 16.007s
+  CP: ??
+
+*/
+puzzle(5,Grid) :-
+  Grid = [[0,0,0,0,5,0,0,0,3,0,0,0,4,0,0,5,0],
+          [0,3,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+          [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,2],
+          [0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,4,0],
+          [0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0],
+          [0,7,0,6,0,0,7,0,0,0,0,0,0,0,0,0,0],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4],
+          [0,0,0,0,0,0,0,0,0,0,5,0,0,6,0,2,0],
+          [0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0],
+          [0,2,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0],
+          [1,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+          [0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,7,0],
+          [0,1,0,0,2,0,0,0,7,0,0,0,2,0,0,0,0]].
+
+
+/*
+  https://puzzling.stackexchange.com/questions/125290/nurikabe-back-to-basics
+
+X:
+  1  1  1  .  2  2  2  2
+  1  1  1  .  2  2  2  2
+  1  1  1  .  .  .  .  .
+  .  .  .  .  4  4  4  4
+  3  3  3  .  4  4  4  4
+  3  3  3  .  4  4  4  4
+  3  3  3  .  4  4  4  4
+  3  3  3  .  4  4  4  4
+
+
+  SAT: 1.232s
+  CP: 
+
+*/
+puzzle(6,Grid) :-
+  Grid = [[0, 0, 0, 0, 0, 0, 0, 0], 
+          [0, 9, 0, 0, 0, 0, 8, 0], 
+          [0, 0, 0, 0, 0, 0, 0, 0], 
+          [0, 0, 0, 0, 0, 0, 0, 0], 
+          [0, 0, 0, 0, 0, 0, 0, 0], 
+          [0, 0, 0, 0, 0, 0, 0, 0], 
+          [0,12, 0, 0, 0, 0,20, 0], 
+          [0, 0, 0, 0, 0, 0, 0, 0]].          
+
+
+/*
+  https://www.puzzle-nurikabe.com/
+  20x20 Easy Nurikabe Puzzle ID: 8,253,226
+
+X:
+  1  1  .  2  .  3  .  .  4  .  5  .  6  .  7  .  8  .  9  .
+  .  .  .  2  .  3  3  .  4  .  5  .  .  .  .  .  .  .  9  .
+ 10 10  .  2  .  .  .  .  4  .  . 11 11 11  . 12 12  .  9  .
+ 10 10  .  2  . 13 13  .  . 14  .  .  .  . 15  . 12  .  9  .
+  .  .  .  2  2  .  . 16  . 14  . 19  . 17  .  .  .  .  .  .
+ 18 18  .  .  2  2  . 16  .  . 19 19  . 17  . 20  . 21  . 22
+  . 18  . 23  .  .  . 16  . 24  .  .  . 17 17  .  . 21 21  .
+  .  .  . 23  . 25 25  .  . 24  . 26  .  .  . 27  .  .  .  .
+ 28 28  . 23  .  .  . 29  .  .  .  . 30 30  . 27  . 31  . 32
+  .  .  .  . 33 33  . 29 29 29  . 36  . 30  . 27 27  .  . 32
+ 34 34  . 35  . 33  .  .  .  . 36 36  .  .  .  . 27 27  .  .
+  .  .  . 35  . 33  . 37  . 38  .  . 39  . 40  .  . 27  . 41
+ 42 42  . 35  .  .  . 37  .  . 43  . 39 39  . 44  . 27  .  .
+ 42 42  .  . 45  . 46  . 47  . 43  .  . 39  .  .  .  . 48  .
+ 42 42 42  .  . 49  .  .  .  .  . 50  .  . 51 51  . 52  .  .
+  .  .  . 53  .  . 59  . 54  . 55  .  . 56  . 51  . 52  . 57
+ 58 58  . 53  . 59 59  . 54  . 55 55  . 56  .  .  .  .  . 57
+  .  .  .  .  .  .  .  . 54  .  .  .  .  . 60 60  . 61  .  .
+ 62  . 63  . 64 64 64  . 54  . 65  . 66  .  .  .  . 61  . 67
+  .  . 63 63  .  .  .  .  .  . 65  .  . 68 68 68  . 61  . 67
+
+
+  SAT: 23.466s
+  CP: ???
+
+
+  
+*/
+puzzle(7,Grid) :-
+  Grid = [[2, 0,  0, 8, 0,  3, 0,  0, 3, 0,  2, 0,  1, 0, 1,  0, 1,  0, 4, 0 ],
+          [0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0 ],
+          
+          [4, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 3,  0, 0, 0,  3, 0,  0, 0, 0 ],
+          [0, 0,  0, 0, 0,  2, 0,  0, 0, 2,  0, 0,  0, 0, 1,  0, 0,  0, 0, 0 ],
+          [0, 0,  0, 0, 0,  0, 0,  3, 0, 0,  0, 0,  0, 4, 0,  0, 0,  0, 0, 0 ],
+          
+          [3, 0,  0, 0, 0,  0, 0,  0, 0, 0,  3, 0,  0, 0, 0,  1, 0,  3, 0, 1 ],
+          [0, 0,  0, 3, 0,  0, 0,  0, 0, 2,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0 ],
+          
+          [0, 0,  0, 0, 0,  2, 0,  0, 0, 0,  0, 1,  0, 0, 0,  8, 0,  0, 0, 0 ],
+          [2, 0,  0, 0, 0,  0, 0,  4, 0, 0,  0, 0,  3, 0, 0,  0, 0,  1, 0, 2 ],
+          [0, 0,  0, 0, 4,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0 ],
+          
+          [2, 0,  0, 3, 0,  0, 0,  0, 0, 0,  3, 0,  0, 0, 0,  0, 0,  0, 0, 0 ],
+          [0, 0,  0, 0, 0,  0, 0,  2, 0, 1,  0, 0,  4, 0, 1,  0, 0,  0, 0, 1 ],
+          
+          [7, 0,  0, 0, 0,  0, 0,  0, 0, 0,  2, 0,  0, 0, 0,  1, 0,  0, 0, 0 ],
+          [0, 0,  0, 0, 1,  0, 1,  0, 1, 0,  0, 0,  0, 0, 0,  0, 0,  0, 1, 0 ],
+          [0, 0,  0, 0, 0,  1, 0,  0, 0, 0,  0, 1,  0, 0, 3,  0, 0,  2, 0, 0 ],
+          
+          [0, 0,  0, 2, 0,  0, 0,  0, 4, 0,  3, 0,  0, 2, 0,  0, 0,  0, 0, 2 ],
+          [2, 0,  0, 0, 0,  3, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 0 ],
+          
+          [0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 0, 2,  0, 0,  3, 0, 0 ],
+          [1, 0,  3, 0, 3,  0, 0,  0, 0, 0,  2, 0,  1, 0, 0,  0, 0,  0, 0, 2 ],
+          [0, 0,  0, 0, 0,  0, 0,  0, 0, 0,  0, 0,  0, 3, 0,  0, 0,  0, 0, 0 ]].
+
+

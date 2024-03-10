@@ -1,0 +1,131 @@
+/* 
+
+  Keisuke grid puzzle in Picat.
+
+  https://en.wikipedia.org/wiki/Keisuke_(puzzle)
+  """
+  Keisuke is a logic puzzle published by Nikoli.
+
+  Rules
+
+  Keisuke is played on a rectangular grid, in which some cells of the grid are shaded. 
+  Additionally, external to the grid, several numeric values are given, some denoted as 
+  horizontal, and some denoted as vertical.
+
+  The puzzle functions as a simple numeric crossword puzzle. The object is to fill in the 
+  empty cells with single digits, such that the given numeric values appear on the grid in 
+  the orientation specified. 
+  """
+
+
+  Unique solution: 
+  [2,3,0,1,3]
+  [0,3,2,2,1]
+  [2,3,3,0,3]
+  [2,1,2,2,2]
+  [0,3,0,1,0]
+
+
+  Cf 
+  - crossword_bratko.pi
+  - crossword_gecode_problems.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  puzzle(1,Grid,Across1,Down1,Max),
+  keisuke(Grid,Across1,Down1,Max, X),
+  println("X:"),
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl,
+  fail,
+  nl.
+go => true.
+
+keisuke(Grid,Across1,Down1,Max, X) =>
+  Across = [Num.number_chars.map(to_int).to_array : Num in Across1],
+  AcrossW = get_words(Across), 
+  Down = [Num.number_chars.map(to_int).to_array : Num in Down1],
+  DownW = get_words(Down),  
+
+  Rows = Grid.len,
+  Cols = Grid[1].len,
+
+  X = new_array(Rows,Cols),
+  X :: 0..Max,
+
+  foreach(I in 1..Rows, J in 1..Cols)
+    if  var(Grid[I,J]) then
+      X[I,J] #!= 0,
+      X[I,J] #= Grid[I,J]
+    else
+      X[I,J] #= 0
+    end
+  end,
+
+  SegmentsAcross = get_segments(Grid),
+  SegmentsDown = get_segments(Grid.transpose),
+
+  constrain_segments(SegmentsAcross,AcrossW,Across),
+  constrain_segments(SegmentsDown,DownW,Down),  
+
+  solve(X).
+
+
+constrain_segments(Segments,Map,Words) =>
+  foreach(S in Segments)
+    table_in(S,Map.get(S.len))
+  end,
+  all_different([V : S in Segments, to_num(S,10,V)]).
+
+get_words(Ws) = Map =>
+  Map = new_map(),
+  foreach(W in Ws)
+    Len = W.len,
+    Map.put(Len,Map.get(Len,[]) ++ [W])
+  end.
+
+
+%
+% Identify all segments (i.e. words) of a crossword.
+%
+get_segments(Problem) = Segments =>
+  Segments1 = [],
+  foreach(P in Problem)
+    Split = split(P,"x"),
+    foreach(S in Split)
+      if length(S) > 1 then
+        Segments1 := Segments1 ++ [S.to_array]
+      end
+    end
+  end,
+  Segments1 = Segments.
+
+%
+% converts a number Num to/from a list of integer List given a base Base
+%
+to_num(List, Base, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).
+
+
+puzzle(1,Grid,Across,Down,Max) :-
+  B = x,
+  Max = 3,
+  Grid = [[_,_,B,_,_],
+          [B,_,_,_,_],
+          [_,_,_,B,_],
+          [_,_,_,_,_],
+          [B,_,B,_,B]],
+  Across = [13,23,233,3221,21222],
+  Down = [12,21,22,232,3132,33313].

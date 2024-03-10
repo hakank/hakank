@@ -1,0 +1,363 @@
+/* 
+
+  Flipping 4 glasses puzzle in Picat.
+
+  From MindYourDecisions
+  Can You Solve The 4 Glasses Logic Puzzle?
+  https://www.youtube.com/watch?v=ekZKT26np84
+  """
+  Four glasses are in a row right side up.
+
+  In each move, you must invert exactly 3 different glasses. Invert means to 
+  flip a glass, so a right side up glass it turned upside down, and vice versa. 
+  Find, with proof, the minimum number of moves so that all glasses are turned 
+  upside down.
+
+  What if there are n glasses, and you have to invert n-11 glasses at a time? 
+  For which n is there a solution, and what is the minimum number of moves? 
+  I saw this general case on Puzzling StackExchange with a proof by Caleb Stanford.
+  """
+
+  For inverting N-1 glasses:
+  - For even N the optimal solution is of length N. 
+  - There are no solutions for odd N
+  - The number of different optimal solutions for even N are N!
+
+
+  Here is one solution (of 24) for N=4:
+   [state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+   [state = uddd,flips = [1,3,4],no_flip = [2],to = dduu]
+   [state = dduu,flips = [1,2,4],no_flip = [3],to = uuud]
+   [state = uuud,flips = [1,2,3],no_flip = [4],to = dddd]
+
+ * Algorithm     
+   The solution for N=4 above shows the algorithm for solving the problem 
+   (for even N).
+    - Flip every glass but the first 
+    - Flip every glass but the second
+    - Flip every glass but the third
+    - Flip every glass but the fourth
+    - ...
+
+    I.e. 
+    foreach(I in 1..N)
+      flip every glass except the I'th glass
+
+    What I can see, this method works for all even N.
+    This is tested in go5/0.
+
+
+  * Inverting N-2 glasses (N > 2) 
+
+    For inverting N-2 glass (instead of N-1), it seems that it always suffices 
+    with atmost 3 moves. This works for both even and odd N.
+
+    For N=4 it requires 2 moves
+
+    [state = uuuu,flips = [3,4],to = uudd]
+    [state = uudd,flips = [1,2],to = dddd]
+
+    But other N requires 3 moves. 
+
+    Here is an example of N=23 (and inverting 21 glasses):
+
+    [state = uuuuuuuuuuuuuuuuuuuuuuu,flips = [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],no_flip = [1,2],to = uuddddddddddddddddddddd]
+    [state = uuddddddddddddddddddddd,flips = [2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],no_flip = [1,3],to = udduuuuuuuuuuuuuuuuuuuu]
+    [state = udduuuuuuuuuuuuuuuuuuuu,flips = [1,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],no_flip = [2,3],to = ddddddddddddddddddddddd]
+
+    And the steps are the same: 
+      - flip all glasses except 1,2  
+      - flip all glasses except 1,3
+      - flip all glasses except 2,3
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import planner.
+
+
+main => go.
+
+go ?=>
+  N = 4,
+  Init = [u : _ in 1..N],
+  println(init=Init),
+  best_plan(Init,Plan,_Cost),
+  foreach(P in Plan)
+    println(P)
+  end,
+ 
+  nl.
+go => true.
+
+/*
+  All solutions for N=4
+
+  Here are some of the 4!=24 solutions:
+
+  [state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+  [state = uddd,flips = [1,3,4],no_flip = [2],to = dduu]
+  [state = dduu,flips = [1,2,4],no_flip = [3],to = uuud]
+  [state = uuud,flips = [1,2,3],no_flip = [4],to = dddd]
+
+  [state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+  [state = uddd,flips = [1,3,4],no_flip = [2],to = dduu]
+  [state = dduu,flips = [1,2,3],no_flip = [4],to = uudu]
+  [state = uudu,flips = [1,2,4],no_flip = [3],to = dddd]
+
+  [state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+  [state = uddd,flips = [1,2,4],no_flip = [3],to = dudu]
+  [state = dudu,flips = [1,3,4],no_flip = [2],to = uuud]
+  [state = uuud,flips = [1,2,3],no_flip = [4],to = dddd]
+
+  [state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+  [state = uddd,flips = [1,2,4],no_flip = [3],to = dudu]
+  [state = dudu,flips = [1,2,3],no_flip = [4],to = uduu]
+  [state = uduu,flips = [1,3,4],no_flip = [2],to = dddd]
+
+  [state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+  [state = uddd,flips = [1,2,3],no_flip = [4],to = duud]
+  [state = duud,flips = [1,3,4],no_flip = [2],to = uudu]
+  [state = uudu,flips = [1,2,4],no_flip = [3],to = dddd]
+
+  ...
+ 
+*/
+go2 ?=>
+  nolog,
+  N = 4,
+  Init = [u : _ in 1..N],
+  println(init=Init),
+  best_plan_nondet(Init,Plan,_Cost),
+  foreach(P in Plan)
+    println(P)
+  end,
+  nl,
+  flush(stdout),
+  fail,
+  nl.
+go2 => true.
+
+
+/*
+  Solutions for even N 2..14
+
+n = 2
+init = uu
+
+CPU time 0.0 seconds.
+
+[state = uu,flips = [2],no_flip = [1],to = ud]
+[state = ud,flips = [1],no_flip = [2],to = dd]
+len = 2
+
+n = 4
+init = uuuu
+
+CPU time 0.0 seconds.
+
+[state = uuuu,flips = [2,3,4],no_flip = [1],to = uddd]
+[state = uddd,flips = [1,3,4],no_flip = [2],to = dduu]
+[state = dduu,flips = [1,2,4],no_flip = [3],to = uuud]
+[state = uuud,flips = [1,2,3],no_flip = [4],to = dddd]
+len = 4
+
+n = 6
+init = uuuuuu
+
+CPU time 0.002 seconds.
+
+[state = uuuuuu,flips = [2,3,4,5,6],no_flip = [1],to = uddddd]
+[state = uddddd,flips = [1,3,4,5,6],no_flip = [2],to = dduuuu]
+[state = dduuuu,flips = [1,2,4,5,6],no_flip = [3],to = uuuddd]
+[state = uuuddd,flips = [1,2,3,5,6],no_flip = [4],to = dddduu]
+[state = dddduu,flips = [1,2,3,4,6],no_flip = [5],to = uuuuud]
+[state = uuuuud,flips = [1,2,3,4,5],no_flip = [6],to = dddddd]
+len = 6
+
+n = 8
+init = uuuuuuuu
+
+CPU time 0.023 seconds.
+
+[state = uuuuuuuu,flips = [2,3,4,5,6,7,8],no_flip = [1],to = uddddddd]
+[state = uddddddd,flips = [1,3,4,5,6,7,8],no_flip = [2],to = dduuuuuu]
+[state = dduuuuuu,flips = [1,2,4,5,6,7,8],no_flip = [3],to = uuuddddd]
+[state = uuuddddd,flips = [1,2,3,5,6,7,8],no_flip = [4],to = dddduuuu]
+[state = dddduuuu,flips = [1,2,3,4,6,7,8],no_flip = [5],to = uuuuuddd]
+[state = uuuuuddd,flips = [1,2,3,4,5,7,8],no_flip = [6],to = dddddduu]
+[state = dddddduu,flips = [1,2,3,4,5,6,8],no_flip = [7],to = uuuuuuud]
+[state = uuuuuuud,flips = [1,2,3,4,5,6,7],no_flip = [8],to = dddddddd]
+len = 8
+
+n = 10
+init = uuuuuuuuuu
+
+CPU time 0.166 seconds.
+
+[state = uuuuuuuuuu,flips = [2,3,4,5,6,7,8,9,10],no_flip = [1],to = uddddddddd]
+[state = uddddddddd,flips = [1,3,4,5,6,7,8,9,10],no_flip = [2],to = dduuuuuuuu]
+[state = dduuuuuuuu,flips = [1,2,4,5,6,7,8,9,10],no_flip = [3],to = uuuddddddd]
+[state = uuuddddddd,flips = [1,2,3,5,6,7,8,9,10],no_flip = [4],to = dddduuuuuu]
+[state = dddduuuuuu,flips = [1,2,3,4,6,7,8,9,10],no_flip = [5],to = uuuuuddddd]
+[state = uuuuuddddd,flips = [1,2,3,4,5,7,8,9,10],no_flip = [6],to = dddddduuuu]
+[state = dddddduuuu,flips = [1,2,3,4,5,6,8,9,10],no_flip = [7],to = uuuuuuuddd]
+[state = uuuuuuuddd,flips = [1,2,3,4,5,6,7,9,10],no_flip = [8],to = dddddddduu]
+[state = dddddddduu,flips = [1,2,3,4,5,6,7,8,10],no_flip = [9],to = uuuuuuuuud]
+[state = uuuuuuuuud,flips = [1,2,3,4,5,6,7,8,9],no_flip = [10],to = dddddddddd]
+len = 10
+
+n = 12
+init = uuuuuuuuuuuu
+
+CPU time 1.234 seconds.
+
+[state = uuuuuuuuuuuu,flips = [2,3,4,5,6,7,8,9,10,11,12],no_flip = [1],to = uddddddddddd]
+[state = uddddddddddd,flips = [1,3,4,5,6,7,8,9,10,11,12],no_flip = [2],to = dduuuuuuuuuu]
+[state = dduuuuuuuuuu,flips = [1,2,4,5,6,7,8,9,10,11,12],no_flip = [3],to = uuuddddddddd]
+[state = uuuddddddddd,flips = [1,2,3,5,6,7,8,9,10,11,12],no_flip = [4],to = dddduuuuuuuu]
+[state = dddduuuuuuuu,flips = [1,2,3,4,6,7,8,9,10,11,12],no_flip = [5],to = uuuuuddddddd]
+[state = uuuuuddddddd,flips = [1,2,3,4,5,7,8,9,10,11,12],no_flip = [6],to = dddddduuuuuu]
+[state = dddddduuuuuu,flips = [1,2,3,4,5,6,8,9,10,11,12],no_flip = [7],to = uuuuuuuddddd]
+[state = uuuuuuuddddd,flips = [1,2,3,4,5,6,7,9,10,11,12],no_flip = [8],to = dddddddduuuu]
+[state = dddddddduuuu,flips = [1,2,3,4,5,6,7,8,10,11,12],no_flip = [9],to = uuuuuuuuuddd]
+[state = uuuuuuuuuddd,flips = [1,2,3,4,5,6,7,8,9,11,12],no_flip = [10],to = dddddddddduu]
+[state = dddddddddduu,flips = [1,2,3,4,5,6,7,8,9,10,12],no_flip = [11],to = uuuuuuuuuuud]
+[state = uuuuuuuuuuud,flips = [1,2,3,4,5,6,7,8,9,10,11],no_flip = [12],to = dddddddddddd]
+len = 12
+
+n = 14
+init = uuuuuuuuuuuuuu
+
+CPU time 7.663 seconds.
+
+[state = uuuuuuuuuuuuuu,flips = [2,3,4,5,6,7,8,9,10,11,12,13,14],no_flip = [1],to = uddddddddddddd]
+[state = uddddddddddddd,flips = [1,3,4,5,6,7,8,9,10,11,12,13,14],no_flip = [2],to = dduuuuuuuuuuuu]
+[state = dduuuuuuuuuuuu,flips = [1,2,4,5,6,7,8,9,10,11,12,13,14],no_flip = [3],to = uuuddddddddddd]
+[state = uuuddddddddddd,flips = [1,2,3,5,6,7,8,9,10,11,12,13,14],no_flip = [4],to = dddduuuuuuuuuu]
+[state = dddduuuuuuuuuu,flips = [1,2,3,4,6,7,8,9,10,11,12,13,14],no_flip = [5],to = uuuuuddddddddd]
+[state = uuuuuddddddddd,flips = [1,2,3,4,5,7,8,9,10,11,12,13,14],no_flip = [6],to = dddddduuuuuuuu]
+[state = dddddduuuuuuuu,flips = [1,2,3,4,5,6,8,9,10,11,12,13,14],no_flip = [7],to = uuuuuuuddddddd]
+[state = uuuuuuuddddddd,flips = [1,2,3,4,5,6,7,9,10,11,12,13,14],no_flip = [8],to = dddddddduuuuuu]
+[state = dddddddduuuuuu,flips = [1,2,3,4,5,6,7,8,10,11,12,13,14],no_flip = [9],to = uuuuuuuuuddddd]
+[state = uuuuuuuuuddddd,flips = [1,2,3,4,5,6,7,8,9,11,12,13,14],no_flip = [10],to = dddddddddduuuu]
+[state = dddddddddduuuu,flips = [1,2,3,4,5,6,7,8,9,10,12,13,14],no_flip = [11],to = uuuuuuuuuuuddd]
+[state = uuuuuuuuuuuddd,flips = [1,2,3,4,5,6,7,8,9,10,11,13,14],no_flip = [12],to = dddddddddddduu]
+[state = dddddddddddduu,flips = [1,2,3,4,5,6,7,8,9,10,11,12,14],no_flip = [13],to = uuuuuuuuuuuuud]
+[state = uuuuuuuuuuuuud,flips = [1,2,3,4,5,6,7,8,9,10,11,12,13],no_flip = [14],to = dddddddddddddd]
+len = 14
+
+
+  
+*/
+go3 ?=>
+  nolog,
+  foreach(N in 2..2..14)
+    nl,
+    println(n=N),
+    Init = [u : _ in 1..N],
+    println(init=Init),
+    if time(best_plan(Init,N**2,Plan,_Cost)) then
+      foreach(P in Plan)
+        println(P)
+      end,
+      println(len=Plan.len)
+    else
+      println(no_solution)
+    end,
+    flush(stdout)
+  end,     
+ 
+  nl.
+go3 => true.
+
+% All solutions
+/*
+  How many solutions (for even N)?
+
+  2 = 2
+  4 = 24
+  6 = 720
+  8 = 40320
+
+  I.e. factorial(N)
+  
+*/
+go4 ?=>
+  nolog,
+  foreach(N in 2..2..10)  
+    Init = [u : _ in 1..N],
+    Count = count_all(best_plan_nondet(Init,_Plan,_Cost)),
+    println(N=Count)
+  end,
+  nl.
+go4 => true.
+
+
+/*
+  Algorithmic approach for even N.
+
+*/
+go5 ?=>
+  NotOk = [],
+  foreach(N in 2..2..1000)
+    nl,
+    println(N),
+    L = {u : _ in 1..N},
+    println(L),
+    foreach(I in 1..N)
+      foreach(J in 1..N, J != I)
+        L[J] := flip(L[J])
+      end,
+      println(L)
+    end,
+    if L.to_list.remove_dups == [d] then
+      println(N=ok)
+    else
+      println(N=not_ok),
+      NotOk := NotOk ++ [N]
+    end
+  end,
+  println(not_ok=NotOk),
+  nl.
+go5 => true.
+
+
+%
+% Pick exactly M = N-1 glasses and flip them
+%
+table
+action(From,To,Move,Cost) :-
+  N = From.len,
+
+  % Pick the N-1 glasses to flip
+  subsets_n(N,N-1, X),   % Original problem
+  % subsets_n(N,N-2, X), % Testing: N-2 flips
+  % subsets_n(N,N-3, X), % Testing: N-3 flips
+  To1 = copy_term(From),
+  Flips = [],
+  foreach(I in 1..N, X[I] == 1)
+    To1[I] := flip(From[I]),
+    Flips := Flips ++ [I]
+  end,
+  To = To1,
+  NoFlip = [I : I in 1..N, X[I] == 0],
+  Move = [state=From,flips=Flips,no_flip=NoFlip,to=To],
+  Cost = 1.
+
+final(State) :-
+  State.remove_dups == [d].
+
+
+subsets_n(N,M, X) =>
+  X = new_list(N),
+  X :: 0..1,
+  sum(X) #= M,
+  solve($[],X).
+
+flip(u) = d.
+flip(d) = u.

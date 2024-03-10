@@ -1,0 +1,180 @@
+/* 
+
+  Stock parser (DCG) in Picat.
+
+  Inspired by
+  http://dialecticsofnurture.blogspot.com/2007/04/parsing-with-prolog-here-is-some-code.html
+  """
+  This is a simple (nay,trivial!)  "dialect" 
+  with only two commands.
+ 
+  Obviously only scratches the surface - 
+  Written as a learning exercise!
+  First define a grammar using prolog's Definite 
+  Clause Grammar (DCG) notation
+  DCG is a bit like a macro system - 
+  the grammar rules are expanded into
+  ordinary prolog clauses  before execution:
+  Thanks to prolog unification, the Cmd variable
+  will end up being instantiated to a functor like
+  sell(abc,10,5) or buy(xyz,55):
+  """
+
+  This is a extension of the above:
+  - rejecting bids that's not possible
+    * buying if we don't have enough money
+    * selling if we don't have the apropriate number of stocks
+  - handling strings instead of lists
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+
+/*
+
+Sold 100 xyx shares at $50.
+content = [ibm = 100,xyx = 0,amount = 6000,googl = 100]
+
+Bought 45 abc shares at $100.
+content = [abc = 45,ibm = 100,xyx = 0,amount = 1500,googl = 100]
+
+Sold 25 abc shares at $360.
+content = [abc = 20,ibm = 100,xyx = 0,amount = 10500,googl = 100]
+
+Sold 20 abc shares at $360.
+content = [abc = 0,ibm = 100,xyx = 0,amount = 17700,googl = 100]
+
+Bought 15 xyz shares at $1000.
+content = [abc = 0,ibm = 100,xyx = 0,amount = 2700,xyz = 15,googl = 100]
+
+Bought 10 ibm shares at $10.
+content = [abc = 0,ibm = 110,xyx = 0,amount = 2600,xyz = 15,googl = 100]
+
+Rejected buy: 115 xyz shares at $1000 (available=2600).
+content = [abc = 0,ibm = 110,xyx = 0,amount = 2600,xyz = 15,googl = 100]
+
+Unrecognised command! = [send,more,money]
+content = [abc = 0,ibm = 110,xyx = 0,amount = 2600,xyz = 15,googl = 100]
+
+*/
+go ?=>
+  % interp([init,10000]),
+  M = get_global_map(),
+  M.put(amount,1000), % amount available
+  M.put(ibm,100),    % stocks available
+  M.put(googl,100),
+  M.put(xyx,100),
+  show_all(),  
+  interp([sell,100,of,xyx,at,50]),
+  interp([buy,45,of,abc,at,100]),
+  interp([sell,25,of,abc,at,360]),
+  interp("sell 20 of abc at 360"),
+  interp([buy,15,of,xyz,at,1000]),
+  interp([buy,10,of,ibm,at,10]),
+  interp([buy,115,of,xyz,at,1000]),
+  interp("send more money"),
+  show_all(),
+
+  nl.
+
+go => true.
+
+% Initialize 
+cmd(Cmd) --> init,!, amount(Amount),
+             { add(Amount), Cmd = $init(Amount)}.
+
+% Sell a stock
+cmd(Cmd) --> sell,!,amount(Amount),of,stock(Stock),at,price(Price),
+             { Available = available_stock(Stock),
+               (
+               Available >= Amount   ->
+                  Cmd = $sell(Stock,Amount,Price), add(Amount*Price),
+                  add(Stock,-Amount)
+               ; 
+                  Cmd = $rejected(sell,Stock,Amount,Price,Available)
+               )
+             }.
+
+% Buy a stock
+cmd(Cmd) --> buy,!,amount(Amount),of,stock(Stock),at,price(Price), 
+             { Total = Amount*Price,
+                Available = available_amount(),
+                ( Available >= Total ->
+                  Cmd = $buy(Stock,Amount,Price), add(-Amount*Price),
+                  add(Stock,Amount)
+               ;
+                  Cmd = $rejected(buy,Stock,Amount,Price,Available)
+               )
+             }.
+
+sell --> [sell].
+buy  --> [buy].
+of   --> [of].
+at   --> [at].
+rejected  --> [rejected].
+init --> [init].
+amount(Amount) --> [Amount].
+stock(Stock)   --> [Stock].
+price(Price)   --> [Price].
+
+% Add amount dolllar
+add(Amount) :-
+  M = get_global_map(),
+  M.put(amount,M.get(amount,0)+Amount).
+
+% Add amount stock
+add(Stock,Amount) :-
+  M = get_global_map(),
+  M.put(Stock,M.get(Stock,0)+Amount).
+
+% Return available amount dollar
+available_amount() = get_global_map().get(amount).
+
+% Return available number of Stock
+available_stock(Stock) = get_global_map().get(Stock,0).
+
+show_amount() :-
+  M = get_global_map(),
+  println(amount=M.get(amount,0)).
+
+show_stock(Stock) :-
+  M = get_global_map(),
+  println(show=M.get(Stock,0)).
+
+show_all() :-
+  println(content=get_global_map().to_list),nl.
+
+% mini-evaluator:
+
+eval(sell(Stock,Amount,Price)) :-
+ bp.format('Sold ~d ~a shares at $~d.~n',[Amount,Stock,Price]).
+ 
+eval(buy(Stock,Amount,Price)) :- 
+ bp.format('Bought ~d ~a shares at $~d.~n',[Amount,Stock,Price]).
+
+eval(rejected(Bid,Stock,Amount,Price,Available)) :- 
+ bp.format('Rejected ~w: ~d ~a shares at $~d (available=~w).~n',[Bid,Amount,Stock,Price,Available]).
+
+eval(init(Amount)) :-
+ bp.format('Init with $~d.~n',[Amount]).
+
+% parse a statement, if it's a command, 
+% evaluate it, otherwise write an error
+%
+% convert a string to list of terms
+interp(Statement), string(Statement) =>
+    interp(Statement.split.map(parse_term)).
+interp(Statement), list(Statement) =>
+                  (cmd(Cmd,Statement,[]),
+                   eval(Cmd),
+                   show_all()
+                  ;
+                  println("Unrecognised command!"=Statement)
+                  ).
+

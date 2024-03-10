@@ -1,21 +1,19 @@
 /* 
 
-  forall in Picat.
+  forall/2 and forany/2 in Picat.
 
-  Testing forall/2 predicate.
+  Testing forall/2 and forany/2 predicate.
 
-  Inspired by B-Prolog's and SWI Prolog's forall/2:
+  Inspired by B-Prolog's and SWI Prolog's forall/2 (and forany/2):
      http://www.probp.com/manual/node35.html
      http://www.swi-prolog.org/pldoc/man?predicate=forall/2
+
+  Note: These are also defined in v3_utils.pi
 
   This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Picat page: http://www.hakank.org/picat/
 
 */
-
-
-% import util.
-% import cp.
 
 
 main => go.
@@ -54,7 +52,7 @@ go =>
    if not forall($q2(X),$p(X)) then
       println(ok5)
    else
-     println(not_ok6)
+     println(not_ok5)
    end,
 
 
@@ -75,7 +73,12 @@ go =>
      println(not_ok7)
    end,
 
-
+   % All numbers satisfy p/1
+   if forall($member(X,[1,2,3]),$(p(X),println(x=X))) then
+      println(ok8)
+   else
+     println(not_ok8)
+   end,
 
    nl.
 
@@ -120,6 +123,87 @@ go2 =>
 
    nl.
 
+%
+% Testing forany/2
+%
+go3 :-
+   if forany($member(X,[1,2,3]),$p(X)) then
+      println(ok1)
+   else
+     println(not_ok1)
+   end,
+
+   if forany($member(X,[1,2,3,20,23]),$(p(X),writeln(X))) then
+      println(ok2)
+   else
+     println(not_ok2)
+   end,
+
+   % All numbers satisfy q/1
+   if forany($member(X,[1,2,3]),$q(X)) then
+      println(ok3)
+   else
+     println(not_ok3)
+   end,
+
+   % No number satisfy q/1
+   if not forany($member(X,[20,21,22,23]),$q(X)) then
+      println(ok4)
+   else
+     println(not_ok4)
+   end,
+
+   % Not all numbers satisfy p/1
+   if forany($q2(X),$p(X)) then
+      println(ok5)
+   else
+     println(not_ok5)
+   end,
+
+
+   % This works as well where 
+   %     $(X < 10) 
+   % is a lambda like expression
+   if forany($member(X,[1,2,3,4]),$(X < 10)) then
+      println(ok6)
+   else
+     println(not_ok6)
+   end,
+
+   % No number is < 10
+   if not forany($member(X,[10,20,21,22,23]),$(X < 10)) then
+      println(ok7)
+   else
+     println(not_ok7)
+   end,
+
+   if forany($member(X,[1,2,3]),$(p(X),println(x=X))) then
+      println(ok8)
+   else
+     println(not_ok8)
+   end,
+   nl.
+
+%
+% Test of prime_n/1
+%
+go4 :-
+  Map = get_global_map(),
+  Max = 1_000_000,
+  Map.put(count,0),
+  Map.put(max,Max),
+  between(1,Max,N),
+  (prime_n(N) -> Map.put(count,Map.get(count)+1),println(N) ; true),
+  fail,
+  nl.
+go4 :-
+  Map = get_global_map(),
+  Count=Map.get(count),
+  println(count=Count),
+  Max = Map.get(max),
+  % Checking the result
+  println(count=count_all((between(1,Max,N),prime(N)))).
+
 
 % predicate to test
 p(X) => X < 10.
@@ -134,4 +218,24 @@ z(X,Y) => X =:= Y.
 % From B-Prolog: http://www.probp.com/manual/node35.html
 %
 forall(Generate, Test) => not (call(Generate), not call(Test)).
+
+% From https://www.swi-prolog.org/pldoc/man?predicate=forall/2
+forany(Cond,Action) :-
+  \+forall(Cond,\+Action).
+
+
+% From https://www.swi-prolog.org/pldoc/man?predicate=forall/2
+% """
+% From http://rosettacode.org/wiki/Primality_by_trial_division#Prolog
+% """
+prime_n(2).
+prime_n(N) :-
+  % between(3, 10000000, N),
+  N >= 3,
+  1 = N mod 2,             % odd
+  M = floor(sqrt(N+1)),    % round-off paranoia
+  Max = (M-1) // 2,        % integer division
+  % Note the escaping of between/3 and N mod ...
+  forall( $between(1, Max, I), $(N mod (2*I+1) > 0) ).
+
 

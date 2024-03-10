@@ -1,0 +1,146 @@
+/* 
+
+  Shinro grid puzzle in Picat.
+
+  From https://en.wikipedia.org/wiki/Shinro
+  """
+  Shinro (しんろ) is a logic-based puzzle that has similarities to Sudoku and 
+  Minesweeper. The objective is to locate 12 hidden 'Holes' on an 8x8 grid. 
+  The board contains a variable number of arrows, each of which points to at 
+  least one Hole. A count of the number of Holes is given for each Row and Column. 
+  """
+
+  Here's the solution of the problem from the Wikipedia page:
+
+  [0,0,0,0,0,1,0,0]
+  [0,1,0,0,0,0,0,0]
+  [0,0,0,1,0,0,1,0]
+  [0,1,0,0,0,0,0,0]
+  [0,0,1,0,0,0,0,1]
+  [0,0,0,1,1,0,0,0]
+  [1,0,0,0,0,0,0,1]
+  [1,0,0,0,0,0,0,0]
+
+  2  2  1  2  1  1  1  2
+  .  .  .  e  .  *  .  .   1
+  .  *  .  .  w  .  .  .   1
+  .  .  .  *  . sw  * nw   2
+  .  *  s  . nw  .  .  .   1
+ ne  .  *  s  w  n  .  *   2
+  .  .  .  *  *  .  .  .   2
+  *  .  . ne  .  . nw  *   2
+  *  .  .  .  .  .  .  .   1
+
+
+  See stars_and_arrows.pi (slightly different model).
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  data(1,Hints,Rows,Cols),
+  shinro(Hints,Rows,Cols, X),
+
+  % Simple 0/1 matrix
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl,
+
+  % Fancy output
+  N = Hints.len,
+  println([to_fstring("%3w",Cols[J]) : J in 1..N].join('')),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%3w", cond(Hints[I,J] != 0, Hints[I,J],
+                         cond(X[I,J] == 0, ".","*")))
+    end,
+    printf(" %3w\n",Rows[I])
+  end,
+  nl,
+  fail,
+  nl.
+go => true.
+
+
+%
+% Solve a Shinro puzzle instance
+%
+shinro(Hints,Rows,Cols, X) => 
+  N = Hints.len,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  sum([X[I,J] : I in 1..N, J in 1..N]) #= sum(Rows),
+
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..N]) #= Rows[I],
+    sum([X[J,I] : J in 1..N]) #= Cols[I]
+  end,
+
+  foreach(I in 1..N)
+    foreach(J in 1..N, Hints[I,J] != 0)
+      calc_hint(X,I,J,Hints[I,J])
+    end
+  end,
+
+  solve(X).
+
+
+%
+% From stars_and_arrows.pi
+%
+calc_hint(X,I,J,H) =>
+  N = X.len,
+  
+  % The row/column/diagonal in the direction of the arrow
+  X[I,J] #= 0,
+  dir(H,[A,B]),  
+  T = [],
+  AT = I,
+  BT = J,
+  while(AT+A >= 1, AT+A <= N, BT+B >= 1, BT+B <= N)
+    AT := AT + A,
+    BT := BT + B,
+    T := T ++ [X[AT,BT]]
+  end,
+  if T.len > 0 then
+    sum(T) #>= 1
+  end.
+
+
+dir(n,[-1,0]).
+dir(s,[1,0]).
+dir(e,[0,1]).
+dir(w,[0,-1]).
+dir(nw,[-1,-1]).
+dir(ne,[-1,1]).
+dir(sw,[1,-1]).
+dir(se,[1,1]).
+
+
+
+% Directions and Rows, Cols
+data(1,Hints,Rows,Cols) =>
+  Hints = [[ 0, 0, 0, e, 0, 0, 0, 0],
+           [ 0, 0, 0, 0, w, 0, 0, 0],
+
+           [ 0, 0, 0, 0, 0,sw, 0,nw],
+           [ 0, 0, s, 0, nw,0, 0, 0],
+
+           [ne, 0, 0, s, w, n, 0, 0],
+           [ 0, 0, 0, 0, 0, 0, 0, 0],
+
+           [ 0, 0, 0,ne, 0, 0,nw, 0],
+           [ 0, 0, 0, 0, 0, 0, 0, 0]],
+  Rows = [1,1,2,1,2,2,2,1],
+  Cols = [2,2,1,2,1,1,1,2].
+           
