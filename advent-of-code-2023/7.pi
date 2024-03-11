@@ -1,0 +1,127 @@
+/* 
+
+  Advent of Code 2023 Day 7 in Picat.
+
+  https://adventofcode.com/2023/day/7
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 7.pi'                                
+  Benchmark 1: picat 7.pi
+    Time (mean ± σ):     407.1 ms ±  10.5 ms    [User: 383.0 ms, System: 23.7 ms]
+    Range (min … max):   393.2 ms … 423.2 ms    10 runs
+*/
+go =>
+  part1_and_2,
+  nl.
+
+part1_and_2 =>
+  File = "7.txt",
+  Lines = read_file_lines(File),
+  foreach(Part in 1..2)
+    Hands = new_map(),
+    hand_order(HandOrder1),
+    HandOrder = new_map([H=R : {H,R} in zip(HandOrder1.reverse,1..HandOrder1.len)]),
+    BidMap = new_map(),
+    foreach(Line in Lines)
+      [Hand,Bid]=Line.split(" "),
+      if Hand = "JJJJJ" then
+        Value = five_of_a_kind % Fix speedup
+      elseif Part == 2, membchk('J',Hand) then
+        JsHands = findall(Hand2,Hand2=generate_js(Hand)),
+        % Sort on Order (O)
+        VO = [[H,O,V] : H in JsHands, analyse(H,V),O=HandOrder.get(V)].sort_down(2).first,
+        [_BestHand,_Order,Value] = VO
+      else
+        analyse(Hand,Value)
+      end,
+      Hands.put(Hand,HandOrder.get(Value)),
+      BidMap.put(Hand,Bid.to_int)
+    end,
+    HandsRanks = new_map(),
+    foreach(H=R in Hands.to_list.sort(2))
+      HandsRanks.put(R,HandsRanks.get(R,[])++[H])
+    end,
+    if Part == 2 then
+      faces_order2(FaceOrder) % Part 2: Special treatments for J
+    else
+      faces_order1(FaceOrder)
+    end,
+    Ranks = [],    
+    foreach(R=Hs in HandsRanks)
+       Ranks := Ranks ++ [ H=[ FaceOrder.get(C) : C in H ] : H in Hs  ].sort(2).map(first)
+    end,
+    Sum = [BidMap.get(H)*I : {H,I} in zip(Ranks,1..Ranks.len)].sum,
+    println(sum=Sum)
+  end,
+  nl.
+
+%
+% Generate all possible hands where J is replaced by 2..A (except J)
+%
+generate_js(Hand) = Hand2 =>
+  Hand2 = copy_term(Hand), 
+  foreach(Pos in 1..5, Hand2[Pos] == 'J')
+    member(C,"23456789TQKA"),
+    Hand2[Pos] := C
+  end.
+
+% This is based on my http://hakank.org/picat/poker_hand_analyser.pi
+
+faces(['A','2','3','4','5','6','7','8','9','T','J','Q','K']).
+
+% Different orders of the cards
+
+% 2 is lowest .. Ace is highest
+faces_order1(Order1) => 
+   Order1 = new_map(['2'=2,'3'=3,'4'=4,'5'=5,'6'=6,'7'=7,'8'=8,'9'=9,'T'=10,'J'=11,'Q'=12,'K'=13,'A'=14]).
+
+% For part 2 (with J=1 instead of 11)
+faces_order2(Order2) => 
+   Order2 = new_map(['J'=1,'2'=2,'3'=3,'4'=4,'5'=5,'6'=6,'7'=7,'8'=8,'9'=9,'T'=10,'Q'=12,'K'=13,'A'=14]).
+
+hand_order(HandOrder) => 
+  HandOrder = [five_of_a_kind,
+               four_of_a_kind,
+               full_house,
+               three_of_a_kind,
+               two_pair,
+               one_pair,
+               high_card
+               ].
+
+analyse(Hand,Value) :-
+  faces(Faces),
+  analyse1(Hand,Faces,Value).
+
+analyse1(Hand,Faces,five_of_a_kind) :- 
+  member(A,Faces),
+  [1 : F in Hand, F == A].len == 5.
+
+analyse1(Hand,Faces,four_of_a_kind) :- 
+  member(A,Faces),
+  [1 : F in Hand, F == A].len == 4.
+
+analyse1(Hand,_Faces,full_house) :- 
+  permutation(Hand,[ F1,F1,F2,F2,F2 ]).
+
+analyse1(Hand,Faces,three_of_a_kind) :-
+  member(A,Faces),
+  [1 : F in Hand, F == A].len == 3.
+
+analyse1(Hand,_Faces,two_pair) :- 
+  permutation(Hand,[ F1, F1, F2, F2, _F3]).
+
+analyse1(Hand,Faces,one_pair) :- 
+  member(A,Faces),
+  [1 : F in Hand, F == A].len == 2.
+
+analyse1(_Hand,_Faces,high_card).

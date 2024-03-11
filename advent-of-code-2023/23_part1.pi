@@ -1,0 +1,129 @@
+/* 
+
+  Advent of Code 2023 Day 23 in Picat.
+
+  https://adventofcode.com/2023/day/23
+
+  Only part 1.
+
+  Two versions:
+  - part1/0 (planner): 8.4s
+  - part1_b/0 (longest_path/5): 9.9s
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import planner.
+
+main => go.
+
+go =>
+  time(part1),
+  time(part1_b),
+  nl.
+
+/*
+ Using planner with a negative weight (-1).
+*/
+part1 => 
+  File = "23.txt",
+
+  M = read_file_lines(File),
+  Rows = M.len,
+  Cols = M[1].len,
+  
+  get_graph(M,Rows,Cols,-1) = [Start,End,Graph],
+  cl_facts_table(Graph),
+
+  Visited = [Start],
+  best_plan_unbounded([Start,End,Visited],_Plan,Cost),
+  
+  println(-Cost).
+
+
+
+/*
+  Using longest_path/5.
+*/
+part1_b => 
+  File = "23.txt",
+  M = read_file_lines(File),
+  Rows = M.len,
+  Cols = M[1].len,
+  
+  get_graph(M,Rows,Cols,1) = [Start,End,Graph],
+  cl_facts_table(Graph),
+
+  longest_path(Start,End,[Start],_Path,Cost),
+  
+  println(Cost).
+
+
+%
+% Get Start and End points and the Graph
+%
+get_graph(M,Rows,Cols,ThisCost) = [Start,End,Graph] =>
+  Start = _,
+  End = _,
+  foreach(J in 1..Cols)
+    if M[1,J]    == '.' then Start = [1,J]    end,
+    if M[Rows,J] == '.' then End   = [Rows,J] end
+  end,
+  
+  println([start=Start,end=End]),
+  Graph = [],
+  foreach(I in 1..Rows, J in 1..Cols, M[I,J] != '#' )
+    if M[I,J] == '.' then 
+       Ns = [ [I+A,J+B] : A in -1..1, B in -1..1, abs(A)+abs(B) == 1,
+                          I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols,
+                          M[I+A,J+B] != '#']
+    elseif M[I,J] == '>' then
+       Ns = [ [I,J+B] : B in 1..1, J+B >= 1, J+B <= Cols, M[I,J+B] != '#']
+    elseif M[I,J] == '<' then
+       Ns = [ [I,J+B] : B in -1..-1, J+B >= 1, J+B <= Cols, M[I,J+B] != '#']    
+    elseif M[I,J] == '^' then
+       Ns = [ [I+A,J] : A in -1..-1, I+A >= 1, I+A <= Rows, M[I+A,J] != '#']        
+    elseif M[I,J] == 'v' then
+       Ns = [ [I+A,J] : A in 1..1, I+A >= 1, I+A <= Rows, M[I+A,J] != '#']            
+    end,
+    foreach([I2,J2] in Ns)
+      Graph := Graph ++ $[edge([I,J],[I2,J2],ThisCost)]
+    end
+  end.
+
+
+final([End,End|_]).
+
+table
+action([[FromI,FromJ],End,Visited],To,Move,Cost) :-
+  Valid = findall([ToI,ToJ]=C, $edge([FromI,FromJ],[ToI,ToJ],C)),
+  member([NewI,NewJ]=C, Valid),  
+  not membchk([NewI,NewJ], Visited),
+
+  To = [[NewI,NewJ],End,[[NewI,NewJ]|Visited]],  
+  Move = [[FromI,FromJ],to,[NewI,NewJ]],
+  Cost = -1.
+
+% Manhattan distance
+heuristic([[I,J],[EndI,EndJ]|_]) = abs(I-EndI)+abs(J-EndJ).
+
+%
+% shortest_path -> longest path: min -> max
+% and adding Visited.
+% (Adapted from section 4.3 in the Picat book)
+% 
+table(+,+,+,-,max)
+longest_path(X,Y,Visited,Path,W) :-
+   Path=[[X,Y]],
+   edge(X,Y,W).
+longest_path(X,Y,Visited,Path,W) :-
+   edge(X,Z,W1),
+   not membchk(Z,Visited),
+   Path = [[X,Z]|PathR],
+   longest_path(Z,Y,[Z|Visited],PathR,W2),
+   W = W1+W2.

@@ -1,0 +1,149 @@
+/* 
+
+  Advent of Code 2023 Day 15 in Picat.
+
+  https://adventofcode.com/2023/day/15
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 15.pi'
+  Benchmark 1: picat 15.pi
+    Time (mean ± σ):      40.8 ms ±   5.9 ms    [User: 25.3 ms, System: 15.4 ms]
+    Range (min … max):    28.7 ms …  48.7 ms    52 runs
+
+*/
+go =>
+  part1,
+  part2,
+  nl.
+
+
+/*
+  Part 1:
+  $ hyperfine 'picat -g part1 15.pi'
+  Benchmark 1: picat -g part1 15.pi
+    Time (mean ± σ):      35.2 ms ±   7.1 ms    [User: 21.2 ms, System: 14.1 ms]
+    Range (min … max):    17.6 ms …  53.2 ms    55 runs
+
+*/
+part1 =>
+  File = "15.txt",
+  println([hash(S) : S in read_file_lines(File).first.split(",\n")].sum).
+
+
+table
+hash(S) = Val =>
+  Val = 0,
+  foreach(C in S)
+    Ord = ord(C),
+    Val := ((Val + Ord) * 17) mod 256
+  end.
+
+/*
+  Part 2:
+  $ hyperfine 'picat -g part2 15.pi'
+  Benchmark 1: picat -g part2 15.pi
+    Time (mean ± σ):      40.3 ms ±   4.9 ms    [User: 24.7 ms, System: 15.5 ms]
+    Range (min … max):    24.5 ms …  45.1 ms    60 runs
+
+  See part2b/0 for another version.
+
+*/
+part2 =>
+  File := "15.txt",  
+  Ss = read_file_lines(File).first.split(",\n"),
+  Map = new_map(),      % The slots
+  LabelMap = new_map(), % Label -> Box
+  foreach(S in Ss)
+    if append(Label,"-",S) then
+      if Box = LabelMap.get(Label,undef),Box != undef then
+        % remove label
+        Map.put(Box,[V : V in Map.get(Box), V != [Label,_]]),
+        LabelMap.put(Label,undef)
+      end
+    elseif append(Label,"=",FocalLength,S) then
+      Box = hash(Label),
+      LF = [Label,FocalLength],
+      if OldBox = LabelMap.get(Label,undef), OldBox != undef then
+        % Replace in the same position
+        Map.put(Box,[V : T in Map.get(Box), V = cond(T=[Label,_],LF,T)]),
+        LabelMap.put(Label,Box)
+      else
+        % New 
+        Map.put(Box,Map.get(Box,[]) ++ [LF]),
+        LabelMap.put(Label,Box)        
+      end
+    end
+  end,
+  Sum = 0,
+  foreach(I in 0..255)
+    L = Map.get(I,undef), 
+    if L != undef, L.len > 0 then
+      foreach({[Label,FocalLength],J} in zip(L,1..L.len))
+        Sum := Sum + (I+1) * J * FocalLength.to_int
+      end
+    end
+  end,
+  println(Sum).
+
+
+/*
+  Another take on part 2. 
+  Same idea but with explicit calls to hashmap/[4-5] predicates.
+  About the same time as part2/0.
+
+  Benchmark 1: picat -g part2b 15.pi
+    Time (mean ± σ):      38.5 ms ±   6.1 ms    [User: 24.6 ms, System: 13.9 ms]
+    Range (min … max):    25.0 ms …  42.8 ms    61 runs
+ 
+*/
+part2b =>
+  File := "15.txt",  
+  Ss = read_file_lines(File).first.split(",\n"),
+  Map = new_map(),      % The slots
+  LabelMap = new_map(), % Label -> Box
+  foreach(S in Ss)
+    if append(Label,"-",S) then
+      hashmap(Map,LabelMap,Label,delete)
+    elseif append(Label,"=",FocalLength,S) then
+      hashmap(Map,LabelMap,Label,FocalLength,append)
+    end
+  end,
+  Sum = 0,
+  foreach(I in 0..255)
+    if L = Map.get(I,undef), L != undef then
+      foreach({[Label,FocalLength],J} in zip(L,1..L.len))
+        Sum := Sum + (I+1) * J * FocalLength.to_int
+      end
+    end
+  end,
+  println(Sum).
+
+% delete
+hashmap(Map,LabelMap,Label,delete) :-
+  if Box = LabelMap.get(Label,undef), Box != undef then
+    Map.put(Box,[V : V in Map.get(Box), V != [Label,_]]),
+    LabelMap.put(Label,undef)
+  end.
+
+% append: new / replace
+hashmap(Map,LabelMap,Label,FocalLength,append) :-
+  Box = hash(Label),
+  LF = [Label,FocalLength],
+  if OldBox = LabelMap.get(Label,undef), OldBox != undef then
+    % Replace in the same position
+    Map.put(Box,[V : T in Map.get(Box), V = cond(T=[Label,_],LF,T)]),
+    LabelMap.put(Label,Box)
+  else
+    % New 
+    Map.put(Box,Map.get(Box,[]) ++ [LF]),
+    LabelMap.put(Label,Box)        
+  end.

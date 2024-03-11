@@ -1,0 +1,128 @@
+/* 
+
+  AoC 2023 Day 1 in Picat.
+
+  https://adventofcode.com/2023/day/1
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+main => go.
+
+/*
+  $ hyperfine 'picat 1.pi'                                
+  Benchmark 1: picat 1.pi
+    Time (mean ± σ):      80.3 ms ±  10.6 ms    [User: 64.2 ms, System: 16.0 ms]
+    Range (min … max):    52.3 ms …  99.5 ms    35 runs
+
+*/
+go =>
+  part1,
+  % part2,
+  part2c, % The fastest version 44ms
+
+  nl.
+
+part1 =>
+  % File = "1_test.txt",
+  File = "1.txt",
+  Sum = [[Digits.head,Digits.last].to_integer : Line in read_file_lines(File),
+                Digits = [C : C in Line, ascii_digit(C)]
+                ].sum,
+  println(Sum).
+
+%
+% This is the original version.
+%
+% Using non-determinism (append/3 and membchk/2). Not fast: 0.1s.
+% In this way, I happended to not got bitten by the problem of overlapping "numbers".
+%
+part2 =>
+  % File = "1b_test.txt",
+  File = "1.txt",  
+  Map = new_map(
+    ["one"="1", "two"="2", "three"="3", "four"="4", "five"="5",
+     "six"="6", "seven"="7", "eight"="8", "nine"="9",
+     "1"="1","2"="2","3"="3","4"="4","5"="5","6"="6","7"="7","8"="8","9"="9"
+     ]
+    ),
+  println([extract_digits(Line,Map,Map.keys) : Line in read_file_lines(File)].sum).
+
+extract_digits(Line,DigitMap,Digits) = [Ds.first,Ds.last].flatten.to_int =>
+  Ds = findall(Digit,(append(_,D,_,Line), membchk(D,Digits), Digit=DigitMap.get(D) )).
+
+
+
+% 
+% Another take: Slightly slower 0.131s (vs part2/0: 0.1s)
+%
+part2b => 
+  File = "1.txt",  
+  Map = new_map(
+    ["one"="1", "two"="2", "three"="3", "four"="4", "five"="5",
+     "six"="6", "seven"="7", "eight"="8", "nine"="9",
+     "1"="1","2"="2","3"="3","4"="4","5"="5","6"="6","7"="7","8"="8","9"="9"
+     ]
+    ),
+    Keys = Map.keys.sort,
+    Nums = [],
+    foreach(Line in read_file_lines(File))
+      Len = Line.len,
+      % Ns = [Map.get(Key).first : I in 1..Len, member(Key,Keys), find(Line,Key,I,_) ], % much slower (0.4s vs 0.131s)      
+      Ns = [Map.get(Key).first : I in 1..Len, member(Key,Keys), append(Key,_,Line[I..Len]) ],
+      if Ns.len > 0 then
+        % Num = [Ns.first,Ns.last].to_int,
+        Num = 10*Ns.first.to_int + Ns.last.to_int,
+        Nums := Nums ++ [Num]
+      end
+    end,
+    println(Nums.sum).
+
+
+%
+% Similar idea as part2b/0, but using append(Key,_,Line[StartIx..Len])
+% + adding precheck using the first character in each "number" (the First list).
+%
+% Speedup 100ms -> 33ms
+% 
+part2c => 
+  File = "1.txt",  
+  Map = new_map(
+    ["one"=1, "two"=2, "three"=3, "four"=4, "five"=5,
+     "six"=6, "seven"=7, "eight"=8, "nine"=9,
+     "1"=1,"2"=2,"3"=3,"4"=4,"5"=5,"6"=6,"7"=7,"8"=8,"9"=9
+     ]
+    ),
+  Keys = Map.keys.sort,
+  FirstChars = new_set([K.first : K in Keys]), % First character in the numbers
+  Nums = [],
+  foreach(Line in read_file_lines(File), Len = Line.len)
+    Ns = [Map.get(Key) : I in 1..Len, FirstChars.has_key(Line[I]), append(Key,_,Line[I..Len]), membchk(Key,Keys)],
+    Nums := Nums ++ [10*Ns.first + Ns.last]
+  end,
+  println(Nums.sum).
+
+
+%
+% Does not use findall, just two append/4 + membchk/2 (reverse string and keys for Last)
+% Not faster: 49ms
+%
+part2d => 
+  File = "1.txt",  
+  Map1 = ["one"=1, "two"=2, "three"=3, "four"=4, "five"=5,
+          "six"=6, "seven"=7, "eight"=8, "nine"=9,
+          "1"=1,"2"=2,"3"=3,"4"=4,"5"=5,"6"=6,"7"=7,"8"=8,"9"=9],
+  Map =  new_map(Map1 ++ [ K.reverse=V : K=V in Map1, string(K)]),
+  Keys = Map.keys.sort,
+  Nums = [],
+  foreach(Line in read_file_lines(File), Len = Line.len, LineRev = Line.reverse)
+    append(_,First,_,Line),   membchk(First,Keys),    
+    append(_,Last,_,LineRev), membchk(Last,Keys), 
+    Nums := Nums ++ [10*Map.get(First) + Map.get(Last)]
+  end,
+  println(Nums.sum).
+
+

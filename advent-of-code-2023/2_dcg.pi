@@ -1,0 +1,106 @@
+/* 
+
+  Advent Of Code 2023 Day 2 in Picat.
+
+  https://adventofcode.com/2023/day/2
+
+  This is a version with a DCG parsing of the file.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 2.pi'                                
+  Benchmark 1: picat 2_dcg.pi
+    Time (mean ± σ):      41.1 ms ±   6.1 ms    [User: 24.2 ms, System: 16.9 ms]
+    Range (min … max):    26.1 ms …  51.7 ms    62 runs
+
+*/
+go =>
+  part1,
+  part2,
+  nl.
+
+/*
+  $ hyperfine 'picat -g part1 2_dcg.pi'
+  Benchmark 1: picat -g part1 2_dcg.pi
+    Time (mean ± σ):      37.0 ms ±   5.4 ms    [User: 22.2 ms, System: 14.9 ms]
+    Range (min … max):    19.0 ms …  47.9 ms    55 runs
+
+*/
+part1 => 
+  File = "2.txt",
+  Max = new_map(["red"=12,"green"=13,"blue"=14]),
+  once(parse_file(Lines,read_file_chars(File),[])),
+  OKs = [],
+  foreach([Id,Cs] in Lines)
+    OK = true,    
+    foreach(Cube in Cs, break(OK == false))
+      foreach([Num,Color] in Cube, break(OK == false))
+        if Max.get(Color) < Num then
+          OK := false
+        end
+      end
+    end,
+    if OK then
+      OKs := OKs ++ [Id]
+    end  
+  end,
+  println(OKs.sum).
+
+
+/*
+  $ hyperfine 'picat -g part2 2_dcg.pi'
+  Benchmark 1: picat -g part2 2_dcg.pi
+    Time (mean ± σ):      36.8 ms ±   6.3 ms    [User: 21.6 ms, System: 15.1 ms]
+    Range (min … max):    14.0 ms …  47.7 ms    59 runs
+*/
+part2 =>
+  File = "2.txt",
+  once(parse_file(Lines,read_file_chars(File),[])),  
+  Prods = [],
+  foreach([Id,Cs] in Lines)
+    Map = new_map(),
+    foreach(Cube in Cs)
+      foreach([Num,Color] in Cube)      
+        Map.put(Color,Map.get(Color,[])++[Num])
+      end
+    end,
+    Prods := Prods ++ [Map.values.map(max).prod]
+  end,
+  println(Prods.sum).
+
+
+%
+% Parsing input with DCG.
+%
+char(C) --> [C], {ascii_lowercase(C)}.
+
+chars([C|Cs]) --> char(C), chars(Cs).
+chars([C])    --> char(C).
+
+digits([C|Rest]) --> [C], {ascii_digit(C)}, digits(Rest).
+digits([])       --> "".
+
+element([Num,Color]) --> " ", digits(Num1), {Num1 != "", Num = Num1.to_int}, " ", chars(Color).
+
+cube([E|Es]) --> element(E), ",", cube(Es).
+cube([E])    --> element(E).
+
+cubes([Cube|Cubes]) --> cube(Cube), ";", cubes(Cubes).
+cubes([Cube])       --> cube(Cube).
+
+parse_line([Id,Cubes]) --> "Game ", digits(Id1), {Id1 != "", Id = Id1.to_int},
+                           ":",
+                           cubes(Cubes).
+
+% Parse the file
+parse_file([Line|Lines]) --> parse_line(Line), "\n", parse_file(Lines).
+parse_file([Line]) --> parse_line(Line).
+parse_file([]) --> "".

@@ -1,0 +1,83 @@
+/* 
+
+  Advent of Code 2023 Day 23 in Picat.
+
+  https://adventofcode.com/2023/day/23
+
+  Part 2
+
+  Brute force. This takes several hours.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+  part2,
+  nl.
+
+part2 ?=>
+  garbage_collect(300_000_000),
+  File = "23.txt",
+
+  M = read_file_lines(File),
+  Rows = M.len,
+  Cols = M[1].len,
+  
+  Start = _,
+  End = _,
+  foreach(J in 1..Cols)
+     if M[1,J] == '.' then Start = [1,J] end,
+     if M[Rows,J] == '.' then End = [Rows,J] end
+  end,
+  println([start=Start,end=End]),
+
+  % The graph
+  Graph = [],
+  foreach(I in 1..Rows, J in 1..Cols, M[I,J] != '#' )
+    Ns = [ [I+A,J+B] : A in -1..1, B in -1..1, abs(A)+abs(B) == 1,
+                       I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols, M[I+A,J+B] != '#'],
+    foreach([I2,J2] in Ns)
+      Graph := Graph ++ $[edge([I,J],[I2,J2],1)] 
+    end
+  end,
+  cl_facts_table(Graph),
+
+  % Using failure driven loop (without tabling)
+  Map = get_global_map(),
+  Map.put(Start,1),
+  Map.put(max_cost,0),
+  Map.put(count,0),  
+ 
+  get_path(Start,End,[Start],_Path,Cost),
+  % Print all found costs, but remember only the largest so far
+  Map.put(count,Map.get(count)+1),  
+  println([cost=Cost,best_so_far=Map.get(max_cost),count=Map.get(count)]),
+  if Cost > Map.get(max_cost) then
+    Map.put(max_cost,Cost),
+    println(max_so_far=Cost),
+    garbage_collect()
+  end,
+  fail,
+  nl.
+  
+part2 =>
+  println(max_cost=get_global_map()).
+
+
+% Note: With tabling it doesn't show any result (at least not for a long time).
+% table 
+get_path(X,Y,Visited,Path,W) :-
+   Path=[[X,Y]],
+   edge(X,Y,W).
+get__path(X,Y,Visited,Path,W) :-
+   edge(X,Z,W1),
+   not membchk(Z,Visited),
+   Path = [[X,Z]|PathR],
+   get_path(Z,Y,[Z|Visited],PathR,W2),
+   W = W1+W2.

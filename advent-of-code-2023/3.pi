@@ -1,0 +1,110 @@
+/* 
+
+  Advent of Code 2023 Day 3 in Picat.
+
+  https://adventofcode.com/2023/day/3
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+main => go.
+
+/*
+  $ hyperfine 'picat 3.pi'                                
+  Benchmark 1: picat 3.pi
+    Time (mean ± σ):     448.7 ms ±   6.1 ms    [User: 426.1 ms, System: 22.2 ms]
+    Range (min … max):   442.1 ms … 460.6 ms    10 runs
+*/
+go =>
+  part1_2,
+  nl.
+
+
+part1_2 =>
+  File = "3.txt",  
+  [Rows,Cols,Symbols,StarSymbols,Numbers] = parse_data(File),
+
+  % Part 1
+  Part1 = [TheNumber : [TheNumber,Nums] in Numbers,
+                       check1(Rows,Cols,Nums,Symbols)],
+  println(Part1.sum),
+
+  % Part 2
+  Part2 = [ Prod : [I,J] in StarSymbols.keys,
+                   check2(Rows,Cols,I,J,Numbers,Prod)],
+  println(Part2.sum),
+  
+  nl.
+
+%
+% Parse data
+%
+parse_data(File) = [Rows,Cols,Symbols,StarSymbols,Numbers] =>
+  M = read_file_lines(File),
+  Rows = M.len,
+  Cols = M[1].len,
+  
+  % Identify the coordinate of the symbols
+  Symbols = new_set([[I,J] : I in 1..Rows, J in 1..Cols,
+                             (not ascii_digit(M[I,J]), M[I,J] != '.') ]),
+
+  % Interestingly, for my input it's the same result with Symbols instead of the correct StarSymbols
+  % (just the neighbour of a * that should be taken into accout for part 2)
+  StarSymbols = new_set([[I,J] : I in 1..Rows, J in 1..Cols, M[I,J] = '*']),
+
+  % The numbers and their coordinates
+  Numbers = [],
+  Num = [],
+  foreach(I in 1..Rows, J in 1..Cols)
+    if ascii_digit(M[I,J]) then
+       Num := Num ++ [[I,J]]
+    else
+       Numbers := new_number(M,Num,Numbers),
+       Num := []
+    end
+  end,
+  % Last number
+  Numbers := new_number(M,Num,Numbers).
+
+% Add a new number
+new_number(M,Num,Numbers) = Numbers2 =>
+  if Num.len > 0 then
+    TheNumber = [ M[A,B] : [A,B] in Num ].to_int,
+    Numbers2 = Numbers ++ [ [TheNumber,Num] ]
+  else
+    Numbers2 = Numbers
+  end.
+
+    
+% The neibours of [I,J] in a Rows x Cols matrix
+table % slightly faster with table/0
+neibs(Rows,Cols,I,J) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                         not(A == 0, B == 0),
+                         I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols].
+
+% For Part 1
+check1(Rows,Cols,Nums,Symbols) =>
+  Found = false,
+  foreach([I,J] in Nums, break(Found == true),
+                         [IA,JB] in neibs(Rows,Cols,I,J), Symbols.has_key([IA,JB]))
+      Found := true
+  end,  
+  Found == true.
+
+
+% For part2
+check2(Rows,Cols,I,J,Numbers, Prod) =>
+  Neibs = neibs(Rows,Cols,I,J),
+  % We want exactly two numbers (from different places in the grid) to multiply
+  Ns = [],  
+  foreach([TheNumber,Nums] in Numbers)
+    Found = false, % to avoid duplicates    
+    foreach([P,Q] in Neibs, break(Found==true), membchk([P,Q], Nums)) 
+      Ns := Ns ++ [TheNumber],
+      Found := true
+    end
+  end,
+  [A,B] = Ns,
+  Prod = A*B.

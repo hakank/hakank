@@ -1,0 +1,158 @@
+/* 
+
+  Advent of Code 2023 Day 13 in Picat.
+
+  https://adventofcode.com/2023/day/13
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+
+main => go.
+
+/*
+  Total time for part 1 and part 2
+
+  $ hyperfine 'picat -g go 13.pi'
+  Benchmark 1: picat -g go 13.pi
+    Time (mean ± σ):     589.8 ms ±   9.2 ms    [User: 574.0 ms, System: 15.7 ms]
+    Range (min … max):   577.5 ms … 600.6 ms    10 runs
+*/
+go =>
+  part1,
+  part2,
+  nl.
+
+/*
+  $ hyperfine 'picat -g part1 13.pi'
+  Benchmark 1: picat -g part1 13.pi
+    Time (mean ± σ):      38.2 ms ±   5.4 ms    [User: 23.8 ms, System: 14.3 ms]
+    Range (min … max):    23.5 ms …  43.1 ms    64 runs
+
+*/
+part1 => 
+  File = "13.txt",
+  Lines = read_file_chars(File),
+  split2(Lines,Ms),
+  Cols = [],
+  Rows = [],
+  foreach(M1 in Ms)
+    M = M1.split("\n"),
+    [Ls,Type] = check(M),
+    if Type == col then
+      Cols := Cols ++ Ls
+    else
+      Rows := Rows ++ Ls
+    end
+  end,
+  println(Cols.sum+100*Rows.sum).
+
+
+%
+% Return the all possible mirror positions (J).
+%
+check1(M) = Ls.remove_dups =>
+  Rows = M.len,
+  Cols = M[1].len,
+  Ls = [],
+  foreach(Start in 1..Cols-1,
+          End in Start+1..Cols,
+          (Start == 1 ; End == Cols), % at least one of the ends must be involved
+          J = Start + (End-Start)//2, % Mid position of Start and End
+          (J-Start == End-J-1) % ensure same length (a speedup)
+          )
+    RowOK = true,
+    foreach(I in 1..Rows, break(RowOK == false))
+      if M[I,Start..J] != M[I,J+1..End].reverse then
+          RowOK := false
+      end
+    end,
+    if RowOK then
+      Ls := Ls ++ [J]
+    end
+  end.
+
+table
+% Return index and the type (row or col)
+check(M) = [Ls,Type] =>
+  Ls = check1(M),
+  Type = col,
+  if Ls.len == 0 then
+    Ls := check1(M.transpose),
+    Type := row
+  end.
+
+
+/*
+
+  I struggled with this a long time since I didn't get that
+  "different reflexion lines" includes the type (row or column).
+
+  $ hyperfine 'picat -g part2 13.pi'
+  Benchmark 1: picat -g part2 13.pi
+    Time (mean ± σ):     584.6 ms ±   9.3 ms    [User: 565.6 ms, System: 19.0 ms]
+    Range (min … max):   570.8 ms … 603.2 ms    10 runs
+
+*/ 
+part2 =>
+  garbage_collect(200_000_000),
+  File := "13.txt",
+  Lines = read_file_chars(File),
+  split2(Lines,Ms),
+  Cols = [],
+  Rows = [],
+  foreach(M1 in Ms)
+    M = M1.split("\n"),
+
+    [OldIxL,OldType] = check(M), % Get the old solution
+    OldIx = OldIxL.first,
+    
+    Ls1 = check2(M),
+    if OldType == col then
+      % Weed out the old solution
+      Ls1 := Ls1.delete(OldIx)
+    end,    
+    if Ls1.len > 0 then 
+      Ix = Ls1.last,
+      Cols := Cols ++ [Ix]
+    else
+      Ls2 = check2(M.transpose),
+      if OldType == row then
+        Ls2 := Ls2.delete(OldIx)
+      end,  
+      Ix = Ls2.last,
+      Rows := Rows ++ [Ix]
+    end
+  end,
+  println(Cols.sum+100*Rows.sum).
+
+%
+% Get the possible positions
+%
+table
+check2(M1) = Map.keys =>
+  Rows = M1.len,
+  Cols = M1[1].len,
+  Map = new_set(),
+  foreach(NewI in 1..Rows, NewJ in 1..Cols)  
+    M = copy_term(M1),
+    M[NewI,NewJ] := cond(M[NewI,NewJ] == '#','.','#'),
+    foreach(I in check1(M))
+      Map.put(I)
+    end
+  end.
+
+split2(Str) = Lines =>
+  split2(Str,Lines).
+
+split2("\n\n",Tokens) => Tokens = [].
+split2(S,Tokens), append(Token,"\n\n",Rest,S) =>
+    Tokens = [Token|TokensR],
+    split2(Rest,TokensR).
+split2(S,Tokens) =>
+    Tokens = [S].

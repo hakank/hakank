@@ -1,0 +1,76 @@
+/* 
+
+  Advent of Code 2023 Day 11 in Picat.
+
+  https://adventofcode.com/2023/day/11
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+
+ $ hyperfine 'picat_run 11.pi'
+ Benchmark 1: picat 11.pi
+   Time (mean ± σ):     334.2 ms ±   8.7 ms    [User: 325.2 ms, System: 9.2 ms]
+   Range (min … max):   310.8 ms … 340.8 ms    10 runs
+
+*/
+go ?=>
+  garbage_collect(100_000_000),
+  File = "11.txt",  
+  M1 = read_file_lines(File),
+  member(Expand,[2,1_000_000]),
+  [NewRows,CR] = [[],0],
+  foreach(I in 1..M1.len)
+    CR := CR + cond(membchk('#',M1[I]),1,Expand),    
+    NewRows := NewRows ++ [CR]
+  end,
+  MT = M1.transpose,
+  [NewCols,CC] = [[],0],
+  foreach(J in 1..MT.len)
+    CC := CC + cond(membchk('#',MT[J]),1,Expand),    
+    NewCols := NewCols ++ [CC]
+  end,
+  Stars = [ [NewRows[I],NewCols[J]] : I in 1..M1.len, J in 1..M1[1].len, M1[I,J] == '#'],
+  println(all_dists(Stars)),
+  fail.
+go => true.
+
+
+all_dists(Ss) = Sum =>
+  Len = Ss.len,
+  Sum = [abs(Ss[S1,1]-Ss[S2,1]) + abs(Ss[S1,2]-Ss[S2,2]) :S1 in 1..Len, S2 in S1+1..Len].sum.
+
+
+/*
+  Same idea with logic programming for the renumbering of the indices. 
+  Not faster, but perhaps neater.
+  $ hyperfine 'picat -g go2 11.pi'
+  Benchmark 1: picat -g go2 11.pi
+    Time (mean ± σ):     332.7 ms ±  13.0 ms    [User: 317.5 ms, System: 15.1 ms]
+    Range (min … max):   303.4 ms … 346.4 ms    10 runs
+
+*/
+go2 ?=>
+  File = "11.txt",  
+  M1 = read_file_lines(File),
+  member(Expand,[2,1_000_000]),
+  renum(M1,0,Expand,[],Rows),
+  renum(M1.transpose,0,Expand,[],Cols),  
+  Stars = [ [Rows[I],Cols[J]] : I in 1..M1.len, J in 1..M1[1].len, M1[I,J] == '#'],
+  println(all_dists(Stars)),
+  fail.
+go2 => true.
+
+% Renumber the indices
+renum([],_,_,New,New).
+renum([L|T],CR0,Expand,New0,[CR1|New]) :-
+  (membchk('#',L) -> Add = 1 ; Add = Expand),
+  CR1 = CR0+Add,
+  renum(T,CR1,Expand,New0,New).

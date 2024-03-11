@@ -1,0 +1,73 @@
+/* 
+
+  Advent of Code 2023 Day 17 in Picat.
+
+  https://adventofcode.com/2023/day/17
+
+  To see the progression of the costs, run with 
+   $ picat -log 17.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import planner.
+
+main => go.
+
+/*
+  Using best_plan/3
+  Part 1: 36.7s
+  Part 2: 1min21s
+
+  Using best_plan_unbounded/4:
+  Part 1: 4.9s
+  Part 2: 8.3s
+
+*/ 
+go =>
+  garbage_collect(500_000_000),
+  File = "17.txt",
+  M = [Line.map(to_int) : Line in read_file_lines(File) ],
+  Rows = M.len,
+  Cols = M[1].len,
+  Max = Rows*Cols,
+  Start = [1,1], 
+  End = [Rows,Cols],
+  foreach(Part in 1..2)
+    % best_plan([Start,End,_,M,Rows,Cols,Part],Plan,TotalCost),
+    % Note: best_plan_bin/3 does not give the correct result for part 2 (offset by one). Why?
+    % best_plan_bin([Start,End,_,M,Rows,Cols,Part],Plan,TotalCost),
+    best_plan_unbounded([Start,End,_,M,Rows,Cols,Part],Max,_Plan,TotalCost), % much faster
+    println(TotalCost)
+  end.
+
+final([Pos,End|_]) =>
+  Pos == End.
+
+table
+action([[I,J],End,Dir,M,Rows,Cols,Part],To,Move,Cost) :-
+  Range = cond(Part == 1, 1..3, 4..10), % The two parts has different ranges
+  ValidMoves = cond(var(Dir), new_pos(M,Rows,Cols,Range,west,I,J) ++ new_pos(M,Rows,Cols,Range,north,I,J),
+                              new_pos(M,Rows,Cols,Range,Dir,I,J)),  
+  member([NewI,NewJ,NewDir,NewCost], ValidMoves),
+  To = [[NewI,NewJ],End,NewDir,M,Rows,Cols,Part],
+  Move = [fromI=[I,J],fromDir=Dir,to=[NewI,NewJ],dir=NewDir,cost=NewCost],
+  Cost = NewCost.
+
+table
+new_pos(M,Rows,Cols,Range,north,I,J) = New =>
+   New = [ [I,J-K, west, [M[I,J-K2] : K2 in 1..K].sum] : K in Range, J-K >=    1] ++
+         [ [I,J+K, east, [M[I,J+K2] : K2 in 1..K].sum] : K in Range, J+K <= Cols].
+new_pos(M,Rows,Cols,Range,south,I,J) = new_pos(M,Rows,Cols,Range,north,I,J).
+
+new_pos(M,Rows,Cols,Range,west,I,J) = New => 
+   New = [ [I-K,J, north,[M[I-K2,J] : K2 in 1..K].sum] : K in Range, I-K >=    1] ++ 
+         [ [I+K,J, south,[M[I+K2,J] : K2 in 1..K].sum] : K in Range, I+K <= Rows].
+new_pos(M,Rows,Cols,Range,east,I,J) = new_pos(M,Rows,Cols,Range,west,I,J).
+
+
+% Manhattan heuristic
+heuristic([[I,J],[EndI,EndJ]|_]) = abs(I-EndI)+abs(J-EndJ).

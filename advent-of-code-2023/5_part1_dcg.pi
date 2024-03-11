@@ -1,0 +1,107 @@
+/* 
+
+  Advent of Code 2023 Day 5 part 1 in Picat.
+
+  https://adventofcode.com/2023/day/5
+
+  Note: This is just part 1 since part 2 is way too slow to be placed in public.
+
+  This is a version of 5_part1.pi using DCG to parse the input
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 5_part1_dcg.pi'
+  Benchmark 1: picat 5_part1_dcg.pi
+    Time (mean ± σ):      38.2 ms ±   7.7 ms    [User: 23.1 ms, System: 15.1 ms]
+    Range (min … max):    22.0 ms …  50.6 ms    64 runs
+
+  It's about as fast as 5_part1.pi, perhaps a millis slower.
+*/
+go =>
+  File = "5.txt",  
+  Str = read_file_chars(File),
+  once(parse_file([Seeds,Parts],Str,[])), 
+  Map = new_set(),
+  MapNames = new_set(),
+  foreach([Name,Ps] in Parts)
+    MapNames.put(Name),    
+    EntryMap = new_map(),    
+    foreach([Dest,Source,Range] in Ps)
+      EndDest = Source+Range-1,
+      EntryMap.put([Source,Dest,Range,EndDest])
+    end,
+    Map.put(Name,EntryMap)
+  end,
+  % Create the path seed -> ... --> location
+  MapNameList = MapNames.keys,
+  PathName = "seed", 
+  Paths = [],
+  while (PathName != "location")
+    PT = PathName ++ "-to-" ++ Target,    
+    member(PT,MapNameList),
+    Paths := Paths ++ [PT],
+    PathName := Target
+  end,
+  Values = [],
+  foreach(Seed in Seeds)
+    Value = get_location(Seed,Paths,Map),
+    Values := Values ++ [Value]
+  end,
+  Part1 = Values.min,
+  println(Part1).
+
+%
+% Find the location given a seed
+%
+get_location(Seed,Paths,Map) = Value =>
+  Value = Seed,
+  % Walk trough the paths
+  foreach(P in Paths)
+    M = Map.get(P).to_list.sort,
+    if Value > M[1,1,1] then
+      Found = false,
+      foreach([Source,Dest,_Range,EndDest]=_ in M, break(Found == true))
+        if Value >= Source, Value <= EndDest then
+          Diff = Value-Source,
+          Value := Dest+Diff,
+          Found := true
+        end
+      end
+    end
+  end.
+
+
+%
+% DCG
+%
+char(C) --> [C], { (ascii_lowercase(C) ; C == '-') }.
+
+chars([C|Cs]) --> char(C), chars(Cs).
+chars([C])    --> char(C).
+
+digits([C|Rest]) --> [C], {ascii_digit(C)}, digits(Rest).
+digits([])       --> "".
+
+numbers([N|Ns]) --> digits(N1), {N1 != "", N = N1.to_int}, " ", numbers(Ns).
+numbers([N])    --> digits(N1), {N1 != "", N = N1.to_int}.
+
+part_nums([Line|Lines]) --> numbers(Line), "\n", part_nums(Lines).
+part_nums([Line])       --> numbers(Line).
+part_nums([])           --> [].
+
+part([Name,Nums]) --> chars(Name), " map:\n", part_nums(Nums).
+
+parts([Part|Parts]) --> part(Part), {Part != []},"\n\n", parts(Parts).
+parts([Part])       --> part(Part).
+
+parse_file([Seeds,Parts]) --> "seeds: ", numbers(Seeds), {Seeds != []},
+                              "\n\n", 
+                              parts(Parts)

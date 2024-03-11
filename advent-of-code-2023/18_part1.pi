@@ -1,0 +1,171 @@
+/* 
+
+  Advent of Code 2023 Day 18 in Picat.
+
+  https://adventofcode.com/2023/day/18
+
+  Part 1. 
+
+  For a simple variant of flood fill see  http://hakank.org/picat/flood_fill.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+main => go.
+
+
+/*
+  $ hyperfine 'time picat -log 18_part1.pi'
+  Benchmark 1: time picat -log 18_part1.pi
+    Time (mean ± σ):     534.8 ms ±   9.4 ms    [User: 467.7 ms, System: 60.3 ms]
+    Range (min … max):   524.6 ms … 547.3 ms    10 runs
+
+*/
+go =>
+  garbage_collect(400_000_000),
+  File = "18.txt",  
+  Lines = read_file_lines(File),
+  NumLines = Lines.len,
+
+  % Estimate the sizes of the area of interest
+  % Note: This might have to changed for another problem instance
+  if NumLines < 20 then
+    Rows = 30, Cols = 30 % Sample data
+  else
+    Rows = 1000, Cols = 1000
+  end,
+  % Start at the mid cell
+  TI = Rows div 2, 
+  TJ = Cols div 2,
+
+  % Create the map
+  X = new_array(Rows,Cols),
+  bind_vars(X,'.'),
+  X[TI,TJ] := '#',
+  foreach(Line in Lines)
+    OldI = TI, OldJ = TJ,
+    [Dir,NS,_RGBS] = Line.split(" "),
+    N = NS.to_int,
+    if Dir == "U" then
+      TI := TI - N,
+      foreach(K in TI..OldI) X[K,TJ] := '#' end
+    elseif Dir == "D" then
+      TI := TI + N,
+      foreach(K in OldI..TI) X[K,TJ] := '#' end
+    elseif Dir == "R" then
+      TJ := TJ + N,
+      foreach(K in OldJ..TJ) X[TI,K] := '#' end
+    else
+      TJ := TJ - N,
+      foreach(K in TJ..OldJ) X[TI,K] := '#' end
+    end,
+    OldI := TI,
+    OldJ := TJ
+  end,
+
+  % Get the area of interest
+  [MinI,MaxI] = get_min_max(X,Rows,Cols),
+  [MinJ,MaxJ] = get_min_max(X.transpose,Rows,Cols),
+
+  %
+  % Reformat the area of interest to a proper sized environment
+  % so there is just one frame with '.' around the 'real' environment:
+  % this is the exterior which we flood fill.
+  %
+  MinI2 = MinI-1, MaxI2 = MaxI+1,
+  MinJ2 = MinJ-1, MaxJ2 = MaxJ+1,
+  Rows2 = MaxI2-MinI2+1,
+  Cols2 = MaxJ2-MinJ2+1,
+  X2 = new_array(Rows2,Cols2),
+  foreach(A in 1..Rows2, B in 1..Cols2)
+    X2[A,B] = X[A+MinI2-1,B+MinJ2-1]
+  end,
+  
+  % Find a cell which is on the outer border (exterior), i.e. is '.'.
+  Node = _,
+  foreach(A in [1,Rows2], B in [1,Cols2], break(nonvar(Node)), X2[A,B] == '.')
+    Node = [A,B]
+  end,
+  if Rows < 30 then
+    print_mat(X2,1,Rows2,1,Cols2)
+  end,
+  
+  % Flood the exterior. Thus everything else is the interior.
+  Inside = new_array(Rows2,Cols2), % This should probably be called Outside instead...
+  bind_vars(Inside,0),
+  Seen = new_set(),
+  flood_fill(X2,Rows2,Cols2,Inside,Node,Seen),
+  % Count the interior cells
+  println([1 : A in 1..Rows2, B in 1..Cols2, Inside[A,B] == 0].len),  
+  nl.
+
+
+%
+% Print a matrix within a certain area
+%
+print_mat(X,MinI,MaxI,MinJ,MaxJ) =>
+  foreach(R in MinI..MaxI)
+    println(X[R,MinJ..MaxJ].to_list)
+  end,
+  nl.
+
+%
+% Get the minimum/maximum area of interest.
+%
+get_min_max(X,Rows,Cols) = [MinI,MaxI] =>
+  MinI = Rows,
+  MaxI = 0,
+  foreach(R in 1..Rows)
+     Row = X[R].to_list,
+     if membchk('#',Row) then
+       if MinI == Rows then
+         MinI := R
+       end,
+       MaxI := R
+     end
+  end.
+
+
+/*
+  https://en.wikipedia.org/wiki/Flood_fill
+  """
+  Flood-fill (node):
+  1. Set Q to the empty queue or stack.
+  2. Add node to the end of Q.
+  3. While Q is not empty:
+  4.   Set n equal to the first element of Q.
+  5.   Remove first element from Q.
+  6.   If n is Inside:
+         Set the n
+         Add the node to the west of n to the end of Q.
+         Add the node to the east of n to the end of Q.
+         Add the node to the north of n to the end of Q.
+         Add the node to the south of n to the end of Q.
+  7. Continue looping until Q is exhausted.
+  8. Return.
+  """
+*/
+flood_fill(M,Rows,Cols,Inside,Node,Seen) =>
+  Q = [Node],
+  while ([[TI,TJ]|Q2] = Q)
+   if not Seen.has_key([TI,TJ]), inside(M,TI,TJ) then
+      Inside[TI,TJ] := 1,
+      foreach(N in neibs(Rows,Cols,TI,TJ), not Seen.has_key(N))
+        Q2 := [N|Q2]
+      end
+   end,
+   Seen.put([TI,TJ]),
+   Q := Q2
+  end.
+
+
+% Note: For this specific application this is really 'outside' the interior.
+inside(M,I,J) => 
+  M[I,J] != '#'.
+
+neibs(Rows,Cols,I,J) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                                   abs(A)+abs(B) == 1, % 4 neigbours
+                                   I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols].

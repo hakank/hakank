@@ -1,0 +1,97 @@
+/* 
+
+  Advent of Code 2023 Day 5 part 1 in Picat.
+
+  https://adventofcode.com/2023/day/5
+
+  Note: This is just part 1 since part 2 is way too slow to be placed in public.
+
+  Cf 5_part1_dcg.pi for a DCG version reading the input.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 5_part1.pi'    
+  Benchmark 1: picat 5_part1.pi
+    Time (mean ± σ):      36.7 ms ±   5.2 ms    [User: 20.3 ms, System: 16.4 ms]
+    Range (min … max):    21.4 ms …  46.5 ms    56 runs
+
+*/
+go =>
+  File = "5.txt",  
+  Str = read_file_chars(File),
+  split3(Str,"\n\n",Entries),
+  Seeds = Entries.first.split(": ").tail.map(to_int),
+  Map = new_set(),
+  MapNames = new_set(),
+  foreach(Entry in Entries.tail)
+    append(MapName,":\n",This,Entry),
+    append(Name1," ",_, MapName),
+    Name = Name1.split("- ").take(3),
+    MapNames.put(Name),
+    
+    EntryMap = new_map(),
+    foreach(T in This.split("\n"))
+       [Dest,Source,Range] = T.split(" ").map(to_int),
+       EndDest = Source+Range-1,
+       EntryMap.put([Source,Dest,Range,EndDest])
+    end,
+    Map.put(Name,EntryMap)
+  end,
+  
+  % Create the path seed -> ... --> location
+  MapNameList = MapNames.keys,
+  PathName = "seed", 
+  Paths = [],
+  while (PathName != "location")
+    % Why doesn't membchk/3 work here? Though member/3 works.  
+    member([PathName,_,Target],MapNameList),
+    Paths := Paths ++ [[PathName,"to",Target]],
+    PathName := Target
+  end,
+  Values = [],
+  foreach(Seed in Seeds)
+    Value = get_location(Seed,Paths,Map),
+    Values := Values ++ [Value]
+  end,
+  Part1 = Values.min,
+  println(Part1).
+
+%
+% Find the location given a seed
+%
+get_location(Seed,Paths,Map) = Value =>
+  Value = Seed,
+  % Walk trough the paths
+  foreach(P in Paths)
+    M = Map.get(P).to_list.sort,
+    if Value > M[1,1,1] then
+      Found = false,
+      foreach([Source,Dest,_Range,EndDest]=_ in M, break(Found == true))
+        if Value >= Source, Value <= EndDest then
+          Diff = Value-Source,
+          Value := Dest+Diff,
+          Found := true
+        end
+      end
+    end
+  end.
+
+
+%
+% Generatlized version, can split on any string.
+% Note: We need ?=> for this.
+% 
+split3(Sep,Sep,[]) ?=> true.
+split3(S,Sep,Tokens), append(Token,Sep,Rest,S) ?=>
+  Tokens = [Token|TokensR],
+  split3(Rest,Sep,TokensR).
+split3(S,Sep,Tokens) =>
+  Tokens = [S].

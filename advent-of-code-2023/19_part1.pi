@@ -1,0 +1,101 @@
+/* 
+
+  Advent of Code 2023 Day 19 in Picat.
+
+  https://adventofcode.com/2023/day/19
+
+  Part 1
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 19.pi'
+  Benchmark 1: picat 19.pi
+    Time (mean ± σ):      42.4 ms ±   6.5 ms    [User: 28.2 ms, System: 14.2 ms]
+    Range (min … max):    25.8 ms …  54.0 ms    61 runs
+
+*/
+go =>
+  part1,
+  nl.
+
+part1 => 
+  File = "19.txt",
+
+  split3(read_file_chars(File),"\n\n",[WorkflowsS,RatingsS]),
+  
+  Workflows = WorkflowsS.split("\n"),
+  Ratings = RatingsS.split("\n"),
+
+  % Handle the workflows
+  WorkflowMap = new_map(),
+  foreach(Workflow in Workflows)
+    append(Name,"{",Rest,Workflow),
+    Parts = Rest.split(",}"),
+    Flow = [],
+    foreach(Part in Parts)
+      Split = Part.split("><:"),
+      if Split.len > 1 then
+        Comp = Part[2],
+        [Rating,Value,Status] = Split,
+        Value := Value.to_int,
+        Flow := Flow ++ [[Rating,Comp,Value,Status]]
+      else
+        Flow := Flow ++ [Part]
+      end
+    end,
+    WorkflowMap.put(Name,Flow)
+  end,
+
+  % The Ratings
+  % All parts begin in the workflow named "in".
+  Total = 0,
+  foreach(Rating in Ratings)
+    Split = Rating.split(",{}"),
+    RMap = new_map([R=V.to_int : S in Split, [R,V]=S.split("=") ] ),
+    State = "in", % Start state
+    M = WorkflowMap.get(State),
+    FoundFinal = false,    
+    while (FoundFinal == false)
+      OrigState = State,
+      foreach(Rule in M, break(State != OrigState), break(FoundFinal != false))
+        if Rule == "A" ; Rule == "R" then
+           FoundFinal := Rule
+        elseif Rule.len == 4 then
+          [Cat,Op,CValue,Next] = Rule,
+          RValue = RMap.get(Cat),
+          if call(Op,RValue,CValue) then
+            State := Next,
+            if State == "A" ; State == "R" then
+              FoundFinal := Next
+            else
+              M := WorkflowMap.get(State)
+            end
+          end
+        else
+          State := Rule,        
+          M := WorkflowMap.get(State)
+        end
+      end
+    end,
+    if FoundFinal == "A" then
+      Total := Total + sum(RMap.values)
+    end
+  end,
+  println(Total).
+
+
+% for splitting on "\n\n"
+split3(Sep,Sep,[]) ?=> true.
+split3(S,Sep,Tokens), append(Token,Sep,Rest,S) ?=>
+  Tokens = [Token|TokensR],
+  split3(Rest,Sep,TokensR).
+split3(S,Sep,Tokens) =>
+  Tokens = [S].

@@ -1,0 +1,78 @@
+/* 
+
+  Advent of Code 2023 Day 4 in Picat.
+  
+  https://adventofcode.com/2023/day/4
+
+  Parsing input with DCG.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  $ hyperfine 'picat 4.pi'                                
+  Benchmark 1: picat 4.pi
+    Time (mean ± σ):      43.7 ms ±   5.9 ms    [User: 24.6 ms, System: 19.0 ms]
+    Range (min … max):    24.4 ms …  51.8 ms    56 runs
+
+  This is slightly slower than 4.pi (about 38.7ms).
+
+*/
+go =>
+  part1_2, 
+  nl.
+
+part1_2 =>
+    File = "4.txt",
+    parse_file(Lines,read_file_chars(File),[]),
+    ScoresPart1 = 0,
+    Wins = [],
+    foreach([_Card,Winning,MyNumbers] in Lines)
+      Score = 0,
+      foreach(Num in MyNumbers, membchk(Num,Winning))
+        Score := cond(Score == 0, 1, Score * 2)
+      end,      
+      ScoresPart1 := ScoresPart1 + Score,
+      Wins := Wins ++ [[1 : Num in MyNumbers,  membchk(Num,Winning)].len]
+    end,
+
+    % Part 1
+    println(ScoresPart1),
+
+    % Part 2
+    Len = Wins.len,
+    Times = new_array(Len),
+    bind_vars(Times,1),
+    foreach(I in 1..Len)
+      foreach(J in I+1..I+Wins[I], J <= Len)
+        Times[J] := Times[J] + Times[I] 
+      end
+    end,
+    println(Times.sum).
+
+
+%
+% DCG
+%
+space --> (" ", space) ; "".
+
+digits([C|Rest]) --> [C], {ascii_digit(C)}, digits(Rest).
+digits([])       --> "".
+
+numbers([N|Ns]) --> digits(N1), {N1 != "", N = N1.to_int}, space, numbers(Ns).
+numbers([N])    --> digits(N1), {N1 != "", N = N1.to_int}.
+numbers([])     --> [].
+
+parse_line([Id,Winning,MyNumbers]) --> "Card", space, digits(Id), {Id != ""},
+                                       ":",  space, numbers(Winning),
+                                       " |", space, numbers(MyNumbers).
+
+parse_file([Line|Lines]) --> parse_line(Line), "\n", parse_file(Lines).
+parse_file([Line])       --> parse_line(Line).
+parse_file([])           --> [].

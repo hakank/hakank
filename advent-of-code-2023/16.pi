@@ -1,0 +1,115 @@
+/* 
+
+  Advent of Code 2023 Day 16 in Picat.
+
+  https://adventofcode.com/2023/day/16
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+go =>
+  part1,
+  part2,
+  nl.
+
+/*
+  Part 1:
+
+  $ hyperfine 'picat -g part1 16.pi'
+  Benchmark 1: picat -g part1 16.pi
+    Time (mean ± σ):      53.4 ms ±   6.4 ms    [User: 34.8 ms, System: 18.5 ms]
+    Range (min … max):    37.1 ms …  77.8 ms    45 runs
+
+*/
+part1 =>
+  M = read_file_lines("16.txt"),
+  NumVisits=num_visits(M,M.len,M[1].len,[1,1,west]),
+  println(NumVisits).
+
+
+/*
+  Part 2: 
+
+  $ hyperfine 'picat -g part2 16.pi'
+
+  With Ps2 := Ps2 ++ [ [NewI,NewJ,NewFrom] ]:
+  Benchmark 1: picat -g part2 16.pi
+    Time (mean ± σ):      3.515 s ±  0.029 s    [User: 3.491 s, System: 0.021 s]
+    Range (min … max):    3.475 s …  3.577 s    10 runs
+
+  Faster with Ps2 := [[NewI,NewJ,NewFrom]|Ps2] (and a few other tweakings):
+    Time (mean ± σ):      2.692 s ±  0.019 s    [User: 2.673 s, System: 0.019 s]
+    Range (min … max):    2.668 s …  2.740 s    10 runs
+
+*/
+part2 =>
+  garbage_collect(100_000_000),
+  M = read_file_lines("16.txt"),
+  Rows = M.len,
+  Cols = M[1].len, 
+  Pss = [ [[1,   J,   north] : J in 1..Cols] ,    % top row from north
+          [[Rows,J,   south] : J in 1..Cols] , % bottom row from south
+          [[I,   1,    west] : I in 1..Rows],      % left column from west
+          [[I,   Cols, east] : I in 1..Rows]    % right column from east
+      ].flatten.chunks_of(3),
+  MaxVisits = 0,
+  foreach([StartI,StartJ,StartFrom] in Pss)
+    Num = num_visits(M,Rows,Cols,[StartI,StartJ,StartFrom]),
+    if Num > MaxVisits then
+      MaxVisits := Num
+    end
+  end,
+  println(MaxVisits).
+
+
+table
+num_visits(M,Rows,Cols,[StartI,StartJ,StartDir]) = Map.size =>
+  Map = new_set(),  % Number of tiles energized
+  Seen = new_set(), % visited [I,J,Dir]
+  Ps = [[StartI,StartJ,StartDir]],
+  while ([[I,J,From]|Ps2] = Ps)
+    Map.put([I,J]),
+    new_dir(M[I,J],From,[I,J],Ds),
+    foreach([II,JJ,NewFrom] in Ds, NewI=II+0, NewJ=JJ+0, not Seen.has_key([NewI,NewJ,NewFrom]))
+      if NewI >= 1, NewI <= Rows, NewJ >= 1, NewJ <= Cols then
+        Ps2 := [[NewI,NewJ,NewFrom]|Ps2]
+      end
+    end,
+    Seen.put([I,J,From]),
+    Ps := Ps2
+  end.
+
+%
+% Note: These are _from_ directions, not _to_ directions
+%
+new_dir('.',north,[I,J],[[I+1,J,north]]).
+new_dir('.',south,[I,J],[[I-1,J,south]]).
+new_dir('.',west,[I,J],[[I,J+1,west]]).
+new_dir('.',east,[I,J],[[I,J-1,east]]).
+
+new_dir('/',north,[I,J],[[I,J-1,east]]).
+new_dir('/',south,[I,J],[[I,J+1,west]]).
+new_dir('/',west,[I,J],[[I-1,J,south]]).
+new_dir('/',east,[I,J],[[I+1,J,north]]).
+
+new_dir('\\',north,[I,J],[[I,J+1,west]]).
+new_dir('\\',south,[I,J],[[I,J-1,east]]).
+new_dir('\\',west,[I,J],[[I+1,J,north]]).
+new_dir('\\',east,[I,J],[[I-1,J,south]]).
+
+% splitters
+new_dir('|',north,[I,J],[[I+1,J,north]]).
+new_dir('|',south,[I,J],[[I-1,J,south]]).
+new_dir('|',west,[I,J],[[I+1,J,north],[I-1,J,south]]).
+new_dir('|',east,[I,J],[[I+1,J,north],[I-1,J,south]]).
+
+new_dir('-',north,[I,J],[[I,J+1,west],[I,J-1,east]]).
+new_dir('-',south,[I,J],[[I,J+1,west],[I,J-1,east]]).
+new_dir('-',west,[I,J],[[I,J+1,west]]).
+new_dir('-',east,[I,J],[[I,J-1,east]]).

@@ -1,0 +1,139 @@
+/* 
+
+  Advent of Code 2023 Day 14 in Picat.
+
+  https://adventofcode.com/2023/day/14
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+
+main => go.
+
+go =>
+  part1,
+  part2,
+  nl.
+
+/*
+  $ hyperfine 'picat -g part1 14.pi'
+  Benchmark 1: picat -g part1 14.pi
+    Time (mean ± σ):      47.1 ms ±   8.3 ms    [User: 32.6 ms, System: 14.3 ms]
+    Range (min … max):    27.5 ms …  62.5 ms    47 runs
+
+*/
+part1 =>
+  garbage_collect(500_000_000),
+  File = "14.txt",
+  M = read_file_lines(File),
+  M2 = M.roll(north),
+  println(calc_load(M2)).
+
+
+/*
+  $ hyperfine 'picat -g part2 14.pi'
+  Benchmark 1: picat -g part2 14.pi
+    Time (mean ± σ):      5.961 s ±  0.015 s    [User: 5.941 s, System: 0.018 s]
+    Range (min … max):    5.937 s …  5.985 s    10 runs
+ 
+
+  Benchmark on different chunk sizes (for cycle/2):
+  ChunkSize    Time
+  -----------------
+          1   104s (original version, with cycle/1)
+       1000   6.1s  with cycle/2
+     10_000   6.0s ibid <-- sweet spot
+    100_000   6.2s ibid
+  1_000_000   6.6s ibid
+
+*/
+part2 =>
+  garbage_collect(400_000_000),
+  File = "14.txt",
+  M1 = read_file_lines(File),
+  M = copy_term(M1),  
+  NumCycles = 1_000_000_000,
+  ChunkSize = 10_000,
+  C = 1,  
+  while (C < NumCycles)
+    M := cycle(M,ChunkSize),
+    C := C + ChunkSize
+  end,
+  println(calc_load(M)).
+
+% Calculate the load of the matrix M
+calc_load(M) = [(N-I+1) : I in 1..N, J in 1..N, M[I,J] == 'O'].sum =>
+  N = M.len.
+
+% 
+% roll(M,Dir)
+% roll dir - change matrix -  and roll back
+%
+table
+roll(M,north) = M.change_mat.
+roll(M,west)  = M.transpose.change_mat.transpose.   
+roll(M,south) = M.rot.rot.change_mat.rot.rot.   
+roll(M,east)  = M.rot.rot.rot.change_mat.rot.
+
+%
+% Do one full cycle.
+%
+table
+cycle(M) = roll(M,north).roll(west).roll(south).roll(east).
+
+%
+% Thanks to DestyNova for this clever idea.
+% I.e. doing a batch of cycles.
+% Tabling is essential.
+%
+table
+cycle(M,Len) = M =>
+  foreach(_ in 1..Len)
+    M := M.cycle 
+  end.
+
+%
+% Roll all rounded rocks for a matrix
+%
+change_mat(M) = NewM =>
+  N = M.len,
+  NewM = {change_col([M[I,J] : I in 1..N]) : J in 1..N}.transpose.
+
+%
+% Roll all rounded rocks (O) for a specic tilt.
+% 
+change_col(Col) = Col =>
+  J = 2,
+  while (J <= Col.len)
+    T = J,
+    while (T > 1, Col[T] == 'O', Col[T-1] == '.')
+      Col[T-1] := 'O',
+      Col[T] := '.',
+      T := T-1
+    end,
+    J := J+1
+  end.
+
+%
+% Rotate the matrix 1 step
+%
+rot(X) = Rot=>
+  N = X.len,
+  Rot = new_array(N,N),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      Rot[I,J] := X[N-J+1,I]
+    end
+  end.
+
+
+% pretty print the matrix 
+print_mat(M) =>
+  foreach(Row in M) println(Row.to_list) end,
+  nl.
+

@@ -1,0 +1,111 @@
+/* 
+
+  Advent of Code 2023 Day 12 in Picat.
+
+  https://adventofcode.com/2023/day/12
+
+  Only Part1. 
+
+  It uses make_automaton from my Nonogram solver:
+  From http://hakank.org/picat/nonogram_regular.pi  
+
+  Alas, this is not performant for Part 2.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+
+main => go.
+
+/*
+  $ hyperfine 'picat 12_part1.pi'    
+  Benchmark 1: picat 12_part1.pi
+    Time (mean ± σ):     151.3 ms ±   6.6 ms    [User: 134.1 ms, System: 17.4 ms]
+    Range (min … max):   137.6 ms … 163.4 ms    17 runs
+*/
+go =>
+  time(part1),
+  nl.
+
+part1  =>
+  File = "12.txt",
+  Lines = read_file_lines(File),
+  Cs = new_map(['?' = 0,'.'=1,'#'=2]), % Convert to integers 0..2
+  Sum = 0,
+  foreach(Line in Lines)
+    Split = Line.split(" "),
+    Pattern = [Cs.get(A,-1) :  A in Split[1] ], % The pattern converted to 0..2
+    Occ = Split[2].split(",").map(to_int), % The occurrence pattern    
+    contiguity(Pattern,Occ,Sols),
+    Sum := Sum + Sols
+  end,
+  println(sum=Sum),
+  nl.
+
+contiguity(Pattern,Occ,Sols) =>
+  X = new_list(Pattern.len),
+  X :: 1..2, % 1='.'  2='#'
+  foreach(I in 1..Pattern.len)
+    if Pattern[I] > 0 then
+      X[I] #= Pattern[I]
+    end
+  end,
+  Sols = count_all(make_automaton1(X,Occ)).
+
+%
+% From http://hakank.org/picat/nonogram_regular.pi
+% Translates the Pattern (the occcurrences, e.g. [1,1,3] to the regex
+%   .*#{n1}.+#{n2}.+#{n3} .... #{nn}.*
+% Where n1,n2,...nn are the numbers in Pattern.
+%
+make_automaton1(X,Pattern) =>
+  N = Pattern.length,
+
+  if N = 0; sum(Pattern) = 0 then
+    % zero clues
+    Len = 1,
+    States = new_array(1,2),
+    States[1,1] := 1,
+    States[1,2] := 1
+  else 
+    Len = max(length([Pattern[I] : I in 1..N, Pattern[I] > 0]) + sum(Pattern),1),
+    Tmp = [0],
+    C = 0,
+    foreach(P in Pattern) 
+       foreach(I in 1..P)
+         Tmp := Tmp ++ [1],
+         C:= C+1
+       end,
+       if C < Len - 2 then
+         Tmp := Tmp ++ [0]
+       end
+    end, 
+
+    States = new_array(Len,2),
+    States[Len,1] := Len, % final state
+    States[Len,2] := 0,
+    foreach(I in 1..Len)
+      if Tmp[I] == 0 then
+        States[I,1] := I,
+        States[I,2] := I+1
+      else 
+        if I < Len then
+          if Tmp[I+1] = 1 then
+            States[I,1] := 0,
+            States[I,2] := I+1
+          else 
+            States[I,1] := I+1,
+            States[I,2] := 0
+          end
+        end
+      end    
+    end
+  end,
+  regular(X,Len,2,States,1,[Len]),
+  solve($[],X).
+
