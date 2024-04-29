@@ -66,7 +66,22 @@ main(ARGS) ?=>
     cl(File),
     data(Experiment,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
     println(experiment=Experiment),
-    run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params)
+    % reset_timeout: Reset and run again after 10s (if no success)
+    if Params.has_key(reset_timeout) then
+      TimeoutMS = Params.get(reset_timeout)*1000, % in millis
+      println(reset_timeout=TimeoutMS),
+      Run = true,
+      while (Run)
+        time_out(run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),TimeoutMS,Status),
+        nl,nl,
+        println(status=Status),
+        if Status == success then
+          Run := false
+        end
+      end
+    else 
+      run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params)
+    end
 
   else
     printf("File %w does not exist!",File),
@@ -80,7 +95,7 @@ go ?=>
   garbage_collect(300_000_000),
 
   % data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
-  data(facebook_puzzle_1b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),  
+  % data(facebook_puzzle_1b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),  
   % data(pickover_puzzle1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
   % data(prime_test,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
   % data(gcd_test,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
@@ -96,10 +111,10 @@ go ?=>
   % data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
   % data(simple,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(mind_your_decision,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
 
-
-
+  data(xxx,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
 
   run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
@@ -854,8 +869,11 @@ arities(even) = 1.
 arities(prime) = 1.
 
 arities(if_then_else) = 3.
+arities(cond) = 3.
 arities(if_less) = 4.
 arities(if_less_equal) = 4.
+arities(if_larger) = 4.
+arities(if_larger_equal) = 4.
 arities(factorial) = 1.
 arities(factorial_restricted) = 1.
 arities(!) = 1.
@@ -1299,6 +1317,12 @@ eval('if_then_else'(X,Y,Z)) = Val =>
     ZVal = eval(Z),    
     Val = cond(XVal==1,YVal,ZVal).
 
+eval('cond'(X,Y,Z)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    ZVal = eval(Z),    
+    Val = cond(XVal==1,YVal,ZVal).
+
 
 eval('if_less'(X,Y,A,B)) = Val =>
     XVal = eval(X),
@@ -1313,6 +1337,21 @@ eval('if_less_equal'(X,Y,A,B)) = Val =>
     AVal = eval(A),
     BVal = eval(B),    
     Val = cond(XVal <= YVal,AVal,BVal).
+
+
+eval('if_larger'(X,Y,A,B)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    AVal = eval(A),
+    BVal = eval(B),    
+    Val = cond(XVal > YVal,AVal,BVal).
+
+eval('if_larger_equal'(X,Y,A,B)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    AVal = eval(A),
+    BVal = eval(B),    
+    Val = cond(XVal >= YVal,AVal,BVal).
 
 
 % Be careful since this blows up!
@@ -2297,3 +2336,101 @@ data(simple,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
   Params = new_map().
 
 
+
+/*
+  From MindYourDecision "Find a simple pattern"
+  https://youtu.be/hgF9-4z6nP0
+  """
+  This interview question was posted to Math StackExchange 
+  [https://math.stackexchange.com/questions/866921/interview-riddle]
+  and people had fun trying to identify the pattern.
+
+  3×4 = 8
+  4×5 = 50
+  5×6 = 30
+  6×7 = 49
+  7×8 = ?
+
+  It is understood to be an open-ended interview question, so it could possibly admit more 
+  than one solution. But the challenge is to find a simple rule that creates this pattern.
+  """
+
+[program = if_then_else(if_then_else(X,2,prime(Y + X)),X * (Y / 6) * Y,5 * 10),res = 50,count = 1]
+
+*/
+data(mind_your_decision,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[3,4],8],
+          [[4,5],50],
+          [[5,6],30],
+          [[6,7],49]
+          ],
+  Ops = [+,-,*,/,mod2,pow2,pow3,pow4,even,prime,if_then_else],
+  Constants = -10..10,          
+  Vars = ['X','Y'],
+  Unknown = [7,8],  
+  MaxSize = 23,
+  Params = new_map([init_size=1000, num_gens=120
+                    % , mutate_rate=0.1, crossover_rate=0.94
+                    ]).  
+
+
+/*
+  https://mathematicsart.com/solved-exercises/solution-only-one-in-1000-can-solve-this-math-problem/
+  """
+  There is only one solution, find it.
+
+  Only one in 1000 can solve this math problem
+
+    1 + 4 = 5
+    2 + 5 = 12
+    3 + 6 = 21
+    8 + 11 = ?  
+  """
+  Via
+  https://www.facebook.com/ArtOfMathematics/posts/pfbid02fTgmEgCNcu7Nkvk6PRNLbMCzgK18Y7mXuHwfbTmwo8NbfsFzxxhuGzWEXt8DZu2Wl
+
+  AllGood:
+  [program = X * (Y + 1),res = 96,count = 10]
+  [program = (Y + 1 / 1) * X,res = 96.0,count = 8]
+  [program = X + Y * X,res = 96,count = 6]
+  [program = (Y * X + X) * 1,res = 96,count = 6]
+  [program = (Y + 1) * (1 * X),res = 96,count = 5]
+  [program = 1 * ((1 - Y * (1 - (1 + 1) / 1)) * X),res = 96.0,count = 5]
+  [program = X - (1 - (Y + 1)) * (X + 1) - Y,res = 96,count = 4]
+  [program = X + X * Y,res = 96,count = 4]
+  [program = (Y + 1) * X,res = 96,count = 4]
+  [program = 1 * X * (Y + 1),res = 96,count = 4]
+  [program = X * (Y / Y / 1 + Y),res = 96.0,count = 4]
+  [program = (Y * X + X) / 1,res = 96.0,count = 3]
+  [program = (Y / Y / 1 + Y) * X,res = 96.0,count = 3]
+  [program = (Y + 1) * (X / 1),res = 96.0,count = 3]
+  [program = (1 + Y) / 1 / (1 / X),res = 96.0,count = 2]
+  [program = (Y + 1) / 1 / (1 / 1 / X),res = 96.0,count = 1]
+  [program = Y * X + X - (X - (X - (1 - (1 + 1 - 1)))),res = 96,count = 1]
+  [program = Y * X + 1 + 1 * (X - 1 / (1 * 1)),res = 96.0,count = 1]
+  [program = X + 1 * Y / Y * (X * Y) * 1,res = 96.0,count = 1]
+  [program = (Y / Y / 1 + Y) * (X / 1 * 1),res = 96.0,count = 1]
+  [program = (1 * (1 * Y) * 1 + 1) * (X / 1),res = 96.0,count = 1]
+  [program = (Y * X + X) * (1 / 1),res = 96.0,count = 1]
+  [program = 1 * X * (Y / Y / 1 + Y),res = 96.0,count = 1]
+  [program = X * (Y + 1 / 1),res = 96.0,count = 1]
+
+  resultMap = [96.0 = 15,96 = 9]
+
+  I prefer this one : X + X*Y.
+
+  Cf facebook_puzzle which has "5+8 = ?" instead.
+
+
+*/
+data(art_of_mathematics,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  Data = [[[1,4],5],
+          [[2,5],12],
+          [[3,6],21]
+          ],
+  Ops = [+,-,*,/],
+  Constants = 1..1,          
+  Vars = ['X','Y'],
+  Unknown = [8,11],  
+  MaxSize = 23,
+  Params = new_map().  

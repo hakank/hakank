@@ -1,0 +1,240 @@
+/* 
+
+  Herstzsprung's problem in Picat.
+
+  https://math.stackexchange.com/questions/1905958/hertzsprungs-problem-the-number-of-ways-to-arrange-n-non-attacking-kings-on-an
+  """
+  Hertzsprung's problem: The number of ways to arrange n non-attacking kings 
+  on an n X n board, with 1 in each row and column.
+  """
+
+  Also see 
+  Another Roof: A Lifelong Mathematical Obsession
+  https://www.youtube.com/watch?v=qt5I1gZj1ew
+
+  And OEIS: https://oeis.org/A002464
+
+
+  For N=4 there are 2 solutions:
+  - matrices
+    [0,0,1,0]
+    [1,0,0,0]
+    [0,0,0,1]
+    [0,1,0,0]
+
+    [0,1,0,0]
+    [0,0,0,1]
+    [1,0,0,0]
+    [0,0,1,0]
+
+  - permutations
+    [2,4,1,3]
+    [3,1,4,2]
+
+
+  Here are the 14 solutions (permutations) for N=5
+    [1,3,5,2,4]
+    [1,4,2,5,3]
+    [2,4,1,3,5]
+    [2,4,1,5,3]
+    [2,5,3,1,4]
+    [3,1,4,2,5]
+    [3,1,5,2,4]
+    [3,5,1,4,2]
+    [3,5,2,4,1]
+    [4,1,3,5,2]
+    [4,2,5,1,3]
+    [4,2,5,3,1]
+    [5,2,4,1,3]
+    [5,3,1,4,2]
+
+  Comparison of the times for solving N=1..10 and N=12
+  - hertzsprung_matrix (go3/0)
+    CP and matrix
+    N=1..10: 16.6s
+    N=12   : 2540.64s 
+
+  - hertzsprung_perm (go5/0)
+    permutation/1
+    N=1..10: 1.5s
+    N=12   : 214.656s
+
+  - hertzsprung_list (go4/0)
+    CP with all_different/1
+    N=1..10: 0.426s
+    N=12  :  50.7s
+ 
+  The CP version with all_different/1 is clearly the fastest.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  N = 4,
+
+  hertzsprung_matrix(N,X),
+  foreach(Row in X)
+    println(Row.to_list)
+  end,
+  nl,
+  fail,
+
+  nl.
+go => true.
+
+go2 =>
+  N = 4,
+  hertzsprung_perm(N,P),
+  println(P),
+  fail,
+  nl.
+
+/*
+  Number of solutions: CP approach.
+
+  N  #sols
+  ---------
+  1 = 1
+  2 = 0
+  3 = 0
+  4 = 2
+  5 = 14
+  6 = 90
+  7 = 646
+  8 = 5242
+  9 = 47622
+  10 = 479306
+
+  Time: 16.6s
+
+
+  N = 12 (63779034 solutions) took 2540.64s
+  
+
+  See https://oeis.org/A002464
+
+*/
+go3 =>
+  foreach(N in 1..10)
+    println(N=count_all(hertzsprung_matrix(N,_X)))
+  end,
+  nl.
+
+/*
+  CP list and all_different/1 (i.e. permutations)
+
+  N #sols
+  -------
+  1 = 1
+  2 = 0
+  3 = 0
+  4 = 2
+  5 = 14
+  6 = 90
+  7 = 646
+  8 = 5242
+  9 = 47622
+  10 = 479306
+
+  Time: 0.426s
+
+  N = 12 (63779034 solutions) took 50.7s
+
+*/
+go4 =>
+  foreach(N in 1..10)
+    println(N=count_all(hertzsprung_list(N,_P)))
+  end,
+  nl.
+
+
+/*
+  Number of solutions: permutation approach.
+  Using permutations are much faster (at least for N <=10)
+
+  N #sols
+  -------
+  1 = 1
+  2 = 0
+  3 = 0
+  4 = 2
+  5 = 14
+  6 = 90
+  7 = 646
+  8 = 5242
+  9 = 47622
+  10 = 479306
+
+  Time: 1.5s
+
+  N = 12 (63779034 solutions) took 214.656s
+
+*/
+go5 =>
+  foreach(N in 1..10)
+    println(N=count_all(hertzsprung_perm(N,_P)))
+  end,
+  nl.
+
+
+
+/*
+  CP matrix approach.
+  The slowest.
+
+*/
+hertzsprung_matrix(N,X) =>
+  X = new_array(N,N),
+  X :: 0..1,
+
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..N]) #= 1,
+    sum([X[J,I] : J in 1..N]) #= 1,
+    % Non-attaching kings
+    foreach(J in 1..N)
+      X[I,J] #= 1 #=> sum([X[I+A,J+B] : A in -1..1, B in -1..1, not (A == 0, B == 0),
+                                        A+I >= 1, A+I <= N,
+                                        B+J >= 1, B+J <= N]) #= 0
+    end
+  end,
+  solve($[],X).
+
+/*
+  CP approach using a list and all_different/1.
+  The fastest.
+*/
+hertzsprung_list(N,X) =>
+  X = new_array(N),
+  X :: 1..N,
+
+  foreach(I in 1..N-1)
+    abs(X[I]-X[I+1]) #> 1 % no rising or falling
+  end,
+  all_different(X),
+  solve($[degree,updown],X).
+
+
+
+/*
+  Permutation approach.
+  https://oeis.org/A002464
+  """
+  ... Also number of permutations of length n without rising or falling successions.
+  """
+  Faster - and simpler - than the CP matrix approach but slower than the 
+  CP all_different/1 approach
+
+*/
+hertzsprung_perm(N,P) =>
+  permutation(1..N,P),
+  foreach(I in 1..N-1)
+    abs(P[I]-P[I+1]) > 1 % no rising or falling
+  end.
