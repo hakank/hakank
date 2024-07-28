@@ -19,6 +19,7 @@ Here's a summary of the directories so far:
 * cpmpy: CPMPy: Constraint modelling system in Python. Supports OR-Tools CP-SAT and PySAT solvers.
 * curry: Curry functional logic programming language with (some) support for Constraint Logic Programming
 * eclipse_clp: ECLiPSe CLP, Prolog, logic programming, constraint programming, loops etc
+* elixir: Elixir is a functional programming language, based on Erlang
 * essence_savile_row: Essence'/Saville Row, constraint programming
 * essence_tailor: Essence'/Tailor, constraint programming
 * eureqa: Eureqa/Formulize, genetic programming
@@ -51,6 +52,7 @@ Here's a summary of the directories so far:
 * project_euler: Project Euler
 * psi_ppl: PSI, probabilistic programming language
 * python: Python programs (Project Euler)
+* racket: Racket is a functional/multiparadigm programming language in the Lisp family
 * sabr: SABR, constraint-based planning language
 * setlx: SETL and SetlX, high level set based programming language
 * sicstus: SICStus Prolog, constraint programming, logic programming, loops, etc.
@@ -65,3 +67,4 @@ I'll try to keep this repository as updated as possible.
 
 Hakan Kjellerstrand (a.k.a. hakank)
 hakank@gmail.com
+http://hakank.org/
