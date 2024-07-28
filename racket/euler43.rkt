@@ -64,17 +64,22 @@
 (define (euler43b)
   (let* ([n 10]
          [lst (range n)]
+         ;;; [lst '(1 2 3 4 5 6 7 8 9 0)] % slower than (range n)
          [f (factorial n)]
          [p-orig (list->vector lst)]
          [p-prev p-orig]
          [p p-orig]
          [rev-p (list->vector (reverse (vector->list p-orig)))])
     (for/sum ([i (range f)]
-              #:break (equal? p rev-p)               
+              ;;; #:break (= (vector-ref p 0) 0)              
+              #:break (equal? p rev-p)
               #:do [(set! p-prev p)
                     (define num (vector->number p-prev))
-                    (set! p (vector-next-permutation p))]
-              #:when (and (not (= (vector-ref p 0) 0) ) (check43a num))
+                    (set! p (vector-next-permutation p))
+                    ;;; (writeln p)
+                    ]
+              ;;; #:when (and (> (vector-ref p 0) 0) (check43a num)) ; slightly slower?
+              #:when (and (not (= (vector-ref p 0) 0)) (check43a num))              
               )
       num)
    )
@@ -128,11 +133,52 @@
 (define (euler43c)
    (for/sum ([p (in-permutations (range 0 10))]
                #:do [(define n (digits->number p))]
-               #:when (and (not (= (first p) 0) ) (check43c-3 n))
+               #:when (and (> (first p) 0) (check43c-3 n))
                )
     n)
   )
 
+;;; Reversing the order of primes and the indices,
+;;; perhaps a little faster than euler43c-3.
+(define (check43d-1 n)
+  ;;; (let* ([ps (reverse '(2 3 5 7 11 13 17))]
+  (let* ([ps '(17 13 11 7 5 3 2)]
+         [nums (number->digits n)]
+         [len (length ps)])
+    (for/and ([p ps]
+              [c (range len 0 -1)])
+      (check-perm nums (+ c 0) (+ c 1) (+ c 2) p)
+      )
+    )
+  )
+
+
+(define (check-perm p a b c m)
+  (= (modulo (+ (* 100 (list-ref p a ))
+                (* 10 (list-ref p b ))
+                (list-ref p c))
+             m) 0)
+  )
+
+;;; Faster than euler43c, but less neat.
+;;; cpu time: 2736 real time: 2740 gc time: 75
+(define (euler43d)
+  (for/sum ([p (in-permutations (range 0 10))] 
+            #:do [(define n (digits->number p))]
+            #:when (and
+                    (> (first p) 0)
+                    (check-perm p 7 8 9 17)
+                    (check-perm p 6 7 8 13)
+                    (check-perm p 5 6 7 11)
+                    (check-perm p 4 5 6 7)
+                    (check-perm p 3 4 5 5)
+                    (check-perm p 2 3 4 3)
+                    (check-perm p 1 2 3 2)
+                    ;;; (check43d-1 n)
+                    )
+            )
+    n)
+  )
 
 
 ;;; Just summing takes 3.8s
@@ -159,7 +205,9 @@
 (define (run)
   ;;; (time-function euler43a)
   ;;; (time-function euler43b)
-  (time-function euler43c)
+  ;;; (time-function euler43c)
+
+  (time-function euler43d)
 
   ;;; (time-function test)
   )
