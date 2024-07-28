@@ -1,0 +1,189 @@
+/* 
+
+  Four empolyees puzzle in Picat.
+
+
+  From https://cms.math.ca/wp-content/uploads/2021/06/CRUXv47n5-b.pdf
+  """
+  MA122. Four people Mr Baker, Ms Carpenter, Mr Driver, and Ms Plumber
+  are employed for four jobs as a baker, carpenter, driver, and plumber. None of
+  them has a name identifying their occupation. They make four statements:
+  1. Mr Baker says he is the plumber.
+  2. Mr Driver says he is the baker.
+  3. Ms Carpenter says she is not the plumber.
+  4. Ms Plumber says she is not the carpenter.
+  Exactly [coffee stain] of the four statements are true. Who is the driver? (One of the
+  editors apologizes for spilling coffee on the page, but we are sure the question used
+  to have a unique answer!)
+  """
+  
+  Via https://rdivyanshu.github.io/posts/2021/06/crux-mathematicorum-ma122-rosette.html
+  (includes a Racket Rosette model).
+
+  The answer (according to the Racket model):
+  '(driver plumber carpenter baker)
+
+  Thus, the answer is that Baker is the Driver.
+
+
+  * go/0 generates 9 different solutions where the number NumTrue (1..3) indicates the
+    number of true statements
+
+    jobs = 1 = [Driver,Baker,Plumber,Carpenter]   <--
+    jobs = 1 = [Driver,Plumber,Baker,Carpenter]   <--
+    jobs = 1 = [Driver,Plumber,Carpenter,Baker]   <--
+
+    jobs = 2 = [Carpenter,Baker,Plumber,Driver]
+    jobs = 2 = [Carpenter,Driver,Plumber,Baker]
+    jobs = 2 = [Carpenter,Plumber,Baker,Driver]
+
+    jobs = 3 = [Plumber,Baker,Carpenter,Driver]
+    jobs = 3 = [Plumber,Driver,Carpenter,Baker]
+    jobs = 3 = [Plumber,Driver,Baker,Carpenter]
+
+    The only solution where the driver is assigned to the same
+    person in all cases is for NumTrue = 1, indicating that Baker 
+    is the Driver.
+
+    This means that there's no unique assignment for all the people
+    (unless I've missed something).
+
+  * go2/0 incorportates this meta-reasoning and checks that there's a 
+    unique solution indicating the Driver (Baker):
+
+    num_true = 1
+    x = [3,1,4,2]
+    t = [0,1,0,0] = 1
+    jobs = 1 = [Driver,Baker,Plumber,Carpenter]
+    Baker Driver (false)
+    Carpenter Baker (true)
+    Driver Plumber (false)
+    Plumber Carpenter (false)
+
+    x = [3,4,1,2]
+    t = [0,0,1,0] = 1
+    jobs = 1 = [Driver,Plumber,Baker,Carpenter]
+    Baker Driver (false)
+    Carpenter Plumber (false)
+    Driver Baker (true)
+    Plumber Carpenter (false)
+
+    x = [3,4,2,1]
+    t = [0,0,0,1] = 1
+    jobs = 1 = [Driver,Plumber,Carpenter,Baker]
+    Baker Driver (false)
+    Carpenter Plumber (false)
+    Driver Carpenter (false)
+    Plumber Baker (true)
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+
+main => go.
+
+go ?=>
+  N = 4,
+  member(NumTrue,1..N),
+  Ss = ["Baker","Carpenter","Driver","Plumber"] ,   
+  four_employees(NumTrue,X,T),
+  solve(X ++ T),
+
+  println(x=X),
+  println(t=T=NumTrue),
+  println(jobs=NumTrue=[Ss[X[I]] : I in 1..N]),
+  foreach(I in 1..N)
+    printf("%w %w (%w)\n", Ss[I], Ss[X[I]], cond(T[I] == 1, "true","false"))
+  end,
+  nl,
+  fail,
+  nl.
+go => true.
+
+/*
+
+  Incorporate the meta-reasoning (post-model).
+
+*/
+go2 ?=>
+
+  N = 4,
+  member(NumTrue,1..N),
+  four_employees(NumTrue,X,T),
+
+  All = solve_all([X,T]),
+  DriverJ = 3,
+  % Check for unique solution
+  [Ix :  [XX,_] in All, nth(Ix,XX,DriverJ) ].remove_dups.len == 1,
+  println(num_true=NumTrue),
+
+  Ss = ["Baker","Carpenter","Driver","Plumber"] ,
+  foreach([XX,TT] in All)
+    println(x=XX),
+    println(t=TT=NumTrue),
+   
+    println(jobs=NumTrue=[Ss[XX[I]] : I in 1..N]),
+    foreach(I in 1..N)
+      printf("%w %w (%w)\n", Ss[I], Ss[XX[I]], cond(TT[I] == 1, "true","false"))
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  nl.
+go2 => true.
+
+%
+% The base model (without solve/1).
+%
+four_employees(NumTrue,X,T) =>
+
+  N = 4,
+  [BakerJ,CarpenterJ,DriverJ,PlumberJ] = [1,2,3,4],
+
+  % Who is assigned to what job?
+  X = new_list(N),
+  X :: 1..N,
+  [BakerN,CarpenterN,DriverN,PlumberN] = X,
+  
+
+  % Who tells the truth/lies?
+  T = new_list(N),
+  T :: 0..1,
+  [BakerT,CarpenterT,DriverT,PlumberT] = T,
+  
+  all_different(X),
+
+  % None of them has a name identifying their occupation.
+  foreach(I in 1..N)
+    X[I] #!= I
+  end,
+
+  % BakerN #!= BakerJ,
+  % CarpenterN #!= CarpenterJ,
+  % DriverN #!= DriverJ,
+  % PlumberN #!= PlumberJ,
+  
+  % They make four statements:
+  
+  % 1. Mr Baker says he is the plumber.
+  BakerT #<=> BakerN #= PlumberJ,
+  
+  % 2. Mr Driver says he is the baker.
+  DriverT #<=> DriverN #= BakerJ,
+  
+  % 3. Ms Carpenter says she is not the plumber.
+  CarpenterT #<=> CarpenterN #!= PlumberJ,
+  
+  % 4. Ms Plumber says she is not the carpenter.
+  PlumberT #<=> PlumberN #!= CarpenterJ,
+
+  % Exactly [coffee stain] of the four statements are true. Who is the driver? (One of the
+  % editors apologizes for spilling coﬀee on the page, but we are sure the question used
+  % to have a unique answer!)
+  NumTrue #= sum(T).
