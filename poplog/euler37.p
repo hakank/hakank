@@ -31,30 +31,30 @@ define is_prime(n);
     if n mod 2 = 0 then
         return(false);
     endif;
-    for i from 3 by 2 to round(sqrt(n))+1 do
+    fast_for i from 3 by 2 to round(sqrt(n))+1 do
         if n mod i = 0 then
             return(false);
         endif;
-    endfor;
+    endfast_for;
     return(true);
 enddefine;
 
-newmemo(is_prime,1000)->is_prime;
+newmemo(is_prime,100)->is_prime;
 
 define check2(n);
    lvars L = n.unpackitem;
    lvars i;
-   for i on L do 
+   fast_for i on L do 
        if not(is_prime(i.packitem)) then
            return(false);
        endif;
-   endfor;
+   endfast_for;
 
-   for i on rev(L) do 
+   fast_for i on rev(L) do 
        if not(is_prime(rev(i).packitem)) then
            return(false);
        endif;
-   endfor;
+   endfast_for;
 
    return(true);
 
@@ -70,7 +70,7 @@ define problem37;
     while c < 11 do
         if is_prime(p) then
             if check2(p) then
-                c+1->c;
+                c + 1->c;
                 ;;; [p ^p]=>
                 sum+p->sum;
             endif;
@@ -85,5 +85,6 @@ enddefine;
 
 'problem37()'=>
 problem37();
+timediff();
 
 

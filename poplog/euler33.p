@@ -33,7 +33,7 @@ define problem33;
             if floor(x)=x and 1.0*y/z < 1 and x < 10 then
                 s*y/z->s;
                 ;;; [^x ^y ^z ^(floor(10*y+x)) / ^(floor(z+10*x)) ^y / ^z]=>;
-                printf('x:%p y:%p z:%p %p/%p %p/%p  (s:%p)\n', [^x ^y ^z ^(floor(10*y+x)) ^(floor(z+10*x)) ^y ^z ^s]);
+                ;;; printf('x:%p y:%p z:%p %p/%p %p/%p  (s:%p)\n', [^x ^y ^z ^(floor(10*y+x)) ^(floor(z+10*x)) ^y ^z ^s]);
                 
             endif;
         endfor;

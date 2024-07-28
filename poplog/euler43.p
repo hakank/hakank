@@ -218,7 +218,7 @@ enddefine;
 ;;; This use the permutations lib from
 ;;; http://users.sussex.ac.uk/~davidy/poplog/permutations.p
 ;;; which should be download and put somewhere relevant
-;;; This takes about 3.36s (and is thus slower than problem43c).
+;;; This takes about 1.45s (and is thus faster than problem43c).
 ;;;
 define problem43d;
     lib permutations;
@@ -274,12 +274,12 @@ enddefine;
 ;;; problem43b();
 ;;; timediff()=>;
 
-'problem43c()'=>
-problem43c();
-timediff()=>;
-
-;;; 'problem43d()'=>
-;;; problem43d();
+;;; 'problem43c()'=>
+;;; problem43c();
 ;;; timediff()=>;
+
+'problem43d()'=>
+problem43d();
+timediff()=>;
 
 

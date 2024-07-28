@@ -33,7 +33,8 @@ define problem9();
         for b from 1 to c do 
             for a from 1 to b do 
                 if a+b+c=1000 and is_pyth(a,b,c) then 
-                    [^(a * b * c) ^a ^b ^c] 
+                    ;;; [^(a * b * c) ^a ^b ^c]
+                    a * b * c
                 endif 
             endfor 
         endfor 
@@ -44,3 +45,4 @@ enddefine;
 
 'problem9()'=>
 problem9();
+timediff();

@@ -13,7 +13,7 @@
 
 
 */
-compile('/home/hakank/Poplib/init.p');
+;compile('/home/hakank/Poplib/init.p');
 
 
 define divisors(n);
@@ -79,7 +79,7 @@ enddefine;
 ;;;
 ;;; Simpler version: loop until the last prime is detected
 ;;;
-define problem3();
+define problem3a();
 
     lvars last;
     lvars n = 600851475143;
@@ -100,8 +100,19 @@ define problem3b();
    last(f)=>
 enddefine;
 
-;;; 'problem3()'=>
-;;; problem3();
+define problem3c();
+   factors(600851475143).last
+enddefine;
 
-'problem3b()'=>
-problem3b()=>;
+
+;;; 'problem3a()'=>
+;;; problem3a();
+;;; timediff()=>;
+
+;;; 'problem3b()'=>
+;;; problem3b()=>;
+;;; timediff()=>;
+
+'problem3c()'=>
+problem3c()=>;
+timediff()=>;

@@ -74,23 +74,23 @@ define problem27;
     lvars t=999, bestLen=0;
     lvars besta=0, bestb=0;
     lvars a,b;
-    for a from -t to t do
-        for b from -t to t do
+    fast_for a from -t to t do
+        fast_for b from -t to t do
             lvars len = p(a,b);
             if len > bestLen then
                 len->bestLen;
                 a->besta;
                 b->bestb;
             endif;
-        endfor;
-    endfor;
+        endfast_for;
+    endfast_for;
 
-    [besta ^besta bestb ^bestb bestLen ^bestLen answer: ^(besta*bestb)]=>;
+    ;;; [besta ^besta bestb ^bestb bestLen ^bestLen answer: ^(besta*bestb)]=>;
+    besta*bestb=>;
 
 enddefine;
 
 
 'problem27()'=>
 problem27();
-
-
+timediff()=>;

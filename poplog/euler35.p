@@ -26,14 +26,15 @@ define is_prime(n);
     if n mod 2 = 0 then
         return(false);
     endif;
-    for i from 3 by 2 to round(sqrt(n))+1 do
+    fast_for i from 3 by 2 to round(sqrt(n))+1 do
         if n mod i = 0 then
             return(false);
         endif;
-    endfor;
+    endfast_for;
     return(true);
 enddefine;
 
+newmemo(is_prime, 10000)->is_prime;
 
 define rotate(L);
     tl(L) <> [%hd(L)%]
@@ -60,25 +61,25 @@ define problem35;
         ;;; lvars len = length(p2);
         lvars check = true;
         lvars d;
-        for d in p2 do
+        fast_for d in p2 do
             if fast_lmember(d, ps2) then
                 false->check;
-                quitloop;
+                quitloop(1);
             endif;
-        endfor;
+        endfast_for;
 
         if check then
             ;;; OK, now we can rotate the list
             lvars len = length(p2);
             lvars i;
-            for i from 1 to len-1 do
+            fast_for i from 1 to len-1 do
                 p2.rotate->p2;
                 lvars p3=p2.packitem;
                 if not(is_prime(p3)) then
                     false->check;
                     quitloop(1);
                 endif;
-            endfor;
+            endfast_for;
             if check then 
                 sum+1->sum;
             endif;
@@ -94,5 +95,5 @@ enddefine;
 
 'problem35()'=>
 problem35();
-
+timediff()=>;
 

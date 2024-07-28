@@ -30,8 +30,10 @@ define problem6();
    applist(0, [%applist(list, procedure(n); n*n endprocedure)%], nonop +) -> sum_squares;
    applist(0, list, nonop +)**2 -> squares_sum;
    (squares_sum - sum_squares) -> sdiff;
-   [^squares_sum - ^sum_squares = ^sdiff]=>;
+   ;;; [^squares_sum - ^sum_squares = ^sdiff]=>;
+   sdiff;
 enddefine;
 
 'problem6()'=>
-problem6();
+problem6()=>;
+timediff()=>;
