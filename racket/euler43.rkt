@@ -1,0 +1,167 @@
+#|
+  Euler #43 in Racket
+
+  """
+  The number, 1406357289, is a 0 to 9 pandigital number because it is made up of 
+  each of the digits 0 to 9 in some order, but it also has a rather interesting 
+  sub-string divisibility property.
+  
+  Let d1 be the 1st digit, d2 be the 2nd digit, and so on. In this way, we 
+  note the following:
+  
+      * d2d3d4=406 is divisible by 2
+      * d3d4d5=063 is divisible by 3
+      * d4d5d6=635 is divisible by 5
+      * d5d6d7=357 is divisible by 7
+      * d6d7d8=572 is divisible by 11
+      * d7d8d9=728 is divisible by 13
+      * d8d9d10=289 is divisible by 17
+  
+  Find the sum of all 0 to 9 pandigital numbers with this property.
+  ""
+
+  TODO: Too slow: 3.7s.
+
+  This Racket program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Racket page: http://www.hakank.org/racket/
+
+|#
+
+#lang racket
+
+(provide (all-defined-out))
+
+(require (except-in math/number-theory permutations))
+;;; (require racket/generator)
+
+;;; (require racket/trace)
+
+(require "utils_hakank.rkt")
+
+(define (check43a n)
+  (let ([ps '(2 3 5 7 11 13 17)])
+    (let ([nums (number->digits n)])
+    (for/and ([p ps]
+              [c (chunks-of (drop nums 1) 3)])
+      (= (modulo (digits->number c) p) 0)
+      )
+    ))
+  )
+
+;;; Way too slow!
+;;; cpu time: 7826 real time: 7836 gc time: 115
+(define (euler43a)
+   (for/sum ([p (in-permutations (range 0 10))]
+               #:do [(define n (digits->number p))]
+               #:when (and (not (= (first p) 0) ) (check43a n) (writeln p))
+               )
+    n)
+  )
+
+;;; Using vector-permutation
+;;; Slower 
+;;; cpu time: 8847 real time: 8855 gc time: 107
+(define (euler43b)
+  (let* ([n 10]
+         [lst (range n)]
+         [f (factorial n)]
+         [p-orig (list->vector lst)]
+         [p-prev p-orig]
+         [p p-orig]
+         [rev-p (list->vector (reverse (vector->list p-orig)))])
+    (for/sum ([i (range f)]
+              #:break (equal? p rev-p)               
+              #:do [(set! p-prev p)
+                    (define num (vector->number p-prev))
+                    (set! p (vector-next-permutation p))]
+              #:when (and (not (= (vector-ref p 0) 0) ) (check43a num))
+              )
+      num)
+   )
+  
+  )
+
+;;; Skipping the chunks-of from check43a
+;;; But still too slow!
+(define (check43c n)
+  (let* ([ps '(2 3 5 7 11 13 17)]
+         [nums (number->digits n)]
+         [len (length ps)])
+    (for/and ([p ps]
+              [c (range 1 (add1 len)) ])
+      (let ([c-list (for/list ([cc (range 3)])
+                      (list-ref nums (+ c cc)))])
+        (= (modulo (digits->number c-list)
+                 p) 0
+           ) ))
+    ))
+
+(define (check43c-2 n)
+  (let* ([ps '(2 3 5 7 11 13 17)]
+         [nums (number->digits n)]
+         [len (length ps)])
+    (for/and ([p ps]
+              [c (range 1 (add1 len)) ])
+      (= (modulo (digits->number (for/list ([cc (range 3)])
+                      (list-ref nums (+ c cc))))
+                 p) 0)
+      )
+    )
+    )
+
+;;; Faster by replacing (digits->number ...) to (+ ...)
+(define (check43c-3 n)
+  (let* ([ps '(2 3 5 7 11 13 17)]
+         [nums (number->digits n)]
+         [len (length ps)])
+    (for/and ([p ps]
+              [c (range 1 (add1 len)) ])
+      (= (modulo (+ (* 100 (list-ref nums (+ c 0 )))
+                    (* 10 (list-ref nums (+ c 1 )))
+                    (list-ref nums (+ c 2 )))
+                 p) 0)
+      )
+    )
+  )
+
+;;; cpu time: 3760 real time: 3760 gc time: 98
+(define (euler43c)
+   (for/sum ([p (in-permutations (range 0 10))]
+               #:do [(define n (digits->number p))]
+               #:when (and (not (= (first p) 0) ) (check43c-3 n))
+               )
+    n)
+  )
+
+
+
+;;; Just summing takes 3.8s
+;;; But using math's permutations is faster: 2.651s
+;; (define (test)
+;;   (let* ([n 10]
+;;          [lst (range n)]
+;;          [f (factorial n)]
+;;          [p-orig (list->vector lst)]
+;;          [p-prev p-orig]
+;;          [p p-orig]
+;;          [rev-p (list->vector (reverse (vector->list p-orig)))])
+;;     (for/sum ([i (range f)]
+;;               #:break (equal? p rev-p)               
+;;               #:do [(set! p-prev p)
+;;                     (define num (vector->number p-prev))
+;;                     (set! p (vector-next-permutation p))]
+;;               )
+;;       ;;; (writeln (list p num "OK"))
+;;       num)
+;;    )
+;;   )
+
+(define (run)
+  ;;; (time-function euler43a)
+  ;;; (time-function euler43b)
+  (time-function euler43c)
+
+  ;;; (time-function test)
+  )
+
+(run)
