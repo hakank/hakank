@@ -51,8 +51,31 @@
     d)
   )
 
+;;; Rearranging #:when's and #:do's
+;;; and just one sort (which is the real booster)
+;;; cpu time: 126 real time: 126 gc time: 0
+(define (euler44b)
+  (let* ([t (for/hash ([n (range 1 2501)])
+              (values (pentagonal-number n) 1)  )]
+         [d 10000000]
+         [hs (sort (hash-keys t) >)])
+    (for* ([j hs]
+           [k hs]
+           #:when (< j k)           
+           #:do [(define a (+ j k))]
+           #:when (and (< a d)
+                       (hash-has-key? t a))
+           #:do [(define b (abs (- j k)))]
+           #:when (and (< b d)
+                       (hash-has-key? t b)
+                       ))
+           (set! d b))
+    d)
+  )
+
 (define (run)
-  (time-function euler44a)
+  ;;; (time-function euler44a)
+  (time-function euler44b)  
   )
 
 (run)
