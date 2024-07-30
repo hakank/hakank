@@ -153,31 +153,43 @@
   )
 
 
-(define (check-perm p a b c m)
+(define (check-perm1 p a b c m)
   (= (modulo (+ (* 100 (list-ref p a ))
                 (* 10 (list-ref p b ))
                 (list-ref p c))
              m) 0)
   )
 
+(define (check-perm perm)
+  (let* ([ps '(17 13 11 7 5 3 2)]
+         [len (length ps)])
+    (for/and ([p ps]
+              [c (range len 0 -1)])
+      (check-perm1 perm (+ c 0) (+ c 1) (+ c 2) p)
+      )
+    )
+  
+  )
+
 ;;; Faster than euler43c, but less neat.
-;;; cpu time: 2736 real time: 2740 gc time: 75
+;;; Ah, skipping converting to number until it's a valid number
+;;; is much faster.
+;;; cpu time: 398 real time: 398 gc time: 30
 (define (euler43d)
-  (for/sum ([p (in-permutations (range 0 10))] 
-            #:do [(define n (digits->number p))]
+  (for/sum ([p (in-permutations (range 0 10))]
             #:when (and
                     (> (first p) 0)
-                    (check-perm p 7 8 9 17)
-                    (check-perm p 6 7 8 13)
-                    (check-perm p 5 6 7 11)
-                    (check-perm p 4 5 6 7)
-                    (check-perm p 3 4 5 5)
-                    (check-perm p 2 3 4 3)
-                    (check-perm p 1 2 3 2)
-                    ;;; (check43d-1 n)
+                    (check-perm1 p 7 8 9 17)
+                    (check-perm1 p 6 7 8 13)
+                    (check-perm1 p 5 6 7 11)
+                    (check-perm1 p 4 5 6 7)
+                    (check-perm1 p 3 4 5 5)
+                    (check-perm1 p 2 3 4 3)
+                    (check-perm1 p 1 2 3 2)
+                    ;;; (check-perm p) ; slower: 0.524s
                     )
             )
-    n)
+    (digits->number p))
   )
 
 
