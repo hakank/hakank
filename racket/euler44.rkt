@@ -15,8 +15,6 @@
   is the value of D?  
   """
 
-  TODO: A little too slow.
-
   This Racket program was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Racket page: http://www.hakank.org/racket/
 
@@ -26,10 +24,12 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
-;;; (require racket/trace)
+(require (only-in math/number-theory
+                  pentagonal-number))
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; A little too slow
 ;;; cpu time: 1134 real time: 1136 gc time: 90

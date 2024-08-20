@@ -19,8 +19,11 @@
 
 ;; #lang racket/base
 
-(require math)  ;;; for sum
-(require "utils_hakank.rkt")
+(require (only-in math
+                  sum))
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; 0s total time 1.03s
 (define (euler1a)
@@ -59,6 +62,14 @@
 
 (define (run)
   (time-function euler1a)
+  ;; (time-function euler1b)
+  ;; (time-function euler1c)
+  ;; (time-function euler1d)
+  ;; (time-function euler1e)
+  )
+
+(define (run2)
+  (euler1a)
   ;; (time-function euler1b)
   ;; (time-function euler1c)
   ;; (time-function euler1d)

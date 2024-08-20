@@ -24,10 +24,12 @@
 
 (provide (all-defined-out))
 
-(require racket/trace)
+;;; (require racket/trace)
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function in-range1
+                  ))
 
 ;;
 ;;; This is a port of my Common Lisp program euler17.lisp
@@ -61,11 +63,11 @@
 (define (spell n)
   (cond
     [(= n 0) ""]
-    [(in-range n 1 9)
+    [(in-range1 n 1 9)
      ( digits n)]
-    [(in-range n 10 19)
+    [(in-range1 n 10 19)
      (teens n)]
-    [(in-range n 20 99)
+    [(in-range1 n 20 99)
      (let* (
             [d (* 10 (floor (/ n 10)))]
             [ten (tens d)]
@@ -77,7 +79,7 @@
            )
        )
      ]
-    [(in-range n 100 999)
+    [(in-range1 n 100 999)
      (let* ( [hundred (floor (/ n 100))]
              [hundred1 (digits hundred)]
              [m (modulo n 100)]

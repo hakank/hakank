@@ -27,7 +27,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 (define (coins cs money m)
   (if (<= money 0)

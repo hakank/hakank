@@ -23,10 +23,15 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math/number-theory
+                  prime?
+                  ))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function digits->number slice number->digits
+                  integer-length2 div
+                  ))
 
 (define (truncate-number ds)
   (let ([len (length ds)]
@@ -96,16 +101,56 @@
                           (set! checked #t))
                         (set! checked #f))
                     ]
-              #:when (equal? #t checked)
-              )
+              #:when (equal? #t checked))
+      n)
+    )
+  )
+
+;;; Simpler than euler37b, but not faster
+;;; cpu time: 532 real time: 532 gc time: 85
+(define (euler37c)
+  (let ([c 0])
+    (for/sum ([n (in-naturals 11)]
+              #:break (= c 11)
+              #:when (check37-b n))
+      (set! c (add1 c))
+      n)
+    )
+  )
+
+(define (check37-d n)
+  (let ([len (integer-length2 n)]
+        [ok #t])
+    (for* ([i (range 1 len)])
+      (let ([e (expt 10 i)])
+        (when (or (not (prime? (modulo n e)))
+                  (not (prime? (div n e))) )
+          (set! ok #f))
+        )
+      )
+    (equal? ok #t))
+  )
+
+;;; Faster then euler37b
+;;; cpu time: 257 real time: 257 gc time: 86
+(define (euler37d)
+  (let ([c 0])
+    (for/sum ([n (in-naturals 11)]
+              #:break (= c 11)
+              #:when (and (prime? n)
+                          (check37-d n)))
+      (set! c (add1 c))
       n)
     )
   )
 
 
+
 (define (run)
   ;;; (time-function euler37a)
-  (time-function euler37b)
+  ;;; (time-function euler37b)
+  ;;; (time-function euler37c)
+  (time-function euler37d) 
   )
 
 (run)

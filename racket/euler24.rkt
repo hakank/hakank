@@ -23,10 +23,16 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
-(require racket/trace)
+(require (only-in math/number-theory
+                  factorial
+                  ))
+;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function digits->number permutations-numbers-lex
+                  vector->number vector-next-permutation list<=?
+                  div
+                  ))
 
 ;;;
 ;;; From https://rosettacode.org/wiki/Permutations#Racket

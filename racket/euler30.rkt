@@ -29,7 +29,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-sum number->digits
+                  ))
 
 ;;; cpu time: 132 real time: 132 gc time: 36
 (define (euler30a)

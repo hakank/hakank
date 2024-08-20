@@ -49,7 +49,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-ref2d
+                  ))
 
 (define *tri* '((75) 
                 (95 64) 

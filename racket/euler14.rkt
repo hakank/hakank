@@ -34,7 +34,9 @@
 ;;; (require math/number-theory)
 ;;; (require memoize)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 (define (collatz n)
   (if (= (modulo n 2) 0)

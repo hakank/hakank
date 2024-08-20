@@ -24,7 +24,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-sum palindromic?
+                  ))
 
 ;;; cpu time: 261 real time: 261 gc time: 98
 (define (euler36a)

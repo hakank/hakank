@@ -32,10 +32,14 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math/number-theory
+                  prime?
+                  ))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;;
 ;;; This is a port of my Picat program in euler26.pi

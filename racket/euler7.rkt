@@ -18,9 +18,13 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math
+                  sum nth-prime next-prime
+         ))
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;; Note: The first call takes a little longer, assumingly to load the stuff in the math package.
 ;; So time the functions separately

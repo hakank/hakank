@@ -33,7 +33,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-sum
+                  ))
 
 (define (get-abundant)
   (let* ([limit 20161]
@@ -63,15 +65,33 @@
         (vector-set! arr (+ a b) 0)
         )
       )
-    
     (for/sum ([i (range 1 limit)]
               #:when (> (vector-ref arr i) 0))
       i)
     )
   )
 
+;;; A little slower than euler23a
+;;; cpu time: 213 real time: 223 gc time: 0
+(define (euler23b)
+  (let* ([limit (add1 20161)]
+         [t (get-abundant)]
+         [arr (first t)]
+         [abundant (second t)])
+    (for* ([a abundant]
+           [b abundant])
+      (when (< (+ a b) limit)
+        (vector-set! arr (+ a b) 0)
+        )
+      )
+    
+     (list-sum (filter (lambda (i) (> (vector-ref arr i) 0)) (range 1 limit)))
+    )
+  )
+
 (define (run)
   (time-function euler23a)
+  ;;; (time-function euler23b)  
   )
 
 (run)

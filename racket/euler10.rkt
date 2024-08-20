@@ -20,7 +20,9 @@
 ;;; Why doesn't math/number-theory have a primes function?
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                 time-function primes list-sum
+                 ))
 
 ;;; Not bad at all...
 ;;; cpu time: 75 real time: 75 gc time: 14

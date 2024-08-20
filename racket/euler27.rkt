@@ -38,10 +38,14 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math/number-theory
+                  prime?
+                  ))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; This works but it's way too messy and too slow
 ;;; cpu time: 1301 real time: 1302 gc time: 911

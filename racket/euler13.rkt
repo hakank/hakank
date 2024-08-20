@@ -22,7 +22,9 @@
 
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 (define *nums*
   '(37107287533902102798797998220837590246510135740250 

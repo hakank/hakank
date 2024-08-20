@@ -20,7 +20,9 @@
 
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  list-sum time-function number->digits
+                  ))
 
 (define (euler16a)
   (list-sum (number->digits (expt 2 1000)))

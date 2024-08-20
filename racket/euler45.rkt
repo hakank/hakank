@@ -22,10 +22,14 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
+(require (only-in math/number-theory
+                  triangle-number pentagonal-number hexagonal-number
+                  ))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; cpu time: 359 real time: 360 gc time: 6
 (define (euler45a)

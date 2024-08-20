@@ -27,9 +27,11 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-sum amicable
+                  ))
 
-;;; cpu time: 108 real time: 108 gc time: 48
+;;; cpu time: 65 real time: 65 gc time: 5
 (define (euler21a)
   (list-sum (for/list ([n (range 1 10000)]
              #:when (amicable n))

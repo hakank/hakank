@@ -25,7 +25,10 @@
 
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function chunks-of list-product list-transpose
+                  list-ref2d
+                  ))
 
 (define *grid*
   '((08 02 22 97 38 15 00 40 00 75 04 05 07 78 52 12 50 77 91 08) 

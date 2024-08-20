@@ -34,15 +34,13 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math/number-theory
+                  divisors triangle-number
+                  ))
 
-(require "utils_hakank.rkt")
-
-;;; Already defined in the math package
-;; (define (triangle-number n)
-;;   (for/sum ([i (range 1 (add1 n))])
-;;     i)
-;;   )
+(require (only-in "utils_hakank.rkt"
+                  time-function num-divisors
+                  ))
 
 ;;; Not too bad
 ;;; cpu time: 440 real time: 441 gc time: 26
@@ -57,15 +55,29 @@
 (define (euler12b)
   (let ([tnum 0])
     (for/first ([n (in-naturals 1)]
-                #:do [(set! tnum (+ tnum n))]
+                #:do [(set! tnum (+ tnum n))]                
                 #:when (> (length (divisors tnum)) 500))
       tnum)
     )
   )
 
+;; Triangle number 
+(define (tri n)
+  (/ (* n (add1 n)) 2))
+
+
+;;; A little faster than euler12b
+;;; cpu time: 246 real time: 259 gc time: 13
+(define (euler12c)
+  (for/first ([n (in-naturals 1)]
+              #:when (> (num-divisors (tri n)) 500))
+    (tri n))
+  )
+
 (define (run)
   ;;; (time-function euler12a)
-  (time-function euler12b)
+  ;;; (time-function euler12b)
+  (time-function euler12c)  
   )
 
 (run)

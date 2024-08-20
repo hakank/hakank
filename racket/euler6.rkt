@@ -25,9 +25,13 @@
 
 (provide (all-defined-out))
 
-(require math)
+(require (only-in math
+                  sum
+                  ))
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; cpu time: 0 real time: 0 gc time: 0
 (define (euler6a)

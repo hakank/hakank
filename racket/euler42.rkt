@@ -27,10 +27,13 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
-;;; (require racket/trace)
+(require (only-in math/number-theory
+                  triangle-number
+                  ))
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 (define (conv-word word)
   (for/sum ([c word])

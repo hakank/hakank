@@ -26,7 +26,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function integer-length2
+                  ))
 
 ;;; A little too slow...
 ;;; cpu time: 325 real time: 325 gc time: 168
@@ -46,7 +48,7 @@
     (for/last ([i (in-naturals 1)]
                ;;; Order matters...
                #:break (> s (add1 max-len))
-               #:do [(set! s (+ s (integer-length i))) ])
+               #:do [(set! s (+ s (integer-length2 i))) ])
       i)
     )
   )

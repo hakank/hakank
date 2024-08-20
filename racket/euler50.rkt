@@ -24,10 +24,13 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
-;;; (require racket/trace)
+(require (only-in math/number-theory
+                  prime? next-primes
+                  ))
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-sum primes
+                  ))
 
 ;;; Too slow!
 ;;; cpu time: 1418 real time: 1420 gc time: 30

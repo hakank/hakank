@@ -23,7 +23,9 @@
 
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;; cpu time: 67 real time: 67 gc time: 0
 (define (euler9a)

@@ -21,7 +21,9 @@
 
 ;;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-product
+                  ))
 
 ;;; cpu time: 0 real time: 0 gc time: 0
 (define (euler15a)

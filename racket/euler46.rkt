@@ -29,10 +29,13 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
+(require (only-in math/number-theory
+                  prime?))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; A little too messy
 ;;; cpu time: 21 real time: 21 gc time: 2

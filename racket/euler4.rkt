@@ -18,9 +18,11 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+;; (require math/number-theory)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function palindromic?
+                  ))
 
 ;;; cpu time: 74 real time: 74 gc time: 11
 (define (euler4a)

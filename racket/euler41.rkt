@@ -19,9 +19,10 @@
 (provide (all-defined-out))
 
 (require (only-in  math/number-theory prime?))
-;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt" 
+                  time-function digits->number permutations-numbers-lex
+                  ))
 
 ;;; Simplification:
 ;;; n=9 is not possible since 1+2+3+4+5+6+7+8+9=45 is divisible by 3

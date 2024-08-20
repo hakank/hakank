@@ -23,8 +23,13 @@
 (provide (all-defined-out))
 
 ;; #lang racket/base
-(require "utils_hakank.rkt")
-(require math)  ;;; for fibonacci and sum
+(require (only-in math
+                  fibonacci sum
+                  ))  ;;; for fibonacci and sum
+
+(require (only-in "utils_hakank.rkt"
+                  time-function my-fib
+                  ))
 
 ;;; (require racket/list) ;;; Not needed. #lang racket fast enough.
 

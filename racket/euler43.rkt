@@ -20,8 +20,6 @@
   Find the sum of all 0 to 9 pandigital numbers with this property.
   ""
 
-  TODO: Too slow: 3.7s.
-
   This Racket program was created by Hakan Kjellerstrand, hakank@gmail.com
   See also my Racket page: http://www.hakank.org/racket/
 
@@ -31,12 +29,13 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
-;;; (require racket/generator)
+(require (only-in math/number-theory
+                  factorial))
 
-;;; (require racket/trace)
-
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function number->digits chunks-of digits->number
+                  vector->number vector-next-permutation 
+                  ))
 
 (define (check43a n)
   (let ([ps '(2 3 5 7 11 13 17)])
@@ -154,11 +153,11 @@
 
 
 (define (check-perm1 p a b c m)
-  (= (modulo (+ (* 100 (list-ref p a ))
-                (* 10 (list-ref p b ))
-                (list-ref p c))
-             m) 0)
-  )
+  (zero? (modulo (+ (* 100 (list-ref p a))
+                    (* 10 (list-ref p b))
+                    (list-ref p c))
+                 m)))
+
 
 (define (check-perm perm)
   (let* ([ps '(17 13 11 7 5 3 2)]
@@ -172,7 +171,7 @@
   )
 
 ;;; Faster than euler43c, but less neat.
-;;; Ah, skipping converting to number until it's a valid number
+;;; Ah, skipping converting to number until it's a valid permutation
 ;;; is much faster.
 ;;; cpu time: 398 real time: 398 gc time: 30
 (define (euler43d)
@@ -193,35 +192,12 @@
   )
 
 
-;;; Just summing takes 3.8s
-;;; But using math's permutations is faster: 2.651s
-;; (define (test)
-;;   (let* ([n 10]
-;;          [lst (range n)]
-;;          [f (factorial n)]
-;;          [p-orig (list->vector lst)]
-;;          [p-prev p-orig]
-;;          [p p-orig]
-;;          [rev-p (list->vector (reverse (vector->list p-orig)))])
-;;     (for/sum ([i (range f)]
-;;               #:break (equal? p rev-p)               
-;;               #:do [(set! p-prev p)
-;;                     (define num (vector->number p-prev))
-;;                     (set! p (vector-next-permutation p))]
-;;               )
-;;       ;;; (writeln (list p num "OK"))
-;;       num)
-;;    )
-;;   )
-
 (define (run)
   ;;; (time-function euler43a)
   ;;; (time-function euler43b)
   ;;; (time-function euler43c)
-
   (time-function euler43d)
 
-  ;;; (time-function test)
   )
 
 (run)

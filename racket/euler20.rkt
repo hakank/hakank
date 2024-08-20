@@ -17,10 +17,14 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math/number-theory
+                  factorial
+                  ))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function list-sum number->digits
+                  ))
 
 ;;; cpu time: 0 real time: 0 gc time: 0
 (define (euler20a)

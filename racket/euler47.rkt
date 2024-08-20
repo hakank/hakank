@@ -27,10 +27,12 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
+;;; (require (except-in math/number-theory permutations))
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function vector-slice
+                  ))
 
 ;;; cpu time: 40 real time: 40 gc time: 7
 (define (euler47a)

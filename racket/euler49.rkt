@@ -22,10 +22,12 @@
 
 (provide (all-defined-out))
 
-(require (except-in math/number-theory permutations))
-;;; (require racket/trace)
+(require (only-in math/number-theory
+                  prime?))
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 (define (char-list->string lst)
   (map (lambda (cs) (apply string cs)) lst)

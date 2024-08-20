@@ -109,15 +109,16 @@
 ;;; (integer-length n)
 ;;; Return the length of integer n.
 ;;;
-(define (integer-length n)
+(define (integer-length2 n)
     (+ 1 (floor (/ (log n) (log 10))))
   )
 
 ;;;
-;;; (in-range n from to)
-;;; Checks if n in in the range from,,to (including)
+;;; (in-range1 n from to)
+;;; Checks if n in in the range from,,to (including).
+;;; The built-in has the range to as excluding
 ;;;
-(define (in-range n from to)
+(define (in-range1 n from to)
   (and (>= n from) (<= n to)))
 
 ;;; Convenience form of (floor (/ ...))
@@ -385,6 +386,16 @@
 (define (sum-proper-divisors n)
   (- (list-sum (divisors n)) n)
   )
+
+
+;;;
+;;; (num-divisors n)
+;;; Returns the number of divisors of n
+;;;
+(define (num-divisors n)
+  (apply *  (map (lambda (f) (add1 (second f))) (factorize n)))
+  )
+
 
 ;;;
 ;;; (amicable n)

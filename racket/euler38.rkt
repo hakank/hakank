@@ -34,7 +34,9 @@
 ;;; (require math/number-theory)
 ;;; (require racket/trace)
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function pandigital
+                  ))
 
 ;;; This is a port of my Picat program euler38.pi (euler38/0)
 ;;; A little too messy, though.

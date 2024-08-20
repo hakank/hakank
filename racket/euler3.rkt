@@ -16,12 +16,13 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
-;;; This is not faster
-;; (require (only-in math/number-theory
-;;                   factorize
-;;                   ))
-(require "utils_hakank.rkt")
+;;; (require math/number-theory)
+(require (only-in math/number-theory
+                  factorize prime?
+                  ))
+(require (only-in "utils_hakank.rkt"
+                  time-function
+                  ))
 
 ;;; cpu time: 26 real time: 26 gc time: 9
 (define (euler3a)

@@ -20,14 +20,19 @@
 
 (provide (all-defined-out))
 
-(require math/number-theory)
+(require (only-in math/number-theory
+                  prime?
+                  ))
+
 ;;; (require racket/trace)
 ;;; (require memoize) 
 
 ;;; This seems to be too messy 
 ;;; (require seq/base) ;;; https://docs.racket-lang.org/seq/  Must be installed
 
-(require "utils_hakank.rkt")
+(require (only-in "utils_hakank.rkt"
+                  time-function digits->number rotate primes number->digits
+                  ))
 
 (define (check35 digits ht)
   (let ([len (length digits)])
