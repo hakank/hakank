@@ -1,6 +1,6 @@
 #| 
 
-  Intelligence test in Racket Gamble.
+  Linear regression in Racket Gamble.
 
   (This is originally a WebPPL example (example/linearRegression.wppl) but translated via my 
   BLOG model linear_regression2.blog.)
@@ -99,6 +99,8 @@
                 #:truncate-output 4
                 #:skip-marginals? #t
                 #:credible-interval 0.94
+                #:credible-interval2 0.94
+                #:show-histogram? #t
                 )
 
 

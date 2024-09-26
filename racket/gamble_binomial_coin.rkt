@@ -75,7 +75,7 @@ Unfair coin: 0.543288604557029
 (require "gamble_utils.rkt")
 
 (define (binomial-coin)
-  (; enumerate ; Too slow (i.e. too large)
+  (; enumerate #:limit 0.05 ; Too slow (i.e. too large)
    ; rejection-sampler
    importance-sampler
    ; mh-sampler
@@ -85,10 +85,10 @@ Unfair coin: 0.543288604557029
    (define p-unfair 6/10)   
 
    ;; Using bernoulli
-   (define num-fair-heads (for/sum ([i (range N)])
+   (define num-fair-heads (for/sum ([i N])
                             (bernoulli p-fair)))
    
-   (define num-unfair-heads (for/sum ([i (range N)])
+   (define num-unfair-heads (for/sum ([i N])
                               (bernoulli p-unfair)))
    
    (list num-fair-heads

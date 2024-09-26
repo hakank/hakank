@@ -151,19 +151,17 @@
     (define mix1994ps (vector 30 20 20 10 10 10 0))
     (define mix1996ps (vector 13 14 13 20 16 0 24))
 
-    (define color0
-      (if (eq? mix0 "mix1994")
-          (categorical-vw2 mix1994ps colors)
-          (categorical-vw2 mix1996ps colors)))
+    (define color0 (if (eq? mix0 "mix1994")
+                       (categorical-vw2 mix1994ps colors)
+                       (categorical-vw2 mix1996ps colors)))
 
-    (define color1
-      (if (eq? mix1 "mix1994")
-      (categorical-vw2 mix1994ps colors)
-      (categorical-vw2 mix1996ps colors)))
-
+    (define color1 (if (eq? mix1 "mix1994")
+                       (categorical-vw2 mix1994ps colors)
+                       (categorical-vw2 mix1996ps colors)))
+    
     (observe/fail (eq? color0 "yellow"))
     (observe/fail (eq? color1 "green"))    
-      
+    
     (list mix0
           mix1
           color0

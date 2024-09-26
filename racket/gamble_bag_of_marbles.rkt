@@ -19,7 +19,7 @@
   This is a port of my WebPPL model bag_of_marbles.wppl
   
   As with the WebPPL model (as well as the cplint and PSI models), the
-  probabilitu of draw1 == white is a little different from the example: 
+  probability of draw1 == white is a little different from the example: 
   0.23529411764705882 (vs 0.235941). Perhaps a typo?
 
   var : draw0

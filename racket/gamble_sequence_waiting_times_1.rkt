@@ -116,11 +116,6 @@ mean: 5.9593657086223875
 (require racket)
 (require "gamble_utils.rkt")
 
-;; From hakank_utils.rkt
-(define (list-slice lst [offset 0] [n (- (length lst) offset)] )
-  (take (drop lst offset) n))
-
-
 (define (model pattern)
   (show "Pattern: " pattern)
   (; enumerate
@@ -154,7 +149,7 @@ mean: 5.9593657086223875
                 (list "len"
                       "a"
                       )
-                  #:num-samples 10000
+                  #:num-samples 100000
                   ; #:truncate-output 20
                   ; #:show-stats? #t
                   ; #:credible-interval 0.84

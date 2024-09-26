@@ -38,116 +38,47 @@
                   time-function
                   ))
 
+;; Optimized Collatz function
 (define (collatz n)
-  (if (= (modulo n 2) 0)
-      (/ n 2)
-      (+ (* n 3) 1))
-  )
+  (if (even? n)
+      (quotient n 2)
+      (+ (* n 3) 1)))
 
-;;; Using memoize
-;;; Much slower than "plain" collatz
-;;; cpu time: 10710 real time: 10727 gc time: 2331
-;; (define/memo (collatz n)
-;;   (if (= (modulo n 2) 0)
-;;       (/ n 2)
-;;       (+ (* n 3) 1))
-;;   )
-
-;; Slower
-(define (collatz-hash n h)
-  (if (hash-has-key? h n)
-      (hash-ref h n)
-      (let ([c (collatz n)])
-        (hash-set! h n c)
-        c)
-      )
-  )
-
-(define (collatz-list n)
-  (define (tmp n aux)
-    (cond [(= n 1) (cons 1 aux)]
-          [else (tmp (collatz n) (cons n aux))]
-          )
-    )
-  ;; (reverse (tmp n '()))
-  (tmp n '()) ; Skipping reverse
-  )
-
-(define (collatz-list-hash n h)
-  (define (tmp n aux h)
-    (cond [(= n 1) (cons 1 aux)]
-          [else (tmp (collatz-hash n h) (cons n aux) h)]
-          )
-    )
-  (tmp n '() h)
-  )
-
-
-;;; Too slow
-;;; cpu time: 5101 real time: 5101 gc time: 282
-;;; Skipping reverse in collatz-list
-;;; cpu time: 4436 real time: 4443 gc time: 267
-;;; Testing only odd numbers:
-;;; cpu time: 2427 real time: 2431 gc time: 231
-(define (euler14a)
-  (second (first (sort (for/list ([n (range 3 1000001 2)])
-                 (list (length (collatz-list n)) n)
-                 ) > #:key first)))
-  )
-
-;;; Much slower:
-;;; cpu time: 25181 real time: 25182 gc time: 338
-(define (euler14b)
-  (second (first (sort (for/list ([n (range 3 1000001 2)])
-                 (list (length (collatz-list-hash n (make-hash))) n)
-                 ) > #:key first)))
-  )
-
-;;;
-;;; This is a port of my longest_seq/1 function from the Picat program euler14.pi.
-;;; This concentrates only on the lengths of the sequences and uses a cache (lens).
-;;; 
-;;; Faster:
-;;; cpu time: 976 real time: 976 gc time: 105
+;; Main function to find the longest Collatz sequence
 (define (longest-seq limit)
-  (let ([lens (make-hash)]
-        [max-len 0]
-        [max-n 1]
-        )
-    ;;; Only checking the odd n's
-    (for ([n (range 3 (add1 limit) 2)])
-      (let ([m n]
-            [c-len 1])
-        (for ([t (in-naturals)]
-              #:break (= m 1)) ; we've reached the target
-          
-          ;;; Is m in cache?
-          (cond
-            [(hash-has-key? lens m) (set! c-len (sub1 (+ c-len (hash-ref lens m))))
-                                    (set! m 1)]
-            [else  (set! m (collatz m))
-                   (set! c-len (add1 c-len))]
-            ))
-        
-        ;;; Update for n
-        (hash-set! lens n c-len)
-        
-        ;;; Check/Update for max len
-        (when (> c-len max-len)
-          (set! max-len c-len)
-          (set! max-n n))))
-    max-n)
-  )
+  (define lens (make-vector limit 0))
+  (define max-len 0)
+  (define max-n 1)
+  
+  (for ([n (in-range 3 limit 2)])
+    (let ([m n]
+          [c-len 1])
+      (let loop ()
+        (cond
+          [(= m 1) (void)]
+          [(and (< m limit) (> (vector-ref lens m) 0))
+           (set! c-len (+ c-len (vector-ref lens m) -1))]
+          [else
+           (set! m (collatz m))
+           (set! c-len (add1 c-len))
+           (loop)]))
+      
+      (when (< n limit)
+        (vector-set! lens n c-len))
+      
+      (when (> c-len max-len)
+        (set! max-len c-len)
+        (set! max-n n))))
+  
+  max-n)
 
-(define (euler14c)
-  (longest-seq 1000001)
-  )
+;; Function to solve Euler problem 14
+(define (euler14a)
+  (longest-seq 1000001))
 
+;; Run and measure the time for the solution
 (define (run)
-  ;;; (time-function euler14a)
-  ;;;(time-function euler14b)
-  (time-function euler14c)
-  )
+  (time-function euler14a))
 
 (run)
 

@@ -17,6 +17,10 @@
 (require (for-syntax racket/base
                      syntax/parse))
 
+(require (only-in math/statistics
+                  quantile))
+
+
 ; Start: from Gamble's examples/forestdb/church-compat.rkt
 ; See gamble_schelling_coordination_game.rkt for an example.
 (define-syntax rejection-query
@@ -35,7 +39,11 @@
         (for/list ([v (discrete-dist-values dd)])
           (dist-pdf dd v))))
 
-(define (multinomial xs ws)
+; This was called multinomial earlier, but Gamble has multinomial-dist (but not multinomial for
+; some reason). Renaming to multinomial2 emphasises that it's special
+; Note that this returns a single value, in contrast to (multinomial-dist n vs) which
+; returns n values
+(define (multinomial2 xs ws)
   (discrete* xs ws))
 
 (define (all ls) (andmap values ls))
@@ -371,10 +379,13 @@
 
         
           (when show-percentiles?
-            (displayln "Percentiles::")
+            (displayln "Percentiles:")
             (if (list? show-percentiles?)
                 (show-percentiles this-sample show-percentiles?)
-                (show-percentiles this-sample)                  
+                (show-percentiles this-sample)
+                ;; TODO
+                ;; (show-percentiles vals weights show-percentiles?)
+                ;; (show-percentiles vals weights)                  
                 )
             )
         
@@ -384,11 +395,95 @@
             )
         
         (newline)
-        
         )
       )        
     )
   )
+
+
+
+#|
+  (get-probs model #:num-samples [num-samples 1000] #:ix [ix #f] #:float? [float? #f]
+  Returns a list of probabilities from the model model.
+  - #:ix: Only return the ix'th elements
+  - #:float?: Convert probabilities to floats
+
+  (Extracted from show-marginals)
+|#
+(define (get-probs model #:num-samples [num-samples 1000] #:ix [ix #f] #:float? [float? #f])
+  (let* ([res (if (discrete-dist? model) model (sampler->discrete-dist model num-samples))]
+         [vals (vector->list  (discrete-dist-values res))]
+         [weights (vector->list  (discrete-dist-weights res))]
+         [num-vars (length (first vals))]
+         [h (for/list ([i (range num-vars)]) (make-hash))])
+    ; Collect into hash h
+    (map (lambda (v w)
+           (for ([i (range num-vars)])
+             (let ([key (list-ref v i)])
+               ; update the i'th hash
+               (hash-update! (list-ref h i) key (lambda (val) (+ val w)) 0))))
+         vals weights)
+
+    ;; Loop through the variables and get all values and probabilities
+    ;; ordered by decreasing probability.
+    (define all '()) ; The output list
+    
+    (for ([i (range num-vars)])      
+      (let* ([this-hash  (list-ref h i)]
+             [this-hash-sorted (hash-sort this-hash >)]
+             [these-probs '()])
+        
+        ; Fetch all "key : probability"
+        (for ([j (length this-hash-sorted)])
+          (let* ([kv (list-ref this-hash-sorted j)]
+                 [key (car kv)]
+                 [prob (cdr kv)]
+                 )
+            (set! these-probs (append these-probs
+                                      (list (list key
+                                                  (if (and (exact? prob) float?)
+                                                      (exact->inexact prob)
+                                                      prob)
+                                                  ))))
+            )
+          )
+        (set! all (append all (list these-probs)))
+        )
+      )
+    (if ix 
+        (list (list-ref all ix))
+        all
+        )
+    )
+  )
+
+#|
+  (probs-mean probs)
+
+  Return the mean of a list of probabilitiy pairs (value probability),
+   e.g. from (get-probs model...).
+
+  Note: Only for numbers of booleans. Otherwise return #f
+
+|#
+(define (probs-mean probs)
+  (let ([first-val (first (first probs))])
+    (if (or (number? first-val) (boolean? first-val))
+        (let ([sum 0])
+          (for ([kp probs])
+            (let* ([k1 (first kp)]
+                   [k (if (boolean? k1) (boolean->integer k1) k1)]
+                   [p (second kp)])
+              (set! sum (+ sum (* k p)))
+              )
+            )
+          sum
+          )
+        #f ; not possible to get mean value of symbols, strings etc
+        )
+    )
+  )
+
 
 ;;
 ;; Returns the sort function for a certain type of list.
@@ -455,7 +550,7 @@
   This is a port of my WebPPL function histogram 
   (in node_modules/hakank_utils/hakank_utils.js).
 
-  Note: exact values are handed as symbolic values they are distinct.
+  Note: exact values are handed as symbolic values as they are distinct.
 |#
 (define (histogram values num_bins)
   (if (and (number? (first values))
@@ -581,7 +676,7 @@
    From https://en.wikipedia.org/wiki/Percentile
    Using Nearest rank method
 |#
-(define *default-percentile-ps* (list 0.01 0.1 0.025 0.25 0.5 0.75 0.84 0.9 0.975 0.99 0.999))
+(define *default-percentile-ps* (list 0.01 0.025 0.1 0.05 0.25 0.5 0.75 0.84 0.9 0.95 0.975 0.99 0.999))
 (define (percentiles values [ps *default-percentile-ps*])
   ; (show2 "percentiles values" values "ps" ps)
   (let* ([len (length values)]
@@ -596,11 +691,52 @@
     )
   )
 
+;; TODO! Use quantile from math/statistics instead
+;; (define (percentiles2 xs ws [ps *default-percentile-ps*])
+;;   ; (show2 "percentiles" xs ws ps)
+;;   (for/list ([p ps])
+;;     (list p (quantile p < (flatten xs) ws))
+;;   ))
+
+
 (define (show-percentiles values [ps *default-percentile-ps*])
   (for ([p (percentiles values ps)])
     (displayln p)
     )
   )
+
+;; TODO
+;; (define (show-percentiles values weights [ps *default-percentile-ps*])
+;;   (for ([p (percentiles2 values weights ps)])
+;;     (displayln p)
+;;     )
+;;   )
+
+#|
+  (dist-quantiles dist qs [n 1000])
+  Quantiles of a distribution based on samples
+  Returns the quantiles given by qs for the distribution dist.
+  The number of samples is n (default 1000).
+
+  Note: The disttribution should be defined in a lambda function, e.g.
+   (define qs '(0.001  0.01 0.02 0.05 0.10 0.25 0.50 0.75 0.90 0.95 0.98 0.99 0.999))
+   (dist-quantiles (lambda () (normal 100 15)) qs num-samples)
+
+  TODO: Use math/statistics/quantile instead?
+|#
+(define (dist-quantiles dist qs [n 1000])
+  (define (model)
+    (importance-sampler
+     (dist)
+     ))
+  (define s (make-samples (model) n))
+  ; (percentiles s qs)
+  (for/list ([q qs])
+    (list q (quantile q < s))
+    )
+  
+  )
+
 
 
 ;;;
@@ -674,6 +810,24 @@
 (define (samples-to-01 s)
   (map (lambda (v) (if v 1 0)) s))
 
+;;
+;; Returns num-samples from the model.
+;; * num-samples: the number of samples to return
+;; * ix: If the samples is a list, take the ix'th elements of each sample
+;; * num-internal-samples: for samplers, the number of samples to make a discrete-distribution from
+;;
+(define (make-samples model num-samples #:num-internal-samples [num-internal-samples 30] #:ix [ix #f] )
+  ; Handling a "pure" discrete model is a little different from handling a sampler model...
+  (let ([samples (if (discrete-dist? model)
+                     (repeat (lambda () (sample model)) num-samples)
+                     (repeat (lambda () (sample (sampler->discrete-dist model num-internal-samples))) num-samples)
+                     )])
+    (if (and ix (list? (first samples)))
+        (map (lambda (v) (list-ref v ix)) samples)
+        samples
+        )
+    )
+  ) 
 
 ;;
 ;; (show-stats samples)
@@ -703,9 +857,72 @@
     (/ s (length samples)))
   )
 
+
 ;; Standard deviation of samples
 (define (stddev samples)
   (sqrt (variance samples)))
+
+;;
+;; (correlation-coefficient1 a1  a2)
+;; Returns the correlation-coefficient1 of lists a1 and a2
+;;;
+
+;; (define (correlation-coefficient1 a1  a2)
+;;   (let ([len1 (length a1)]
+;;         [len2 (length a2)])
+    
+;;     ; Same length
+;;     (when (not (= len1 len2))
+;;         (error "As have different lengths!"))
+
+;;     (let ([n len1]
+;;           [sumX 0]
+;;           [sumY 0]
+;;           [sumXY 0]
+;;           [sumX2 0]
+;;           [sumY2 0])
+;;       (for ([x a1]
+;;             [y a2])
+;;         (set! sumX (+ sumX x))
+;;         (set! sumY (+ sumY y))        
+;;         (set! sumXY (+ sumXY (* x y)))
+;;         (set! sumX2 (+ sumX2 (* x x)))
+;;         (set! sumY2 (+ sumY2 (* y y)))
+;;         )
+;;       (let ([numer (- (* n sumXY) (* sumX sumY))]
+;;             [denom (sqrt (* (- (* n sumX2) (* sumX sumX))
+;;                             (- (* n sumY2) (* sumY sumY))))])
+;;         (/ numer denom)))))
+;;
+(define (correlation-coefficient a1  a2)
+  (define (loop a1 a2 n [sumX 0] [sumY 0] [sumXY 0] [sumX2 0] [sumY2 0])
+    (let ([len1 (length a1)]
+          [len2 (length a2)])
+      
+      ; Same length
+      (when (not (= len1 len2))
+        (error "As have different lengths!"))
+      
+      (if (null? a1)
+          ; calculate the correlation-coefficient
+          (let* ([numer (- (* n sumXY) (* sumX sumY))]
+                 [denom (sqrt (* (- (* n sumX2) (* sumX sumX))
+                                 (- (* n sumY2) (* sumY sumY))))])
+            (/ numer denom))
+          ; else: continue
+          (let ([x (first a1)]
+                [y (first a2)])
+            (loop (rest a1)
+                  (rest a2)
+                  n
+                  (+ sumX x)
+                  (+ sumY y)
+                  (+ sumXY (* x y))
+                  (+ sumX2 (* x x))
+                  (+ sumY2 (* y y)))))))
+
+  (loop a1 a2 (length a1))
+  ) 
 
 
 ;;;
@@ -728,7 +945,7 @@
 (define (collect lst)
   (let ([h (make-hash)])
     (for ([e lst])
-      (hash-update! h e add1 1)
+      (hash-update! h e add1 0)
       )
     h)
   )
@@ -862,3 +1079,286 @@
 (define (list-ref2d m i j)
   (list-ref (list-ref m i) j)
   )
+
+(define (vector-ref2d m i j)
+  (vector-ref (vector-ref m i) j)
+  )
+
+
+;;
+;; (ref-2d a b i)
+;; General approach: a and b are can be either a list or a vector
+;; Extract the value in a given the index of i'th value in b
+;;
+(define (ref-2d a b i)
+  (let* ([ix-b (if (list? b) (list-ref b i) (vector-ref b i))]
+         [val (if (list? a) (list-ref a ix-b) (vector-ref a ix-b))])
+    val
+    ))
+
+
+
+;;
+;; Given var:
+;;   Returns the probabilities of a distribution for the variable var
+;; Else:
+;;   Returns all probabilities as a list with (var prob)
+;;
+(define (get-probs-var dist (var #f))
+  (if var
+      (for/first (((v p) (in-dist dist))
+                  #:when (eq? var v))
+        p)
+      (for/list (((v p) (in-dist dist))) (list v p))
+      )
+  )
+
+
+
+;;
+;; Draw n elements from a without replacement
+;;
+(define (draw-without-replacement n a [res '()])
+  (if (or (= n 0) (null? a))
+      res
+      (let* ([d (uniform-draw a)]
+             [new-a (remove d a)])
+        (draw-without-replacement (sub1 n) new-a (append res (list d))))))
+
+;;
+;; Draw - with replacement - n elements from data.
+;;
+(define (resample n data) (for/list ([i n]) (uniform-draw data)))
+
+
+;; From hakank_utils.rkt (renamed to list-slice since there's already a slice in Gamble
+(define (list-slice lst [offset 0] [n (- (length lst) offset)] )
+  (take (drop lst offset) n))
+
+
+;;
+;; (take-last a n)
+;; Returns the the last n elements in list a
+;;
+(define (take-last a n)
+  (let* ([len (length a)]
+         [i (- len n)])
+    (if (>= i 0)
+        (list-slice a i)
+        a))
+  
+  )
+
+
+
+;;
+;; Return the differences of the consecutive values in the list lst
+;;
+;; The following does not work since it's uneven lengths:
+;;   (map - list (rest list))
+(define (differences lst)
+  (for/list ([i (range 1 (length lst))])
+    (- (list-ref lst i) (list-ref lst (sub1 i)))
+  ))
+
+;;
+;; Count the number of matching value val in the list lst
+;;
+(define (count-occurrences val lst)
+  (count (lambda (v) (= v val)) lst)
+  )
+
+(define (count-occurrences-eq val lst)
+  (count (lambda (v) (eq? v val)) lst)
+  )
+
+;;
+;; Count the number of matching sublists sub in the list lst
+;;
+(define (count-occurrences-sublist sub lst)
+  (let ([sub-len (length sub)])
+    (for/sum ([i (add1 (- (length lst) sub-len))])      
+      (boolean->integer (equal? (list-slice lst i sub-len) sub))
+      )
+    )
+  )
+
+;;
+;; (define (index-of-sub a sub)
+;; Return the first position that sub-list sub occurs in list a.
+;; If there is no such occurrence, return the length of a.
+;;
+(define (index-of-sub a sub)
+  (let* ([sub-len (length sub)]
+         [e (for/first ([i (add1 (- (length a) sub-len))]
+                        #:when (equal? (list-slice a i sub-len) sub))
+              i)])
+    (if e e (length a))
+    )
+  )
+   
+; (show "first-pos" (first-pos '("h" "h" "h" "h" "h" "t" "t" "h" "t") '("h" "t")))
+
+
+;;
+;; rounds the number v to the (1/c)'th decimal
+;;
+(define (roundf v c) (* (round (/ v c)) c))
+
+;;
+;; (simplex-list lst)
+;; (simplex-vector lst)
+;; Returns a list or vector with the values translated so the sum is 1
+;; 
+(define (simplex-list lst)     
+  (let ([s (sum lst)])
+    (for/list ([v lst]) (/ v s))))
+
+(define (simplex-vector lst)
+  (let ([s (sum lst)])
+    (for/vector ([v lst]) (/ v s))))
+
+
+(define (ones-list n val) (build-list n (const val)))
+(define (ones-vector n val) (build-vector n (const val)))
+
+(define (rep n v) (ones-list n v))
+
+; Racket already has argmax but it's not the one I want
+(define (argmax2 lst)
+  (index-of lst (apply max lst))
+  )
+
+(define (argmin2 lst)
+  (index-of lst (apply min lst))
+  )
+
+
+;;
+;; (flip-until-pattern patt [coins '(1 0)]
+;; Flip a fair coin until pattern patt occur.
+;; Returns the start position of the pattern.
+;;
+(define (flip-until-pattern patt [coins '(1 0)])
+  (define (loop a patt acc)
+    (define a-len (length a))
+    (define p-len (length patt))
+    (cond [(and (>= a-len p-len) (< (index-of-sub a patt) a-len)) acc]
+          [else (loop (append a (list (uniform-draw coins))) patt (add1 acc))]))
+  
+  (loop '() patt 0)
+  )
+
+;;
+;; (draw-until-pattern patt draw)
+;; call draw until pattern pattern is found
+;; Returns the start position of the pattern.
+;; This is a generalized version of flip-until-pattern
+;;
+(define (draw-until-pattern patt draw)
+  (define (loop a patt acc)
+    (let ([a-len (length a)]
+          [p-len (length patt)])
+      (cond [(and (>= a-len p-len) (< (index-of-sub a patt) a-len)) acc]
+            [else (loop ; (append a (list (uniform-draw coins)))
+                   (append a (list (draw)))
+                   patt
+                   (add1 acc))]))
+    )
+  (loop '() patt 0)
+  )
+
+;;
+;; Alternative approach using match
+;; Seem to be a little faster than draw-until-pattern
+;; TODO: Check this more. It does not return the same as draw-until-pattern!
+;; (define (draw-until-pattern2 patt draw)
+;;   (define (loop a patt acc)
+;;     (match a
+;;       [(list x y ___ x) acc]
+;;       [_ (loop (append a (list (draw)))
+;;             patt
+;;             (add1 acc))]
+;;     ))
+;;   (loop '() patt 0)
+;;   )
+
+
+;;
+;; (draw-until-patterns patterns draw)
+;; Draw from the lambda function draw until any of the pattern occurs.
+;; TODO: Check this more!
+;;
+(define (draw-until-patterns patterns draw)
+  (define (loop a acc)
+    (let* ([a-len (length a)]
+           [matches (for/first ([patt patterns]
+                                #:when (and (>= a-len (length patt)) (< (index-of-sub a patt) a-len)))
+                      (list patt acc))])
+      (cond
+        [matches matches]
+        [else (loop (append a (list (draw))) (add1 acc))])
+      )
+    )
+  (loop '() 0)
+  )
+   
+
+;
+; (make-tuples n lst)
+; Make tuples of size n
+; Example:
+; n=2 (a b c d e) -> (a b) (b c) (d e)
+;
+(define (make-tuples n lst)
+  (define (loop lst acc)
+    (cond
+      [(empty? lst) acc]
+      [(loop (drop lst n) (append acc (list (take lst n))))]))
+  (loop lst '())
+  )
+
+;
+; (chunks-of lst size)
+; Returns a list of all size sized sub lists.
+;
+; Example:
+; > (chunks-of (range 1 10) 4)
+; '((1 2 3 4) (2 3 4 5) (3 4 5 6) (4 5 6 7) (5 6 7 8) (6 7 8 9))
+;
+; (from utils_hakank.rkt)
+;
+(define (chunks-of lst size)
+  (let* ([len1 (length lst)]
+         [len (add1 (- len1 size))])
+    (for/list ([i (range 0 len)]) (map (lambda (e) (list-ref lst e)) (range i (+ i size))))
+    )
+  )
+
+(define (vector-chunks-of lst size)
+  (let* ([len1 (length lst)]
+         [len (add1 (- len1 size))])
+    (for/list ([i (range 0 len)]) (map (lambda (e) (vector-ref lst e)) (range i (+ i size))))
+    )
+  )
+
+;
+; (num-runs a)
+; Returns the number of runs in the list a
+;
+(define (num-runs a)
+  (define (loop t a acc)
+    (if (empty? a)
+        (if (eq? t a) acc (add1 acc))
+        (let ([first-a (first a)]
+              [rest-a (rest a)])
+          (loop first-a rest-a (+ (if (eq? t first-a) 0 1) acc)))))
+
+  (if (empty? a)
+      0
+      (loop (first a) (rest a) 0))
+  )
+
+; (factorial n)
+(define (factorial n)
+  (apply * (range 1 (add1 n))))

@@ -36,58 +36,47 @@
   Gamble does not have an negative binomial distribution, so we have to roll 
   our own.
 
-  * Using (negative_binomial_dist2 3 0.7) and enumerate
+  * Using (negative_binomial 3 0.7) and enumerate (with a limit)
 
-var : y
-0: 0.3430000000000001
-1: 0.3087000000000001
-2: 0.18522000000000008
-3: 0.09261000000000007
-4: 0.04167450000000001
-5: 0.017503290000000005
-6: 0.007001315999999995
-7: 0.0027005075999999993
-8: 0.00101269035
-9: 0.0003713197950000015
-54: 1.3644254290393474e-27
-55: 3.4179833913017743e-28
-56: 8.407579724584549e-29
-57: 2.0222152540177456e-29
-58: 4.728027186295881e-30
-59: 1.0652898074562232e-30
-60: 2.281916049954993e-31
-61: 4.5400930512759145e-32
-62: 8.011928914016392e-33
-63: 1.1445612734309028e-33
-mean: 1.285714285700838
-ix: 0
-Credible interval (0.94): 0..4
-Credible-interval2 (0.94): 0..5 (ps: (0.030000000000000027 0.97))
-Histogram:
- 0: 3402
- 1: 3117
- 2: 1816
- 3: 978 
- 4: 390 
- 5: 183 
- 6: 74  
- 7: 31  
- 8: 9   
- 9: 6   
-10: 3   
-11: 2   
-12: 2   
+  var : y
+  0: 0.34300342843668685
+  1: 0.3087030855930182
+  2: 0.18522185135581096
+  3: 0.09261092567790549
+  4: 0.04167491655505745
+  5: 0.01750346495312413
+  6: 0.0070013859812496455
+  7: 0.0027005345927677217
+  8: 0.0010127004722878948
+  9: 0.0003713235065055633
+  10: 0.00013367646234200225
+  11: 4.739438210307371e-5
+  12: 1.5312031140993005e-5
+  mean: 1.2855939768981777
+  Credible interval (0.94): 0..4
+  Credible-interval2 (0.94): 0..4 (ps: (0.030000000000000027 0.97))
+  Histogram:
+   0: 3382
+   1: 3184
+   2: 1889
+   3: 913 
+   4: 400 
+   5: 140 
+   6: 58  
+   7: 24  
+   8: 13  
+   9: 6   
+  10: 2   
 
-var : p
-#f: 0.8147800000000004
-#t: 0.18522000000000008
-mean: 0.18522000000000008
-ix: 0
-Credible interval (0.94): 0..1
-Credible-interval2 (0.94): #f..#t (ps: (0.030000000000000027 0.97))
-Histogram:
-#f: 8186
-#t: 1816
+  var : p
+  #f: 0.8147781486441892
+  #t: 0.18522185135581096
+  mean: 0.18522185135581096
+  Credible interval (0.94): 0..1
+  Credible-interval2 (0.94): #f..#t (ps: (0.030000000000000027 0.97))
+  Histogram:
+  #f: 8113
+  #t: 1889
 
 
   This is a port of my WebPPL model  negative_binomial_test.wppl (WebPPL does not have a
@@ -104,39 +93,20 @@ Histogram:
 ; (require gamble/viz)
 (require racket)
 (require "gamble_utils.rkt")
-
-
-; Note: The geometric distribution is infinite, so beware!
-(define (negative_binomial_dist m p)
-  (for/sum ([i (range m)]) (geometric p))
-)
-
-; This version of geometric distribution has a limit of
-; the recursion, which makes it work with enumerate
-(define (geometric_dist2 p limit)
-  (define (loop p limit c)
-    (if (or (> c limit) (flip p)) 0 
-        (add1 (loop p limit (add1 c))))
-    )
-  (loop p limit 0)  
-  )
-
-
-(define (negative_binomial_dist2 m p limit)
-  (for/sum ([i (range m)]) (geometric_dist2 p limit))
-)
+(require "gamble_distributions.rkt")
 
 
 (define (model)
   
-  (enumerate 
+  (enumerate
+   #:limit 1e-05
    ; rejection-sampler
    ; importance-sampler
    ; mh-sampler
 
    (define limit 20)
    ; This works with enumerate
-   (define y (negative_binomial_dist2 3 0.7 limit))
+   (define y (negative_binomial 3 0.7))
 
    ; This does not work with enumerate
    ; (define y (negative_binomial_dist 3 0.7)) 
@@ -155,7 +125,7 @@ Histogram:
                       "p"
                       )
                 #:num-samples 10000
-                #:truncate-output 10
+                ; #:truncate-output 10
                 ; #:skip-marginals? #t
                 #:credible-interval 0.94
                 #:credible-interval2 0.94

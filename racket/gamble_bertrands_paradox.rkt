@@ -6,7 +6,7 @@
   """
   3. Bertrand's Box Paradox
 
-  If you are familiar with the Montey Hall problem, this paradox is quite 
+  If you are familiar with the Monty Hall problem, this paradox is quite 
   similar. In front of us there are three boxes:
 
     [image of three boxes]

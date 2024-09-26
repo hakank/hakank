@@ -153,11 +153,10 @@
 
 
 (define (check-perm1 p a b c m)
-  (zero? (modulo (+ (* 100 (list-ref p a))
-                    (* 10 (list-ref p b))
-                    (list-ref p c))
+  (zero? (modulo (+ (* 100 (vector-ref p a))
+                    (* 10 (vector-ref p b))
+                    (vector-ref p c))
                  m)))
-
 
 (define (check-perm perm)
   (let* ([ps '(17 13 11 7 5 3 2)]
@@ -175,22 +174,40 @@
 ;;; is much faster.
 ;;; cpu time: 398 real time: 398 gc time: 30
 (define (euler43d)
-  (for/sum ([p (in-permutations (range 0 10))]
-            #:when (and
-                    (> (first p) 0)
-                    (check-perm1 p 7 8 9 17)
-                    (check-perm1 p 6 7 8 13)
-                    (check-perm1 p 5 6 7 11)
-                    (check-perm1 p 4 5 6 7)
-                    (check-perm1 p 3 4 5 5)
-                    (check-perm1 p 2 3 4 3)
-                    (check-perm1 p 1 2 3 2)
-                    ;;; (check-perm p) ; slower: 0.524s
-                    )
-            )
-    (digits->number p))
-  )
+  (define result 0)
+  (define p (make-vector 10))
+  
+  (define (generate-permutations start)
+    (if (= start 10)
+        (when (and (> (vector-ref p 0) 0)
+                   (check-perm1 p 7 8 9 17)
+                   (check-perm1 p 6 7 8 13)
+                   (check-perm1 p 5 6 7 11)
+                   (check-perm1 p 4 5 6 7)
+                   (check-perm1 p 3 4 5 5)
+                   (check-perm1 p 2 3 4 3)
+                   (check-perm1 p 1 2 3 2))
+          (set! result (+ result (vector->number p))))
+        (for ([i (in-range start 10)])
+          (vector-swap! p start i)
+          (generate-permutations (add1 start))
+          (vector-swap! p start i))))
+  
+  (vector-copy! p 0 (vector 0 1 2 3 4 5 6 7 8 9))
+  (generate-permutations 0)
+  result)
 
+;; Helper function to swap vector elements
+(define (vector-swap! v i j)
+  (let ([temp (vector-ref v i)])
+    (vector-set! v i (vector-ref v j))
+    (vector-set! v j temp)))
+
+;; Helper function to convert vector to number
+(define (vector->number v)
+  (for/fold ([num 0])
+            ([digit (in-vector v)])
+    (+ (* num 10) digit)))
 
 (define (run)
   ;;; (time-function euler43a)

@@ -44,7 +44,6 @@
 (require racket)
 (require "gamble_utils.rkt")
 
-; set! model
 (define (model)
 
   (; enumerate ; strange results
@@ -81,4 +80,55 @@
                 ; #:show-stats? #t
                 )
 
+#|
+  Using observe-sample with normal-dist kind of work
+
+var : x
+mean: 0.3517394669085218
+
+var : z
+mean: 2.0000993909737
+
+var : y
+mean: 0.7035020832137237
+
+
+|#
+(define (model2)
+
+  (; enumerate ; strange results
+   ; rejection-sampler
+   importance-sampler
+   ; mh-sampler
+
+   (define x (uniform 0 1))
+   (define y (uniform 0 1))
+   ; How do I make this as a distribution, to use with (observe-sample z 2)?
+   (define z (/ y x))
+
+   ; (observe z 2) ; (with uniform-dist): expression is not observable
+   ; (observe-sample z 2) ; Nope, z is not a distribution!
+   (observe-sample (normal-dist z 0.001) 2)
+   ; (observe/fail (< (abs (- z 2)) 0.01))
+   
+   (list x
+         z
+         y
+         )
+  
+   )
+  )
+
+(displayln "\nModel 2")
+(show-marginals (model2)
+                (list "x"
+                      "z"
+                      "y"
+                      )
+                #:num-samples 1000
+                #:truncate-output 4
+                #:skip-marginals? #t
+                ; #:credible-interval 0.94
+                ; #:show-stats? #t
+                )
 
