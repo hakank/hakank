@@ -228,9 +228,10 @@ def reif(model, expr):
     """
     reif(model, expr, not_expr b)
 
-    Return the boolean variable b to express
-    b <=> expr
+    Return the boolean variable b to express the implication
+    b => expr
     Note that there are no negation of b here.
+    Also note that this should be considered experimental.
     """
     b = model.NewBoolVar("b " + str(expr))
     model.Add(expr).OnlyEnforceIf(b)
@@ -241,8 +242,10 @@ def reif2(model, expr, not_expr):
     reif2(model, expr, not_expr b)
 
     Return the boolean variable b to express
-    b <=> expr
-    !b <=> not_expr
+    b => expr
+    !b => not_expr
+
+    Note: This should be considered experimental.
     """    
     b = model.NewBoolVar("b expr:" + str(expr) + " neg: " + str(not_expr))
     model.Add(expr).OnlyEnforceIf(b)
