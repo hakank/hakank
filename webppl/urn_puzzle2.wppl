@@ -1,0 +1,87 @@
+/*
+
+  Urn puzzle in Racket.Gamble 
+
+  From Daniel Litt  (Jan 28, 2024)
+  https://x.com/littmath/status/1751648838501224790
+  """
+  You are given an urn containing 100 balls; n of them are red, and 100-n are green, 
+  where n is chosen uniformly at random in [0, 100]. You take a random ball out of 
+  the urn—it’s red—and discard it. The next ball you pick (out of the 99 remaining) is:
+    More likely to be red: 22.6%
+    More likely to be green: 37.1%
+    Equally likely: 20.9%
+    Don’t know/see results: 19.5%
+  """
+
+  Note: The "official" answer 
+  (in https://www.quantamagazine.org/perplexing-the-web-one-probability-puzzle-at-a-time-20240829/?mc_cid=94caee8978) is that probability of the next ball red is 2/3, and blue 1/3.
+
+  color_ball2
+  Marginal:
+    "red" : 0.6667961165048513
+    "green" : 0.3332038834951488
+
+  expectation:
+  [ [ 'num_red', 66.67961165048538 ],
+    [ 'num_green', 33.32038834951456 ],
+    [ 'ball1', 33.33980582524275 ],
+    [ 'color_ball1', NaN ],
+    [ 'ball2', 50.16660194174753 ],
+    [ 'color_ball2', NaN ] ]
+
+  However, I got a slightly different answer by restricting to be at least one red ball.
+
+  
+  See https://colab.research.google.com/drive/1vK8sl3ZecjBTjrcNcee6hmlHvrp3Zh4_?usp=sharing
+  for another (Bayesian simulation) approach. It gives 2/3 and 1/3. 
+
+  This problem was found via the Quanta Magazine article on Daniel Litt:
+  "Perplexing the Web, One Probability Puzzle at a Time" by Erica Klarreich:
+  https://www.quantamagazine.org/perplexing-the-web-one-probability-puzzle-at-a-time-20240829/?mc_cid=94caee8978
+
+  This model is a port of my Racket/Gamble model urn_puzzle2.rkt
+
+*/
+
+var model = function() {
+    var total = 100        // number of balls
+    var total1 = total + 1 // number of red 0..100
+
+    var num_red = randomInteger(total1)
+    var num_green = total - num_red
+
+    // There must be at least one red ball, i.e. the one we first select.
+    // Without this, the probabilities are exactly 2/3 red and 1/3 green,
+    // which is the official answer.
+    condition(num_red > 0)
+    
+    var color = function(ball) { return ball <= num_red ? "red" : "green" }
+
+    var ball1 = randomInteger(total1)
+    var color_ball1 = color(ball1)
+
+    condition(color_ball1 == "red")
+
+    var ball2 = randomInteger(total1)
+    var color_ball2 = color(ball2)
+
+    // Discard first ball since it cannot be selected again
+    condition(ball2 != ball1)
+
+    return {
+        num_red:num_red,
+        num_green:num_green,
+        ball1:ball1,
+        color_ball1:color_ball1,
+        ball2:ball2,
+        color_ball2:color_ball2,
+       
+    }
+    
+}
+
+
+var d = Infer({method:"enumerate"},model)
+exp_map_all(d)
+

@@ -3,7 +3,8 @@
 
    This model use the standard formulation of the n-queens problem.
 
-   * Using method:enumerate (i.e. exact solutions) for different Ns
+   * Three separate loops 
+     Using method:enumerate (i.e. exact solutions) for different Ns
    
      N    #sols  time
      --------------------------
@@ -15,9 +16,6 @@
      7   40      21.2s
      8   92      >8min
 
-     Well, using probabilistic programming for this problem is 
-     not the best choice. :-) :-)
-     
    * Using method:"rejection"
      N    #sols  time
      --------------------------
@@ -26,24 +24,39 @@
      4    2      1.4s
      5   10      2.1s
      6    4     45.3s 
-     7   40      
+     7   40     >to slow 
      8   92      
+
+     Well, using probabilistic programming for this problem is 
+     not the best choice. :-) :-)
+
+   * Later: 
+     Combining all three constraints into one loop is quite faster.
+     
+     Using enumerate:
+     N    #sols  time
+     --------------------------
+     2    0      -
+     3    0      -
+     4    2      1.6s
+     5   10      1.8s       
+     6    4      2.5s
+     7   40     19.9s 
+     8   92     531.43s 
 
 
 */
 
 var all_different = function(a,n) {
     mapN(function(i) {
-        sum(mapN(
-            function(j) {
-                if (i != j) {
-                    condition(a(i) != a(j))
-                }
-            },
-            i)
-           )
+        console.log("i",i)
+        mapN(function(j) {
+            console.log("i",i,"j",j)
+            if (i != j) {
+                condition(a[i] != a[j])
+            }
+            },i)
     },n);
-
 }
 
 var model = function() {
@@ -57,40 +70,15 @@ var model = function() {
 
     // all_different(queen,n);
 
-    // Note: It seems that one have to use separate
-    //       runs of these, i.e. they can not be
-    //       combined into
-    //              condition(queen(i) != queen(j) &&
-    //                        queen(i)+i != queen(j)+j &&
-    //                        queen(i)+i != queen(j)+j
-    //                        )
-    // Different rows
     mapN(function(i) {
-        sum(mapN(
-            function(j) {
-                condition(queen(i) != queen(j)) 
-             },
-             i)
-            )
-    },n);
-    // different diagonals1
-    mapN(function(i) {
-        sum(mapN(
-            function(j) {
-                condition(queen(i)+i != queen(j)+j)
-             },
-             i)
-            )
-    },n);
-    
-    // different diagonals2
-    mapN(function(i) {
-        sum(mapN(
-            function(j) {
-                condition(queen(i)-i != queen(j)-j)
-             },
-             i)
-            )
+        mapN(function(j) {
+            condition( queen(i) != queen(j)
+                       &&
+                       queen(i)+i != queen(j)+j
+                       &&
+                       queen(i)-i != queen(j)-j
+                     ) 
+        },i)
     },n);
     
     return {
@@ -100,22 +88,39 @@ var model = function() {
 }
 
 // var d = Infer({method:"enumerate"},model);
-// var d = Infer({method:"rejection"},model);
-// var d = Infer({method:"MCMC",kernel:"MH",samples:10000,verbose:true},model);
-var d = Infer({method:"SMC",particles:10000},model);
-// var d = Infer(model);
-// display(d);
+// exp_map(d,["queens"]);
+// var m = marginalize(d, "queens");
+// console.log("#solutions",m.supp.length)
 
 
-var exp_map = function(d,arr) {
-    display("Marginals:");
-    map(function(a) {display(a);display(marginalize(d, a)) }, arr);
-    display("expectation:");
-    display(map(function(a) { [a,expectation(marginalize(d, a))] }, arr));
-    display("MAP:");
-    display(map(function(a) { [a,MAP(marginalize(d, a))] }, arr));
+/*
+  Another approach: Using 3 all_different 
+  (the standard constraint programm approach)
+
+  No, this does not work...
+
+*/
+var model2 = function() {
+    var n = 4;
+
+    var queen = mem(function(i) {
+        return randomInteger(n);
+    })
+
+    var queens = mapN(function(i) { return queen(i) },n);
+
+    all_different(queen,n)
+    all_different(mapN(function(i) { queen(i)+i},n),n)
+    all_different(mapN(function(i) { queen(i)-i},n),n)
+
+    return {
+        queens:queens,
+    }
+
 }
 
-exp_map(d,["queens"]);
-var m = marginalize(d, "queens");
-console.log("#solutions",m.supp.length)
+console.log("\nModel 2")
+var d2 = Infer({method:"enumerate"},model2);
+exp_map(d2,["queens"]);
+var m2 = marginalize(d2, "queens");
+console.log("#solutions",m2.supp.length)

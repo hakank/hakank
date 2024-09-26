@@ -26,76 +26,98 @@
   Compute the expected length of the sequences of coin tosses using MCINTYRE.
   """ 
 
-  Note: The cplint version (corrected by  Fabrizio Riguzzi) at http://cplint.eu/p/coin_tosses_hakank_rzf.swinb
-  give another solutions:
+  The cplint version (corrected by  Fabrizio Riguzzi) 
+  at http://cplint.eu/p/coin_tosses_hakank_rzf.swinb give this solutions:
    - first problem: probability of the sequence [h,h,h] -> 0.015
    - second problem: probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] -> about 0.03
    - third problem: probability of the sequences of 10 coin tosses -> about 0.026
    - fourth problem: expected length of the sequences of coin tosses -> about 4.
 
-This is not at all the same as this BLOG model.
-  
+
+  Here's the answers using this WebPPL model
+  Experiment 1:  
+   - first problem: probability of the sequence [h,h,h]: about 0.016
+   - third problem: probability of the sequences of 10 coin tosses: about 0.0233
+   - fourth problem: expected length of the sequences of coin tosses: about 5
+
+  expectation:
+  [ [ 'threeHead', 0.013500000000000003 ],
+    [ 'len', 4.994400000000001 ],
+    [ 'p10', 0.025999999999999995 ] ]
+
+  Experiment 2:
+   - second problem: probability of the sequence [h,h,h,h,h] given that the 
+     subsequence [h,h,h] occurred: 0.0315
+
+   expectation:
+   [ [ 'fiveHeadGivenHHH', 0.0315 ] ]
+
+  (My earlier version of this was incorrect since I didn't take into accout that
+   the requirement was that the questions was about exact length of the sequences.)
+
+  Cf coin_tosses2.wppl 
+
   Cf ~/blog/coin_tosses.blog
 
 */
 
-var model = function() {
+var run = function(experiment) {
+    console.log("Experiment ", experiment)    
+    var model = function() {
 
-    // type Coin;
-    // distinct Coin head, tail, nothrow;
-    var coins = ["head","tail"];
-    
-    // Should we continue to toss?
-    // I.e. toss first and then check.
-    var do_toss = function(t) {
-        if (t == 0) {
-            return true;
-        } else {
-            return flip(0.8);
-        }
-    };
-    
-    var toss = (function(t) {
-        // console.log("toss",t);
-        if (t == 0) {
-            // Always toss the first 
-            return categorical({ps:[0.5,0.5],vs:coins })
-        } else {
-            // console.log("here", t);
-            // console.log("mapN:", mapN(function(i) {return do_toss(i)}, t));            
-            if (
-                // !exists Integer i i > 0 & i <= t & !do_toss(i)
-                do_toss(t) && sum(mapN(function(i) {return do_toss(i) }, t))==t
-               ) {
-                return categorical({ps:[0.5,0.5],vs:coins })              
+        var coins = ["head","tail"];
+        
+        var tosses = function(t, a) {
+            var r = categorical({ps:[0.5,0.5],vs:coins })
+            if (t == 0) {
+                tosses(t+1,a.concat(r))
             } else {
-                return "nothrow";
+                if (flip(0.8)) {
+                    tosses(t+1,a.concat(r))
+                } else {
+                    a
+                }
             }
         }
-    });
-    
-    condition(toss(0) == "head");
-    condition(toss(1) == "head");
-    condition(toss(2) == "head");
 
-    return {
-        threeHead:toss(0)=="head" && toss(1) == "head" && toss(2) == "head",
-        fiveHeadGivenHHH:toss(3)=="head" && toss(4) == "head", // uncomment the three conditions above
-        toss0:toss(0),
-        toss1:toss(1),
-        toss2:toss(2),
-        // toss3:toss(3),
-        // toss4:toss(4),
-        // toss5:toss(5),
-        // toss6:toss(6),
-        // toss7:toss(7),
-        // toss8:toss(8),
-        // toss9:toss(9),
-    };
+        var a = tosses(0, [])
+        var len = a.length
+
+        var threeHead = _.isEqual(a,["head","head","head"])
+        var p10 = len == 10
+
+        if (experiment == 2) {
+            condition(a[0] == "head")
+            condition(a[1] == "head")
+            condition(a[2] == "head")
+        }
+        var fiveHeadGivenHHH = _.isEqual(a,["head","head","head","head","head"])
+
+        
+        if (experiment == 2) {
+            return {
+                fiveHeadGivenHHH:fiveHeadGivenHHH,
+            }
+        } else {
+            return {
+                threeHead:threeHead,
+                len:len,
+                p10:p10
+            }
+        }
+    }
+
+    // var d = Infer(model);
+    // var d = Infer({method:"rejection",samples:100000},model);
+    var d = Infer({method:"SMC",particles:10000},model);        
+    // var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
+    // display(d);
+
+    exp_map_all(d);
 }
 
-var d = Infer(model);
-// var d = Infer({method:"MCMC",kernel:"MH",samples:100000,verbose:true},model);
-// display(d);
 
-exp_map_all(d);
+run(1)
+
+
+run(2)
