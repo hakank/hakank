@@ -1,0 +1,125 @@
+/* 
+
+  Queens with reqions in Picat.
+
+  From Alireza Soroudi 
+  https://www.linkedin.com/pulse/queens-game-using-cp-alireza-soroudi-2hbke/
+  """
+  I recently came across a fascinating challenge on LinkedIn that caught my attention. 
+  It's a perfect example of the kind of problem that can be tackled using constraint 
+  programming. Let's explore how we can solve it with this powerful approach.
+
+  Game rules: 
+
+  - Only one queen should be placed at each region
+  - At most one queen can be placed on each row and column. 
+  - No two queens can touch each other (they can be on the same diagonal if 
+    they don't touch)
+
+  [The regions 
+        1 1 1 1 1 1 1 1 1
+        1 1 2 2 2 2 2 2 1 
+        1 1 3 3 3 3 3 2 1 
+        1 1 3 3 4 4 3 7 1 
+        1 1 3 5 5 4 3 7 1 
+        1 6 6 6 5 3 3 7 1 
+        8 9 9 6 3 3 3 7 1 
+        8 8 9 6 1 1 1 1 1 
+        8 8 8 1 1 1 1 1 1
+  ]
+  """
+
+  Also see: https://www.linkedin.com/games/queens/
+
+  Note that it's not the traditional n-queens problem, the extra constraint
+  is that queens cannot touch each other (and no diagonal constraints. 
+  The problem should rather be named "N-Kings with regions", or - after a discussion
+  with Oisín Mac Fhearaí - perhaps "Myopic queens with regions".
+
+
+
+  Solution:
+   columns = [9,7,3,8,6,4,2,5,1]
+   11111111X
+   112222X21
+   11X333321
+   11334X371
+   1135543X1
+   1666X3371
+   8X9633371
+   889X11111
+   X88111111
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import util.
+import cp.
+
+main => go.
+
+go ?=>
+  regions(Regions),
+  N = Regions.len,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  foreach(I in 1..N)
+    % One queens for each row and each column
+    sum([X[I,J] : J in 1..N]) #= 1,
+    sum([X[J,I] : J in 1..N]) #= 1,    
+    foreach(J in 1..N)
+      % Queens cannot touch
+      no_touch(X,N,N,I,J) 
+    end
+  end,
+
+  % Ensure that it's exactly one queen in a region  
+  foreach(R in 1..N)
+    sum([ X[I,J] : I in 1..N, J in 1..N,Regions[I,J] == R]) #= 1
+  end,
+
+  solve(X),
+
+  % Output solution
+  println(columns=[[I : I in 1..N, X[I,J] == 1] : J in 1..N].flatten),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if X[I,J] == 1 then
+        print("X")
+      else
+        print(Regions[I,J])
+      end
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  
+  nl.
+go => true.
+
+% Ensure that no queens touch each other.
+no_touch(X,Rows,Cols,I,J) =>
+  X[I,J] #= 1 #=> sum([ X[I+A,J+B] : A in -1..1, B in -1..1,
+                     % abs(A)+abs(B) == 1, % 4 neigbours
+                     not(A == 0, B == 0), % 8 neibours
+                     I+A >= 1, I+A <= Rows,
+                     J+B >= 1, J+B <= Cols
+               ]) #= 0.
+
+regions(Regions) :-
+           %  1 2 3 4 5 6 7 8 9
+ Regions = [[1,1,1,1,1,1,1,1,1],
+            [1,1,2,2,2,2,2,2,1],
+            [1,1,3,3,3,3,3,2,1],
+            [1,1,3,3,4,4,3,7,1],
+            [1,1,3,5,5,4,3,7,1],
+            [1,6,6,6,5,3,3,7,1],
+            [8,9,9,6,3,3,3,7,1],
+            [8,8,9,6,1,1,1,1,1],
+            [8,8,8,1,1,1,1,1,1]].

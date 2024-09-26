@@ -1,0 +1,321 @@
+/* 
+
+  Generate Queens with reqions in Picat.
+
+  From Alireza Soroudi 
+  https://www.linkedin.com/pulse/queens-game-using-cp-alireza-soroudi-2hbke/
+  """
+  I recently came across a fascinating challenge on LinkedIn that caught my attention. 
+  It's a perfect example of the kind of problem that can be tackled using constraint 
+  programming. Let's explore how we can solve it with this powerful approach.
+
+  Game rules: 
+
+  - Only one queen should be placed at each region
+  - At most one queen can be placed on each row and column. 
+  - No two queens can touch each other (they can be on the same diagonal if 
+    they don't touch)
+
+  This program generates such instances:
+  * queens_with_regions_generate(N, Regions, X) 
+    Generate a tentative unique problem instance and check for uniqueness
+  * queens_with_regions_solve(Regions, X) 
+    Solves a problem instance.
+   
+  This is a combination of queens_with_regions.pi (for solving the instances)
+  and queens_with_regions_nqueens.pi (for generating instances of a similar problem).
+
+
+  Here are some generated instances with solution for n=9.
+  Note: It's not very fast
+
+
+% Problem instance:
+columns = [3,6,2,7,1,8,4,9,5]
+Instance:
+    1    1    2    2    2    3    3    3    4
+    5    1    1    6    6    3    3    3    4
+    5    5    6    6    6    3    3    3    4
+    6    6    6    6    6    6    3    3    4
+    6    7    6    6    6    6    6    3    4
+    6    7    7    8    6    6    6    3    3
+    6    6    8    8    6    6    6    3    3
+    6    6    6    6    6    6    6    6    9
+    6    6    6    6    6    6    6    9    9
+
+Solution:
+X = [5,3,1,7,9,2,4,6,8]
+    1    1    2    2  (2)    3    3    3    4
+    5    1  (1)    6    6    3    3    3    4
+  (5)    5    6    6    6    3    3    3    4
+    6    6    6    6    6    6  (3)    3    4
+    6    7    6    6    6    6    6    3  (4)
+    6  (7)    7    8    6    6    6    3    3
+    6    6    8  (8)    6    6    6    3    3
+    6    6    6    6    6  (6)    6    6    9
+    6    6    6    6    6    6    6  (9)    9
+
+
+% Problem instance:
+columns = [7,2,6,1,3,8,5,9,4]
+Instance:
+    1    1    2    2    3    4    4    4    4
+    3    1    3    2    3    5    4    4    4
+    3    3    3    3    3    5    4    4    4
+    3    6    6    6    6    5    4    4    4
+    3    3    6    7    6    5    5    4    4
+    3    3    7    7    6    6    6    4    4
+    8    7    7    7    6    6    6    4    4
+    8    7    7    7    9    9    6    4    4
+    8    7    7    7    7    9    6    6    4
+
+Solution:
+X = [4,2,5,9,7,3,1,6,8]
+    1    1    2  (2)    3    4    4    4    4
+    3  (1)    3    2    3    5    4    4    4
+    3    3    3    3  (3)    5    4    4    4
+    3    6    6    6    6    5    4    4  (4)
+    3    3    6    7    6    5  (5)    4    4
+    3    3  (7)    7    6    6    6    4    4
+  (8)    7    7    7    6    6    6    4    4
+    8    7    7    7    9  (9)    6    4    4
+    8    7    7    7    7    9    6  (6)    4
+
+
+% Problem instance:
+columns = [1,4,8,5,3,7,9,6,2]
+Instance:
+    1    1    1    1    1    1    1    1    1
+    1    1    1    1    1    1    1    1    2
+    1    1    3    3    3    1    2    2    2
+    1    4    1    1    1    1    1    1    1
+    1    4    4    5    1    1    1    1    1
+    1    4    4    5    5    6    6    6    1
+    1    4    4    5    5    7    7    8    8
+    1    1    9    5    5    5    7    8    8
+    1    9    9    5    5    5    8    8    8
+
+Solution:
+X = [1,9,5,2,4,8,6,3,7]
+  (1)    1    1    1    1    1    1    1    1
+    1    1    1    1    1    1    1    1  (2)
+    1    1    3    3  (3)    1    2    2    2
+    1  (4)    1    1    1    1    1    1    1
+    1    4    4  (5)    1    1    1    1    1
+    1    4    4    5    5    6    6  (6)    1
+    1    4    4    5    5  (7)    7    8    8
+    1    1  (9)    5    5    5    7    8    8
+    1    9    9    5    5    5  (8)    8    8
+
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+% import cp.
+% import mip.
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 9,
+
+  % Generate a problem instance, i.e. the regions
+  queens_with_regions_generate(N, Regions1, _X),
+
+  % Ensure that it has a unique solution,
+  All = findall([Regions1,X1],queens_with_regions_solve(Regions1, X1)),
+  if All.len == 1 then
+    [Regions,X] = All.first,
+    println("% Problem instance:"),
+    println(columns=[[I : I in 1..N, X[I,J] == 1] : J in 1..N].flatten),
+    print_regions(Regions),  
+    printf("problem(x,%w).\n",Regions),
+    print_solution(Regions,X),
+    nl
+  end,
+  fail,  
+  nl.
+go => true.
+
+%
+% Solve a problem instance
+%
+queens_with_regions_solve(Regions, X) =>
+  N = Regions.len,
+
+  X = new_array(N,N),
+  X :: 0..1,
+
+  foreach(I in 1..N)
+    % One queens for each row and each column
+    sum([X[I,J] : J in 1..N]) #= 1,
+    sum([X[J,I] : J in 1..N]) #= 1,    
+    foreach(J in 1..N)
+      % Queens cannot touch
+      no_touch(X,N,N,I,J) 
+    end
+  end,
+
+  % Ensure that it's exactly one queen in a region  
+  foreach(R in 1..N)
+    sum([ X[I,J] : I in 1..N, J in 1..N,Regions[I,J] == R]) #= 1
+  end,
+
+  solve($[limit(2)],X).
+
+
+%
+% Generate a problem instance
+%
+queens_with_regions_generate(N, Regions, X) => 
+   
+  % The 0/1 matrices for the regions
+  Grids = new_array(N, N,N),
+  Grids :: 0..1,
+
+  % Which regions does a cell belongs to
+  Regions = new_array(N,N),
+  Regions :: 1..N,
+
+  % Where to place the queens
+  X = new_array(N,N),
+  X :: 0..1,
+
+  % The queens constraints
+  foreach(I in 1..N)
+    % One queens for each row and each column
+    sum([X[I,J] : J in 1..N]) #= 1,
+    sum([X[J,I] : J in 1..N]) #= 1,    
+    foreach(J in 1..N)
+      % Queens cannot touch
+      no_touch(X,N,N,I,J) 
+    end
+  end,
+
+  % Regions
+  % Ensure that the 1s in Grid[K] are connected.
+  foreach(K in 1..N)
+    GK = Grids[K],
+    sum(GK.vars) #>= 3, % each region should be at least 3 cells
+    scc_grid(GK)
+  end,
+
+  % Each cell in the regions must be filled,
+  % i.e. the total number of 1s in Grids is N*N.
+  sum(Grids.vars) #= N*N,
+
+  % Each Grid constiture a unique region, i.e. there are no overlaps
+  foreach(I in 1..N, J in 1..N)
+    sum([Grids[G,I,J] : G in 1..N]) #= 1
+  end,
+
+  % Connect the K'th grid to the K'th region
+  foreach(K in 1..N)
+    foreach(I in 1..N)
+      foreach(J in 1..N)
+         Grids[K,I,J] #= 1 #=> Regions[I,J] #= K
+      end
+    end
+  end,
+  
+  % Symmetry breaking: Ensure that the start
+  % of each regions is in proper (natural) order.
+  value_precede_chain(1..N,Regions.vars),
+
+  % Connect X and Regions
+  % Ensure that it's exactly one queen in a region  
+  foreach(R in 1..N)
+    % sum([ X[I,J] : I in 1..N, J in 1..N,Regions[I,J] == R]) #= 1 % For solving a "static" instanca
+    sum([ X[I,J]*(Regions[I,J] #= R) : I in 1..N, J in 1..N]) #= 1
+  end,
+
+  % Vars = X.vars ++ Grids.vars ++ Regions.vars,
+  Vars = Regions.vars ++ X.vars ++ Grids.vars,
+  solve($[seq,ff,split],Vars).
+
+
+% Ensure that no queens touch each other.
+no_touch(X,Rows,Cols,I,J) =>
+  X[I,J] #= 1 #=> sum([ X[I+A,J+B] : A in -1..1, B in -1..1,
+                     % abs(A)+abs(B) == 1, % 4 neigbours
+                     not(A == 0, B == 0), % 8 neibours
+                     I+A >= 1, I+A <= Rows,
+                     J+B >= 1, J+B <= Cols
+               ]) #= 0.
+
+%
+% The global constraint
+%     value_precede_chain(C, X)
+% ensures that the value C[I-1] precedes the value C[I] in the array X
+% if both C[I-1] and C[I] are in X.
+% I.e. it ensures that the first occurrences of the numbers in C are in order.
+%
+value_precede_chain(C, X) =>
+  foreach(I in 2..C.length)
+    value_precede(C[I-1], C[I], X)
+  end.
+
+
+%
+% The global constraint 
+%     value_precede(S,T, X) 
+% ensures that the value S precedes the value T in array X
+% if both S and T are in X.
+%
+% This definition is inspired by 
+% MiniZinc definition value_precede_int.mzn
+%
+value_precede(S,T,X) =>
+   XLen = X.length,
+   B = new_list(XLen+1),
+   B :: 0..1,
+   foreach(I in 1..XLen)
+     % Xis :: 0..1,
+     Xis #= (X[I] #= S),
+     (Xis #=> (B[I+1] #= 1))
+     #/\ ((#~ Xis #= 1) #=> (B[I] #= B[I+1]))
+     #/\ ((#~ B[I] #= 1) #=> (X[I] #!= T))
+   end,
+   B[1] #= 0.
+
+%
+% Pretty print the regions
+% 
+print_regions(Regions) =>
+  println("Instance:"),
+  N = Regions.len,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%5w", Regions[I,J])
+    end,
+    nl
+  end,
+  % Number of cells in each region
+  nl,
+  println(num_cells_in_region=[R=C : R in 1..N, C=sum([1 : I in 1..N, J in 1..N, Regions[I,J] == R])]),
+  nl.
+
+%
+% Pretty print the solution
+%
+print_solution(Regions,X) =>
+  println("Solution:"),
+  N = Regions.len,
+  println('X'=[J : I in 1..N, J in 1..N, X[I,J] == 1]),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      if X[I,J] == 1 then
+        printf("%5w","(" ++ Regions[I,J].to_string ++ ")")
+      else
+        printf("%5w",Regions[I,J])
+      end
+    end,
+    nl
+  end,
+  nl.

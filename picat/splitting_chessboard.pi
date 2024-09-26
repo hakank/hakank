@@ -1,0 +1,124 @@
+/* 
+
+  Splitting a chessboard in Picat.
+
+  From Alireza Soroudi
+  https://www.linkedin.com/pulse/how-cut-your-board-using-cp-alireza-soroudi-phd-wbdye/
+  """
+  [Reference to Dudeney's "Amusements in Mathematics", "The Chessboard" problem]
+  In simple words "How can we split the chess board into two equal surface parts? "
+  """
+
+  This model uses gcc_grid/1 to ensure a continuous space of 32 0s and 32 1s:
+
+  Here are some solutions for N=8
+
+  [0,0,0,0,0,0,0,0]
+  [0,0,0,1,1,1,1,1]
+  [0,0,0,1,1,1,1,1]
+  [0,1,0,1,1,1,1,1]
+  [0,1,1,1,1,1,0,1]
+  [0,0,0,0,0,0,0,1]
+  [0,0,0,0,1,1,1,1]
+  [0,0,0,1,1,1,1,1]
+
+  [0,0,0,0,0,1,1,1]
+  [0,0,0,0,0,0,1,1]
+  [0,0,0,0,0,0,0,1]
+  [0,0,0,0,0,0,0,1]
+  [0,0,1,1,1,0,0,1]
+  [1,1,1,1,1,0,0,1]
+  [1,1,1,1,1,1,0,1]
+  [1,1,1,1,1,1,1,1]
+
+  [0,0,0,0,0,0,0,0]
+  [0,0,0,0,0,0,0,0]
+  [0,0,0,0,0,0,0,0]
+  [0,0,0,0,0,1,1,0]
+  [1,0,1,1,1,1,1,1]
+  [1,0,1,1,1,1,1,1]
+  [1,1,1,1,1,1,1,1]
+  [1,1,1,1,1,1,1,1]
+
+  [0,0,0,1,1,1,1,1]
+  [0,0,1,1,1,0,0,1]
+  [0,0,0,0,1,1,0,1]
+  [0,1,1,0,0,0,0,1]
+  [0,0,1,1,1,1,0,1]
+  [0,1,1,0,0,1,0,1]
+  [0,1,1,1,0,1,0,1]
+  [0,0,0,0,0,1,1,1]
+
+
+  Number of solutions:
+  N  #sols  time
+  --------------
+  2  2      0.002s
+  4  70     0.862s
+  6  ?
+  8  ?
+  
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import sat.
+% import cp. % too slow for generating all
+
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 8,
+  splitting_chessboard(N,X),
+  foreach(Rows in X[1])
+    println(Rows.to_list)
+  end,
+  nl,
+  fail,
+  nl.
+go => true.
+
+go2 =>
+  nolog,
+  % Only even N
+  foreach(N in 2..2..8)
+    time(Sols = count_all(splitting_chessboard(N,_X))),
+    printf("%d: %d solutions\n", N,Sols)
+  end,
+  nl.
+
+splitting_chessboard(N,X) =>
+
+  % The two scc grids
+  X = new_array(2,N,N),
+  X :: 0..1,
+
+
+  foreach(K in 1..2)
+    T = X[K],
+    scc_grid(T),
+    % sum(T.vars) #= (N**2) div 2 % count elements
+    sum([T[I,J] #= (K-1) : I in 1..N, J in 1..N]) #= (N**2) div 2 % faster
+  end,
+
+  % All cells in the two scc grids are different
+  foreach(I in 1..N, J in 1..N)
+    X[1,I,J] #!= X[2,I,J]
+  end,
+
+  % Symmetry breaking
+  X[1,1,1] #= 0,
+
+
+  % Frënicle symmetry. Nope, it doesn't include the horizonal or vertical splits.
+  % X[2,1,1] #= min([X[2,1,1], X[2,1,N], X[2,N,1], X[2,N,N]]),
+  % X[2,1,2] #< X[2,2,1],
+
+  % solve($[ff,split],X).
+  solve($[],X.vars).  
+  

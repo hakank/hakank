@@ -1,0 +1,436 @@
+/* 
+
+  CASA puzzle in Picat.
+
+  From https://x.com/CryptoMoonWatc1/status/1831939934477021382 (Sep 6 2024)
+  """
+  Hi Hakan,
+
+  An interesting (at least for me) puzzle: how many times can you write CASA left to
+  right and up to down in a 8x8 matrix?
+  """
+
+  * The original problem: only left to right and up to down
+  z = 22
+  rows1 = _37100
+  rows2 = 11
+  cols1 = _37130
+  cols2 = 11
+  A S A C A S A C 
+  S A S A C A S C 
+  A S A C A S A C 
+  C A C A S A C A 
+  A C A S A C A S 
+  S A S A C S S A 
+  A S A C A S A C 
+  C S C A S A C C 
+
+  There are 81 optimal solutions.
+
+
+  * This version checks left, right, up, down
+
+  z = 40
+  rows1 = 10
+  rows2 = 10
+  cols1 = 10
+  cols2 = 10
+  C A C A S A C A 
+  A C A S A C A S 
+  C A S A C A S A 
+  A S A C A S A C 
+  S A C A S A C A 
+  A C A S A C A S 
+  C A S A C A S A 
+  A S A C A S A C 
+
+  There are 40 optimal solutions with symmetry breaking X[1,1] #= C.
+  Without symmetry breaking: 288 optimal solutions.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+import util.
+% import cp. % too slow
+import sat. % 0.43s
+% import mip. % 1.7s
+% import smt. % too slow
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 8,
+  X = new_array(N,N),
+  X :: 1..3,
+
+  % Rows
+  Rows1 #= sum([ Count : I in 1..N, casa(X[I],Count)]),
+  Rows1 :: 0..N*N,
+
+  Rows2 #= sum([ Count : I in 1..N, casa(X[I].reverse,Count)]),
+  Rows2 :: 0..N*N,
+
+  XT = X.transpose,
+  Cols1 #= sum([ Count : I in 1..N, casa(XT[I],Count)]),
+  Cols1 :: 0..N*N,
+  
+  Cols2 #= sum([ Count : I in 1..N, casa(XT[I].reverse,Count)]),
+  Cols2 :: 0..N*N,
+
+  % Symmetry breaking: First cell is C. 
+  % X[1,1] #= 1, 
+
+  Z #= Rows1 + Rows2 + Cols1 + Cols2,
+  % Z #= Rows2 + Cols2,  
+
+  % Z #= 40, % All rows and cols
+  % Z #= 22, % Rows2 and Cols2
+
+  % Vars = X.vars ++ [Rows1,Rows2,Cols1,Cols2],
+  Vars = X.vars ++ [Rows2,Cols2],  
+  solve($[ff,split,max(Z),report(printf("z:%d\n",Z))],Vars),
+  % solve($[ff,split,report(printf("z:%d\n",Z))],Vars),
+  
+
+  println(z=Z),
+  println(rows1=Rows1),
+  println(rows2=Rows2),  
+  println(cols1=Cols1),
+  println(cols2=Cols2),
+  Map = new_map([1='C',2='A',3='S']),
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%w ",Map.get(X[I,J]))
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  
+  nl.
+go => true.
+
+
+/*
+  Generalized version of casa/2: left/right/up/down
+
+  For CASA (cf go/0):
+  z = 40
+  rows1 = 10
+  rows2 = 10
+  cols1 = 10
+  cols2 = 10
+  C A S A C A S A 
+  A S A C A S A C 
+  S A C A S A C A 
+  A C A S A C A S 
+  C A S A C A S A 
+  A S A C A S A C 
+  S A C A S A C S 
+  A C A S A C A C 
+
+  For CASS: 
+  z = 32
+  rows1 = 9
+  rows2 = 7
+  cols1 = 7
+  cols2 = 9
+  C A S S C A S S 
+  C A S S A C S S 
+  A C A S S A C A 
+  S A C A S S A C 
+  S S A C A S S S 
+  A S S A C A S S 
+  C A S S A C A A 
+  A C A S S A C C 
+
+  For CACA:
+  z = 80
+  rows1 = 20
+  rows2 = 20
+  cols1 = 20
+  cols2 = 20
+  C A C A C A C A 
+  A C A C A C A C 
+  C A C A C A C A 
+  A C A C A C A C 
+  C A C A C A C A 
+  A C A C A C A C 
+  C A C A C A C A 
+  A C A C A C A C 
+
+  For PICAT (n=10):
+  z = 32
+  rows1 = 8
+  rows2 = 8
+  cols1 = 8
+  cols2 = 8
+  P I C A T A C I P T 
+  I P I C A T A C I P 
+  C I P I C A T C C I 
+  A C I P I C A T A C 
+  T A C I P I C A T A 
+  A T A C I P I C A T 
+  C A T A C I P I C A 
+  I C C T A C I P I C 
+  P I C A T A C I P I 
+  T P I C A T A C I P 
+
+  For HAKAN (n=10):
+  z = 32
+  rows1 = 8
+  rows2 = 8
+  cols1 = 8
+  cols2 = 8
+  H A K A A A K A H A 
+  A H A K A A A K A H 
+  K A H A K A A A K A 
+  A K A A A K A H A K 
+  A A K A H A K A A A 
+  A A A K A H A K A A 
+  K A A A K A H A K A 
+  A K H H A K A A A K 
+  H A K A A A K A H A 
+  A H A K A A A K A H 
+
+
+
+
+*/
+go2 ?=>
+  nolog,
+  NN = 8,
+  [C,A,S] = [1,2,3],
+  Word = [C,A,S,A],
+  Str = "CASA",
+  
+  % NN = 8,
+  % [C,A,S] = [1,2,3],
+  % Word = [C,A,C,A],
+  % Str = "CACA",
+  
+  % NN = 8,
+  % [C,A,S] = [1,2,3],
+  % Word = [C,A,S,S],
+  % Str = "CASS",
+
+  % NN = 10,
+  % [P,I,C,A,T] = [1,2,3,4,5],
+  % Word = [P,I,C,A,T],
+  % Str = "PICAT",
+
+  % NN = 10,
+  % [H,A,K,N] = [1,2,3,4],
+  % Word = [H,A,K,A,N],
+  % Str = "HAKAN",
+  
+  % [A,B,C] = [1,2,3],
+  % Word = [A,B,C,A],
+  % Str = "ABCA",
+
+  XX = new_array(NN,NN),
+  XX :: Word,
+
+  % Rows
+  Rows1 #= sum([ Count : II in 1..NN, count_words(XX[II],Word,Count)]),
+  Rows1 :: 0..NN*NN,
+  
+  Rows2 #= sum([ Count : II in 1..NN, count_words(XX[II].reverse,Word,Count)]),
+  Rows2 :: 0..NN*NN,
+
+  XXT = XX.transpose,
+  Cols1 #= sum([ Count : II in 1..NN, count_words(XXT[II],Word,Count)]),
+  Cols1 :: 0..NN*NN,
+  
+  Cols2 #= sum([ Count : II in 1..NN, count_words(XXT[II].reverse,Word,Count)]),
+  Cols2 :: 0..NN*NN,
+
+  % No diagonals
+  % Diagonals1 #= sum([Count : D in all_diagonals(X), casa(D,Count)]),
+  % Diagonals2 #= sum([Count : D in all_diagonals(XT), casa(D,Count)]),
+
+  % Symmetry breaking: Start first row with the word
+  foreach(JJ in 1..Word.len) XX[1,JJ] #= Word[JJ] end,
+
+  ZZ #= Rows1 + Rows2 + Cols1 + Cols2,
+
+  Vars = XX.vars ++ [Rows1,Rows2,Cols1,Cols2],
+  solve($[degree,updown,split,max(ZZ),report(printf("z:%d\n",ZZ))],Vars),
+
+  println(z=ZZ),
+  println(rows1=Rows1),
+  println(rows2=Rows2),  
+  println(cols1=Cols1),
+  println(cols2=Cols2),
+  foreach(II in 1..NN)
+    foreach(JJ in 1..NN)
+      printf("%w ",Str[XX[II,JJ]])
+    end,
+    nl
+  end,
+  nl,
+  fail,
+  
+  nl.
+go2 => true.
+
+/*
+  Add diagonals, left/right/up/down/
+
+  CASA:
+  z = 59
+  rows1 = 16
+  rows2 = 8
+  cols1 = 0
+  cols2 = 0
+  diagonals1 = 15
+  diagonals2 = 20
+  CASACASA
+  CASACASA
+  CASACASA
+  CASACASA
+  CASACASA
+  CASACASA
+  CASACASA
+  CASACASA
+
+  This and its transpose are the only optimal solutions,
+
+  CASS:
+  z = 46
+  rows1 = 0
+  rows2 = 0
+  cols1 = 16
+  cols2 = 0
+  diagonals1 = 20
+  diagonals2 = 10
+  CCCCCCCC
+  AAAAAAAA
+  SSSSSSSS
+  SSSSSSSS
+  CCCCCCCC
+  AAAAAAAA
+  SSSSSSSS
+  SSSSSSSS
+
+
+
+*/
+go3 ?=>
+  nolog,
+  NN = 8,
+  [C,A,S] = [1,2,3],
+  Word = [C,A,S,A],
+  Str = "CASA",
+
+  % NN = 8,
+  % [C,A,S] = [1,2,3],
+  % Word = [C,A,S,S],
+  % Str = "CASS",
+  
+  % [P,I,C,A,T] = [1,2,3,4,5],
+  % Word = [P,I,C,A,T],
+  % Str = "picat",
+  % [H,A,K,N] = [1,2,3,4],
+  % Word = [H,A,K,A,N],
+  % Str = "HAKAN",
+  % [A,B,C] = [1,2,3],
+  % Word = [A,B,C,A],
+  % Str = "ABCA",
+
+  println(str=Str),
+  
+  XX = new_array(NN,NN),
+  XX :: Word,
+
+  % Rows
+  Rows1 #= sum([ Count : II in 1..NN, count_words(XX[II],Word,Count)]),
+  Rows1 :: 0..NN*NN,
+  
+  Rows2 #= sum([ Count : II in 1..NN, count_words(XX[II].reverse,Word,Count)]),
+  Rows2 :: 0..NN*NN,
+
+  XXT = XX.transpose,
+  Cols1 #= sum([ Count : II in 1..NN, count_words(XXT[II],Word,Count)]),
+  Cols1 :: 0..NN*NN,
+  
+  Cols2 #= sum([ Count : II in 1..NN, count_words(XXT[II].reverse,Word,Count)]),
+  Cols2 :: 0..NN*NN,
+
+  % No diagonals
+  % DiagLen = all_diagonals(XX).len,
+  % println(diag1=Diag1=DiagLen),
+  Diagonals1 #= sum([Count : DD in all_diagonals(XX), count_words(DD,Word,Count)]),
+  % Diagonals1 :: 0..DiagLen,
+  
+  Diagonals2 #= sum([Count : DD in all_diagonals(XXT), count_words(DD,Word,Count)]),
+  % Diagonals2 :: 0..DiagLen,
+  
+  % Symmetry breaking: Start first row with the word
+  % foreach(JJ in 1..Word.len) XX[1,JJ] #= Word[JJ] end,
+
+  ZZ #= Rows1 + Rows2 + Cols1 + Cols2 + Diagonals1 + Diagonals2,
+  
+  % ZZ #= 59, % For CASA
+  
+  Vars = XX.vars ++ [Rows1,Rows2,Cols1,Cols2,Diagonals1,Diagonals2],
+  solve($[ff,split,max(ZZ),report(printf("z:%d\n",ZZ))],Vars),
+  % solve($[ff,split,report(printf("z:%d\n",ZZ))],Vars),  
+
+  println(z=ZZ),
+  println(rows1=Rows1),
+  println(rows2=Rows2),  
+  println(cols1=Cols1),
+  println(cols2=Cols2),
+  println(diagonals1=Diagonals1),
+  println(diagonals2=Diagonals2),    
+  foreach(II in 1..NN)
+    foreach(JJ in 1..NN)
+      printf("%w",Str[XX[II,JJ]])
+    end,
+    nl
+  end,
+  nl,
+  % fail,
+  
+  nl.
+go3 => true.
+
+
+% Count the number of CASA in the list L.
+casa(L, Count) =>
+  Len = L.len,
+  if Len < 4 then
+    Count #= 0
+  else
+    [C,A,S] = [1,2,3],
+    Count #= sum([L[I] #= C #/\ L[I+1] #= A #/\ L[I+2] #= S #/\ L[I+3] #= A : I in 1..Len-3])
+  end.
+
+%
+% Generalized version of casa/2
+%
+count_words(L,Word, Count) =>
+  Len = L.len,
+  WordLen = Word.len,
+  if Len < WordLen then
+    Count #= 0
+  else
+    Count #= sum( [ sum( [ L[I+J] #= Word[J+1] : J in 0..WordLen-1 ]) #= WordLen 
+                                                        : I in 1..Len-WordLen+1])   
+  end.
+
+%
+% Get all diagonals on a square matrix of size NxN.
+%
+all_diagonals(X) = Diagonals =>
+  N = X.len,
+  % There are in total 2 * NumDiagonals (from left and from right)  
+  NumDiagonals = (N*2-1),
+  Diagonals = [],
+  foreach(K in 1..NumDiagonals)
+    Diagonals := Diagonals ++ [[X[I,J] : I in 1..N, J in 1..N, I+J == K+1]],
+    Diagonals := Diagonals ++ [[X[J,I] : I in 1..N, J in 1..N, I+(N-J+1) == K+1]]
+  end.
