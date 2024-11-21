@@ -18,7 +18,12 @@
                      syntax/parse))
 
 (require (only-in math/statistics
-                  quantile))
+                  quantile
+                  real-hpd-interval
+                  median
+                  (variance math-variance)
+                  (stddev math-stddev))
+         )
 
 
 ; Start: from Gamble's examples/forestdb/church-compat.rkt
@@ -150,6 +155,10 @@
 (define (sum lst)
   (apply + lst))
 
+(define (prod lst)
+  (apply * lst))
+
+
 ;;; (avg lst)
 ;;; Return the average (mean) of lst
 (define (avg lst)
@@ -265,6 +274,9 @@
                         #:skip-marginals? [skip-marginals? #f]
                         #:show-histogram? [show-histogram? #f]
                         #:show-percentiles? [show-percentiles? #f]
+                        #:hpd-interval [hpd-interval #f]
+                        #:burn [burn 0]
+                        #:thin [thin 0]
                         )
   ; Convert to a discrete distribution (if needed)
   (let* ([res (if (discrete-dist? model) model (sampler->discrete-dist model num-samples))]
@@ -273,16 +285,15 @@
          [first-val (first (first vals))]
          [num-vars (length (first vals))]
          [h (for/list ([i (range num-vars)]) (make-hash))]
-         [samples (if (or credible-interval credible-interval2 show-stats? show-histogram? show-percentiles?)
+         [samples (if (or credible-interval credible-interval2 show-stats? show-histogram? show-percentiles? hpd-interval)
                       (if (discrete-dist? model)
                           (repeat (lambda() (sample model)) num-samples)
-                          (vector->list (generate-samples model num-samples))
+                          (vector->list (generate-samples model num-samples #:burn burn #:thin thin))
                           )
                       '()
                       )
                   ]
          )
-    
     ;; Collect the probabilities into the h hash for the variables and values
     (map (lambda (v w)
            (for ([i (range num-vars)])
@@ -295,7 +306,7 @@
     ;; ordered by decreasing probability.
     ;; Also, calculate the mean value
     (for ([i (range num-vars)])
-      (show "var " (list-ref vars i))
+      (show "variable " (list-ref vars i))
       
       (let* ([mean-val '()]
              [this-hash  (list-ref h i)]
@@ -347,36 +358,38 @@
           
           ; Show stats
           (when show-stats?
-            (show-stats (for/list ([v samples])
-                          (list-ref v i))))
-          
+            ;; (show-stats (for/list ([v samples])
+            ;;               (list-ref v i))))
+            (show-stats this-sample)
+            )
+                        
           ; Credible interval
           (when credible-interval
             (show-credible-interval 
-             (for/list ([v samples])
-               (list-ref v i))          
+             ;; (for/list ([v samples])
+             ;;   (list-ref v i))
+             this-sample
              credible-interval)
-            )
-
-          
+            )          
           )
-
-          ;; ; Credible interval
-          ;; (when credible-interval
-          ;;   (show-credible-interval 
-          ;;    (for/list ([v samples])
-          ;;      (list-ref v i))          
-          ;;    credible-interval)
-          ;;   )
 
           ; Credible interval2 (alternative, but might give different results)
           (when credible-interval2
             (show-credible-interval2 
-             (for/list ([v samples])
-               (list-ref v i))          
+             ;; (for/list ([v samples])
+             ;;   (list-ref v i))
+             this-sample
              credible-interval2)
             )
 
+          ; Using math/statistics/real-hpd-interval
+          ; (faster than credible-interval)
+          ; only supports numbers (not symbols)
+          (when (and hpd-interval (number? (first this-sample)))
+            (show-hpd-interval this-sample hpd-interval)
+            ; TODO?
+            ; (show-hpd-interval2 vals weights hpd-interval)
+            )
         
           (when show-percentiles?
             (displayln "Percentiles:")
@@ -389,6 +402,7 @@
                 )
             )
         
+          
           (when show-histogram?
             (displayln "Histogram:")
             (show-histogram this-sample #:num-bins show-histogram?)
@@ -483,6 +497,16 @@
         )
     )
   )
+
+;;
+;; (vals*weights vals)
+;; Given a list of (val weight), return the total sum of val*weight
+;;
+(define (vals*weights vals)
+  (for/sum ([val vals])
+    (* (first val) (second val))
+    )
+)
 
 
 ;;
@@ -621,13 +645,13 @@
       )        
   )
 
-
 (define (show-histogram samples #:num-bins [num-hist-bins #f])
   (let* ([nbins (if (number? num-hist-bins)
                     num-hist-bins
                     (num-bins samples))]
          [hist (histogram samples nbins)]
          [counts (first hist)]
+         [counts-list (vector->list counts)]         
          [keys (second hist)]
          ; [max-key (last keys)]
          ; Get the longest key (a little too convoluted...)
@@ -637,27 +661,36 @@
          [max-count (vector-argmax identity counts)]
          [max-key-len (string-length (~a max-key))]
          [max-count-len (string-length (~a max-count))]
+         [total-count (sum counts-list)]
+         [scale 80]
          )
     ;; (show2 "nbins" nbins)
     ;; (show2 "keys" keys)    
     ;; (show2 "counts" counts)    
-    ; (show2 "max-key" max-key "max-count" max-count)    
-    ; (show2 "max-key-len" max-key-len "max-count-len" max-count-len)
+    ;; (show2 "max-key" max-key "max-count" max-count "total-count" total-count)    
+    ;; (show2 "max-key-len" max-key-len "max-count-len" max-count-len)
     (for ([i (length keys)])
-      (let ([key (list-ref keys i)]
-            [count (vector-ref counts i)] )
-        (displayln (format "~a: ~a"
+      (let* ([key (list-ref keys i)]
+             [count (vector-ref counts i)]
+             [count-prev (sum (take counts-list i))]
+             [cc (if (= 0 count-prev) 0 (/ count-prev total-count))]
+             )
+        (displayln (format "~a: ~a ~a (~a / ~a)"
                            (if (string? key)
                                (~a key    #:width max-key-len #:align 'left)
                                (~a key    #:width max-key-len #:align 'right)                               
                                )
-                           (~a count  #:width max-count-len #:align 'left)
+                           (~a count  #:width max-count-len #:align 'right)
+                           (~a (apply string (rep (ceiling (* scale (/ count max-count))) #\#))  #:align 'left)
+                           (~a (* 1.0 (/ count total-count)) #:width 5)
+                           (~a (* 1.0 cc) #:width 5)  
                          ))
         )
       
       )
     )
   )
+
 
 #|
    Percentiles of an array.
@@ -712,30 +745,41 @@
 ;;     )
 ;;   )
 
-#|
-  (dist-quantiles dist qs [n 1000])
-  Quantiles of a distribution based on samples
-  Returns the quantiles given by qs for the distribution dist.
-  The number of samples is n (default 1000).
+(define (show-hpd-interval1 xs p)
+  (let ([hpd (hpd-interval xs p)])
+    (displayln (format "HPD interval (~a): ~a..~a" p (first hpd) (second hpd)))
+    ))
 
-  Note: The disttribution should be defined in a lambda function, e.g.
-   (define qs '(0.001  0.01 0.02 0.05 0.10 0.25 0.50 0.75 0.90 0.95 0.98 0.99 0.999))
-   (dist-quantiles (lambda () (normal 100 15)) qs num-samples)
+(define (show-hpd-interval xs p)
+  (when (member (first xs) '(#t #f))
+    (set! xs (samples-to-01 xs)))  
+  (if (list? p)
+      (for ([pp p]) (show-hpd-interval1 xs pp))
+      (show-hpd-interval1 xs p)
+  ))
 
-  TODO: Use math/statistics/quantile instead?
-|#
-(define (dist-quantiles dist qs [n 1000])
-  (define (model)
-    (importance-sampler
-     (dist)
-     ))
-  (define s (make-samples (model) n))
-  ; (percentiles s qs)
-  (for/list ([q qs])
-    (list q (quantile q < s))
+;; Using both values and weights from a discrete distribution
+;; (define (show-hpd-interval2 xs ws p)
+;;   (let ([hpd (hpd-interval2 xs ws p)])
+;;     (displayln (format "HPD interval (~a): ~a..~a" p (first hpd) (second hpd)))
+;;     )
+;;   )
+
+;;
+;; HPD interval 
+;; See https://docs.racket-lang.org/math/stats.html#%28def._%28%28lib._math%2Fstatistics..rkt%29._real-hpd-interval%29%29
+;; Note: real-hpd-interval requires numbers, i.e. it does not support symbols or strings.
+;;       Booleans are converted to 0 1 in show-hpd-interval.
+;;
+(define (hpd-interval xs p)
+  (let-values ([(lower upper) (real-hpd-interval p xs)])
+    (list lower upper))
     )
-  
-  )
+
+;; (define (hpd-interval2 xs ws p)
+;;   (let-values ([(lower upper) (real-hpd-interval p xs ws)])
+;;     (list lower upper))
+;;     )
 
 
 
@@ -806,6 +850,31 @@
   )
 
 
+  
+#|
+  (dist-quantiles dist qs [n 1000])
+  Quantiles of a distribution based on samples
+  Returns the quantiles given by qs for the distribution dist.
+  The number of samples is n (default 1000).
+
+  Note: The disttribution should be defined in a lambda function, e.g.
+   (define qs '(0.001  0.01 0.02 0.05 0.10 0.25 0.50 0.75 0.90 0.95 0.98 0.99 0.999))
+   (dist-quantiles (lambda () (normal 100 15)) qs num-samples)
+
+|#
+(define (dist-quantiles dist qs [n 1000])
+  (define (model)
+    (importance-sampler
+     (dist)
+     ))
+  (define s (make-samples (model) n))
+  ; (percentiles s qs)
+  (for/list ([q qs])
+    (list q (quantile q < s))
+    )  
+  )
+
+
 ; Convert #t/#f list to 1/0
 (define (samples-to-01 s)
   (map (lambda (v) (if v 1 0)) s))
@@ -852,15 +921,32 @@
 
 
 ;; Variance of samples
+;; (define (variance samples)
+;;   (let ([len (length samples)])
+;;     (if (> len 0)
+;;         (let ([s (for/sum ([v samples]) (expt (- v (avg samples)) 2))])
+;;           (/ s (length samples)))
+;;         0
+;;   )))
 (define (variance samples)
-  (let ([s (for/sum ([v samples]) (expt (- v (avg samples)) 2))])
-    (/ s (length samples)))
-  )
+  (math-variance samples))
 
-
-;; Standard deviation of samples
+;; ;; Standard deviation of samples
+;; (define (stddev samples)
+;;   (sqrt (variance samples)))
 (define (stddev samples)
-  (sqrt (variance samples)))
+  (math-stddev samples))
+
+
+; The variance and stddev  in math/statistics different from Mathematica's functions?
+; The following population variance/stddev are coherent with Mathematica.
+(define (sample-variance sample)
+  (let ([m (avg sample)])
+    (/ (for/sum ([v sample]) (expt (- v m) 2)) (- (length sample) 1))))
+
+(define (sample-stddev sample)
+  (sqrt (sample-variance sample)))
+
 
 ;;
 ;; (correlation-coefficient1 a1  a2)
@@ -1043,6 +1129,113 @@
   )
 
 
+;; (get-freq-1 lst #:exact? [exact? #t])
+;; Returns the frequences of lst in decreasing order of values
+;; Default the probabilities are shown as inexact.
+;; To show exact values, change to
+;;    #:exact? #t
+(define (get-freq-1 lst #:exact? [exact? #f])
+  (let* ([c (collect-sort-values-down lst)]
+         [total (for/sum ([e c]) (cdr e))]
+         [totalf (* 1.0 (for/sum ([e c]) (cdr e)))]
+         )
+    (for/list ([e c])
+      (list (car e) (/ (cdr e) (if exact? total totalf))))
+    )
+  )
+
+;
+; (get-freq lst #:exact? #:sort-down?)
+; Returns the frequences of lst in decreasing order of values and the mean value.
+; Default the probabilities and mean are shown as inexact.
+; - #:exact?
+; To show exact values, change to
+;   #:exact? #t
+; - #:sort-down?: 
+; Default sort method is to show the values+probabilities
+; in decreasing order of probabilities.
+; If #:sort-down #f the order is increasing order of values.
+;
+(define (get-freq lst #:exact? [exact? #f] #:sort-down? [sort-down? #t])
+  ;;; If lst consists of multi-element then the 'fancy' version (show-freq) cannot be
+  ;;; used, so call show-freq-1 instead.
+  (if (not (number? (first lst)))
+      (get-freq-1 lst #:exact? exact?)
+      (let* ([c (if sort-down?
+                    (collect-sort-values-down lst)
+                    (collect-sort lst))]
+             [total (for/sum ([e c]) (cdr e))]
+             [totalf (* 1.0 (for/sum ([e c]) (cdr e)))]
+             [values-sum 1]
+             [freq (for/list ([e c])
+                     (let* ([val (car e)]
+                            [weight (cdr e)]
+                            [p (/ weight (if exact? total totalf))]
+                            )
+                       (set! values-sum (+ values-sum (* val weight)))
+                       (list val p)
+                       )
+                     )])
+        freq
+        )
+      )
+  )
+
+;
+; Given a PDF (list of (val probability), returns a CDF
+;
+(define (pdf->cdf pdf)
+  (let ([ss (sort pdf < #:key first)]
+        [cdf 0])
+    (for/list ([s ss])
+      (let ([val (first s)]
+            [p (second s)])
+        (set! cdf (+ cdf p))
+        (list val cdf)))))
+
+
+;
+; Returns a CDF given data
+;
+(define (data->cdf data)
+  (let ([ss (sort (get-freq data) < #:key first)]
+        [cdf 0])
+    (for/list ([s ss])
+      (let ([val (first s)]
+            [p (second s)])
+        (set! cdf (+ cdf p))
+        (list val cdf)))))
+
+
+
+;
+; Runs a simple model using enumerate and returns the PDF, the discrete-dist converted to a list
+; of (value probability).
+; Note that it's essential that last in the function is a value, which is the result of the model.
+;
+(define (run-enumerate model)
+  (let* ([res (enumerate (model))]
+         [vals  (vector->list  (discrete-dist-values res))]
+         [weights (vector->list  (discrete-dist-weights res))])
+    ; sort on the weights
+    (sort (map (lambda (v w) (list v w)) vals weights) > #:key second)
+    ))
+
+;
+; Runs a simple model using importance-sampler and returns the PDF, the discrete-dist converted to a list
+; of (value probability).
+; Note that it's essential that last in the function is a value, which is the result of the model.
+;
+(define (run-importance-sampler model #:num-samples [num-samples 1000])
+  (let* ([res (sampler->discrete-dist (importance-sampler (model)) num-samples)]
+         [vals  (vector->list  (discrete-dist-values res))]
+         [weights (vector->list  (discrete-dist-weights res))])
+    ; sort on the weights
+    (sort (map (lambda (v w) (list v w)) vals weights) > #:key second)
+    ))
+  
+
+
 ;;
 ;; (show var val)
 ;; For print debugging.
@@ -1062,6 +1255,13 @@
 (define (show2 . args)
   (displayln args))
 
+;
+; Show the value of v and return it.
+; Useful for debugging/inspecting in complex expressions
+;
+(define (debug v)
+  (displayln v)
+  v)
 
 ;;;
 ;;; (boolean->integer bool)
@@ -1071,7 +1271,8 @@
 (define (boolean->integer bool)
   (if bool 1 0))
 
-
+(define (b2i bool)
+  (if bool 1 0))
 ;;;
 ;;; (list-ref2d m i j)
 ;;; Returns m[i,j]
@@ -1113,6 +1314,21 @@
       )
   )
 
+;
+; (get-prob-value res key)
+; Returns the probability of the key key in the
+; list returned by (get-probs (model) #:ix ix)
+;
+(define (get-prob-value res key)
+  (for/first ([r (first res)]
+              #:when (eq? (first r) key))
+    (second r)))
+
+; A variant which does not take first first.
+(define (get-prob-value2 res key)
+  (for/first ([r res]
+              #:when (eq? (first r) key))
+    (second r)))
 
 
 ;;
@@ -1125,10 +1341,20 @@
              [new-a (remove d a)])
         (draw-without-replacement (sub1 n) new-a (append res (list d))))))
 
+; Using cons instead, not significantly faster than draw-without-replacement
+(define (draw-without-replacement2 n a [res '()])
+  (if (or (= n 0) (null? a))
+      (reverse res)
+      (let* ([d (uniform-draw a)]
+             [new-a (remove d a)])
+        (draw-without-replacement (sub1 n) new-a (cons d res)))))
+
 ;;
 ;; Draw - with replacement - n elements from data.
 ;;
 (define (resample n data) (for/list ([i n]) (uniform-draw data)))
+
+(define (resample-all data) (for/list ([i (length data)]) (uniform-draw data)))
 
 
 ;; From hakank_utils.rkt (renamed to list-slice since there's already a slice in Gamble
@@ -1149,7 +1375,12 @@
   
   )
 
-
+;
+; Return the list except for the last element
+;
+(define (but-last xs)
+  (let ([len (length xs)])
+    (list-slice xs 0 (sub1 len))))
 
 ;;
 ;; Return the differences of the consecutive values in the list lst
@@ -1197,9 +1428,6 @@
     )
   )
    
-; (show "first-pos" (first-pos '("h" "h" "h" "h" "h" "t" "t" "h" "t") '("h" "t")))
-
-
 ;;
 ;; rounds the number v to the (1/c)'th decimal
 ;;
@@ -1224,13 +1452,67 @@
 
 (define (rep n v) (ones-list n v))
 
-; Racket already has argmax but it's not the one I want
-(define (argmax2 lst)
-  (index-of lst (apply max lst))
+; Racket already has argmax but it's not the one I want.
+; Returns the index which has the (first) maximal value in the list lst
+(define (argmax2 xs)
+  (index-of xs (apply max xs))
   )
 
-(define (argmin2 lst)
-  (index-of lst (apply min lst))
+(define (argmax2-val xs)
+  (let* ([ix (argmax2 xs)]
+         [val (list-ref xs ix)])
+    (list ix val)))
+         
+(define (argmin2 xs)
+  (index-of xs (apply min xs))
+  )
+
+(define (argmin2-val xs)
+  (let* ([ix (argmin2 xs)]
+         [val (list-ref xs ix)])
+    (list ix val)))
+
+;
+; This variant randomly pick a random index of all the indices of the minimum values
+;
+(define (argmin2-random-ties lst)
+  (let* ([min-val (apply min lst)]
+         ; get all indices that has the min value
+         [min-ixes (for/list ([i (length lst)]
+                              #:when (eq? min-val (list-ref lst i)))
+                          i)])
+    (uniform-draw min-ixes))
+  )
+
+(define (argmax2-random-ties lst)
+  (let* ([max-val (apply min lst)]
+         ; get all indices that has the min value
+         [max-ixes (for/list ([i (length lst)]
+                              #:when (eq? max-val (list-ref lst i)))
+                          i)])
+    (uniform-draw max-ixes))
+  )
+
+
+;
+; (arg-sort lst)
+; 
+; Return the permutation of the indices which will make the elements in
+; list lst ordered.
+; * comp
+;   - <: increasing order (default)
+;   - >: decreasing order
+;
+(define (arg-sort lst [comp <])
+  ; lst2 is used to "check" the taken values, by replacing the selected value by #f
+  (define (loop a lst2 aux)
+     (if (empty? a)
+        aux
+        (let* ([min-val (apply (if (eq? comp <) min max) a)]
+               [ix (index-of lst2 min-val)])
+          (loop (remove min-val a)  (list-set lst2 ix #f) (append aux (list ix))))))
+  
+  (loop lst lst '())
   )
 
 
@@ -1342,6 +1624,153 @@
     )
   )
 
+
+
+; (factorial n)
+(define (factorial n)
+  (apply * (range 1 (add1 n))))
+
+
+;
+; (scan f init xs)
+; Returns a list of the accumulated function f for the list xs.
+;
+(define (scan f init xs)
+  (foldl (lambda (x a) (append a
+                              (list (f (if (null? a) init (last a)) x))))
+        '() xs)
+  )
+
+(define (accum xs)
+  (scan + 0 xs))
+
+;
+; (integer-partition n m vals [sorted #t])
+; Returns a vector of possible integer partition of length m that
+; sums to n with each value is from the list vals.
+; Note that it just checks for length m lists that sums to n.
+; - sorted #t is the "normal" integer partition
+; - sorted #f gives all possible combinations
+;
+(define (integer-partition n m vals [sorted #t])
+  (vector->list (discrete-dist-values
+   (enumerate
+    (define d
+      (if sorted
+          (sort (for/list ([i m]) (uniform-draw vals)) <)
+          (for/list ([i m]) (uniform-draw vals))))
+    (observe/fail (= (sum d) n))
+    d
+    )))
+  )
+
+; Returns the median of a list of values.
+; https://docs.racket-lang.org/math/stats.html#%28def._%28%28lib._math%2Fstatistics..rkt%29._median%29%29
+(define (median xs)
+  (quantile 1/2 < xs))
+
+
+;
+; (boolean-subsets n m)
+; Returns all m-sized boolean subsets for lists of size n.
+; Example
+; (boolean-subsets 4 3)
+; '((0 1 1 1) (1 0 1 1) (1 1 0 1) (1 1 1 0))
+;
+(define (boolean-subsets n m)
+  (vector->list (discrete-dist-values (enumerate 
+   (define t (for/list ([i n]) (uniform-draw '(0 1))))
+   (observe/fail (sum t) m)
+   t
+   ))))
+
+;
+; (scalar-product x y)
+; returns sum (x * y)
+;
+(define (scalar-product x y)
+  (sum (map (lambda (a b) (* a b)) x y)))
+
+
+;
+; (equivalence s1 s2)
+; Equivalence of boolean statements: s1 <=> s2
+; i.e. if s1 is true -> s2 is true
+;      if s2 is true -> s1 is true
+; Supports both "plain" conditions as well as lambda based conditions
+;
+(define (equivalence s1 s2)
+  ; Convert lambda based condition to plain conditions
+  (let ([a (if (procedure? s1) (s1) s1)]
+        [b (if (procedure? s2) (s2) s2)])
+     (when a (observe/fail b))
+     (when b (observe/fail a))
+  ))
+
+;
+; (implication s1 s2)
+; Implication of boolean statements: s1 => s2
+; i.e. if s1 is true -> s2 is true
+; Supports both "plain" conditions as well as lambda based conditions
+;
+(define (implication s1 s2)
+  ; Convert lambda based condition to plain conditions
+  (let ([a (if (procedure? s1) (s1) s1)]
+        [b (if (procedure? s2) (s2) s2)])
+     (when a (observe/fail b))
+  ))
+
+
+#|
+  Harmonic number 
+  https://en.wikipedia.org/wiki/Zipf%27s_law
+  H,N
+|#
+(define (harmonic_number n)
+  (sum (for/list ([i n]) (/ 1 (add1 i)))))
+
+#|
+  Generatlized Harmonic number
+  Hs,N
+|#
+(defmem (harmonic_number_generalized n s) 
+  (sum (for/list ([i n]) (/ 1 (expt (add1 i) s) ))))
+
+(define (max-list a)
+  (apply max a))
+
+(define (min-list a)
+  (apply min a))
+
+
+;
+; Stirling number of the first kind in Racket.
+;
+; https://en.wikipedia.org/wiki/Stirling_numbers_of_the_first_kind
+;
+(define (stirling-first-kind n k)
+  (define dp (make-vector (add1 n) #f)) ; Create DP table for memoization
+  (for ([i (in-range (add1 n))])
+    (vector-set! dp i (make-vector (add1 k) 0))) ; Initialize DP table
+  
+  (vector-set! (vector-ref dp 0) 0 1) ; Base case: S(0, 0) = 1
+  
+  (for ([i (in-range 1 (add1 n))])    ; Loop over n
+    (for ([j (in-range (add1 k))])    ; Loop over k
+      (define prev (vector-ref (vector-ref dp (sub1 i)) j))
+      (define prev-1 (if (> j 0) (vector-ref (vector-ref dp (sub1 i)) (sub1 j)) 0))
+      (vector-set! (vector-ref dp i) j (+ prev-1 (* (sub1 i) prev)))))
+
+  (vector-ref (vector-ref dp n) k))   ; Return S(n, k)
+
+; Memoized recursive version, which might be faster than stirling-first-kind
+(defmem (stirling-1 n k)
+  (cond
+    [(= n 0) (if (= k 0) 1 0)]
+    [(= k 0) 0]
+    [else (+ (* (- n 1) (stirling-1 (- n 1) k))
+          (stirling-1 (- n 1) (- k 1)))]))
+
 ;
 ; (num-runs a)
 ; Returns the number of runs in the list a
@@ -1353,12 +1782,237 @@
         (let ([first-a (first a)]
               [rest-a (rest a)])
           (loop first-a rest-a (+ (if (eq? t first-a) 0 1) acc)))))
-
+  
   (if (empty? a)
       0
       (loop (first a) (rest a) 0))
   )
 
-; (factorial n)
-(define (factorial n)
-  (apply * (range 1 (add1 n))))
+; Return the runs of the list xs
+(define (get-runs xs)
+  (define (loop as aux)
+    ; (show2 "loop" "as" as "aux" aux)
+    (if (null? as)
+        aux
+        (let* ([but-last-aux (but-last aux)]
+               [last-aux (last aux)]
+               [aux-val (first last-aux)]
+               [a (first as)])
+          (if (eq? aux-val a)
+              (loop (rest as) (append but-last-aux (list (cons a last-aux))))
+              (loop (rest as) (append aux (list (list a))))
+              )))
+    )
+  (loop (rest xs) (list (list (first xs))))
+  )
+
+; Get the length of the runs of xs
+(define (get-runs-lens xs)
+  (map length (get-runs xs)))
+
+
+; Generate n 0/1 runs with probability p of success
+(define (generate-01-runs n p)
+  (get-runs (for/list ([i n]) (bernoulli p))))
+
+; Returns the runs with value vals
+(define (filter-runs runs val)
+  (filter (lambda (run) (and (= (first run) val))) runs))
+
+;
+; Return the i'th smallest element in list xs
+; Use sorted? #t  if the list is already sorted (increasing)
+; 
+(define (ith-smallest xs i [sorted? #f])
+  (if sorted?
+      (list-ref xs i)
+      (let ([s (sort xs <)])
+        (list-ref s i))))
+
+
+; Return all records in the list xs
+(define (get-records xs)
+  (define (loop a max-val aux)
+    (if (empty? a)
+        aux
+        (let ([val (first a)])
+          (if (> val max-val)
+              (loop (rest a) val (append aux (list val)))
+              (loop (rest a) max-val aux)))
+        )
+       )
+  (let ([max-val (first xs)])
+    (loop (rest xs)  max-val (list max-val))
+    )
+  )
+
+; Weak records, i.e. >=
+(define (get-records-geq xs)
+  (define (loop a max-val aux)
+    (if (empty? a)
+        aux
+        (let ([val (first a)])
+          (if (>= val max-val)
+              (loop (rest a) val (append aux (list val)))
+              (loop (rest a) max-val aux)))
+        )
+       )
+  (let ([max-val (first xs)])
+    (loop (rest xs)  max-val (list max-val))
+    )
+  )
+
+; Return the index of all the records in the list xs
+(define (get-records-ix xs)
+  (define (loop ix a max-val aux)      
+    (if (empty? a)
+        aux
+        (let ([val (first a)])
+          (if (> val max-val)
+              (loop (add1 ix) (rest a) val (append aux (list ix)))
+              (loop (add1 ix) (rest a) max-val aux)))
+        )
+    )
+  (let ([max-val (first xs)])
+       (loop 1 (rest xs)  max-val (list 0))
+       )
+  )
+
+; Weal records >=
+(define (get-records-ix-geq xs)
+  (define (loop ix a max-val aux)      
+    (if (empty? a)
+        aux
+        (let ([val (first a)])
+          (if (>= val max-val)
+              (loop (add1 ix) (rest a) val (append aux (list ix)))
+              (loop (add1 ix) (rest a) max-val aux)))
+        )
+    )
+  (let ([max-val (first xs)])
+       (loop 1 (rest xs)  max-val (list 0))
+       )
+  )
+
+
+;
+; ASCII plot
+; Example: Plotting the sine function
+; (ascii-plot sin (- pi) pi 40 20)
+;
+;; Custom function to generate an ASCII plot for a mathematical function
+(define (ascii-plot f xmin xmax width height)
+  (define step (/ (- xmax xmin) width))  ; Step size for x-axis
+  (define ymin -1.0)
+  (define ymax 1.0)
+  (define ystep (/ (- ymax ymin) height))  ; Step size for y-axis
+
+  ;; Loop through each row (y-axis), from top to bottom
+  (for ([y (in-range ymax ymin (- ystep))])
+    (for ([x (in-range xmin xmax step)])
+      (define fy (f x))
+      ;; Plot '*' if the function value is near the current y level
+      (if (and (>= fy (- y (/ ystep 2))) (<= fy (+ y (/ ystep 2))))
+          (display "*")
+          (display " ")))
+    (newline)))
+
+
+; Random n x n matric
+(define (random-matrix n [val (/ 1 n)])
+  (for/list ([i n])
+    (vector->list (dirichlet (ones-vector n val)))))
+
+
+; Return a random markov chain with transitions transitions and init-states init-state
+(define (markov-chain transitions init-state n)
+  (define (loop n a)
+    (if (= n 0)
+        a
+        (let* ([state (last a)] 
+               [len (length (first transitions))]
+               [next (categorical-vw2 (list->vector (list-ref transitions state)) (list->vector (range len)))])
+          ; (show2 "state" state "next" next "probs" (list-ref transitions state))
+          (loop (sub1 n) (append a (list next)))))
+    )
+  (define init (categorical-vw2 (list->vector init-state) (list->vector (range (length transitions) ))))
+  (loop (sub1 n) (list init))
+  
+  )
+
+; Simple display of a matrix
+(define (display-matrix m [name "Matrix"])
+  (displayln name)
+  (for ([row m])
+    (displayln row)))
+
+
+#|
+  Simple A/B test model
+
+  (ab-test number-of-tests-for-A 
+           number-of-tests-for-B 
+           number-of-successes-for-A
+           number-of-successes-for-B)
+
+|#
+(define (ab-test numA numB obsA obsB
+                 #:num-samples [num-samples 10000]
+                 #:truncate-output [truncate-output 5]
+                 #:hpd-interval [hpd-interval (list 0.9 0.95 0.99 0.99999)]
+                 #:skip-marginals? [skip-marginals? #f]
+                 )
+  
+  (define (model)
+    (importance-sampler
+
+   (define rateA (beta 1 1))
+   (define rateB (beta 1 1))
+
+   (observe-sample (binomial-dist numA rateA) obsA) ; number of successes for A
+   (observe-sample (binomial-dist numB rateB) obsB) ; number of successes for B
+
+   (define diff (- rateB rateA))
+   
+   (list rateA
+         rateB
+         diff
+         (> diff 0.0)
+    )))
+
+  (show-marginals (model)
+                  (list  "rateA"
+                         "rateB"
+                         "diff"
+                         "diff > 0.0")
+                  #:num-samples num-samples
+                  #:truncate-output truncate-output
+                  #:hpd-interval hpd-interval
+                  #:skip-marginals? skip-marginals?
+                  )
+  )
+
+
+; Create a one hot list of length n and the single 1 in position i
+; Example
+; > (one-hot 10 4)
+; '(0 0 0 0 1 0 0 0 0 0)
+(define (one-hot n i)
+  (let ([a (ones-list n 0)])
+    (set! a (list-set a i 1))
+    a
+    ))
+
+; Returns the first occurrence of val in list a.
+; If no occurrence, return default value.
+(define (find-first a val [default (length a)])
+  (let ([ix (index-of a val)])
+    (if ix
+        ix
+        default)))
+
+
+; Return the diagonal of a (square) matrix
+(define (diagonal m)
+  (for/list ([i (length m)]) (list-ref (list-ref m i) i)))
+

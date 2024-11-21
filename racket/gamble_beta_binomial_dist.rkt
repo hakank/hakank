@@ -36,6 +36,8 @@
   2: 0.0010000000000000002
   mean: 9.283000000000001
 
+  beta_binomial_mean 12 10 3:: 9.23076923076923
+
   See below for some more examples.
 
   This program was created by Hakan Kjellerstrand, hakank@gmail.com
@@ -50,26 +52,28 @@
 (require "gamble_utils.rkt")
 (require "gamble_distributions.rkt")
 
-
 (define (model)
   (; enumerate
    ; rejection-sampler
    importance-sampler
    ; mh-sampler
 
+   (define n 12)
    (define a 10)
    (define b 3)
-   (define x (beta_binomial 12 a b))
+   (define x (beta_binomial n a b))
    
    (list x)
    
    )
 )
 
+(displayln "Model 1")
 (show-marginals (model)
                 (list  "x")
-                #:num-samples 1000)
+                #:num-samples 10000)
 
+(show "beta_binomial_mean 12 10 3:" (beta_binomial_mean 12 10 3.0))
 
 
 #|
