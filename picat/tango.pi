@@ -1,0 +1,144 @@
+/* 
+
+  Tango puzzle in Picat.
+
+  https://www.linkedin.com/games/tango/
+  """
+  - Fill the grid so that each cell contains either a sun ()
+    or a moon (). 
+  - No more than 2
+    or may be next to each other, either vertically or horizontally.
+  - Each row (and column) must contain the same number of and.
+  - Cells separated by an = sign must be of the same type.
+  - Cells separated by an X sign must be of the opposite type.
+  - Each puzzle has one right answer and can be solved via deduction 
+   (you should never have to make a guess). 
+  """
+
+  Here sun=1 and moon=0.
+
+  Unique solution (1:S, 0: M):
+  S M M S M S 
+  M M S M S S 
+  S S M S M M 
+  M S S M S M 
+  M M S S M S 
+  S S M M S M 
+
+  Via Alireza Soroudi;
+  https://www.linkedin.com/pulse/last-tango-math-cp-alireza-soroudi-phd-2guwe
+
+  Compare with the following:
+  - bioxxo.pi
+  - binero.pi (a.k.a Binairo, Takuzu, Binary puzzle)
+  - binary_sudoku.pi 
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  problem(1,X,Signs),
+  tango(X,Signs),
+  N = X.len,
+  foreach(I in 1..N)
+    foreach(J in 1..N)
+      printf("%w ", cond(X[I,J] == 1,"S","M"))
+    end,
+    nl
+  end,
+  nl,
+  fail,
+
+  nl.
+go => true.
+
+
+tango(X,Signs) =>
+  N = X.len,  
+  M = N div 2,
+  X :: 0..1,  % 0: Moon, 1: Sun
+
+  % The number of Suns is the same as the number of Moons in each row and column.
+  % (I.e. the sum of each row/column is n / 2.
+  foreach(I in 1..N)
+    sum([X[I,J] : J in 1..N]) #= M,
+    sum([X[J,I] : J in 1..N]) #= M
+  end,
+
+  % Place Sun or Moon in the empty cells so that there are no more
+  % than two consecutive Suns or Moons in a row or a colum.
+  % (I.e. for each seqment of 3 there can be max two Suns (1s) (sum is 0..2).
+  foreach(I in 1..N)
+    % Max 2 Suns (1s) in a row
+    sliding_sum(0,2,3,[X[I,J] : J in 1..N]),
+    sliding_sum(0,2,3,[X[J,I] : J in 1..N]),
+    
+    % Max 2 Moons (0s) in a row
+    foreach(J in 1..N-2)
+      sum([X[I,J+K] #= 0 : K in 0..2]) #<= 2,
+      sum([X[J+K,I] #= 0 : K in 0..2]) #<= 2      
+    end 
+  end,
+
+  % Special signs
+  foreach([S,[X1,Y1],[X2,Y2]] in Signs)
+    % call(S,X[X1,Y1], X[X2,Y2]) % This works as well (see problem instance below)
+    
+    if S == 'x' then
+      X[X1,Y1] #!= X[X2,Y2]
+    elseif S == '=' then
+      X[X1,Y1] #= X[X2,Y2]
+    end
+  end,
+
+  solve(X).
+
+%
+% Global constraint sliding_sum
+%
+% Ensure that each sequence of length Seq in Variables
+% has between Low and Up 1s.
+% Note: Seq must be instantiated, but neither Low or Up has
+% to be (the result may be weird unless they are, though).
+%
+sliding_sum(Low, Up, Seq, Variables) =>
+  foreach(I in 1..Variables.length-Seq+1)
+    Sum #= sum([Variables[J] : J in I..I+Seq-1]),
+    Sum #>= Low,
+    Sum #=< Up
+  end.
+
+%
+% Problem instance
+% https://www.linkedin.com/games/tango/
+% https://www.linkedin.com/pulse/last-tango-math-cp-alireza-soroudi-phd-2guwe
+%
+
+problem(1,Problem,Signs) :-
+  S = 1,
+  M = 0,
+  Problem = [ [S, _, _, _, _, S],
+              [_, M, _, _, S, _],
+              [_, _, M, S, _, _],
+              [_, _, S, M, _, _],
+              [_, M, _, _, M, _],
+              [S, _, _, _, _, M]
+  ],
+  Signs = [ [x,[1,3],[1,4]],
+            [x,[3,1],[4,1]],
+            [=,[3,6],[4,6]],
+            [=,[6,3],[6,4]]
+  ].
+  % This works as well
+  % Signs = [ [#!=,[1,3],[1,4]],
+  %           [#!=,[3,1],[4,1]],
+  %           [#=,[3,6],[4,6]],
+  %           [#=,[6,3],[6,4]]
+  % ].
+  

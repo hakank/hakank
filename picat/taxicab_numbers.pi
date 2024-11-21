@@ -1,0 +1,155 @@
+/* 
+
+  Taxicab numbers in Picat.
+
+  From https://medium.com/@moligninip/the-taxicab-number-algorithm-explained-8265a7b2805d
+  """
+  [On Hardy's visiting Ramanujan at the hospital]
+  
+    I remember once going to see him when he was ill at Putney. I had 
+    ridden in taxi cab number 1729 and remarked that the number seemed to me 
+    rather a dull one, and that I hoped it was not an unfavorable omen. 
+    "No", he replied, "it is a very interesting number; it is the smallest 
+    number expressible as the sum of two cubes in two different ways."
+
+  ...
+  
+  Since a taxicab number is a positive integer that can be expressed as the 
+  sum of two cubes in two distinct ways, the brute force approach would be 
+  to loop over all possible pairs of pairs, i.e. integers a, b, c, d such that a³+b³=c³+d³.
+  """
+ 
+  Here are some different implementations.
+
+  * CP (go/0)
+    N=10**6:
+    Finding the 360 solutions: 0.273s
+    Symmmetry breaking (A<B,C<D, A<C): Finding the 45 numbers using cp takes about 0.052s
+
+    N=10**8: 5.541s
+
+  * Brute force for loop (go2/0): 4.342s
+
+  * Using hash tables (go/3): 0.003s
+
+  * Using member/2: (go/4) 1.335s
+
+
+  IMHO the CP and member/2 approach are the neatest and fast enough.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  N = 10**6,
+  Limit = ceiling(N**(1/3)),
+  println(limit=Limit),
+  X = [A,B,C,D],
+  X :: 1..Limit,
+
+  A**3 + B**3 #= C**3 + D**3,
+
+  A #!= C,
+  A #!= D,
+  B #!= D,
+
+  % Additional Symmetry breaking
+  A #< B,
+  C #< D,
+  A #< C,
+
+  solve($[ffd],X),
+  println((A**3+B**3)=X=[[A**3,B**3],[C**3,D**3]]),
+  fail,
+  
+  nl.
+go => true.
+
+/*
+  Brute force (360 solutions): 21.229s
+  Brute force with symmetry breaking A<B, C<D, A<C (45 solutions): 4.396s
+
+*/
+go2 ?=>
+  N = 10**6,
+  Limit = ceiling(N**(1/3)),
+
+  % foreach(A in 1..Limit, B in 1..Limit, C in 1..Limit, D in 1..Limit,
+  foreach(B in 1..Limit, A in 1..B, D in 1..Limit, C in 1..D, % A<= B, C<=D
+          A != C, A != D, B != D
+          , A < C
+          )
+    if A**3 + B**3 == C**3 + D**3 then
+      Num = A**3 + B**3,
+      println(x=Num=[A,B,C,D]=[[A**3,B**3],[C**3,D**3]])
+    end
+  end,
+  
+  nl.
+go2 => true.
+
+
+%
+% Optimization, using hash tables
+% Faster and got all 45 solutions: 0.0..0.004s
+%
+% Though- IMHO - it's harder to see exactly what it does,
+% at least compared to go/0 and go/4.
+%
+% Note: The Python code show in the post has an unnessecary
+% extra wrapper loop.
+% 
+go3 ?=>
+  garbage_collect(300_000_000),
+  N = 10**6,
+  Limit = ceiling(N**(1/3)),
+  println(limit=Limit),
+  Map = new_map(),
+  SumMap = new_map(),
+  PowMap = new_map(),
+  Count = 0,
+  foreach(A in 1..Limit)
+    PowMap.put(A,A**3),
+    foreach(B in 1..A-1)
+      S = PowMap.get(B,0) + PowMap.get(A),
+      if SumMap.has_key(S) then
+        println([S,[B,A],SumMap.get(S)]),
+        Count := Count +1
+      end,
+      SumMap.put(S,[B,A])
+    end
+  end,
+  println(count=Count),  
+  nl.
+
+go3 => true.
+
+%
+% Nondet (same approach as go/0): 2.833s -> 1.382s
+%
+go4 ?=>
+  N = 10**6,
+  Limit = N**(1/3),
+  println(limit=Limit),
+  
+  member(B,1..Limit),
+  member(D,1..Limit),
+  member(C,1..D-1),
+  member(A,1..min(B,C)-1),
+  
+  A**3 + B**3 == C**3 + D**3,
+  A != D,
+  B != D,
+
+  println((A**3+B**3)=[A,B,C,D]=[[A**3,B**3],[C**3,D**3]]),
+  fail,
+  
+  nl.
+go4 => true.
+
