@@ -1,0 +1,282 @@
+/* 
+
+  AoC Utilities in Picat.
+
+  Also see
+  - utils_me.pi (misc)
+  - haskell_prelude.pi (functional function)
+  - apl_util.pi (APL/K functions/procedures)
+  - v3_utils.pi (Prolog stuff)
+  - cp_utils.pi (Constraint modelling)
+  - (date_utils.pi dow, leap_year, g2j, j2g)
+  - dcg_utils.pi (DCG)
+  - *dcg*.pi (DCG)
+  - regex_utils.pi
+  - set_util.pi
+  - sort_util.pi
+  - string_util.pi
+  - string_util_python.pi
+
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module aoc_utils.
+
+import util.
+
+/*
+  split2(String)=Lines
+
+ 
+  Split the string String with "\n\n" as separator, 
+  returns the splitted lines.
+
+  (From Neng-Fa Zhou.)
+
+  Picat> X=split2("kalle persson\n\nemma stavsson\n\nulla gregersdottir").map(split)
+  X = [[[k,a,l,l,e],[p,e,r,s,s,o,n]],[[e,m,m,a],[s,t,a,v,s,s,o,n]],[[u,l,l,a],[g,r,e,g,e,r,s,d,o,t,t,i,r]]]
+
+*/
+split2(Str) = Lines =>
+  split2(Str,Lines).
+
+split2("\n\n",Tokens) => Tokens = [].
+split2(S,Tokens), append(Token,"\n\n",Rest,S) =>
+    Tokens = [Token|TokensR],
+    split2(Rest,TokensR).
+split2(S,Tokens) =>
+    Tokens = [S].
+
+
+/*
+  split3(Sep,String)=Lines
+
+  Generalization of split2/2
+  Split the string String with Sep as separator, 
+  and returns the splitted strings/lists.
+  
+  Picat> split3("a\n\nb c d\n\ne f\n\ng h","\n\n")=X       
+  X = [[a],[b,' ',c,' ',d],[e,' ',f],[g,' ',h]]
+
+  Picat> "a\n\nb c d\n\ne f\n\ng h".split3("\n\n")=X                 
+  X = [[a],[b,' ',c,' ',d],[e,' ',f],[g,' ',h]]
+
+*/
+split3(Str,Sep) = Lines =>
+  split3(Sep,Str,Lines).
+  
+split3(Sep,[],Tokens) => Tokens = [].
+split3(Sep,S,Tokens), append(Token,Sep,Rest,S) =>
+    Tokens = [Token|TokensR],
+    split3(Sep,Rest,TokensR).
+split3(Sep,S,Tokens) =>
+    Tokens = [S].
+
+
+
+%
+% Replacing all occurrences of the string/list Old in List with New.
+% Both Old and New must be lists (or strings).
+% 
+% Picat> replace2("picat is programming is fun","is","IS")=X,println(X)  
+% picat IS programming IS fun
+% X = [p,i,c,a,t,' ','I','S',' ',p,r,o,g,r,a,m,m,i,n,g,' ','I','S',' ',f,u,n]
+%
+replace2(List,Old,New) = Res =>
+  Res = List,
+  while (find(Res,Old,_,_))
+    once(append(Before,Old,After,Res)),
+    Res := Before ++ New ++ After
+  end.
+
+
+%
+% append/2 (list of lists)
+% Picat> append([[1,2,3],X,[6,7,8],Y],1..10)
+% X = [4,5]
+% Y = [9,10] ?;
+%
+% Picat> append([A,[B],C,D],1..10), A.len > 0, B > 3
+% A = [1,2,3]
+% B = 4
+% C = '[]'
+% D = [5,6,7,8,9,10] ?;
+% A = [1,2,3]
+% B = 4
+% C = [5]
+% D = [6,7,8,9,10] ?;
+% A = [1,2,3]
+% B = 4
+% C = [5,6]
+% D = [7,8,9,10] ?
+% ...
+append2(ListOfLists, List) :-
+    % must_be(list, ListOfLists),
+    append2_(ListOfLists, List).
+append2_([], []).
+append2_([L|Ls], As) :-
+    append(L, Ws, As),
+    append2_(Ls, Ws).
+
+
+
+%
+% occurrences(List):
+% collect(List):
+%
+% returns a map with all the keys and the 
+% number of occurrences of each elements.
+% 
+% Picat> X=[random(1,4) : N in 1..100],collect(X)=Map
+% X = [1,2,4,2,2,4,2,4,2,4,4,1,2,2,3,2,3,4,4,1,1,4,1,2,4,4,3,1,1,4,1,2,1,4,3,2,3,4,2,4,4,1,1,1,2,3,2,1,3,1,1,3,4,1,4,4,4,2,4,1,1,4,2,1,4,4,3,2,3,4,2,2,4,2,3,1,4,4,1,2,1,1,4,4,2,3,3,1,1,3,1,1,2,2,2,1,1,4,3,4]
+% Map = (map)[1 = 29,2 = 25,3 = 15,4 = 31]
+occurrences(List) = Map =>
+  Map = new_map(),
+  foreach(E in List)
+     Map.put(E, cond(Map.has_key(E),Map.get(E)+1,1))
+  end.
+
+% Some aliases
+collect(List) = occurrences(List).
+
+% 
+% Group the elements with the same occurrences
+% Picat> X=[random(1,4) : N in 1..20],collect(X)=Map,groups(Map)=Groups
+% X = [4,1,1,3,1,1,4,4,3,4,1,1,1,1,4,1,3,3,3,4]
+% Map = (map)[1 = 9,3 = 5,4 = 6]
+% Groups = (map)[5 = [3],6 = [4],9 = [1]]
+%
+groups(Map) = Groups =>
+  Groups = new_map(),
+  foreach(K=V in Map.to_list.sort)
+    Groups.put(V,Groups.get(V,[])++[K])
+  end.
+
+
+%
+% flatten1(List)
+%
+% Flatten the list one level
+% flatten1([ [1,2,3,4], [[5,6,7],[8,9,10]] ,[11]])=A
+% A = [1,2,3,4,[5,6,7],[8,9,10],11]
+%
+flatten1(List) = fold(++,[], List).
+
+
+% This is not allowed in Picat
+%   Lines.map(split("\n"))
+% since the argument to map must be callable (which split("\n") apparantly is not)
+% 
+% Instead one can use some helper functions
+%   Lines.map(split_nl)
+%   Lines.map(split_space)
+%   Lines.map(split_colon)
+%   etc
+split_nl(L) = L.split("\n").
+split_space(L) = L.split(" ").
+split_colon(L) = L.split(":").
+
+
+%
+% DCG
+%
+% phrase/2
+phrase(P,L) :-
+    println($phrase(P,L)),
+    Goal =.. [P,L,[]],
+    call(Goal).
+
+% phrase/3
+phrase(P,P2,L) :-
+    println($phrase(P,P2,L)),
+    Goal =.. [P,P2,L,[]],
+    call(Goal).
+
+
+% For debugging. This works.
+println(X) --> {println(X)}.
+
+% " "*
+space --> (" ", space) ; "".
+
+% " "+
+space1 --> " ", space1.
+
+digit(C) --> {ascii_digit(C)}.
+digits([C|Cs]) --> [C], {ascii_digit(C)}, digits(Cs).
+digits([])       --> "".
+
+list_of_digits([D|Ds],Sep) --> digits(D),{D!=""}, [Sep], list_of_digits(Ds,Sep).
+list_of_digits([D],Sep) --> digits(D),{D!=""}.
+list_of_digits([],_) --> [].
+
+
+lower_char(C) --> [C], {ascii_lowercase(C)}.
+lower_chars([C|Cs]) --> lower_char(C), lower_chars(Cs).
+lower_chars([C])    --> lower_char(C).
+
+upper_char(C) --> [C], {ascii_uppercase(C)}.
+upper_chars([C|Cs]) --> upper_char(C), upper_chars(Cs).
+upper_chars([C])    --> upper_char(C).
+
+% 0..9a..zA..Z
+char(C) --> [C], {(ascii_digit(C) ; ascii_lowercase(C) ; ascii_uppercase(C))}.
+chars([C|Cs]) --> char(C), chars(Cs).
+chars([C]) --> char(C).
+
+% Useful for non digit/lower/upper stuff
+char_except(C,Except) --> [C], {not membchk(C,Except)}.
+
+chars_except([C|Cs],Except) --> char_except(C,Except), chars_except(Cs,Except).
+chars_except([C],Except) --> char_except(C,Except).
+chars_except([],_) --> [].
+
+% line: Get the line
+line(Chars) --> chars_except(Chars,"\n"),{Chars != ""}.
+line("") --> "".
+
+% A single number
+number(N) --> digits(N1), {N1!="",N = N1.to_int}.
+
+% List of numbers, separated by space
+numbers([N|Ns]) --> digits(N1), {N1 != "", N = N1.to_int}, space, numbers(Ns).
+numbers([N])    --> digits(N1), {N1 != "", N = N1.to_int}.
+numbers([])     --> [].
+
+list_of_numbers1([N|Ns],Sep) --> numbers(N),{N!=""}, [Sep], list_of_numbers1(Ns,Sep).
+list_of_numbers1([N],Sep) --> numbers(N),{N!=""}.
+list_of_numbers1([],_) --> [].
+
+% List of number with a separator Sep, default " "
+list_of_numbers(Ns) --> list_of_numbers([Ns]," "). % Default " "
+% This removes one level of lists (since list_of_numbers1 is a list of list of numbers)
+list_of_numbers(Numbers,Sep) --> list_of_numbers1(N1,Sep),{N1 != "", Numbers = N1.first}.
+
+% Many spaces
+list_of_numbers_spaces1([N|Ns]) --> numbers(N),{N!=""}, space1, list_of_numbers_spaces1(Ns).
+list_of_numbers_spaces1([N]) --> numbers(N),{N!=""}.
+list_of_numbers_spaces1([]) --> [].
+
+list_of_numbers_spaces(Numbers) --> list_of_numbers_spaces1(N1),{N1 != "", Numbers = N1.first}.
+
+% list_of_char([Ns]) --> list_of_chars([Ns]," "). % Default " "
+% list_of_chars([N|Ns],Sep) --> chars(N),{N!=""}, [Sep], list_of_chars(Ns,Sep).
+% list_of_chars([N],Sep) --> chars(N),{N!=""}.
+% list_of_chars([],_) --> [].
+
+matrix([Line|Lines]) --> line(Line), "\n", matrix(Lines).
+matrix([Line])  --> line(Line).
+matrix([]) --> [].
+
+
+seq([])     --> [].
+seq([E|Es]) --> [E], {E != ' ', E != '\n'}, seq(Es).
+
+seq_list([S|Ss]) --> seq(S), (", " ; " "), seq_list(Ss).
+seq_list([S]) --> seq(S).
+seq_list([]).
+
