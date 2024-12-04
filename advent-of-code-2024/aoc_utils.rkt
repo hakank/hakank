@@ -24,6 +24,8 @@
 ; Sum a list of integers
 (define (sum x) (apply + x))
 
+(define (prod x) (apply * x))
+
 ; Converts a boolean to integer (0 or 1)
 (define (b2i x) (if x 1 0))
 
@@ -40,8 +42,7 @@
 ; This can surely be written in a neater way...
 (define (differences lst)
   (for/list ([i (range 1 (length lst))])
-    (- (list-ref lst i) (list-ref lst (sub1 i)))
-  ))
+    (- (list-ref lst i) (list-ref lst (sub1 i)))))
 
 
 ; Remove the element in index ix in list a
@@ -77,3 +78,44 @@
             (loop (rest x) (cons (take x n) aux))
             )))
   (loop a '()))
+
+
+(define (count-occurrences val lst)
+  (count (lambda (v) (= v val)) lst)
+  )
+
+(define (count-occurrences-eq val lst)
+  (count (lambda (v) (equal? v val)) lst)
+  )
+(define (list-slice lst [offset 0] [n (- (length lst) offset)] )
+  (take (drop lst offset) n))
+
+(define (count-occurrences-sublist sub lst)
+  (let* ([sub-len (length sub)]
+         [s (for/list ([i (add1 (- (length lst) sub-len))])      
+              (b2i (equal? (list-slice lst i sub-len) sub))
+              )])
+    (if (empty? s) 0 (sum s))))
+
+; Reference in a 2d matrix: m[i j]
+(define (list-ref-2d m i j) (list-ref (list-ref m i) j))
+
+
+; Return the diagonal of a (square) matrix
+; There are in total 2 * num-diagonals diagonals (from left/right/up/down)  
+(define (all-diagonals m)
+
+  (let* ([n (length m)]
+         [num-diagonals (- (* n 2) 1)])
+    (append (for/list ([k num-diagonals])
+      (for*/list ([i n]
+                  [j n]
+                  #:when (= (+ i j) k))
+        (list-ref-2d m i j)))
+    (for/list ([k num-diagonals])    
+      (for*/list ([i n]
+                  [j n]
+                  #:when (= (+ i (- n j)) k))
+        (list-ref-2d m j i)))
+      )))
+

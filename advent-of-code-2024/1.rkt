@@ -11,7 +11,7 @@
 
 #lang racket
 
-; (require math)
+; See http://www.hakank.org/advent-of-code-2024/aoc_utils.rkt
 (require "aoc_utils.rkt")
 
 (define file "1.txt")

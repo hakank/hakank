@@ -11,7 +11,7 @@
 
 #lang racket
 
-; (require math)
+; See http://www.hakank.org/advent-of-code-2024/aoc_utils.rkt
 (require "aoc_utils.rkt")
 
 (define file "2.txt")
@@ -41,5 +41,5 @@
                             (b2i (safe (remove-index i line)))) 0)))
     1))
 
-(part1)
-(part2)
+(time (part1))
+(time (part2))
