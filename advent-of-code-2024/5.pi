@@ -1,0 +1,105 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 5
+  https://adventofcode.com/2024/day/5
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import aoc_utils.
+
+main => go.
+
+/*
+
+  Part 1 and 2
+
+  Hyperfine:
+
+  Part 1:
+  Benchmark 1: picat -g go 5.pi 
+    Time (mean ± σ):      49.0 ms ±   7.0 ms    [User: 32.3 ms, System: 16.7 ms]
+    Range (min … max):    29.2 ms …  62.1 ms    55 runs
+
+  Part2 1: About 6.0s
+   
+*/
+go => 
+  File = "5.txt",
+  
+  Chars = read_file_chars(File),
+  Lines = split2(Chars),               % Split on "\n\n"
+  
+  Prec = [A.split("|").map(to_int) : A in Lines.first.split("\n")],
+  PageOrders = [A.split(",").map(to_int) : A in Lines.second.split("\n")],
+  member(Part,1..2),
+  Map = new_map(),
+  foreach([A,B] in Prec)
+     Map.put(A,Map.get(A,[])++[B])
+  end,
+  % Extra: Can we get a total order? No! It's cyclic...
+  % model2(Prec,PageOrders.flatten.sort_remove_dups,AllX),
+  % println(allX=AllX),
+  Sum = 0,
+  Incorrect = [],
+  foreach(Line in PageOrders)
+    OK = true,
+    foreach(I in 1..Line.len, break(OK == false))
+      T = Map.get(Line[I],[]),
+      foreach(J in I+1..Line.len, break(OK == false))
+        if not membchk(Line[J],T) then
+          Incorrect := Incorrect ++ [Line],
+          OK := false
+        end
+      end
+    end,
+    if Part == 1, OK then
+      Sum := Sum + Line[Line.len//2+1]
+    end
+  end,
+  if Part == 1 then
+    println(Sum)
+  else
+    println([S :  C in Incorrect,model(Prec,C,X),S = X[X.len//2+1]].sum)  
+  end,
+  fail.
+
+%
+% CP model
+%
+model(Prec,Cs,X) =>
+  N = Cs.len,
+  X = new_list(N),
+  X :: Cs,
+  all_different(X),
+  % Ensure that the precedences are satisfied, i.e.
+  % in the correct ordering.
+  foreach([A,B] in Prec, membchk(A,Cs),membchk(B,Cs))
+    PA #< PB,        % Position of A must be before position of B in X
+    element(PA,X,A), % A = X[PA]
+    element(PB,X,B)  % B = X[BA]
+  end,
+  solve($[ff,split],X).
+
+%
+% Test: Is there a total order of all pages?
+% Result: No.
+%
+model2(Prec,Cs,X) =>
+  println(cs=Cs),
+  N = Cs.len,
+  X = new_list(N),
+  X :: Cs,
+  all_different(X),
+  foreach([A,B] in Prec, membchk(A,Cs),membchk(B,Cs))
+    PA #< PB,  
+    element(PA,X,A),
+    element(PB,X,B)
+  end,
+  solve($[ff,split],X).
