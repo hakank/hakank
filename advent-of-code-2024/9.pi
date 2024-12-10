@@ -1,0 +1,131 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 9
+  https://adventofcode.com/2024/day/9
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+%
+% Slow and not pretty
+% 37.8s
+%
+go => 
+  File = "9.txt",
+  garbage_collect(300_000_000),
+  Line = read_file_lines(File).first,  
+
+  Type = 1,
+  Id = 0, % 0:Length, 1:Free
+  T = {},
+  foreach(C in Line.map(to_int))
+    if Type == 1 then 
+      T := T ++ {Id : _ in 1..C},
+      Id := Id + 1
+    else
+      T := T ++ {'.' : _ in 1..C}
+    end,
+    Type := cond(Type==1,2,1)
+  end,
+  % T = copy_term(L),
+  OK = true,
+  LastPos = T.len,
+  while (OK)
+    FirstPos = find_first_of(T,'.'),
+    while (T[LastPos] == '.') 
+      LastPos := LastPos - 1,
+      if LastPos < 1 ; FirstPos > LastPos then
+        OK := false
+      end
+    end,
+    if OK then
+      T[FirstPos] := T[LastPos],
+      T[LastPos] := '.'
+    end
+  end,
+  println([I*C : {I,C} in zip(0..T.len-1,T.to_list), C != '.'].sum).
+
+
+%
+% Slow and not pretty
+%
+% 30.8s
+%
+go2 => 
+  File = "9.txt",
+  garbage_collect(300_000_000),
+  Line = read_file_lines(File).first,  
+
+  Type = 1, % Type 1: File, Type 2: Free
+  Id = 0,
+  L = [],
+  foreach(C in Line.map(to_int))
+    if Type == 1 then 
+      L := L ++ [Id : _ in 1..C],
+      Id := Id + 1,
+      Type := 2
+    else
+      L := L ++ ['.' : _ in 1..C],
+      Type := 1
+    end
+  end,
+  T = copy_term(L),
+  [BlockPos,BlockLen] = get_block_positions(T.to_array),
+  BlockId = L.last+1,
+  OK = true,  
+  while (OK)
+    BlockId := BlockId - 1,
+    if BlockId < 1 then
+      OK := false
+    else
+      [BlockStart,BlockSize] = [BlockPos[BlockId+1],BlockLen[BlockId+1]],
+      BlockEnd = BlockStart+BlockSize-1,
+      if [FreeStart,FreeEnd] = first_free_space(T,BlockSize), FreeStart < BlockStart then
+        if OK then
+          foreach(I in FreeStart..FreeEnd)
+            T[I] := BlockId
+          end,
+          foreach(I in BlockStart..BlockEnd)
+            T[I] := '.'
+          end
+        end
+      end
+    end
+  end,
+  println([I*C : {I,C} in zip(0..T.len-1,T), C != '.'].sum).
+
+% This should be replaced with something faster
+% that works with arrays.
+first_free_space(L,Size) = [Start,End] =>
+  Free = ['.' : _ in 1..Size],
+  once(append(S,Free,_,L)),
+  Start = S.len+1,
+  End = Start + Size-1.
+
+get_block_positions(T) = [BlockPos,BlockLen] =>
+  Len = T.len,
+  BlockPos = {},
+  BlockLen = {},  
+  P = 0,
+  Q = 1,
+  foreach(I in 1..Len)
+    if T[I] == P then
+      if P > 0 then BlockLen := BlockLen ++ {Q} end,    
+      BlockPos := BlockPos ++ {I},
+      P := P + 1,
+      Q := 1
+    else
+      if T[I] != '.' then
+        Q := Q + 1
+      end
+    end
+  end,
+  BlockLen := BlockLen ++ {Q}.
