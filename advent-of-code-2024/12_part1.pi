@@ -1,0 +1,109 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 12
+  https://adventofcode.com/2024/day/12
+
+  Part 1
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+
+main => go.
+
+/*
+  Hyper fine
+  Benchmark 1: picat 12_part1.pi
+    Time (mean ± σ):      1.543 s ±  0.014 s    [User: 1.501 s, System: 0.041 s]
+    Range (min … max):    1.525 s …  1.568 s    10 runs
+
+*/
+go => 
+  File = "12.txt",
+  
+  M = read_file_lines(File), 
+  Rows = M.len,
+  Cols = M[1].len,
+  M2 = new_array(Rows,Cols),
+  Ids = M.flatten.sort_remove_dups,
+  RId = 1, % Region Id
+  % Separate into analysis of the same characters
+  foreach(Id in Ids)
+    SameChars=[ [I,J] : I in 1..Rows, J in 1..Cols, M[I,J] == Id],
+    Adj = new_map(),
+    foreach([A,B] in SameChars)
+      Ns = neibs2(M,Rows,Cols,A,B,Id)++[[A,B]],
+      Adj.put([A,B],Ns)
+    end,
+    CC = connected_components(SameChars,Adj),
+    foreach(C in CC)
+      foreach([A,B] in C)
+        M2[A,B] := RId
+      end,
+      RId := RId + 1
+    end    
+  end,
+  Sum = 0,
+  Chrs = M2.array_matrix_to_list_matrix.flatten.remove_dups,
+  foreach(C in Chrs)
+    RegionPerimeter = [[I,J] : I in 1..Rows, J in 1..Cols, M2[I,J] == C],
+    Perimeter = perimeter(M2,Rows,Cols,RegionPerimeter,C),
+    RegionArea = [M2[I,J] : I in 1..Rows, J in 1..Cols, M2[I,J] == C],    
+    Area = RegionArea.len,
+    PA = Area * Perimeter,
+    Sum := Sum + PA
+  end,
+  println(Sum).
+
+
+perimeter(M,Rows,Cols,A,C) = P =>
+  Ns = [], 
+  foreach([I,J] in A)
+    N = neibs(M,Rows,Cols,I,J),
+    Ns := Ns ++ N
+  end,
+  Same = [1 : I in 1..Ns.len, Ns[I] == C],
+  P = A.len*4 - Same.len.
+
+% All neigbours
+neibs(M,Rows,Cols,I,J) = [M[I+A,J+B] : A in -1..1, B in -1..1,
+                           abs(A+B) == 1, % just left/right/up/down
+                           I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols].
+
+% All neighours with the same character as M[I,J]
+neibs2(M,Rows,Cols,I,J,C) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                             abs(A+B) == 1, % just left/right/up/down
+                             I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols,
+                             M[I+A,J+B] == C].
+
+%
+% Connected components
+%
+% https://www.geeksforgeeks.org/connected-components-in-an-undirected-graph/
+dfs(Adj,Temp0,V, Visited,Temp) =>
+  Temp1 = copy_term(Temp0),
+  Visited.put(V,true),
+  Temp1 := Temp1 ++ [V],
+  foreach([A,B] in Adj.get(V))
+    if not Visited.has_key([A,B]) then
+      dfs(Adj,Temp1,[A,B],Visited,Temp2),
+      Temp1 := Temp2
+    end
+  end,
+  Temp=Temp1.
+
+connected_components(Nodes,Adj) = CC =>
+  Visited = new_map(),
+  CC = [],
+  foreach([A,B] in Nodes)
+    if not Visited.has_key([A,B]) then
+      Temp = [],
+      dfs(Adj,Temp, [A,B], Visited,Temp2),
+      CC := CC ++ [Temp2]
+    end
+  end.
