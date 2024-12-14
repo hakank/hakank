@@ -1,0 +1,230 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 14
+  https://adventofcode.com/2024/day/14
+
+  This contains improved versions of the original stuff in 14.pi
+  including some new ways of detecting the sought pattern in part 2.
+
+  Here are the different predicates used here:
+  * go/0: Part 1
+  * go2/0: Automatic detection.
+  * go2_detect/0: A neater version of the automatic detection in go2/0.
+  * go2_detect2/0: An alternative way of detection
+  * go2_detect3/0: An alternative way of detection. The fastest one.
+  * go2_detect4/0: A slight variation of go2_detect3/0 suggested by DestyNova
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import aoc_utils_regex.
+
+main => go.
+
+
+
+/*
+  Part 1:
+
+
+  Benchmark 1: picat -g go1 14.pi
+    Time (mean ± σ):      45.8 ms ±   8.0 ms    [User: 28.2 ms, System: 17.5 ms]
+    Range (min … max):    20.7 ms …  58.3 ms    50 runs
+
+*/
+go => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Ns = [find_all_numbers(Line) : Line in Lines],  
+  Cols = 101, Rows = 103,
+  Map = do_step(100,Ns,Rows,Cols),
+  safety_factor(Map,Rows,Cols).println.
+go => true.
+
+do_step(N,Ns,Rows,Cols) = Map =>
+  Map = new_map(),
+  foreach([C,R,VC,VR] in Ns)
+    NR = (R+N*VR) mod Rows,
+    NC = (C+N*VC) mod Cols,
+    Map.put([NR,NC], Map.get([NR,NC],[])++[[VR,VC]])
+  end.
+
+/* 
+
+  Part 2
+ 
+  Automatic detection of the pattern, version 1
+
+  Time for automatic detection with the now adjusted string: 14.3s
+
+*/
+go2 => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Ns = [find_all_numbers(Line) : Line in Lines],  
+  Cols = 101, Rows = 103,
+  It = 0,
+  OK = true,
+  while (OK == true)
+    It := It + 1,
+    Map = do_step(It,Ns,Rows,Cols),
+    T = get_map(Map,Rows,Cols),    
+    foreach(L in T, once(find(L,"XXXXXXXXXXXXXXXXXXXXXXXXXXXX",_,_)) )
+      print_map(Map,Rows,Cols), 
+      println("Found at it"=It),
+      println(factor=safety_factor(Map,Rows,Cols)),
+      OK := false
+    end
+  end,
+  nl.
+
+/*
+  Automatic detection.
+  This is a rewrite of my original version (in go2/0).
+
+  The time is about the same as in go2/0: 15.1s
+
+*/
+go2_detect => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Ns = [find_all_numbers(Line) : Line in Lines],  
+  Cols = 101,
+  Rows = 103,
+  detect(false,Ns,do_step(1,Ns,Rows,Cols),MapFound,Rows,Cols,0,ItFound),
+  println("Found at it"=ItFound),
+  print_map(MapFound,Rows,Cols), 
+  println("Found at it"=ItFound),
+  nl.
+
+
+% Detect a pattern
+detect(true,Ns,Map,Map,_Rows,_Cols,It,It).
+detect(false,Ns,Map0,Map,Rows,Cols,It0,It) :-
+  T = get_map(Map0,Rows,Cols),
+  ( (member(L,T), find(L,"XXXXXXXXXXXXXXXXXXXXXXXXXXXX",_,_)) ->
+     detect(true,Ns,Map0,Map,Rows,Cols,It0,It)
+   ;
+     Map2 = do_step(It0+1,Ns,Rows,Cols),
+     detect(false,Ns,Map2,Map,Rows,Cols,It0+1,It)
+   ).
+
+
+/*
+  Another way to detect the pattern automatically: 
+
+  The pattern is when the safety factor is at minimum.
+  Note: After finding the pattern, the program will do nothing.
+
+  This approach finds the pattern in about 15s.
+
+*/
+go2_detect2 => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Ns = [find_all_numbers(Line) : Line in Lines],  
+  Cols = 101, Rows = 103,
+  It = 1,
+  MinFactor = safety_factor(do_step(It,Ns,Rows,Cols),Rows,Cols),
+  while (true)
+    It := It + 1,
+    Map = do_step(It,Ns,Rows,Cols),
+    Factor = safety_factor(Map,Rows,Cols),
+    if Factor < MinFactor then
+      print_map(Map,Rows,Cols),
+      MinFactor := Factor,
+      println(it=It),
+      println(factor=Factor),
+      nl
+    end
+  end,
+  nl.
+
+/*
+  A third way of detecting the pattern.
+
+  Here we check for the case when all robots are
+  unique positions.
+
+  This is by far the fastest one.
+
+  Benchmark 1: picat -g go2_detect3 14b.pi
+    Time (mean ± σ):      1.629 s ±  0.029 s    [User: 1.588 s, System: 0.039 s]
+    Range (min … max):    1.599 s …  1.702 s    10 runs
+
+  (This was inspired by some comments I saw today.)
+
+*/ 
+go2_detect3 => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Ns = [find_all_numbers(Line) : Line in Lines],
+  NumRobots = Ns.len,
+  Cols = 101, Rows = 103,
+  It = 0,
+  OK = false,
+  while (OK == false)
+    It := It + 1,
+    Map = do_step(It,Ns,Rows,Cols),
+    if Map.keys.len == NumRobots then
+      print_map(Map,Rows,Cols),
+      println(it=It),
+      OK := true
+    end
+  end,
+  nl.
+
+%
+% An alternative approach to the counting method in go2_detect3/0, suggested by DestyNova.
+% Though it's a little slower (3.4s vs 1.6s).
+%
+go2_detect4 => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Ns = [find_all_numbers(Line) : Line in Lines],
+  NumRobots = Ns.len,
+  Cols = 101, Rows = 103,
+  It = 0,
+  OK = false,
+  while (OK == false)
+    It := It + 1,
+    Map = do_step(It,Ns,Rows,Cols),
+    if max(Map.values.map(len)) == 1 then
+      print_map(Map,Rows,Cols),
+      println(it=It),
+      OK := true
+    end
+  end,
+  nl.
+
+
+
+safety_factor(Map,Rows,Cols) = Factor =>
+  Factor = 1,
+  % Quadrants
+  Q1 = [[0,Rows//2-1],[0,Cols//2-1]],
+  Q2 = [[Rows//2+1,Rows],[0,Cols//2-1]],
+  Q3 = [[0,Rows//2-1],[Cols//2+1,Cols]],
+  Q4 = [[Rows//2+1,Rows],[Cols//2+1,Cols]],
+  foreach( [ [SR,ER],[SC,EC]] in [Q1,Q2,Q3,Q4] )
+    Factor := Factor * [Map.get([R,C],0).len : R in SR..ER, C in SC..EC, Map.has_key([R,C])  ].sum
+  end.
+
+print_map(Map,Rows,Cols) =>
+  foreach(R in 0..Rows)
+    foreach(C in 0..Cols)
+      printf("%w",cond(Map.has_key([R,C]),'X','.'))
+    end,
+    nl
+  end,
+  nl.
+
+% As a rows of strings
+get_map(Map,Rows,Cols) = [ [cond(Map.has_key([R,C]),'X','.') : C in 1..Cols] : R in 0..Rows].
+
+

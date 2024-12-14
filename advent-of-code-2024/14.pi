@@ -1,0 +1,141 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 14
+  https://adventofcode.com/2024/day/14
+
+  This is the original versions (though somewhat refactored).
+
+  * go/0: Part 1
+  * go2/0: Either manually pattern detection (when Manual = true) or
+           automatic detection.
+
+  See 14b.pi for some faster versions, and alternate versions of
+  automatic detection.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import aoc_utils_regex.
+
+main => go.
+
+
+/*
+
+  Part 1
+
+  Benchmark 1: picat -g go 14.pi
+    Time (mean ± σ):      84.3 ms ±   8.6 ms    [User: 63.9 ms, System: 20.2 ms]
+    Range (min … max):    54.8 ms …  98.7 ms    30 runs
+
+*/
+go => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],  
+  Cols = 101-1,
+  Rows = 103-1,
+  Map = new_map(),
+  foreach(Line in Lines)
+    [C,R,VC,VR]=find_all_numbers(Line),
+    % Adjust to "normal" coordinates: [R,C]
+    Map.put([R,C], Map.get([R,C],[])++[[VR,VC]])
+  end,
+  foreach(_ in 1..100)
+    Map := next(Map,Rows,Cols)
+  end,
+  Factor = safety_factor(Map,Rows,Cols),
+  println(Factor).
+go => true.
+
+
+
+/* 
+
+  Part 2
+
+  For part 2, I combined manually eye-balling the output and ran a "pattern detector".
+  Unfortunately, the string I used for the detection was too long so it didn't found any
+  solution with that. The manual eye-balling took quite long time.
+
+  Time for automatical detection with the now adjusted string: 15.8s
+
+  See go2_detect/0 for a little neater version.
+
+*/
+go2 => 
+  File = "14.txt",
+  Lines = [Line: Line in read_file_lines(File)],
+  Cols = 101-1,
+  Rows = 103-1,
+  Map = new_map(),
+  foreach(Line in Lines)
+    [C,R,VC,VR]=find_all_numbers(Line),
+    % Adjust to "normal" coordinates: [R,C]
+    Map.put([R,C], Map.get([R,C],[])++[[VR,VC]])
+  end,
+  Manual = false, % set to true for manual eye balling as well
+  It = 0,
+  OK = true,
+  while (OK == true)
+    It := It + 1,
+    Map := next(Map,Rows,Cols),
+    if Manual then
+      println(it=It),    
+      print_map(Map,Rows,Cols),
+      println(factor=safety_factor(Map,Rows,Cols)),
+      nl
+    end,
+    
+    % Detect a pattern
+    T = get_map(Map,Rows,Cols),    
+    foreach(L in T)
+      if once(find(L,"XXXXXXXXXXXXXXXXXXXXXXXXXXXX",_,_)) then
+        print_map(Map,Rows,Cols), 
+        println("Found at it"=It),
+        println(factor=safety_factor(Map,Rows,Cols)),
+        OK := false
+      end
+    end
+  end,
+  nl.
+
+
+safety_factor(Map,Rows,Cols) = Factor =>
+  Factor = 1,
+  % Quadrants
+  Q1 = [[0,Rows//2-1],[0,Cols//2-1]],
+  Q2 = [[Rows//2+1,Rows],[0,Cols//2-1]],
+  Q3 = [[0,Rows//2-1],[Cols//2+1,Cols]],
+  Q4 = [[Rows//2+1,Rows],[Cols//2+1,Cols]],
+  foreach( [ [SR,ER],[SC,EC]] in [Q1,Q2,Q3,Q4] )
+    Factor := Factor * [Map.get([R,C],0).len : R in SR..ER, C in SC..EC, Map.has_key([R,C])  ].sum
+  end.
+
+next(Map,Rows,Cols) = Map2 =>
+  Map2 = new_map(),
+  foreach([R,C] in Map.keys.sort)
+    Vs = Map.get([R,C]),
+    foreach([VR,VC] in Vs)
+      NextR = (R+VR) mod (Rows+1), % Rows        
+      NextC = (C+VC) mod (Cols+1), % Column
+      Map2.put([NextR,NextC],Map2.get([NextR,NextC],[])++[[VR,VC]])
+    end
+  end.
+
+print_map(Map,Rows,Cols) =>
+  foreach(R in 0..Rows)
+    foreach(C in 0..Cols)
+      printf("%w",cond(Map.has_key([R,C]),'X','.'))
+    end,
+    nl
+  end,
+  nl.
+
+% As a rows of strings
+get_map(Map,Rows,Cols) = [ [cond(Map.has_key([R,C]),'X','.') : C in 1..Cols] : R in 0..Rows].
+
