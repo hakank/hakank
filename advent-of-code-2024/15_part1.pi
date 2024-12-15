@@ -1,0 +1,112 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 15
+  https://adventofcode.com/2024/day/15
+
+  Only part 1
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import aoc_utils.
+
+main => go.
+
+% About 2.9s
+go => 
+  File := "15.txt",    
+  Split = split2(read_file_chars(File)), 
+  Grid = Split[1].split("\n").list_matrix_to_array_matrix,
+  N = Grid.len,
+  Moves= Split[2].split("\n").join(''),
+  [X,Y] = [[I,J] : I in 1..N, J in 1..N, Grid[I,J] == '@'].first,
+  MoveNum = 0,
+  foreach(Move in Moves)
+    MoveNum := MoveNum + 1,
+    [X2,Y2] = move(Move,X,Y),
+    if Grid[X2,Y2] != '#' then
+      Line = line(Move,Grid,N,X,Y),
+      if Line.len > 1, Line[2] == 'O' then
+        if once(find(Line,".",FirstFree,_)) then
+          CanMove = true,
+          if once(find(Line,"#",FirstBlock,_)), FirstBlock < Line.len then
+            if FirstFree > FirstBlock then
+              CanMove := false
+            end
+          end,
+          if CanMove then
+            Line[1] := '.',
+            Line[2] := '@',
+            foreach(F in 3..FirstFree)
+              Line[F] := 'O'
+            end,            
+            Grid := replace_line(Move,Line,Grid,N,X,Y)
+          end
+        end,
+        [NewX,NewY] = find_pos(Grid,N),
+        X := NewX,
+        Y := NewY        
+      else
+        % We don't push anything, just move around
+        Grid[X,Y] := '.',
+        X := X2,
+        Y := Y2,
+        Grid[X,Y] := '@'
+      end
+    end,
+    [NewX,NewY] = find_pos(Grid,N),
+    X := NewX, Y := NewY
+  end,
+  % print_grid(Grid),
+  Sum = 0,
+  foreach(I in 1..N, J in 1..N, Grid[I,J] == 'O')
+    Sum := Sum + 100*(I-1) + (J-1)
+  end,
+  println(Sum).
+
+
+find_pos(Grid,N) = [[I,J] : I in 1..N, J in 1..N, Grid[I,J] == '@'].first.
+
+print_grid(Grid) =>
+  foreach(Row in Grid)
+    println(Row.to_list)
+  end.
+
+move(<,I,J) = [I,J-1].
+move(^,I,J) = [I-1,J].
+move(>,I,J) = [I,J+1].
+move(v,I,J) = [I+1,J].
+
+% The relevant section for a push, including @ and border #
+line(<,Grid,N,I,J) = [Grid[I,B] : B in 1..J].reverse.
+line(^,Grid,N,I,J) = [Grid[A,J] : A in 1..I].reverse.
+line(>,Grid,N,I,J) = [Grid[I,B] : B in J..N].
+line(v,Grid,N,I,J) = [Grid[A,J] : A in I..N].
+
+replace_line(<,Line,Grid,N,I,J) = Grid2 =>
+    Line := Line.reverse,    
+    Grid2 = copy_term(Grid),
+    foreach(B in 1..J)
+      Grid2[I,B] := Line[B]
+    end.
+replace_line(^,Line,Grid,N,I,J) = Grid2 =>
+    Line := Line.reverse,
+    Grid2 = copy_term(Grid),
+    foreach(A in 1..I)
+      Grid2[A,J] := Line[A]
+    end.
+replace_line(>,Line,Grid,N,I,J) = Grid2 =>
+    Grid2 = copy_term(Grid),
+    foreach(B in J..N)
+      Grid2[I,B] := Line[B-J+1]
+    end.
+replace_line(v,Line,Grid,N,I,J) = Grid2 =>
+    Grid2 = copy_term(Grid),
+    foreach(A in I..N) 
+      Grid2[A,J] := Line[A-I+1]
+    end.
