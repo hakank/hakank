@@ -1,0 +1,95 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 16
+  https://adventofcode.com/2024/day/16
+
+  A little different planning model.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import planner.
+
+main => go.
+
+/*
+  About 4.8s
+*/ 
+go =>
+  garbage_collect(500_000_000),
+  File = "16.txt",
+  
+  M = [Line : Line in read_file_lines(File)],
+  N = M.len,
+
+  [[StartX,StartY]] = [[I,J] : I in 1..N, J in 1..N, M[I,J] == 'S'],
+  [[EndX,EndY]] = [[I,J] : I in 1..N, J in 1..N, M[I,J] == 'E'],
+
+  Graph = [ $edge([I,J],[A,B]) : I in 1..N, J in 1..N, [A,B] in neibs(M,N,I,J)],
+  % Add the edges to the "database" so edge/2 is available in action/4.
+  cl_facts_table(Graph,$[edge(+,-)]),
+
+  StartDir = east,
+  % best_plan([[EndX,EndY],StartDir,null_op,[StartX,StartY]],Path,Cost), % 3min57.3s 
+  % best_plan_bin([[EndX,EndY],StartDir,null_op,[StartX,StartY]],Path,Cost), % 10.9s. Not correct solution
+  % best_plan_bb([[EndX,EndY],StartDir,null_op,[StartX,StartY]],Path,Cost), % too slow
+  best_plan_unbounded([[EndX,EndY],StartDir,null_op,[StartX,StartY]],_Path,Cost), % 4.8s
+  println(Cost).
+
+
+
+% All neigbours of M[I,J] (!= '#')
+neibs(M,N,I,J) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                           abs(A+B) == 1, % just left/right/up/down
+                           I+A >= 1, I+A <= N, J+B >= 1, J+B <= N,
+                           M[I+A,J+B] != '#'].
+
+final([End,Dir,Op,End]).
+
+% Slight speed up.
+heuristic([[EndI,EndJ],_,_,[I,J]]) = abs(I-EndI)+abs(J-EndJ).
+
+table
+% This order is slightly faster than with rot first
+action([End,Dir,Op1,[X,Y]],To,Action,Cost) :-
+  % Go forward one step in the same direction
+  Edges = findall(E,edge([X,Y],E)),
+  member([A,B],Edges),
+  fd(Dir,[X,Y],[X-A,Y-B]),
+  Op = fd,
+  To=[End,Dir,Op,[A,B]],
+  Action = [[X,Y],Dir,Op,[A,B]],
+  Cost = 1.
+
+action([End,Dir,Op1,[X,Y]],To,Action,Cost) :-
+  % Just rotate clockwise or counter clockwize
+  rot(Dir,NewDir),
+  Op = rot,
+  To=[End,NewDir,Op,[X,Y]],
+  Action = [[X,Y],NewDir,Op,[X,Y]],
+  Cost = 1000.
+
+
+rot(north,east).
+rot(north,west).
+
+rot(east,north).
+rot(east,south).
+
+rot(south,west).
+rot(south,east).
+
+rot(west,north).
+rot(west,south).
+
+% The directions are from bottom/left of the matrix
+% (not from the top/left)
+fd(south,[X,Y],[-1,0]).
+fd(west,[X,Y],[0,1]).
+fd(north,[X,Y],[1,0]).
+fd(east,[X,Y],[0,-1]).
