@@ -1,0 +1,288 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 18
+  https://adventofcode.com/2024/day/18
+
+  Here are some different versions.
+
+  Part1:
+  - go/0: Using planner, 2.86s
+  - go1_dijkstra/0: Using dijkstra/4: 0.84s
+
+  Part 2:
+  - go2/0: Using planner: Out of memory
+  - go2_dijkstra: Using dijkstra/4: 46min10s
+  - go2_dijkstra_binary_search: dijkstra/4 + binary search: 3.5s
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import aoc_utils.
+import planner.
+
+main => go.
+
+/*
+  Part 1:
+  Using the planner: 2.86s
+
+*/
+go => 
+  File = "18.txt",
+  
+  Lines = [Line.split(",").map(to_int): Line in read_file_lines(File)],
+  N = cond(File == "18.txt", 70+1, 6+1),
+  Steps = cond(File == "18.txt", 1024, 12),
+  M = new_array(N,N),
+  bind_vars(M,'.'),
+  foreach([Y,X] in Lines[1..Steps])
+     M[X+1,Y+1] := '#'
+  end,
+  Graph = [],
+  foreach(I in 1..N, J in 1..N)
+     Ns = neibs(M,N,N,I,J,'.'),
+     foreach(S in Ns)
+       Graph := Graph ++ $[edge([I,J],S,1)]
+     end
+  end,
+  cl_facts_table(Graph,$[edge(+,-,-)]),
+
+  % best_plan([[1,1],[N,N]],Plan,Cost), % 2.87s
+  % best_plan_bb([[1,1],[N,N]],Plan,Cost), % Wrong answer!
+  % best_plan_bin([[1,1],[N,N]],Plan,Cost), % 3.1s
+  best_plan_unbounded([[1,1],[N,N]],_Plan,Cost), % 2.86s
+  println(Cost).
+
+
+/*
+  Part 1
+  Using dijkstra/4
+  0.84s
+*/
+go1_dijkstra => 
+  File = "18.txt",
+  Lines = [Line.split(",").map(to_int): Line in read_file_lines(File)],
+  N = cond(File == "18.txt", 70+1, 6+1),
+  Steps = cond(File == "18.txt", 1024, 12),
+  
+  M = new_array(N,N),
+  bind_vars(M,'.'),
+  foreach([Y,X] in Lines[1..Steps])
+     M[X+1,Y+1] := '#'
+  end,
+  Graph = new_map(),
+  foreach(I in 1..N, J in 1..N)
+     Ns = neibs(M,N,N,I,J,'.'),
+     foreach(S in Ns)
+       Graph.put([I,J],Graph.get([I,J],[])++[S])
+     end
+  end,
+  [Found,_Dist,_Prev] = dijkstra(Graph,10000,[1,1],[N,N]),
+  println(Found.len-1).
+
+
+/*
+  Part 2 
+
+  Using (my very slow) Dijkstra's algorithm: About 46min10s
+
+*/
+go2_dijkstra => 
+  File = "18.txt",  
+  Lines = [Line.split(",").map(to_int): Line in read_file_lines(File)],
+  N = cond(File == "18.txt", 70+1, 6+1),
+  
+  M = new_array(N,N),
+  bind_vars(M,'.'),
+  OK := true,
+  foreach(Step in 1..Lines.len, break(OK != true))
+    println(step=Step),
+    [X,Y] = Lines[Step],
+    M[X+1,Y+1] := '#',
+    Graph = new_map(),
+    foreach(I in 1..N, J in 1..N)
+       Ns = neibs(M,N,N,I,J,'.'),
+       foreach(S in Ns)
+         Graph.put([I,J],Graph.get([I,J],[])++[S])
+       end
+    end,
+    if _ = dijkstra(Graph,10000,[1,1],[N,N]) then
+      true
+    else
+      println(no_path=Step),
+      OK := Step
+    end
+  end,
+  println(step=OK=Lines[OK]).
+
+/*
+  Part 2
+  Dijkstra + Binary search: 3.5s
+
+*/
+go2_dijkstra_binary_search => 
+  File = "18.txt",
+  Lines = [Line.split(",").map(to_int): Line in read_file_lines(File)],
+  N = cond(File == "18.txt", 70+1, 6+1),
+  L = 1,
+  R = Lines.len,
+  M = _,
+  while (L <= R)
+     M := (L+R) // 2,
+     if _ = check_path(Lines,N,M) then
+        L := M + 1
+     else 
+       R := M - 1
+     end
+  end,
+  println(M=Lines[M+1]).
+
+%
+% True if there is a a path from [1,1] -> [N,]
+%
+check_path(Lines,N,Step) = Found =>
+  M = new_array(N,N),
+  bind_vars(M,'.'),
+  Graph = new_map(),  
+  foreach(S in 1..Step)
+    [X,Y] = Lines[S],
+    M[X+1,Y+1] := '#'
+  end,
+  foreach(I in 1..N, J in 1..N)
+    Ns = neibs(M,N,N,I,J,'.'),
+    foreach(T in Ns)
+      Graph.put([I,J],Graph.get([I,J],[])++[T])
+     end
+  end,  
+  [Found,_,_] = dijkstra(Graph,10000,[1,1],[N,N]).
+  
+
+/*
+  Dijkstra's algorithm
+  (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm)
+  However, it's very slow.
+*/
+table
+dijkstra(Graph,Init,Source,Target) = [Found,Dist,Prev] =>
+  Inf = maxint_small(),
+  Dist = new_min_heap([{0,Source}]),
+  Prev = new_map(),
+  Q = [],
+  Vals = new_map(),
+  foreach(V in Graph.keys)
+    Dist.heap_push({Inf,V}),
+    Prev.put(V,undef),
+    Vals.put(V,Inf),
+    Q := Q ++ [V]
+  end,
+  Seen = new_set(),
+  Found = false,
+  while (Q.len > 0, Found == false)
+    {UVal,U} = Dist.heap_pop(),
+    
+    % Found the target. Unroll the path.
+    if nonvar(Target), U == Target then
+      S = {},
+      UU = Target,
+      if Prev.get(UU,undef) != undef; UU == Source then
+        while (UU != undef)
+          S := {UU} ++ S,
+          UU := Prev.get(UU,undef)
+        end
+      end,
+      Found := S
+    end,
+    if Seen.has_key(U) then
+      % We have seen this before -> No path
+      Found := no_path
+    end,
+    select(U,Q,Q2),
+    Seen.put(U),    
+    foreach(V in Graph.get(U,[]),membchk(V,Q2),not Seen.has_key(V))
+      Cost = abs(U[1]-V[1])+abs(U[2]-V[2]),
+      Alt = UVal + Cost,
+      VVal = Vals.get(V),     
+      if Alt < VVal then
+        Dist.heap_push({Alt,V}),
+        Vals.put(V,Alt),
+        Prev.put(V,U)
+      end
+    end,
+    Q := Q2
+  end.
+
+/*
+  Part 2
+  Using planner: OUT OF MEMORY
+
+*/
+go2_planner =>
+  garbage_collect(1000_000_000),
+  File = "18.txt",
+  
+  Lines = [Line.split(",").map(to_int): Line in read_file_lines(File)],
+
+  N = cond(File == "18.txt", 70+1,6+1),
+  M = new_array(N,N),
+  bind_vars(M,'.'),
+
+  OK = false,  
+  foreach(Step in 1..Lines.len, break(OK != false))
+    % initialize_table,
+    
+    println(step=Step=Lines[Step]),
+    [Y,X] = Lines[Step],
+    M[X+1,Y+1] := '#',
+    Graph = [],
+    foreach(I in 1..N, J in 1..N)
+       Ns = neibs(M,N,N,I,J,'.'),
+       foreach(S in Ns)
+         Graph := Graph ++ $[edge([I,J],S,1)]
+       end
+    end,
+    cl_facts_table(Graph,$[edge(+,-,-)]),
+
+    % best_plan([[1,1],[N,N]],Plan,Cost),  
+    % best_plan_bb([[1,1],[N,N]],Plan,Cost),
+    % best_plan_bin([[1,1],[N,N]],Plan,Cost),
+    if best_plan_unbounded([[1,1],[N,N]],_Plan,Cost) then
+      println(cost=Cost)
+    else
+      println(foundit=Step=Lines[Step]),
+      OK := [Step,Lines[Step]]
+    end    
+
+  end,
+  println(foundit=OK),
+  nl.
+
+
+print_mat(M) =>
+  foreach(Row in M)
+    println(Row.to_list)
+  end,
+  nl.
+
+% Indices of 4 neibours
+neibs(M,Rows,Cols,I,J,C) = [[I+A,J+B] : A in -1..1, B in -1..1,
+                                         abs(A+B) == 1, 
+                                         I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols,
+                                         M[I+A,J+B] == C].
+
+
+heuristic([[I,J],[EndI,EndJ]]) = abs(I-EndI)+abs(J-EndJ).
+
+final([End,End]).
+
+table
+action([[X,Y],End],To,Action,Cost) :-
+  edge([X,Y],[I,J],_),
+  To = [[I,J],End],
+  Action = [[X,Y],to,[I,J]],
+  Cost = 1.

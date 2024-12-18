@@ -1,0 +1,115 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 5
+  https://adventofcode.com/2024/day/5
+
+  Using topological ordering for part 2.
+
+  Originally I tried to do a topological sort for the all numbers,
+  but that didn't work since it's cyclic.
+
+  However, if one separate each update and do a topological sort
+  on only the rules that applies to both A|B then it works.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import aoc_utils.
+
+main => go.
+
+
+go2 =>
+  File = "5.txt",
+  Chars = read_file_chars(File),
+  Lines = split2(Chars),
+  
+  Prec = [A.split("|").map(to_int) : A in Lines.first.split("\n")],
+  PageOrders = [A.split(",").map(to_int) : A in Lines.second.split("\n")],
+  Map = new_map(),
+  foreach([A,B] in Prec)
+     Map.put(A,Map.get(A,[])++[B])
+  end,
+  Incorrect = [],
+  foreach(Line in PageOrders)
+    OK = true,
+    foreach(I in 1..Line.len, break(OK == false))
+      T = Map.get(Line[I],[]),
+      foreach(J in I+1..Line.len, break(OK == false))
+        if not membchk(Line[J],T) then
+          Incorrect := Incorrect ++ [Line],
+          OK := false
+        end
+      end
+    end,
+  end,
+  Sum = 0,  
+  foreach(Inc in Incorrect)
+    % Extract the rules that only applied on the numbers in the
+    % (incorrectly-ordered) updates and do a topological sort.
+    Precedences = [],
+    foreach([A,B] in Prec, membchk(A,Inc), membchk(B,Inc))
+      Precedences := Precedences ++ [[A,B]]
+    end,
+    topological_sort(Precedences, Sorted),
+    Sum := Sum + Sorted[Sorted.len//2+1]
+  end,
+  println(Sum).
+
+%
+% Inspired by this SETL snippet:
+%   (while exists x in nodes | x notin range edges)
+%      print(x);
+%      nodes less:= x;
+%      edges lessf:= x;
+%   end;
+% Note: This implementation detect cycles 
+%       so it's a little overkill for our purposes here.
+% See http://hakank.org/picat/topological_sort.pi
+% for more examples (including cycle detection).
+% 
+topological_sort(Precedences, Sorted) =>
+
+  % Note: Picat don't support multi-maps so we work with a 
+  %       list of K=V (i.e. key=value)
+  Edges = [K=V : [K,V] in Precedences],
+  Nodes = (domain(Edges) ++ range(Edges)).remove_dups(),
+
+  Sorted1 = [],
+  while (member(X,Nodes), not member(X,range(Edges))) 
+      Sorted1 := Sorted1 ++ [X],
+      Nodes := Nodes.delete(X),
+      Edges := Edges.delete_key(X)
+  end,
+  % detect a cycle
+  if Nodes.length > 0 then
+    println("\nThe graph is cyclic. Here's the detected cycle."),
+    println(nodes_in_cycle=Nodes),
+    println(edges_in_cycle=Edges),
+    Sorted = [without_cycle=Sorted1,cycle=Nodes]
+  else 
+    Sorted = Sorted1
+  end,
+  nl.
+
+
+% domain are the keys in L
+domain(L) = [K : K=_V in L].
+
+% range are the values of L
+range(L) = [V : _K=V in L].
+
+% deletes all pairs in L where a value is X
+% (this is less on a multi-map in GNU SETL)
+delete_value(L,X) = [K=V : K=V in L, V!=X].
+
+% deletes all pairs in L where a key is X
+% (this is lessf on a multi-map in GNU SETL)
+delete_key(L,X) = [K=V : K=V in L, K!=X].
+
