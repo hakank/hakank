@@ -1,0 +1,97 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 22
+  https://adventofcode.com/2024/day/22
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+% import aoc_utils.
+
+main => go.
+
+/*
+  Part 1
+
+  Hyperfine 
+  Benchmark 1: picat -g go 22.pi
+    Time (mean ± σ):     706.1 ms ±  10.0 ms    [User: 687.9 ms, System: 17.2 ms]
+    Range (min … max):   689.3 ms … 720.3 ms    10 runs
+
+*/
+go => 
+  File = "22.txt",
+  Lines = [Line.(to_int): Line in read_file_lines(File)],  
+  [calc1(N,2000) : N in Lines].sum.println.
+
+
+/*
+  Part 2: 1min29.6s
+*/ 
+go2 =>
+  garbage_collect(300_000_000),
+  File = "22.txt",
+  Lines = [Line.(to_int): Line in read_file_lines(File)],
+  Ds = new_map(20000),
+  % Phase 1: Get the best changes
+  foreach(N in Lines)
+    Rs = calc2(N,2000),
+    Diffs = differences(Rs),
+    Seen = new_map(2000),
+    foreach(I in 5..Rs.len, D = Diffs[I-4..I-1], not Seen.has_key(D))
+      Seen.put(D),
+      Ds.put(D,Ds.get(D,0)+Rs[I])
+    end
+  end,
+  Best = Ds.to_list.sort(2).last.first,
+  garbage_collect(300_000_000),
+  
+  % Phase 2
+  Sum = 0,
+  foreach(N in Lines)
+    Rs = calc2(N,2000),
+    Diffs = differences(Rs),
+    if once(append(Pre,Best,_,Diffs)) then
+      Len = Pre.len,
+      Sum := Sum + Rs[Len+5]
+    end
+  end,
+  println(Sum).
+
+debug(N) = N => println(n=N).
+
+table
+differences(L) = [L[I]-L[I-1] : I in 2..L.len].
+
+mix(N,Secret) = N ^ Secret.
+prune(Secret) = Secret mod 16777216.
+
+% calc(Secret) = Secret.debug().calc1().debug().calc2().debug().calc3().
+calc(Secret) = Secret.calc1().calc2().calc3().
+calc1(Secret) = Secret.mix(Secret*64).prune().
+calc2(Secret) = Secret.mix(Secret // 32).prune().
+calc3(Secret) = Secret.mix(Secret * 2048).prune().
+
+% For part 1
+calc1(Secret,N) = Res =>
+  Res = Secret,
+  foreach(_ in 1..N)
+    Res := calc(Res)
+  end.
+
+% For part 2
+table
+calc2(Secret,N) = Ss =>
+  Res = Secret,
+  Ss = [Res mod 10],
+  foreach(_ in 1..N)
+    Res := calc(Res),
+    Ss := Ss ++ [Res mod 10]
+  end.
+
+  

@@ -1,0 +1,132 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 21
+  https://adventofcode.com/2024/day/21
+
+  Part 1
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import aoc_utils.
+import planner.
+main => go.
+
+/*
+  Part 1
+
+  Hyperfine
+
+  Benchmark 1: picat -g go 21.pi
+    Time (mean ± σ):     182.4 ms ±  11.0 ms    [User: 159.8 ms, System: 22.1 ms]
+    Range (min … max):   157.7 ms … 196.9 ms    15 runs
+ 
+*/
+go =>
+  nolog,
+  File = "21.txt",
+  Lock = ["789",
+          "456",
+          "123",
+          " 0A"],
+  LockRows = Lock.len,
+  LockCols = Lock[1].len,
+  LockMap = new_map(),
+  foreach(I in 1..LockRows, J in 1..LockCols, Lock[I,J] != ' ')
+    LockMap.put(Lock[I,J],[I,J])
+  end,
+  Keypad = [" ^A",
+            "<v>"],
+  KeypadRows = Keypad.len,
+  KeypadCols = Keypad[1].len,            
+  KeypadMap = new_map(),
+  foreach(I in 1..KeypadRows, J in 1..KeypadCols, Keypad[I,J] != ' ')
+    KeypadMap.put(Keypad[I,J],[I,J])
+  end,
+  Lines = read_file_lines(File),
+  LockStart = LockMap.get('A'),
+  KeypadStart = KeypadMap.get('A'),
+  Sum = 0,
+  foreach(Line in Lines[1..5])
+    minof_inc(combined(Line,Lock,LockMap,LockStart,LockRows,LockCols,
+         Keypad,KeypadMap,KeypadStart,KeypadRows,KeypadCols,
+         Ps,K1,K2, Opt), Opt),
+    CC =[C : C in Line, ascii_digit(C)],
+    Sum := Sum + K2.len * CC.parse_term   
+  end,
+  println(Sum).
+
+table
+combined(Line,Lock,LockMap,LockStart,LockRows,LockCols,
+         Keypad,KeypadMap,KeypadStart,KeypadRows,KeypadCols,
+         PsF,K1F,K2F, Opt) :-
+    T = [LockStart] ++ [[I,J] : C in Line, [I,J] = LockMap.get(C,[])],
+    Ps = [],
+    foreach(I in 2..T.len)
+      best_plan_nondet([lock,Lock,LockRows,LockCols,T[I-1],T[I]],Plan,_Cost),
+      Ps := Ps ++ Plan ++ "A",
+    end,
+    
+    % First keypad round
+    Keypad1 = [KeypadStart] ++ [[I,J] : C in Ps, [I,J] = KeypadMap.get(C,[])],
+    K1 = [],
+    foreach(I in 2..Keypad1.len)
+      best_plan_nondet([keypad,Keypad,KeypadRows,KeypadCols,Keypad1[I-1],Keypad1[I]],Plan,_Cost),
+      K1 := K1 ++ Plan ++ "A",
+    end,
+
+    % Second keypad round
+    Keypad2 = [KeypadStart] ++ [[I,J] : C in K1, [I,J] = KeypadMap.get(C,[])],
+    K2 = [],
+    foreach(I in 2..Keypad2.len)
+      best_plan([keypad,Keypad,KeypadRows,KeypadCols,Keypad2[I-1],Keypad2[I]],Plan,_Cost),
+      K2 := K2 ++ Plan ++ "A",
+    end,
+    CC =[C : C in Line, ascii_digit(C)],
+    PsF = Ps,
+    K1F = K1,
+    K2F = K2,
+
+    % Opt = Ps.len+K1.len+K2.len.
+    Opt = K2.len.    
+
+
+
+final([_Type,_Lock,_Rows,_Cols,End,End]) .
+
+% The lock steps
+table
+action([lock,Lock,Rows,Cols,[X,Y],End],To,Move,Cost) :-
+  Ns = neibs_ab(Rows,Cols,X,Y),
+  member([A,B],Ns),
+  Lock[X+A,Y+B] != ' ',  
+  To = [lock,Lock,Rows,Cols,[X+A,Y+B],End],
+  move(Mv,[A,B]),
+  Move = Mv,
+  Cost = 1.
+
+% The keypad steps
+table
+action([keypad,Keypad,Rows,Cols,[X,Y],End],To,Move,Cost) :-
+  Ns = neibs_ab(Rows,Cols,X,Y),
+  member([A,B],Ns),
+  Keypad[X+A,Y+B] != ' ',    
+  To = [keypad,Keypad,Rows,Cols,[X+A,Y+B],End],
+  move(Mv,[A,B]),
+  Move = Mv,
+  Cost = 1.
+
+move('^',[-1,0]).
+move('A',[0,0]).
+move('<',[0,-1]).
+move('v',[1,0]).
+move('>',[0,1]).
+
+neibs_ab(Rows,Cols,I,J) = [[A,B] : A in -1..1, B in -1..1,
+                                   abs(A+B) == 1, 
+                                   I+A >= 1, I+A <= Rows, J+B >= 1, J+B <= Cols].
