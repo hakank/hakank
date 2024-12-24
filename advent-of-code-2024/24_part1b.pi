@@ -1,0 +1,79 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 24
+  https://adventofcode.com/2024/day/24
+
+  Thanks to DestyNova for hinting on a very annoying bug in part 1.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import aoc_utils.
+
+main => go.
+
+/*
+  Part 1
+
+  Benchmark 1: picat -g go24_part1b.pi
+    Time (mean ± σ):      29.7 ms ±   6.7 ms    [User: 15.8 ms, System: 13.9 ms]
+    Range (min … max):    10.7 ms …  41.7 ms    63 runs
+
+*/
+go => 
+  File = "24.txt",
+  Split = split2(read_file_chars(File)),
+  First =   [A.split(": ") : A in Split.first.split("\n")], 
+  Second = [A.split(" ->") : A in Split.second.split("\n")],
+
+  Cs = "import cp,util.\n",
+  Cs :=  Cs ++ "main => \n",
+  Vars = new_set(),
+  Inits = new_map(),
+  foreach([Gate,Init] in First)
+    Vars.put(Gate.to_uppercase),
+    Inits.put(Gate,Init.to_int)
+  end,
+  Zs = [],
+  Cons = [],
+  foreach([G1,Op,G2,Res] in Second)
+    Vars.put(G1.to_uppercase),
+    Vars.put(G2.to_uppercase),
+    Vars.put(Res.to_uppercase),
+    if Op == "AND" then
+      Cons:= Cons ++ "bit_and(" ++ G1.to_uppercase ++"," ++ G2.to_uppercase ++ "," ++ Res.to_uppercase ++ "),\n"      
+    elseif Op == "OR" then
+      Cons:= Cons ++ "bit_or(" ++ G1.to_uppercase ++"," ++ G2.to_uppercase ++ "," ++ Res.to_uppercase ++ "),\n"      
+    else
+      Cons:= Cons ++ "bit_xor(" ++ G1.to_uppercase ++"," ++ G2.to_uppercase ++ "," ++ Res.to_uppercase ++ "),\n"      
+    end,
+    if Res.first == 'z' then
+      Zs := Zs ++ [Res.to_uppercase]
+    end
+  end,
+  foreach(V in Vars.keys.sort)
+    Cs := Cs ++ V.to_uppercase ++ " :: 0..1,\n"
+  end,
+  foreach(Init=Val in Inits.to_list.sort)
+    Cs := Cs ++ Init.to_uppercase ++ " #= " ++ Val.to_string ++ ",\n"
+  end,
+  Cs := Cs ++ Cons,
+  Cs := Cs ++ "Vars = [" ++ Vars.keys.sort.join(",") ++ "],\n",
+  Cs := Cs ++ "solve(Vars),\n",
+  Cs := Cs ++ "println(zs=[" ++ Zs.sort.reverse.join(",") ++ "].bin_to_dec()),\n",
+  Cs := Cs ++ "nl.\n",
+  Cs := Cs ++ "bit_and(X,Y,Z) :- Z #= cond(X #=1 #/\\ Y #= 1,1,0).\n",
+  Cs := Cs ++ "bit_or(X,Y,Z) :- Z #= cond(X#=1 #\\/ Y #= 1,1,0).\n",
+  Cs := Cs ++ "bit_xor(X,Y,Z) :- Z #= cond(X #!= Y,1,0).\n",  
+  Cs := Cs ++ "bin_to_dec(L) = [2**(L.len-I)*L[I] : I in 1..L.len].sum.\n",
+  Part1File = "24_part1_model.pi",
+  FD = open(Part1File,write),
+  print(FD,Cs),
+  close(FD),
+  _C = command("picat -log " ++ Part1File).

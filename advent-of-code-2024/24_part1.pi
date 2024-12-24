@@ -1,0 +1,79 @@
+/* 
+
+  Advent of Code 2024 in Picat.
+
+  Problem 24
+  https://adventofcode.com/2024/day/24
+
+  Part 1
+
+  Thanks to DestyNova for hinting on a very annoying bug in part 1.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+import aoc_utils.
+
+main => go.
+
+/*
+  Part 1
+
+  Benchmark 1: picat -g go24_part1.pi
+    Time (mean ± σ):      32.6 ms ±   5.7 ms    [User: 16.6 ms, System: 16.0 ms]
+    Range (min … max):    18.5 ms …  42.1 ms    69 runs
+
+*/
+go => 
+  File = "24.txt",
+  
+  Split = split2(read_file_chars(File)),
+  Wires = [S.split(": ") : S in Split.first.split("\n")], 
+  Gates = [S.split(" ->") : S in Split.second.split("\n")],
+
+  Gs = new_map(),
+  foreach([Wire,Init] in Wires)
+    if not Gs.has_key(Wire) then    
+      new_var(Gs,Wire),
+      Gs.get(Wire) #= Init.to_int
+    end
+  end,
+  Zs = [],
+  foreach([G1,Op,G2,Res] in Gates)
+    new_var(Gs,G1),
+    new_var(Gs,G2),
+    new_var(Gs,Res),
+    op(Gs.get(G1),Op,Gs.get(G2),Gs.get(Res)),
+    if Res.first == 'z' then
+      Zs := Zs ++ [Res]
+    end
+  end,
+  % Note: We don't need solve/1 for this since the CP solver
+  %       figure it during parsing of the model.
+  println([Gs.get(Z) : Z in Zs.sort.reverse].bin_to_dec()).
+
+%
+% Create a new decision variable in the Gs map
+%
+new_var(Gs,Var) :-
+  if not Gs.has_key(Var) then
+    Gs.put(Var,new_dvar()),
+    Gs.get(Var) :: 0..1
+  end.
+
+% The bit operations
+op(X,"AND",Y,Z) :-
+  Z #= cond(X #= 1 #/\ Y #= 1, 1, 0).
+
+op(X,"OR",Y,Z) :-
+  Z #= cond(X #= 1 #\/ Y #= 1, 1, 0).  
+
+op(X,"XOR",Y,Z) :-
+  Z #= cond(X #!= Y #= 1, 1, 0).    
+
+% Convert a binary number to a decimal number
+bin_to_dec(L) = [2**(L.len-I)*L[I] : I in 1..L.len].sum.
