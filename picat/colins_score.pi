@@ -1,0 +1,299 @@
+/* 
+
+  Colin's score in Picat.
+
+  From Pablo Meier: "Some Professor Layton Prolog!"
+  https://morepablo.com/2010/09/some-professor-layton-prolog.html
+  """
+  No 151 from Professor Layton and the Diabolical Box: Colin's Score
+
+  Four students took a test where every question had two possible answers, 
+  A or B. Each question was worth 10 points, for a total of 100 points.
+
+  The students' test results were posted as seen below, but the teacher forgot 
+  to tally Colin's score. Colin was heading to the teacher's office when Mary 
+  called him back, saying they could figure out his score using the results from 
+  the other tests. Can you figure out Colin's score?
+
+  [image:
+
+     Mary: 
+          1 2 3 4 5 6 7 8 9 10  Score: 70
+          B B A B A B B A B B
+
+     Dan: 
+          1 2 3 4 5 6 7 8 9 10  Score: 50
+          B A A A B A B A A A
+
+     Lisa: 
+          1 2 3 4 5 6 7 8 9 10  Score: 50
+          B A A A B B B A B A
+
+     Colin: 
+          1 2 3 4 5 6 7 8 9 10  Score: ?
+          B B A A A B B A A A 
+
+  ]
+
+  """
+
+  The Prolog code is also at https://swish.swi-prolog.org/p/Some%20Professor%20Layton%20Prolog.pl
+
+  Via Hillel Wayne: "Solving a "Layton Puzzle" with Prolog"
+  https://buttondown.com/hillelwayne/archive/a48fce5b-8a05-4302-b620-9b26f057f145
+
+  Hillel's (simpler) Prolog solutions (using CLPFD) is at
+  https://swish.swi-prolog.org/p/layton_prolog_puzzle.pl
+
+
+
+  There are four solutions to this Picat model, all stating that Colin has score of 60:
+
+  correct = [0,1,0,1,0,0,1,0,0,1]
+  scores = [70,50,30,60]
+
+  correct = [1,1,0,1,0,0,0,0,0,1]
+  scores = [70,50,30,60]
+
+  correct = [1,1,0,1,0,0,1,1,0,1]
+  scores = [70,50,30,60]
+
+  correct = [1,1,1,1,0,0,1,0,0,1]
+  scores = [70,50,30,60]
+
+
+  Below are the Prolog models from Pablo (go2/2) and Hillel (go3/3), respectively.
+  They yield the same output of 4 solutions.
+
+  A small comparison of the times for each variant,
+  using Picat's time/1 and SWI-Prolog's time/1.
+  
+                                      Picat     SWI-Prolog
+  ---------------------------------------------------------
+  * Picat (Hakan, go/0):              0.0s      -
+  * Plain Prolog (Pablo, go2/0):      0.018s    0.037s
+  * Prolog + clpfd (Hillel, go3/0):   0.017s    0.036s  
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  [A,B] = [0,1],
+  Results = [[B,B,A,B,A,B,B,A,B,B],  % Mary:  70
+             [B,A,A,A,B,A,B,A,A,A],  % Dan:   50
+             [B,A,A,A,B,B,B,A,B,A],  % Lisa:  30
+             [B,B,A,A,A,B,B,A,A,A]], % Colin:  ?
+  N = Results.len,
+  M = Results[1].len,
+
+  % What's the correct score?
+  Correct = new_list(M),
+  Correct :: 0..1,
+
+  Scores = [70,50,30, _],
+  Scores :: 0..100,
+  foreach(I in 1..N)
+    Scores[I] #= sum([10*(Results[I,J]#=Correct[J]) : J in 1..M]),
+  end,
+  solve(Correct ++ Scores),
+  println(correct=Correct),
+  println(scores=Scores),
+  nl,
+  fail,
+  nl.
+go => true.
+
+/*
+  This is the Prolog code from
+  https://morepablo.com/2010/09/some-professor-layton-prolog.html
+
+  Output:
+  score = 60
+  score = 60
+  score = 60
+  score = 60
+
+*/
+go2 :-
+  colin_score(Score),
+  println(score=Score),
+  fail,
+  nl.
+go2.
+
+
+%% A question is a [[question number,answer], correctness].
+%% Example:
+%% [[1,a], correct]
+%% A test is a list of questions.
+
+
+%% We create a rule that every correct answer is 10 points.
+points([_, correct], 10). points([_, incorrect], 0).
+
+%% Create rules flip solutions and whether or not they are incorrect.
+flip(a, b). flip(correct, incorrect).
+flip(b, a). flip(incorrect, correct).
+
+%% Given a test, calculates the score based on the correctness.
+test_score([], 0).
+test_score([H|T], Score) :-
+  points(H, These_Points),
+  test_score(T, Rest_of_Points),
+  Score is These_Points + Rest_of_Points.
+
+%% This is the critical rule: it ensures that all tests are scored
+%% by the same answer key. This way, Prolog won't find a binding that
+%% works for each individual test, but for all tests that get bound.
+%% Two empty tests naturally follow the same grading criteria:
+sensible_scores([], []).
+
+%% We investigate tests recursively: if both tests have identical heads
+%% (e.g. they agree on an answer and its correctness) then the test is
+%% 'sensible' (follows a common rubric) as long as the rest of the test does.
+sensible_scores([A|T1], [A|T2]) :-
+  sensible_scores(T1, T2).
+
+%% If they have the same number but differ in answer, they must also differ
+%% in correctness.
+sensible_scores([[[A,B],Aye]|T1], [[[A,C],Nay]|T2]) :-
+  flip(B, C),
+  flip(Aye, Nay),
+  sensible_scores(T1, T2).
+
+
+%% A cheap rule that binds X to Mary's score sheet. Correctness
+%% is automagically bound by Prolog!
+mary_test(X) :-
+  X = [ [[1, b], _],
+        [[2, b], _],
+        [[3, a], _],
+        [[4, b], _],
+        [[5, a], _],
+        [[6, b], _],
+        [[7, b], _],
+        [[8, a], _],
+        [[9, b], _],
+        [[10, b], _]].
+
+%% Dan's score sheet.
+dan_test(X) :-
+  X = [ [[1, b], _],
+        [[2, a], _],
+        [[3, a], _],
+        [[4, a], _],
+        [[5, b], _],
+        [[6, a], _],
+        [[7, b], _],
+        [[8, a], _],
+        [[9, a], _],
+        [[10, a], _]].
+
+%% Lisa's score sheet.
+lisa_test(X) :-
+  X = [ [[1, b], _],
+        [[2, a], _],
+        [[3, a], _],
+        [[4, a], _],
+        [[5, b], _],
+        [[6, b], _],
+        [[7, b], _],
+        [[8, a], _],
+        [[9, b], _],
+        [[10, a], _]].
+
+
+%% And Colin's, whose score we don't know.
+colin_test(X) :-
+  X = [ [[1, b], _],
+        [[2, b], _],
+        [[3, a], _],
+        [[4, a], _],
+        [[5, a], _],
+        [[6, b], _],
+        [[7, b], _],
+        [[8, a], _],
+        [[9, a], _],
+        [[10, a], _]].
+
+%% Finally, the meat! We bind Lisa, Dan, and Mary to their score sheets.
+%% We then use sensible_scores to ensure that their sheets follow the same
+%% grading rubric. Finally, we ensure that this rubric adheres to the scores
+%% that Mary, Dan, and Lisa obtained.
+test_integrity(X) :-
+  lisa_test(Lisa),
+  dan_test(Dan),
+  mary_test(Mary),
+  sensible_scores(Lisa, Dan),
+  sensible_scores(Dan, Mary),
+  sensible_scores(Mary, X),
+  test_score(Mary, 70),
+  test_score(Dan, 50),
+  test_score(Lisa, 30).
+
+%% Finally, we bind Score to what Colin's score is by setting
+%% it to his test results, ensuring that his score has the same
+%% answer key as his peers, then calculating the score with that
+%% answer key.
+colin_score(Score) :-
+  colin_test(X),
+  test_integrity(X),
+  test_score(X, Score).
+
+
+% End of Pablo's Prolog code
+
+
+/*
+  This is Hillel Wayne's Prolog code (adapted to Picat)
+  Output:
+  6
+  6
+  6
+  6
+
+*/
+go3 :-
+  solution(X),
+  println(X),
+  fail,
+  nl.
+go3.
+
+% The student's test score
+% score(student answers, answer key, score)
+score([], [], 0).
+score([A|As], [A|Ks], N) :-
+   N #= M + 1, score(As, Ks, M).
+score([A|As], [K|Ks], N) :- 
+    bp.dif(A, K), score(As, Ks, N). % hakank: Added bp to dif
+
+% FLip member so we can use it in maplist to type-constrain an answer key
+contains(L, X) :- member(X, L).
+
+% A key that matches all of the student scores.
+key(Key) :-
+    bp.length(Key, 10),
+    % maplist($contains([a,b]), Key), % hakank: Added $. Also, this isn't needed and is faster without it.
+    score([b, b, a, b, a, b, b, a, b, b], Key, 7),
+    score([b, a, a, a, b, a, b, a, a, a], Key, 5),
+    score([b, a, a, a, b, b, b, a, b, a], Key, 3).
+
+solution(X) :- key(Key), score([b, b, a, a, a, b, b, a, a, a], Key, X).
+
+% Hakank: Added this since Picat don't have a built-in maplist/2.
+maplist(Goal, List) :-
+    maplist_(List, Goal).
+maplist_([], _).
+maplist_([Elem|Tail], Goal) :-
+    call(Goal, Elem),
+    maplist_(Tail, Goal).
+
+% End of Hillel's Prolog code (with some Picat adaptions)

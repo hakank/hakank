@@ -1,0 +1,274 @@
+/* 
+
+  15 puzzle (shortest path) in Picat.
+
+  This is a port of brebs' SWI-Prolog model
+  "Sliding 15-puzzle using CLP(FD)"
+  https://stackoverflow.com/questions/79583486/sliding-15-puzzle-using-clpfd
+  """
+  Below is my code for a shortest-path solver
+  [https://kociemba.org/themen/fifteen/fifteensolver.html]
+  of the well-known sliding 15 puzzle, using CLP(FD).
+
+  ...
+
+  Result in swi-prolog (shortest path):
+
+  % 196,409,239 inferences, 11.029 CPU in 11.030 seconds (100% CPU, 17808591 Lips)
+  P = [r, d, l, u, u, u, r, r, d, d, l, l, d, r, u, l, u, u, r, r, d, d, d, l, l, u, u, u, r, r, d, d, r, d]
+
+  Can the performance be improved in Prolog, to be competitive with other languages/methods, 
+  preferably whilst still using CLP(FD)? Solutions can be in any Prolog dialect.
+
+  Some ideas:
+
+  - Can more arithmetic hints be provided to CLP(FD), to manage the combinatorial explosion?
+  - Manhattan Distance is known to be an inferior heuristic which can under-estimate the 
+    number of steps needed, although it is conveniently simple - pattern databases or walking 
+    distance seem to be much faster - can they be implemented simply?
+  
+  """
+
+  * SWI-Prolog run for first solution: 9.800s
+  [r,d,l,u,u,u,r,r,d,d,l,l,d,r,u,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,r,d]
+  % 196,633,577 inferences, 9.786 CPU in 9.800 seconds (100% CPU, 20093245 Lips)
+
+   Time for all four solutions: 9.792s +  0.257s + 18.167s +  0.133s = 28.349s
+
+   % 196,633,577 inferences, 9.756 CPU in 9.792 seconds (100% CPU, 20154859 Lips)
+   [r,d,l,u,u,u,r,r,d,d,l,l,d,r,u,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,r,d]
+
+   labeling all
+   % 4,575,180 inferences, 0.256 CPU in 0.257 seconds (100% CPU, 17864225 Lips)
+   [r,d,l,u,u,u,r,r,d,d,l,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,l,d,r,u,r,d]
+
+   labeling all
+   % 372,535,109 inferences, 18.135 CPU in 18.167 seconds (100% CPU, 20541772 Lips)
+   [u,u,r,r,d,d,l,d,r,u,l,l,u,u,r,r,d,d,d,l,u,r,d,l,l,u,u,u,r,r,d,d,r,d]
+
+   labeling all
+   % 1,979,583 inferences, 0.132 CPU in 0.133 seconds (100% CPU, 14942965 Lips)
+   [u,u,r,r,d,d,l,d,r,u,l,l,u,u,r,r,d,d,l,d,r,u,l,d,l,u,u,u,r,r,d,d,r,d]
+
+
+  This Picat model: 
+
+  * go/0: 0.25s for the first solution
+    len = 29
+    len = 31
+    len = 32
+    len = 33
+    len = 34
+    len = 35
+
+    CPU time 0.254 seconds. Backtracks: 0
+
+    [r,d,l,u,u,u,r,r,d,d,l,l,d,r,u,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,r,d]
+
+    CPU time 0.006 seconds. Backtracks: 0
+
+    [r,d,l,u,u,u,r,r,d,d,l,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,l,d,r,u,r,d]
+
+    CPU time 0.437 seconds. Backtracks: 0
+
+    [u,u,r,r,d,d,l,d,r,u,l,l,u,u,r,r,d,d,d,l,u,r,d,l,l,u,u,u,r,r,d,d,r,d]
+
+    CPU time 0.003 seconds. Backtracks: 0
+
+    [u,u,r,r,d,d,l,d,r,u,l,l,u,u,r,r,d,d,l,d,r,u,l,d,l,u,u,u,r,r,d,d,r,d]
+    len = 36
+    len = 37
+
+    CPU time 0.755 seconds. Backtracks: 0
+
+    [r,d,l,u,u,u,r,r,d,d,l,d,l,u,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,d,l,u,r,r,d]
+    ^C
+
+  * go2/0: Getting all 4 optimal solutions (and only these): 0.756s
+    len = 29
+    len = 31
+    len = 32
+    len = 33
+    len = 34
+    len = 35
+
+    CPU time 0.23 seconds. Backtracks: 0
+
+    [r,d,l,u,u,u,r,r,d,d,l,l,d,r,u,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,r,d]
+
+    CPU time 0.006 seconds. Backtracks: 0
+
+    [r,d,l,u,u,u,r,r,d,d,l,l,u,u,r,r,d,d,d,l,l,u,u,u,r,r,d,d,l,d,r,u,r,d]
+
+    CPU time 0.438 seconds. Backtracks: 0
+
+    [u,u,r,r,d,d,l,d,r,u,l,l,u,u,r,r,d,d,d,l,u,r,d,l,l,u,u,u,r,r,d,d,r,d]
+
+    CPU time 0.003 seconds. Backtracks: 0
+
+    [u,u,r,r,d,d,l,d,r,u,l,l,u,u,r,r,d,d,l,d,r,u,l,d,l,u,u,u,r,r,d,d,r,d]
+    len = 36
+    len = 37
+
+    CPU time 0.752 seconds. Backtracks: 0
+
+
+  Changes needed:
+  - All domains in/2 and ins/2: replaced with :: 
+  - #<==>: replaced with #<=>
+  - #/=: replaced with #!=
+  - length/2: length/1
+  - nth1/3: nth/3
+  - flatten/2: vars/1
+  - labeling/2: solve/2
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>  
+  time2(do15(X)),
+  writeln(X),
+  fail,
+ 
+  nl.
+go => true.
+
+
+/*
+  A little more elaborate way of getting only the four optimal solutions
+
+*/
+go2 ?=>
+  Map = get_global_map(),
+  Map.put(opt,0),
+  time2(do15(X)),
+  Len = X.len,
+  (Map.get(opt) == 0 ->  Map.put(opt,Len) ; true),
+  (Len > Map.get(opt) -> true ; writeln(X), fail),
+  nl.
+go2 => true.
+
+
+% length 35 (starting position plus 34 moves), roughly 11 CPU seconds
+start([13, 9, 5, 4, 15, 6, 1, 8, 16, 10, 2, 11, 14, 3, 7, 12]).
+
+elem_xy_home(E, X, Y) :-
+    % https://www.swi-prolog.org/pldoc/man?section=clpfd
+    [X, Y] :: 1..4,
+    E #= ((Y - 1) * 4) + X.
+
+xy_dist(X, Y, X1, Y1, D) :-
+    D #= abs(X - X1) + abs(Y - Y1).
+
+indexes_dist(A, B, D) :-
+    elem_xy_home(A, AX, AY),
+    elem_xy_home(B, BX, BY),
+    xy_dist(AX, AY, BX, BY, D).
+
+h_dist(E, L, D) :-
+    element(A, L, E),
+    indexes_dist(A, E, D).
+
+h_dist_sum(L, S) :-
+    h_dist_sum_(1, L, 0, S).
+
+h_dist_sum_(16, _, C, S) :-
+    !,
+    C = S.
+h_dist_sum_(U, L, C, S) :-
+    h_dist(U, L, D),
+    U1 is U + 1,
+    C1 #= C + D,
+    h_dist_sum_(U1, L, C1, S).
+
+direction(-4, u).
+direction(-1, l).
+direction(1, r).
+direction(4, d).
+
+directions([L|Ls], Ds) :-
+    once(nth(E, L, 16)),
+    directions_(Ls, E, Ds).
+
+directions_([], _, []).
+directions_([L|Ls], E, [D|Ds]) :-
+    once(bp.nth1(E1, L, 16)),
+    DV is E1 - E,
+    direction(DV, D),
+    directions_(Ls, E1, Ds).
+
+do15(Ds) :-
+    start(L),
+    element(E, L, 16),
+    h_dist_sum(L, S),
+    path(S, E, -1, L, Ls, Ws),
+    % bp.length(Ls, Len),
+    Len = Ls.len,
+    println(len=Len),
+    % Is faster to label Ws first
+    % println('labeling Ws'),
+    % labeling([], Ws),
+    solve($[ff,split],Ws),
+    % labeling of Ls is done to ensure all vars are ground
+    % println('labeling all'),
+    % bp.flatten(Ls, F),
+    % F = Ls.vars,
+    % labeling([], F),
+    % solve($[ff,split],F), % Not needed
+    % Turn path into directions
+    directions(Ls, Ds).
+
+% S is the heuristic sum - 0 if puzzle solved
+path(0, _, _,  L, [L], []).
+path(S, E, E0, L, [L|Ls], [W|Ws]) :-
+    S #> 0,
+    next_move(E, E0, S, L, E1, S1, L1, W),
+    path(S1, E1, E, L1, Ls, Ws).
+
+next_move(E, E0, S, L, E1, S1, L1, W) :-
+    % W in 1..15,
+    W :: 1..15,
+    % E1 in 1..16,
+    E1 :: 1..16,
+    % bp.length(L1, 16),
+    L1 = new_list(16),
+    % L1 ins 1..16,
+    L1 :: 1..16,
+    % Including "all_distinct(L1)" reduces performance
+    % all_distinct(L1),
+    elem_xy_home(E, X, Y),
+    [X1, Y1] :: 1..4,
+    [DX, DY] :: -1..1,
+    % This "A in" hugely improves performance
+    % A in -1 \/ 1 \/ -4 \/ 4,
+    A :: [-1,1,-4,4],
+    E1 #= E + A,
+    abs(DX) + abs(DY) #= 1,
+    X1 #= X + DX,
+    Y1 #= Y + DY,
+    elem_xy_home(E1, X1, Y1),
+    % Do not go back to immediate-prior position
+    E1 #!= E0,
+    copy_square_list(L, L1, 1, E, E1, W),
+    h_dist(W, L, D0),
+    h_dist(W, L1, D1),
+    DD #= D1 - D0,
+    % Can only increment or decrement the Manhattan distance
+    DD :: [-1,1],
+    S1 #= S + DD.
+
+copy_square_list([], [], _, _, _, _).
+copy_square_list([H|L], [H1|L1], U, E, E1, W) :-
+    U #= E #<=> H1 #= W,
+    % 16 is the space
+    U #= E1 #<=> H1 #= 16,
+    % Will apply to 14 of the 16 squares in the 4x4 puzzle grid
+    (U #!= E #/\ U #!= E1) #<=> H1 #= H,
+    U1 #= U + 1,
+    copy_square_list(L, L1, U1, E, E1, W).

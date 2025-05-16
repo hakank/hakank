@@ -1,0 +1,459 @@
+/* 
+
+  No change problem in Picat.
+
+  From Muhammad Zain Sarwar
+  "A Puzzle That Will Test Your Thinking"
+  https://medium.com/puzzle-sphere/a-puzzle-that-will-test-your-thinking-cd5f8fdff08c
+  """
+  A customer comes to the cashier named Robert and asks for change for a $1 bill.
+
+  The cashier says to the customer that I can’t give you change for $1 by checking 
+  his cash register.
+
+  The customer is slightly puzzled and asks, "Can you give me change for 50 cents then?
+
+  Robert shakes his head and says, "No, I can’t do that either."
+  
+  Now the customer becomes more curious and asks, "What about 25 cents, 10 cents, 
+  or even 5 cents?"
+
+  Robert sighs, "I’m sorry I can’t give you change for any of those amounts."
+
+  "Do you even have any coins?" the customer asks in frustration.
+
+  Robert nods and says, "Yes, I have exactly $1.19 in coins."
+
+  ...
+
+  [Solution:]
+
+  Robert has the following coins.
+
+  - One dollar coin ($1)
+  - 1 nickel ($0.05 ) = 5 cents
+  - 1 dime ($ 0.1) = 10 cents
+  - 4 pennies ($0.04) = 4 cents
+
+  This adds up to $1.19 but that prevents Robert from giving exact change for the 
+  amounts requested.
+
+  - He can’t provide a $1 change because he can’t break the single dollar coin with 
+    just one nickel, one dime, and four pennies.
+  - He can’t provide 50¢ because he does not have a combination of coins that add up 
+    to exactly 50 cents.
+  - He can’t provide 25¢ because he only has 19 cents total.
+  - He can’t provide 10¢ because has only 1 dime, 4 pennies, and 1 nickel.
+  - He can’t provide 5¢ since he has only 4 pennies which adds up to 4 cents in total.
+  """
+
+  Note that the exact denominations are not mentioned in the puzzle description.
+  The listing of coins before the solutions are 1c, 5c, 10c, 100c (1 dollar),
+  not 25c or 50c coins.
+
+  The constraint model in go/0 finds two solutions, both the intended in 
+  the description (shown last) as well as the alternative solution (the first shown):
+
+  x = [4,0,4,1,1,0]
+  num_coins = 10
+
+    1 cent: 4
+    5 cent: 0
+   10 cent: 4
+   25 cent: 1
+   50 cent: 1
+  100 cent: 0
+
+  Possible changes:
+  [0,1,2,3,4,10,11,12,13,14,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,105,106,107,108,109,115,116,117,118,119] = 100
+
+  x = [4,1,1,0,0,1]
+  num_coins = 7
+
+    1 cent: 4
+    5 cent: 1
+   10 cent: 1
+   25 cent: 0
+   50 cent: 0
+  100 cent: 1
+
+  Possible changes:
+  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119] = 40
+
+
+  Here are some different approaches:
+  * go_brute_force/0: Brute force
+  * go_post/0: Using post processing to get both solutions (slow)
+
+
+  I've tested some LLMs (ChatGPT, Gemini, Grok, DeepSeek, Claude) using Reasoning
+  mode if possible, if they can solve this problem, but have considerable problems
+  with this, and can - perhaps - only solve the problem if given a lot of hints.
+  
+  The problem seems to be that they - at least before I have to give some hints - 
+  assume that "give change of X cent" mean that Robert can give back a X cent coin,
+  and thus cannot hold a 5c, 10c, 25c, 50c, or 100c and thus give some very 
+  strange solutions, for example inventing 19c coins, or think that a solution
+  is that Robert have 119 1c coins.
+
+  But that is not what we - humans - mean by the phrase "cannot change": 
+  If Robert just have a 50c coin then he _cannot_ give change of 50c. 
+  
+  Just for fun, I also asked Google Gemini to do a Deep Research on this problem
+  (Google Docs: https://docs.google.com/document/d/1iq03SpoQosUWwK4hzicu7SwMllt_E75ijl37X3U2De8/edit?tab=t.0)
+  and then used NotebookLM (plus) to generate a Deep Dive podcast of the paper
+  (two persons having a discussion):
+  https://notebooklm.google.com/notebook/28081f13-2f80-427f-b078-e4dda9c1b2d3/audio
+  Note that the paper also discusses variants to this puzzle.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+% import sat.
+% import mip.
+
+
+main => go.
+/* 
+
+  This constraint model gives both solutions.
+
+  x = [4,0,4,1,1,0]
+  num_coins = 10
+
+    1 cent: 4
+    5 cent: 0
+   10 cent: 4
+   25 cent: 1
+   50 cent: 1
+  100 cent: 0
+
+  Possible changes:
+  [0,1,2,3,4,10,11,12,13,14,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,105,106,107,108,109,115,116,117,118,119] = 100
+
+  x = [4,1,1,0,0,1]
+  num_coins = 7
+
+    1 cent: 4
+    5 cent: 1
+  10 cent: 1
+  25 cent: 0
+  50 cent: 0
+ 100 cent: 1
+
+
+  Possible changes:
+  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119] = 40
+
+
+*/
+go ?=>
+  Total = 119,
+  B = [1,5,10,25,50,100], % denominations
+  N = B.length,
+
+  X = new_list(N),
+  X :: 0..Total,
+
+  Total #= sum([X[I]*B[I] : I in 1..N]),
+
+  % for all the denominations (B[i]):
+  foreach(I in 1..N)
+    % and for all the denominations larger than B[i]:
+    foreach(J in I+1..N)
+      % there is no amount of B[I]*(1..X[I]) that can yield the amount of B[J]
+      sum([ K #<= X[I] #/\ B[I]*K #= B[J] : K in 1..fd_max(X[I])]) #= 0
+    end
+  end, 
+
+  solve(X),
+  println(x=X),
+  println(num_coins=sum(X)),
+  nl,
+
+  foreach(I in 1..N)
+    printf("%3d cent: %d\n", B[I], X[I])
+  end,
+
+  show_changes(B,X),  
+  fail,
+  nl.
+go => true.
+
+
+
+/*
+  Here is a simpler model than go/0, and gives the intended solution, 
+  but not the alternative solution.
+
+  x = [4,1,1,0,0,1]
+  [coin = 1,x = 4]
+  [coin = 5,x = 1]
+  [coin = 10,x = 1]
+  [coin = 25,x = 0]
+  [coin = 50,x = 0]
+  [coin = 100,x = 1]
+
+  Possible changes:
+  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119]
+
+*/
+go2 ?=>
+  nolog,
+  Coins = [1,5,10,25,50,100],
+  % Coins = [1,2,5,10,25,50,100], % Old Swedish denominations
+  println(coins=Coins),
+  N = Coins.len,
+  X = new_list(N),
+  X :: 0..10,
+  
+  sum([X[I]*Coins[I] : I in 1..N]) #= 119,
+  % This is the only (and simpler) constraint
+  foreach(I in 1..N-1)
+    X[I]*Coins[I] #< Coins[I+1]
+  end,
+  solve(X), % This is not needed.
+  println(x=X), 
+  % Print solution and all possible changes
+  foreach(I in 1..N)
+    println([coin=Coins[I],x=X[I]])
+  end,
+  
+  show_changes(Coins,X),
+  
+  fail, 
+ 
+  nl.
+go2 => true.
+
+
+% Show all possible changes of the solution in X
+show_changes(Coins, X) =>
+  N = Coins.len,
+  nl,
+  % Show the possible changes
+  println("\nPossible changes:"),
+  Y = new_list(N),
+  Y :: 0..100,
+  foreach(I in 1..N)
+    Y[I] #<= X[I]
+  end,
+  All=solve_all(Y),
+  Changes = [],
+  foreach(A in All)
+    S = sum([A[I]*Coins[I] : I in 1..N]),
+    Changes := Changes ++ [S]
+  end,
+  println(Changes.sort),
+  nl.
+
+
+/*
+  Post processing approach. Unsurprisingly, this is much slower than go/0.
+
+  Using [1,5,10,100] gives the same (single) solution as go/0.
+
+  Using [1,5,10,25,50,100] it gives the corresponding solution:
+
+  x = [4,1,1,0,0,1]
+  1 = 4
+  5 = 1
+  10 = 1
+  25 = 0
+  50 = 0
+  100 = 1
+  Possible changes:
+  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119]
+
+
+  However, it also gives another solution:
+  x = [4,0,4,1,1,0]
+  1 = 4
+  5 = 0
+  10 = 4
+  25 = 1
+  50 = 1
+  100 = 0
+  Possible changes:
+  [0,1,2,3,4,10,11,12,13,14,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,105,106,107,108,109,115,116,117,118,119]
+
+  4 1c
+  0 5c
+  4 10c
+  1 25c
+  1 50c
+  0 100c
+
+
+*/
+go_post ?=>
+  nolog,
+  Coins = [1,5,10,25,50,100],
+  % Coins = [1,2,5,10,25,50,100], % Old Swedish coin denominations
+  Forbidden = [5,10,25,50,100],  
+  % Coins = [1,5,10,100],
+  N = Coins.len,      
+  X = new_list(N),
+  X :: 0..100,
+
+  sum([X[I]*Coins[I] : I in 1..N]) #= 119,  % Total must sum to 119
+  solve($[ff,split],X),
+
+  % Post process the solution
+  % Forbidden sums that must not be formed
+  OK = true,
+  Y = new_list(N),
+  Y :: 0..100,
+  foreach(I in 1..N)
+    Y[I] #<= X[I]
+  end,
+  All=solve_all(Y),
+  Ss = [],
+  % Ensure that all possible sums of X does not give any of the forbidden sums.
+  % The important thing is that give change of - say 5c - means that we should
+  % return 5 1c. Simply giving back our 5c is not a solution, so that is not 
+  % forbidden. What we do forbid is that he have 5 1c coins, etc.
+  % Stating in another way: It should not be possible to give back a sum of S using
+  % coins with lower denominations.
+  foreach(Sol in All)   
+    S = sum([Coins[I]*Sol[I] : I in 1..N]),
+    if membchk(S,Forbidden), membchk(S,Coins),
+       sum([Sol[I]*Coins[I] : I in 1..N, Coins[I] < S]) == S then
+        OK := false
+    else
+      % if membchk(S,Coins) then println(S=Sol) end,
+      % Ss := Ss ++ [S=Sol]
+      Ss := Ss ++ [S]
+    end
+  end,
+  OK == true,
+  println(x=X),
+  foreach(I in 1..N)
+    println(Coins[I]=X[I])
+  end,
+  println("Possible changes:"),
+  println(Ss.sort),
+  nl,
+
+  fail,
+  nl.
+go_post => true.
+
+
+/*
+  Imperative brute force (using foreach):
+
+  119 = [4,0,4,1,1,0]
+  4  1c
+  0  5c
+  4 10c
+  1 25c
+  1 50c
+  0 100c
+
+  119 = [4,1,1,0,0,1]
+  4  1c
+  1  5c
+  1 10c
+  0 25c
+  0 50c
+  1 100c
+
+  CPU time 0.14 seconds.
+
+  (This is faster than I expected.)
+
+*/ 
+go_brute_force ?=>
+  M = 10,
+  Changes = [5,10,25,50,100],
+  Coins = [1,5,10,25,50,100],
+  foreach(L1 in 0..M,
+          L5 in 0..M,
+          L10 in 0..M,
+          L25 in 0..M,
+          L50 in 0..M,
+          L100 in 0..M)
+    Z = L1*1 + L5*5 + L10*10 + L25*25 + L50*50 + L100*100,
+    if Z == 119 then
+      OK = true,
+      foreach(V1 in 0..L1,
+            V5 in 0..L5,
+            V10 in 0..L10,
+            V25 in 0..L25,
+            V50 in 0..L50,
+            V100 in 0..L100, break(OK==false))            
+        V = V1*1 + V5*5 + V10*10 + V25*25 + V50*50 + V100*100,
+        
+        % This is the tricky part: We allow that Robert has a 5c coin when the requirement is change of 5c
+        if ((V == 5, V5==0) ;
+           (V == 10, V10==0) ;
+           (V == 25, V25==0) ;
+           (V == 50, V50==0) ;
+           (V == 100, V100==0))
+         then
+          OK := false
+        end
+      end,
+      if OK then
+        X = [L1,L5,L10,L25,L50,L100],
+        println(Z=X),
+        foreach(I in 1..Coins.len)
+          printf("%2d %2dc\n",X[I],Coins[I])
+        end,
+        nl
+      end
+    end
+  end,
+  nl.
+go_brute_force => true.
+
+
+go_brute_force_b ?=>
+  M = 10,
+  Coins = [1,5,10,25,50,100],
+  foreach(L1 in 0..M,
+          L5 in 0..M,
+          L10 in 0..M,
+          L25 in 0..M,
+          L50 in 0..M,
+          L100 in 0..M)
+    Z = L1*1 + L5*5 + L10*10 + L25*25 + L50*50 + L100*100,
+    if Z == 119, c2b([L1,L5,L10,L25,L50,L100]) then
+      X = [L1,L5,L10,L25,L50,L100],
+      println(Z=X),
+      foreach(I in 1..Coins.len)
+        printf("%2d %2dc\n",X[I],Coins[I])
+      end,
+      nl
+    end
+  end,
+  nl.
+go_brute_force_b => true.
+
+c2b(Vs) ?=>
+  Vs = [L1,L5,L10,L25,L50,L100],
+  Coins = [1,5,10,25,50,100],
+  Changes = [5,10,25,50,100],
+  N = Coins.len,
+  X = new_list(N),
+  foreach(I in 1..N)  
+    member(X[I],0..Vs[I])
+  end,
+  OK = true,  
+  foreach(I in 1..N)  
+    V = X[1]*1 + X[2]*5 + X[3]*10 + X[4]*25 + X[5]*50 + X[6]*100,
+    println(v=V),
+    foreach(J in 1..Changes.len)
+      println([j=J,changesJ=Changes[J],xJ=X[J]]),
+      if (V == Changes[J], X[J+1]==0) then
+        OK := false
+      end
+    end,
+  end,
+  println(ok=OK),
+  OK == true.
+c2b => true.

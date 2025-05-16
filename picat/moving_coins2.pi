@@ -1,0 +1,252 @@
+/* 
+
+  Moving coins in Picat.
+
+  From Ritvik Nayak:
+  "Are You A Math Geek? Prove It By Solving This Puzzle - It’s Way Harder Than It Looks!"
+  https://medium.com/puzzle-sphere/are-you-a-math-geek-prove-it-by-solving-this-puzzle-b4f9c3c54f90
+  """
+  Here’s the tricky puzzle! Can you solve it?
+
+  Move 2 coins co every row and column has even number of coins
+
+       C  _   _   C
+       _  C   C   C 
+       _  C   C   C
+       C  _   _   C
+
+  ...
+
+  These methods lead to 12 different solutions.
+
+  """
+
+  (The problem is be based on 
+   MindYourDecisions' "7 Baffling Puzzles"
+  https://mindyourdecisions.com/blog/2025/03/23/7-baffling-puzzles/#more-37708
+  )
+
+
+  This planner model gives 48 different solutions, including symmetries.
+  Here are some solutions (C: coin, _: empty)
+
+  Plan:
+  _C_C
+  _CCC
+  _CCC
+  C__C
+  [[1,1],to,[1,2]]
+
+  _C_C
+  __CC
+  CCCC
+  C__C
+  [[2,2],to,[3,1]]
+
+
+  Plan:
+  _C_C
+  _CCC
+  _CCC
+  C__C
+  [[1,1],to,[1,2]]
+
+  _C_C
+  CCCC
+  __CC
+  C__C
+  [[3,2],to,[2,1]]
+
+
+  Plan:
+  __CC
+  _CCC
+  _CCC
+  C__C
+  [[1,1],to,[1,3]]
+
+  __CC
+  _C_C
+  CCCC
+  C__C
+  [[2,3],to,[3,1]]
+
+
+  Plan:
+  __CC
+  _CCC
+  _CCC
+  C__C
+  [[1,1],to,[1,3]]
+
+  __CC
+  CCCC
+  _C_C
+  C__C
+  [[3,3],to,[2,1]]
+
+
+  Plan:
+  ___C
+  CCCC
+  _CCC
+  C__C
+  [[1,1],to,[2,1]]
+
+  _C_C
+  CCCC
+  __CC
+  C__C
+  [[3,2],to,[1,2]]
+
+
+  And here are the 12 final states:
+
+  _C_C
+  __CC
+  CCCC
+  C__C
+
+  _C_C
+  CCCC
+  __CC
+  C__C
+
+  __CC
+  _C_C
+  CCCC
+  C__C
+
+  __CC
+  CCCC
+  _C_C
+  C__C
+
+  CCCC
+  __CC
+  _C_C
+  C__C
+
+  C__C
+  __CC
+  CCCC
+  _C_C
+
+  C__C
+  __CC
+  _C_C
+  CCCC
+
+  CCCC
+  _C_C
+  __CC
+  C__C
+
+  C__C
+  _C_C
+  CCCC
+  __CC
+
+  C__C
+  _C_C
+  __CC
+  CCCC
+
+  C__C
+  CCCC
+  __CC
+  _C_C
+
+  C__C
+  CCCC
+  _C_C
+  __CC
+
+  num_states = 12
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go ?=>
+  nolog,
+  Map = get_global_map(),
+  Map.put(count,0),
+  Map.put(all_moves,[]),
+  Map.put(end_states,[]),    
+
+  Init = ["C__C",
+          "_CCC",
+          "_CCC",
+          "C__C"],
+
+  best_plan_nondet([Init,Init],Plan,Cost),
+  println("Plan:"),
+  Moves = [],  
+  foreach(P in Plan)
+    foreach(PP in P[1])
+      println(PP)
+    end,
+    println(P.tail),
+    Moves := Moves ++ [ [P[2],P[4]] ],
+    nl
+  end,
+  % foreach(PP in Plan[2,1])
+  %   println(PP)
+  % end,  
+  nl,
+  Map.put(count,Map.get(count)+1),
+  Map.put(all_moves,Map.get(all_moves)++[Moves]),
+  Map.put(end_states,Map.get(end_states)++[Plan[2,1]]),    
+  fail,
+  nl.
+go =>
+  Map = get_global_map(),
+  println(num_solutions=Map.get(count)),
+  println("The different moves:"),
+  foreach(Moves in Map.get(all_moves).sort)
+    println(Moves),
+  end,
+  nl,
+  println("\nStates:"),
+  foreach(State in Map.get(end_states).remove_dups)
+    foreach(Row in State)
+      println(Row)
+    end,
+    nl
+  end,
+  println(num_states=Map.get(end_states).remove_dups.len),
+  nl.
+
+
+final([Init,Cs]) =>
+  N = Cs.len,
+  % current_plan().len>1, % enforce exactly two moves. Nope, this does not backtrack!
+  
+  % There should be 4 different cells (2 per move)
+  [ 1 : I in 1..N, J in 1..N, Cs[I,J] != Init[I,J]].len == 4,
+  foreach(I in 1..N)
+    [1 : J in 1..N, Cs[I,J] == 'C'].len mod 2 == 0,
+    [1 : J in 1..N, Cs[J,I] == 'C'].len mod 2 == 0,
+  end.
+
+table
+action([Init,From],Next,Move,Cost) ?=>
+  N = From.len,
+  CoinPos = [[I,J] : I in 1..N, J in 1..N, From[I,J] == 'C'],
+  ToPos = [[I,J] : I in 1..N, J in 1..N, From[I,J] == '_'],
+  member([FI,FJ],CoinPos),
+  member([TI,TJ],ToPos),
+  To = copy_term(From),
+  To[TI,TJ] := 'C',
+  To[FI,FJ] := '_',
+  Next = [Init,To],
+  Move = [ To,[FI,FJ],to,[TI,TJ]],
+  Cost = 1.

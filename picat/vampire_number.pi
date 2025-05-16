@@ -1,0 +1,236 @@
+/* 
+
+  Vampire number in Picat.
+
+  From http://rosettacode.org/wiki/Vampire_number
+  """
+  A vampire number is a natural number with an even number of digits, that can be factored 
+  into two integers. These two factors are called the fangs, and must have the following 
+  properties:
+
+    - they each contain half the number of the digits of the original number
+    - together they consist of exactly the same digits as the original number
+    - at most one of them has a trailing zero 
+
+  An example of a Vampire number and its fangs: 1260 : (21, 60)
+
+  Task description:
+
+    - Print the first 25 Vampire numbers and their fangs.
+    - Check if the following numbers are Vampire numbers and, if so, print them and their fangs: 
+     16758243290880, 24959017348650, 14593825548650 
+
+  Note that a Vampire number can have more than 1 pair of fangs. 
+  """
+
+  See below for the results.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+% import sat.
+% import smt.
+
+
+main => go.
+
+/*
+  Non CP
+
+  n = 1260 = [[21,60]] = 1
+  n = 1395 = [[15,93]] = 2
+  n = 1435 = [[35,41]] = 3
+  n = 1530 = [[30,51]] = 4
+  n = 1827 = [[21,87]] = 5
+  n = 2187 = [[27,81]] = 6
+  n = 6880 = [[80,86]] = 7
+  n = 102510 = [[201,510]] = 8
+  n = 104260 = [[260,401]] = 9
+  n = 105210 = [[210,501]] = 10
+  n = 105264 = [[204,516]] = 11
+  n = 105750 = [[150,705]] = 12
+  n = 108135 = [[135,801]] = 13
+  n = 110758 = [[158,701]] = 14
+  n = 115672 = [[152,761]] = 15
+  n = 116725 = [[161,725]] = 16
+  n = 117067 = [[167,701]] = 17
+  n = 118440 = [[141,840]] = 18
+  n = 120600 = [[201,600]] = 19
+  n = 123354 = [[231,534]] = 20
+  n = 124483 = [[281,443]] = 21
+  n = 125248 = [[152,824]] = 22
+  n = 125433 = [[231,543]] = 23
+  n = 125460 = [[204,615],[246,510]] = 24
+  n = 125500 = [[251,500]] = 25
+
+  CPU time 1.133 seconds. Backtracks: 0
+
+*/
+go ?=>
+  C = 0,
+  MaxNum = 25,
+  foreach(I in 2..2..10,break(C >= MaxNum))
+    foreach(N in 10**(I-1)..10**I-1, break(C >= MaxNum))
+      if AB=findall([A,B],[A,B]=vampire_number(N)), AB.len > 0 then
+        C := C + 1,
+        println(N=AB=C)
+      end
+    end
+  end,
+
+  nl.
+go => true.
+
+/* 
+  Part 2
+
+  16758243290880 = [[1982736,8452080],[2123856,7890480],[2751840,6089832],[2817360,5948208]]
+  24959017348650 = [[2947050,8469153],[2949705,8461530],[4125870,6049395],[4129587,6043950],[4230765,5899410]]
+  14593825548650 = []
+ 
+  CPU time 1.245 seconds. Backtracks: 0
+
+*/
+go2 ?=>
+  foreach(N in [16758243290880,24959017348650, 14593825548650])
+    All=findall([A,B],[A,B]=vampire_number(N)),
+    println(N=All)
+  end,
+  nl.
+go2 => true.
+
+vampire_number(N) = [A,B] =>
+  X = N.to_string,
+  Len = X.len,
+  Len2 = Len div 2,
+  member([A,B],factors2(N,Len2)), % generate a pair A*B = B
+  not (A mod 10 == 0,B mod 10 == 0),
+  once(permutation(X,A.to_string ++ B.to_string)). % ensure AB is a permutation of X
+
+% Returna all factors that are of length Len2
+% factors2(N,Len2) = [ I : I in 10**(Len2-1)..10**Len2-1, N mod I == 0].
+
+% Returna pairs of divisors that are of length Len2
+factors2(N,Len2) = [[I, N div I] : I in 10**(Len2-1)..10**Len2-1, N mod I == 0, I <= N div I].
+
+
+/*
+  CP: Part 1 (go3/0) is slightly faster than go/0
+
+  1260 = [[21,60]]
+  1395 = [[15,93]]
+  1435 = [[35,41]]
+  1530 = [[30,51]]
+  1827 = [[21,87]]
+  2187 = [[27,81]]
+  6880 = [[80,86]]
+  102510 = [[201,510]]
+  104260 = [[260,401]]
+  105210 = [[210,501]]
+  105264 = [[204,516]]
+  105750 = [[150,705]]
+  108135 = [[135,801]]
+  110758 = [[158,701]]
+  115672 = [[152,761]]
+  116725 = [[161,725]]
+  117067 = [[167,701]]
+  118440 = [[141,840]]
+  120600 = [[201,600]]
+  123354 = [[231,534]]
+  124483 = [[281,443]]
+  125248 = [[152,824]]
+  125433 = [[231,543]]
+  125460 = [[204,615],[246,510]]
+  125500 = [[251,500]]
+
+  CPU time 1.075 seconds. Backtracks: 80462
+
+
+*/
+go3 ?=>
+  nolog,
+  Map = get_global_map(), % counting the solutions
+  member(Len, 4..2..6),
+  vampire_number2(Len,XN, H1N,H2N),
+  
+  Map.put(XN,(Map.get(XN,[])++[[H1N,H2N]]).remove_dups),
+  (Map.keys.len < 25 -> fail ; true),
+  foreach(N in Map.keys.sort)
+    println(N=Map.get(N))
+  end,
+  nl,
+  nl.  
+go3 => true.
+
+/*
+  CP Part 2: Too slow!
+
+*/
+go4 ?=>
+  foreach(N in [16758243290880, 24959017348650, 14593825548650])
+    println(n=N),
+    All=findall([H1,H2],vampire_number2(_,N,H1,H2)),
+    println(N=All)
+  end,
+  nl.
+go4 => true.
+
+vampire_number2(Len,XN, H1N,H2N) =>
+  if var(XN) then
+    XN :: 10**(Len-1)..10**Len-1
+  else
+    Len = XN.to_string.len,
+    println(len=Len)
+  end,
+  M = Len div 2,
+  X = new_list(Len),
+  X :: 0..9,
+  to_num(X,XN),
+
+  % Find a permutation of X
+  Perm = new_list(Len),
+  Perm :: 1..Len,
+  all_distinct(Perm),
+  P = new_list(Len),
+  permutation3(X,Perm,P),
+
+  % - they each contain half the number of the digits of the original number
+  % - together they consist of exactly the same digits as the original number
+  H1 = new_list(M),
+  H2 = new_list(M),
+  P = H1 ++ H2,
+
+  % H1N #> 0,
+  % XN mod H1N #= 0,
+  % H2N #> 0,
+  % XN mod H2N #= 0,
+  
+  to_num(H1,H1N),
+  to_num(H2,H2N),
+  H1N*H2N #= XN,  
+  H1N #<= H2N,
+ 
+  % - at most one of them has a trailing zero
+  H1[M] #= 0 + H2[M] #= 0 #<= 1,
+
+  Vars = X ++ [XN,H1N,H2N] ++ P ++ Perm,
+  solve($[],Vars).  
+  % solve($[ff,constr,degree],Vars). % Faster, finds 25 numbers in 0.5s but not the 25 smallest.
+
+
+to_num(List, Num) =>
+   Len = length(List),
+   Num #= sum([List[I]*10**(Len-I) : I in 1..Len]).
+
+% The permutation from A <-> B using the permutation P
+permutation3(A,P,B) =>
+   foreach(I in 1..A.length)
+       %  B[I] #= A[P[I]]
+       PI #= P[I],
+       BI #= B[I],
+       element(PI, A, BI)
+   end.

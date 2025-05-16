@@ -1,0 +1,164 @@
+/* 
+
+  Spelling Bee solver in Picat.
+
+  Solver for NY Times Spelling Bee problems:
+  https://www.nytimes.com/puzzles/spelling-bee
+
+  Which words can be matched given the 7 letters in Letters and the 
+  Center letter Center?
+
+  Syntax: 
+    - perl -log spelling_bee_solver.pi odteuqn o
+    - perl -log spelling_bee_solver.pi odteuqn o words_lower.txt
+
+  Example:
+
+  center = 'o',
+  letters = "odteuqn",
+
+  [center = o,letters = odteuqn]
+  [dedo,denote,denoted,deuton,dodd,dodded,dode,dodo,done,donee,donet,donn,
+   donne,donned,donnee,donnot,dont,donut,doon,dote,doted,doto,dotted,dout,
+   duetto,dunno,duodene,duotone,duotoned,eddo,endnote,endoute,enode,entone,
+   eton,neon,neoned,nodded,node,noded,nondo,none,nonene,nonent,nonet,nonetto,
+   nontoned,nontuned,noon,nooned,note,noted,noun,odeon,oenone,onto,oont,oooo,
+   ottetto,otto,oudenodon,oudenodont,outdo,outdone,outed,outen,outqueen,outquote,
+   outquoted,quod,quodded,quot,quote,quoted,quotee,quott,tendo,tendon,tenno,
+   tenon,tenoned,tenuto,teton,teuton,todd,tode,toed,toetoe,tondo,tone,toned,
+   tonette,tonn,tonne,tonto,toon,toot,tooted,toque,toquet,tote,toted,toto,
+   totquot,totted,totten,tout,touted,tuno,tuquoque,tutto,undenoted,undo,undon,
+   undone,undotted,unnoted,unode,unquod,unquote,unquoted,unto,untone,untoned,
+   untotted]
+  num_words = 125
+
+  Note: This requires a wordlist with one word in each line.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+main => go.
+
+% From the command line.
+main(ARGS) =>
+  Wordlist0 = "words_alpha.txt",  
+  if ARGS.len == 2 then
+      [Letters,Center] = ARGS,
+      Wordlist = Wordlist0
+  elseif ARGS.len == 3 then
+      [Letters,Center,Wordlist] = ARGS
+  else
+    println("Syntax: perl spelling_bee_solver.pi letters center [wordlist]\n"),
+    halt
+  end,
+  println([wordlist=Wordlist,center=Center,letters=Letters]),
+  spelling_bee_solver(Wordlist,Center.first,Letters),
+  nl.
+
+go ?=>
+  Center = 'o',
+  Letters = "odteuqn",
+  Wordlist = "words_alpha.txt",  
+  spelling_bee_solver(Wordlist,Center,Letters),
+  nl.
+go => true.
+
+
+spelling_bee_solver(Wordlist,Center,Letters) =>
+  println([center=Center,letters=Letters]),
+  Words = [W.to_lowercase : W in read_file_lines(Wordlist), W.len>= 4,
+                                               membchk(Center,W),
+                                               not membchk('s',W),
+                                               S = W.sort_remove_dups,
+                                               sum([1 : L in S, not membchk(L,Letters)]) == 0
+                                               ],
+  println(Words),
+  println(num_words=Words.len),  
+  nl.
+
+/*
+  Using DCG (Definite Clause Grammar), and a fail driven approach.
+
+  - sp: simple hardcoded version: sp(Word,[])
+  - sp2: more general version
+
+*/
+go2 ?=>
+  C = 'o',Ls = "odteuqn",
+  member(W,read_file_lines("words_alpha.txt")),
+  W.len >= 4,membchk(C,W),sp2(Ls,W,_,[]),
+  println(W),fail.
+go2 => true.
+
+sp2(Ls,[C|Cs])-->[C],{membchk(C,Ls)},sp2(Ls,Cs).
+sp2(_,[])-->"".
+
+% Simpler direct version
+sp --> [C], {membchk(C, "odteuqn")},sp.
+sp --> "".
+
+
+/*
+  Generate "words" given the Spelling Bee letters.
+
+  oooo
+  oood
+  ooot
+  oooe
+  ooou
+  oooq
+  ...
+  eode
+  eodu
+  eodq
+  ...
+  onoqd
+  onoqt
+  onoqe
+  onoqu
+  onoqq
+  ...
+
+
+*/
+go3 ?=>
+ % Ensure it's at least 4 character
+ bp.length(Word,Len),
+ Len >= 4,
+ sp3("odteuqn",Word,_,[]),
+ membchk('o',Word),
+ println(Word),
+ fail,
+ nl.
+go3 => true.
+
+% Generate strings (for go3/0)
+% The difference between sp3/3 and sp2/3 is the sp3/3 uses member/2 to generate
+% characters, sp2/3's membchk is just a checker but it faster (and only succeeds once).
+sp3(Chars,[C|Cs]) --> [C], {member(C, Chars)},sp3(Chars,Cs).
+sp3(_,[]) --> "".
+
+/*
+
+  Using the generator sp3/3 to get the valid Spelling Bee words.
+  And - of course - this generate and test approach is extremely slow...
+
+*/
+go4 ?=>
+ Words=read_file_lines("words_alpha.txt"),
+ Map = get_global_map(),
+ Map.put(count,0), % count the number of found words
+ bp.length(Word,Len),
+ Len >= 4,
+ sp3("odteuqn",Word,_,[]),
+ membchk('o',Word),
+ membchk(Word,Words), 
+ Map.put(count,Map.get(count)+1),
+ println(Word=Map.get(count)), 
+ fail,
+ nl.
+go4 => println(count=get_global_map().get(count)).
+
