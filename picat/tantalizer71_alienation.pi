@@ -1,0 +1,138 @@
+/* 
+
+  Tantalizer 71: Alienation in Picat.
+
+  From https://enigmaticcode.wordpress.com/2025/06/04/tantalizer-71-alienation/
+  """
+  From New Scientist #621, 31st October 1968 [link]
+
+  "Very specialized business, the piano-making industry", Septimus Plonk confided 
+  to me in the train one night. "I, for instance, am a middle-C polisher, working 
+  for a mammoth concern with dozens and dozens of factories. Each factory has exactly 
+  the same number and range of jobs and each employee in any factory does a different job.
+  There are no unfilled vacancies anywhere".
+
+  "I happen to be the oldest in my factory but younger than the oldest in each other 
+  factory. (No two employees are the same age). My brother Octavius is the youngest 
+  top-G-Impact-Analyst in the whole combine, but older than the youngest employee in 
+  [any other] job".
+
+  Which brother is older? Or is there no way of telling?
+
+  This puzzle is also included in the book Tantalizers (1970) under the title "The Tailor’s Puzzle".
+  """
+
+  Assumptions:
+  - I (Septimus) works in the first factory.
+  - My brother (Octavius) works either in the same factory as me (i.e. factory 1) 
+    or not (then at factory 2). So we check these two cases with 
+    member(BrothersFactory,1..2).
+
+    He has the job of Analyst, but we don't know my (Septimus') job.
+    We have have the same job, so this must be checked as well: 
+    member(AnalystLabel,1..2).
+    
+  - To simplify the problem, we just have four factories and four people
+    at each factory. And let's make the age from 1..4x4.
+  
+  The check is then if I (Septimus) is older than my brother (Octavius), and
+  if so the we print a solution. The reified constraint for that is
+      IAmOlder #<=> Me #> Brother,
+  I.e. If I am older then the boolean IAmOlder is set to 1 (true) else 0 (false).
+
+  To simplify the model, we state that I am not older (IAmOlder #= 0), and if that 
+  returns no solution in all the four variants, then I am older than Octavius.
+
+  Here's the output of the model. 
+
+    brothersFactory = 1
+
+    analystLabel = 1
+    No solution
+
+    analystLabel = 2
+    No solution
+
+    brothersFactory = 2
+
+    analystLabel = 1
+    No solution
+
+    analystLabel = 2
+    No solution
+
+  CPU time 0.0 seconds. Backtracks: 56
+  
+  And indeed, Septimus is older than Octavius.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  nolog,
+  NumFactories = 4,
+  NumPeople = 4,
+
+  member(BrothersFactory,1..2),
+  println(brothersFactory=BrothersFactory),
+  member(AnalystLabel,1..2),
+  println(analystLabel=AnalystLabel),
+
+  X = new_array(NumFactories, NumPeople),
+  X :: 1..NumFactories*NumPeople, % Ages for each person
+
+  % "(No two employees are the same age)"
+  all_different(X.vars),
+
+  Me #= X[1,1], % I work at factory 1 and has the first labeled job
+  % The brother might work at the same of the different factory than me.
+  Brother #= X[BrothersFactory,2],
+
+  % If we both work at the same factory, then we cannot have the same job
+  % if BrothersFactory == 1 then AnalystLabel != 1 end,
+
+  % "I happen to be the oldest in my factory but younger than the oldest in each other 
+  % factory."
+  Me #= max(X[1].to_list), % oldest in my factory
+  % I am younger than the oldest in each other factory
+  foreach(I in 2..NumFactories)
+     Me #< max([X[I,J] : J in 1..NumPeople]) % younger than the oldest at the other factories
+  end,
+
+  % "My brother Octavius is the youngest top-G-Impact-Analyst in the whole combine,
+  % but older than the youngest employee in [any other] job".
+  Brother #= min([X[I,AnalystLabel] : I in 1..NumFactories]), % youngest analyst
+  Brother #!= min(X.vars), % not the youngest of all workers
+
+  % Am I older than my brother?
+  IAmOlder :: 0..1,
+  IAmOlder #<=> Me #> Brother,
+
+  % Checking:
+  % Let's assume that I am younger than my brother.
+  % If so then there's no solution.
+  % If I am younger then there is at least one solution.
+  IAmOlder #= 0,
+
+  Vars = X.vars ++ [Me,Brother,IAmOlder],
+  if solve($[],Vars) then
+    println(x=X),
+    foreach(Row in X)
+      println(Row)
+    end,
+    println([me=Me,brother=Brother,iAmOlder=IAmOlder]),
+    nl
+  else
+   println("No solution")
+  end,
+  nl,
+  fail,
+  nl.
+go => true.

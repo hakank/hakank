@@ -1,0 +1,307 @@
+/*
+  Identify a constant and also force (another) constant to always be included in all expressions.
+
+  See symbolic_regression_identify_constant.pi for other examples (without force_constant).
+
+  Some examples:
+
+  * 0.1153442566  
+    1  - ( (3*sqrt(3)) / (1+sqrt(3) + Pi)) (From David R. Stoutemyer "How to Hunt Wild Constants")
+
+    Forcing Pi to be included. Approx 0.00001
+    [program = pow2(log10(4)) / (exp(-7) + 3.14159),res = 0.115346,count = 1]
+
+  * Pi 
+
+    Forced constant EulerGamma
+
+    approx 0.0001
+    [program = pow4(exp(0.915966) * 0.577216) / log(7) + (sqrt(pow3(pow3(0.577216 / 5))) + 0.915966),res = 3.14151,count = 1]
+    [program = 3 * pow3(0.577216) + sqrt((6 + 0.577216) * 1),res = 3.14155,count = 1]
+
+    approx=0.00001
+    [program = exp(0.577216) + sqrt(2) * (10 * 0.577216) / 6,res = 3.14158,count = 1]  (11min38.7s)
+
+  * 2.23606797749979 sqrt(5) 
+    forcing constant Phi 
+    Cf https://lightcapai.medium.com/this-%CF%86-series-converges-insanely-fast-without-using-any-known-tricks-why-academy-doesnt-accept-b73cf0c08b52
+
+    Note: Phi = 1/2*(1+sqrt(5)
+
+    approx=0
+    AllGood:
+    [program = 1.61803 * (3 - 1.61803),res = 2.23607,count = 695]
+    [program = pow2(sqrt(1.61803)) * (3 - 1.61803),res = 2.23607,count = 336]
+    [program = sqrt(5) * 1.61803 * (1 / exp(log(1.61803))),res = 2.23607,count = 308]
+    [program = log(exp(1.61803)) * (3 - 1.61803),res = 2.23607,count = 220]
+    [program = (3 - 1.61803) * 1.61803,res = 2.23607,count = 182]
+    [program = 1.61803 + 1 / exp(log(1.61803)),res = 2.23607,count = 153]
+    [program = 1.61803 + (1.61803 - 1),res = 2.23607,count = 98]
+    [program = 1 / exp(log(1.61803)) * (sqrt(5) * 1.61803),res = 2.23607,count = 98]
+    [program = 1 / exp(log(1.61803)) + 1.61803,res = 2.23607,count = 88]
+    [program = sqrt(5) * 1.61803 / 1.61803,res = 2.23607,count = 63]
+    [program = log(exp(1.61803)) + 1 / exp(log(1.61803)),res = 2.23607,count = 50]
+    [program = pow3(1.61803) - 2,res = 2.23607,count = 39]
+    [program = (sqrt(4) + 1.61803) / 1.61803,res = 2.23607,count = 24]
+    [program = 1.61803 - 1 + 1.61803,res = 2.23607,count = 24]
+    [program = 1 * 1.61803 + 1 / exp(log(1.61803)),res = 2.23607,count = 21]
+    [program = (3 - 1.61803) * log(exp(1.61803)),res = 2.23607,count = 11]
+    [program = (1.61803 + 2) / 1.61803,res = 2.23607,count = 9]
+    [program = (3 - 1.61803) * pow2(sqrt(1.61803)),res = 2.23607,count = 8]
+    [program = (3 - 1.61803) / (1 / exp(log(1.61803))),res = 2.23607,count = 6]
+    [program = 1.61803 * sqrt(5) / 1.61803,res = 2.23607,count = 4]
+    [program = 4 * 1.61803 - pow3(1.61803),res = 2.23607,count = 4]
+    [program = 1.61803 - (sqrt(1) - 1.61803),res = 2.23607,count = 3]
+    [program = 1.61803 / 1 * (3 - 1.61803),res = 2.23607,count = 3]
+    [program = 8 + pow2(1.61803) - (10 - 1.61803),res = 2.23607,count = 2]
+    [program = 1.61803 + 1.61803 - 1,res = 2.23607,count = 2]
+    [program = 1.61803 * (1.61803 + 1) - 2,res = 2.23607,count = 2]
+    [program = pow2(1.61803) - (sqrt(4) - 1.61803),res = 2.23607,count = 2]
+    [program = 1.61803 - (1 - 1.61803),res = 2.23607,count = 2]
+    [program = 1 / exp(log(1.61803)) + log(exp(1.61803)),res = 2.23607,count = 2]
+    [program = (3 - 1.61803) * (1.61803 * 1),res = 2.23607,count = 2]
+    [program = sqrt(pow2(1.61803)) * (3 - 1.61803),res = 2.23607,count = 2]
+    [program = (sqrt(4) + 1.61803) / (1 * 1.61803),res = 2.23607,count = 1]
+    [program = (2 + 1.61803) / 1.61803,res = 2.23607,count = 1]
+    [program = sqrt(5) * 1.61803 / pow2(sqrt(1.61803)),res = 2.23607,count = 1]
+    [program = 1.61803 + 1.61803 - 1.61803 / 1.61803,res = 2.23607,count = 1]
+    [program = 3 * 1.61803 - pow2(1.61803),res = 2.23607,count = 1]
+    [program = 1.61803 * 3 - pow2(1.61803),res = 2.23607,count = 1]
+    [program = 7 / (1.61803 * 7) + log(exp(1.61803)),res = 2.23607,count = 1]
+    [program = 2 / 1.61803 + pow2(pow2(1.61803) / pow2(1.61803)),res = 2.23607,count = 1]
+    [program = 1 / exp(log(1.61803)) + 1.61803 / 1,res = 2.23607,count = 1]
+    [program = 1 / exp(log(1.61803)) + 1.61803 * 1,res = 2.23607,count = 1]
+    [program = 1 / exp(log(1.61803)) + exp(log(1.61803)),res = 2.23607,count = 1]
+    [program = 1.61803 - 2.71828 / 2.71828 + 1.61803,res = 2.23607,count = 1]
+    [program = 1.61803 - 2 + pow2(1.61803),res = 2.23607,count = 1]
+    [program = sqrt(pow2(1.61803)) + (1.61803 - 1),res = 2.23607,count = 1]
+    [program = pow2(sqrt(1.61803)) + 1 / exp(log(1.61803)),res = 2.23607,count = 1]
+    [program = log(exp(1.61803)) + (1.61803 - 1),res = 2.23607,count = 1]
+
+    resultMap = [2.23607 = 47]
+
+
+  * 1.618033988749895 Phi 
+    forcing constant sqrt(5) (2.23606797749979)
+    Don't forget to add sqrt(5) to the Constants list.
+
+    Note: Phi = 1/2*(1+sqrt(5)
+
+    Approx 0
+    [program = (2.23607 + pow2(sqrt(5))) / (2 * 2.23607),res = 1.61803,count = 686]
+    [program = (2.23607 + sqrt(sqrt(1))) / 2,res = 1.61803,count = 252]
+    [program = (2.23607 + pow2(sqrt(5))) / (2 / 1 * 2.23607),res = 1.61803,count = 209]
+    resultMap = [1.61803 = 3]
+
+
+    [program = (2.23607 - 3 + 4) / 2,res = 1.61803,count = 1]
+    resultMap = [1.61803 = 1]
+
+        
+    AllGood:
+    [program = (1 + 2.23607) / (2.23607 / (2.23607 / 2)),res = 1.61803,count = 341]
+    [program = (1 + 2.23607) / 2,res = 1.61803,count = 329]
+
+
+  * Feigenbaum constant 4.669201609
+    Forcing Pi and E
+    approx 0.0
+
+    results_best = [[0.0006001,3.14159 + exp(3.14159 - 2.71828),check = 4.668601508526992]]
+
+    results_best = [[6.98116e-05,(sqrt(2.71828) + ((3.14159 + pow4(3)) / 7 + 1)) / 3.14159,check = 4.669271420621578]]
+    
+    results_best = [[5.88695e-05,exp(sqrt(2.71828 / log(3.14159))),check = 4.669142739538231]]
+
+
+    From https://en.wikipedia.org/wiki/Feigenbaum_constants
+    """
+    A simple rational approximation is ⁠621/133, which is correct to 5 significant values 
+    (when rounding). For more precision use ⁠1228/263, which is correct to 7 significant values.
+
+    It is approximately equal to ⁠10*(1/(π − 1)) with an error of 0.0047%.
+    """
+
+    So, let's test with forcing only Pi:
+
+    Approx: 0.0
+
+    results_best = [[0.00022046,10 / (3.14159 - pow2(1)),check = 4.669422069242599]]
+
+    results_best = [[0.00022046,2 / (3.14159 - 1) * 5,check = 4.669422069242598]]
+
+    results_best = [[0.000134762,sqrt(pow4(log(3.14159)) + pow3(2.71828)),check = 4.669336371339944]]
+
+    results_best = [[6.93346e-05,pow3(3.14159) / pow4(exp(1.61803) / 3.14159),check = 4.669132274444856]]
+
+    results_best = [[9.81722e-05,3.14159 * (sqrt(5) / 0.915966) - 3,check = 4.669299781233465]]
+
+    results_best = [[5.94943e-05,pow2(log(pow2(3.14159))) - log(sqrt(3.14159)),check = 4.669261103302423]]
+
+    results_best = [[3.6188e-05,sqrt(sqrt(3.14159)) + sqrt(3.14159 + 8),check = 4.669237797004481]]
+    results_best = [[3.6188e-05,sqrt(sqrt(3.14159)) + sqrt(8 + 3.14159),check = 4.669237797004481]]
+
+    results_best = [[6.94203e-06,log(pow4(3.14159) + exp(6)) / sqrt(sqrt(3.14159)),check = 4.669208551026961]]
+
+    results_best = [[1.37759e-06,9 - 3.14159 - sqrt(sqrt(2)),check = 4.669200231407486]]
+
+    Approx 0.00001
+    AllGood:
+
+    [program = 9 - 3.14159 - sqrt(sqrt(2)),res = 4.6692,count = 835]
+
+    Approx: 0.000001
+
+
+  * 5.43656365691809  2*exp(1) 
+    w/o exp
+    forcing EulerGamma
+
+    results_best = [[2.06104e-05,3 * pow3(0.577216) - (9 - 8 / 0.577216),check = 5.436584267268619]]
+
+
+  Some references for mathematical constants / constant identification
+  * http://oeis.org/
+  * http://mrob.com/pub/ries/
+  * http://askconstants.org
+  * wolframalpha.com
+  * https://math.hawaii.edu/~dale/AskConstants/HowToHuntWildConstants.pdf
+  * https://en.wikipedia.org/wiki/List_of_mathematical_constants
+  * https://oeis.org/wiki/Index_to_constants
+
+  * Notable Properties of Specific Numbers    
+    This is a list of a lot of special numbers.
+    https://www.mrob.com/pub/math/numbers.html
+    https://www.mrob.com/pub/math/numbers-2.html
+    ...
+    https://www.mrob.com/pub/math/numbers-25.html
+
+*/
+data(identify_constant_force_constant,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+  % Seq = [1,3.142857143],
+  % make_point_seq(Seq,Data,Unknown,Vars), 
+  % make_seq(Seq,1,Data,Unknown,Vars),
+  % make_seq(Seq,2,Data,Unknown,Vars),
+  % make_seq(Seq,3,Data,Unknown,Vars),
+  % Ops = [+,-,*,/,sin,exp,log,sqrt,pow2,pow3,pow4],  
+  Data = [
+      %% Floats: Change to float functions below
+      % [[1], 3.142857143] % 22 / 7
+      % [[1], 3.146264370]  % 2^1/2 + 3^1/2
+      % [[1], 3.141701399] % arcsinh(231/20)
+      % [[1],2.596684952] % 3 + Pi - 2 Pi^(1/2)
+      % [[1],math.pi] % Pi,
+      % [[1], 0.7692389013] % cos(ln(2))
+      % [[1], 2.7889921029138087050] % 2 Catalan + Catalan^(1/2)
+      % [[1], 1.618033988749895] % Phi
+      % [[1],0.915965594177219 ] % Catalan
+      % From David R. Stoutemyer "How to Hunt Wild Constants"
+      % (https://www.researchgate.net/publication/350542593_How_to_hunt_wild_constants)
+      % https://math.hawaii.edu/~dale/AskConstants/HowToHuntWildConstants.pdf
+      % [[1], 9.141592654] % 6+Pi  6 + 3.14159, tan(atan(6)) + acos(-1)
+      % [[1],0.1153442566]  % 1-  ( (3*sqrt(3)) / (1+sqrt(3) + Pi))
+      % [[1],0.1857930606004482] % 1/(e^(arccosh(5)/2) + sqrt(5))
+      % 
+      % [[1], -0.9125775987] % sin(exp(pi)) % -> sin(pow2(exp(3.14159)))
+      % [[1], 0.9887872246] % sin(exp(2*pi)) % sin(exp(3.14159 * 2))
+      % [[1], 1.414213562373095] % sqrt(2)
+      % [[1], 1.732050807568877] % sqrt(3)
+      [[1], 4.669201609] % Feigenbaum constant
+      % [[1], 4.669201609] % 2 exp(1)
+      % [[1], 0.3828968253968254] % 9649 / 25200
+      % [[1],0.26424111765711533] % 1 - 2/exp(1)
+      % [[1],0.6321205588285577] % 1 - 1/exp(1)
+      % [[1],1.6449340668482] % zeta(2), or π^squared/6.
+      % [[1],299792458.0] % Speed of light (as float)
+      % [[1],2.23606797749979] % sqrt(5)
+      % [[1],5.43656365691809] % 2*exp(1) w/o exp
+
+
+      % Integers 
+      % [[1], 6564120420] % 20th Catalan number: (40)!/(20!*21!),
+      % [[1], 3628800] % 10!
+      % [[1], 384] % 2*4*6*8  % pow2(-8) * 6,  pow3(4) * 6,  1 * 6 * (-8 * -8)
+      % [[1], 1] % 1      
+      % [[1], 2] % 2
+      % [[1], 68] % 2*3+4*5+6*7
+      % [[1], -1/12]
+      % [[1],299792458] % Speed of light
+      ],
+  Unknown = [1],
+  % Vars = ['x'], 
+  Vars = [], % Note: No variables, just the constants.
+  % Ops = [+,-,*,/],
+  % Ops = [+,-,*,/,exp,log,sqrt,pow2,pow3,pow4],
+  % IntegerOps = [+,-,*,/,div,gcd,floor,prime,pow_mod2,pow2,pow3,mod,factorial_restricted,mod_replace,sum_i],
+  IntegerOps = [+,-,*,/,div,gcd,floor,prime,pow_mod2,pow2,pow3,mod,mod_replace], % skipping factorial_restricted
+
+ %  FloatOps  = [+,-,*,/,sqrt,pow_mod2,pow2,pow3,pow4,pow_neg3,pow_neg4,pow_neg5,exp,log,log2,log10,log_2,sin,tan,atan,atan2,acos,acot,asec,asinh,atanh],
+  % FloatOps  = [+,-,*,/,sqrt,pow_mod2,pow2,pow3,pow4,pow_neg3,pow_neg4,pow_neg5,exp,log,log2,log10,log_2], % Skipping trig functions
+  FloatOps  = [+,-,*,/,sqrt,pow2,pow3,pow4,exp,log], %
+  % FloatOps  = [+,-,*,/,sqrt,pow2,pow3,pow4,log], % w/o exp
+  % FloatOps  = [+,-,*,/,sqrt,pow_mod2,pow2,pow3,pow4,exp,log,log2,log10,log_2,sin,tan,atan,atan2,acos,acot,asec,atanh], % w/o asinh/1 (for Phi identification)  
+  % FloatOps  = [+,-,*,/,pow_mod2,pow2,pow3,pow4,exp,log,log2,log10,log_2,sin,tan,atan,atan2,acos,acot,asec,asinh,atanh],   % w/o sqrt (for sqrt(2))
+  
+  ForceIntegerFunctions = false,
+  % ForceIntegerFunctions = true,  
+  if ForceIntegerFunctions ; integer(Data[1,2]) then
+    TheOps = IntegerOps
+  else
+    TheOps = FloatOps
+  end,
+  member(Ops,[
+         % [+,-,*,/]
+         % [+,-,*,/,sqrt]
+         % [+,-,*,/,pow_mod2]
+         % IntegerOps
+         % FloatOps
+         TheOps
+        ]),
+  nl,
+  println(ops=Ops),
+  % Constants = -100..0.01..100,
+  % Constants = -1000..1000,
+  % Constants = -1000..1000 ++ [math.pi,math.e],
+  % Add some nice mathematical constants
+  Catalan = 0.915965594177219,
+  EulerGamma = 0.577215664901533,
+  Phi = 1.618033988749895, % golden ratio
+  % math.pi and math.e are built-in constants in Picat
+  
+  Constants = 1..10 ++ [math.pi,math.e,Catalan,EulerGamma,Phi],
+  % Constants = 1..10 ++ [math.pi,Catalan,EulerGamma,Phi], % no math.e
+  % Constants = 1..10 ++ [math.e,Catalan,EulerGamma,Phi], % No Pi
+  % Constants = 1..10 ++ [math.e,math.pi,Catalan,EulerGamma,sqrt(5)], % w/o Phi
+  % Constants = 1..10, % Without specific constants
+  MaxSize = 11,
+  Params = new_map([
+                    % approx=0.0,
+                    approx=0.000001,                    
+                    % approx=0.00001,
+                    % approx=0.0001,
+                    % approx=0.001,
+                    % approx=0.01,
+                    % approx=0.1,
+                    % remove_dups=false,
+                    % Don't forget to add the forced constant to Constants
+                    force_constants=[math.pi],
+                    % force_constants=[math.e],
+                    % force_constants=[EulerGamma],
+                    % force_constants=[math.pi,math.e],
+                    % force_constants=[Phi],
+                    % force_constants=[sqrt(5)],
+                    init_size=10000, % Set to larger population size if > 2 forced constants
+                    show_best=1, % Number of the best expressions in the population to show
+                    num_gens=1000
+                    % , show_only_good=true % don't show intermediate results, only the final accepted solutions
+                    % , reset_timeout = 600 % reset problem after reset_timeout seconds
+                    % , mutation_rate=0
+                    % , crossover_rate=0
+                    % , mutation_rate=0.01
+                    % , crossover_rate=0.9
+                    % , timeout=10
+                    % , debug=true
+                    % , stop_criteria=generation
+                    % , show_only_improvements=false
+                    ]).
+  

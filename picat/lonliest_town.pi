@@ -1,0 +1,129 @@
+/* 
+
+  Lonliest town in Picat.
+
+  From https://colab.research.google.com/drive/1DLI8pZfXAQk2nLmSokrtzcrSGVLOGFci?usp=sharing#scrollTo=s9LspAW8MQFv
+  """
+  Task: Find the Loneliest Town
+
+  Given a list of towns with their coordinates, find the "loneliest" town.
+  The loneliest town is defined as the one whose distance to its
+  nearest neighbor is the greatest.
+
+  This problem requires a multi-step logical process:
+  1. For each town, calculate the distance to all other towns.
+  2. For each town, find the minimum of these distances (the distance to its nearest neighbor).
+  3. From these minimum distances, find the overall maximum and the town associated with it.
+
+  ... 
+  # Input Data: A predicate with town names and their coordinates.
+  Town(name: "A", lat: 0, lon: 0);
+  Town(name: "B", lat: 0, lon: 1);
+  Town(name: "C", lat: 5, lon: 5);
+  Town(name: "D", lat: 5, lon: 6.5);
+  Town(name: "E", lat: -3, lon: -10);
+  """
+
+  Via https://x.com/EvgSkvDev/status/1936243423281045674
+  """
+  Finding loneliest town in Logica.
+  """
+
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+% import cp.
+
+main => go.
+
+/*
+[100000,1,50,67.25,109]
+[1,100000,41,55.25,130]
+[50,41,100000,2.25,289]
+[67.25,55.25,2.25,100000,336.25]
+[109,130,289,336.25,100000]
+E
+
+*/
+go ?=>
+  Towns = findall([Name,Lat,Long],town(Name,Lat,Long)),
+  N = Towns.len,
+
+  Distance = new_array(N,N),
+  bind_vars(Distance,100000),
+  foreach(I in 1..N, J in 1..N, I != J)
+    Distance[I,J] := distance(Towns[I,2..3],Towns[J,2..3])
+  end,
+  foreach(Row in Distance)
+    println(Row.to_list)
+  end,
+  println(Towns[[min(Row) :  Row in Distance].argmax,1]),  
+
+  nl.
+go => true.
+
+town("A", 0, 0).
+town("B", 0,  1).
+town("C", 5, 5).
+town("D", 5, 6.5).
+town("E", -3, -10).
+
+distance(A,B) = abs(A[1]-B[1])**2 + abs(A[2]-B[2])**2.
+
+distance(LatA,LongA,LatB,LongB) = abs(LatA-LatB)**2 + abs(LongA-LongB)**2.
+
+argmax(L) = MaxIxs =>
+  Max = max(L),
+  MaxIxs = [I : I in 1..L.length, L[I] == Max].first().
+
+
+/*
+  Another approach, using table (DP)
+  [E,109]
+
+*/
+go2 ?=>
+  dist(A,Dist),
+  println([A,Dist]),
+  nl.
+go2 => true.
+
+% maximize the minimum distance to the other towns
+table(-,max) 
+dist(A,Dist) =>
+  % Calculate the minimum distance to each other town
+  town(A,LatA,LongA),
+  Rest = findall([B,LatB,LongB],(town(B,LatB,LongB), A != B)),
+  Dist = min([distance([LatA,LongA],B[2..3]) : B in Rest]).
+
+/*
+  A variant of go2/0, and a little more  similar to the Logica version
+
+ [E,109]
+
+*/
+go3 ?=>
+  dist2(A,Dist),
+  println([A,Dist]),
+  nl.
+go3 => true.
+
+table(-,max) 
+dist2(A,Dist) =>
+  % Maximize the minimum neighbor distances
+  town(A,_LatA,_LongA),
+  min_nn(A,Dist).
+
+% Minimum nearest neighbour for A
+table(+,min)
+min_nn(A,Dist) =>
+  town(A,LatA,LongA),
+  town(B,LatB,LongB),
+  A != B,
+  Dist = distance(LatA,LongA,LatB,LongB).

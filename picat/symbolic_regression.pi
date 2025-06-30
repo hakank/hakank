@@ -2,43 +2,369 @@
 
   Symbolic regression in Picat.
 
-  My goal is to implement as much as possible that included
-  in my JGAP SymbolicRegression system, perhaps skipping ADF?
+  Symbolic regression (https://en.wikipedia.org/wiki/Symbolic_regression)
+  is a variant of Genetic Programming (https://en.wikipedia.org/wiki/Genetic_programming)
+  for solving machine learning tasks: Given a data set, the objective is to generate a 
+  symbolic (mathematical) formula for the structure that underlies the data.
 
-  Interestingly, without even doing any genetic operations,
-  this program finds many solutions...
+  For examples how to use this program:
+  * See below (data/8) for some simple examples. 
+    In the go/0 predicate, remove the comment for the example, and run the program 
+    as
+     $ picat picat symbolic_regression.pi
 
-  Some comments / drawbacks:
-  - to add a function two things must be done:
-    * add it to arities/1
-    * add it to eval/n
+  * https://hakank.org/picat/#symbolic_regression
+    which contains over 170 different type of problem of various types, sizes,
+    complexity, and success rate.
 
-  - The variables (as well as the functions) must be
-    atoms, e.g.
-      Vars = ['A','B',C']
-
-  - ** might blow up (see infamous_equation)
-    Sometimes it works to use the restricted variants pow_mod2/2 or pow_mod/3.
-
-
-  - it's not possible to add guarding constraints,
-    e.g. that Y != 0 in X / Y. Doing that
-    just ends the prpgram since catch does not 
-    handle it. 
-    (Perhaps it could be fixed with some fail/0 or more checks?)
-
+    Run an example like this:
+    $ picat symbolic_regression.pi symbolic_regression_facebook_puzzle.pi 
   
+  * For constant identification, see the following:
+
+    - https://hakank.org/picat/symbolic_regression_identify_constant.pi
+      This includes quite a few experiments of (trying to) identifying
+      mathematical constants.
+    
+    - https://hakank.org/picat/symbolic_regression_identify_constant_force_constant.pi
+
+      This gives some examples that uses the force_constant/1 option for
+      forcing the generated expressions to include the specified constants.
+      See below for more on force_constant/1.
 
 
-  Cf symbolic_function_induction.pi 
-  This program tries to solve similar problems but using an 
-  enumeration approach (via backtracking) which clearly does 
-  not solves all problems that JGAP SymbolicRegression can solve.
+  Below is a summary of what a configuration file can (and must) include, as well
+  as the available options for the Params hash table.
+
+  Here is a simple example of a configuration file show below (also see 
+  symbolic_regression_facebook_puzzle.pi).
+
+   data(facebook_puzzle,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
+     Data = [[[1,4],5],
+             [[2,5],12],
+             [[3,6],21]
+             ],
+     Vars = ['A','B'],
+     Unknown = [5,8],
+     Ops = [+,*,/],
+     Constants = 1..10,
+     MaxSize = 5,  
+     Params = new_map([init_size=200,
+                       stop_criteria=generation,
+                       num_gens=100
+                       ]).
+
+
+
+    * Data
+      The data section is of the following form:
+      Data = [[[1,4],5],
+              [[2,5],12],
+              [[3,6],21]
+             ],
+      For each datapoint it represents
+         [ InputList, Output ]
+
+    * Unknown: 
+      Unknown = [5,8]
+
+      This is the value we want the result of and is the value that is compared in
+      the progression of the program. 
+
+   * Vars 
+     Vars = ['A','B']
+
+     This is the list of the symbolic names of the input variables (in order).
+     Note: A variable name must either in the form 'A' (for upper case) or a (lower case).
+           A variable name without quotes is interpreted as a Picat variable, and it
+           will give strange results (or errors).
+
+   * Ops
+     This is a list of the operators/functions that are allowed in the result.
+
+     For this simple problem, we only use the basic math operators.
+     Ops = [+,*,/]     
+
+     Normally the interesting functions for integer constants are not the same as for float constants. 
+
+     Here are the most interesting integer functions:
+
+       IntegerOps = [+,-,*,/,div,gcd,odd,even,floor,ceiling,prime,    
+                     pow_mod2,pow2,pow3,pow,pow_restricted,
+                     abs,mod,mod_replace], 
   
-  On the other hand, I would like to be able to find all
-  solutions to a problem. This means that somehow fixing        
-  the random/2 function so it's backtrackable. But that might
-  be a moot goal...
+     And here are the supported float functions.
+       FloatOps =  [+,-,*,/,sqrt,pow_mod2,pow2,pow3,pow4,pow_neg2,pow_neg3,
+                    pow_neg4,exp,log,log2,log10,log_2,
+                    sin,tan,atan,atan2,acos,acot,asec,atanh,asinh] 
+
+     Here are some other supported function, see below (eval/1) for the definitions.
+
+     Bitwise and Logic = [^,\/,/\,>>,<<,~, and,or,=>,<=>,not,sheffer,nand,nor,xor]
+     Comparison and Logic = [<,=<,>,>=,==,!=,if_then_else,cond,if_less,if_less_equal,
+                             if_larger,if_larger_equal
+                            ]
+     The comparisons returna 1 (true) or 0 (false) so beware that these might give expressions     
+     that are hard to interpret.
+     
+     Misc = [min,max,distance,to_num2,to_num3,to_num4,sum_i,char_count,factorial,!]
+
+     Note that adding many function to the available function will make the search space of
+     possible solutions larger and thus it might be harder to find solutions.  
+
+     For the definition of these functions, see below in the program for the definitions
+     eval('function_name')
+
+     One can add new functions in this program:
+     - add eval/1 for the function defining the logic of the function
+     - add arities/1 for the function, defining the number of parameter the function has
+
+     Tip: I tend to do some test runs with a lot of functions, and then remove the functions that 
+     does not seems to be relevant
+
+
+  * Constants
+
+    This is a list of the allowed constants to be used
+
+    Constants = 1..10, % [1,2,3,4,5,6,7,8,9,10]
+
+    One can add any constant to the Constant list, for example some of the 
+    nice mathematical constants
+    Catalan = 0.915965594177219,
+    EulerGamma = 0.577215664901533,
+    Phi = 1.618033988749895, % golden ratio
+
+    For example:
+    Constants = 0..10 ++ [math.pi, math.e, EulerGamma,Phi],
+
+  * MaxSize
+    This is (about) the size of the start value of the formula (amount of functions + amount of numbers).  
+    If one want a short formula then start with a low value. However, this is not a fixed max length
+    and the expressions are often grown during the search.
+
+    In the simple example above: 
+    MaxSize = 5
+
+  * Params
+    This is a map (hash table) of different options to use. 
+
+   - approx=<precision>
+     Defaul precision = 0 (Exact match. For floats: to precision 10e-16)
+
+     The program continues to run until the value of the absolute difference between the result of 
+     the formula and the given output value is larger than this value.
+
+     For expressions when the output value is a float, it is probably better to set
+     approx to a larger values, for example:
+        approx=0.1
+        approx=0.0001
+        approx=0.000001
+    or perhaps even
+        approx=100.0
+
+    The appropriate value depends on the size of input values and how long one
+    want to wait for a solution.
+
+  - init=<size> 
+    size of each population, the number of formulae to use in each generation
+
+  - num_gens=<n>
+    Number of generations. The program runs <n> generations and then reports the result 
+    (all the found "good" formulas).
+
+    Unless there is an approx option: If the program has not reached the stated precision 
+    then it continues to run until that is found (and stops directly when found).
+
+  - reset_timeout = <seconds>
+    If set then the program restarts if <seconds> seconds has gone without any solution. 
+    This is a complete reset, so previous results are forgotten completely.
+
+  - force_constants=<list of constants>
+    This is a the new (and experimental) option. 
+    If not empty, then all constants in this list must be in the selected result. 
+    This might give an empty population, and then the main function is re-run automatically).
+
+    Example:
+      force_constant=[math.pi,math.e]
+      force_constant=[2025,42]
+
+    All the constant values in this list must be in the Constant list.
+
+    Note: Using many (say > 2) forced constants might give empty populations (as 
+    mentioned above).
+
+    Then one can increase the size of the populations init_size to a larger 
+    value (testing with 1000, 10000, etc). This will - however - make
+    the run slower.    
+
+  - mutation_rate=<pct> crossover_rate=<pct>
+    I actually don't use them much, but rely on the other parameters instead for .  
+    The default values are mutation_rate=0.05 and crossover_rate=0.9.
+
+  - stop_criteria
+
+    This influences how/when the program stops.
+
+    * at_least_one_solution (default)
+      The program continues to find at least one solutions.
+
+    * generation (or any other value)
+      Stop when the allowed number of generations (num_gens) have        
+      been reached and report the found solutions (if any).
+
+  - timeout=<seconds>
+    Default: no timeout
+
+    The program stops after <timeout> seconds.
+
+  - eval_timeout=<seconds>
+    Default: 1000 (1s)
+
+    Default timeout for the eval of a single expression
+
+  - show_errors=<false|true>
+    Default: false
+
+    If true, then show the internal errors when evaluating the expressions.
+    
+  - show_only_good=<true|false>
+    Default: false
+
+    If true, then only the found acceptable solutions are show as a summary.
+    If false, then all found expression are shown. 
+    See the option show_only_improvements for more on this.
+
+  - show_instances=<false|true>
+    Default: false
+
+    Show all instances in the population.
+
+  - show_only_improvements=<false|true>
+    Default true
+    
+    If true: Show only when an improvement of the fitness has been found.
+    If false: Show all intermediate expressions.
+
+  - show_best=<n>
+    Default: 1
+
+    The number of expressions to show when reporting improvement of the
+    fitness. 
+
+  - remove_dups:<false|true>
+    Default: false
+
+    If true: Remove duplicates in the population for the next generation
+
+  - init_fun
+    Default empty
+
+    If not empty, added to the first population.
+
+    See symbolic_regression_puzzle.pi for an example.
+    init_fun=$(('A'*'B'*10000)+('A'*'C'*100)+('A'*'B'+'C')-'B')
+
+  - debug=<false|true>
+    Default: false
+
+    If true: show _alot_ of information about the run.
+    If false: no debug information is shown.
+
+  - keep_programs_pct:<0.0..1.0>
+    Default: 0.01
+
+    The number (percent) of good programs to keep to the next generation.
+
+  - unique_digits_all=<false|true>
+    Default: false
+    
+    If true: All digits in the expression must be unique and all must be
+             represented in a valid expression.
+    If false: No retriction on digits
+    
+    See symbolic_regression_puzzle4b.pi for an example.
+
+  - no_restart:<false|true>
+    Default: true
+
+    If true: If a population is empty, then the program restart
+    If false: No restart is done if the population is empty.
+
+    This can occur when using the option force_constants=[...],
+    for example if the list contains many constants.
+
+  - unique_vars_all=<false|true>
+    Default: false
+    Similar to unique_digits_all, but the constraints are here on the variables.
+    
+    If true: All variables in the expression must be unique and all must
+             be represented in a valid expression.
+    If false: No retriction on variables
+    
+    See symbolic_regression_puzzle4.pi and symbolic_regression_puzzle4b.pi 
+    for examples of this.
+
+
+  One fun way using symbolic regression is to solve puzzles, for example
+  sequence puzzles: What is the next value in this sequence. 
+  For helping out with these puzzles, some utilities are available:
+
+  * make_seq
+    Generate the dataset of the consecutive N-tuples (N>=1) given
+    a list of values.
+
+    For example, from the fibonacci problem defined below
+      N = 2,
+      make_seq([1,1,2,3,5,8,13,21],N,Data,Unknown,Vars)
+
+    This creates the needed information Data, Unknown, and Vars
+    for this specific problem instance:
+    
+     Data = [[[1,1],2],[[1,2],3],[[2,3],5],[[3,5],8],[[5,8],13],[[8,13],21]]
+     Unknown = [13,21]
+     Vars = ['A','B']
+
+    Here we also see that one can use Picat non-deterministic predicates
+    such as member(N,2..3) for doing many experiments in one configuration
+    file.
+
+  * make_point_seq
+    Create a "pointwise" sequence of a list, where the data set
+    is the pairs of <index of the value, value>
+
+    From the simple example below 
+       make_point_seq([5,3,1],Data,Unknown,Vars)
+    which generates
+      Data = [[[1],5],[[2],3],[[3],1]]
+      Unknown = [4]
+      Vars = ['A']
+
+  * make_data_matrix
+    See below for the comments on this predicate,
+    and symbolic_regression_triangles.pi for an problem instance.
+
+
+
+  Also see:
+  - My JGAP (Java) extension for Symmetric Regression
+    https://hakank.org/jgap/
+
+  - Symbolic Function Induction (in Picat) 
+    https://hakank.org/picat/symbolic_function_induction.pi
+    This is another approach for getting
+    symbolic functions given a data set, and is the precursor
+    of the program symbolic_regression.pi. It is not developed
+    (much) anymore, and does not has as many bells & whistles
+    as the symbolic regression program.
+
+  - My Popper page: https://hakank.org/popper/
+    This contains some examples of datafiles for Popper 
+    (https://github.com/logic-and-learning-lab/Popper ),  
+    a system for Inductive Logic Programming (ILP). It creates
+    Prolog (Picat) programs instead of mathematical expressions given
+    a dataset. 
+
 
 
   This program was created by Hakan Kjellerstrand, hakank@gmail.com
@@ -72,6 +398,7 @@ main(ARGS) ?=>
       println(reset_timeout=TimeoutMS),
       Run = true,
       while (Run)
+        garbage_collect(500_000_000),
         time_out(run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),TimeoutMS,Status),
         nl,nl,
         println(status=Status),
@@ -107,14 +434,14 @@ go ?=>
   % data(equation3b,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
   % data(planets,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
-  % data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  data(fibonacci,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
   % data(number_puzzle_1,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
   % data(simple,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
   % data(mind_your_decision,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(art_of_mathematics,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
-
-  data(xxx,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  % data(xxx,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
 
 
   run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
@@ -427,7 +754,19 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
   RemoveDups = Params.get(remove_dups,true), % remove duplicates after new generated population
   InitFun = Params.get(init_fun,_), % initial function
   Timeout = Params.get(timeout,0), % Total timeout in seconds
-
+  ForceConstants = Params.get(force_constants,[]), % force constants
+  FailAtEnd = Params.get(fail_at_end,true),
+  NoRestart = Params.get(no_restart,false), % restart after no found functions?
+  
+  if ForceConstants.len > 0 then
+    foreach(FC in ForceConstants)
+      if not membchk(FC,Constants) then
+        printf("\nError:\nForced constant %w is not in the Constants list (%w)!\n", FC,Constants),
+        nl,
+        halt
+      end
+    end
+  end,
 
   % Random seed
   RandomSeed = Params.get(random_seed,_),
@@ -475,7 +814,13 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
     % Next iteration
     Programs = [F : [_,F,_] in All],
     if All.len == 0 then
-      println("No found functions")
+      if NoRestart then
+         println("\nNo found functions. Cannot continue.\n"),
+         KeepRunning = false
+      else
+         println("\nNo found functions. Restarts.\n"),
+         run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params)
+      end
     end,
     if All.len > 0 then
        ThisBest = All[1,1]
@@ -506,7 +851,8 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
       BestLast := All[1,1]
     end,
 
-    KeepNumPrograms = floor(All.len * KeepProgramsPct),
+    KeepNumPrograms = max(floor(All.len * KeepProgramsPct),2), % We keep at least 2 best programs
+    % KeepNumPrograms = floor(All.len * KeepProgramsPct),
     Keep =  Programs[1..KeepNumPrograms],
     
     % Remove duplicate programs or not
@@ -555,7 +901,9 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
   println(resultMap=ResultMap.to_list.sort_down(2)),
   nl,
   flush(stdout),
-  fail,
+  if FailAtEnd then
+    fail
+  end,
   nl.
 
 %
@@ -573,20 +921,39 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
   UniqueDigitsAll = Params.get(unique_digits_all,false),
   UniqueVars = Params.get(unique_vars,false), % NOTE: only single atom vars!
   UniqueVarsAll = Params.get(unique_vars_all,false),  % NOTE: only single atom vars!
-
+  ForceConstants = Params.get(force_constants,[]), % force constants
+  
   Results = [],
   Good = [],
+  ForceConstantsStrings = ForceConstants.map(to_string),
   foreach(F in Funs)
-    Failed := false,
+    Failed = false,
+    % Force constants: This is experimental (or at least a new feature)
+    if ForceConstants.len > 0 then
+      /*
+      FS = F.to_string,
+      foreach(FC in ForceConstants)
+        if not find(FS,FC.to_string,_,_) then
+          Failed := true
+        end
+      end,
+      */
+      % Tokens
+      FS = F.to_string.split(" ()"),
+      foreach(FC in ForceConstantsStrings)
+        if not membchk(FC,FS) then
+          Failed := true
+        end
+      end,
+    end,
     if Debug ; ShowInstances then
       nl,
       println(f=F)
     end,
     R = [],
-
     % Check if the function contains unique variables
     CheckUniqueFailed = false,
-    if UniqueVars ; UniqueVarsAll then
+    if Failed == false, (UniqueVars ; UniqueVarsAll) then
       % Convert the function to a flattened list
       F =.. FL,
       flatten_tree(FL,[],Flatten),
@@ -803,6 +1170,12 @@ arities(pow2) = 1.
 arities(pow3) = 1.
 arities(pow4) = 1.
 arities(pow5) = 1.
+arities(pow6) = 1.
+arities(pow_neg2) = 1.
+arities(pow_neg3) = 1.
+arities(pow_neg4) = 1.
+arities(pow_neg5) = 1.
+arities(pow_neg6) = 1.
 arities(pow_mod2) = 2.
 arities(pow_mod) = 3.
 arities(mod) = 2.
@@ -812,6 +1185,7 @@ arities('%') = 2.
 arities(div) = 2.
 arities(rem) = 2.
 arities(gcd) = 2.
+
 arities(^) = 2.
 arities(\/) = 2. % bitwise or
 arities(/\) = 2. % bitwise and
@@ -819,6 +1193,7 @@ arities(>>) = 2.
 arities(<<) = 2.
 arities(~) = 1.
 
+arities(abs) = 1.
 arities(min) = 1.
 arities(max) = 1.
 
@@ -922,6 +1297,10 @@ eval('//'(X,Y)) = Val =>
     YVal = eval(Y),
     Val = XVal//YVal.
 
+% NOTE: Using **, pow/2 tends to explode since
+%       it will fast be huge numbers.
+%       Hence several restricted variants are available instead.
+
 % See pow/2 for a restricted version
 eval('**'(X,Y)) = Val =>
     XVal = eval(X),
@@ -948,6 +1327,18 @@ eval('pow_restricted'(X,Y)) = Val =>
     else 
       YVal = eval(Y),
       Val = cond(YVal > 10, 1, XVal ** YVal)
+    end.
+
+%
+% If either X or Y are > 30 then return 1 else return X**Y
+%
+eval('pow_restricted_limit_30'(X,Y)) = Val =>
+    XVal = eval(X),
+    if XVal > 30 then
+      Val = 1
+    else 
+      YVal = eval(Y),
+      Val = cond(YVal > 30, 1, XVal ** YVal)
     end.
 
 % A restricted version of power: power modulo some smaller value
@@ -979,6 +1370,30 @@ eval('pow4'(X)) = Val =>
 eval('pow5'(X)) = Val =>
     XVal = eval(X),
     Val = XVal ** 5.
+
+eval('pow6'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** 6.
+
+eval('pow_neg2'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** -2.
+
+eval('pow_neg3'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** -3.
+
+eval('pow_neg4'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** -4.
+
+eval('pow_neg5'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** -5.
+
+eval('pow_neg6'(X)) = Val =>
+    XVal = eval(X),
+    Val = XVal ** -6.
 
 
 eval('mod'(X,Y)) = Val =>
@@ -1085,6 +1500,11 @@ eval('!='(X,Y)) = Val =>
     XVal = eval(X),
     YVal = eval(Y),
     Val = cond(XVal != YVal,1,0).
+
+eval('abs'(X)) = Val =>
+    XVal = eval(X),
+    Val = abs(XVal).
+
 
 eval('min'(X,Y)) = Val =>
     XVal = eval(X),
@@ -1570,7 +1990,7 @@ make_point_seq(Seq,Data,Unknown,Vars) =>
     vars = [A,B]
     unknown = [1,9]
 
-  (See symbolic_function_induction_triangles.pi )
+  (See symbolic_regression_triangles.pi )
 
 */
 make_data_matrix(Matrix, Data, Unknown, Vars) =>

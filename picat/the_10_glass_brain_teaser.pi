@@ -1,0 +1,129 @@
+/* 
+
+  The 10 glass brain teaser in Picat.
+
+  From Muhammad Zain Sarwar
+  "The 10-Glass Brain Teaser — How Fast Can You Solve It?"
+  """
+  While having dinner, I came up with this puzzle after observing the 
+  arrangement of half-empty and half-filled glasses.
+
+  Here’s the puzzle!
+
+  There are 10 glasses lined up in a row, with the first five filled with 
+  water and the last five empty. What is the minimum number of glasses 
+  you need to move to make the full and empty glasses alternate?
+
+  ...
+
+  Solution
+
+  Here’s how it works
+
+  1. Start with the Setup
+  There are ten glasses in a row in front of you. The final five cups are empty, 
+  while the first five are full with water.
+
+  2. Pick Up the Second Glass
+  I have filled the second glass with water. You fill the empty ninth glass with 
+  its contents. The ninth glass is now full, while the second glass is empty.
+
+  3. Pick Up the Fourth Glass
+  There is also water in the fourth glass. It is empty when you pour its contents 
+  into the seventh glass. At this point, the seventh glass is full and the fourth 
+  glass is empty.
+
+  4. Result
+
+  You will have an alternating pattern of filled and empty glasses after these 
+  two movements. In particular, this is how the glasses will be arranged
+
+  Glass 1: Full
+  Glass 2: Empty (previously full)
+  Glass 3: Full
+  Glass 4: Empty (previously full)
+  Glass 5: Full
+  Glass 6: Empty
+  Glass 7: Full (previously empty, now full after pouring from glass 4)
+  Glass 8: Empty
+  Glass 9: Full (previously empty, now full after pouring from glass 2)
+  Glass 10: Empty
+  """
+
+
+  I first modelled the problem before I read the clever solution.
+  As a traditional planner problem (using action1/4) it takes 4 moves,
+  for example:
+   move: 1 to 6: ffffefeeee
+   move: 1 to 7: fffefefeee
+   move: 1 to 8: ffefefefee
+   move: 1 to 9: fefefefefe
+   cost = 4
+
+  (There's a lot of other optimal solutions.)
+
+
+  Using instead a move that fills a glass into another (action/4),
+  it takes 2 moves (as in the description):
+
+  fill: 2 to 7: fefffefeee
+  fill: 4 to 9: fefefefefe
+
+  fill: 2 to 9: fefffeeefe
+  fill: 4 to 7: fefefefefe
+
+  fill: 4 to 7: fffefefeee
+  fill: 2 to 9: fefefefefe
+
+  fill: 4 to 9: fffefeeefe
+  fill: 2 to 7: fefefefefe
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import planner.
+
+main => go.
+
+go ?=>
+  nolog,
+  Start = [f,f,f,f,f,e,e,e,e,e],
+  best_plan_nondet(Start,Plan,Cost),
+  foreach([Move, F,to,T,P] in Plan)
+    printf("%w: %d to %d: %w\n",Move,F,T,P)
+  end,
+  println(cost=Cost),
+  nl,
+  fail,
+  nl.
+go => true.
+
+% It doesn't mention if it's (full,empty,...)  or (empty,full,...)
+final(L) =>
+  % L = [f,e,f,e,f,e,f,e,f,e].
+  (L = [f,e,f,e,f,e,f,e,f,e] ; L = [e,f,e,f,e,f,e,f,e,f]).
+
+% Original (4 moves)
+action_move(From,To,Action,Cost) ?=>
+  Len = From.len,
+  select(F,1..Len,Rest), % Position from
+  member(T,Rest),        % Position to
+  Glass = From[F],  
+  To1 = From[1..F-1] ++ From[F+1..Len], % delete the glass from position F
+  To = insert(To1,T,Glass),             % add it to position T
+  Action = [move,F,to,T,To],
+  Cost = 1.
+
+% A move fills another glass (2 moves)
+action(From,To,Action,Cost) ?=>
+  Len = From.len,
+  select(F,1..Len,Rest), % Position from
+  member(T,Rest),        % Position to
+  From[F] == f, From[T] == e,
+  To = copy_term(From),
+  To[F] := e,
+  To[T] := f,
+  Action = [fill,F,to,T,To],
+  Cost = 1.
