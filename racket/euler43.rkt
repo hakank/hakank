@@ -172,7 +172,7 @@
 ;;; Faster than euler43c, but less neat.
 ;;; Ah, skipping converting to number until it's a valid permutation
 ;;; is much faster.
-;;; cpu time: 398 real time: 398 gc time: 30
+;;; cpu time: 279 real time: 279 gc time: 0
 (define (euler43d)
   (define result 0)
   (define p (make-vector 10))
@@ -193,7 +193,7 @@
           (generate-permutations (add1 start))
           (vector-swap! p start i))))
   
-  (vector-copy! p 0 (vector 0 1 2 3 4 5 6 7 8 9))
+  (vector-copy! p 0 (vector 1 0 2 3 4 5 6 7 8 9))
   (generate-permutations 0)
   result)
 

@@ -18,6 +18,8 @@
     - the number of observed balls for each type
     - the number of left balls for each type
     - number of draws
+  * One can add probability for an event
+  * One can add some observation
    
   For not too complex cases enumerate works quite nicely, but it takes 
   long time for more complex combinations (use importance-sampler instead).
@@ -727,6 +729,8 @@ variable : num_observed, num_balls_left
      *  0: Do not add any ball (draw without replacement)
      * < 0: Draw without replacement and remove extra balls of the same color
    - number of draws
+   - obs: optional function for observation/fail
+   - prob: optional function for probability
   Returns
    - array of N observed balls
    - array of N left balls
@@ -737,18 +741,7 @@ variable : num_observed, num_balls_left
   number of balls <= 0.
 
 |#
-(define (list-transpose m)
-  (let ([rows (length m)]
-        [cols (length (list-ref m 1))])
-    (for/list ([i (range rows)])
-      (for/list ([j (range cols)])
-        (list-ref2d m j i)
-        )
-      )
-    )
-  )
-
-(define (urn_model balls add_balls num_draws [obs #f])
+(define (urn_model balls add_balls num_draws #:obs [obs #f] #:prob [prob #f])
   (displayln (format "balls:~a add_balls:~a num_draws:~a~n" balls add_balls num_draws))
   (define len (length balls))
   
@@ -758,7 +751,7 @@ variable : num_observed, num_balls_left
    ; mh-sampler
 
    (define (f num_balls num_observed progress i)
-     (if (or (= i num_draws) (memf (lambda (v) (<= v 0)) num_balls))
+     (if (or (>= i num_draws) (memf (lambda (v) (< v 0)) num_balls))
          ; Return the number of observed balls and number of balls that are left.
          (values num_observed num_balls i progress)
          ; else
@@ -782,16 +775,32 @@ variable : num_observed, num_balls_left
             [num_balls_left_mean (* 1.0 (avg num_balls_left))]
             )
 
-       ; Observation: experimental
+       ; Observation
+       (when obs
+         (let ([what (first obs)]
+               [o (second obs)])
+           (cond
+             [(eq? what "num_observed")
+              (observe/fail (o num_observed))]
+             [(eq? what "num_balls_left")
+              (observe/fail (o num_balls_left))]
+             [(eq? what "num_runs")
+              (observe/fail (o num_runs))]
+             [else 0]))
+         )
+       
+       ; Probability: experimental
        (define p
-         (if obs
-             (let ([what (first obs)]
-                   [o (second obs)])
+         (if prob
+             (let ([what (first prob)]
+                   [o (second prob)])
                (cond
                  [(eq? what "num_observed")
                   (o num_observed)]
                   [(eq? what "num_balls_left")
                    (o num_balls_left)]
+                  [(eq? what "num_runs")
+                   (o num_runs)]
                  [else 0]))
              ; No observation
              1)
@@ -813,27 +822,34 @@ variable : num_observed, num_balls_left
    )
   )
 
-(define num_balls '(10 10))
-(define add_balls '(0 0))
-(define num_draws 10)
-; Experimental
-(define obs (list "num_observed" (lambda (v) (equal? v '(6 4)))))
-; (define obs '(1 0 4))
-; (define obs (list "num_observed" (lambda (v) (equal? v '(1 0 4))))
-; (define obs (list "num_observed" (lambda (v) (>= (first v) 1))))
-; (define obs (list "num_observed" (lambda (v) (for/list ([b v]) (> b 0)))))
-; (define obs (list "num_observed" (lambda (v) (sum (for/list ([b v]) (b2i (> b 0)))))))
+(define num_balls '(12 23 9))
+(define add_balls '(-1 -1 -1))
+(define num_draws 5)
 
+; Experimental: Probability
+; (define prob (list "num_observed" (lambda (v) (equal? v '(6 4)))))
+; (define prob '(1 0 4))
+; (define prob (list "num_observed" (lambda (v) (equal? v '(1 0 4))))
+; (define prob (list "num_observed" (lambda (v) (>= (first v) 1))))
+; (define prob (list "num_observed" (lambda (v) (for/list ([b v]) (> b 0)))))
+; (define prob (list "num_observed" (lambda (v) (sum (for/list ([b v]) (b2i (> b 0)))))))
 ; Banach's match box problem:
 ;   A person has, in each of his two pockets, a box with n matches.
 ;   Now and then he talkes a match from a randomly chosen box until
 ;   he finds the selected box empty. Find the expectation of the 
 ;   number, R, of remaining matches in the other box.
-; Cf gamble_banachs_match_box_problem.rkt
-; (define obs (list "num_balls_left" (lambda (v) (if (= 0 (first v)) (second v) (first v) )) ))
+;   Cf gamble_banachs_match_box_problem.rkt
+; (define prob (list "num_balls_left" (lambda (v) (if (= 0 (first v)) (second v) (first v) )) ))
+; (define prob (list "num_balls_left" (lambda (v) (abs (- (first v) (second v))))))
+(define prob (list "num_observed" (lambda (v) (equal? v (list 2 0 3)))))
+; (define prob #f)
 
+; Experimental: Observation
+; (define obs (list "num_observed" (lambda (v) (> (first v) 0))))
+; (define obs (list "num_runs" (lambda (v) (<= v 8))))
+(define obs #f)
 
-(show-marginals (urn_model num_balls add_balls num_draws obs)
+(show-marginals (urn_model num_balls add_balls num_draws #:prob prob #:obs obs)
                 (list "num_observed_total"
                       "num_observed_mean"
                       "num_balls_left_total"
@@ -851,7 +867,7 @@ variable : num_observed, num_balls_left
                 ; #:truncate-output 5
                 ; #:skip-marginals? #t
                 ; #:show-stats? #t
-                ; #:credible-interval 0.84
+                #:credible-interval 0.84
                 ; #:show-histogram? #t
                 ; #:show-percentiles? #t
                 )

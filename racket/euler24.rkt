@@ -133,6 +133,34 @@
          (digits->number (append answer eli)))
   )
 
+; Thanks to soergaard for the tip of
+; https://github.com/racket/racket/blob/master/racket/collects/racket/list.rkt#L719x
+(define (permutations-lexi xs)
+   (map reverse (permutations (reverse xs))))
+
+; However it's too slow: 3.1s
+(define (euler24h)
+  (displayln (string-join (map number->string (first (take (drop (permutations-lexi (range 10)) 999999) 1))) ""))
+
+  )
+
+; Another tip from soegaard
+; cpu time: 404 real time: 405 gc time: 136
+(define (euler24i)
+  (let ([xs (map number->string (range 10))])
+    (for/last ([x (in-range 1000000)]
+               [rev-p (in-permutations (reverse xs))])
+      (string-join (reverse rev-p) "")
+  )))
+
+; Yet another tip from soegaard, much faster than euler24i
+; cpu time: 31 real time: 31 gc time: 0
+(define (euler24j)
+  (define xs    (map number->string (range 10)))
+  (define last  (for/last ([x (in-range 1000000)]
+                           [rev-p (in-permutations (reverse xs))])
+                  rev-p))
+  (string-append* (reverse last)))
 
 (define (run)
   ;;; (time-function euler24a)
@@ -142,6 +170,9 @@
   ;;; (time-function euler24e) 
   ;;; (time-function euler24f)
   (time-function euler24g)
+  ;;; (time-function euler24h)
+  ;;; (time-function euler24i)
+  ;;;  (time-function euler24j)  
   )
 
 (run)

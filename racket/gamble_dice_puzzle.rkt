@@ -19,9 +19,19 @@
 
   Cf: 1-(5/6)**4  ~ 0.51774691358024691358
 
+  Some different runs on the 24 throws:
+
   24 throws getting at least one double 6 (rejection-sampler)
   (#f : 0.5182)
   (#t : 0.4818)
+
+  24 throws getting at least one double 6 (importance-sampler)
+  (#f : 0.51398)
+  (#t : 0.48602)
+
+  24 throws getting at least one double 6 (importance-sampler)
+  (#f : 0.50645)
+  (#t : 0.49355)
 
   Cf: 1-(35/36)**24 ~ 0.49140387613090325958
 
@@ -50,10 +60,9 @@
 
 
 
-(displayln "\n24 throws getting at least one double 6 (rejection-sampler)")
+(displayln "\n24 throws getting at least one double 6 (importance-sampler)")
 (define (twenty-four)
-  (rejection-sampler
-   ; importance-sampler
+  (importance-sampler
    
    (define n2 24)
    (define t2 (for/sum ([i (range n2)])
@@ -68,4 +77,4 @@
   )
 
 ; (show-discrete-dist (sampler->discrete-dist (twenty-four) 10000))
-(show-model (twenty-four) #:num-samples 10000 #:no-stats? #t #:no-cred? #t)
+(show-model (twenty-four) #:num-samples 100000 #:no-stats? #t #:no-cred? #t)

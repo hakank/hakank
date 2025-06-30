@@ -159,7 +159,7 @@
       )
   )
 
-
+#|
 ;;;
 ;;; (chunks-of lst size)
 ;;; Returns a list of all size sized sub lists.
@@ -174,6 +174,36 @@
     (for/list ([i (range 0 len)]) (map (lambda (e) (list-ref lst e)) (range i (+ i size))))
     )
   )
+|#
+
+
+#|
+  (chunks-of a n #:partition? [partition? #f])
+  Returns chunks of length n for a list a.
+  There are two modes:
+  * partition? #t (default)
+    Returns a list of partitions in the list a of length n 
+  * partition? #f
+    Returns a list of sublist (overlapping) in the list a of length n 
+
+  Note: For the partiton mode, the last chunk may be of length < n.
+
+  Examples:
+  > (chunks-of (range 11) 3)
+  ((0 1 2) (3 4 5) (6 7 8) (9 10))
+  > (chunks-of (range 11) 3 #:partition? #f)
+  -> ((0 1 2) (1 2 3) (2 3 4) (3 4 5) (4 5 6) (5 6 7) (6 7 8) (7 8 9) (8 9 10)))
+|#
+(define (chunks-of a n #:partition? [partition? #f])  
+  (define (loop x aux)
+    (if (<= (length x) n)
+        (append (reverse aux) (list x))
+        (if partition?
+            (loop (drop x n) (cons (take x n) aux))
+            (loop (rest x) (cons (take x n) aux))
+            )))
+  (loop a '()))
+
 
 (define (vector-chunks-of lst size)
   (let* ([len1 (length lst)]
@@ -211,7 +241,7 @@
 ;;;
 (define (list-transpose m)
   (let ([rows (length m)]
-        [cols (length (list-ref m 1))])
+        [cols (length (list-ref m 0))])
     (for/list ([i (range rows)])
       (for/list ([j (range cols)])
         (list-ref2d m j i)
@@ -474,3 +504,29 @@
 (define (vector->number v)
   (digits->number (vector->list v)))
 
+
+;
+; (scan f init xs)
+; Returns a list of the accumulated function f for the list xs.
+;
+(define (scan f init xs)
+  (foldr (lambda (x a) (append a
+                              (list (f (if (null? a) init (last a)) x))))
+        '() xs)
+  )
+
+;
+; (acc-sum xs)
+; Returns the accumulated sum
+;
+(define (acc-sum xs)
+  (scan + 0 xs)
+  )
+
+(define (acc-prod xs)
+    (scan * 1 xs)
+  )
+
+
+(define (show . a)
+  (displayln a))
