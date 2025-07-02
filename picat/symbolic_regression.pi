@@ -305,6 +305,24 @@
     See symbolic_regression_puzzle4.pi and symbolic_regression_puzzle4b.pi 
     for examples of this.
 
+  - show_similar=<false|true>  Experimental
+    Default: false
+
+    If true, then the tokens in the expressions are sorted, and all 
+    already seen sorted token lists are remove from the population.
+
+    Note: This is experimental, and is probably only useful when
+    running the same experiment many times (with different random seeds).
+
+    The drawback of this method is that it will consider these 
+    two expressions as the same, i.e. rejecting the one that
+    happens to come second:
+       (A + B) * C 
+       A + (B * C) 
+       
+    If running the experiment many times then both expressions should
+    be generated (if considering all expressions from all experiments).
+    
 
   One fun way using symbolic regression is to solve puzzles, for example
   sequence puzzles: What is the next value in this sequence. 
@@ -344,7 +362,10 @@
     See below for the comments on this predicate,
     and symbolic_regression_triangles.pi for an problem instance.
 
-
+  This is the program we used in our paper 
+  S. V. Chekanov, H. Kjellerstrand 
+  "Discovering the underlying analytic structure within Standard Model constants using artificial intelligence"
+  https://arxiv.org/abs/2507.00225
 
   Also see:
   - My JGAP (Java) extension for Symmetric Regression
@@ -922,12 +943,29 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
   UniqueVars = Params.get(unique_vars,false), % NOTE: only single atom vars!
   UniqueVarsAll = Params.get(unique_vars_all,false),  % NOTE: only single atom vars!
   ForceConstants = Params.get(force_constants,[]), % force constants
+  RemoveSimilar = Params.get(remove_similar,false), % remove if sorted tokens are the same (very experimental)
   
   Results = [],
   Good = [],
   ForceConstantsStrings = ForceConstants.map(to_string),
+  SortedTokensMap = new_set(), % for RemoveSimilar
+  TokensMap = new_map(), % Testing
   foreach(F in Funs)
     Failed = false,
+
+    % Check similar (sorted tokens)
+    % Note: This is probably only useful when
+    % running many runs and with different random seeds.
+    if RemoveSimilar == true then
+      Tokens = F.to_string.split(" ()"),
+      SortedTokens = Tokens.sort.join(''),
+      if SortedTokensMap.has_key(SortedTokens) then
+        Failed := true
+      end,
+      SortedTokensMap.put(SortedTokens),
+      TokensMap.put(Tokens,TokensMap.get(Tokens,0)+1)
+    end,
+
     % Force constants: This is experimental (or at least a new feature)
     if ForceConstants.len > 0 then
       /*
@@ -939,9 +977,9 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
       end,
       */
       % Tokens
-      FS = F.to_string.split(" ()"),
+      Tokens = F.to_string.split(" ()"),
       foreach(FC in ForceConstantsStrings)
-        if not membchk(FC,FS) then
+        if not membchk(FC,Tokens) then
           Failed := true
         end
       end,
