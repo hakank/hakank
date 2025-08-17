@@ -22,7 +22,7 @@
   0.20910597145616058
 
   The mean value of tosses needed to get 10 heads in a row is
-  > (prob-n-heads-mean 10))
+  > (expected-tosses-needed-for-n-heads 10))
   2046
 
 
@@ -384,7 +384,7 @@ Quantile
   (show2 "p" p "m" m "n" n)
   (show "Dist" (for/list ([i 10]) (prob-n-heads-after-k-in-max-m-tosses-dist p m n)))
   (show "Dist mean (10000 samples)" (* 1.0 (avg (for/list ([i 10000]) (prob-n-heads-after-k-in-max-m-tosses-dist p m n)))))
-  (show "Theoretical Mean" (prob-n-heads-mean n))  
+  (show "Theoretical Mean" (expected-tosses-needed-for-n-heads n))  
   (displayln "Histogram:")
   (show-histogram (for/list ([i 10000]) (prob-n-heads-after-k-in-max-m-tosses-dist p m n)))
   (newline)
@@ -425,12 +425,12 @@ Quantile
 (newline)
 
 ; 2046
-(show "mean value of getting 10 heads in a row" (prob-n-heads-mean 10)) 
+(show "mean value of getting 10 heads in a row" (expected-tosses-needed-for-n-heads 10)) 
 (newline)
 
 ; 167
 (show "0.999999 quantile for 3 heads in a row"
-      (prob-n-heads-after-k-in-max-m-tosses-quantile 1/2 (* 20 (prob-n-heads-mean 3)) 3 0.999999))
+      (prob-n-heads-after-k-in-max-m-tosses-quantile 1/2 (* 20 (expected-tosses-needed-for-n-heads 3)) 3 0.999999))
 
 #|
   m for 20*E(n)
@@ -448,7 +448,7 @@ Quantile
 |#
 (displayln "m for 20*mean(n)")
 (for ([n (range 1 11)])
-  (show2 n (prob-n-heads-mean n) "est:" (* 20 (prob-n-heads-mean n)))
+  (show2 n (expected-tosses-needed-for-n-heads n) "est:" (* 20 (expected-tosses-needed-for-n-heads n)))
   )
 
 (newline)
@@ -694,7 +694,7 @@ Quantile
    
    (define n 10)
 
-   (define theoretical-mean (prob-n-heads-mean n))
+   (define theoretical-mean (expected-tosses-needed-for-n-heads n))
 
    (define limit 486)
    ;; (define limit theoretical-mean)

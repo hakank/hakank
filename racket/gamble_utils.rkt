@@ -26,7 +26,7 @@
          )
 
 
-; Start: from Gamble's examples/forestdb/church-compat.rkt
+; ** Start **: from Gamble's examples/forestdb/church-compat.rkt
 ; See gamble_schelling_coordination_game.rkt for an example.
 (define-syntax rejection-query
   (syntax-parser
@@ -44,6 +44,8 @@
         (for/list ([v (discrete-dist-values dd)])
           (dist-pdf dd v))))
 
+
+
 ; This was called multinomial earlier, but Gamble has multinomial-dist (but not multinomial for
 ; some reason). Renaming to multinomial2 emphasises that it's special
 ; Note that this returns a single value, in contrast to (multinomial-dist n vs) which
@@ -56,7 +58,21 @@
 (define (fold f init lst) (foldl f init lst))
 (define (pair a b) (cons a b))
 
-;;; End: from Gamble's examples/forestdb/church-compat.rkt
+;;; ** End ** : from Gamble's examples/forestdb/church-compat.rkt
+
+;; hakank: Porting Church's mh-query similar to enumeration-query and rejection-query above
+;;  (mh-query num-samples lag ...)
+;; Note: Gamble's mh-sampler does not support the two parameters num-samples lag.
+;;       Though it does not seems to matter if they are included or not in the call.
+(define-syntax mh-query
+  (syntax-parser
+    [(_ def/expr ... result-expr #:when condition)
+     #'((mh-sampler def/expr ... (observe/fail condition) result-expr))]))
+
+;; Church's repeat is (repeat n proc)
+;; Note: Here we wrap this into a lambda. Let's see if this is good enough.
+(define (repeat-church n procedure)
+  (repeat (lambda () procedure) n))
 
 ;;;
 ;;; Port of Church's uniform-draw
@@ -90,6 +106,12 @@
 (define (random-integer-dist n)
   (categorical-dist (make-vector n (/ n))))
 
+;; For Church compatibility
+(define (sample-integer n)
+  (discrete-uniform n))
+
+;; For Church pow
+(define (pow x y) (expt x y))
 
 ;;
 ;; (categorical-vw-dist values probs)
@@ -165,6 +187,10 @@
   (/ (sum lst) (length lst))
   )
 
+(define (mean lst)
+  (/ (sum lst) (length lst))
+  )
+
 ;;;
 ;;; (show-model model #:num-samples #:cred-mass #:no-dist? #:no-stats #:no-cred)
 ;;;
@@ -193,7 +219,7 @@
     [(discrete-dist? model) (show-discrete-dist model) ]
     
     ;; All the rest - rejection/importance/mh-samplers - are considered weighted samplers
-    ;; (Only importance-sample is NOT considered a weighted-sampler!)
+    ;; (Only importance-sampler is NOT considered a weighted-sampler!)
     [(weighted-sampler? model)
      ; show the distribution?
      (when (not no-dist?) (show-discrete-dist (sampler->discrete-dist model num-samples)))
@@ -618,7 +644,7 @@
       (begin
         (let* ([bins (collect values)]
                [keys (hash-keys bins)]
-               [values (for/list ([key keys]) (hash-ref bins key))]
+               [values (for/list ([key (my-sort keys)]) (hash-ref bins key))]
                [k1 (first keys)]
                ;; [lt
                ;;  (cond
@@ -637,6 +663,10 @@
           ;;     (list (list->vector values) (sort keys (sort-less-than (first keys))))
           ;;     )
           ; A more generic version of sort, which handles different types of elements
+          ;; (show "bins" bins)
+          ;; (show "keys" keys)
+          ;; (show "values" values)
+          ;; (show "k1" k1)
           (list (list->vector values) (my-sort keys))
            
           )
@@ -656,7 +686,8 @@
          ; [max-key (last keys)]
          ; Get the longest key (a little too convoluted...)
          [max-key
-          (second (last (sort (map (lambda (v) (list (string-length (~a v)) v)) (remove-duplicates keys) ) #:key first <)))
+          ; (second (last (sort (map (lambda (v) (list (string-length (~a v)) v)) (remove-duplicates keys) ) #:key first <)))
+          (last (my-sort (remove-duplicates keys) ))
                          ]
          [max-count (vector-argmax identity counts)]
          [max-key-len (string-length (~a max-key))]
@@ -664,6 +695,7 @@
          [total-count (sum counts-list)]
          [scale 80]
          )
+    ;; (show2 "hist" hist)
     ;; (show2 "nbins" nbins)
     ;; (show2 "keys" keys)    
     ;; (show2 "counts" counts)    
@@ -1918,6 +1950,115 @@
     (newline)))
 
 
+;; Helper: pad string right to a fixed width
+(define (string-pad-right s len)
+  (string-append s (make-string (max 0 (- len (string-length s))) #\space)))
+
+(define (plot-2d points [GRID-WIDTH 40] [GRID-HEIGHT 20])
+  ;; Extract and normalize bounds
+  (define xs (map car points))
+  (define ys (map cadr points))
+  (define min-x (min 0 (apply min xs)))
+  (define max-x (apply max xs))
+  (define min-y (min 0 (apply min ys)))
+  (define max-y (apply max ys))
+
+  ;; Scaling
+  (define (scale val min-val max-val scale-max)
+    (inexact->exact
+     (floor (* (/ (- val min-val)
+                  (max 1e-9 (- max-val min-val)))
+               (- scale-max 1)))))
+
+  ;; Grid
+  (define grid (make-vector GRID-HEIGHT))
+  (for ([i (in-range GRID-HEIGHT)])
+    (vector-set! grid i (make-vector GRID-WIDTH #\space)))
+
+  ;; Plot points
+  (for-each
+   (lambda (pt)
+     (define x (scale (car pt) min-x max-x GRID-WIDTH))
+     (define y (scale (cadr pt) min-y max-y GRID-HEIGHT))
+     (vector-set! (vector-ref grid (- GRID-HEIGHT 1 y)) x #\*))
+   points)
+
+  ;; Axis positions
+  (define x0-col (and (<= min-x 0) (<= 0 max-x)
+                      (scale 0 min-x max-x GRID-WIDTH)))
+  (define y0-row (and (<= min-y 0) (<= 0 max-y)
+                      (- GRID-HEIGHT 1 (scale 0 min-y max-y GRID-HEIGHT))))
+
+  ;; Draw axes
+  (when x0-col
+    (for ([row (in-range GRID-HEIGHT)])
+      (define ch (vector-ref (vector-ref grid row) x0-col))
+      (when (equal? ch #\space)
+        (vector-set! (vector-ref grid row) x0-col #\|))))
+  (when y0-row
+    (for ([col (in-range GRID-WIDTH)])
+      (define ch (vector-ref (vector-ref grid y0-row) col))
+      (when (equal? ch #\space)
+        (vector-set! (vector-ref grid y0-row) col #\-))))
+  (when (and x0-col y0-row)
+    (vector-set! (vector-ref grid y0-row) x0-col #\+))
+
+  ;; String formatting helper
+  (define (real->decimal-string x n)
+    (let* ([factor (expt 10 n)]
+           [rounded (/ (round (* x factor)) factor)])
+      (number->string rounded)))
+
+  ;; Label width
+  (define label-width (string-length (real->decimal-string max-y 5)))
+
+  ;; Print grid with aligned labels
+  (for ([i (in-range GRID-HEIGHT)])
+    (define row (vector-ref grid i))
+    ;; Y-label on first row only
+    (if (= i 0)
+        (printf "~a " (string-pad-right (real->decimal-string max-y 5) label-width))
+        (printf "~a " (make-string label-width #\space)))
+    ;; Print the grid row
+    (for ([ch (in-vector row)])
+      (display ch))
+    ;; After printing the row, print max-x label *only* if it's the x-axis row
+    (when (= i y0-row)
+      (printf "  ~a" (real->decimal-string max-x 5)))
+    (newline))
+
+  ;; Print '0' under the origin column
+  (when (and x0-col y0-row)
+    (printf "~a0\n" (make-string (+ label-width 1 x0-col) #\space))))
+
+
+(define (scatter points [GRID-WIDTH 40] [GRID-HEIGHT 20])
+  (plot-2d points GRID-WIDTH GRID-HEIGHT  
+  ))
+
+#|
+  (barplot lst)
+
+  The list lst consists of two lists: 
+  - the keys
+  - the count/probabilities/etc
+
+  (For complying with Church's barplot)
+
+|#
+(define (barplot lst)
+  (let* ([l1 (first lst)]
+         [l2 (second lst)]
+         [maxk (max-list (map (lambda (k) (string-length (~a k))) l1))]         
+         [maxv (max-list l2)]
+         [new2 (map (lambda (v) (apply string (rep (inexact->exact (ceiling (/ (* v 70) maxv))) #\#))) l2)]
+         [res (map (lambda (k v o) (format "~a: ~a (~a)" (~a #:width maxk k #:align 'left) v o)) l1 new2 l2)])
+  (for ([t res])
+    (displayln t)
+    )
+  ))
+
+
 ; Random n x n matric
 (define (random-matrix n [val (/ 1 n)])
   (for/list ([i n])
@@ -2016,3 +2157,22 @@
 (define (diagonal m)
   (for/list ([i (length m)]) (list-ref (list-ref m i) i)))
 
+
+;;;
+;;; (list-transpose m)
+;;; Transposes a 2d list.
+;;; 
+;;; Example:
+;;; > (list-tranpose ((1 4 7) (2 5 8) (3 6 9)))
+;;; ((1 4 7) (2 5 8) (3 6 9))
+;;;
+(define (list-transpose m)
+  (let ([rows (length m)]
+        [cols (length (list-ref m 0))])
+    (for/list ([i (range rows)])
+      (for/list ([j (range cols)])
+        (list-ref2d m j i)
+        )
+      )
+    )
+  )

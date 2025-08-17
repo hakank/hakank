@@ -766,7 +766,7 @@
   ))
 
 ; This works with enumerate
-; but os still not correct
+; but is still not correct
 (define (multinomial_dist2-bad n probs)
   (sample (enumerate
            (define d (for/list ([p probs]) (binomial n p)))
@@ -806,6 +806,8 @@
 (define (multinomial_objects_2_pdf m n a b  x y)
   (/ (* (binomialf a x) (binomialf b y) (binomialf (- m a b) (- n x y)))
      (binomialf m n)))
+
+
 #|
   Multinomial trials, page 316
 
@@ -3089,8 +3091,16 @@
   )
 
 ; The mean value of tosses needed to get n heads
-(define (prob-n-heads-mean n)
+(define (expected-tosses-needed-for-n-heads n)
   (* 2 (- (expt 2 n) 1)))
+
+; Generalized version of (expected-tosses-needed-for-n-heads n)
+; The mean value of tosses needed to get n successes when the
+; probabilisty of success is p
+(define (expected-tosses-needed-for-n-successes n p)
+  (/ (- 1 (expt p n))
+     (* (- 1 p) (expt p n))))
+
 
 
 

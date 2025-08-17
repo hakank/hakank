@@ -3048,46 +3048,57 @@ Quantiles
 #|
   Birthday/coincidences
 
-pbirthday, pbirthday, and qbirthday
-rbirthday
-'(28 29 17 37 27 33 18 17 22 11)
-(17 : 0.15789473684210525)
-(33 : 0.10526315789473684)
-(18 : 0.10526315789473684)
-(37 : 0.10526315789473684)
-(22 : 0.10526315789473684)
-(27 : 0.10526315789473684)
-(11 : 0.10526315789473684)
-(28 : 0.10526315789473684)
-(29 : 0.10526315789473684)
-(mean: 24.31578947368421)
-
-(pbirthday 23): 38093904702297390785243708291056390518886454060947061/75091883268515350125426207425223147563269805908203125
+pbirthday
+(pbirthday 23): 38093904702297390785243708291056390518886454060947061/750918832685153501254262074252231475
+63269805908203125
 (* 1.0 (pbirthday 23)): 0.5072972343239854
 (* 1.0 (pbirthday 22)): 0.4756953076625501
 (* 1.0 (pbirthday 100)): 0.9999996927510721
-(pbirthday 20 #:classes 30 #:coincident 3): 0.5985778029003122
-(pbirthday 50 #:classes 365 #:coincident 3): 0.13167863385753809
+(pbirthday 30 3 20): 0.5985778029003122
+(pbirthday 365 3 50): 0.13167863385753809
+((* 1.0 (pbirthday 365 2  0 )) 0)
+((* 1.0 (pbirthday 365 2  1 )) 0)
+((* 1.0 (pbirthday 365 2  2 )) 0.0027397260273972603)
+((* 1.0 (pbirthday 365 2  3 )) 0.008204165884781385)
+((* 1.0 (pbirthday 365 2  4 )) 0.016355912466550306)
+((* 1.0 (pbirthday 365 2  5 )) 0.02713557369979359)
+((* 1.0 (pbirthday 365 2  6 )) 0.04046248364911149)
+((* 1.0 (pbirthday 365 2  7 )) 0.056235703095975406)
+((* 1.0 (pbirthday 365 2  8 )) 0.07433529235166902)
+((* 1.0 (pbirthday 365 2  9 )) 0.09462383388916669)
 
 qbirthday
 (qbirthday): 23
-(qbirthday #:prob 0.75 #:classes 365 #:coincident 3): 112
+(qbirthday 365 3 0.75): 274.0
 
-(qbirthday #:prob 0.01 #:classes 365 #:coincident 2): 4
-(qbirthday #:prob 0.025 #:classes 365 #:coincident 2): 5
-(qbirthday #:prob 0.1 #:classes 365 #:coincident 2): 10
-(qbirthday #:prob 0.05 #:classes 365 #:coincident 2): 7
-(qbirthday #:prob 0.25 #:classes 365 #:coincident 2): 15
-(qbirthday #:prob 0.5 #:classes 365 #:coincident 2): 23
-(qbirthday #:prob 0.75 #:classes 365 #:coincident 2): 32
-(qbirthday #:prob 0.84 #:classes 365 #:coincident 2): 37
-(qbirthday #:prob 0.9 #:classes 365 #:coincident 2): 41
-(qbirthday #:prob 0.95 #:classes 365 #:coincident 2): 47
-(qbirthday #:prob 0.975 #:classes 365 #:coincident 2): 52
-(qbirthday #:prob 0.99 #:classes 365 #:coincident 2): 57
-(qbirthday #:prob 0.999 #:classes 365 #:coincident 2): 70
+(qbirthday 365 2 0.01): 4
+(qbirthday 365 2 0.025): 5
+(qbirthday 365 2 0.1): 10
+(qbirthday 365 2 0.05): 7
+(qbirthday 365 2 0.25): 15
+(qbirthday 365 2 0.5): 23
+(qbirthday 365 2 0.75): 32
+(qbirthday 365 2 0.84): 37
+(qbirthday 365 2 0.9): 41
+(qbirthday 365 2 0.95): 47
+(qbirthday 365 2 0.975): 52
+(qbirthday 365 2 0.99): 57
+(qbirthday 365 2 0.999): 70
 
-  Also, see gamble_birthday_probabilities.rkt
+rbirthday
+(16 : 0.1)
+(33 : 0.1)
+(17 : 0.1)
+(36 : 0.1)
+(22 : 0.1)
+(23 : 0.1)
+(10 : 0.1)
+(28 : 0.1)
+(13 : 0.1)
+(79 : 0.1)
+(mean: 27.75)
+
+   Also, see gamble_birthday_probabilities.rkt
 |#
 (let ([x 1])
   (displayln "pbirthday")
@@ -3099,7 +3110,7 @@ qbirthday
   (show "(pbirthday 365 3 50)" (pbirthday 365 3 50))
   
   (for ([n 10])
-    (show "(* 1.0 (pbirthday 365 2 n))" (* 1.0 (pbirthday 365 2 n)))
+    (show2 "(* 1.0 (pbirthday 365 2 " n "))" (* 1.0 (pbirthday 365 2 n)))
     )
   
   (newline)
@@ -3129,7 +3140,7 @@ qbirthday
 (matching 25): 
 
 Samples
-(matching_dist (1 3 1 0 0 0 2 0 0 0)): 
+(matching_dist: (1 3 1 0 0 0 2 0 0 0)): 
 PDF:
 (matching_pdf 25 0): 79253545592131482810517/215433472824041472000000 (0.36787944117144233)
 (matching_pdf 25 1): 9923922230666898717143/26976017466662584320000 (0.36787944117144233)
@@ -3210,7 +3221,7 @@ Quantile:
   (displayln (format "(matching ~a): " n))
   (newline)
   (displayln "Samples")
-  (displayln (format "(matching_dist ~a): " (repeat (lambda () (matching_dist n)) 10)))
+  (displayln (format "(matching_dist: ~a): " (repeat (lambda () (matching_dist n)) 10)))
   (displayln "PDF:")
   (for ([i (add1 n)])
     (let ([v_pdf (matching_pdf n i)])
@@ -4116,8 +4127,6 @@ variance: 12/5
 
 (newline)  
       
-
-
 #|
 
   prob-n-heads-after-k-in-max-m-tosses
@@ -4228,7 +4237,7 @@ Quantile
   (show2 "p" p "m" m "n" n)
   (show "Dist" (for/list ([i 10]) (prob-n-heads-after-k-in-max-m-tosses-dist p m n)))
   (show "Dist mean (10000 samples)" (* 1.0 (avg (for/list ([i 10000]) (prob-n-heads-after-k-in-max-m-tosses-dist p m n)))))
-  (show "Theoretical Mean" (prob-n-heads-mean n))  
+  (show "Theoretical Mean" (expected-tosses-needed-for-n-heads n))  
   (displayln "Histogram:")
   (show-histogram (for/list ([i 10000]) (prob-n-heads-after-k-in-max-m-tosses-dist p m n)))
   (newline)
@@ -4262,6 +4271,26 @@ Quantile
   (flush-output)
   )
 
+(newline)
+
+
+#|
+  Expected number of "tosses" to get n successes
+
+  (expected-tosses-needed-for-n-successes 10 1/2): 2046
+  (expected-tosses-needed-for-n-successes 10 1/6): 72559410
+  (expected-tosses-needed-for-n-successes 100 1/2): 2535301200456458802993406410750
+  (expected-tosses-needed-for-n-successes 100 1/6): 783982348200085087316028320589669384644572452567545845851686359643396569772850
+  (expected-tosses-needed-for-n-successes 1000 1/2): 21430172143725346418968500981200036211228096234110672148875007767407021022498722449863967576313917162551893458351062936503742905713846280871969155149397149607869135549648461970842149210124742283755908364306092949967163882534797535118331087892154125829142392955373084335320859663305248773674411336138750
+
+|#
+(displayln "Expected number of 'tosses' to get n successes: expected-tosses-needed-for-n-successes")
+(displayln (format "(expected-tosses-needed-for-n-successes 10 1/2): ~a" (expected-tosses-needed-for-n-successes 10 1/2)))
+(displayln (format "(expected-tosses-needed-for-n-successes 10 1/6): ~a" (expected-tosses-needed-for-n-successes 10 1/6)))
+(displayln (format "(expected-tosses-needed-for-n-successes 100 1/2): ~a" (expected-tosses-needed-for-n-successes 100 1/2)))
+(displayln (format "compare: (expected-tosses-needed-for-n-heads 100): ~a" (expected-tosses-needed-for-n-heads 100)))
+(displayln (format "(expected-tosses-needed-for-n-successes 100 1/6): ~a" (expected-tosses-needed-for-n-successes 100 1/6)))
+(displayln (format "(expected-tosses-needed-for-n-successes 1000 1/2): ~a" (expected-tosses-needed-for-n-successes 1000 1/2)))
 (newline)
 
 
