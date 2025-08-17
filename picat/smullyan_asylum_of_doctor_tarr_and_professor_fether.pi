@@ -1,0 +1,907 @@
+/* 
+
+  The Asylum of Doctor Tarr and Professor Fether in Picat.
+
+  These puzzles are from Smullyan's "The Lady or the Tiger",
+  Chapter 3 "The Asylum of Doctor Tarr and Professor Fether"
+  """
+  Inspector Craig of Scotland Yard was called over to France
+  to investigate eleven insane asylums where it was suspected
+  that something was wrong. In each of these asylums, the only
+  inhabitants were patients and doctors - the doctors constituted 
+  the entire staff. Each inhabitant of each asylum, patient
+  or doctor, was either sane or insane. Moreover, the sane ones
+  were totally sane and a hundred percent accurate in all their
+  beliefs; all true propositions they knew to be true and all false
+  propositions they knew to be false. The insane ones were totally 
+  inaccurate in their beliefs; all true propositions they believed 
+  to be false and all false propositions they believed to be true. 
+  It is to be assumed also that all the inhabitants were
+  always honest—whatever they said, they really believed.
+  """
+
+  In each asylumns cases the doctors and the patients was either
+  sane or insane.
+
+  Sane: tells truth
+  Insane: lies
+
+  Note that doctors can be sane or insane, and patients can be insane or sane.
+  However, when asked about "normal" asylum it's assumed that 
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  go1,
+  go1b,
+  go2,
+  go2b,
+  go3,
+  go4,
+
+  % Introducing beliefs
+  go5,
+  go5b,
+  go6,
+  go7,
+  % go8, % TBW (added trust and teachers)
+  go9,
+
+  nl.
+go => true.
+
+/*
+  1 The First Asylum
+  """
+  In the first Asylum Craig visited, he spoke separately to 
+  two inhabitants whose last names was Jones and Smith.
+  "Tell me", Craig asked Jones, "what do you know about
+  Mr Smith?"
+  "You should call him Doctor Smith", replied Jones. "He is
+  a doctor on our staff".
+  Sometime later, Craig met Smith and asked, "What do you
+  know about Jones? Is he a patient or a doctor?"
+  "He is a patient", replied Smith.
+  The inspector mulled over the situation for a while and
+  then relalized that there was indeed something wrong with
+  this asylum: either one of the doctors was insane, hence
+  shouldn't be working there, or, worse still, one of the 
+  patients was sane and shouldn't be there at all.
+  How did Craig know this?"
+  """
+
+  Solutions:
+  In all solutions there is at least one insane doctor
+  or a sane patient.
+
+  [person = Jones,truth = False,type = Doctor,sanity = Insane]  <-
+  [person = Smith,truth = False,type = Patient,sanity = Insane]
+
+  [person = Jones,truth = False,type = Patient,sanity = Insane]
+  [person = Smith,truth = True,type = Patient,sanity = Sane]    <-
+
+  [person = Jones,truth = True,type = Doctor,sanity = Sane]
+  [person = Smith,truth = False,type = Doctor,sanity = Insane]  <-
+
+  [person = Jones,truth = True,type = Patient,sanity = Sane]    <-
+  [person = Smith,truth = True,type = Doctor,sanity = Sane]
+
+
+
+*/
+go1 ?=>
+  println("1 The First Asylum"),
+  % Jones = 1,
+  % Smith = 2,
+
+  Sane = 1,
+  Insane = 2,
+
+  Doctor = 1,
+  Patient = 2,
+
+  Truth = [TruthJones,TruthSmith],
+  Truth :: 0..1,
+
+  Sanity = [_SanityJones,_SanitySmith],
+  Sanity :: Sane..Insane,
+
+  Type = [TypeJones,TypeSmith],
+  Type :: Doctor..Patient,
+
+
+  % Jones: Smith is a doctor
+  TruthJones #<=> (TypeSmith #= Doctor),
+  
+  % Smith: Jones is a patient  
+  TruthSmith #<=> (TypeJones #= Patient),
+
+  foreach(I in 1..2)
+     Truth[I] #= 1 #<=> (Sanity[I] #= Sane),
+
+     % If these are uncommented and there is no
+     % solutions, then there is something wrong with the
+     % asylyum (i.e. an insase doctor or a sane patient)
+     % Type[I] #= Doctor #<=> Sanity[I] #= Sane,
+     % Type[I] #= Patient #<=> Sanity[I] #= Insane,     
+  end,
+
+  Vars = Truth ++ Type ++ Sanity,
+  solve(Vars),
+  People = ["Jones","Smith"],
+  TruthS = ["False","True"],
+  TypeS  = ["Doctor","Patient"],
+  SanityS = ["Sane","Insane"],
+  foreach(P in 1..2)
+     println([person=People[P],truth=TruthS[Truth[P]+1],type=TypeS[Type[P]],sanity=SanityS[Sanity[P]]])
+  end,
+  nl,
+  fail,
+  nl.
+go1 => true.
+
+
+go1b ?=>
+  println("1 The First Asylum"),
+  Jones = 1,
+  Smith = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,none),
+  Statements = [
+    % Jones: Smith is a doctor
+    Truth[Jones] #<=> (Type[Smith] #= Map.get(doctor)),
+  
+    % Smith: Jones is a patient  
+    Truth[Smith] #<=> (Type[Jones] #= Map.get(patient))
+
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Jones","Smith"]),
+
+
+  nl.
+go1b => true.
+
+/*
+   2 The Second Asylum
+   """
+   In the next asylum Craig visited, one of the inhabitants made
+   a statement from which the inspector could deduce that the
+   speaker must be a sane patient, hence did not belong there.
+   Craig then took steps to have him released.
+   Can you supply such a statement?
+   """
+
+   Some variants: 
+   * TruthA #= 1 #<=> (TypeA #= Patient #\/ SanityA #= Insane)
+     (I'm either a patient or insane)
+
+     [person = A,truth = True,type = Patient,sanity = Sane]
+
+   * TruthA #= 1 #<=> #~(TypeA #= Doctor #/\ SanityA #= Sane)
+     This is the one Smullyan mention in his solution as
+     "one of the simplest"
+
+     [person = A,truth = True,type = Patient,sanity = Sane]
+
+
+*/
+go2 ?=>
+  println("2 The Second Asylum"),
+  Sane = 1,
+  Insane = 2,
+
+  Doctor = 1,
+  Patient = 2,
+
+  Truth = [TruthA],
+  Truth :: 0..1,
+
+  Sanity = [SanityA],
+  Sanity :: Sane..Insane,
+
+  Type = [TypeA],
+  Type :: Doctor..Patient,
+
+  % [O]ne of the inhabitants made a statement from which the
+  % inspector could deduce that the speaker must be a sane patient,
+  % hence did not belong there.
+  TruthA #= 1 #<=> (TypeA #= Patient #\/ SanityA #= Insane),
+  % TruthA #= 1 #<=> #~(TypeA #= Doctor #/\ SanityA #= Sane),
+
+
+  foreach(I in 1..Truth.len)
+     Truth[I] #= 1 #<=> (Sanity[I] #= Sane),
+
+     % If these are uncommented and there is no
+     % solutions, then there is something wrong with the
+     % asylyum (i.e. an insase doctor or a sane patient)
+     % Type[I] #= Doctor #<=> Sanity[I] #= Sane,
+     % Type[I] #= Patient #<=> Sanity[I] #= Insane,     
+  end,
+
+  Vars = Truth ++ Type ++ Sanity,
+  solve(Vars),
+  People = ["A","B"],
+  TruthS = ["False","True"],
+  TypeS  = ["Doctor","Patient"],
+  SanityS = ["Sane","Insane"],
+  foreach(P in 1..Truth.len)
+     println([person=People[P],truth=TruthS[Truth[P]+1],type=TypeS[Type[P]],sanity=SanityS[Sanity[P]]])
+  end,
+  nl,
+  fail,
+
+  nl.
+go2 => true.
+
+/*
+   Same result as in go2/0.
+
+   [A,truth = True,type = Patient,sanity = Sane]
+
+*/
+go2b ?=>
+  println("2 The Second Asylum"),
+  A = 1,
+
+  [Map,Type,Sanity,Truth] = init(1,none),
+  Statements = [
+
+    Truth[A] #<=> (Type[A] #= Map.get(patient) #\/ Sanity[A] #= Map.get(insane))
+
+    % Smullyan's variant
+    % Truth[A] #<=> #~(Type[A] #= Map.get(doctor) #/\ Sanity[A] #= Map.get(sane))
+    
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["A"]),
+
+
+  nl.
+go2b => true.
+
+
+/*
+  3 The Third Asylum
+  """
+  In the next asylum, an inhabitant made a statement from
+  which Craig could deduce that the speaker was an insane
+  doctor. Can you supply such a statement?
+  """
+
+  * I am an insane patient
+  Truth[A] #<=> (Type[A] #= Map.get(patient) #/\ Sanity[A] #= Map.get(insane))
+  [A,truth = False,type = Doctor,sanity = Insane]
+  This is the solution from Smullyan
+
+  * It is not true that I am a doctor or sane
+  Truth[A] #<=> #~(Type[A] #= Map.get(doctor) #\/ Sanity[A] #= Map.get(sane))
+  [A,truth = False,type = Doctor,sanity = Insane]
+
+*/
+go3 ?=>
+  println("3 The Third Asylum"),
+  A = 1,
+
+  [Map,Type,Sanity,Truth] = init(1,none),
+  Statements = [
+
+    Truth[A] #<=> (Type[A] #= Map.get(patient) #/\ Sanity[A] #= Map.get(insane))
+    % Truth[A] #<=> #~(Type[A] #= Map.get(doctor) #\/ Sanity[A] #= Map.get(sane))
+    
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["A"]),
+
+  nl.
+go3 => true.
+
+
+/*
+  4 The Fourth Asylum
+  """
+  In the next asylum, Craig asked one of the inhabitants, “Are
+  you a patient?” He replied, “Yes.”
+  Is there anything necessarily wrong with this asylum?
+  """
+
+  If true then he is a sane patient which is wrong since
+  the asylum should not have sane patients.
+  Or if it's false then it's an insane doctor, which
+  is also wrong.
+
+  Solutions:
+  [A,truth = False,type = Doctor,sanity = Insane]
+
+  [A,truth = True,type = Patient,sanity = Sane]
+
+
+
+*/
+go4 ?=>
+  println("4 The Fourth Asylum"),
+  A = 1,
+
+  [Map,Type,Sanity,Truth] = init(1,none),
+  Statements = [
+
+    Truth[A] #<=> (Type[A] #= Map.get(patient))
+    
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["A"]),
+
+  nl.
+go4 => true.
+
+
+/*
+  5 The Fifth Asylum
+  """
+  In the next asylum, Craig asked one of the inhabitants, “Are
+  you a patient?” He replied, “I believe so.”
+  Is there anything necessarily wrong with this asylum?
+  """
+
+  My initial thought was that this is the same case as the previous one,
+  according to the initial presentation of the Asylum problems (see above) 
+  that all beliefs are true, and all statements about beliefs are thus 
+  also true.
+
+  However, Smullyan discusses that if the person just _believes_
+  that he is a patient, the we have to dig further.
+
+  For this problem Smullyan notes:
+  """
+  We see, therefore, that he could be either a sane patient or 
+  an insane patient, and we have no grounds for finding anything 
+  wrong with this asylum.
+  """
+  
+  Well, this cannot be modelled in the same framework as the 
+  earlier cases and we must add the level of beliefs.
+  Another variable (Belief) must be added and we connect
+  it as:
+  - If (and only if) a sane person belief some thing then it's
+    a true belief.
+
+  [person = A,belief = False,truth = False,type = Patient,sanity = Insane]
+
+  [person = A,belief = True,truth = True,type = Patient,sanity = Sane]
+
+
+  Let's see how well this works with further problems...
+
+*/
+go5 ?=>
+  println("5 The Fifth Asylum"),
+  A = 1,
+  
+  Sane = 1,
+  Insane = 2,
+
+  Doctor = 1,
+  Patient = 2,
+
+  Truth = [TruthA],
+  Truth :: 0..1,
+
+  Sanity = [SanityA],
+  Sanity :: Sane..Insane,
+
+  Belief = [BeliefA], % Is the belief true?
+  Belief :: 0..1,
+
+  Type = [TypeA],
+  Type :: Doctor..Patient,
+
+  % A: I believe I am a Patient
+  Truth[A] #<=> (Belief[A] #<=> Type[A] #= Patient),
+
+  foreach(I in 1..Truth.len)
+     % Truth[I] #= 1 #<=> (Sanity[I] #= Sane #/\ Belief[I] #= 1),
+     % A sane person tells the truth
+     Truth[I] #= 1 #<=> (Sanity[I] #= Sane),
+
+     % Additional constraint for beliefs
+     % A sane person belief true things
+     Sanity[I] #= Sane #<=> Belief[I] #= 1,
+
+     % If these are uncommented and there is no
+     % solutions, then there is something wrong with the
+     % asylyum (i.e. an insase doctor or a sane patient)
+     % Type[I] #= Doctor #<=> Sanity[I] #= Sane,
+     % Type[I] #= Patient #<=> Sanity[I] #= Insane,     
+  end,
+
+  Vars = Truth ++ Belief ++ Type ++ Sanity,
+  solve(Vars),
+  % println([Truth,Belief,Type,Sanity]),
+  People = ["A","B"],
+  TruthS = ["False","True"],
+  BeliefS = ["False","True"],  
+  TypeS  = ["Doctor","Patient"],
+  SanityS = ["Sane","Insane"],
+  foreach(P in 1..Truth.len)
+     println([person=People[P],belief=BeliefS[Belief[P]+1],truth=TruthS[Truth[P]+1],type=TypeS[Type[P]],sanity=SanityS[Sanity[P]]])
+  end,
+  nl,
+  fail,
+
+  nl.
+go5 => true.
+
+go5b ?=>
+  println("5 The Fifth Asylum"),
+  A = 1,
+  [Map,Type,Sanity,Truth,Belief] = init_beliefs(1,none),
+  Statements = [
+    Truth[A] #<=> (Belief[A] #<=> Type[A] #= Map.get(patient))
+  ],
+  check_beliefs(Statements,[Map,Type,Sanity,Truth,Belief],["A"]),
+  nl.
+go5b => true.
+
+/*
+  6 The Sixth Asylum
+  """
+  In the next asylum Craig visited, he asked an inhabitant, "Do
+  you believe you are a patient?" The inhabitant replied, "I
+  believe I do."
+  Is there anything necessarily wrong with this asylum?
+  """
+
+  The speaker must be either a sane patient or an insane doctor
+
+  
+  [person = A,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+  [person = A,belief = True,truth = True,type = Patient,sanity = Sane]
+
+*/
+go6 ?=>
+  println("6 The Sixth Asylum"),
+  A = 1,
+
+  [Map,Type,Sanity,Truth,Belief] = init_beliefs(1,none),
+  Statements = [
+    Truth[A] #<=> (Belief[A] #<=> (Belief[A] #<=> Type[A] #= Map.get(patient)))
+  ],
+  check_beliefs(Statements,[Map,Type,Sanity,Truth,Belief],["A"]),  
+  nl.
+go6 => true.
+
+/*
+  7 The Seventh Asylum
+  """
+  Craig found the next asylum more interesting. He met two
+  inhabitants, A and B, and found out that A believed that B
+  was insane and B believed that A was a doctor. Craig then
+  took measures to have one of the two removed. Which one,
+  and why?
+  """
+
+  Craig had A removed: Either A is an insane doctor or a sane patient.
+  Nothing can be deduced about B (B can be sane/insane doctor/patient).
+
+  [A,belief = False,truth = False,type = Doctor,sanity = Insane]
+  [B,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+  [A,belief = False,truth = False,type = Doctor,sanity = Insane]
+  [B,belief = True,truth = True,type = Patient,sanity = Sane]
+
+  [A,belief = True,truth = True,type = Patient,sanity = Sane]
+  [B,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+  [A,belief = True,truth = True,type = Patient,sanity = Sane]
+  [B,belief = False,truth = False,type = Patient,sanity = Insane]
+
+*/
+go7 ?=>
+  println("7 The Seventh Asylum"),
+  A = 1,
+  B = 2,
+
+  [Map,Type,Sanity,Truth,Belief] = init_beliefs(2,none),
+  % Hmm, I'm not sure that this is correct. It works if
+  % LHS is Belief, but not if LHS is Truth
+  Statements = [
+    % A believed that B was insane
+    % Truth[A] #<=> (Belief[A] #<=> (Sanity[B] #= Map.get(insane))),
+    (Belief[A] #<=> (Sanity[B] #= Map.get(insane))),
+    
+    % B believed that A was a doctor
+    % Truth[B] #<=> (Belief[B] #<=> (Type[A] #= Map.get(doctor)))
+    (Belief[B] #<=> (Type[A] #= Map.get(doctor))) 
+  ],
+  check_beliefs(Statements,[Map,Type,Sanity,Truth,Belief],["A","B"]),  
+  nl.
+go7 => true.
+
+
+/*
+  8 The Eighth Asylum
+  """
+  The next asylum proved to be quite a puzzler, but Craig finally 
+  managed to get to the bottom of things. He found out that the 
+  following conditions prevailed:
+  1. Given any two inhabitants, A and B, either A trusts B or
+     he doesn't.
+  2. Some of the inhabitants are teachers of other inhabitants. 
+     Each inhabitant has at least one teacher.
+  3. No inhabitant A isw illing to be a teacher of an inhabitant B 
+     unless A belie ves that B trusts himself.
+  4- For any inhabitant A there is an inhabitant B who trusts
+     all and only those inhabitants who have at least one teacher
+     who is trusted by A. (In other words, for any inhabitant X, B
+     trusts X if A trusts some teacher of X, and B doesn't trust X
+     unless A trusts some teacher of X.)
+  5. There is one inhabitant who trusts all the patients but
+     does not trust any of the doctors.
+  Inspector Craig thought this over for a long time and was
+  finally able to prove that either one of the patients was sane
+  or one of the doctors was insane. Can you find the proof?
+  """
+
+  This is yet another variant including trust and teachers.
+  TBW.
+
+*/
+go8 ?=>
+  println("8 The Eighth Asylum"),
+  nl.
+go8 => true.
+
+
+/*
+
+  9 The Ninth Asylum
+  """
+  In this asylum, Craig interviewed four inhabitants: A, B, C,
+  and D. A believed that B and C were alike as far as their sanity 
+  was concerned. B believed that A and D were alike as far
+  as their sanity was concerned. Then Craig asked C, "Are you
+  and D both doctors?" C replied, "No."
+  Is there anything wrong with this asylum?
+  """
+
+  "...Therefore, this asylum contains at least one sane patient, or
+  else at least two insane doctors."
+
+  This model has 32 different solutions:
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = False,truth = False,type = Doctor,sanity = Insane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = False,truth = False,type = Patient,sanity = Insane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = False,truth = False,type = Doctor,sanity = Insane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = False,truth = False,type = Patient,sanity = Insane]
+[C,belief = False,truth = False,type = Doctor,sanity = Insane]
+[D,belief = False,truth = False,type = Doctor,sanity = Insane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = True,truth = True,type = Doctor,sanity = Sane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = True,truth = True,type = Doctor,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = True,truth = True,type = Doctor,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Doctor,sanity = Sane]
+
+[A,belief = True,truth = True,type = Patient,sanity = Sane]
+[B,belief = True,truth = True,type = Patient,sanity = Sane]
+[C,belief = True,truth = True,type = Patient,sanity = Sane]
+[D,belief = True,truth = True,type = Patient,sanity = Sane]
+
+
+
+  All solutions either have at least one insane doctor or at least one 
+  sane patient.
+  Note: I can not reproduce that it's (at least) _two_ insane doctors,
+  just at least _one_ insane doctor (see the fourth solution above).
+  
+  A quick check is to change 
+    init_beliefs(4,none) 
+  to
+    init_beliefs(4,check)
+  which gives no solutions, indicating that the this is a fishy asylum.
+
+*/
+go9 ?=>
+  println("9 The Ninth Asylum"),
+  A = 1,
+  B = 2,
+  C = 3,
+  D = 4,
+
+  [Map,Type,Sanity,Truth,Belief] = init_beliefs(4,none), % 32 solutions
+  % [Map,Type,Sanity,Truth,Belief] = init_beliefs(4,check), % -> no solution
+  
+  Statements = [
+    % A believed that B and C were alike as far as their sanity 
+    % was concerned.
+    Belief[A] #<=> (Sanity[B] #= Sanity[C]),
+    
+    % B believed that A and D were alike as far as their sanity
+    % was concerned.
+    Belief[B] #<=> (Sanity[A] #= Sanity[D]),
+    
+    % Then Craig asked C, "Are you and D both doctors?" C replied, "No."
+    Truth[C] #<=> #~(Type[C] #= Map.get(doctor) #/\  Type[D] #= Map.get(doctor))
+    
+  ],
+  check_beliefs(Statements,[Map,Type,Sanity,Truth,Belief],["A","B","C","D"]),  
+  nl.
+go9 => true.
+
+
+%
+% General functions/predicates.
+%
+
+%
+% Create lists, define domains, and set general constraints
+%
+init(Len,CaseType) = [Map,Type,Sanity,Truth] =>
+
+  % A sane human and an insane vampire tells the truth.
+  % This ensures that we can encode truthfullness with Type == Sanity
+  Map = new_map([doctor=1,patient=2,sane=1,insane=2]),
+  
+  Type = new_list(Len),
+  Type :: Map.get(doctor)..Map.get(patient),  
+  Sanity = new_list(Len),
+  Sanity :: Map.get(sane)..Map.get(insane),  
+  Truth = new_list(Len), Truth :: 0..1,
+  if CaseType == check then
+    % Checking against a "normal" asylum
+    foreach(I in 1..Len)
+      Type[I] #= Map.get(doctor)  #<=> Sanity[I] #= Map.get(sane),
+      Type[I] #= Map.get(patient) #<=> Sanity[I] #= Map.get(insane)
+    end
+  end.
+
+% For beliefs
+init_beliefs(Len,CaseType) = [Map,Type,Sanity,Truth,Belief] =>
+
+  % A sane human and an insane vampire tells the truth.
+  % This ensures that we can encode truthfullness with Type == Sanity
+  Map = new_map([doctor=1,patient=2,sane=1,insane=2]),
+  
+  Type = new_list(Len),
+  Type :: Map.get(doctor)..Map.get(patient),  
+  Sanity = new_list(Len),
+  Sanity :: Map.get(sane)..Map.get(insane),  
+  Truth = new_list(Len), Truth :: 0..1,
+  Belief = new_list(Len), Belief :: 0..1,  
+  if CaseType == check then
+    % Checking against a "normal" asylum.
+    % If no solution, then the asylym is problematic.
+    foreach(I in 1..Len)
+      Type[I] #= Map.get(doctor)  #<=> Sanity[I] #= Map.get(sane),
+      Type[I] #= Map.get(patient) #<=> Sanity[I] #= Map.get(insane)
+    end
+  end.
+
+
+
+
+%
+% Print all possible solutions of the puzzle
+%
+check(Statements,[Map,Type,Sanity,Truth],People) =>
+  Len = People.len,
+  
+  % "Activate" the statements
+  foreach(S in Statements)
+   S
+  end,
+
+  % Who tells the truth?
+  % Connect truthness with sanity
+  foreach(I in 1..Len)
+     Truth[I] #= 1 #<=> (Sanity[I] #= Map.get(sane)),
+
+     % If these are uncommented and there is no
+     % solutions, then there is something wrong with the
+     % asylyum (i.e. an insane doctor or a sane patient)
+     % Type[I] #= Map.get(doctor) #<=> Sanity[I] #= Map.get(sane),
+     % Type[I] #= Map.get(patient) #<=> Sanity[I] #= Map.get(insane),     
+  
+  end,
+
+  Vars = Truth ++ Type ++ Sanity,
+  solve(Vars),
+  % println([truth=Truth,type=Type,sanity=Sanity]),
+  TypeS   = ["Doctor","Patient"],  
+  SanityS = ["Sane","Insane"],
+  TruthS  = ["False","True"],
+  foreach(I in 1..Len)
+    println([People[I],truth=TruthS[Truth[I]+1],type=TypeS[Type[I]],sanity=SanityS[Sanity[I]]])
+  end,
+  nl,
+  fail,
+  nl.
+
+% For beliefs
+check_beliefs(Statements,[Map,Type,Sanity,Truth,Belief],People) =>
+  Len = People.len,
+
+  
+  % "Activate" the statements
+  foreach(S in Statements)
+   S
+  end,
+
+  % Who tells the truth?
+  % Connect truthness with sanity
+  foreach(I in 1..Len)
+     Truth[I] #= 1 #<=> (Sanity[I] #= Map.get(sane)),
+
+     % Additional constraint for beliefs:
+     % A sane person belief true things
+     Belief[I] #= 1 #<=> (Sanity[I] #= Map.get(sane)),
+
+
+     % If these are uncommented and there is no
+     % solutions, then there is something wrong with the
+     % asylyum (i.e. an insane doctor or a sane patient)
+     % Type[I] #= Map.get(doctor) #<=> Sanity[I] #= Map.get(sane),
+     % Type[I] #= Map.get(patient) #<=> Sanity[I] #= Map.get(insane),     
+  
+  end,
+
+  Vars = Truth ++ Belief ++ Type ++ Sanity,
+  solve(Vars),
+  % println([truth=Truth,type=Type,sanity=Sanity]),
+  TypeS   = ["Doctor","Patient"],  
+  SanityS = ["Sane","Insane"],
+  TruthS  = ["False","True"],
+  BeliefS  = ["False","True"],  
+  foreach(I in 1..Len)
+    println([People[I],belief=BeliefS[Belief[I]+1],truth=TruthS[Truth[I]+1],type=TypeS[Type[I]],sanity=SanityS[Sanity[I]]])
+  end,
+  nl,
+  fail,
+  nl.

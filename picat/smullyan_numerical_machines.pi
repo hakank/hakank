@@ -1,0 +1,963 @@
+/* 
+
+  Smullyan's numerical machines in Picat.
+
+
+  http://stackoverflow.com/questions/24313936/solution-to-smullyans-numerical-machines
+  """
+  Here I propose to find a solution to to Sullyman's numerical machines as defined here: 
+  http://heras-gilsanz.com/manuel/smullyan-machines.html
+
+  Problem statement
+
+  They're machines that takes a list of digits as input, and transform it as another list of 
+  digits following some rules based on the pattern of the input. Here are the rules of the 
+  machine given in the link above, expressed a bit more formally. Let say M is the machine, 
+  and M(X) is the transformation of X. We define a few rules like this:
+
+  M(2X) = X
+  M(3X) = M(X)2M(X)
+  M(4X) = reverse(M(X)) // reverse the order of the list.
+  M(5X) = M(X)M(X)
+
+  And anything that do not march any rule is rejected. Here are a few examples:
+
+     M(245) = 45
+     M(3245) = M(245)2M(245) = 45245
+     M(43245) = reverse(M(3245)) = reverse(45245) = 54254
+     M(543245) = M(43245)M(43245) = 5425454254
+
+  And the questions are, find X such that:
+
+     M(X) = 2
+     M(X) = X
+     M(X) = X2X
+     M(X) = reverse(X)
+     M(X) = reverse(X2X)reverse(X2X)
+
+
+  Here is a second example a bit more complex with the exhaustive search (especially if 
+  I want the first 10 or 100 solutions).
+
+  M(1X2) = X
+  M(3X) = M(X)M(X)
+  M(4X) = reverse(M(X))
+  M(5X) = trucate(M(X)) // remove the first element of the list trucate(1234) = 234
+  M(6X) = 1M(X)
+  M(7X) = 2M(X)
+
+  Questions:
+
+    M(X) = XX
+    M(X) = X
+    M(X) = reverse(X)
+
+
+  (Non-)Solutions
+
+  Writing a solver in prolog is pretty straightforward. Except that it's just exhaustive 
+  exploration (a.k.a brutforce) and may take some time for some set of rules.
+
+  I tried but couldn't express this problem in terms of logic constraints with CLP(FD), so 
+  I tried CHR (Constraint Handling Rules) to express this in terms of constraints on lists 
+  (especially append constraints), but no matter how I express it, it always boils down 
+  to an exhaustive search.
+
+  Question
+
+  Any idea what approach I could take to resolve any problem of this kind in a reasonable 
+  amount of time? Ideally I would like to be able to generate all the solutions shorter than some bound.
+  """
+
+  Here are some different experiments:
+
+  Rules 2..5 (testing rule/2)
+  * go/0: Testing some specific problem instances.
+  * go2/0: Generate random problems (ad infinitum)
+  * go3/0: Find a number X which produces2 (CP approach)
+  * go3b/0: Find a number X which produces2 (plain logic programming)
+  % go4/0: Find a number X which produces X (CP)
+  % go4b/0: Find a number X which produces X (plain LP)
+  * go5/0: Find a number X which produces its associate (X2X)
+  * go5b/0: Find a number X which produces its associate (plain LP)
+  * go6/0: Find a number X which produces its own inverse (CP)
+
+  Rules 1..7 (testing rule2/2 and rule3/2)
+  * go10/0: Some specific problem instances
+  * go11/0: rule2: M(X) = X
+  * go12/0: rule2: M(X) = reverse(X)
+  * go12/0: rule2: M(X) = reverse(X), using findall/1
+  * go12_3/0: using rule3: M(X) = reverse(X)
+  * go13/0: Generate all possible solutions (CP)
+  * go13b/0. Generate all possible solutions (plain LP)
+
+  * go14/0: rule3/0 and M(X) = XX
+
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+import util.
+import cp.
+import planner.
+
+main => go.
+
+
+/*
+  p = [2,4,5]
+  [p = [2,4,5],r = [4,5]]
+
+  p = [3,2,4,5]
+  [p = [3,2,4,5],r = [4,5,2,4,5]]
+
+  p = [4,3,2,4,5]
+  [p = [4,3,2,4,5],r = [5,4,2,5,4]]
+
+  p = [5,4,3,2,4,5]
+  [p = [5,4,3,2,4,5],r = [5,4,2,5,4,5,4,2,5,4]]
+
+  p = [4,2,0,0]
+  [p = [4,2,0,0],r = [0,0]]
+
+  p = [3,2]
+  [p = [3,2],r = [2]]
+
+  p = [4]
+  no_solution
+*/
+go ?=>
+
+  Problems = [
+             [2,4,5],
+             [3,2,4,5],
+             [4,3,2,4,5],
+             [5,4,3,2,4,5],
+             [4,2,0,0],
+             [3,2],
+             [4]
+           ],
+
+  foreach(P in Problems)  
+    println(p=P),
+    if rule(P,R) then
+      println([p=P,r=R])
+    else
+      println(no_solution)
+    end,
+    nl
+  end,
+  
+  nl.
+
+go => true.
+
+/*
+  Solve problem ad infinitum.
+
+  E.g.
+  problem = [2,3,5,3,4,3,3,2,4,4,5,5,3,3,2,5,3,4,5,4,2,5,3,2,5,5,5,2,3,3,2,3,5,2,4,3,3,2,3,5,4,3,4,5,4,4,5,5,2,4,3,3,3,4,3,2,4,2,3,5,3,3,3,2,3,5,3,4,5,5,4,3,2,2,3,4,5,2,4,5,4,5,2,5,4,3,2,2,3,3,5,5,4,2,5,2,2,3,4,5,2,2,3,2,3,4,4,2,4]
+  r = [3,5,3,4,3,3,2,4,4,5,5,3,3,2,5,3,4,5,4,2,5,3,2,5,5,5,2,3,3,2,3,5,2,4,3,3,2,3,5,4,3,4,5,4,4,5,5,2,4,3,3,3,4,3,2,4,2,3,5,3,3,3,2,3,5,3,4,5,5,4,3,2,2,3,4,5,2,4,5,4,5,2,5,4,3,2,2,3,3,5,5,4,2,5,2,2,3,4,5,2,2,3,2,3,4,4,2,4] = 108
+
+  problem = [3,5,4,5,2,3,4,5,4,3,5,4,4,3,3,4,4,4,4,5,2,3,5,4,3,4,4,3,4,4,5,2,3,3,5,4,5,3,3]
+  r = [3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,2,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3,3,3,5,4,5,3,3,2,5,4,4,3,4,4,3,4,5,3,2,5,4,4,4,4,3,3,4,4,5,3,4,5,4,3] = 273
+
+
+*/
+go2 =>
+  _ = random2(),
+  while (true) 
+    N = random(1,120),
+    Nums = [2,3,4,5],
+    Len = Nums.length,
+    Problem = [Nums[random(1,Len)] : _I in 1..N],   
+    println(problem=Problem),
+    if rule(Problem, R) then
+      println(r=R=R.len)
+    else
+      println(no_solution)
+    end,
+    nl
+  end,
+  nl.
+
+% From
+% http://heras-gilsanz.com/manuel/smullyan-machines.html
+% 
+% Find a number X which produces 2
+% Find a number X which produces X
+% Find a number X which produces its associate (X2X)
+% Find a number X which produces its own inverse
+% Find a number X which produces the repetition of the inverse of its own associate
+
+
+/*
+  Find a number X which produces 2 
+
+n = 1
+n = 2
+[2,2]
+[3,2]
+n = 3
+[3,4,2]
+[3,5,2]
+[4,2,2]
+[4,3,2]
+n = 4
+[3,4,4,2]
+[3,4,5,2]
+[3,5,4,2]
+[3,5,5,2]
+[4,3,4,2]
+[4,3,5,2]
+[4,4,2,2]
+[4,4,3,2]
+n = 5
+[3,4,4,4,2]
+[3,4,4,5,2]
+[3,4,5,4,2]
+[3,4,5,5,2]
+[3,5,4,4,2]
+[3,5,4,5,2]
+[3,5,5,4,2]
+[3,5,5,5,2]
+[4,3,4,4,2]
+[4,3,4,5,2]
+[4,3,5,4,2]
+...
+n = 6
+[3,4,4,4,4,2]
+[3,4,4,4,5,2]
+[3,4,4,5,4,2]
+[3,4,4,5,5,2]
+[3,4,5,4,4,2]
+[3,4,5,4,5,2]
+[3,4,5,5,4,2]
+[3,4,5,5,5,2]
+[3,5,4,4,4,2]
+[3,5,4,4,5,2]
+...
+n = 7
+[3,4,4,4,4,4,2]
+[3,4,4,4,4,5,2]
+[3,4,4,4,5,4,2]
+[3,4,4,4,5,5,2]
+[3,4,4,5,4,4,2]
+[3,4,4,5,4,5,2]
+[3,4,4,5,5,4,2]
+[3,4,4,5,5,5,2]
+[3,4,5,4,4,4,2]
+[3,4,5,4,4,5,2]
+[3,4,5,4,5,4,2]
+[3,4,5,4,5,5,2]
+[3,4,5,5,4,4,2]
+...
+n = 8
+[3,4,4,4,4,4,4,2]
+[3,4,4,4,4,4,5,2]
+[3,4,4,4,4,5,4,2]
+[3,4,4,4,4,5,5,2]
+[3,4,4,4,5,4,4,2]
+[3,4,4,4,5,4,5,2]
+[3,4,4,4,5,5,4,2]
+[3,4,4,4,5,5,5,2]
+[3,4,4,5,4,4,4,2]
+[3,4,4,5,4,4,5,2]
+[3,4,4,5,4,5,4,2]
+[3,4,4,5,4,5,5,2]
+..
+n = 9
+[3,4,4,4,4,4,4,4,2]
+[3,4,4,4,4,4,4,5,2]
+[3,4,4,4,4,4,5,4,2]
+[3,4,4,4,4,4,5,5,2]
+[3,4,4,4,4,5,4,4,2]
+[3,4,4,4,4,5,4,5,2]
+[3,4,4,4,4,5,5,4,2]
+[3,4,4,4,4,5,5,5,2]
+[3,4,4,4,5,4,4,4,2]
+[3,4,4,4,5,4,4,5,2]
+[3,4,4,4,5,4,5,4,2]
+...
+n = 10
+[3,4,4,4,4,4,4,4,4,2]
+[3,4,4,4,4,4,4,4,5,2]
+[3,4,4,4,4,4,4,5,4,2]
+[3,4,4,4,4,4,4,5,5,2]
+[3,4,4,4,4,4,5,4,4,2]
+[3,4,4,4,4,4,5,4,5,2]
+[3,4,4,4,4,4,5,5,4,2]
+[3,4,4,4,4,4,5,5,5,2]
+[3,4,4,4,4,5,4,4,4,2]
+[3,4,4,4,4,5,4,4,5,2]
+[3,4,4,4,4,5,4,5,4,2]
+[3,4,4,4,4,5,4,5,5,2]
+
+*/
+go3 => 
+   member(N,1..10),
+   println(n=N),
+   L = new_list(N),
+   L :: 2..5,
+   rule(L,[2]),
+   solve(L),
+   println(L),
+   fail,
+   nl.    
+
+% no cp
+go3b => 
+   between(1,10,N),
+   println(n=N),
+   L = new_list(N),
+   rule(L,[2]),
+   println(L),
+   fail,
+   nl.    
+
+/*
+  Find a number X which produces X
+
+n = 1
+n = 2
+n = 3
+[3,2,3]
+n = 4
+[5,2,5,2]
+n = 5
+n = 6
+n = 7
+[3,4,4,2,3,4,4]
+[4,3,4,2,4,3,4]
+[4,4,3,2,4,4,3]
+n = 8
+[4,4,5,2,4,4,5,2]
+[4,5,4,2,4,5,4,2]
+[5,4,4,2,5,4,4,2]
+n = 9
+n = 10
+
+
+*/
+go4 =>
+   member(N,1..10),
+   println(n=N),
+   L1 = new_list(N),
+   L1 :: 2..5,
+   rule(L1,L1),
+   solve(L1),
+   println(L1),
+   fail,
+   nl.    
+
+% Find a number X which produces X
+% no cp
+go4b => 
+   between(1,10,N),
+   println(n=N),
+   L1 = new_list(N),
+   rule(L1,L1),
+   println(L1),
+   fail,
+   nl.    
+
+/*
+  Find a number X which produces its associate (X2X)
+
+n = 1
+n = 2
+n = 3
+n = 4
+n = 5
+[3,3,2,3,3]
+n = 6
+[3,5,2,3,5,2]
+n = 7
+[3,4,3,2,3,4,3]
+n = 8
+n = 9
+[3,3,4,4,2,3,3,4,4]
+[3,4,3,4,2,3,4,3,4]
+[3,4,4,3,2,3,4,4,3]
+[4,3,3,4,2,4,3,3,4]
+[4,3,4,3,2,4,3,4,3]
+[4,4,3,3,2,4,4,3,3]
+n = 10
+[3,4,4,5,2,3,4,4,5,2]
+[3,4,5,4,2,3,4,5,4,2]
+[3,5,4,4,2,3,5,4,4,2]
+[4,3,4,5,2,4,3,4,5,2]
+[4,3,5,4,2,4,3,5,4,2]
+[4,4,3,5,2,4,4,3,5,2]
+
+*/
+go5 => 
+   member(N,1..10),
+   println(n=N),
+   L1 = new_list(N),
+   L1 :: 2..5,
+   L2 = new_list(N*2+1),
+   L2 :: 2..5,
+   rule(L1,L2),
+   L2[N+1] #= 2,
+   foreach(I in 1..N) 
+      L1[I] #= L2[I], 
+      L1[I] #= L2[I+N+1]  
+   end,
+   solve(L1 ++ L2),
+   println(L1),
+   fail,
+   nl.    
+
+% no cp
+go5b => 
+   member(N,1..10),
+   println(n=N),
+   L1 = new_list(N),
+   L2 = new_list(N*2+1),
+   foreach(I in 1..N) 
+      L1[I] = L2[I], 
+      L1[I] = L2[I+N+1]  
+   end,
+   L2[N+1] = 2,
+   rule(L1,L2),
+   println(L1),
+   fail,
+   nl.    
+
+
+/*
+  Find a number X which produces its own inverse.
+  Using CP
+
+n = 1
+n = 2
+n = 3
+[3,2,3]
+n = 4
+n = 5
+[3,4,2,3,4]
+[4,3,2,4,3]
+n = 6
+[4,5,2,4,5,2]
+[5,4,2,5,4,2]
+n = 7
+[4,3,4,2,4,3,4]
+n = 8
+n = 9
+[3,4,4,4,2,3,4,4,4]
+[4,3,4,4,2,4,3,4,4]
+[4,4,3,4,2,4,4,3,4]
+[4,4,4,3,2,4,4,4,3]
+n = 10
+[4,4,4,5,2,4,4,4,5,2]
+[4,4,5,4,2,4,4,5,4,2]
+[4,5,4,4,2,4,5,4,4,2]
+[5,4,4,4,2,5,4,4,4,2]
+n = 11
+[4,4,3,4,4,2,4,4,3,4,4]
+n = 12
+n = 13
+[3,4,4,4,4,4,2,3,4,4,4,4,4]
+[4,3,4,4,4,4,2,4,3,4,4,4,4]
+[4,4,3,4,4,4,2,4,4,3,4,4,4]
+[4,4,4,3,4,4,2,4,4,4,3,4,4]
+[4,4,4,4,3,4,2,4,4,4,4,3,4]
+[4,4,4,4,4,3,2,4,4,4,4,4,3]
+
+
+*/
+go6 => 
+   member(N,1..13),
+   println(n=N),
+   L1 = new_list(N),
+   L1 :: 2..5,
+   L2 = new_list(N),
+   L2 :: 2..5,
+   rule(L1,L2),
+   foreach(I in 1..N) 
+      L1[I] #= L2[N-I+1]
+   end,
+   solve(L1 ++ L2),
+   println(L1=L2),
+   fail,
+   nl.    
+
+% no CP
+% It's faster without tabling: 3.17s
+% With table: 4.79s
+go6b => 
+   between(1,13,N),
+   % initialize_table, % clear the table
+   println(n=N),
+   L1 = new_list(N),
+   rule(L1,L1.reverse),
+   println(L1),
+   fail,
+   nl.    
+
+
+/*
+  The rules
+  M(2X) = X
+  M(3X) = M(X)2M(X)
+  M(4X) = reverse(M(X)) // reverse the order of the list.
+  M(5X) = M(X)M(X)
+
+*/
+% table
+rule([H|X], R) ?=> 
+   H = 2, 
+   R = X.
+rule([H|X], R) ?=> 
+   H = 3, 
+   rule(X,R1), 
+   append(R1,[2],R1,R).
+rule([H|X], R) ?=> 
+   H = 4, 
+   rule(X,R1), 
+   R = reverse(R1).
+rule([H|X], R) ?=> 
+   H = 5, 
+   rule(X,R1), 
+   append(R1,R1,R).
+
+my_reverse(L1,L2) => my_rev(L1,L2,[]).
+my_rev([],L2,L3)  ?=> L2 #= L3.
+my_rev([X|Xs],L2,Acc) => my_rev(Xs,L2,[X|Acc]).
+
+
+/*
+  The extended rule set (1..7)
+  Here is a second example a bit more complex with the exhaustive search
+  (especially if I want the first 10 or 100 solutions).
+
+  M(1X2) = X
+  M(3X) = M(X)M(X)
+  M(4X) = reverse(M(X))
+  M(5X) = trucate(M(X)) // remove the first element of the list trucate(1234) = 234
+  M(6X) = 1M(X)
+  M(7X) = 2M(X)
+
+p = [4,7,3,4,1,4,7,3,4,1,2]
+[p = [4,7,3,4,1,4,7,3,4,1,2],r = [4,7,3,4,1,4,7,3,4,1,2]]
+
+p = [4,7,4,3,1,4,7,4,3,1,2]
+[p = [4,7,4,3,1,4,7,4,3,1,2],r = [4,7,4,3,1,4,7,4,3,1,2]]
+
+p = [7,3,4,1,7,3,4,1,2]
+[p = [7,3,4,1,7,3,4,1,2],r = [2,1,4,3,7,1,4,3,7]]
+
+p = [7,4,3,1,7,4,3,1,2]
+[p = [7,4,3,1,7,4,3,1,2],r = [2,1,3,4,7,1,3,4,7]]
+
+p = [3,7,4,5,1,2,3,7,4,5,1,2]
+[p = [3,7,4,5,1,2,3,7,4,5,1,2],r = [2,1,5,4,7,3,2,1,5,4,7,3]]
+
+
+*/
+go10 =>
+  get_global_map().put(print,true),
+  Problems = [             
+             % M(X) = X
+             [4,7,3,4,1,4,7,3,4,1,2],
+             [4,7,4,3,1,4,7,4,3,1,2],
+
+             % for the reverse problem
+             % M(X) = reverse(X)
+             [7,3,4,1,7,3,4,1,2],
+             [7,4,3,1,7,4,3,1,2],
+             [3,7,4,5,1,2,3,7,4,5,1,2]
+           ],
+
+  foreach(P in Problems)  
+    println(p=P),
+    if rule2(P,R) then
+      println([p=P,r=R])
+    else
+      println(no_solution)
+    end,
+    nl
+  end,
+  
+  nl.
+
+/*
+  rule2: M(X) = X
+
+  n = 1
+n = 2
+n = 3
+n = 4
+n = 5
+n = 6
+n = 7
+n = 8
+n = 9
+n = 10
+n = 11
+[4,7,3,4,1,4,7,3,4,1,2]
+[4,7,4,3,1,4,7,4,3,1,2]
+n = 12
+n = 13
+
+
+*/
+go11 => 
+   get_global_map().put(print,false),
+   between(1,13,N),
+   % initialize_table,
+   println(n=N),
+   L1 = new_list(N),
+   rule2(L1,L1),
+   println(L1), 
+   fail,
+   nl.    
+
+/*
+  rule2: M(X) = reverse(X)
+
+n = 1
+n = 2
+n = 3
+n = 4
+n = 5
+n = 6
+n = 7
+n = 8
+n = 9
+[7,3,4,1,7,3,4,1,2]
+[7,4,3,1,7,4,3,1,2]
+n = 10
+n = 11
+n = 12
+[3,7,4,5,1,2,3,7,4,5,1,2]
+[7,4,5,3,1,_3090,7,4,5,3,1,2]
+[7,4,5,3,6,1,7,4,5,3,6,2]
+[7,5,3,6,4,1,7,5,3,6,4,2]
+n = 13
+[4,4,7,3,4,1,4,4,7,3,4,1,2]
+[4,4,7,4,3,1,4,4,7,4,3,1,2]
+[5,6,7,3,4,1,5,6,7,3,4,1,2]
+[5,6,7,4,3,1,5,6,7,4,3,1,2]
+[5,7,7,3,4,1,5,7,7,3,4,1,2]
+[5,7,7,4,3,1,5,7,7,4,3,1,2]
+[7,3,4,4,4,1,7,3,4,4,4,1,2]
+[7,3,4,5,1,_30b0,7,3,4,5,1,_30b0,2]
+[7,3,4,5,6,1,7,3,4,5,6,1,2]
+[7,3,4,5,7,1,7,3,4,5,7,1,2]
+[7,3,5,6,4,1,7,3,5,6,4,1,2]
+[7,3,5,7,4,1,7,3,5,7,4,1,2]
+[7,3,6,5,4,1,7,3,6,5,4,1,2]
+[7,4,3,4,4,1,7,4,3,4,4,1,2]
+[7,4,3,5,1,_30b0,7,4,3,5,1,_30b0,2]
+[7,4,3,5,6,1,7,4,3,5,6,1,2]
+[7,4,3,5,7,1,7,4,3,5,7,1,2]
+[7,4,4,3,4,1,7,4,4,3,4,1,2]
+[7,4,4,4,3,1,7,4,4,4,3,1,2]
+[7,4,5,6,3,1,7,4,5,6,3,1,2]
+[7,4,5,7,3,1,7,4,5,7,3,1,2]
+[7,5,6,3,4,1,7,5,6,3,4,1,2]
+[7,5,6,4,3,1,7,5,6,4,3,1,2]
+[7,5,7,3,4,1,7,5,7,3,4,1,2]
+[7,5,7,4,3,1,7,5,7,4,3,1,2]
+[7,6,5,3,4,1,7,6,5,3,4,1,2]
+[7,6,5,4,3,1,7,6,5,4,3,1,2]
+ 
+
+*/
+go12 => 
+   between(1,13,N),
+   println(n=N),
+   L1 = new_list(N),
+   rule2(L1,reverse(L1)),
+   println(L1), 
+   fail,
+   nl.    
+
+% using findall
+go12b => 
+   % This takes 39.5s
+   foreach(N in 1..13)
+      All = rule2_reverse(N),
+      if All != [] then println(N=All) end
+   end,
+   nl.    
+
+% using rule3: much faster (3.3s)
+go12_3 => 
+   between(1,13,N),
+   println(n=N),
+   L1 = new_list(N),
+   rule3(L1,L1.reverse),
+   println(L1), 
+   fail,
+   nl.    
+
+/*
+  Generate all possible solutions, CP
+
+  Some examples:
+n = 2
+[problem = [1,2],r = []]
+n = 3
+[problem = [1,1,2],r = [1]]
+[problem = [1,2,2],r = [2]]
+[problem = [1,3,2],r = [3]]
+[problem = [1,4,2],r = [4]]
+[problem = [1,5,2],r = [5]]
+[problem = [1,6,2],r = [6]]
+[problem = [1,7,2],r = [7]]
+[problem = [3,1,2],r = []]
+[problem = [4,1,2],r = []]
+[problem = [6,1,2],r = [1]]
+[problem = [7,1,2],r = [2]]
+n = 4
+[problem = [1,1,1,2],r = [1,1]]
+[problem = [1,1,2,2],r = [1,2]]
+[problem = [1,1,3,2],r = [1,3]]
+[problem = [1,1,4,2],r = [1,4]]
+[problem = [1,1,5,2],r = [1,5]]
+[problem = [1,1,6,2],r = [1,6]]
+...
+[problem = [3,1,6,2],r = [6,6]]
+[problem = [3,1,7,2],r = [7,7]]
+[problem = [3,3,1,2],r = []]
+[problem = [3,4,1,2],r = []]
+[problem = [3,6,1,2],r = [1,1]]
+[problem = [3,7,1,2],r = [2,2]]
+[problem = [4,1,1,2],r = [1]]
+[problem = [4,1,2,2],r = [2]]
+[problem = [4,1,3,2],r = [3]]
+[problem = [4,1,4,2],r = [4]]
+[problem = [4,1,5,2],r = [5]]
+[problem = [4,1,6,2],r = [6]]
+[problem = [4,1,7,2],r = [7]]
+[problem = [4,3,1,2],r = []]
+[problem = [4,4,1,2],r = []]
+[problem = [4,6,1,2],r = [1]]
+...
+n = 5
+[problem = [1,1,1,1,2],r = [1,1,1]]
+[problem = [1,1,1,2,2],r = [1,1,2]]
+[problem = [1,1,1,3,2],r = [1,1,3]]
+[problem = [1,1,1,4,2],r = [1,1,4]]
+[problem = [1,1,1,5,2],r = [1,1,5]]
+[problem = [1,1,1,6,2],r = [1,1,6]]
+[problem = [1,1,1,7,2],r = [1,1,7]]
+[problem = [1,1,2,1,2],r = [1,2,1]]
+[problem = [1,1,2,2,2],r = [1,2,2]]
+...
+[problem = [3,3,1,6,2],r = [6,6,6,6]]
+[problem = [3,3,1,7,2],r = [7,7,7,7]]
+[problem = [3,3,3,1,2],r = []]
+[problem = [3,3,4,1,2],r = []]
+[problem = [3,3,6,1,2],r = [1,1,1,1]]
+[problem = [3,3,7,1,2],r = [2,2,2,2]]
+[problem = [3,4,1,1,2],r = [1,1]]
+[problem = [3,4,1,2,2],r = [2,2]]
+[problem = [3,4,1,3,2],r = [3,3]]
+[problem = [3,4,1,4,2],r = [4,4]]
+[problem = [3,4,1,5,2],r = [5,5]]
+...
+n = 6
+[problem = [1,1,1,1,1,2],r = [1,1,1,1]]
+[problem = [1,1,1,1,2,2],r = [1,1,1,2]]
+[problem = [1,1,1,1,3,2],r = [1,1,1,3]]
+[problem = [1,1,1,1,4,2],r = [1,1,1,4]]
+[problem = [1,1,1,1,5,2],r = [1,1,1,5]]
+[problem = [1,1,1,1,6,2],r = [1,1,1,6]]
+[problem = [1,1,1,1,7,2],r = [1,1,1,7]]
+
+*/
+go13 => 
+   member(N,2..13),
+   println(n=N),
+   Problem = new_list(N),
+   Problem :: 1..7,
+   rule2(Problem, R),
+   solve(Problem),
+   println([problem=Problem,r=R]),
+   fail,
+   nl.
+
+/*
+  All solutions, no CP.
+  Shows all "principal" solutions, i.e. with _ as unknown ("whatever")
+
+n = 1
+n = 2
+[problem = [1,2],r = []]
+n = 3
+[problem = [1,_2f50,2],r = [_2f50]]
+[problem = [3,1,2],r = []]
+[problem = [4,1,2],r = []]
+[problem = [6,1,2],r = [1]]
+[problem = [7,1,2],r = [2]]
+n = 4
+[problem = [1,_2f60,_2f68,2],r = [_2f60,_2f68]]
+[problem = [3,1,_2f60,2],r = [_2f60,_2f60]]
+[problem = [3,3,1,2],r = []]
+[problem = [3,4,1,2],r = []]
+[problem = [3,6,1,2],r = [1,1]]
+[problem = [3,7,1,2],r = [2,2]]
+[problem = [4,1,_2f60,2],r = [_2f60]]
+[problem = [4,3,1,2],r = []]
+[problem = [4,4,1,2],r = []]
+[problem = [4,6,1,2],r = [1]]
+[problem = [4,7,1,2],r = [2]]
+[problem = [5,1,_2f60,2],r = []]
+[problem = [5,6,1,2],r = []]
+[problem = [5,7,1,2],r = []]
+[problem = [6,1,_2f60,2],r = [1,_2f60]]
+[problem = [6,3,1,2],r = [1]]
+[problem = [6,4,1,2],r = [1]]
+[problem = [6,6,1,2],r = [1,1]]
+[problem = [6,7,1,2],r = [1,2]]
+[problem = [7,1,_2f60,2],r = [2,_2f60]]
+[problem = [7,3,1,2],r = [2]]
+[problem = [7,4,1,2],r = [2]]
+[problem = [7,6,1,2],r = [2,1]]
+[problem = [7,7,1,2],r = [2,2]]
+n = 5
+[problem = [1,_2f70,_2f78,_2f80,2],r = [_2f70,_2f78,_2f80]]
+[problem = [3,1,_2f70,_2f78,2],r = [_2f70,_2f78,_2f70,_2f78]]
+[problem = [3,3,1,_2f70,2],r = [_2f70,_2f70,_2f70,_2f70]]
+...
+
+
+*/
+go13b => 
+   between(1,10,N),
+   println(n=N),
+   Problem = new_list(N),
+   rule2(Problem, R), 
+   println([problem=Problem,r=R]),
+   flush(),
+   fail,
+   nl.
+
+/*
+  Rules for the the extended version.
+
+  M(1X2) = X
+  M(3X) = M(X)M(X)
+  M(4X) = reverse(M(X))
+  M(5X) = trucate(M(X)) // remove the first element of the list trucate(1234) = 234
+  M(6X) = 1M(X)
+  M(7X) = 2M(X)
+
+*/
+
+rule2_reverse(N) = All => 
+  L = new_list(N),
+  All = findall([R], (R = reverse(L), rule2(L,R))).
+
+
+% tabling is much faster on this problem
+table
+% M(1X2) = X
+rule2([H|X], R) ?=> 
+   H = 1, 
+   append(R,[2],X).
+
+% M(3X) = M(X)M(X)
+rule2([H|X], R) ?=>
+   H = 3, 
+   rule2(X,R1),
+   append(R1,R1,R).
+
+% M(4X) = reverse(M(X))
+rule2([H|X], R) ?=> 
+   H = 4, 
+   rule2(X,R1), 
+   R = reverse(R1).
+   % my_reverse(R1,R).
+
+% M(5X) = trucate(M(X)) // remove the first element of the list trucate(1234) = 234
+rule2([H|X], R), length(X) > 1 ?=> 
+   H = 5, 
+   rule2(X,R1),
+   append([_],R,R1).
+
+% M(6X) = 1M(X)
+rule2([H|X], R) ?=> 
+   H = 6, 
+   rule2(X,R1), 
+   append([1],R1,R).
+   % R = [1|R1]. % slightly faster
+
+% M(7X) = 2M(X)
+rule2([H|X], R) ?=> 
+   H = 7, 
+   rule2(X,R1), 
+   append([2],R1,R).
+   % R = [2|R1].
+
+/*
+  rule3/2
+
+  M(X) = XX
+
+n = 13
+[4,3,7,4,3,1,4,3,7,4,3,1,2] = [4,3,7,4,3,1,4,3,7,4,3,1,2,4,3,7,4,3,1,4,3,7,4,3,1,2]
+[3,4,7,4,3,1,3,4,7,4,3,1,2] = [3,4,7,4,3,1,3,4,7,4,3,1,2,3,4,7,4,3,1,3,4,7,4,3,1,2]
+[4,3,7,3,4,1,4,3,7,3,4,1,2] = [4,3,7,3,4,1,4,3,7,3,4,1,2,4,3,7,3,4,1,4,3,7,3,4,1,2]
+[3,4,7,3,4,1,3,4,7,3,4,1,2] = [3,4,7,3,4,1,3,4,7,3,4,1,2,3,4,7,3,4,1,3,4,7,3,4,1,2]
+n = 14
+n = 15
+n = 16
+[3,5,4,5,3,1,2,2,1,3,5,4,5,3,1,2] = [3,5,4,5,3,1,2,2,1,3,5,4,5,3,1,2,3,5,4,5,3,1,2,2,1,3,5,4,5,3,1,2]
+[3,5,5,3,4,1,2,1,4,3,5,5,3,4,1,2] = [3,5,5,3,4,1,2,1,4,3,5,5,3,4,1,2,3,5,5,3,4,1,2,1,4,3,5,5,3,4,1,2]
+[5,4,7,4,3,3,1,2,5,4,7,4,3,3,1,2] = [5,4,7,4,3,3,1,2,5,4,7,4,3,3,1,2,5,4,7,4,3,3,1,2,5,4,7,4,3,3,1,2]
+[4,7,4,5,3,3,1,2,4,7,4,5,3,3,1,2] = [4,7,4,5,3,3,1,2,4,7,4,5,3,3,1,2,4,7,4,5,3,3,1,2,4,7,4,5,3,3,1,2]
+[5,4,7,3,4,3,1,2,5,4,7,3,4,3,1,2] = [5,4,7,3,4,3,1,2,5,4,7,3,4,3,1,2,5,4,7,3,4,3,1,2,5,4,7,3,4,3,1,2]
+[3,5,4,7,4,3,1,_2f68,3,5,4,7,4,3,1,2] = [3,5,4,7,4,3,1,_2f68,3,5,4,7,4,3,1,2,3,5,4,7,4,3,1,_2f68,3,5,4,7,4,3,1,2]
+[4,3,7,4,5,3,1,_2f68,4,3,7,4,5,3,1,2] = [4,3,7,4,5,3,1,_2f68,4,3,7,4,5,3,1,2,4,3,7,4,5,3,1,_2f68,4,3,7,4,5,3,1,2]
+[3,4,7,4,5,3,1,_2f68,3,4,7,4,5,3,1,2] = [3,4,7,4,5,3,1,_2f68,3,4,7,4,5,3,1,2,3,4,7,4,5,3,1,_2f68,3,4,7,4,5,3,1,2]
+[5,4,7,3,3,4,1,2,5,4,7,3,3,4,1,2] = [5,4,7,3,3,4,1,2,5,4,7,3,3,4,1,2,5,4,7,3,3,4,1,2,5,4,7,3,3,4,1,2]
+[3,5,4,7,3,4,1,_2f68,3,5,4,7,3,4,1,2] = [3,5,4,7,3,4,1,_2f68,3,5,4,7,3,4,1,2,3,5,4,7,3,4,1,_2f68,3,5,4,7,3,4,1,2]
+[3,3,5,4,7,4,1,2,3,3,5,4,7,4,1,2] = [3,3,5,4,7,4,1,2,3,3,5,4,7,4,1,2,3,3,5,4,7,4,1,2,3,3,5,4,7,4,1,2]
+[4,3,3,7,4,5,1,2,4,3,3,7,4,5,1,2] = [4,3,3,7,4,5,1,2,4,3,3,7,4,5,1,2,4,3,3,7,4,5,1,2,4,3,3,7,4,5,1,2]
+[3,4,3,7,4,5,1,2,3,4,3,7,4,5,1,2] = [3,4,3,7,4,5,1,2,3,4,3,7,4,5,1,2,3,4,3,7,4,5,1,2,3,4,3,7,4,5,1,2]
+[3,3,4,7,4,5,1,2,3,3,4,7,4,5,1,2] = [3,3,4,7,4,5,1,2,3,3,4,7,4,5,1,2,3,3,4,7,4,5,1,2,3,3,4,7,4,5,1,2]
+[4,3,7,5,3,6,4,1,4,3,7,5,3,6,4,2] = [4,3,7,5,3,6,4,1,4,3,7,5,3,6,4,2,4,3,7,5,3,6,4,1,4,3,7,5,3,6,4,2]
+[3,4,7,5,3,6,4,1,3,4,7,5,3,6,4,2] = [3,4,7,5,3,6,4,1,3,4,7,5,3,6,4,2,3,4,7,5,3,6,4,1,3,4,7,5,3,6,4,2]
+[3,5,4,7,4,3,6,1,3,5,4,7,4,3,6,2] = [3,5,4,7,4,3,6,1,3,5,4,7,4,3,6,2,3,5,4,7,4,3,6,1,3,5,4,7,4,3,6,2]
+...
+
+*/
+go14 =>
+  bp.length(X,N),  
+  println(n=N),
+  append(X,X,Y),
+  rule3(X,Y),
+  println(X=Y),
+  fail,
+  nl.
+
+
+%
+% rule3: Much faster than rule2/2.
+% Based on one of false's answers.
+%
+rule3([H|X], R) ?=> 
+   H = 1, 
+   append(R,[2],X).
+rule3([H|X], R) =>
+   rule3(X,R1),
+   (
+      H = 3, append(R1,R1,R)
+     ;
+      H = 4, R = reverse(R1)
+     ;
+      H = 5,  append([_],R,R1) 
+     ; 
+      H = 6, append([1],R1,R)
+     ;
+      H = 7,  append([2],R1,R)
+   ).
+

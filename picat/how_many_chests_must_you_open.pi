@@ -1,0 +1,150 @@
+/* 
+
+  How many chests must you open? in Picat.
+
+  From Pascal Bercker: "Worst Case Scenario — How Many Chests Must You Open?"
+  https://medium.com/@pbercker/worst-case-scenario-how-many-chests-must-you-open-a1c9b81b3b3
+  """
+  Suppose you have 4 chests, each with a gold, silver, copper, or jade coin. Each chest has a 
+  label for the alleged coin it contains, but only one label is true, the other 3 are false. 
+  You want to discover what each chest contains while minimizing your search efforts. What 
+  is the best-case scenario? What is the worst-case scenario on how many chests you have to open?
+  """
+
+  Best case scenariou: We need to open 1 Chest
+  Worst case scenariou: We need to open 2 Chests
+
+
+  We need to open at most 2 chests to uniquely identify
+  where the coins is in the correct labeled chest.
+
+  Let's make this simple strategy of alway first open
+  chest 1 and - if needed - open chest 2:
+  * first open chest 1, if this is the correct labeled chest: done
+  * else open chest 2
+    If this is the correct labeled chest: done
+    else: 
+    now we now that chest 1 or 2 cannot be the correct one.
+    Also, we know that the coin in which we found in
+    chest 1 cannot be in the chest with that label,
+    and similarly with the coin we found in chest 2.
+
+    Thus we can now draw the conclusion which chest is
+    correctly labeled.
+
+
+  The model below uses two different approaches to find the correct chest:
+  * the CP model which encodes the above strategy using
+    reification (#<=>) to separate the different cases
+  * an "algorithmic" approach (post CP) doing the same this, but in quite 
+    a different way.
+
+  Here are the eight cases and the output of the model:
+
+  CP model:
+  - chest: Which is the found chest/coin
+  - numToPpen: Number of chest(s) we need to open.
+
+  Algorithmic:
+  - found: Where is the chest
+  - open: which chests to open
+
+  [x = [1,3,4,2] = [Gold,Copper,Jade,Silver],chest = 1,numToOpen = 1]
+  found = 1
+  open = [1] = 1
+
+  [x = [1,4,2,3] = [Gold,Jade,Silver,Copper],chest = 1,numToOpen = 1]
+  found = 1
+  open = [1] = 1
+
+  [x = [2,3,1,4] = [Silver,Copper,Gold,Jade],chest = 4,numToOpen = 2]
+  found = 4
+  open = [1,2] = 2
+
+  [x = [2,4,3,1] = [Silver,Jade,Copper,Gold],chest = 3,numToOpen = 2]
+  found = 3
+  open = [1,2] = 2
+
+  [x = [3,1,2,4] = [Copper,Gold,Silver,Jade],chest = 4,numToOpen = 2]
+  found = 4
+  open = [1,2] = 2
+
+  [x = [3,2,4,1] = [Copper,Silver,Jade,Gold],chest = 2,numToOpen = 2]
+  found = 2
+  open = [1,2] = 2
+
+  [x = [4,1,3,2] = [Jade,Gold,Copper,Silver],chest = 3,numToOpen = 2]
+  found = 3
+  open = [1,2] = 2
+
+  [x = [4,2,1,3] = [Jade,Silver,Gold,Copper],chest = 2,numToOpen = 2]
+  found = 2
+  open = [1,2] = 2
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import cp.
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 4,
+
+  X = new_list(N),
+  X :: 1..N,
+
+  all_different(X),
+
+  % Each chest has a label for the alleged coin it contains, but only one label
+  % is true, the other 3 are false.
+  sum([X[I] #= I : I in 1..N]) #= 1,
+
+  % Which chest is has the correct label?
+  Chest :: 1..N,
+  (X[1] #= 1) #<=> (Chest #= 1), % Open Chest 1: If it's there: OK
+  (X[2] #= 2) #<=> (Chest #= 2), % Open Chest 2: If it's there: OK  
+   % If not in chest 1 or 2 we know it's not in 1,2,X[1],and X[2]
+  (Chest #!= 1 #/\ Chest #!= 2) #<=> (Chest #!= X[1] #/\ Chest #!= X[2]),
+
+  % How many chests do we need to open?
+  NumToOpen :: 1..2,
+  NumToOpen #= 1 #<=> X[1] #= 1,
+
+  % If we hard code the instance, we don't need solve/1 to find out Chest.
+  % X = [1,3,4,2],
+  % println(X=Chest),
+
+  Vars = X ++ [Chest,NumToOpen],
+  solve(Vars),
+  
+  S = ["Gold","Silver","Copper","Jade"],
+  println([x=X=[S[X[I]] : I in 1..N],chest=Chest,numToOpen=NumToOpen]),
+
+  % "Algorithmic" approach
+  Found = 1..N,
+  Open = [],
+  % Continue until we have a unique answer
+  foreach(I in 1..N,break(Found.len == 1))
+    % Open Chest I
+    Open := Open ++ [I],
+    if X[I] == I then
+      % If it's there: cool!
+      Found := [I]
+    else
+      % Else: Remove the possibility that it's in this box
+      %       as well as in the I'th box
+      Found := delete(Found,I),
+      Found := delete(Found,X[I])
+    end
+  end,
+  println(found=Found.first),
+  println(open=Open=Open.len),
+  nl,
+  fail,
+  
+  nl.
+go => true.

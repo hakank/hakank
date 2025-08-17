@@ -1,0 +1,736 @@
+/* 
+
+  Smullyan Sane/Insame Humans/Vampires in Picat.
+
+  From Smullyan "The Lady and the Tiger", 
+  chapter 4 "Inspector Craig Visits Transylvania"
+
+  Sane human: truth teller
+  Insane human: lies
+  Sane vampire: lies
+  Insane vampire: truth teller
+
+  Note: go1/0 is a verbose variant (showing everything in one predicate).
+  go1_b/0 and the rest use the generalized version of init/1 and check/3.
+
+  Part 1: The First Five Cases
+  Here we know that one of the two persons involved is a human and 
+  the other is a vampire.
+  * go1/0, go1_b/0: Problem 1 The Case of Lucy and Minna
+  * go2/0: 2 Case of the Lugosi Brothers
+  * go3/0: 3 The Case of Michael and Peter Karloff
+  * go4/0: 4 The Case of the Turgeniefs
+  * go5/0: 5 The Case of Karl and Martha Dracula
+
+  Part 2: Five married Couples
+  In these cases, the requirements is that if two people are married
+  they much be of the same type, either both humans or both vampired.
+  * go6/0: 6 The Case of Sylvan and Sylvia Nitrate
+  * go7/0: 7 The Case of George and Gloria Globule
+  * go8/0: 8 The Case of Boris and Dorothy Vampyre
+  * go9/0: 9 The Case of Arthur and Lilian Sweet
+  * go10/0: 10 The Case of Luigi and Manuella Byrdecliffe
+
+  Part 3: Two Unexpected Puzzles
+  In these two cases, nothing is known of the people involved,
+  so any combination is possible.
+  * go11/0: 11 The Case of A and B
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util,cp.
+
+main => go.
+
+
+go ?=>
+  go1,
+  go1_b,
+  go2,
+  go3,
+  go4,
+  go5,
+
+  go6,
+  go7,
+  go8,
+  go9,
+  go10,
+
+  go11,
+  nl.
+go => true.
+
+
+
+/*
+ 
+  Note: This version is the verbose variant, showing everything together.
+
+  See go1_b/0 for a generalized version.
+
+  The First Five Cases.
+
+  In these cases, we know that there is one human and one vampire.
+
+  Problem 1 The Case of Lucy and Minna
+
+  """
+  The first case involved two sisters named Lucy and Minna,
+  and Craig had to determine which one of them was a vampire.
+  As indicated above, nothing was known about the sanity of 
+  either. Here is a transcript of the investigation:
+
+  Craig to Lucy: "Tell me something about yourselves"
+  Lucy: "We are both insane"
+  Create (to Minna): "Is that true?"
+  Minna: "Of course not!"
+  """
+
+  One of the sisters Lucy and Minna is a human and the other is a vampire.
+
+  Lucy is the Vampire
+
+  Solution:
+  [truth = [0,1],type = [2,1],sanity = [1,1]]
+  [Lucy,False,Vampire,Sane]
+  [Minna,True,Human,Sane]
+
+  [truth = [1,0],type = [2,1],sanity = [2,2]]
+  [Lucy,True,Vampire,Insane]
+  [Minna,False,Human,Insane]
+
+  In both solutions, Lucy is a Vampire.
+
+*/
+go1 ?=>
+
+  println("Problem 1 The Case of Lucy and Minna"),
+  % A sane human and an insane vampire tells the truth.
+  % This ensures that we can encode truthfullness with Type == Sanity
+  Human = 1,
+  Vampire = 2,
+  Sane = 1,
+  Insane = 2,
+
+  Type = [LucyType,MinnaType], % Human or Vampire
+  Type :: Human..Vampire,
+
+  Sanity = [LucySanity,MinnaSanity], % Sane or Insane
+  Sanity :: Sane..Insane,
+
+  % Speaks the truth or lies.
+  Truth = [LucyTruth,MinnaTruth],
+  Truth :: 0..1,  
+
+
+  % One is a human and one is a vampire
+  % (we don't know anything about the sanity)
+  % all_different(Type),
+  LucyType #!= MinnaType,
+
+  % Lucy: "We are both insane"
+  LucyTruth #<=> ( LucySanity #= Insane #/\ MinnaSanity #= Insane),
+
+  % Craig (to Minna): Is that true?
+  % Minna: "Of course not!"
+  MinnaTruth #= 1 #<=> LucyTruth #= 0,
+  % MinnaTruth #<=> #~LucyTruth, % alternative encoding
+
+  % Who tells the truth?
+  % Connect truthness with sanity and type.
+  foreach(I in 1..Type.len)
+    % Truth[I] #= 1 #<=> ((Type[I] #= Human #/\ Sanity[I] #= Sane)
+    %                     #\/
+    %                     (Type[I] #= Vampire #/\ Sanity[I] #= Insane)
+    %                     ),
+    
+    % Simplified version as a consequence of the coding of Human/Vampire and Sane/Insane.
+    Truth[I] #= 1 #<=> (Type[I] #= Sanity[I])
+  end,
+
+  Vars = Truth ++ Type ++ Sanity,
+  solve(Vars),
+  println([truth=Truth,type=Type,sanity=Sanity]),
+  TypeS     = ["Human","Vampire"],  
+  SanityS = ["Sane","Insane"],
+  People    = ["Lucy","Minna"],
+  TruthS    = ["False","True"],
+  foreach(I in 1..2)
+    println([People[I],TruthS[Truth[I]+1],TypeS[Type[I]],SanityS[Sanity[I]]])
+  end,
+  nl,
+  fail,
+
+  nl.
+go1 => true.
+
+%
+% Generalized version
+%
+go1_b ?=>
+  println("Problem 1 The Case of Lucy and Minna, version 2"),
+  
+  Lucy = 1,
+  Minna = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,first_five_cases),
+
+  Statements = [
+    % Lucy: "We are both insane"
+    Truth[Lucy] #<=> ( Sanity[Lucy] #= Map.get(insane) #/\
+                       Sanity[Minna] #= Map.get(insane)
+                     ),
+
+    % Craig (to Minna): Is that true?
+    % Minna: "Of course not!"
+    Truth[Minna] #= 1 #<=> Truth[Lucy] #= 0
+    % MinnaTruth #<=> #~LucyTruth, % alternative encoding
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Lucy","Minna"]),
+
+  nl.
+go1_b => true.
+
+
+
+/*
+  2 Case of the Lugosi Brothers
+  """
+  The next case was that of the Lugosi brothers. Both had the
+  first name of Bela. Again, one was a vampire and one was not.
+  They made the following statements.
+
+  Bela the Elder: I am human.
+  Bela the Younger: I am human.
+  Bela the Elder: My brother is sane.
+
+  Which one is the vampire?
+  """
+
+  Younger is the vampire.
+
+  Solution:
+  [truth = [1,0],type = [1,2],sanity = [1,1]]
+  [Elder,True,Human,Sane]
+  [Younger,False,Vampire,Sane]
+
+
+
+*/
+go2 ?=>
+  println("2 Case of the Lugosi Brothers"),
+  Elder = 1,
+  Younger = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,first_five_cases),
+
+  Statements = [
+    % Bela the Elder: I am human.
+    Truth[Elder] #= 1 #<=> Type[Elder] #= Map.get(human),
+
+    % Bela the Younger: I am human.
+    Truth[Younger] #= 1 #<=> Type[Younger] #= Map.get(human),
+  
+    % Bela the Elder: My brother is sane.  
+    Truth[Elder] #= 1 #<=> Sanity[Younger] #= Map.get(sane)
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Elder","Younger"]),
+  
+  nl.
+go2 => true.
+
+
+
+/*
+  3 The case of Michael and Peter Karloff
+  """
+  The next case involved another pair of brothers,
+  Michael and Peter Karloff. Here is what they said:
+
+  Michael Karloff: I am a vampire.
+  Peter Karloff: I am human.
+  Michael Karlsoff: My brother and I are alike as far
+  as our sanity goes.
+  
+  Which one is the vampire
+  """
+
+  Peter is a vampire.
+
+  Solution:
+  [truth = [0,0],type = [1,2],sanity = [2,1]]
+  [Michael,False,Human,Insane]
+  [Peter,False,Vampire,Sane]
+
+*/
+go3 ?=>
+  println("3 The case of Michael and Peter Karloff"),
+  Michael = 1,
+  Peter = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,first_five_cases),
+  Statements = [
+    % Michael Karloff: I am a vampire.
+    Truth[Michael] #= 1 #<=> (Type[Michael] #= Map.get(vampire)),
+  
+    % Peter Karloff: I am human.
+    Truth[Peter] #= 1 #<=> (Type[Peter] #= Map.get(human)),
+
+    % Michael Karlsoff: My brother and I are alike as far
+    % as our sanity goes.
+    Truth[Michael] #= 1 #<=> (Sanity[Michael] #= Sanity[Peter])
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Michael","Peter"]),
+  
+  nl.
+go3 => true.
+
+
+/*
+  4 The Case of the Turgeniefs
+  """
+  The next case involved a father and son whose surname was
+  Turgenief. Here is the transcript of the interrogration.
+
+  Craig (to the father): Are you both sane or both insane, or
+  are you different in this respect?
+  Father: At least one of us is insane.
+  Son: This is quite true!
+  Father: I, of course, am not a vampire.
+
+  Which one is the vampire?
+  """
+
+  The son is the vampire.
+
+  Solution:
+  [truth = [1,1],type = [1,2],sanity = [1,2]]
+  [Father,True,Human,Sane]
+  [Son,True,Vampire,Insane]
+
+*/
+go4 ?=>
+  println("4 The Case of the Turgeniefs"),
+  Father = 1,
+  Son = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,first_five_cases),
+  Statements = [
+    % Father: At least one of us is insane.
+    Truth[Father] #<=> (Sanity[Father] #= Map.get(insane) #\/ Sanity[Son] #= Map.get(insane)),
+    
+    % Son: This is quite true!
+    Truth[Son] #<=> (Sanity[Father] #= Map.get(insane) #\/ Sanity[Son] #= Map.get(insane)),
+    
+    % Father: I, of course, am not a vampire.,
+    Truth[Father] #<=> (Type[Father] #!= Map.get(vampire))
+
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Father","Son"]),
+  
+  
+  nl.
+go4 => true.
+
+
+/*
+  5 The Case of Karl and Martha Dracula
+  """
+  The last case of the group involved a pair of twings, Karl and
+  Martha Dracula (no relation ot the count, I can assure you!).
+  The interesting thing about this case is that not only was it
+  already known that one of them was human and the other a 
+  vampire, but it was also known that one of the two was sane  
+  and the other insane, although Craig had no idea which was
+  which. Here is what they said.
+
+  Karl: My sister is a vampire.
+  Martha: My brother is insane.
+
+  Which one is the vampire?
+  """
+
+  Karl is the vampire.
+
+  Karl is a sane vampire and Martha is an insane human.
+
+  Solution:
+  [truth = [0,0],type = [2,1],sanity = [1,2]]
+  [Karl,False,Vampire,Sane]
+  [Martha,False,Human,Insane]
+
+*/
+go5 ?=>
+  println("5 The Case of Karl and Martha Dracula"),
+  Karl = 1,
+  Martha = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,first_five_cases),
+  Statements = [
+    % One of the two was sane and the other insane
+    Sanity[Karl] #!= Sanity[Martha],
+
+    % Karl: My sister is a vampire.
+    Truth[Karl] #<=> Type[Martha] #= Map.get(vampire),
+    
+    % Martha: My brother is insane.
+    Truth[Martha] #<=> Sanity[Karl] #= Map.get(insane)
+
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Karl","Martha"]),
+  
+  
+  nl.
+go5 => true.
+
+
+/*
+   Fived Married Couples Cases
+
+   The type constraint is that the married couple must be of the
+   same type, i.e. both are human or both are vampires.
+   
+   6. The Case of Sylvan and Sylvia Nitrate
+   """
+   The first case in this group was that of Sylvan and Sylvia
+   Nitrate. As already explained, they are either both humans or
+   both vampires. Here is the transcript of Craig's interrogation:
+   Craig: (to Mrs. Nitrate): Tell me something about yourselves.
+   Sylvia: My husband is human.
+   Sylvan: My wife is a vampire.
+   Sylvia: One of us is sane and one of us is not.
+
+   Are they humans or vampires?
+   """
+
+   Both are human. Sylvia is sane, and Sylvan is insane.
+
+   Solution:
+   [truth = [1,0],type = [1,1],sanity = [1,2]]
+   [Sylvia,True,Human,Sane]
+   [Sylvan,False,Human,Insane]
+
+
+*/
+go6 ?=>
+  println("6. The Case of Sylvan and Sylvia Nitrate"),
+  Sylvia = 1,
+  Sylvan = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,five_married_couples),
+  Statements = [
+   % Sylvia: My husband is human.
+   Truth[Sylvia] #<=> Type[Sylvan] #= Map.get(human),
+   
+   % Sylvan: My wife is a vampire.
+   Truth[Sylvan] #<=> Type[Sylvia] #= Map.get(vampire),
+   
+   % Sylvia: One of us is sane and one of us is not.
+   Truth[Sylvia] #<=> (Sanity[Sylvia] #!= Sanity[Sylvan]) 
+
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Sylvia","Sylvan"]),
+  
+  nl.
+go6 => true.
+
+
+/*
+  7 The Case of George and Gloria Globule
+  """
+  The next case involved the Globules.
+  Craig: Tell me somthing about yourselves.
+  Gloria: Whatever my husband says is true.
+  George: My wife is insane.
+  Craig did not feel that the husband's remark was overly
+  gallant; nevertheless, these two testimonies were sufficient
+  to solve the case.
+
+  Is this a human of a vampire couple?
+  """
+  
+  Gloria is a vampire (and thus George is a vampire as well).
+
+  Solutions:
+  [truth = [0,0],type = [2,2],sanity = [1,1]]
+  [George,False,Vampire,Sane]
+  [Gloria,False,Vampire,Sane]
+
+  [truth = [1,1],type = [2,2],sanity = [2,2]]
+  [George,True,Vampire,Insane]
+  [Gloria,True,Vampire,Insane]
+
+
+*/
+go7 ?=>
+  println("7. The Case of George and Gloria Globule"),
+  George = 1,
+  Gloria = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,five_married_couples),
+  Statements = [
+    % Gloria: Whatever my husband says is true.
+    Truth[Gloria] #<=> Truth[George] #= 1,
+    % Alternative:
+    % Truth[Gloria] #<=> Sanity[Gloria] #= Map.get(insane),
+    
+    % George: My wife is insane.
+    Truth[George] #<=> Sanity[Gloria] #= Map.get(insane)
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["George","Gloria"]),
+
+  nl.
+go7 => true.
+
+
+
+/*
+  8 The Case of Boris and Dorothy Vampyre
+  """
+  "It is important", said the Transylvanian chief of police to  
+  Inspector Craig, "not to let the last name of the suspects 
+  prejudice the issue".
+  Here are the answers they gave:
+  Boris Vampyre: We are both vampires.
+  Dorothy Vampyre: Yes, we are.
+  Boris Vampyre: We are alike, as far as our sanity goes.
+
+  What kind of couple are we dealing with?
+  """
+
+  They are vampires (and both are insane).
+
+  Solution:
+  [truth = [1,1],type = [2,2],sanity = [2,2]]
+  [Boris,True,Vampire,Insane]
+  [Dorothy,True,Vampire,Insane]
+
+*/
+go8 ?=>
+  println("8 The Case of Boris and Dorothy Vampyre"),
+  Boris = 1,
+  Dorothy = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,five_married_couples),
+  Statements = [
+    % Boris Vampyre: We are both vampires.
+    Truth[Boris] #<=> (Type[Boris] #= Map.get(vampire) #/\ Type[Dorothy] #= Map.get(vampire)),
+    
+    % Dorothy Vampyre: Yes, we are.
+    Truth[Dorothy] #<=> (Type[Boris] #= Map.get(vampire) #/\ Type[Dorothy] #= Map.get(vampire)),
+    
+    % Boris Vampyre: We are alike, as far as our sanity goes.
+    Truth[Boris] #<=> (Sanity[Boris] #= Sanity[Dorothy])
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Boris","Dorothy"]),
+
+  nl.
+go8 => true.
+
+
+
+/*
+  9 The Case of Arthur and Lilian Sweet
+  """
+  The next case involved a foreign couple (foreign to Transylvania,
+  that is) named Arthur and Lilian Sweet. Here is their testimony:
+  Arthur: We are both insane.
+  Lilian: That is true.
+
+  What are Arthur and Lilian?
+  """
+
+  They are vampires.
+
+  Solutions:
+  [truth = [0,0],type = [2,2],sanity = [1,1]]
+  [Arthur,False,Vampire,Sane]
+  [Lilian,False,Vampire,Sane]
+
+  [truth = [1,1],type = [2,2],sanity = [2,2]]
+  [Arthur,True,Vampire,Insane]
+  [Lilian,True,Vampire,Insane]
+
+*/
+go9 ?=>
+  println("9 The Case of Arthur and Lilian Sweet"),
+  Arthur = 1,
+  Lilian = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,five_married_couples),
+  Statements = [
+    % Arthur: We are both insane.
+    Truth[Arthur] #<=> (Sanity[Arthur] #= Map.get(insane) #/\ Sanity[Lilian] #= Map.get(insane)),
+    
+    % Lilian: That is true.
+    Truth[Lilian] #<=> (Truth[Arthur] #= 1)    
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Arthur","Lilian"]),
+
+  nl.
+go9 => true.
+
+
+/*
+  10 The Case of Luigi and Manuella Byrdecliffe
+  """
+  Here is the testimony of the Byrdcliffes:
+  Luigi: At least one of us is insane.
+  Manuella: That is not true!
+  Luigi: We are both human.
+
+  What are Luigi and Manuella?
+  """
+
+  They are both human (and Luigi is insane and Manuella is insane).
+
+  Solution:
+  [truth = [1,0],type = [1,1],sanity = [1,2]]
+  [Luigi,True,Human,Sane]
+  [Manuella,False,Human,Insane]
+
+*/
+go10 ?=>
+  println("10 The Case of Luigi and Manuella Byrdecliffe"),
+  Luigi = 1,
+  Manuella = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,five_married_couples),
+  Statements = [
+    % Luigi: At least one of us is insane.
+    Truth[Luigi] #<=> (Sanity[Luigi] #= Map.get(insane) #\/ Sanity[Manuella] #= Map.get(insane)),
+
+    % Manuella: That is not true!
+    Truth[Manuella] #<=> #~(Sanity[Luigi] #= Map.get(insane) #\/ Sanity[Manuella] #= Map.get(insane)),
+    
+    % Luigi: We are both human.
+    Truth[Luigi] #<=> (Type[Luigi] #= Map.get(human) #\/ Type[Manuella] #= Map.get(human))
+
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["Luigi","Manuella"]),
+
+  nl.
+go10 => true.
+
+
+
+/* 
+   Two unexpected puzzles
+
+   In these two puzzles, nothing is known before the interrogation
+   about the type of sanity of the people involved.
+
+
+   11 The Case of A and B
+   """
+   At the trial A stated that B was sane, and B claimed that A 
+   was insane. Then A claimed that B was a vampire and B declared
+   then A was human.
+   What can be deduced about A and B?
+   """
+
+   A is a sane vampire and B is an insane human.
+
+   Solution:
+   [truth = [0,0],type = [2,1],sanity = [1,2]]
+   [A,False,Vampire,Sane]
+   [B,False,Human,Insane]
+
+
+
+*/
+go11 ?=>
+  println("11 The Case of A and B"),
+  A = 1,
+  B = 2,
+
+  [Map,Type,Sanity,Truth] = init(2,two_unexpected_puzzles),
+  Statements = [
+    % A stated that B was sane,
+    Truth[A] #<=> (Sanity[B] #= Map.get(sane)),
+    
+    % and B claimed that A was insane.
+    Truth[B] #<=> (Sanity[A] #= Map.get(insane)),
+    
+    % Then A claimed that B was a vampire
+    Truth[A] #<=> (Type[B] #= Map.get(vampire)),
+    
+    % and B declared then A was human.
+    Truth[B] #<=> (Type[A] #= Map.get(human))
+  ],
+  check(Statements,[Map,Type,Sanity,Truth],["A","B"]),
+
+  nl.
+go11 => true.
+
+
+%
+% Generate functions/predicates.
+%
+
+%
+% Create lists, define domains, and set general constraints
+%
+init(Len,CaseType) = [Map,Type,Sanity,Truth] =>
+
+  % A sane human and an insane vampire tells the truth.
+  % This ensures that we can encode truthfullness with Type == Sanity
+  Map = new_map([human=1,vampire=2,sane=1,insane=2]),
+  
+  Type = new_list(Len),
+  Type :: Map.get(human)..Map.get(vampire),  
+  Sanity = new_list(Len),
+  Sanity :: Map.get(sane)..Map.get(insane),  
+  Truth = new_list(Len), Truth :: 0..1,
+
+  if CaseType == first_five_cases then
+     % One is a human and one is a vampire
+     % (we don't know anything about the sanity)
+     all_different(Type)
+  elseif CaseType == five_married_couples then
+     Type[1] #= Type[2]
+  elseif CaseType == two_unexpected_puzzles then
+     % Nothing is assumed
+     true
+  end.
+
+
+%
+% Print all possible solutions of the puzzle
+%
+check(Statements,[Map,Type,Sanity,Truth],People) =>
+  Len = People.len,
+  
+  % "Activate" the statements
+  foreach(S in Statements)
+   S
+  end,
+
+  % Who tells the truth?
+  % Connect truthness with sanity and type.
+  foreach(I in 1..Len)
+    % Truth[I] #= 1 #<=> ((Type[I] #= Map.get(human) #/\ Sanity[I] #= Map.get(sane))
+    %                     #\/
+    %                     (Type[I] #= Map.get(vampire) #/\ Sanity[I] #= Map.get(insane))
+    %                     ),
+    
+    % Simplified version as a consequence of the coding of Human/Vampire and Sane/Insane.
+    Truth[I] #= 1 #<=> (Type[I] #= Sanity[I])
+  end,
+
+  Vars = Truth ++ Type ++ Sanity,
+  solve(Vars),
+  println([truth=Truth,type=Type,sanity=Sanity]),
+  TypeS   = ["Human","Vampire"],  
+  SanityS = ["Sane","Insane"],
+  TruthS  = ["False","True"],
+  foreach(I in 1..Len)
+    println([People[I],TruthS[Truth[I]+1],TypeS[Type[I]],SanityS[Sanity[I]]])
+  end,
+  nl,
+  fail,
+  nl.
