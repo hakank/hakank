@@ -1,0 +1,324 @@
+/* 
+
+  Some tests of bv module and my bv_utils module in Picat.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import util.
+import sat.
+import bv_utils.
+
+main => go.
+
+% Just fooling around by chaining the constraints
+go ?=>
+  nolog,
+  A = new_bv(4),
+  B = new_bv(4),
+  D = new_bv(4),
+  C = bv_mul(A,2).bv_add(B).bv_shift_left(3).bv_mod(D),
+  bv_eq(C,0),
+  E = bv_sum([A,B,D]),
+  bv_eq(E,25),
+  Vars = A ++ B ++ C ++ D ++ E,
+  solve(Vars),
+  % println(a=A.bti),
+  % println(c=C.bti),
+  println([A,B,C,D,E].bti),
+  fail,
+  nl.
+go => true.
+
+% Get all solutions for X**2 + 2*X + 3 = Y
+% Note: There's no bv function for subtraction!
+%       And no support for negative numbers.
+go2 ?=>
+  nolog,
+  X = new_bv(128),
+  Y = bv_pow(X,2).bv_add(bv_mul(X,2)).bv_add(3),
+  % bv_eq(Y,1152921508901814278),
+  % bv_eq(Y,293781105823845345863615395592029952258),
+  bv_eq(Y,21259104184701634106245906744778807659134047632285687054809526721052672003),
+  solve(X++Y),
+  println([X,Y].bti),
+  fail,
+  nl.
+go2 => true.
+
+go3 =>
+  nolog,
+  Size = 8,
+  X = new_bv(Size),
+  Y = bv_not(X),
+
+  solve(X++Y),
+  println([X,Y].bti),
+  if (~X.bti) mod 2**Size == Y.bti then  
+    println(ok)
+  else
+    println(not_ok),
+    halt
+  end,
+  fail,
+  nl.
+go3 => true.
+
+% subtraction
+% A - B = C -> C = A + (~B + 1)
+% Picat> C = 10 + (~8 +1)
+% C = 2
+% NOTE: This only works if A >= B, otherwise it fails.
+%
+go4 =>
+  nolog,
+  Size = 8,
+  A = new_bv(Size),
+  B = new_bv(Size),
+  % A.bv_eq(10),
+  % B.bv_eq(3),
+  bv_ge(A,B),
+  % bv_sub(A,B,C),
+  NotB = new_bv(Size),
+  % NotB1 = new_bv(Size),
+  % C = new_bv(Size),
+  NotB = bv_not(B),
+  NotB1 = bv_add(NotB,1),
+  C = bv_add(A,NotB1).bv_mod(2**Size),
+  solve(A ++ B ++ NotB ++ NotB1 ++ C),
+  % println([A,B,NotB,NotB1,C].bti),
+  println([a=A.bti,b=B.bti,notB=NotB.bti,notb1=NotB1.bti,c=C.bti]),
+  if A.bti - B.bti == C.bti then
+    println(ok)
+  else
+    println(not_ok),
+    halt
+  end,
+  fail,
+  nl.
+go4 => true.
+
+% Checking with bv_sub/3
+go4b =>
+  nolog,
+  Size = 4,
+  A = new_bv(Size),
+  B = new_bv(Size),
+  bv_ge(A,B), % A must be >= B
+  bv_sub(A,B,C),
+  solve(A ++ B ++ C),
+  println([a=A.bti,b=B.bti,c=C.bti]),
+  if A.bti - B.bti == C.bti then
+    println(ok)
+  else
+    println(not_ok),
+    halt
+  end,
+  fail,
+  nl.
+go4b => true.
+
+
+% All different
+go5 ?=>
+  nolog,
+  garbage_collect(300_000_000),
+  X = make_bv_array(15,64),
+  bv_all_different(X),
+  bv_increasing(X),
+  solve(X),
+  println(X.bti),
+  fail,
+  nl.
+go5 => true.
+
+
+% Queens:
+% This does NOT work.
+% The traditional model using all_different/1 requires that
+% one use negative values which is not allowed by the bv module.
+% The fix by adding N does not work.
+go6 ?=>
+  nolog,
+  N = 4,
+  /*
+  % q = [2,4,1,3]
+  % [5,6,2,3]
+  % [7,10,8,11]
+  %
+  % q = [3,1,4,2]
+  % [6,3,5,2]
+  % [8,7,11,10]
+  % 
+  Q = new_list(N),
+  Q :: 1..N,
+  all_different(Q),
+  all_different([$N+(Q[I]-I) : I in 1..N]),
+  all_different([$N+(Q[I]+I) : I in 1..N]),
+  solve(Q),
+  println(q=Q),
+  println([N+Q[I]-I : I in 1..N]),
+  println([N+Q[I]+I : I in 1..N]),
+  */
+  
+  % This does not work correctly. Why?
+  Q = make_bv_array(N,1,N),
+  bv_all_different(Q),
+  bv_all_different({ T : I in 1..N, T=new_bv(2**N),bv_add(Q[I],N).bv_sub2(I,T)}),
+  % bv_all_different({ T : I in 1..N, T=new_bv(64),bv_add(Q[I],N,A),bv_add(A,I,T)}),  
+  % bv_all_different({ T : I in 1..N, T = bv_add(Q[I],N).bv_add(I)}),  
+  % bv_all_different([ T : I in 1..N, T = bv_add(Q[I],N).bv_sub(I)]),
+  bv_all_different([ T : I in 1..N, T = bv_add(Q[I],I)]),  
+  solve(Q),
+  println(q=Q.bti),
+  println([N+Q[I].bti-I : I in 1..N]),    
+  println([N+Q[I].bti+I : I in 1..N]),
+
+  nl,
+
+
+  % % Another take: Nope, bv_sub/3 cannot handle negative values
+  % Q = make_bv_array(N,1,N),
+  % bv_all_different(Q),
+  % foreach(I in 1..N, J in 1..N, I < J)
+  %   bv_neq(Q[I],Q[J]),
+  %   bv_neq(bv_add(Q[I],I),bv_add(Q[J],J)),
+  %   bv_neq(bv_sub(Q[I],I),bv_sub(Q[J],J)),    
+  % end,
+  % solve(Q),
+  % println(q=Q.bti),
+  
+  fail,
+  nl.
+go6 => true.
+
+/*
+  Testing the limits of bv's
+
+  Here we test by just creating a bv to a certain bit size (in base 10).
+  Between each round a garbage_collect(400_000_000) is done:
+
+  Number of bits    Time for new_bv/1 + solve/1
+  ---------------------------------------------
+  1                 0
+  1000001           0.944 seconds.
+  2000001           1.727 seconds.
+  3000001           2.356 seconds.
+  4000001           4.595 seconds.
+  5000001           5.545 seconds.
+  6000001           6.619 seconds.
+  7000001           8.095 seconds.
+  8000001           8.865 seconds.
+  9000001           9.908 seconds.
+  10000001          10.984 seconds.
+
+  So, the time for solve/1 a bv of 1_000_000 bits takes about 0.95s
+
+  Let's add a simple operation to this: Y = X mod 2. Now we have to use quite
+  smallest bit sizes to be in about the same time range
+
+  Number of bits    Time for new_bv/1 of X and Y + bv_mod(X,2) + solve/1
+  -----------------------------------------------------------
+  1 0.0 seconds.
+  10001 0.337 seconds.
+  20001 1.019 seconds.
+  30001 1.622 seconds.
+  40001 2.83 seconds.
+  50001 4.316 seconds.
+  60001 6.35 seconds.
+  70001 8.611 seconds.
+  80001 11.024 seconds.
+  90001 14.042 seconds.
+  100001 17.276 seconds.
+
+  So, it takes about 17s to create a bv of bitsize 100_000 and to a mod 2.
+
+  Interestingly, if we only create a bv for X, but not Y, then it's much faster:
+  Number of bits    Time for new_bv/1 of X (not Y) + bv_mod(X,2) + solve/1
+  -------------------------------------------------------------------------
+  1                 0.0 seconds.
+  10001             0.027 seconds.
+  20001             0.051 seconds.
+  30001             0.07 seconds.
+  40001             0.1 seconds.
+  50001             0.121 seconds.
+  60001             0.146 seconds.
+  70001             0.175 seconds.
+  80001             0.198 seconds.
+  90001             0.283 seconds.
+ 100001             0.284 seconds.
+
+  So let's do that for up to 1_000_000 instead.
+  Number of bits    Time for new_bv/1 of X (not Y) + bv_mod(X,2,Y) + solve/1
+  -------------------------------------------------------------------------
+  1                 0.0 seconds.
+  100001            0.307 seconds.
+  200001            0.758 seconds.
+  300001            1.099 seconds.
+  400001            1.563 seconds.
+  500001            1.905 seconds.
+  600001            2.228 seconds.
+  700001            2.681 seconds.
+  800001            2.968 seconds.
+  900001            3.335 seconds.
+  1000001           3.661 seconds.
+
+ 
+  Note: int_to_bits/1 (using log2/1) cannot handle integers larger than 10**308 (~ 2**1024).
+        And unfortunately to_string/1 for large integers is quite slow, in fact quite slower
+        than solve/1.
+*/
+go7 ?=>
+  nolog,
+  garbage_collect(400_000_000),
+  foreach(E in 1..1_000..10_001)
+    garbage_collect(400_000_000),
+    println(e=E),
+    X = new_bv(E),
+    % Y = new_bv(E),
+    X.bv_gt(0),
+    % Y.bv_gt(0),
+    
+    % bv_add(X,X,Y),
+    % bv_pow(X,2,Y),
+    % bv_pow(X,Y,Z),    
+    % bv_mul(X,X,Y),
+    % bv_mul(X,Y,Z),
+    % bv_mod(X,2,Y),
+    Y = bv_mod(X,2**8-1),
+    % Y = bv_mod(X,2),
+    % time(solve(X++Y)),
+
+    % time(solve(X)),
+    time(solve(X++Y)),
+    % XX = X.bti,
+    % YY=Y.bti,
+    % println(to_string),
+    % time(XS = XX.to_string.len), % Note .ints_to_bits (using log2/1) cannot handle large integers
+    % println(xs=XS),
+    % YS = YY.to_string.len,    
+    % println(E=x=XS)
+    % println(E),
+    println(E=[x=X.bti,y=Y.bti])
+  end,
+  nl.
+go7 => true.
+
+% Testing bv_prod
+go8 ?=>
+  nolog,
+  % X = make_bv_array(5,1,5),
+  X = make_bv_array(5,64),
+  % Y = new_bv(64),
+  bv_prod(X,Y),
+  Y.bv_gt(0),
+  bv_increasing(X),  
+  solve(X++Y),
+  println([x=X.bti,y=Y.bti]),
+  fail,
+  nl.
+go8 => true.
+  

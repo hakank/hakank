@@ -1,0 +1,238 @@
+/* 
+
+  Utils for the bv module in Picat.
+
+  This module extends the built-in bv module (introduced in Picat v3.9).
+
+  See https://hakank.org/picat/#bv for some examples.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+module bv_utils.
+
+import sat.
+
+% Returns the number of bits required for integer Int
+int_to_bits(Int) = 1 + Int.log2.floor.
+
+% bti(A)
+% returns the bv_to_int representation of A
+% - A is a single bit vector or
+% - A is an array of bit vectors
+bti(A) = cond(integer(A),A,cond(array(A[1]),cond(array(A),A.to_list.map(bv_to_int),A.map(bv_to_int)),A.bv_to_int)).
+
+%
+% Convert the bv_*/3 predicates to bv_*/2 functions for chaining the constraints
+%
+bv_add(A,B) = C => bv_add(A,B,C).
+bv_and(A,B) = C => bv_and(A,B,C).
+bv_div(A,B) = C => bv_xor(A,B,C).
+bv_mod(A,B) = C => bv_mod(A,B,C).
+bv_mul(A,B) = C => bv_mul(A,B,C).
+bv_or(A,B)  = C => bv_or(A,B,C).
+bv_pow(A,B) = C => bv_pow(A,B,C).
+bv_xor(A,B) = C => bv_xor(A,B,C).
+bv_sum(A)   = B => bv_sum(A,B).
+bv_prod(A)  = B => bv_prod(A,B).
+
+
+% The one defined in this module
+bv_shift_left(A,B) = C => bv_shift_left(A,B,C).
+bv_shift_right(A,B) = C => bv_shift_right(A,B,C).
+bv_sub(A,B) = C => bv_sub(A,B,C).
+bv_not(A) = B => bv_not(A,B).
+
+
+
+% convenience functions
+bv_lt(A,B) => bv_gt(B,A). % A <  B -> B >  A
+bv_le(A,B) => bv_ge(B,A). % A <= B -> B <= A
+
+scalar_product_bv(X,A) = Sum => scalar_product_bv(X,A,Sum).
+bv_scalar_product(X,A) = Sum => scalar_product_bv(X,A,Sum).
+
+%
+% Converts a bv Num to/from a list of bv List given a base Base
+% Cf my to_num/2-3 for "plain" constraint modeling.
+%
+to_num_bv(List, Base, Num) =>
+  Len = length(List),
+  % Num #= sum([List[I]*Base**(Len-I) : I in 1..Len]).  
+  bv_sum([ T : I in 1..Len, bv_mul(List[I],Base**(Len-I),T)],Num).
+
+to_num_bv(List, Num) =>
+  to_num_bv(List, 10, Num).
+
+%
+% Make an array of bv's with the domain of Min..Max
+%
+make_bv_array(N,Min,Max) = L =>
+  L = {},
+  D = int_to_bits(Max), % 1 + Max.log2.floor,
+  foreach(_ in 1..N)
+    T = new_bv(D),
+    bv_ge(T,Min),
+    bv_ge(Max,T),
+    L := L ++ {T}
+  end.
+
+make_bv_array(N,Size) = {new_bv(Size) : _ in 1..N}.
+
+make_bv_matrix(Rows,Cols,Min,Max) = M =>
+  M = {},
+  D = int_to_bits(Max), % 1 + Max.log2.floor,
+  foreach(_ in 1..Rows)
+    L = {},
+    foreach(_ in 1..Cols) 
+      T = new_bv(D),
+      bv_ge(T,Min),
+      bv_ge(Max,T),
+      L := L ++ {T}
+    end,
+    M := M ++ {L}
+  end.
+
+make_bv_matrix(N,Size) = {{new_bv(Size) : _ in 1..N} : _ in 1..N}.
+
+
+% Restrict variable to be in the range Low..High
+bv_dom(X,Low,High) =>
+  check_bv(X,bv_dom,BVX),
+  bv_le(BVX,High),
+  bv_ge(BVX,Low).
+
+
+% Right shift: >>
+% (See bv_shift.pi for some tests)
+bv_shift_right(X,N,Res) =>
+  check_bv(X,bv_shift_right,BVX),
+  Len = BVX.len,
+  if N > Len then
+    handle_exception($[n,N,larger_than_bitlen,Len], bv_shift_right)
+  end,  
+  Drop = bv_drop(BVX,N),
+  Res = Drop ++ {0 : _ in 1..N}.
+
+% Left shift: <<
+% (See bv_shift.pi for some tests)
+bv_shift_left(X,N,Res) =>
+  check_bv(X,bv_shift_left,BVX),
+  Len = BVX.len,
+  if N > Len then
+    handle_exception($[n,N,larger_than_bitlen,Len], bv_shift_left)
+  end,
+  Take = bv_take(BVX,Len-N),
+  Res = {0 : _ in 1..N} ++ Take.
+
+% Subtraction
+% Using bv_not/3 for this.
+% A - B = C -> C = A + (~B + 1)
+% Note: This only works if A >= B,
+%       otherwise it fails (since bv:s
+%       cannot be negative)
+bv_sub(A,B,C), var(C) =>
+  check_bv(A,bv_sub,AVX),
+  Size = AVX.len,
+  C = new_bv(Size),
+  NotB = new_bv(Size),
+  NotB1 = new_bv(Size),  
+  bv_not(B,NotB),
+  bv_add(NotB,1,NotB1),
+  bv_add(A,NotB1,C1),
+  bv_mod(C1,2**Size,C).
+
+bv_sub(A,B,C), array(C) =>
+  check_bv(A,bv_sub,BVX),
+  Size = BVX.len,
+  bv_not(B,NotB),
+  bv_add(NotB,1,NotB1),
+  bv_add(A,NotB1,C1),
+  bv_mod(C1,2**Size,C).
+
+
+% TEST
+bv_sub2(A,B,C), var(C) =>
+  check_bv(A,bv_sub,BVX),
+  Size = BVX.len,
+  C = new_bv(Size),
+  bv_add(A,B).bv_add(C).bv_eq(0).
+
+bv_sub2(A,B,C), array(C) =>
+  check_bv(A,bv_sub,BVX),
+  % Size = BVX.len,
+  bv_add(A,B).bv_add(C).bv_eq(0).  
+
+
+% NOTE: Again, B cannot be negative.
+bv_not(A,B) =>
+  check_bv(A,bv_not,BVX),
+  Size = BVX.len,
+  B = new_bv(Size),
+  B = {T : Bit in BVX, T #= Bit #^ 1}.
+
+%
+% All different.
+% (Note: A is an array, so we cannot use the traditional [H|T] stuff here.)
+bv_all_different(A) =>
+  if A.len <= 1 then
+    true
+  else 
+    H=A[1],
+    T = A[2..A.len],
+    foreach(V in T)
+      bv_neq(H,V)
+    end,
+    bv_all_different(T)
+  end.
+
+% Increasing (<=)
+bv_increasing(A) =>
+  foreach(I in 2..A.len)
+    bv_le(A[I-1],A[I])
+  end.
+
+% Increasing strict (<)
+bv_increasing_strict(A) =>
+  foreach(I in 2..A.len)
+    bv_lt(A[I-1],A[I])
+  end.
+
+
+% Decreasing (>=)
+bv_decreasing(A) =>
+  foreach(I in 2..A.len)
+    bv_ge(A[I-1],A[I])
+  end.
+
+% Decreasing strict (>)
+bv_decreasing_strict(A) =>
+  foreach(I in 2..A.len)
+    bv_gt(A[I-1],A[I])
+  end.
+
+
+% Scalar product: X*A = Sum
+scalar_product_bv(X,A,Sum) =>
+  bv_sum([bv_mul(X[I],A[I]) : I in 1..X.len],Sum).
+
+bv_scalar_product(X,A,Sum) => scalar_product_bv(X,A,Sum).
+
+% bv_prod (based on bv.bv_prod)
+% bv_prod(V,Prod), array(V) => bv_prod(V.to_list,Prod).
+bv_prod([],Prod) => bv_eq(Prod,0).
+bv_prod([V],Prod) => bv_eq(Prod,V).
+bv_prod([V1,V2],Prod) => bv_mul(V1,V2,Prod).
+bv_prod([V1,V2|Vs],Prod) => 
+    bv_mul(V1,V2,V),
+    bv_prod_aux(Vs,[V],Prod).
+bv_prod(Vs,Prod) => 
+    handle_exception($list_expected(Vs), bv_prod).
+
+bv_prod_aux([],Vs1,Prod) => bv_prod(Vs1,Prod).
+bv_prod_aux([V],Vs1,Prod) => bv_prod([V|Vs1],Prod).
+bv_prod_aux([V1,V2|Vs],Vs1,Prod) => 
+    bv_mul(V1,V2,V),
+    bv_prod_aux(Vs,[V|Vs1],Prod).

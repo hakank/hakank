@@ -1,0 +1,238 @@
+/* 
+
+  Cracking Linear Congruential Generators in Picat.
+
+  From http://rosettacode.org/wiki/Linear_congruential_generator
+  """
+  The linear congruential generator is a very simple example of a random number 
+  generator. All linear congruential generators use this formula:
+
+    r_{n + 1} = a times r_n + c mod m 
+
+  Where:
+
+    r0 is a seed.
+    r1, r2, r3, ..., are the random numbers.
+    a, c, m are constants. 
+  """
+
+  Here we want to recover a, c and m given a sequence from 
+  a lcg.
+
+  Cf linear_congruential_generator.pi
+
+  There's a lot of solutions:
+
+  Generated sequence: [12345,1406932606,654583775,1449466924,229283573,1109335178]
+
+  Derived sequence and A, C, Mod, and Div
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,614416868,16509622,663908699,164985115,1109335178]
+  a = 3
+  c = 3055500648
+  mod = 2441120815
+  div = 1
+  [test,1501264552,1109335178]
+
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,50355438,302070903,32302916,211808293,1109335178]
+  a = 5
+  c = 50293713
+  mod = 1528345312
+  div = 1
+  [test,1011933667,1109335178]
+
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,1561271434,1109335178,572464266,35593354,1109335178]
+  a = 1048576
+  c = 1501502602
+  mod = 1610612736
+  div = 1
+  [test,572464266,1109335178]
+
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,1498612412,1364916710,587257394,632009306,1109335178]
+  a = 228366
+  c = 1900659614
+  mod = 1610612736
+  div = 1
+  [test,1450060586,1109335178]
+
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,1372730848,2045920316,1320051714,1940562048,1109335178]
+  a = 2
+  c = 1372706158
+  mod = 2072247538
+  div = 1
+  [test,1519128976,1109335178]
+
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,2084025234,1164443722,861183626,1573227658,1109335178]
+  a = 13176
+  c = 1921367514
+  mod = 2147483648
+  div = 1
+  [test,600480906,1109335178]
+
+  seq = [12345,1406932606,654583775,1449466924,229283573,1109335178]
+  seeds = [12345,306971346,41543177,1262180482,34897729,1109335178]
+  a = 23
+  c = 306687411
+  mod = 1831371298
+  div = 1
+  [test,182198333,1109335178]
+
+  ...
+
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+import bv_utils.
+
+main => go.
+
+go ?=>
+  nolog,
+  N = 6,
+  % BSD
+  lcg_init(bsd,1103515245,12345,2**31,1),
+  Seq = [lcg(bsd) : _ in 1..N],
+  
+  % MS
+  %     (Type,Seed,Multiplier,Adder,Mod,OutputDivisor
+  % lcg_init(ms,1,214013,2531011,2**31,2**16),
+  % lcg_init(ms,1,214013,2531011,2**31,2**16),
+  % Seq = [lcg(ms) : _ in 1..N],
+  println(seq=Seq),
+
+  % We must separate the seed from the output.
+  % The output is seed div 2**16 but the seed is
+  % mod 2**31!
+  % Seeds = new_list(N),
+  % Seeds :: 0..2**32,
+  Seeds = make_bv_array(N,0,2**31),
+  % println(seeds=Seeds),
+  % Seeds[1] #= Seq[1],
+  bv_eq(Seeds[1],int_to_bv(Seq[1])),
+
+  Bits = 32,
+  % A :: 1..2**56,
+  A = new_bv(Bits),
+  A.bv_gt(1),
+
+  % C :: 0..2**56,
+  C = new_bv(Bits),
+  C.bv_gt(0),
+  % println(c=C),
+  
+  % M :: 1..2**56,
+  M = new_bv(Bits),
+  % M.bv_gt(1),
+  % M :: [2**I : I in 0..54], % No solution!
+  % M #> max(Seq),
+  bv_gt(M,max(Seq)),
+  % println(m=M),
+  
+  % Div :: 1..2**56,
+  Div = new_bv(Bits),
+  bv_gt(Div,0),  
+  % Div :: [2**I : I in 0..32], % 0..2**32,
+  % Div #= 2**16, % for MS
+  % Div #= 1, % for BSD
+  % println(div=Div),
+
+  % A #>= 0, % :: 0..2**32,
+  % println(a=A),
+  % C #>= 0, % :: 0..2**32,
+  % println(c=C),
+  % M #>= 0, % :: 0..2**32,
+  % println(m=M),
+
+  % We keep Seq[N] for testing
+  foreach(I in 2..N)
+    % Seeds[I] #= ((A * Seeds[I-1] + C) mod M),
+    bv_mul(A,Seeds[I-1],ASeedsI1),
+    bv_add(ASeedsI1,C,ASeedsI1C),
+    bv_mod(ASeedsI1C,M,Seeds[I]),
+
+    % Seq[I] #= Seeds[I] div Div % -> Div*Seq[I] #= Seeds[I]
+    % bv_div(Seeds[I],Div,Seq[I])    
+    bv_mul(Seq[I],Div,SeqIDiv),
+
+    % Adjust for bitsize
+    % bv_mod(SeqIDiv,2**Bits,Seq[I]),
+    bv_and(SeqIDiv,2**Bits-1,Seq[I]),
+    
+    % bv_eq(Seq[I],Seeds[I])
+  end,
+  bv_eq(Seeds[N],Seq[N]),
+  
+
+  
+  Vars = Seeds ++ A ++ C ++ M ++ Div,
+  println(solve),
+  solve($[],Vars),
+
+
+  println(seq=Seq),
+  println(seeds=Seeds.to_list.map(bv_to_int)),
+  AA = A.bv_to_int, CC = C.bv_to_int, MM = M.bv_to_int, DivD = Div.bv_to_int,
+  SeedsN = Seeds[N].bv_to_int,
+  println(a=AA),
+  println(c=CC),
+  println(mod=MM),
+  println(div=DivD),
+  
+  println([test,(((AA*SeedsN + CC) mod MM) div DivD),Seq[N]]),
+  nl,
+  % (((A*Seeds[N-1] + C) mod M) div Div)==Seq[N],
+
+  (AA == 1103515245, CC ==12345, MM == 2**31),
+  % fail,
+  println(ok),
+   
+  nl.
+go => true.
+
+%
+% Make an array of bv's with the domain of Min..Max
+%
+make_bv_array(N,Min,Max) = L =>
+  L = {},
+  D = 1 + Max.log2.floor,
+  foreach(_ in 1..N)
+    T = new_bv(D),
+    bv_ge(T,Min),
+    bv_ge(Max,T),
+    L := L ++ {T}
+  end.
+
+%
+% general version using global map
+%
+% (Multiplier*Seed + Adder) mod Mod
+%
+% default seed is 0
+lcg_init(Type,Multiplier,Adder,Mod,OutputDivisor) => 
+  lcg_init(Type,0,Multiplier,Adder,Mod,OutputDivisor).
+
+lcg_init(Type,Seed,Multiplier,Adder,Mod,OutputDivisor) => 
+  get_global_map().put(Type, 
+              new_map([seed=Seed,multiplier=Multiplier,adder=Adder,mod=Mod,outputDivisor=OutputDivisor])).
+
+lcg(Type) = Rand div M.get(outputDivisor) =>
+  if not get_global_map().has_key(Type) then
+    throw $lcg(Type,unknown_LCG_type)
+  end,
+  Map = get_global_map(),
+  M = Map.get(Type),
+  Rand = ((M.get(multiplier)*M.get(seed) + M.get(adder)) mod M.get(mod)),
+  M.put(seed,Rand),
+  Map.put(Type,M).
+
+

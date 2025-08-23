@@ -1,0 +1,210 @@
+/* 
+
+  Simplified xorshift128 problem  in Picat.
+
+  Using the bv module (in Picat version >= v3.9).
+
+  It's based on the xorshift128 problem by Albert Binero from the Picat group:
+  https://groups.google.com/g/picat-lang/c/o5gv1Rad_1o
+  Albert pointed to: https://blog.securityevaluators.com/hacking-the-javascript-lottery-80cc437e3b7f
+  The Picat model below is a simplified version of that problem.
+
+  xs = [2680751407537546273,18303446388156671302,4979183507015256116,8710532915341142828]
+  ns = [6430731402447207,8027020921204090,7780754404832096]
+
+  Python code result:
+"""
+floats: [0.7139546068176913, 0.8911783445868615, 0.8638372689198199]
+53 bits = 0x16d8b754e38967 n= 6430731402447207
+53 bits = 0x1c8488729ced7a n= 8027020921204090
+53 bits = 0x1ba48e0e627360 n= 7780754404832096
+check = sat
+state = 0x2533f133b1676421 0xfe02e783a37c2546L x: 2680751407537546273 y: 18303446388156671302 
+
+0.713954606818
+x:  2680751407537546273 y: 18303446388156671302
+0.891178344587
+x:  18303446388156671302 y: 4979183507015256116
+0.86383726892
+x:  4979183507015256116 y: 8710532915341142828
+0.912423789538
+x:  8710532915341142828 y: 13572489224510462729
+0.988904867489
+x:  13572489224510462729 y: 415591282033017005
+0.174715987463
+x:  415591282033017005 y: 4368805223946513585
+0.808913956409
+x:  4368805223946513585 y: 3483751376118205069
+0.717231117906
+x:  3483751376118205069 y: 10907206077293841604
+0.993629814643
+x:  10907206077293841604 y: 1594729110757850972
+0.740529029604
+x:  1594729110757850972 y: 10409530389080712871
+"""
+
+   NOTE: This is using the old bv module written by Neng-Fa in 2018,
+         i.e. not the sat_bv module that's officially in Picat v3.9.
+
+  This Picat model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+
+% import util.
+% import cp.
+
+import sat.
+import bv_utils.
+
+main => go.
+
+
+/*
+
+Here's is the Z3/Python model that's ported to Picat.
+
+# run xs128_dbl.py 0.7139546068176913 0.8911783445868615 0.8638372689198199
+# time to solve: 477 ms
+
+import sys, z3
+bit53 = 0x001fffffffffffff
+bit64 = 0xffffffffffffffff
+
+if len(sys.argv) < 4: print 'Need 3 math.random() values!'; sys.exit()
+
+def xs128(x, y, LShR = lambda x,i: x>>i):
+    x ^= (x << 23) & bit64
+    return y, x ^ y ^ LShR(x,18) ^ LShR(y, 5)
+
+x0, y0 = z3.BitVecs('x0 y0', 64)
+x, y = x0, y0
+s = z3.Solver()
+
+for v in sys.argv[1:]:
+    n = int(float(v) * 2**53)
+    print '53 bits =', hex(n)
+    s.add((x + y) & bit53 == n)
+    x, y = xs128(x, y, z3.LShR)
+
+print 'check =', s.check()
+solns = s.model()
+x, y = solns[x0].as_long(), solns[y0].as_long()
+print 'state =', hex(x), hex(y), '\n'
+
+for i in range(10):         # predict 7 more
+    print ((x + y) & bit53) / (1.0+bit53)
+    x, y = xs128(x, y)
+
+"""
+
+
+
+*/
+
+go =>
+  nolog,
+
+  BitSize = 64,
+
+  Bit53Const = 0x001fffffffffffff,
+  % Bit64Const = 0xffffffffffffffff,
+
+  % Constants
+  Bit53 = int_to_bv(Bit53Const),
+  % Bit64 = int_to_bv(Bit64Const),
+
+  Floats = [0.7139546068176913, 0.8911783445868615, 0.8638372689198199],
+  println(floatsGiven=[to_fstring("%2.15f",F) : F in Floats]),
+  Flen = Floats.len,
+
+  Xs = make_bv_array(Flen+1,BitSize),
+  Ys = make_bv_array(Flen+1,BitSize),
+  Ns = new_array(Flen),
+
+  % Loop through the given floats and try to figure out the Xs
+  % (The only interesting is the first one, but we have to collect
+  %  all to be able to solve the problem.)
+  foreach(I in 1..Flen)
+    % convert float to 64-bit
+    F2 = to_integer(Floats[I]*2**53),
+    % println(f2=F2),
+    Ns[I] = int_to_bv(F2),
+
+    % s.add((x + y) & bit53 == n)
+    % bv_add(Xs[I],Ys[I],XPlusY),
+    % bv_and(XPlusY,Bit53,EqN),
+    % bv_eq(EqN,Ns[I]),
+    bv_and( bv_add(Xs[I],Ys[I]),Bit53).bv_eq(Ns[I]),
+    xs128(Xs[I],Ys[I], Xs[I+1],Ys[I+1])
+    % xs128_c(Xs[I],Ys[I], Xs[I+1],Ys[I+1]) % TODO
+  end,
+
+
+  println(solve),
+  Vars = Xs ++ Ys, %  ++ Ns,
+  solve($[], Vars),
+
+  println(xs=Xs.bti),
+  println(ys=Ys.bti),
+
+  % Now we found the start values of X and Y so we start again
+  % and show 7 new (apart from the 3 start values in Float)
+  % Note: This uses the non bv version of xs128/4.
+  X = Xs[1].bti,
+  Y = Ys[1].bti, % same as Xs[2]
+  foreach(I in 1..10)
+    % Convert to Float
+    F = (((X + Y) ) /\ Bit53Const ) / (1+Bit53Const ),
+    % println(F),
+    xs128_fixed(X,Y,X2,Y2),
+    printf("%10.15f x:%w y:%w\n",F,X,Y),    
+    X := X2,
+    Y := Y2
+  end,
+
+  fail,
+
+  nl.
+
+
+/*
+def xs128(x, y, LShR = lambda x,i: x>>i):
+    x ^= (x << 23) & bit64
+    return y, x ^ y ^ LShR(x,18) ^ LShR(y, 5)
+
+*/
+xs128(X, Y, XRes, YRes) =>
+  Bit64 = int_to_bv(0xffffffffffffffff), 
+  bv_shift_left(X,23,XShift23), % x << 23
+  bv_and(XShift23,Bit64,And),   % (x << 23) & bit64 
+  bv_xor(X,And,X2),             % x ^= (x << 23) & bit64
+
+  bv_shift_right(X2,18,XRS18),  % LShR(x,18) 
+  bv_shift_right(Y,5,YRS5),     % LShR(y, 5)
+
+  bv_xor(X2,Y,XxorY),           % x ^ y
+  bv_xor(XxorY,XRS18,T1),       % x ^ y ^ LShR(x,18)
+  bv_xor(T1,YRS5,YRes),         % x ^ y ^ LShR(x,18) ^ LShR(y, 5)
+  XRes = Y.
+
+
+% For fixed X and Y
+xs128_fixed(X,Y, X2,Y2) =>
+  Bit64 = 0xffffffffffffffff, 
+  X := X ^ (X << 23 ) /\ Bit64,
+  Y2 = X ^ Y ^ (X >> 18) ^ (Y >> 5),
+  X2 = Y.
+
+
+
+
+% Chaining version of xs128/4
+%  x ^= (x << 23) & bit64
+%  return y, x ^ y ^ LShR(x,18) ^ LShR(y, 5)
+% TODO!
+% xs128_c(X, Y, XRes, YRes) =>
+%   Bit64 = int_to_bv(0xffffffffffffffff),
+%   X := bv_xor(X,bv_and(X,bv_shift_left(X,23)).bv_and(Bit64)),
+%   Y = X.bv_xor(Y).bv_xor(bv_shift_left(X,18)).bv_xor(bv_shift_right(Y,5)).

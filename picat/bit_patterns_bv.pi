@@ -1,0 +1,160 @@
+/* 
+
+  16-bit pattern in Picat.
+
+  https://stackoverflow.com/questions/66079294/what-is-the-most-elegant-way-to-find-16-bit-numbers-which-satisfy-some-condition
+  """
+  What is the most elegant way to find 16-bit numbers which satisfy some conditions?
+
+  I need to find all triples of 16-bit numbers (x, y, z) (well, actually only bits which perfectly 
+  match up in different triples with bits on same positions), such that
+
+  y | x = 0x49ab
+  (y >> 2) ^ x = 0x530b
+  (z >> 1) & y = 0x0883
+  (x << 2) | z = 0x1787
+
+  Straight ahead tactics would require about 2 days on 8700K, which is too much (even if I'll 
+  use all PCs I have access (R5-3600, i3-2100, i7-8700K, R5-4500U, 3xRPi4, RPi0/W) it would 
+  take too much time).
+
+  If bit shift wasn't in equations then it would be trivial to do that, but with shifts it's 
+  too hard to do the same thing (or maybe even impossible).
+
+  So I came up to pretty interesting solution: parse equations into statements about bits 
+  of numbers (something like "3rd bit of x XOR 1st bit of y is equal 1") and with all 
+  these statements written in something like Prolog language (or just interpret them 
+  using truth tables of operations) executed all unambiguous bits would be found. This 
+  solution is pretty hard too: I have no idea how to write such parser and no experience 
+  in Prolog. (*)
+
+  So the question is: What would be the best way to do this? And if it's (*) then how to do that?
+
+  Edit: for easier coding here the binary pattern of the numbers:
+
+  0x49ab = 0b0100100110101011
+  0x530b = 0b0101001100001011
+  0x0883 = 0b0000100010000011
+  0x1787 = 0b0001011110000111
+  """
+
+  (Accepted) answer by Harold:
+  """
+  There are four solutions. In all of them, x = 0x4121, y = 0x48ab. There are four options 
+  for z (two of its bits are free to be 0 or 1), namely 0x1307, 0x1387, 0x1707, 0x1787.
+
+  This can be calculated by treating the variables are arrays of 16 bits and implementing 
+  the bitwise operations on them in terms of operations on booleans. That could probably be done 
+  in Prolog, or it could be done with a SAT solver or with binary decisions diagrams, I used 
+  this website (*) which uses BDDs internally.
+  * [http://haroldbot.nl/?q=%28%28y+%7C+x%29+%3D%3D+0x49ab%29+%26%26+%28%28%28y+%3E%3E+2%29+%5E+x%29+%3D%3D+0x530b%29+%26%26+%28%28%28z+%3E%3E+1%29+%26+y%29+%3D%3D+0x0883%29+%26%26+%28%28%28%28x+%3C%3C+2%29+%26+0xFFFF%29+%7C+z%29+%3D%3D+0x1787%29]
+  """
+
+  This is a variant of bit_patterns.pi using the bv module
+  instead of my experimental bitwise module, and it gives exactly the same
+  output (modulo the ordering of solutions).
+
+ 
+  Answers should be (in dec):
+  [x = 16673,y = 18603]
+  z = [4871,4999,5895,6023]
+
+  The four solutions (in dec):
+  [x = 16673,y = 18603,z = 4871]
+  [x = 16673,y = 18603,z = 4999]
+  [x = 16673,y = 18603,z = 5895]
+  [x = 16673,y = 18603,z = 6023]
+
+
+  dec = [x = 16673,y = 18603,z = 4871]
+  hex = [x = 4121,y = 48AB,z = 1307]
+  bin = [x = 100000100100001,y = 100100010101011,z = 1001100000111]
+
+  dec = [x = 16673,y = 18603,z = 4999]
+  hex = [x = 4121,y = 48AB,z = 1387]
+  bin = [x = 100000100100001,y = 100100010101011,z = 1001110000111]
+
+  dec = [x = 16673,y = 18603,z = 5895]
+  hex = [x = 4121,y = 48AB,z = 1707]
+  bin = [x = 100000100100001,y = 100100010101011,z = 1011100000111]
+
+  dec = [x = 16673,y = 18603,z = 6023]
+  hex = [x = 4121,y = 48AB,z = 1787]
+  bin = [x = 100000100100001,y = 100100010101011,z = 1011110000111]
+
+
+  This model was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+% import bitwise.
+
+% import v3_utils.
+% import util.
+% import cp.
+import sat.
+import bv_utils.
+
+main => go.
+
+go ?=>
+  nolog,
+  Size = 16,
+  println("Answers should be:"),
+  println([x = 0x4121, y = 0x48ab]),
+  println(z=[0x1307, 0x1387, 0x1707, 0x1787]),
+  nl,
+
+  X = new_bv(Size),
+  Y = new_bv(Size),
+  Z = new_bv(Size),
+
+  % Y \/ X = 0x49ab,
+  Y.bv_or(X).bv_eq(0x49ab),
+  
+  % (Y >> 2) ^ X = 0x530b,
+  Y.bv_shift_right(2).bv_xor(X).bv_eq(0x530b),
+  
+  % (Z >> 1) /\ Y = 0x0883,
+  Z.bv_shift_right(1).bv_and(Y).bv_eq(0x0883),
+  
+  % (X << 2) \/ Z = 0x1787,
+  X.bv_shift_left(2).bv_or(Z).bv_eq(0x1787),
+
+  Vars = [X,Y,Z],
+  println(solve),
+  solve(Vars),
+  println(dec=[x=X.bti,y=Y.bti,z=Z.bti]),
+  println(hex=[x=X.bti.to_hex_string,y=Y.bti.to_hex_string,z=Z.bti.to_hex_string]),
+  println(bin=[x=X.bti.to_binary_string,y=Y.bti.to_binary_string,z=Z.bti.to_binary_string]),
+  nl,
+  fail,
+  nl.
+go => true.
+
+
+%
+% Brute force (in theory)
+%
+go2 ?=>
+  garbage_collect(300_000_000),
+  /*
+  Y | X = 0x49ab,
+  (Y >> 2) ^ X = 0x530b,
+  (Z >> 1) & Y = 0x0883,
+  (X << 2) | Z = 0x1787,
+  */
+  Range = 0..2**16,
+  member(X,Range),
+  member(Y,Range),
+  member(Z,Range),
+  Y \/ X == 0x49ab,
+  (Y >> 2) ^ X == 0x530b,
+  (Z >> 1) /\ Y == 0x0883,
+  (X << 2) \/ Z == 0x1787,
+  println([X,Y,Z]),
+  fail,
+  nl.
+go2 => true.
+
+

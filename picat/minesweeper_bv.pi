@@ -1,0 +1,413 @@
+/*
+
+  Minesweeper solver in Picat bv module.
+
+  From gecode/examples/minesweeper.cc:
+  """
+  A specification is a square matrix of characters. Alphanumeric
+  characters represent the number of mines adjacent to that field. 
+  Dots represent fields with an unknown number of mines adjacent to 
+  it (or an actual mine).
+  """
+  
+  E.g.
+       "..2.3."
+       "2....."
+       "..24.3"
+       "1.34.."
+       ".....3"
+       ".3.3.."
+  """
+  
+  Also see:
+  * http://www.janko.at/Raetsel/Minesweeper/index.htm
+
+  * http://en.wikipedia.org/wiki/Minesweeper_(computer_game)
+ 
+  * Ian Stewart on Minesweeper: 
+    http://www.claymath.org/Popular_Lectures/Minesweeper/
+
+  * Richard Kaye's Minesweeper Pages
+    http://web.mat.bham.ac.uk/R.W.Kaye/minesw/minesw.htm
+
+  * Some Minesweeper Configurations
+    http://web.mat.bham.ac.uk/R.W.Kaye/minesw/minesw.pdf
+
+  This model uses the bv module and is slightly slower than minesweeper.pi
+
+  Benchmark 1: picat minesweeper_bv.pi
+  Time (mean ± σ):      76.7 ms ±  10.2 ms    [User: 59.4 ms, System: 14.5 ms]
+  Range (min … max):    58.8 ms …  98.8 ms    28 runs
+ 
+  Benchmark 1: picat minesweeper.pi
+  Time (mean ± σ):      72.5 ms ±   9.5 ms    [User: 54.7 ms, System: 15.4 ms]
+  Range (min … max):    44.6 ms …  83.2 ms    34 runs
+ 
+
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import cp.
+import sat.
+import bv_utils.
+
+main => go.
+
+% Problems 1..10, and 14: has unique solutions
+%          11: 4 solutions
+%          12: 2 solutions
+%          13: many, many solutions (we just show the first here)
+go =>   
+   foreach(P in 1..14, P != 13)
+      L = findall(_, $minesweeper(P)),
+      writef("%d solution(s)\n", length(L))
+   end,
+   time2($minesweeper(13)).
+
+
+% special for problem 13 (which has _many_ solutions)
+go2 ?=>
+  time2(minesweeper(13)), fail.
+
+go2 => true.
+
+% special for problem 15
+% 19 solutions
+go3 ?=>
+  time2(minesweeper(15)), fail.
+go3 => true.
+
+% Groza puzzle 96
+go4 ?=>
+  nolog,
+  time2(minesweeper(96)), fail.
+go4 => true.
+%
+% Main Minesweeper solver
+%
+minesweeper(Problem) =>
+   nolog,
+   problem(Problem, Game),
+   writef("\nPROBLEM %d\n", Problem),
+   
+   % dimensions of the problem instance
+   R = Game.length,
+   C = Game[1].length,
+
+   % decision variable: where is the mines?
+   % Mines = new_array(R,C),
+   % Mines :: 0..1,
+   Mines = make_bv_matrix(R,C,0,1),
+
+   %
+   % Game[I,J] = _ means that it is unknown from start, may be a mine.
+   % Games[I,J] >= 0 means that the value is known and that it is not a mine.
+   %
+   foreach(I in 1..R, J in 1..C)
+         % we check only those cells that we are unsure of, i.e.
+         % when GameIJ >= 0
+         if ground(Game[I,J]) then
+            % some reasoning about this cell: not a mine
+            bv_eq(Mines[I,J], 0),
+            
+            % Sum the number of neighboring mines of this cell.
+            % The number of neighboring mines must sum up to Game[I,J].
+            bv_sum([Mines[I+A,J+B] :  A in -1..1, B in -1..1,
+                              I+A >= 1, I+A <= R,
+                              J+B >= 1, J+B <= C
+                              ]).bv_eq(Game[I,J])
+
+         end
+   end,
+
+   % search
+   solve(Mines),
+
+   % print
+   pretty_print(Mines),
+   nl.
+
+
+pretty_print(X) =>
+  foreach(I in 1..X.length)
+    foreach(J in 1..X[1].length)
+      if X[I,J].bti == 1 then writef("X") else writef("_") end
+    end,
+    nl
+  end.
+
+%
+% data
+%
+%  _ is coded as unknown
+%  0..8: known number of neighbours
+%
+
+% The first 10 examples (0..9) are from Gecode/examples/minesweeper.cc
+% http://www.gecode.org/gecode-doc-latest/minesweeper_8cc-source.html
+% """
+% The instances are taken from
+%   http://www.janko.at/Raetsel/Minesweeper/index.htm
+% """
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 0
+% 
+% Solution:
+%  1 0 0 0 0 1
+%  0 1 0 1 1 0
+%  0 0 0 0 1 0
+%  0 0 0 0 1 0
+%  0 1 1 1 0 0
+%  1 0 0 0 1 1
+problem(0, P) => 
+        P = {{_,_,2,_,3,_},
+             {2,_,_,_,_,_},
+             {_,_,2,4,_,3},
+             {1,_,3,4,_,_},
+             {_,_,_,_,_,3},
+             {_,3,_,3,_,_}}.
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 1
+problem(1, P) => 
+        P = {{_,2,_,2,1,1,_,_},
+             {_,_,4,_,2,_,_,2},
+             {2,_,_,2,_,_,3,_},
+             {2,_,2,2,_,3,_,3},
+             {_,_,1,_,_,_,4,_},
+             {1,_,_,_,2,_,_,3},
+             {_,2,_,2,2,_,3,_},
+             {1,_,1,_,_,1,_,1}}.
+
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 2
+problem(2,P) => 
+        P = {{1,_,_,2,_,2,_,2,_,_},
+             {_,3,2,_,_,_,4,_,_,1},
+             {_,_,_,1,3,_,_,_,4,_},
+             {3,_,1,_,_,_,3,_,_,_},
+             {_,2,1,_,1,_,_,3,_,2},
+             {_,3,_,2,_,_,2,_,1,_},
+             {2,_,_,3,2,_,_,2,_,_},
+             {_,3,_,_,_,3,2,_,_,3},
+             {_,_,3,_,3,3,_,_,_,_},
+             {_,2,_,2,_,_,_,2,2,_}}.
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 3
+problem(3, P) => 
+        P = {{2,_,_,_,3,_,1,_},
+             {_,5,_,4,_,_,_,1},
+             {_,_,5,_,_,4,_,_},
+             {2,_,_,_,4,_,5,_},
+             {_,2,_,4,_,_,_,2},
+             {_,_,5,_,_,4,_,_},
+             {2,_,_,_,5,_,4,_},
+             {_,3,_,3,_,_,_,2}}.
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 4
+problem(4,P) => 
+        P = {{0,_,0,_,1,_,_,1,1,_},
+             {1,_,2,_,2,_,2,2,_,_},
+             {_,_,_,_,_,_,2,_,_,2},
+             {_,2,3,_,1,1,_,_,_,_},
+             {0,_,_,_,_,_,_,2,_,1},
+             {_,_,_,2,2,_,1,_,_,_},
+             {_,_,_,_,_,3,_,3,2,_},
+             {_,5,_,2,_,_,_,3,_,1},
+             {_,3,_,1,_,_,3,_,_,_},
+             {_,2,_,_,_,1,2,_,_,0}}.
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 5
+problem(5,P) => 
+        P = {{_,2,1,_,2,_,2,_,_,_},
+             {_,4,_,_,3,_,_,_,5,3},
+             {_,_,_,4,_,4,4,_,_,3},
+             {4,_,4,_,_,5,_,6,_,_},
+             {_,_,4,5,_,_,_,_,5,4},
+             {3,4,_,_,_,_,5,5,_,_},
+             {_,_,4,_,4,_,_,5,_,5},
+             {2,_,_,3,3,_,6,_,_,_},
+             {3,6,_,_,_,3,_,_,4,_},
+             {_,_,_,4,_,2,_,2,1,_}}.
+
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 6
+problem(6, P) => 
+        P = {{_,3,2,_,_,1,_,_},
+             {_,_,_,_,1,_,_,3},
+             {3,_,_,2,_,_,_,4},
+             {_,5,_,_,_,5,_,_},
+             {_,_,6,_,_,_,5,_},
+             {3,_,_,_,5,_,_,4},
+             {2,_,_,5,_,_,_,_},
+             {_,_,2,_,_,3,4,_}}.
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 7
+problem(7, P) => 
+        P = {{_,1,_,_,_,_,_,3,_},
+             {_,_,_,3,4,3,_,_,_},
+             {2,4,4,_,_,_,4,4,3},
+             {_,_,_,4,_,4,_,_,_},
+             {_,4,_,4,_,3,_,6,_},
+             {_,_,_,4,_,3,_,_,_},
+             {1,2,3,_,_,_,1,3,3},
+             {_,_,_,3,2,2,_,_,_},
+             {_,2,_,_,_,_,_,3,_}}.
+
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 8
+problem(8, P) => 
+        P = {{_,_,_,_,_,_,_},
+             {_,2,3,4,3,5,_},
+             {_,1,_,_,_,3,_},
+             {_,_,_,5,_,_,_},
+             {_,1,_,_,_,3,_},
+             {_,1,2,2,3,4,_},
+             {_,_,_,_,_,_,_}}.
+
+
+% Problem from Gecode/examples/minesweeper.cc  problem 9
+problem(9, P) => 
+        P = {{2,_,_,_,2,_,_,_,2},
+             {_,4,_,4,_,3,_,4,_},
+             {_,_,4,_,_,_,1,_,_},
+             {_,4,_,3,_,3,_,4,_},
+             {2,_,_,_,_,_,_,_,2},
+             {_,5,_,4,_,5,_,4,_},
+             {_,_,3,_,_,_,3,_,_},
+             {_,4,_,3,_,5,_,6,_},
+             {2,_,_,_,1,_,_,_,2}}.
+
+
+
+% From "Some Minesweeper Configurations",page 2
+problem(10, P) => 
+         P = {{_,_,_,_,_,_},
+              {_,2,2,2,2,_},
+              {_,2,0,0,2,_},
+              {_,2,0,0,2,_},
+              {_,2,2,2,2,_},
+              {_,_,_,_,_,_}}.
+
+
+
+% From "Some Minesweeper Configurations",page 3
+% 4 solutions
+problem(11, P) => 
+         P = {{2,3,_,2,2,_,2,1},
+              {_,_,4,_,_,4,_,2},
+              {_,_,_,_,_,_,4,_},
+              {_,5,_,6,_,_,_,2},
+              {2,_,_,_,5,5,_,2},
+              {1,3,4,_,_,_,4,_},
+              {0,1,_,4,_,_,_,3},
+              {0,1,2,_,2,3,_,2}}.
+
+
+% Richard Kaye: How Complicated is Minesweeper?
+% http://web.mat.bham.ac.uk/R.W.Kaye/minesw/ASE2003.pdf
+% 
+% A Wire,page 33
+% 2 solutions
+%
+problem(12, P) => 
+         P = {{_,0,0,0,0,0,0,0,0,0,0,0,0,_},
+              {_,1,1,1,1,1,1,1,1,1,1,1,1,_},
+              {_,_,1,_,_,1,_,_,1,_,_,1,_,_},
+              {_,1,1,1,1,1,1,1,1,1,1,1,1,_},
+              {_,0,0,0,0,0,0,0,0,0,0,0,0,_}}.
+
+
+% Richard Kaye: How Complicated is Minesweeper?
+% http://web.mat.bham.ac.uk/R.W.Kaye/minesw/ASE2003.pdf
+% A splitter,page 35
+% Many solutions...
+%
+problem(13, P) => 
+          P= {{_,_,_,0,_,_,_,0,_,_,_},
+              {_,_,_,0,1,_,1,0,_,_,_},
+              {_,_,_,0,1,_,1,0,_,_,_},
+              {0,0,0,0,1,1,1,0,0,0,0},
+              {_,1,1,1,1,_,1,1,1,1,_},
+              {_,_,_,1,_,2,_,1,_,_,_},
+              {_,1,1,1,1,_,1,1,1,1,_},
+              {0,0,0,0,1,1,1,0,0,0,0},
+              {_,_,_,0,1,_,1,0,_,_,_},
+              {_,_,_,0,1,_,1,0,_,_,_},
+              {_,_,_,0,_,_,_,0,_,_,_}}.
+        
+
+
+% Oleg German,Evgeny Lakshtanov: "Minesweeper" without a computer
+% http://arxiv.org/abs/0806.3480, page 4
+problem(14, P) => 
+         P = {{_,1,_,1,_,1},
+              {2,_,2,_,1,_},
+              {_,3,_,2,_,1},
+              {1,_,3,_,2,_},
+              {_,1,_,2,_,1}}.
+
+
+%
+% From http://stephenlombardi.com/minesweeper/minesweeper.lisp
+%
+problem(15,P) =>
+  P = 
+{{0,0,0,0,1,_,_,_,_},
+ {0,0,0,0,1,_,_,3,_},
+ {0,0,1,1,2,_,_,_,_},
+ {0,0,1,_,_,_,_,1,_},
+ {0,0,1,2,_,3,_,_,_},
+ {0,0,0,1,_,_,_,_,_},
+ {0,0,1,2,2,1,1,1,1},
+ {0,0,1,_,1,0,0,0,0},
+ {0,0,1,_,1,0,0,0,0}}.
+
+/*
+  From Adrian Groza "Modelling Puzzles in First Order Logic"
+  """
+  Puzzle 96. Playing minesweeper
+
+  A brave soldier has to find the mines in the given enemy map. The number in a cell
+  indicates how many of the eight neighbouring cells contain a mine. A numbered cell
+  does not contain a mine. No clue says that there are zero mines around.
+  """
+
+   _______X_
+   _X__XX_XX
+   ________X
+   ____XX___
+   XX_X_X__X
+   _X_XXX___
+   XX_X_X___
+   XXXXXXX_X
+   X_X_X__X_
+
+  Note: Groza's solution does not show the two mines placed
+  at [2,5] and [2,6].
+
+
+*/
+problem(96,P) =>
+  P =
+  {{1,1,1,_,2,_,3,_,3},
+   {1,_,1,_,_,_,_,_,_},
+   {1,1,1,_,4,4,3,_,_},
+   {_,_,_,_,_,_,_,_,2},
+   {_,_,_,_,7,_,_,_,_},
+   {5,_,6,_,_,_,3,_,1},
+   {_,_,_,_,8,_,_,_,_},
+   {_,_,_,_,_,_,_,3,_},
+   {_,5,_,5,_,_,3,_,2}
+  }.

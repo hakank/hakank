@@ -1,0 +1,268 @@
+/* 
+
+  Shifted division in Picat.
+
+  https://twitter.com/queued_q/status/1315505135246663682
+  """
+   7903225806451612       7
+   -----------------  =   -
+    9032258064516128      8
+  """
+
+  This is represented as
+
+    x/y = a/b
+
+  which is converted to  x*b = a*y in the model below.
+
+  Note that a (here 7) is the first digit of x and b (here 8) is the
+  last digit of y. These constraints are what make it interesting problem.
+
+  Also, see an animation of this at https://twitter.com/ScienceMagician/status/1485613903623200776
+
+  This uses Picat's bv module (added in v3.9) as well as my bv_util module.
+
+  Here are the solutions for 16 (see above), 17, and 29 digits numbers (via go/0):
+  [n = 16,x = 8648648648648648,y = 6486486486486486,a = 8,b = 6]
+  [n = 16,x = 4324324324324324,y = 3243243243243243,a = 4,b = 3]
+  [n = 16,x = 4999999999999999,y = 9999999999999998,a = 4,b = 8]
+  [n = 16,x = 9878048780487804,y = 8780487804878048,a = 9,b = 8]
+  [n = 16,x = 2666666666666666,y = 6666666666666665,a = 2,b = 5]
+  [n = 16,x = 1666666666666666,y = 6666666666666664,a = 1,b = 4]
+  [n = 16,x = 7903225806451612,y = 9032258064516128,a = 7,b = 8]
+  [n = 16,x = 1999999999999999,y = 9999999999999995,a = 1,b = 5]
+
+  [n = 17,x = 26666666666666666,y = 66666666666666665,a = 2,b = 5]
+  [n = 17,x = 95294117647058823,y = 52941176470588235,a = 9,b = 5]
+  [n = 17,x = 87671232876712328,y = 76712328767123287,a = 8,b = 7]
+  [n = 17,x = 48484848484848484,y = 84848484848484847,a = 4,b = 7]
+  [n = 17,x = 19999999999999999,y = 99999999999999995,a = 1,b = 5]
+  [n = 17,x = 16666666666666666,y = 66666666666666664,a = 1,b = 4]
+  [n = 17,x = 49999999999999999,y = 99999999999999998,a = 4,b = 8]
+  [n = 17,x = 74242424242424242,y = 42424242424242424,a = 7,b = 4]
+  [n = 17,x = 47058823529411764,y = 70588235294117646,a = 4,b = 6]
+  [n = 17,x = 65454545454545454,y = 54545454545454545,a = 6,b = 5]
+  [n = 17,x = 23529411764705882,y = 35294117647058823,a = 2,b = 3]
+
+  [n = 29,x = 19999999999999999999999999999,y = 99999999999999999999999999995,a = 1,b = 5]
+  [n = 29,x = 26666666666666666666666666666,y = 66666666666666666666666666665,a = 2,b = 5]
+  [n = 29,x = 93103448275862068965517241379,y = 31034482758620689655172413793,a = 9,b = 3]
+  [n = 29,x = 48484848484848484848484848484,y = 84848484848484848484848484847,a = 4,b = 7]
+  [n = 29,x = 65454545454545454545454545454,y = 54545454545454545454545454545,a = 6,b = 5]
+  [n = 29,x = 49999999999999999999999999999,y = 99999999999999999999999999998,a = 4,b = 8]
+  [n = 29,x = 31034482758620689655172413793,y = 10344827586206896551724137931,a = 3,b = 1]
+  [n = 29,x = 62068965517241379310344827586,y = 20689655172413793103448275862,a = 6,b = 2]
+  [n = 29,x = 16666666666666666666666666666,y = 66666666666666666666666666664,a = 1,b = 4]
+  [n = 29,x = 74242424242424242424242424242,y = 42424242424242424242424242424,a = 7,b = 4]
+
+
+  See shited_division.pi for some other approaches, e.g. "plain" CP/SAT (N<=17) 
+  and a very fast approach using plain integers.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+import bv_utils.
+
+main => go.
+
+%
+% Generate all solution for N in 2..29.
+% 
+go =>
+  nolog,
+  garbage_collect(300_000_000),
+  Sols = [],
+  foreach(N in 2..29)
+    Sol = findall(X,(shifted_division(N,X,Y,A,B),
+                  println([n=N,x=X.bti,y=Y.bti,a=A.bti,b=B.bti]))),
+    println(N=Sol.len),
+    Sols := Sols ++ [N=Sol.len],
+    nl
+  end,
+  println(Sols.sort_down(2)),
+  nl.
+  
+
+% Testing the slower shifted_division2/5
+go2 =>
+  nolog,
+  member(N, 2..16),
+  println(n=N),
+  shifted_division2(N,X,Y,A,B),
+  println(x=X.bv_to_int),
+  println(y=Y.bv_to_int),
+  println([a1=A[1].bv_to_int,bn=B[N].bv_to_int]),
+  nl,
+  fail,
+  nl.
+
+%
+% Number of solutions for N=2..20
+%
+% 2 = 4
+% 3 = 7
+% 4 = 6
+% 5 = 7
+% 6 = 5
+% 7 = 20
+% 8 = 4
+% 9 = 8
+% 10 = 6
+% 11 = 8
+% 12 = 4
+% 13 = 20
+% 14 = 6
+% 15 = 7
+% 16 = 8
+% 17 = 11
+% 18 = 4
+% 19 = 24
+% 20 = 4
+% 
+go3 =>
+  nolog,
+  foreach(N in 2..20)
+    Count = count_all(shifted_division(N,_X,_Y,_A,_B)),
+    println(N=Count)
+  end,
+  nl.
+
+% 
+% The instance above.
+% x = 7903225806451612
+% y = 9032258064516128
+% [a1 = 7,bn = 8]
+% Note: Using shifted_division2/5 for this.
+%
+go4 =>
+  nolog,
+  N = 16,
+  X = int_to_bv(7903225806451612),
+  shifted_division2(N,X,Y,A,B),
+  println(x=X.bv_to_int),
+  println(y=Y.bv_to_int),
+  println([a1==A[1].bv_to_int,bn=B[N].bv_to_int]),
+  nl.
+
+%
+% Shifted division (the faster variant)
+%
+% This approach gets the common digits (C) of X and Y,
+% which has size of X.len - 2.
+% Then A is placed in front of C, and B is added at the end of C.
+% 
+shifted_division(N,X,Y,A,B) =>
+  V1 = 10**(N-2),
+  V2 = 10**(N-1)-1,
+  D2 = int_to_bits(V2), % 1+V2.log2.floor,
+  
+  % C :: 10**(N-2)..10**(N-1)-1, % The common number
+  C = new_bv(D2),
+  bv_ge(C,V1),
+  bv_ge(V2,C),
+  
+  % [X,Y] :: 10**(N-1)..10**N-1,
+  T1 = 10**(N-1),
+  T2 = 10**N-1,
+  T3 = int_to_bits(T2), 
+  X = new_bv(T3),
+  bv_dom(X,T1,T2),
+  
+  Y = new_bv(T3),
+  bv_dom(Y,T1,T2),
+    
+  % [A,B] :: 0..9,
+  A = new_bv(4),
+  bv_dom(A,0,9),
+  
+  B = new_bv(4),
+  bv_dom(B,0,9),
+
+  % X #= C + A*10**(N-1),
+  bv_add(C,bv_mul(A,10**(N-1))).bv_eq(X),
+
+  % Y #= 10*C + B,
+  bv_mul(C,10).bv_add(B).bv_eq(Y),
+  
+  % X/Y = A/B, converted to X*B #= A*Y,
+  X.bv_mul(B).bv_eq(bv_mul(A,Y)),
+
+  % X #!= Y,
+  % weeding out some boring solutions,
+  % e.g  X = Y = 8888888
+  bv_neq(X,Y),
+  
+  Vars = [C,X,Y,A,B],
+  solve(Vars).
+
+
+%
+% Slower version, used in go4/0
+% This uses to_num_bv/3
+% 
+shifted_division2(N,X,Y,A,B) =>
+  % X :: 10**(N-1)..10**(N)-1,
+  V1 = 10**(N-1), % lower
+  V2 = 10**N-1,   % upper
+  D2 = 1+V2.log2.floor, % size of the bv var
+  % println(d2=D2),
+  % println(log2=[V1=D1,V2=D2]),
+
+  % Handling int_to_bv numbers
+  if var(X) ; var(X[1]) then 
+    X = new_bv(D2),
+    bv_ge(X,V1),
+    bv_ge(V2,X)
+  end,
+  
+  % Y :: 10**(N-1)..10**(N)-1,
+  if var(Y) ; var(Y[1]) then
+    Y = new_bv(D2),
+    bv_ge(Y,V1),
+    bv_ge(V2,Y)
+  end,
+  
+  % A = new_array(N),
+  % A :: 0..9,
+  A = make_bv_array(N,0,9),
+
+  % B = new_array(N),
+  % B :: 0..9,
+  B = make_bv_array(N,0,9),
+
+  to_num_bv(A,X),
+  to_num_bv(B,Y),
+
+  % The division
+  %  X / Y = A[1] / B[N]
+  % Convert to a multiplication instead.
+  % X*B[N] #=A[1]*Y,
+  % bv_mul(X,B[N],XBN),
+  % bv_mul(A[1],Y,A1Y),  
+  % bv_eq(XBN,A1Y),
+
+  X.bv_mul(B[N]).bv_eq(A[1].bv_mul(Y)),
+
+  % Bi = shift Ai to right
+  foreach(I in 2..N)
+    % A[I] #= B[I-1]
+    bv_eq(A[I],B[I-1])
+    
+    % , A[I] #!= B[I] % weed out some boring solutions
+    % . A[I] #!= A[I-1] % weed out some boring solutions
+  end,
+
+  % 
+  % A[1] #> 0,
+  bv_gt(A[1],0),
+  % B[1] #> 0,
+  bv_gt(B[1],0),
+  % X #!= Y,
+  bv_neq(X,Y),
+
+  Vars = A ++ B ++ X ++ Y,
+  solve($[],Vars).

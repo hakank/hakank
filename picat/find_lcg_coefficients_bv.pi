@@ -1,0 +1,81 @@
+/* 
+
+  Find LCG Coefficients in Picat.
+
+  From Hillel Wayne
+  https://www.linkedin.com/posts/hillel-wayne_i-finally-found-a-good-example-of-smt-solving-activity-7317238862760579072-ZEWr?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAAC-AgBXFkv0JScJazY_DjWbtmxB_gd-Js
+
+  Port of Hillel's Python/z3 model
+  """
+  $ time python3 find_lcg_coefficients.py 
+  [[22695477, 1]]
+  python3 find_lcg_coefficients.py  0,47s user 0,13s system 14% cpu 4,189 total
+  """
+
+
+  Using the bv package (from Picat v3.9)
+
+  $ time picat find_lcg_coefficients_bv.pi
+  modulus = 2147483648
+  size = 31
+  a = {1,0,1,0,1,1,0,0,0,1,1,1,0,0,1,0,0,1,0,1,1,0,1,0,1,0,0,0,0,0,0} = 22695477
+  c = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} = 1
+
+  [a = 22695477,c = 1]
+  picat find_lcg_coefficients_bv.pi  0,16s user 0,02s system 99% cpu 0,185 total
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat.
+import bv_utils.
+
+main => go.
+
+go ?=>
+  nolog,
+  Modulus = 2**31,
+  println(modulus=Modulus=bits=Modulus.int_to_bits),
+  % Sequence = [4096, 618876929, 113892918,1048278319], % 0.163s
+  % We need only three elements for a unique solution (which is a little faster: 0.096s)
+  Sequence = [4096, 618876929, 113892918],  
+  find_lcg_coefficients(Modulus, Sequence, A, C),
+  println(a=A=A.bv_to_int),
+  println(c=C=C.bv_to_int),
+  println([a=A.bv_to_int,c=C.bv_to_int]),
+  fail,
+  
+  nl.
+go => true.
+
+
+find_lcg_coefficients(Modulus, Sequence, A, C) :-
+    if Sequence.len < 2 then
+        print("Error: Need at least 2 values in the sequence")
+    else
+      Size = log2(Modulus).to_int,
+      println(size=Size),
+      A = new_bv(Size),
+      C = new_bv(Size),
+      % Note: The bv_mod(Modulus) is important since
+      % the result of bv_mul is larger than 2**Size.
+      foreach(I in 1..Sequence.len -1)
+        %%% XNext #= C + (A * XCurr) mod Modulus,      
+        %% XCurr = Sequence[I],
+        %% XNext = Sequence[I+1],
+        %% bv_mul(A,XCurr,AXCurr),
+        %% bv_add(C,AXCurr,CAXCurr),
+        %% bv_mod(CAXCurr,Modulus,XNext),
+        
+        % Using the functions in my bv_utils.pi
+        % bv_add(C,bv_mul(A,XCurr)).bv_mod(Modulus).bv_eq(XNext)
+        
+        % And a little simpler still
+        bv_add(C,bv_mul(A,Sequence[I])).bv_mod(Modulus).bv_eq(Sequence[I+1])
+      end
+    end,
+    Vars = [A,C],
+    solve(Vars).

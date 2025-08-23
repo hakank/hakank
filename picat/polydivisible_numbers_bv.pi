@@ -1,0 +1,98 @@
+/*
+
+  Polydivisible numbers (using CP) in Picat
+
+  What is the largest polydivisible number such that all subsequences of the number (1..n)
+  is divisible by n?
+
+  See the Picat forum for a discussion:
+  https://groups.google.com/forum/#!topic/picat-lang/Cb3RWZ6h-LE
+
+  To be able to use constraint modeling and larger numbers (larger than the traditional 
+  CP/SAT limit of 2**56), the bv module is used.
+
+  Note: http://hakank.org/picat/polydivisible_number.pi is a variant which 
+  uses plain arbitrary precision, i.e. not a constraint model, and is quite faster 
+  than this model. It also includes the program for calculating the number of
+  solutions for each size.
+  
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+import bv_utils.
+
+main => go.
+
+go =>
+   nolog,
+   foreach(N in 2..28)
+       nl,
+       println(n=N),
+       (
+       time(problem(N, X, _T)) ->
+          println(x=X.bti.map(to_string).join(''))
+        ;
+          println("No solution"),
+          halt
+       )
+   end,
+   nl.
+
+
+% Finds all solutions
+go2 =>
+   nolog,
+   foreach(N in 2..28)
+      nl,
+      println(n=N),
+      L = findall([X, T], $problem(N, X, T)),
+      foreach([X2, T2] in L)
+         println(x=X2.bti),
+         println(t=T2.bti),
+         nl
+      end,
+      println(len=L.len),
+      nl
+    end.
+
+
+
+main([N]) ?=>
+   nolog,
+   problem(N.to_int, X, T),
+   println(x=X.bti),
+   println(t=T.bti),
+   nl,
+   flush(stdout),
+   fail.
+
+main(_) => true.
+
+problem(N, X,T) =>
+
+   M = 10**(N)-1, % largest value
+   % % println(m=M),
+   % if M > 2**57 then
+   %   println("TO LARGE for cp module to handle.")
+   % end,
+
+   X = make_bv_array(N,0,9),
+   % bv_all_different(X), % no distinct constraints
+
+   
+   T = make_bv_array(N,1,M),
+   % T :: 1..M,
+
+   foreach(I in 1..N)
+      XI = [X[J] : J in  1..I],
+      to_num_bv(XI, 10, T[I]),
+      % T[I] mod I #= 0
+      bv_mod(T[I],I).bv_eq(0)
+   end,
+   Vars = T ++ X,
+   solve(Vars).
+

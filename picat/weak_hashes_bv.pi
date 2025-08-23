@@ -1,0 +1,218 @@
+/* 
+
+  Cracking weak hashes in Picat.
+
+  This is a more general approach than the z3 code in
+  https://github.com/TechSecCTF/z3_splash_class/blob/master/examples/java_hash.ipynb
+
+  Description from https://github.com/TechSecCTF/z3_splash_class
+  """
+  Example: Weak hash function
+
+  In computer science, a hash function is a function that takes in a string of characters
+  (or any object really), and produces a fixed-size number (the 'hash') that corresponds
+  to that string. Importantly, the hashes of two related strings should be different.
+  Hash functions are useful for all sorts of things in computer science (like hashtables).
+  Cryptographic hash functions are a special type of hash function which also satisfies a
+  number of properties, one of the most important of which is that given the hash of a
+  string, it should be difficult to reconstruct the string.
+
+  One area where hash functions are very useful are in password checking. When a user
+  registers with a site, they specify a password. Suppose that the webiste records the
+  password in their database. Later when the user logs in, they enter that password and
+  the website checks that it matches the password in their database. But now, if the
+  website's database gets leaked, every user's account is compromised.
+
+  Suppose instead the website computes a hash of the password when a user registers and
+  stores the hash in their database instead of the password itself. Then, whenever the
+  user logs in, the website can just compute the hash of whatever password is entered and
+  check the hash against whatever is stored in their database. If the database leaks (and
+  the hash is cryptographically secure, and the passwords themselves are sufficiently
+  complex) it should be difficult to easily reverse the hashes and compromise the user
+  accounts.
+
+  The problem is, many people frequently use non-cryptographically secure hash functions
+  for password-checking. In this example, we'll reverse the hash for a website using the
+  same hash function that Java uses for its hash tables.
+
+  Check out examples/java_hash.ipynb and examples/java_hash.html.
+  """
+
+  Note: See java_hashes.pi for a pure CP model (with limited domains of 2**56).
+
+
+  The model uses the bv module to be able to work work values > 2**56.
+  It generates a hash value given the password which is then cracked.
+  The crack itself is by trying to creating string of lengths 1 to 126 that
+  generates that hash value by recovering the values of:
+    - The incremental value of hash values, were the last value of the Ms        
+      array is the hash value
+    - The constant Constant, which by default is fixed in the model
+      but might also be recovered if the parameter FixConstant = false
+    - The used ASCII values in the array P that is used to create the 
+      hash value last in the Ms array.
+  See the crack/7 predicate below for details.
+
+  This is a port of my Z3 model https://www.hakank.org/z3/weak_hashes.py
+  with the additional feature that the constant  might also be recovered 
+  if FixConstant=false.
+
+  The selected value of Constant is very important for creating unique hash values 
+  for a certain password string. A too small value (such as 31) will
+  give a huge number of hash collisions.
+
+  As an example, let's take the password "secret" and use the constant 31. 
+  Then there are many different solutions which generates the generated hash value 
+  (3388690096), nameley these 243 strings:
+  secret,secrfU,secrg6,secsFt,secsGU,secsH6,sect't,sect(U,sect)6,sedSet,sedSfU,sedSg6,
+  sedTFt,sedTGU,sedTH6,sedU't,sedU(U,sedU)6,see4et,see4fU,see4g6,see5Ft,see5GU,see5H6,
+  see6't,see6(U,see6)6,sfDret,sfDrfU,sfDrg6,sfDsFt,sfDsGU,sfDsH6,sfDt't,sfDt(U,sfDt)6,
+  sfESet,sfESfU,sfESg6,sfETFt,sfETGU,sfETH6,sfEU't,sfEU(U,sfEU)6,sfF4et,sfF4fU,sfF4g6,
+  sfF5Ft,sfF5GU,sfF5H6,sfF6't,sfF6(U,sfF6)6,sg%ret,sg%rfU,sg%rg6,sg%sFt,sg%sGU,sg%sH6,
+  sg%t't,sg%t(U,sg%t)6,sg&Set,sg&SfU,sg&Sg6,sg&TFt,sg&TGU,sg&TH6,sg&U't,sg&U(U,sg&U)6,
+  sg'4et,sg'4fU,sg'4g6,sg'5Ft,sg'5GU,sg'5H6,sg'6't,sg'6(U,sg'6)6,tFcret,tFcrfU,tFcrg6,
+  tFcsFt,tFcsGU,tFcsH6,tFct't,tFct(U,tFct)6,tFdSet,tFdSfU,tFdSg6,tFdTFt,tFdTGU,tFdTH6,
+  tFdU't,tFdU(U,tFdU)6,tFe4et,tFe4fU,tFe4g6,tFe5Ft,tFe5GU,tFe5H6,tFe6't,tFe6(U,tFe6)6,
+  tGDret,tGDrfU,tGDrg6,tGDsFt,tGDsGU,tGDsH6,tGDt't,tGDt(U,tGDt)6,tGESet,tGESfU,tGESg6,
+  tGETFt,tGETGU,tGETH6,tGEU't,tGEU(U,tGEU)6,tGF4et,tGF4fU,tGF4g6,tGF5Ft,tGF5GU,tGF5H6,
+  tGF6't,tGF6(U,tGF6)6,tH%ret,tH%rfU,tH%rg6,tH%sFt,tH%sGU,tH%sH6,tH%t't,tH%t(U,tH%t)6,
+  tH&Set,tH&SfU,tH&Sg6,tH&TFt,tH&TGU,tH&TH6,tH&U't,tH&U(U,tH&U)6,tH'4et,tH'4fU,tH'4g6,
+  tH'5Ft,tH'5GU,tH'5H6,tH'6't,tH'6(U,tH'6)6,u'cret,u'crfU,u'crg6,u'csFt,u'csGU,u'csH6,
+  u'ct't,u'ct(U,u'ct)6,u'dSet,u'dSfU,u'dSg6,u'dTFt,u'dTGU,u'dTH6,u'dU't,u'dU(U,u'dU)6,
+  u'e4et,u'e4fU,u'e4g6,u'e5Ft,u'e5GU,u'e5H6,u'e6't,u'e6(U,u'e6)6,u(Dret,u(DrfU,u(Drg6,
+  u(DsFt,u(DsGU,u(DsH6,u(Dt't,u(Dt(U,u(Dt)6,u(ESet,u(ESfU,u(ESg6,u(ETFt,u(ETGU,u(ETH6,
+  u(EU't,u(EU(U,u(EU)6,u(F4et,u(F4fU,u(F4g6,u(F5Ft,u(F5GU,u(F5H6,u(F6't,u(F6(U,u(F6)6,
+  u)%ret,u)%rfU,u)%rg6,u)%sFt,u)%sGU,u)%sH6,u)%t't,u)%t(U,u)%t)6,u)&Set,u)&SfU,u)&Sg6,
+  u)&TFt,u)&TGU,u)&TH6,u)&U't,u)&U(U,u)&U)6,u)'4et,u)'4fU,u)'4g6,u)'5Ft,u)'5GU,u)'5H6,
+  u)'6't,u)'6(U,u)'6)6
+
+  And that is when we actually know the constant. If we don't know the constant, then there's
+  a huge number of strings that generates the same hash value. 
+
+  However, with the larger constant 311 the hashvalue is 335527691729896, that gives a 
+  unique password. However, if we don't know the constant there are many different
+  strings given this hashvalue. Note: there's is only one string of length 6, but
+  there are many other strings that are larger than that.
+
+  For the possible password candidates, we only assume that the ASCII values are
+  between 32 and 126.
+
+  The hash value of the string "mysupersecretpassword" and the constant 311 is 
+  7837660307097028079971520391679033917461702680377498
+  and this model finds the correct (and proves it's unique) password in 
+
+  This model (with FixConstant=true) finds the correct password and proves that it's
+  unique in 9.2s. With FixConstant=false it takes longer: 
+
+  Note that the length of the password string itself does not matters very much 
+  for the _uniqueness_ of the generated string when using this very simple hash 
+  function, in constrast to the important of long password strings for the proper 
+  crypto functions that should be used for handling passwords. 
+  For example, the simple password string "abc" and the constant 311 gives a hash value 
+  (9412514) which generates a unique string ("abc"). That being said, given this very
+  short hash value it is very easy to crack it.
+  So the problem in that case is not hash collisions but that the generated hash value 
+  is so easy to crack.
+  If FixConstant=false, then there are a huge number of string of different lengths
+  that give the same hash value (9412514).
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import sat,bv_utils.
+
+main => go.
+
+go ?=>
+  nolog,
+  garbage_collect(300_000_000),
+  Map = get_global_map(),
+  Map.put(passwords,[]),
+
+  % The Constant should be large
+  Constant = 311,
+  % Constant = 301,
+  % Constant = 101, 
+  %  Constant = 31, % This might generate many different hash collisions
+  FixConstant = true,
+  
+  % S = "mysupersecretpasswordthatislongersinceiwanttotestit", 
+  % S = "kalle",
+  % S = "reindeer",
+  % S = "mysupersecretpassword",
+  % S = "secret",
+  S = "p455w0rd",
+  % S = "abc",
+
+  H = java_hash(S,Constant),
+  println([s=S,slen=S.len,hash=H,hash_bits=int_to_bits(H),constant=Constant]),
+  nl,
+  println("Recovering valid passwords:"),
+  member(N,1..126),
+  crack(H,N,Constant,FixConstant, P,Ms,C),
+  println(n=N),
+  Password = P.to_list.map(bv_to_int).map(chr), 
+  println(p=Password),
+  println(ms=Ms.to_list.map(bv_to_int)),
+  CC=C.bv_to_int,
+  println(constant=CC),
+  nl,
+  Map.put(passwords,Map.get(passwords)++[Password=CC]),
+  fail,
+
+  nl.
+go =>
+  println("\nPasswords:"),
+  Passwords = get_global_map().get(passwords),
+  println(Passwords.sort),
+  println(num=Passwords.len),
+  nl.
+
+
+crack(Hash,N,Constant,FixConstant, P,Ms,C) =>
+  % The password as ASCII values (32..126)
+  P = make_bv_array(N,32,126),
+
+  % The (incremental) values of the hash values
+  Ms = make_bv_array(N,0,Hash),
+  bv_eq(Ms[1],P[1]),
+
+  % The constant: We assume a constant <= 1000 (and > 0)
+  C = new_bv(int_to_bits(1000)),
+  bv_gt(C,0), % C #> 0
+  if FixConstant then
+    bv_eq(C,Constant)
+  end,
+
+  % The cracking loop:
+  % Multiply the last value with the constant and add the ASCII value.
+  % The final value in Ms is the hash value Hash 
+  bv_eq(Ms[N],Hash), % The final value = The Hash value 
+  foreach(I in 2..N)
+    % Ms[I] #= Ms[I-1] * Constant + P[I]
+    % bv_mul(Ms[I-1],C,MsI1Constant),
+    % bv_add(MsI1Constant,P[I],Ms[I])
+    Ms[I-1].bv_mul(Constant).bv_add(P[I]).bv_eq(Ms[I])
+  end,
+  
+  Vars = P ++ Ms ++ C,
+  solve(Vars).
+
+%
+% This is the simple hash value function we are cracking
+% S: The string
+% C: The constant
+% 
+% The method:
+% loop over the characters and for each character
+% multiply the last hash value with a constant and add the
+% ASCII value of the character.
+%
+java_hash(S,Constant) = M =>
+  M = 0,
+  foreach(C in S)
+    M := M * Constant + C.ord
+  end.
+

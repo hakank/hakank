@@ -1,0 +1,196 @@
+/*
+
+  SEND+MOST=MONEY in Picat using bv module.
+
+  Alphametic problem were we maximize MONEY.
+
+  This version do two things:
+    - find the maximum of MONEY
+    - and then find all solutions for the maximum value of MONEY.
+
+  Problem from the lecture notes:
+  http://www.ict.kth.se/courses/ID2204/notes/L01.pdf
+
+  This uses the bv module.
+
+  Cf send_most_money.pi and send_more_money_bv.pi.
+
+  Model created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import sat.
+import bv_utils.
+
+main => go.
+
+/*
+  Max MONEY is 10876. Finding all optimal solutions:
+  digits = [9,7,8,4,1,0,2,6]
+  [send = 9784,most = 1092,money = 10876]
+
+  digits = [9,7,8,2,1,0,4,6]
+  [send = 9782,most = 1094,money = 10876]
+
+  CPU time 0.217 seconds. Backtracks: 0
+
+*/
+go ?=>
+  nolog,
+  Base = 10,
+  sendmost(Base,_Digits,_SEND,_MOST,MONEY),
+  printf("Max MONEY is %d. Finding all optimal solutions:\n",MONEY.bti),
+  sendmost(Base,Digits2,SEND2,MOST2,MONEY),    
+  print_solution(Base,Digits2,SEND2,MOST2,MONEY),
+  fail,
+  nl.
+go => true.
+
+/*
+  Large integers
+
+  There's a huge number of optimal solutions.
+
+  base = 18446744073709551616
+  Max MONEY is 115792089237316195429848086744074588616765491721927291992059671356797976838140. Finding all optimal solutions:
+  digits = [18446744073709551615,18446744073709551613,18446744073709551614,13176245766935394008,1,0,5270498306774157604,18446744073709551612]
+  [send = 115792089237316195423570985008687907852589419931798687112507117550669109507800,most = 6277101735386680764176071790128604879552553806128867330340,money = 115792089237316195429848086744074588616765491721927291992059671356797976838140]
+  [send = [18446744073709551615,18446744073709551613,18446744073709551614,13176245766935394008],most = [1,0,18446744073709551615,5270498306774157604],money = [1,0,18446744073709551614,18446744073709551613,18446744073709551612]]
+
+  digits = [18446744073709551615,18446744073709551613,18446744073709551614,12846839622762009176,1,0,5599904450947542436,18446744073709551612]
+  [send = 115792089237316195423570985008687907852589419931798687112506788144524936122968,most = 6277101735386680764176071790128604879552883212273040715172,money = 115792089237316195429848086744074588616765491721927291992059671356797976838140]
+  [send = [18446744073709551615,18446744073709551613,18446744073709551614,12846839622762009176],most = [1,0,18446744073709551615,5599904450947542436],money = [1,0,18446744073709551614,18446744073709551613,18446744073709551612]]
+
+  ...
+*/
+go1 ?=>
+  garbage_collect(400_000_000),
+  nolog,
+  % Base = 11,
+  Base = 2**64,
+  % Base = 2**128,
+  % Base = 2**255,
+  % Base = 2**256, % too large
+  println(base=Base),
+  sendmost(Base,_Digits,_SEND,_MOST,MONEY),
+  printf("Max MONEY is %w. Finding all optimal solutions:\n",MONEY.bti),
+  sendmost(Base,Digits2,SEND2,MOST2,MONEY),    
+  print_solution(Base,Digits2,SEND2,MOST2,MONEY),
+  MONEY_BITS = MONEY.bti.to_string.len,
+  println(money_bits=MONEY_BITS),
+  fail,
+  nl.
+go1 => true.
+
+
+/*
+ 
+  Max MONEY is 10876. Finding all optimal solutions:
+  digits = [9,7,8,4,1,0,2,6]
+  [send = 9784,most = 1092,money = 10876]
+
+  digits = [9,7,8,2,1,0,4,6]
+  [send = 9782,most = 1094,money = 10876]
+
+  CPU time 0.277 seconds. Backtracks: 0
+
+*/
+go2 =>
+  nolog,
+  Base = 10,
+  sendmost2(Base,_Digits,_SEND,_MOST,MONEY),
+  printf("Max MONEY is %d. Finding all optimal solutions:\n",MONEY.bti),
+  sendmost2(Base,Digits2,SEND2,MOST2,MONEY),    
+  print_solution(Base,Digits2,SEND2,MOST2,MONEY),
+  fail,
+  nl.
+go2 => true.
+
+/*
+  "Standard" model
+*/
+sendmost(Digits,SEND,MOST,MONEY) =>
+  sendmost(10,Digits,SEND,MOST,MONEY).
+sendmost(Base,Digits,SEND,MOST,MONEY) =>
+  Digits = make_bv_array(8,0,Base-1),
+  Digits = {S,E,N,D,M,O,T,Y},
+
+  if var(MONEY) then
+    Opt = true
+  else
+    Opt = false
+  end,
+
+  bv_all_different(Digits),
+  bv_gt(S,0),
+  bv_gt(M,0),
+  B1 = Base**1,
+  B2 = Base**2,
+  B3 = Base**3,
+  B4 = Base**4,
+  % println([b1=B1,b2=B2,b3=B3,4=B4]),
+  % SEND = bv_mul(S,B3).bv_add(bv_mul(E,B2)).bv_add(bv_mul(N,B1)).bv_add(D),
+  % MOST = bv_mul(M,B3).bv_add(bv_mul(O,B2)).bv_add(bv_mul(S,B1)).bv_add(T),
+  % MONEY = bv_mul(M,B4).bv_add(bv_mul(O,B3)).bv_add(bv_mul(N,B2)).bv_add(bv_mul(E,B1)).bv_add(Y),
+  % This is faster:
+  SEND = bv_sum([bv_mul(S,B3),bv_mul(E,B2),bv_mul(N,B1),D]),
+  MOST = bv_sum([bv_mul(M,B3),bv_mul(O,B2),bv_mul(S,B1),T]),
+  MONEY = bv_sum([bv_mul(M,B4),bv_mul(O,B3),bv_mul(N,B2),bv_mul(E,B1),Y]),
+  bv_add(SEND,MOST).bv_eq(MONEY),
+  
+  Vars = Digits ++ SEND ++ MOST ++ MONEY,
+  if Opt then
+    solve($[max(MONEY)],Vars)
+  else
+    solve(Vars)  
+  end.
+
+
+%
+% Using scalar_product
+%
+sendmost2(Digits,SEND,MOST,MONEY) => 
+  sendmost2(10,Digits,SEND,MOST,MONEY).
+sendmost2(Base,Digits,SEND,MOST,MONEY) =>
+  Digits = make_bv_array(8,0,Base-1),
+  Digits = {S,E,N,D,M,O,T,Y},
+
+  if var(MONEY) then
+    Opt = true
+  else
+    Opt = false
+  end,
+
+  bv_all_different(Digits),
+
+  bv_gt(S, 0),
+  bv_gt(M, 0),
+
+  Base4 = [1000,100,10,1],
+  Base5 = [10000,1000,100,10,1],
+  
+  SEND = scalar_product_bv(Base4,[S,E,N,D]),
+  MOST = scalar_product_bv(Base4,[M,O,S,T]),
+  MONEY = scalar_product_bv(Base5,[M,O,N,E,Y]),
+  bv_add(SEND,MOST).bv_eq(MONEY),
+  Vars = Digits ++ SEND ++ MOST ++ MONEY,
+  if Opt then
+    solve($[max(MONEY)],Vars)
+  else
+    solve(Vars)  
+  end.
+
+
+print_solution(Base,Digits,SEND,MOST,MONEY) =>
+  nonvar(Digits),
+  Digits = {S,E,N,D,M,O,T,Y},
+  println(digits=Digits.bti),
+  if Base == 10 then
+    println([send=SEND.bti,most=MOST.bti,money=MONEY.bti])
+  else
+    println([send=SEND.bti,most=MOST.bti,money=MONEY.bti]),
+    println([send=[S,E,N,D].bti,most=[M,O,S,T].bti,money=[M,O,N,E,Y].bti])
+  end,
+  nl.

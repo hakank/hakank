@@ -1,0 +1,176 @@
+/* 
+
+  Test of the new bv_* in Picat v3.9.
+
+• bv_add(A,B,C): Forces bit-vector C to be the sum of bit-vectors A and B.
+
+• bv_and(A,B,C): Forces bit-vector C to be the bitwise and of bit-vectors A and B.
+
+• bv_div(A,B,C): Forces bit-vector C to be the quotient of A divided by B (C=A div B).
+
+• bv_drop(A,N ): Returns a bit vector containing the remaining bits of bit-vector A after
+  dropping the lowest N bits.
+
+• bv_eq(A,B): Forces equality between bit-vector A and bit-vector B.
+
+• bv_ge(A,B): Forces bit-vector A to be greater than or equal bit-vector B (A ≥ B).
+
+• bv_gt(A,B): Forces bit-vector A to be greater than bit-vector B (A > B).
+
+• bv_mod(A,B,C): Forces bit-vector C to be the remainder of A divided by B (C = A mo dB).
+
+• bv_mul(A,B,C): Forces bit-vector C to be the product of multiplying A and B.
+
+• bv_neq(A,B): Forces inequality between bit-vector A and bit-vector B (A ̸= B).
+
+• bv_or(A,B,C): Forces bit-vector C to be the bitwise or of bit-vectors A and B.
+
+• bv_pow(A,B,C): Forces bit-vector C to be A raised to the power of B (C = A B ).
+
+• bv_sum(As,B): Forces the sum of bit-vectors in As to be equal to bit-vector B, where
+  As is a list of bit vectors.
+
+• bv_take(A,N ): Returns a bit vector containing the lowest N bits of bit-vector A.
+
+• bv_to_int(A): Returns an integer represented by bit-vector A. This function throws an
+  exception if A is not ground.
+
+• bv_xor(A,B,C): Forces bit-vector C to be the bitwise xor of bit-vectors A and B.
+
+• int_to_bv(C): Returns the binary representation of integer C as a bit vector.
+
+• new_bv(N : Returns a bit vector of length N
+
+
+  Note: There are more tests in bv_test*.pi which also use my bv_utils module
+        a few neat functions, e.g. function versions of (some of) these procedures.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+% import util.
+import sat.
+
+main => go.
+
+go ?=>
+  garbage_collect(400_000_000),
+  nolog,
+  Bits = 2**7,
+  println([bits=Bits,max=(2**Bits)-1]),
+  X=new_bv(Bits),
+  Y=new_bv(Bits),
+  Z=new_bv(Bits),
+
+  bv_neq(X,Z),
+  bv_neq(Y,Z),
+  % bv_eq(Z,1),
+
+  % bv_mod(X,Y,Z),
+  % bv_sum([X,Y],Z),
+  % bv_xor(X,Y,Z),
+  % bv_div(X,Y,Z),
+  bv_mul(X,Y,Z),
+  
+  println(solve),
+  solve([X,Y,Z]),
+  println([x=bv_to_int(X),y=bv_to_int(Y),z=bv_to_int(Z)]),
+  fail,
+  
+  nl.
+go => true.
+
+
+
+% Testing int_to_bv/1
+go2 ?=>
+  Bits = 1000,
+  X=int_to_bv(1506808978855688420083722725240627546101975516460906635467773983645806165644441422256060220209572300491930008790309112722919423058004816623810331221441987081803298593334657482324838616336895941826587306865272160544566210490727951688007654617417086972361574504674669992327247945076150304398982047072256),
+  % Y=new_bv(Bits),
+  Y = int_to_bv(83711609936579404980523831943443163049920300731852254126192921084040986907529586893074348752827264151622740231984234985033861485885078584185273310646810396707243695950494480787663965243141505634288549136326188079457346703321454209023565106999754340951579175069626544103645612396459281593884292939776),
+  Z=new_bv(Bits),
+  bv_neq(X,Z),
+  bv_neq(Y,Z),  
+  bv_mod(X,Y,Z),
+  println(solve),
+  solve([X,Y,Z]),
+  println([x=bv_to_int(X),y=bv_to_int(Y),z=bv_to_int(Z)]),
+  fail,
+  nl.
+go2 => true.
+
+% Testing bv_drop(A,N)
+go3 ?=>
+  nolog,
+  Bits = 64,
+  X=new_bv(Bits),
+  Y=new_bv(Bits),
+  Z=new_bv(Bits),
+  A = bv_drop(X,60),
+  bv_mul(X,Y,Z),
+  
+  println(solve),
+  solve([X,Y,Z,A]),
+  println([x=bv_to_int(X),y=bv_to_int(Y),z=bv_to_int(Z),a=A]),
+  fail,
+  nl.  
+go3 => true.
+
+% Z is automatically converted to a bv var, but it might have a much larger (bit) length.
+% This is really neat feature.
+% E.g. 
+% [x = 31,y = 31,z = 17069174130723235958610643029059314756044734431]
+% [x = 31,y = 30,z = 550618520345910837374536871905139185678862401]
+% [x = 31,y = 29,z = 17761887753093897979823770061456102763834271]
+% [x = 31,y = 28,z = 572964121067545096123347421337293637543041]
+% [x = 31,y = 25,z = 19232792489931358333837313998767870751]
+% [x = 31,y = 24,z = 620412660965527688188300451573157121]
+% [x = 31,y = 27,z = 18482713582824035358817658752815923791711]
+% ...
+% Note that this feature comes with a cost: If it's important that the operations
+% are in a fixed size one must use bv_mod(X,2**Bits,Res)) or bv_and(X,2**Bits-1,Res)
+% to ensure that.
+go4 ?=>
+  garbage_collect(300_000_000),
+  nolog,
+  Bits = 5,
+  println(max=(2**Bits)),
+  X=new_bv(Bits),
+  Y=new_bv(Bits),
+  % Z=new_bv(Bits),
+  % bv_gt(X,1),
+  % bv_gt(Y,1),
+  % bv_gt(Z,1),    
+  bv_pow(X,Y,Z),
+  % bv_mul(X,Y,Z),  
+  solve([X,Y,Z]),
+  println([x=bv_to_int(X),y=bv_to_int(Y),z=bv_to_int(Z)]),
+  fail,
+  nl.
+go4 => true.
+
+% 
+% 
+% For Bits = 6..25: Very slow
+% For Bits = 25..28: error(representation_error(max_arity),functor/3)
+% For Bits >= 29: *** error(resource_error(out_of_memory),stack_heap)
+% 
+error1 ?=>
+  garbage_collect(300_000_000),
+  nolog,
+  Bits = 6,
+  println([bits=Bits,max=(2**Bits)-1]),
+  X=new_bv(Bits),
+  Y=new_bv(Bits),
+  Z=new_bv(Bits),
+  % bv_gt(X,1),
+  % bv_gt(Y,1),
+  % bv_gt(Z,1),    
+  bv_pow(X,Y,Z),
+  solve([X,Y,Z]),
+  println([x=bv_to_int(X),y=bv_to_int(Y),z=bv_to_int(Z)]),
+  fail,
+  nl.
+error1 => true.
