@@ -31,22 +31,21 @@
    B: 0.6166
    A: 0.3834
 
- 
    Model 2:
    first-shooter: A
-   var : survivor
+   variable : survivor
    B: 0.620253164556962
    A: 0.379746835443038
 
    first-shooter: B
-   var : survivor
-   B: 0.9039487726787621
-   A: 0.09605122732123804
+   variable : survivor
+   B: 0.8860759493929579
+   A: 0.11392405060704218
 
    first-shooter: random
-   var : survivor
-   B: 0.786873599650254
-   A: 0.21312640034974592
+   variable : survivor
+   B: 0.7531645569730195
+   A: 0.24683544302698038
 
 
   This program was created by Hakan Kjellerstrand, hakank@gmail.com
@@ -121,7 +120,7 @@
 ;
 (define (model2 first-shooter a b)
   ; We have to limit enumerate to not go through all variants
-  (enumerate #:limit 1e-001
+  (enumerate #:limit 1e-10
    ; rejection-sampler
    ; importance-sampler
    ; mh-sampler ; #:transition (slice)

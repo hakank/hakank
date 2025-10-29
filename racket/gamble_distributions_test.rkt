@@ -4398,6 +4398,9 @@ discrete_markov_process_stationary
 (0.3275862068794929 0.4137931034613079 0.2586206896591996)
 (0.3275862068794929 0.4137931034613079 0.2586206896591996)
 
+discrete_markov_process_absorption_probabilities
+(0.19753086419753088 0.5432098765432098 0.25925925925925924)
+
 Random variates:
 Random: (0 1 0 1 1 0 0 2 0 0 0 1 0 0 0 1 0 0 0 0 0 0 1 0 0 0 2 1 1 1)
 (0 : 0.4186046511627907)
@@ -4470,6 +4473,9 @@ Quantiles
   (displayln "discrete_markov_process_stationary")
   (displayln (discrete_markov_process_stationary transition-matrix #:tolerance 1e-10))
   (displayln (discrete_markov_process_stationary2 transition-matrix #:tolerance 1e-10))
+  (newline)
+  (displayln "discrete_markov_process_absorption_probabilities")
+  (displayln (discrete_markov_process_absorption_probabilities transition-matrix 0))
   (newline)
   (displayln "Random variates:")
   (displayln (format "Random: ~a" (for/list ([i 30]) (discrete_markov_process_dist transition-matrix initial-state-probabilities 4))))

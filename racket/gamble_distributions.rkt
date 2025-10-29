@@ -70,7 +70,7 @@
   - probability-of-run-size: (not a proper distribution)
   - prob-n-heads-after-k-in-max-m-tosses: dist, pdf, cdf, quantile, mean, variance
   - wiener_process: dist, pdf, cdf, quantile, mean, variance
-  - discrete_markov_process: dist, pdf, cdf, quantile, stationary
+  - discrete_markov_process: dist, pdf, cdf, quantile, stationary, absorption
   - sum_prob: dist, pdf, cdf, quantile, mean
 
   Some of these distributions are ports from my WebPPL programs, especially 
@@ -2393,6 +2393,10 @@
   (for/sum ([i (range 1 (add1 k))])
     (/ m (+ m (- i) 1))))
 
+;; Euler's approximation
+(define (coupon_collector_mean_euler n)
+  (+ (* n (log n)) (* 0.577 n) 1/2))
+
 (define (coupon_collector_variance m k)
   (for/sum ([i (range 1 (add1 k))])
     (/ (* m (- i 1)) (expt (+ m (- i) 1) 2))))
@@ -2651,6 +2655,7 @@
               #:when (>= (num_records_cdf n k) q))
     k))
 
+; Generate records
 (define (num_records n)
   (let ([u (uniform 0 1)])
     (num_records_quantile n u)))
@@ -3288,6 +3293,57 @@
        (vector->list f-new)
        ]))
   )
+
+#|
+  discrete_markov_process_absorption transition i0
+  Input:
+  - transition: NxN holder-only matrix (diag = keep prob)
+  - i0: start index
+
+  Output:
+  - absorption probabilities of i0 (start index)
+  - t-total: number of steps (including keep step)
+  - t-passes: number of passes
+  - B: absorption probability matrix 
+  - N: fundamental matrix, number of visits until absorption
+|#
+(define (discrete_markov_process_absorption transition i0)
+  (define M (list*->matrix transition))          ; your built-in converter
+  (define n (matrix-num-rows M))
+  (define Q (build-matrix n n (λ (i j) (if (= i j) 0 (matrix-ref M i j)))))
+  (define R (build-matrix n n (λ (i j) (if (= i j) (matrix-ref M i i) 0))))
+  (define I (identity-matrix n))
+  (define N (matrix-inverse (matrix- I Q)))      ; fundamental matrix
+  (define B (matrix* N R))                       ; absorption probabilities
+  (define ones (build-matrix n 1 (λ (a b) 1)))
+  (define t-total   (matrix-ref (matrix* N ones) i0 0)) ; E[T], incl. keep step
+  (define t-passes  (- t-total 1))                        ; expected passes
+  
+  (list
+    (for/list ([j n]) (matrix-ref B i0 j))       ; row i0 of B. The absorptions probs of 0..n-1
+    t-total                                      ; number of steps, including keep step
+    t-passes                                     ; number of passes
+    B                                            ; absorption probability matrix
+    N                                            ; fundamental matrix (number of visits until absorption)
+    ))
+
+; Getters for the different return values of discrete_markov_process_absorption
+(define (discrete_markov_process_absorption_probabilities transition i0)
+  (first (discrete_markov_process_absorption transition i0)))
+
+(define (discrete_markov_process_absorption_total_steps transition i0)
+  (second (discrete_markov_process_absorption transition i0)))
+
+(define (discrete_markov_process_absorption_total_passes transition i0)
+  (third (discrete_markov_process_absorption transition i0)))
+
+(define (discrete_markov_process_absorption_fundamental_matrix transition i0)
+  (matrix->list* (fifth (discrete_markov_process_absorption transition i0))))
+
+(define (discrete_markov_process_absorption_probability_matrix transition i0)
+  (matrix->list* (fourth (discrete_markov_process_absorption transition i0))))
+
+
 
 
 #|

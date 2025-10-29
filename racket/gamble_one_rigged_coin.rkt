@@ -13,12 +13,32 @@
   - can't tell/see results
   """
 
-  For different n tosses with n heads
+  For different n tosses with n heads. 
 
   n: 10
   var : pick_coin
   fair_coin: 9999/11023 (0.9071033294021591)
   biased_coin: 1024/11023 (0.09289667059784087)
+
+  n: 11
+  variable : pick_coin
+  fair_coin: 9999/12047 (0.8299991699178219)
+  biased_coin: 2048/12047 (0.17000083008217814)
+
+  n: 12
+  variable : pick_coin
+  fair_coin: 9999/14095 (0.7094004966300106)
+  biased_coin: 4096/14095 (0.29059950336998935)
+
+  n: 13
+  variable : pick_coin
+  fair_coin: 9999/18191 (0.5496674179539333)
+  biased_coin: 8192/18191 (0.45033258204606674)
+
+  n: 14
+  variable : pick_coin
+  biased_coin: 16384/26383 (0.6210059508016526)
+  fair_coin: 9999/26383 (0.3789940491983474)
 
   n: 15
   var : pick_coin
@@ -45,7 +65,10 @@
   biased_coin: 1267650600228229401496703205376/1267650600228229401496703215375 (1.0)
   fair_coin: 9999/1267650600228229401496703215375 (7.887820191304897e-27)
 
-  (This run takes about 4s.)
+  n: 1000
+  variable : pick_coin
+  biased_coin: 10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668069376/10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668079375 (1.0)
+  fair_coin: 9999/10715086071862673209484250490600018105614048117055336074437503883703510511249361224931983788156958581275946729175531468251871452856923140435984577574698574803934567774824230985421074605062371141877954182153046474983581941267398767559165543946077062914571196477686542167660429831652624386837205668079375 (9.331702921413686e-298)
 
 
   Calculation (for n=10) from
@@ -59,6 +82,34 @@
   """
 
 
+  Throwing 10 to 13 heads in a row indicates that fair coin was picked, 
+  but when it's 14 heads in a row or more, then we might suspect that it 
+  was the biased coin.
+
+
+  Pascal Bercker also wrote about this problem: https://medium.com/@pbercker/given-10000-coins-9999-coins-are-fair-but-1-is-double-headed-fa508fc38d48)
+
+  Following Pascal's line of thoughts, the breakpoint of fair coin -> biased coin can be seen 
+  if one compare the probability of selecting a fair coin (1/10000) with the binomial 
+  PDF for throwing n heads in n throws.
+
+  Probability of throwing n=10..13 heads in n flips:
+  > (binomial_dist_pdf 10 1/2 10)
+  1/1024
+  > (binomial_dist_pdf 11 1/2 11)
+  1/2048
+  > (binomial_dist_pdf 12 1/2 12)
+  1/4096
+  > (binomial_dist_pdf 13 1/2 13)
+  1/8192
+
+  These is are less than the probability of selecting the biased coin: 1/10000.
+
+  However, the probability of 14 heads in a row is larger:
+  > (binomial_dist_pdf 14 1/2 14)
+  1/16384
+
+  
   Cf my WebPPL model one_rigged_coin.wppl (which is actually slower)
 
 
@@ -86,7 +137,7 @@
    (define (fair_coin i)
      (categorical-vw2 (vector 1/2 1/2) (vector "head" "tail")))
 
-   ; Throw the coin n times ...   
+   ; Pick a coin. We have 9999 fair coins and 1 biased coin
    (define pick_coin (if (flip 9999/10000) "fair_coin" "biased_coin"))
 
    (define (a i)
@@ -94,7 +145,7 @@
          (fair_coin i)
          (biased_coin i)))
 
-   ; And observe n heads
+   ; Throw the coin n times and observe n heads
    (for ([i n])
      (observe/fail (eq? (a i) "head")))
      
@@ -105,7 +156,7 @@
   )
 
 ; Number of coin tosses with n heads
-(for ([n '(10 15 20 25 50 100)])
+(for ([n '(10 11 12 13 14 15 20 25 50 100 1000)])
   (show "n" n)
   (show-marginals (model n)
                   (list  "pick_coin"
@@ -120,3 +171,5 @@
                   ; #:show-percentiles? #t
                   )
   )
+
+

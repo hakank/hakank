@@ -19,18 +19,17 @@
 
 
   * With observations
-  var : perfB1
-  mean: 89.97899000000515
+  variable : perfB1
+  mean: 90.69628000000229
 
-  var : skillA
-  mean: 100.00266000000559
+  variable : skillA
+  mean: 93.41458000000233
 
-  var : perfA
-  mean: 90.00740000000508
+  variable : perfA
+  mean: 83.3851800000021
 
-  var : result
-  mean: 0.47575000000003287
-
+  variable : result
+  mean: 0 (0.0)
 
   This is a port of my WebPPL model trueskill_poisson_binomial.wppl.
 
@@ -88,7 +87,7 @@
 
 (newline)
 (displayln "With observations")
-(show-marginals (model #f)
+(show-marginals (model #t)
                 (list  "perfB1"
                        "skillA"
                        "perfA"
