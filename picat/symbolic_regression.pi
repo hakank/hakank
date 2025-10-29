@@ -419,7 +419,8 @@ main(ARGS) ?=>
       println(reset_timeout=TimeoutMS),
       Run = true,
       while (Run)
-        garbage_collect(500_000_000),
+        % garbage_collect(500_000_000),
+        garbage_collect(),
         time_out(run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),TimeoutMS,Status),
         nl,nl,
         println(status=Status),
@@ -427,7 +428,7 @@ main(ARGS) ?=>
           Run := false
         end
       end
-    else 
+    else
       run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params)
     end
 
@@ -528,6 +529,15 @@ go4 =>
   % println(ok2),
   % println(new_fun=NewFun),
   nl.
+
+go5 ?=>
+  data(Problem,Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  println(problem=Problem),
+  run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params),
+  nl,nl,
+  fail,
+  nl.
+go5 => true.
 
 
 % Flatten a function tree
@@ -822,7 +832,7 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
   BestLast = _,
   while (KeepRunning)
     if Gen mod 100 == 0 then
-      garbage_collect
+      garbage_collect()
     end,
     [Good,All] = symbolic_regression(Funs,Data,Vars,Unknown,Params),
     foreach(G in Good)
@@ -916,10 +926,16 @@ run(Data,Vars,Unknown,Ops,Constants,MaxSize,Params) =>
   foreach(Good=Count in AllGood.to_list.sort_down(2))
     Good = $(Program = Res),
     ResultMap.put(Res,ResultMap.get(Res,0)+1),
-    println([program=Program,res=Res, count=Count])
+    % println([program=Program,res=Res, count=Count]),
+    if integer(Res) then
+      printf("[program = %w, res = %d, count = %d]\n",Program,Res,Count)    
+    else
+      printf("[program = %w, res = %3.17f, count = %d]\n",Program,Res,Count)
+    end
   end,
   nl,
-  println(resultMap=ResultMap.to_list.sort_down(2)),
+  % println(resultMap=ResultMap.to_list.sort_down(2)),
+  println(resultMap=[cond(integer(K),K,to_fstring("%3.17f",K))=V :  K=V in  ResultMap.to_list.sort_down(2)]),
   nl,
   flush(stdout),
   if FailAtEnd then
@@ -1093,6 +1109,7 @@ symbolic_regression(Funs,Data,Vars,Unknown,Params) = [Good,ResultsSort] =>
       end,
       % Results := Results ++ [[abs(S),F]],
       catch(Check = replace_term(F,Vars,Unknown).eval,CheckError,true),
+      % if nonvar(CheckError) then println(checkError=CheckError) end,
       if var(Check) ; integer(Check) then
         CheckF = Check
       else
@@ -1129,6 +1146,7 @@ generate_function(Ops,Constants,Vars,Size,MaxSize) = Fun =>
   Size <= MaxSize,
   oneof(Ops,Op),
   Arity = arities(Op),
+  % println(arity=Arity),
   gen(Ops,Constants,Vars,Size+1,MaxSize) = C1,
   if Arity == 1 then
     Fun =.. [Op,C1]
@@ -1144,12 +1162,15 @@ generate_function(Ops,Constants,Vars,Size,MaxSize) = Fun =>
      gen(Ops,Constants,Vars,Size+3,MaxSize) = C3,
      gen(Ops,Constants,Vars,Size+4,MaxSize) = C4,     
      Fun =.. [Op,C1,C2,C3,C4]
-  else
+  elseif Arity == 5 then
      gen(Ops,Constants,Vars,Size+2,MaxSize) = C2,
      gen(Ops,Constants,Vars,Size+3,MaxSize) = C3,
-     gen(Ops,Constants,Vars,Size+4,MaxSize) = C4,
+     gen(Ops,Constants,Vars,Size+4,MaxSize) = C4,     
      gen(Ops,Constants,Vars,Size+5,MaxSize) = C5,
      Fun =.. [Op,C1,C2,C3,C4,C5]
+  else
+     Ls = [Op,C1] ++ [ C: I in 2..Arity, C = gen(Ops,Constants,Vars,Size+I,MaxSize)],
+     Fun =.. Ls
   end.
 
 %
@@ -1185,17 +1206,9 @@ replace_term(Term,Vars,Vals) = X =>
   end,
   X =.. L1.
 
-% for eval('rec'(X,Y,Z))
-rec(X,Y,Z) = Val =>
-  % println($rec(X,Y,Z)),
-  if X <= 0 then
-    Val = Y
-  else
-    Val = rec(X-1,Y,Z)
-  end.
 
-
-% Note: This must be funtions
+% Note: This must be functions
+% table
 arities(+) = 2.
 arities(-) = 2.
 arities(*) = 2.
@@ -1223,6 +1236,7 @@ arities('%') = 2.
 arities(div) = 2.
 arities(rem) = 2.
 arities(gcd) = 2.
+arities(lcm) = 2.
 
 arities(^) = 2.
 arities(\/) = 2. % bitwise or
@@ -1275,11 +1289,15 @@ arities(acot) = 1.
 
 arities(logistic) = 1.
 
+arities(step) = 1.
+arities(eq) = 1.
+
 arities(floor) = 1.
 arities(ceiling) = 1.
 arities(odd) = 1.
 arities(even) = 1.
 arities(prime) = 1.
+arities(no_prime) = 1.
 
 arities(if_then_else) = 3.
 arities(cond) = 3.
@@ -1289,17 +1307,42 @@ arities(if_larger) = 4.
 arities(if_larger_equal) = 4.
 arities(factorial) = 1.
 arities(factorial_restricted) = 1.
+arities(factorial_restricted2) = 2.
 arities(!) = 1.
+
+arities(count2) = 2.
+arities(count3) = 3.
+arities(count4) = 4.
+arities(count5) = 5.
 
 arities(distance) = 2.
 arities(to_num2) = 2.
 arities(to_num3) = 3.
 arities(to_num4) = 4.
 
+arities(digital_root) = 1.
+arities(digit_sum) = 1.
+
 arities(char_count) = 1. % Experimental
 
 arities(rec) = 3. % Experimental
-arities(sum_i) = 2. 
+arities(sum_i) = 2.
+arities(binomial) = 2.
+
+arities(linear1) = 3.
+arities(linear2) = 5.
+arities(linear3) = 7.
+arities(linear4) = 9.
+
+
+arities(poly1) = 3.
+arities(poly2) = 4.
+arities(poly3) = 5.
+arities(poly4) = 6.
+
+
+% arities(linearc2) = 5.
+% arities(c) = 1.
 
 % arities(length) = 1.
 
@@ -1477,6 +1520,11 @@ eval('gcd'(X,Y)) = Val =>
     XVal = eval(X),
     YVal = eval(Y),
     Val = gcd(XVal, YVal).
+
+eval('lcm'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),
+    Val = lcm(XVal, YVal).
 
 eval('^'(X,Y)) = Val =>
     XVal = eval(X),
@@ -1728,6 +1776,18 @@ eval('logistic'(X)) = Val =>
     XVal = eval(X),
     Val = 1.0/(1.0+exp(-XVal)).
 
+% Step
+eval('step'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(XVal == 1, 1, 0).
+
+% Eq
+eval('eq'(X,Y)) = Val =>
+    XVal = eval(X),
+    YVal = eval(Y),    
+    Val = cond(XVal == YVal, 1, 0).
+
+
 
 % Ensure that sqrt/1 don't yield error on negative values
 eval('sqrt_restricted'(X)) = Val =>
@@ -1763,6 +1823,10 @@ eval('even'(X)) = Val =>
 eval('prime'(X)) = Val =>
     XVal = eval(X),
     Val = cond(prime(XVal),1,0).
+
+eval('no_prime'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(prime(XVal),0,1).
 
 %
 % Note: True is then XVal == 1, everything else is false.
@@ -1830,6 +1894,27 @@ eval('factorial_restricted'(X)) = Val =>
     XVal = eval(X),
     Val = cond(XVal > 100, 1, factorial(XVal)).
 
+eval('factorial_restricted2'(X)) = Val =>
+    XVal = eval(X),
+    Val = cond(XVal > 10, 1, factorial(XVal)).
+
+%
+% Count the number of non-0 values
+%
+eval('count2'(X1,X2)) = Val => 
+  Val = [1 : V in [X1,X2], eval(V) > 0].sum.
+
+eval('count3'(X1,X2,X3)) = Val => 
+  Val = [1 : V in [X1,X2,X3], eval(V) > 0].sum.
+
+eval('count4'(X1,X2,X3,X4)) = Val => 
+  Val = [1 : V in [X1,X2,X3,X4], eval(V) > 0].sum.
+
+eval('count5'(X1,X2,X3,X4,X5)) = Val => 
+  Val = [1 : V in [X1,X2,X3,X4,X5], eval(V) > 0].sum.
+
+
+
 % Distance between X and Y
 eval('distance'(X,Y)) = Val =>
     XVal = eval(X),
@@ -1858,11 +1943,31 @@ eval('to_num4'(X,Y,Z,A)) = Val =>
     AVal = eval(A),        
     Val = 1000*XVal + 100*YVal + 10*ZVal + AVal.
 
+
+% Digit sum
+
+% Reduce to single digit (digital root)
+eval('digital_root'(X)) = Val =>
+  XVal = eval(X),
+  Val = XVal.to_string.map(to_int).sum,
+  while (Val > 10)
+    Val := Val.to_string.map(to_int).sum
+  end.
+
+% sum the digits in X (any length)
+eval('digit_sum'(X)) = Val =>
+  XVal = eval(X),
+  Val = XVal.to_string.map(to_int).sum.
+
+
 % count the number of characters in the
 % string representation of the number  (via english/1).
 eval('char_count'(X)) = Val =>
   XVal = eval(X),
   Val = english(XVal).to_string.len.
+
+
+
 
 %
 % EXPERIMENTAL
@@ -1912,20 +2017,103 @@ eval('sum_i'(X,Y)) = Val =>
     Val = Sum
   end.
 
+% Binomial
+eval('binomial'(X,Y)) = Val =>
+  XVal = eval(X),
+  YVal = eval(Y),
+  Val = binomial_f(XVal,YVal).
 
-% eval('length'(X)) = Val =>
-%     println(length=X),
-%     XVal = eval(X), % eval(X.to_string),
-%     println(eval_first_xval=XVal),        
-%     Val = length(XVal).
+%
+% Linear combination:
+%
+
+% Val = C1*X1 + C2
+eval('linear1'(X1,C1,C2)) = Val =>
+  X1Val = eval(X1),
+  C1Val = eval(C1),
+  C2Val = eval(C2),
+  Val = C1Val*X1Val + C2Val.
+
+
+%  Val = C1*X1 + C2*X2 + C3
+eval('linear2'(X1,X2,C1,C2,C3)) = Val =>
+  X1Val = eval(X1),
+  X2Val = eval(X2),
+  C1Val = eval(C1),
+  C2Val = eval(C2),
+  C3Val = eval(C3),
+  Val = C1Val*X1Val + C2Val*X2Val + C3Val.
+
+eval('linear3'(X1,X2,X3,C1,C2,C3,C4)) = Val =>
+  X1Val = eval(X1),  
+  X2Val = eval(X2),
+  X3Val = eval(X3),
+  C1Val = eval(C1),
+  C2Val = eval(C2),
+  C3Val = eval(C3),
+  C4Val = eval(C4),  
+  Val = C1Val*X1Val + C2Val*X2Val + C3Val*X3Val + C4Val.
+
+eval('linear4'(X1,X2,X3,X4,C1,C2,C3,C4,C5)) = Val =>
+  X1Val = eval(X1),
+  X2Val = eval(X2),
+  X3Val = eval(X3),
+  X4Val = eval(X4), 
+  C1Val = eval(C1),
+  C2Val = eval(C2),
+  C3Val = eval(C3),
+  C4Val = eval(C4),
+  C5Val = eval(C5),    
+  Val = C1Val*X1Val + C2Val*X2Val + C3Val*X3Val + C4Val*X4Val + C5Val.
+
+%
+% Polynomial
+% poly<n>: Polynomial with n as the highest exponent 
+%
+
+% Val = C1*X + C
+eval('poly1'(X,C1,C)) = Val =>
+  XVal = eval(X),
+  C1Val = eval(C1),
+  CVal  = eval(C),
+  Val = C1Val*XVal + CVal.
+
+% Val = C2*X^2 + C1*X + C
+eval('poly2'(X,C2,C1,C)) = Val =>
+  XVal = eval(X),
+  C2Val = eval(C2),
+  C1Val = eval(C1),
+  CVal  = eval(C),
+  Val = (C2Val*XVal + C1Val)*XVal + CVal.
+  % Val = C2Val*XVal**2 + C1Val*XVal + CVal.
+
+% Val = C3*X^3 + C2*X^2 + C1*X + C
+eval('poly3'(X,C3,C2,C1,C)) = Val =>
+  XVal = eval(X),
+  C3Val = eval(C3),  
+  C2Val = eval(C2),
+  C1Val = eval(C1),
+  CVal  = eval(C),
+  Val = (C3Val*XVal + C2Val*XVal)*XVal + C1Val*XVal + CVal.
+  % Val = C3Val*XVal**3 + C2Val*XVal**2 + C1Val*XVal + CVal.
+
+% Val = C4*X^4 + C3*X^3 + C2*X^2 + C1*X + C
+eval('poly4'(X,C4,C3,C2,C1,C)) = Val =>
+  XVal = eval(X),
+  C4Val = eval(C4),    
+  C3Val = eval(C3),  
+  C2Val = eval(C2),
+  C1Val = eval(C1),
+  CVal  = eval(C),
+  Val = (((C4Val*XVal + C3Val)*XVal + C2Val)*XVal + C1Val)*XVal + CVal.
+  % Val = C4Val*XVal**4 + C3Val*XVal**3 + C2Val*XVal**2 + C1Val*XVal + CVal.  
+
 
 % eval(String) = String, string(String) => true.
 
 eval(Number) = Number, number(Number) => true.
 
 eval(Exp) = apply(Exp). % for user-defined function
-
-
 
 
 %
@@ -2090,6 +2278,34 @@ english(N) = English =>
         Sstr := Sstr ++ Cardinals[N]
     end,
     English = Sstr.
+
+
+% binomial
+binomial_f(N,K) = Res =>
+   if K < 0 ; K > N then
+     R = 0
+   else
+     R = 1,
+     foreach(I in 0..K-1) 
+       R := R * (N-I) // (I+1)
+     end
+   end,
+   Res = R.
+
+
+% lcm/2
+lcm(X,Y) = LCM => GCD=gcd(X,Y), LCM = X*Y//GCD.
+
+
+% for eval('rec'(X,Y,Z))
+% Experimental (or rather: This does not work!)
+rec(X,Y,Z) = Val =>
+  % println($rec(X,Y,Z)),
+  if X <= 0 then
+    Val = Y
+  else
+    Val = rec(X-1,Y,Z)
+  end.
 
 
 
@@ -2813,7 +3029,7 @@ data(simple,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-
   than one solution. But the challenge is to find a simple rule that creates this pattern.
   """
 
-[program = if_then_else(if_then_else(X,2,prime(Y + X)),X * (Y / 6) * Y,5 * 10),res = 50,count = 1]
+  [program = if_then_else(if_then_else(X,2,prime(Y + X)),X * (Y / 6) * Y,5 * 10),res = 50,count = 1]
 
 */
 data(mind_your_decision,Data,Vars,Unknown,Ops,Constants,MaxSize,Params) :-

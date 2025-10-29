@@ -1,0 +1,282 @@
+/* 
+
+  Weighing deposit bottles in Picat.
+
+  From Kasper Müller: 
+  "Can You Find the Exact Value of Your Deposit Bottles by Weighing The Bag?"
+  https://www.cantorsparadise.com/can-you-find-the-exact-value-of-your-deposit-bottles-by-weighing-the-bag-ef79e36d3c29
+  """
+  Not so long ago, one of my friends, Mikkel, asked me the seemingly innocent 
+  question: Is it possible to calculate the total value of a bag of deposit 
+  bottles by weighing it? The short answer to this question is… it depends. 
+  The more interesting answer is this article.
+
+  ...
+
+  To give you an indication of how precise it needs to be, I tried to solve this 
+  problem for coins instead of bottles, and with the 6 different Danish coins, a small 
+  Python script showed that already with weights beginning at exactly 12.9 g, we get into 
+  trouble. It turns out that the weight of the Danish coins are:
+
+  50-øre: 4.3 g
+  1-krone: 3.6 g
+  2-krone: 5.9 g
+  5-krone: 9.2 g
+  10-krone: 7.0 g
+  20 krone: 9.3 g
+  """
+  
+  For 12.9 g we get three possible values: [1200,2100,150].
+
+  Even with a much precise measurement of the weights (precision 0.00001), 
+  we also get more than one solution at around 12.9 g:
+  For the weight 12.99128 g we get two of the same solutions 1200 and 2100.
+  See go2/0.
+
+  And there's a similar issue with Swedish coins, see go3/0.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import util.
+import cp.
+% import sat.
+% import mip.
+% import smt.
+
+main => go.
+
+/*
+  Coins
+
+  We found problem for 12.9g (i.e. precision 0.1)
+
+  The solutions are in the format of [Cost].
+
+  3.6 = [100] = 1
+  4.3 = [50] = 1
+  5.9 = [200] = 1
+  7.0 = [1000] = 1
+  7.2 = [200] = 1
+  7.9 = [150] = 1
+  8.6 = [100] = 1
+  9.2 = [500] = 1
+  9.3 = [2000] = 1
+  9.5 = [300] = 1
+  10.2 = [250] = 1
+  10.6 = [1100] = 1
+  10.8 = [300] = 1
+  11.3 = [1050] = 1
+  11.5 = [250] = 1
+  11.8 = [400] = 1
+  12.2 = [200] = 1
+  12.8 = [600] = 1
+  12.9 = [1200,2100,150] = 3
+  13.1 = [400] = 1
+  13.5 = [550] = 1
+  13.6 = [2050] = 1
+  13.8 = [350] = 1
+  14.0 = [2000] = 1
+  14.2 = [1200] = 1
+  14.4 = [400] = 1
+  14.5 = [300] = 1
+  14.9 = [1150] = 1
+  15.1 = [700,350] = 2
+  15.2 = [2200] = 1
+  15.4 = [500] = 1
+  15.6 = [1100] = 1
+  15.8 = [300] = 1
+  16.1 = [450] = 1
+  16.2 = [1500] = 1
+  16.3 = [3000] = 1
+  16.4 = [700] = 1
+  16.5 = [1300,2200,250] = 3
+
+
+*/
+go ?=>
+  nolog,
+  %     Ore  g * 10
+  Coins = [[50,43],
+           [100,36],
+           [200, 59],
+           [500, 92],
+           [1000, 70],
+           [2000, 93]
+           ],
+  Found = false,
+  foreach(Weight in 1..10000, break(Found==true))
+    if check(Weight,Coins,Sols), Sols.len > 0 then
+      % println((Weight/10)=Sols=Sols.len),
+      println((Weight/10)=Sols.map(second)=Sols.len),      
+      if Sols.len > 1 then
+        % Found := true
+        true
+      end      
+    end
+  end,
+  
+  nl.
+go => true.
+
+
+/*
+  Let's increase the precision with some random extra digits.
+
+  With the precision of 0.00001, we still get an issue around 12.9g
+
+  3.62344 = [100] = 1
+  4.31234 = [50] = 1
+  5.93454 = [200] = 1
+  7.05674 = [1000] = 1
+  7.24688 = [200] = 1
+  7.93578 = [150] = 1
+  8.62468 = [100] = 1
+  9.24564 = [500] = 1
+  9.36784 = [2000] = 1
+  9.55798 = [300] = 1
+  10.2469 = [250] = 1
+  10.68018 = [1100] = 1
+  10.87032 = [300] = 1
+  11.36908 = [1050] = 1
+  11.55922 = [250] = 1
+  11.86908 = [400] = 1
+  12.24812 = [200] = 1
+  12.86908 = [600] = 1
+  12.93702 = [150] = 1
+  12.99128 = [1200,2100] = 2
+  13.1814 = [400] = 1
+  13.558 = [550] = 1
+  13.68018 = [2050] = 1
+  13.87032 = [350] = 1
+  14.1135 = [2000] = 1
+  14.30362 = [1200] = 1
+  14.49376 = [400] = 1
+  14.55922 = [300] = 1
+  14.9925 = [1150] = 1
+  15.18018 = [700] = 1
+  15.18266 = [350] = 1
+  15.3024 = [2200] = 1
+  15.4925 = [500] = 1
+  15.6814 = [1100] = 1
+  15.8716 = [300] = 1
+  16.1814 = [450] = 1
+  16.3024 = [1500] = 1
+  16.4246 = [3000] = 1
+  16.4925 = [700] = 1
+  16.5605 = [250] = 1
+  16.6147 = [1300,2200] = 2
+
+  The cost is also the same as the original problem: 1200 and 2100,
+  though the third solution of the original problem (150) is not included.
+
+
+*/
+go2 ?=>
+  nolog,
+  %     Ore  g * 100000
+  Coins = [[50,431234],
+           [100,362344],
+           [200, 593454],
+           [500, 924564],
+           [1000, 705674],
+           [2000, 936784]
+           ],
+  Found = false,
+  foreach(Weight in 1..10000000, break(Found==true))
+    if check(Weight,Coins,Sols), Sols.len > 0 then
+      println((Weight/100000)=Sols.map(second)=Sols.len),
+      if Sols.len > 1 then
+        % Found := true
+        true
+      end
+    end
+  end,
+  
+  nl.
+go2 => true.
+
+/*
+  Swedish coins.
+  Weights from https://ingemars.se/mynttyper_sv.htm
+  (Picking the most current years.)
+
+  Same issue as for the Danish coins. 
+  First duplicate solution is for 10.9g
+
+  2.18 = [25] = 1
+  3.6 = [100] = 1
+  3.7 = [50] = 1
+  4.36 = [50] = 1
+  4.8 = [200] = 1
+  5.78 = [125] = 1
+  5.88 = [75] = 1
+  6.1 = [500] = 1
+  6.54 = [75] = 1
+  6.6 = [1000] = 1
+  6.98 = [225] = 1
+  7.2 = [200] = 1
+  7.3 = [150] = 1
+  7.4 = [100] = 1
+  7.96 = [150] = 1
+  8.06 = [100] = 1
+  8.28 = [525] = 1
+  8.4 = [300] = 1
+  8.5 = [250] = 1
+  8.72 = [100] = 1
+  8.78 = [1025] = 1
+  9.16 = [250] = 1
+  9.38 = [225] = 1
+  9.48 = [175] = 1
+  9.58 = [125] = 1
+  9.6 = [400] = 1
+  9.7 = [600] = 1
+  9.8 = [550] = 1
+  10.14 = [175] = 1
+  10.2 = [1100] = 1
+  10.24 = [125] = 1
+  10.3 = [1050] = 1
+  10.46 = [550] = 1
+  10.58 = [325] = 1
+  10.68 = [275] = 1
+  10.8 = [300] = 1
+  10.9 = [700,250,125] = 3
+
+*/
+go3 ?=>
+  nolog,
+  %     Ore  g * 10
+  Coins = [[  25, 218], % 2.18g (discontinued in 1984)
+           [  50, 370],
+           [ 100, 360],
+           [ 200, 480],
+           [ 500, 610],
+           [1000, 660]
+           ],
+  Found = false,
+  foreach(Weight in 1..10000000, break(Found==true))
+    if check(Weight,Coins,Sols), Sols.len > 0 then
+      println((Weight/100)=Sols.map(second)=Sols.len),
+      if Sols.len > 1 then
+        % Found := true
+        true
+      end
+    end
+  end,
+  nl.
+go3 => true.
+
+
+
+check(Weight,Data,All) =>
+  [OreD,WeightD] = Data.transpose,
+  N = OreD.len,
+  X = new_list(N),
+  X :: 0..10,
+  Weight #= sum([X[I]*WeightD[I] : I in 1..N]),
+  Cost #= sum([X[I]*OreD[I] : I in 1..N]),
+  All = solve_all($[limit(100)],[X,Cost]).
+
+
