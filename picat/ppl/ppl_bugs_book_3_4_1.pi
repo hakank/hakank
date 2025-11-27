@@ -1,0 +1,131 @@
+/* 
+
+  Bugs book example 3.4.1 in Picat.
+
+  Example 3.4.1 Three coins (page 45)
+  """
+  Suppose I have 3 coins in my pocket. The coins may be either fair, biased 3:1 in
+  favour of heads, or 3:1 in favour of tails, but I don't know how many of
+  each type there are among the 3 coins. I randomly select 1 coin att toss it once,
+  observing a head. What is the posterior distribution of the probability of a head?
+  """
+
+  Cf
+  - ppl_gamble_bugs_book_3_4_1b.pi  
+  - my Gamble model gamble_bugs_book_3_4_1.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : coin
+  Probabilities:
+  3: 0.4830234438156831
+  2: 0.3478172999191593
+  1: 0.1691592562651576
+  mean = 2.31386
+
+  var : theta true
+  Probabilities:
+  0.75: 0.4830234438156831
+  0.5: 0.3478172999191593
+  0.25: 0.1691592562651576
+  mean = 0.578466
+
+  var : coin_prob 1
+  Probabilities:
+  0: 0.8308407437348424
+  1: 0.1691592562651576
+  mean = 0.169159
+
+  var : coin_prob 2
+  Probabilities:
+  0: 0.6521827000808408
+  1: 0.3478172999191593
+  mean = 0.347817
+
+  var : coin_prob 3
+  Probabilities:
+  0: 0.5169765561843169
+  1: 0.4830234438156831
+  mean = 0.483023
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+model() =>
+  N = 3,
+  Coin = random_integer1(3),
+  Theta = [ I * 0.25 : I in 1..N],
+  CoinProb = [cond(Coin==I,1,0) : I in 1..N],
+  ThetaTrue = Theta[Coin],
+  Y = bern(ThetaTrue),
+  observe(Y == 1), % We observe a head
+  if observed_ok then
+    add("coin",Coin),
+    add("theta true",ThetaTrue),
+    add("coin_prob 1",CoinProb[1]),
+    add("coin_prob 2",CoinProb[2]),
+    add("coin_prob 3",CoinProb[3]),    
+  end.
+
+
+
+/*
+  Another - simpler - approach
+
+  var : coin
+  Probabilities:
+  biased_head: 0.5077782209812525
+  fair: 0.3308735540486638
+  biased_tails: 0.1613482249700838
+  mean = [biased_head = 0.507778,fair = 0.330874,biased_tails = 0.161348]
+
+  var : flip
+  Probabilities:
+  head: 1.0000000000000000
+  mean = [heads = 1.0]
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+model2() =>
+  % We have 3 coins
+  Coin = uniform_draw([fair,biased_head,biased_tails]),
+  Flip = case(Coin,
+              [
+              [fair,categorical([1/2,1/2],[head,tail])],
+              [biased_head,categorical([3/4,1/4],[head,tail])],
+              [biased_tails,categorical([1/4,3/4],[head,tail])]
+              ]),
+
+  % We observe a head
+  observe(Flip == head), 
+  if observed_ok then
+    add("coin",Coin),
+    add("flip",Flip),
+  end.

@@ -1,0 +1,129 @@
+/* 
+
+  Virus infection in Picat.
+
+  From https://www.reddit.com/r/Probability/comments/1fa52ig/help_with_exercise_conditional_probabilities_let/
+  """
+  Help with exercise conditional probabilities
+
+  Hello .. how would you solve this exercise ?
+
+  A disease can be caused by three viruses A, B, and C. In a laboratory there are three tubes 
+  with virus A, two with virus B, and five with virus C. The probability that virus A causes 
+  the disease is 1/3, virus B is 2/3, and virus C is 1/7. A virus is inoculated into an animal 
+  and it contracts the disease. 
+  What is the probability that the inoculated virus was C?
+
+  I think I should calculate the 
+  P (incoulated C| disease)= (P disease C|inoculated C * P inoculated C) / P disease= 6.25%
+
+  Can you confirm that? i have no solution for this exercise
+
+  Thank you for your help
+  """
+
+  Below are two models with some different approaches.
+
+  And here's a shorter (and exact) version w/o any fancy 
+  Probabilitic Programming stuff:
+  Picat> X = (5 * 1/7) / ((3 *1/3) + (2 * 2/3) + (5 * 1/7))  
+  X = 0.234375
+
+  Cf my Gamble model gamble_virus_infection.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  var : virus
+  Probabilities:
+  b: 0.4373000000000000
+  a: 0.3269333333333334
+  c: 0.2357666666666667
+
+*/
+go ?=>
+  reset_store,
+  run_model(30_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Viruses = [a,b,c],
+
+  % 3 virus A tubes, 2 virus B tubes, and 5 with virus C
+  NumTubes = [3,2,5],
+  Probs = [1/3,2/3,1/7],
+
+  % The probability that virus A causes the disease is 1/3, virus B is 2/3, and virus C is 1/7
+  % Virus = categorical([3*1/3,2*2/3,5*1/7],Viruses),
+   
+  % This is more "formal":
+  Virus = categorical([T*P : {P,T} in zip(Probs,NumTubes)],Viruses),
+
+  add("virus",Virus).
+
+
+/*
+  Another approach
+  (as it happens it's quite similar to the Bayesian Network in
+   https://www.reddit.com/r/Probability/comments/1fa52ig/help_with_exercise_conditional_probabilities_let/ )
+
+  * We have observed a virus
+
+    var : tube
+    Probabilities:
+    b: 0.4332755632582322
+    a: 0.3298310225303293
+    c: 0.2368934142114385
+
+  * Without any observation about the virus
+
+    var : tube
+    Probabilities:
+    c: 0.5046666666666667
+    a: 0.2982000000000000
+    b: 0.1971333333333333  
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(30_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  Viruses = [a,b,c],
+
+  % 3 virus A tubes, 2 virus B tubes, and 5 with virus C
+  NumTubes = [3,2,5],
+  Tube = categorical(NumTubes,Viruses),
+
+  Probs = [1/3,2/3,1/7],
+
+  % The probability that virus A causes the disease is 1/3, virus B is 2/3, and virus C is 1/7
+  Virus = case(Tube,[[a,flip(Probs[1])],
+                     [b,flip(Probs[2])],
+                     [c,flip(Probs[3])]]),
+
+  % We know that it's virus
+  observe(Virus),
+
+  if observed_ok then
+    add("tube",Tube).
+  end.

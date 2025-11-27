@@ -1,0 +1,308 @@
+/* 
+
+  Gamma dist in Picat.
+
+  Implementing gamma_dist using gamma_regularized.  
+
+  gamma_regularized and inverse_gamma_regularized kind of works,
+
+
+  But the gamma_dist_quantile is still unreliable for larger values, e.g.
+
+  Existing version:
+    gamma_dist(180,8)
+  Picat> X=gamma_dist(180,8),Y=gamma_dist_cdf(180,8,X),Z=gamma_dist_quantile(180,8,Y)
+  *** error(zero_divisor,/ /2)
+   
+  These functions:
+  Picat> X=gamma_dist(180,8),Y=gamma_dist_cdf2(180,8,X),Z=gamma_dist_quantile2(180,8,Y)
+  X = 1344.907369666374052
+  Y = 0.0
+  Z = 0
+
+  Skipping this, and instead added a binary search version as a reserved.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Gamma regularized
+gamma_regularized(1,1.5),a = 1,z = 1.5,expected = 0.22313,x = 0.22313,diff = 1.60148e-07]
+ok
+
+[gamma_regularized(3,0.5),a = 3,z = 0.5,expected = 0.985612,x = 0.985612,diff = 3.22033e-07]
+ok
+
+[gamma_regularized(3,10.5),a = 3,z = 10.5,expected = 0.00183462,x = 0.00183462,diff = 4.06207e-09]
+ok
+
+[gamma_regularized(103,120.5),a = 103,z = 120.5,expected = 0.0476831,x = 0.0476831,diff = 4.88888e-10]
+ok
+
+[gamma_regularized(10,1.5),a = 10,z = 1.5,expected = 0.999996,x = 0.999996,diff = 9.7501e-08]
+ok
+
+[gamma_regularized(10,21.5),a = 10,z = 21.5,expected = 0.00204432,x = 0.00204432,diff = 1.63775e-09]
+ok
+
+[gamma_regularized(1,1),a = 1,z = 1,expected = 0.367879,x = 0.367879,diff = 0.0]
+ok
+
+
+*/
+go ?=>
+  % Testing with Mathematica's examples
+  Examples = [[1,1.5, 0.22313],
+              [3,0.5, 0.985612],
+              [3,10.5, 0.00183462],
+              [103,120.5,0.0476831],
+              [10, 1.5, 0.999996],
+              [10, 21.5, 0.00204432],
+              [100, 21.5],
+              [1  , 1, 0.36787944117144232160]
+              ],
+  foreach([A,Z,Expected] in Examples)
+    X = gamma_regularized(A, Z),
+    Diff = abs(X-Expected),    
+    println([$gamma_regularized(A,Z),a=A,z=Z,expected=Expected,x=X,diff=Diff]),
+    if abs(X-Expected) <= 0.001 then
+      println(ok)
+    else
+      println(not_ok)    
+    end,
+    nl
+  end,
+  
+  nl.
+go => true.
+
+/*
+  inverse_gamma_regularized(A, S)
+  Must use inverse_gamma_regularized_mma(A, S)
+*/
+go2 ?=>
+  Examples = [[1,1.5, 0.22313],
+              [3,0.5, 0.985612],
+              [3,10.5, 0.00183462],
+              [103,120.5,0.0476831],
+              [10, 1.5, 0.999996],
+              [10, 21.5, 0.00204432],
+              [100, 21.5],
+              [1  , 1, 0.36787944117144232160]
+              ],
+  % Reverses the order from gamma_regularized test above
+  foreach([A,Expected,S] in Examples)
+    % println([a=A,s=S,expected=Expected]),
+    println(testing=$inverse_gamma_regularized_mma(A,S)),
+    X = inverse_gamma_regularized_mma(A, S),
+    Diff = abs(X-Expected),    
+    println([$inverse_gamma_regularized(A,S),a=A,s=S,expected=Expected,x=X,diff=Diff]),
+    % println([$inverse_gamma_regularized(A,S),expected=Expected,x=X]),    
+    if abs(X-Expected) <= 0.001 then
+      println(ok)
+    else
+      println(not_ok)    
+    end,
+    nl
+  end,
+
+
+  nl.
+go2 => true.
+
+/*
+Table[PDF[GammaDistribution[1, 2], x], {x, 1, 10}] // N
+{0.303265, 0.18394, 0.111565, 0.0676676, 0.0410425, 0.0248935, \
+0.0150987, 0.00915782, 0.0055545, 0.00336897}
+
+Table[CDF[GammaDistribution[1, 2], x], {x, 1, 10}] // N
+{0.393469, 0.632121, 0.77687, 0.864665, 0.917915, 0.950213, 0.969803, \
+0.981684, 0.988891, 0.993262}
+
+Table[Quantile[GammaDistribution[1, 2], x/100], {x, 1, 100, 10}] // N
+{0.0201007, 0.233068, 0.471445, 0.742127, 1.05527, 1.4267, 1.88322, \
+2.47575, 3.32146, 4.81589}
+*/
+go3 ?=>
+  println("PDF:"),
+  println([gamma_dist_pdf2(1,2,V) : V in 1..10]),
+  nl,
+  println("CDF:"),
+  println([gamma_dist_cdf2(1,2,V) : V in 1..10]),
+  nl,
+  println("Quantile:"),
+  println([gamma_dist_quantile2(1,2,V/100) : V in 1..10..100]),   
+  nl.
+go3 => true.
+
+/*
+
+
+*/
+go10 ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go10 => true.
+  
+  
+model() =>
+  
+  
+  observe(Obs),
+  
+  if observed_ok then
+    add("xxx",Xxx),
+  end.
+
+gamma_dist_pdf2(Alpha,Beta,X) = Res =>
+  if X > 0 then
+    Res = exp(-X/Beta) * X**(Alpha-1)*Beta**(-Alpha) / gamma_func(Alpha)
+  else
+    Res = 0
+  end.
+
+
+gamma_dist_cdf2(Alpha,Beta,X) = Res =>
+  if X > 0 then
+    Res = gamma_regularized_mma(Alpha,X/Beta)
+  else
+    Res = 0
+  end.
+
+
+gamma_dist_quantile2(Alpha,Beta,X) = Res =>
+  if X >= 0, X <= 1 then 
+    if X > 0, X < 1 then
+      Res = Beta * inverse_gamma_regularized(Alpha,X)
+    else
+      Res = 0
+    end 
+  else
+    throw($error('gamma_dist_quantile: X > 0, X < 1'))
+  end.
+
+
+/*
+  gamma_regularized(A, Z)
+  -----------------------
+  Regularized lower incomplete gamma P(A,Z)
+  (Mathematica: GammaRegularized[a,z])
+
+  Accurate for all A>0, Z>=0.
+*/
+% This seems to work!
+gamma_regularized(A, Z) = P =>
+    if A =< 0.0 then
+        throw($error('gamma_regularized: A must be > 0'))
+    elseif Z < 0.0 then
+        throw($error('gamma_regularized: Z must be >= 0'))
+    elseif Z == 0.0 then
+        P = 0.0
+    else
+        GLN = log(gamma_func(A)),         % ln Γ(a)
+        if Z < A + 1.0 then
+            % -------- series expansion (lower tail) --------
+            AP = A,
+            SUM = 1.0 / A,
+            DEL = SUM,
+            while (DEL.abs > 1.0e-15)
+                AP := AP + 1.0,
+                DEL := DEL * Z / AP,
+                SUM := SUM + DEL
+            end,
+            GLOW = SUM * exp(-Z + A * log(Z) - GLN),
+            P = 1- GLOW
+        else
+            % -------- continued fraction (upper tail) -------
+            B = Z + 1.0 - A,
+            C = 1.0 / 1.0e-30,
+            D = 1.0 / B,
+            H = D,
+            I = 1,
+            while (I =< 1000)
+                AN = -I * (I - A),
+                B := B + 2.0,
+                D := AN * D + B,
+                if D.abs < 1.0e-30 then D := 1.0e-30 end,
+                C := B + AN / C,
+                if C.abs < 1.0e-30 then C := 1.0e-30 end,
+                D := 1.0 / D,
+                DEL := D * C,
+                H := H * DEL,
+                if (DEL - 1.0).abs < 1.0e-15 then
+                    I := 1001
+                else
+                    I := I + 1
+                end
+            end,
+            Q = exp(-Z + A * log(Z) - GLN) * H,
+            P = Q
+        end
+    end.
+
+gamma_regularized_mma(A,Z) = 1.0 - gamma_regularized(A,Z).
+
+/*
+  inverse_gamma_regularized(A, S)
+  --------------------------------
+  Works with your gamma_regularized/2, which returns the UPPER regularized
+  incomplete gamma  Q(a,z) = 1 - P(a,z).
+
+  Returns Z such that P(a,Z) ≈ S,
+  i.e. GammaRegularized[a,Z] (Mathematica) ≈ S.
+*/
+inverse_gamma_regularized(A, S) = Z =>
+    if A =< 0.0 then
+        throw($error('inverse_gamma_regularized: A must be > 0'))
+    elseif S =< 0.0 then
+        Z = 0.0
+    elseif S >= 1.0 then
+        Z = 1.0e308
+    elseif abs(A - 1.0) < 1.0e-15 then
+        % For a = 1:  Q(1,z) = exp(-z),  P(1,z) = 1 - exp(-z)
+        Z = -log(1.0 - S)
+    else
+        Target = 1.0 - S,     % we need Q(a,z) = Target
+        println(target=Target),
+        Lo = 0.0,
+        Hi = max(1.0, A),
+        QHi = gamma_regularized(A, Hi),
+
+        % --- Bracket: Q decreases with z ---
+        while (QHi > Target)
+            Hi := Hi * 2.0,
+            QHi := gamma_regularized(A, Hi)
+        end,
+
+        % --- Bisection: because Q decreases, flip comparisons ---
+        I = 0,
+        Limit = 2000,
+        while (I < Limit)
+            Mid = 0.5 * (Lo + Hi),
+            QMid = gamma_regularized(A, Mid),
+            if abs(QMid - Target) < 1.0e-15 ; abs(Hi - Lo) < 1.0e-15 then
+                I := Limit
+            elseif QMid > Target then       % move right -> larger z
+                Lo := Mid
+            else                            % move left -> smaller z
+                Hi := Mid
+            end,
+            I := I + 1
+        end,
+        println([lo=Lo,hi=Hi]),
+        Z = 0.5 * (Lo + Hi)
+    end.
+
+inverse_gamma_regularized_mma(A,S) = inverse_gamma_regularized(A, 1.0 - S).

@@ -1,0 +1,184 @@
+/* 
+
+  Discrete Markov process - gambler's ruin in Picat.
+
+  From Mathematica DiscreteMarkovProcess
+  """
+  A gambler, starting with three chips, places a one-chip bet at each step,
+  with a winning probability of 0.4 and a goal of winning seven units 
+  before going broke. The states here are the integers 1 through 8, representing 
+  the gambler's wealth plus one:
+
+  ...
+
+  gamblerwealth = DiscreteMarkovProcess[4, GamblersRuin[0.4, 7]]
+  Normal@GamblersRuin[0.4, 7]
+  -> 
+  {{1, 0, 0, 0, 0, 0, 0, 0}, 
+   {0.6, 0, 0.4, 0, 0, 0, 0, 0}, 
+   {0, 0.6, 0, 0.4, 0, 0, 0, 0}, 
+   {0, 0, 0.6, 0, 0.4, 0, 0, 0}, 
+   {0, 0, 0, 0.6, 0, 0.4, 0, 0}, 
+   {0, 0, 0, 0, 0.6, 0, 0.4, 0}, 
+   {0, 0, 0, 0, 0, 0.6, 0, 0.4}, 
+   {0, 0, 0, 0, 0, 0, 0, 1}}
+
+
+  ...
+
+  Find the expected number of times the gambler has 1<=n<=6 units:
+  {{1, 1.42059}, 
+   {2, 2.36765}, 
+   {3, 2.99903}, 
+   {4, 1.75328}, 
+   {5, 0.922778}, 
+   {6, 0.369111}}
+
+   Find the expected time until the gambler reaches his goal or goes broke:
+   Mean[FirstPassageTimeDistribution[gamblerwealth, {1, 8}]]
+   -> 9.83244
+
+   Table[{s, Mean[FirstPassageTimeDistribution[gamblerwealth, s]]}, {s, 1, 8}]
+   -> {{1, 9.50547}, {2, 5.92828}, {3, 2.73678}, {4, 2.93837}, 
+       {5, 2.21457}, {6, 4.95136}, {7, 8.14286}, {8, 11.72}}
+
+  Find the probability of winning:
+  PDF[gamblerwealth[Infinity], 8]
+  -> 
+  0.14764
+
+  Using exact probability 4/19:
+  PDF[gamblerwealth[Infinity], 8]
+  -> 304/2059
+  N[%, 20]
+  -> 0.14764448761534725595
+  """
+
+  Cf my Gamble model gamble_discrete_markov_process_gamblers_ruin.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils, ppl_common_utils.
+import util.
+% import ordset.
+
+main => go.
+
+make_ruin_transitions(N,P) = Res =>
+  Res = [],
+  foreach(I in 0..N)
+    T = [],
+    foreach(J in 0..N)
+      V = cases([[(I == 0, J == 0),1],
+                 [(I == N, J == N),1],
+                 [(I > 0, I = (J - 1)),P],
+                 [(I < N, J = (I - 1)),(1-P)],
+                 [true,0]]),
+      T := T ++ [V]
+    end,
+    Res := Res ++ [T]
+  end.
+
+/*
+
+  Transition matrix
+  [0.6,0,0.4,0,0,0,0,0]
+  [0,0.6,0,0.4,0,0,0,0]
+  [0,0,0.6,0,0.4,0,0,0]
+  [0,0,0,0.6,0,0.4,0,0]
+  [0,0,0,0,0.6,0,0.4,0]
+  [0,0,0,0,0,0.6,0,0.4]
+  [0,0,0,0,0,0,0,1]
+
+  init = [0,0,0,1,0,0,0,0]
+  stationary = [0.679395,1.30302e-12,2.06859e-12,1.95191e-12,1.71966e-12,1.04354e-12,5.10214e-13,0.320605]
+  Probability of winning (reaching last state = state 8): 0.147644487615
+
+  The model:
+  n = 500
+  var : v
+  mean = 2.0542
+
+  var : p win
+  mean = 0.1506
+
+  var : p loose
+  mean = 0.8494
+
+  var : p not decided
+  mean = 0.0
+
+  var : count 1
+  mean = 416.669
+
+  var : count 2
+  mean = 1.4082
+
+  var : count 3
+  mean = 2.349
+
+  var : count 4
+  mean = 2.9837
+
+  var : count 5
+  mean = 1.7428
+
+  var : count 6
+  mean = 0.9188
+
+  var : count 7
+  mean = 0.3695
+
+  var : count 8
+  mean = 73.5588
+
+
+*/
+go ?=>
+  TM = make_ruin_transitions(7,0.4),
+  TMLen = TM.len,
+  Init = one_hot(TMLen,3+1), % Starts with 3 chips, start in state 3+1
+  show_matrix(TM,"Transition matrix"),
+  println(init=Init),
+  Stationary = stationary_dist(TM),
+  println(stationary=Stationary),
+  PWinning = discrete_markov_process_dist_pdf(TM,Init,1_000,TMLen),
+  printf("Probability of winning (reaching last state = state %d): %0.12f\n",TMLen,PWinning),
+  nl,
+
+  println("The model:"),
+  reset_store,
+  N = 500, % length of the chain
+  println(n=N),
+  run_model(10_000,$model(TM,Init,N),[mean]),
+  nl.
+go => true.
+
+model(TM,Init,N) =>
+  EndState = TM.len, % end/winning state
+  X = markov_chain(TM,Init,N),
+
+  V = X.last,
+  PWin = check(V == EndState), % Have we reached the winning (end) state?
+  PLoose = check(V == 1),      % Have we reached a loosing state (1)?
+  PNotDecided = check( (V > 1, V < EndState)),
+
+  % add("x",X),
+  add("v",V),
+  add("p win",PWin),
+  add("p loose",PLoose),
+  add("p not decided",PNotDecided),
+
+  % Expected number of times the gambler has 1 <= N <= 6 units
+  foreach(S in 1..EndState)
+    add("count "++S.to_string,count_occurrences(S,X))
+  end.
+
+  % % First position of state S
+  % foreach(S in 1..EndState)
+  %   add("first "++S.to_string,find_first(X,S,0))
+  % end,
+  % add("p2",find_first(X,1,0) + V + find_first(X,EndState,0)).

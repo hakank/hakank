@@ -1,0 +1,150 @@
+/* 
+
+  Telephone operator in Picat.
+
+  From https://github.com/fzaiser/genfer/blob/main/benchmarks/prodigy/telephone_operator.sgcl
+  """
+# Adapted from https://github.com/LKlinke/Prodigy/blob/main/pgfexamples/inference/telephone_operator.pgcl
+
+x ~ Bernoulli(2/7);
+if (x=0){
+    d ~ Poisson(6);
+} else {
+    d ~ Poisson(2);
+}
+
+observe(d=5);
+
+return x;
+
+#= Original code:
+
+nat x; // 0: weekday, 1: weekend
+nat d; // sample the number of phone calls received in one hour.
+rparam p;
+nparam n;
+
+x := bernoulli(2/7)
+if (x=0){
+    d := poisson(6) // Weekdays there are 10 phone calls on average in an hour
+} else {
+    d := poisson(2) // Weekends there are 4 phone calls in average in an hour
+}
+
+observe(d=5) // we have observed 5 phone calls.
+?Pr[x = 0]
+//!Plot[x, d]
+!Print
+
+
+  """
+
+  $ genfer ./benchmarks/prodigy/telephone_operator.sgcl --no-timing --print-program 
+Parsed program:
+a ~ Bernoulli(2/7);
+if a ∈ [0] {
+  b ~ Poisson(6);
+} else {
+  b ~ Poisson(2);
+}
+observe b ∈ [5];
+return a
+
+ ...
+
+Computing probabilities up to 2...
+Unnormalized: p(0)     = 0.11473081503427147
+Normalized:   p(0) / Z = 0.9175376792241287
+Unnormalized: p(1)     = 0.010311259675170492
+Normalized:   p(1) / Z = 0.08246232077587151
+Unnormalized: p(n)     <= 0.0 for all n >= 2
+Normalized:   p(n) / Z <= 0.0 for all n >= 2
+
+
+
+  Cf my Gamble model gamble_telephone_operator.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  var : x
+  Probabilities:
+  false: 0.9199780116224281
+  true: 0.0800219883775719
+  mean = 0.080022
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  P6 = poisson_dist(6),
+  P2 = poisson_dist(2),
+
+  X = flip(2/7), % 0: weekday, 1: weekend
+  D = cond(not X, P6, P2),
+
+  observe(D == 5),
+
+  if observed_ok then
+    add("x",X),
+  end.
+
+
+/*
+  The original problem (from Prodigy, see "Original code" above)
+  with poisson_dist(10) for Weekend and poisson_dist(4) for weekday
+
+  var : x
+  Probabilities:
+  true: 0.6266946191474493
+  false: 0.3733053808525507
+  mean = 0.626695
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(100_000,$model2,[show_probs_trunc,mean
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  X = flip(2/7), % 0: weekday, 1: weekend
+  D = cond(not X, poisson_dist(10), poisson_dist(4)),
+
+  observe(D == 5),
+
+  if observed_ok then
+    add("x",X),
+  end.

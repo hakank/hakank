@@ -1,0 +1,104 @@
+/* 
+
+  Seven Scientists in Picat.
+
+  From https://mhtess.github.io/bdappl/chapters/03-simpleModels.html
+  """
+  Seven scientists with wildly-differing experimental skills all make a 
+  measurement of the same quantity. They get the answers 
+
+     x = (−27.020, 3.570, 8.191, 9.898, 9.603, 9.945, 10.056). 
+
+  Intuitively, it seems clear that the first two scientists are pretty inept 
+  measurers, and that the true value of the quantity is probably just a bit 
+  below 10. The main problem is to find the posterior distribution over 
+  the measured quantity, telling us what we can infer from the measurement. 
+  A secondary problem is to infer something about the measurement skills of 
+  the seven scientists.
+  """
+
+  This is a rather hard BDA problem for Picat PPL.
+
+  Cf my Gamble model gamble_seven_scientists.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  Forcing 1000 accepted samples (14.8s)
+
+  
+  Num accepted samples: 996  Total samples: 634280  (0.002%)
+  Num accepted samples: 997  Total samples: 634520  (0.002%)
+  Num accepted samples: 998  Total samples: 636368  (0.002%)
+  Num accepted samples: 999  Total samples: 637723  (0.002%)
+  Num accepted samples: 1000  Total samples: 638347  (0.002%)
+
+  var : mu
+  mean = 5.24438
+
+  var : sigmas 1
+  mean = 15.9921
+
+  var : sigmas 2
+  mean = 8.59933
+
+  var : sigmas 3
+  mean = 8.7325
+
+  var : sigmas 4
+  mean = 8.86567
+
+  var : sigmas 5
+  mean = 8.81675
+
+  var : sigmas 6
+  mean = 9.0874
+
+  var : sigmas 7
+  mean = 8.7213
+
+  Note: We see clearly that Sigma[1] is higher that the other.
+        But one might have expected to see this for Sigmas[2] 
+        as well...
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[% show_probs_trunc,
+                            mean,
+                            min_accepted_samples=1_000,show_accepted_samples=true
+                                ]),
+  % nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+    
+model() =>
+  Data = [-27.020,3.570,8.191,9.898,9.603,9.945,10.056],
+  N = Data.len,
+  Stdev = Data.stdev,
+
+  Mu = normal_dist(0,30),
+  Sigmas = uniform_n(0,20,N),
+
+  Ys = [normal_dist(Mu,Sigmas[I]) : I in 1..N],
+  foreach(I in 1..N)
+    observe(abs(Data[I]-Ys[I])<Stdev),  
+  end,
+  
+  if observed_ok then
+    add("mu",Mu),
+    foreach(I in 1..N)
+      add("sigmas "++I.to_string,Sigmas[I]),
+    end
+  end.

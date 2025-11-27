@@ -1,0 +1,123 @@
+/* 
+
+  Continuous weight example in Picat.
+
+  From Church model:
+  """
+  (define observed-data '(h h h h h))
+  (define num-flips (length observed-data))
+  (define num-samples 1000)
+  (define prior-samples (repeat num-samples (lambda () (uniform 0 1))))
+
+  (define samples
+    (mh-query
+         num-samples 10
+   
+         (define coin-weight (uniform 0 1))
+   
+         (define make-coin (lambda (weight) (lambda () (if (flip weight) 'h 't))))
+         (define coin (make-coin coin-weight))
+   
+         coin-weight
+
+         (equal? observed-data (repeat num-flips coin))))
+
+   ;;; (density prior-samples "Coin weight, prior to observing data" #t )
+   ;;; (density samples "Coin weight, conditioned on observed data" #t)
+  """
+
+
+  Cf my Gamble model gamble_continuous_weight.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+var : coin weight
+Probabilities (truncated):
+0.99999637948349: 0.0005896226415094
+0.999748871195944: 0.0005896226415094
+0.999685252550843: 0.0005896226415094
+0.999410244635963: 0.0005896226415094
+.........
+0.314302344952851: 0.0005896226415094
+0.308752641691245: 0.0005896226415094
+0.293086304931476: 0.0005896226415094
+0.286043609160019: 0.0005896226415094
+mean = 0.853114
+[len = 1696,min = 0.286044,mean = 0.853114,median = 0.885716,max = 0.999996,variance = 0.0155478,stdev = 0.124691]
+Histogram (total 1696)
+  0.286:     2 #                                                            (0.001 / 0.001)
+  0.304:     1                                                              (0.001 / 0.002)
+  0.322:     1                                                              (0.001 / 0.002)
+  0.340:     1                                                              (0.001 / 0.003)
+  0.357:     2 #                                                            (0.001 / 0.004)
+  0.375:     0                                                              (0.000 / 0.004)
+  0.393:     0                                                              (0.000 / 0.004)
+  0.411:     1                                                              (0.001 / 0.005)
+  0.429:     2 #                                                            (0.001 / 0.006)
+  0.447:     6 ##                                                           (0.004 / 0.009)
+  0.465:     3 #                                                            (0.002 / 0.011)
+  0.482:     4 #                                                            (0.002 / 0.014)
+  0.500:     7 ##                                                           (0.004 / 0.018)
+  0.518:     3 #                                                            (0.002 / 0.019)
+  0.536:     9 ##                                                           (0.005 / 0.025)
+  0.554:    10 ###                                                          (0.006 / 0.031)
+  0.572:    17 ####                                                         (0.010 / 0.041)
+  0.589:    12 ###                                                          (0.007 / 0.048)
+  0.607:    20 #####                                                        (0.012 / 0.060)
+  0.625:    21 #####                                                        (0.012 / 0.072)
+  0.643:    21 #####                                                        (0.012 / 0.084)
+  0.661:    34 #########                                                    (0.020 / 0.104)
+  0.679:    23 ######                                                       (0.014 / 0.118)
+  0.697:    24 ######                                                       (0.014 / 0.132)
+  0.714:    27 #######                                                      (0.016 / 0.148)
+  0.732:    36 #########                                                    (0.021 / 0.169)
+  0.750:    54 ##############                                               (0.032 / 0.201)
+  0.768:    50 #############                                                (0.029 / 0.231)
+  0.786:    47 ############                                                 (0.028 / 0.258)
+  0.804:    62 ################                                             (0.037 / 0.295)
+  0.822:    63 ################                                             (0.037 / 0.332)
+  0.839:    87 ######################                                       (0.051 / 0.383)
+  0.857:    96 ########################                                     (0.057 / 0.440)
+  0.875:    91 #######################                                      (0.054 / 0.494)
+  0.893:   114 #############################                                (0.067 / 0.561)
+  0.911:   107 ###########################                                  (0.063 / 0.624)
+  0.929:   115 #############################                                (0.068 / 0.692)
+  0.946:   130 #################################                            (0.077 / 0.768)
+  0.964:   153 ######################################                       (0.090 / 0.858)
+  0.982:   240 ############################################################ (0.142 / 1.000)
+
+
+*/
+go ?=>
+  [H,_T] = [1,0],
+  ObservedData = [H,H,H,H,H], % convert to numerical data for observe_abc
+  reset_store,
+  run_model(10_000,$model(ObservedData),[show_probs_trunc,mean,
+                                         show_simple_stats,show_histogram]),
+  nl.
+go => true.
+  
+make_coin(Weight) = cond(flip(Weight) == true, 1, 0).
+
+model(ObservedData) =>
+  NumFlips = ObservedData.len,
+
+  CoinWeight = uniform(0,1),
+  Coins = [make_coin(CoinWeight) : _ in 1..NumFlips],
+
+  observe_abc(ObservedData,Coins,1/10),
+
+  if observed_ok then
+    add("coin weight",CoinWeight),
+  end.

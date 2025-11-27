@@ -1,0 +1,166 @@
+/* 
+
+  How many times was the coin tossed? in Picat.
+
+  From https://medium.com/illumination/how-many-times-was-the-coin-tossed-acf166b61eeb
+  """
+  An unfair coin lands on Head with 1/4. When tossed n times, the probability
+  of 2 heads == probabillity of 3 heads. 
+  What is n?
+
+  ...
+
+  And so our answer is 11!
+
+  """
+
+  Cf my Gamble model gamble_how_many_times_was_the_coin_tossed.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : n
+  Probabilities:
+  11: 1.0000000000000000
+  mean = 11.0
+
+  var : n,p2,p2
+  Probabilities:
+  [11,0.258104,0.258104]: 1.0000000000000000
+  mean = [[11,0.258104,0.258104] = 1.0]
+
+  var : p2
+  Probabilities:
+  0.258104: 1.0000000000000000
+  mean = 0.258104
+
+  var : p3
+  Probabilities:
+  0.258104: 1.0000000000000000
+  mean = 0.258104
+
+
+  Compare with Mathematica:
+  """
+  Reduce[{
+  PDF[BinomialDistribution[n, 1/4], 2] == 
+   PDF[BinomialDistribution[n, 1/4], 3], n > 0}, {x}, Integers]
+  -> 
+  x \[Element] Integers && (n == 1 || n == 11)
+
+  PDF[BinomialDistribution[11, 1/4], 2] // N
+  -> 
+  0.258104
+  """
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  % N must be >= 3 since we have done at least 3 tosses: 2 heads and 3 heads
+  N = uniform_draw(3..20), % 3+random_integer(20-3),
+
+  P = 1/4,
+
+  % Probability of P2 == probability of P3
+  P2 = binomial_dist_pdf(N,P,2),
+  P3 = binomial_dist_pdf(N,P,3),
+
+  observe(P2 == P3),
+  
+  if observed_ok then
+    add("n",N),
+    add("p2",P2),
+    add("p3",P3),
+    add("n,p2,p2",[N,P2,P3])
+  end.
+
+
+/*
+  Another approach using lists of bernoulli (0/1) tosses.
+
+  var : n
+  Probabilities (truncated):
+  9: 0.1106259097525473
+  10: 0.1048034934497817
+  11: 0.1004366812227074
+  8: 0.0982532751091703
+  .........
+  28: 0.0021834061135371
+  29: 0.0007278020378457
+  27: 0.0007278020378457
+  25: 0.0007278020378457
+  mean = 11.1412
+  min = 3
+  max = 29
+  Histogram:
+      3:     6 ##                                                           (0.004 / 0.004)
+      4:    28 ###########                                                  (0.020 / 0.025)
+      5:    37 ###############                                              (0.027 / 0.052)
+      6:    76 ##############################                               (0.055 / 0.107)
+      7:   103 #########################################                    (0.075 / 0.182)
+      8:   135 #####################################################        (0.098 / 0.280)
+      9:   152 ############################################################ (0.111 / 0.391)
+     10:   144 #########################################################    (0.105 / 0.496)
+     11:   138 ######################################################       (0.100 / 0.596)
+     12:   129 ###################################################          (0.094 / 0.690)
+     13:    90 ####################################                         (0.066 / 0.755)
+     14:    66 ##########################                                   (0.048 / 0.803)
+     15:    69 ###########################                                  (0.050 / 0.854)
+     16:    51 ####################                                         (0.037 / 0.891)
+     17:    47 ###################                                          (0.034 / 0.925)
+     18:    26 ##########                                                   (0.019 / 0.944)
+     19:    19 ########                                                     (0.014 / 0.958)
+     20:    13 #####                                                        (0.009 / 0.967)
+     21:    14 ######                                                       (0.010 / 0.977)
+     22:    11 ####                                                         (0.008 / 0.985)
+     23:     8 ###                                                          (0.006 / 0.991)
+     24:     6 ##                                                           (0.004 / 0.996)
+     25:     1                                                              (0.001 / 0.996)
+     27:     1                                                              (0.001 / 0.997)
+     28:     3 #                                                            (0.002 / 0.999)
+     29:     1                                                              (0.001 / 1.000)
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(100_000,$model2,[show_probs_trunc,mean,min,max,show_histogram]),
+  nl,
+  show_store_lengths,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  % N must be >= 3 since we have done at least 3 tosses: 2 heads and 3 heads
+  N = random_integer1(50), %  uniform_draw(1..50), 
+
+  P = 1/4,
+
+  % Probability of P2 == probability of P3
+  P2L = [ bern(P) : _ in 1..N],
+  observe(P2L.sum == 2),
+  P3L = [ bern(P) : _ in 1..N],
+  observe(P3L.sum == 3),
+ 
+  if observed_ok then
+    add("n",N),
+  end.

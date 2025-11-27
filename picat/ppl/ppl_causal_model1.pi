@@ -1,0 +1,167 @@
+/* 
+
+  Causal model 1 in Picat.
+
+  From https://basisresearch.github.io/chirho/tutorial_i.html
+  """
+  def causal_model(stress_prob, smokes_cond_prob, cancer_cond_prob):
+    stress = pyro.sample("stress", Bernoulli(stress_prob))
+
+    # Vindex is a helper function that allows for broadcastable indexing into a tensor
+    smokes_prob = Vindex(smokes_cond_prob)[..., stress.int()]
+    smokes = pyro.sample("smokes", Bernoulli(smokes_prob))
+
+    cancer_prob = Vindex(cancer_cond_prob)[..., stress.int(), smokes.int()]
+    cancer = pyro.sample("cancer", Bernoulli(cancer_prob))
+
+    return {"stress": stress, "smokes": smokes, "cancer": cancer}
+  """
+
+  Cf my Gamble model gamble_causal_model1.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  * No observation:
+
+    var : stress
+    Probabilities:
+    true: 0.5085000000000000
+    false: 0.4915000000000000
+    mean = [true = 0.5085,false = 0.4915]
+
+    var : smokes
+    Probabilities:
+    true: 0.5041000000000000
+    false: 0.4959000000000000
+    mean = [true = 0.5041,false = 0.4959]
+
+    var : cancer
+    Probabilities:
+    true: 0.5601000000000000
+    false: 0.4399000000000000
+    mean = [true = 0.5601,false = 0.4399]
+
+    var : stress cancer
+    Probabilities:
+    [true,true]: 0.3007000000000000
+    [false,true]: 0.2594000000000000
+    [false,false]: 0.2321000000000000
+    [true,false]: 0.2078000000000000
+    mean = [[true,true] = 0.3007,[false,true] = 0.2594,[false,false] = 0.2321,[true,false] = 0.2078]
+
+    var : smokes cancer
+    Probabilities:
+    [true,true]: 0.2892000000000000
+    [false,true]: 0.2709000000000000
+    [false,false]: 0.2250000000000000
+    [true,false]: 0.2149000000000000
+    mean = [[true,true] = 0.2892,[false,true] = 0.2709,[false,false] = 0.225,[true,false] = 0.2149]
+
+    var : stress smokes
+    Probabilities:
+    [true,true]: 0.4067000000000000
+    [false,false]: 0.3941000000000000
+    [true,false]: 0.1018000000000000
+    [false,true]: 0.0974000000000000
+    mean = [[true,true] = 0.4067,[false,false] = 0.3941,[true,false] = 0.1018,[false,true] = 0.0974]
+
+    var : stress smokes cancer
+    Probabilities:
+    [true,true,true]: 0.2397000000000000
+    [false,false,true]: 0.2099000000000000
+    [false,false,false]: 0.1842000000000000
+    [true,true,false]: 0.1670000000000000
+    [true,false,true]: 0.0610000000000000
+    [false,true,true]: 0.0495000000000000
+    [false,true,false]: 0.0479000000000000
+    [true,false,false]: 0.0408000000000000
+    mean = [[true,true,true] = 0.2397,[false,false,true] = 0.2099,[false,false,false] = 0.1842,[true,true,false] = 0.167,[true,false,true] = 0.061,[false,true,true] = 0.0495,[false,true,false] = 0.0479,[true,false,false] = 0.0408]
+
+
+  * observe: cancer
+
+    var : stress
+    Probabilities:
+    true: 0.5415406511296922
+    false: 0.4584593488703078
+    mean = [true = 0.541541,false = 0.458459]
+
+    var : smokes
+    Probabilities:
+    true: 0.5217932752179327
+    false: 0.4782067247820673
+    mean = [true = 0.521793,false = 0.478207]
+
+    var : cancer
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+    var : stress cancer
+    Probabilities:
+    [true,true]: 0.5415406511296922
+    [false,true]: 0.4584593488703078
+    mean = [[true,true] = 0.541541,[false,true] = 0.458459]
+
+    var : smokes cancer
+    Probabilities:
+    [true,true]: 0.5217932752179327
+    [false,true]: 0.4782067247820673
+    mean = [[true,true] = 0.521793,[false,true] = 0.478207]
+
+    var : stress smokes
+    Probabilities:
+    [true,true]: 0.4372887386586017
+    [false,false]: 0.3739548123109767
+    [true,false]: 0.1042519124710906
+    [false,true]: 0.0845045365593311
+    mean = [[true,true] = 0.437289,[false,false] = 0.373955,[true,false] = 0.104252,[false,true] = 0.0845045]
+
+    var : stress smokes cancer
+    Probabilities:
+    [true,true,true]: 0.4372887386586017
+    [false,false,true]: 0.3739548123109767
+    [true,false,true]: 0.1042519124710906
+    [false,true,true]: 0.0845045365593311
+    mean = [[true,true,true] = 0.437289,[false,false,true] = 0.373955,[true,false,true] = 0.104252,[false,true,true] = 0.0845045]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Stress = flip(0.5),
+  Smokes = flip(condt(Stress,0.8,0.2)),
+  Cancer = cond(Stress==true,
+                 categorical([0.1,0.15],[false,true]),
+                 categorical([0.8,0.85],[false,true])),
+
+  observe(Cancer==true),
+  % observe(not Cancer),
+  % observe(Smokes),    
+  
+  if (observed_ok) then
+    add("stress",Stress),
+    add("smokes",Smokes),
+    add("cancer",Cancer),
+    add("stress cancer",[Stress,Cancer]),
+    add("smokes cancer",[Smokes,Cancer]),
+    add("stress smokes",[Stress,Smokes]),
+    add("stress smokes cancer",[Stress,Smokes,Cancer])
+  end.

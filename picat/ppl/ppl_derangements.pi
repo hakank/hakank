@@ -1,0 +1,190 @@
+/* 
+
+  Derangements in Picat.
+
+  From http://rosettacode.org/wiki/Permutations/Derangements
+  """
+  Permutations/Derangements
+  A derangement is a permutation of the order of distinct items in which 
+  no item appears in its original place.
+
+  For example, the only two derangements of the three items 
+    (0, 1, 2) are (1, 2, 0), and (2, 0, 1).
+  
+  The number of derangements of n distinct items is known as the subfactorial of n, 
+  sometimes written as !n. There are various ways to calculate !n.
+  ...
+  """
+
+  Two variables:
+  - total: the number of i in i'th position.
+    The expectation of total is 1
+  - totalIs0: probability that total is 0, i.e. a derangement
+
+  Note: This can be calculated by the matching distribution.
+  For example for N=8:
+
+  * Expected number of matches:
+
+    Picat> X = matching_dist_mean(8)
+    X = 1
+
+  * Probability of no match, i.e. a derangement:
+
+    Picat> X = matching_dist_pdf(8,0)
+    X = 0.367881944444444
+
+
+  Cf my Gamble model gamble_derangements.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  n = 8
+  var : total
+  Probabilities:
+  1: 0.3719000000000000
+  0: 0.3641500000000000
+  2: 0.1862000000000000
+  3: 0.0583500000000000
+  4: 0.0163500000000000
+  5: 0.0023000000000000
+  6: 0.0006500000000000
+  8: 0.0001000000000000
+  mean = 1.00095
+
+  var : total == 0
+  Probabilities:
+  false: 0.6358500000000000
+  true: 0.3641500000000000
+  mean = 0.36415
+
+  theoretical_mean = 1
+  theoretical_prob_of_0 = 0.367882
+  PDF:
+   0 0.367881944444444 
+   1 0.367857142857143 
+   2 0.184027777777778 
+   3 0.061111111111111 
+   4 0.015625 
+   5 0.002777777777778 
+   6 0.000694444444444 
+   7 0.0 
+   8 0.000024801587302 
+
+  n = 20
+  var : total
+  Probabilities:
+   0: 0.3700500000000000
+   1: 0.3669500000000000
+   2: 0.1826000000000000
+   3: 0.0611500000000000
+   4: 0.0157000000000000
+   5: 0.0029500000000000
+   6: 0.0005000000000000
+   8: 0.0000500000000000
+   7: 0.0000500000000000
+  mean = 0.9969
+
+  var : total == 0
+  Probabilities:
+  false: 0.6299500000000000
+  true: 0.3700500000000000
+  mean = 0.37005
+
+  theoretical_mean = 1
+  theoretical_prob_of_0 = 0.367879
+  PDF:
+    0 0.367879441171442 
+    1 0.367879441171442 
+    2 0.183939720585721 
+    3 0.06131324019524 
+    4 0.01532831004881 
+    5 0.003065662009762 
+    6 0.000510943668295 
+    7 0.000072991952611 
+    8 0.00000912399408 
+    9 0.000001013777114 
+   10 0.000000101377718 
+   11 0.000000009216149 
+
+  n = 100
+  var : total
+  Probabilities:
+   1: 0.3704500000000000
+   0: 0.3689000000000000
+   2: 0.1816000000000000
+   3: 0.0606500000000000
+   4: 0.0149000000000000
+   5: 0.0028500000000000
+   6: 0.0006000000000000
+   7: 0.0000500000000000
+   mean = 0.9934
+
+  var : total == 0
+  Probabilities:
+  false: 0.6311000000000000
+  true: 0.3689000000000000
+  mean = 0.3689
+
+  theoretical_mean = 1
+  theoretical_prob_of_0 = 0.367879
+  PDF:
+   0 0.367879441171442 
+   1 0.367879441171442 
+   2 0.183939720585721 
+   3 0.06131324019524 
+   4 0.01532831004881 
+   5 0.003065662009762 
+   6 0.000510943668294 
+   7 0.000072991952613 
+   8 0.000009123994077 
+   9 0.00000101377712 
+  10 0.000000101377712 
+  11 0.000000009216156 
+
+
+*/
+go ?=>
+  member(N,[8,20,100]),
+  println(n=N),
+  reset_store,
+  run_model(20_000,$model(N),[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=matching_dist_mean(N)),
+  println(theoretical_prob_of_0=matching_dist_pdf(N,0)),
+  println("PDF:"),
+  pdf_all($matching_dist(N),0.01,0.99999999).printf_list,
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(N) =>
+  Seq = shuffle(1..N),
+
+  % How many are in the I'th position?
+  Total = [cond(Seq[I] == I,1,0) : I in 1..N].sum,
+
+  Total0 = check(Total == 0),
+  
+  add("total",Total),
+  add("total == 0",Total0).
+

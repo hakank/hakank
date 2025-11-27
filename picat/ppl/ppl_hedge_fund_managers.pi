@@ -1,0 +1,144 @@
+/* 
+
+  Hedge fund managers in Picat.
+
+  From Mathematica OrderStatistics 
+  """
+  Find the probability that the most successful hedge-fund manager among 
+  25 non-skilled managers outperforms the market nine out of 10 years, assuming 
+  their performances are independent from each other, and from year to year:
+
+  managerSuccessDist = BinomialDistribution[10, 1/2];
+  NProbability[goodYears >= 9, goodYears e OrderDistribution[{managerSuccessDist, 25}, 25]]
+  -> 0.236626
+
+  Compare to the probability that one a priori chosen manager performs this well:
+  NProbability[goodYears >= 9, goodYears e managerSuccessDist]
+  -> 
+  0.0107422
+  """
+
+  Cf my Gamble model gamble_hedge_fund_managers.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : best m
+  Probabilities:
+  8: 0.5183000000000000
+  7: 0.2332000000000000
+  9: 0.2164000000000000
+  10: 0.0242000000000000
+  6: 0.0079000000000000
+  mean = 8.0158
+
+  var : p best
+  Probabilities:
+  false: 0.7594000000000000
+  true: 0.2406000000000000
+  mean = [false = 0.7594,true = 0.2406]
+
+  var : first m
+  Probabilities (truncated):
+  5: 0.2445000000000000
+  4: 0.2054000000000000
+  6: 0.2010000000000000
+  3: 0.1206000000000000
+  .........
+  1: 0.0090000000000000
+  9: 0.0082000000000000
+  10: 0.0012000000000000
+  0: 0.0010000000000000
+  mean = 4.9949
+
+  var : p first
+  Probabilities:
+  false: 0.9906000000000000
+  true: 0.0094000000000000
+  mean = [false = 0.9906,true = 0.0094]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 25, % Number of hedge fund managers
+  Managers = binomial_dist_n(10,1/2,N),
+
+  % The best manager
+  BestM = Managers.max,
+  PBest = check(BestM >= 9),
+
+  % A random manager, e.g. the first
+  FirstM = Managers[1],
+  PFirst = check(FirstM >= 9),
+  
+  add("best m",BestM),
+  add("p best",PBest),  
+  add("first m",FirstM),
+  add("p first",PFirst).
+
+/*
+  * A related problem: 
+    How many of the hedge fund  managers outperforms the market nine out of ten years,
+
+    var : p25
+    Probabilities:
+    0: 0.7603000000000000
+    1: 0.2113000000000000
+    2: 0.0265000000000000
+    3: 0.0018000000000000
+    4: 0.0001000000000000
+    mean = 0.2701
+
+    var : p1
+    Probabilities:
+    0: 0.9897000000000000
+    1: 0.0103000000000000
+    mean = 0.0103
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  N = 25, % Number of hedge fund managers
+  Managers = [ cond(binomial_dist(10,1/2) >= 9,1,0)  : _ in 1..N],
+  P25 = Managers.sum,
+  P1 = Managers[1],
+  
+  add("p25",P25),
+  add("p1",P1).  

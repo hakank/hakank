@@ -1,0 +1,122 @@
+/* 
+
+  Classical random walk in Picat.
+
+  From Gunnar Blom, Lars Holst, Dennis Sandell:
+  "Problems and Snapshots from the World of Probability"
+  Page 6f, Problem 1.5 Classical Random Walk 1, 
+  cases a) Probability of absorption
+        b) Expected number of steps until absorption
+        c) Ruin problem
+
+  The probability of moving to the left or right is 0.5 (symmetric
+  random walk). The walk stops when reaching either -a or +b (
+  a and are both positive integers).
+
+  Cf my Gamble model gamble_random_walk_1.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+% Theoretical probability that we ends in (-a,b): 
+theoretical_prob(A,B) = [B/(A+B),A/(A+B)].
+
+% Theoretical length until absorption
+theoretical_length(A,B) = A*B.
+
+
+/*
+
+  [a = 10,b = 10,theo_prob = [0.5,0.5],theo_len = 100]
+  var : last == -a
+  Probabilities:
+  true: 0.5085000000000000
+  false: 0.4915000000000000
+  mean = [true = 0.5085,false = 0.4915]
+
+  var : last == b
+  Probabilities:
+  false: 0.5085000000000000
+  true: 0.4915000000000000
+  mean = [false = 0.5085,true = 0.4915]
+
+  var : len
+  Probabilities (truncated):
+  46: 0.0204000000000000
+  28: 0.0203000000000000
+  34: 0.0202000000000000
+  38: 0.0201000000000000
+  .........
+  372: 0.0001000000000000
+  354: 0.0001000000000000
+  336: 0.0001000000000000
+  318: 0.0001000000000000
+  mean = 99.5134
+
+
+  [a = 1,b = 100,theo_prob = [0.990099,0.00990099],theo_len = 100]
+  var : last == -a
+  Probabilities:
+  true: 0.9900000000000000
+  false: 0.0100000000000000
+  mean = [true = 0.99,false = 0.01]
+
+  var : last == b
+  Probabilities:
+  false: 0.9900000000000000
+  true: 0.0100000000000000
+  mean = [false = 0.99,true = 0.01]
+
+  var : len
+  Probabilities (truncated):
+  1: 0.5208000000000000
+  3: 0.1365000000000000
+  5: 0.0590000000000000
+  7: 0.0321000000000000
+  .........
+  187: 0.0001000000000000
+  183: 0.0001000000000000
+  177: 0.0001000000000000
+  159: 0.0001000000000000
+  mean = 95.1806
+
+*/
+go ?=>
+  member([A,B], [[10,10],
+                 [1,100]]),
+  println([a=A,b=B,theo_prob=theoretical_prob(A,B),theo_len=theoretical_length(A,B)]),
+  reset_store,
+  run_model(10_000,$model(A,B),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+  
+
+walk(Arr,A,B) = Ret =>
+  % println($walk(Arr,A,B)),
+  Len = Arr.len,
+  LastA = cond(Len==0,0,Arr.last),
+  if LastA == -A ; LastA == B then
+    Ret = Arr
+  else
+    Ret = walk(Arr++[LastA + uniform_draw([-1,1])],A,B)
+  end.
+model(A,B) =>
+    
+  Arr = walk([],A,B),
+  LastPos = Arr.last,
+  
+  % add("arr",Arr),
+  add("len",Arr.len),
+  add("last == -a",check(LastPos == -A)),
+  add("last == b",check(LastPos == B)).
+

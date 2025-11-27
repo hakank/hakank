@@ -1,0 +1,283 @@
+/* 
+
+  Order statistics with replacement (discrete) in Picat.
+
+  This is for order statistics with replacement for discrete distributions. 
+  For continous distribution, see gamble_order_statistics_continuous_dist.rkt
+
+  From Siegrist "Probability Mathematical Statisics and Stochastic Processes",
+  Chapter "6.6: Order Statistics"
+  """
+  Suppose that x is a real-valued variable for a population and that x = (x1,x2, … , xn ) 
+  are the observed values of a sample of size n corresponding to this variable. 
+  The order statistic of rank k is the k th smallest value in the data set, and is usually 
+  denoted xn:k . To emphasize the dependence on the sample size, another common notation 
+  is x(k) .
+  """
+  And Wikipedia https://en.wikipedia.org/wiki/Order_statistic
+
+
+  Example:
+  4 dice are thrown, what are the probabilities of the second minimum value
+  of these dice? 
+
+    4 dice are thrown -> n=4
+    2nd smallest value -> k=2
+    X is the value in 1..6 for which we want to see the CDF or PDF
+
+    For 
+      PDF = $discrete_uniform_dist_pdf(1,6)
+      CDF = $discrete_uniform_dist_cdf(1,6)
+
+    order_statistics_with_replacement_discrete_leq_cdf(PDF,CDF,4,1,X)
+
+    order_statistics_with_replacement_discrete_pdf(PDF,CDF,4,1,X)
+
+   The general form is 
+    order_statistics_with_replacement_discrete_*(PDF,CDF,N,K,X)
+
+   Here's the CDF
+   CDF <=
+   1: 0.51774691358024694
+   2: 0.80246913580246926 <-- (cf Mathematica's calculation)
+   3: 0.93750000000000000
+   4: 0.98765432098765427
+   5: 0.99922839506172834
+   6: 1.00000000000000000
+
+   and the PDF
+   PDF
+   1: 0.51774691358024694
+   2: 0.28472222222222227  <-- (cf Mathematica's calculation)
+   3: 0.13503086419753091
+   4: 0.05015432098765424
+   5: 0.01157407407407408
+   6: 0.00077160493827146
+
+  I.e. the probability that 1 is the second smallest value is
+  0.51774691358024694
+
+  This corresponds to Mathematica's OrderDistribution which 
+  is for order statistics with replacement, e.g.
+     dist = OrderDistribution[{DiscreteUniformDistribution[{1, 6}], 4}, 1]
+     PDF[dist, 2]
+     -> 0.284722
+     CDF[dist, 2]
+     -> 0.802469
+
+
+  In general, in Mathematica
+   dist = OrderDistribution[{DiscreteUniformDistribution[{a, b}], b}, k]
+  i.e. it takes all samples (not a part of the samples as in 
+  statistics_without_replacement_dist_*
+   
+
+  For order statistics without replacement, see 
+  ppl_order_statistics_without_replacement_dist.pi)
+
+
+  Cf my Gamble model gamble_order_statistics_with_replacement_discrete_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  CDF <=
+  1: 0.51774691358024694
+  2: 0.80246913580246926
+  3: 0.93750000000000000
+  4: 0.98765432098765427
+  5: 0.99922839506172834
+  6: 1.00000000000000000
+
+  CDF <
+  1: 0.00000000000000000
+  2: 0.51774691358024694
+  3: 0.80246913580246915
+  4: 0.93750000000000000
+  5: 0.98765432098765449
+  6: 0.99922839506172856
+
+  PDF
+  1: 0.51774691358024694
+  2: 0.28472222222222227
+  3: 0.13503086419753091
+  4: 0.05015432098765424
+  5: 0.01157407407407408
+  6: 0.00077160493827146
+
+  Quantile <=
+  0.01: 1.00000000000000000
+ 0.025: 1.00000000000000000
+  0.05: 1.00000000000000000
+  0.25: 1.00000000000000000
+   0.5: 1.00000000000000000
+  0.75: 2.00000000000000000
+  0.84: 3.00000000000000000
+ 0.975: 4.00000000000000000
+  0.99: 5.00000000000000000
+ 0.999: 5.00000000000000000
+0.9999: 6.00000000000000000
+0.999999: 6.00000000000000000
+
+
+*/
+go ?=>
+  N = 6, % dice 1..6 
+  K = 4, % 4 dice
+  PDF = $discrete_uniform_dist_pdf(1,N),
+  CDF = $discrete_uniform_dist_cdf(1,N),
+  println("CDF <="),
+  foreach(I in 1..N)
+    printf("%d: %.17f\n",I,order_statistics_with_replacement_discrete_leq_cdf(PDF,CDF,K,1,I))
+  end,
+  nl,
+  println("CDF <"),
+  foreach(I in 1..6)
+    printf("%d: %.17f\n",I,order_statistics_with_replacement_discrete_lt_cdf(PDF,CDF,K,1,I))
+  end,
+  nl,
+  println("PDF"),
+  foreach(I in 1..6)
+    printf("%d: %.17f\n",I,order_statistics_with_replacement_discrete_pdf(PDF,CDF,K,1,I))
+  end,
+  nl,
+  println("Quantile <="),
+  Qs = [0.01,0.025,0.05,0.25,0.50,0.75,0.84,0.975,0.99,0.999,0.9999,0.999999],
+  foreach(Q in Qs)
+    printf("%6w: %.17f\n",Q,order_statistics_with_replacement_discrete_leq_quantile(PDF,CDF,K,1,Q))
+  end,
+ 
+  nl.
+go => true.
+
+/*
+  4 dice are thrown, what are the probabilities of the second minimum value
+  of these dice? 
+
+pdf = discrete_uniform_dist_pdf(1,6)
+cdf = discrete_uniform_dist_cdf(1,6)
+[n = 6,k = 4,x = 2,pdf = 0.0914352,cdf = 0.100137]
+var : p
+Probabilities:
+true: 0.5894500000000000
+false: 0.4105500000000000
+mean = [true = 0.58945,false = 0.41055]
+Histogram:
+false     :  8211 ##########################################                   (0.411 / 0.411)
+true      : 11789 ############################################################ (0.589 / 1.000)
+
+var : v
+Probabilities:
+3: 0.2797500000000000
+2: 0.2742000000000000
+4: 0.2020500000000000
+1: 0.1363500000000000
+5: 0.0927000000000000
+6: 0.0149500000000000
+mean = 2.8854
+Histogram:
+      1:  2727 #############################                                (0.136 / 0.136)
+      2:  5484 ###########################################################  (0.274 / 0.411)
+      3:  5595 ############################################################ (0.280 / 0.690)
+      4:  4041 ###########################################                  (0.202 / 0.892)
+      5:  1854 ####################                                         (0.093 / 0.985)
+      6:   299 ###                                                          (0.015 / 1.000)
+
+
+ 
+*/
+go2 ?=>
+  N = 6, % A die (1..6)
+  K = 4, % We roll 4 dice
+  X = 1, % We check the second minimum value
+  PDF = $discrete_uniform_dist_pdf(1,6),
+  CDF = $discrete_uniform_dist_cdf(1,6),
+  println(pdf=PDF),
+  println(cdf=CDF),
+  println([n=N,x=X,k=K,pdf=order_statistics_with_replacement_discrete_pdf(PDF,CDF,N,K,X),
+                       cdf=order_statistics_with_replacement_discrete_leq_cdf(PDF,CDF,N,K,X)
+                       % , quantile_50=order_statistics_with_replacement_discrete_leq_quantile(PDF,CDF,N,K,0.5)
+                        ]),
+  reset_store,
+  run_model(20_000,$model2(N,K,X),[show_probs_trunc,mean,show_histogram]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(N,K,X) =>
+  % With replacement
+  Ds = discrete_uniform_dist_n(1,6,K).sort, % sorted
+
+  V = ith_smallest(Ds,X,true),
+  P = check(V >= 3),
+  add("v",V),
+  add("p",P).
+
+
+/*
+   Testing poisson(3)
+
+[n = 10,k = 4,x = 1,pdf = 0.118366,cdf = 0.119378]
+var : p
+Probabilities:
+false: 0.9959000000000000
+true: 0.0041000000000000
+mean = [false = 0.9959,true = 0.0041]
+Histogram:
+false     :  9959 ############################################################ (0.996 / 0.996)
+true      :    41                                                              (0.004 / 1.000)
+
+var : v
+Probabilities:
+1: 0.4890000000000000
+0: 0.4001000000000000
+2: 0.1068000000000000
+3: 0.0041000000000000
+mean = 0.7149
+Histogram:
+      0:  4001 #################################################            (0.400 / 0.400)
+      1:  4890 ############################################################ (0.489 / 0.889)
+      2:  1068 #############                                                (0.107 / 0.996)
+      3:    41 #                                                            (0.004 / 1.000)
+
+*/
+go3 ?=>
+  N = 10, 
+  K = 4, % We do 4 experiments
+  X = 1, % We check the first minimum value
+  PDF = $poisson_dist_pdf(3),
+  CDF = $poisson_dist_cdf(3),  
+  println([n=N,k=K,x=X, pdf=order_statistics_with_replacement_discrete_pdf(PDF,CDF,N,K,X),
+                        cdf=order_statistics_with_replacement_discrete_leq_cdf(PDF,CDF,N,K,X)
+                        % , quantile_50=order_statistics_with_replacement_discrete_leq_quantile(PDF,CDF,N,K,0.5)
+                        ]),
+  reset_store,
+  run_model(10_000,$model3(N,K,X),[show_probs_trunc,mean,show_histogram]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+
+model3(N,K,X) =>
+  % With replacement
+  Ds = poisson_dist_n(3,N).sort, % sorted
+
+  V = ith_smallest(Ds,X,true),
+  P = check(V >= 3),
+  add("v",V),
+  add("p",P).
+
+

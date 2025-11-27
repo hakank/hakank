@@ -1,0 +1,110 @@
+/* 
+
+  Discrete Markov Process in Picat.
+
+  From Mathematica DiscreteMarkovProcess
+
+  Cf my Gamble model gamble_discrete_markov_process.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  From Mathematica DiscreteMarkovProcess
+  """
+  A simple weather model is: given that it rains today, it will rain tomorrow 
+  with probability 0.7; and given that it does not rain today, it will rain tomorrow 
+  with probability 0.4. Given that it is raining today, represent this model with a 
+  discrete Markov process and find the probability that it will rain four days from 
+  now. 
+
+  ...
+
+  weather = DiscreteMarkovProcess[1, {{0.7, 0.3}, {0.4, 0.6}}];
+
+  The probability of rain in four days:
+  Probability[rain[4] == 1, rain in weather]
+  -> 
+  0.5749
+  """
+
+  Here we simulate the problem (markov_chain/3) as well as using 
+  the probability distribution discrete_markov_process_dist.
+
+  var : last day
+  Probabilities:
+  1: 0.5700000000000000
+  2: 0.4300000000000000
+  mean = 1.43
+
+  var : p
+  Probabilities:
+  true: 0.5700000000000000
+  false: 0.4300000000000000
+  mean = 0.57
+
+  var : a
+  Probabilities:
+  [1,1,1,1]: 0.3367000000000000
+  [1,1,1,2]: 0.1480000000000000
+  [1,1,2,2]: 0.1318000000000000
+  [1,2,2,2]: 0.1120000000000000
+  [1,2,1,1]: 0.0816000000000000
+  [1,1,2,1]: 0.0816000000000000
+  [1,2,2,1]: 0.0701000000000000
+  [1,2,1,2]: 0.0382000000000000
+  mean = []
+
+  theoretical_probability = 0.5749
+  PDF of raining day 0..10:
+  0  1 
+  1 0.7 
+  2 0.61 
+  3 0.583 
+  4 0.5749 
+  5 0.57247 
+  6 0.571741 
+  7 0.5715223 
+  8 0.57145669 
+  9 0.571437007 
+  10 0.5714311021 
+
+*/
+go ?=>
+  Rain = 1,
+  NotRain = 2,
+  
+  Transitions = [[7/10,3/10], % Rain today
+                 [4/10,6/10]], % Not rain today
+
+  InitialState = [1,0], % It rains today
+  N = 4, % Does it rain 4 days from now?
+  reset_store,
+  run_model(10_000,$model(Rain,NotRain,Transitions,InitialState,N),[show_probs_trunc,mean]),
+  
+  println(theoretical_probability=discrete_markov_process_dist_pdf(Transitions,InitialState,N,Rain)),
+  println("PDF of raining day 0..10:"),
+  [V=discrete_markov_process_dist_pdf(Transitions,InitialState,V,Rain) : V in 0..10].printf_list,
+  nl,
+  nl.
+go => true.
+  
+  
+model(Rain,NotRain,Transitions,InitialState,N) =>
+
+  A = markov_chain(Transitions,InitialState,N),
+  LastDay = A.last,
+  P = check(LastDay == Rain),
+
+  add("last day",LastDay),
+  add("p",P),
+  add("a",A).
+

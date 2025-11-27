@@ -1,0 +1,247 @@
+/* 
+
+  Minimum daily flows (Gumbel dist) in Picat.
+
+  From Mathematica MinStableDistribution
+  """
+  MinStableDistribution can be used to model the annual minimum mean daily 
+  flows. Consider the Mahanadi river and the minimum flows given in cubic meters per second:
+  """
+   
+  Here we use Gumbel distribution (instead of MinStableDistribution) which also
+  is for minimum extreme values.
+
+  """
+  edist = EstimatedDistribution[minFlow, GumbelDistribution[a, b]]
+  --> 
+  GumbelDistribution[2.95485, 1.28719]
+
+  Mean[edist]
+  -> 2.21187
+
+  Find the probability that the minimum flow is 1.5 cubic meters per second or less:
+  NProbability[x <= 1.5, x e edist]
+  -> 
+  0.275991
+
+  Assuming that the annual minimum flows are independent, find the probability that the 
+  minimum flow will not exceed 2 cubic meters per second for 3 consecutive years:
+
+ [Note the cube]  
+
+  NProbability[x <= 2, x e edist]^3
+  -> 0.0543934
+
+
+  NProbability[x <= 2, x e edist]
+  -> 0.378892
+
+  """
+
+  Picat> X=gumbel_dist_cdf(2.95485, 1.28719,1.5)
+  X = 0.275991125761081
+
+  Picat> X=gumbel_dist_cdf(2.95485, 1.28719,2.0)
+  X = 0.378892605215321
+
+  Picat> X=gumbel_dist_cdf(2.95485, 1.28719,2.0)**3
+  X = 0.054393673229712
+
+
+  Cf my Gamble model gamble_gumbel_minimum_daily_flows.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  * With an informed prior of Mu as normal_dist(Data.mean,Data.stdev)
+
+    Num accepted samples: 10000  Total samples: 88397  (0.113%)
+
+    var : mu
+    Probabilities (truncated):
+    5.186626792006313: 0.0001000000000000
+    4.78549846209142: 0.0001000000000000
+    4.734288723944527: 0.0001000000000000
+    4.723846614370886: 0.0001000000000000
+    .........
+    1.29609566307292: 0.0001000000000000
+    1.291518616400008: 0.0001000000000000
+    1.141900815953208: 0.0001000000000000
+    0.97265086663013: 0.0001000000000000
+    mean = 2.68174
+
+    var : sigma
+    Probabilities (truncated):
+    4.145207588628496: 0.0001000000000000
+    3.380391631918211: 0.0001000000000000
+    3.328869828641819: 0.0001000000000000
+    3.242924308051785: 0.0001000000000000
+    .........
+    0.001043430530021: 0.0001000000000000
+    0.000631073490079: 0.0001000000000000
+    0.000561280176305: 0.0001000000000000
+    0.000268626026934: 0.0001000000000000
+    mean = 0.907518
+
+    var : post
+    Probabilities (truncated):
+    9.383554769702251: 0.0001000000000000
+    7.782748381459902: 0.0001000000000000
+    7.191969618915694: 0.0001000000000000
+    7.108908299912517: 0.0001000000000000
+    .........
+    -9.442293446184689: 0.0001000000000000
+    -9.760743122724712: 0.0001000000000000
+    -12.321201841668042: 0.0001000000000000
+    -13.792722378471748: 0.0001000000000000
+    mean = 2.13377
+
+    var : p1
+    Probabilities:
+    0: 0.7565000000000000
+    1: 0.2435000000000000
+    mean = 0.2435
+
+    var : p2
+    Probabilities:
+    0: 0.6032000000000000
+    1: 0.3968000000000000
+    mean = 0.3968
+
+
+    Probability of flow <= 2.0 in 1..consecutive years:
+    year:1 p(flow <= 2.0): 0.3968000000
+    year:2 p(flow <= 2.0): 0.1574502400
+    year:3 p(flow <= 2.0): 0.0624762552
+    year:4 p(flow <= 2.0): 0.0247905781
+    year:5 p(flow <= 2.0): 0.0098369014
+    year:6 p(flow <= 2.0): 0.0039032825
+    year:7 p(flow <= 2.0): 0.0015488225
+    year:8 p(flow <= 2.0): 0.0006145728
+    year:9 p(flow <= 2.0): 0.0002438625
+    year:10 p(flow <= 2.0): 0.0000967646
+
+
+  * With an uninformed prior of Mu: uniform(0,100)
+    Unsurprisingly this takes more total samples (and time)
+    than the informed prior version.
+
+    Num accepted samples: 10000  Total samples: 2512182  (0.004%)
+
+    var : mu
+    Probabilities (truncated):
+    4.008060416210471: 0.0002000000000000
+    5.650668780156723: 0.0001000000000000
+    5.316110237183101: 0.0001000000000000
+    5.267709961751341: 0.0001000000000000
+    .........
+    1.225483697478419: 0.0001000000000000
+    1.146460092229052: 0.0001000000000000
+    1.146457018864554: 0.0001000000000000
+    1.137129776709308: 0.0001000000000000
+    mean = 2.85952
+
+    var : sigma
+    Probabilities (truncated):
+    3.493597858349605: 0.0001000000000000
+    3.393100171067333: 0.0001000000000000
+    3.318771502617174: 0.0001000000000000
+    3.212649269594182: 0.0001000000000000
+    .........
+    0.000808634795625: 0.0001000000000000
+    0.000690682791495: 0.0001000000000000
+    0.000439584255423: 0.0001000000000000
+    0.000150501728128: 0.0001000000000000
+    mean = 0.966781
+
+    var : post
+    Probabilities (truncated):
+    8.589944816805192: 0.0001000000000000
+    7.930432658016172: 0.0001000000000000
+    7.37149835402287: 0.0001000000000000
+    7.340687673907862: 0.0001000000000000
+    .........
+    -8.411953749316973: 0.0001000000000000
+    -9.327733466305517: 0.0001000000000000
+    -9.492244375829202: 0.0001000000000000
+    -11.052290387002202: 0.0001000000000000
+    mean = 2.30813
+
+    var : p1
+    Probabilities:
+    0: 0.7766999999999999
+    1: 0.2233000000000000
+    mean = 0.2233
+
+    var : p2
+    Probabilities:
+    0: 0.6397000000000000
+    1: 0.3603000000000000
+    mean = 0.3603
+
+    Probability of flow <= 2.0 in 1..consecutive years:
+    year:1 p(flow <= 2.0): 0.3603000000
+    year:2 p(flow <= 2.0): 0.1298160900
+    year:3 p(flow <= 2.0): 0.0467727372
+    year:4 p(flow <= 2.0): 0.0168522172
+    year:5 p(flow <= 2.0): 0.0060718539
+    year:6 p(flow <= 2.0): 0.0021876889
+    year:7 p(flow <= 2.0): 0.0007882243
+    year:8 p(flow <= 2.0): 0.0002839972
+    year:9 p(flow <= 2.0): 0.0001023242
+    year:10 p(flow <= 2.0): 0.0000368674
+
+
+*/
+go ?=>
+  Data = [2.78,2.47,1.64,3.91,1.95,1.61,2.72,3.48,0.85,2.29,1.72,
+          2.41,1.84,2.52,4.45,1.93,5.32,2.55,1.36,1.47,1.02,1.73],
+  println(data=Data),
+  reset_store,
+  run_model(10_000,$model(Data),[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           min_accepted_samples=10_000,show_accepted_samples=true
+                          ]),
+  nl,
+  P2Mean = get_store().get("p2").mean,
+  println("Probability of flow <= 2.0 in 1..consecutive years:"),
+  foreach(Y in 1..10)
+    printf("year:%d p(flow <= 2.0):% 0.10f\n", Y, P2Mean**Y)
+  end,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Data) =>
+  Mu = normal_dist(Data.mean,Data.stdev), % informed prior
+  % Mu = uniform(0,100), % uninformed prior
+  Sigma = uniform(0,10),
+
+  X = gumbel_dist_n(Mu,Sigma,Data.len),
+  observe_abc(Data,X,1),
+
+  Post = gumbel_dist(Mu,Sigma),
+
+  P1 = check1(Post <= 1.5),
+  P2 = check1(Post <= 2),
+
+  if observed_ok then
+    add("mu",Mu),
+    add("sigma",Sigma),
+    add("post",Post),
+    add("p1",P1),
+    add("p2",P2),
+  end.

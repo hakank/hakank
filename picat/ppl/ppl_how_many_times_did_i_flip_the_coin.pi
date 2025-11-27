@@ -1,0 +1,143 @@
+/* 
+
+  How many times did I flip the coin? in Picat.
+
+  From Pascal Bercker "How Many Times Was This Coin Flipped? Beta-Binomial Updating With a Bayesian Network"
+  https://medium.com/@pbercker/how-many-times-was-this-coin-flipped-beta-binomial-updating-with-a-bayesian-network-7df8750dd6ae
+  """
+  Problem 16.5 How many times did I flip the coin?
+
+  Suppose that I have a coin and that theta denotes the probability of its landing
+  heads up, In each experiment I flip the coin N times, where N is unknown to the
+  observer, and record the number of heads obtained, Y. I repeat the experiment 10
+  times, each time flipping the coin the same N times, and record
+  Y = {9,7,11,10,10,9,8,11,9,11} heads.
+
+  Problem 16.5.1 Write down an expression for the likelihood, stating any 
+  assumptions you make.
+  Problem 16.5.2 Suppose that the maximum number of times the coin could be
+  flipped is 20, and that all other (allowed) values we regard a priori as
+  equally probable, Further suppose that, based on previous coin flipping fun,
+  we specify a prior theta ~  beta(7,2). Write down the model as a whole 
+  (namely the likelihood and prior).
+
+  ... 
+
+  SOURCES: 
+
+  A Student's Guide to Bayesian Statistics, Ben Lambert
+
+  """
+
+  Cf my Gamble model gamble_how_many_times_did_i_flip_the_coin.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+
+  * For prior of NumFlips in random 7..100:
+    (using 100 accepted samples)
+
+    var : num flips
+    Probabilities (truncated):
+    12: 0.3300000000000000
+    11: 0.2800000000000000
+    13: 0.1900000000000000
+    14: 0.0500000000000000
+    .........
+    16: 0.0200000000000000
+    10: 0.0200000000000000
+    20: 0.0100000000000000
+    18: 0.0100000000000000
+    mean = 12.6
+    [len = 100,min = 10,mean = 12.6,median = 12.0,max = 20,variance = 3.8,stdev = 1.94936]
+
+    var : p
+    Probabilities (truncated):
+    0.975512247701841: 0.0100000000000000
+    0.965777399204469: 0.0100000000000000
+    0.913619824456724: 0.0100000000000000
+    0.902268291803585: 0.0100000000000000
+    .........
+    0.521733468497695: 0.0100000000000000
+    0.517166206439771: 0.0100000000000000
+    0.486437301809165: 0.0100000000000000
+    0.480548646755242: 0.0100000000000000
+    mean = 0.762509
+    [len = 100,min = 0.480549,mean = 0.762509,median = 0.783246,max = 0.975512,variance = 0.00942263,stdev = 0.0970702]
+
+
+  * For a prior of random 11..20:
+    (1000 accepted samples)
+
+    var : num flips
+    Probabilities:
+    12: 0.3150000000000000
+    11: 0.3110000000000000
+    13: 0.1700000000000000
+    14: 0.0980000000000000
+    15: 0.0460000000000000
+    16: 0.0230000000000000
+    17: 0.0200000000000000
+    18: 0.0090000000000000
+    19: 0.0050000000000000
+    20: 0.0030000000000000
+    mean = 12.498
+    [len = 1000,min = 11,mean = 12.498,median = 12.0,max = 20,variance = 2.668,stdev = 1.6334]
+
+    var : p
+    Probabilities (truncated):
+    0.920235293465968: 0.0010000000000000
+    0.918759521875381: 0.0010000000000000
+    0.918484006226644: 0.0010000000000000
+    0.918096362772749: 0.0010000000000000
+    .........
+    0.513962752734978: 0.0010000000000000
+    0.45632483361471: 0.0010000000000000
+    0.439006587227157: 0.0010000000000000
+    0.437490142538871: 0.0010000000000000
+    mean = 0.771695
+    [len = 1000,min = 0.43749,mean = 0.771695,median = 0.786276,max = 0.920235,variance = 0.00800839,stdev = 0.0894896]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           show_simple_stats,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Y = [9,7,11,10,10,9,8,11,9,11],
+
+  NumFlips = 11 + random_integer(10), % 11..20
+  % NumFlips = discrete_uniform_dist(Y.min,100),
+
+  P = beta_dist(7,2),
+
+  X = binomial_dist_n(NumFlips,P,Y.len),
+  observe_abc(Y,X,1/10),
+  
+  if observed_ok then
+    add("num flips",NumFlips),
+    add("p",P),
+  end.

@@ -1,0 +1,158 @@
+/* 
+
+  Brian ate pizza last night in Picat.
+
+  CUFP 2013: Avi Pfeffer: Functional Probabilistic Programming
+  From https://www.youtube.com/watch?v=U67guma2H6s
+  @3.56
+  Brian ate pizza last night. Is he a programmer or a student?
+
+  Cf my Gamble model gamble_brian_ate_pizza_last_night.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  * obs = none
+  var : student
+  Probabilities:
+  true: 0.6953000000000000
+  false: 0.3047000000000000
+  mean = [true = 0.6953,false = 0.3047]
+
+  var : programmer
+  Probabilities:
+  false: 0.8277000000000000
+  true: 0.1723000000000000
+  mean = [false = 0.8277,true = 0.1723]
+
+  var : student or programmer
+  Probabilities:
+  true: 0.7275000000000000
+  false: 0.2725000000000000
+  mean = [true = 0.7275,false = 0.2725]
+
+  var : student and programmer
+  Probabilities:
+  false: 0.8599000000000000
+  true: 0.1401000000000000
+  mean = [false = 0.8599,true = 0.1401]
+
+  var : pizza
+  Probabilities:
+  false: 0.6222000000000000
+  true: 0.3778000000000000
+  mean = [false = 0.6222,true = 0.3778]
+
+
+  * obs = ate_pizza
+  var : student
+  Probabilities:
+  true: 0.7630825305909920
+  false: 0.2369174694090081
+  mean = [true = 0.763083,false = 0.236917]
+
+  var : programmer
+  Probabilities:
+  false: 0.6308253059099193
+  true: 0.3691746940900807
+  mean = [false = 0.630825,true = 0.369175]
+
+  var : student or programmer
+  Probabilities:
+  true: 0.7870346263993752
+  false: 0.2129653736006248
+  mean = [true = 0.787035,false = 0.212965]
+
+  var : student and programmer
+  Probabilities:
+  false: 0.6547774017183026
+  true: 0.3452225982816975
+  mean = [false = 0.654777,true = 0.345223]
+
+  var : pizza
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  So, since Brian ate pizza last night, he is probably a student and not a programmer: 
+  the posterior is a little larger than the prior.
+
+
+  * obs = not_ate_pizza
+  var : student
+  Probabilities:
+  true: 0.6545454545454545
+  false: 0.3454545454545455
+  mean = [true = 0.654545,false = 0.345455]
+
+  var : programmer
+  Probabilities:
+  false: 0.9390185036202735
+  true: 0.0609814963797265
+  mean = [false = 0.939019,true = 0.0609815]
+
+  var : student or programmer
+  Probabilities:
+  true: 0.6897827835880933
+  false: 0.3102172164119067
+  mean = [true = 0.689783,false = 0.310217]
+
+  var : student and programmer
+  Probabilities:
+  false: 0.9742558326629123
+  true: 0.0257441673370877
+  mean = [false = 0.974256,true = 0.0257442]
+
+  var : pizza
+  Probabilities:
+  false: 1.0000000000000000
+  mean = [false = 1.0]
+
+  Then it's a little less likely that Brian is a student, and we are
+  quite sure that he's not a programmer (p is about 0.06).
+
+
+*/
+go ?=>
+  member(Obs,[none,ate_pizza,not_ate_pizza]),
+  println(obs=Obs),
+  reset_store,
+  run_model(10_000,$model(Obs),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Obs) =>
+  Student    = flip(7/10),
+  Programmer = cond(Student == true,flip(2/10),flip(1/10)),
+  Pizza      = cond( (Student == true,Programmer == true), flip(9/10), flip(3/10)),
+
+  if Obs == ate_pizza then
+    % Brian ate pizza last night
+    observe(Pizza == true)
+  end,
+
+  if Obs == not_ate_pizza then
+    % Brian did not ate pizza last night    
+    observe(Pizza == false)
+  end,
+
+  if Obs == none ; observed_ok then
+    add("student",Student),
+    add("programmer",Programmer),
+    add("student or programmer",check( (Student ; Programmer))),
+    add("student and programmer",check( (Student,Programmer))),
+    add("pizza",Pizza)
+  end.

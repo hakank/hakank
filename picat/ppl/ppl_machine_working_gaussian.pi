@@ -1,0 +1,117 @@
+/* 
+
+  Machine working (gaussian) in Picat.
+
+  From https://pedrozudo.github.io/docs/20_thesis/thesis_final_online_compressed.pdf
+  page 85f
+  """
+  Example 6.1. In this example we model the temperature as a continuous random
+  variable distributed according to a normal distribution with mean 20 and standard
+  deviation 5 (Line 3).
+  1 machine(1). machine(2).
+  2
+  3 temperature ~ normal(20,5).
+  4 0.99::cooling(1).
+  5 0.95::cooling(2).
+  6
+  7 works(N):- machine(N), cooling(N).
+  8 works(N):- machine(N), temperature<25.0
+  evidence(works(2)).
+  query(works(1)).
+  """
+
+  Cf
+  - ppl_machine_working.pi 
+  - my Gamble model gamble_machine_working_gaussian.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : temperature
+  Probabilities (truncated):
+  38.899701068666531: 0.0001008572869390
+  38.187981679181178: 0.0001008572869390
+  37.579888989894549: 0.0001008572869390
+  37.309764733281355: 0.0001008572869390
+  .........
+  2.434730440666204: 0.0001008572869390
+  2.261060015456884: 0.0001008572869390
+  1.389789110926479: 0.0001008572869390
+  0.197716880438719: 0.0001008572869390
+  mean = 19.9297
+
+  var : cooling 1
+  Probabilities:
+  true: 0.9902168431669188
+  false: 0.0097831568330812
+  mean = [true = 0.990217,false = 0.00978316]
+
+  var : cooling 2
+  Probabilities:
+  true: 0.9584467977811397
+  false: 0.0415532022188603
+  mean = [true = 0.958447,false = 0.0415532]
+
+  var : works 1
+  Probabilities:
+  true: 0.9984871406959153
+  false: 0.0015128593040847
+  mean = [true = 0.998487,false = 0.00151286]
+
+  var : works 2
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : both works
+  Probabilities:
+  true: 0.9984871406959153
+  false: 0.0015128593040847
+  mean = [true = 0.998487,false = 0.00151286]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Temperature = normal_dist(20,5),
+  Cooling = [flip(99/100),flip(95/100)],
+  
+  Works   = [cond( (Cooling[M] == true ; Temperature < 25),true,false) : M in 1..2],
+
+  % Machine 2 works
+  observe(Works[2] == true),
+
+  BothWorks = check((Works[1] == true, Works[2] == true)),
+
+  if observed_ok then
+    add("temperature",Temperature),
+    add("cooling 1",Cooling[1]),
+    add("cooling 2",Cooling[2]),
+    add("works 1",Works[1]),
+    add("works 2",Works[2]),
+    add("both works",BothWorks),            
+  end.

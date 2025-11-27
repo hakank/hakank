@@ -1,0 +1,89 @@
+/* 
+
+  Birth death model in Picat.
+
+  From https://www.nature.com/articles/s42003-021-01753-7
+  Basic birth-death model simulation
+
+  Cf my Gamble model gamble_birth_death_model.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : lambda
+  Probabilities (truncated):
+  10.387677755472469: 0.0002965599051008
+  9.294507610051472: 0.0002965599051008
+  9.239908861682444: 0.0002965599051008
+  9.018214066224539: 0.0002965599051008
+  .........
+  0.03909394422453: 0.0002965599051008
+  0.03555431196214: 0.0002965599051008
+  0.016673540188701: 0.0002965599051008
+  0.001969823820374: 0.0002965599051008
+  mean = 1.60846
+  HPD intervals:
+  HPD interval (0.84): 0.06010178846939..2.59516595460334
+
+  var : mu
+  Probabilities (truncated):
+  7.555069281081828: 0.0002965599051008
+  7.334340721920645: 0.0002965599051008
+  6.608270575618519: 0.0002965599051008
+  6.399607109484975: 0.0002965599051008
+  .........
+  0.000347513757779: 0.0002965599051008
+  0.000269684484584: 0.0002965599051008
+  0.000266379732941: 0.0002965599051008
+  0.000031495112584: 0.0002965599051008
+  mean = 0.491147
+  HPD intervals:
+  HPD interval (0.84): 0.00003149511258..0.86307319879742
+
+*/
+go ?=>
+  garbage_collect(500_000_000),
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           show_hpd_intervals,hpd_intervals=[0.84]]),
+  nl,
+  % show_store_lengths, nl,
+  % fail,
+  nl.
+go => true.
+  
+goes_extinct(Time,Lambda,Mu) = Ret =>
+  WaitingTime = exponential_dist(1/(Lambda + Mu)),
+  if WaitingTime > Time then
+    Ret = false
+  else
+    IsSpecification = flip(Lambda / (Lambda+Mu)),  
+    if not IsSpecification then
+      Ret = true
+    else
+      Ret = cond( (goes_extinct(Time - WaitingTime,Lambda,Mu)==true,
+                   goes_extinct(Time - WaitingTime,Lambda,Mu)==true),true,false)
+    end
+  end.
+model() =>
+  T = 20,
+  
+  Lambda = gamma_dist(1,1),
+  Mu     = gamma_dist(1,1),
+  
+  GoesExtinct = goes_extinct(T,Lambda,Mu),
+  observe(GoesExtinct == false),
+  
+  if observed_ok then
+    add("lambda",Lambda),
+    add("mu",Mu)
+  end.

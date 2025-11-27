@@ -1,0 +1,150 @@
+/* 
+
+  Voting probability in Picat.
+
+   What is the probability of B winning of A when polls says that A has < 50% chance of winning?
+
+  Cf my Gamble model gamble_voting_probability.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+% Closed form
+% Probabillity of A winning with a forecasted probability of a for A winning
+prob_a_wins(A) = A**2.
+
+% Probabillity of B winning with a forecasted probability of a for A winning
+prob_b_wins(A) = (A - 1)**2.
+
+% Probabillity of a tie with a forecasted probability of a for A winning
+prob_tie(A) = - 2 * (A-1) * A.
+
+go ?=>
+  foreach(A in 0.0..0.1..1.0 ++ [0.51])
+    println([a=A,prob_a_wins=prob_a_wins(A),prob_b_wins=prob_b_wins(A), prob_tie=prob_tie(A)]),
+  end,
+
+  
+  nl.
+go => true.
+
+/*
+  Checking the calculations for some probabilities of A wins
+
+  aprob = 0.4
+  var : a wins
+  Probabilities:
+  false: 0.8393000000000000
+  true: 0.1607000000000000
+  mean = 0.1607
+
+  var : b wins
+  Probabilities:
+  false: 0.6351000000000000
+  true: 0.3649000000000000
+  mean = 0.3649
+
+  var : tie
+  Probabilities:
+  false: 0.5256000000000000
+  true: 0.4744000000000000
+  mean = 0.4744
+
+  theoretical_a_wins = 0.16
+  theoretical_b_wins = 0.36
+  theoretical_tie = 0.48
+
+
+  aprob = 0.51
+  var : a wins
+  Probabilities:
+  false: 0.7430000000000000
+  true: 0.2570000000000000
+  mean = 0.257
+
+  var : b wins
+  Probabilities:
+  false: 0.7572000000000000
+  true: 0.2428000000000000
+  mean = 0.2428
+
+  var : tie
+  Probabilities:
+  true: 0.5002000000000000
+  false: 0.4998000000000000
+  mean = 0.5002
+
+  theoretical_a_wins = 0.2601
+  theoretical_b_wins = 0.2401
+  theoretical_tie = 0.4998
+
+
+  aprob = 0.6
+  var : a wins
+  Probabilities:
+  false: 0.6375999999999999
+  true: 0.3624000000000000
+  mean = 0.3624
+
+  var : b wins
+  Probabilities:
+  false: 0.8440000000000000
+  true: 0.1560000000000000
+  mean = 0.156
+
+  var : tie
+  Probabilities:
+  false: 0.5184000000000000
+  true: 0.4816000000000000
+  mean = 0.4816
+
+  theoretical_a_wins = 0.36
+  theoretical_b_wins = 0.16
+  theoretical_tie = 0.48
+
+
+*/
+go2 ?=>
+  member(AProb, [0.4,51/100,0.6]),
+  println(aprob=AProb),
+  reset_store,
+  run_model(10_000,$model2(AProb),[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  % Theoretical
+  println(theoretical_a_wins=prob_a_wins(AProb)),
+  println(theoretical_b_wins=prob_b_wins(AProb)),
+  println(theoretical_tie=prob_tie(AProb)),    
+                          
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+  
+  
+model2(AProb) =>
+  P1 = bern(AProb),
+  P2 = bern(1-AProb),
+
+  AWins = check(P1 > P2),
+  BWins = check(P2 > P1),
+  Tie = check(P2 == P1),  
+
+ 
+  add("a wins",AWins),
+  add("b wins",BWins),
+  add("tie",Tie).
+

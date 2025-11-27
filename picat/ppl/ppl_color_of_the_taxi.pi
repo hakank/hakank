@@ -1,0 +1,94 @@
+/* 
+
+  Color of the taxi in Picat.
+
+  From https://www.bayesia.com/2018-03-02-probabilistic-reasoning-under-uncertainty
+
+  Originally from Kahnemann, Slovic, Tversky "Judgement under uncertainty"
+  
+
+  There has been an accicent involving a taxi.
+  There are two kinds of taxis:
+    - yellow taxi: 85% 
+    - white taxi: 15%
+
+  A witness say: It was a white taxi involved in the accident.
+
+  Researcher:
+    - 80% of all witness statements are true
+    - 20% of all witness statements are false.
+
+  What is the probability that it was a white taxi involved in
+  the accident?
+
+  Cf my Gamble model gamble_color_of_the_taxi.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Answer: The probability that it was a white taxi involved in the accident
+          is about 41%. And it's the same as in the talk.
+
+  var : involved
+  Probabilities:
+  yellow: 0.5801396695622552
+  white: 0.4198603304377448
+  mean = [yellow = 0.58014,white = 0.41986]
+
+  var : witness white
+  Probabilities:
+  false: 0.5520354283767671
+  true: 0.4479645716232328
+  mean = 0.447965
+
+  var : witness yellow
+  Probabilities:
+  true: 0.5460739226707546
+  false: 0.4539260773292454
+  mean = 0.546074
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(20_000,$model,[show_probs_trunc,mean % ,
+                           % use_local_tabling=true
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+% Witness says color but is is only x percent reliable.
+% Witness experts states that a witness can only be 80% reliable
+% (given the same circumstances as the accidents).
+% table
+witness(C,Involved) = cond(Involved == C, flip(8/10),flip(2/10)).
+
+model() =>
+  
+  % Prior distributions of the different taxis.
+  Involved = categorical([15/100,85/100],[white,yellow]),
+  
+  observe(witness(white,Involved)),
+
+  if observed_ok then
+    add("involved",Involved),
+    add("witness white",witness(white,Involved)),
+    add("witness yellow",witness(yellow,Involved)),    
+  end.

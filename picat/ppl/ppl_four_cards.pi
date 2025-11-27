@@ -1,0 +1,160 @@
+/* 
+
+  Four cards in Picat.
+
+  From Bar-Hillel & Falk "Some teasers concerning conditional probabilities" 
+  """
+  Problem 3:
+  A deck of four cards consists of the ace of spades, the ace of clubs, the deuce of spades, 
+  and the deuce of clubs. A hand of two cards is randomly dealt from this deck. What 
+  is the probability that it contains both aces if we know it contains at least one?
+
+  The answer to this problem is traditionally agreed upon to be l/S, following the reasoning 
+  that five equiprobable hands are compatible with the conditioning event (only the double 
+  deuce hand is ruled outj, and just one of these contains both aces.
+
+  Now compare Problem 3 to the following: 
+
+  Problem 4:
+  Like Problem 3, but the question is: What is the probability that the hand contains 
+  both aces if we know it contains the ace of spades’.
+  """
+
+  Here are three runs:
+  * none  : No observation
+  * model1: At least one ace
+  * model2: It contains ace of spades
+
+  Cf 
+  - ppl_two_children_problem.pi
+  - ppl_how_many_sons.pi
+  - my Gamble model gamble_four_cards.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  obs = none
+  var : selected
+  Probabilities:
+  [AC,2S]: 0.0886000000000000
+  [AC,2C]: 0.0857000000000000
+  [AS,AC]: 0.0856000000000000
+  [AC,AS]: 0.0848000000000000
+  [2C,AC]: 0.0848000000000000
+  [2C,AS]: 0.0843000000000000
+  [2C,2S]: 0.0836000000000000
+  [2S,AC]: 0.0832000000000000
+  [AS,2S]: 0.0818000000000000
+  [AS,2C]: 0.0804000000000000
+  [2S,AS]: 0.0789000000000000
+  [2S,2C]: 0.0783000000000000
+
+  var : num aces
+  Probabilities:
+  1: 0.6677000000000000
+  2: 0.1704000000000000
+  0: 0.1619000000000000
+  mean = 1.0085
+
+  var : p
+  Probabilities:
+  false: 0.8296000000000000
+  true: 0.1704000000000000
+  mean = [false = 0.8296,true = 0.1704]
+
+
+  obs = model1
+  var : selected
+  Probabilities:
+  [AC,2S]: 0.1082604004316029
+  [AC,2C]: 0.1058626064021101
+  [2C,AC]: 0.1035847020740918
+  [AS,AC]: 0.1026255844622947
+  [AC,AS]: 0.0997482316269032
+  [2C,AS]: 0.0977101067018343
+  [AS,2S]: 0.0972305478959357
+  [AS,2C]: 0.0961515405826640
+  [2S,AC]: 0.0953123126723414
+  [2S,AS]: 0.0935139671502218
+
+  var : num aces
+  Probabilities:
+  1: 0.7976261839108021
+  2: 0.2023738160891979
+  mean = 1.20237
+
+  var : p
+  Probabilities:
+  false: 0.7976261839108021
+  true: 0.2023738160891979
+  mean = [false = 0.797626,true = 0.202374]
+
+
+  obs = model2
+  var : selected
+  Probabilities:
+  [2S,AS]: 0.1723726114649682
+  [AC,AS]: 0.1709792993630573
+  [AS,AC]: 0.1681926751592357
+  [AS,2S]: 0.1675955414012739
+  [AS,2C]: 0.1648089171974522
+  [2C,AS]: 0.1560509554140127
+
+  var : num aces
+  Probabilities:
+  1: 0.6608280254777070
+  2: 0.3391719745222930
+  mean = 1.33917
+
+  var : p
+  Probabilities:
+  false: 0.6608280254777070
+  true: 0.3391719745222930
+  mean = [false = 0.660828,true = 0.339172]
+
+*/
+go ?=>
+  member(Obs, [none,model1,model2]),
+  println(obs=Obs),
+  reset_store,
+  run_model(10_000,$model(Obs),[show_probs,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Obs) =>
+  Cards = ["AS","AC","2S","2C"],
+  Selected = draw_without_replacement(2,Cards),
+  NumAces = [ 1 : S in Selected, membchk(S,["AS","AC"])].sum,
+
+  if Obs != none then
+    if Obs == model1 then
+      % We observe at least one ace
+      observe(NumAces >= 1)
+    else
+      % We observe the Ace of Spades
+      % observe(membchk("AS",Selected)), % Picat complains about this
+      observe(cond(membchk("AS",Selected),true,false)),
+    end
+  end,
+
+  % What is the probability of two aces?
+  P = check(NumAces == 2),
+
+  if Obs == none ; observed_ok then
+    add("selected",Selected),
+    add("num aces",NumAces),
+    add("p",P)
+  end.

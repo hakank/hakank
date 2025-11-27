@@ -1,0 +1,120 @@
+/* 
+
+  Extreme value test in Picat.
+
+  According to 
+  "From one extreme to another: the statistics of extreme events - Jon Keating"
+  https://www.youtube.com/watch?v=mfh_d0G1nB4
+  @21:00ff
+  The largest of N numbers normal mu variance is
+    mu + variance * sqrt (2 log N)
+
+  @26:30ff 
+  """
+  More accurate answer: the largest of N number is given by
+  
+   mu + sigma*(sqrt 2 log N) - 1/2*sigma * ((log log n)/(sqrt 2 log n)) + small fluctuations
+  """
+
+  Let's test with with N=100 normal 100 15 (i.e. IQ distribution), 100000 samples
+
+  And also test with extreme_value_dist_quantile(100,15,0.95).
+
+  Cf my Gamble model gamble_extreme_value_test2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : est extreme value dist (95%)
+  Probabilities:
+  144.553: 1.0000000000000000
+  mean = 144.553
+
+  var : est max val
+  Probabilities:
+  145.523: 1.0000000000000000
+  mean = 145.523
+
+  var : est max val better
+  Probabilities:
+  141.749: 1.0000000000000000
+  mean = 141.749
+
+  var : max val
+  Probabilities (truncated):
+  169.439707143052033: 0.0001000000000000
+  167.044062985762253: 0.0001000000000000
+  166.707353140683722: 0.0001000000000000
+  166.520719219680757: 0.0001000000000000
+  .........
+  121.966017498517587: 0.0001000000000000
+  121.895446237434371: 0.0001000000000000
+  121.594071836804559: 0.0001000000000000
+  121.488707739589515: 0.0001000000000000
+  mean = 137.582
+
+  var : p
+  Probabilities:
+  false: 0.8888000000000000
+  true: 0.1112000000000000
+  mean = [false = 0.8888,true = 0.1112]
+
+  var : p2
+  Probabilities:
+  false: 0.7635000000000000
+  true: 0.2365000000000000
+  mean = [false = 0.7635,true = 0.2365]
+
+  var : p3
+  Probabilities:
+  false: 0.8629000000000000
+  true: 0.1371000000000000
+  mean = [false = 0.8629,true = 0.1371]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 100,
+  Mu = 100,
+  Sigma = 15,
+
+  X = normal_dist_n(Mu,Sigma,N),
+
+  MaxVal = X.max,
+  EstMaxVal = Mu + Sigma * sqrt(2*log(N)),
+  %                  mu + sigma*(sqrt 2 log N) - 1/2*sigma * ((log log n)/(sqrt 2 log n)) + small fluctuations
+  EstMaxValBetter =  Mu + Sigma*sqrt(2*log(N)) - 1/2*Sigma * ((log(log(N)))/(sqrt(2*log(N)))),
+
+  % Compare with extreme value dist (0.95)
+  EstExtremeValueDist = extreme_value_dist_quantile(Mu,Sigma,0.95),
+
+  P = check(MaxVal > EstMaxVal),
+  P2 = check(MaxVal > EstMaxValBetter),
+  P3 = check(MaxVal > EstExtremeValueDist),
+  
+  add("max val", MaxVal),
+  add("est max val", EstMaxVal),
+  add("est max val better", EstMaxValBetter),
+  add("est extreme value dist (95%)", EstExtremeValueDist),  
+  add("p", P),
+  add("p2", P2),
+  add("p3", P3).  

@@ -1,0 +1,187 @@
+/* 
+
+  Gender Height - Probabilistic programming in Picat.
+
+  Identify a person's sex by height.
+
+  Given a certain height, what is the probable gender?
+
+  This is port of my Racket/Gamble model gamble_gender_height.rkt
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_utils, ppl_distributions.
+
+main => go.
+
+
+/*
+  No observation
+  var : gender
+  Probabilities:
+  Male: 0.5060000000000000
+  Female: 0.4940000000000000
+
+  observedHeight: 160 (cm)
+  Var gender:
+  Probabilities:
+  Female: 0.9828269484808454
+  Male: 0.0171730515191546
+
+  Var prob:
+  Probabilities:
+  0: 0.9621499999999999
+  1: 0.0378500000000000
+
+
+  observedHeight: 170 (cm)
+  Var gender:
+  Probabilities:
+  Female: 0.7585949177877429
+  Male: 0.2414050822122571
+
+  Var prob:
+  Probabilities:
+  0: 0.9331000000000000
+  1: 0.0669000000000000
+
+
+  observedHeight: 180 (cm)
+  Var gender:
+  Probabilities:
+  Male: 0.8429360694554064
+  Female: 0.1570639305445935
+
+  Var prob:
+  Probabilities:
+  0: 0.9366500000000000
+  1: 0.0633500000000000
+
+
+  observedHeight: 190 (cm)
+  Var gender:
+  Probabilities:
+  Male: 0.9927667269439421
+  Female: 0.0072332730560579
+
+  Var prob:
+  Probabilities:
+  0: 0.9723500000000000
+  1: 0.0276500000000000
+
+
+  observedHeight: 200 (cm)
+  Var gender:
+  Probabilities:
+  Male: 1.0000000000000000
+
+  Var prob:
+  Probabilities:
+  0: 0.9980000000000000
+  1: 0.0020000000000000
+
+*/
+go =>
+  Heights = [none,160.0,170.0,180.0,190.0,200.0],
+  member(ObservedHeight, Heights),
+  if ObservedHeight != none then
+    printf("observedHeight: %.0f (cm)\n",ObservedHeight)
+  else
+    println("No observation")
+  end,
+  reset_store,
+  run_model(10_000,$model(ObservedHeight),[show_probs]),
+  fail,
+  nl.
+go => true.
+
+model(ObservedHeight) =>
+  Gender = uniform_draw(["Male","Female"]),
+  % From https://en.wikipedia.org/wiki/List_of_average_human_height_worldwide
+  % Here are the values for Sweden.
+  Height = cond(Gender == "Male",
+                normal_dist(181.5,sqrt(50)), % in cm
+                normal_dist(166.8,sqrt(50))),
+
+  if ObservedHeight != none then
+    % Observe a height (interval +/- 1.0)
+    observe(abs(Height-ObservedHeight) <= 1.0),
+  end,
+  
+  if ObservedHeight == none ; observed_ok then
+    add("gender",Gender),
+    % add("height",Height),
+  end.
+
+
+
+/*
+  Here we observe the gender instead:
+
+  observedGender: Male
+  var : gender
+  Probabilities:
+  Male: 1.0000000000000000
+  mean = [Male = 1.0]
+
+  var : height
+  Probabilities (truncated):
+  207.614021866926777: 0.0002039567611666
+  207.427308076314489: 0.0002039567611666
+  207.294383242301819: 0.0002039567611666
+  204.561703838059543: 0.0002039567611666
+  .........
+  158.69842041573736: 0.0002039567611666
+  157.686415067266921: 0.0002039567611666
+  157.460129251496312: 0.0002039567611666
+  156.951254962665786: 0.0002039567611666
+  mean = 181.548
+
+  observedGender: Female
+  var : gender
+  Probabilities:
+  Female: 1.0000000000000000
+  mean = [Female = 1.0]
+
+  var : height
+  Probabilities (truncated):
+  192.021489035654355: 0.0001981767736821
+  190.550210578204229: 0.0001981767736821
+  190.482148779297034: 0.0001981767736821
+  189.341907619514586: 0.0001981767736821
+  .........
+  143.450930638564444: 0.0001981767736821
+  143.276334668372328: 0.0001981767736821
+  140.984668084866996: 0.0001981767736821
+  140.707297160348304: 0.0001981767736821
+  mean = 166.68
+
+*/
+go2 =>
+  member(ObservedGender, ["Male","Female"]),
+  printf("observedGender: %w\n",ObservedGender),
+  reset_store,
+  run_model(10_000,$model2(ObservedGender),[show_probs_trunc,mean]),
+  fail,
+  nl.
+go2 => true.
+
+model2(ObservedGender) =>
+  Gender = uniform_draw(["Male","Female"]),
+  % From https://en.wikipedia.org/wiki/List_of_average_human_height_worldwide
+  % Here are the values for Sweden.
+  Height = cond(Gender == "Male",
+                normal_dist(181.5,sqrt(50)), % in cm
+                normal_dist(166.8,sqrt(50))),
+
+  observe(Gender == ObservedGender),
+  if observed_ok then
+    add("gender",Gender),
+    add("height",Height)
+  end.
+
+

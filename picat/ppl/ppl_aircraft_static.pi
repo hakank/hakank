@@ -1,0 +1,93 @@
+/* 
+
+  Aircraft static in Picat.
+
+  From BLOG example/aircraft-static.blog
+
+  Cf my Gamble model gamble_aircraft_static.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : num aircraft
+  Probabilities:
+  3: 0.3176420695504665
+  4: 0.2862595419847328
+  2: 0.1632739609838846
+  5: 0.1399491094147583
+  6: 0.0525869380831213
+  1: 0.0186598812553011
+  7: 0.0182357930449534
+  8: 0.0029686174724343
+  9: 0.0004240882103478
+  mean = 3.61366
+
+  var : sum blip
+  Probabilities:
+  4: 1.0000000000000000
+  mean = 4.0
+
+  var : location 1
+  Probabilities (truncated):
+  199.991114437575959: 0.0004240882103478
+  199.980581179252169: 0.0004240882103478
+  199.859216716074968: 0.0004240882103478
+  199.838776234462273: 0.0004240882103478
+  .........
+  100.21717320206443: 0.0004240882103478
+  100.21524135964701: 0.0004240882103478
+  100.030641397475563: 0.0004240882103478
+  100.009966082875607: 0.0004240882103478
+  mean = 150.039
+
+  var : blip location 1
+  Probabilities (truncated):
+  209.918976500592635: 0.0004240882103478
+  209.682406782956036: 0.0004240882103478
+  209.526187721419234: 0.0004240882103478
+  209.472864400349977: 0.0004240882103478
+  .........
+  -1.762534446836317: 0.0004240882103478
+  -2.011810984967715: 0.0004240882103478
+  -2.105624102344187: 0.0004240882103478
+  -2.382527749525317: 0.0004240882103478
+  mean = 40.2138
+
+*/
+go ?=>
+  reset_store,
+  run_model(20_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  NumAircraft = poisson_dist(3),
+  BlipPerAircraft = poisson_dist_n(1.0,NumAircraft),
+  SumBlip = BlipPerAircraft.sum,
+  
+  Location = uniform_dist_n(100.0,200.0,NumAircraft),
+  BlipLocation = [cond(BlipPerAircraft[A]>0,
+                       normal_dist(BlipPerAircraft[A],1.0),
+                       uniform(90,210))
+                 : A in 1..NumAircraft],
+
+  observe(SumBlip==4),
+
+  if observed_ok then
+    add("num aircraft",NumAircraft),
+    add("sum blip",SumBlip),
+    add("location 1",Location[1]),
+    add("blip location 1",BlipLocation[1])
+  end.

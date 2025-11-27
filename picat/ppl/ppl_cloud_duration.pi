@@ -1,0 +1,172 @@
+/* 
+
+  Cloud duration in Picat.
+
+  From Mathematica (Probability)
+  """
+  Cloud duration approximately follows a beta distribution with parameters 0.3 and 0.4 for a particular location. 
+  Find the probability that cloud duration will be longer than half a day:
+
+  Probability(x > 0.5, x e BetaDistribution(0.3, 0.4))
+  -> 0.421508
+
+  Find the average cloudiness duration for a day:
+  Mean(BetaDistribution(0.3, 0.4))
+  -> 0.428571
+
+  Find the probability of having exactly 20 days in a month with cloud duration less than 10%:
+  p = Probability(x < 0.1, x e BetaDistribution(0.3, 0.4));
+  -> 0.331541
+
+  Probability(k == 20, k e BinomialDistribution(30, p))
+  -> 0.000137807
+
+  Find the probability of at least 20 days in a month with cloud duration less than 10%:
+  Probability(k >= 20, k e BinomialDistribution(30, p))
+  0.000178284  
+  """
+
+  Below is a PPL model. Here are some theoretical results using PDF, CDF, and mean:
+
+  * Find the probability that cloud duration will be longer than half a day:
+    Picat> X=1-beta_dist_cdf(0.3,0.4,0.5)
+    X = 0.421508210955663
+
+  * Find the average cloudiness duration for a day:
+    Picat> X=beta_dist_mean(0.3,0.4)      
+    X = 0.428571428571429
+
+  * Find the probability of having exactly 20 days in a month with cloud duration less than 10%:
+    Picat> P=beta_dist_cdf(0.3,0.4,0.1), X = binomial_dist_pdf(30,P,20)
+    P = 0.331541360051119
+    X = 0.000137807269981
+
+
+  * Find the probability of at least 20 days in a month with cloud duration less than 10%:
+    Picat> P=beta_dist_cdf(0.3,0.4,0.1), X = 1-binomial_dist_cdf(30,P,19)
+    P = 0.331541360051119
+    X = 0.000178284229861
+
+
+  Cf my Gamble model gamble_cloud_duration.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : p
+  Probabilities (truncated):
+  0.99999999987429: 0.0001000000000000
+  0.999999997923013: 0.0001000000000000
+  0.999999989090109: 0.0001000000000000
+  0.999999960239218: 0.0001000000000000
+  .........
+  0.000000000010876: 0.0001000000000000
+  0.000000000003684: 0.0001000000000000
+  0.000000000003172: 0.0001000000000000
+  0.000000000000096: 0.0001000000000000
+  mean = 0.420978
+
+  var : p theoretical
+  Probabilities:
+  0.428571: 1.0000000000000000
+  mean = 0.428571
+
+  var : p1
+  Probabilities:
+  false: 0.5867000000000000
+  true: 0.4133000000000000
+  mean = [false = 0.5867,true = 0.4133]
+
+  var : p2
+  Probabilities:
+  false: 0.6601000000000000
+  true: 0.3399000000000000
+  mean = [false = 0.6601,true = 0.3399]
+
+  var : pp
+  Probabilities:
+  0.3: 0.2638000000000000
+  0.4: 0.2226000000000000
+  0.2: 0.1974000000000000
+  0.5: 0.1356000000000000
+  0.1: 0.0868000000000000
+  0.6: 0.0547000000000000
+  0.0: 0.0206000000000000
+  0.7: 0.0156000000000000
+  0.8: 0.0023000000000000
+  0.9: 0.0006000000000000
+  mean = 0.33026
+
+  var : k
+  Probabilities (truncated):
+  10: 0.0750000000000000
+  8: 0.0736000000000000
+  9: 0.0725000000000000
+  11: 0.0714000000000000
+  .........
+  25: 0.0014000000000000
+  26: 0.0007000000000000
+  27: 0.0003000000000000
+  30: 0.0001000000000000
+  mean = 9.93
+
+  var : p3
+  Probabilities:
+  false: 0.9866000000000000
+  true: 0.0134000000000000
+  mean = [false = 0.9866,true = 0.0134]
+
+  var : p4
+  Probabilities:
+  false: 0.9610000000000000
+  true: 0.0390000000000000
+  mean = [false = 0.961,true = 0.039]
+
+  Note: 
+  Picat> X=beta_dist_cdf(0.3,0.4,0.1)
+  X = 0.331541360051119
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+% 
+% Calculate the mean of beta(0.3,0.4) < 0.1
+% 
+pp() = [ cond(beta_dist(0.3,0.4) < 0.1, 1, 0) : _ in 1..10].avg.
+  
+
+model() =>
+  P = beta_dist(0.3,0.4),
+  PTheo = beta_dist_mean(0.3,0.4),
+  P1 = check(P > 0.5),
+  P2 = check(P < 0.1), % same as pp/0 above
+  K = binomial_dist(30,pp()),
+  P3 = check(K == 20),
+  P4 = check(K >= 20),
+  
+  add("p",P),
+  add("p theoretical",PTheo),
+  add("p1",P1),
+  add("p2",P2),
+  add("pp",pp()),
+  add("k",K),
+  add("p3",P3),
+  add("p4",P4).
+

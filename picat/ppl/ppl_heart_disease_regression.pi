@@ -1,0 +1,170 @@
+/* 
+
+  Heart disease regression in Picat.
+
+  From Hugin's BN heart_disease_regression.net 
+  Risk of dying from heart disease in the next 10 years
+
+  Cf my Gamble model gamble_heart_rate_regression.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  At age 68 it's a little concerning that the risk of dying from
+  heart disease is (very near) 1.
+
+  var : sex
+  Probabilities:
+  0: 1.0000000000000000
+  mean = 0.0
+
+  var : age
+  Probabilities (truncated):
+  68.987236291792144: 0.0322580645161290
+  68.964155423192793: 0.0322580645161290
+  68.86595803636294: 0.0322580645161290
+  68.863059884569125: 0.0322580645161290
+  .........
+  67.112898751216179: 0.0322580645161290
+  67.092035521927215: 0.0322580645161290
+  67.074697415304314: 0.0322580645161290
+  67.065166778493676: 0.0322580645161290
+  mean = 67.9693
+
+  var : cholesterol
+  Probabilities (truncated):
+  5.796430132549877: 0.0322580645161290
+  5.79312329769161: 0.0322580645161290
+  5.790650320508447: 0.0322580645161290
+  5.772382335349497: 0.0322580645161290
+  .........
+  5.634557370401549: 0.0322580645161290
+  5.625290932282351: 0.0322580645161290
+  5.612321799979021: 0.0322580645161290
+  5.607396491252416: 0.0322580645161290
+  mean = 5.7006
+
+  var : score sex
+  Probabilities:
+  0: 1.0000000000000000
+  mean = 0.0
+
+  var : score age
+  Probabilities (truncated):
+  37.974472583584287: 0.0322580645161290
+  37.928310846385585: 0.0322580645161290
+  37.73191607272588: 0.0322580645161290
+  37.726119769138251: 0.0322580645161290
+  .........
+  34.225797502432357: 0.0322580645161290
+  34.184071043854431: 0.0322580645161290
+  34.149394830608628: 0.0322580645161290
+  34.130333556987352: 0.0322580645161290
+  mean = 35.9385
+
+  var : score cholesterol
+  Probabilities (truncated):
+  0.955716159059852: 0.0322580645161290
+  0.951747957229933: 0.0322580645161290
+  0.948780384610136: 0.0322580645161290
+  0.926858802419396: 0.0322580645161290
+  .........
+  0.761468844481859: 0.0322580645161290
+  0.750349118738821: 0.0322580645161290
+  0.734786159974826: 0.0322580645161290
+  0.728875789502899: 0.0322580645161290
+  mean = 0.840716
+
+  var : risk
+  Probabilities (truncated):
+  0.999999999999997: 0.0645161290322581
+  0.999999999999997: 0.0645161290322581
+  0.999999999999993: 0.0645161290322581
+  0.999999999999998: 0.0322580645161290
+  .........
+  0.999999999999912: 0.0322580645161290
+  0.999999999999907: 0.0322580645161290
+  0.999999999999905: 0.0322580645161290
+  0.999999999999898: 0.0322580645161290
+  mean = 1.0
+
+  var : 1-risk
+  Probabilities (truncated):
+  0.000000000000007: 0.0645161290322581
+  0.000000000000003: 0.0645161290322581
+  0.000000000000003: 0.0645161290322581
+  0.000000000000102: 0.0322580645161290
+  .........
+  0.000000000000005: 0.0322580645161290
+  0.000000000000004: 0.0322580645161290
+  0.000000000000002: 0.0322580645161290
+  0.000000000000002: 0.0322580645161290
+  mean = 3.04631e-14
+
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(400_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Male = 0,
+  Female = 1,
+
+  Sex = random_integer(2),
+
+  
+  % In the Hugin model the variance is 100.0.   
+  Cholesterol = normal_dist(6,10),
+
+  % In the Hugin model the variance is 625.
+  Age = normal_dist(40,25),
+
+  Intercept = -5,
+
+  ScoreCholesterol = 1.2 * (Cholesterol - 5),
+  ScoreSex = -1 * Sex,
+  ScoreAge = 2 * (Age - 50),
+
+  Score = Intercept + ScoreAge + ScoreSex + ScoreCholesterol,
+
+  Risk = 1 / (1 + exp(-Score)),
+
+  %
+  % Observations
+  %
+  % observe(Sex == Male),
+  observe(Sex == Female),
+  
+  observe(abs(Age-68) < 1.0),
+  % observe(abs(Age-60) < 1.0),
+  
+  observe(abs(Cholesterol-5.7)<=0.1),
+  
+  if observed_ok then
+    add_all([ ["sex",Sex],
+              ["age",Age],
+              ["cholesterol",Cholesterol],
+              ["score cholesterol",ScoreCholesterol],
+              ["score sex",ScoreSex],
+              ["score age",ScoreAge],
+              ["score",Score],
+              ["risk",Risk],
+              ["1-risk",1-Risk]
+            ])
+  end.

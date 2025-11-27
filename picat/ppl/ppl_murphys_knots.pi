@@ -1,0 +1,428 @@
+/* 
+
+  Murphy's knots (Random walks in n dimensions) in Picat.
+
+  Robert Matthews has written an article about knots on a string 
+  'Knotted rope: a topological example of Murphy's Law' ("If rope can become knotted, it will do").
+  Matthews mentions a random walk in 3 dimensions.
+
+  The simulation consists of the following.
+ 
+  - The dimension is n
+  - Start from position (0,0,0) (i.e. n 0s)
+  - Get a new random position, one step in some of the directions, i.e. -1 or 1 in either 
+    x, y, and z direction (for dimension n=3).
+  - The criteria that it's a knot is that one come back some of the visited positions.
+  - The unknown parameter is the length of the path until a knot occurs somewhere in the
+    string. Note that the last point is included in the path, which means that the
+    minimal value is 3 for all dimensions.
+
+
+  Cf my Gamble model gamble_murphys_knots.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  The length of the step until a knot.
+
+  n = 1
+  var : len
+  Probabilities:
+  3: 0.5022000000000000
+  4: 0.2503000000000000
+  5: 0.1229000000000000
+  6: 0.0624000000000000
+  7: 0.0289000000000000
+  8: 0.0158000000000000
+  9: 0.0070000000000000
+  10: 0.0044000000000000
+  11: 0.0033000000000000
+  12: 0.0013000000000000
+  13: 0.0008000000000000
+  16: 0.0003000000000000
+  14: 0.0003000000000000
+  15: 0.0001000000000000
+  mean = 4.0052
+
+
+  n = 2
+  var : len
+  Probabilities:
+  3: 0.2400000000000000
+  4: 0.1890000000000000
+  5: 0.1707000000000000
+  6: 0.1168000000000000
+  7: 0.0881000000000000
+  8: 0.0601000000000000
+  9: 0.0429000000000000
+  10: 0.0293000000000000
+  11: 0.0194000000000000
+  12: 0.0124000000000000
+  13: 0.0103000000000000
+  14: 0.0056000000000000
+  15: 0.0043000000000000
+  16: 0.0033000000000000
+  17: 0.0028000000000000
+  18: 0.0020000000000000
+  20: 0.0010000000000000
+  19: 0.0010000000000000
+  21: 0.0004000000000000
+  26: 0.0002000000000000
+  28: 0.0001000000000000
+  27: 0.0001000000000000
+  24: 0.0001000000000000
+  23: 0.0001000000000000
+  mean = 5.6451
+
+
+  n = 3
+  var : len
+  Probabilities:
+  3: 0.1663000000000000
+  4: 0.1428000000000000
+  5: 0.1333000000000000
+  6: 0.1048000000000000
+  7: 0.0918000000000000
+  8: 0.0697000000000000
+  9: 0.0610000000000000
+  10: 0.0460000000000000
+  11: 0.0357000000000000
+  12: 0.0293000000000000
+  13: 0.0251000000000000
+  14: 0.0176000000000000
+  15: 0.0164000000000000
+  16: 0.0122000000000000
+  17: 0.0094000000000000
+  18: 0.0091000000000000
+  19: 0.0077000000000000
+  20: 0.0050000000000000
+  21: 0.0033000000000000
+  22: 0.0029000000000000
+  23: 0.0024000000000000
+  25: 0.0020000000000000
+  24: 0.0014000000000000
+  26: 0.0010000000000000
+  27: 0.0009000000000000
+  30: 0.0006000000000000
+  32: 0.0004000000000000
+  31: 0.0004000000000000
+  28: 0.0004000000000000
+  34: 0.0003000000000000
+  35: 0.0002000000000000
+  33: 0.0002000000000000
+  38: 0.0001000000000000
+  37: 0.0001000000000000
+  36: 0.0001000000000000
+  29: 0.0001000000000000
+  mean = 7.3171
+
+
+  n = 4
+  var : len
+  Probabilities (truncated):
+  3: 0.1243000000000000
+  5: 0.1087000000000000
+  4: 0.1065000000000000
+  6: 0.0917000000000000
+  7: 0.0863000000000000
+  8: 0.0676000000000000
+  9: 0.0599000000000000
+  .........
+  50: 0.0003000000000000
+  45: 0.0003000000000000
+  42: 0.0003000000000000
+  40: 0.0003000000000000
+  51: 0.0002000000000000
+  62: 0.0001000000000000
+  41: 0.0001000000000000
+  mean = 9.1469
+  
+  n = 5
+  var : len
+  Probabilities (truncated):
+  3: 0.1045000000000000
+  5: 0.0907000000000000
+  4: 0.0831000000000000
+  6: 0.0787000000000000
+  7: 0.0742000000000000
+  8: 0.0629000000000000
+  9: 0.0573000000000000
+  .........
+  75: 0.0001000000000000
+  71: 0.0001000000000000
+  66: 0.0001000000000000
+  63: 0.0001000000000000
+  62: 0.0001000000000000
+  60: 0.0001000000000000
+  48: 0.0001000000000000
+  mean = 11.0809
+
+
+  n = 6
+  var : len
+  Probabilities (truncated):
+  3: 0.0833000000000000
+  4: 0.0784000000000000
+  5: 0.0727000000000000
+  6: 0.0697000000000000
+  7: 0.0656000000000000
+  8: 0.0602000000000000
+  9: 0.0487000000000000
+  .........
+  65: 0.0002000000000000
+  61: 0.0002000000000000
+  91: 0.0001000000000000
+  85: 0.0001000000000000
+  84: 0.0001000000000000
+  83: 0.0001000000000000
+  70: 0.0001000000000000
+  mean = 13.0199
+
+
+  n = 7
+  var : len
+  Probabilities (truncated):
+  3: 0.0747000000000000
+  4: 0.0674000000000000
+  6: 0.0639000000000000
+  5: 0.0631000000000000
+  7: 0.0581000000000000
+  8: 0.0502000000000000
+  9: 0.0497000000000000
+  .........
+  88: 0.0001000000000000
+  87: 0.0001000000000000
+  85: 0.0001000000000000
+  81: 0.0001000000000000
+  80: 0.0001000000000000
+  71: 0.0001000000000000
+  68: 0.0001000000000000
+  mean = 14.9582
+
+
+  n = 8
+  var : len
+  Probabilities (truncated):
+  3: 0.0665000000000000
+  5: 0.0598000000000000
+  6: 0.0595000000000000
+  4: 0.0576000000000000
+  7: 0.0518000000000000
+  8: 0.0458000000000000
+  9: 0.0427000000000000
+  .........
+  78: 0.0002000000000000
+  98: 0.0001000000000000
+  97: 0.0001000000000000
+  90: 0.0001000000000000
+  88: 0.0001000000000000
+  84: 0.0001000000000000
+  80: 0.0001000000000000
+  mean = 16.9089
+
+
+  n = 9
+  var : len
+  Probabilities (truncated):
+  3: 0.0579000000000000
+  4: 0.0552000000000000
+  5: 0.0529000000000000
+  6: 0.0501000000000000
+  9: 0.0421000000000000
+  7: 0.0409000000000000
+  8: 0.0405000000000000
+  .........
+  98: 0.0002000000000000
+  97: 0.0002000000000000
+  96: 0.0002000000000000
+  84: 0.0002000000000000
+  95: 0.0001000000000000
+  90: 0.0001000000000000
+  85: 0.0001000000000000
+  mean = 19.0202
+
+
+  n = 10
+  var : len
+  Probabilities (truncated):
+  5: 0.0474000000000000
+  3: 0.0473000000000000
+  4: 0.0471000000000000
+  6: 0.0446000000000000
+  7: 0.0432000000000000
+  8: 0.0388000000000000
+  10: 0.0377000000000000
+  .........
+  99: 0.0003000000000000
+  95: 0.0003000000000000
+  93: 0.0003000000000000
+  91: 0.0003000000000000
+  89: 0.0003000000000000
+  87: 0.0003000000000000
+  78: 0.0003000000000000
+  mean = 20.9204
+
+
+*/
+go ?=>
+  member(N,1..10),
+  println(n=N),
+  reset_store,
+  ShowProbs = cond(N <=3, show_probs,show_probs_trunc),
+  run_model(10_000,$model(N),[ShowProbs,mean,truncate_size=7
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+
+step(S,Steps,N,MaxSteps) = Res =>
+  if S > MaxSteps then
+    Res = Steps
+  else
+    LastStep = Steps.last,
+    Coord = random_integer(N), % which direction
+    Dir = categorical([1,1],[-1,1]),
+    NewStep = [cond(I == Coord,LastStep[I] + Dir,LastStep[I] - Dir): I in 1..N],
+    NewSteps = Steps ++ [NewStep],
+    Seen = check_duplicates(NewSteps),
+    if Seen then
+      Res = NewSteps
+    else
+      Res = step(S+1,NewSteps,N,MaxSteps)
+    end
+  end.
+
+model(N) =>
+
+  % Dirs = [-1,1],
+  MaxSteps = 100,
+
+  A = step(0,[ones(N,0)],N,MaxSteps),
+  add("len",A.len).
+
+
+
+/*
+  Can we figure out the distribution of this?
+  Let's run this for N=3 (dimensions) and test with a Pascal distribution.
+
+  * Default statistics (mean,stdev). 2.4s
+
+    Num accepted samples: 100  Total samples: 234  (0.427%)
+    var : n
+    Probabilities:
+    5: 0.1800000000000000
+    3: 0.1700000000000000
+    4: 0.1500000000000000
+    2: 0.1400000000000000
+    6: 0.1100000000000000
+    7: 0.0800000000000000
+    1: 0.0800000000000000
+    9: 0.0500000000000000
+    8: 0.0400000000000000
+    mean = 4.36
+
+    var : p
+    Probabilities (truncated):
+    0.985510539786736: 0.0100000000000000
+    0.983016846777768: 0.0100000000000000
+    0.981508909776711: 0.0100000000000000
+    0.964060481289688: 0.0100000000000000
+    .........
+    0.168920252811753: 0.0100000000000000
+    0.146156085453739: 0.0100000000000000
+    0.131043815012926: 0.0100000000000000
+    0.13053832095502: 0.0100000000000000
+    mean = 0.642079
+
+  * Using the "recommended" statistics  (2.6s)
+
+    Num accepted samples: 100  Total samples: 276  (0.362%)
+    var : n
+    Probabilities:
+    4: 0.1600000000000000
+    2: 0.1600000000000000
+    1: 0.1500000000000000
+    3: 0.1300000000000000
+    5: 0.1200000000000000
+    7: 0.1100000000000000
+    6: 0.1000000000000000
+    8: 0.0500000000000000
+    9: 0.0200000000000000
+    mean = 4.05
+
+    var : p
+    Probabilities (truncated):
+    0.955699426400795: 0.0100000000000000
+    0.928785444492503: 0.0100000000000000
+    0.923600412208725: 0.0100000000000000
+    0.914336811666997: 0.0100000000000000
+    .........
+    0.155001543653819: 0.0100000000000000
+    0.152543159226278: 0.0100000000000000
+    0.137589553870505: 0.0100000000000000
+    0.134996031547054: 0.0100000000000000
+    mean = 0.616361
+
+   Not much difference.
+
+
+   Note: Mathematica's FindDistribution gives
+      PascalDistribution[2, 0.262211
+*/ 
+go2 ?=>
+
+  reset_store,
+  run_model(100,$model(3),[presentation=[]
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  % Data = get_store().get("len"),
+  Data = [8,4,5,10,3,11,6,3,3,10,8,4,14,4,14,5,6,5,11,5,14,6,7,4,4,5,12,5,6,6,6,15,6,5,6,7,3,10,5,14,4,8,5,12,6,9,4,6,4,5,5,7,10,8,4,9,3,17,12,6,5,3,6,3,11,3,9,6,11,7,5,12,4,4,4,6,17,3,24,4,4,4,4,12,5,26,9,5,9,4,9,3,4,10,4,4,26,15,7,9],
+  println(data=Data),
+  [Methods,Explain]=recommend_abc_stats_explained(Data),
+  println(methods=Methods),
+  println(explain=Explain),
+  reset_store,
+  run_model(100,$model2(Data),[show_probs_trunc,mean,
+                               % show_percentiles,
+                               % show_hpd_intervals,hpd_intervals=[0.94],
+                               % show_histogram,
+                               min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+
+model2(Data) =>
+  N = random_integer(10),
+  P = beta_dist(1,1),
+
+  X = pascal_dist_n(N,P,Data.len),
+  % observe_abc(Data,X),
+  observe_abc(Data,X,1,[median,iqr,mad,skewness]), % use the recommended statistics
+
+  if observed_ok then
+    add("n",N),
+    add("p",P),    
+  end.

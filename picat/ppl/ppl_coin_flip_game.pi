@@ -1,0 +1,246 @@
+/* 
+
+  Coin flip game in Picat.
+
+  Anne Ogborn:
+  https://twitter.com/AnneOgborn/status/1560681513548759042
+  """
+  I offer a game-  flip a coin. Heads, I pay $1 and the game ends. Tails, we flip again- 
+  if Heads, I pay $2 and game ends, Tails, we flip again, doubling each time.
+  What would you pay me to play this game?
+  """
+
+  Comment by Richard Barrell:
+  """
+  Roughly 0.5*log2(your bankroll)
+  Each round has an EV of $0.50 and the number of rounds is log2(the maximum possible 
+  amount of money you can pay out)
+  """
+ 
+  (This is related to the St Petersburg "paradox"/lottery: 
+   https://en.wikipedia.org/wiki/St._Petersburg_paradox)
+
+  p is the probability that we get at least the expected value (0.5*log2(n)).
+
+  For larger n, it seems that (/ (log n 2) 2) underestimates the estimated value by 
+  (exactly) 1.
+
+
+  Testing for n (limited bankroll) as powers of 2
+
+  (expt 2 n) (game 1)
+  ------------------------------------------------------
+        1 : 1
+        2 : 1.5
+        4 : 2
+        8 : 2.5
+       16 : 3
+       32 : 3.5
+       64 : 4
+      128 : 4.5
+      256 : 5
+      512 : 5.5
+     1024 : 6
+     2048 : 6.5
+     4096 : 7
+     8192 : 7.5
+    16384 : 8
+    32768 : 8.5
+    65536 : 9
+   131072 : 9.5
+   262144 : 10
+   524288 : 10.5
+  1048576 : 11
+
+  Via JGAP (Symbolic Regressions), the estimated value for the powers of 2 results, is about
+    (log (4 * n)) / (log(4))
+  or:
+    0.7213475205 ln(4.0 V1)
+
+  Maple:
+  > (log (4 * V1)) / (log(4));
+                                                ln(4 V1)
+                                                --------
+                                                 ln(4)
+
+  Mathematica:
+  The estimate from Richard Barrell has the limit of:
+    Limit[Log2[n] / 2, n -> Infinity]
+    -> Infinity
+
+    However, with some limit (bankroll) a:
+    Limit[Log2[n] / 2, n -> a]
+    -> Log[a]/Log[4]
+
+  This estimation, i.e. (log (4 * n)) / (log(4)) seems to be exact for the powers of 2.
+  Perhaps it would been simpler to adjust the original formula by subtracting 1:
+    (- (/ (log n 2) 2) 1)
+
+  Note: for values that are not powers of 2, this does not work as neat.
+
+
+  Cf my Gamble model gamble_coin_flip_game.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  * With a limit of 10**12:
+
+  [n = 1000000000000,simple = false]
+  var : game 1
+  Probabilities:
+  1: 0.4894000000000000
+  2: 0.2517000000000000
+  4: 0.1345000000000000
+  8: 0.0644000000000000
+  16: 0.0306000000000000
+  32: 0.0146000000000000
+  64: 0.0076000000000000
+  128: 0.0038000000000000
+  256: 0.0019000000000000
+  512: 0.0007000000000000
+  1024: 0.0005000000000000
+  4096: 0.0002000000000000
+  2048: 0.0001000000000000
+  mean = 6.3564
+
+  var : log2(N) div 2
+  Probabilities:
+  19.9316: 1.0000000000000000
+  mean = 19.9316
+
+  var : est
+  Probabilities:
+  20.9316: 1.0000000000000000
+  mean = 20.9316
+
+  var : p1
+  Probabilities:
+  false: 0.9706000000000000
+  true: 0.0294000000000000
+  mean = [false = 0.9706,true = 0.0294]
+
+  var : p2
+  Probabilities:
+  false: 0.9706000000000000
+  true: 0.0294000000000000
+  mean = [false = 0.9706,true = 0.0294]
+
+  * With a limit of 2**20:
+
+  [n = 1048576,simple = false]
+  var : game 1
+  Probabilities:
+  1: 0.4920000000000000
+  2: 0.2567000000000000
+  4: 0.1265000000000000
+  8: 0.0605000000000000
+  16: 0.0320000000000000
+  32: 0.0148000000000000
+  64: 0.0087000000000000
+  128: 0.0035000000000000
+  256: 0.0033000000000000
+  512: 0.0012000000000000
+  1024: 0.0003000000000000
+  4096: 0.0002000000000000
+  2048: 0.0002000000000000
+  8192: 0.0001000000000000
+  mean = 7.8002
+
+  var : log2(N) div 2
+  Probabilities:
+  10.0: 1.0000000000000000
+  mean = 10.0
+
+  var : est
+  Probabilities:
+  11.0: 1.0000000000000000
+  mean = 11.0
+
+  var : p1
+  Probabilities:
+  false: 0.9357000000000000
+  true: 0.0643000000000000
+  mean = [false = 0.9357,true = 0.0643]
+
+  var : p2
+  Probabilities:
+  false: 0.9357000000000000
+  true: 0.0643000000000000
+  mean = [false = 0.9357,true = 0.0643]
+
+*/
+go ?=>
+  % N = 10**12,
+  N = 2**20,  
+  Simple = false,
+  println([n=N,simple=Simple]),
+  reset_store,
+  run_model(10_000,$model(N,Simple),[show_probs,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+game(I,N) = Res =>
+  V = flip(1/2),
+  if (V == true ; I >= N) then
+    Res = I
+  else
+    Res = game(2*I,N)
+  end.
+  
+model(N,Simple) =>
+  Game1 = game(1,N),
+  
+  % Probability that we get at least the expected value
+  % (according to the 0.5*log2(n) formula)
+  P1 = check( Game1 > 0.5*log2(N) ),
+  
+  % Checking the formula from JGAP (symbolic regression))
+  % This seems to give an exact closed for for (game 1)
+  P2 = check( Game1 > log(4*N) / log(4) ),
+
+  if Simple == true then
+    add("game 1",Game1),
+    add("log2(N) div 2",(log2(N) / 2)),
+    add("diff1",(Game1 - (log2(N) / 2))),
+    add("log(4*N) / log(4) ",( log(4*N) / log(4) )),        
+    add("diff2",(Game1 - (  log(4*N) / log(4)))),
+  else
+    add("game 1",Game1),
+    add("log2(N) div 2",(log2(N) / 2)),
+    add("est",(log(4*N) / log(4))),
+    add("p1",P1), 
+    add("p2",P2),
+  end.
+
+
+
+/*
+
+*/
+go2 ?=>
+  member(M,1..20),
+  N = 2**M,  
+  Simple = true,
+  println([n=N,simple=Simple]),
+  reset_store,
+  run_model(1000,$model(N,Simple),[mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+  

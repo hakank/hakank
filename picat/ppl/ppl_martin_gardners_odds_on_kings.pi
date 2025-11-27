@@ -1,0 +1,430 @@
+/* 
+
+  Martin Gardner's Odds on Kings in Picat.
+
+  From BL "Martin Gardner’s Odds On Kings - A Probability Puzzle"
+  https://medium.com/math-games/martin-gardners-odds-on-kings-58dbf416a598
+  """
+  Six playing cards are lying face down on the table. You have been told that two 
+  and only two of them are kings, but you do not know the position of the kings. 
+  You pick two cards at random and turn them face up.
+
+  Which is the most likely:
+  (1) There will be at least one king among the two cards?
+  (2) There will be no king among the two cards?
+
+  """
+
+  [See below for the variant with 8 cards and 3 kings]
+
+  Generallized version for k*2  + 2 cards and k kings, k = 1..5
+
+
+  Cf my Gamble model gamble_martin_gardners_odds_on_kings.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Generallized version for k*2  + 2 cards and k kings, k = 1..5
+
+  [n = 4,k = 1]
+  var : two cards
+  Probabilities:
+  [0,0]: 0.5026000000000000
+  [0,1]: 0.2544000000000000
+  [1,0]: 0.2430000000000000
+  mean = []
+
+  var : at least one king
+  Probabilities:
+  false: 0.5026000000000000
+  true: 0.4974000000000000
+  mean = 0.4974
+
+  var : no king
+  Probabilities:
+  true: 0.5026000000000000
+  false: 0.4974000000000000
+  mean = 0.5026
+
+
+  [n = 6,k = 2]
+  var : two cards
+  Probabilities:
+  [0,0]: 0.3981000000000000
+  [0,1]: 0.2742000000000000
+  [1,0]: 0.2622000000000000
+  [1,1]: 0.0655000000000000
+  mean = []
+
+  var : at least one king
+  Probabilities:
+  true: 0.6019000000000000
+  false: 0.3981000000000000
+  mean = 0.6019
+
+  var : no king
+  Probabilities:
+  false: 0.6019000000000000
+  true: 0.3981000000000000
+  mean = 0.3981
+
+
+  [n = 8,k = 3]
+  var : two cards
+  Probabilities:
+  [0,0]: 0.3528000000000000
+  [1,0]: 0.2750000000000000
+  [0,1]: 0.2654000000000000
+  [1,1]: 0.1068000000000000
+  mean = []
+
+  var : at least one king
+  Probabilities:
+  true: 0.6472000000000000
+  false: 0.3528000000000000
+  mean = 0.6472
+
+  var : no king
+  Probabilities:
+  false: 0.6472000000000000
+  true: 0.3528000000000000
+  mean = 0.3528
+
+
+  [n = 10,k = 4]
+  var : two cards
+  Probabilities:
+  [0,0]: 0.3290000000000000
+  [1,0]: 0.2682000000000000
+  [0,1]: 0.2681000000000000
+  [1,1]: 0.1347000000000000
+  mean = []
+
+  var : at least one king
+  Probabilities:
+  true: 0.6710000000000000
+  false: 0.3290000000000000
+  mean = 0.671
+
+  var : no king
+  Probabilities:
+  false: 0.6710000000000000
+  true: 0.3290000000000000
+  mean = 0.329
+
+
+  [n = 12,k = 5]
+  var : two cards
+  Probabilities:
+  [0,0]: 0.3170000000000000
+  [1,0]: 0.2715000000000000
+  [0,1]: 0.2620000000000000
+  [1,1]: 0.1495000000000000
+  mean = []
+
+  var : at least one king
+  Probabilities:
+  true: 0.6830000000000001
+  false: 0.3170000000000000
+  mean = 0.683
+
+  var : no king
+  Probabilities:
+  false: 0.6830000000000001
+  true: 0.3170000000000000
+  mean = 0.317
+
+  What is the probability when K -> infinity (here 100_000).
+
+  [n = 200002,k = 100000]
+  var : two cards
+  Probabilities:
+  [0,1]: 0.2534000000000000
+  [1,1]: 0.2518000000000000
+  [0,0]: 0.2484000000000000
+  [1,0]: 0.2464000000000000
+  mean = []
+
+  var : at least one king
+  Probabilities:
+  true: 0.7516000000000000
+  false: 0.2484000000000000
+  mean = 0.7516
+
+  var : no king
+  Probabilities:
+  false: 0.7516000000000000
+  true: 0.2484000000000000
+  mean = 0.2484
+
+  So when k -> infinity it seems the probably of at least one king 
+  is 3/4 and probablity of no king is 1/4
+
+
+*/
+go ?=>
+  member(K,1..5 ++ [100000]),
+  N = K * 2 + 2,
+  println([n=N,k=K]),
+  reset_store,
+  run_model(10_000,$model(N,K),[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(N,NumKings) =>
+  Cards = rep(NumKings,1) ++ rep(N-NumKings,0),
+  TwoCards = draw_without_replacement(2,Cards),
+
+  AtLeastOneKing = check(TwoCards.sum >= 1),
+  NoKing         = check(TwoCards.sum == 0),
+  
+  add("two cards",TwoCards),
+  add("at least one king",AtLeastOneKing),
+  add("no king",NoKing).
+
+
+/*
+  Using hypergeometric probability distribution
+
+  [n = 6,num_kings = 2]
+  At least one king: 0.6000000000000021
+  No king: 0.3999999999999979
+
+  [n = 8,num_kings = 3]
+  At least one king: 0.6428571428571415
+  No king: 0.3571428571428585
+
+  [n = 12,num_kings = 5]
+  At least one king: 0.6818181818181797
+  No king: 0.3181818181818204
+
+  [n = 2002,num_kings = 1000]
+  At least one king: 0.7496251874066578
+  No king: 0.2503748125933422
+
+  [n = 200002,num_kings = 100000]
+  At least one king: 0.7499962499643249
+  No king: 0.2500037500356750
+
+  [n = 20000000002,num_kings = 10000000000]
+  At least one king: 0.7500069149954850
+  No king: 0.2499930850045150
+
+*/
+go2 ?=>
+  member(NumKings,[2,3,5,1_000,100_000,10_000_000_000]),
+  N = NumKings * 2 + 2,
+  println([n=N,num_kings=NumKings]),
+  NumDrawnCards = 2,
+  NumSuccesses = NumKings,
+  NumTotalCards = N,
+  AtLeastOneKing = 1 - hypergeometric_dist_cdf(NumDrawnCards,NumSuccesses,NumTotalCards,0),
+  NoKing = hypergeometric_dist_cdf(NumDrawnCards,NumSuccesses,NumTotalCards,0),
+
+  printf("At least one king: %0.16f\n",AtLeastOneKing),
+  printf("No king: %0.16f\n",NoKing),  
+  nl,
+  fail,
+  nl.
+go2 => true.
+  
+
+
+/*
+
+  From the same Medium post:
+  """
+  A Challenge Ahead: 
+  [The Dealer's Twist - Bigger Deck
+    
+  Eight cards lie face down: exactly three are kings. 
+  You pick three cards at random and set them aside, still face
+  down.
+  The dealer peeks at the other five and turns one card face up.
+  It is not a king.
+  1. They contain at least one king.
+  2. They contain no kings.
+  
+  Is (1) or (2) more likely to happen.
+  """
+
+  The issue here is if the dealer selects a card that is not a king,
+  or just turn any card which happens to be no a king.   
+  Here are three slightly different versions:
+  1) The dealer just pick any card and that happens to be a non king. 
+     This is representing by observing that the first of the 
+     dealer's five card is not a king
+  2) The dealer actively pick a card that is not a king.
+     Here we sort the dealer's card (0 for no king and 1 for king), 
+     pick the first and see that it's not a king. 
+     And that would be impossible since at least the first two cards 
+     must be non-kings.
+
+     This interpretation seems to be the most likely given the
+     description.
+
+  0) We do not observe anything.
+     This corresponds to the fact that the dealer does not show any card.
+
+
+     observe = 1
+     var : my cards
+     Probabilities:
+     [0,0,1]: 0.1743415737598966
+     [1,0,0]: 0.1709484569397318
+     [0,1,0]: 0.1673937631281306
+     [0,1,1]: 0.1224753595088059
+     [1,0,1]: 0.1148812409112942
+     [1,1,0]: 0.1121344320568751
+     [0,0,0]: 0.1121344320568751
+     [1,1,1]: 0.0256907416383907
+     mean = []
+
+     var : at least one king
+     Probabilities:
+     true: 0.8878655679431249
+     false: 0.1121344320568751
+     mean = 0.887866
+
+     var : no king
+     Probabilities:
+     false: 0.8878655679431249
+     true: 0.1121344320568751
+     mean = 0.112134
+
+
+     observe = 2
+     var : my cards
+     Probabilities:
+     [0,1,0]: 0.1795000000000000
+     [0,0,0]: 0.1791000000000000
+     [0,0,1]: 0.1778000000000000
+     [1,0,0]: 0.1755000000000000
+     [0,1,1]: 0.0917000000000000
+     [1,1,0]: 0.0897000000000000
+     [1,0,1]: 0.0877000000000000
+     [1,1,1]: 0.0190000000000000
+     mean = []
+
+     var : at least one king
+     Probabilities:
+     true: 0.8209000000000000
+     false: 0.1791000000000000
+     mean = 0.8209
+
+     var : no king
+     Probabilities:
+     false: 0.8209000000000000
+     true: 0.1791000000000000
+     mean = 0.1791
+
+
+     observe = 0
+     var : my cards
+     Probabilities:
+     [0,0,1]: 0.1822000000000000
+     [0,0,0]: 0.1801000000000000
+     [0,1,0]: 0.1762000000000000
+     [1,0,0]: 0.1761000000000000
+     [1,0,1]: 0.0900000000000000
+     [1,1,0]: 0.0896000000000000
+     [0,1,1]: 0.0881000000000000
+     [1,1,1]: 0.0177000000000000
+     mean = []
+
+     var : at least one king
+     Probabilities:
+     true: 0.8199000000000000
+     false: 0.1801000000000000
+     mean = 0.8199
+
+     var : no king
+     Probabilities:
+     false: 0.8199000000000000
+     true: 0.1801000000000000
+     mean = 0.1801
+
+
+  Note that scenario 2 and 0 give the same probabilities,
+  which indicates that the step of the dealer showing a 
+  non-king does not matter.
+
+*/
+go3 ?=>
+  member(Observe,[1,2,0]),
+  println(observe=Observe),
+  reset_store,
+  run_model(10_000,$model3(Observe),[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  show_store_lengths,nl,
+  fail,
+  nl.
+go3 => true.
+  
+  
+model3(Observe) =>
+  King = 1,
+  NotKing = 0,
+
+  NumKings = 3,
+  NumCards = 8,
+  TakeCards = 3,
+
+  Cards = rep(NumKings, King) ++ rep(NumCards-NumKings,NotKing),
+  
+  ShuffledCards = draw_without_replacement(NumCards,Cards),
+  MyCards = take(ShuffledCards,TakeCards),
+  TheRest = drop(ShuffledCards,TakeCards),
+
+  % Here's the tricky part
+  % """
+  % The dealer peeks at the other five and turns one card face up.
+  % It is not a king.
+  % """
+  if Observe == 1 then
+    % One interpretation: The first of the rest five cards is not a king.
+    observe(King != TheRest.first)
+  elseif Observe == 2 then
+    % Ensure that there can not be a king at the first card
+    observe(King != TheRest.sort.first)
+  else
+    % No observe
+    true
+  end,
+
+  S = MyCards.sum,
+  AtLeastOneKing = check(S >= 1),
+  NoKing = check(S == 0),
+
+  if Observe == 0 ; (Observe > 0, observed_ok) then
+    add("my cards",MyCards),    
+    add("at least one king",AtLeastOneKing),
+    add("no king",NoKing)
+  end.
+

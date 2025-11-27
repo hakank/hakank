@@ -1,0 +1,274 @@
+/* 
+
+  Successive wins in Picat.
+
+  From Mosteller "Fifty Challenging problems in Probability"
+  """
+  Problem 2: Successive Wins
+        
+  To encourage Elmer's promising tennis career, his 
+  father offers him a prize if he wins (at least) two 
+  tennis sets in a row in a three-set series to be played 
+  with his father and the club champion alternately:  
+  father-champion-father or champion-father-champion, 
+  according to Elmer's choice.  The champion is a better 
+  player than Elmer's father.  Which series should Elmer 
+  choose?
+  """
+
+  It depends on Elmer's probability of winning against
+  the father and the champion.
+
+  Probability of Elmer winning against the father is 0.2 
+  and against the champion 0.4:
+
+  Cf my Gamble model gamble_successive_wins.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : matches 1: father, champion, father
+  Probabilities:
+  [0,0,0]: 0.3890000000000000
+  [0,1,0]: 0.2585000000000000
+  [0,0,1]: 0.0946000000000000
+  [1,0,0]: 0.0921000000000000
+  [0,1,1]: 0.0636000000000000
+  [1,1,0]: 0.0610000000000000
+  [1,0,1]: 0.0252000000000000
+  [1,1,1]: 0.0160000000000000
+  mean = [[0,0,0] = 0.389,[0,1,0] = 0.2585,[0,0,1] = 0.0946,[1,0,0] = 0.0921,[0,1,1] = 0.0636,[1,1,0] = 0.061,[1,0,1] = 0.0252,[1,1,1] = 0.016]
+
+  var : matches 2: champion, father, champion
+  Probabilities:
+  [0,0,0]: 0.2903000000000000
+  [0,0,1]: 0.1976000000000000
+  [1,0,0]: 0.1828000000000000
+  [1,0,1]: 0.1275000000000000
+  [0,1,0]: 0.0724000000000000
+  [0,1,1]: 0.0478000000000000
+  [1,1,0]: 0.0460000000000000
+  [1,1,1]: 0.0356000000000000
+  mean = [[0,0,0] = 0.2903,[0,0,1] = 0.1976,[1,0,0] = 0.1828,[1,0,1] = 0.1275,[0,1,0] = 0.0724,[0,1,1] = 0.0478,[1,1,0] = 0.046,[1,1,1] = 0.0356]
+
+  var : success 1
+  Probabilities:
+  false: 0.8594000000000001
+  true: 0.1406000000000000
+  mean = [false = 0.8594,true = 0.1406]
+
+  var : success 2
+  Probabilities:
+  false: 0.8706000000000000
+  true: 0.1294000000000000
+  mean = [false = 0.8706,true = 0.1294]
+
+  Conclusion:
+  Pick matches 1: father,champion,father
+
+
+*/
+go ?=>
+  Champion = 4/10,
+  Father   = 2/10,
+  reset_store,
+  run_model(10_000,$model(Champion,Father),[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  Store = get_store(),
+  Success1 = Store.get("success 1").mean.new_map().get(true),
+  Success2 = Store.get("success 2").mean.new_map().get(true),
+  % println([success1=Success1,success2=Success2,total=Success1+Success2]),
+  println("Conclusion:"),
+  if Success1 > Success2 then
+    println("Pick matches 1: father,champion,father")
+  else
+    println("Pick matches 2: champion,father,champion")  
+  end,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+test(M) = cond(append(_,[1,1],_,M),true,false).
+
+model(Champion,Father) =>
+  Seq1 = [Father,Champion,Father],
+  Seq2 = [Champion,Father,Champion],
+
+  Matches1 = [ bern(M) : M in Seq1],
+  Matches2 = [ bern(M) : M in Seq2],  
+
+  Success1 = test(Matches1),
+  Success2 = test(Matches2),  
+
+  add("matches 1: father, champion, father",Matches1),
+  add("matches 2: champion, father, champion",Matches2),
+  add("success 1",Success1),
+  add("success 2",Success2).
+
+/*
+  Here's a more extensive test of some different probabilities of winning
+  against the father and the champion. Note that the champion is 
+  better than the father.
+
+
+  [father = 0,champion = 0.001,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 0.2,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 0.4,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 0.5,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 0.6,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 0.8,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 0.99,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0,champion = 1,success1 = 0,success2 = 0,best_strat = same]
+  [father = 0.001,champion = 0.2,success1 = 0,success2 = 0.002,best_strat = 2]
+  [father = 0.001,champion = 0.4,success1 = 0.001,success2 = 0.001,best_strat = same]
+  [father = 0.001,champion = 0.5,success1 = 0.001,success2 = 0,best_strat = 1]
+  [father = 0.001,champion = 0.6,success1 = 0.001,success2 = 0.003,best_strat = 2]
+  [father = 0.001,champion = 0.8,success1 = 0.001,success2 = 0,best_strat = 1]
+  [father = 0.001,champion = 0.99,success1 = 0,success2 = 0.002,best_strat = 2]
+  [father = 0.001,champion = 1,success1 = 0,success2 = 0.001,best_strat = 2]
+  [father = 0.2,champion = 0.4,success1 = 0.154,success2 = 0.131,best_strat = 1]
+  [father = 0.2,champion = 0.5,success1 = 0.164,success2 = 0.149,best_strat = 1]
+  [father = 0.2,champion = 0.6,success1 = 0.219,success2 = 0.158,best_strat = 1]
+  [father = 0.2,champion = 0.8,success1 = 0.308,success2 = 0.192,best_strat = 1]
+  [father = 0.2,champion = 0.99,success1 = 0.384,success2 = 0.193,best_strat = 1]
+  [father = 0.2,champion = 1,success1 = 0.37,success2 = 0.185,best_strat = 1]
+  [father = 0.4,champion = 0.5,success1 = 0.331,success2 = 0.308,best_strat = 1]
+  [father = 0.4,champion = 0.6,success1 = 0.373,success2 = 0.335,best_strat = 1]
+  [father = 0.4,champion = 0.8,success1 = 0.519,success2 = 0.401,best_strat = 1]
+  [father = 0.4,champion = 0.99,success1 = 0.629,success2 = 0.42,best_strat = 1]
+  [father = 0.4,champion = 1,success1 = 0.636,success2 = 0.39,best_strat = 1]
+  [father = 0.5,champion = 0.6,success1 = 0.454,success2 = 0.409,best_strat = 1]
+  [father = 0.5,champion = 0.8,success1 = 0.626,success2 = 0.481,best_strat = 1]
+  [father = 0.5,champion = 0.99,success1 = 0.749,success2 = 0.507,best_strat = 1]
+  [father = 0.5,champion = 1,success1 = 0.755,success2 = 0.487,best_strat = 1]
+  [father = 0.6,champion = 0.8,success1 = 0.671,success2 = 0.574,best_strat = 1]
+  [father = 0.6,champion = 0.99,success1 = 0.849,success2 = 0.555,best_strat = 1]
+  [father = 0.6,champion = 1,success1 = 0.796,success2 = 0.602,best_strat = 1]
+  [father = 0.8,champion = 0.99,success1 = 0.947,success2 = 0.813,best_strat = 1]
+  [father = 0.8,champion = 1,success1 = 0.971,success2 = 0.799,best_strat = 1]
+  [father = 0.99,champion = 1,success1 = 1.0,success2 = 0.993,best_strat = 1]
+
+*/
+go2 ?=>
+  Ps = [0,1/1000,2/10,4/10,5/10,6/10,8/10,99/100,1],
+  member(Father,Ps),
+  member(Champion,Ps),
+  if Champion > Father then
+    reset_store,
+    run_model(1000,$model(Champion,Father),[presentation=[]]),
+    Store = get_store(),
+    Success1 = Store.get("success 1").mean.new_map().get(true,0),
+    Success2 = Store.get("success 2").mean.new_map().get(true,0),
+    % println([success1=Success1,success2=Success2,total=Success1+Success2]),
+    if Success1 > Success2 then
+      BestStrat = 1
+    elseif Success1 == Success2 then
+      BestStrat = same    
+    else
+      BestStrat = 2
+    end,
+    println([father=Father,champion=Champion,success1=Success1,success2=Success2,best_strat=BestStrat]),
+  end,
+  fail,
+  nl.
+go2 => true.
+  
+
+/*
+  Random probabilities: Champion is always better than the father (which means 
+  less probability for Elmer to win against the Champion).
+
+  var : success 1
+  Probabilities:
+  false: 0.6420798065296252
+  true: 0.3579201934703748
+  mean = [false = 0.64208,true = 0.35792]
+
+  var : success 2
+  Probabilities:
+  false: 0.6975010076582023
+  true: 0.3024989923417977
+  mean = [false = 0.697501,true = 0.302499]
+
+  var : best
+  Probabilities:
+  0: 0.6769447803305119
+  1: 0.1892382103990327
+  2: 0.1338170092704555
+  mean = 0.456872
+
+  var : matches 1: father, champion, father
+  Probabilities:
+  [0,1,0]: 0.3022974607013301
+  [0,0,0]: 0.2033454252317614
+  [1,1,1]: 0.1291817815397017
+  [0,1,1]: 0.1154776299879081
+  [1,1,0]: 0.1132607819427650
+  [0,0,1]: 0.0540104796453043
+  [1,0,0]: 0.0475614671503426
+  [1,0,1]: 0.0348649738008867
+  mean = [[0,1,0] = 0.302297,[0,0,0] = 0.203345,[1,1,1] = 0.129182,[0,1,1] = 0.115478,[1,1,0] = 0.113261,[0,0,1] = 0.0540105,[1,0,0] = 0.0475615,[1,0,1] = 0.034865]
+
+  var : matches 2: champion, father, champion
+  Probabilities:
+  [1,0,1]: 0.2885933091495365
+  [1,1,1]: 0.2019347037484885
+  [0,0,0]: 0.1432889963724305
+  [1,0,0]: 0.1273679967754938
+  [0,0,1]: 0.1072148327287384
+  [0,1,1]: 0.0505844417573559
+  [1,1,0]: 0.0499798468359532
+  [0,1,0]: 0.0310358726320032
+  mean = [[1,0,1] = 0.288593,[1,1,1] = 0.201935,[0,0,0] = 0.143289,[1,0,0] = 0.127368,[0,0,1] = 0.107215,[0,1,1] = 0.0505844,[1,1,0] = 0.0499798,[0,1,0] = 0.0310359]
+
+
+*/
+go3 ?=>
+  reset_store,
+  run_model(10_000,$model3,[show_probs_trunc,mean]),
+  nl.
+go3 => true.
+
+
+model3() =>
+  Father = random_integer1(100) / 100,
+  Champion = random_integer1(100) / 100,
+
+  % Champion is better (lower probabilities for Elmer to win) than the father
+  observe(Champion > Father),
+
+  Seq1 = [Father,Champion,Father],
+  Seq2 = [Champion,Father,Champion],
+
+  Matches1 = [ bern(M) : M in Seq1],
+  Matches2 = [ bern(M) : M in Seq2],  
+
+  Success1 = test(Matches1),
+  Success2 = test(Matches2),  
+
+  Best = cases( [[ (Success1, not Success2), 1],
+                 [ (not Success1, Success2), 2],
+                 [true,0]]),
+
+  if observed_ok then
+    add("success 1",Success1),
+    add("success 2",Success2),
+    add("best",Best),
+    add("matches 1: father, champion, father",Matches1),
+    add("matches 2: champion, father, champion",Matches2),    
+  end.

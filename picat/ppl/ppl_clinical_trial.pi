@@ -1,0 +1,116 @@
+/* 
+
+  Clinical trial in Picat.
+
+  From Infer.Net model ClinicalTrial
+  https://dotnet.github.io/infer/userguide/Clinical%20trial%20tutorial.html 
+  """
+  Probability treatment has an effect = Bernoulli(0.7549)  
+  Probability of good outcome if given treatment = 0.7142857  
+  Probability of good outcome if control = 0.2857143
+  """
+
+  Cf my Gamble model gamble_clinical_trial.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : is effective
+  Probabilities:
+  true: 0.7230769230769231
+  false: 0.2769230769230769
+  mean = [true = 0.723077,false = 0.276923]
+
+  var : prob control
+  Probabilities (truncated):
+  0.788794487853551: 0.0153846153846154
+  0.729874380498528: 0.0153846153846154
+  0.700166350952828: 0.0153846153846154
+  0.684515573899814: 0.0153846153846154
+  .........
+  0.038483048532156: 0.0153846153846154
+  0.038070437697718: 0.0153846153846154
+  0.027281690399225: 0.0153846153846154
+  0.025129109507074: 0.0153846153846154
+  mean = 0.300654
+
+  var : prob treatment
+  Probabilities (truncated):
+  0.98188936170039: 0.0153846153846154
+  0.963121604746983: 0.0153846153846154
+  0.949573673130043: 0.0153846153846154
+  0.916418341355016: 0.0153846153846154
+  .........
+  0.325321579793614: 0.0153846153846154
+  0.256520389188045: 0.0153846153846154
+  0.151819429696617: 0.0153846153846154
+  0.081018002449825: 0.0153846153846154
+  mean = 0.667771
+
+  var : prob all
+  Probabilities (truncated):
+  0.973221956188484: 0.0153846153846154
+  0.971216689954687: 0.0153846153846154
+  0.910077452181512: 0.0153846153846154
+  0.904109904216926: 0.0153846153846154
+  .........
+  0.02806747175245: 0.0153846153846154
+  0.027451499391928: 0.0153846153846154
+  0.027122598206614: 0.0153846153846154
+  0.010737368247199: 0.0153846153846154
+  mean = 0.49007
+
+
+  Variable lengths:
+  is effective = 65
+  prob all = 65
+  prob control = 65
+  prob treatment = 65
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean]),
+  nl,
+  show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Control = [false,false,true,false,false],
+  Treatment = [true,false,true,true,true],
+
+  N = Treatment.len,
+
+  IsEffective   = flip(0.5),
+  ProbControl   = beta_dist(1,1),
+  ProbTreatment = beta_dist(1,1),
+  ProbAll       = beta_dist(1,1),    
+
+  foreach(I in 1..N)
+    if IsEffective then
+      observe(flip(ProbControl)==Control[I]),
+      observe(flip(ProbTreatment)==Treatment[I]),      
+    else
+      observe(flip(ProbAll)==Control[I]),
+      observe(flip(ProbAll)==Treatment[I]),          
+    end,
+  end,
+  
+  if observed_ok then
+    add("is effective",IsEffective),
+    add("prob control",ProbControl),
+    add("prob treatment",ProbTreatment),    
+    add("prob all",ProbAll),    
+  end.

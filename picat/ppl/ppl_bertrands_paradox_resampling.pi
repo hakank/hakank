@@ -1,0 +1,135 @@
+/* 
+
+  Bertrand's paradox (boxes) in Picat.
+
+  From Julian Simon "Resampling Statistics", page 80ff
+  """
+  A Spanish treasure fleet of three ships was sunk at sea
+  off Mexico. One ship had a trunk of gold forward and
+  another aft, another ship had a trunk of gold forward
+  and a trunk of silver aft, while a third ship had a trunk
+  of silver forward and another trunk of silver aft. Divers
+  just found one of the ships and a trunk of silver in it.
+  They are now taking bets about whether the other trunk
+  found on the same ship will contain silver or gold. What
+  are fair odds?
+
+  (This is a restatement of a problem that Joseph Bertrand posed
+  early in the 19th century.) In the Goldberg variation:
+
+  Three identical boxes each contain two coins. In one
+  box both are pennies, in the second both are nickels,
+  and in the third there is one penny and one nickel.
+  A man chooses a box at random and takes out a coin.
+  If the coin is a penny, what is the probability that the
+  other coin in the box is also a penny?
+  """
+  
+
+  Cf my Gamble model gamble_bertrands_paradox_resampling.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : ship
+  Probabilities:
+  1: 0.6587705559906030
+  2: 0.3412294440093970
+  mean = 1.34123
+
+  var : z
+  Probabilities:
+  true: 0.6587705559906030
+  false: 0.3412294440093970
+  mean = [true = 0.658771,false = 0.341229]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  GG = [g,g], % gold, gold
+  GS = [g,s], % gold, silver
+  SS = [s,s], % silver,silver
+
+  Ships = [GG] ++ [GS] ++ [SS],
+
+  % Pick a ship
+  Ship = random_integer1(3),
+
+  % If we pick ship 1: then the other must be gold
+  % If we pick ship 2: then we pick gold and thus then the other must be silver
+  % If we pick ship 3: then it's not interesting (both are silver)
+  PickSide = random_integer1(2),  % Pick a random side
+  OtherSide = cond(PickSide == 1,2,1), % Check the other side
+  % Did the other side has gold?
+  Z = check(Ships[Ship,OtherSide] == g),
+  
+  % We did found gold in the first pick
+  observe(Ships[Ship,PickSide] == g),
+  if observed_ok then
+    add("ship",Ship),
+    add("z",Z)
+  end.
+
+
+/*
+  Alternative model:
+
+  var : ship
+  Probabilities:
+  1: 0.3366000000000000
+  2: 0.3322000000000000
+  3: 0.3312000000000000
+  mean = 1.9946
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  GG = [g,g], % gold, gold
+  GS = [g,s], % gold, silver
+  SS = [s,s], % silver,silver
+
+  Ships = [GG] ++ [GS] ++ [SS],
+
+  % Pick a ship
+  Ship = random_integer1(3),
+
+  % If we pick ship 1: then the other must be gold
+  % If we pick ship 2: then we pick gold and thus then the other must be silver
+  % If we pick ship 3: then it's not interesting (both are silver)
+  if Ship == 1 then
+    % We picked ship 1: both are gold
+    add("scores",1)
+  else
+    if Ship == 2, uniform_draw(Ships[Ship]) == g then
+       add("scores",0),
+    end
+  end.

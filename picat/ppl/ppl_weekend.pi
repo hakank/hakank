@@ -1,0 +1,99 @@
+/* 
+
+  Weekend problem in Picat.
+
+  This is a port of the PSI model test/weekend.psi 
+  """
+  example from: Disintegration and Bayesian Inversion, Both Abstractly and Concretely 
+  by K Cho and B Jacobs
+  """
+  https://www.cs.ru.nl/B.Jacobs/PAPERS/disintegration.pdf
+  """
+  Customers calling
+  Imagine a call centre that is open for 8 hours on each day of the week. The distribution
+  of calls is different on weekends (Sat-Sun) from other days (Mon-Fri). What can we then
+  learn from a single call at a given time of the day regarding whether it is weekend or not?
+
+  ...
+
+  In the weekend diagram on the left we see that the calls start coming in later. Now we
+  ask ourselves the question: suppose we see one call at (hour) 6. How does this affect the
+  prior distribution? Of course, the updated distribution should have a higher likelihood for
+  ‘weekend’ since 6 is relatively late
+
+  ---
+    
+  >>> d(6)
+  0.374|W> + 0.626|~W>
+  """
+
+  Without the observation of call at hour 6, the probability of weekend is 
+   0.286|W> + 0.714|~W>
+  (page 36)
+
+  Cf my Gamble model gamble_weekend.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  Without the observation of call at hour 6, the probability of weekend:
+  var : isWeekend
+  Probabilities:
+  false: 0.7163000000000000
+  true: 0.2837000000000000
+  mean = [false = 0.7163,true = 0.2837]
+
+  With the observation of call at hour 6, the probability of weekend:
+  var : isWeekend
+  Probabilities:
+  false: 0.6250000000000000
+  true: 0.3750000000000000
+  mean = [false = 0.625,true = 0.375]
+
+*/
+go ?=>
+  reset_store,
+  println("Without the observation of call at hour 6, the probability of weekend:"),
+  run_model(10_000,$model(false),[show_probs_trunc,mean]),
+  nl,
+  reset_store,
+  println("With the observation of call at hour 6, the probability of weekend:"),
+  run_model(30_000,$model(true),[show_probs_trunc,mean]),
+  nl.
+go => true.
+  
+% We observe that the time is between 0 and 8
+hours_prior(Mu,V) = Ret =>
+  OK = false,
+  Ret = _,
+  while(OK == false)
+    R = normal_dist(Mu,V),
+    if 0 <= R, R <= 8 then
+      Ret = R,
+      OK := true
+    end
+  end.
+  
+model(Obs) =>
+  IsWeekend = flip(2/7),
+  Hour = condt(IsWeekend,
+               hours_prior(5,4),
+               hours_prior(2,4)),
+
+  if Obs then
+     observe(abs(Hour-6.0) < 0.1),  
+     if observed_ok then
+       add("isWeekend",IsWeekend)
+     end
+  else
+    add("isWeekend",IsWeekend)
+  end.

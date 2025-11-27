@@ -1,0 +1,434 @@
+/* 
+
+  Three biased coins in Picat.
+
+  From Pascal Bercker: "The problem of three biased coins - A Bayesian network solution."
+  https://medium.com%2F@medium.com/@pbercker/the-problem-of-three-biased-coins-a-bayesian-network-solution-310cbfe70572
+  """
+  [Coin 1     Coin 2     Coin 3
+   p(H):0.4   p(H):0.6      p(H):0.8
+
+  [S]uppose you have 3 biased coins with the given biased probabilities for landing heads. 
+  Given that one was randomly picked and tossed 5 times landing {H, H, H, T, T}, which coin was 
+  most likely picked? 
+
+  [References this YouTube video by Serrabo.Academi "The Beta distribution in 12 minutes!"
+   https://www.youtube.com/watch?v=juF3r12nM5A
+   that includes the three biased coins example.
+  ]
+  """
+
+  Here are the exact probabilities from my Gamble model using enumerate:
+  The exact probabilities for each coin bias in target1 (1, 1, 1, 0, 0):
+  variable : p
+  0.6: 0.44262295081967223
+  0.4: 0.29508196721311475
+  0.8: 0.262295081967213
+  mean: 0.5934426229508196
+
+  For the target (1 1 1 1 1 1 1 0 0 0) (mentioned in the YouTube video), the
+  probabilities are then:
+  variable : p
+  0.6: 0.4686093850439257
+  0.8: 0.4388257981572742
+  0.4: 0.09256481679880006
+  mean: 0.6692521962716947
+
+
+  For target 3 (generated "manually" random)
+  variable : p
+  0.4: 0.5968946799154932
+  0.6: 0.397929786610329
+  0.8: 0.005175533474177944
+  mean: 0.48165617071173705
+
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+
+  target = [1,1,1,0,0]
+  min_accepted_samples = 3000
+  var : coin prob
+  Probabilities:
+  0.6: 0.4330000000000000
+  0.4: 0.2926666666666667
+  0.8: 0.2743333333333333
+  mean = 0.596333
+
+  target = [1,1,1,1,1,1,1,0,0,0]
+  min_accepted_samples = 3000
+  var : coin prob
+  Probabilities:
+  0.6: 0.4920000000000000
+  0.8: 0.4173333333333333
+  0.4: 0.0906666666666667
+  mean = 0.665333
+
+  target = [1,0,1,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1]
+  min_accepted_samples = 3000
+  var : coin prob
+  Probabilities:
+  0.4: 0.5870000000000000
+  0.6: 0.4060000000000000
+  0.8: 0.0070000000000000
+  mean = 0.484
+
+*/
+go ?=>
+  Target1 = [1,1,1,0,0],
+  Target2 = [1,1,1,1,1,1,1,0,0,0],
+  Target3 = [1,0,1,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1],
+  member(Target,[Target1,Target2,Target3]),
+  println(target=Target),
+  reset_store,
+  run_model(10_000,$model(Target),[show_probs_trunc,mean,truncate_size=10,
+                           % show_simple_stats,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=3_000 % ,show_accepted_samples=true
+                           ]),
+  nl,  
+  fail,
+  nl.
+go => true.
+
+model(Target) =>
+    N = Target.len,
+    CoinProb = uniform_draw([4/10,6/10,8/10]),
+    
+    Coins = bern_n(CoinProb,N),
+    observe_abc(Target,Coins,1/20),
+    
+    if observed_ok then
+      add("coin prob",CoinProb)
+    end.
+
+
+/*
+  Using p = (beta a b) distribution, recovering the a and b parameters,
+  but still using the (bernoulli p) as the list generator.
+
+  Here we force a and b to be integers, but do not force p to be one
+  of 0.4, 0.6, and 0.8.
+
+  target = [1,1,1,0,0]
+  min_accepted_samples = 3000
+  var : p
+  Probabilities (truncated):
+  0.963355894660057: 0.0003333333333333
+  0.959783626220492: 0.0003333333333333
+  0.943475453198396: 0.0003333333333333
+  0.941399964210434: 0.0003333333333333
+  0.939074010634865: 0.0003333333333333
+  0.937663748463243: 0.0003333333333333
+  0.931525229683502: 0.0003333333333333
+  0.930433636205947: 0.0003333333333333
+  0.926522241374102: 0.0003333333333333
+  0.922595756060272: 0.0003333333333333
+  .........
+  0.134173025306801: 0.0003333333333333
+  0.132905052917127: 0.0003333333333333
+  0.129923979879161: 0.0003333333333333
+  0.124772547981451: 0.0003333333333333
+  0.121342260711213: 0.0003333333333333
+  0.120451951896485: 0.0003333333333333
+  0.109297030549339: 0.0003333333333333
+  0.106131804851912: 0.0003333333333333
+  0.076883471984456: 0.0003333333333333
+  0.070023277946792: 0.0003333333333333
+  mean = 0.551889
+
+  var : a
+  Probabilities:
+  8: 0.1490000000000000
+  7: 0.1380000000000000
+  9: 0.1353333333333333
+  6: 0.1336666666666667
+  5: 0.1183333333333333
+  4: 0.1073333333333333
+  3: 0.1030000000000000
+  2: 0.0740000000000000
+  1: 0.0413333333333333
+  mean = 5.69733
+
+  var : b
+  Probabilities:
+  4: 0.1366666666666667
+  5: 0.1276666666666667
+  3: 0.1266666666666667
+  6: 0.1186666666666667
+  2: 0.1106666666666667
+  8: 0.1060000000000000
+  9: 0.1053333333333333
+  7: 0.0926666666666667
+  1: 0.0756666666666667
+  mean = 5.01867
+
+
+  target = [1,1,1,1,1,1,1,0,0,0]
+  min_accepted_samples = 3000
+  var : p
+  Probabilities (truncated):
+  0.960318159131448: 0.0003333333333333
+  0.958042398686644: 0.0003333333333333
+  0.957068935173145: 0.0003333333333333
+  0.955510151498268: 0.0003333333333333
+  0.94901206375702: 0.0003333333333333
+  0.939244880849804: 0.0003333333333333
+  0.938740110580235: 0.0003333333333333
+  0.937193635919078: 0.0003333333333333
+  0.937070183951663: 0.0003333333333333
+  0.935927288322086: 0.0003333333333333
+  .........
+  0.279060955314957: 0.0003333333333333
+  0.275709812833962: 0.0003333333333333
+  0.274335126163373: 0.0003333333333333
+  0.272444036147654: 0.0003333333333333
+  0.267678613665578: 0.0003333333333333
+  0.263900152206332: 0.0003333333333333
+  0.259924043376911: 0.0003333333333333
+  0.25397302845455: 0.0003333333333333
+  0.242733980575843: 0.0003333333333333
+  0.201356516239853: 0.0003333333333333
+  mean = 0.640708
+
+  var : a
+  Probabilities:
+  19: 0.0853333333333333
+  18: 0.0823333333333333
+  17: 0.0813333333333333
+  16: 0.0783333333333333
+  12: 0.0723333333333333
+  15: 0.0716666666666667
+  14: 0.0716666666666667
+  13: 0.0663333333333333
+  10: 0.0616666666666667
+  11: 0.0593333333333333
+  9: 0.0500000000000000
+  7: 0.0446666666666667
+  6: 0.0416666666666667
+  8: 0.0393333333333333
+  5: 0.0313333333333333
+  3: 0.0253333333333333
+  4: 0.0190000000000000
+  2: 0.0123333333333333
+  1: 0.0060000000000000
+  mean = 12.484
+
+  var : b
+  Probabilities:
+  5: 0.0826666666666667
+  6: 0.0796666666666667
+  4: 0.0790000000000000
+  3: 0.0770000000000000
+  8: 0.0690000000000000
+  7: 0.0690000000000000
+  9: 0.0626666666666667
+  10: 0.0610000000000000
+  2: 0.0576666666666667
+  11: 0.0570000000000000
+  12: 0.0463333333333333
+  13: 0.0443333333333333
+  14: 0.0390000000000000
+  1: 0.0386666666666667
+  16: 0.0323333333333333
+  17: 0.0290000000000000
+  15: 0.0290000000000000
+  18: 0.0270000000000000
+  19: 0.0196666666666667
+  mean = 8.41167
+
+
+  target = [1,0,1,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1]
+  min_accepted_samples = 3000
+  var : p
+  Probabilities (truncated):
+  0.767133208569662: 0.0003333333333333
+  0.759056937933323: 0.0003333333333333
+  0.759030206846871: 0.0003333333333333
+  0.757954609019034: 0.0003333333333333
+  0.755666046508139: 0.0003333333333333
+  0.754715142975201: 0.0003333333333333
+  0.753534328425456: 0.0003333333333333
+  0.751980502468623: 0.0003333333333333
+  0.751050100701668: 0.0003333333333333
+  0.74987760052021: 0.0003333333333333
+  .........
+  0.216687867297973: 0.0003333333333333
+  0.215881953716682: 0.0003333333333333
+  0.214677560298096: 0.0003333333333333
+  0.214479886426628: 0.0003333333333333
+  0.209716833823515: 0.0003333333333333
+  0.205622429088873: 0.0003333333333333
+  0.202602100764947: 0.0003333333333333
+  0.198808703753995: 0.0003333333333333
+  0.183609759352328: 0.0003333333333333
+  0.16077761921912: 0.0003333333333333
+  mean = 0.477954
+
+  var : a
+  Probabilities (truncated):
+  20: 0.0436666666666667
+  23: 0.0403333333333333
+  19: 0.0403333333333333
+  26: 0.0390000000000000
+  21: 0.0376666666666667
+  18: 0.0360000000000000
+  16: 0.0350000000000000
+  25: 0.0343333333333333
+  17: 0.0340000000000000
+  27: 0.0336666666666667
+  .........
+  35: 0.0220000000000000
+  37: 0.0210000000000000
+  7: 0.0186666666666667
+  6: 0.0183333333333333
+  8: 0.0176666666666667
+  5: 0.0120000000000000
+  4: 0.0113333333333333
+  3: 0.0083333333333333
+  2: 0.0073333333333333
+  1: 0.0026666666666667
+  mean = 20.9493
+
+  var : b
+  Probabilities (truncated):
+  22: 0.0420000000000000
+  29: 0.0413333333333333
+  32: 0.0376666666666667
+  27: 0.0370000000000000
+  24: 0.0356666666666667
+  21: 0.0356666666666667
+  34: 0.0353333333333333
+  31: 0.0353333333333333
+  33: 0.0346666666666667
+  35: 0.0343333333333333
+  .........
+  9: 0.0193333333333333
+  10: 0.0180000000000000
+  5: 0.0153333333333333
+  8: 0.0146666666666667
+  7: 0.0136666666666667
+  4: 0.0113333333333333
+  6: 0.0093333333333333
+  3: 0.0063333333333333
+  2: 0.0063333333333333
+  1: 0.0030000000000000
+  mean = 22.558
+
+*/
+go2 =>
+  Target1 = [1,1,1,0,0],
+  Target2 = [1,1,1,1,1,1,1,0,0,0],
+  Target3 = [1,0,1,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1],
+  member(Target,[Target1,Target2,Target3]),
+  println(target=Target),
+  reset_store,
+  run_model(10_000,$model2(Target),[show_probs_trunc,mean,truncate_size=10,
+                           % show_simple_stats,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=3_000 % ,show_accepted_samples=true
+                           ]),
+  nl,  
+  fail,
+
+  nl.
+go2 => true.
+
+
+model2(Target) =>
+  N = Target.len,
+  A = random_integer1(2*N-1), % must be > 0
+  B = random_integer1(2*N-1), % must be > 0
+  P = beta_dist(A,B),
+    
+  Coins = bernoulli_dist_n(P,N),
+  observe_abc(Target,Coins,1/10),
+    
+  if observed_ok then
+    add("p",P), 
+    add("a",A),
+    add("b",B),
+  end.
+
+
+/*
+  Using binomial distribution instead (using the sum of the sequence)
+
+  The probability distribution is - unsurprisingly - the same as
+  in the first model.
+
+  target = [1,1,1,0,0]
+
+  min_accepted_samples = 3000
+  var : p
+  Probabilities:
+  0.6: 0.4453333333333334
+  0.4: 0.2963333333333333
+  0.8: 0.2583333333333334
+  mean = 0.5924
+
+  target = [1,1,1,1,1,1,1,0,0,0]
+
+  min_accepted_samples = 3000
+  var : p
+  Probabilities:
+  0.8: 0.4590000000000000
+  0.6: 0.4550000000000000
+  0.4: 0.0860000000000000
+  mean = 0.6746
+
+  target = [1,0,1,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1]
+
+  min_accepted_samples = 3000
+  var : p
+  Probabilities:
+  0.4: 0.5930000000000000
+  0.6: 0.4016666666666667
+  0.8: 0.0053333333333333
+  mean = 0.482467
+
+
+*/
+go3 =>
+  Target1 = [1,1,1,0,0],
+  Target2 = [1,1,1,1,1,1,1,0,0,0],
+  % Third sequence (by manual randomness) (require at lot of runs)
+  Target3 = [1,0,1,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,1],
+  member(Target,[Target1,Target2,Target3]),
+  println(target=Target),
+  nl,
+  reset_store,
+  run_model(10_000,$model3(Target),[show_probs_trunc,mean,truncate_size=10,
+                           % show_simple_stats,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=3_000 % ,show_accepted_samples=true
+                           ]),
+  fail,  
+  nl.
+
+
+model3(Target) =>
+  N = Target.len,
+  P = uniform_draw([4/10,6/10,8/10]),
+  TargetNumHeads = Target.sum,
+
+  observe(binomial_dist(N,P) == TargetNumHeads),
+  
+  if observed_ok then
+    add("p",P)
+  end.

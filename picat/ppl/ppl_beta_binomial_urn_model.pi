@@ -1,0 +1,259 @@
+/* 
+
+  Beta binomial urn model in Picat.
+
+  https://en.wikipedia.org/wiki/Beta-binomial_distribution
+  """
+  The beta-binomial distribution can also be motivated via an urn model for positive 
+  integer values of α and β, known as the Pólya urn model. Specifically, imagine an 
+  urn containing α red balls and β black balls, where random draws are made. If a red ball 
+  is observed, then two red balls are returned to the urn. Likewise, if a black ball is 
+  drawn, then two black balls are returned to the urn. If this is repeated n times, 
+  then the probability of observing x red balls follows a beta-binomial distribution 
+  with parameters n, α and β.
+
+  If the random draws are with simple replacement (no balls over and above the observed ball 
+  are added to the urn), then the distribution follows a binomial distribution and if 
+  the random draws are made without replacement, the distribution follows a 
+  hypergeometric distribution.
+  """
+
+
+  Cf my Gamble model gamble_beta_binomial_urn_model.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  Here is a simple example: 
+  - number of white balls = number of black balls = 1
+  - number of balls to add if a white or black ball is drawn = 1 (of the same color)
+  - 10 draws
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+/*
+  A general Urn model (2 balls)
+
+  Given
+   - number of white balls
+   - number of black balls
+   - number of draws
+   - number of white balls to add if we draw a white ball
+   - number of black balls to add if we draw a black ball
+  Returns
+   - (number of observed white balls, number of observed black balls)
+   - (number of left white balls, number of left black balls)
+
+  If the number of balls is negative, we stop if any of the balls reach 0 (or below).
+
+
+  var : num white obs
+  Probabilities (truncated):
+  9: 0.0938000000000000
+  10: 0.0936000000000000
+  2: 0.0929000000000000
+  0: 0.0927000000000000
+  .........
+  5: 0.0901000000000000
+  1: 0.0899000000000000
+  7: 0.0888000000000000
+  8: 0.0866000000000000
+  mean = 4.997
+
+  var : num black obs
+  Probabilities (truncated):
+  1: 0.0938000000000000
+  0: 0.0936000000000000
+  8: 0.0929000000000000
+  10: 0.0927000000000000
+  .........
+  4: 0.0901000000000000
+  9: 0.0899000000000000
+  3: 0.0888000000000000
+  2: 0.0866000000000000
+  mean = 5.003
+
+  var : num white left
+  Probabilities (truncated):
+  10: 0.0938000000000000
+  11: 0.0936000000000000
+  3: 0.0929000000000000
+  1: 0.0927000000000000
+  .........
+  6: 0.0901000000000000
+  2: 0.0899000000000000
+  8: 0.0888000000000000
+  9: 0.0866000000000000
+  mean = 5.997
+
+  var : num black left
+  Probabilities (truncated):
+  2: 0.0938000000000000
+  1: 0.0936000000000000
+  9: 0.0929000000000000
+  11: 0.0927000000000000
+  .........
+  5: 0.0901000000000000
+  10: 0.0899000000000000
+  4: 0.0888000000000000
+  3: 0.0866000000000000
+  mean = 6.003
+
+  var : num runs
+  Probabilities:
+  10: 1.0000000000000000
+  mean = 10.0
+
+  var : all
+  Probabilities (truncated):
+  [9,1,10,2]: 0.0938000000000000
+  [10,0,11,1]: 0.0936000000000000
+  [2,8,3,9]: 0.0929000000000000
+  [0,10,1,11]: 0.0927000000000000
+  .........
+  [5,5,6,6]: 0.0901000000000000
+  [1,9,2,10]: 0.0899000000000000
+  [7,3,8,4]: 0.0888000000000000
+  [8,2,9,3]: 0.0866000000000000
+  mean = [[9,1,10,2] = 0.0938,[10,0,11,1] = 0.0936,[2,8,3,9] = 0.0929,[0,10,1,11] = 0.0927,[4,6,5,7] = 0.0911,[3,7,4,8] = 0.0904,[6,4,7,5] = 0.0901,[5,5,6,6] = 0.0901,[1,9,2,10] = 0.0899,[7,3,8,4] = 0.0888,[8,2,9,3] = 0.0866]
+
+
+*/
+urn_model_2_balls_f(NumWhite, NumBlack, NumDraws, NumAddWhite, NumAddBlack,
+                    NumWhiteObserved,NumBlackObserved, NumRuns) = Res =>
+  if (NumDraws == NumRuns ; NumWhite <= 0 ; NumBlack <= 0) then
+     Res = [NumWhiteObserved, NumBlackObserved, max(NumWhite,0), max(NumBlack,0), NumRuns]
+  else
+     PWhite = NumWhite / (NumWhite + NumBlack), % Prob of white ball
+     Pick = flip(PWhite),
+     if Pick == true then
+       Res = urn_model_2_balls_f(NumWhite + NumAddWhite, NumBlack, NumDraws, NumAddWhite, NumAddBlack,
+                                 NumWhiteObserved+1,NumBlackObserved,NumRuns+1)
+     else
+       Res = urn_model_2_balls_f(NumWhite, NumBlack + NumAddBlack, NumDraws, NumAddWhite, NumAddBlack,
+                                 NumWhiteObserved,NumBlackObserved+1,NumRuns+1)
+     end
+  end.
+
+urn_model_2_balls(NumWhite, NumBlack, NumDraws, NumAddWhite, NumAddBlack) = 
+    urn_model_2_balls_f(NumWhite, NumBlack, NumDraws, NumAddWhite, NumAddBlack, 0, 0, 0).
+
+
+model() =>
+  NumWhite = 1,
+  NumBlack = 1,
+  NumDraws = 10,
+  NumAddWhite = 1,
+  NumAddBlack = 1,
+  [NumWhiteObs,NumBlackObs,NumWhiteLeft,NumBlackLeft,NumRuns] =
+                         urn_model_2_balls(NumWhite, NumBlack, NumDraws, NumAddWhite, NumAddBlack),
+ 
+  add("num white obs",NumWhiteObs),
+  add("num black obs",NumBlackObs),
+  add("num white left",NumWhiteLeft),
+  add("num black left",NumBlackLeft),
+  add("num runs",NumRuns),
+  add("all",[NumWhiteObs,NumBlackObs,NumWhiteLeft,NumBlackLeft]).
+
+
+
+/*
+  These "urn distribution" are all based on beta_binomial_dist().
+  They all give the number of observed white balls.
+
+
+  For the same setup as the one above:
+
+  var : beta binomial
+  Probabilities (truncated):
+  10: 0.0924000000000000
+  3: 0.0919000000000000
+  2: 0.0918000000000000
+  5: 0.0917000000000000
+  .........
+  7: 0.0901000000000000
+  6: 0.0897000000000000
+  4: 0.0897000000000000
+  9: 0.0889000000000000
+  mean = 4.9937
+
+  var : polya eggenberg
+  Probabilities (truncated):
+  8: 0.0938000000000000
+  6: 0.0938000000000000
+  9: 0.0932000000000000
+  2: 0.0932000000000000
+  .........
+  4: 0.0898000000000000
+  0: 0.0888000000000000
+  5: 0.0868000000000000
+  3: 0.0862000000000000
+  mean = 5.0434
+
+  var : polya
+  Probabilities (truncated):
+  7: 0.0959000000000000
+  5: 0.0952000000000000
+  10: 0.0936000000000000
+  8: 0.0921000000000000
+  .........
+  2: 0.0897000000000000
+  4: 0.0890000000000000
+  9: 0.0881000000000000
+  3: 0.0823000000000000
+  mean = 5.0379
+
+*/
+go2 ?=>
+  NumWhite = 1,
+  NumBlack = 1,
+  NumAddWhite = 1,
+  NumAddBlack = 1,
+  NumDraws = 10,
+  reset_store,
+  run_model(10_000,$model2(NumWhite,NumBlack,NumAddWhite,NumAddBlack,NumDraws),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.  
+
+model2(NumWhite,NumBlack,NumAddWhite,NumAddBlack,NumDraws) =>
+  % Check with beta_binomial_dist, only valid when both adds are 1.
+  BetaBinomial = beta_binomial_dist(NumDraws,NumWhite/NumAddWhite,NumBlack/NumAddBlack),
+
+  % Polya Eggenberg distribution: only valid if num_add_white == num_add_black
+  PolyaEggenberg = cond( (NumAddWhite > 0, NumAddWhite  == NumAddBlack),
+                         polya_eggenberg_dist(NumDraws,NumWhite,NumBlack,NumAddWhite),
+                         -1),
+
+  
+  % Polya distribution. Only valid if both add's are the same
+  Polya = cond( (NumWhite > 0, NumWhite == NumBlack),
+                polya_dist(NumDraws,NumWhite,NumBlack,NumAddWhite),
+                1),
+
+  add("beta binomial",BetaBinomial),
+  add("polya eggenberg",PolyaEggenberg),
+  add("polya",Polya).
+
+
+  

@@ -1,0 +1,112 @@
+/* 
+
+  Discarding n cards in Poker in Picat.
+
+  From https://discourse.julialang.org/t/optimizing-a-puzzle-from-the-balatro-game-discarding-part-of-a-poker-hand-to-get-a-pair/121912
+  """
+  Optimizing a puzzle from the Balatro game: discarding part of a poker hand to get a pair
+
+  Interesting problem from Balatro, from a hand of 8 without any pairs, if you discard 
+  n and draw n from the remaining deck of 44 cards. What’s the optimum n to maximize 
+  your chance of obtaining at least a pair?
+
+  I am sure many of you are obsessed by Balatro. So I wrote some code to simulate this. 
+  For 1m simulations it ran in about 0.077s per n.
+
+  Anyone wanna challenge my algorithm?
+  """
+
+  The exact values are (see foobar_lv2's comment), see below:
+  (1 21/44 0.4772727272727273)
+  (2 657/946 0.6945031712473573)
+  (3 10597/13244 0.8001359106010268)
+  (4 115910/135751 0.8538426972913643)
+  (5 136663/155144 0.8808784097354716)
+  (6 6297931/7059052 0.8921780148382531)
+  (7 34182305/38320568 0.8920093512183849)
+  (8 156095218/177232627 0.880736355614703)
+
+  So, the optimal value of the number of card to discard and get is 6, with 7 as very close.
+
+  Cf my Gamble model gamble_discarding_n_cards_in_poker.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  [discard = 1,p = 0.485345]
+  [discard = 2,p = 0.713209]
+  [discard = 3,p = 0.809673]
+  [discard = 4,p = 0.858907]
+  [discard = 5,p = 0.88615]
+  [discard = 6,p = 0.89874]
+  [discard = 7,p = 0.88949]
+  [discard = 8,p = 0.857845]
+
+  Ordered by probability:
+  6 0.898739873987399 
+  7 0.889490302210194 
+  5 0.886149708650829 
+  4 0.858906525573192 
+  8 0.857845328565042 
+  3 0.809673085535154 
+  2 0.713209219858156 
+  1 0.485344827586207 
+
+
+
+*/
+go ?=>
+  Map = get_global_map(),
+  member(Discard,1..8),
+  reset_store,
+  run_model(20_000,$model(Discard),[presentation=[]]),
+  P = get_store().get("p").mean,
+  println([discard=Discard,p=P]),
+  Map.put(Discard,P),
+  fail,
+  nl.
+go =>
+  nl,
+  Map = get_global_map(),
+  println("Ordered by probability:"),
+  Map.to_list.sort_down(2).printf_list,
+  nl.
+  
+  
+  
+model(Discard) =>
+  Deck = rep(4,1..13).flatten,
+
+  NumCards = 8, % cards per hand
+
+  % 0: Shuffle the deck
+  ThisDeck = shuffle(Deck),
+
+  % 1: Get the hand
+  Hand = take(ThisDeck,NumCards),
+
+  % Ensure there's no pairs in the hand, i.e. all values are unique
+  observe(Hand.remove_dups.len == NumCards),
+
+  % 2: Discard n card at random to get the second hand
+  Hand2 = drop(Hand,Discard) ++ take(drop(ThisDeck,NumCards),Discard),
+
+  % Check if there's at least one pair in the new hand
+  TT = collect(Hand2).values,
+  NumDuplicates = [ 1 : V in TT, V > 1].sum,
+
+  P = check(NumDuplicates > 0),
+  
+  if observed_ok then
+    add("p",P),
+  end.

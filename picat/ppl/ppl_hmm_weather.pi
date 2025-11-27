@@ -1,0 +1,151 @@
+/* 
+
+  Hidden Markov model - weather in Picat.
+
+  From ProbLog example hmm_weather.pl
+  """
+  % System test 6 - a Hidden Markv Model.
+  % Description: An HMM which represents the state of the weather every day based on the 
+  % previous observations. 
+  % Query: what is the probability of sunny weather in 10 days.
+  % Expected outcome: 
+  % weather(sun,10) 0.3333508096
+
+  %% At time T=0
+  0.5::weather(sun,0) ; 0.5::weather(rain,0) <- true.
+
+  %% Time T>0
+  0.6::weather(sun,T) ; 0.4::weather(rain,T) <- T>0, Tprev is T-1, weather(sun,Tprev).
+  0.2::weather(sun,T) ; 0.8::weather(rain,T) <- T>0, Tprev is T-1, weather(rain,Tprev).
+
+  %%% Queries
+  query(weather(sun,10)).
+  %query(weather(rain,0)).
+  """
+
+  Cf my Gamble model gamble_hmm_weather.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+t = 2
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+sun: 1.0000000000000000
+mean = [sun = 1.0]
+
+
+t = 3
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+sun: 0.6010000000000000
+rain: 0.3990000000000000
+mean = [sun = 0.601,rain = 0.399]
+
+
+t = 4
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.5570000000000001
+sun: 0.4430000000000000
+mean = [rain = 0.557,sun = 0.443]
+
+
+t = 5
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.6560000000000000
+sun: 0.3440000000000000
+mean = [rain = 0.656,sun = 0.344]
+
+
+t = 6
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.6620000000000000
+sun: 0.3380000000000000
+mean = [rain = 0.662,sun = 0.338]
+
+
+t = 7
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.6660000000000000
+sun: 0.3340000000000000
+mean = [rain = 0.666,sun = 0.334]
+
+
+t = 8
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.6660000000000000
+sun: 0.3340000000000000
+mean = [rain = 0.666,sun = 0.334]
+
+
+t = 9
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.6860000000000001
+sun: 0.3140000000000000
+mean = [rain = 0.686,sun = 0.314]
+
+
+t = 10
+min_accepted_samples = 1000
+var : weather last day
+Probabilities:
+rain: 0.6560000000000000
+sun: 0.3440000000000000
+mean = [rain = 0.656,sun = 0.344]
+
+
+*/
+go ?=>
+  foreach(T in 2..10)
+    println(t=T),
+    reset_store,
+    run_model(20_000,$model(T),[show_probs_trunc,mean,
+                                min_accepted_samples=1000,show_accepted_samples=false
+                                ]),
+    nl
+  end,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+% weather(T) = categorical([0.5,0.5],[sun,rain]).
+model(T) =>
+  Weather = categorical_n([0.5,0.5],[sun,rain],T),
+  
+  % First day is sunny
+  observe(Weather[1] == sun),
+
+  foreach(TT in 2..T-1)
+    C = cond(Weather[TT-1] == sun,
+              categorical([0.6,0.4],[sun,rain]),
+              categorical([0.2,0.8],[sun,rain])),
+    observe(Weather[TT] == C),
+  end,
+  
+  if observed_ok then
+    add("weather last day",Weather[T-1])
+  end.

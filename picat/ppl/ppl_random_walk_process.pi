@@ -1,0 +1,380 @@
+/* 
+
+  Random Walk process in Picat.
+
+  From Mathematica RandomWalkProcess
+  """
+  RandomWalkProcess[p]
+  represents a random walk on a line with the probability of a positive unit step 
+  p and the probability of a negative unit step 1-p.
+  """
+
+  random_walk_process_dist(P,T)
+  random_walk_process_dist_pdf(P,T,X)
+  random_walk_process_dist_cdf(P,T,X)
+  random_walk_process_dist_quantile(P,T,Q)
+  random_walk_process_dist_mean(P,T)
+  random_walk_process_dist_variant(P,T)
+
+  * T: time slice to study
+  * X: the value for pdf/cdf
+  * Q: quantile
+
+
+  Cf my Gamble model gamble_random_walk_process.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  random = [4,0,6,2,8,6,4,4,2,0]
+  pdf = [0.200658,0.0,0.250823,0.0,0.214991,0.0,0.120932,0.0,0.0403108,0.0,0.00604662,0]
+  cdf = [0.366897,0.366897,0.617719,0.617719,0.83271,0.83271,0.953643,0.953643,0.993953,0.993953,1,1]
+  quantile = [-10,-2,0,0,2,2,2,4,4,6,10]
+
+  mean = 2.0
+  mean_check = 1.9444
+
+  variance = 9.6
+  check_check = 9.44891
+
+*/
+go ?=>
+  _ = random2(),
+  P = 3/5,
+  T = 10,
+  println(random=random_walk_process_dist_n(P,T,10)),
+  println(pdf=[random_walk_process_dist_pdf(P,T,V) : V in 0..T+1] ),
+  println(cdf=[random_walk_process_dist_cdf(P,T,V) : V in 0..T+1] ),
+  println(quantile=[random_walk_process_dist_quantile(P,T,V/100) : V in 0..10..100] ),
+  nl,
+  Rand = random_walk_process_dist_n(P,T,10000),
+  println(mean=random_walk_process_dist_mean(P,T)),
+  println(mean_check=Rand.mean),  
+  nl,
+  println(variance=random_walk_process_dist_variance(P,T)),
+  println(check_check=Rand.variance),    
+  nl.
+go => true.
+  
+  
+model() =>
+  P = 3/5,
+  T = 10, % time slice
+
+  X = [ cond(flip(P) == true,1,-1) : _ in 1..T].asum,
+
+  ValT = X[T],
+  Prob = check(ValT == 4),
+  
+  add("val t",ValT),
+  add("prob",Prob).
+
+
+
+/*
+  Adapted example from Mathematica's RandomWalkProcess:
+  """
+  A particle starts at the origin and moves to the right by one unit with 
+  probability 3/5 and to the left by one unit with probability 2/5 after 
+  each second. Find the probability that it has moved to the right by 
+  four units after 10 seconds.
+
+  particleMotion = RandomWalkProcess[3/5];
+  Probability[x[10] == 4, x in particleMotion] 
+  N@%
+  -> 
+  419904/1953125
+  0.214991
+
+  PDF[RandomWalkProcess[3/5][10], 4]
+  % // N
+  -> 
+  419904/1953125
+  0.214991
+  """
+
+  Picat> X = random_walk_process_dist_pdf(3/5,10,4) 
+  X = 0.214990848
+
+
+  [p = 0.6,t = 10,check = 4]
+  var : val t
+  Probabilities:
+  2: 0.2460000000000000
+  4: 0.2144000000000000
+  0: 0.2039000000000000
+  6: 0.1237000000000000
+  -2: 0.1133000000000000
+  -4: 0.0420000000000000
+  8: 0.0397000000000000
+  -6: 0.0098000000000000
+  10: 0.0057000000000000
+  -8: 0.0015000000000000
+  mean = 2.001
+  HPD intervals:
+  HPD interval (0.84): -2.00000000000000..6.00000000000000
+  HPD interval (0.9): -2.00000000000000..6.00000000000000
+  HPD interval (0.99): -6.00000000000000..8.00000000000000
+  HPD interval (0.999999): -8.00000000000000..10.00000000000000
+
+  var : prob
+  Probabilities:
+  false: 0.7856000000000000
+  true: 0.2144000000000000
+  mean = 0.2144
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  theoretical_mean = 2.0
+  theoretical_prob = 0.214991
+
+*/
+go2 ?=>
+  P = 3/5,
+  T = 10,
+  Check = 4,
+  println([p=P,t=T,check=Check]),
+  reset_store,
+  run_model(10_000,$model2(P,T,Check),[show_probs,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.9,0.99,0.999999]
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=random_walk_process_dist_mean(P,T)),                          
+  println(theoretical_prob=random_walk_process_dist_pdf(P,T,Check)),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(P,T,Check) =>
+
+  X = [ cond(flip(P) == true,1,-1) : _ in 1..T].asum,
+
+  ValT = X[T],
+  Prob = check(ValT == Check),
+  
+  add("val t",ValT),
+  add("prob",Prob).
+
+
+/*
+  Using random_walk_process_dist
+
+  [p = 0.6,t = 10,check = 4]
+  var : val t
+  Probabilities:
+  2: 0.2540000000000000
+  4: 0.2102000000000000
+  0: 0.1996000000000000
+  6: 0.1254000000000000
+  -2: 0.1080000000000000
+  -4: 0.0431000000000000
+  8: 0.0408000000000000
+  -6: 0.0116000000000000
+  10: 0.0058000000000000
+  -8: 0.0015000000000000
+  mean = 2.0156
+  HPD intervals:
+  HPD interval (0.84): -2.00000000000000..6.00000000000000
+  HPD interval (0.9): -4.00000000000000..6.00000000000000
+  HPD interval (0.99): -6.00000000000000..8.00000000000000
+  HPD interval (0.999999): -8.00000000000000..10.00000000000000
+
+  var : prob
+  Probabilities:
+  false: 0.7897999999999999
+  true: 0.2102000000000000
+  mean = 0.2102
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  theoretical_mean = 2.0
+  theoretical_prob = 0.214991
+
+
+
+*/
+go3 ?=>
+  P = 3/5,
+  T = 10,
+  Check = 4,
+  println([p=P,t=T,check=Check]),
+  reset_store,
+  run_model(10_000,$model2(P,T,Check),[show_probs,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.9,0.99,0.999999]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=random_walk_process_dist_mean(P,T)),                          
+  println(theoretical_prob=random_walk_process_dist_pdf(P,T,Check)),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+  
+model3(P,T,Check) =>
+
+  D = random_walk_process_dist(P,T),
+
+  Prob = check(D == Check),
+  
+  add("d",D),
+  add("prob",Prob).
+
+
+/*
+  Parameter recovery of random_walk_process_dist(3/5,4)
+  
+
+[p = 0.6,t = 4]
+data = [2,0,2,2,4,0,0,2,0,2,0,2,0,0,4,4,2,2,-2,2,-4,0,-2,2,-2,0,-2,-2,4,0,0,2,2,0,2,0,0,4,0,2,2,2,0,4,0,0,2,4,-2,4,2,-2,0,2,4,0,-2,-4,0,-2,0,4,4,2,0,2,0,2,0,2,2,-2,0,4,4,2,0,2,2,0,2,-2,0,4,2,0,0,4,0,2,4,2,2,2,0,4,0,2,2,4]
+[len = 100,min = -4,mean = 1.12,median = 2.0,max = 4,variance = 3.7856,stdev = 1.94566]
+Histogram (total 100)
+     -4:     2 ###                                                          (0.020 / 0.020)
+     -2:    11 ###################                                          (0.110 / 0.130)
+      0:    34 ##########################################################   (0.340 / 0.470)
+      2:    35 ############################################################ (0.350 / 0.820)
+      4:    18 ###############################                              (0.180 / 1.000)
+
+Num accepted samples: 100  Total samples: 10922  (0.009%)
+
+var : p
+Probabilities (truncated):
+0.744006898709062: 0.0100000000000000
+0.741584119128414: 0.0100000000000000
+0.697524282397453: 0.0100000000000000
+0.69491138865396: 0.0100000000000000
+.........
+0.574387216141185: 0.0100000000000000
+0.57350812222436: 0.0100000000000000
+0.558214541851794: 0.0100000000000000
+0.554733163004457: 0.0100000000000000
+mean = 0.635374
+HPD intervals:
+HPD interval (0.84): 0.57350812222436..0.67245422163801
+HPD interval (0.9): 0.57438721614119..0.68347732386249
+HPD interval (0.99): 0.55821454185179..0.74400689870906
+HPD interval (0.999999): 0.55473316300446..0.74400689870906
+
+var : t
+Probabilities:
+4: 0.7100000000000000
+5: 0.1800000000000000
+3: 0.0700000000000000
+6: 0.0300000000000000
+7: 0.0100000000000000
+mean = 4.2
+HPD intervals:
+HPD interval (0.84): 4.00000000000000..5.00000000000000
+HPD interval (0.9): 3.00000000000000..5.00000000000000
+HPD interval (0.99): 3.00000000000000..6.00000000000000
+HPD interval (0.999999): 3.00000000000000..7.00000000000000
+
+var : post
+Probabilities:
+2: 0.3000000000000000
+0: 0.2000000000000000
+4: 0.1300000000000000
+1: 0.1000000000000000
+-2: 0.0700000000000000
+3: 0.0600000000000000
+-1: 0.0500000000000000
+-4: 0.0400000000000000
+-3: 0.0300000000000000
+5: 0.0200000000000000
+mean = 1.06
+HPD intervals:
+HPD interval (0.84): -1.00000000000000..4.00000000000000
+HPD interval (0.9): -2.00000000000000..4.00000000000000
+HPD interval (0.99): -4.00000000000000..5.00000000000000
+HPD interval (0.999999): -4.00000000000000..5.00000000000000
+
+var : prob
+Probabilities:
+false: 0.8700000000000000
+true: 0.1300000000000000
+mean = 0.13
+HPD intervals:
+show_hpd_intervals: data is not numeric
+
+Post:
+[len = 100,min = -4,mean = 1.06,median = 2.0,max = 5,variance = 4.5364,stdev = 2.12988]
+Histogram (total 100)
+     -4:     4 ########                                                     (0.040 / 0.040)
+     -3:     3 ######                                                       (0.030 / 0.070)
+     -2:     7 ##############                                               (0.070 / 0.140)
+     -1:     5 ##########                                                   (0.050 / 0.190)
+      0:    20 ########################################                     (0.200 / 0.390)
+      1:    10 ####################                                         (0.100 / 0.490)
+      2:    30 ############################################################ (0.300 / 0.790)
+      3:     6 ############                                                 (0.060 / 0.850)
+      4:    13 ##########################                                   (0.130 / 0.980)
+      5:     2 ####                                                         (0.020 / 1.000)
+
+theoretical_prob = 0.1296
+
+*/
+go4 ?=>
+  P = 3/5,
+  T = 4,
+  Check = 4,
+  println([p=P,t=T,check=Check]),  
+  Data = random_walk_process_dist_n(P,T,100),
+  println(data=Data),
+  show_simple_stats(Data),
+  show_histogram(Data),
+  reset_store,
+  run_model(10_000,$model4(Data,Check),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.9,0.99,0.999999],
+                           % show_histogram,
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  println("Post:"),
+  Post = get_store().get("post"),
+  show_simple_stats(Post),
+  show_histogram(Post),
+  nl,
+  println(theoretical_prob=random_walk_process_dist_pdf(P,T,Check)),
+
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go4 => true.
+  
+  
+model4(Data,Check) =>
+  P = beta_dist(1,1),
+  Max = Data.map(abs).max,
+  T = random_integer1(Max*2),
+
+  X = random_walk_process_dist_n(P,T,Data.len),
+  observe_abc(Data,X,1/10),
+
+  Post = random_walk_process_dist(P,T),
+  Prob = check(Post == Check),
+
+  if observed_ok then
+    add("p",P),
+    add("t",T),
+    add("post",Post),
+    add("prob",Prob)
+  end.

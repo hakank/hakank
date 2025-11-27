@@ -1,0 +1,244 @@
+/* 
+
+  Probability of winning an election - Trump vs Harris in Picat.
+
+  What is the probability of Trump or Harris (or other) winning given forecasts,
+  i.e. that they get more votes than the two other?
+
+  From Nate Silver
+  (as of writing 2024-11-03 @09:34, CEST)
+  https://www.natesilver.net/p/nate-silver-2024-president-election-polls-model
+
+  Probability of national winning;
+  - Trump: 0.476
+  - Harris: 0.485
+  
+
+  Cf
+  - ppl_voting_probabilities.pi 
+  - my Gamble model gamble_voting_trump_harris.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  As can be noted, as the votes increases, the probability of Trump
+  winning decreases.
+
+[trump_prob = 0.476,harris_prob = 0.485,num_votes = 10]
+var : trump
+Probabilities (truncated):
+5: 0.2458000000000000
+4: 0.2261000000000000
+6: 0.1732000000000000
+3: 0.1452000000000000
+.........
+1: 0.0133000000000000
+9: 0.0074000000000000
+0: 0.0019000000000000
+10: 0.0012000000000000
+mean = 4.742
+
+var : harris
+Probabilities (truncated):
+5: 0.2473000000000000
+4: 0.2119000000000000
+6: 0.1950000000000000
+3: 0.1280000000000000
+.........
+1: 0.0129000000000000
+9: 0.0070000000000000
+0: 0.0017000000000000
+10: 0.0009000000000000
+mean = 4.866
+
+var : other
+Probabilities:
+0: 0.6707000000000000
+1: 0.2731000000000000
+2: 0.0503000000000000
+3: 0.0054000000000000
+4: 0.0004000000000000
+5: 0.0001000000000000
+mean = 0.392
+
+var : trump wins
+Probabilities:
+false: 0.6098000000000000
+true: 0.3902000000000000
+mean = 0.3902
+
+var : harris wins
+Probabilities:
+false: 0.5721000000000001
+true: 0.4279000000000000
+mean = 0.4279
+
+var : other wins
+Probabilities:
+false: 0.9999000000000000
+true: 0.0001000000000000
+mean = 0.0001
+
+var : no win
+Probabilities:
+false: 0.8182000000000000
+true: 0.1818000000000000
+mean = 0.1818
+
+
+[trump_prob = 0.476,harris_prob = 0.485,num_votes = 20]
+var : trump
+mean = 9.4554
+
+var : harris
+mean = 9.7577
+
+var : other
+mean = 0.7869
+
+var : trump wins
+mean = 0.4168
+
+var : harris wins
+mean = 0.473
+
+var : other wins
+mean = 0.0
+
+var : no win
+mean = 0.1102
+
+
+[trump_prob = 0.476,harris_prob = 0.485,num_votes = 100]
+var : trump
+mean = 47.5925
+
+var : harris
+mean = 48.5407
+
+var : other
+mean = 3.8668
+
+var : trump wins
+mean = 0.4387
+
+var : harris wins
+mean = 0.5187
+
+var : other wins
+mean = 0.0
+
+var : no win
+mean = 0.0426
+
+
+[trump_prob = 0.476,harris_prob = 0.485,num_votes = 1000]
+var : trump
+mean = 475.822
+
+var : harris
+mean = 485.102
+
+var : other
+mean = 39.0758
+
+var : trump wins
+mean = 0.3629
+
+var : harris wins
+mean = 0.6243
+
+var : other wins
+mean = 0.0
+
+var : no win
+mean = 0.0128
+
+[trump_prob = 0.476,harris_prob = 0.485,num_votes = 10000]
+var : trump
+mean = 4759.72
+
+var : harris
+mean = 4850.24
+
+var : other
+mean = 390.043
+
+var : trump wins
+mean = 0.18
+
+var : harris wins
+mean = 0.818
+
+var : other wins
+mean = 0.0
+
+var : no win
+mean = 0.002
+
+[trump_prob = 0.476,harris_prob = 0.485,num_votes = 100000]
+garbage_collect_when = 10
+var : trump
+mean = 47597.3
+
+var : harris
+mean = 48501.2
+
+var : other
+mean = 3901.5
+
+var : trump wins
+mean = 0.004
+
+var : harris wins
+mean = 0.996
+
+var : other wins
+mean = 0.0
+
+var : no win
+mean = 0.0
+
+*/
+go ?=>
+  TrumpProb  = 0.476,
+  HarrisProb = 0.485,
+  member(NumVotes, [10,20,100,1000,10_000,100_000]),
+  println([trump_prob=TrumpProb,harris_prob=HarrisProb,num_votes=NumVotes]),
+  reset_store,
+  Parameters = cond(NumVotes==10,[show_probs_trunc,mean],[mean,garbage_collect_when=10]),
+  run_model(1000,$model(TrumpProb,HarrisProb,NumVotes),Parameters),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(TrumpProb,HarrisProb,NumVotes) =>
+  OtherProb = 1 - TrumpProb - HarrisProb,
+  [Trump,Harris,Other] = multinomial_dist(NumVotes,[TrumpProb,HarrisProb,OtherProb]),
+
+  TrumpWins = check1((Trump > Harris, Trump > Other)),
+  HarrisWins = check1((Harris > Trump, Harris > Other)),
+  OtherWins = check1((Other > Trump, Other > Harris)),
+  NoWin = check1((TrumpWins == 0,HarrisWins == 0,OtherWins == 0)),
+
+  add("trump",Trump),
+  add("harris",Harris),
+  add("other",Other),
+  add("trump wins",TrumpWins),
+  add("harris wins",HarrisWins),
+  add("other wins",OtherWins),
+  add("no win",NoWin).
+

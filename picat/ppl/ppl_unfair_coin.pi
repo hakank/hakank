@@ -1,0 +1,187 @@
+/* 
+
+  Unfair coin in Picat.
+
+  From a Brilliant quiz
+  """
+  Maja thinks her coin is unfair. She flips it 4 times and gets heads every time. 
+  She calculates that this would only occur with a fair coin roughly 6% of the time.
+
+  Can she conclude there is a roughly 94% chance that her coin is unfair?
+  """
+
+  The HPD interval of 0.94 yields 0..4, which indicates that one can
+  actually assume that a fair coin can give 4 heads.
+
+  However, throwing a coin 6 times and all 6 throws shows head is more 
+  suspicious:
+  Picat> X=binomial_dist_pdf(6,0.5,6)
+  X = 0.015625
+
+  The 0.94'th quantile of throwing 6 times is 5 heads
+  Picat> X=binomial_dist_quantile(6,0.5,0.94)
+  X = 5
+
+  Here's the probabilities that we get n heads in n throws for n=0..10:
+  Picat> foreach(T in [N=binomial_dist_pdf(N,0.5,N) : N in 0..10]) println(T) end
+  0 = 1.0
+  1 = 0.5
+  2 = 0.25
+  3 = 0.125
+  4 = 0.0625
+  5 = 0.03125
+  6 = 0.015625
+  7 = 0.0078125
+  8 = 0.00390625
+  9 = 0.00195312
+  10 = 0.000976562
+
+  The number of heads for N tosses according the 0.94'th quantile is
+  Picat> foreach(T in [N=binomial_dist_quantile(N,0.5,0.94) : N in 0..10]) println(T) end
+  0 = 0
+  1 = 1
+  2 = 2
+  3 = 3
+  4 = 4
+  5 = 4
+  6 = 5
+  7 = 6
+  8 = 6
+  9 = 7
+  10 = 7
+  
+
+  Cf my Gamble model gamble_unfair_coin.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  n = 6
+  var : b
+  Probabilities:
+  3: 0.3125000000000000
+  2: 0.2370000000000000
+  4: 0.2312000000000000
+  1: 0.0967000000000000
+  5: 0.0954000000000000
+  0: 0.0141000000000000
+  6: 0.0131000000000000
+  mean = 2.9886
+  Percentiles:
+  (0.001 0)
+  (0.01 0)
+  (0.025 1)
+  (0.05 1)
+  (0.1 1)
+  (0.25 2)
+  (0.5 3)
+  (0.75 4)
+  (0.84 4)
+  (0.9 5)
+  (0.95 5)
+  (0.975 5)
+  (0.99 6)
+  (0.999 6)
+  (0.9999 6)
+  (0.99999 6)
+
+  HPD intervals:
+  HPD interval (0.94): 1.00000000000000..5.00000000000000
+  HPD interval (0.99): 0.00000000000000..6.00000000000000
+
+  n = 10
+  var : b
+  Probabilities (truncated):
+  5: 0.2541000000000000
+  6: 0.2080000000000000
+  4: 0.2001000000000000
+  3: 0.1157000000000000
+  .........
+  9: 0.0102000000000000
+  1: 0.0086000000000000
+  10: 0.0013000000000000
+  0: 0.0008000000000000
+  mean = 5.0173
+  Percentiles:
+  (0.001 1)
+  (0.01 2)
+  (0.025 2)
+  (0.05 2)
+  (0.1 3)
+  (0.25 4)
+  (0.5 5)
+  (0.75 6)
+  (0.84 7)
+  (0.9 7)
+  (0.95 8)
+  (0.975 8)
+  (0.99 9)
+  (0.999 10)
+  (0.9999 10)
+  (0.99999 10)
+
+  HPD intervals:
+  HPD interval (0.94): 1.00000000000000..7.00000000000000
+  HPD interval (0.99): 1.00000000000000..9.00000000000000
+
+  n = 100
+  var : b
+  Probabilities (truncated):
+  50: 0.0790000000000000
+  49: 0.0788000000000000
+  51: 0.0767000000000000
+  52: 0.0753000000000000
+  .........
+  66: 0.0002000000000000
+  32: 0.0002000000000000
+  69: 0.0001000000000000
+  33: 0.0001000000000000
+  mean = 49.9836
+  Percentiles:
+  (0.001 35)
+  (0.01 39)
+  (0.025 40)
+  (0.05 42)
+  (0.1 44)
+  (0.25 47)
+  (0.5 50)
+  (0.75 53)
+  (0.84 55)
+  (0.9 56)
+  (0.95 58)
+  (0.975 60)
+  (0.99 61)
+  (0.999 64)
+  (0.9999 67.000199999998586)
+  (0.99999 68.800020000002405)
+
+  HPD intervals:
+  HPD interval (0.94): 40.00000000000000..58.00000000000000
+  HPD interval (0.99): 38.00000000000000..62.00000000000000
+
+*/
+go ?=>
+  member(N,[6,10,100]),
+  println(n=N),
+  reset_store,
+  run_model(10_000,$model(N),[show_probs_trunc,mean,show_percentiles]),
+  show_hpd_intervals(get_store().get("b"),[0.94,0.99]),
+  nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(N) =>
+  % B = binomial_dist(N,1/2),
+  B = bern_n(1/2,N).sum,
+  add("b",B).
+

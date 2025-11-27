@@ -1,0 +1,234 @@
+/* 
+
+  Sultan's children in Picat.
+
+  From "Puzzle-based learning", page 80
+  """
+  Many years ago, a powerful sultan had the largest harem in the 
+  world. He had many children with his many wifes, and toward the 
+  end of his life the total number of his children was estimated
+  to be between 100 and 500. However, the sultan kept the exact number
+  of his children a secret: no one could provide a better estimation of
+  this number.
+
+  One day a foreign diplomat overheard a conversation between the sultan
+  and his vizier. The sultan said: "If you select any two of my children
+  at random, the probability that you selected two boys would be exactly
+  50 percent.
+  
+  This piece of information was sufficient for the diplomat to calculate
+  the exact number of the sultan's children. How many children did
+  the sultan have?
+  """
+
+  
+
+
+  Cf my Gamble model gamble_sultans_children.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  The sultan have 120 children, 85 boys and 35 girls.
+
+  Probabilities:
+  85: 1.0000000000000000
+  mean = 85.0
+
+  var : g
+  Probabilities:
+  35: 1.0000000000000000
+  mean = 35.0
+
+  var : tot
+  Probabilities:
+  120: 1.0000000000000000
+  mean = 120.0
+
+  var : prop
+  Probabilities:
+  0.708333: 1.0000000000000000
+  mean = 0.708333
+
+  Though I confess that it's somewhat cheating to use that formula...
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=10,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  B = random_integer1(400), % between 100 and 500 children
+  G = random_integer1(400),
+
+  Tot = B+G,
+  observe(Tot >= 100, Tot <= 400),
+
+  % The equation from page 81 (op.cit)
+  observe(abs(0.5 - (B * (B-1) / ((B+G) * (B+G-1))))<=0.0000001),
+
+  Prop = B / Tot, % proportion of the number of boys to the total
+
+  if observed_ok then
+    add("b",B),
+    add("g",G),
+    add("tot",Tot),
+    add("prop",Prop),    
+  end.
+
+
+/*
+  So, let's instead use a more PPL-ish model.
+  But this does NOT work at all...
+
+  Here's a bad run:
+
+  Num accepted samples: 100  Total samples: 15839  (0.006%)
+
+  var : b
+  Probabilities (truncated):
+  200: 0.0300000000000000
+  181: 0.0300000000000000
+  174: 0.0300000000000000
+  172: 0.0300000000000000
+  .........
+  75: 0.0100000000000000
+  68: 0.0100000000000000
+  65: 0.0100000000000000
+  64: 0.0100000000000000
+  mean = 149.13
+
+  var : g
+  Probabilities (truncated):
+  36: 0.0600000000000000
+  82: 0.0500000000000000
+  75: 0.0400000000000000
+  72: 0.0400000000000000
+  .........
+  39: 0.0100000000000000
+  35: 0.0100000000000000
+  32: 0.0100000000000000
+  28: 0.0100000000000000
+  mean = 63.94
+
+  var : tot,b,g
+  Probabilities (truncated):
+  [255,173,82]: 0.0200000000000000
+  [123,87,36]: 0.0200000000000000
+  [323,198,125]: 0.0100000000000000
+  [299,195,104]: 0.0100000000000000
+  .........
+  [110,82,28]: 0.0100000000000000
+  [104,68,36]: 0.0100000000000000
+  [101,65,36]: 0.0100000000000000
+  [101,64,37]: 0.0100000000000000
+
+  var : p
+  Probabilities:
+  0.5: 1.0000000000000000
+  mean = 0.5
+
+  var : tot
+  Probabilities (truncated):
+  270: 0.0300000000000000
+  258: 0.0300000000000000
+  255: 0.0300000000000000
+  244: 0.0300000000000000
+  .........
+  127: 0.0100000000000000
+  111: 0.0100000000000000
+  110: 0.0100000000000000
+  104: 0.0100000000000000
+  mean = 213.07
+
+  var : prop
+  Probabilities (truncated):
+  0.666666666666667: 0.0300000000000000
+  0.720930232558139: 0.0200000000000000
+  0.717948717948718: 0.0200000000000000
+  0.707317073170732: 0.0200000000000000
+  .........
+  0.643564356435644: 0.0100000000000000
+  0.639484978540773: 0.0100000000000000
+  0.633663366336634: 0.0100000000000000
+  0.613003095975232: 0.0100000000000000
+  mean = 0.701378
+
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+
+p2(Children) = Res =>
+  N = 100,
+  C = 0,
+  foreach(_I in 1..N)
+    [C1,C2] = draw_without_replacement(2,Children),
+    if C1 == b, C2 == b then
+      C := C + 1
+    end
+  end,
+  Res = C/N.
+
+
+model2() =>
+  % I have simplified this from 400 -> 200
+  B = random_integer1(200), % 100..500
+  G = random_integer1(200),
+
+  Tot = B+G,
+  observe(Tot >= 100, Tot <= 400),
+
+  % Generate 
+  Children = rep(B,b) ++ rep(G,g),
+
+  P = p2(Children),
+
+  % "Proabablity is exactly 0.5"
+  observe(abs(0.5-P)<0.0000000001),
+
+  Prop = B / Tot, % proportion of the number of boys to the total
+
+  if observed_ok then
+    println(Tot=B=G),
+    add("b",B),
+    add("g",G),
+    add("tot,b,g",[Tot,B,G]),
+    add("p",P),
+    add("tot",Tot),
+    add("prop",Prop),    
+  end.

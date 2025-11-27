@@ -1,0 +1,118 @@
+/* 
+
+  Random walk 2D in Picat.
+
+  This is a 2D version of a random walk. 
+  The stop criteria is when we're back to the start position (0,0)
+  (or reaching a limit).
+
+  This example is from 
+  Fredrik Dahlqvist and Alexandra Silva
+  "Semantics of Probabilistic Programming: A Gentle Introduction"
+
+  Cf
+  - ppl_random_walk_1.pi 
+  - my Gamble model gamble_random_walk_2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : len
+  Probabilities (truncated):
+  1001: 0.3285000000000000
+  2: 0.2459000000000000
+  4: 0.0788000000000000
+  6: 0.0428000000000000
+  .........
+  226: 0.0001000000000000
+  214: 0.0001000000000000
+  178: 0.0001000000000000
+  154: 0.0001000000000000
+  mean = 371.492
+
+  var : p
+  Probabilities:
+  true: 0.6714000000000000
+  false: 0.3286000000000000
+  mean = [true = 0.6714,false = 0.3286]
+
+
+  Observing that length < Limit:
+  var : len
+  Probabilities (truncated):
+  2: 0.3698994677705500
+  4: 0.1114725014784151
+  6: 0.0635718509757540
+  8: 0.0419869899467771
+  .........
+  260: 0.0001478415138971
+  240: 0.0001478415138971
+  236: 0.0001478415138971
+  196: 0.0001478415138971
+  mean = 60.314
+
+  var : p
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+*/
+go ?=>
+  A = 0, % start coordinates
+  B = 0,
+  Limit = 1000,
+  reset_store,
+  run_model(10_000,$model(A,B,Limit),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+
+step(U,V) = [A,B] =>
+  X = bern(1/2),
+  Y = bern(1/2),
+  A = U + (X-Y),
+  B = (V + (X+Y)) - 1.
+
+walk(A,Limit) = Ret =>
+  % println($walk(A,Limit)),
+  Len = A.len,
+  if Len > Limit then
+    Ret = A
+  else
+    [U,V] = A.last,
+    % println(uv=U=V),
+    [X,Y] = step(U,V),
+    % println(xy=X=Y),
+    if X == 0, Y == 0 then
+      Ret = A
+    else
+      Ret = walk(A ++ [[X,Y]],Limit)
+    end
+  end.
+
+model(A,B,Limit) =>
+  
+  Arr = walk([[A,B]],Limit),
+  Len = Arr.len,
+  P = check( Len < Limit),
+  add("len",Len),
+  add("p",P).
+  /*
+  observe(P),
+  if observed_ok then
+    add("len",Len),
+    add("p",P)
+  end.
+  */  

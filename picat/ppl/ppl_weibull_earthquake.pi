@@ -1,0 +1,132 @@
+/* 
+
+  Earthquake Extreme Value Theory using Weibull distribution in Picat.
+
+  Example and data from Mathematica WeibullDistribution: yearly maximum magnitude 
+  of earthquakes in the United States in the past 200 years:
+  """
+  mYdist = EstimatedDistribution(maxYearly, WeibullDistribution(Alpha, Beta))
+  -> WeibullDistribution(9.11753, 6.99072)
+
+  Using the model, find the probability of the annual maximum earthquake of magnitude 
+  at least 6:
+  NProbability(x >= 6, x ~ mYdist)
+  -> 0.780175
+
+  Find the average magnitude of the annual maximum earthquake:
+  Mean(mYdist)
+  -> 6.62384
+  """
+
+  Cf my Gamble model gamble_weibull_earthquake.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Not too bad. 
+  Warning: However, this is unstable, and might give errors as 
+           error(domain_error(number,-nan),sqrt)
+  
+  Num accepted samples: 1000  Total samples: 13287  (0.075%)
+
+  var : a
+  Probabilities (truncated):
+  19.96708496472197: 0.0010000000000000
+  19.965268112702887: 0.0010000000000000
+  19.94810333473054: 0.0010000000000000
+  19.90220899689114: 0.0010000000000000
+  .........
+  3.856817383252465: 0.0010000000000000
+  3.833290358927702: 0.0010000000000000
+  3.821606516755003: 0.0010000000000000
+  3.340166166117492: 0.0010000000000000
+  mean = 11.9842
+
+  var : b
+  Probabilities (truncated):
+  8.158327521830019: 0.0010000000000000
+  8.108844425579926: 0.0010000000000000
+  8.102379724431028: 0.0010000000000000
+  8.097860947296891: 0.0010000000000000
+  .........
+  5.931354093333406: 0.0010000000000000
+  5.920845561623968: 0.0010000000000000
+  5.905222532295261: 0.0010000000000000
+  5.899634000798518: 0.0010000000000000
+  mean = 6.92813
+
+  var : p
+  Probabilities:
+  true: 0.7750000000000000
+  false: 0.2250000000000000
+  mean = 0.775
+
+  var : post
+  Probabilities (truncated):
+  10.303937311422571: 0.0010000000000000
+  9.664528448032405: 0.0010000000000000
+  9.516597200685776: 0.0010000000000000
+  9.388239351832013: 0.0010000000000000
+  .........
+  3.499786256389961: 0.0010000000000000
+  3.077112757075607: 0.0010000000000000
+  2.687420420694607: 0.0010000000000000
+  1.920881589628852: 0.0010000000000000
+  mean = 6.64251
+
+
+*/
+go ?=>
+  %  From Mathematica WeibullDistribution,
+  %  The yearly maximum value of earthquakes in USA the past 200 year
+  YearlyMax = [6.0,4.5,5.3,6.5,4.4,6.0,7.2,7.4,5.0,5.5,4.6,4.5,6.8,7,
+               4.6,6.0,4.2,4.9,6.5,4.6,6.0,5.5,7.6,6.1,6.3,5.6,5.9,4.8,
+               5.9,6.3,5.8,5.1,7.9,6.1,6.0,7.0,7.3,6.7,5.8,4.8,6.2,5.8,
+               6.0,6.2,6.0,5.9,6.2,6.7,6.3,5.9,6.0,6.3,5.5,6.7,5.5,5.9,
+               5.9,6.0,6.4,7.6,8.0,7.7,7.1,7.0,7.0,7.3,7.4,7.8,7.4,7.0,7.4,
+               7.0,7.1,7.3,7.2,6.7,7.7,7.7,7.9,6.8,6.1,5.5,5.2,7.3,7.2,
+               5.7,6.7,7.0,7.1,6.8,7.8,6.5,6.2,7.2,6.9,7.1,7.1,6.2,7.3,
+               8.3,6.2,7.4,6.7,6.9,7.4,7.1,6.7,7.3,7.2,7.5,6.9,6.7,7.1,
+               7.2,7.1,7.2,7.0,6.8,8.1,7.9,7.7,6.9,6.7,6.7,6.7,8.4,8.2,
+               7.0,6.7,7.1,6.5,6.7,7.1,7.6,6.7,6.5,7.6,6.3,6.7,6.7,7.1,
+               6.9,7.0,6.2,7.2,6.6,6.5,7.9,7.8,7.7,7.1],
+  show_simple_stats(YearlyMax),
+  reset_store,
+  run_model(10_000,$model(YearlyMax),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(YearlyMax) =>
+  A = uniform(0,20),
+  B = uniform(0,20),  
+
+  Y = weibull_dist_n(A,B,YearlyMax.len),
+  observe_abc(YearlyMax,Y),
+
+  Post = weibull_dist(A,B),
+  P = check(Post >= 6),
+
+  if observed_ok then
+    add("a",A),
+    add("b",B),
+    add("p",P),
+    add("post",Post),    
+  end.

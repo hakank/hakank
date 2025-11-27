@@ -1,0 +1,172 @@
+/* 
+
+  Dice game in Picat.
+
+  From
+  http://www.informs.org/ORMS-Today/Public-Articles/December-Volume-38-Number-6/THE-PUZZLOR
+  """
+     A         B           C            D
+     7          4          6            5 
+   1 1 1 1    4 4 4 4    2 2 2 2      3 5 3 3
+     7          4          6            5
+  Figure 1 shows four dice with varying numbers on each face. You and 
+  three friends will play a simple game where you will each roll one 
+  of the dice and the highest number wins. You get first pick from 
+  the dice.
+
+  Which die should you choose in order to maximize your chance of winning?
+  """
+ 
+
+  Cf my Gamble model gamble_dice_game.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  We should select die 4 or 2:
+
+  var : a
+  mean = 1.98367
+
+  var : b
+  mean = 3.65233
+
+  var : c
+  mean = 2.685
+
+  var : d
+  mean = 3.679
+
+  var : a %
+  mean = 0.165306
+
+  var : b %
+  mean = 0.304361
+
+  var : c %
+  mean = 0.22375
+
+  var : d %
+  mean = 0.306583
+
+  var : throws
+  mean = []
+
+  var : total
+  mean = 12.0
+
+  a = 1.98367
+  b = 3.65233
+  c = 2.685
+  d = 3.679
+  order = [d = 3.679,b = 3.65233,c = 2.685,a = 1.98367]
+
+  Percentages:
+  pcts = [0.165306,0.304361,0.22375,0.306583]
+  order = [dp = 0.306583,bp = 0.304361,cp = 0.22375,ap = 0.165306]
+
+  Throws:
+  0.000000 1.675667 2.351333 3.027000 
+  1.663667 0.000000 2.336333 3.010000 
+  2.332000 2.333333 0.000000 3.666667 
+  2.979000 3.024667 3.659667 0.000000 
+
+*/
+go ?=>
+  reset_store,
+  NumRuns = 3_000,
+  run_model(NumRuns,$model,[mean]),
+  
+  S = get_store(),
+  [A,B,C,D] = [S.get("a").mean,S.get("b").mean,S.get("c").mean,S.get("d").mean],
+  Map = new_map([a=A,b=B,c=C,d=D]),
+  println(a=A),
+  println(b=B),
+  println(c=C),
+  println(d=D),
+  println(order=Map.to_list.sort_down(2)),
+  nl,
+  println("Percentages:"),
+  [AP,BP,CP,DP] = [S.get("a %").mean,S.get("b %").mean,S.get("c %").mean,S.get("d %").mean],
+  println("pcts"=[AP,BP,CP,DP]),
+  MapP = new_map([ap=AP,bp=BP,cp=CP,dp=DP]),
+  println(order=MapP.to_list.sort_down(2)),
+  
+  nl,
+  println("Throws:"),
+  Throws = S.get("throws"),
+  N = 4,
+  T = new_array(N,N),
+  bind_vars(T,0),
+  foreach(TT in Throws)
+     foreach(I in 1..N, J in 1..N)
+       T[I,J] := T[I,J] + TT[I,J],
+     end
+  end,
+
+  foreach(I in 1..N)
+    Vs = [],
+    foreach(J in 1..N)
+      V = T[I,J] ,
+      Vs := Vs ++ [V],
+      printf("%.6f ",V / NumRuns),
+    end,
+    nl
+  end,
+
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+check_wins(D,Throws) = [cond(D == Throws[I,J],1,0)   : I in 1..N, J in 1..N].sum => N = Throws.len.
+
+model() =>
+  S = [[1,1,1,1,7,7],
+       [4,4,4,4,4,4],
+       [2,2,2,2,6,6],
+       [3,5,3,3,5,5]],
+
+  N = S.len,
+
+  NumSides = S[1].len,
+
+  Throws = [ [cond(I==J,
+                  0,
+                  cond(S[I,D1] > S[J,D2],I,J)) % save the winner
+                   : J in 1..N ]
+              : I in 1..N, [D1,D2] = random_integer1_n(NumSides,2)],
+
+  A = check_wins(1,Throws),
+  B = check_wins(2,Throws),
+  C = check_wins(3,Throws),
+  D = check_wins(4,Throws),  
+
+  % Percentages
+  Total = [A,B,C,D].sum,
+
+  AP = A / Total,
+  BP = B / Total,
+  CP = C / Total,
+  DP = D / Total,  
+
+  add("a",A),
+  add("b",B),
+  add("c",C),
+  add("d",D),
+  add("a %",AP),
+  add("b %",BP),
+  add("c %",CP),
+  add("d %",DP),
+  add("throws",Throws),
+  add("total",Total).

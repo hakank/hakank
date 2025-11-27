@@ -1,0 +1,130 @@
+/* 
+
+  Lucky dip task in Picat.
+
+  From
+  Pascal Bercker:
+  "Lucky Dip Task — Is This A Fair Game? Three Ways of Modeling with A Bayesian Network"
+  https://medium.com/@pbercker/lucky-dip-task-is-this-a-fair-game-three-ways-of-modeling-with-a-bayesian-network-8b393583aa34
+  """
+  I got this simple puzzle from a dissertation [https://openscholar.uga.edu/record/17924/files/molnar_robert_a_201508_phd.pdf] 
+  on teaching conditional probability in a high school context.
+
+  Lucky Dip Task
+  Dominic has devised a simple game. Inside a bag he places 3 black and 3 white balls. 
+  He then shakes the bag.
+  He asks Amy to take two balls from the bag without looking.
+
+  If the two balls are the same color, then Amy wins.
+  If they are different colors, then Dominic wins.
+
+  Is the game fair, meaning Dominic and Amy have equal probability if winning?
+  If not, then who is most likely to win?
+  """
+
+  The game is not fair: 
+  Dominic has 3/5 probability of winning, while Amy only has 2/5 probability.
+
+  However, if Amy draws with replacement, then the game is fair.
+
+  Cf my Gamble model gamble_lucky_dip_task.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : amy wins
+  Probabilities:
+  false: 0.5969500000000000
+  true: 0.4030500000000000
+  mean = 0.40305
+
+  var : dominic wins
+  Probabilities:
+  true: 0.5969500000000000
+  false: 0.4030500000000000
+  mean = 0.59695
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(20_000,$model,[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Bag = [b,b,b,w,w,w],
+  
+  AmyDraw = draw_without_replacement(2,Bag),
+  AmyWins = check(AmyDraw[1] == AmyDraw[2]),
+
+  DominicWins = check(not AmyWins),
+
+  add("amy wins",AmyWins),
+  add("dominic wins",DominicWins).
+
+
+/*
+
+  What if Amy draw _with_ replacement? Then it's a fair game:
+
+  var : amy wins
+  Probabilities:
+  false: 0.5034333333333333
+  true: 0.4965666666666667
+  mean = 0.496567
+
+  var : dominic wins
+  Probabilities:
+  true: 0.5034333333333333
+  false: 0.4965666666666667
+  mean = 0.503433
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(30_000,$model2,[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  Bag = [b,b,b,w,w,w],
+  
+  AmyDraw = uniform_draw_n(Bag,2),
+  AmyWins = check(AmyDraw[1] == AmyDraw[2]),
+
+  DominicWins = check(not AmyWins),
+
+  add("amy wins",AmyWins),
+  add("dominic wins",DominicWins).
+

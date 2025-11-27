@@ -1,0 +1,409 @@
+/* 
+
+  Poisson horse kicks in Picat.
+
+  https://www.randomservices.org/random/data/HorseKicks.html
+  """
+  The data below give the number of soilders in the Prussian cavalry killed 
+  by horse kicks, by corp membership and by year. The years are from 1875 to 1894, 
+  and there are 14 different cavalry corps: the first column corresponds to the 
+  guard corp and the other columns to corps 1 through 11, 14, and 15. The data are 
+  from Distributome project and are derived from the book by Andrews and Herzberg. 
+  The original source of the data is the classic book by von Bortkiewicz (references 
+  are given below). The data are famous because they seem to fit the Poisson 
+  model reasonably well.
+
+  """
+  First from Mathematica:
+  """
+  ...
+  FindDistributionParameters(data, PoissonDistribution(lambda))
+  -> 
+  (lambda -> 0.7)
+
+  """
+  Note that 0.7 is the mean of the data (which is the mean of a poisson distribution).
+
+  """
+  Table(PDF(PoissonDistribution(0.7), k), (k, 0, 7))
+  -> (0.496585, 0.34761, 0.121663, 0.0283881, 0.00496792, 0.000695509, 0.0000811427, 8.11427*10^-6)
+  %*280
+  (139.044, 97.3307, 34.0658, 7.94868, 1.39102, 0.194743, 0.02272, 0.002272)
+  """
+
+
+  Cf my Gamble model gamble_poisson_horse_kicks.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Three different versions of observe_abc/2-4:
+
+  * default observe_abc(Data,Y), i.e. [mean,stdev] with scale 1
+    (1.6s)
+
+    Num accepted samples: 1000  Total samples: 2468  (0.405%)
+
+    var : lambda
+    Probabilities (truncated):
+    1.833608378578726: 0.0010000000000000
+    1.726920987352226: 0.0010000000000000
+    1.709727716497019: 0.0010000000000000
+    1.682016427480623: 0.0010000000000000
+    .........
+    0.007017811763574: 0.0010000000000000
+    0.002961847932526: 0.0010000000000000
+    0.00068227201732: 0.0010000000000000
+    0.00051585957432: 0.0010000000000000
+    mean = 0.777815
+    HPD intervals:
+    HPD interval (0.94): 0.04006611371416..1.50569108198662
+
+    var : post
+    Probabilities:
+    0: 0.5110000000000000
+    1: 0.3180000000000000
+    2: 0.1150000000000000
+    3: 0.0380000000000000
+    4: 0.0140000000000000
+    6: 0.0020000000000000
+    5: 0.0020000000000000
+    mean = 0.74
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..2.00000000000000
+
+    est_lambda = 0.777815
+
+  * observe_abc(Data,Y,1/10) : [mean,stdev] with scale 1/10 
+   (12.5s)
+
+   Num accepted samples: 1000  Total samples: 26900  (0.037%)
+
+   var : lambda
+   Probabilities (truncated):
+   0.911947980947768: 0.0010000000000000
+   0.910919679752979: 0.0010000000000000
+   0.910816774196372: 0.0010000000000000
+   0.89182568941816: 0.0010000000000000
+   .........
+   0.543652588754731: 0.0010000000000000
+   0.538137870159996: 0.0010000000000000
+   0.537278492253869: 0.0010000000000000
+   0.5275369177235: 0.0010000000000000
+   mean = 0.712347
+   HPD intervals:
+   HPD interval (0.94): 0.58201099586767..0.82999518738594
+
+   var : post
+   Probabilities:
+   0: 0.5030000000000000
+   1: 0.3290000000000000
+   2: 0.1180000000000000
+   3: 0.0420000000000000
+   4: 0.0070000000000000
+   5: 0.0010000000000000
+   mean = 0.724
+   HPD intervals:
+   HPD interval (0.94): 0.00000000000000..2.00000000000000
+
+   est_lambda = 0.711207
+
+
+ * observe_abc(Data,Y,1/20) : [mean,stdev] with scale 1/20
+   (38.1s)
+
+   Num accepted samples: 1000  Total samples: 84663  (0.012%)
+   var : lambda
+   Probabilities (truncated):
+   0.890923567531129: 0.0010000000000000
+   0.886894466768435: 0.0010000000000000
+   0.881238598786871: 0.0010000000000000
+   0.878740769288848: 0.0010000000000000
+   .........
+   0.574180562316524: 0.0010000000000000
+   0.572856543852415: 0.0010000000000000
+   0.539565436793289: 0.0010000000000000
+   0.537588440132136: 0.0010000000000000
+   mean = 0.710267
+   HPD intervals:
+   HPD interval (0.94): 0.59893228327806..0.80393605530445
+
+   var : post
+   Probabilities:
+   0: 0.5080000000000000
+   1: 0.3350000000000000
+   2: 0.1220000000000000
+   3: 0.0270000000000000
+   4: 0.0050000000000000
+   5: 0.0030000000000000
+   mean = 0.695
+   HPD intervals:
+   HPD interval (0.94): 0.00000000000000..2.00000000000000
+
+   est_lambda = 0.710267
+
+
+  * Using the methods from from recommend_abc_stats_explained:
+    methods = [median,iqr,mad,skewness]
+    "Data is clearly skewed. Using robust statistics (median, IQR, MAD, skewness)."
+    (33.2s)
+
+    Note: This is clearly not good...
+
+    Num accepted samples: 1000  Total samples: 8984  (0.111%)
+
+    var : lambda
+    Probabilities (truncated):
+    0.817242566876692: 0.0010000000000000
+    0.796272166444115: 0.0010000000000000
+    0.787020471313512: 0.0010000000000000
+    0.780158032095133: 0.0010000000000000
+    .........
+    0.238064494094841: 0.0010000000000000
+    0.236494707053758: 0.0010000000000000
+    0.227912832157646: 0.0010000000000000
+    0.214331636305122: 0.0010000000000000
+    mean = 0.501337
+    HPD intervals:
+    HPD interval (0.94): 0.28958434438779..0.72164790924715
+
+    var : post
+    Probabilities:
+    0: 0.6280000000000000
+    1: 0.2830000000000000
+    2: 0.0760000000000000
+    3: 0.0130000000000000
+    mean = 0.474
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..2.00000000000000
+
+    est_lambda = 0.474
+  
+  * Mathematica:  FindDistribution[data, 3]:
+
+    {PoissonDistribution[0.70922], 
+     BinomialDistribution[15, 0.0472813], 
+     NegativeBinomialDistribution[4, 0.849398]
+     }
+
+    As above:
+    FindDistributionParameters[data, PoissonDistribution[lambda]]
+    -> {lambda -> 0.7}
+
+*/
+go ?=>
+  % Total number of death by horse kicks per year
+  %(Data = [3,5,7,9,10,18,6,14,11,9,5,11,15,6,11,17,12,15,8,4],
+
+  % Death per cavalry corp per year
+  Data = [
+         % A B C D E F G H I J K L M N   
+         0,0,0,0,0,0,0,1,1,0,0,0,1,0, % year 1875
+         2,0,0,0,1,0,0,0,0,0,0,0,1,1,
+         2,0,0,0,0,0,1,1,0,0,1,0,2,0,
+         1,2,2,1,1,0,0,0,0,0,1,0,1,0,
+         0,0,0,1,1,2,2,0,1,0,0,2,1,0,
+         0,3,2,1,1,1,0,0,0,2,1,4,3,0,
+         1,0,0,2,1,0,0,1,0,1,0,0,0,0,
+         1,2,0,0,0,0,1,0,1,1,2,1,4,1,
+         0,0,1,2,0,1,2,1,0,1,0,3,0,0,
+         3,0,1,0,0,0,0,1,0,0,2,0,1,1,
+         0,0,0,0,0,0,1,0,0,2,0,1,0,1,
+         2,1,0,0,1,1,1,0,0,1,0,1,3,0,
+         1,1,2,1,0,0,3,2,1,1,0,1,2,0,
+         0,1,1,0,0,1,1,0,0,0,0,1,1,0,
+         0,0,1,1,0,1,1,0,0,1,2,2,0,2,
+         1,2,0,2,0,1,1,2,0,2,1,1,2,2,
+         0,0,0,1,1,1,0,1,1,0,3,3,1,0,
+         1,3,2,0,1,1,3,0,1,1,0,1,1,0,
+         0,1,0,0,0,1,0,2,0,0,1,3,0,0,
+         1,0,0,0,0,0,0,0,1,0,1,1,0,0 % year 1894
+   ],
+  [Methods,Explain] = recommend_abc_stats_explained(Data),
+  println(methods=Methods),
+  println(Explain),
+  reset_store,
+  run_model(10_000,$model(Data),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  println(est_lambda=get_store().get("lambda").mean),
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Data) =>
+  Lambda = uniform(Data.min,Data.max),
+
+  Y = poisson_dist_n(Lambda,Data.len),
+  
+  % observe_abc(Data,Y), % fast but wrong
+  observe_abc(Data,Y,1/10), % fairly correct and fast
+  % observe_abc(Data,Y,1/20), % not much better than using scale 1/10
+  % observe_abc(Data,Y,1,[median,iqr,mad,skewness]), % slow and not good
+
+  Post = poisson_dist(Lambda),
+
+  if observed_ok then
+    add("lambda",Lambda),
+    add("post",Post)
+  end.
+
+
+/*
+  Number of deaths
+  https://mindyourdecisions.com/blog/2013/06/21/what-do-deaths-from-horse-kicks-have-to-do-with-statistics/
+  From the book Bulmer "Principles of Statistics":
+  https://www.google.se/books/edition/Principles_of_Statistics/BZi8AQAAQBAJ?hl=sv&gbpv=1&dq=prussian+soldier+horse+deaths+poisson&pg=PT125&printsec=frontcover&bshm=rimc/1
+
+  Num deaths  Occurrences   Expected frequence (from the book)
+  ------------------------------------------------------------
+   0           144            139
+   1            91             97 
+   2            32             34
+   3            11             8
+   4             2             1
+  >5             0             0
+
+
+  This model:
+
+  Frequencies of data:
+  (map)[0 = 144,1 = 91,2 = 32,3 = 11,4 = 2]
+  min_accepted_samples = 1000
+
+  est_lambda = 0.713157
+
+PDF using poisson_dist(0.71315711387860):
+ 0 0.490094468364676 
+ 1 0.349514356586817 
+ 2 0.124629324901294 
+ 3 0.029626763217082 
+ 4 0.005282134237365 
+ 5 0.000753398321568 
+ 6 0.000089548562102 
+ 7 0.000009123170586 
+
+PDF using Mathematica value poisson_dist(0.7):
+ 0 0.49658530379141 
+ 1 0.347609712653987 
+ 2 0.121663399428895 
+ 3 0.028388126533409 
+ 4 0.004967922143347 
+ 5 0.000695509100069 
+ 6 0.000081142728341 
+ 7 0.000008114272834 
+
+280*PDF using poisson_dist(0.71315711387860):
+ 0 137.22645114210917 
+ 1 97.8640198443087 
+ 2 34.896210972362411 
+ 3 8.295493700782869 
+ 4 1.4789975864621 
+ 5 0.210951530038943 
+
+280*PDF using Mathematica value poisson_dist(0.7):
+ 0 139.043885061594779 
+ 1 97.33071954311626 
+ 2 34.065751840090648 
+ 3 7.948675429354496 
+ 4 1.391018200137038 
+ 5 0.194742548019185 
+
+Distribution using poisson_dist(0.71315711387860):
+(map)[0 = 134,1 = 105,2 = 31,3 = 8,4 = 1,5 = 1]
+
+Distribution using Mathematica value poisson_dist(0.7):
+(map)[0 = 134,1 = 105,2 = 31,3 = 8,4 = 1,5 = 1]
+
+Comparison with data, Est lambda, Mathematica's 0.7:
+0:  data: 144  est: 134 MMa: 126
+1:  data:  91  est: 105 MMa: 109
+2:  data:  32  est:  31 MMa:  35
+3:  data:  11  est:   8 MMa:   8
+4:  data:   2  est:   1 MMa:   1
+
+
+*/
+go2 ?=> 
+  % Total number of death by horse kicks per year
+  %(Data = [3,5,7,9,10,18,6,14,11,9,5,11,15,6,11,17,12,15,8,4],
+
+  % Death per cavalry corp per year
+  Data = [
+         % A B C D E F G H I J K L M N   
+         0,0,0,0,0,0,0,1,1,0,0,0,1,0, % year 1875
+         2,0,0,0,1,0,0,0,0,0,0,0,1,1,
+         2,0,0,0,0,0,1,1,0,0,1,0,2,0,
+         1,2,2,1,1,0,0,0,0,0,1,0,1,0,
+         0,0,0,1,1,2,2,0,1,0,0,2,1,0,
+         0,3,2,1,1,1,0,0,0,2,1,4,3,0,
+         1,0,0,2,1,0,0,1,0,1,0,0,0,0,
+         1,2,0,0,0,0,1,0,1,1,2,1,4,1,
+         0,0,1,2,0,1,2,1,0,1,0,3,0,0,
+         3,0,1,0,0,0,0,1,0,0,2,0,1,1,
+         0,0,0,0,0,0,1,0,0,2,0,1,0,1,
+         2,1,0,0,1,1,1,0,0,1,0,1,3,0,
+         1,1,2,1,0,0,3,2,1,1,0,1,2,0,
+         0,1,1,0,0,1,1,0,0,0,0,1,1,0,
+         0,0,1,1,0,1,1,0,0,1,2,2,0,2,
+         1,2,0,2,0,1,1,2,0,2,1,1,2,2,
+         0,0,0,1,1,1,0,1,1,0,3,3,1,0,
+         1,3,2,0,1,1,3,0,1,1,0,1,1,0,
+         0,1,0,0,0,1,0,2,0,0,1,3,0,0,
+         1,0,0,0,0,0,0,0,1,0,1,1,0,0 % year 1894
+  ],
+  println("Frequencies of data:"),
+  DataFreq = collect(Data),
+  println(DataFreq),
+  reset_store,
+  run_model(10_000,$model(Data),[presentation = [],
+                                 min_accepted_samples=1000,show_accepted_samples=false
+                          ]),
+  nl,
+  LambdaList = get_store().get("lambda"),
+  EstLambda = LambdaList.mean,
+  println(est_lambda=EstLambda),
+  nl,
+  printf("PDF using poisson_dist(%0.14f):\n",EstLambda),
+  pdf_all($poisson_dist(EstLambda),0.01,0.999999).printf_list,
+  nl,
+  printf("PDF using Mathematica value poisson_dist(0.7):\n"),
+  pdf_all($poisson_dist(0.7),0.01,0.999999).printf_list,
+  nl,
+  printf("280*PDF using poisson_dist(%0.14f):\n",EstLambda),
+  [V=280*poisson_dist_pdf(EstLambda,V) : V in 0..5].printf_list,
+  nl,
+  printf("280*PDF using Mathematica value poisson_dist(0.7):\n"),
+  [V=280*poisson_dist_pdf(0.7,V) : V in 0..5].printf_list,  
+
+  nl,
+  printf("Distribution using poisson_dist(%0.14f):\n",EstLambda),
+  EstFreq=poisson_dist_n(EstLambda,Data.len).collect,
+  println(EstFreq),
+  nl,
+  printf("Distribution using Mathematica value poisson_dist(0.7):\n"),
+  MmaFreq=poisson_dist_n(0.7,Data.len).collect,
+  println(EstFreq),
+  nl,
+  println("Comparison with data, Est lambda, Mathematica's 0.7:"),
+  foreach(V in Data.min..Data.max)
+    printf("%d:  data: %3w  est: %3w MMa: %3w\n", V, DataFreq.get(V,0),EstFreq.get(V,0),MmaFreq.get(V,0))
+  end,
+
+  % fail,
+  nl.

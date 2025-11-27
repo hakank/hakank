@@ -1,0 +1,168 @@
+/* 
+
+  Actor's award in Picat.
+
+  From "Figaro Tutorial", page 19f
+  """
+  There are three classes: actors, movies, and appearances relating actors to movies.
+  Whether an actor receives an award for an appearance depends on the fame of the actor 
+  and the quality of the movie.
+  """
+
+  This is a little messy since we have to memoize the values
+  of the random variables for each run. 
+  (We cannot use table since that it global.)
+
+  Cf my Gamble model gamble_actors_award.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Num accepted samples: 100  Total samples: 18956  (0.005%)
+
+  var : famous actor1
+  Probabilities:
+  false: 0.8600000000000000
+  true: 0.1400000000000000
+  mean = [false = 0.86,true = 0.14]
+
+  var : famous actor2
+  Probabilities:
+  false: 0.8700000000000000
+  true: 0.1300000000000000
+  mean = [false = 0.87,true = 0.13]
+
+  var : famous actor3
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : quality movie 1
+  Probabilities:
+  medium: 0.5500000000000000
+  low: 0.2500000000000000
+  high: 0.2000000000000000
+  mean = [medium = 0.55,low = 0.25,high = 0.2]
+
+  var : quality movie 2
+  Probabilities:
+  high: 1.0000000000000000
+  mean = [high = 1.0]
+
+  var : award appearance 1
+  Probabilities:
+  false: 0.9399999999999999
+  true: 0.0600000000000000
+  mean = [false = 0.94,true = 0.06]
+
+  var : award appearance 2
+  Probabilities:
+  false: 0.7300000000000000
+  true: 0.2700000000000000
+  mean = [false = 0.73,true = 0.27]
+
+  var : award appearance 3
+  Probabilities:
+  true: 0.6700000000000000
+  false: 0.3300000000000000
+  mean = [true = 0.67,false = 0.33]
+
+  var : prob award appearance 1
+  Probabilities:
+  0.01: 0.5300000000000000
+  0.001: 0.2200000000000000
+  0.05: 0.1900000000000000
+  0.2: 0.0600000000000000
+  mean = 0.02702
+
+  var : prob award appearance 2
+  Probabilities:
+  0.05: 0.8700000000000000
+  0.2: 0.1300000000000000
+  mean = 0.0695
+
+  var : prob award appearance 3
+  Probabilities:
+  0.2: 1.0000000000000000
+  mean = 0.2
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+
+famous(Actor) = flip(0.1).
+
+quality(Movie) = categorical([0.3,0.5,0.2],[low,medium,high]).
+
+prob_award([Actor,Movie],Quality,Famous) = Res =>
+  QualityMovie= Quality.get(Movie),
+  FamousActor = Famous.get(Actor),
+  T = [QualityMovie,FamousActor],
+  Res = case(T,
+             [ [[low,false], 0.001],
+                [[low,true], 0.01],
+                [[medium,false], 0.01],
+                [[medium,true], 0.05],
+                [[high,false], 0.05],
+                [[high,true], 0.2],
+                [true,0.999]
+                ]).
+
+award(ActorMovie,ProbAward) = flip(ProbAward.get(ActorMovie)).
+
+model() =>
+  Appearance1 = [actor1,movie1],
+  Appearance2 = [actor2,movie2],
+  Appearance3 = [actor3,movie2],
+  Appearances = [Appearance1,Appearance2,Appearance3],
+
+  % Memoizing the values.
+  % We have to do that to ensure that all call to - say - famous(actor1)
+  % give the same result both in the observe and then in the presentation.
+  % Unfortunately this makes it a little more messy than necessarily...
+  % 
+  Famous    = new_map([A=famous(A) : A in [actor1,actor2,actor3]]),
+  Quality   = new_map([M=quality(M) : M in [movie1,movie2]]),
+  ProbAward = new_map([A=prob_award(A,Quality,Famous) : A in Appearances]),  
+  Award     = new_map([A=award(A,ProbAward) : A in Appearances]),
+
+
+  observe(Famous.get(actor3) == true),
+  observe(Quality.get(movie2) == high),  
+
+  % Ensure that exactly one appearance get an award
+  observe(1 == [cond(Award.get(A) == true,1,0) :  A in Appearances].sum),
+  if observed_ok then
+    add("famous actor1",Famous.get(actor1)),
+    add("famous actor2",Famous.get(actor2)),
+    add("famous actor3",Famous.get(actor3)),
+    add("quality movie 1",Quality.get(movie1)),
+    add("quality movie 2",Quality.get(movie2)),
+    add("award appearance 1",Award.get(Appearance1)),
+    add("award appearance 2",Award.get(Appearance2)),
+    add("award appearance 3",Award.get(Appearance3)),   
+    add("prob award appearance 1",ProbAward.get(Appearance1)),
+    add("prob award appearance 2",ProbAward.get(Appearance2)),
+    add("prob award appearance 3",ProbAward.get(Appearance3)),    
+  end.

@@ -1,0 +1,72 @@
+/* 
+
+  Sally and the vending machine (2) in Picat.
+
+  From https://probmods.org/chapters/social-cognition (WebPPL model)
+  """
+  [I]magine that Sally walks up to a vending machine wishing to have a cookie. 
+  ...
+  In a world that is not quite so deterministic Sally’s actions will be more stochastic:
+    [WebPPL model]
+  Technically, this method of making a choices is not optimal, but rather it is 
+  soft-max optimal (also known as following the “Boltzmann policy”).
+  """
+
+  See ppl_vending_machine1.pi for the first part of this problem.
+
+
+  Cf my Gamble model gamble_vending_machine2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Note: This is almost identical model as ppl_vending_machine1.pi
+  The difference is that in vending_machine/2, the fixed bagel/cookie
+  has been replaced with categorical/2 selecting randomly between
+  bagel and cookie (with some different probabilities).
+
+  var : v
+  Probabilities:
+  b: 0.9032453134448700
+  a: 0.0967546865551300
+  mean = [b = 0.903245,a = 0.0967547]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+vending_machine(State,Action) = Res =>
+  Res = case(Action,
+             [[a,categorical([0.9,0.1],[bagel,cookie])], % Here's the difference to ppl_vending_machine1.pi
+              [b,categorical([0.1,0.9],[bagel,cookie])],
+              [true,nothing]]).
+
+choose_action(GoalState,Transition,ActionPrior) = choose_action(GoalState, Transition, ActionPrior, undefined).
+choose_action(GoalState, Transition, ActionPrior, State1) = Res =>
+  State = cond(State1 == undefined,start,state1),
+  Action = ActionPrior,
+  observe(GoalState == apply(Transition,State,Action)),
+  Res = Action.
+
+model() =>
+  ActionPrior = categorical([0.5,0.5],[a,b]),
+
+  V = choose_action(cookie,vending_machine,ActionPrior),
+    
+  if observed_ok then
+    add("v",V),
+  end.

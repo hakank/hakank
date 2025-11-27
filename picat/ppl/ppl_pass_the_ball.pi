@@ -1,0 +1,256 @@
+/* 
+
+  Pass the Ball in Picat.
+
+  From https://www.quantguide.io/questions/pass-the-ball
+  """ 
+  You and 4 other people are sitting in a circle. You are given a ball to start the game. 
+  Every second of this game, the person with the ball has three choices they can make. 
+  They can either pass the ball to the left, pass the ball to the right, or keep the ball 
+  (all with equal probability). This game goes on till someone keeps the ball. What is the 
+  probability that you are the person to end the game and keep the ball?
+  """
+
+  Via Pascal Berker: https://medium.com/@pbercker/pass-the-ball-a-probability-puzzle-with-a-markov-chain-and-a-dbn-3c170a988cba
+
+  The probability is 5/11: 0.45454545454545453
+
+  Cf my Gamble model gamble_pass_the_ball.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils, ppl_common_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+   Circle
+         1
+     5      2
+       4   3
+        
+   1 -> 2, 1 -> 5
+   2 -> 1, 2 -> 3
+   3 -> 2, 3 -> 4
+   4 -> 3, 4 -> 5
+   5 -> 1, 5 -> 4
+
+  
+  Note: The Gamble model gamble_pass_the_ball.rkt also 
+        included the absorption propability matrix, but
+        this feature is currently missing in Picat PPL.
+
+
+  Transition matrix
+  [0.333333,0.333333,0,0,0.333333]
+  [0.333333,0.333333,0.333333,0,0]
+  [0,0.333333,0.333333,0.333333,0]
+  [0,0,0.333333,0.333333,0.333333]
+  [0.333333,0,0,0.333333,0.333333]
+
+
+  var : pos
+  Probabilities:
+  0: 0.4551000000000000
+  1: 0.1824500000000000
+  4: 0.1808000000000000
+  3: 0.0920500000000000
+  2: 0.0896000000000000
+  mean = 1.361
+
+  var : c
+  Probabilities:
+  0: 0.3338500000000000
+  1: 0.2227500000000000
+  2: 0.1471000000000000
+  3: 0.0985000000000000
+  4: 0.0657000000000000
+  5: 0.0440000000000000
+  6: 0.0291500000000000
+  7: 0.0207000000000000
+  8: 0.0132000000000000
+  9: 0.0085500000000000
+  10: 0.0055000000000000
+  11: 0.0039000000000000
+  12: 0.0024500000000000
+  13: 0.0018000000000000
+  15: 0.0010500000000000
+  14: 0.0007000000000000
+  17: 0.0003500000000000
+  16: 0.0003500000000000
+  19: 0.0001500000000000
+  18: 0.0001500000000000
+  22: 0.0000500000000000
+  20: 0.0000500000000000
+  mean = 1.99305
+
+  var : p
+  Probabilities:
+  false: 0.5449000000000001
+  true: 0.4551000000000000
+  mean = 0.4551
+
+*/
+go ?=>
+  TM = [[1/3, 1/3,   0,   0, 1/3],
+        [1/3, 1/3, 1/3,   0,   0],
+        [  0, 1/3, 1/3, 1/3,   0],
+        [  0,   0, 1/3, 1/3, 1/3],
+        [1/3,   0,   0, 1/3, 1/3]
+       ],
+  print_matrix(TM,"Transition matrix"),
+  % Stationary = stationary_dist(TM),
+  % println(stationary=Stationary),
+
+  reset_store,
+  run_model(20_000,$model,[show_probs,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+% With time limit T
+f(Pos,C,N,T) = Res =>
+  if C >= T then
+    Res = [Pos,C]
+  else
+    NewPos = uniform_draw([(Pos + V) mod N : V in -1..1]),
+    % End if a person get the ball and decide to keep it
+    if NewPos == Pos then
+      Res = [Pos,C]
+    else
+      Res = f(NewPos,C+1,N,T)
+    end
+  end.
+
+% No time limit
+f2(Pos,C,N) = Res =>
+  NewPos = uniform_draw([(Pos + V) mod N : V in -1..1]),
+  % End if a person get the ball and decide to keep it
+  if NewPos == Pos then
+    Res = [Pos,C]
+  else
+    Res = f2(NewPos,C+1,N)
+  end.
+
+model() =>
+  N = 5,
+  T = 20, % Time limit
+  
+  InitState = 0,
+  InitStep = 0,
+  % [Pos,C] = f(InitState,InitStep,N,T),
+  [Pos,C] = f2(InitState,InitStep,N), % No time limit
+  P = check(Pos == InitState),
+  
+  add("pos",Pos),
+  add("c",C),
+  add("p",P).
+
+
+/*
+  This model is inspired by Pascal's Netica model in his Medium post (see above).
+ 
+  States 0..4: Each person's state
+  States 5..9: Each person's absorption state
+
+  var : pos
+  Probabilities:
+  6: 0.4551000000000000
+  7: 0.1843000000000000
+  10: 0.1807000000000000
+  9: 0.0913000000000000
+  8: 0.0886000000000000
+  mean = 7.3582
+
+  var : c
+  Probabilities:
+  1: 0.3379000000000000
+  2: 0.2182000000000000
+  3: 0.1405000000000000
+  4: 0.1035000000000000
+  5: 0.0655000000000000
+  6: 0.0433000000000000
+  7: 0.0297000000000000
+  8: 0.0195000000000000
+  9: 0.0144000000000000
+  10: 0.0085000000000000
+  11: 0.0066000000000000
+  12: 0.0042000000000000
+  13: 0.0030000000000000
+  14: 0.0016000000000000
+  15: 0.0015000000000000
+  17: 0.0007000000000000
+  16: 0.0007000000000000
+  25: 0.0002000000000000
+  19: 0.0002000000000000
+  22: 0.0001000000000000
+  21: 0.0001000000000000
+  20: 0.0001000000000000
+  mean = 3.0207
+
+  var : p
+  Probabilities:
+  false: 0.5449000000000001
+  true: 0.4551000000000000
+  mean = 0.4551
+
+
+*/
+go2 ?=>
+  %           States               Absorption states
+  %        1   2   3   4   5   6   7   8   9   10
+  TM = [[0/3,1/3,0/3,0/3,1/3,  1/3,0/3,0/3,0/3,0/3],
+        [1/3,0/3,1/3,0/3,0/3,  0/3,1/3,0/3,0/3,0/3],
+        [0/3,1/3,0/3,1/3,0/3,  0/3,0/3,1/3,0/3,0/3],
+        [0/3,0/3,1/3,0/3,1/3,  0/3,0/3,0/3,1/3,0/3],
+        [1/3,0/3,0/3,1/3,0/3,  0/3,0/3,0/3,0/3,1/3],
+
+        [0/3,0/3,0/3,0/3,0/3,  3/3,0/3,0/3,0/3,0/3], % 3/3: success states
+        [0/3,0/3,0/3,0/3,0/3,  0/3,3/3,0/3,0/3,0/3],
+        [0/3,0/3,0/3,0/3,0/3,  0/3,0/3,3/3,0/3,0/3],
+        [0/3,0/3,0/3,0/3,0/3,  0/3,0/3,0/3,3/3,0/3],
+        [0/3,0/3,0/3,0/3,0/3,  0/3,0/3,0/3,0/3,3/3]],
+  print_matrix(TM,"Transition matrix"),
+  
+  % This gives the incorrect answer...
+  % Stationary = stationary_dist(TM),
+  % Stationary = stationary_dist(TM,1.0e-16,200000), 
+  % println(stationary=Stationary),
+  % println(stationary=Stationary.map(to_rat)),  
+
+  reset_store,
+  run_model(10_000,$model2(TM),[show_probs,mean]),
+  nl.
+go2 => true.
+  
+
+f3(State,C,TM) = Res =>
+  NewState = categorical(TM[State],1..TM.len),
+  V = TM[State,NewState],
+  if V == 1.0 then
+    % Reached one of the success states (with probability 3/3 = 1.0)
+    Res = [NewState,C]
+  else
+    Res = f3(NewState,C+1,TM)
+  end.
+  
+model2(TM) =>
+ 
+  InitState = 1,
+  InitStep = 0,
+
+  [Pos,C] = f3(InitState,InitStep,TM),
+
+  P = check(Pos == InitState + 5),
+
+  add("pos",Pos),
+  add("c",C),
+  add("p",P).
+

@@ -1,0 +1,179 @@
+/* 
+
+  Fair coin game in Picat.
+
+  From BL: "Can You Make It A Fair Game? - A Logic Puzzle from xkcd"
+  https://medium.com/math-games/can-you-make-it-a-fair-game-bd86dc9b5e22
+  """
+  Sue and Bob are playing the following game:
+
+  Sue pays Bob $2 to start the game. Then Bob starts tossing coins. If the coin falls 
+  on head Bob pays Sue $1 and continues tossing the coin. If however the coin falls 
+  on tails then the game is finished.
+
+  Example 1: Sue pays Bob $2. Bob tosses head three times in a row before finally 
+  tossing a tails. For each head Bob pays Sue $1 and Sue thus wins $1.
+
+  Example 2: Sue pays Bob $2. Bob starts by tossing tails and Sue thus loses her $2.
+
+  Clearly Sue has a disadvantage here. The question is: what is the correct initial 
+  amount, so that neither Sue nor Bob have an advantage.
+
+  Note 1: the difficulty lies in the fact, that Sue could potentially win an infinite 
+  amount of money if there is an infinite number of head-tosses.
+
+  Note 2: there is a way to easily get the correct amount without getting into “infinity”.
+  """
+
+  Cf my Gamble model gamble_fair_game.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils, ppl_common_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  With Initial = 1, then the Score is ~ 0, and thus fair.
+
+  initial = -3
+  var : score
+  Probabilities (truncated):
+  -3: 0.4918000000000000
+  .........
+  -20: 0.0001000000000000
+  mean = -4.0076
+
+
+  initial = -2
+  var : score
+  Probabilities (truncated):
+  -2: 0.5024999999999999
+  .........
+  -15: 0.0001000000000000
+  mean = -3.0026
+
+
+  initial = -1
+  var : score
+  Probabilities (truncated):
+  -1: 0.4984000000000000
+  .........
+  -14: 0.0001000000000000
+  mean = -2.0149
+
+
+  initial = 0
+  var : score
+  Probabilities (truncated):
+  0: 0.4996000000000000
+  .........
+  -13: 0.0002000000000000
+  mean = -0.9987
+
+
+  initial = 1
+  var : score
+  Probabilities (truncated):
+  1: 0.5112000000000000
+  .........
+  -13: 0.0001000000000000
+  mean = 0.0238
+
+
+  initial = 2
+  var : score
+  Probabilities (truncated):
+  2: 0.4921000000000000
+  .........
+  -13: 0.0002000000000000
+  mean = 0.9775
+
+
+  initial = 3
+  var : score
+  Probabilities (truncated):
+  3: 0.4960000000000000
+  .........
+  -8: 0.0001000000000000
+  mean = 1.997
+
+
+*/
+go ?=>
+  member(Initial,-3..3),
+  println(initial=Initial),
+  reset_store,
+  run_model(10_000,$model(Initial),[show_probs_trunc,mean,truncate_size=1]),
+  nl,
+  fail,
+  nl.
+go => true.
+  
+
+f(Len,Score) = Res =>
+  R = uniform_draw([h,t]),
+  if R == h then
+    Res = [Len,Score]
+  else
+    Res = f(Len+1,Score-1)
+  end.
+  
+model(Initial) =>
+
+  % Score is Bob's: At start Sue pays Bob $2
+  [_Len,Score] = f(0,Initial),
+ 
+  % add("len",Len),
+  add("score",Score).  
+
+
+
+/*
+  Another approach: Generate initial values (here -3..3) and
+  check which value generates a (mean of) 0 score.
+
+  var : score
+  Probabilities:
+  0.0: 1.0000000000000000
+  mean = 0.0
+
+  var : initial
+  Probabilities:
+  1: 1.0000000000000000
+  mean = 1.0
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(100,$model2,[show_probs,mean,min_accepted_samples=1000 % ,show_accepted_samples=true
+                        ]),
+  nl,
+  nl.
+go2 => true.
+  
+check(Initial) = Res =>
+  N = 100,
+  R = 0,
+  foreach(_ in 1..N)
+    [_Len,Score] = f(0,Initial),
+    R := R + Score
+  end,
+  Res = R/N.
+  
+model2() =>
+
+  Initial = discrete_uniform_dist(-3,3),
+  Score = check(Initial),
+  observe(Score==0.0),
+  
+  if observed_ok then
+    add("score",Score),
+    add("initial",Initial)
+  end.
+

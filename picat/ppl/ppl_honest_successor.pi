@@ -1,0 +1,225 @@
+/* 
+
+  Honest successor in Picat.
+
+  From Bassey John "How to Use Maths to Choose an Honest Successor -
+  The Royal Cheating Puzzle"
+  https://medium.com/think-art/how-to-use-maths-to-choose-an-honest-successor-19b8c1eb98cb
+  """
+  Problem
+
+  You’re the chief steward to a king who needs to declare his next heir.
+  He wants his heir to be honest. So he devised a competition to test his children 
+  and demanded that you choose the winner.
+
+  The Rules of the Game:
+
+  1. Each potential heir will be given the same two-sided die (A Green and Brown die).
+     - The Green die has the numbers: 2, 7, 7, 12, 12, 17
+     - The Brown die has the numbers: 3, 8, 8, 13, 13, 18.
+
+  2. The dice are fair, so each side is equally likely to come up.
+
+  3. Each contestant will be sent to a room, where they will roll each die 20 times. 
+     A contestant's score starts at zero, and each turn, they should add the total 
+     of the two numbers rolled to their score. After 20 turns, they should report 
+     their final score.
+
+  4. If you are atleast 90% sure that a contestant misadded or cheated, you should 
+     disqualify that contestant. The highest-scoring player who remains will be heir 
+     to the throne.
+
+  The Contestants are Lydia, Arnold, Bertrand, and Cyril.
+
+  Lydia Reports 375, Bertrand Reports 810, Cyril Reports 443, and Arnold Reports 700.
+  Who is worthy to be the next successor?
+
+  ...
+
+  [Reasoning about the possible total score, and they all with end with 0 or 5.
+   The highest total possible is 700.
+   - Bertand (score 810): must be lying since > 700.
+   - Arnold (700): Perhaps, but scoring 700 is very very unlikely.
+   - Cyril (score 443): The score does not end in 0 or 5. Thus not honest
+   - Lydia (score 375): Definitely Possible and ends in 5. 
+   Thus Lydia is the only honest person.
+  ]
+  """
+
+  This PPL model get the same result: Lydia is the only honest person.
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  The HPD intervals of the rolls is 350 .. 445
+
+  [who = none,reported_score = no_score]
+  var : rolls (no observation)
+  mean = 400.37
+  HPD intervals:
+  HPD interval (0.9): 350.00000000000000..445.00000000000000
+
+  Bertrand (with 810), Arndold (with 700) are way too far from this.
+  Lydia and Cyril (by a hair!) are the only that are within this range.
+  
+  This model - however - only shows that only Lydia might be honest.
+  Even if we increase the number of runs to 10_000_000,
+  Cyril don't get any accepted observations. 
+
+  So, Lydia is the only honest person, and thus the (worthy) successor.
+
+
+  [who = lydia,reported_score = 375]
+  var : rolls
+  mean = 375.0
+  HPD intervals:
+  HPD interval (0.9): 375.00000000000000..375.00000000000000
+
+  var : diff
+  mean = 0.0
+  HPD intervals:
+  HPD interval (0.9): 0.00000000000000..0.00000000000000
+
+  var : p
+  mean = 1.0
+  HPD intervals:
+  HPD interval (0.9): 1.00000000000000..1.00000000000000
+
+
+  [who = bertand,reported_score = 810]
+
+  [who = cyril,reported_score = 443]
+
+  [who = arnold,reported_score = 700]
+
+  The Gamble model gamble_honest_successor.rkt - which was written 
+  for checking - has the same output: I.e. Cyril has no hits, nor did arnold
+*/
+go ?=>
+  member([Who,ReportedScore],[ [none, no_score],
+                               [lydia,375],
+                               [bertand,810],
+                               [cyril,443],
+                               [arnold,700]]),
+  println([who=Who,reported_score=ReportedScore]),
+  reset_store,
+  if Who == cyril ; Who == none then
+    NumRuns = 10_000 % tried even 10_000_000
+  else
+    NumRuns = 10_000
+  end,
+  run_model(NumRuns,$model(Who,ReportedScore),[mean,show_probs,show_hpd_intervals,hpd_intervals=[0.9]]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Who,ReportedScore) =>
+  N = 20,
+  Green = [2,7,7,12,12,17],
+  Brown = [3,8,8,13,13,18],
+
+  Rolls = [ uniform_draw(Green) + uniform_draw(Brown) : _ in 1..N].sum,
+
+  if Who == none then
+    add("rolls (no observation)", Rolls)
+  else
+    P = check1(Rolls==ReportedScore),
+    Diff = abs(Rolls - ReportedScore),
+    observe(Rolls == ReportedScore),
+    if observed_ok then
+      add("rolls",Rolls),
+      add("diff",Diff),
+      add("p",P)
+    end
+  end.
+
+
+/*
+  Only showing the possible total roll sums.
+
+  It's not necessarily exhaustive but we see that they all ends with 0 or 5 
+  (as commented in the site). For example 700 is not included but it's possible.
+
+  var : rolls
+  mean = 400.305
+  Probabilities:
+  400: 0.0681000000000000
+  405: 0.0651000000000000
+  410: 0.0647500000000000
+  395: 0.0637500000000000
+  390: 0.0612000000000000
+  415: 0.0575500000000000
+  385: 0.0566000000000000
+  420: 0.0522000000000000
+  380: 0.0502500000000000
+  425: 0.0467000000000000
+  375: 0.0444000000000000
+  430: 0.0409000000000000
+  370: 0.0395500000000000
+  435: 0.0368500000000000
+  365: 0.0331500000000000
+  440: 0.0301000000000000
+  360: 0.0279000000000000
+  355: 0.0228000000000000
+  445: 0.0225000000000000
+  350: 0.0177000000000000
+  450: 0.0173000000000000
+  455: 0.0132500000000000
+  345: 0.0115500000000000
+  460: 0.0094500000000000
+  340: 0.0090500000000000
+  335: 0.0069500000000000
+  465: 0.0060000000000000
+  470: 0.0040000000000000
+  330: 0.0039000000000000
+  325: 0.0033000000000000
+  480: 0.0027500000000000
+  475: 0.0022000000000000
+  320: 0.0022000000000000
+  485: 0.0013500000000000
+  315: 0.0012000000000000
+  310: 0.0009000000000000
+  490: 0.0006000000000000
+  305: 0.0004500000000000
+  300: 0.0004000000000000
+  500: 0.0003500000000000
+  295: 0.0002500000000000
+  495: 0.0001500000000000
+  290: 0.0001500000000000
+  285: 0.0001500000000000
+  515: 0.0000500000000000
+  510: 0.0000500000000000
+  HPD intervals:
+  HPD interval (0.9): 350.00000000000000..445.00000000000000
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(20_000,$model2,[mean,show_probs,show_hpd_intervals,hpd_intervals=[0.9]]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  N = 20,
+  Green = [2,7,7,12,12,17],
+  Brown = [3,8,8,13,13,18],
+
+  Rolls = [ uniform_draw(Green) + uniform_draw(Brown) : _ in 1..N].sum,
+  add("rolls",Rolls).

@@ -1,0 +1,135 @@
+/* 
+
+  Game show problem in Picat.
+
+  From https://www.youtube.com/watch?v=WWAoh3XfWzA
+  "A fun game show probability problem | Bonus cash stop riddle"
+  """
+  A fun probability problem for you! You've just won a game show and it's time to 
+  play the bonus round for some extra cash! You play a random game where you open 
+  up boxes and get the prize money inside until you open up a stop sign. How much 
+  do you expect to make from playing this game?
+  """
+
+  There are 5 boxes with the following:
+  - 1 * $10 
+  - 2 * $1000
+  - 1 * $10000
+  - stop sign  
+
+  You can draw until the stop sign and then you earn all the money 
+  you picked. There is no penalty to draw until stop sign.
+
+  Answer: Estimated value is $6005
+  Calculated by:
+     10*0.5 + 1000*0.5 + 1000*0.5 + 10000*0.5 = 6005
+  where 0.5 is the probability that the value is to the left 
+  of the stop sign, i.e. is selected.
+
+  Cf my Gamble model gamble_game_show_problem.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+game_show_problem_theoretical(Boxes) = Boxes.sum / 2.
+
+/*
+
+  boxes = [10,1000,1000,10000,0]
+  theoretical = 6005.0
+  var : total
+  Probabilities:
+  0: 0.1981500000000000
+  12010: 0.1967000000000000
+  1000: 0.0999000000000000
+  11010: 0.0996000000000000
+  11000: 0.0710500000000000
+  1010: 0.0673000000000000
+  2010: 0.0516000000000000
+  10000: 0.0513000000000000
+  12000: 0.0509000000000000
+  10: 0.0491000000000000
+  2000: 0.0328500000000000
+  10010: 0.0315500000000000
+  mean = 6017.91
+
+
+  boxes = [10,1000,1000,10000,12345,0]
+  theoretical = 12177.5
+  var : total
+  Probabilities:
+  0: 0.1702000000000000
+  24355: 0.1622000000000000
+  23355: 0.0655500000000000
+  1000: 0.0639500000000000
+  12345: 0.0349000000000000
+  11000: 0.0346000000000000
+  10000: 0.0339500000000000
+  10: 0.0339500000000000
+  13355: 0.0335000000000000
+  11010: 0.0335000000000000
+  13345: 0.0329000000000000
+  23345: 0.0325500000000000
+  12010: 0.0324000000000000
+  1010: 0.0322000000000000
+  24345: 0.0321500000000000
+  14355: 0.0321000000000000
+  2000: 0.0186000000000000
+  14345: 0.0180000000000000
+  12355: 0.0180000000000000
+  22355: 0.0176500000000000
+  2010: 0.0170500000000000
+  10010: 0.0167500000000000
+  12000: 0.0167000000000000
+  22345: 0.0166500000000000
+  mean = 12063.6
+
+*/
+go ?=>
+  member(Boxes,[[10,1000,1000,10000,0],[10,1000,1000,10000,12345,0]]),
+  println(boxes=Boxes),
+  println(theoretical=game_show_problem_theoretical(Boxes)),
+  reset_store,
+  run_model(20_000,$model(Boxes),[show_probs,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+  
+
+% Pick a box and continue until the stop box (value = 0) is picked
+% Note: Since we have duplicate values we use boxes indices
+% instead of the values which makes it slightly more elaborate
+pick_a_box(Boxes,BoxesIxLeft,ValSoFar) = Ret =>
+  Len = BoxesIxLeft.len,
+  if Len <= 1 then
+    Ret = ValSoFar
+  else
+    BoxIx = random_integer1(Len), % Pick an index
+    
+    % Lookup the value of this selected index    
+    Val = Boxes[BoxesIxLeft[BoxIx]],
+    
+    % Stop if stop box is selected or just the stop box is left
+    % (If the length is 1 then it must be the stop box)
+    if Val == 0 then
+      Ret = ValSoFar
+    else
+      NewBoxesIx = delete(BoxesIxLeft,BoxesIxLeft[BoxIx]),
+      Ret = pick_a_box(Boxes,NewBoxesIx,ValSoFar+Val)
+    end
+  end.
+
+model(Boxes) =>
+  Total = pick_a_box(Boxes,1..Boxes.len,0),
+ 
+  add("total",Total).
+

@@ -1,0 +1,111 @@
+/* 
+
+  Bayesian network in Picat.
+
+  From https://dtai.cs.kuleuven.be/problog/tutorial/mpe/01_bn.html
+
+  Exact probability from my Gamble model:
+
+  variable : burglary
+  #t: 0.7900459418070443
+  #f: 0.20995405819295562
+  mean: 0.7900459418070443
+
+  variable : earthquake
+  #f: 0.7914241960183768
+  #t: 0.20857580398162334
+  mean: 0.20857580398162334
+
+  variable : alarm
+  #t: 0.7105666156202143
+  #f: 0.28943338437978566
+  mean: 0.7105666156202143
+
+  variable : calls john
+  #f: 1.0
+  mean: 0 (0.0)
+
+  variable : calls mary
+  #t: 1.0
+  mean: 1.0
+
+  variable : calls bob
+  #t: 0.5973966309341501
+  #f: 0.4026033690658499
+  mean: 0.5973966309341501
+
+
+  This is a port of my Gamble model gamble_bayesian_network.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+  This model
+
+  var : burglary
+  Probabilities:
+  true: 0.7891174173392346
+  false: 0.2108825826607654
+
+  var : earthquake
+  Probabilities:
+  false: 0.7938036969539183
+  true: 0.2061963030460817
+
+  var : alarm
+  Probabilities:
+  true: 0.7073678729497527
+  false: 0.2926321270502473
+
+  var : calls(john)
+  Probabilities:
+  false: 1.0000000000000000
+
+  var : calls(mary)
+  Probabilities:
+  true: 1.0000000000000000
+
+  var : calls(bob)
+  Probabilities:
+  true: 0.5935954178599323
+  false: 0.4064045821400677
+
+*/
+go ?=>
+  reset_store,
+  run_model(30_000,$model,[show_probs,mean]),
+  fail,  
+  nl.
+go => true.
+  
+
+calls(X,Alarm) = cond(Alarm, flip(0.8),flip(0.1)).
+
+model() =>
+  Burglary   = flip(0.7),
+  Earthquake = flip(0.2),
+  Alarm      = cond( (Burglary, Earthquake), flip(0.9),
+                      cond( (Burglary, not Earthquake), flip(0.8),
+                           cond( (not Burglary, Earthquake), flip(0.1),
+                                false))),
+  CallsJohn  = calls(john,Alarm),
+  CallsMary  = calls(mary,Alarm),
+  CallsBob   = calls(bob,Alarm),
+  
+  observe(not CallsJohn, CallsMary),
+
+  if observed_ok  then
+    add("burglary",Burglary),
+    add("earthquake",Earthquake),        
+    add("alarm",Alarm),
+    add("calls(john)",CallsJohn),
+    add("calls(mary)",CallsMary),
+    add("calls(bob)",CallsBob),
+  end.

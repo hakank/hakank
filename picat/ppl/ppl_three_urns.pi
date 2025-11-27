@@ -1,0 +1,227 @@
+/* 
+
+  Three urns in Picat.
+
+  From Andreas Stuhlmüller 
+  "Modeling Cognition with Probabilistic Programs: Representations and Algorithms"
+  page 30f
+  """
+  We are presented with three opaque urns, each of which contains some unknown number of
+  red and black balls. We do not know the proportion of red balls in each urn, and
+  we don’t know how similar the proportions of red balls are between urns, but we
+  have reason to suspect that the urns could be similar, as they all were filled at the
+  same factory. We are asked to predict the proportion of red balls in the third urn
+  (1) before making any observations, 
+  (2) after observing 15 balls drawn from the first urn, 14 of which are red, and 
+  (3) after observing in addition 15 balls drawn from the second urn, only one 
+      of which is red.
+  """
+
+  Note: This model was written before I read the further in the text.
+
+  Assumptions:
+  - We replace the balls after each observation.
+  - The three urns share a common probability of the proportion of red balls
+    (p_red).
+  - We assume that the number of balls in each urn is distributed 
+    according to poisson 15.
+
+  One issue is how much we should assume before making any observations. 
+  Here I assume:
+  - there are at least 15 balls in urn 1 and at least 14 red balls in urn 1
+  - there are at least 15 balls in urn 2 and at least 1 red ball in urn 2
+  - there is at least one ball in urn 3
+
+  Cf my Gamble model gamble_three_urns.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  * 1) Number of red in urn 3 before any observations
+
+       question = 1
+       min_accepted_samples = 1000
+       var : p red
+       mean = 0.50092
+
+       var : num balls 1
+       mean = 17.956
+
+       var : num balls 2
+       mean = 17.727
+
+       var : num balls 3
+       mean = 15.104
+
+       var : urn 1 red
+       mean = 8.931
+
+       var : urn 2 red
+       mean = 8.938
+
+       var : urn 3 red
+       mean = 7.486
+
+       var : p urn 1 red
+       mean = 0.497189
+
+       var : p urn 2 red
+       mean = 0.5043
+
+       var : p urn 3 red
+       mean = 0.494376
+
+
+  * 2) After observing the number of red balls in urn 1 as 14
+       what is the proportion of red in urn 3 (PUrn3Red)?
+
+       question = 2
+       min_accepted_samples = 1000
+       var : p red
+       mean = 0.769044
+
+       var : num balls 1
+       mean = 17.541
+
+       var : num balls 2
+       mean = 17.936
+
+       var : num balls 3
+       mean = 14.744
+
+       var : urn 1 red
+       mean = 14.0
+
+       var : urn 2 red
+       mean = 13.815
+
+       var : urn 3 red
+       mean = 11.259
+
+       var : p urn 1 red
+       mean = 0.812521
+
+       var : p urn 2 red
+       mean = 0.769626
+
+       var : p urn 3 red
+       mean = 0.763576
+
+
+  * 3) After also observing the number of red balls in urn 2 as 14 
+       in 15 drawn balls, what is the proportion of 
+       red in urn 3 (PUrn3Red)?
+
+       Note this is quite hard for Picat PPL so just a few (20) acceptable
+       samples are required.
+
+       question = 3
+       min_accepted_samples = 20
+       var : p red
+       mean = 0.42056
+
+       var : num balls 1
+       mean = 21.3
+
+       var : num balls 2
+       mean = 16.25
+
+       var : num balls 3
+       mean = 13.95
+
+       var : urn 1 red
+       mean = 14.0
+
+       var : urn 2 red
+       mean = 1.0
+
+       var : urn 3 red
+       mean = 6.15
+
+       var : p urn 1 red
+       mean = 0.674883
+
+       var : p urn 2 red
+       mean = 0.0618718
+
+       var : p urn 3 red
+       mean = 0.424687
+
+
+
+*/
+go ?=>
+  AcceptedSamples = [1000,1000,20],
+  member(Question,1..3),
+  println(question=Question),
+  reset_store,
+  run_model(10_000,$model(Question),[mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=AcceptedSamples[Question] % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Question) =>
+  % The common - but unknown - proportion of red in the urns.
+  PRed = beta_dist(1,1),
+
+  % Number of balls in each urns
+  % Ensure at least one ball.
+  [NumBalls1,NumBalls2,NumBalls3] = poisson_gt0_dist_n(15,3),
+  observe(NumBalls1 >= 15),
+  observe(NumBalls2 >= 15),
+  observe(NumBalls3 >= 1),
+
+  % Number of red balls (== true)
+  Urn1Red = binomial_dist_smart(NumBalls1,PRed),
+  Urn2Red = binomial_dist_smart(NumBalls2,PRed),
+  Urn3Red = binomial_dist_smart(NumBalls3,PRed),
+
+  % The proportion of red in each ball
+  PUrn1Red = Urn1Red / NumBalls1,
+  PUrn2Red = Urn2Red / NumBalls2,
+  PUrn3Red = Urn3Red / NumBalls3,
+  
+  % 2) After observing the number of red balls in urn 1 as 14
+  %    what is the proportion of red in urn 3 (p_urn3_red)?
+  if Question == 2 ; Question == 3 then
+    observe(Urn1Red == 14)
+  end,
+
+  % 3) After also observing the number of red balls in urn 2 as 1 in 15,
+  %    what is the proportion of red in urn 3 (p_urn3_red)?
+  if Question == 3 then
+    observe(Urn2Red == 1)
+  end,
+  
+  if observed_ok then
+    add("p red",PRed),
+    add("num balls 1",NumBalls1),
+    add("num balls 2",NumBalls2),
+    add("num balls 3",NumBalls3),
+
+    add("urn 1 red",Urn1Red),
+    add("urn 2 red",Urn2Red),
+    add("urn 3 red",Urn3Red),
+
+    add("p urn 1 red",PUrn1Red),
+    add("p urn 2 red",PUrn2Red),
+    add("p urn 3 red",PUrn3Red),
+
+  end.

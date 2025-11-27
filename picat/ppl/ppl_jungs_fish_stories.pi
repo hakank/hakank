@@ -1,0 +1,335 @@
+/* 
+
+  Jung's fish stories (coincidences)  in Picat.
+
+ From http://www.dartmouth.edu/~chance/chance_news/recent_news/chance_news_7.10.html#Math%20and%20Media
+  """
+  As part of the symposium, Persi Diaconis gave a talk on coincidences. He discussed a 
+  number of examples from his classic paper with Fred Mosteller, "Methods for Studying
+  Coincidence", Journal of the American Statistical Association Dec. 1989, Vol. 84, 
+  No. 408, 853-861. He started with an example from the work of the well-known 
+  psychiatrist C. G. Jung. Jung felt that coincidences occurred far to often to be 
+  attributed to chance. Diacoinis considered one of Jung's examples where Jung 
+  observed, in one day, six incidences having to do with fish. To show that this could
+  occur by chance, Diaconis suggested that we model the occurrence of fish stories by 
+  a Poisson process over a period of six months with a rate of one fish story per day.
+  Then we plot the times at which fish stories occur and move a 24-hour window over 
+  this period to see if the window ever includes 6 or more events, i.e., fish stories.
+  Diaconis remarks that finding the probability of this happening is not an easy 
+  problem but can be done. The answer is that there is about a 22% chance that the 
+  window will cover 6 or more events.
+  """
+
+  I think it's this talk by Persi Diaconis:
+  "Persi Diaconis On coincidences"
+  https://www.youtube.com/watch?v=EVGATVaKK7M&list=PL7LlTeoYa2BuEpOs9SOXnSwVldjkWZJSt
+  @0:40ff
+
+  This is also mentioned in https://www.edge.org/response-detail/10211
+  """
+  Chance as an Unseen Force
+
+  Eighty-three years later Carl Jung published a similar idea in his well-known essay 
+  "Synchronicity, An Acausal Connecting Principle." He postulated the existence of a 
+  hidden force that is responsible for the occurrence of seemingly related events that 
+  otherwise appear to have no causal connection. The initial story of the six fish 
+  encounters is Jung's, taken from his book. He finds this string of events unusual, 
+  too unusual to be ascribable to chance. He thinks something else must be going on—
+  and labels it the acausal connecting principle.
+
+  Persi Diaconis, Stanford Professor and former professor of mine, thinks critically 
+  about Jung's example: suppose we encounter the concept of fish once a day on average 
+  according to what statisticians call a "Poisson process" (another fish reference!). 
+  The Poisson process is a standard mathematical model for counts, for example radioactive 
+  decay seems to follow a Poisson process. The model presumes a certain fixed rate at 
+  which observations appear on average and otherwise they are random. So we can consider 
+  a Poisson process for Jung's example with a long run average rate of one observation 
+  per 24 hours and calculate the probability of seeing six or more observations of 
+  fish in a 24 hour window. Diaconis finds the chance to be about 22%. Seen from this 
+  perspective, Jung shouldn't have been surprised.
+  """
+
+  I cannot reproduce Diaconi's result of a probability of 22% with >= 6 fish 
+  stories. All four models below give a probability of about 10%, which 
+  still suggests that Jung shouldn't be surprised. 
+  Note that all these models has the assumption that a fish story per
+  per day is according to a Poisson(1) distribution.
+
+  A reminder about the Poissson(1) distribution (PDF):
+  Picat> pdf_all($poisson_dist(1),0.001,0.99999999).printf_list
+   0 0.367879441171443 
+   1 0.367879441171442 
+   2 0.183939720585721 
+   3 0.06131324019524 
+   4 0.01532831004881 
+   5 0.003065662009762 
+   6 0.000510943668294 
+   7 0.000072991952613 
+   8 0.000009123994077 
+   9 0.00000101377712 
+  10 0.000000101377712 
+  11 0.000000009216156 
+
+
+
+  Cf my Gamble model gamble_jungs_fish_stories.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  First a very simple model:
+  We assume a poisson process with rate 1.
+  What is the probability that there are 6 or more fish stories during this day:
+  Quite unlikely:
+
+  var : num fish stories
+  Probabilities:
+  1: 0.3750000000000000
+  0: 0.3637000000000000
+  2: 0.1874000000000000
+  3: 0.0554000000000000
+  4: 0.0148000000000000
+  5: 0.0033000000000000
+  6: 0.0004000000000000
+  mean = 0.9941
+
+  var : p
+  Probabilities:
+  false: 0.9996000000000000
+  true: 0.0004000000000000
+  mean = [false = 0.9996,true = 0.0004]
+
+  var : p2
+  Probabilities:
+  0.106953: 1.0000000000000000
+  mean = 0.106953
+
+  The exact probability of >= 6 occurrences on a day is
+  Picat> X=1-poisson_dist_cdf(1,5)
+  X = 0.000594184817582
+
+  This is just for one day. Since the range is over 6 months (we assume 30 days 
+  in each month), the probability is
+  Picat> X=0.000594184817582 * 6 * 30
+  X = 0.10695326716476
+  i.e. about 10.7%, as shown in the p2 variable.
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  NumFishStories = poisson_dist(1),
+
+  P = check(NumFishStories >= 6),
+  P2 = 6 * 30 * (1 - poisson_dist_cdf(1,5)),
+  
+  add("num fish stories",NumFishStories),
+  add("p",P),
+  add("p2",P2).
+
+
+/*
+  Here is a more elaborate model where we simulate each of the 30 days
+  a day with a poisson distribution with rate 1, and checks
+
+  The probability of >= 6 fish stories in some of the 30 days is about 
+  10.4%, still far from Diaconis' 22%:
+
+  var : fs
+  Probabilities:
+  0: 0.8957000000000001
+  1: 0.0981000000000000
+  2: 0.0062000000000000
+  mean = 0.1105
+
+  var : p
+  Probabilities:
+  false: 0.8957000000000001
+  true: 0.1043000000000000
+  mean = [false = 0.8957,true = 0.1043]
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  NumDays = 6*30, % Number of days
+
+  % Number of fish stories per day
+  FishStories = poisson_dist_n(1,NumDays),
+  
+  % Are there any days with >= 6 fish stories?
+  FS = [cond(S >= 6,1,0) : S in FishStories].sum,
+  P = check(FS > 0),
+
+  add("fs",FS),
+  add("p",P).
+
+
+/*
+
+  A variant of model 2.
+  I added max fish stories per day just for fun. :-)
+
+  var : num at least six fish stories per day 
+  Probabilities:
+  0: 0.8989000000000000
+  1: 0.0944000000000000
+  2: 0.0066000000000000
+  3: 0.0001000000000000
+  mean = 0.1079
+
+  var : max fish stories per day 
+  Probabilities:
+  4: 0.4862000000000000
+  5: 0.3791000000000000
+  6: 0.0861000000000000
+  3: 0.0336000000000000
+  7: 0.0135000000000000
+  8: 0.0013000000000000
+  9: 0.0002000000000000
+  mean = 4.5644
+
+  var : p
+  Probabilities:
+  false: 0.8989000000000000
+  true: 0.1011000000000000
+  mean = [false = 0.8989,true = 0.1011]
+
+
+*/
+go3 ?=>
+  reset_store,
+  run_model(10_000,$model3,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+  
+model3() =>
+  NumDays = 6*30, % 6 months
+
+  % Number of fish stories per day
+  FishStories = poisson_dist_n(1,NumDays),
+
+  FS6 = [ cond(FishStories[I] >= 6, 1,0) : I in 1..NumDays],
+
+  MaxFS6 = FishStories.max,
+
+  NumFS6 = FS6.sum,
+
+  P = check(NumFS6 > 0),
+
+  add("num at least six fish stories per day ",NumFS6),
+  add("max fish stories per day ",MaxFS6),
+  add("p",P).
+
+
+/*
+  And a fourth model: For each chunks of 30 days, check if there are any occurrence of >= 6.
+  About 10%, still too low compared to Diaconis' 22%: 
+
+  var : num at least six fish stories per day 
+  Probabilities (truncated):
+  0: 0.8972000000000000
+  30: 0.0665000000000000
+  60: 0.0025000000000000
+  27: 0.0016000000000000
+  .........
+  40: 0.0001000000000000
+  39: 0.0001000000000000
+  36: 0.0001000000000000
+  32: 0.0001000000000000
+  mean = 2.7579
+
+  var : max fish stories per day 
+  Probabilities:
+  4: 0.4933000000000000
+  5: 0.3710000000000000
+  6: 0.0874000000000000
+  3: 0.0329000000000000
+  7: 0.0143000000000000
+  8: 0.0011000000000000
+  mean = 4.5602
+
+  var : p
+  Probabilities:
+  false: 0.8972000000000000
+  true: 0.1028000000000000
+  mean = [false = 0.8972,true = 0.1028]
+
+*/
+go4 ?=>
+  reset_store,
+  run_model(10_000,$model4,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go4 => true.
+  
+  
+model4() =>
+  NumDays = 6*30, % 6 months
+
+  % Number of fish stories per day
+  FishStories = poisson_dist_n(1,NumDays),
+
+  % Check each chunk of 30 days during this period
+  FS6 = [ [cond(CC >= 6, 1,0) : CC in C]  : C in sublists(FishStories,30) ],
+
+  MaxFS6 = FishStories.max,
+
+  NumFS6 = FS6.sum,
+
+  P = check(NumFS6 > 0),
+
+  add("num at least six fish stories per day ",NumFS6),
+  add("max fish stories per day ",MaxFS6),
+  add("p",P).

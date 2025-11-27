@@ -1,0 +1,592 @@
+/* 
+
+  n heads in a row after k tosses in Picat.
+
+  Inspired by (and extended)
+  https://www.reddit.com/r/learnmath/comments/1gi6kuf/whats_the_probability_to_get_10_heads_in_a_row_if/
+  """
+  What’s the probability to get 10 heads in a row if you flip a coin 500 times? How would you 
+  generalize the method? 
+
+  Hi!
+
+  I came across a short where a person tried flipping a coin until they got 10 heads in 
+  a row. It took them 486 attempts. I do not care about how real or fake the video is, but 
+  it did made me ask a question. How would you calculate the chances of getting 10 heads in 
+  a row in 486 flips, and more generally, how to calculate the probability of x events(with 
+  a probability of say p, to happen independently) happening y times in a row with n cases?
+  """
+
+
+  The probability of getting a run of 10 heads in 486 flips is 
+  Picat> X = probability_of_run_size(486,1/2,10)
+  X = 0.20910597145616
+
+  The mean value of tosses needed to get 10 heads in a row is
+  Picat> X = expected_tosses_needed_for_n_heads(10)
+  X = 2046
+
+  Here I explore a related question:
+  * What is the probability of getting n heads in a row after exact k tosses with probability 
+    p of getting heads?
+
+  For practical/computational purposes we have to give a some maximum limit, e.g. 
+  m = 20*expected value of n tosses in a row.
+
+  Thus, the PDF etc can be used in two cases:
+  - The probability of n heads after exactly k tosses in max number of tosses
+  - The probability of n heads after exactly k tosses (ignoring - kind of - max number of tosses)
+
+  The PDF is
+     prob_n_heads_after_k_in_max_m_tosses_dist_pdf(P,M,N,K)
+  p: probability of tossing heads
+  m: maximum number of tosses
+  n: the number of heads in a row to study
+  k: the number of tosses when the n number of heads occurred.
+
+
+  Let's use a simpler example to explore this: 
+  What is the probability of getting 3 heads in a rows?
+
+  First, the (total) probability of getting 3 heads in a row in max 21 tosses is
+  about 0.804:
+  Picat> X = probability_of_run_size(21,1/2,3)             
+  X = 0.804141998291016
+
+  We can ask questions such as:
+  What is the probability of getting a row of 3 heads come _after exactly_ 7 tosses (with 
+  max 21 tosses)?
+
+  p: probability of tossing heads: 1/2
+  m: maximum number of tosses: 21
+  n: the number of heads in a row to study: 3
+  k: the number of tosses when the n number of heads occurred: 7
+
+  > (prob-n-heads-after-k-in-max-m-tosses-pdf 1/2 21 3 7)
+  Picat> X = prob_n_heads_after_k_in_max_m_tosses_dist_pdf(1/2,21,3,7)
+  X = 0.0546875
+
+  Picat> [V=prob_n_heads_after_k_in_max_m_tosses_dist_pdf(1/2,21,3,V) : V in 0..22].printf_list
+   0  0 
+   1  0 
+   2  0 
+   3 0.125 
+   4 0.0625 
+   5 0.0625 
+   6 0.0625 
+   7 0.0546875 
+   8 0.05078125 
+   9 0.046875 
+  10 0.04296875 
+  11 0.03955078125 
+  12 0.036376953125 
+  13 0.033447265625 
+  14 0.03076171875 
+  15 0.028289794921875 
+  16 0.026016235351562 
+  17 0.02392578125 
+  18 0.022003173828125 
+  19 0.020235061645508 
+  20 0.018609046936035 
+  21 0.01711368560791 
+  22 0.195858001708984 
+
+  Note: The last entry (k=22) is the probability of NOT getting 3 heads in a rows using
+        max 21 tosses.
+
+  Here is the CDF:
+
+  Picat> [V=prob_n_heads_after_k_in_max_m_tosses_dist_cdf(1/2,21,3,V) : V in 0..22].printf_list
+   0  0 
+   1  0 
+   2  0 
+   3 0.125 
+   4 0.1875 
+   5 0.25 
+   6 0.3125 
+   7 0.3671875 
+   8 0.41796875 
+   9 0.46484375 
+  10 0.5078125 
+  11 0.54736328125 
+  12 0.583740234375 
+  13 0.6171875 
+  14 0.64794921875 
+  15 0.676239013671875 
+  16 0.702255249023438 
+  17 0.726181030273438 
+  18 0.748184204101562 
+  19 0.76841926574707 
+  20 0.787028312683105 
+  21 0.804141998291016 
+  22  1 
+
+
+  Some quantiles:
+  0.0001: 3
+  0.001: 3
+  0.01: 3
+  0.05: 3
+  0.25: 5
+  0.3: 6
+  0.4: 8
+  0.5: 10
+  0.75: 19
+  0.8: 21
+  0.84: 22
+  0.9: 22
+  0.95: 22
+  0.99: 22
+  0.999: 22
+  0.9999: 22
+  0.99999: 22
+
+  Note that everything larger than 21 (max number of tosses), the number 21+1=22 is
+  used. 
+
+  For the more general question of "all" probabilities of a specific n, then just 
+  make m (much) larger, for example m=20*expectation (n=3) = 20*14 = 280:
+
+  PDF
+  (0 0)
+  (1 0)
+  (2 0)
+  (3 0.125)
+  (4 0.0625)
+  (5 0.0625)
+  (6 0.0625)
+  (7 0.0546875)
+  (8 0.05078125)
+  (9 0.046875)
+  (10 0.04296875)
+  ...
+  (78 0.00014442822418039307)
+  (79 0.00013282245990704932)
+  (80 0.00012214929565099986)
+  (81 0.0001123337908248114)
+  (82 0.00010330702681353683)
+  (83 9.500562306934624e-5)
+  (84 8.737129209115876e-5)
+  (85 8.035043016460804e-5)
+  ...
+  276 9.042796130921462e-12)
+  (277 8.316147576852854e-12)
+  (278 7.647890046255897e-12)
+  (279 7.033331433706345e-12)
+  (280 6.4681566755237534e-12)
+  (281 7.402498107604121e-11)
+  sum: 1
+
+  CDF
+  (0 0)
+  (1 0)
+  (2 0)
+  (3 0.125)
+  (4 0.1875)
+  (5 0.25)
+  (6 0.3125)
+  (7 0.3671875)
+  (8 0.41796875)
+  (9 0.46484375)
+  (10 0.5078125)
+  ...
+  (78 0.9983470875709834)
+  (79 0.9984799100308904)
+  (80 0.9986020593265414)
+  (81 0.9987143931173663)
+  (82 0.9988177001441798)
+  (83 0.9989127057672491)
+  (84 0.9990000770593404)
+  (85 0.9990804274895049)
+  ...
+  (275 0.9999999998874667)
+  (276 0.9999999998965095)
+  (277 0.9999999999048257)
+  (278 0.9999999999124736)
+  (279 0.9999999999195068)
+  (280 0.999999999925975)
+  (281 1.0)
+
+  Quantile
+  0.0001: 3
+  0.001: 3
+  0.01: 3
+  0.05: 3
+  0.25: 5
+  0.3: 6
+  0.4: 8
+  0.5: 10
+  0.75: 19
+  0.8: 21
+  0.84: 24
+  0.9: 30
+  0.95: 38
+  0.99: 57
+  0.999: 84
+  0.9999: 112
+  0.99999: 139
+  0.999999: 167
+
+
+  Cf my Gamble model gamble_n_heads_in_a_row_after_k_tosses.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+
+/*
+  probability_of_run_size(486,1/2,10) = 0.209106
+  [p = 0.5,m = 21,n = 3]
+  prob_n_heads_after_k_in_max_m_tosses_list(0.5,21,3)
+  [0,0,0,0.125,0.1875,0.25,0.3125,0.3671875,0.417969,0.464844,0.5078125,0.547363,0.58374,0.6171875,0.647949,0.676239,0.702255,0.726181,0.748184,0.768419,0.787028,0.804142]
+
+  PDF:
+   0: 0.000000000000000
+   1: 0.000000000000000
+   2: 0.000000000000000
+   3: 0.125000000000000
+   4: 0.062500000000000
+   5: 0.062500000000000
+   6: 0.062500000000000
+   7: 0.054687500000000
+   8: 0.050781250000000
+   9: 0.046875000000000
+  10: 0.042968750000000
+  11: 0.039550781250000
+  12: 0.036376953125000
+  13: 0.033447265625000
+  14: 0.030761718750000
+  15: 0.028289794921875
+  16: 0.026016235351562
+  17: 0.023925781250000
+  18: 0.022003173828125
+  19: 0.020235061645508
+  20: 0.018609046936035
+  21: 0.017113685607910
+  22: 0.195858001708984
+
+  CDF:
+   0: 0.000000000000000
+   1: 0.000000000000000
+   2: 0.000000000000000
+   3: 0.125000000000000
+   4: 0.187500000000000
+   5: 0.250000000000000
+   6: 0.312500000000000
+   7: 0.367187500000000
+   8: 0.417968750000000
+   9: 0.464843750000000
+  10: 0.507812500000000
+  11: 0.547363281250000
+  12: 0.583740234375000
+  13: 0.617187500000000
+  14: 0.647949218750000
+  15: 0.676239013671875
+  16: 0.702255249023438
+  17: 0.726181030273438
+  18: 0.748184204101562
+  19: 0.768419265747070
+  20: 0.787028312683105
+  21: 0.804141998291016
+  22: 1.000000000000000
+
+  Quantile:
+  0.000001 = 3
+  0.00001 = 3
+  0.001 = 3
+  0.01 = 3
+  0.025 = 3
+  0.05 = 3
+  0.25 = 5
+  0.5 = 10
+  0.75 = 19
+  0.84 = 22
+  0.975 = 22
+  0.99 = 22
+  0.999 = 22
+  0.99999 = 22
+  0.999999 = 22
+
+  (prob_n_heads_after_k_in_max_m_tosses_dist_cdf(1/2,486,10,486)) = 0.209106
+
+  mean value of getting 10 heads in a row = 2046
+
+  0.999999 quantile for 3 heads in a row = 167
+
+  M for 20*mean(N)
+   1:    2 est:    40
+   2:    6 est:   120
+   3:   14 est:   280
+   4:   30 est:   600
+   5:   62 est:  1240
+   6:  126 est:  2520
+   7:  254 est:  5080
+   8:  510 est: 10200
+   9: 1022 est: 20440
+  10: 2046 est: 40920
+
+  expected_tosses_needed_for_n_successes(10,0.5)
+  2046.0
+
+  expected_tosses_needed_for_n_successes(20,0.8)
+  428.681
+
+
+
+*/
+go ?=>
+
+  % 0.20910597145616058
+  println("probability_of_run_size(486,1/2,10)"=probability_of_run_size(486,1/2,10)),
+  P = 1/2,
+  M = 21,
+  N = 3,
+  println([p=P,m=M,n=N]),
+  println($prob_n_heads_after_k_in_max_m_tosses_list(P,M,N)),
+  println(prob_n_heads_after_k_in_max_m_tosses_list(P,M,N)),
+  nl,
+  println("PDF:"),
+  foreach(K in 0..M+1) 
+    printf("%2d: %0.15f\n",K,prob_n_heads_after_k_in_max_m_tosses_dist_pdf(P,M,N,K))
+  end,
+  nl,
+  println("CDF:"),
+  foreach(K in 0..M+1)
+    printf("%2d: %0.15f\n",K,prob_n_heads_after_k_in_max_m_tosses_dist_cdf(P,M,N,K))  
+  end,
+  nl,
+  println("Quantile:"),
+  foreach(Q in quantile_qs())
+    println(Q=prob_n_heads_after_k_in_max_m_tosses_dist_quantile(P,M,N,Q))
+  end,
+  nl,
+  % 0.209106
+  println("(prob_n_heads_after_k_in_max_m_tosses_dist_cdf(1/2,486,10,486))"=(prob_n_heads_after_k_in_max_m_tosses_dist_cdf(1/2,486,10,486))),
+  nl,
+
+  % 2046
+  println("mean value of getting 10 heads in a row"=expected_tosses_needed_for_n_heads(10)),
+  nl,
+
+  % 167
+  println("0.999999 quantile for 3 heads in a row"=
+      prob_n_heads_after_k_in_max_m_tosses_dist_quantile(1/2,(20* expected_tosses_needed_for_n_heads(3)),3,0.999999)),
+  nl,
+  println("M for 20*mean(N)"),
+  foreach(I in 1..10)
+    printf("%2d: %4d est: %5d\n",I,expected_tosses_needed_for_n_heads(I),(20* expected_tosses_needed_for_n_heads(I)))
+  end,
+  nl,
+  % 2046.0 (as above)
+  println($expected_tosses_needed_for_n_successes(10, 0.5)),
+  println(expected_tosses_needed_for_n_successes(10, 0.5)),
+  nl,
+  % expected_tosses_needed_for_n_successes(20,0.8)
+  % 428.681
+  println($expected_tosses_needed_for_n_successes(20, 0.8)),
+  println(expected_tosses_needed_for_n_successes(20, 0.8)),
+
+  nl.
+go => true.
+
+
+/*
+  [n = 10,limit = 486,use_limit = true]
+  var : len
+  Probabilities (truncated):
+  487: 0.7946000000000000
+  128: 0.0012000000000000
+  155: 0.0011000000000000
+  10: 0.0011000000000000
+  .........
+  33: 0.0001000000000000
+  29: 0.0001000000000000
+  20: 0.0001000000000000
+  17: 0.0001000000000000
+  mean = 436.763
+  HPD intervals:
+  HPD interval (0.84): 374.00000000000000..487.00000000000000
+  HPD interval (0.99): 32.00000000000000..487.00000000000000
+  HPD interval (0.999999): 10.00000000000000..487.00000000000000
+
+  var : theoretical mean
+  Probabilities:
+  2046: 1.0000000000000000
+  mean = 2046.0
+
+  var : p
+  Probabilities:
+  false: 0.7946000000000000
+  true: 0.2054000000000000
+  mean = 0.2054
+
+  var : theoretical p
+  Probabilities:
+  0.209106: 1.0000000000000000
+  mean = 0.209106
+
+  [n = 4,limit = 21,use_limit = true]
+  var : len
+  Probabilities (truncated):
+  22: 0.5085000000000000
+  4: 0.0623000000000000
+  6: 0.0327000000000000
+  5: 0.0323000000000000
+  .........
+  17: 0.0209000000000000
+  20: 0.0204000000000000
+  19: 0.0187000000000000
+  21: 0.0177000000000000
+  mean = 16.6573
+  HPD intervals:
+  HPD interval (0.84): 8.00000000000000..22.00000000000000
+  HPD interval (0.99): 4.00000000000000..22.00000000000000
+  HPD interval (0.999999): 4.00000000000000..22.00000000000000
+
+  var : theoretical mean
+  Probabilities:
+  30: 1.0000000000000000
+  mean = 30.0
+
+  var : p
+  Probabilities:
+  false: 0.5085000000000000
+  true: 0.4915000000000000
+  mean = 0.4915
+
+  var : theoretical p
+  Probabilities:
+  0.496924: 1.0000000000000000
+  mean = 0.496924
+
+  * Skipping the limit (UseLimit=false) for n=10 gives a wide range of
+    extremes. Using 10000 samples gives that it might take as long as 20579 tosses 
+    (in theory in can take "forever").
+    Note that the PDF, CDF, quantiles above handles this as well, just pick a large
+    enough m, e.g. 20*expected value
+
+
+  [n = 10,limit = 486,use_limit = false]
+  var : len
+  Probabilities (truncated):
+  10: 0.0013000000000000
+  350: 0.0012000000000000
+  199: 0.0012000000000000
+  123: 0.0012000000000000
+  .........
+  107: 0.0001000000000000
+  32: 0.0001000000000000
+  22: 0.0001000000000000
+  19: 0.0001000000000000
+  mean = 1989.78
+  HPD intervals:
+  HPD interval (0.84): 10.00000000000000..3622.00000000000000
+  HPD interval (0.99): 10.00000000000000..8911.00000000000000
+  HPD interval (0.999999): 10.00000000000000..17435.00000000000000
+
+  var : theoretical mean
+  Probabilities:
+  2046: 1.0000000000000000
+  mean = 2046.0
+
+  var : p
+  Probabilities:
+  false: 0.7890000000000000
+  true: 0.2110000000000000
+  mean = 0.211
+
+  var : theoretical p
+  Probabilities:
+  0.209106: 1.0000000000000000
+  mean = 0.209106
+
+  [n = 3,limit = 21,use_limit = false]
+  var : len
+  Probabilities (truncated):
+  3: 0.1284000000000000
+  5: 0.0649000000000000
+  6: 0.0638000000000000
+  4: 0.0609000000000000
+  .........
+  77: 0.0001000000000000
+  72: 0.0001000000000000
+  69: 0.0001000000000000
+  60: 0.0001000000000000
+  mean = 13.9003
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..24.00000000000000
+  HPD interval (0.99): 3.00000000000000..55.00000000000000
+  HPD interval (0.999999): 3.00000000000000..123.00000000000000
+
+  var : theoretical mean
+  Probabilities:
+  14: 1.0000000000000000
+  mean = 14.0
+
+  var : p
+  Probabilities:
+  true: 0.8062000000000000
+  false: 0.1938000000000000
+  mean = 0.8062
+
+  var : theoretical p
+  Probabilities:
+  0.804142: 1.0000000000000000
+  mean = 0.804142
+
+*/
+go2 ?=>
+  member([N,Limit,UseLimit],[[10,486,true],
+                             [4,21,true],
+                             [10,486,false],
+                             [3,21,false]]),
+  println([n=N,limit=Limit,use_limit=UseLimit]),
+  reset_store,
+  run_model(10_000,$model2(N,Limit,UseLimit),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.99,0.999999]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+
+f2(C,H,Prob,N,UseLimit,Limit) = Res =>
+  if H == N ; (UseLimit == true, C > Limit) then
+    Res = C
+  else
+    Res = f2(C+1,cond(flip(Prob)==true,H+1,0),Prob,N,UseLimit,Limit)
+  end.
+
+
+model2(N,Limit,UseLimit) =>
+  Prob = 1/2,
+  
+  %  The theoretical probability of getting n heads in atmost limit tosses
+  TheoreticalP = probability_of_run_size(Limit,Prob,N),
+  
+  % The theoretical probability of getting n heads in atmost limit tosses
+  TheoreticalMean = expected_tosses_needed_for_n_heads(N),
+
+  % Simulate the number of tosses required to get n heads
+  Len = f2(0,0,Prob,N,UseLimit,Limit),
+  
+  P = check(Len <= Limit),
+
+  add("len",Len),
+  add("theoretical mean",TheoreticalMean),
+  add("p",P),
+  add("theoretical p",TheoreticalP).
+
+

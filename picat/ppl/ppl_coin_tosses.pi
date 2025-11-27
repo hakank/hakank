@@ -1,0 +1,165 @@
+/* 
+
+  Coin tosses in Picat.
+
+  https://edu.swi-prolog.org/mod/assign/view.php?id=254&forceview=1
+  """
+  Coin tosses
+
+  http://cplint.eu/p/coin_tosses.swinb
+
+  Coin tosses
+
+  Consider a process where you repeatedly toss coins and record the results.
+
+  After each toss, you continue tossing with probability 0.8.
+
+  Write a predicate tosses(Coin,L) that, given an initial coin id Coin, returns in 
+  L the list of results of coin tosses obtained using the process above.
+
+  Moreover, write a predicate length_tosses(N) that returns the number of coin tosses.
+
+  Compute the probability of the sequence [h,h,h] using MCINTYRE.
+
+  Compute the probability of the sequence [h,h,h,h,h] given that the subsequence [h,h,h] 
+  was observed using rejection sampling and Metropolis Hastings.
+
+  Compute the probability of the sequences of 10 coin tosses using MCINTYRE.
+
+  Compute the expected length of the sequences of coin tosses using MCINTYRE.
+  """ 
+
+  Note: The cplint version (corrected by Fabrizio Riguzzi) 
+  at http://cplint.eu/p/coin_tosses_hakank_rzf.swinb
+  give another solutions (note that all are sampled result, i.e. not exact)
+   - first problem: probability of the sequence [h,h,h] -> 0.015
+   - second problem: probability of the sequence [h,h,h,h,h] given that the subsequence 
+     [h,h,h] -> about 0.03
+   - third problem: probability of the sequences of 10 coin tosses -> about 0.026
+   - fourth problem: expected length of the sequences of coin tosses -> about 4.
+
+  
+  Experiment 1 answers the first, third, and fourth problem, whereas experiment 2 answers the
+  second problem (since we have to do an observation).
+
+   - first problem: probability of the sequence [h,h,h]: 0.018
+   - second problem: probability of the sequence [h,h,h,h,h] given that 
+     the subsequence [h,h,h] occurred: 0.0333
+   - third problem: probability of the sequences of 10 coin tosses:  0.0267
+   - fourth problem: expected length of the sequences of coin tosses: 4.9
+
+
+  Cf my Gamble model gamble_coin_tosses.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  experiment = 1
+  var : three head
+  Probabilities:
+  false: 0.9842000000000000
+  true: 0.0158000000000000
+  mean = [false = 0.9842,true = 0.0158]
+
+  var : toss len
+  Probabilities (truncated):
+  1: 0.1969000000000000
+  2: 0.1651000000000000
+  3: 0.1249000000000000
+  4: 0.0945000000000000
+  .........
+  38: 0.0001000000000000
+  37: 0.0001000000000000
+  36: 0.0001000000000000
+  32: 0.0001000000000000
+  mean = 5.0305
+
+  var : toss len == 10
+  Probabilities:
+  false: 0.9733000000000001
+  true: 0.0267000000000000
+  mean = [false = 0.9733,true = 0.0267]
+
+
+  experiment = 2
+  var : fiveHeadGivenHHH
+  Probabilities:
+  false: 0.9690461149715730
+  true: 0.0309538850284270
+  mean = [false = 0.969046,true = 0.0309539]
+
+*/
+go ?=>
+  member(Experiment,1..2),
+  println(experiment=Experiment),
+  reset_store,
+  run_model(10_000,$model(Experiment),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+
+toss_a(T,A) = Res=>
+  R = categorical([0.5,0.5],[head,tail]),
+  if T == 0 then
+    Res = toss_a(T+1,A++[R])
+  else
+    if flip(0.8) == true then
+      Res = toss_a(T+1,A++[R])
+    else
+      Res = A
+    end
+  end.
+
+model(Experiment) =>
+  Tosses = toss_a(0,[]),
+  TossLen = Tosses.len,
+  
+  % Exactly 3 heads
+  if TossLen >= 3 then
+    ThreeHead = check( (TossLen == 3,
+                        Tosses[1] == head,
+                        Tosses[2] == head,
+                        Tosses[3] == head
+                        )),
+  else
+    ThreeHead = false
+  end,
+    
+  % For experiment 2: given 3 heads, what's the probability of exactly 5 heads
+  FiveHeadGivenHHH = false,
+  if Experiment == 2, TossLen >= 3 then
+     observe(Tosses[1] == head),
+     observe(Tosses[2] == head),
+     observe(Tosses[3] == head),
+     if TossLen == 5 then
+       FiveHeadGivenHHH := check((TossLen==5,
+                              Tosses[4] == head,
+                              Tosses[5] == head
+                             ))
+     else
+       FiveHeadGivenHHH := false
+     end
+  end,
+  
+  if Experiment == 1 then
+    add("three head",ThreeHead),
+    add("toss len",TossLen),
+    add("toss len == 10",check(TossLen==10)),
+  else
+    if TossLen >= 3, observed_ok then
+      add("fiveHeadGivenHHH",FiveHeadGivenHHH)
+    end
+  end.

@@ -1,0 +1,158 @@
+/* 
+
+  Rolling the bullet in Picat.
+
+  From https://brainstellar.com/puzzles/probability/1
+  """
+  Two bullets are loaded into a gun's round barrel consecutively. The barrel has 
+  a capacity of 6. The gun is fired once, but no bullet is shot. Does rolling the 
+  barrel (shuffling) before next shot increase the probability of firing a bullet?
+
+  Hint:
+  Since the bullets are loaded consecutively, the next shot is also constrained.
+
+  Answer:
+  Yes, shuffling increases the probability of firing a bullet from 25% to 33.3%)
+
+  Solution:
+  Initial Misstep: If the two bullets are randomly put instead of consecutively, then, 
+  after firing one empty shot, there are 2 bullets and 5 total slots. The probability 
+  would be 2/5=40, but that's not the case here.
+
+  Correct step: The probability of firing a bullet without a shuffle is 1/4=25%. 
+  To understand this, imagine that the firing pin was on one of the empty slots 
+  (3,4,5,6), and the first shot was taken, but no bullet was fired. Now assumming that 
+  the barrel rotates clockwise, the pin will move to one of these slots: (2,3,4,5). 
+  Out of these four slots, only the slot (1) has a bullet. Hence probability of 
+  firing a bullet is 1/4=25%. Note that the same is true in anti-clockwise direction.
+  barrel
+
+  After the shuffle, the state is reset. There are 6 total slots with 2 bullets, the 
+  probabilty of firing a bullet after a shuffle is 2/6=1/3≈33%.
+
+  Thus, shuffling does increase the probability of firing a bullet (from 25% to 33)
+  """
+
+  This model confirms this.
+
+  Probability of a bullet in the second shot:
+  no_rolling = 0.250726
+  rolling = 0.330826
+
+
+  This is a port of my Gamble model gamble_rolling_the_bullet.rkt.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  No rolling:
+  var : res1
+  Probabilities:
+  empty: 1.00000000000000000 (1 / 1)
+  mean = [empty = 1.0]
+
+  var : res2
+  Probabilities:
+  empty: 0.74927420162178393 (14969 / 19978)
+  bullet: 0.25072579837821601 (5009 / 19978)
+  mean = [empty = 0.749274,bullet = 0.250726]
+
+  var : shot1
+  Probabilities:
+  5: 0.25292822104314744 (5053 / 19978)
+  6: 0.25072579837821601 (5009 / 19978)
+  4: 0.24957453198518370 (2493 / 9989)
+  3: 0.24677144859345279 (2465 / 9989)
+  mean = 4.50761
+
+  var : shot2
+  Probabilities:
+  6: 0.25292822104314744 (5053 / 19978)
+  1: 0.25072579837821601 (5009 / 19978)
+  5: 0.24957453198518370 (2493 / 9989)
+  4: 0.24677144859345279 (2465 / 9989)
+  mean = 4.00325
+
+  Rolling:
+  var : res1
+  Probabilities:
+  empty: 1.00000000000000000 (1 / 1)
+  mean = [empty = 1.0]
+
+  var : res2
+  Probabilities:
+  empty: 0.66917406348728747 (4448 / 6647)
+  bullet: 0.33082593651271253 (2199 / 6647)
+  mean = [empty = 0.669174,bullet = 0.330826]
+
+  var : shot1
+  Probabilities:
+  6: 0.25364826237400329 (1686 / 6647)
+  4: 0.24983701920665966 (4982 / 19941)
+  3: 0.24833258111428716 (4952 / 19941)
+  5: 0.24818213730504990 (4949 / 19941)
+  mean = 4.50715
+
+  var : shot2
+  Probabilities:
+  2: 0.17030239205656686 (1132 / 6647)
+  6: 0.16950002507396822 (3380 / 19941)
+  3: 0.16759440349029636 (1114 / 6647)
+  4: 0.16749410761747155 (3340 / 19941)
+  5: 0.16458552730555137 (1094 / 6647)
+  1: 0.16052354445614564 (1067 / 6647)
+  mean = 3.51382
+
+
+  Probability of a bullet in the second shot:
+  no_rolling = 0.250726
+  rolling = 0.330826
+
+*/
+go ?=>
+  reset_store(),
+  println("No rolling:"),
+  run_model(10_000,$model("no rolling"),[show_probs_rat,mean]),
+  Probs1 = get_store().get("res2").get_probs.new_map,
+
+  reset_store(),
+  println("Rolling:"),  
+  run_model(10_000,$model("rolling"),[show_probs_rat,mean]),
+  Probs2 = get_store().get("res2").get_probs.new_map,
+
+  nl,
+  println("Probability of a bullet in the second shot:"),
+  println(no_rolling=Probs1.get("bullet")),
+  println(rolling=Probs2.get("bullet")),
+
+  nl.
+go => true.
+
+model(Action) =>
+  Gun = ["bullet","bullet","empty","empty","empty","empty"],
+  N = Gun.len,
+
+  Shot1 = random_integer1(N),
+  Res1  = Gun[Shot1],
+
+  Shot2 = cond(Action == "no rolling",
+               mod_replace(Shot1+1, N), % the next shot
+               random_integer1(N)),
+  Res2  = Gun[Shot2],
+
+  observe(Res1 == "empty"),
+  if observed_ok() then
+    add("shot1",Shot1),
+    add("res1",Res1),
+    add("shot2",Shot2),
+    add("res2",Res2),    
+  end.
+        

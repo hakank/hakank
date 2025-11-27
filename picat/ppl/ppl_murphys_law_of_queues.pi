@@ -1,0 +1,248 @@
+/* 
+
+  Murphy's law of queues in Picat.
+
+  From Robert Matthews (link not available anymore), cited in my 
+  (Swedish) simulating page: https://www.hakank.org/sims/simulering.html
+  """
+  Murphy's law of queues - The line next to you will usually finish first - is 
+  also rooted in simple math.
+
+  If you're waiting behind a person with a two-months supply of groceries, it's 
+  hardly a surprise if you get through more slowly than your neighbours. But 
+  what about joining a line that's identical in length from the ones on either 
+  side of you. Is it all in your mind when you are the last one to get through?
+
+  Actually...NO.
+
+  Over time, it's true that on average the lines will move more or less at the 
+  same rate, says Matthews. Each will suffer random delays when for example the 
+  cashier runs out of change or a customer's cheque or bank card is declined. 
+  But when we're lined up at any one particular time, we don't care about 
+  averages, we care only about that one instance. In these cases, chances of you
+  picking the fastest moving line is one out of the number of lines there are in
+  the store. If there are 10 lines, you have a 1 in 10 chance (or 10%) of 
+  picking the fastest line. Even if you're only concerned about beating the 
+  lines on either side of you, you only have a 1 in 3 chance that you will. 
+  You're more likely to be in a slower line.
+  """
+
+  Cf my Gamble model gamble_murphys_law_of_queues.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Here's a simulation of this. 
+  - There are 5 simular queues with 10 customers in each queue
+  - I am last in one of them (picked randomly)
+  - The service takes between 1 to 5 minutes per customer (randomly
+    and independent of anything else)
+
+  The probability that I stand in the *fastest* queue (p-first) is about 20%,
+  i.e. as expected from 5 queues. The probability of being in one of 
+  the 3 fastest queues (p-first3) is about 60%.
+
+  var : fastest queue
+  Probabilities:
+  4: 0.2049000000000000
+  1: 0.2006000000000000
+  3: 0.1987000000000000
+  5: 0.1986000000000000
+  2: 0.1972000000000000
+  mean = 3.0037
+
+  var : val fastest
+  Probabilities (truncated):
+  25: 0.1362000000000000
+  26: 0.1321000000000000
+  24: 0.1181000000000000
+  27: 0.1125000000000000
+  .........
+  34: 0.0003000000000000
+  14: 0.0003000000000000
+  35: 0.0002000000000000
+  13: 0.0001000000000000
+  mean = 24.8133
+
+  var : p first
+  Probabilities:
+  false: 0.8008000000000000
+  true: 0.1992000000000000
+  mean = [false = 0.8008,true = 0.1992]
+
+  var : p first 3
+  Probabilities:
+  true: 0.5954000000000000
+  false: 0.4046000000000000
+  mean = [true = 0.5954,false = 0.4046]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  
+  % Original problem
+  NumQueues = 5,
+  NumCustomers = 10,
+  MaxTime = 5,
+
+  MyQueue = random_integer1(NumQueues),
+  Qs = [ [random_integer1(MaxTime) : _C in 1..NumCustomers] : _Q in 1..NumQueues],
+
+  Total = Qs.map(sum),
+  TotalSorted = Total.argsort,
+  
+  % Note: we have to break ties randomly, otherwise
+  % 1 tends to be the fastest queue, then 2, etc.
+  % This is done with argmin-random-ties
+  % (argmin picks the first occurrence).
+  FastestQueue = argmin_random_ties(Total),
+  ValFastest = Total[FastestQueue],
+
+  PFirst = check(MyQueue == TotalSorted.first),
+  if TotalSorted.len >= 3 then
+    PFirst3 = check( cond(membchk(MyQueue,TotalSorted.take(3)),true,false))
+  else
+    PFirst3 = false
+  end,
+
+  add("fastest queue",FastestQueue),
+  add("val fastest",ValFastest),
+  add("p first",PFirst),
+  add("p first 3",PFirst3).
+
+
+/*
+
+  But what is I select the shortest queue?
+  or rather: 
+  Let's see what happens to the person that that is last in the 
+  shortest queue.
+
+  Here we have queues with a random number of customers.
+
+  Now there's a pretty good chance that this person will be 
+  served first (about 87%) and pretty sure that they will be
+  one of the first three to be served (99.8%).
+
+  var : fastest queue
+  Probabilities:
+  3: 0.2055000000000000
+  5: 0.2042000000000000
+  2: 0.2030000000000000
+  1: 0.2021000000000000
+  4: 0.1852000000000000
+  mean = 2.9864
+
+  var : val fastest
+  Probabilities (truncated):
+  2: 0.0747000000000000
+  1: 0.0721000000000000
+  3: 0.0692000000000000
+  4: 0.0663000000000000
+  .........
+  77: 0.0001000000000000
+  72: 0.0001000000000000
+  69: 0.0001000000000000
+  66: 0.0001000000000000
+  mean = 12.1195
+
+  var : p first
+  Probabilities:
+  true: 0.8717000000000000
+  false: 0.1283000000000000
+  mean = [true = 0.8717,false = 0.1283]
+
+  var : p first 3
+  Probabilities:
+  true: 0.9978000000000000
+  false: 0.0022000000000000
+  mean = [true = 0.9978,false = 0.0022]
+
+  var : my queue
+  Probabilities:
+  3: 0.2035000000000000
+  2: 0.2033000000000000
+  1: 0.2020000000000000
+  5: 0.2017000000000000
+  4: 0.1895000000000000
+  mean = 2.9856
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  
+  % Original problem
+  NumQueues = 5,
+  MaxCustomers = 20,
+  MaxTime = random_integer1(10), 
+
+  NumCustomers = [ random_integer1(MaxCustomers)  : _Q in 1..NumQueues],
+
+  % Pick the queue with the smallest number of customers
+  % Or rather - to simplify the model: I happen to stand in the shortest line
+  MyQueue = argmin_random_ties(NumCustomers),
+
+  Qs = [ [ random_integer1(MaxTime) : _C in 1..NumCustomers[Q]] : Q in 1..NumQueues],
+  
+  % From here on, this is the same as the previous model
+  Total = Qs.map(sum),
+  TotalSorted = Total.argsort,
+  
+  % Note: we have to break ties randomly, otherwise
+  % 1 tends to be the fastest queue, then 2, etc.
+  % This is done with argmin-random-ties
+  % (argmin picks the first occurrence).
+  FastestQueue = argmin_random_ties(Total),
+  ValFastest = Total[FastestQueue],
+
+  PFirst = check(MyQueue == TotalSorted.first),
+  if TotalSorted.len >= 3 then
+    PFirst3 = check( cond(membchk(MyQueue,TotalSorted.take(3)),true,false))
+  else
+    PFirst3 = false
+  end,
+
+  add("fastest queue",FastestQueue),
+  add("val fastest",ValFastest),
+  add("p first",PFirst),
+  add("p first 3",PFirst3),
+  add("my queue",MyQueue).
+
+
+

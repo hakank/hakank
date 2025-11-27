@@ -1,0 +1,214 @@
+/* 
+
+  Murder mystery in Picat.
+
+  From https://mbmlbook.com/MurderMystery.html
+  
+  Infer.Net code: 
+  https://github.com/dotnet/mbmlbook/blob/main/src/1.%20A%20Murder%20Mystery/Program.cs
+  """
+  ;; Input probabilities
+  (define priors = new MurdererProbs ( Grey = 0.3, Auburn = 0.7 );
+  
+  (define conditionalsWeapon = new Variables.ConditionalVariablesWeapon
+  (
+  RevolverGivenGrey = 0.9,
+  DaggerGivenGrey = 0.1,
+  RevolverGivenAuburn = 0.2,
+  DaggerGivenAuburn = 0.8,
+  );
+  
+  (define conditionalsHair = new Variables.ConditionalVariablesHair
+  (
+  HairGivenGrey = 0.5,
+  HairGivenAuburn = 0.05
+  );
+  """
+
+  Cf my Gamble model gamble_murder_mystery_mbmlbook.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  [weapon_cond = false,hair_cond = false]
+  var : murderer
+  Probabilities:
+  auburn: 0.7056000000000000
+  grey: 0.2944000000000000
+  mean = [auburn = 0.7056,grey = 0.2944]
+
+  var : murderer grey
+  Probabilities:
+  false: 0.7056000000000000
+  true: 0.2944000000000000
+  mean = [false = 0.7056,true = 0.2944]
+
+  var : murderer auburn
+  Probabilities:
+  true: 0.7056000000000000
+  false: 0.2944000000000000
+  mean = [true = 0.7056,false = 0.2944]
+
+  var : weapon
+  Probabilities:
+  dagger: 0.5955000000000000
+  revolver: 0.4045000000000000
+  mean = [dagger = 0.5955,revolver = 0.4045]
+
+  var : hair
+  Probabilities:
+  false: 0.8157000000000000
+  true: 0.1843000000000000
+  mean = [false = 0.8157,true = 0.1843]
+
+
+  [weapon_cond = false,hair_cond = true]
+  var : murderer
+  Probabilities:
+  grey: 0.8169312169312170
+  auburn: 0.1830687830687831
+  mean = [grey = 0.816931,auburn = 0.183069]
+
+  var : murderer grey
+  Probabilities:
+  true: 0.8169312169312170
+  false: 0.1830687830687831
+  mean = [true = 0.816931,false = 0.183069]
+
+  var : murderer auburn
+  Probabilities:
+  false: 0.8169312169312170
+  true: 0.1830687830687831
+  mean = [false = 0.816931,true = 0.183069]
+
+  var : weapon
+  Probabilities:
+  revolver: 0.7835978835978836
+  dagger: 0.2164021164021164
+  mean = [revolver = 0.783598,dagger = 0.216402]
+
+  var : hair
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+
+  [weapon_cond = true,hair_cond = false]
+  var : murderer
+  Probabilities:
+  grey: 0.6607662463627546
+  auburn: 0.3392337536372454
+  mean = [grey = 0.660766,auburn = 0.339234]
+
+  var : murderer grey
+  Probabilities:
+  true: 0.6607662463627546
+  false: 0.3392337536372454
+  mean = [true = 0.660766,false = 0.339234]
+
+  var : murderer auburn
+  Probabilities:
+  false: 0.6607662463627546
+  true: 0.3392337536372454
+  mean = [false = 0.660766,true = 0.339234]
+
+  var : weapon
+  Probabilities:
+  revolver: 1.0000000000000000
+  mean = [revolver = 1.0]
+
+  var : hair
+  Probabilities:
+  false: 0.6602812803103782
+  true: 0.3397187196896218
+  mean = [false = 0.660281,true = 0.339719]
+
+
+  [weapon_cond = true,hair_cond = true]
+  var : murderer
+  Probabilities:
+  grey: 0.9457579972183588
+  auburn: 0.0542420027816412
+  mean = [grey = 0.945758,auburn = 0.054242]
+
+  var : murderer grey
+  Probabilities:
+  true: 0.9457579972183588
+  false: 0.0542420027816412
+  mean = [true = 0.945758,false = 0.054242]
+
+  var : murderer auburn
+  Probabilities:
+  false: 0.9457579972183588
+  true: 0.0542420027816412
+  mean = [false = 0.945758,true = 0.054242]
+
+  var : weapon
+  Probabilities:
+  revolver: 1.0000000000000000
+  mean = [revolver = 1.0]
+
+  var : hair
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+*/
+go ?=>
+  member(WeaponCond,[false,true]),
+  member(HairCond,[false,true]),
+  println([weapon_cond=WeaponCond,hair_cond=HairCond]),
+  
+  reset_store,
+  run_model(10_000,$model(WeaponCond,HairCond),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+  
+  
+model(WeaponCond, HairCond) =>
+
+  % Priors for the murderer
+  Murderer = categorical([0.3,0.7],[grey,auburn]),
+
+  MurdererGrey = check(Murderer == grey),
+  MurdererAuburn = check(Murderer == auburn),
+
+  % The weapon was found
+  Weapon = condt(MurdererGrey,
+                 categorical([0.9,0.1],[revolver,dagger]),
+                 categorical([0.2,0.8],[revolver,dagger])),
+
+  % Some hair was found
+  Hair = condt(MurdererGrey,flip(0.5),flip(0.05)),
+
+  Observed = false,
+  if WeaponCond then
+    observe(Weapon == revolver),
+    Observed := true
+  end,
+
+  if HairCond then
+    observe(Hair),
+    Observed := true    
+  end,
+
+  if (Observed, observed_ok) ;not(Observed)
+     then
+    add("murderer",Murderer),
+    add("murderer grey",MurdererGrey),
+    add("murderer auburn",MurdererAuburn),
+    add("weapon",Weapon),
+    add("hair",Hair),
+  end.

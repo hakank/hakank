@@ -1,0 +1,128 @@
+/* 
+
+  Benford dist in Picat.
+
+  https://www.randomservices.org/random/special/Benford.html
+  """
+  First digit law:
+  G1^-1(p) = ceil(b^p-1)
+  """
+
+  Also, see Mathematica BenfordLaw:
+  ""
+  Quantile(BenfordDistribution(base), x)
+  -> 
+   -1 + Ceiling(base^x)   0 < x < 1
+   1                      x <= 0  if 0 <= x <= 1
+  -1 + b                  True
+  """
+
+  Cf my Gamble model gamble_benford_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  [n = 10,theoretical_mean = 3.44024]
+  Theoretical PDF:
+  1 0.301029995663981 
+  2 0.176091259055681 
+  3 0.1249387366083 
+  4 0.096910013008056 
+  5 0.079181246047625 
+  6 0.066946789630613 
+  7 0.057991946977687 
+  8 0.051152522447381 
+  9 0.045757490560675 
+
+  var : b
+  Probabilities:
+  1: 0.3008000000000000
+  2: 0.1755000000000000
+  3: 0.1269000000000000
+  4: 0.1039000000000000
+  5: 0.0764000000000000
+  6: 0.0628000000000000
+  7: 0.0561000000000000
+  8: 0.0543000000000000
+  9: 0.0433000000000000
+  mean = 3.4237
+
+
+
+*/
+go ?=>
+  N = 10,
+  println([n=10,theoretical_mean=benford_dist_mean(N)]),
+  println("Theoretical PDF:"),
+  pdf_all($benford_dist(N)).sort_down(2).printf_list,
+  nl,
+  reset_store,
+  run_model(10_000,$model(N),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(N) =>
+  B = benford_dist(N),
+  add("b",B).
+
+
+/*
+  Can we recover parameter?
+
+  Again, PPL is not good at Bayseian Data Analysis.
+  Picat> X=benford_dist_n(10,10)
+  X = [1,2,4,5,8,3,3,2,7,4]
+
+  It cannot recover for 10 data points, but perhaps for 5.
+
+  Data = [1,2,4,5,8] an 1_000_000 runs:
+
+  var : b
+  Probabilities:
+  9: 0.3076923076923077
+  12: 0.2307692307692308
+  15: 0.1538461538461539
+  17: 0.0769230769230769
+  13: 0.0769230769230769
+  11: 0.0769230769230769
+  10: 0.0769230769230769
+  mean = 11.7692
+
+  Variable lengths:
+  b = 13
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(1_000_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  Data = [1,2,4,5,8], % ,3,3,2,7,4],
+  B = random_integer1(20),
+  foreach(I in 1..Data.len)
+    observe(benford_dist(B) == Data[I]),
+  end,
+  
+  if observed_ok then
+    add("b",B)
+  end.

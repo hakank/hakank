@@ -1,0 +1,135 @@
+/* 
+
+  A Marble Chance Puzzle in Picat.
+
+  From Cole Frederick: "A Marble Chance Puzzle - A simple test of logic"
+  https://colefp.medium.com/a-marble-chance-puzzle-c93e3224deb4
+  """
+  You have two boxes. One box has a blue marble, and the other box has one blue 
+  marble and one black marble. You cannot see into either box. You simultaneously 
+  reach into each box, grab one marble from each, then switch them quickly without 
+  looking. You then randomly pick a box, and then randomly pick a marble 
+  from that box. What is the probability you pick a blue marble?
+  """
+
+
+  Cf my Gamble model gamble_a_marble_chance_puzzle.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : pick from A
+  Probabilities:
+  blue: 1.0000000000000000
+  mean = []
+
+  var : pick from B
+  Probabilities:
+  blue: 0.5031000000000000
+  black: 0.4969000000000000
+  mean = []
+
+  var : box A 2
+  Probabilities:
+  [blue]: 0.5031000000000000
+  [black]: 0.4969000000000000
+  mean = []
+
+  var : box B 2
+  Probabilities:
+  [black,blue]: 0.5031000000000000
+  [blue,blue]: 0.4969000000000000
+  mean = []
+
+  var : pick box
+  Probabilities:
+  [black]: 0.2529000000000000
+  [blue]: 0.2522000000000000
+  [black,blue]: 0.2509000000000000
+  [blue,blue]: 0.2440000000000000
+  mean = []
+
+  var : pick = blue
+  Probabilities:
+  true: 0.6172000000000000
+  false: 0.3828000000000000
+  mean = 0.6172
+
+  var : scenario A
+  Probabilities:
+  true: 0.5031000000000000
+  false: 0.4969000000000000
+  mean = 0.5031
+
+  var : scenario B
+  Probabilities:
+  false: 0.5031000000000000
+  true: 0.4969000000000000
+  mean = 0.4969
+
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  % First step
+  BoxA_1 = [blue],
+  BoxB_1 = [blue,black],
+
+  % Pick one marble from each box
+  PickFromA = uniform_draw(BoxA_1),
+  PickFromB = uniform_draw(BoxB_1),
+
+  % And move it to the other box
+  BoxA_2 = delete(BoxA_1,PickFromA) ++ [PickFromB],
+  BoxB_2 = delete(BoxB_1,PickFromB) ++ [PickFromA],
+
+  % Pick a box at random
+  PickBox = uniform_draw([BoxA_2,BoxB_2]),
+  % And draw a marble at random
+  Pick = uniform_draw(PickBox),
+
+  % Probability of each scenario
+  % 1. A: blue  B: black blue
+  % 2. A: black B: blue blue
+  ScenarioA = check( (BoxA_2 == [blue],  BoxB_2 == [black,blue])),
+  ScenarioB = check( (BoxA_2 == [black], BoxB_2 == [blue,blue])),  
+
+  % What is the probability that the drawn marble is blue
+  PickBlue = check(Pick == blue),
+  
+  add("pick from A",PickFromA),
+  add("pick from B",PickFromB),
+  add("box A 2",BoxA_2),
+  add("box B 2",BoxB_2),
+  add("pick box",PickBox),
+  add("pick = blue",PickBlue),  
+  add("scenario A",ScenarioA),
+  add("scenario B",ScenarioB).
+
+

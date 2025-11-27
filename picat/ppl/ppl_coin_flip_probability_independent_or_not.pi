@@ -1,0 +1,156 @@
+/* 
+
+  Coin flip probability independent or not? in Picat.
+
+  https://math.stackexchange.com/questions/4492477/coin-flip-probability-independent-or-not
+  """
+  Coin Flip Probability Independent or Not?
+
+  I give you a hat which has 10 coins inside of it. 1 out of the 10 have two heads on it, and 
+  the rest of them are fair. You draw a coin at random from the jar and flip it 5 times. 
+  If you flip heads 5 times in a row, what is the probability that you get heads on 
+  your next flip?
+
+  I tried to approach this question by using Bayes: Let R
+  be the event that the coin with both heads is drawn and F be the event that 5 heads are 
+  flipped in a row. Then
+     P(R|F)=P(F|R)P(R)P(F)=1⋅1/101⋅1/10+1/25⋅9/10=32/41
+
+  Thus the probability that you get heads on the next flip is
+
+  P(H|R)P(R)+P(H|R′)P(R′)=1⋅32/41+1/2⋅(1−32/41)=73/82
+
+  However, according to my friend, this is a trick question because the flip after 
+  the first 5 flips is independent of the first 5 flips, and therefore the correct 
+  probability is
+   1⋅1/10+1/2⋅9/10=11/20
+
+  Is this true or not?
+  """
+
+  We have n number of coins, of which 1 is a two head, and the rest (n-1) are fair.
+  We toss the coin m times and get head all the time. What is the probability 
+  that we get a head on the next toss?
+
+  This model confirms the answer of p=73/82 = 0.89024390243902439024
+
+
+  Cf my Gamble model gamble_coin_flip_probability_independent_or_not.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  For the original question, the probability is about 0.88
+  (the exact probability is 73/82 = 0.8902439024390244)
+  [n = 10,m = 5]
+  var : p
+  Probabilities:
+  true: 0.8813291139240507
+  false: 0.1186708860759494
+  mean = [true = 0.881329,false = 0.118671]
+
+
+*/
+go ?=>
+  N = 10,
+  M = 5,
+  println([n=N,m=M]),
+  reset_store,
+  run_model(10_000,$model(N,M),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(N,M) =>
+  %  Select a coin: 1 coin has two heads, the rest (n-1) are fair
+  Coin = categorical([1/N,(N-1)/N],[two_head,fair]),
+
+  % What is the result of the tosses?
+  Tosses = [ cond(Coin == two_head,
+                  head,
+                  categorical([1/2,1/2],[head,tail]))
+          : I in 1..M+1],
+
+  % We toss head M times
+  foreach(I in 1..M)
+    observe(Tosses[I] == head)
+  end,
+
+  % What is the probability of head the next toss?
+  P = check(Tosses[M+1] == head),
+  if observed_ok then
+    add("p",P)
+  end.
+
+/*
+  Some other experiments:
+
+  [n = 10,m = 1]
+  var : p
+  Probabilities:
+  true: 0.5835433921498020
+  false: 0.4164566078501981
+  mean = [true = 0.583543,false = 0.416457]
+
+
+  [n = 10,m = 10]
+  var : p
+  Probabilities:
+  true: 0.9940594059405941
+  false: 0.0059405940594059
+  mean = [true = 0.994059,false = 0.00594059]
+
+
+  [n = 5,m = 3]
+  var : p
+  Probabilities:
+  true: 0.8493427704752275
+  false: 0.1506572295247725
+  mean = [true = 0.849343,false = 0.150657]
+
+
+  [n = 3,m = 2]
+  var : p
+  Probabilities:
+  true: 0.8261304521808723
+  false: 0.1738695478191276
+  mean = [true = 0.82613,false = 0.17387]
+
+
+  [n = 30,m = 3]
+  var : p
+  Probabilities:
+  true: 0.6023391812865497
+  false: 0.3976608187134503
+  mean = [true = 0.602339,false = 0.397661]
+
+
+*/
+go2 ?=>
+  member([N,M], [% [10,5],
+                 [10,1],
+                 [10,10],
+                 [5,3],
+                 [3,2],
+                 [30,3]]),
+  println([n=N,m=M]),
+  reset_store,
+  run_model(10_000,$model(N,M),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+  

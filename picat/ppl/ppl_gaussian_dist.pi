@@ -1,0 +1,157 @@
+/* 
+
+  Gaussian (Normal) distribution in Picat.
+
+  Cf my Gamble model gamble_gaussian_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Picat> X=1-normal_dist_cdf(0,1,1)
+  X = 0.158655253931457
+
+  Picat> X=1-normal_dist_cdf(100,10,120)
+  X = 0.022750131948179
+
+  var : g1
+  Probabilities (truncated):
+  3.83197419386408: 0.0001000000000000
+  3.820828884192482: 0.0001000000000000
+  3.782633711230096: 0.0001000000000000
+  3.670404403785952: 0.0001000000000000
+  .........
+  -3.25693275210355: 0.0001000000000000
+  -3.277383487014303: 0.0001000000000000
+  -3.571216259733065: 0.0001000000000000
+  -4.358093186575151: 0.0001000000000000
+  mean = 0.0123709
+
+  var : p1
+  Probabilities:
+  false: 0.8386000000000000
+  true: 0.1614000000000000
+  mean = [false = 0.8386,true = 0.1614]
+
+  var : g2
+  Probabilities (truncated):
+  143.317995078449087: 0.0001000000000000
+  141.093393119023688: 0.0001000000000000
+  136.778134686539801: 0.0001000000000000
+  135.533595981964709: 0.0001000000000000
+  .........
+  65.079849097062521: 0.0001000000000000
+  64.952538497024022: 0.0001000000000000
+  63.451817338112207: 0.0001000000000000
+  57.053086370449513: 0.0001000000000000
+  mean = 99.9774
+
+  var : p2
+  Probabilities:
+  false: 0.9768000000000000
+  true: 0.0232000000000000
+  mean = [false = 0.9768,true = 0.0232]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  
+  G1 = normal_dist(0,1),
+  G2 = normal_dist(100,10),
+
+  P1 = check(G1 > 1) ,
+  P2 = check(G2 > 120) ,
+  
+  add("g1",G1),
+  add("p1",P1),  
+  add("g2",G2),
+  add("p2",P2).
+
+
+/*
+  Parameter recovery: normal_dist(100,10)
+
+  Num accepted samples: 1000  Total samples: 231154  (0.004%)
+
+  var : mu
+  Probabilities (truncated):
+  112.383829016417195: 0.0010000000000000
+  111.680001538097855: 0.0010000000000000
+  110.695312316853233: 0.0010000000000000
+  110.541508118874177: 0.0010000000000000
+  .........
+  86.918908677491785: 0.0010000000000000
+  86.24402158253082: 0.0010000000000000
+  86.021966340961853: 0.0010000000000000
+  85.95034251266641: 0.0010000000000000
+  mean = 98.7807
+  HPD intervals:
+  HPD interval (0.94): 88.62316007196119..108.51244260953386
+
+  var : sigma
+  Probabilities (truncated):
+  24.548276571812234: 0.0010000000000000
+  24.32712559789751: 0.0010000000000000
+  23.972987953560889: 0.0010000000000000
+  23.821899492210662: 0.0010000000000000
+  .........
+  0.049343192972868: 0.0010000000000000
+  0.044243456816414: 0.0010000000000000
+  0.040913932044485: 0.0010000000000000
+  0.010019540791409: 0.0010000000000000
+  mean = 10.5542
+  HPD intervals:
+  HPD interval (0.94): 0.04091393204448..20.04386778922932
+
+*/
+go2 ?=>
+  Data = normal_dist_n(100,10,100),
+  println(data=Data),
+  reset_store,
+  run_model(10_000,$model2(Data),[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           show_hpd_intervals,hpd_intervals=[0.94],
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(Data) =>
+  Mu = uniform(0,1000),
+  Sigma = uniform(0,100),
+  
+  X = normal_dist_n(Mu,Sigma,Data.len),
+  observe_abc(Data,X),
+  
+  if observed_ok then
+    add("mu",Mu),
+    add("sigma",Sigma),
+  end.
+

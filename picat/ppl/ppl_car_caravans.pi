@@ -1,0 +1,163 @@
+/* 
+
+  Car caravans in Picat.
+
+  From Glick "Breaking Records and Breaking Boards", page 8
+  """
+  Car caravans in a one-lane tunnel. When traffic moving in one direction is confined 
+  to a single lane, a slow car is likely to be followed closely by a queue of vehicles 
+  whose drivers wish to go faster, but who cannot pass. If there is no exit from this 
+  lane, then more and more following vehicles will... until there happens to be a
+  catch up and be added to the slow moving "platoon" or "caravan" its own
+  at a lower speed. This vehicle will not catch up, but will accumulate
+  following vehicle travelling caravan.
+  """
+
+  Here we define a "caravan" as a cluster of (increasing) consecutive numbers (in 1..n).
+
+  Cf my Gamble model gamble_car_caravans.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+import ordset.
+
+main => go.
+
+/*
+
+  n = 10
+  var : num caravans
+  Probabilities:
+  1: 0.4158000000000000
+  0: 0.4040000000000000
+  2: 0.1517000000000000
+  3: 0.0262000000000000
+  4: 0.0023000000000000
+  mean = 0.807
+
+  var : max length
+  Probabilities:
+  2: 0.5200000000000000
+  0: 0.4040000000000000
+  3: 0.0682000000000000
+  4: 0.0071000000000000
+  5: 0.0004000000000000
+  7: 0.0003000000000000
+  mean = 1.2771
+
+
+  n = 20
+  var : num caravans
+  Probabilities:
+  0: 0.3864000000000000
+  1: 0.3847000000000000
+  2: 0.1709000000000000
+  3: 0.0498000000000000
+  4: 0.0073000000000000
+  5: 0.0007000000000000
+  7: 0.0001000000000000
+  6: 0.0001000000000000
+  mean = 0.9099
+
+  var : max length
+  Probabilities:
+  2: 0.5683000000000000
+  0: 0.3864000000000000
+  3: 0.0419000000000000
+  4: 0.0033000000000000
+  5: 0.0001000000000000
+  mean = 1.276
+
+  n = 100
+  var : num caravans
+  Probabilities:
+  0: 0.3746000000000000
+  1: 0.3705000000000000
+  2: 0.1813000000000000
+  3: 0.0571000000000000
+  4: 0.0135000000000000
+  5: 0.0025000000000000
+  6: 0.0003000000000000
+  7: 0.0002000000000000
+  mean = 0.9741
+
+  var : max length
+  Probabilities:
+  2: 0.6165000000000000
+  0: 0.3746000000000000
+  3: 0.0088000000000000
+  4: 0.0001000000000000
+  mean = 1.2598
+
+
+*/
+go ?=>
+  member(N,[10,20,100]),
+  println(n=N),
+  reset_store,
+  run_model(10_000,$model(N),[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+
+
+
+% Remove all sub-caravans from  a list of (sub) caravans
+remove_sub_caravans(T) = Res =>
+  Res = [],
+  foreach(S1 in T)
+    Check = [S2 : S2 in T, S1 != S2, subset(S1,S2)],
+    if Check.len == 0 then
+      Res := Res ++ [S1]
+    end
+  end.
+
+% Get all "proper" caravans
+get_caravans(X) = Res =>
+  N = X.len,
+  Cs = [],  
+  foreach(I in 1..N)
+    foreach(J in I+1..N)
+      T = [X[K]  : K in I..J],
+      MinVal = T.min,
+      MaxVal = T.max,
+      if T.len > 1, T == MinVal..MaxVal then
+        % We have a caravan
+        Cs := Cs ++ [T],
+      end
+    end
+  end,
+  Res = remove_sub_caravans(Cs).
+
+
+  
+model(N) =>
+
+  % X = shuffle(1..N),
+  X = draw_without_replacement(0..N-1),
+  
+  Caravans = get_caravans(X),
+  NumCaravans = Caravans.len,
+  
+  if NumCaravans > 0 then
+    MaxLen = Caravans.map(len).max,
+  else
+    MaxLen = 0
+  end,
+
+  add("num caravans",NumCaravans),
+  add("max length",MaxLen).
+

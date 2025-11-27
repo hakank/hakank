@@ -1,0 +1,90 @@
+/* 
+
+  Uniform ball in Picat.
+
+  BLOG example/uniform-ball.blog
+  """
+  Model file for balls in an urn, allowing observation errors. 
+  This version uses a Poisson prior for the number of balls.
+  """
+
+  Result of the BLOG model:
+  """
+  Distribution of values for size({b for Ball b : true})
+  	1	0.07696467881871667
+	2	0.2749155437572819
+	3	0.3066400745347743
+	4	0.34147970288922114
+  Distribution of values for (ballDrawn(Draw[0]) = ballDrawn(Draw[1]))
+	false	0.7070034886998044
+	true	0.29299651130018706
+  """
+
+
+  Cf my Gamble model gamble_uniform_ball.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Num accepted samples: 1000  Total samples: 475174  (0.002%)
+
+  var : num balls
+  Probabilities:
+  4: 0.3650000000000000
+  3: 0.3070000000000000
+  2: 0.2600000000000000
+  1: 0.0680000000000000
+  mean = 2.969
+
+  var : ball 1 == ball 2
+  Probabilities:
+  0: 0.7180000000000000
+  1: 0.2820000000000000
+  mean = 0.282
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  /*
+    """
+    Evidence file asserting that the drawn balls appeared blue on half the 
+    draws and green on half the draws.
+    """
+  */
+  Data = [true,false,true,false,true,false,true,false],  
+  N = 8,
+
+  NumBalls = random_integer1(4),
+  IsBlue = flip_n(0.5,N),
+  BallDrawn = random_integer1_n(NumBalls,N),
+  ObsBlue = [cond(IsBlue[BallDrawn[D]]==true,flip(0.8),flip(0.2))  : D in 1..N],
+
+  observe(Data == ObsBlue),
+ 
+  if observed_ok then
+    add("num balls",NumBalls),
+    add("ball 1 == ball 2",cond(BallDrawn[1]==BallDrawn[2],1,0))
+  end.

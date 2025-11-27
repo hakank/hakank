@@ -1,0 +1,141 @@
+/* 
+
+  Records in Picat.
+
+  This is from Robert Matthews (http://www.numberwatch.co.uk/record.htm  not available anymore)
+  """
+  Let us invent a stationary process and create a little allegory. In the 
+  eighteenth century an eccentric amateur astronomer looks through his low-power
+  telescope each night, pointing roughly in the same direction, and counts the 
+  number of stars in its field of vision. He is keen to establish a record so 
+  that he can apply for entry in the contemporary equivalent of the Guinness 
+  Book of Records. The conditions are such that the average number of stars he 
+  sees is 100 and the average scatter (standard deviation) is plus or minus ten 
+  stars.
+
+  We can model this process by generating numbers from a normal distribution 
+  (for the cognoscenti the function rnorm(N,100,10) in Mathcad).
+
+  Our astronomer takes one reading each night and only writes down the current 
+  record, the highest value so far, so after a hundred nights he gets something 
+  like....
+  ....
+  By now we have reached the tenth generation. It is the late twentieth century 
+  and the age of rationality has come to an end. The new scion of the family, 
+  realising that it has obtained no benefit from all these years of effort, 
+  publishes a paper warning of the increase in star density that is occurring 
+  and calculating all sorts of disasters that arise from the increased 
+  gravitation. He is appointed to a professorial chair in a new university and 
+  founds a new Department of Celestial Change. The cause is taken up by the 
+  Deputy Prime Minister and large sums of money are diverted from other research 
+  areas to a new programme for the study of celestial change. Disaster stories 
+  are regularly fed to the media, who sell more papers and advertising time.
+
+  A few old-fashioned scientists point out that the results are completely 
+  explained by the well-known statistics of extremes, which predict that the 
+  largest value will increase as the logarithm of the number of observations. 
+  There is no money in that, so they are ignored and the bandwagon rolls on.  
+  """
+
+  See my Swedish text http://www.hakank.org/sims/simulering.html for an R simulation.
+
+  Cf my Gamble model gamble_records.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Max/min values of n number of normal(100,15), N=1..10
+  Here we can see that the mean values are increasing for max,
+  and decreasing for min. The other distributions shows
+  the same behavior.
+
+
+  dist = normal_dist(100,15)
+  n:    1 min_val: 99.914591 max_val: 99.914591
+  n:    2 min_val: 91.162084 max_val: 108.801106
+  n:    3 min_val: 87.646079 max_val: 112.331218
+  n:    4 min_val: 84.555145 max_val: 115.140486
+  n:    5 min_val: 82.256323 max_val: 116.890809
+  n:    6 min_val: 80.710674 max_val: 118.981057
+  n:    7 min_val: 79.884200 max_val: 120.586938
+  n:    8 min_val: 78.735038 max_val: 121.636810
+  n:    9 min_val: 77.790887 max_val: 122.479299
+  n:   10 min_val: 77.044230 max_val: 123.092295
+  n:  100 min_val: 62.063425 max_val: 138.047516
+  n: 1000 min_val: 51.047087 max_val: 148.774069
+
+  dist = poisson_dist(15)
+  n:    1 min_val: 15.065000 max_val: 15.065000
+  n:    2 min_val: 12.792000 max_val: 17.184000
+  n:    3 min_val: 11.842000 max_val: 18.123000
+  n:    4 min_val: 11.082000 max_val: 19.082000
+  n:    5 min_val: 10.687000 max_val: 19.752000
+  n:    6 min_val: 10.320000 max_val: 20.241000
+  n:    7 min_val: 9.993000 max_val: 20.556000
+  n:    8 min_val: 9.695000 max_val: 20.662000
+  n:    9 min_val: 9.591000 max_val: 20.774000
+  n:   10 min_val: 9.398000 max_val: 21.261000
+  n:  100 min_val: 6.330000 max_val: 25.514000
+  n: 1000 min_val: 4.264000 max_val: 28.872000
+
+  dist = extreme_value_dist(100,15)
+  n:    1 min_val: 108.488877 max_val: 108.488877
+  n:    2 min_val: 98.220406 max_val: 119.692155
+  n:    3 min_val: 94.254115 max_val: 125.477403
+  n:    4 min_val: 91.787671 max_val: 130.350186
+  n:    5 min_val: 89.781151 max_val: 132.594552
+  n:    6 min_val: 88.116975 max_val: 135.357127
+  n:    7 min_val: 87.393808 max_val: 137.720980
+  n:    8 min_val: 86.358226 max_val: 140.559307
+  n:    9 min_val: 85.932937 max_val: 141.238641
+  n:   10 min_val: 85.305192 max_val: 143.241650
+  n:  100 min_val: 75.714068 max_val: 177.397773
+  n: 1000 min_val: 69.977235 max_val: 211.643431
+
+
+*/
+go ?=>
+  member(Dist,$[normal_dist(100,15),
+                poisson_dist(15),
+                extreme_value_dist(100,15)
+                ]),
+  nl,
+  println(dist=Dist),
+  member(N,1..10 ++ [100,1000]),
+  % println(n=N),
+  reset_store,
+  run_model(1_000,$model(Dist,N),[% show_probs_trunc,
+                                  presentation = [],
+                                  mean % ,
+                                  % show_percentiles,show_histogram,
+                                  % show_hpd_intervals,hpd_intervals=[0.94],
+                                  % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  % nl,
+  Store = get_store(),
+  MinVal = Store.get("min val").mean,
+  MaxVal = Store.get("max val").mean,
+  printf("n: %4d min_val: %4.6f max_val: %4.6f\n",N,MinVal,MaxVal),
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Dist,N) =>
+  X = [ Dist.apply() : _ in 1..N],
+  MinVal = X.min,  
+  MaxVal = X.max,
+
+  add("min val",MinVal),
+  add("max val",MaxVal).

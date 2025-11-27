@@ -1,0 +1,134 @@
+/* 
+
+  Two dice wager in Picat.
+
+  From https://puzzlewocky.com/brain-teasers/the-two-dice-wager/
+  """
+  A gambler presents you with an even-money wager. You will roll two dice, and if the highest 
+  number showing is one, two, three or four, then you win. If the highest number on either die 
+  is five or six, then she wins. Should you take the bet?
+  """
+
+  No, this is not a fair game. The 1..4 player will win 4/9 (~ 0.444) of the games and 
+  lose 5/9 (~ 0.555)  of the game.
+
+  However, it game be made more fair if we add weights to the wins: 5/9 and 4/9 respectively.
+  Now, the expected outcome of the two players are the same.
+
+  Cf my Gamble model gamble_two_dice_wager.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  Game 1: The original game.
+
+  No, this is not a fair game. The 1..4 player will win 4/9 (~ 0.444) of the games and 
+  lose 5/9 (~ 0.555)  of the game.
+
+  var : m
+  Probabilities:
+  6: 0.3015000000000000
+  5: 0.2531000000000000
+  4: 0.1990000000000000
+  3: 0.1359000000000000
+  2: 0.0841000000000000
+  1: 0.0264000000000000
+  mean = 4.4728
+
+  var : p 1..4
+  Probabilities:
+  false: 0.5546000000000000
+  true: 0.4454000000000000
+  mean = [false = 0.5546,true = 0.4454]
+
+  var : p 5..6
+  Probabilities:
+  true: 0.5546000000000000
+  false: 0.4454000000000000
+  mean = [true = 0.5546,false = 0.4454]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  D1 = random_integer1(6),
+  D2 = random_integer1(6),  
+  M = max(D1,D2),
+
+  P1_4 = check(M <= 4),
+  P5_6 = check(M >= 5),
+ 
+  add("m",M),
+  add("p 1..4",P1_4),
+  add("p 5..6",P5_6).
+
+/*
+  Modified game.
+  Multipling the revenues by 5/9 and 4/9 respectively yields a fair game:
+  P1_4 and P5_6 are now (about) the same (0.246944 and 0.246889 in this run).
+
+  var : m
+  Probabilities:
+  6: 0.3046000000000000
+  5: 0.2509000000000000
+  4: 0.1943000000000000
+  3: 0.1328000000000000
+  2: 0.0877000000000000
+  1: 0.0297000000000000
+  mean = 4.4628
+
+  var : p 1..4
+  Probabilities:
+  0.0: 0.5555000000000000
+  0.555556: 0.4445000000000000
+  mean = 0.246944
+
+  var : p 5..6
+  Probabilities:
+  0.444444: 0.5555000000000000
+  0.0: 0.4445000000000000
+  mean = 0.246889
+
+*/
+go2 ?=>
+  Mult1 = 5/9,
+  Mult2 = 4/9,
+  reset_store,
+  run_model(10_000,$model2(Mult1,Mult2),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(Mult1,Mult2) =>
+  D1 = random_integer1(6),
+  D2 = random_integer1(6),  
+  M = max(D1,D2),
+
+  P1_4 = Mult1 * cond(M <= 4, 1, 0),
+  P5_6 = Mult2 * cond(M >= 5, 1, 0),
+ 
+  add("m",M),
+  add("p 1..4",P1_4),
+  add("p 5..6",P5_6).
+

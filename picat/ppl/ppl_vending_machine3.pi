@@ -1,0 +1,75 @@
+/* 
+
+  Sally and the vending machine (3) in Picat.
+
+  From https://probmods.org/chapters/social-cognition (WebPPL model)
+  """
+  Now imagine that we don’t know Sally’s goal (which food she wants), but we observe 
+  her pressing button b. We can use Infer to infer her goal (this is sometimes called 
+  "inverse planning", since the outer infer "inverts" the inference inside chooseAction).
+  """
+
+   See ppl_vending_machine1.pi and ppl_vending_machine1.pi for the previous 
+  parts of this problem.
+
+
+  Cf my Gamble model gamble_vending_machine3.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Note: This is nearly the same model as ppl_vending_machine2.pi
+        but with goal_posterior/0 added.
+
+  var : v
+  Probabilities:
+  cookie: 0.9040132395531650
+  bagel: 0.0959867604468349
+  mean = [cookie = 0.904013,bagel = 0.0959868]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+vending_machine(State,Action) = Res =>
+  Res = case(Action,
+             [[a,categorical([0.9,0.1],[bagel,cookie])], 
+              [b,categorical([0.1,0.9],[bagel,cookie])],
+              [true,nothing]]).
+
+choose_action(GoalState,Transition,ActionPrior) = choose_action(GoalState, Transition, ActionPrior, undefined).
+choose_action(GoalState, Transition, ActionPrior, State1) = Res =>
+  State = cond(State1 == undefined,start,state1),
+  Action = ActionPrior,
+  observe(GoalState == apply(Transition,State,Action)),
+  Res = Action.
+
+% This is new compared to ppl_vending_machine2.pi
+goal_posterior(ActionPrior) = Ret =>
+  Goal = categorical([0.5,0.5],[bagel, cookie]),
+  ActionDist = choose_action(Goal,vending_machine,ActionPrior),
+  observe(ActionDist==b),
+  Ret = Goal.
+
+model() =>
+  ActionPrior = categorical([0.5,0.5],[a,b]),
+  V = goal_posterior(ActionPrior),
+
+  if observed_ok then
+    add("v",V),
+  end.

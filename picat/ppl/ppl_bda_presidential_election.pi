@@ -1,0 +1,145 @@
+/* 
+
+  BDA Presidential election in Picat.
+
+  https://github.com/probmods/ppaml2016/blob/gh-pages/chapters/5-election.md
+  """
+  Basic model
+  Learning a state-wide preference from poll data
+  """
+
+  Here are two models:
+  * model/0: Sample election (using binomial_dist)
+             This is very slow and needed a lot of tweaking
+  * model2/0: Simulation using the normal approximation to binomial distribution.
+              Much faster.
+
+  Cf my Gamble model gamble_bda_presidential_election.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  After some tweaking it gives some result:
+
+  var : pref
+  Probabilities (truncated):
+  0.539497321466923: 0.0010000000000000
+  0.53436378017007: 0.0010000000000000
+  0.528771931662089: 0.0010000000000000
+  0.527871837998928: 0.0010000000000000
+  .........
+  0.421804525412022: 0.0010000000000000
+  0.421208914814576: 0.0010000000000000
+  0.418362396152212: 0.0010000000000000
+  0.414024851407259: 0.0010000000000000
+  mean = 0.476113
+
+  var : winner
+  Probabilities:
+  trump: 0.8720000000000000
+  clinton: 0.1280000000000000
+  mean = [trump = 0.872,clinton = 0.128]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(1_000,$model,[show_probs_trunc,mean]),
+  nl,
+  show_store_lengths,
+  % fail,
+  nl.
+go => true.
+
+%
+% Generate a "true state preference" for model/0
+%
+% With a little tweaking this is faster:
+% - Regenerating the pref if no hit
+% - informed beta dist with (clinton votes, trump votes)
+% - Using the faster "smart" binomial version which handles
+%   large N (> 1000) in the binomial dist.
+%
+true_state_pref() = Ret =>
+   Counts = new_map([trump=304,clinton=276]),
+   Pref = beta_dist(100,100),   
+   Total = Counts.values.sum,
+   Ret = false,
+   while (Ret == false)
+     if binomial_dist_smart(Total,Pref) == Counts.get(clinton) then
+       Ret := Pref
+     else
+       Pref := beta_dist(1,1),
+     end
+   end.
+
+% Sample election
+model() =>
+  Pref = true_state_pref(),
+  Turnout = 2400000,
+  ClintonVotes=binomial_dist_smart(Turnout,Pref),
+  TrumpVotes = Turnout - ClintonVotes,
+  Winner = cond(ClintonVotes > TrumpVotes,clinton,trump),
+  % println([pref=Pref,clinton=ClintonVotes,trump=TrumpVotes,winner=Winner]),
+  add("winner",Winner),
+  add("pref",Pref).
+
+
+
+/*
+  Simulate result
+
+  This is much more like it!
+
+  var : clinton win prob
+  Probabilities (truncated):
+  0.0: 0.8480000000000000
+  1.0: 0.1002000000000000
+  0.999999999999997: 0.0002000000000000
+  0.000000000000004: 0.0002000000000000
+  .........
+  0.000000000000002: 0.0001000000000000
+  0.000000000000001: 0.0001000000000000
+  0.000000000000001: 0.0001000000000000
+  0.000000000000001: 0.0001000000000000
+  mean = 0.122481
+
+  var : winner
+  Probabilities:
+  trump: 0.8777000000000000
+  clinton: 0.1223000000000000
+  mean = [trump = 0.8777,clinton = 0.1223]
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go2 => true.
+
+model2() =>
+  P0 = 276 + 1,
+  P1 = 304 + 1,
+
+  P = beta_dist(P0,P1),
+  % gaussian approximation to binomial because binomial with large n is slow
+  N = 2400000, % 2012 turnout
+  NP = N*P,
+
+  % use cdf to sample a winner rather than explicitly sampling a number of votes
+  ClintonWinProb = 1 - normal_dist_cdf(NP, sqrt(NP*(1-P)),N/2),
+  Winner = condt(flip(ClintonWinProb),clinton,trump),
+  add("clinton win prob", ClintonWinProb),
+  add("winner",Winner).

@@ -1,0 +1,132 @@
+/* 
+
+  Appears tall in Picat.
+
+  From HAL-ProbLog example examples/appears_tall.pl  
+  (https://bitbucket.org/pedrozudo/hal_problog/src/master/examples/appears_tall.pl)
+  """
+  2/5::male;3/5::female.
+
+  normal(180,8)~height:-male.
+  normal(160,8)~height:-female.
+  is_tall:-male, height~=Height, conS(180<Height).
+  is_tall:-female, height~=Height, conS(170<Height).
+  appears_tall:- is_tall.
+  3/10::appears_tall:-male.
+
+  query(is_tall).
+  query(appears_tall).
+  """
+
+  We check with no observation and the obervation: is_tall = true
+
+
+  Cf my Gamble model gamble_appears_tall.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  observation = none
+  var : appears tall
+  Probabilities:
+  false: 0.6636000000000000
+  true: 0.3364000000000000
+  mean = [false = 0.6636,true = 0.3364]
+
+  var : gender
+  Probabilities:
+  female: 0.5965000000000000
+  male: 0.4035000000000000
+  mean = [female = 0.5965,male = 0.4035]
+
+  var : height
+  Probabilities (truncated):
+  209.494219717115953: 0.0001000000000000
+  207.755007561625206: 0.0001000000000000
+  205.586799076977314: 0.0001000000000000
+  204.438807897600412: 0.0001000000000000
+  .........
+  134.1968876780752: 0.0001000000000000
+  133.64478324064828: 0.0001000000000000
+  133.384865290567006: 0.0001000000000000
+  131.810397755542311: 0.0001000000000000
+  mean = 168.536
+
+  var : is tall
+  Probabilities:
+  false: 0.7186000000000000
+  true: 0.2814000000000000
+  mean = [false = 0.7186,true = 0.2814]
+
+
+  observation = is_tall
+  var : appears tall
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : gender
+  Probabilities:
+  male: 0.7216266173752310
+  female: 0.2783733826247690
+  mean = [male = 0.721627,female = 0.278373]
+
+  var : height
+  Probabilities (truncated):
+  205.97063638903856: 0.0003696857670980
+  205.666150354896018: 0.0003696857670980
+  205.654977812449943: 0.0003696857670980
+  204.562262582212497: 0.0003696857670980
+  .........
+  170.033421846958078: 0.0003696857670980
+  170.021855794438949: 0.0003696857670980
+  170.018651853569622: 0.0003696857670980
+  170.000340926121169: 0.0003696857670980
+  mean = 182.826
+
+  var : is tall
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+*/
+go ?=>
+  member(Observation,[none,is_tall]),
+  println(observation=Observation),
+  reset_store,
+  run_model(10_000,$model(Observation),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Observation) =>
+  GenderList = [male,female],
+  Gender = categorical([2/5,3/5],GenderList),
+  Height = cond(Gender == male, normal_dist(180,8), normal_dist(160.8,8)),
+
+  IsTall = cond(Gender == male,check(Height >= 180), check(Height >= 170)),
+  AppearsTall = cases([[IsTall, true],
+                       [Gender==male, flip(3/10)],
+                       [true,false]]),
+
+  if Observation != none then
+    observe(IsTall == true)
+  end,
+
+  if ( (Observation == none) ; (Observation != none, observed_ok)) then
+    add("gender",Gender),
+    add("height",Height),
+    add("appears tall",AppearsTall),
+    add("is tall",IsTall)
+  end.

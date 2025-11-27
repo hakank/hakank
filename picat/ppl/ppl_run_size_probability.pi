@@ -1,0 +1,353 @@
+/* 
+
+  Run size probability in Picat.
+
+  What is the probability of a run (number of heads) of x in n tosses,
+  with probability p of getting a head?
+
+  Picat> [V=probability_of_run_size(10,5/10,V) : V in 0..10].printf_list    
+   0 1.0 
+   1 0.9990234375 
+   2 0.859375 
+   3 0.5078125 
+   4 0.2451171875 
+   5 0.109375 
+   6 0.046875 
+   7 0.01953125 
+   8 0.0078125 
+   9 0.0029296875 
+  10 0.0009765625 
+
+  
+  Probability of 20 consecutive success in 100 runs with 90% probability of success:
+  Picat> X = probability_of_run_size(100,9/10,20) 
+  X = 0.775299195879503
+
+  For the probability of getting n heads after exact k tosses, 
+  see ppl_n_heads_in_a_row_after_k_tosses.pi
+
+  Cf
+  - ppl_streaks_chess.pi 
+  - my Gamble model gamble_run_size_probability.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+/*
+   Probability of getting N concecutive successes in 10 runs:
+
+   0 1.0 
+   1 0.9990234375 
+   2 0.859375 
+   3 0.5078125 
+   4 0.2451171875 
+   5 0.109375 
+   6 0.046875 
+   7 0.01953125 
+   8 0.0078125 
+   9 0.0029296875 
+  10 0.0009765625 
+
+*/
+go ?=>
+  println("'CDF':"),
+  [V=probability_of_run_size(10,0.5,V) : V in 0..10].printf_list,
+  println("PDF"),
+  [V=probability_of_run_size_pdf(10,0.5,V) : V in 1..10].printf_list,
+  nl.
+go => true.
+  
+  
+
+/*
+  "Probability of [at least] 20 consecutive success in 100 runs with 90% probability of success"
+
+  var : max run length
+  Probabilities (truncated):
+  23: 0.0531000000000000
+  22: 0.0520000000000000
+  20: 0.0503000000000000
+  21: 0.0495000000000000
+  .........
+  81: 0.0001000000000000
+  80: 0.0001000000000000
+  78: 0.0001000000000000
+  73: 0.0001000000000000
+  mean = 27.0823
+  [len = 10000,min = 9,mean = 27.0823,median = 25.0,max = 89,variance = 96.3525,stdev = 9.81593]
+
+  var : prob
+  Probabilities:
+  true: 0.7756999999999999
+  false: 0.2243000000000000
+  mean = 0.7757
+  show_simple_stats: no numeric data
+
+  theoretical_prob = 0.775299
+
+*/
+go2 ?=>
+  N = 100,
+  P = 0.9,
+  Check = 20,
+  reset_store,
+  run_model(10_000,$model2(N,P,Check),[show_probs_trunc,mean,
+                           show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_prob=probability_of_run_size(N,0.9,Check)),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(N,P,Check) =>
+
+  X = bern_n(0.9,N),
+  Runs = get_runs(X),
+  RunLens = Runs.map(len),
+  MaxRunLength = RunLens.max,
+  Prob = check(MaxRunLength >= Check),
+  
+  add("max run length",MaxRunLength),
+  add("prob",Prob).
+
+
+/*
+
+  THIS IS EXPERIMENTAL!
+
+  Testing the "PDF", i.e. probability of exactly the length X, and mean.
+
+  var : max run length
+  Probabilities:
+  10: 0.3514200000000000
+  5: 0.1419200000000000
+  6: 0.1219500000000000
+  7: 0.1043300000000000
+  8: 0.0894700000000000
+  9: 0.0768300000000000
+  4: 0.0742800000000000
+  3: 0.0352700000000000
+  2: 0.0045200000000000
+  1: 0.0000100000000000
+  mean = 7.50502
+  [len = 100000,min = 1,mean = 7.50502,median = 8.0,max = 10,variance = 5.34035,stdev = 2.31092]
+
+  var : prob
+  Probabilities:
+  true: 0.9602000000000001
+  false: 0.0398000000000000
+  mean = 0.9602
+  show_simple_stats: no numeric data
+
+  var : prob exact
+  Probabilities:
+  false: 0.9257200000000000
+  true: 0.0742800000000000
+  mean = 0.07428
+  show_simple_stats: no numeric data
+
+  theoretical_prob_gt = 0.959362
+  theoretical_mean = 7.49708
+
+  Exact (PDF):
+  theoretical_pdf = 0.0736269
+  all:
+  10 0.3486784401 
+   5 0.1417176 
+   6 0.12223143 
+   7 0.105225318 
+   8 0.0903981141 
+   9 0.0774840978 
+   4 0.0736268859 
+   3 0.0354752541 
+   2 0.005100084 
+   1 0.0000627759 
+   0 0.0000000001 
+
+
+*/
+
+/*
+go3 ?=>
+  N = 10,
+  P = 0.9,
+  Check = 4,
+  reset_store,
+  run_model(100_000,$model3(N,P,Check),[show_probs_trunc,mean,
+                           show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_prob_gt=probability_of_run_size(N,P,Check)),
+  println(theoretical_mean=probability_of_run_size_mean(N,P)),  
+  nl,
+  println("Exact (PDF):"),
+  println(theoretical_pdf=probability_of_run_size_pdf(N,P,Check)),
+  println("all:"),
+  [V=probability_of_run_size_pdf(N,P,V) : V in 0..10].sort_down(2).printf_list,
+  nl,
+  nl.
+go3 => true.
+  
+model3(N,P,Check) =>
+
+  X = bern_n(P,N),
+  Runs = get_runs(X),
+  RunLens = Runs.map(len),
+  MaxRunLength = RunLens.max,
+  Prob = check(MaxRunLength >= Check),  
+  ProbExact = check(MaxRunLength == Check),  
+  add("max run length",MaxRunLength),
+  add("prob",Prob),
+  add("prob exact",ProbExact).
+*/
+
+
+/*
+  A more general model where M is the number of different values
+  (0..M-1). 
+
+
+  [n = 10,m = 2]
+  var : max run length
+  Probabilities:
+  3: 0.3637000000000000
+  4: 0.2475000000000000
+  2: 0.1683000000000000
+  5: 0.1214000000000000
+  6: 0.0593000000000000
+  7: 0.0215000000000000
+  8: 0.0089000000000000
+  9: 0.0051000000000000
+  1: 0.0030000000000000
+  10: 0.0013000000000000
+  mean = 3.6641
+
+
+  [n = 10,m = 3]
+  var : max run length
+  Probabilities:
+  2: 0.4335000000000000
+  3: 0.3570000000000000
+  4: 0.1308000000000000
+  5: 0.0379000000000000
+  1: 0.0265000000000000
+  6: 0.0107000000000000
+  7: 0.0027000000000000
+  9: 0.0005000000000000
+  8: 0.0004000000000000
+  mean = 2.768
+
+
+  [n = 10,m = 4]
+  var : max run length
+  Probabilities:
+  2: 0.5707000000000000
+  3: 0.2695000000000000
+  1: 0.0749000000000000
+  4: 0.0669000000000000
+  5: 0.0144000000000000
+  6: 0.0028000000000000
+  7: 0.0008000000000000
+  mean = 2.3868
+
+
+  [n = 100,m = 2]
+  var : max run length
+  Probabilities:
+  6: 0.2703000000000000
+  7: 0.2295000000000000
+  5: 0.1713000000000000
+  8: 0.1453000000000000
+  9: 0.0792000000000000
+  10: 0.0401000000000000
+  4: 0.0255000000000000
+  11: 0.0193000000000000
+  12: 0.0093000000000000
+  13: 0.0038000000000000
+  14: 0.0033000000000000
+  15: 0.0013000000000000
+  16: 0.0009000000000000
+  17: 0.0005000000000000
+  3: 0.0003000000000000
+  18: 0.0001000000000000
+  mean = 6.9276
+
+
+  [n = 100,m = 3]
+  var : max run length
+  Probabilities:
+  4: 0.3704000000000000
+  5: 0.3244000000000000
+  6: 0.1513000000000000
+  3: 0.0723000000000000
+  7: 0.0537000000000000
+  8: 0.0188000000000000
+  9: 0.0055000000000000
+  10: 0.0025000000000000
+  11: 0.0005000000000000
+  12: 0.0004000000000000
+  13: 0.0001000000000000
+  2: 0.0001000000000000
+  mean = 4.8409
+
+
+  [n = 100,m = 4]
+  var : max run length
+  Probabilities:
+  4: 0.4558000000000000
+  3: 0.2909000000000000
+  5: 0.1813000000000000
+  6: 0.0494000000000000
+  7: 0.0130000000000000
+  2: 0.0059000000000000
+  8: 0.0028000000000000
+  9: 0.0008000000000000
+  10: 0.0001000000000000
+  mean = 4.0322
+
+
+*/
+go4 ?=>
+  member(N,[10,100]),
+  member(M,2..4), % Number of values 0..M-1
+  println([n=N,m=M]),
+  reset_store,
+  run_model(10_000,$model4(N,M),[show_probs,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  fail,
+  nl.
+go4 => true.
+  
+model4(N,M) =>
+  X = random_integer_n(M,N),
+
+  Runs = get_runs(X),
+  RunLens = Runs.map(len),
+  MaxRunLength = RunLens.max,
+
+  add("max run length",MaxRunLength).

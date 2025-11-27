@@ -1,0 +1,272 @@
+/* 
+
+  Test of extreme values in Picat.
+
+  Here are some tests of extreme value distributions
+  * Extreme value distribution, for max values
+  * Gumel distribution, for min values
+
+
+  Cf my Gamble model gamble_extreme_value_tests.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  var : last record
+  Probabilities (truncated):
+  174.325567112559241: 0.0001000000000000
+  164.952987044836334: 0.0001000000000000
+  164.078464775447173: 0.0001000000000000
+  161.029924161851284: 0.0001000000000000
+  .........
+  106.920377810346096: 0.0001000000000000
+  106.81327329190114: 0.0001000000000000
+  106.150332250762744: 0.0001000000000000
+  106.085915021465354: 0.0001000000000000
+  mean = 127.97
+
+  var : num unique
+  Probabilities:
+  3: 0.2787000000000000
+  4: 0.2515000000000000
+  2: 0.1816000000000000
+  5: 0.1429000000000000
+  6: 0.0678000000000000
+  1: 0.0494000000000000
+  7: 0.0217000000000000
+  8: 0.0053000000000000
+  9: 0.0009000000000000
+  10: 0.0002000000000000
+  mean = 3.5804
+
+  var : ix
+  Probabilities (truncated):
+  8: 0.0531000000000000
+  18: 0.0524000000000000
+  5: 0.0522000000000000
+  3: 0.0521000000000000
+  .........
+  13: 0.0483000000000000
+  12: 0.0483000000000000
+  16: 0.0475000000000000
+  11: 0.0454000000000000
+  mean = 10.4393
+
+  var : p
+  Probabilities:
+  false: 0.6357000000000000
+  true: 0.3643000000000000
+  mean = [false = 0.6357,true = 0.3643]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 20,
+  Mu = 100,
+  Sigma = 15,
+
+  X = normal_dist_n(Mu,Sigma,N),
+  Records = scanl(max,X.first,X),
+  println(Records.remove_dups),
+  LastRecord = Records.last, % This is the max value
+  NumUnique = Records.remove_dups.len,
+  P = check(LastRecord > 130),
+  Ix = find_first_of(X,LastRecord),
+  
+  % add("records",Records),
+  add("last record",LastRecord),  
+  add("num unique",NumUnique),
+  add("ix",Ix),
+  add("p",P).
+
+
+/*
+
+  Relation with extreme value distributions.
+
+  The mean of an Extreme value distribution is mu + EulerGamma * sigma
+  The mean of a Gumbel distribution is mu - EulerGamma * sigma
+
+  Here we see that the max value of two normal distribution is about the
+  same as the mean of the extreme value distribution. 
+  Similarly, the min value of two normal distribution is about the
+  same as the mean of the Gumbel distribution. 
+
+  var : max val
+  mean = 108.433
+  HPD intervals:
+  HPD interval (0.94): 87.08021688725046..133.46666457814612
+
+  var : extreme value
+  mean = 108.658
+  HPD intervals:
+  HPD interval (0.94): 108.65823497352299..108.65823497352299
+
+  var : max val - extreme value
+  mean = -0.225482
+  HPD intervals:
+  HPD interval (0.94): -21.57801808627254..24.80842960462313
+
+  var : min val
+  mean = 91.4412
+  HPD intervals:
+  HPD interval (0.94): 68.19648220794339..114.63726152747103
+
+  var : gumbel
+  mean = 91.3418
+  HPD intervals:
+  HPD interval (0.94): 91.34176502647701..91.34176502647701
+
+  var : min val - Gumbel
+  mean = -0.0993919
+  HPD intervals:
+  HPD interval (0.94): -23.29549650099402..23.14528281853362
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[% show_probs_trunc,
+                               mean,
+                               % show_percentiles,show_histogram,
+                               show_hpd_intervals,hpd_intervals=[0.94]
+                               % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  N = 2,
+  Mu = 100,
+  Sigma = 15,
+
+  X = normal_dist_n(Mu,Sigma,N),
+  MaxVal = X.max,
+  MinVal = X.min,
+  ExtremeValue = extreme_value_dist_mean(Mu,Sigma),
+  ExtremeValueDiff = MaxVal - ExtremeValue,
+
+  Gumbel = gumbel_dist_mean(Mu,Sigma),
+  GumbelDiff = Gumbel - MinVal,
+  
+  add("max val",MaxVal),  
+  add("extreme value",ExtremeValue),
+  add("max val - extreme value",ExtremeValueDiff),
+  add("min val",MinVal),  
+  add("gumbel",Gumbel),
+  add("min val - Gumbel",GumbelDiff).
+
+
+/*
+  Max values: Recovering parameter for extreme value distribution
+  For 100 samples of max of 20 normal_dist(100,15).
+
+  Num accepted samples: 1000  Total samples: 767934  (0.001%)
+
+  var : mu
+  Probabilities (truncated):
+  133.466604227883096: 0.0010000000000000
+  133.324586382752557: 0.0010000000000000
+  133.232411990516084: 0.0010000000000000
+  133.105301360183063: 0.0010000000000000
+  .........
+  115.096759570341902: 0.0010000000000000
+  114.811574628023237: 0.0010000000000000
+  114.309241117122241: 0.0010000000000000
+  113.746711105921634: 0.0010000000000000
+  mean = 124.371
+  HPD intervals:
+  HPD interval (0.94): 116.73137504455232..131.47674413932336
+
+  var : sigma
+  Probabilities (truncated):
+  12.576756492525693: 0.0010000000000000
+  12.045246321729033: 0.0010000000000000
+  11.83788278691372: 0.0010000000000000
+  11.837829561828556: 0.0010000000000000
+  .........
+  0.061120465426296: 0.0010000000000000
+  0.051912851655815: 0.0010000000000000
+  0.045364350101615: 0.0010000000000000
+  0.003659352661883: 0.0010000000000000
+  mean = 5.23117
+  HPD intervals:
+  HPD interval (0.94): 0.05191285165582..10.03491874320196
+
+  var : post
+  Probabilities (truncated):
+  178.549626245042333: 0.0010000000000000
+  173.478955159232129: 0.0010000000000000
+  162.794014798864481: 0.0010000000000000
+  161.269603196459798: 0.0010000000000000
+  .........
+  106.422106439456954: 0.0010000000000000
+  103.961237894229427: 0.0010000000000000
+  102.368206893094722: 0.0010000000000000
+  100.511982831737868: 0.0010000000000000
+  mean = 127.619
+  HPD intervals:
+  HPD interval (0.94): 112.86721683286832..144.09245097271599
+
+*/
+go3 ?=>
+  Data = [ normal_dist_n(100,15,20).max : _ in 1..100],
+  println(data=Data),
+  println([min=Data.min,mean=Data.mean,max=Data.max,stdev=Data.stdev]),
+  reset_store,
+  run_model(10_000,$model3(Data),[show_probs_trunc,
+                                  mean,
+                                  % show_percentiles,show_histogram,
+                                  show_hpd_intervals,hpd_intervals=[0.94],
+                                  min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  show_store_lengths,nl,
+  fail,
+  nl.
+go3 => true.
+  
+  
+model3(Data) =>
+
+  Mu    = uniform(0,1000),
+  Sigma = uniform(0,100),
+
+  X = extreme_value_dist_n(Mu,Sigma,Data.len),
+
+  observe_abc(Data,X),
+
+  Post = extreme_value_dist(Mu,Sigma),
+
+  if observed_ok then
+    add("mu",Mu),
+    add("sigma",Sigma),
+    add("post",Post),          
+  end.

@@ -1,0 +1,111 @@
+/* 
+
+  Machine working in Picat.
+
+  https://pedrozudo.github.io/docs/20_thesis/thesis_final_online_compressed.pdf
+  """
+  Example 1.1. We model two machines (Line 1 in the program below). We want to know
+  the probability of the first machine working (Line 11), given that the second machine
+  works (Line 10) and given a model that describes under which conditions the machines
+  work (Lines 7 and 8). Additionally the program models the outside temperature (Line
+  3) and whether the cooling of each machine works (Lines 4 and 5) as (Boolean) random
+  variables (expressed as probabilistic facts).
+    1 machine(1). machine(2).
+    2
+    3 0.8::temperature(low).
+    4 0.99::cooling(1).
+    5 0.95::cooling(2).
+    6
+    7 works(N):- machine(N), cooling(N).
+    8 works(N):- machine(N), temperature(low).
+    9
+    10 evidence(works(2)).
+    11 query(works(1)).
+  Running the program yields p(works(1)|works(2)) ≈ 0.998
+  """
+
+
+  Cf my Gamble model gamble_machine_working.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : temp low
+  Probabilities:
+  true: 0.8040246738800688
+  false: 0.1959753261199312
+  mean = [true = 0.804025,false = 0.195975]
+
+  var : cooling 1
+  Probabilities:
+  true: 0.9902922439073718
+  false: 0.0097077560926282
+  mean = [true = 0.990292,false = 0.00970776]
+
+  var : cooling 2
+  Probabilities:
+  true: 0.9601577510365052
+  false: 0.0398422489634948
+  mean = [true = 0.960158,false = 0.0398422]
+
+  var : works 1
+  Probabilities:
+  true: 0.9980786732733340
+  false: 0.0019213267266660
+  mean = [true = 0.998079,false = 0.00192133]
+
+  var : works 2
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : both works
+  Probabilities:
+  true: 0.9980786732733340
+  false: 0.0019213267266660
+  mean = [true = 0.998079,false = 0.00192133]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  TempLow = flip(8/10),
+  Cooling = [flip(99/100),flip(95/100)],
+  Works   = [cond( (Cooling[M] == true ; TempLow),true,false) : M in 1..2],
+
+  % Machine 2 works
+  observe(Works[2] == true),
+
+  BothWorks = check((Works[1] == true, Works[2] == true)),
+
+  if observed_ok then
+    add("temp low",TempLow),
+    add("cooling 1",Cooling[1]),
+    add("cooling 2",Cooling[2]),
+    add("works 1",Works[1]),
+    add("works 2",Works[2]),
+    add("both works",BothWorks),            
+  end.

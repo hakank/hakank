@@ -1,0 +1,449 @@
+/* 
+
+  Order statistics - continuous distributions in Picat.
+
+  From Siegrist "Probability Mathematical Statisics and Stochastic Processes",
+  Chapter "6.6: Order Statistics"
+  """
+  Suppose that x is a real-valued variable for a population and that x = (x1,x2, … , xn ) 
+  are the observed values of a sample of size n corresponding to this variable. 
+  The order statistic of rank k is the k th smallest value in the data set, and is usually 
+  denoted xn:k . To emphasize the dependence on the sample size, another common notation 
+  is x(k) .
+  """
+
+  Wikipedia https://en.wikipedia.org/wiki/Order_statistic
+
+  Note: For continuous distributions, it's harder to compare the
+  the theoretical result and the model since we have to use some
+  granularity to get the individial PDF values.
+  Some some distributions, e.g. normal and larger values (such as
+  normal 100 15) it works a little better when rounding the values
+  in the model, but that might give some strange results...
+
+  For discrete values, see
+  - ppl_order_statistics_without_replacement_dist.pi
+  - ppl_order_statistics_with_replacement_discrete_dist.pi
+
+
+  Cf my Gamble model gamble_order_statistics_continuous_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Normal distribution: normal_dist(100,15)
+  - N: 10 number of measurements (increasing ordered)
+  - K: 1 or 10: We check the K'th measurements
+
+  Here we show in steps of 10.
+
+  * First with K = 1, i.e. the smallest measurement.
+    Here we see that the 50th percentile is 77.6 (with the precision of 0.1)
+
+    Normal distribution
+    Mu:100 Sigma:15 From:0 (By:10) To:200 N:10 K:1
+
+    PDF = normal_dist_pdf(100,15)
+      0: 0.00000000005940600
+     10: 0.00000000405058853
+     20: 0.00000017708671706
+     30: 0.00000496396219814
+     40: 0.00008919472231479
+     50: 0.00102422242040757
+     60: 0.00733939537132723
+     70: 0.02926041134338440
+     80: 0.04623234022717437
+     90: 0.01551846337446857
+    100: 0.00051945609427270
+    110: 0.00000088827173908
+    120: 0.00000000004777642
+    130: 0.00000000000000006
+    140: 0.00000000000000000
+    150: 0.00000000000000000
+    160: 0.00000000000000000
+    170: 0.00000000000000000
+    180: 0.00000000000000000
+    190: 0.00000000000000000
+    200: 0.00000000000000000
+
+    CDF = normal_dist_cdf(100,15)
+      0: 0.00000000013084922
+     10: 0.00000000986588418
+     20: 0.00000048213022939
+     30: 0.00001530616193551
+     40: 0.00031666728410192
+     50: 0.00428232862865741
+     60: 0.03765027282613776
+     70: 0.20556895983294296
+     80: 0.61573611712016507
+     90: 0.94553025698539694
+    100: 0.99902343750000022
+    110: 0.99999894686154778
+    120: 0.99999999996014499
+    130: 0.99999999999999989
+    140: 1.00000000000000000
+    150: 1.00000000000000000
+    160: 1.00000000000000000
+    170: 1.00000000000000000
+    180: 1.00000000000000000
+    190: 1.00000000000000000
+    200: 1.00000000000000000
+
+    Quantile:
+    0.0100000: 53.70000000000049312
+    0.0250000: 58.00000000000055422
+    0.0500000: 61.50000000000060396
+    0.2500000: 71.50000000000021316
+    0.5000000: 77.59999999999986642
+    0.7500000: 83.09999999999955378
+    0.8400000: 85.59999999999941167
+    0.9750000: 92.49999999999901945
+    0.9900000: 94.99999999999887734
+    0.9990000: 99.99999999999859313
+    0.9999000: 103.89999999999837144
+    0.9999990: 110.09999999999801901
+
+    Median
+    77.6
+
+
+
+  * Compare if we check K = 10, i.e. the largest measurement.
+    Here we see that the 50th percentile is 122.5 (with precision of 0.1)
+
+    Normal distribution
+    Mu:100 Sigma:15 From:0 (By:10) To:200 N:10 K:10
+
+    PDF = normal_dist_pdf(100,15)
+      0: 0.00000000000000000
+     10: 0.00000000000000000
+     20: 0.00000000000000000
+     30: 0.00000000000000000
+     40: 0.00000000000000000
+     50: 0.00000000000000000
+     60: 0.00000000000000000
+     70: 0.00000000000000006
+     80: 0.00000000004777642
+     90: 0.00000088827173908
+    100: 0.00051945609427270
+    110: 0.01551846337446857
+    120: 0.04623234022717437
+    130: 0.02926041134338440
+    140: 0.00733939537132723
+    150: 0.00102422242040757
+    160: 0.00008919472231479
+    170: 0.00000496396219814
+    180: 0.00000017708671706
+    190: 0.00000000405058853
+    200: 0.00000000005940600
+
+    CDF = normal_dist_cdf(100,15)
+      0: 0.00000000000000000
+     10: 0.00000000000000000
+     20: 0.00000000000000000
+     30: 0.00000000000000000
+     40: 0.00000000000000000
+     50: 0.00000000000000000
+     60: 0.00000000000000000
+     70: 0.00000000000000004
+     80: 0.00000000003985498
+     90: 0.00000105313845236
+    100: 0.00097656250000000
+    110: 0.05446974301460329
+    120: 0.38426388287983487
+    130: 0.79443104016705757
+    140: 0.96234972717386169
+    150: 0.99571767137134204
+    160: 0.99968333271589804
+    170: 0.99998469383806388
+    180: 0.99999951786977115
+    190: 0.99999999013411633
+    200: 0.99999999986915133
+
+    Quantile:
+    0.0100000: 105.09999999999830322
+    0.0250000: 107.59999999999816112
+    0.0500000: 109.79999999999803606
+    0.2500000: 116.99999999999762679
+    0.5000000: 122.49999999999731415
+    0.7500000: 128.59999999999698161
+    0.8400000: 131.79999999999679972
+    0.9750000: 142.09999999999621423
+    0.9900000: 146.39999999999596980
+    0.9990000: 155.79999999999543547
+    0.9999000: 163.99999999999496936
+    0.9999990: 177.99999999999417355
+
+    Median
+    122.5
+
+
+*/
+go ?=>
+  Mu = 100,
+  Sigma = 15,
+  From = 0,
+  To = 200,
+  By = 10,
+  N = 10, % We have N (increasing ordered) measurements
+  member(K,[1,10]),
+  % K = 1, % We want to check the value of the Kth measurement
+
+  println("Normal distribution"),
+  printf("Mu:%w Sigma:%w From:%w (By:%w) To:%w N:%w K:%w\n",Mu,Sigma,From,By,To,N,K),
+  nl,
+  CDF = $normal_dist_cdf(Mu,Sigma),
+  PDF = $normal_dist_pdf(Mu,Sigma),
+  println("PDF"=PDF),
+  foreach(I in From..By..To)
+    T = order_statistics_continuous_pdf(PDF,CDF,N,K,I),
+    printf("%3d: %0.17f\n",I,T)
+  end,
+  nl,
+  println("CDF"=CDF),
+  foreach(I in From..By..To)
+    T = order_statistics_continuous_cdf(CDF,N,K,I),
+    printf("%3d: %0.17f\n",I,T)
+  end,
+  nl,  
+  println("Quantile:"),
+  Qs = [0.01,0.025,0.05,0.25,0.50,0.75,0.84,0.975,0.99,0.999,0.9999,0.999999],  
+  foreach(Q in Qs)
+    T = order_statistics_continuous_quantile(CDF,N,K,Q,0.1),
+    printf("%.7f: %0.17f\n",Q,T)
+  end,
+  nl,
+  println("Median"),
+  println(order_statistics_continuous_median(CDF,N,K,0.1)),
+  nl,
+  fail,
+  nl.
+go => true.
+
+/*
+  Exponential distribution: lambda=0.01, N = 10, K = 1
+
+Lambda:0.01 From:0 (By:1) To:20 N:10 K:1
+
+CDF = exponential_dist_cdf(0.01)
+  0: 0.00000000000000000
+  1: 0.09516258196403997
+  2: 0.18126924692201848
+  3: 0.25918177931828229
+  4: 0.32967995396436101
+  5: 0.39346934028736652
+  6: 0.45118836390597367
+  7: 0.50341469620859025
+  8: 0.55067103588277844
+  9: 0.59343034025940067
+ 10: 0.63212055882855789
+ 11: 0.66712891630192062
+ 12: 0.69880578808779792
+ 13: 0.72746820696598713
+ 14: 0.75340303605839365
+ 15: 0.77686983985157032
+ 16: 0.79810348200534442
+ 17: 0.81731647594726531
+ 18: 0.83470111177841344
+ 19: 0.85043138077736502
+ 20: 0.86466471676338752
+
+PDF = exponential_dist_pdf(0.01)
+  0: 0.09999999999999962
+  1: 0.09048374180359565
+  2: 0.08187307530779783
+  3: 0.07408182206817147
+  4: 0.06703200460356365
+  5: 0.06065306597126312
+  6: 0.05488116360940243
+  7: 0.04965853037914078
+  8: 0.04493289641172197
+  9: 0.04065696597405976
+ 10: 0.03678794411714407
+ 11: 0.03328710836980782
+ 12: 0.03011942119122008
+ 13: 0.02725317930340114
+ 14: 0.02465969639416057
+ 15: 0.02231301601484290
+ 16: 0.02018965179946546
+ 17: 0.01826835240527340
+ 18: 0.01652988882215859
+ 19: 0.01495686192226344
+ 20: 0.01353352832366122
+
+Quantile:
+0.0100000: 1.00000000000000000
+0.0250000: 1.00000000000000000
+0.0500000: 1.00000000000000000
+0.2500000: 3.00000000000000000
+0.5000000: 7.00000000000000000
+0.7500000: 14.00000000000000000
+0.8400000: 19.00000000000000000
+0.9750000: 37.00000000000000000
+0.9900000: 47.00000000000000000
+0.9990000: 70.00000000000000000
+0.9999000: 93.00000000000000000
+0.9999990: 139.00000000000000000
+
+Median
+7
+
+
+*/
+go2 ?=>
+  Lambda = 1/100,
+  From = 0,
+  To = 20,
+  By = 1,
+  N = 10, % We have N (increasing ordered) measurements
+  K = 1, % We want to check the value of the Kth measurement
+
+  println("Exponential distribution"),
+  printf("Lambda:%w From:%w (By:%w) To:%w N:%w K:%w\n",Lambda,From,By,To,N,K),
+  nl,
+  CDF = $exponential_dist_cdf(Lambda),
+  PDF = $exponential_dist_pdf(Lambda),
+  println("CDF"=CDF),
+  foreach(I in From..By..To)
+    T = order_statistics_continuous_cdf(CDF,N,K,I),
+    printf("%3d: %0.17f\n",I,T)
+  end,
+  nl,
+  println("PDF"=PDF),
+  foreach(I in From..By..To)
+    T = order_statistics_continuous_pdf(PDF,CDF,N,K,I),
+    printf("%3d: %0.17f\n",I,T)
+  end,
+  nl,
+  println("Quantile:"),
+  Qs = [0.01,0.025,0.05,0.25,0.50,0.75,0.84,0.975,0.99,0.999,0.9999,0.999999],  
+  foreach(Q in Qs)
+    T = order_statistics_continuous_quantile(CDF,N,K,Q),
+    printf("%.7f: %0.17f\n",Q,T)
+  end,
+  nl,
+  println("Median"),
+  println(order_statistics_continuous_median(CDF,N,K)),
+  nl,
+  fail,
+
+  nl.
+go2 => true.
+
+
+/*
+  Simulation for 10 sorted measurements of normal_dist(100,15).
+  We check K=1 (the smallest) and K=10 (the largest) measurements.
+
+  k = 1
+  var : m
+  Probabilities (truncated):
+  101.723023908632811: 0.0001000000000000
+  101.357349670806514: 0.0001000000000000
+  100.900423389350422: 0.0001000000000000
+  100.843714591206236: 0.0001000000000000
+  .........
+  41.56495714422455: 0.0001000000000000
+  40.111539867927775: 0.0001000000000000
+  39.654061056234546: 0.0001000000000000
+  38.952071423612196: 0.0001000000000000
+  mean = 76.8456
+  Percentiles:
+  (0.001 44.090761523175559)
+  (0.01 54.172740211338585)
+  (0.025 58.08170627870355)
+  (0.05 61.733880304045648)
+  (0.1 65.363358989124407)
+  (0.25 71.291354179851581)
+  (0.5 77.41359608237228)
+  (0.75 83.000323476281636)
+  (0.84 85.43878548984631)
+  (0.9 87.537104587381279)
+  (0.95 90.139878362353414)
+  (0.975 92.35277033931321)
+  (0.99 94.674316768477254)
+  (0.999 99.345245388858672)
+  (0.9999 101.35738623823003)
+  (0.99999 101.686460141593)
+  HPD intervals:
+  HPD interval (0.5): 72.52658618115967..83.97236324319972
+  HPD interval (0.84): 65.10952943596413..89.09092234508401
+  HPD interval (0.9): 62.89284547965602..91.09716843579342
+  HPD interval (0.95): 58.65532338862543..92.57180035068299
+  HPD interval (0.99): 53.07112830069623..97.60380512002473
+  HPD interval (0.999): 43.80477495689069..100.90042338935042
+  HPD interval (0.9999): 39.65406105623455..101.72302390863281
+  HPD interval (0.99999): 38.95207142361220..101.72302390863281
+
+
+  k = 10
+  var : m
+  Probabilities (truncated):
+  164.661731161718365: 0.0001000000000000
+  158.598660338279728: 0.0001000000000000
+  157.341411132654144: 0.0001000000000000
+  156.654767239790658: 0.0001000000000000
+  .........
+  99.077799871499494: 0.0001000000000000
+  98.812156772558225: 0.0001000000000000
+  98.474667260938773: 0.0001000000000000
+  98.458766485746182: 0.0001000000000000
+  mean = 123.188
+  Percentiles:
+  (0.001 100.37113370981785)
+  (0.01 105.12398299780398)
+  (0.025 107.56893189081703)
+  (0.05 109.81927973694974)
+  (0.1 112.49446616622484)
+  (0.25 117.12416737663874)
+  (0.5 122.53464375531441)
+  (0.75 128.57506095982131)
+  (0.84 131.69452971836529)
+  (0.9 134.98999337765795)
+  (0.95 138.93945484308611)
+  (0.975 142.36625401540113)
+  (0.99 146.09888312330531)
+  (0.999 155.06593911593595)
+  (0.9999 158.59926664535777)
+  (0.99999 164.05548471009001)
+  HPD intervals:
+  HPD interval (0.5): 116.57456809220301..127.87491832411510
+  HPD interval (0.84): 110.14580102424041..134.61629370382292
+  HPD interval (0.9): 109.45163691589499..138.30548394635434
+  HPD interval (0.95): 106.68033121377148..141.06330249551877
+  HPD interval (0.99): 102.87215336719167..147.68666823441558
+  HPD interval (0.999): 99.89194734931932..155.93298916016067
+  HPD interval (0.9999): 98.45876648574618..158.59866033827973
+  HPD interval (0.99999): 98.45876648574618..164.66173116171836
+
+*/
+go3 ?=>
+  member(K,[1,10]),
+  println(k=K),
+  reset_store,
+  run_model(10_000,$model3(K),[show_probs_trunc,mean,show_percentiles,show_hpd_intervals]),
+  nl,
+  fail,
+  nl.
+go3 => true.
+
+model3(K) =>
+  Mu = 100,
+  Sigma = 15,
+  N = 10, % we have N ordered measurements
+  % K = 1, % we want to check the K'th value
+  Xs = normal_dist_n(Mu,Sigma,N).sort,
+
+  % M = Xs[K],
+  M = ith_smallest(Xs,K,true),
+  
+  add("m",M).
+

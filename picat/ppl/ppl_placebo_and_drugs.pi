@@ -1,0 +1,145 @@
+/* 
+
+  Placebo and drugs in Picat.
+
+  From Dennis Shasha and Manda Wilson: Statistics is Easy!
+  https://cs.nyu.edu/~shasha/papers/StatisticsIsEasyExcerpt.html
+  """
+  Imagine we have given some people a placebo and others a drug. The measured 
+  improvement (the more positive the better) is:
+  Placebo: 54 51 58 44 55 52 42 47 58 46
+  Drug:    54 73 53 70 73 68 52 65 65
+  As you can see, the drug seems more effective on the average (the average measured 
+  improvement is nearly 63.7 (63 2/3 to be precise) for the drug and 50.7 for the 
+  placebo). But, is this difference in the average real?
+  ...
+  We repeat this shuffle-then-measure procedure 10,000 times and ask what fraction of time 
+  we get a difference between drug and placebo greater than or equal to the measured difference 
+  of 63.7 - 50.7 = 13. The answer in this case is under 0.001. That is less than 0.1%. Therefore, 
+  we conclude that the difference between the averages of the samples is real. 
+  This is what statisticians call significant. 
+  """
+
+  Cf my Gamble model gamble_placebo_and_drugs.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Checking both using resampling (with replacement) and resample (without replacement).
+
+  use_resample = true
+  var : sample placebo mean
+  mean = 56.8168
+  HPD intervals:
+  HPD interval (0.9): 52.20000000000000..61.80000000000000
+  HPD interval (0.99): 49.70000000000000..64.50000000000000
+  HPD interval (0.999): 47.60000000000000..66.20000000000000
+  HPD interval (0.9999): 46.80000000000000..67.80000000000000
+
+  var : sample drug mean
+  mean = 56.8142
+  HPD intervals:
+  HPD interval (0.9): 51.55555555555556..61.77777777777778
+  HPD interval (0.99): 49.00000000000000..64.77777777777777
+  HPD interval (0.999): 47.88888888888889..67.00000000000000
+  HPD interval (0.9999): 46.44444444444444..67.88888888888889
+
+  var : sample diff
+  mean = 3.41578
+  HPD intervals:
+  HPD interval (0.9): 0.00000000000000..7.08888888888889
+  HPD interval (0.99): 0.00000000000000..10.90000000000000
+  HPD interval (0.999): 0.00000000000000..13.87777777777778
+  HPD interval (0.9999): 0.00000000000000..15.81111111111112
+
+  var : p
+  mean = 0.0016
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+
+  use_resample = false
+  var : sample placebo mean
+  mean = 56.8157
+  HPD intervals:
+  HPD interval (0.9): 53.10000000000000..60.00000000000000
+  HPD interval (0.99): 51.40000000000000..61.80000000000000
+  HPD interval (0.999): 50.70000000000000..63.00000000000000
+  HPD interval (0.9999): 50.20000000000000..63.40000000000000
+
+  var : sample drug mean
+  mean = 56.8714
+  HPD intervals:
+  HPD interval (0.9): 52.77777777777778..60.44444444444444
+  HPD interval (0.99): 51.11111111111111..62.66666666666666
+  HPD interval (0.999): 50.00000000000000..63.66666666666666
+  HPD interval (0.9999): 49.55555555555556..64.22222222222223
+
+  var : sample diff
+  mean = 3.56287
+  HPD intervals:
+  HPD interval (0.9): 0.08888888888889..7.30000000000000
+  HPD interval (0.99): 0.08888888888889..11.06666666666666
+  HPD interval (0.999): 0.08888888888889..13.00000000000000
+  HPD interval (0.9999): 0.08888888888889..14.02222222222223
+
+  var : p
+  mean = 0.0016
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+
+*/
+go ?=>
+  member(UseResample,[true,false]),
+  println(use_resample=UseResample),
+  reset_store,
+  run_model(10_000,$model(UseResample),[% show_probs_trunc,
+                                        mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.9,0.99,0.999,0.9999]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(UseResample) =>
+  % Data
+  Placebo = [54,51,58,44,55,52,42,47,58,46],
+  Drug    = [54,73,53,70,73,68,52,65,65],
+  PlaceboMean = Placebo.mean,
+  DrugMean = Drug.mean,
+  DiffMean = DrugMean - PlaceboMean,
+  All = Placebo ++ Drug,
+  PlaceboLen = Placebo.len,
+  
+  % Sampling
+  Sample = cond(UseResample,resample(All),shuffle(All)),
+
+  % The first placebo_len elements represents placebos, the rest represents drugs
+  SamplePlacebo = take(Sample,PlaceboLen).mean,
+  SampleDrug = drop(Sample,PlaceboLen).mean,
+  SampleDiff = abs(SampleDrug - SamplePlacebo),
+  
+  % Did we see as great difference between the sample means?
+  P = check(SampleDiff >= DiffMean),
+  
+  add("sample placebo mean",SamplePlacebo),
+  add("sample drug mean",SampleDrug),
+  add("sample diff",SampleDiff),
+  add("p",P).

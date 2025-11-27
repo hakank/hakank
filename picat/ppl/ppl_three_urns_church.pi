@@ -1,0 +1,133 @@
+/* 
+
+  Three urns in Picat.
+
+  From Andreas Stuhlmüller 
+  "Modeling Cognition with Probabilistic Programs: Representations and Algorithms"
+  page 30ff
+  """
+  We are presented with three opaque urns, each of which contains some unknown number of
+  red and black balls. We do not know the proportion of red balls in each urn, and
+  we don’t know how similar the proportions of red balls are between urns, but we
+  have reason to suspect that the urns could be similar, as they all were filled at the
+  same factory. We are asked to predict the proportion of red balls in the third urn
+  (1) before making any observations, 
+  (2) after observing 15 balls drawn from the first urn, 14 of which are red, and 
+  (3) after observing in addition 15 balls drawn from the second urn, only one 
+      of which is red.
+  """
+  
+  This is a port of the Church code at page 35 for scenario 2 and 3: we observe 
+  14 red balls and 1 black.
+  """
+  (query
+  ; ; model
+  (define bias (uniform 0 10) )
+  (define red-bias (uniform 0 bias ) )
+  (define black-bias (- bias red-bias ) )
+  (define urn->proportion-red
+    (mem
+      (λ (urn)
+      (beta (+ .4 red-bias ) (+ .4 black-bias ) ) ) ) )
+  (define (sample-urn urn )
+     (if (flip (urn-> proportion-red urn ) ) R B) )
+
+  ;; query expression
+  (urn->proportion-red 3)
+
+  ;; condition
+  (equal? (repeat 15 (λ () (sample-urn 1) ) )
+  (list R R R R R R B R R R R R R R R) ) )
+  """
+
+
+  Cf my Gamble model gamble_three_urns_church.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  obs = [0,0,0,0,0,0,1,0,0,0,0,0,0,0,0]
+  min_accepted_samples = 10000
+  var : urn proportion red 1
+  Probabilities (truncated):
+  0.99956619666129: 0.0001000000000000
+  0.99951409377321: 0.0001000000000000
+  0.999011764887766: 0.0001000000000000
+  0.99870596247891: 0.0001000000000000
+  .........
+  0.543734174999438: 0.0001000000000000
+  0.521818026852994: 0.0001000000000000
+  0.511290920943632: 0.0001000000000000
+  0.496315536579795: 0.0001000000000000
+  mean = 0.889882
+
+  var : urn proportion red 2
+  Probabilities (truncated):
+  0.999999639305028: 0.0001000000000000
+  0.999994201854777: 0.0001000000000000
+  0.999993432177565: 0.0001000000000000
+  0.999992171954706: 0.0001000000000000
+  .........
+  0.000074272245611: 0.0001000000000000
+  0.000041746311773: 0.0001000000000000
+  0.000006018435616: 0.0001000000000000
+  0.000000127542993: 0.0001000000000000
+  mean = 0.727934
+
+  var : urn proportion red 3
+  Probabilities (truncated):
+  0.999999871835092: 0.0001000000000000
+  0.999999838615021: 0.0001000000000000
+  0.999999786377295: 0.0001000000000000
+  0.999999414789242: 0.0001000000000000
+  .........
+  0.000306803068273: 0.0001000000000000
+  0.000164811597417: 0.0001000000000000
+  0.000007645567938: 0.0001000000000000
+  0.000001601946651: 0.0001000000000000
+  mean = 0.728049
+
+
+*/
+go ?=>
+  % Obs =  ["R","R","R","R","R","R","B","R","R","R","R","R","R","R","R"],
+  % Translating R = 0, B = 1
+  [R,B] = [0,1],
+  Obs = [R,R,R,R,R,R,B,R,R,R,R,R,R,R,R],
+  println(obs=Obs),
+  reset_store,
+  run_model(10_000,$model(Obs,R,B),[show_probs_trunc,mean,
+                                    min_accepted_samples=10_000 % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+model(Obs,R,B) =>
+  Bias = uniform(0,10),
+  RedBias = uniform(0,Bias),
+  BlackBias = Bias-RedBias,
+
+  UrnProportionRed = [  beta_dist(0.4+RedBias, 0.4+BlackBias)  : U in 1..3], % Three urns
+
+  SampleUrn1 = [ cond(flip(UrnProportionRed[1])==true,R,B) : U in 1..Obs.len],
+
+  observe_abc(Obs,SampleUrn1,1/10),
+  
+  if observed_ok then
+    add("urn proportion red 1",UrnProportionRed[1]),
+    add("urn proportion red 2",UrnProportionRed[2]),
+    add("urn proportion red 3",UrnProportionRed[3]),    
+  end.

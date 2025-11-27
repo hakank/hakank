@@ -1,0 +1,155 @@
+/* 
+
+  Drunk passenger in Picat.
+
+  https://brainstellar.com/puzzles/probability/101
+  """
+  A line of 100 airline passengers is waiting to board a plane. They each hold a ticket 
+  to one of the 100 seats on that flight. For convenience, let's say that the nth
+  passenger in line has a ticket for seat number 'n'. Being drunk, the first person in 
+  line picks a random seat (equally likely for each seat). All of the other passengers 
+  are sober, and will go to their assigned seats unless it is already occupied; If it 
+  is occupied, they will then find a free seat to sit in, at random. What is the probability 
+  that the last (100th) person to board the plane will sit in their own seat (#100)?
+
+  ...
+
+  Follow-up Question: What's the probability that the second-last person sits on their seat?
+
+  """
+
+
+  Cf my Gamble model gamble_drunk_passenger.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+import ordset. % for subtract/2
+
+
+main => go.
+
+
+
+/*
+
+
+  * First question: 
+    What is the probability 
+    that the last (100th) person to board the plane will sit in their own seat (#100).
+
+    var : last seat
+    Probabilities:
+    100: 0.5016000000000000
+    1: 0.4984000000000000
+    mean = 50.6584
+
+    var : p
+    Probabilities:
+    true: 0.5016000000000000
+    false: 0.4984000000000000
+    mean = [true = 0.5016,false = 0.4984]
+
+  * Follow up question: What's the probability that the second-last person sits on their seat?
+
+    var : next to last seat
+    Probabilities:
+    99: 0.6683000000000000
+    1: 0.1680000000000000
+    100: 0.1637000000000000
+    mean = 82.6997
+
+    var : p2
+    Probabilities:
+    true: 0.6683000000000000
+    false: 0.3317000000000000
+    mean = [true = 0.6683,false = 0.3317]
+
+  * Follow up question: Probability for a random-passenger to find their seat
+    var : random passenger
+    Probabilities (truncated):
+    14: 0.0129000000000000
+    69: 0.0128000000000000
+    51: 0.0119000000000000
+    37: 0.0117000000000000
+    .........
+    83: 0.0081000000000000
+    68: 0.0078000000000000
+    29: 0.0078000000000000
+    47: 0.0074000000000000
+    mean = 50.0612
+
+    var : random passenger seat
+    Probabilities (truncated):
+    14: 0.0130000000000000
+    69: 0.0126000000000000
+    51: 0.0117000000000000
+    15: 0.0117000000000000
+    .........
+    29: 0.0080000000000000
+    96: 0.0079000000000000
+    68: 0.0079000000000000
+    47: 0.0072000000000000
+    mean = 50.0794
+
+    var : p3
+    Probabilities:
+    true: 0.9486000000000000
+    false: 0.0514000000000000
+    mean = [true = 0.9486,false = 0.0514]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+% subtract/2 needs both lists (sets) to be sorted.
+free_seats(A,N) = subtract(1..N,A.sort).
+
+pick_seat(P,A,N) = Res =>
+  % println($pick_seat(P,A,N)),
+  if A.len == N then
+    Res = A
+  else
+    if P == 1 ; membchk(P,A) then
+      % first or already occupied
+      Res = pick_seat(P+1, A++ [uniform_draw(free_seats(A,N))],N)
+    else
+      Res = pick_seat(P+1, A++ [P],N)
+    end
+  end.
+  
+model() =>
+  N = 100,
+
+  Seats = pick_seat(1,[],N),
+  % println(seats=Seats),
+
+  LastSeat = Seats.last,
+  P = check(LastSeat == N),
+
+  % Follow up question
+  NextToLastSeat = Seats[N-1],
+  P2 = check(NextToLastSeat == N-1),
+
+  RandomPassenger = random_integer1(N),
+  RandomPassengerSeat = Seats[RandomPassenger],
+  P3 = check(RandomPassengerSeat == RandomPassenger),
+  
+  add_all([["last seat",LastSeat],
+           ["p",P],
+           ["next to last seat",NextToLastSeat],
+           ["p2",P2],
+           ["random passenger",RandomPassenger],
+           ["random passenger seat",RandomPassengerSeat],
+           ["p3",P3]]).

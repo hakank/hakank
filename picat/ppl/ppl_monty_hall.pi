@@ -1,0 +1,75 @@
+/* 
+
+  Monty Hall problem in Picat.
+
+  From the PyMC3 model in the talk
+  "Carlo Revolution is Open Source: Probabilistic Programming with PyMC3?Austin Rochford"
+  https://www.safaribooksonline.com/videos/open-data-science/9780135432792/9780135432792-ODSC_11
+  Around time 9:00
+
+  The assumptions are: 
+  - the prize is at random place
+  - we always select door 1
+  - Monty Hall opens door 2
+
+  The exact probabilities (from my Gamble/Racket model)
+  var : prize
+  3: 2/3 (0.6666666666666666)
+  1: 1/3 (0.3333333333333333)
+  mean: 7/3 (2.3333333333333335)
+
+  Which mean that if we had kept door d1 (i.e. didn't switch to door d3) it will 
+  be 1/3 chance of being the price door.
+  Changing to d3 would - however - give a 2/3 change of getting the price.
+
+  This is a port of my Racket/Gamble model gamble_monty_hall.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+  var : prize
+  Probabilities:
+  d3: 0.67736161750082868 (10218 / 15085)
+  d1: 0.32263838249917137 (4867 / 15085)
+  mean = [d3 = 0.677362,d1 = 0.322638]
+
+*/
+go ?=>
+  reset_store,
+  run_model(30_000,$model,[show_probs_rat,mean]),
+  fail,
+  nl.
+go => true.
+
+model() =>
+  Doors = [d1,d2,d3],
+  
+  % The prize can be behind any door 1..3.
+  Prize = uniform_draw(Doors),
+
+   % Which door will Monty open?
+   % Assumption (WLOG): We always select door 1.
+   % If the prize is behind door 1 (our selected door),
+   % then Monty picks some of other the other doors by random.
+   % Note: Monty knows were the prize is and never opens
+   % the door of the prize.
+   MontyOpen = cond(Prize == d1,
+                    uniform_draw([d2,d3]),  % Monty must pick D2 or D3 randomly
+                    cond(Prize==d2,d3,d2)), % Monty must open D2
+   
+   % We see that Monty opens door 2
+   % What are the probabilities that the price is behind
+   % - door D1 (the one we selected, i.e don't switch)
+   % - or door D3 (i.e. switch door)
+   observe(MontyOpen == d2),
+
+   if observed_ok then     
+     add("prize",Prize)
+   end.

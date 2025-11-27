@@ -1,0 +1,141 @@
+/* 
+
+  True skill Poisson Binomial in Picat.
+
+  From SPPL model trueskill-poisson-binomial.pynb
+
+  Cf my Gamble model gamble_trueskill_poisson_binomial.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  use_observation = false
+  var : perfA1
+  Probabilities (truncated):
+  89: 0.0455000000000000
+  91: 0.0444000000000000
+  92: 0.0425000000000000
+  90: 0.0408000000000000
+  .........
+  124: 0.0001000000000000
+  123: 0.0001000000000000
+  121: 0.0001000000000000
+  57: 0.0001000000000000
+  mean = 90.0855
+
+  var : perfB1
+  Probabilities (truncated):
+  91: 0.1358000000000000
+  90: 0.1309000000000000
+  92: 0.1179000000000000
+  89: 0.1170000000000000
+  .........
+  79: 0.0005000000000000
+  78: 0.0003000000000000
+  99: 0.0001000000000000
+  76: 0.0001000000000000
+  mean = 90.0033
+
+  var : result
+  Probabilities:
+  0: 0.5216000000000000
+  1: 0.4784000000000000
+  mean = 0.4784
+
+  var : skillA
+  Probabilities (truncated):
+  98: 0.0425000000000000
+  104: 0.0414000000000000
+  103: 0.0400000000000000
+  101: 0.0398000000000000
+  .........
+  132: 0.0001000000000000
+  67: 0.0001000000000000
+  63: 0.0001000000000000
+  60: 0.0001000000000000
+  mean = 100.051
+
+  use_observation = true
+  var : perfA1
+  Probabilities (truncated):
+  74: 0.1562500000000000
+  77: 0.1250000000000000
+  75: 0.1250000000000000
+  78: 0.0937500000000000
+  .........
+  69: 0.0625000000000000
+  79: 0.0312500000000000
+  76: 0.0312500000000000
+  68: 0.0312500000000000
+  mean = 74.21875
+
+  var : perfB1
+  Probabilities:
+  80: 0.5000000000000000
+  78: 0.3125000000000000
+  79: 0.0937500000000000
+  77: 0.0937500000000000
+  mean = 79.0
+
+  var : result
+  Probabilities:
+  0: 1.0000000000000000
+  mean = 0.0
+
+  var : skillA
+  Probabilities (truncated):
+  86: 0.1250000000000000
+  83: 0.1250000000000000
+  81: 0.0937500000000000
+  80: 0.0937500000000000
+  .........
+  92: 0.0625000000000000
+  88: 0.0625000000000000
+  84: 0.0625000000000000
+  82: 0.0312500000000000
+  mean = 83.03125
+
+
+*/
+go ?=>
+  member([UseObservation,NumRuns],[[false,10_000],[true,100_000]]),
+  
+  println(use_observation=UseObservation),
+  reset_store,
+  run_model(NumRuns,$model(UseObservation),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(UseObservation) =>
+
+  PerfB1 = binomial_dist(100,0.9),
+  SkillA = poisson_dist(100),
+  PerfA1 = binomial_dist(SkillA,0.9),
+
+  Result = cond(PerfA1 > PerfB1,1,0),
+
+  if UseObservation == true then
+    observe(PerfB1 <= 80),
+    observe( (SkillA >= 77, SkillA < 125)),
+    observe(Result == 0)
+  end,
+  
+  if (UseObservation == false) ; ( UseObservation == true, observed_ok) then
+    add("perfB1",PerfB1),
+    add("skillA",SkillA),
+    add("perfA1",PerfA1),
+    add("result",Result),
+  end.

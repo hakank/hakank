@@ -1,0 +1,197 @@
+/* 
+
+  Consecutive numbers in Lotto ticket in Picat.
+
+  From https://www.reddit.com/r/Probability/comments/1etgees/consecutive_numbers_in_lotto_random_pick_ticket/
+  """
+  Consecutive numbers in lotto 'random pick' ticket
+
+  Just got this lotto ticket. Thought the number of consecutive numbers was 
+  just way too many. Are these really random? 
+  Or is this number of consecutive numbers normal? 
+  """
+
+  The Lotto described is 7 numbers in 1..40.
+
+  Cf my Gamble model gamble_consecutive_numbers_in_lotto_tickets.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils, ppl_common_utils.
+import util.
+
+main => go.
+
+/*
+
+  For a single Lotto ticket row in the pick 7 of 40 Lotto, the probabilities 
+  of the number of consecutive numbers are:
+
+  [num = 40,num_pick = 7]
+  var : num consecutive
+  Probabilities:
+  1: 0.4341000000000000
+  0: 0.2889000000000000
+  2: 0.2227333333333333
+  3: 0.0500000000000000
+  4: 0.0041333333333333
+  5: 0.0001333333333333
+  mean = 1.04677
+
+  var : p
+  Probabilities:
+  true: 0.7111000000000000
+  false: 0.2889000000000000
+  mean = [true = 0.7111,false = 0.2889]
+
+  
+  However, the example shows that for the 18 rows in the Lotto ticket,
+  17 of these rows has at least one occurrence of consecutive numbers.
+
+  Now, the model shows that the probability of at least one occurrence is quite 
+  (surprisingly?) high: about 71%.  
+
+  So what is the probability of 17 ticket rows of 18 has at least one occurrence
+  of consecutive numbers. Here's a simple way, using binomial. First a simulation:
+
+  Picat> binomial_dist_n(18,0.7111,10000).show_freq_prob
+  Show freqs:
+  5: 3 (0.0003000000000000)
+  6: 15 (0.0015000000000000)
+  7: 37 (0.0037000000000000)
+  8: 114 (0.0114000000000000)
+  9: 306 (0.0306000000000000)
+  10: 712 (0.0712000000000000)
+  11: 1311 (0.1311000000000000)
+  12: 1868 (0.1868000000000000)
+  13: 2052 (0.2052000000000000)
+  14: 1761 (0.1761000000000000)
+  15: 1132 (0.1132000000000000)
+  16: 526 (0.0526000000000000)
+  17: 137 (0.0137000000000000)
+  18: 26 (0.0026000000000000)
+
+  Given that we can rely on p=0.7111 in the experiment, the 
+  exact PDF for exactly 17 such ticket rows is thus
+
+  Picat> X=binomial_dist_pdf(18,0.7111,17)
+  X = 0.015806713578139
+
+  Here are the exact probabilities for 0..18 rows with at least one occurrence 
+  of consecutive numbers (again, assuming that p=0.714 is correct):
+  Picat> foreach(V=T in [V=binomial_dist_pdf(18,0.7111,V) : V in 0..18]) println(V=T) end
+  0 = 1.96542e-10
+  1 = 8.70786e-09
+  2 = 1.82185e-07
+  3 = 2.39164e-06
+  4 = 2.20755e-05
+  5 = 0.000152143
+  6 = 0.000811383
+  7 = 0.00342367
+  8 = 0.0115872
+  9 = 0.0316898
+  10 = 0.0702012
+  11 = 0.125668
+  12 = 0.180437
+  13 = 0.204982
+  14 = 0.180194
+  15 = 0.118275
+  16 = 0.0545855
+  17 = 0.0158067
+  18 = 0.00216148
+
+  The probability of (exact) 17 such row is small, about 1.6%, but 
+  it's definity not very rare, though given a "surprise level" 0.01
+  (i.e. how rare an event should in order to raise a surprise),
+  it _is_ a little surprising.
+
+  However, we would probably also be surprised if there were - say - 15 or 
+  more such consecutive rows. And the probability of 15 or more 
+  such rows is quite high: 19%!
+
+  Picat> X=1-binomial_dist_cdf(18,0.7111,14)           
+  X = 0.190828710530796
+
+  The average number of ticket rows (of 18) with at least one occurrence is
+  Picat> X=binomial_dist_mean(18,0.7111)    
+  X = 12.799799999999999
+
+  So, we should expect quite many occurrences of consecutive numbers in 
+  a given Lotto ticket.
+
+  * Other Lottos
+
+  For the Swedish Lotto variant a draw is to pick 7 numbers from 1..35.
+  The probability of at least one occurrence of consecutive numbers is 
+  about 77%:
+
+  [num = 35,num_pick = 7]
+  var : num consecutive
+  Probabilities:
+  1: 0.4244000000000000
+  2: 0.2632333333333333
+  0: 0.2317333333333333
+  3: 0.0713000000000000
+  4: 0.0089000000000000
+  5: 0.0004333333333333
+  mean = 1.20253
+
+  var : p
+  Probabilities:
+  true: 0.7682666666666667
+  false: 0.2317333333333333
+  mean = [true = 0.768267,false = 0.231733]
+
+
+  For the UK Lotto with 6 numbers from 1..49, the probability is lower: about 49.6%
+
+  [num = 49,num_pick = 6]
+  var : num consecutive
+  Probabilities:
+  0: 0.5041000000000000
+  1: 0.3931333333333333
+  2: 0.0930666666666667
+  3: 0.0094333333333333
+  4: 0.0002666666666667
+  mean = 0.608633
+
+  var : p
+  Probabilities:
+  false: 0.5041000000000000
+  true: 0.4959000000000000
+  mean = [false = 0.5041,true = 0.4959]
+
+
+*/
+go ?=>
+  member([Num,NumPick],[[40,7],
+                        [35,7],
+                        [49,6]]),
+  println([num=Num,num_pick=NumPick]),
+  reset_store,
+  run_model(30_000,$model(Num,NumPick),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Num,NumPick) =>
+  Nums = 1..Num,
+
+  Picks = draw_without_replacement(NumPick,Nums).sort,
+  Diffs = differences(Picks),
+  
+  % Here we count any occurrence of two consecutive numbers as an occurrence.
+  % This mean that if three numbers are consecutive, it's counted as 2 occurrences, etc.
+  NumConsecutive = [1 : D in Diffs, D == 1].sum,
+
+  % Probability of at least one consecutive occurrence
+  P = check(NumConsecutive > 0),
+
+  add("num consecutive",NumConsecutive),
+  add("p",P).

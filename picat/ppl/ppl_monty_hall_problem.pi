@@ -1,0 +1,135 @@
+/* 
+
+  Monty Hall problem in Picat.
+
+  From Statistics101 (Resampling Stats)
+  File MontyHall.txt
+  """
+  This is the "Three Door Problem" or the "Monty Hall Problem"
+  The game show contestant is faced with three doors, behind
+  one of which is a prize. He chooses one door, but before
+  that door is opened, the host opens another of the three
+  doors revealing it to contain nothing. (The host knows which
+  door conceals the prize and always opens a door that doesn  t
+  have the prize behind it.) The contestant then is given the
+  opportunity to switch his choice to the remaining unopened
+  door. Should he switch or stay?
+
+  This simulation takes advantage of the fact that if the
+  contestant  s guess is wrong, then switching is the winning
+  move, and that if the guess is right, then switching loses.
+
+  To understand intuitively why switching is the better option
+  consider that at the start, the contestant has 2 out of 3
+  chances of guessing wrong. In other words, his first choice
+  has a 66.7% probability of being wrong, meaning that there's
+  a 66.7% probability that the prize is behind one of the
+  other two doors. Therefore, after the empty door is shown,
+  the remaining door "inherits" the 66.7% probability. 
+  -> 
+  stayingWinProbability: 0.3356
+  switchingWinProbability: 0.6644
+  """
+
+
+  Cf:
+  - ppl_monty_hall.pi
+  - and my Gamble model gamble_monty_hall_problem.rkt
+  
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  Modelling:
+  var : guess door
+  Probabilities:
+  door3: 0.3369000000000000
+  door1: 0.3350000000000000
+  door2: 0.3281000000000000
+  mean = [door3 = 0.3369,door1 = 0.335,door2 = 0.3281]
+
+  var : prize door
+  Probabilities:
+  door1: 0.3380000000000000
+  door2: 0.3333000000000000
+  door3: 0.3287000000000000
+  mean = [door1 = 0.338,door2 = 0.3333,door3 = 0.3287]
+
+  var : stay p
+  Probabilities:
+  false: 0.6602000000000000
+  true: 0.3398000000000000
+  mean = [false = 0.6602,true = 0.3398]
+
+  var : switch p
+  Probabilities:
+  true: 0.6602000000000000
+  false: 0.3398000000000000
+  mean = [true = 0.6602,false = 0.3398]
+
+
+  Global variables:
+  Switch wins: 6602 (0.660200%)
+  Stay   wins: 3398 (0.339800%)
+
+  Another approach: random_integer(3) != random_integer(3):
+  [cond(random_integer(3)!=random_integer(3),1,0) : _ in 1..1000000].mean:
+  0.666702
+
+
+*/
+go ?=>
+  Map = get_global_map(),
+  Map.put(switch_win,0),
+  Map.put(stay_win,0),
+  println("Modelling:"),
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  println("Global variables:"),
+  SwitchWins = Map.get(switch_win),
+  StayWins = Map.get(stay_win),  
+  TotalC = SwitchWins + StayWins,
+
+  printf("Switch wins: %d (%f%%)\n", SwitchWins, SwitchWins/TotalC),
+  printf("Stay   wins: %d (%f%%)\n", StayWins, StayWins/TotalC),  
+  nl,
+  println("Another approach: random_integer(3) != random_integer(3):"),
+  println("[cond(random_integer(3)!=random_integer(3),1,0) : _ in 1..1000000].mean:"),
+  println([cond(random_integer(3)!=random_integer(3),1,0) : _ in 1..1000000].mean),
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Map = get_global_map(),
+  Doors = [door1,door2,door3],
+  PrizeDoor = uniform_draw(Doors),
+  GuessDoor = uniform_draw(Doors),
+
+  if GuessDoor == PrizeDoor then
+    StayP = true,
+    SwitchP = false,
+    Map.put(stay_win,Map.get(stay_win)+1)
+  else
+    SwitchP = true,
+    StayP = false,
+    Map.put(switch_win,Map.get(switch_win)+1)
+  
+  end,
+  
+  add("prize door",PrizeDoor),
+  add("guess door",GuessDoor),
+  add("stay p",StayP),
+  add("switch p",SwitchP).
+

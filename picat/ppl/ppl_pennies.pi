@@ -1,0 +1,106 @@
+/* 
+
+  Pennies in Picat.
+
+  From Statistics101 (Resampling Stats)
+  File pennies.txt and penniesReadable.txt
+  """
+  Two players, each with a stake of 10 pennies play this game:
+  A coin is tossed. If it is heads, player B gives A one penny.
+  If it is tails, player A gives B one penny.
+  What is the probability that one player will lose his entire
+  stake of 10 pennies if they play for 200 tosses?
+  From "Resampling: The New Statistics, Julian Simon, p. 110.
+  -> 
+  probabilityOfRuin: 0.8928
+  """
+
+  Note: I interpret this as 
+  "probability that _anyone_ of the players will lose his entire stake",
+  i.e. not one specific player.
+
+  Cf my Gamble model gamble_pennies.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : s
+  Probabilities (truncated):
+  0: 0.1631000000000000
+  1: 0.0288000000000000
+  2: 0.0193000000000000
+  3: 0.0162000000000000
+  .........
+  183: 0.0002000000000000
+  181: 0.0002000000000000
+  188: 0.0001000000000000
+  187: 0.0001000000000000
+  mean = 52.3922
+  HPD intervals:
+  HPD interval (0.84): 0.00000000000000..114.00000000000000
+
+  var : p
+  Probabilities:
+  true: 0.8369000000000000
+  false: 0.1631000000000000
+  mean = 0.8369
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : first ruin: 
+  Probabilities (truncated):
+  200: 0.1057000000000000
+  32: 0.0203000000000000
+  30: 0.0202000000000000
+  28: 0.0200000000000000
+  .........
+  188: 0.0026000000000000
+  180: 0.0024000000000000
+  198: 0.0022000000000000
+  10: 0.0013000000000000
+  mean = 90.8176
+  HPD intervals:
+  HPD interval (0.84): 12.00000000000000..166.00000000000000
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 200,
+  Stake = 10,
+  Tosses = uniform_draw_n([-1,1],N),
+
+  Acc = asum(Tosses),
+  S = [ cond(abs(V) > Stake,1,0) : V in Acc].sum,
+  P = check(S > 0),
+
+  % When is the first ruin?
+  FirstRuin = [ I : I in 1..N, abs(Acc[I]) >= Stake],
+  
+  add("s",S),
+  add("p",P),
+  add("first ruin: ",cond(FirstRuin == [], N, FirstRuin.first)).
+

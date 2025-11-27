@@ -1,0 +1,133 @@
+/* 
+
+  Tug of war in Picat.
+
+  This is a port of the Church ForestDB model (via my Gamble model
+  gamble_tug_of_war3.rkt),
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+  var : alice strength
+  Probabilities:
+  10: 0.75000000000000000 (3 / 4)
+  5: 0.25000000000000000 (1 / 4)
+  mean = 8.75
+
+  var : bob strength
+  Probabilities:
+  10: 0.78378378378378377 (29 / 37)
+  5: 0.21621621621621623 (8 / 37)
+  mean = 8.91892
+
+  var : c
+  Probabilities:
+  1: 0.25843333333333335 (7753 / 30000)
+  2: 0.16586666666666666 (311 / 1875)
+  3: 0.13156666666666667 (3947 / 30000)
+  4: 0.11436666666666667 (3431 / 30000)
+  5: 0.10596666666666667 (3179 / 30000)
+  6: 0.10496666666666667 (3149 / 30000)
+  7: 0.09170000000000000 (917 / 10000)
+  0: 0.01726666666666667 (259 / 15000)
+  8: 0.00986666666666667 (37 / 3750)
+  mean = 3.3228
+
+  var : sue strength
+  Probabilities:
+  5: 0.83108108108108103 (123 / 148)
+  10: 0.16891891891891891 (25 / 148)
+  mean = 5.84459
+
+  var : team1 strength
+  Probabilities:
+  20: 0.53378378378378377 (79 / 148)
+  15: 0.46621621621621623 (69 / 148)
+  mean = 17.6689
+
+  var : team1,team2
+  Probabilities:
+  [15,10]: 0.46283783783783783 (137 / 296)
+  [20,15]: 0.32770270270270269 (97 / 296)
+  [20,10]: 0.20608108108108109 (61 / 296)
+  [15,15]: 0.00337837837837838 (1 / 296)
+  mean = not_numeric
+
+  var : team2 strength
+  Probabilities:
+  10: 0.66891891891891897 (99 / 148)
+  15: 0.33108108108108109 (49 / 148)
+  mean = 11.6554
+
+  var : tom strength
+  Probabilities:
+  5: 0.83783783783783783 (31 / 37)
+  10: 0.16216216216216217 (6 / 37)
+  mean = 5.81081
+
+
+*/
+go ?=>
+  reset_store,
+  Obs = [team1,team2,team1,team1,team1,team1,team1,team1], % Note team2 won match 2
+  run_model(10_000,$model(Obs),[show_probs_rat,mean]),
+  fail,
+  nl.
+go => true.
+
+
+sample_strength(P) = condt(flip(), 10, 5).
+lazy(Person) = flip(1/3).
+winner(TotalPullingTeam1,TotalPullingTeam2) = cond(TotalPullingTeam1 <= TotalPullingTeam2,team2,team1).
+   
+model(Obs) =>
+  Len = Obs.len,
+  NumPeople = 4,
+  Alice = 1,
+  Bob   = 2,
+  Sue   = 3,
+  Tom   = 4,
+
+  Team1 = [Alice,Bob],
+  Team2 = [Sue,Tom],
+  
+  % We keep strength constant (memoized),
+  % but laziness can fluctuate during each session
+  Strengths = [sample_strength(P) : P in 1..NumPeople],
+  Team1Strength = [Strengths[P] : P in Team1].sum,
+  Team2Strength = [Strengths[P] : P in Team2].sum,  
+  
+  C = 0, % Number of correct observations
+  Winner = [],
+  foreach(I in 1..Len)
+     TP1 = sum([ condt(lazy(P), SP/2,SP) : P in Team1, SP = Strengths[P]]),
+     TP2 = sum([ condt(lazy(P), SP/2,SP) : P in Team2, SP = Strengths[P]]),
+     W = winner(TP1,TP2),
+     Winner := Winner ++ [W],
+     if W == Obs[I] then
+       C := C +1 
+     end
+  end,
+  observe(C == Len),  
+  add("c",C),
+  if observed_ok then
+     add_all([["alice strength",Strengths[Alice]],
+              ["bob strength",Strengths[Bob]],
+              ["sue strength",Strengths[Sue]],
+              ["tom strength",Strengths[Tom]],
+              ["team1 strength",Team1Strength],
+              ["team2 strength",Team2Strength],
+              ["team1,team2",[Team1Strength,Team2Strength]]
+              ])
+  end.
+  
+    
+  

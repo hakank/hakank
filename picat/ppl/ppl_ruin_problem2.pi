@@ -1,0 +1,150 @@
+/* 
+
+  Ruin problem in Picat.
+
+  Cf my Gamble model gamble_ruin_problem2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  How likely is a ruin? With some different limits.
+
+  limit = 5
+  var : len
+  Probabilities:
+  2: 0.4982000000000000
+  6: 0.3775000000000000
+  4: 0.1243000000000000
+  mean = 3.7586
+
+  var : p(ruin)
+  Probabilities:
+  true: 0.6814000000000000
+  false: 0.3186000000000000
+  mean = [true = 0.6814,false = 0.3186]
+
+
+  limit = 10
+  var : len
+  Probabilities:
+  2: 0.5056000000000000
+  11: 0.2434000000000000
+  4: 0.1252000000000000
+  6: 0.0580000000000000
+  8: 0.0392000000000000
+  10: 0.0286000000000000
+  mean = 5.137
+
+  var : p(ruin)
+  Probabilities:
+  true: 0.7566000000000001
+  false: 0.2434000000000000
+  mean = [true = 0.7566,false = 0.2434]
+
+
+  limit = 50
+  var : len
+  Probabilities (truncated):
+  2: 0.4998000000000000
+  4: 0.1272000000000000
+  51: 0.1084000000000000
+  6: 0.0667000000000000
+  .........
+  46: 0.0024000000000000
+  32: 0.0024000000000000
+  48: 0.0023000000000000
+  50: 0.0020000000000000
+  mean = 11.1642
+
+  var : p(ruin)
+  Probabilities:
+  true: 0.8915999999999999
+  false: 0.1084000000000000
+  mean = [true = 0.8916,false = 0.1084]
+
+
+  limit = 100
+  var : len
+  Probabilities (truncated):
+  2: 0.4814000000000000
+  4: 0.1224000000000000
+  101: 0.0815000000000000
+  6: 0.0632000000000000
+  .........
+  98: 0.0009000000000000
+  80: 0.0009000000000000
+  96: 0.0007000000000000
+  94: 0.0006000000000000
+  mean = 16.8273
+
+  var : p(ruin)
+  Probabilities:
+  true: 0.9185000000000000
+  false: 0.0815000000000000
+  mean = [true = 0.9185,false = 0.0815]
+
+
+  limit = 1000
+  var : len
+  Probabilities (truncated):
+  2: 0.4811000000000000
+  4: 0.1156000000000000
+  6: 0.0724000000000000
+  8: 0.0437000000000000
+  .........
+  196: 0.0001000000000000
+  192: 0.0001000000000000
+  184: 0.0001000000000000
+  174: 0.0001000000000000
+  mean = 48.3422
+
+  var : p(ruin)
+  Probabilities:
+  true: 0.9766000000000000
+  false: 0.0234000000000000
+  mean = [true = 0.9766,false = 0.0234]
+
+
+*/
+go ?=>
+  member(Limit,[5,10,50,100,1000]),
+  println(limit=Limit),
+  reset_store,
+  run_model(10_000,$model(Limit),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+
+draw(A,Limit) = Res =>
+  Len = A.len,
+  if A.last == 0 ; Len > Limit then
+    Res = A
+  else
+    Win = 1,
+    Loose = 1,
+    LastVal = A.last,
+    C = uniform_draw([head,tail]),
+    if C == head then
+      Res = draw(A++[LastVal+Win],Limit)
+    elseif LastVal-Loose <= 0 then
+      Res = draw(A++[0],Limit)
+    else
+      Res = draw(A++[LastVal-Loose],Limit)
+    end
+  end.
+model(Limit) =>
+  Start = 1,
+  A = draw([Start],Limit),
+  Len = A.len, % Note: The sentential 0 is included 
+  add("len",Len),
+  add("p(ruin)",check(A.last==0)).

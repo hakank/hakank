@@ -1,0 +1,148 @@
+/* 
+
+  Dice until 6 in Picat.
+
+  From From Mosteller "Fifty Challenging problems in Probability"
+  """
+  On the average, how many times must a die be thrown until one gets a 6?
+
+  ...
+ 
+  In our example, p = -t, and so m = 6, as seemed obvious.
+  """
+
+  The geometric distribution is the number of failure until a success.
+  So the number of times until a 6 (or any certain value) is 
+    1 + (geomtric_dist 1/6)
+
+  Picat>  D = 1 + geometric_dist_mean(1/6)
+  D = 6.000000000000001
+
+  However, the proper probability distribution to use is the 
+  shifted_geometric_dist ((trials until first success)):
+
+  Picat>  D = shifted_geometric_dist_mean(1/6)
+  D = 6.0
+
+
+  Cf 
+  - ppl_dice_6_throws.pi
+  - ppl_dice_6_throws2.pi
+  - my Gamble model gamble_dice_6_throws.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+var : v
+Probabilities (truncated):
+1: 0.1704000000000000
+2: 0.1405000000000000
+3: 0.1165000000000000
+4: 0.0984000000000000
+.........
+32: 0.0002000000000000
+53: 0.0001000000000000
+41: 0.0001000000000000
+37: 0.0001000000000000
+mean = 5.9366
+HPD intervals:
+HPD interval (0.84): 1.00000000000000..10.00000000000000
+HPD interval (0.9): 1.00000000000000..13.00000000000000
+HPD interval (0.94): 1.00000000000000..16.00000000000000
+HPD interval (0.99): 1.00000000000000..26.00000000000000
+HPD interval (0.99999): 1.00000000000000..53.00000000000000
+Histogram (total 10000)
+  1.000:  1704 ################################################             (0.170 / 0.170)
+  2.300:  1405 #######################################                      (0.141 / 0.311)
+  3.600:  2149 ############################################################ (0.215 / 0.526)
+  4.900:   750 #####################                                        (0.075 / 0.601)
+  6.200:   700 ####################                                         (0.070 / 0.671)
+  7.500:  1025 #############################                                (0.102 / 0.773)
+  8.800:   377 ###########                                                  (0.038 / 0.811)
+ 10.100:   299 ########                                                     (0.030 / 0.841)
+ 11.400:   491 ##############                                               (0.049 / 0.890)
+ 12.700:   179 #####                                                        (0.018 / 0.908)
+ 14.000:   166 #####                                                        (0.017 / 0.925)
+ 15.300:   124 ###                                                          (0.012 / 0.937)
+ 16.600:   180 #####                                                        (0.018 / 0.955)
+ 17.900:    78 ##                                                           (0.008 / 0.963)
+ 19.200:    58 ##                                                           (0.006 / 0.969)
+ 20.500:    99 ###                                                          (0.010 / 0.978)
+ 21.800:    37 #                                                            (0.004 / 0.982)
+ 23.100:    28 #                                                            (0.003 / 0.985)
+ 24.400:    46 #                                                            (0.005 / 0.990)
+ 25.700:    18 #                                                            (0.002 / 0.991)
+ 27.000:    11                                                              (0.001 / 0.992)
+ 28.300:     9                                                              (0.001 / 0.993)
+ 29.600:    23 #                                                            (0.002 / 0.996)
+ 30.900:    11                                                              (0.001 / 0.997)
+ 32.200:     2                                                              (0.000 / 0.997)
+ 33.500:    12                                                              (0.001 / 0.998)
+ 34.800:     3                                                              (0.000 / 0.998)
+ 36.100:     2                                                              (0.000 / 0.999)
+ 37.400:     3                                                              (0.000 / 0.999)
+ 38.700:     3                                                              (0.000 / 0.999)
+ 40.000:     4                                                              (0.000 / 1.000)
+ 41.300:     1                                                              (0.000 / 1.000)
+ 42.600:     2                                                              (0.000 / 1.000)
+ 43.900:     0                                                              (0.000 / 1.000)
+ 45.200:     0                                                              (0.000 / 1.000)
+ 46.500:     0                                                              (0.000 / 1.000)
+ 47.800:     0                                                              (0.000 / 1.000)
+ 49.100:     0                                                              (0.000 / 1.000)
+ 50.400:     0                                                              (0.000 / 1.000)
+ 51.700:     1                                                              (0.000 / 1.000)
+
+Geometric distribution: number of failures until success. + 1: 6.0
+Shifted Geometric distribution: number of trials until success: 6.0
+
+
+
+*/
+go ?=>
+  P = 1/6,
+  reset_store,
+  run_model(10_000,$model(P),[show_probs_trunc,mean,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           show_histogram
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  print("Geometric distribution: number of failures until success. + 1: "),
+  println(1 + geometric_dist_mean(P)),
+
+
+  print("Shifted Geometric distribution: number of trials until success: "),
+  println(shifted_geometric_dist_mean(P)),
+
+
+
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+toss(N) = Res =>
+  if dice() == 6 then
+    Res = N
+  else
+    Res = toss(N+1)
+  end.
+  
+model(P) =>
+  V = toss(1),    
+  add("v",V).  
+

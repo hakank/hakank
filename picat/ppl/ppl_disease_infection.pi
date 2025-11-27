@@ -1,0 +1,161 @@
+/* 
+
+  Disease infection in Picat.
+
+  This is a port of the SPPL model disease-infection.pynb
+
+  The SPPL model give a value of 330 for num_met.
+
+  P is hardcoded to 0.5 as in the SPPL model. 
+  If we also estimate p the result give a quite larger value of 
+  num_people, and a much larger credible interval: almost the full
+  range of the prior 500..1500.
+
+  Cf my Gamble model gamble_disease_infection.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  estimate_p = false
+  var : num people
+  Probabilities (truncated):
+  579: 0.0540540540540541
+  730: 0.0270270270270270
+  701: 0.0270270270270270
+  695: 0.0270270270270270
+  .........
+  561: 0.0135135135135135
+  560: 0.0135135135135135
+  546: 0.0135135135135135
+  511: 0.0135135135135135
+  mean = 662.73
+  HPD intervals:
+  HPD interval (0.84): 579.00000000000000..747.00000000000000
+
+  var : num met
+  Probabilities (truncated):
+  311: 0.0540540540540541
+  347: 0.0405405405405405
+  330: 0.0405405405405405
+  319: 0.0405405405405405
+  .........
+  288: 0.0135135135135135
+  279: 0.0135135135135135
+  270: 0.0135135135135135
+  265: 0.0135135135135135
+  mean = 331.946
+  HPD intervals:
+  HPD interval (0.84): 301.00000000000000..371.00000000000000
+
+  var : num infected
+  Probabilities:
+  100: 1.0000000000000000
+  mean = 100.0
+  HPD intervals:
+  HPD interval (0.84): 100.00000000000000..100.00000000000000
+
+  var : p
+  Probabilities:
+  0.5: 1.0000000000000000
+  mean = 0.5
+  HPD intervals:
+  HPD interval (0.84): 0.50000000000000..0.50000000000000
+
+
+  estimate_p = true
+  var : num people
+  Probabilities (truncated):
+  1144: 0.0645161290322581
+  1100: 0.0645161290322581
+  1473: 0.0322580645161290
+  1333: 0.0322580645161290
+  .........
+  533: 0.0322580645161290
+  521: 0.0322580645161290
+  516: 0.0322580645161290
+  509: 0.0322580645161290
+  mean = 824.29
+  HPD intervals:
+  HPD interval (0.84): 521.00000000000000..1144.00000000000000
+
+  var : num met
+  Probabilities (truncated):
+  367: 0.0645161290322581
+  350: 0.0645161290322581
+  343: 0.0645161290322581
+  338: 0.0645161290322581
+  .........
+  292: 0.0322580645161290
+  283: 0.0322580645161290
+  282: 0.0322580645161290
+  281: 0.0322580645161290
+  mean = 334.968
+  HPD intervals:
+  HPD interval (0.84): 282.00000000000000..367.00000000000000
+
+  var : num infected
+  Probabilities:
+  100: 1.0000000000000000
+  mean = 100.0
+  HPD intervals:
+  HPD interval (0.84): 100.00000000000000..100.00000000000000
+
+  var : p
+  Probabilities (truncated):
+  0.744323974356206: 0.0322580645161290
+  0.655574423100601: 0.0322580645161290
+  0.655142081740844: 0.0322580645161290
+  0.642228656747485: 0.0322580645161290
+  .........
+  0.279817818328653: 0.0322580645161290
+  0.255857950195604: 0.0322580645161290
+  0.249600579147041: 0.0322580645161290
+  0.222916221815588: 0.0322580645161290
+  mean = 0.444336
+  HPD intervals:
+  HPD interval (0.84): 0.27981781832865..0.65557442310060
+
+
+
+*/
+go ?=>
+  member(EstimateP,[false,true]),
+  println(estimate_p=EstimateP),
+  reset_store,
+  run_model(10_000,$model(EstimateP),[show_probs_trunc,mean,
+                          show_hpd_intervals,hpd_intervals=[0.84]]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+  
+  
+model(EstimateP) =>
+  NumInfected = 100,
+  NumPeople = 500 + random_integer(1000),
+  
+  % The probability p for num_met is hardcoded to 0.5 in the SPPL model,
+  %  but let's go crazy and estimate it as well.    
+  %  Change estimate-p above to #t for that.
+  P = condt(EstimateP, uniform(0,1),0.5),
+
+  NumMet = binomial_dist(NumPeople,P),
+
+  observe(binomial_dist(NumMet, 0.3) == NumInfected),
+
+  if observed_ok then
+    add("num people",NumPeople),
+    add("num met",NumMet),
+    add("num infected",NumInfected),
+    add("p",P),
+  end.

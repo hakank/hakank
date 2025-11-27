@@ -1,0 +1,134 @@
+/* 
+
+  Records of permutations in Picat.
+
+  See for example https://math.stackexchange.com/questions/3769816/probability-of-the-record-its-expected-value-and-variation
+
+  Cf my Gamble model gamble_record_permutations.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+record_prob(N) = (factorial(N)-1) / factorial(N).
+
+
+/*
+  record_prob(N):
+   1 0.0 (0 / 1) 
+   2 0.5 (1 / 2) 
+   3 0.833333333333333 (5 / 6) 
+   4 0.958333333333333 (23 / 24) 
+   5 0.991666666666667 (119 / 120) 
+   6 0.998611111111111 (719 / 720) 
+   7 0.999801587301587 (5039 / 5040) 
+   8 0.999975198412698 (40319 / 40320) 
+   9 0.999997244268078 (362878 / 362879) 
+  10 0.999999724426808 (3628798 / 3628799) 
+
+  data = [38,29,14,95,36,23,80,72,74,55,56,57,4,16,27,58,94,59,99,62,82,20,64,12,65,85,5,2,7,41,28,51,26,32,66,96,11,91,79,10,47,97,8,92,77,93,63,46,88,42,83,73,31,37,40,70,24,39,69,78,13,100,1,19,6,53,33,3,52,89,43,35,18,49,17,75,34,84,9,68,76,87,61,60,54,21,45,44,98,90,50,86,67,15,25,30,71,81,48,22]
+  records = [38,95,99,100]
+  records_ix = [1,4,19,62]
+
+  data2 = [54,5,73,5,71,19,47,73,23,71,15,49,86,52,33,59,75,55,4,70,39,72,77,72,2,60,98,36,21,43,62,75,49,87,80,72,7,79,46,82,3,13,84,89,65,17,0,40,24,5,11,16,77,40,88,31,53,39,19,26,82,81,1,83,20,33,8,79,64,6,62,67,19,46,56,36,15,9,28,40,14,39,56,43,32,96,74,37,35,93,63,70,26,16,53,98,49,61,78,65]
+  weak_records = [54,73,73,86,98,98]
+  weak_records_ix = [1,3,8,13,27,96]
+
+  records_min = [54,5,4,2,0]
+  records_min_ix = [1,2,19,25,47]
+
+*/
+go ?=>
+  _ = random2(),
+  println("record_prob(N):"),
+  [V=record_prob(V).and_rat() : V in 1..10].printf_list,
+  nl,
+  Data = draw_without_replacement(100,1..100),
+  println(data=Data),
+  println(records=get_records(Data)),
+  println(records_ix=get_records_ix(Data)),
+  nl,
+  Data2 = random_integer_n(100,100),
+  println(data2=Data2),
+  println(weak_records=get_records_geq(Data2)),
+  println(weak_records_ix=get_records_ix_geq(Data2)),
+  nl,
+  println(records_min=get_records(Data2,$(<))),
+  println(records_min_ix=get_records_ix(Data2,$(<))),
+  nl.
+go => true.
+
+/*
+
+  var : num records
+  Probabilities:
+  3: 0.3217000000000000
+  2: 0.2799000000000000
+  4: 0.2005000000000000
+  1: 0.1042000000000000
+  5: 0.0735000000000000
+  6: 0.0167000000000000
+  7: 0.0033000000000000
+  8: 0.0002000000000000
+  mean = 2.9235
+
+  var : records (indices)
+  Probabilities (truncated):
+  [1]: 0.1042000000000000
+  [1,2]: 0.0951000000000000
+  [1,2,3]: 0.0511000000000000
+  [1,3]: 0.0487000000000000
+  [1,4]: 0.0358000000000000
+  [1,2,4]: 0.0315000000000000
+  [1,5]: 0.0265000000000000
+  [1,2,5]: 0.0262000000000000
+  [1,2,6]: 0.0197000000000000
+  [1,6]: 0.0191000000000000
+  .........
+  [1,2,3,5,6,9,10]: 0.0001000000000000
+  [1,2,3,5,6,7,9]: 0.0001000000000000
+  [1,2,3,5,6,7,8]: 0.0001000000000000
+  [1,2,3,4,7,10]: 0.0001000000000000
+  [1,2,3,4,7,9]: 0.0001000000000000
+  [1,2,3,4,6,9,10]: 0.0001000000000000
+  [1,2,3,4,6,8,9,10]: 0.0001000000000000
+  [1,2,3,4,5,7,10]: 0.0001000000000000
+  [1,2,3,4,5,7,8]: 0.0001000000000000
+  [1,2,3,4,5,6,8]: 0.0001000000000000
+
+
+*/
+go2 ?=>
+
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean, truncate_size=10
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+
+model2() =>
+  N = 10,
+
+  X = draw_without_replacement(N,1..N),
+
+  Records = get_records_ix(X),
+  NumRecords = Records.len,
+
+  add("num records",NumRecords),
+  add("records (indices)",Records).

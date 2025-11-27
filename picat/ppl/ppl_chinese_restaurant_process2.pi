@@ -1,0 +1,296 @@
+/* 
+
+  Chinese restaurant process in Picat.
+
+  https://en.wikipedia.org/wiki/Chinese_restaurant_process
+  """
+  ...
+  An equivalent, but subtly different way to define the Chinese restaurant process, is to 
+  let new customers choose companions rather than tables. Customer n+1 chooses to sit at 
+  the same table as any one of the n seated customers with probability 
+    1/(n+theta) 
+  or chooses to sit at a new, unoccupied table with probability 
+    theta/(n + theta)
+ 
+  Notice that in this formulation, the customer chooses a table without having to count table 
+  occupancies- we don't need |b|.
+
+  ... 
+
+  It can be understood as the sum of n independent Bernoulli random variables, each with 
+  a different parameter:
+  
+    K = sum(bi,i=1..n)
+    bi ~ Bernoulli theta / (i - 1 + theta)
+    PMF:  gamma(theta)
+          ------------     * |s(n,k)*theta^k   k = 1..N
+          gamma(n + theta)
+
+  where s denotes Stirling number of the first kind
+  """
+
+ 
+
+  Also, see ppl gamble_chinese_restaurant_process.pi for an alternative model
+  but that model has different probability "dynamics".
+
+  Cf my Gamble model gamble_chinese_restaurant_process2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Probability distrubution crp_dist.
+
+  Samples:
+  [3,2,3,3,3,1,2,3,1,2,2,2,2,2,4,4,2,3,1,2,1,1,1,3,1,2,1,1,6,1]
+  mean = 2.13326
+
+  PDF:
+   1 0.28377319275152 
+   2 0.401392676810632 
+   3 0.229263684372043 
+   4 0.070739977447924 
+   5 0.013163307280954 
+   6 0.001546239564815 
+   7 0.000115467607728 
+   8 0.000005315175594 
+   9 0.000000137461438 
+
+  CDF:
+   1 0.28377319275152 
+   2 0.685165869562153 
+   3 0.914429553934195 
+   4 0.985169531382119 
+   5 0.998332838663073 
+   6 0.999879078227889 
+   7 0.999994545835616 
+   8 0.99999986101121 
+   9 0.999999998472648 
+
+   Quantiles:
+   0.000001 = 1
+   0.00001 = 1
+   0.001 = 1
+   0.01 = 1
+   0.025 = 1
+   0.05 = 1
+   0.1 = 1
+   0.25 = 1
+   0.5 = 2
+   0.75 = 3
+   0.84 = 3
+   0.9 = 3
+   0.975 = 4
+   0.99 = 5
+   0.999 = 6
+   0.99999 = 7
+   0.999999 = 8
+
+   The probability (CDF) of 9 and 10 filled tables are quite unusual:
+
+   Picat> X=crp_dist_cdf(1/2,10,9) 
+   X = 0.999999998472648
+
+   Picat> X=crp_dist_cdf(1/2,10,10)
+   X = 0.999999999999997
+
+
+*/
+go ?=>
+  Theta = 1/2,
+  N = 10,
+  println("Samples:"),
+  println(crp_dist_n(Theta,N,30)),
+  println(mean=crp_dist_mean(Theta,N)),
+  nl,
+  println("PDF:"),
+  pdf_all($crp_dist(Theta,N),0.01,0.9999999).printf_list,
+  nl,
+  println("CDF:"),
+  cdf_all($crp_dist(Theta,N),0.01,0.9999999).printf_list,
+  nl,
+  println("Quantiles:"),
+  foreach(Q in quantile_qs())
+    println(Q=crp_dist_quantile(Theta,N,Q)),
+  end,
+  nl.
+go => true.
+
+
+/*
+  The model below supports two variants for showing the tables:
+  - sort-tables: true : This means that the tables are sorted to break symmetries.
+                        It make sense if one interpreted this as the customer
+                        is seated by an already occupied table (1 / (n + theta)).
+                        Using this option, the theoretical value of K is seem 
+                        directly as probability on K filled tables (b).
+
+  - sort-tables: false: Here the tables are not sorted.
+                        For this option, it's harder to related the tables (b)
+                        and the probabilities.
+  Note that this only change the presentaion of the b variable. The probabiities
+  k is not changed
+
+
+  [max_quests = 10,theta = 0.5,sort_tables = true]
+  var : b
+  Probabilities:
+  [1,1,0,0,0,0,0,0,0,0]: 0.3872000000000000
+  [1,0,0,0,0,0,0,0,0,0]: 0.2836000000000000
+  [1,1,1,0,0,0,0,0,0,0]: 0.2431000000000000
+  [1,1,1,1,0,0,0,0,0,0]: 0.0707000000000000
+  [1,1,1,1,1,0,0,0,0,0]: 0.0131000000000000
+  [1,1,1,1,1,1,0,0,0,0]: 0.0021000000000000
+  [1,1,1,1,1,1,1,0,0,0]: 0.0002000000000000
+  mean = []
+
+  var : k
+  Probabilities:
+  2: 0.3872000000000000
+  1: 0.2836000000000000
+  3: 0.2431000000000000
+  4: 0.0707000000000000
+  5: 0.0131000000000000
+  6: 0.0021000000000000
+  7: 0.0002000000000000
+  mean = 2.1496
+
+  theoretical_mean = 2.13326
+  PDF:
+  2 0.401392676810632 
+  1 0.28377319275152 
+  3 0.229263684372043 
+  4 0.070739977447924 
+  5 0.013163307280954 
+  6 0.001546239564815 
+  7 0.000115467607728 
+  8 0.000005315175594 
+  9 0.000000137461438 
+
+
+  [max_quests = 10,theta = 0.5,sort_tables = false]
+  var : b
+  Probabilities (truncated):
+  [1,0,0,0,0,0,0,0,0,0]: 0.2866000000000000
+  [1,1,0,0,0,0,0,0,0,0]: 0.1448000000000000
+  [1,0,1,0,0,0,0,0,0,0]: 0.0681000000000000
+  [1,0,0,1,0,0,0,0,0,0]: 0.0482000000000000
+  .........
+  [1,0,0,0,1,0,0,1,0,1]: 0.0001000000000000
+  [1,0,0,0,0,1,0,1,1,0]: 0.0001000000000000
+  [1,0,0,0,0,1,0,1,0,1]: 0.0001000000000000
+  [1,0,0,0,0,0,0,1,1,1]: 0.0001000000000000
+  mean = []
+
+  var : k
+  Probabilities:
+   2: 0.4019000000000000
+  1: 0.2866000000000000
+  3: 0.2283000000000000
+  4: 0.0683000000000000
+  5: 0.0136000000000000
+  6: 0.0012000000000000
+  7: 0.0001000000000000
+  mean = 2.1244
+
+  theoretical_mean = 2.13326
+  PDF:
+  2 0.401392676810632 
+  1 0.28377319275152 
+  3 0.229263684372043 
+  4 0.070739977447924 
+  5 0.013163307280954 
+  6 0.001546239564815 
+  7 0.000115467607728 
+  8 0.000005315175594 
+  9 0.000000137461438 
+
+
+
+
+  [max_quests = 100,theta = 0.5,sort_tables = true]
+  var : b
+  Probabilities (truncated):
+  [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.2800000000000000
+  [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.2317000000000000
+  [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.2116000000000000
+  [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.1195000000000000
+  .........
+  [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.0013000000000000
+  [1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.0001000000000000
+  [1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.0001000000000000
+  [1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]: 0.0001000000000000
+  mean = []
+
+  var : k
+  Probabilities (truncated):
+  3: 0.2800000000000000
+  2: 0.2317000000000000
+  4: 0.2116000000000000
+  5: 0.1195000000000000
+  .........
+  9: 0.0013000000000000
+  12: 0.0001000000000000
+  11: 0.0001000000000000
+  10: 0.0001000000000000
+  mean = 3.2666
+
+  theoretical_mean = 3.28434
+  PDF:
+   3 0.279181826450048 
+   2 0.229703516788347 
+   4 0.214054165260315 
+   5 0.117130720973547 
+   1 0.088733539714164 
+   6 0.049002166265233 
+   7 0.016381147140072 
+   8 0.004512998691993 
+   9 0.001048321130806 
+  10 0.000208964181523 
+  11 0.0000362466743 
+  12 0.000005533804576 
+  13 0.000000750650872 
+  14 0.000000091193925 
+  15 0.000000009989839 
+
+*/
+go2 ?=>
+  Theta = 1/2,
+  MaxGuests = 10,
+  % MaxGuests = 100,
+  
+  % SortTables = true,
+  SortTables = false,
+  println([max_quests=MaxGuests,theta=Theta,sort_tables=SortTables]),  
+  reset_store,
+  run_model(10_000,$model2(MaxGuests,Theta,SortTables),[show_probs_trunc,mean]),
+  println(theoretical_mean=crp_dist_mean(Theta,MaxGuests)),
+  println("PDF:"),
+  pdf_all($crp_dist(Theta,MaxGuests),0.01,0.99999999).sort_down(2).printf_list,
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(MaxGuests,Theta,SortTables) =>
+
+  T = [bern( Theta/(I - 1 + Theta))  : I in 1..MaxGuests],
+  B = cond(SortTables == true,T.sort_down,T),
+
+  % Number of filled tables
+  K = B.sum,
+  
+  add("b",B),
+  add("k",K).
+

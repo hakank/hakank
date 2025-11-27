@@ -1,0 +1,196 @@
+/* 
+
+  Poker in Picat.
+
+  https://en.wikipedia.org/wiki/Poker_probability
+  """
+  Hand                Probability(%) Probability  1/Probability
+  --------------------------------------------------------------------------
+  Royal straight flush  0.000154%    0.00000154   ~649350.64935064935064935065
+  Straight flush        0.00139%     0.0000139    ~71942.44604316546762589928    (excluding royal flush)
+  Four of a kind        0.02401%     0.0002401    ~4164.93127863390254060808 
+  Full House            0.1441%      0.001441     ~693.96252602359472588480
+  Flush                 0.1965%      0.001965     ~508.90585241730279898219      (excluding royal flush and straight flush)
+  Straight              0.3925%      0.003925     ~254.77707006369426751592      (excluding royal flush and straight flush)
+  Three of a kind       2.1128%      0.021128     ~47.33055660734570238546
+  Two pair              4.7539%      0.047539     ~21.03536044090115484129
+  Pair                 42.2569%      0.422569     ~2.36647742735505917377
+  No pair              50.1177%      0.501177     ~1.9953030566047524128
+  """
+
+  Cf my Gamble model gamble_poker.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+var : count values
+Probabilities:
+[1,1,1,1,1]: 0.5039666666666667
+[1,1,1,2]: 0.4266666666666667
+[1,2,2]: 0.0476666666666667
+[1,1,3]: 0.0204000000000000
+[2,3]: 0.0011000000000000
+[1,4]: 0.0002000000000000
+mean = [[1,1,1,1,1] = 0.503967,[1,1,1,2] = 0.426667,[1,2,2] = 0.0476667,[1,1,3] = 0.0204,[2,3] = 0.0011,[1,4] = 0.0002]
+
+var : no hand
+Probabilities:
+false: 0.5019666666666667
+true: 0.4980333333333333
+mean = 0.498033
+
+var : pair
+Probabilities:
+false: 0.5733333333333334
+true: 0.4266666666666667
+mean = 0.426667
+
+var : two pairs
+Probabilities:
+false: 0.9523333333333334
+true: 0.0476666666666667
+mean = 0.0476667
+
+var : three of a kind
+Probabilities:
+false: 0.9796000000000000
+true: 0.0204000000000000
+mean = 0.0204
+
+var : straight
+Probabilities:
+false: 0.9964666666666666
+true: 0.0035333333333333
+mean = 0.00353333
+
+var : flush
+Probabilities:
+false: 0.9976000000000000
+true: 0.0024000000000000
+mean = 0.0024
+
+var : full house
+Probabilities:
+false: 0.9989000000000000
+true: 0.0011000000000000
+mean = 0.0011
+
+var : four of a kind
+Probabilities:
+false: 0.9998000000000000
+true: 0.0002000000000000
+mean = 0.0002
+
+var : straight flush
+Probabilities:
+false: 1.0000000000000000
+mean = 0.0
+
+var : royal straight flush
+Probabilities:
+false: 1.0000000000000000
+mean = 0.0
+
+
+no hand              : 0.4980333 -> 2.0078977
+pair                 : 0.4266667 -> 2.3437500
+two pairs            : 0.0476667 -> 20.9790210
+three of a kind      : 0.0204000 -> 49.0196078
+straight             : 0.0035333 -> 283.0188679
+flush                : 0.0024000 -> 416.6666667
+full house           : 0.0011000 -> 909.0909091
+four of a kind       : 0.0002000 -> 5000.0000000
+straight flush       : 0.0000000 -> 0.0000000
+royal straight flush : 0.0000000 -> 0.0000000
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(30_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  Hands = ["no hand","pair","two pairs","three of a kind","straight","flush",
+           "full house","four of a kind","straight flush","royal straight flush"],
+  Store = get_store(),
+  foreach(Hand in Hands)
+    P = Store.get(Hand,[0]).mean,
+    printf("%-21w: %0.7f -> %0.7f\n",Hand,P,cond(P > 0,1/P,0))
+  end,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+
+value(I) = I mod 13.
+suite(I) = I mod 4.
+
+model() =>
+  N = 52,
+  M = 5,
+
+  Cards = draw_without_replacement(M,1..N),
+  Values = Cards.map(value),
+  Suites = Cards.map(suite),  
+
+  NumUniqueValues = Values.remove_dups.len,
+  NumUniqueSuites = Suites.remove_dups.len,  
+
+  MinVal = Values.min,
+  MaxVal = Values.max,  
+
+  CountValues = collect(Values).values.sort,
+
+  Pair = check( CountValues = [1,1,1,2]) ,
+  ThreeOfAKind = check( CountValues = [1,1,3]),
+  TwoPairs = check( CountValues = [1,2,2]),
+
+  Straight = check((NumUniqueValues == 5,
+                    MaxVal-MinVal == 4,
+                    NumUniqueSuites > 1)),
+
+  Flush = check((NumUniqueSuites == 1, not Straight)),
+
+  FullHouse = check(CountValues = [2,3]),
+  FourOfAKind = check(CountValues = [1,4]), 
+
+  StraightFlush = check( (NumUniqueSuites == 1,
+                          MaxVal-MinVal == 4,
+                          MaxVal < 12)),
+  RoyalStraightFlush = check( (NumUniqueSuites == 1,
+                               MaxVal-MinVal == 4,
+                               MaxVal == 12)),
+
+  NoHand = check( (CountValues == [1,1,1,1,1],
+                   not Flush,
+                   not Straight)),
+
+  add_all([["count values",CountValues],
+           ["no hand",NoHand],
+           ["pair",Pair],
+           ["two pairs",TwoPairs],
+           ["three of a kind",ThreeOfAKind],
+           ["straight",Straight],
+           ["flush",Flush],
+           ["full house",FullHouse],
+           ["four of a kind",FourOfAKind],
+           ["straight flush",StraightFlush],
+           ["royal straight flush",RoyalStraightFlush]
+          ]).
+
+

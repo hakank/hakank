@@ -1,0 +1,149 @@
+/* 
+
+  BDA (Bayesian Data Analysis) in Picat.
+
+  From https://github.com/probmods/ppaml2016/blob/gh-pages/chapters/5-data.md
+  """
+  Here, we explore the result of an experiment with 15 trials and binary outcomes 
+  (e.g., flipping a coin with an uncertain weight, asking people if they'll vote for 
+  Hillary Clinton or Donald Trump, ...) 
+  """
+
+  Cf my Gamble model gamble_bda.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : prior p
+  Probabilities (truncated):
+  0.998752694576398: 0.0016556291390728
+  0.998105465899271: 0.0016556291390728
+  0.997413437812316: 0.0016556291390728
+  0.997339044696344: 0.0016556291390728
+  .........
+  0.005983372687354: 0.0016556291390728
+  0.005479980262686: 0.0016556291390728
+  0.004879563117809: 0.0016556291390728
+  0.001939886716166: 0.0016556291390728
+  mean = 0.493889
+  HPD intervals:
+  HPD interval (0.5): 0.08672453653380..0.56241099981703
+  HPD interval (0.84): 0.04399096921272..0.86692161805319
+  HPD interval (0.9): 0.00547998026269..0.89154787635968
+  HPD interval (0.95): 0.04399096921272..0.98790892864946
+  HPD interval (0.99): 0.00487956311781..0.99028609226937
+  HPD interval (0.999): 0.00193988671617..0.99875269457640
+  HPD interval (0.9999): 0.00193988671617..0.99875269457640
+  HPD interval (0.99999): 0.00193988671617..0.99875269457640
+
+  var : prior predictive
+  Probabilities (truncated):
+  12: 0.0860927152317881
+  1: 0.0778145695364238
+  6: 0.0711920529801325
+  2: 0.0695364238410596
+  .........
+  5: 0.0579470198675497
+  10: 0.0546357615894040
+  13: 0.0496688741721854
+  3: 0.0430463576158940
+  mean = 7.4404
+  HPD intervals:
+  HPD interval (0.5): 0.00000000000000..7.00000000000000
+  HPD interval (0.84): 0.00000000000000..13.00000000000000
+  HPD interval (0.9): 0.00000000000000..14.00000000000000
+  HPD interval (0.95): 0.00000000000000..15.00000000000000
+  HPD interval (0.99): 0.00000000000000..15.00000000000000
+  HPD interval (0.999): 0.00000000000000..15.00000000000000
+  HPD interval (0.9999): 0.00000000000000..15.00000000000000
+  HPD interval (0.99999): 0.00000000000000..15.00000000000000
+
+  var : posterior p
+  Probabilities (truncated):
+  0.396681257708315: 0.0016556291390728
+  0.385205929346944: 0.0016556291390728
+  0.384523541379964: 0.0016556291390728
+  0.373158328408915: 0.0016556291390728
+  .........
+  0.009724092208652: 0.0016556291390728
+  0.009436830882652: 0.0016556291390728
+  0.00778414216255: 0.0016556291390728
+  0.006158195438868: 0.0016556291390728
+  mean = 0.118043
+  HPD intervals:
+  HPD interval (0.5): 0.05199396472983..0.13999476243742
+  HPD interval (0.84): 0.01141602220545..0.19082498233338
+  HPD interval (0.9): 0.00943683088265..0.22422182710107
+  HPD interval (0.95): 0.00615819543887..0.26299049438117
+  HPD interval (0.99): 0.00615819543887..0.34484377798850
+  HPD interval (0.999): 0.00615819543887..0.39668125770832
+  HPD interval (0.9999): 0.00615819543887..0.39668125770832
+  HPD interval (0.99999): 0.00615819543887..0.39668125770832
+
+  var : posterior predictive
+  Probabilities:
+  0: 0.2698675496688742
+  1: 0.2516556291390729
+  2: 0.1953642384105960
+  3: 0.1341059602649007
+  4: 0.0827814569536424
+  5: 0.0380794701986755
+  6: 0.0198675496688742
+  7: 0.0049668874172185
+  8: 0.0033112582781457
+  mean = 1.74669
+  HPD intervals:
+  HPD interval (0.5): 0.00000000000000..1.00000000000000
+  HPD interval (0.84): 0.00000000000000..3.00000000000000
+  HPD interval (0.9): 0.00000000000000..4.00000000000000
+  HPD interval (0.95): 0.00000000000000..5.00000000000000
+  HPD interval (0.99): 0.00000000000000..6.00000000000000
+  HPD interval (0.999): 0.00000000000000..8.00000000000000
+  HPD interval (0.9999): 0.00000000000000..8.00000000000000
+  HPD interval (0.99999): 0.00000000000000..8.00000000000000
+
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,show_hpd_intervals]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 15, % number of attempts
+  K = 1,  % number of successes
+
+  P = uniform(0,1),
+
+  % Sample from binomial with updated P
+  PosteriorPredictive = binomial_dist(N,P),
+
+  % Sample fresh P
+  PriorP = uniform(0,1),
+  % sample from binomial with fresh p
+  PriorPredictive = binomial_dist(N, PriorP),
+
+  % Observed k number of successes, assuming a binomial
+  observe(binomial_dist(N,P) == K),
+  
+ 
+  if observed_ok then
+    add("prior p",PriorP),
+    add("prior predictive",PriorPredictive),
+    add("posterior p",P),
+    add("posterior predictive",PosteriorPredictive)
+  end.

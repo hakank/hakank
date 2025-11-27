@@ -1,0 +1,294 @@
+/* 
+
+  Poisson process distribution in Picat.
+
+  From Siegrist "Probability Mathematical Statisics and Stochastic Processes",
+  Chapter "14: The Poisson process" 
+  and 
+  Mathematica PoissonProcess
+
+  Cf my Gamble model gamble_poisson_process_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+Random:
+[3,1,3,3,4,1,1,3,1,2]
+
+PDF:
+[0.135335,0.270671,0.270671,0.180447,0.0902235,0.0360894,0.0120298,0.00343709,0.000859272,0.000190949,3.81899e-05]
+
+CDF:
+[0.135335,0.406006,0.676676,0.857123,0.947347,0.983436,0.995466,0.998903,0.999763,0.999954,0.999992]
+
+Quantile:
+0.000001 = 0
+0.00001 = 0
+0.001 = 0
+0.01 = 0
+0.025 = 0
+0.05 = 0
+0.1 = 0
+0.25 = 1
+0.5 = 2
+0.75 = 3
+0.84 = 3
+0.9 = 4
+0.975 = 5
+0.99 = 6
+0.999 = 8
+0.99999 = 10
+0.999999 = 12
+0.99999999999 = 17
+0.999999999999999 = 21
+0.9999999999999999 = 22
+0.999999999999999999 = 1.0e+100
+
+mean = 2.0
+variance = 2.0
+
+
+*/
+go ?=>
+  Mu = 1/2,
+  T = 4,
+  println([mu=Mu,t=T]),
+  println("Random:"),
+  println(poisson_process_dist_n(Mu,T,10)),
+  nl,
+  println("PDF:"),
+  println([poisson_process_dist_pdf(Mu,T,X) : X in 0..10]),
+  nl,
+  println("CDF:"),
+  println([poisson_process_dist_cdf(Mu,T,X) : X in 0..10]),
+  nl,
+  println("Quantile:"),  
+  foreach(Q in quantile_qs())
+    println(Q=poisson_process_dist_quantile(Mu,T,Q))
+  end,
+  % Testing the limits (precision)
+  println("0.99999999999"=poisson_process_dist_quantile(Mu,T,0.99999999999)),
+  println("0.999999999999999"=poisson_process_dist_quantile(Mu,T,0.999999999999999)),
+  println("0.9999999999999999"=poisson_process_dist_quantile(Mu,T,0.9999999999999999)),
+  % These are practially 1 -> infinity -> 1.0e100
+  println("0.99999999999999999"=poisson_process_dist_quantile(Mu,T,0.99999999999999999)),  
+  println("0.999999999999999999"=poisson_process_dist_quantile(Mu,T,0.999999999999999999)),    
+  nl,
+  println(mean=poisson_process_dist_mean(Mu,T)),
+  println(variance=poisson_process_dist_variance(Mu,T)), 
+  % fail,
+  nl.
+go => true.
+  
+/*
+  From Mathematica PoissonProcess
+  """
+  Customers arrive at a store according to a Poisson rate of four per hour. 
+  Given that the store opens at 9am, find the probability that exactly one 
+  customer has arrived by 9:30am:
+    arrivalProcess = PoissonProcess[4];
+
+  The probability of exactly one arrival by 9:30am:
+    Probability[x[1/2] == 1, x \[Distributed] arrivalProcess]
+  -> 
+   2/exp(2)
+
+    N[%] 
+  -> 
+   0.270671
+  """
+
+  Picat> X = poisson_process_dist_pdf(4,1/2,1) 
+  X = 0.270670566473225
+
+
+  From the model:
+  [mu = 0.5,t = 4,check = 1]
+  var : x
+  Probabilities:
+  1: 0.2754000000000000
+  2: 0.2703000000000000
+  3: 0.1777000000000000
+  0: 0.1364000000000000
+  4: 0.0838000000000000
+  5: 0.0383000000000000
+  6: 0.0138000000000000
+  7: 0.0026000000000000
+  8: 0.0013000000000000
+  9: 0.0004000000000000
+  mean = 1.9908
+
+  var : p
+  Probabilities:
+  false: 0.7246000000000000
+  true: 0.2754000000000000
+  mean = 0.2754
+
+  theoretical_mean = 2.0
+  theoretical_prob = 0.270671
+  Theoretical probs:
+  2 0.270670566473225 
+  1 0.270670566473225 
+  3 0.180447044315484 
+  0 0.135335283236613 
+  4 0.090223522157742 
+  5 0.036089408863097 
+  6 0.012029802954366 
+  7 0.00343708655839 
+  8 0.000859271639598 
+  9 0.000190949253244 
+  10 0.000038189850649 
+  11 0.000006943609209 
+  12 0.000001157268201 
+  13 0.000000178041262 
+
+*/
+go2 ?=>
+  Mu = 1/2,
+  T = 4,
+  Check = 1,
+  println([mu=Mu,t=T,check=Check]),
+  reset_store,
+  run_model(10_000,$model2(Mu,T,Check),[show_probs,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=poisson_process_dist_mean(Mu,T)),
+  println(theoretical_prob=poisson_process_dist_pdf(Mu,T,Check)),
+  println("Theoretical probs:"),
+  pdf_all($poisson_process_dist(Mu,T),0.0001,0.9999999).sort_down(2).printf_list,
+  nl,
+  
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(Mu,T,Check) =>
+  X = poisson_process_dist(Mu,T),
+  P = check(X == Check),
+  
+  add("x",X),
+  add("p",P).
+
+
+
+/*
+  Solving the same problem as in model2, 
+  simulating the process using "plain" poisson distribution.
+
+
+  [mu = 0.5,t = 4,check = 1]
+  var : t 1
+  Probabilities:
+  0: 0.6066000000000000
+  1: 0.3026000000000000
+  2: 0.0752000000000000
+  3: 0.0132000000000000
+  4: 0.0021000000000000
+  5: 0.0003000000000000
+  mean = 0.5025
+
+  var : t 2
+  Probabilities:
+  1: 0.3754000000000000
+  0: 0.3649000000000000
+  2: 0.1819000000000000
+  3: 0.0592000000000000
+  4: 0.0147000000000000
+  5: 0.0030000000000000
+  6: 0.0008000000000000
+  7: 0.0001000000000000
+  mean = 0.9961
+
+  var : t 3
+  Probabilities:
+  1: 0.3403000000000000
+  2: 0.2546000000000000
+  0: 0.2218000000000000
+  3: 0.1183000000000000
+  4: 0.0473000000000000
+  5: 0.0135000000000000
+  6: 0.0027000000000000
+  7: 0.0012000000000000
+  8: 0.0003000000000000
+  mean = 1.4881
+
+  var : t 4
+  Probabilities:
+  2: 0.2788000000000000
+  1: 0.2733000000000000
+  3: 0.1720000000000000
+  0: 0.1334000000000000
+  4: 0.0907000000000000
+  5: 0.0352000000000000
+  6: 0.0116000000000000
+  7: 0.0034000000000000
+  8: 0.0011000000000000
+  10: 0.0002000000000000
+  9: 0.0002000000000000
+  12: 0.0001000000000000
+  mean = 1.9929
+
+  var : p
+  Probabilities:
+  false: 0.7267000000000000
+  true: 0.2733000000000000
+  mean = 0.2733
+
+  ts = [0.5025,0.9961,1.4881,1.9929]
+
+  expected_prob = theoretical_prob = 0.270671
+
+
+
+*/
+go3 ?=>
+  Mu = 1/2,
+  T = 4,
+  Check=1,
+  println([mu=Mu,t=T,check=Check]),
+  reset_store,
+  run_model(10_000,$model3(Mu,T,Check),[show_probs,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  Store = get_store(),
+  Ts = [ Store.get("t " ++ TT.to_string).mean : TT in 1..T],
+  println(ts=Ts),
+  nl,
+  println(expected_prob=theoretical_prob=poisson_process_dist_pdf(Mu,T,Check)),
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+  
+model3(Mu,T,Check) =>
+
+  X = poisson_dist_n(Mu,T),
+  Xs = X.asum,
+
+  P = check(Xs[T] == Check),
+
+  foreach(TT in 1..T)
+    add("t " ++ TT.to_string,Xs[TT])
+  end,
+  add("p",P).
+
+

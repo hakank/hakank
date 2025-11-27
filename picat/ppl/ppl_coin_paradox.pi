@@ -1,0 +1,397 @@
+/* 
+
+  Coin paradox in Picat.
+
+  From https://web.archive.org/web/20031208074118/www.csua.berkeley.edu/~emin/writings/coinGame.html
+  """
+  ... 
+
+  Now consider a simple variation on this game. Instead of betting on the outcome of a single coin, 
+  imagine what would happen if both you and your friend each had a coin. The game would now be 
+  played as follows: Each turn you flip your coin and your friend flips his coin. If the sequence 
+  (Heads, Tails) occurs on your coin before the sequence (Heads, Heads) occurs on your friends coin, 
+  then you win. If the sequence (Heads, Heads) occurs on your friends coin before (Heads, Tails) 
+  occurs on your coin, then your friend wins. If the sequence (Heads, Tails) occurs on your coin 
+  in the same turn that (Heads, Heads) occurs on your friends coin, then both of you start over 
+  (e.g. there are no ties). 
+
+   
+  At first glance it seems like the second game also results in each player having a 
+  probability of winning of 1/2. However this is not true! The player who bets on 
+  (Heads, Tails) will win much more often. The simplest way to see this is by calcuting 
+  the average number of flips it takes each player to win.
+
+  Let X_HH be the number of flips it takes to get the sequence (Heads, Heads) on a given 
+  fair coin, and let F_k be the result of the kth coin flip (k starts at 1).
+
+
+  E[X_HH|F_1 = T] = 1 + E[X_HH]
+
+  E[X_HH|F_1 = H] = (1/2) * ( 2 ) + (1/2) * (E[X_HH] + 2)
+  E[X_HH|F_1 = H] = 2 + (1/2) * E[X_HH]
+
+  E[X_HH] = (1/2) * ( E[X_HH|F_1 = H] + E[X_HH|F_1 = T] )
+  E[X_HH] = (1/2) * ( 1 + E[X_HH] + 2 + (1/2)*E[X_HH])
+  E[X_HH] = (1/2) * ( 3 + (3/2)*E[X_HH]) = 3/2 + (3/4) E[X_HH]
+  E[X_HH] = 6
+
+  E[X_HT|F_1 = T] = 1 + E[X_HT]
+
+  E[X_HT|F_1 = H] = (1/2) * ( 2 ) + (1/2) * (E[X_HT|F_1 = H] + 1)
+  E[X_HT|F_1 = H] = 1 + (1/2) * (E[X_HT|F_1 = H] + 1)
+  E[X_HT|F_1 = H] = 3
+
+  E[X_HT] = (1/2) * ( E[X_HT|F_1 = H] + E[X_HT|F_1 = T] )
+  E[X_HT] = (1/2) * ( 1 + E[X_HT] + 3 )
+  E[X_HT] = 2 + (1/2)*E[X_HT]
+  E[X_HT] = 4
+
+  As we showed above the average time until the sequence (Heads, Heads) occurs is six 
+  flips, but the average time until the sequence (Heads, Tails) occurs is four flips. 
+  Therefore "on average" it will take longer to get (Heads, Heads) on a coin than it 
+  will to get (Heads, Tails). Technically this does not show that the person betting 
+  on (Heads, Tails) in the second game has a higher probability of winning. To do that 
+  we would have to do more detailed calculations similiar to what we did above. However 
+  the fact that the average time to get (Heads, Tails) is shorter than the average time 
+  to get heads tails is still quite a fascinating result! 
+  """
+  
+  Below are some experiments of this. 
+
+
+  Cf
+  - my Gamble model gamble_coin_paradox.rkt
+  - ppl_coin_hh_vs_ht.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Simpler variant: Throw a coin - say - 20 times and get the length of the sequence to get to 
+  the first HT and HH, respectively.
+
+  * For 20 tosses
+    var : hh pos
+    Probabilities (truncated):
+    2: 0.2508000000000000
+    3: 0.1305000000000000
+    4: 0.1240000000000000
+    5: 0.0889000000000000
+    .........
+    15: 0.0099000000000000
+    17: 0.0071000000000000
+    18: 0.0063000000000000
+    19: 0.0038000000000000
+    mean = 5.9241
+
+    var : ht pos
+    Probabilities (truncated):
+    2: 0.2456000000000000
+    3: 0.2415000000000000
+    4: 0.1933000000000000
+    5: 0.1309000000000000
+    .........
+    14: 0.0009000000000000
+    15: 0.0006000000000000
+    16: 0.0003000000000000
+    17: 0.0001000000000000
+    mean = 4.0359
+
+    var : winner
+    Probabilities:
+    hh: 0.5047000000000000
+    ht: 0.4953000000000000
+    mean = [hh = 0.5047,ht = 0.4953]
+
+
+  The probabilities of winning should be identical (and there should be 1 tie)
+
+  * For 100 tosses
+    var : hh pos
+    Probabilities (truncated):
+    2: 0.2466000000000000
+    4: 0.1257000000000000
+    3: 0.1216000000000000
+    5: 0.0920000000000000
+    .........
+    43: 0.0001000000000000
+    42: 0.0001000000000000
+    39: 0.0001000000000000
+    38: 0.0001000000000000
+    mean = 6.0754
+
+    var : ht pos
+    Probabilities (truncated):
+    2: 0.2519000000000000
+    3: 0.2501000000000000
+    4: 0.1863000000000000
+    5: 0.1174000000000000
+    .........
+    21: 0.0001000000000000
+    20: 0.0001000000000000
+    19: 0.0001000000000000
+    18: 0.0001000000000000
+    mean = 4.0124
+
+    var : winner
+    Probabilities:
+    ht: 0.5034999999999999
+    hh: 0.4965000000000000
+    mean = [ht = 0.5035,hh = 0.4965]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Coins = [h,t],
+
+  % Lst = uniform_draw_n(Coins,20),
+  Lst = uniform_draw_n(Coins,100),  
+  HTPos = index_of_sub(Lst,[h,t]),
+  HHPos = index_of_sub(Lst,[h,h]),  
+
+  Winner = cases([ [HTPos == HHPos, tie],
+                   [HTPos > HHPos, hh],
+                   [HTPos < HHPos, ht],
+                   [true, else]]),
+
+  add("ht pos",HTPos),
+  add("hh pos",HHPos),
+  add("winner",Winner).  
+
+
+/*
+  Another approach: Generate a list to get either HH or HT and compare the lengths.
+
+  * Including ties
+
+    var : hh len
+    Probabilities (truncated):
+    2: 0.2473000000000000
+    3: 0.1237000000000000
+    4: 0.1220000000000000
+    5: 0.0911000000000000
+    .........
+    46: 0.0001000000000000
+    43: 0.0001000000000000
+    39: 0.0001000000000000
+    35: 0.0001000000000000
+    mean = 6.0781
+
+    var : ht len
+    Probabilities (truncated):
+    2: 0.2490000000000000
+    3: 0.2473000000000000
+    4: 0.1865000000000000
+    5: 0.1234000000000000
+    .........
+    15: 0.0004000000000000
+    20: 0.0001000000000000
+    19: 0.0001000000000000
+    18: 0.0001000000000000
+    mean = 4.0255
+
+    var : winner
+    Probabilities:
+    ht: 0.5412000000000000
+    hh: 0.3273000000000000
+    tie: 0.1315000000000000
+    mean = [ht = 0.5412,hh = 0.3273,tie = 0.1315]
+
+
+  * Weeding out the ties
+    var : hh len
+    Probabilities (truncated):
+    2: 0.2186883343006384
+    4: 0.1165409170052234
+    3: 0.1109692396982008
+    5: 0.0975043528728961
+    .........
+    52: 0.0001160766105630
+    42: 0.0001160766105630
+    39: 0.0001160766105630
+    37: 0.0001160766105630
+    mean = 6.44898
+
+    var : ht len
+    Probabilities (truncated):
+    3: 0.2508415554265815
+    2: 0.2236796285548462
+    4: 0.1947765525246663
+    5: 0.1302379570516541
+    .........
+    17: 0.0002321532211259
+    16: 0.0002321532211259
+    24: 0.0001160766105630
+    18: 0.0001160766105630
+    mean = 4.1119
+
+    var : winner
+    Probabilities:
+    ht: 0.6263493905977946
+    hh: 0.3736506094022055
+    mean = [ht = 0.626349,hh = 0.373651]
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go2 => true.
+  
+
+model2() =>
+  Coins = [h,t],
+
+  HT = draw_until_pattern([],[h,t],Coins),
+  HH = draw_until_pattern([],[h,h],Coins),
+  HTLen = HT.len,
+  HHLen = HH.len,  
+  Winner = cases([ [HTLen == HHLen, tie],
+                   [HTLen < HHLen, ht],
+                   [HTLen > HHLen, hh],
+                   [true, else]]),
+
+  observe(HTLen != HHLen),
+  if observed_ok then
+    add("ht len",HTLen),
+    add("hh len",HHLen),
+    add("winner",Winner)
+  end.
+
+
+/*
+  Here we draw two parallel sequences.
+
+  var : count
+  Probabilities (truncated):
+  2: 0.3670000000000000
+  3: 0.2544000000000000
+  4: 0.1529000000000000
+  5: 0.1000000000000000
+  .........
+  19: 0.0001000000000000
+  18: 0.0001000000000000
+  17: 0.0001000000000000
+  16: 0.0001000000000000
+  mean = 3.5374
+
+  var : winner
+  Probabilities:
+  ht: 0.5848000000000000
+  hh: 0.4152000000000000
+  mean = [ht = 0.5848,hh = 0.4152]
+
+  var : winner hh len
+  Probabilities (truncated):
+  2: 0.4484585741811175
+  3: 0.2302504816955684
+  4: 0.1274084778420038
+  5: 0.0888728323699422
+  .........
+  13: 0.0012042389210019
+  12: 0.0012042389210019
+  15: 0.0007225433526012
+  14: 0.0004816955684008
+  mean = 3.3172
+
+  var : winner ht len
+  Probabilities (truncated):
+  2: 0.3091655266757866
+  3: 0.2715458276333789
+  4: 0.1709986320109439
+  5: 0.1079001367989056
+  .........
+  19: 0.0001709986320109
+  18: 0.0001709986320109
+  17: 0.0001709986320109
+  16: 0.0001709986320109
+  mean = 3.69374
+
+  var : winner len
+  Probabilities (truncated):
+  2: 0.3670000000000000
+  3: 0.2544000000000000
+  4: 0.1529000000000000
+  5: 0.1000000000000000
+  .........
+  19: 0.0001000000000000
+  18: 0.0001000000000000
+  17: 0.0001000000000000
+  16: 0.0001000000000000
+  mean = 3.5374
+
+*/
+go3 ?=>
+  reset_store,
+  run_model(20_000,$model3,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go3 => true.
+  
+
+model3() =>
+  Coins = [h,t],
+
+  Winner = false,
+  HT = [],
+  HH = [],
+  Count = 0,
+  WinnerList = _,
+  while (Winner == false)
+    Count := Count + 1,
+    HTW = false, % Did A got [h,t]?
+    HHW = false, % Did B got [h,h]?    
+    HT := HT ++ [uniform_draw(Coins)],
+    HH := HH ++ [uniform_draw(Coins)],    
+    if once(append(_,[h,t],HT)) then
+      HTW := true
+    end,
+    if once(append(_,[h,h],HH)) then
+      HHW := true
+    end,
+    if HTW == true, HHW == false then
+      Winner := ht,
+      WinnerList = HT
+    elseif HTW == false, HHW == true then      
+      Winner := hh,
+      WinnerList = HH
+    else
+      if HTW == true, HHW == true then
+        HT := [],
+        HT := []
+      end
+    end    
+  end,
+  % println([ht=HT,hh=HH,winner=Winner]),
+  add("count",Count),  
+  add("winner",Winner),
+  % add("winner list",WinnerList),
+  add("winner len",WinnerList.len),  
+  if Winner == ht then
+    add("winner ht len",HT.len)
+  else
+    add("winner hh len",HH.len)
+  end.
+

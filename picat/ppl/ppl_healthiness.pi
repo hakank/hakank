@@ -1,0 +1,217 @@
+/* 
+
+  Healthiness in Picat.
+
+  From BLOG examples/healtiness.blog:
+  """
+  healthiness model
+  This BLOG program describes the model for healthiness in 
+  a person.
+  See exercise 3.5 in:
+  Probabilistic Graphical Models: Principles and Techniques
+  Daphne Koller, Nir Friedman, MIT 2009
+  Each person is described by whether they are health
+  conscious, have free time, exercise, have a good diet, 
+  have normal weight, have high cholesterol, and whether
+  they tested positive for high cholesterol.
+  @author: jnieh
+  @date: 2012-09-13
+  """
+
+
+  Cf my Gamble model gamble_healthyness.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  * Observation: Not tested high cholesterol
+
+var : health conscious
+Probabilities:
+true: 0.5706327099084759
+false: 0.4293672900915241
+mean = [true = 0.570633,false = 0.429367]
+
+var : little free time
+Probabilities:
+true: 0.5041782729805014
+false: 0.4958217270194986
+mean = [true = 0.504178,false = 0.495822]
+
+var : exercise
+Probabilities:
+true: 0.5254675686430561
+false: 0.4745324313569439
+mean = [true = 0.525468,false = 0.474532]
+
+var : good diet
+Probabilities:
+true: 0.6625547154795066
+false: 0.3374452845204934
+mean = [true = 0.662555,false = 0.337445]
+
+var : normal weight
+Probabilities:
+true: 0.5584958217270195
+false: 0.4415041782729805
+mean = [true = 0.558496,false = 0.441504]
+
+var : high cholesterol
+Probabilities:
+false: 0.8963390370075607
+true: 0.1036609629924393
+mean = [false = 0.896339,true = 0.103661]
+
+var : tested high cholesterol
+Probabilities:
+false: 1.0000000000000000
+mean = [false = 1.0]
+
+  * Observation: Exercise
+
+var : health conscious
+Probabilities:
+true: 0.6962484872932634
+false: 0.3037515127067366
+mean = [true = 0.696248,false = 0.303752]
+
+var : little free time
+Probabilities:
+false: 0.6926179911254539
+true: 0.3073820088745462
+mean = [false = 0.692618,true = 0.307382]
+
+var : exercise
+Probabilities:
+true: 1.0000000000000000
+mean = [true = 1.0]
+
+var : good diet
+Probabilities:
+true: 0.5917708753529649
+false: 0.4082291246470351
+mean = [true = 0.591771,false = 0.408229]
+
+var : normal weight
+Probabilities:
+true: 0.6855586930213796
+false: 0.3144413069786204
+mean = [true = 0.685559,false = 0.314441]
+
+var : high cholesterol
+Probabilities:
+false: 0.5417507059298104
+true: 0.4582492940701896
+mean = [false = 0.541751,true = 0.458249]
+
+var : tested high cholesterol
+Probabilities:
+false: 0.5348931020572811
+true: 0.4651068979427188
+mean = [false = 0.534893,true = 0.465107]
+
+  * observation: not normal weight
+var : health conscious
+Probabilities:
+false: 0.6241317721770192
+true: 0.3758682278229807
+mean = [false = 0.624132,true = 0.375868]
+
+var : little free time
+Probabilities:
+true: 0.5419726136138122
+false: 0.4580273863861877
+mean = [true = 0.541973,false = 0.458027]
+
+var : exercise
+Probabilities:
+false: 0.6662036118277436
+true: 0.3337963881722564
+mean = [false = 0.666204,true = 0.333796]
+
+var : good diet
+Probabilities:
+false: 0.6773169279618972
+true: 0.3226830720381028
+mean = [false = 0.677317,true = 0.322683]
+
+var : normal weight
+Probabilities:
+false: 1.0000000000000000
+mean = [false = 1.0]
+
+var : high cholesterol
+Probabilities:
+true: 0.5763048223853939
+false: 0.4236951776146061
+mean = [true = 0.576305,false = 0.423695]
+
+var : tested high cholesterol
+Probabilities:
+true: 0.5701528080968447
+false: 0.4298471919031554
+mean = [true = 0.570153,false = 0.429847]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.84],
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+
+
+  HealthConscious = flip(0.5),
+  LittleFreeTime = flip(0.5),
+  
+  Exercise = cases([[(HealthConscious,LittleFreeTime),flip(0.5)],
+                    [(HealthConscious,not LittleFreeTime),flip(0.9)],
+                    [(not HealthConscious,LittleFreeTime),flip(0.1)],
+                    [(not HealthConscious,not LittleFreeTime),flip(0.5)]
+                   ]),
+
+  GoodDiet = condt(HealthConscious,flip(0.7),flip(0.3)),
+  NormalWeight = cases([[(GoodDiet,Exercise),flip(0.8)],
+                        [(GoodDiet,not Exercise),flip(0.5)],
+                        [(not GoodDiet,Exercise),flip(0.5)],
+                        [(not GoodDiet,not Exercise),flip(0.2)]
+                       ]),
+
+  HighCholesterol = condt(GoodDiet, flip(0.3), flip(0.7)),
+
+  TestedHighCholesterol = condt(HighCholesterol,flip(0.9),flip(0.1)),
+
+  % Evidence
+  % observe((not TestedHighCholesterol)),
+  % observe(Exercise),
+  % observe(LittleFreeTime),
+  observe(not NormalWeight),
+  
+  if observed_ok then
+    add("health conscious",HealthConscious),
+    add("little free time",LittleFreeTime),
+    add("exercise",Exercise),
+    add("good diet",GoodDiet),
+    add("normal weight",NormalWeight),
+    add("high cholesterol",HighCholesterol),
+    add("tested high cholesterol",TestedHighCholesterol),                        
+  end.

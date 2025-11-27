@@ -1,0 +1,90 @@
+/* 
+
+  Conditional probability in Picat.
+
+  This is a port of my PSI model youtube5.wppl 
+  (from a now unavailable YouTube video) 
+  """
+  def main() {
+    x := uniform(0,1);
+    d := infer((){
+            y := uniform(0,1);
+            observe(y <= x);
+            return y;
+         }) :Distribution[ℝ];
+    r := sample(d);
+    observe(x <= 1/2);
+
+    return r;
+  }
+  """
+
+  The (exact) expected value from PSI is E[r] = 1/8 (0.125)
+
+
+  Cf my Gamble model gamble_youtube5.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : r
+  Probabilities (truncated):
+  0.484143665285848: 0.0001000000000000
+  0.48113154782035: 0.0001000000000000
+  0.480283599570526: 0.0001000000000000
+  0.479943752977971: 0.0001000000000000
+  .........
+  0.000056679360595: 0.0001000000000000
+  0.000052151270235: 0.0001000000000000
+  0.000029045157148: 0.0001000000000000
+  0.000025116372865: 0.0001000000000000
+  mean = 0.124932
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           min_accepted_samples=10_000 % ,show_accepted_samples=true
+                           ]),
+  nl,
+  % fail,
+  nl.
+go => true.
+
+
+% Using observe does not work.
+sample1(X) = Res =>
+  Y = uniform_dist(0,1),
+  observe(Y <= X),
+  if observed_ok then
+    Res = Y
+  end.
+
+% However this works:
+% Continue to draw Y until it's <= X
+sample(X) = Res =>
+  Y = uniform_dist(0,1),
+  if (Y <= X)
+    Res = Y
+  else
+    Res = sample(X)
+  end.
+  
+model() =>
+  X = uniform_dist(0,1),
+  
+  R = sample(X),
+  observe(X <= 1/2),
+  
+  if observed_ok then
+    add("r",R),    
+  end.

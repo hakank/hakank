@@ -1,0 +1,127 @@
+/* 
+
+  Population in Picat.
+
+  From the video 
+  https://neurips.cc/virtual/2023/poster/72239
+  @ about 2:40
+  """
+  population ~ Poisson(100);
+  disaster   ~ Bernoulli(0.1);
+  if disaster = 1 {
+    population ~ Binomial(population, 0.8)
+  } else {
+    offspring ~ Poisson(10);
+    population += offspring;
+  }
+
+  observe 9 ~ Binomial(population, 0.1);
+
+  return population;
+  """
+
+  Cf my Gamble model gamble_population.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : population
+  Probabilities (truncated):
+  97: 0.0472440944881890
+  99: 0.0446194225721785
+  98: 0.0446194225721785
+  102: 0.0428696412948381
+  .........
+  77: 0.0008748906386702
+  69: 0.0008748906386702
+  66: 0.0008748906386702
+  63: 0.0008748906386702
+  mean = 98.6614
+  HPD intervals:
+  HPD interval (0.84): 85.00000000000000..111.00000000000000
+
+  var : disaster
+  Probabilities:
+  false: 0.8853893263342082
+  true: 0.1146106736657918
+  mean = 0.114611
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : population2
+  Probabilities (truncated):
+  107: 0.0428696412948381
+  105: 0.0376202974628171
+  108: 0.0367454068241470
+  109: 0.0358705161854768
+  .........
+  133: 0.0008748906386702
+  65: 0.0008748906386702
+  64: 0.0008748906386702
+  61: 0.0008748906386702
+  mean = 105.269
+  HPD intervals:
+  HPD interval (0.84): 91.00000000000000..126.00000000000000
+
+  var : offspring
+  Probabilities (truncated):
+  0: 0.1146106736657918
+  9: 0.1137357830271216
+  10: 0.1102362204724409
+  8: 0.1058617672790901
+  .........
+  22: 0.0008748906386702
+  21: 0.0008748906386702
+  20: 0.0008748906386702
+  1: 0.0008748906386702
+  mean = 8.82677
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..15.00000000000000
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_simple_stats,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84]
+                           % show_histogram
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Population = poisson_dist(100),
+  Disaster = flip(0.1),
+
+  Offspring = cond(Disaster == true, 0, poisson_dist(10)),
+
+  Population2 = cond(Disaster == true,
+                     binomial_dist(Population,0.8),
+                     Population + Offspring),
+
+  % We observe 10% of the population and found 9 (surviving) individual
+  observe(binomial_dist(Population2,0.1) == 9),
+   
+  if observed_ok then
+    add("population",Population),
+    add("disaster",Disaster),
+    add("population2",Population2),
+    add("offspring",Offspring),
+  end.

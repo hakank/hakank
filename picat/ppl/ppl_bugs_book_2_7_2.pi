@@ -1,0 +1,148 @@
+/* 
+
+  Bugs book example 2.7.2 in Picat.
+
+  Example 2.7.2 Heart transplant cost-effectiveness (continued)
+
+  Cf my Gamble model gamble_bugs_book_2_7_2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : theta N
+  Probabilities:
+  2.0: 1.0000000000000000
+  mean = 2.0
+  HPD intervals:
+  HPD interval (0.84): 2.00000000000000..2.00000000000000
+
+  var : theta T
+  Probabilities (truncated):
+  0.998511675130262: 0.0001000000000000
+  0.99844809972267: 0.0001000000000000
+  0.997978033450186: 0.0001000000000000
+  0.996857228988609: 0.0001000000000000
+  .........
+  0.344759077909629: 0.0001000000000000
+  0.304436234317824: 0.0001000000000000
+  0.303814023177633: 0.0001000000000000
+  0.271379457049754: 0.0001000000000000
+  mean = 0.800746
+  HPD intervals:
+  HPD interval (0.84): 0.67123793308932..0.98118826908025
+
+  var : theta P
+  Probabilities (truncated):
+  8.692874155760908: 0.0001000000000000
+  8.543067660085086: 0.0001000000000000
+  8.542524995739354: 0.0001000000000000
+  8.395659036823904: 0.0001000000000000
+  .........
+  1.978218356186636: 0.0001000000000000
+  1.839828658135684: 0.0001000000000000
+  1.753972773923389: 0.0001000000000000
+  1.331488048619408: 0.0001000000000000
+  mean = 4.99973
+  HPD intervals:
+  HPD interval (0.84): 3.65495407375922..6.45863431456659
+
+  var : theta C
+  Probabilities (truncated):
+  4428.912985975270203: 0.0001000000000000
+  4264.463092054649678: 0.0001000000000000
+  4099.114364398915313: 0.0001000000000000
+  4068.906365540204206: 0.0001000000000000
+  .........
+  1868.137151472975802: 0.0001000000000000
+  1867.969092316921888: 0.0001000000000000
+  1784.827959217435819: 0.0001000000000000
+  1747.509799793880802: 0.0001000000000000
+  mean = 2997.99
+  HPD intervals:
+  HPD interval (0.84): 2544.53840899726629..3431.37124857836852
+
+  var : E c
+  Probabilities (truncated):
+  45.519432789209461: 0.0001000000000000
+  44.517539604006394: 0.0001000000000000
+  44.283673829134571: 0.0001000000000000
+  44.256726891762952: 0.0001000000000000
+  .........
+  23.084302359195284: 0.0001000000000000
+  23.015277091854635: 0.0001000000000000
+  22.724622966126532: 0.0001000000000000
+  21.705523874096464: 0.0001000000000000
+  mean = 32.0029
+  HPD intervals:
+  HPD interval (0.84): 26.82931986962738..36.06648010249445
+
+  var : E e
+  Probabilities (truncated):
+  5.669145057974631: 0.0001000000000000
+  5.553936379056355: 0.0001000000000000
+  5.532071374409322: 0.0001000000000000
+  5.466967207448022: 0.0001000000000000
+  .........
+  -0.873412524502794: 0.0001000000000000
+  -0.948065476677241: 0.0001000000000000
+  -1.006100880147863: 0.0001000000000000
+  -1.463483185602223: 0.0001000000000000
+  mean = 2.0027
+  HPD intervals:
+  HPD interval (0.84): 0.55282047601593..3.41364178159673
+
+  var : icer
+  Probabilities (truncated):
+  6257.502978520363285: 0.0001000000000000
+  6051.837848669110826: 0.0001000000000000
+  4773.40742176844924: 0.0001000000000000
+  4224.014815110375821: 0.0001000000000000
+  .........
+  -1984.311207471874013: 0.0001000000000000
+  -4333.283710565224283: 0.0001000000000000
+  -8245.961048066910735: 0.0001000000000000
+  -14602.742034907050765: 0.0001000000000000
+  mean = 21.3975
+  HPD intervals:
+  HPD interval (0.84): 8.47496506765871..30.48309020915352
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,show_hpd_intervals,hpd_intervals=[0.84]]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  ThetaN = 2.0,                               %  expected lifetime without transplant
+  ThetaT = beta_dist(8,2),                    %  probability of surviving operation
+  ThetaP = normal_dist(5,1),                  %  expected survival post-transplant (mean 5, sd 1)
+  ThetaC = normal_dist(3000.0, sqrt(100000)), %  expected cost per year (mean 3000, sd 1000)
+  E_c    = (20000 + (ThetaC * ThetaT * ThetaP)) / 1000, %  expected additional cost of transplant
+                                                        %  in thousands of pounds
+  E_e    = (ThetaT * ThetaP) - ThetaN,  %  expected total additional survival
+  ICER   = E_c / E_e,                   %  incremental cost-effectiveness ratio
+   
+  add("theta N",ThetaN),
+  add("theta T",ThetaT),
+  add("theta P",ThetaP),
+  add("theta C",ThetaC),
+  add("E c",E_c),
+  add("E e",E_e),
+  add("icer",ICER).  
+
+

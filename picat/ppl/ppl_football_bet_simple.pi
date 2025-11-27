@@ -1,0 +1,111 @@
+/* 
+
+  Football bet simple in Picat.
+
+  Netica model of a football bet.
+  From Neapolitan?
+  The Netica model use an utility node (u) and a decision node (accept_bet)
+  which I try to model here...
+
+  Cf my Gamble model gamble_fotball_bet_simple.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : accept bet
+  Probabilities:
+  yes: 0.5009986684420772
+  no: 0.4990013315579228
+  mean = [yes = 0.500999,no = 0.499001]
+
+  var : accept bet,u
+  Probabilities:
+  [no,20]: 0.2939414114513981
+  [yes,40]: 0.2936085219707057
+  [yes,-20]: 0.2073901464713715
+  [no,-5]: 0.2050599201065246
+  mean = [[no,20] = 0.293941,[yes,40] = 0.293609,[yes,-20] = 0.20739,[no,-5] = 0.20506]
+
+  var : result
+  Probabilities:
+  melbwins: 0.5875499334221038
+  melbloses: 0.4124500665778961
+  mean = [melbwins = 0.58755,melbloses = 0.41245]
+
+  var : u
+  Probabilities:
+  20: 0.2939414114513981
+  40: 0.2936085219707057
+  -20: 0.2073901464713715
+  -5: 0.2050599201065246
+  mean = 12.4501
+
+  var : u accept bet no
+  Probabilities:
+  0: 0.5009986684420772
+  20: 0.2939414114513981
+  -5: 0.2050599201065246
+  mean = 4.85353
+
+  var : u accept bet yes
+  Probabilities:
+  0: 0.4990013315579228
+  40: 0.2936085219707057
+  -20: 0.2073901464713715
+  mean = 7.59654
+
+  var : weather
+  Probabilities:
+  wet: 1.0000000000000000
+  mean = [wet = 1.0]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+   Weather = categorical([30,70],[wet,dry]),
+   AcceptBet = categorical([50,50],[yes,no]),
+    
+   Result = cond(Weather == wet,
+                 categorical([60,40],[melbwins,melbloses]),
+                 categorical([25,75],[melbwins,melbloses])),
+    
+   U = cases([[(Result==melbwins,AcceptBet==yes), 40],
+              [(Result==melbwins,AcceptBet=no  ), 20],
+              [(Result==melbloses,AcceptBet=yes),-20],
+              [(Result==melbloses,AcceptBet==no), -5],
+              [true,0]]),
+              
+   UAcceptBetYes = cond(AcceptBet==yes,U,0),
+   UAcceptBetNo  = cond(AcceptBet==no,U,0),   
+   
+   observe(Weather==wet),
+   % observe(Result==melbwins),
+
+  if observed_ok then
+    add("weather",Weather),
+    add("result",Result),
+    add("u",U),
+    add("accept bet",AcceptBet),
+    add("accept bet,u",[AcceptBet,U]),
+    add("u accept bet yes",UAcceptBetYes),
+    add("u accept bet no",UAcceptBetNo),    
+
+  end.

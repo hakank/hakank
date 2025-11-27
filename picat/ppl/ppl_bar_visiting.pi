@@ -1,0 +1,374 @@
+/* 
+
+  Bar visiting in Picat.
+
+  I saw this problem in some Swedish Facebook (?) group but 
+  cannot find it now.
+
+  The basic problem is this:
+   - A visits the bar 3 times during a period, say 10 weeks
+   - Each time A visit the bar he sees B.
+   What it the chance of this? 
+   
+  In the Facebook (?) post there was also some information about 
+  number of people at the bar etc, but I don't care about that.
+
+  Below are two models:
+  - go/0: a simple and unreasonable model
+  - go2/0: a more reasonable model
+ 
+  Cf my Gamble model gamble_bar_visiting.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Model 1
+  This model is based on the following reasoning:
+  - The probability that a person visits a bar is a 
+    Poisson distribution with some probability
+  - A visits the bar exactly 3 times
+  What is the probability that B also visits the bar these 3 times?
+
+  Well, the probability (p) given this model is about 67%,
+  which - given the original problem statement - is quite high.
+  What's missing here is that the model does not take into 
+  account that the visits should be the _same_ days.
+  
+  var : n
+  Probabilities (truncated):
+  2: 0.2778523489932886
+  3: 0.2020134228187919
+  1: 0.1953020134228188
+  4: 0.1456375838926174
+  .........
+  9: 0.0046979865771812
+  11: 0.0020134228187919
+  10: 0.0020134228187919
+  13: 0.0006711409395973
+  mean = 3.00872
+  HPD intervals:
+  HPD interval (0.84): 1.00000000000000..5.00000000000000
+
+  var : p1
+  Probabilities:
+  3: 1.0000000000000000
+  mean = 3.0
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..3.00000000000000
+
+  var : p2
+  Probabilities (truncated):
+  2: 0.2006711409395973
+  3: 0.1805369127516779
+  4: 0.1463087248322148
+  1: 0.1261744966442953
+  .........
+  13: 0.0033557046979866
+  12: 0.0033557046979866
+  17: 0.0013422818791946
+  15: 0.0006711409395973
+  mean = 3.98523
+  HPD intervals:
+  HPD interval (0.84): 1.00000000000000..6.00000000000000
+
+  var : prob1
+  Probabilities:
+  true: 0.6731543624161074
+  false: 0.3268456375838926
+  mean = [true = 0.673154,false = 0.326846]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : prob2
+  Probabilities:
+  true: 0.6731543624161074
+  false: 0.3268456375838926
+  mean = [true = 0.673154,false = 0.326846]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+*/
+go ?=>
+  reset_store,
+  println("Model 1:"),
+  run_model(30_000,$model1,[show_probs_trunc,mean,show_hpd_intervals,hpd_intervals=[0.84]]),
+  reset_store,
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+model1() =>
+  % N = 10,
+  N = random_integer(20)+1,
+  P1 = poisson_dist(N) + 1,
+  P2 = poisson_dist(N) + 1,
+
+  observe(P1 == 3),
+
+  % Given the observation that P1 == 3, these two are identical
+  Prob1 = check((P1 == 3, P2 >= 3)),
+  Prob2 = check(P2 >= P1),
+
+  if observed_ok then
+    add("n",N),
+    add("p1",P1),
+    add("p2",P2),
+    add("prob1",Prob1),
+    add("prob2",Prob2),    
+  end.
+
+
+/*
+  Model 2:
+  Well, perhaps it's better to make the visits more explicit.
+
+  Say we study this over 30 days instead, and let A and B
+  visit the bar with some probability and check if they 
+  visit the bar the same day.
+
+  The period stated in the original problem was over a period
+  of 10 weeks, but let's reformulate this to only consider
+  3 bardays per week = 30 days.
+  A visits the bar exactly 3 days during this month,
+  while B can visit the bar more times (but at least 3).
+
+
+  Without any restrictions how many visits B does we get
+  the probability of the two persons visits the        
+  bar exactly 3 times (p) is about 28.5%. The average
+  number of days B visits the bar is about 16, which is
+  quite high.
+  
+  So let's restrict the number of days that B visits the
+  bar to atmost 10 days (which makes the mean about 6.6 days). 
+  Then the probability of that A visits the bar exacty
+  3 days when person B is there is much smaller: 1.8%
+  
+  restrictVisitsOf2 = false
+  Model 2:
+  var : p1
+  Probabilities (truncated):
+  0.319313097858369: 0.0017825311942959
+  0.297212628477678: 0.0017825311942959
+  0.295386531694708: 0.0017825311942959
+  0.288113917771911: 0.0017825311942959
+  .........
+  0.025933476290733: 0.0017825311942959
+  0.025084357421214: 0.0017825311942959
+  0.024800755544113: 0.0017825311942959
+  0.023047978876692: 0.0017825311942959
+  mean = 0.125184
+  HPD intervals:
+  HPD interval (0.84): 0.04616483102908..0.19085567249040
+
+  var : p2
+  Probabilities (truncated):
+  0.999698089196564: 0.0017825311942959
+  0.996870714055225: 0.0017825311942959
+  0.994697564831809: 0.0017825311942959
+  0.992240361141735: 0.0017825311942959
+  .........
+  0.053927851330225: 0.0017825311942959
+  0.053168585026687: 0.0017825311942959
+  0.052269321662407: 0.0017825311942959
+  0.051529915556638: 0.0017825311942959
+  mean = 0.54983
+  HPD intervals:
+  HPD interval (0.84): 0.20064039785496..0.93794872523409
+
+  var : p
+  Probabilities:
+  false: 0.7147950089126560
+  true: 0.2852049910873440
+  mean = [false = 0.714795,true = 0.285205]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : num visits 1
+  Probabilities:
+  3: 1.0000000000000000
+  mean = 3.0
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..3.00000000000000
+
+  var : num visits 2
+  Probabilities (truncated):
+  14: 0.0695187165775401
+  20: 0.0534759358288770
+  17: 0.0445632798573975
+  11: 0.0445632798573975
+  .........
+  7: 0.0249554367201426
+  16: 0.0213903743315508
+  15: 0.0178253119429590
+  8: 0.0178253119429590
+  mean = 16.5241
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..26.00000000000000
+
+  var : num visits same day
+  Probabilities:
+  2: 0.2869875222816399
+  3: 0.2852049910873440
+  1: 0.2406417112299465
+  0: 0.1871657754010695
+  mean = 1.67023
+  HPD intervals:
+  HPD interval (0.84): 0.00000000000000..3.00000000000000
+
+
+  Variable lengths:
+  num visits 1 = 561
+  num visits 2 = 561
+  num visits same day = 561
+  p = 561
+  p1 = 561
+  p2 = 561
+
+
+  restrictVisitsOf2 = true
+  Model 2:
+  var : p1
+  Probabilities (truncated):
+  0.345427850364857: 0.0062500000000000
+  0.315766313684381: 0.0062500000000000
+  0.29980781067149: 0.0062500000000000
+  0.288221642057587: 0.0062500000000000
+  .........
+  0.026857509282873: 0.0062500000000000
+  0.026826094760829: 0.0062500000000000
+  0.026321118385012: 0.0062500000000000
+  0.00830649324725: 0.0062500000000000
+  mean = 0.131043
+  HPD intervals:
+  HPD interval (0.84): 0.04099559800427..0.20653801954352
+
+  var : p2
+  Probabilities (truncated):
+  0.499568389101983: 0.0062500000000000
+  0.464495769706591: 0.0062500000000000
+  0.461366347284229: 0.0062500000000000
+  0.446648381408088: 0.0062500000000000
+  .........
+  0.060279523984728: 0.0062500000000000
+  0.057709107041869: 0.0062500000000000
+  0.035588209539321: 0.0062500000000000
+  0.032384267609679: 0.0062500000000000
+  mean = 0.233624
+  HPD intervals:
+  HPD interval (0.84): 0.07406844142699..0.34897562401291
+
+  var : p
+  Probabilities:
+  false: 0.9812500000000000
+  true: 0.0187500000000000
+  mean = [false = 0.98125,true = 0.01875]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : num visits 1
+  Probabilities:
+  3: 1.0000000000000000
+  mean = 3.0
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..3.00000000000000
+
+  var : num visits 2
+  Probabilities:
+  9: 0.1500000000000000
+  4: 0.1500000000000000
+  8: 0.1250000000000000
+  7: 0.1250000000000000
+  5: 0.1250000000000000
+  10: 0.1187500000000000
+  6: 0.1125000000000000
+  3: 0.0937500000000000
+  mean = 6.59375
+  HPD intervals:
+  HPD interval (0.84): 3.00000000000000..9.00000000000000
+
+  var : num visits same day
+  Probabilities:
+  0: 0.5187500000000000
+  1: 0.3562500000000000
+  2: 0.1062500000000000
+  3: 0.0187500000000000
+  mean = 0.625
+  HPD intervals:
+  HPD interval (0.84): 0.00000000000000..1.00000000000000
+
+
+  Variable lengths:
+  num visits 1 = 160
+  num visits 2 = 160
+  num visits same day = 160
+  p = 160
+  p1 = 160
+  p2 = 160
+
+*/
+go2 ?=>
+  member(RestrictVisitsOf2,[false,true]),
+  println(restrictVisitsOf2=RestrictVisitsOf2),
+  reset_store,
+  println("Model 2:"),
+  run_model(20_000,$model2(RestrictVisitsOf2),[show_probs_trunc,mean,show_hpd_intervals,
+                            hpd_intervals=[0.84]]),
+  nl,
+  show_store_lengths,
+  nl,
+  fail,
+  nl.
+go2 => true.
+  
+model2(RestrictVisitsOf2) =>
+  N = 30, % number of days
+
+  % Probabilities of visiting a bar at each day
+  P1 = beta_dist(1,1),
+  P2 = beta_dist(1,1),
+
+  % The visits 
+  Visits1 = [bern(P1) : _ in 1..N],
+  Visits2 = [bern(P2) : _ in 1..N],  
+
+  % Total number of visits
+  NumVisits1 = Visits1.sum,
+  NumVisits2 = Visits2.sum,  
+
+  % Visits the same days
+  NumVisitsSameDay = [cond(Visits1[Day]*Visits2[Day]==1,1,0) : Day in 1..N].sum,
+
+  % Probability that the two persons visit
+  % the bar the same day exactly 3 times
+  P = check(NumVisitsSameDay == 3),
+
+  % Person 1 visits the bar exactly 3 times
+  observe(NumVisits1 == 3),
+
+  % Person 2 visits the bar at least 3 times
+  observe(NumVisits2>=NumVisits1),
+  
+  % Restrict the number of visits for person 2, to - say - atmost 10 visits
+  % during this month
+  if RestrictVisitsOf2 then
+    observe(NumVisits2 <= 10)
+  end,
+  
+  if observed_ok then
+    add("p1",P1),
+    add("p2",P2),      
+    add("p",P),
+    add("num visits 1",NumVisits1),
+    add("num visits 2",NumVisits2),    
+    add("num visits same day",NumVisitsSameDay)
+  end.

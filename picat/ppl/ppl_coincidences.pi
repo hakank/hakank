@@ -1,0 +1,250 @@
+/* 
+
+  Coincidences in Picat.
+
+  This is a port (or at least inspired) by old simulations in R
+  written in 2003 (in Swedish):
+  http://www.hakank.org/sims/coincidence_simulating.html
+  and the Swedish blog post "Sammanträffanden - anteckningar vid läsning 
+  av Diaconis och Mosteller 'Methods for Studying Coincidences'" 
+  ("Coincidences - note from a reading of Diaconis and Mosteller 'Methods for Studying Coincidences'")
+  http://www.hakank.org/webblogg/archives/000216.html
+  (translated)
+  """
+  The study of coincidences is related to cognitive illusions (which is the current interest). 
+  We have bad intuition regarding coincidences which the birthday problems shows: 
+  It takes about 23 person for it to be a 50% probability that two persons in this group 
+  shares the birthday. Surprising? A common intuition is that it require many more people .
+  ...
+  Here I simulate some of the most interesting sections in Diaconis' and Mosteller's paper
+  'Methods for Studying Coincidences', section "7.1 General-Purpose Models: Birthday Problems" 
+  (857ff).
+  """ 
+
+  Note: This program implements the plain birthday "paradox" (i.e. a single attribute model).
+
+  Cf my Gamble model gamble_coincidences.rkt
+
+  Also, see ppl_coincidences2.pi for combined coincidences (multiple attributes).
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+% The theoretical probability of at least two persons having the same birthday
+theoretical(NumDays,NumPeople) = 1-prod( [D / NumDays : D in NumDays..-1..(NumDays-NumPeople+1)]).
+
+/*
+
+
+*/
+go ?=>
+  NumDays = 365,
+  NumPeople = 23,
+  println(theoretical=theoretical(NumDays,NumPeople)),
+  reset_store,
+  run_model(10_000,$model(NumDays,NumPeople),[show_probs_trunc,mean,variance]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(NumDays,NumPeople) =>
+  
+  observe(NumPeople == NumPeople),
+
+  X = [ random_integer1(NumDays) : _ in 1..NumPeople],
+  CommonBirthday = NumPeople-X.remove_dups.len,
+
+  P = check(CommonBirthday > 0),
+  
+  if (number(ObsNumPeople), observed_ok)
+     ;
+     (not number(ObsNumPeople)
+     )
+     then
+    add("common birthday",CommonBirthday),
+    add("num people",NumPeople),
+    add("p",P),        
+  end.
+
+
+/*
+  How many people are needed for it to be about 50% and 95% chance of
+  at least one common birthday.
+
+  
+  NumDays = 365
+  theoretical = [22.926,47.7624]
+  target_pct = 0.5
+  var : num people
+  Probabilities:
+  24: 0.2666666666666667
+  22: 0.2222222222222222
+  23: 0.2000000000000000
+  26: 0.0888888888888889
+  20: 0.0888888888888889
+  25: 0.0666666666666667
+  21: 0.0444444444444444
+  19: 0.0222222222222222
+  mean = 23.0
+  variance = 2.88889
+  HPD intervals:
+  HPD interval (0.5): 22.00000000000000..24.00000000000000
+  HPD interval (0.84): 22.00000000000000..26.00000000000000
+  HPD interval (0.9): 19.00000000000000..25.00000000000000
+  HPD interval (0.95): 20.00000000000000..26.00000000000000
+  HPD interval (0.99): 19.00000000000000..26.00000000000000
+  HPD interval (0.999): 19.00000000000000..26.00000000000000
+  HPD interval (0.9999): 19.00000000000000..26.00000000000000
+  HPD interval (0.99999): 19.00000000000000..26.00000000000000
+
+  var : p
+  Probabilities:
+  0.5: 0.2444444444444444
+  0.48: 0.2222222222222222
+  0.52: 0.2000000000000000
+  0.51: 0.1777777777777778
+  0.49: 0.1555555555555556
+  mean = 0.499778
+  variance = 0.000202173
+  HPD intervals:
+  HPD interval (0.5): 0.48000000000000..0.50000000000000
+  HPD interval (0.84): 0.48000000000000..0.52000000000000
+  HPD interval (0.9): 0.48000000000000..0.52000000000000
+  HPD interval (0.95): 0.48000000000000..0.52000000000000
+  HPD interval (0.99): 0.48000000000000..0.52000000000000
+  HPD interval (0.999): 0.48000000000000..0.52000000000000
+  HPD interval (0.9999): 0.48000000000000..0.52000000000000
+  HPD interval (0.99999): 0.48000000000000..0.52000000000000
+
+
+  target_pct = 0.95
+  var : num people
+  Probabilities (truncated):
+  45: 0.1008902077151335
+  47: 0.0979228486646884
+  46: 0.0919881305637982
+  43: 0.0890207715133531
+  .........
+  38: 0.0089020771513353
+  55: 0.0059347181008902
+  37: 0.0029673590504451
+  36: 0.0029673590504451
+  mean = 46.3056
+  variance = 15.963
+  HPD intervals:
+  HPD interval (0.5): 42.00000000000000..47.00000000000000
+  HPD interval (0.84): 39.00000000000000..50.00000000000000
+  HPD interval (0.9): 39.00000000000000..52.00000000000000
+  HPD interval (0.95): 39.00000000000000..54.00000000000000
+  HPD interval (0.99): 38.00000000000000..57.00000000000000
+  HPD interval (0.999): 36.00000000000000..57.00000000000000
+  HPD interval (0.9999): 36.00000000000000..57.00000000000000
+  HPD interval (0.99999): 36.00000000000000..57.00000000000000
+
+  var : p
+  Probabilities:
+  0.97: 0.2077151335311573
+  0.94: 0.1869436201780415
+  0.96: 0.1780415430267062
+  0.95: 0.1661721068249258
+  0.93: 0.1335311572700297
+  0.92: 0.1275964391691395
+  mean = 0.947567
+  variance = 0.000281913
+  HPD intervals:
+  HPD interval (0.5): 0.94000000000000..0.96000000000000
+  HPD interval (0.84): 0.93000000000000..0.97000000000000
+  HPD interval (0.9): 0.92000000000000..0.97000000000000
+  HPD interval (0.95): 0.92000000000000..0.97000000000000
+  HPD interval (0.99): 0.92000000000000..0.97000000000000
+  HPD interval (0.999): 0.92000000000000..0.97000000000000
+  HPD interval (0.9999): 0.92000000000000..0.97000000000000
+  HPD interval (0.99999): 0.92000000000000..0.97000000000000
+
+*/
+
+/*
+  The theoretical values of the number of persons required for 50% and 95% chance 
+  or a coincidence is according to Diaconics & Mosteller "Methods for Studying Coincidences"
+  R code:
+    p.50 <- 1.2*sqrt(1/sum(1/num.vals))
+    p.95 <- 2.5*sqrt(1/sum(1/num.vals))
+*/
+theoretical2(Ns) = [1.2*T,2.5*T]  =>
+  T = sqrt(1/sum([1/V : V in Ns])).
+
+go2 ?=>
+  NumDays = 365,
+  println(numDays=NumDays),
+  println(theoretical=theoretical2([NumDays])),
+  MaxNumPeople = 300,
+  member(TargetPct, [0.5,0.95]),
+  println(target_pct=TargetPct),
+  reset_store,
+  run_model(10_000,$model2(NumDays,MaxNumPeople,TargetPct),
+                          [show_probs_trunc,mean,variance,show_hpd_intervals]),
+  nl,
+  fail,
+  nl.
+go2 => true.
+  
+
+% table
+birthday_gen(N,NumDays,NumPeople) = Hits/N =>
+  Hits = 0,
+  foreach(_ in 1..N)
+    X = [random_integer1(NumDays) : _ in 1..NumPeople],
+    CommonBirthdays = NumPeople-X.remove_dups.len,
+    if CommonBirthdays > 0 then
+      Hits := Hits + 1
+    end
+  end.
+
+
+/*
+% This works for both 50% and 95% but it's not neat/natural enough...
+model2(NumDays,MaxNumPeople,TargetPct) =>
+  % Generate the number of people
+  NumPeople = random_integer1(MaxNumPeople),
+  % Generate a lot of meeting with these number of people (here 100)
+  Pcur = birthday_gen(100,NumDays,NumPeople),
+
+  Pprev = cond(NumPeople > 1,
+                 birthday_gen(100, NumDays, NumPeople - 1),
+                 0.0),
+  Eps    = 0.0,
+  observe(Pprev < TargetPct - Eps),
+  observe(Pcur  >= TargetPct),
+
+
+  % And ensure that the probability is close to TargetPct
+  % observe(abs(P-TargetPct) <=0.1),
+  
+  if observed_ok then
+    add("num people",NumPeople),
+    add("p",Pcur),        
+  end.
+*/
+
+model2(NumDays,MaxNumPeople,TargetPct) =>
+  % Generate the number of people
+  NumPeople = random_integer1(MaxNumPeople),
+  % Generate a lot of meeting with these number of people (here 100)
+  P = birthday_gen(100,NumDays,NumPeople),
+
+  % And ensure that the probability is close to TargetPct
+  observe(abs(P-TargetPct)<=0.03),
+  
+  if observed_ok then
+    add("num people",NumPeople),
+    add("p",P),        
+  end.

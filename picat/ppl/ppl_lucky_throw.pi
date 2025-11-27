@@ -1,0 +1,211 @@
+/* 
+
+  Lucky throw in Picat.
+
+  From https://github.com/fzaiser/genfer/blob/main/benchmarks/prodigy/lucky_throw.sgcl
+  """
+  # Adapted from https://github.com/LKlinke/Prodigy/blob/main/pgfexamples/inference/lucky_throw.pgcl
+  hand := 0;
+  lucky_throw := 0;
+
+  sum ~ UniformDisc(4, 25);
+
+  loop 4 {
+    die ~ UniformDisc(1, 7);
+    if die = 6 { lucky_throw := 1; }
+    hand += die;
+  }
+
+  observe(hand = sum);
+
+  return lucky_throw
+  """
+
+  $ genfer ./benchmarks/prodigy/lucky_throw.sgcl --rational
+Computing probabilities up to 2...
+Unnormalized: p(0)     = 625/27216
+Normalized:   p(0) / Z = 625/1296
+Unnormalized: p(1)     = 671/27216
+Normalized:   p(1) / Z = 671/1296
+Unnormalized: p(n)     <= 0 for all n >= 2
+Normalized:   p(n) / Z <= 0 for all n >= 2
+Time to compute probability masses: 0.0191s
+Total inference time: 0.301s
+
+  p(i) = probability of lucky draw == 0 | 1
+
+
+  The exact probabilities for LuckyThrow:
+
+  * False
+    Picat> X= 625/1296 
+    X = 0.482253086419753
+
+  * True
+    Picat> X = 671/1296
+    X = 0.517746913580247
+
+
+  Cf my Gamble model gamble_lucky_throw.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : hand
+  Probabilities (truncated):
+  14: 0.1155000000000000
+  13: 0.1112000000000000
+  15: 0.1095000000000000
+  16: 0.0982000000000000
+  .........
+  5: 0.0039000000000000
+  23: 0.0032000000000000
+  24: 0.0005000000000000
+  4: 0.0005000000000000
+  mean = 14.0036
+
+  var : the sum
+  Probabilities (truncated):
+  14: 0.1155000000000000
+  13: 0.1112000000000000
+  15: 0.1095000000000000
+  16: 0.0982000000000000
+  .........
+  5: 0.0039000000000000
+  23: 0.0032000000000000
+  24: 0.0005000000000000
+  4: 0.0005000000000000
+  mean = 14.0036
+
+  var : num sixes
+  Probabilities:
+  0: 0.4808000000000000
+  1: 0.3859000000000000
+  2: 0.1194000000000000
+  3: 0.0134000000000000
+  4: 0.0005000000000000
+  mean = 0.6669
+
+  var : lucky throw
+  Probabilities:
+  true: 0.5192000000000000
+  false: 0.4808000000000000
+  mean = 0.5192
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=10_000 % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  TheSum = uniform_draw(4..24),
+  Throws = random_integer1_n(6,4),
+  Hand = Throws.sum,
+  NumSixes = count_occurrences(6,Throws),
+
+  LuckyThrow = check(NumSixes >= 1),
+  
+  observe(Hand == TheSum),
+  
+  if observed_ok then
+    add("hand",Hand),
+    add("the sum",TheSum),
+    add("num sixes",NumSixes),
+    add("lucky throw",LuckyThrow),    
+  end.
+
+
+/*
+  Alternative model, similar to the Prodigy model above using updates.
+  
+  var : hand
+  Probabilities (truncated):
+  14: 0.1135000000000000
+  13: 0.1094000000000000
+  15: 0.1053000000000000
+  12: 0.0981000000000000
+  .........
+  5: 0.0033000000000000
+  23: 0.0025000000000000
+  24: 0.0009000000000000
+  4: 0.0007000000000000
+  mean = 13.9822
+
+  var : the sum
+  Probabilities (truncated):
+  14: 0.1135000000000000
+  13: 0.1094000000000000
+  15: 0.1053000000000000
+  12: 0.0981000000000000
+  .........
+  5: 0.0033000000000000
+  23: 0.0025000000000000
+  24: 0.0009000000000000
+  4: 0.0007000000000000
+  mean = 13.9822
+
+  var : lucky throw
+  Probabilities:
+  1: 0.5270000000000000
+  0: 0.4730000000000000
+  mean = 0.527
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           min_accepted_samples=10_000 % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  Hand = 0,
+  LuckyThrow = 0,
+
+  Sum = uniform_draw(4..24),
+
+  foreach(_ in 1..4)
+    Die = dice(),
+    if Die == 6 then LuckyThrow := 1 end,
+    Hand := Hand + Die 
+  end,
+  
+  observe(Hand == Sum),
+  
+  if observed_ok then
+    add("hand",Hand),
+    add("the sum",TheSum),
+    add("lucky throw",LuckyThrow),    
+  end.

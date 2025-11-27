@@ -1,0 +1,136 @@
+/* 
+
+  Simple Caesar cipher in Picat.
+
+  Port of Dice model
+  https://github.com/SHoltzen/dice/blob/master/benchmarks/simpleCaesar.dice
+
+  Cf my Gamble model gamble_caesar.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.84],
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+
+draw_char(Key,Observation) = Res =>
+  S = [0.08167,0.01492,0.02782,0.04253,0.04378,0.02228,0.02015,0.06094,
+       0.06966,0.0153,0.0772,0.04025,0.02406,0.06749,0.07507,0.01929,
+       0.00095,0.05987,0.06327,0.09056,0.02758,0.00978,0.02360,0.00150,
+       0.01974,0.00074],
+  Len = S.len,
+  DrawnChar = categorical(S,0..Len-1),
+  Encrypted = Key + DrawnChar,
+  observe(Encrypted == Observation),
+  Res = Encrypted.
+  
+model() =>
+  Len = 26,
+  Key1 = categorical(ones(Len,1),0..Len-1),
+  % We only do one observation here
+
+  Observation = draw_char(Key1,2),
+
+  if observed_ok then
+    add("key1",Key1),
+    add("observation",Observation),    
+  end.
+
+/*
+  Here is a simpler version from http://dicelang.cs.ucla.edu/
+  
+
+  reps = 1
+  var : key
+  Probabilities:
+  3: 0.5068163592622293
+  2: 0.2481956696070569
+  0: 0.1279069767441861
+  1: 0.1170809943865277
+  mean = 2.13392
+
+
+  reps = 2
+  var : key
+  Probabilities:
+  3: 0.7539682539682540
+  2: 0.1746031746031746
+  0: 0.0374149659863946
+  1: 0.0340136054421769
+  mean = 2.64512
+
+
+  reps = 3
+  var : key
+  Probabilities:
+  3: 0.8739255014326648
+  2: 0.0945558739255014
+  0: 0.0171919770773639
+  1: 0.0143266475644699
+  mean = 2.82521
+
+
+  reps = 4
+  var : key
+  Probabilities:
+  3: 0.9806451612903225
+  2: 0.0193548387096774
+  mean = 2.98065
+
+*/
+go2 ?=>
+  member(Reps,1..4),
+  println(reps=Reps),
+  reset_store,
+  run_model(10_000,$model2(Reps),[show_probs_trunc,mean % ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.84],
+                            %min_accepted_samples=1000,show_accepted_samples=false
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+
+send_char(Key,Observation) = Res =>
+  Gen = categorical([0.5,0.25,0.125,0.125],0..3),
+  Enc = Key + Gen,
+  observe(Observation == Enc),
+  Res = Enc.
+
+model2(Reps) =>
+  N = 4,
+  Key = categorical(ones(N,1),0..N-1),
+  Os = [],
+  foreach(I in 1..Reps)
+   O = send_char(Key,3),
+   Os := Os ++ [O]
+  end,
+
+  if observed_ok then
+    add("key",Key),
+  end.

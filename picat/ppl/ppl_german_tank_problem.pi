@@ -1,0 +1,120 @@
+/* 
+
+  German Tank problem in Picat.
+
+  https://en.wikipedia.org/wiki/German_tank_problem
+  """
+  In the statistical theory of estimation, the German tank problem consists of 
+  estimating the maximum of a discrete uniform distribution from sampling without 
+  replacement. In simple terms, suppose there exists an unknown number of items 
+  which are sequentially numbered from 1 to N. A random sample of these items 
+  is taken and their sequence numbers observed; the problem is to estimate N 
+  from these observed numbers.
+  """
+
+  Cf 
+  - ppl_locomotive_problem.pi (which has a single observation: 60).
+  - ppl_order_statistics_estimator_of_m.pi (a theoretical approach)
+  - my Gamble model gamble_german_tank_problem.rkt
+
+  This current model is a generalization that can handle multiple observations.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+
+main => go.
+
+/*
+  var : N
+  Probabilities (truncated):
+  329: 0.0300000000000000
+  275: 0.0300000000000000
+  443: 0.0200000000000000
+  435: 0.0200000000000000
+  .........
+  269: 0.0100000000000000
+  264: 0.0100000000000000
+  260: 0.0100000000000000
+  258: 0.0100000000000000
+  mean = 373.61
+  Histogram (total 100)
+  258.000:     3 ############                                                 (0.030 / 0.030)
+  276.175:    15 ############################################################ (0.150 / 0.180)
+  294.350:    12 ################################################             (0.120 / 0.300)
+  312.525:    11 ############################################                 (0.110 / 0.410)
+  330.700:    10 ########################################                     (0.100 / 0.510)
+  348.875:     9 ####################################                         (0.090 / 0.600)
+  367.050:     7 ############################                                 (0.070 / 0.670)
+  385.225:     6 ########################                                     (0.060 / 0.730)
+  403.400:     6 ########################                                     (0.060 / 0.790)
+  421.575:     1 ####                                                         (0.010 / 0.800)
+  439.750:     5 ####################                                         (0.050 / 0.850)
+  457.925:     2 ########                                                     (0.020 / 0.870)
+  476.100:     3 ############                                                 (0.030 / 0.900)
+  494.275:     1 ####                                                         (0.010 / 0.910)
+  512.450:     1 ####                                                         (0.010 / 0.920)
+  530.625:     1 ####                                                         (0.010 / 0.930)
+  548.800:     0                                                              (0.000 / 0.930)
+  566.975:     0                                                              (0.000 / 0.930)
+  585.150:     0                                                              (0.000 / 0.930)
+  603.325:     0                                                              (0.000 / 0.930)
+  621.500:     1 ####                                                         (0.010 / 0.940)
+  639.675:     1 ####                                                         (0.010 / 0.950)
+  657.850:     0                                                              (0.000 / 0.950)
+  676.025:     0                                                              (0.000 / 0.950)
+  694.200:     1 ####                                                         (0.010 / 0.960)
+  712.375:     1 ####                                                         (0.010 / 0.970)
+  730.550:     0                                                              (0.000 / 0.970)
+  748.725:     1 ####                                                         (0.010 / 0.980)
+  766.900:     0                                                              (0.000 / 0.980)
+  785.075:     0                                                              (0.000 / 0.980)
+  803.250:     0                                                              (0.000 / 0.980)
+  821.425:     1 ####                                                         (0.010 / 0.990)
+  839.600:     0                                                              (0.000 / 0.990)
+  857.775:     0                                                              (0.000 / 0.990)
+  875.950:     0                                                              (0.000 / 0.990)
+  894.125:     0                                                              (0.000 / 0.990)
+  912.300:     0                                                              (0.000 / 0.990)
+  930.475:     0                                                              (0.000 / 0.990)
+  948.650:     0                                                              (0.000 / 0.990)
+  966.825:     1 ####                                                         (0.010 / 1.000)
+
+
+*/
+go ?=>
+
+  Observations = [10,256,202,97], 
+  println(observations=Observations),
+  MaxInt = 1000,  
+  reset_store,
+  run_model(10_000,$model(Observations,MaxInt),[show_probs_trunc,mean,
+                                                show_histogram,
+                                                min_accepted_samples=100,show_accepted_samples=true
+                                               ]),
+  nl.
+go => true.
+  
+  
+model(Observations,MaxInt) =>
+  Len = Observations.len,
+  MaxObs = Observations.max,
+
+  N = random_integer1(MaxInt),
+  
+  Probs = [1/N : _ in 1..N],
+  Values = 1..N,
+  Y = categorical_n(Probs,Values,Observations.len),
+
+  observe(N >= MaxObs),
+  observe_abc(Observations,Y,1/3),
+  
+  if observed_ok then
+    add("N",N),
+  end.
+
+

@@ -1,0 +1,161 @@
+/* 
+
+  Two dimensional mixture model in Picat.
+
+  From SPPL model two-dimensional-mixture-model.pynb
+  SPPL model:
+  """
+  X ~= norm(loc=0, scale=2)
+  Y ~= 0.6*norm(loc=8, scale=1) | 0.4*gamma(loc=-3, a=3)
+  """
+  It seems that 0.6 and 0.6 are the weights, i.e. 
+  the probability of each cluster 
+
+  The SPPL model returns the following probabilities for these 
+  conditions  
+                (((-4 < X) < 4) & ((1 < Y) < 2)) 
+                (((-4 < X) < 4) & ((-2 < Y) < -1)) 
+                (((-1 < X) < 1) & ((-1 <= Y) <= 1)) 
+                (((-1 < X) < 1) & ((2 <= Y) < 6))
+
+   for t1..t4:
+   prior:
+   (0.09278584524638006, 0.04331568961023601, 0.06717622976807626, 0.023365316112895024)
+   posterior
+   (0.40939191677247666, 0.1911185175795767, 0.29639656127801434, 0.10309300436993234)
+
+
+
+  Cf my Gamble model gamble_two_dimentional_mixture_model.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  * prior
+
+    var : cluster
+    mean = 1.3996
+    HPD intervals:
+    HPD interval (0.94): 1.00000000000000..2.00000000000000
+
+    var : x
+    mean = -0.0252975
+    HPD intervals:
+    HPD interval (0.94): -3.54965893076570..4.03785178249425
+
+    var : y
+    mean = 4.81278
+    HPD intervals:
+    HPD interval (0.94): -2.06040830769494..9.57594384055159
+
+    var : t1
+    mean = 0.096
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..1.00000000000000
+
+    var : t2
+    mean = 0.0448
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..0.00000000000000
+
+    var : t3
+    mean = 0.0659
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..1.00000000000000
+
+    var : t4
+    mean = 0.0238
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..0.00000000000000
+
+  * posterior
+
+    var : cluster
+    mean = 1.97526
+    HPD intervals:
+    HPD interval (0.94): 2.00000000000000..2.00000000000000
+
+    var : x
+    mean = 0.00889454
+    HPD intervals:
+    HPD interval (0.94): -2.86304451402191..2.99950352898352
+
+    var : y
+    mean = -0.0110759
+    HPD intervals:
+    HPD interval (0.94): -1.99958674138610..3.03072610340170
+
+    var : t1
+    mean = 0.419606
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..1.00000000000000
+
+    var : t2
+    mean = 0.179111
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..1.00000000000000
+
+    var : t3
+    mean = 0.300504
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..1.00000000000000
+
+    var : t4
+    mean = 0.100779
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..1.00000000000000
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[% show_probs_trunc,
+                           mean,
+                           % show_percentiles,show_histogram,
+                           show_hpd_intervals,hpd_intervals=[0.94] % ,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  X = normal_dist(0,2),
+
+  % Probability of the clusters
+  Cluster = categorical([0.6,0.4],[1,2]),
+  Y = cond(Cluster == 1, normal_dist(8,1), gamma_dist(3,1) - 3),
+
+  observe((  (-4 < X, X < 4, 1 < Y**2, Y**2 < 4  )
+            ;
+             (-1 < X, X < 1, -1.5 < Y, Y < 6)
+          )
+          ),
+
+  % The different conditions in the SPPL model
+  T1 = check1( (-4 < X, X < 4, -2 < Y, Y < -1) ),
+  T2 = check1( (-4 < X, X < 4, 1 < Y, Y < 2)),
+  T3 = check1( (-1 < X, X < 1, -1 <= Y, Y <= 1)),
+  T4 = check1( (-1 < X, X < 1, 2 <= Y, Y < 6)),
+    
+  if observed_ok then
+    add("cluster",Cluster),
+    add("x",X),
+    add("y",Y),
+    add("t1",T1),
+    add("t2",T2),
+    add("t3",T3),
+    add("t4",T4),    
+  end.

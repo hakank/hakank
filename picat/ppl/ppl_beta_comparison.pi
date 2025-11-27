@@ -1,0 +1,93 @@
+/* 
+
+  Beta comparison in Picat.
+
+  From infer.net src/tests/Test/BlogTests.cs
+  """
+  a = Beta(11,500)[mean=0.02153], b = Beta(16,695)[mean=0.0225]
+  aGreaterThanConstant = Bernoulli(0.9849)
+  P(A > B) =  Bernoulli(0.4467)
+  """
+
+  This is an A/B test.
+
+  This is a port of my Racket/Gamble model gamble_beta_comparison.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  var : ARate
+  Probabilities (truncated):
+  0.028186066831246: 0.0454545454545455
+  0.028086347415719: 0.0454545454545455
+  0.027263549591807: 0.0454545454545455
+  0.025770386628652: 0.0454545454545455
+  .........
+  0.016907220867913: 0.0454545454545455
+  0.014902729258726: 0.0454545454545455
+  0.013514855121266: 0.0454545454545455
+  0.011093578306136: 0.0454545454545455
+
+  mean = 0.0203634
+
+  var : BRate
+  Probabilities (truncated):
+  0.032329959176256: 0.0454545454545455
+  0.031241788952231: 0.0454545454545455
+  0.030749082505564: 0.0454545454545455
+  0.028821906226334: 0.0454545454545455
+  .........
+  0.014475546752513: 0.0454545454545455
+  0.01230742107712: 0.0454545454545455
+  0.011615652004552: 0.0454545454545455
+  0.011020021786651: 0.0454545454545455
+
+  mean = 0.0211452
+
+  var : ARate > BRate
+  Probabilities:
+  0: 0.5909090909090909
+  1: 0.4090909090909091
+  mean = 0.409091
+
+  var : ARate > 0.01
+  Probabilities:
+  1: 1.0000000000000000
+  mean = 1.0
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean,
+                            presentation=["ARate","BRate","ARate > BRate","ARate > 0.01"]]),
+  % fail,  
+  nl.
+go => true.
+  
+  
+model() =>
+  ARate = beta_dist(1,10),
+  BRate = beta_dist(1,10),
+
+  ATrialCount = 500,
+  BTrialCount = 700,
+
+  ASuccessCount = binomial_dist(ATrialCount,ARate),
+  BSuccessCount = binomial_dist(BTrialCount,BRate),
+
+  observe(ASuccessCount == 10, BSuccessCount == 15),
+  
+  if observed_ok then
+    add("ARate",ARate),
+    add("BRate",BRate),
+    add("ARate > BRate",cond(ARate > BRate,1,0)),
+    add("ARate > 0.01",cond(ARate > 0.01,1,0))
+  end.

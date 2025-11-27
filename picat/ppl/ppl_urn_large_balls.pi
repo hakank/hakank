@@ -1,0 +1,106 @@
+/* 
+
+  Urn larger balls in Picat.
+
+  From
+  Siddharth Srivastava and Stuart Russell and Paul Ruan and Xiang Cheng
+  "First-Order Open-Universe POMDPs"
+  page 3
+  """
+  Fig. 1 shows a simple example of a BLOG model with two
+  types, Urn and Ball. This model expresses a distribution
+  over possible worlds consisting of varying numbers of urns
+  with varying numbers of balls in each urn. The number of
+  urns follows a Poisson(5) distribution (line 3). The number 
+  of balls in an urn depends on whether or not the urn is
+  Large. Origin functions map the object being generated to
+  the arguments that were used in the number statement that
+  was responsible for generating it. In Fig. 1, Source maps a
+  ball to the urn it belongs to. The number of balls in an urn
+  follows a Poisson(10) distribution if the urn is Large, and
+  a Poisson(2) distribution otherwise (lines 4-6). Finally, the
+  probability of an urn being Large is 0.5 (lines 7 & 8).
+  """
+
+  Cf my Gamble model gamble_urn_large_balls.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : num balls 1
+  Probabilities (truncated):
+  2: 0.1268478260869565
+  1: 0.1165217391304348
+  3: 0.0847826086956522
+  10: 0.0703260869565217
+  .........
+  19: 0.0018478260869565
+  20: 0.0009782608695652
+  21: 0.0006521739130435
+  22: 0.0004347826086957
+  mean = 6.4538
+
+  var : num large urns
+  Probabilities:
+  2: 0.2760869565217391
+  3: 0.2368478260869565
+  1: 0.2251086956521739
+  4: 0.1451086956521739
+  5: 0.0725000000000000
+  6: 0.0270652173913043
+  7: 0.0116304347826087
+  8: 0.0046739130434783
+  9: 0.0009782608695652
+  mean = 2.72076
+
+  var : num urns
+  Probabilities (truncated):
+  5: 0.1848913043478261
+  4: 0.1755434782608696
+  6: 0.1550000000000000
+  3: 0.1390217391304348
+  .........
+  12: 0.0031521739130435
+  13: 0.0021739130434783
+  14: 0.0008695652173913
+  15: 0.0001086956521739
+  mean = 5.19402
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  NumUrns = poisson_dist(5),
+  observe(NumUrns > 0),
+
+  LargeUrn = flip_n(1/2,NumUrns),
+  NumBalls = [ cond(LargeUrn[U] == true, poisson_dist(10), poisson_dist(2))  : U in 1..NumUrns],
+
+  NumLargeUrns = [cond(LargeUrn[U] == true,1,0) : U in 1..NumUrns].sum,
+
+  observe(NumLargeUrns > 0),
+
+  if observed_ok then
+    add("num urns",NumUrns),
+    add("num large urns",NumLargeUrns),
+    if NumUrns > 0 then
+      add("num balls 1",NumBalls[1]),
+    end
+  end.

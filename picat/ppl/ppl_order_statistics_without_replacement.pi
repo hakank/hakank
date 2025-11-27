@@ -1,0 +1,275 @@
+/* 
+
+  Order statistics without replacement in Picat.
+
+  From Siegrist "Probability Mathematical Statisics and Stochastic Processes",
+  Chapter "12.4: Order Statistics"
+
+  This is for order statistics without replacement.
+
+  (Note: This is not the same as Mathematica's OrderDistribution which 
+  is for order statistics with replacement. See ppl_order_statistics_with_replacement_dist.pi)
+
+  Cf my Gamble model gamble_order_statistics_without_replacement.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  From Siegrist, op.cit:
+  """
+  Suppose that in a lottery, tickets numbered from 1 to 25 are placed in a bowl. 
+  Five tickets are chosen at random and without replacement.
+  1. Find the probability density function of X(3)
+  2. Find E [ X(3) ] .
+  3. Find var [ X(3) ] .
+  
+  Answer
+  1. P[X(3)=x] = binomial(x-1,2) * binomial(25-x,2) / binomial(25,5)
+     for x in 3..23
+  2. E[X(3)] = 13
+  3. var[X(3)] = 130/7
+  """
+
+  order_statistics_without_replacement(M:25,N:5,K:3)
+  Samples
+  [18,12,17,17,19,9,11,16,10,14,13,15,11,13,20,19,15,16,8,14,5,10,8,17,8,12,8,7,23,9]
+
+  PDF:
+  1: 0.00000000000000000
+  2: 0.00000000000000000
+  3: 0.00434782608695657
+  4: 0.01185770750988147
+  5: 0.02145680406549995
+  6: 0.03218520609824978
+  7: 0.04319593450028270
+  8: 0.05375494071146375
+  9: 0.06324110671936863
+  10: 0.07114624505928921
+  11: 0.07707509881423040
+  12: 0.08074534161490751
+  13: 0.08198757763975187
+  14: 0.08074534161490751
+  15: 0.07707509881423040
+  16: 0.07114624505928921
+  17: 0.06324110671936863
+  18: 0.05375494071146375
+  19: 0.04319593450028270
+  20: 0.03218520609824978
+  21: 0.02145680406549995
+  22: 0.01185770750988147
+  23: 0.00434782608695657
+
+  CDF:
+  1: 0.00000000000000000
+  2: 0.00000000000000000
+  3: 0.00434782608695657
+  4: 0.01620553359683804
+  5: 0.03766233766233799
+  6: 0.06984754376058777
+  7: 0.11304347826087047
+  8: 0.16679841897233422
+  9: 0.23003952569170283
+  10: 0.30118577075099207
+  11: 0.37826086956522248
+  12: 0.45900621118012996
+  13: 0.54099378881988180
+  14: 0.62173913043478934
+  15: 0.69881422924901970
+  16: 0.76996047430830894
+  17: 0.83320158102767761
+  18: 0.88695652173914130
+  19: 0.93015245623942400
+  20: 0.96233766233767382
+  21: 0.98379446640317381
+  22: 0.99565217391305527
+  23: 1.00000000000001177
+
+  Quantile:
+  0.0001  : 3
+  0.001   : 3
+  0.01    : 4
+  0.05    : 6
+  0.25    : 10
+  0.5     : 13
+  0.75    : 16
+  0.9     : 19
+  0.95    : 20
+  0.99    : 22
+  0.999   : 23
+  0.9999  : 23
+  0.99999 : 23
+
+  Mean = 13.0
+  Variance = 18.5714
+
+*/
+go ?=>
+  M = 25,
+  N = 5,
+  K = 3,
+
+  printf("order_statistics_without_replacement(M:%w,N:%w,K:%w)\n",M,N,K),
+  println("Samples"),
+  println(order_statistics_without_replacement_n(M,N,K,30)),
+  nl,
+  println("PDF:"),
+  foreach(I in 1..M-N+K)
+    printf("%w: %.17f\n",I,order_statistics_without_replacement_pdf(M,N,K,I)),
+  end,
+  nl,
+  println("CDF:"),
+  foreach(I in 1..M-N+K)
+    printf("%2w: %.17f\n",I,order_statistics_without_replacement_cdf(M,N,K,I)),
+  end,
+  nl,
+  println("Quantile:"),
+  Qs = [0.0001,0.001,0.01,0.05,0.25,0.5,0.75,0.9,0.95,0.99,0.999,0.9999,0.99999],
+  foreach(Q in Qs)
+    printf("%-8w: %w\n",Q,order_statistics_without_replacement_quantile(M,N,K,Q)),
+  end,
+  nl,
+  println("Mean"=order_statistics_without_replacement_mean(M,N,K)),
+  println("Variance"=order_statistics_without_replacement_variance(M,N,K)),  
+  nl.
+go => true.
+
+
+/*
+  Simulating the lottery problem described above.
+
+  [m = 25,n = 5,k = 3,theoretical_mean = 13.0,theoretical_variance = 18.5714]
+  var : v
+  Probabilities:
+  14: 0.0834000000000000
+  13: 0.0832000000000000
+  12: 0.0802000000000000
+  15: 0.0776000000000000
+  11: 0.0750000000000000
+  16: 0.0712000000000000
+  10: 0.0696000000000000
+  17: 0.0645000000000000
+  9: 0.0607000000000000
+  8: 0.0552000000000000
+  18: 0.0541000000000000
+  7: 0.0457000000000000
+  19: 0.0406000000000000
+  6: 0.0324000000000000
+  20: 0.0318000000000000
+  5: 0.0213000000000000
+  21: 0.0211000000000000
+  22: 0.0128000000000000
+  4: 0.0113000000000000
+  3: 0.0044000000000000
+  23: 0.0039000000000000
+  mean = 12.995
+  variance = 18.5252
+  Percentiles:
+  (0.001 3)
+  (0.01 4)
+  (0.025 5)
+  (0.05 6)
+  (0.1 7)
+  (0.25 10)
+  (0.5 13)
+  (0.75 16)
+  (0.84 18)
+  (0.9 19)
+  (0.95 20)
+  (0.975 21)
+  (0.99 22)
+  (0.999 23)
+  (0.9999 23)
+  (0.99999 23)
+  HPD intervals:
+  HPD interval (0.5): 8.00000000000000..14.00000000000000
+  HPD interval (0.84): 6.00000000000000..18.00000000000000
+  HPD interval (0.9): 5.00000000000000..19.00000000000000
+  HPD interval (0.95): 4.00000000000000..20.00000000000000
+  HPD interval (0.99): 4.00000000000000..22.00000000000000
+  HPD interval (0.999): 3.00000000000000..23.00000000000000
+  HPD interval (0.9999): 3.00000000000000..23.00000000000000
+  HPD interval (0.99999): 3.00000000000000..23.00000000000000
+
+
+*/
+go2 ?=>
+  M = 25,
+  N = 5,
+  K = 3,
+  println([m=M,n=N,k=K,theoretical_mean=order_statistics_without_replacement_mean(M,N,K),
+                       theoretical_variance=order_statistics_without_replacement_variance(M,N,K)]),
+  reset_store,
+  run_model(10_000,$model(M,N,K),[show_probs,mean,variance,show_percentiles,show_hpd_intervals]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model(M,N,K) =>
+  
+  % The distribution are without replacement
+  X = draw_without_replacement(N, 1..M).sort,
+
+  V = ith_smallest(X,K,true),
+  add("v",V).
+
+
+/*
+  A simpler problem:  4 dice are rolled, what is the min value (i=1) or max value (i=4))
+
+  [m = 6,n = 4,k = 1,theoretical_mean = 1.4,theoretical_variance = 0.373333]
+  var : v
+  Probabilities:
+  1: 0.6636000000000000
+  2: 0.2665000000000000
+  3: 0.0699000000000000
+  mean = 1.4063
+  HPD intervals:
+  HPD interval (0.5): 1.00000000000000..1.00000000000000
+  HPD interval (0.84): 1.00000000000000..2.00000000000000
+  HPD interval (0.9): 1.00000000000000..2.00000000000000
+  HPD interval (0.95): 1.00000000000000..3.00000000000000
+  HPD interval (0.99): 1.00000000000000..3.00000000000000
+
+
+  [m = 6,n = 4,k = 4,theoretical_mean = 5.6,theoretical_variance = 0.373333]
+  var : v
+  Probabilities:
+  6: 0.6667000000000000
+  5: 0.2657000000000000
+  4: 0.0676000000000000
+  mean = 5.5991
+  HPD intervals:
+  HPD interval (0.5): 6.00000000000000..6.00000000000000
+  HPD interval (0.84): 5.00000000000000..6.00000000000000
+  HPD interval (0.9): 5.00000000000000..6.00000000000000
+  HPD interval (0.95): 4.00000000000000..6.00000000000000
+  HPD interval (0.99): 4.00000000000000..6.00000000000000
+
+
+*/ 
+go3 ?=>
+  M = 6,
+  N = 4,
+  member(K,[1,4]),
+  println([m=M,n=N,k=K,theoretical_mean=order_statistics_without_replacement_mean(M,N,K),
+                       theoretical_variance=order_statistics_without_replacement_variance(M,N,K)]),
+  reset_store,
+  run_model(10_000,$model(M,N,K),[show_probs,mean,
+                                  show_hpd_intervals,hpd_intervals=[0.5,0.84,0.9,0.95,0.99]]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go3 => true.
+  

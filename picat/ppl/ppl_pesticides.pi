@@ -1,0 +1,94 @@
+/* 
+
+  Pesticides in Picat.
+
+  From Statistics101 (Resample Stats)
+  http://www.statistics101.net/QuickReference.pdf
+  Page 47
+  """
+  Here’s a more complicated example using resampling to perform a hypothesis test. The example
+  is taken from Statistics the Easy Way by Douglas Downing and Jeffrey Clark, (Chapter 18
+  exercise 5, page 223). Suppose four new pesticides are being tested in a laboratory, with the
+  results shown in the following table, called a contingency table. Is pesticide 1 significantly 
+  better than the rest?
+                    Type 1 Type 2 Type 3 Type 4 Total
+  Insects killed     139   100     73     98     410
+  Insects surviving   15    50     80     47     192
+  Total tested       154   150    153    145     602
+  ...
+  The result of this simulation is:
+  probability: 0.0
+  Out of 1000 trials from the null population there were no cases as extreme as the observed
+  difference between ratios. Since that is well below our critical value (0.05), you can reject the
+  null hypothesis.
+  """
+
+  Cf my Gamble model gamble_pesticides.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : ratio difference
+  Probabilities (truncated):
+  0.072418300653595: 0.0021000000000000
+  0.066274509803922: 0.0021000000000000
+  0.092413793103448: 0.0020000000000000
+  0.064367816091954: 0.0020000000000000
+  .........
+  0.00474697716077: 0.0001000000000000
+  0.004675324675325: 0.0001000000000000
+  0.004597701149425: 0.0001000000000000
+  0.003380662609872: 0.0001000000000000
+  mean = 0.0780318
+
+  var : p
+  Probabilities:
+  false: 0.9999000000000000
+  true: 0.0001000000000000
+  mean = 0.0001
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  TestRatioDifference = 0.227,
+  NullPopulation = rep(410,died) ++ rep(192,survived),
+  TypeNums = [154,150,153,145],
+
+  Types = [resample(V,NullPopulation) : V in TypeNums],
+  TypeSurvivorCounts = [count_occurrences(survived,V) : V in Types],
+  RatioArray = [ TypeSurvivorCounts[I] / TypeNums[I] :  I in 1..TypeNums.len],
+
+  MinRatio = RatioArray.min,
+  MaxRatio = RatioArray.max,
+
+  RatioDifference = MaxRatio-MinRatio,
+
+  % What is the probability that we get the difference as large as from the test?
+  P = check(RatioDifference >= TestRatioDifference),
+
+  add("ratio difference",RatioDifference),
+  add("p",P).

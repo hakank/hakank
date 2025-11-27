@@ -1,0 +1,167 @@
+/* 
+
+  Quake probability in Picat.
+
+  From Statistics101 (Resample Stats)
+  File quakeProbability.txt
+  """
+  (From: http://www.physics.utah.edu/~p5720/assgn/a07.html)
+  Given: 
+  - The distribution of earthquakes is lognormal.
+  - The mean time between quakes in a certain region is 1200 years
+  - The standard deviation of the time between quakes is 120 years
+  - The last quake was 1200 years ago
+  Find: The probability that another quake will occur in the next 50 years.
+  mu: 121.12402989301995
+  sigma: 1200.2861533879125
+  probability: 0.1604
+  (another run: probability: 0.15739)
+  """
+
+  In Statistics101 LOGNORMAL seems to mean something else:
+  """
+  LOGNORMAL exp 1 1200 120 xxx
+  PRINT xxx"
+  -> 1124.5607506111548
+  """
+  What does "exp" indicates? It seems that it's just (normal mu,sigma).
+
+  Mathematica:
+  """
+  Probability(x - 1200 <= 50 && x - 1200 >= 0 , x ~ NormalDistribution(1200, 120)) ;; N
+  -> 0.161539
+  """
+
+
+  Cf my Gamble model gamble_quake_probability.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Definition of lognormal from
+  https://web.physics.utah.edu/~p5720/assgn/a07.html
+  Testing log_normal2(1200,120) -> 1231.5912119933946
+  So this is more like the expected behaviour (i.e. the Statistics101 model).
+  But it's not the log_normal distribution as Mathematica (and I) defines it.
+*/
+log_normal2(Mu,Sd) = Res => 
+   S = sqrt(log(Sd*Sd/(Mu*Mu)+1.0)),
+   M = log(Mu)-0.5*S*S,
+   Res = exp(S*normal_dist(0,1)+M).
+
+
+/*
+
+  Checking both log_normal2/2 and normal_dist/2 for NextQuake.
+
+  dist = log_normal2
+  var : next_quake
+  Probabilities (truncated):
+  1781.439214091880103: 0.0001000000000000
+  1748.440547289010283: 0.0001000000000000
+  1717.268041282420199: 0.0001000000000000
+  1686.820649853033501: 0.0001000000000000
+  .........
+  863.807728290452815: 0.0001000000000000
+  859.550960617949045: 0.0001000000000000
+  836.512098272291382: 0.0001000000000000
+  805.61884724782783: 0.0001000000000000
+  mean = 1200.48
+
+  var : y
+  Probabilities (truncated):
+  581.439214091880103: 0.0001000000000000
+  548.440547289010283: 0.0001000000000000
+  517.268041282420199: 0.0001000000000000
+  486.820649853033501: 0.0001000000000000
+  .........
+  -336.192271709547185: 0.0001000000000000
+  -340.449039382050955: 0.0001000000000000
+  -363.487901727708618: 0.0001000000000000
+  -394.38115275217217: 0.0001000000000000
+  mean = 0.481122
+
+  var : p
+  Probabilities:
+  false: 0.8427000000000000
+  true: 0.1573000000000000
+  mean = 0.1573
+
+
+  dist = normal_dist
+  var : next_quake
+  Probabilities (truncated):
+  1652.822736898857102: 0.0001000000000000
+  1635.288242541600312: 0.0001000000000000
+  1630.622894687562621: 0.0001000000000000
+  1628.930626908327667: 0.0001000000000000
+  .........
+  795.696632746298974: 0.0001000000000000
+  778.700241057294988: 0.0001000000000000
+  773.382224508354511: 0.0001000000000000
+  772.765198813190977: 0.0001000000000000
+  mean = 1199.9
+
+  var : y
+  Probabilities (truncated):
+  452.822736898857102: 0.0001000000000000
+  435.288242541600312: 0.0001000000000000
+  430.622894687562621: 0.0001000000000000
+  428.930626908327667: 0.0001000000000000
+  .........
+  -404.303367253701026: 0.0001000000000000
+  -421.299758942705012: 0.0001000000000000
+  -426.617775491645489: 0.0001000000000000
+  -427.234801186809023: 0.0001000000000000
+  mean = -0.101577
+
+  var : p
+  Probabilities:
+  false: 0.8359000000000000
+  true: 0.1641000000000000
+  mean = 0.1641
+
+
+*/
+go ?=>
+  member(Dist,[log_normal2,normal_dist]),
+  println(dist=Dist),
+  reset_store,
+  run_model(10_000,$model(Dist),[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Dist) =>
+  Mu = 1200,
+  LastQuake = 1200, % Last quake was 1200 years ago
+  Sigma = 120,
+
+  if Dist == log_normal2 then
+    NextQuake = log_normal2(Mu,Sigma)
+  else
+    NextQuake = normal_dist(Mu,Sigma)
+  end,
+  Y = NextQuake-LastQuake,
+  P = check( (Y <= 50, Y>= 0) ), % Next quake is withing 50 years
+  
+  add("next_quake",NextQuake),
+  add("y",Y),
+  add("p",P).

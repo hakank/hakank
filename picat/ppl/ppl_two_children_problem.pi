@@ -1,0 +1,141 @@
+/* 
+
+  Two children problem in Picat.
+
+  https://robeastaway.com/blog/boy-girl
+  """
+  I have two children, at least one of whom is a boy.  
+  What is the chance that the second child is also a boy?
+
+  ...
+
+  The classic, surprising answer is that the chance of a second 
+  boy is 1/3, not 1/2 as most would expect.  Why?  Because if I 
+  have two children, there is an equal chance that they will be 
+  Boy-Boy, Boy-Girl, Girl-Boy or Girl-Girl.  There are three 
+  equally likely combinations in which at least one child is 
+  a boy (BB, BG and GB) and only in the first scenario is the 
+  other child also a boy.
+  """
+
+  We assume the inital probability of a boy/girl as 0.5.
+
+  Cf my Gamble model gamble_two_children_problem.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  First model: 
+  """
+  I have two children, _at least one of whom_ is a boy.  
+  What is the chance that the second child is also a boy?
+  """
+
+  var : child1
+  Probabilities:
+  boy: 0.6573593936976466
+  girl: 0.3426406063023534
+  mean = [boy = 0.657359,girl = 0.342641]
+
+  var : child2
+  Probabilities:
+  boy: 0.6762398617205159
+  girl: 0.3237601382794841
+  mean = [boy = 0.67624,girl = 0.32376]
+
+  var : num boys
+  Probabilities:
+  1: 0.6664007445818375
+  2: 0.3335992554181625
+  mean = 1.3336
+
+  I.e. the probability that the other child is also a boy (i.e. two boys) is 1/3,
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Children = categorical_n([1/2,1/2],[boy,girl],2),
+  NumBoys = [ cond(C == boy,1,0) : C in Children].sum,
+  % Note: it's important that we state the condition
+  %       "at least one of whom is a boy"
+  %       as something like this.
+  observe(NumBoys >= 1),
+  
+  if observed_ok then
+    add("child1",Children[1]),
+    add("child2",Children[2]),
+    add("num boys",NumBoys),
+  end.
+
+/*
+  Second model:
+  """
+  I have two children, the eldest is a boy.  
+  What is the chance that the second child is also a boy?
+  """
+
+  var : child1
+  Probabilities:
+  boy: 1.0000000000000000
+  mean = [boy = 1.0]
+
+  var : child2
+  Probabilities:
+  girl: 0.5084041922088195
+  boy: 0.4915958077911806
+  mean = [girl = 0.508404,boy = 0.491596]
+
+  var : num boys
+  Probabilities:
+  1: 0.5084041922088195
+  2: 0.4915958077911806
+  mean = 1.4916
+
+  Since we now know that child1 is a boy, it's a matter of chance (50%) 
+  if the other child is also a boy.
+  
+  Note:
+  In ppl_how_many_sons.pi I model the same problems, but with a 
+  little different approach.
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  Children = categorical_n([1/2,1/2],[boy,girl],2),
+  NumBoys = [ cond(C == boy,1,0) : C in Children].sum,
+
+  % "The eldest is a boy"
+  observe(Children[1] == boy),
+
+  if observed_ok then
+    add("child1",Children[1]),
+    add("child2",Children[2]),
+    add("num boys",NumBoys),
+  end.

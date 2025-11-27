@@ -1,0 +1,256 @@
+/* 
+
+  Generating Bernoulli/Binomial distributio in Picat.
+
+  From Handbook on probability distributions
+  page 8ff
+
+  See ppl_distributions.pi and ppl_distributions_test.pi
+  for more on this, and for the PDF, CDF, quantile, mean,
+  and variance.
+
+  The exact mean:
+  Picat> X=bernoulli_dist_mean(8/10)      
+  X = 0.8
+
+  Picat> X=binomial_dist_mean(10,8/10)
+  X = 8.0
+
+  The exact PDF:
+
+  Picat> pdf_all($bernoulli_dist(8/10)).sort_down(2).printf_list                  
+   1 8 / 10 
+   0 0.2 
+
+  Picat> pdf_all($binomial_dist(10,8/10),0.00000001,0.9999).sort_down(2).printf_list
+    8 0.301989888 
+    9 0.268435456 
+    7 0.201326592 
+   10 0.1073741824 
+    6 0.088080384 
+    5 0.0264241152 
+    4 0.005505024 
+    3 0.000786432 
+    2 0.000073728 
+    1 0.000004096 
+    0 0.0000001024 
+
+  binomial_dist(10,8/10) <= 6:
+  Picat> X=binomial_dist_cdf(10,8/10,5)
+  X = 0.0327934976
+
+
+  Cf my Gamble model gamble_binomial_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  var : bern
+  Probabilities:
+  1: 0.7997000000000000
+  0: 0.2003000000000000
+  mean = 0.7997
+  Percentiles:
+  (0.001 0)
+  (0.01 0)
+  (0.025 0)
+  (0.05 0)
+  (0.1 0)
+  (0.25 1)
+  (0.5 1)
+  (0.75 1)
+  (0.84 1)
+  (0.9 1)
+  (0.95 1)
+  (0.975 1)
+  (0.99 1)
+  (0.999 1)
+  (0.9999 1)
+  (0.99999 1)
+
+  var : binomial
+  Probabilities:
+  8: 0.3028000000000000
+  9: 0.2658000000000000
+  7: 0.2003000000000000
+  10: 0.1098000000000000
+  6: 0.0904000000000000
+  5: 0.0251000000000000
+  4: 0.0046000000000000
+  3: 0.0010000000000000
+  2: 0.0002000000000000
+  mean = 8.0044
+  Percentiles:
+  (0.001 3)
+  (0.01 5)
+  (0.025 5)
+  (0.05 6)
+  (0.1 6)
+  (0.25 7)
+  (0.5 8)
+  (0.75 9)
+  (0.84 9)
+  (0.9 10)
+  (0.95 10)
+  (0.975 10)
+  (0.99 10)
+  (0.999 10)
+  (0.9999 10)
+  (0.99999 10)
+
+  var : bin prob
+  Probabilities:
+  false: 0.9691000000000000
+  true: 0.0309000000000000
+  mean = [false = 0.9691,true = 0.0309]
+  Percentiles:
+  (0.001 false)
+  (0.01 false)
+  (0.025 false)
+  (0.05 false)
+  (0.1 false)
+  (0.25 false)
+  (0.5 false)
+  (0.75 false)
+  (0.84 false)
+  (0.9 false)
+  (0.95 false)
+  (0.975 true)
+  (0.99 true)
+  (0.999 true)
+  (0.9999 true)
+  (0.99999 true)
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,show_percentiles]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  P = 8/10,
+  N = 10,
+  Bern = bern(P),
+  Binomial = binomial_dist(N,P),
+
+  BinProb = check(Binomial <= 5),
+  
+  add("bern",Bern),
+  add("binomial",Binomial),
+  add("bin prob",BinProb). 
+
+
+/*
+  Recover parameters
+
+  * 20 samples from binomial_dist(10,8/10),
+    100 accepted samples. 48.1s
+
+    data = [8,8,8,8,6,9,7,8,7,5,7,9,8,10,8,9,7,6,9,5]
+    ...
+    Num accepted samples: 100  Total samples: 219818  (0.000%)
+
+    var : n
+    Probabilities (truncated):
+    10: 0.2800000000000000
+    11: 0.2000000000000000
+    9: 0.1800000000000000
+    13: 0.1000000000000000
+    .........
+    50: 0.0100000000000000
+    34: 0.0100000000000000
+    27: 0.0100000000000000
+    20: 0.0100000000000000
+    mean = 11.95
+    HPD intervals:
+    HPD interval (0.94): 9.00000000000000..16.00000000000000
+
+    var : p
+    Probabilities (truncated):
+    0.889282369003297: 0.0100000000000000
+    0.884356327766718: 0.0100000000000000
+    0.876731282508341: 0.0100000000000000
+    0.875007256341636: 0.0100000000000000
+    .........
+    0.402856632323403: 0.0100000000000000
+    0.314111299493402: 0.0100000000000000
+    0.248939244192531: 0.0100000000000000
+    0.15344908374988: 0.0100000000000000
+    mean = 0.682094
+    HPD intervals:
+    HPD interval (0.94): 0.46356448925266..0.88928236900330
+
+
+  * 100 samples from binomial_dist(10,8/10)
+    2min37s
+
+    Num accepted samples: 100  Total samples: 330337  (0.000%)
+
+    var : n
+    Probabilities:
+    11: 0.4900000000000000
+    10: 0.3700000000000000
+    12: 0.1300000000000000
+    13: 0.0100000000000000
+    mean = 10.78
+    HPD intervals:
+    HPD interval (0.94): 10.00000000000000..12.00000000000000
+
+    var : p
+    Probabilities (truncated):
+    0.840375028476294: 0.0100000000000000
+    0.831270416188645: 0.0100000000000000
+    0.825943290640574: 0.0100000000000000
+    0.825796639931293: 0.0100000000000000
+    .........
+    0.644574897198274: 0.0100000000000000
+    0.643610832115454: 0.0100000000000000
+    0.635782977862183: 0.0100000000000000
+    0.633638658855873: 0.0100000000000000
+    mean = 0.744417
+    HPD intervals:
+    HPD interval (0.94): 0.65254644521165..0.82594329064057
+
+
+*/
+
+go2 ?=>
+  Data = binomial_dist_n(10,8/10,50),
+  println(data=Data),
+  reset_store,
+  run_model(10_000,$model2(Data),[show_probs_trunc,mean,% show_percentiles,
+                                  show_hpd_intervals,hpd_intervals=[0.94],
+                                  min_accepted_samples=100,show_accepted_samples=true]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(Data) =>
+  P = uniform(0,1),
+  N = random_integer1(100),
+
+  Binomial = binomial_dist_n(N,P,Data.len),
+  observe_abc(Data,Binomial,1/10),
+
+  if observed_ok then
+    add("n",N),
+    add("p",P)
+  end.
+

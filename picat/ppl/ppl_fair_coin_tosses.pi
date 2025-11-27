@@ -1,0 +1,100 @@
+/* 
+
+  Fair coin tosses in Picat.
+
+  From 
+  https://keith-mcnulty.medium.com/the-trick-that-helps-all-statisticians-survive-069ac685e6d7
+  """
+  A Cambridge University mathematics entrance question in 1991 posed the following 
+  question:
+
+  A fair coin is thrown 10,000 times. On each throw, 1 point is scored for a head and 
+  1 point is lost for a tail. Find an approximation for the probability that the final 
+  score is greater than 100.
+
+  ...
+
+  Our standard deviation is 50, so we are looking for the area under the normal curve 
+  to the right of 50.5/50 = 1.01 standard deviations above the mean, so our z-score 
+  is +1.01. We can use tables, an appropriate scientific calculator, or a function in 
+  R to calculate the appropriate upper-tail p-value for this z-score:
+
+  > pnorm(1.01, lower.tail = FALSE)
+  [1] 0.1562476
+
+  Let’s see if this agrees with the R function for calculating the p-value for a 
+  binomial distribution:
+
+  > pbinom(5050, 10000, 0.5, lower.tail = FALSE)
+  [1] 0.1562476
+
+  A perfect match. And there we are — the probability that the score is greater than 
+  100 is approximately 15.62%.
+  """
+
+  Here's the corresponding forms in PPL:
+
+  Normal:
+  Picat> X=normal_dist_cdf(1.01,1,0)                                           
+  X = 0.156247645021254
+
+  Binomial:
+  Using the float version:
+  Picat> X=1-binomial_distf_cdf(10000,0.5,5050)
+  X = 0.156247604767705
+
+  See below for the PPL models.
+
+  This is a port of my Gamble model gamble_fair_coin_tosses.rkt:
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+  Using uniform_draw_n/2:
+  var : prob
+  Probabilities:
+  0: 0.84440000000000004 (2111 / 2500)
+  1: 0.15559999999999999 (389 / 2500)
+  mean = 0.1556
+
+  Using binomial_dist/2:
+  var : prob
+  Probabilities:
+  0: 0.84009999999999996 (8401 / 10000)
+  1: 0.15989999999999999 (1599 / 10000)
+  mean = 0.1599
+
+*/
+  
+
+go ?=>
+  reset_store(),
+  println("Using uniform_draw_n/2:"),
+  time2(run_model(10_000,$model1,[show_probs_rat,mean])),
+  nl,
+  reset_store(),
+  println("Using binomial/2:"),  
+  time2(run_model(10_000,$model2,[show_probs_rat,mean])),  
+  nl.
+go => true.
+
+% Uniform draw
+model1() =>
+  N = 10_000,
+  SumTosses = uniform_draw_n([1,-1],N).sum,
+  add("prob",cond(SumTosses > 100,1,0)).
+
+% Binomial
+model2() =>
+  P = binomial_dist(10_000,0.5),
+  add("prob",cond(P > 5050,1,0)).
+
+
+

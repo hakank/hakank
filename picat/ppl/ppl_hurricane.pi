@@ -1,0 +1,133 @@
+/* 
+
+  Hurricane in Picat.
+
+  From BLOG example/hurricane.blog
+  """
+  Hurricane 
+  Figure 4.2 in Milch's thesis
+
+  Number of samples: 1000000
+  Distribution of values for First
+	B	0.5000740737774813
+	A	0.4999259262225148
+  Distribution of values for Damage(A)
+	Severe	0.6304659440802821
+	Mild	0.36953405591971533
+  Distribution of values for Damage(B)
+	Severe	0.6298433239506385
+	Mild	0.3701566760493723
+  Distribution of values for Damage(NotFirst)
+	Mild	0.7396907319690265
+	Severe	0.2603092680309184
+  """
+
+  The challenge in this model is that the function prep/4 and damage/4 are calling
+  each other recursively, and we have to memoise the values in each call.
+  This is solved by "local" tabling, i.e. a table flag for the two functions.
+  The "local" means that the table area is cleared each run.
+
+  For this, the configuration flag initialize_table=true is set (which is to    
+  be considered experimental).
+
+  Cf my Gamble model gamble_hurricane.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  initialize_table = true
+  var : first
+  Probabilities:
+  a: 0.5053632867840518
+  b: 0.4946367132159482
+  mean = [a = 0.505363,b = 0.494637]
+
+  var : damage a
+  Probabilities:
+  severe: 0.6296296296296297
+  mild: 0.3703703703703703
+  mean = [severe = 0.62963,mild = 0.37037]
+
+  var : damage b
+  Probabilities:
+  severe: 0.6215341024084193
+  mild: 0.3784658975915807
+  mean = [severe = 0.621534,mild = 0.378466]
+
+  var : damage not first
+  Probabilities:
+  mild: 0.7488362679619510
+  severe: 0.2511637320380490
+  mean = [mild = 0.748836,severe = 0.251164]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           use_local_tabling=true % Note we have to flag this usage
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+% This is a "local" tabling
+table
+prep(C,First,PrepLevel,DamageLevel) = Res =>
+  if First == C then
+    Res = categorical([1/2,1/2],PrepLevel)
+  else
+    DamageFirst = damage(First,First,PrepLevel,DamageLevel),
+    if DamageFirst == severe then
+      Res = categorical([9/10,1/10],PrepLevel)
+    else
+      Res = categorical([1/10,9/10],PrepLevel)    
+    end
+  end.
+
+% This is a "local" tabling
+table
+damage(C,First,PrepLevel,DamageLevel) = Res =>
+  PrepC = prep(C,First,PrepLevel,DamageLevel),
+  if PrepC == high then
+    Res = categorical([2/10,8/10],DamageLevel)
+  else
+    Res = categorical([8/10,2/10],DamageLevel)  
+  end.
+
+model() =>
+  Cities = [a,b],
+  DamageLevel = [severe,mild],
+  PrepLevel = [high,low],
+
+  First = uniform_draw(Cities),
+  NotFirst = uniform_draw(Cities.delete(First)),
+
+  DamageFirst = damage(First,First,PrepLevel,DamageLevel),
+  DamageA     = damage(a,First,PrepLevel,DamageLevel),
+  DamageB     = damage(b,First,PrepLevel,DamageLevel),
+  DamageNotFirst = damage(NotFirst,First,PrepLevel,DamageLevel),
+  observe(DamageFirst == severe),
+
+  if observed_ok then
+    add("first",First),
+    add("damage a",DamageA),
+    add("damage b",DamageB),
+    add("damage not first",DamageNotFirst)
+  end.

@@ -1,0 +1,108 @@
+/* 
+
+  BUGS book, Example 3.3.3 in Picat.
+
+  Example 3.3.3 Trihalomethanes in tap water
+  Cf ~/jags/bugs_book_3_3_3.R
+  """
+  model (
+    for (i in 1:n) (
+      y(i) ~ dnorm(mu, inv.sigma.squared)
+    )
+    mu ~ dnorm(gamma, inv.omega.squared)
+    inv.omega.squared <- n0/sigma.squared
+    inv.sigma.squared <- 1/sigma.squared
+    y.pred ~ dnorm(mu, inv.sigma.squared)
+    P.crit <- step(y.pred - y.crit)
+  )
+
+  Data: list(n=2, y=c(128, 132), gamma=120, n0=0.25,sigma.squared=25, y.crit=145)
+
+  Output:
+            Mean      SD  Naive SE Time-series SE
+P.crit 3.213e-03 0.05659 0.0002001      0.0002034
+mu     1.289e+02 3.33096 0.0117767      0.0117332
+y.pred 1.289e+02 5.95716 0.0210618      0.0209726 
+  """
+
+  Cf my Gamble model gamble_bugs_book_3_3_3.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : p_crit
+  Probabilities:
+  false: 0.9870129870129870
+  true: 0.0129870129870130
+  mean = [false = 0.987013,true = 0.012987]
+
+  var : mu
+  Probabilities (truncated):
+  138.008448943028441: 0.0129870129870130
+  137.231223163163378: 0.0129870129870130
+  137.077585605954852: 0.0129870129870130
+  136.855827004404745: 0.0129870129870130
+  .........
+  123.943574222760716: 0.0129870129870130
+  123.448629337372154: 0.0129870129870130
+  121.176970718224936: 0.0129870129870130
+  117.471493611858762: 0.0129870129870130
+  mean = 130.25
+
+  var : y pred
+  Probabilities (truncated):
+  145.938164164523641: 0.0129870129870130
+  143.96463921345611: 0.0129870129870130
+  142.615163060602328: 0.0129870129870130
+  141.235791291770596: 0.0129870129870130
+  .........
+  119.190276154397708: 0.0129870129870130
+  119.166461407005954: 0.0129870129870130
+  116.347670596517943: 0.0129870129870130
+  113.750765174140668: 0.0129870129870130
+  mean = 130.522
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 2,
+  % fixed Real() y =(128.0, 132.0); % Moved to observation
+  Gamma = 120,
+  N0 = 0.25,
+  SigmaSquared = 25,
+  YCrit = 145.0,
+
+  OmegaSquared = SigmaSquared / N0,
+  Mu = normal_dist(Gamma,OmegaSquared),
+  Ys = normal_dist_n(Mu,sqrt(SigmaSquared),N),
+
+  YPred = normal_dist(Mu,sqrt(SigmaSquared)),
+  PCrit = check(YPred > YCrit),
+
+  observe( abs(Ys[1]-128) < 1),
+  observe( abs(Ys[2]-132) < 1),  
+
+  if observed_ok then
+    add("p_crit",PCrit),
+    add("mu",Mu),
+    add("y pred",YPred),        
+  end.

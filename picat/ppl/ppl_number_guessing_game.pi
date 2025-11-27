@@ -1,0 +1,146 @@
+/* 
+
+  Number guessing game in Picat.
+
+  https://social.microsoft.com/Forums/en-US/a76a904d-ae2e-4118-bec0-c928772d7ff7/solving-the-nested-number-guessing-problem-from-anglican-web-site?forum=infer.net
+  """
+  I'm trying to express with Infer.NET one of the examples in the Anglican web site:
+     http://www.robots.ox.ac.uk/~fwood/anglican/examples/viewer/?worksheet=nested-number-guessing
+
+  Here the description of the problems:
+    "Two agents play a game in which each agent needs to name a number between 0 and 9 and they win
+     if their numbers add up to 13. The first player knows this, and he knows that the second player
+     gets to see the number the first player chooses, but the second player mistakenly thinks that
+     the two win if their numbers add up to any number greater than 8 (and the first player knows
+     this as well). What number should the first player choose?
+  """ 
+
+
+  Cf the Church model http://forestdb.org/models/nested-guessing.html
+  """
+  (define (sample)
+  (rejection-query
+   (define a (sample-integer 10))
+   (define b
+     (rejection-query
+      (define c (sample-integer 10))
+      c
+      (> (+ a c) 8)))
+   a
+   (= (+ a b) 13)))
+
+  (hist (repeat 10000 sample))
+  """
+
+  References:
+  Reasoning about Reasoning by Nested Conditioning: Modeling Theory of Mind with Probabilistic 
+  Programs. Andreas Stuhlmüller and Noah D. Goodman (2013). Cognitive Systems Research.
+  [http://www.mit.edu/~ast/papers/nested-conditioning-cogsys2013.pdf]
+
+  Cf 
+  - my Gamble model gamble_number_guessing_game.rkt
+  - my WebPPL model number_guessing_game.wppl
+  - my PSI model number_guessing_game.psi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  This is a port of the Church mode and my Gamble model. 
+
+  var : a
+  Probabilities:
+  4: 0.1923000000000000
+  5: 0.1862000000000000
+  6: 0.1761000000000000
+  7: 0.1652000000000000
+  8: 0.1443000000000000
+  9: 0.1359000000000000
+  mean = 6.2907
+
+  I.e. the player should pick the number 4.
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           min_accepted_samples=10_000 % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+%
+% In the Church and Gamble models, this
+% was a model using rejection sampling.
+% In Picat PPL, we have to do this
+% in a different way...
+%
+b(A) = Res =>
+  C = random_integer(10),
+  % Ensure A + C > 8
+  if not (A + C > 8) then
+    C := random_integer(10),
+  end,
+  Res = C.
+
+model() =>
+  A = random_integer(10),
+  B = b(A),
+  
+  observe(A + B == 13),
+
+  if observed_ok then
+    add("a",A),
+  end.
+
+
+/*
+  A variant (from my WebPPL model number_guessing_game.wppl)
+
+  var : b
+  Probabilities:
+  4: 0.2183000000000000
+  5: 0.1992000000000000
+  6: 0.1837000000000000
+  7: 0.1511000000000000
+  8: 0.1312000000000000
+  9: 0.1165000000000000
+  mean = 6.1272
+
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean,
+                           min_accepted_samples=10_000 % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+
+model2() =>
+  A = random_integer(10),
+  B = random_integer(10),
+  C = random_integer(10),  
+
+  observe(A + C > 8),   % player a thinks that they win if a+b > 8 (this is a mistake)
+  observe(A + B == 13), % player b knows that it's the sum of 13 that's the goal
+
+  if observed_ok then
+    add("b",B),
+  end.

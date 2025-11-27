@@ -1,0 +1,172 @@
+/* 
+
+  Negative binomial coins in Picat.
+
+  From Mathematica (NegativeBinomialDistribution)  
+  """
+  The number of tails before getting 4 heads with a fair coin:
+    heads4 = NegativeBinomialDistribution(4, 1/2)
+
+  Compute the probability of getting at least 6 tails before getting 4 heads:
+    Probability(tails >= 6, tails -> heads4)
+    -> 
+    65/256  (0.25390625)
+
+
+  Compute the expected number of tails before getting 4 heads:
+     Mean(heads4)
+     -> 
+     4
+  """
+
+  * Compute the probability of getting at least 6 tails before getting 4 heads:
+
+    Picat> X=1-negative_binomial_dist_cdf(4,1/2,5)
+    X = 0.25390625    
+
+  * Compute the probability of getting at least 6 tails before getting 4 heads: 
+
+    Picat> X=negative_binomial_dist_mean(4,1/2)    
+    X = 4.0
+
+
+  Cf my Gamble model gamble_negative_binomial_coins.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Let's simulate with bernoulli dist.
+
+  var : num flips
+  Probabilities (truncated):
+  6: 0.1551000000000000
+  7: 0.1477000000000000
+  8: 0.1362000000000000
+  5: 0.1277000000000000
+  .........
+  20: 0.0008000000000000
+  21: 0.0005000000000000
+  23: 0.0003000000000000
+  22: 0.0003000000000000
+  mean = 8.0411
+
+  var : num heads
+  Probabilities:
+  4: 1.0000000000000000
+  mean = 4.0
+
+  var : num tails
+  Probabilities (truncated):
+  2: 0.1551000000000000
+  3: 0.1477000000000000
+  4: 0.1362000000000000
+  1: 0.1277000000000000
+  .........
+  16: 0.0008000000000000
+  17: 0.0005000000000000
+  19: 0.0003000000000000
+  18: 0.0003000000000000
+  mean = 4.0411
+
+  var : prob
+  Probabilities:
+  false: 0.7408000000000000
+  true: 0.2592000000000000
+  mean = 0.2592
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+
+model() =>
+  NumTails = 0,
+  NumHeads = 0,
+  NumFlips = 0,
+  P = 1/2,
+  OK = false,
+  while (OK == false)
+    NumFlips := NumFlips + 1,
+    B = bern(P),
+    if B == 1 then
+      NumHeads := NumHeads + 1
+    else
+      NumTails := NumTails + 1
+    end,
+    if NumHeads == 4 then
+      OK := true
+    end
+  end,
+  Prob = check(NumTails >= 6),
+  add("num flips",NumFlips),
+  add("num heads",NumHeads),
+  add("num tails",NumTails),
+  add("prob",Prob).
+
+
+
+/*
+  Using negative binomial
+
+  var : heads 4
+  Probabilities (truncated):
+  2: 0.1555000000000000
+  3: 0.1552000000000000
+  4: 0.1345000000000000
+  1: 0.1265000000000000
+  .........
+  17: 0.0002000000000000
+  21: 0.0001000000000000
+  20: 0.0001000000000000
+  19: 0.0001000000000000
+  mean = 4.0155
+
+  var : p
+  Probabilities:
+  false: 0.7428000000000000
+  true: 0.2572000000000000
+  mean = 0.2572
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+
+model2() =>
+  Heads4 = negative_binomial_dist(4,1/2),
+  P = check(Heads4 >= 6),
+  add("heads 4",Heads4),
+  add("p",P).
+

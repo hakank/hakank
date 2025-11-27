@@ -1,0 +1,231 @@
+/* 
+
+  100 heads in a row in Picat.
+
+  From Holger van Jouanne-Diedrich:
+  https://www.linkedin.com/feed/?highlightedUpdateType=SHARED_BY_YOUR_NETWORK&highlightedUpdateUrn=urn%3Ali%3Aactivity%3A7360550738478989312
+  """
+  A little fun experiment, comments are welcome.
+
+  If I flip a coin 100 times and it lands heads every time, what will it most likely
+  land on the next flip?
+
+   * heads
+   * 50/50
+   * tails
+  """
+
+  I'd say heads and that it's a biased coin with a probability of about 0.90 of landing heads.
+  
+  Note: For smaller number of observed heads in a row, then this model still assumes that 
+  it's a biased coin, and that is somewhat dubious. So let's say that this is a model to 
+  when when we think that a biased coin
+  is involved.
+
+  A theoretical result:
+
+  (a_prior, b_prior) = (1,1)
+  heads = 100
+  tails = 0
+  a_post = a_prior + heads
+  b_post = b_prior + tails
+
+  # Posterior distribution is Beta(a_post, b_post)
+  posterior_mean = a_post / (a_post + b_post)
+
+  posterior_mean
+
+  Picat> X = (100+1) / (100 + 1 + 1)  
+  X = 0.990196078431373
+
+
+  Cf my Gamble model gamble_100_heads_in_a_row.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+biased_coin_prob(N) = biased_coin_prob(N,1).
+biased_coin_prob(N,A) = Res =>
+  if A == 1 then
+    X = N + 1,
+    Y = 1,
+    Res = X / (X + Y)
+  else
+    X = N + A,
+    Y = N + 2*A,
+    Res = X / Y
+  end.
+
+
+/*
+
+  What is the estimated bias (probability) given
+  that we saw n heads in a row?
+  If a > 1 then a is the number of prior pseudo-tosses.
+
+  3 = 0.8 (4 / 5)
+  10 = 0.916666666666667 (11 / 12)
+  30 = 0.96875 (31 / 32)
+  70 = 0.986111111111111 (71 / 72)
+  100 = 0.990196078431373 (101 / 102)
+  1000 = 0.999001996007984 (1001 / 1002)
+
+  With prior pseudo tosses (A = 2):
+  3 = 0.714285714285714 (5 / 7)
+  10 = 0.857142857142857 (6 / 7)
+  30 = 0.941176470588235 (16 / 17)
+  70 = 0.972972972972973 (36 / 37)
+  100 = 0.980769230769231 (51 / 52)
+  1000 = 0.99800796812749 (501 / 502)
+
+  With prior pseudo tosses (A = 10):
+  3 = 0.565217391304348 (13 / 23)
+  10 = 0.666666666666667 (2 / 3)
+  30 = 0.8 (4 / 5)
+  70 = 0.888888888888889 (8 / 9)
+  100 = 0.916666666666667 (11 / 12)
+  1000 = 0.990196078431373 (101 / 102)
+
+
+*/
+go ?=>
+  foreach(N in [3,10,30,70,100,1000])
+    println(N=biased_coin_prob(N,1).and_rat)
+  end,
+  nl,
+  println("With prior pseudo tosses (A = 2):"),
+  foreach(N in [3,10,30,70,100,1000])
+    println(N=biased_coin_prob(N,2).and_rat)
+  end,
+  nl,
+  println("With prior pseudo tosses (A = 10):"),
+  foreach(N in [3,10,30,70,100,1000])
+    println(N=biased_coin_prob(N,10).and_rat)
+  end,
+  
+  nl.
+go => true.
+
+/*
+  var : prob
+  Probabilities (truncated):
+  0.999994453024277: 0.0010000000000000
+  0.999993252685927: 0.0010000000000000
+  0.999977414583917: 0.0010000000000000
+  0.999968989532129: 0.0010000000000000
+  .........
+  0.94747573820874: 0.0010000000000000
+  0.947070477090959: 0.0010000000000000
+  0.940068676944265: 0.0010000000000000
+  0.938848447989552: 0.0010000000000000
+  mean = 0.990267
+  HPD intervals:
+  HPD interval (0.84): 0.98251735881456..0.99999445302428
+  HPD interval (0.9): 0.97733592379458..0.99999445302428
+  HPD interval (0.94): 0.97265067127412..0.99999445302428
+  HPD interval (0.99): 0.95539683758572..0.99999445302428
+  HPD interval (0.99999): 0.93884844798955..0.99999445302428
+  Histogram (total 1000)
+  0.939:     1                                                              (0.001 / 0.001)
+  0.940:     1                                                              (0.001 / 0.002)
+  0.942:     0                                                              (0.000 / 0.002)
+  0.943:     0                                                              (0.000 / 0.002)
+  0.945:     0                                                              (0.000 / 0.002)
+  0.946:     1                                                              (0.001 / 0.003)
+  0.948:     2 #                                                            (0.002 / 0.005)
+  0.950:     0                                                              (0.000 / 0.005)
+  0.951:     3 #                                                            (0.003 / 0.008)
+  0.953:     1                                                              (0.001 / 0.009)
+  0.954:     0                                                              (0.000 / 0.009)
+  0.956:     2 #                                                            (0.002 / 0.011)
+  0.957:     1                                                              (0.001 / 0.012)
+  0.959:     1                                                              (0.001 / 0.013)
+  0.960:     2 #                                                            (0.002 / 0.015)
+  0.962:     2 #                                                            (0.002 / 0.017)
+  0.963:     2 #                                                            (0.002 / 0.019)
+  0.965:     7 ##                                                           (0.007 / 0.026)
+  0.966:     9 ###                                                          (0.009 / 0.035)
+  0.968:     6 ##                                                           (0.006 / 0.041)
+  0.969:     7 ##                                                           (0.007 / 0.048)
+  0.971:     5 #                                                            (0.005 / 0.053)
+  0.972:    12 ###                                                          (0.012 / 0.065)
+  0.974:    11 ###                                                          (0.011 / 0.076)
+  0.976:    16 #####                                                        (0.016 / 0.092)
+  0.977:    14 ####                                                         (0.014 / 0.106)
+  0.979:    20 ######                                                       (0.020 / 0.126)
+  0.980:    21 ######                                                       (0.021 / 0.147)
+  0.982:    13 ####                                                         (0.013 / 0.160)
+  0.983:    27 ########                                                     (0.027 / 0.187)
+  0.985:    34 ##########                                                   (0.034 / 0.221)
+  0.986:    33 ##########                                                   (0.033 / 0.254)
+  0.988:    55 ################                                             (0.055 / 0.309)
+  0.989:    53 ###############                                              (0.053 / 0.362)
+  0.991:    66 ###################                                          (0.066 / 0.428)
+  0.992:    74 #####################                                        (0.074 / 0.502)
+  0.994:    90 ##########################                                   (0.090 / 0.592)
+  0.995:    92 ###########################                                  (0.092 / 0.684)
+  0.997:   108 ###############################                              (0.108 / 0.792)
+  0.998:   208 ############################################################ (0.208 / 1.000)
+
+  var : p is fair coin
+  Probabilities:
+  false: 1.0000000000000000
+  mean = 0.0
+  Histogram (total 1000)
+  false     :  1000 ############################################################ (1.000 / 1.000)
+
+  var : bias
+  Probabilities:
+  0.990196: 1.0000000000000000
+  mean = 0.990196
+  HPD intervals:
+  HPD interval (0.84): 0.99019607843137..0.99019607843137
+  HPD interval (0.9): 0.99019607843137..0.99019607843137
+  HPD interval (0.94): 0.99019607843137..0.99019607843137
+  HPD interval (0.99): 0.99019607843137..0.99019607843137
+  HPD interval (0.99999): 0.99019607843137..0.99019607843137
+  Histogram (total 1000)
+  0.990196078431373:  1000 ############################################################ (1.000 / 1.000)
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           show_histogram,
+                           min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+model2() =>
+  N = 100,
+  Prob = beta_dist(1,1),
+
+  Coins = bern_n(Prob,N),
+
+  % We have seen 100 heads in a row
+  observe_abc(ones(100,1),Coins),
+
+  PIsFairCoin = check(abs(Prob - 0.5) <= 0.1),
+  Bias = biased_coin_prob(N),
+  
+  if observed_ok then
+    add("prob",Prob),
+    add("p is fair coin",PIsFairCoin),
+    add("bias",Bias),
+  end.

@@ -1,0 +1,154 @@
+/* 
+
+  Frechet windspeed in Picat.
+
+  From Mathematica (FrechetDistribution)
+  """
+  FrechetDistribution can be used to model annual maximum wind speeds:
+  maxWinds =  Table(Max(
+   DeleteMissing(
+    WeatherData("Boston", "WindSpeed", (year), "Value"))), (year, 
+   1938, 2009)) ;; QuantityMagnitude
+  -> 
+  (72.36, 64.8, 72.36, 68.4, 77.76, 55.44, 96.48, 96.48, 66.6, 72.36,
+  61.2, 55.8, 96.48, 74.16, 77.76, 88.92, 138.96, 77.76, 85.32, 66.6,
+  70.56, 63, 81.72, 66.6, 74.16, 77.76, 64.8, 57.6, 66.6, 77.76, 63,
+  64.8, 74.16, 74.16, 79.56, 77.76, 68.76, 59.4, 86.76, 84.96, 92.88,
+  81.72, 79.56, 81.72, 64.8, 105.48, 64.8, 85.32, 64.8, 63, 72.36,
+  100.08, 59.4, 75.96, 81.72, 87.12, 77.76, 68.76, 74.16, 68.4, 75.96,
+  63, 63, 64.8, 57.6, 61.2, 59.4, 66.6, 57.24, 63, 55.44, 59.4)
+
+  Fit the distribution to the data:
+  edist = EstimatedDistribution(maxWinds,FrechetDistribution(alpha, beta))
+  -> FrechetDistribution(7.26626, 66.9224)
+
+  Find the probability of annual maximum wind exceeding 90 km/h:
+  Probability(x > 90, x in edist)
+  -> 0.109663
+
+  Find average annual maximum wind speed:
+  Mean(edist)
+  -> 73.6778
+
+  data = RandomVariate(edist, 1000);
+  MinMax(data)
+  -> (51.1608, 213.02)
+   """
+
+
+
+  Cf my Gamble model gamble_frechet_windspeed.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  This took 5.2s 
+
+  Num accepted samples: 999  Total samples: 72024  (0.014%)
+  Num accepted samples: 1000  Total samples: 72036  (0.014%)
+  var : alpha
+  Probabilities (truncated):
+  16.919121009725668: 0.0010000000000000
+  16.535621409088193: 0.0010000000000000
+  15.323022834175742: 0.0010000000000000
+  15.048818037402267: 0.0010000000000000
+  .........
+  4.552238051571063: 0.0010000000000000
+  4.434918862038719: 0.0010000000000000
+  4.205161554368754: 0.0010000000000000
+  4.136456368088934: 0.0010000000000000
+  mean = 8.52418
+  HPD intervals:
+  HPD interval (0.84): 5.63332310301872..10.98892062389707
+
+  var : beta
+  Probabilities (truncated):
+  75.213292299428403: 0.0010000000000000
+  75.057310134164268: 0.0010000000000000
+  75.04774781899593: 0.0010000000000000
+  74.622715243069294: 0.0010000000000000
+  .........
+  60.537330502231747: 0.0010000000000000
+  60.490055543301651: 0.0010000000000000
+  60.05907870856278: 0.0010000000000000
+  59.143342642757794: 0.0010000000000000
+  mean = 68.0612
+  HPD intervals:
+  HPD interval (0.84): 64.03286559350337..72.81834156538699
+
+  var : post
+  Probabilities (truncated):
+  167.206175250870302: 0.0010000000000000
+  150.001544449212759: 0.0010000000000000
+  140.157026306082997: 0.0010000000000000
+  135.570607528543718: 0.0010000000000000
+  .........
+  50.169493692425178: 0.0010000000000000
+  48.395217315722419: 0.0010000000000000
+  47.73310923328772: 0.0010000000000000
+  45.664541500111895: 0.0010000000000000
+  mean = 74.0054
+  HPD intervals:
+  HPD interval (0.84): 56.79411914582231..86.96041867629890
+
+  var : p
+  Probabilities:
+  false: 0.8920000000000000
+  true: 0.1080000000000000
+  mean = [false = 0.892,true = 0.108]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+
+*/
+go ?=>
+  % Annual maximum wind speed in Boston 1938..2009
+  % From Mathematica (FrechetDistribution, see above)
+  Data = [72.36,64.8,72.36,68.4,77.76,55.44,96.48,96.48,66.6,72.36,
+          61.2,55.8,96.48,74.16,77.76,88.92,138.96,77.76,85.32,66.6,
+          70.56,63,81.72,66.6,74.16,77.76,64.8,57.6,66.6,77.76,63,
+          64.8,74.16,74.16,79.56,77.76,68.76,59.4,86.76,84.96,92.88,
+          81.72,79.56,81.72,64.8,105.48,64.8,85.32,64.8,63,72.36,
+          100.08,59.4,75.96,81.72,87.12,77.76,68.76,74.16,68.4,75.96,
+          63,63,64.8,57.6,61.2,59.4,66.6,57.24,63,55.44,59.4],
+  println([len=Data.len, mean=Data.mean,stdev=Data.stdev]),
+  reset_store,
+  run_model(1_000_000,$model(Data),[show_probs_trunc,mean,
+                                    show_hpd_intervals,hpd_intervals=[0.84],
+                                    min_accepted_samples=1_000,show_accepted_samples=true
+                           ]),
+  nl,
+  show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Data) =>
+  Len = Data.len,
+  
+  Alpha = uniform(1,100),
+  Beta  = normal_dist(Data.mean,10),
+
+  Y = frechet_dist_n(Alpha,Beta,Len),
+  
+  observe_abc(Data,Y,1/3),
+
+  Post = frechet_dist(Alpha,Beta),
+  P = check(Post > 90),
+  
+  if observed_ok then
+    add("alpha",Alpha),
+    add("beta",Beta),
+    add("post",Post),
+    add("p",P),    
+  end.

@@ -1,0 +1,131 @@
+/* 
+
+  Gumbel distribution, recovering parameters in Picat.
+
+  Trying to recover gumbel_dist(12,3)
+
+  Cf my Gamble model gamble_gumbel_recover.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  data = [13.8191,9.92959,13.2725,13.4131,14.6592,7.45881,9.31276,13.1394,8.63207,11.3581,10.7027,11.9735,9.62964,11.0158,15.3369,14.7239,12.0293,12.7013,6.36193,11.7947,-0.325047,8.16221,6.26043,13.4667,6.69132,9.99406,6.08061,5.51665,17.7662,7.79552,11.0118,13.8081,11.8411,8.85928,12.0443,11.1086,10.8448,15.8458,8.81641,13.1672,11.1294,13.1544,9.98706,14.3942,8.70223,9.49982,13.5002,14.7652,4.11952,15.2781,11.1231,4.77569,7.36705,12.254,14.3782,9.46167,3.86034,0.297675,10.5266,3.80793,8.09608,15.7821,14.531,13.9307,8.48794,11.2392,9.73707,13.0691,11.0084,12.2908,11.1706,2.34882,10.343,14.964,14.9472,12.7321,8.71451,12.8813,12.0641,9.51675,12.4564,6.88035,10.3658,14.2555,13.7083,9.25848,7.95907,14.4173,9.4774,12.4465,15.4272,11.6446,12.2055,14.0138,10.3608,14.8394,9.9695,13.5673,12.4263,14.6498]
+  [data_len = 100,mean = 10.9059,variance = 11.8002,stdev = 3.43514]
+  min_accepted_samples = 1000
+  Num accepted samples: 995  Total samples: 309852  (0.003%)
+  Num accepted samples: 996  Total samples: 309855  (0.003%)
+  Num accepted samples: 997  Total samples: 310629  (0.003%)
+  Num accepted samples: 998  Total samples: 310996  (0.003%)
+  Num accepted samples: 999  Total samples: 311131  (0.003%)
+  Num accepted samples: 1000  Total samples: 311164  (0.003%)
+  var : a
+  Probabilities (truncated):
+  18.064845877729748: 0.0010000000000000
+  17.77785428649646: 0.0010000000000000
+  17.670147321033362: 0.0010000000000000
+  17.582403655900809: 0.0010000000000000
+  .........
+  8.379811974884856: 0.0010000000000000
+  8.360384822990923: 0.0010000000000000
+  8.347008126949429: 0.0010000000000000
+  8.24285467771946: 0.0010000000000000
+  mean = 12.686
+  HPD intervals:
+  HPD interval (0.84): 9.70951753887791..15.86556079558356
+
+  var : b
+  Probabilities (truncated):
+  7.537985399150283: 0.0010000000000000
+  6.842325472665171: 0.0010000000000000
+  6.686305540002094: 0.0010000000000000
+  6.333051810661821: 0.0010000000000000
+  .........
+  1.011001968761441: 0.0010000000000000
+  1.007916464474013: 0.0010000000000000
+  1.006425390954327: 0.0010000000000000
+  1.00589597318596: 0.0010000000000000
+  mean = 3.28662
+  HPD intervals:
+  HPD interval (0.84): 1.00589597318596..4.75498385064070
+
+  var : post
+  Probabilities (truncated):
+  24.118233179408435: 0.0010000000000000
+  23.872367769501384: 0.0010000000000000
+  22.362170215068193: 0.0010000000000000
+  22.297743511728505: 0.0010000000000000
+  .........
+  -9.891908652005943: 0.0010000000000000
+  -9.935528410727011: 0.0010000000000000
+  -11.064188167438926: 0.0010000000000000
+  -11.314736746056271: 0.0010000000000000
+  mean = 10.8731
+  HPD intervals:
+  HPD interval (0.84): 4.44576020783433..17.16081714690396
+
+
+*/
+go ?=>
+  % Picat> Data = gumbel_dist_n(12,3,20) 
+  % Data = [11.518499730919215,13.028365258431627,3.20658234604986,6.714788065681552,19.443383621200262,7.572248645800662,14.374728064470576,5.971751782454896,17.434119209685697,3.329857691539864,14.145287047244519,4.232313644494006,-4.439307160494742,14.825697677342399,11.687704685553006,7.155216506571059,6.823573135140714,9.902933011950658,14.678641122163508,13.614924757196006],
+  Data = gumbel_dist_n(12,3,100),
+  println(data=Data),
+  println([data_len=Data.len,mean=Data.mean,variance=Data.variance,stdev=Data.stdev]),
+  reset_store,
+  run_model(40_000,$model(Data),[show_probs_trunc,mean,
+                                  % show_percentiles,
+                                  show_hpd_intervals,hpd_intervals=[0.84],
+                                  % show_histogram,
+                                  min_accepted_samples=1000,show_accepted_samples=true
+                                  ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Data) =>
+  Len = Data.len,
+  Mean = Data.mean,
+  Stdev = Data.stdev,
+  Variance = Data.variance,
+  
+  A = uniform(1,20),
+  B = uniform(1,20),
+
+  % A = normal_dist(Mean,4),
+  % B = normal_dist(Mean,4),  
+
+  Y = gumbel_dist_n(A,B,Len),
+  YMean = Y.mean,
+  YStdev = Y.stdev,
+
+  % foreach(I in 1..Data.len)
+  %   observe( abs(gumbel_dist(A,B)-Data[I])<=Mean) % Not too bad.
+  %   % observe( abs(gumbel_dist(A,B)-Data[I])<=Stdev*2)
+  % end,
+
+  % This is much faster - and reliable
+  % observe( abs(Mean-YMean) < Stdev/2),
+  % observe( abs(Stdev-YStdev) < Stdev/2),
+  observe_abc(Data,Y,1/2), % convenience function
+
+  Post = gumbel_dist(A,B),
+
+  if observed_ok then
+    % println(A=B),
+    add("a",A),
+    add("b",B),
+    add("post",Post)
+  end.

@@ -1,0 +1,187 @@
+/* 
+
+  Laplace births in Picat.
+
+  From http://mc-stan.org/workshops/vanderbilt2016/carp-1.pdf
+  Slide 5ff
+  """
+ 
+  Laplace's data on live births in Paris 1745-1770:
+     sex        live births
+     ----------------------
+     female      241 945
+     male        251 527    
+  
+  * Question 1 (Estimation):
+    What is the birth rate of boys vs. girls?
+
+  * Question 2 (Event Probability)
+    Is a boy more likely to be born than a girl?
+
+    Bayes (1763) set up the 'Bayesian' model  Laplace (1781, 1786) solved for the posterior
+
+  ...
+
+  (Answers:)
+  * Q1: θis 99% certain to lie in (0.508,0.512)
+
+  * Q2: Laplace 'morally certain' boys more prevalent
+  """
+
+  Using the "smart" binomial_dist it give at least some
+  accepted samples.
+
+  Picat> X=binomial_dist(251527 + 241945,0.910006)
+  X = 449253
+
+  It IS a hard problem using this crude rejection sampling approach...
+
+  This is a port of my Racket/Gamble model gamble_laplace_birhts.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/* 
+
+  With 10_000_000 with got about 23 accepted samples:
+
+var : theta
+Probabilities (truncated):
+0.51109593142156: 0.04347826086956522 (1 / 23)
+0.51094657871273: 0.04347826086956522 (1 / 23)
+0.510339420268834: 0.04347826086956522 (1 / 23)
+0.510166373797441: 0.04347826086956522 (1 / 23)
+.........
+0.509282214011374: 0.04347826086956522 (1 / 23)
+0.509118300206507: 0.04347826086956522 (1 / 23)
+0.508951112280384: 0.04347826086956522 (1 / 23)
+0.508798626753149: 0.04347826086956522 (1 / 23)
+mean = 0.509675
+HPD intervals:
+HPD interval (0.5): 0.50933656661710..0.50967194937541
+HPD interval (0.84): 0.50879862675315..0.51016637379744
+HPD interval (0.9): 0.50879862675315..0.51033942026883
+HPD interval (0.95): 0.50895111228038..0.51109593142156
+HPD interval (0.99): 0.50879862675315..0.51109593142156
+HPD interval (0.999): 0.50879862675315..0.51109593142156
+HPD interval (0.9999): 0.50879862675315..0.51109593142156
+HPD interval (0.99999): 0.50879862675315..0.51109593142156
+
+var : theta>0.5
+Probabilities:
+Probabilities:
+1: 1.00000000000000000 (1 / 1)
+mean = 1.0
+HPD intervals:
+HPD interval (0.5): 1.00000000000000..1.00000000000000
+HPD interval (0.84): 1.00000000000000..1.00000000000000
+HPD interval (0.9): 1.00000000000000..1.00000000000000
+HPD interval (0.95): 1.00000000000000..1.00000000000000
+HPD interval (0.99): 1.00000000000000..1.00000000000000
+HPD interval (0.999): 1.00000000000000..1.00000000000000
+HPD interval (0.9999): 1.00000000000000..1.00000000000000
+HPD interval (0.99999): 1.00000000000000..1.00000000000000
+
+
+
+*/
+go ?=>
+  reset_store(),
+  run_model(1_000_000,$model,[show_probs_rat_trunc,mean,show_hpd_intervals]),
+  % fail,
+  show_store_lengths(),
+  nl.
+go => true.
+
+
+model() =>
+  Male2 = 251527,
+  Female = 241945,
+  Theta = beta_dist(100,100),
+  Male = binomial_dist_smart(Male2+Female,Theta),
+  % println($binomial_dist(Male2+Female,Theta)=Male),  
+  observe(Male == 251527),
+  if observed_ok  then
+    println(Theta=Male),
+    add("theta>0.5",cond(Theta>0.5,1,0)),
+    add("theta",Theta)
+  end.
+
+
+/*
+  With 100 accepted samples:
+
+
+  Num accepted samples: 97  Total samples: 3957382  (0.000%)
+  Num accepted samples: 98  Total samples: 3959087  (0.000%)
+  Num accepted samples: 99  Total samples: 3972256  (0.000%)
+  Num accepted samples: 100  Total samples: 3987741  (0.000%)
+
+  var : theta>0.5
+  Probabilities:
+  1: 1.00000000000000000 (1 / 1)
+  mean = 1.0
+  HPD intervals:
+  HPD interval (0.5): 1.00000000000000..1.00000000000000
+  HPD interval (0.84): 1.00000000000000..1.00000000000000
+  HPD interval (0.9): 1.00000000000000..1.00000000000000
+  HPD interval (0.95): 1.00000000000000..1.00000000000000
+  HPD interval (0.99): 1.00000000000000..1.00000000000000
+  HPD interval (0.999): 1.00000000000000..1.00000000000000
+  HPD interval (0.9999): 1.00000000000000..1.00000000000000
+  HPD interval (0.99999): 1.00000000000000..1.00000000000000
+
+  var : theta
+  Probabilities (truncated):
+  0.511415781571505: 0.01000000000000000 (1 / 100)
+  0.511280888793264: 0.01000000000000000 (1 / 100)
+  0.511166669685694: 0.01000000000000000 (1 / 100)
+  0.51112873575676: 0.01000000000000000 (1 / 100)
+  .........
+  0.508585934554109: 0.01000000000000000 (1 / 100)
+  0.508583239212868: 0.01000000000000000 (1 / 100)
+  0.508576476675757: 0.01000000000000000 (1 / 100)
+  0.508451018321024: 0.01000000000000000 (1 / 100)
+  mean = 0.509767
+  HPD intervals:
+  HPD interval (0.5): 0.50941244625486..0.51025575336670
+  HPD interval (0.84): 0.50857647667576..0.51045524443356
+  HPD interval (0.9): 0.50857647667576..0.51085542677659
+  HPD interval (0.95): 0.50857647667576..0.51102823621519
+  HPD interval (0.99): 0.50845101832102..0.51128088879326
+  HPD interval (0.999): 0.50845101832102..0.51141578157151
+  HPD interval (0.9999): 0.50845101832102..0.51141578157151
+  HPD interval (0.99999): 0.50845101832102..0.51141578157151
+
+
+*/
+go2 ?=>
+  reset_store(),
+  run_model(1_000_000,$model2,[show_probs_rat_trunc,mean,show_hpd_intervals,
+                               min_accepted_samples=100,show_accepted_samples=true]),
+  % fail,
+  show_store_lengths(),
+  nl.
+go2 => true.
+
+
+model2() =>
+  Male2 = 251527,
+  Female = 241945,
+  Theta = beta_dist(100,100),
+  Male = binomial_dist_smart(Male2+Female,Theta),
+  
+  observe(Male == 251527),
+  
+  if observed_ok  then
+    add("theta>0.5",cond(Theta>0.5,1,0)),
+    add("theta",Theta)
+  end.
+
+              

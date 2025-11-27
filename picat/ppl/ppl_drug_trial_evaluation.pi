@@ -1,0 +1,164 @@
+/* 
+
+  Drug trial evaluation in Picat.
+
+  Port of PyMC3 Drug trial evaluation model in
+  https://docs.pymc.io/pymc-examples/examples/case_studies/BEST.html
+  """
+  Example: Drug trial evaluation
+
+  To illustrate how this Bayesian estimation approach works in practice, we will use a 
+  fictitious example from Kruschke (2012) concerning the evaluation of a clinical trial for 
+  drug evaluation. The trial aims to evaluate the efficacy of a "smart drug" that is 
+  supposed to increase intelligence by comparing IQ scores of individuals in a treatment 
+  arm (those receiving the drug) to those in a control arm (those recieving a placebo). 
+  There are 47 individuals and 42 individuals in the treatment and control arms, respectively.
+  """
+
+  (Ref: Kruschke JK. Bayesian estimation supersedes the t test. 
+     J Exp Psychol Gen. 2013;142(2):573-603. doi:10.1037/a0029146.))
+
+  Point estimates for the PyMC3 model (via the graphs):
+  - group1_mean: 102
+  - group1_std: 2.1
+  - group2_mean: 101
+  - group2_std: 1,2
+  ~ v: 0.97
+  ~ difference_of_means: 1  (1.3% < 0 < 98.7%)
+
+
+  Cf my Gamble model gamble_drug_trial_evaluation.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : group1 mean
+  mean = 101.753
+  HPD intervals:
+  HPD interval (0.94): 98.65015779651735..105.32714311495029
+
+  var : group2 mean
+  mean = 100.198
+  HPD intervals:
+  HPD interval (0.94): 98.68771635813110..101.56965749787116
+
+  var : group1 std
+  mean = 6.02194
+  HPD intervals:
+  HPD interval (0.94): 3.00579533912511..9.04990569690704
+
+  var : group2 std
+  mean = 2.56937
+  HPD intervals:
+  HPD interval (0.94): 1.23405752155653..3.94232709004652
+
+  var : nu
+  mean = 1.03241
+  HPD intervals:
+  HPD interval (0.94): 1.00000373705404..1.09491956477318
+
+  var : lambda 1
+  mean = 0.037898
+  HPD intervals:
+  HPD interval (0.94): 0.01001864661068..0.09116709133959
+
+  var : lambda 2
+  mean = 0.209657
+  HPD intervals:
+  HPD interval (0.94): 0.04988961108301..0.49689409063676
+
+  var : diff of means
+  mean = 1.55563
+  HPD intervals:
+  HPD interval (0.94): -2.12258643229566..5.21445783482751
+
+  var : diff of stds
+  mean = 3.45257
+  HPD intervals:
+  HPD interval (0.94): 0.05193261245821..7.15642335040328
+
+  var : effect size
+  mean = 0.354761
+  HPD intervals:
+  HPD interval (0.94): -0.48644427760436..1.20691221693005
+
+
+*/
+go ?=>
+  Drug = [101.0,100,102,104,102,97,105,105,98,101,100,123,105,103,100,95,102,106,
+          109,102,82,102,100,102,102,101,102,102,103,103,97,97,103,101,97,104,
+          96,103,124,101,101,100,101,101,104,100,101],
+  Placebo = [99,101,100,101,102,100,97,101,104,101,102,102,100,105,88,101,100,
+             104,100,100,100,101,102,103,97,101,101,100,101,99,101,100,100,
+             101,100,99,101,100,102,99,100,99],
+  reset_store,
+  run_model(10_000,$model(Drug,Placebo),[% show_probs_trunc,
+                                         mean,
+                                         % show_percentiles,show_histogram,
+                                         show_hpd_intervals,hpd_intervals=[0.94],
+                                         min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  nl.
+go => true.
+  
+  
+model(Drug,Placebo) =>
+  Y = Drug ++ Placebo,
+  MuM = Y.mean,
+  MuS = Y.stdev,
+
+  Group1Mean = normal_dist(MuM,MuS),
+  Group2Mean = normal_dist(MuM,MuS),
+
+  SigmaLow = 1,
+  SigmaHigh = 10,
+  Group1Std = uniform(SigmaLow,SigmaHigh),
+  Group2Std = uniform(SigmaLow,SigmaHigh),
+
+  Nu = 1 + exponential_dist(29.0), % 1/29.0 in Gamble
+  Lambda1 = Group1Std ** (-2),
+  Lambda2 = Group2Std ** (-2),  
+
+  % Note: PyMC's StudentT has these parameters: nu, mu, lamb
+  %       Picat PPL has these parameters: Mu, Sigma, Nu
+  % Group1 = student_t_dist_n(Group1Mean,Lambda1,Nu, Drug.len),
+  % Group2 = student_t_dist_n(Group1Mean,Lambda2,Nu, Placebo.len),
+
+  % Let's do the same as in the Gamble model for easier comparison,
+  % i.e. using normal dist/2 instead
+  % Group1 = normal_dist_n(Group1Mean + (Nu*Lambda1),Group1Std, Drug.len),
+  % Group2 = normal_dist_n(Group2Mean + (Nu*Lambda2),Group2Std, Placebo.len),  
+  Group1 = normal_dist_n(Group1Mean + (Nu*Lambda1),Group1Std, Drug.len),
+  Group2 = normal_dist_n(Group2Mean + (Nu*Lambda2),Group2Std, Placebo.len),  
+
+  observe_abc(Drug,Group1,1/2),
+  observe_abc(Placebo,Group2,1/2),  
+
+  DiffOfMeans = Group1Mean - Group2Mean,
+  DiffOfStds = Group1Std - Group2Std,
+  EffectSize = DiffOfMeans / sqrt( (Group1Std**2 + Group2Std**2) /2 ),
+  
+ 
+  if observed_ok then
+    add("group1 mean",Group1Mean),
+    add("group2 mean",Group2Mean),    
+    add("group1 std",Group1Std),
+    add("group2 std",Group2Std),
+    add("nu", Nu),
+    add("lambda 1",Lambda1),
+    add("lambda 2",Lambda2),
+    add("diff of means",DiffOfMeans),
+    add("diff of stds",DiffOfStds),
+    add("effect size",EffectSize),    
+  end.

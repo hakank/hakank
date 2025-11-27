@@ -1,0 +1,85 @@
+/* 
+
+  Tourist with a short memory in Picat.
+
+  From Gunnar Blom, Lars Holst, Dennis Sandell:
+  "Problems and Snapshots from the World of Probability"
+  page 2, Problem 1.2
+
+  A tourist wants to visits all the four cities, A, B, C, and D. 
+  When he is in A he then visit the other cities (B, C, or D) 
+  with equal probability, and the same for the other cities.
+  Unfortunately, he don't remember which cities he has already visited
+  so he always select the other 3 cities woth equal probability.
+
+  How many cities will he visit until he had visited all four cities?
+
+  The text state the "theoretical" expectation (geometric distribution) as:
+  """
+    E(N) = 1 + 1 + 3/2 + 3 = 13/2 (= 6.5)
+  """
+
+
+  Cf my Gamble model gamble_tourist_with_a_short_memory.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+% The theoretical expectation according to the cited text
+theoretical(NumCities) = 
+  1 + (NumCities - 1) * sum([1/I : I in 1..NumCities-1]).
+  
+/*
+
+  [n = 4,theoretical_expectation = 6.5]
+  var : len
+  Probabilities (truncated):
+  5: 0.2252000000000000
+  4: 0.2241000000000000
+  6: 0.1695000000000000
+  7: 0.1204000000000000
+  .........
+  29: 0.0001000000000000
+  27: 0.0001000000000000
+  26: 0.0001000000000000
+  22: 0.0001000000000000
+  mean = 6.5006
+
+*/
+go ?=>
+  NumCities = 4,
+  println([n=NumCities,theoretical_expectation=theoretical(NumCities)]),
+  reset_store,
+  run_model(10_000,$model(NumCities),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+
+visit_cities(A,Cities) = Res =>
+  Len = A.len,
+  if A.remove_dups.len == Cities.len then
+    Res = A
+  else
+    if Len == 0 then
+      Res = visit_cities(A++[uniform_draw(Cities)],Cities)
+    else
+      LastCity = A.last,
+      NextCity = uniform_draw(Cities.delete(LastCity)),
+      Res = visit_cities(A++[NextCity],Cities)
+    end
+  end.
+model(NumCities) =>
+  A = visit_cities([],1..NumCities),
+  Len = A.len,
+  % add("a",A),
+  add("len",Len).

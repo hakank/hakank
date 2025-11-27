@@ -1,0 +1,378 @@
+/* 
+
+  Gamma distribution in Picat.
+  From Handbook on probability distributions
+  page 60
+  """
+  Simulate a gamma G(a, lambda) is quite tricky for non integer shape parameter.
+  Indeed, if the shape parameter a is integer, then we simply sum a exponential
+  random variables E(lambda). Otherwise we need to add a gamma variable
+  G(α−abs(α), lambda). This is carried out by an acceptance/rejection method.
+  """
+
+  See gamble_distributions.rkt and gamble_distributions_test.rkt for more on this.
+
+  Example from 
+  https://medium.com/pythons-gurus/understanding-the-basics-of-gamma-distribution-24bfd9bee253
+  """
+  Suppose we want to model the time until the next earthquake in a region 
+  that has an average of 2 earthquakes per year. If we assume the time between 
+  earthquakes follows a Gamma Distribution, we can use the shape parameter k 
+  (number of events) and the scale parameter θ (average time between events) to 
+  understand the distribution of waiting times.
+  
+  ...
+
+  Suppose a company manufactures a component, and the time to produce a component 
+  follows a Gamma distribution with a shape parameter k=3 and a rate parameter 
+  λ=2(which means the mean production time is k/λ = 3/2 ​= 1.5 hours). 
+  We want to find the probability that the production time for a component is 
+  less than 2 hours.
+
+  --- 
+
+  The Gamma Distribution is widely used in various fields, including:
+
+  - Engineering: To model the time until failure of systems or components.
+  - Finance: To assess the time between market events or transactions.
+  - Healthcare: To study the duration of patient recovery times or the 
+    time between disease occurrences.
+
+  Connection with Poisson Distribution
+
+  It’s also worth noting that the Gamma Distribution is related to the Poisson 
+  Distribution. While the Poisson Distribution models the number of events occurring 
+  within a fixed interval, the Gamma Distribution models the time until 
+  the k-th event occurs. 
+  """
+
+  Note: For this example:
+   k=a
+   λ=b (rather the rate: 1/b)
+
+
+  Cf my Gamble model gamble_gamma_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : d1
+  Probabilities (truncated):
+  27.531946293921578: 0.0001000000000000
+  27.011772722802579: 0.0001000000000000
+  26.514553758244993: 0.0001000000000000
+  25.847222845935619: 0.0001000000000000
+  .........
+  0.243195199481534: 0.0001000000000000
+  0.228326664917978: 0.0001000000000000
+  0.214459814868097: 0.0001000000000000
+  0.100473035466899: 0.0001000000000000
+  mean = 6.05597
+  HPD intervals:
+  HPD interval (0.84): 1.16705237132514..9.79381678922502
+  HPD interval (0.99): 0.22832666491798..17.03768033992526
+
+  var : d1 rate
+  Probabilities (truncated):
+  8.503777818132756: 0.0001000000000000
+  7.369181051031887: 0.0001000000000000
+  6.836933728182181: 0.0001000000000000
+  6.575827646691306: 0.0001000000000000
+  .........
+  0.07605906826376: 0.0001000000000000
+  0.069065092258491: 0.0001000000000000
+  0.049612442394763: 0.0001000000000000
+  0.042462177444864: 0.0001000000000000
+  mean = 1.50543
+  HPD intervals:
+  HPD interval (0.84): 0.29905951852109..2.42898419892456
+  HPD interval (0.99): 0.06906509225849..4.23376060505306
+
+  var : gamma dist mean a b
+  Probabilities:
+  6: 1.0000000000000000
+  mean = 6.0
+
+  var : gamma dist mean a b_rate
+  Probabilities:
+  1.5: 1.0000000000000000
+  mean = 1.5
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.99]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  A = 3, % shape
+  B = 2, % scale
+  BRate = 1/B, % rate = 1/scale
+
+  D1 = gamma_dist(A,B),
+  D1Rate = gamma_dist(A,BRate),
+  
+  add("d1",D1),
+  add("d1 rate",D1Rate),
+  add("gamma dist mean a b",gamma_dist_mean(A,B)),
+  add("gamma dist mean a b_rate",gamma_dist_mean(A,BRate)).
+
+
+/*
+  B:2
+  [a = 3,b = 2,x = 24,q = 0.99]
+  pdf = 0.000221192
+  cdf = 0.999478
+  quantile = 16.8119
+  mean = 6
+  variance = 12
+
+  B:1/2
+  [a = 3,b = 0.5,x = 24,q = 0.99]
+  pdf = 0.0
+  cdf = 1.0
+  quantile = 4.20297
+  mean = 1.5
+  variance = 0.75
+
+*/
+go2 ?=>
+  A = 3,
+  B = 2,
+  X = 24,
+  Q = 0.99,
+  println("B:2"),
+  println([a=A,b=B,x=X,q=Q]),
+  println(pdf=gamma_dist_pdf(A,B,X)),
+  println(cdf=gamma_dist_cdf(A,B,X)),
+  println(quantile=gamma_dist_quantile(A,B,Q)),
+  println(mean=gamma_dist_mean(A,B)),
+  println(variance=gamma_dist_variance(A,B)),    
+  nl,
+  println("B:1/2"),
+  println([a=A,b=1/B,x=X,q=Q]),
+  println(pdf=gamma_dist_pdf(A,1/B,X)),
+  println(cdf=gamma_dist_cdf(A,1/B,X)),
+  println(quantile=gamma_dist_quantile(A,1/B,Q)),
+  println(mean=gamma_dist_mean(A,1/B)),
+  println(variance=gamma_dist_variance(A,1/B)),    
+  
+  nl.
+go2 => true.
+
+
+
+/*
+  Parameter recovery gamma_dist(3,2).
+  Not very bad...
+
+
+data = [3.95453,7.42077,5.90446,2.53461,1.91803,4.48384,1.70806,9.76731,1.68198,15.5934,7.59926,2.66195,10.1447,3.33334,9.55486,7.1879,16.1715,8.33699,4.46802,0.483288,12.8284,5.1417,5.63305,2.94222,10.1371,4.78817,3.6682,1.3995,4.42388,4.47015,4.5482,3.82801,7.28625,4.05071,6.30133,4.36031,4.73734,1.85847,4.41165,7.71051,11.8681,8.119,3.48801,4.1667,5.45302,7.36593,5.14338,6.38422,5.72216,4.02983,5.52436,1.12182,7.74351,3.69298,11.1909,5.54038,16.8615,6.87421,10.1385,2.02066,3.90707,5.50351,4.98024,3.79412,6.6762,6.2058,7.67459,2.90082,7.01157,5.37069,3.7982,5.92084,5.86462,9.99378,4.67325,2.63776,3.47555,10.7578,7.16304,2.94299,4.2316,9.04323,4.15393,7.46441,4.96127,6.1178,3.86769,9.10814,4.707,2.0243,3.83089,4.79661,13.7249,4.40781,10.5171,4.61598,3.48635,6.36018,7.07272,10.7422]
+[min = 0.483288,mean = 5.9837,median = 5.14254,max = 16.8615,variance = 10.5709,stdev = 3.25129]
+Histogram (total 100)
+  0.483:     1 #####                                                        (0.010 / 0.010)
+  0.893:     0                                                              (0.000 / 0.010)
+  1.302:     2 ###########                                                  (0.020 / 0.030)
+  1.712:     3 ################                                             (0.030 / 0.060)
+  2.121:     3 ################                                             (0.030 / 0.090)
+  2.531:     3 ################                                             (0.030 / 0.120)
+  2.940:     3 ################                                             (0.030 / 0.150)
+  3.349:     4 ######################                                       (0.040 / 0.190)
+  3.759:     9 #################################################            (0.090 / 0.280)
+  4.168:     6 #################################                            (0.060 / 0.340)
+  4.578:    11 ############################################################ (0.110 / 0.450)
+  4.987:     6 #################################                            (0.060 / 0.510)
+  5.397:     5 ###########################                                  (0.050 / 0.560)
+  5.806:     5 ###########################                                  (0.050 / 0.610)
+  6.216:     5 ###########################                                  (0.050 / 0.660)
+  6.625:     1 #####                                                        (0.010 / 0.670)
+  7.035:     5 ###########################                                  (0.050 / 0.720)
+  7.444:     5 ###########################                                  (0.050 / 0.770)
+  7.853:     3 ################                                             (0.030 / 0.800)
+  8.263:     2 ###########                                                  (0.020 / 0.820)
+  8.672:     0                                                              (0.000 / 0.820)
+  9.082:     2 ###########                                                  (0.020 / 0.840)
+  9.491:     1 #####                                                        (0.010 / 0.850)
+  9.901:     2 ###########                                                  (0.020 / 0.870)
+ 10.310:     3 ################                                             (0.030 / 0.900)
+ 10.720:     3 ################                                             (0.030 / 0.930)
+ 11.129:     1 #####                                                        (0.010 / 0.940)
+ 11.539:     0                                                              (0.000 / 0.940)
+ 11.948:     1 #####                                                        (0.010 / 0.950)
+ 12.357:     0                                                              (0.000 / 0.950)
+ 12.767:     1 #####                                                        (0.010 / 0.960)
+ 13.176:     0                                                              (0.000 / 0.960)
+ 13.586:     1 #####                                                        (0.010 / 0.970)
+ 13.995:     0                                                              (0.000 / 0.970)
+ 14.405:     0                                                              (0.000 / 0.970)
+ 14.814:     0                                                              (0.000 / 0.970)
+ 15.224:     0                                                              (0.000 / 0.970)
+ 15.633:     1 #####                                                        (0.010 / 0.980)
+ 16.043:     1 #####                                                        (0.010 / 0.990)
+ 16.452:     1 #####                                                        (0.010 / 1.000)
+methods = [median,iqr,mad,skewness]
+explain = Data is clearly skewed. Using robust statistics (median, IQR, MAD, skewness).
+garbage_collect_when = 10
+min_accepted_samples = 100
+var : a
+Probabilities (truncated):
+8.127790567524634: 0.0100000000000000
+8.048257803566873: 0.0100000000000000
+7.912330491427486: 0.0100000000000000
+6.936477626178636: 0.0100000000000000
+.........
+1.627129396250066: 0.0100000000000000
+1.625324507069459: 0.0100000000000000
+1.611469053482389: 0.0100000000000000
+1.580480989804715: 0.0100000000000000
+mean = 3.71002
+HPD intervals:
+HPD interval (0.84): 1.58048098980472..5.16398725340329
+HPD interval (0.99): 1.58048098980472..8.04825780356687
+
+var : b
+Probabilities (truncated):
+3.717419613952478: 0.0100000000000000
+3.310874469257367: 0.0100000000000000
+3.267526171760413: 0.0100000000000000
+3.223266887116836: 0.0100000000000000
+.........
+0.907769948666808: 0.0100000000000000
+0.845653871468107: 0.0100000000000000
+0.80107122696986: 0.0100000000000000
+0.764592988772594: 0.0100000000000000
+mean = 1.859
+HPD intervals:
+HPD interval (0.84): 0.80107122696986..2.45071317183353
+HPD interval (0.99): 0.76459298877259..3.31087446925737
+
+var : post
+Probabilities (truncated):
+24.969500541496302: 0.0100000000000000
+19.285869585991723: 0.0100000000000000
+19.168856868760102: 0.0100000000000000
+16.563950455934059: 0.0100000000000000
+.........
+2.25443355000043: 0.0100000000000000
+1.491336647584206: 0.0100000000000000
+1.321907569349017: 0.0100000000000000
+0.77812475220582: 0.0100000000000000
+mean = 6.30115
+HPD intervals:
+HPD interval (0.84): 2.25443355000043..9.49870944476968
+HPD interval (0.99): 0.77812475220582..19.28586958599172
+
+[min = 0.778125,mean = 6.30115,median = 5.38814,max = 24.9695,variance = 16.1938,stdev = 4.02415]
+Histogram (total 100)
+  0.778:     1 ####                                                         (0.010 / 0.010)
+  1.383:     2 #########                                                    (0.020 / 0.030)
+  1.988:     2 #########                                                    (0.020 / 0.050)
+  2.592:     8 ##################################                           (0.080 / 0.130)
+  3.197:     7 ##############################                               (0.070 / 0.200)
+  3.802:     8 ##################################                           (0.080 / 0.280)
+  4.407:    14 ############################################################ (0.140 / 0.420)
+  5.012:     8 ##################################                           (0.080 / 0.500)
+  5.616:     5 #####################                                        (0.050 / 0.550)
+  6.221:     9 #######################################                      (0.090 / 0.640)
+  6.826:    10 ###########################################                  (0.100 / 0.740)
+  7.431:     5 #####################                                        (0.050 / 0.790)
+  8.036:     5 #####################                                        (0.050 / 0.840)
+  8.640:     1 ####                                                         (0.010 / 0.850)
+  9.245:     2 #########                                                    (0.020 / 0.870)
+  9.850:     1 ####                                                         (0.010 / 0.880)
+ 10.455:     2 #########                                                    (0.020 / 0.900)
+ 11.059:     1 ####                                                         (0.010 / 0.910)
+ 11.664:     1 ####                                                         (0.010 / 0.920)
+ 12.269:     0                                                              (0.000 / 0.920)
+ 12.874:     0                                                              (0.000 / 0.920)
+ 13.479:     2 #########                                                    (0.020 / 0.940)
+ 14.083:     0                                                              (0.000 / 0.940)
+ 14.688:     1 ####                                                         (0.010 / 0.950)
+ 15.293:     0                                                              (0.000 / 0.950)
+ 15.898:     1 ####                                                         (0.010 / 0.960)
+ 16.503:     1 ####                                                         (0.010 / 0.970)
+ 17.107:     0                                                              (0.000 / 0.970)
+ 17.712:     0                                                              (0.000 / 0.970)
+ 18.317:     0                                                              (0.000 / 0.970)
+ 18.922:     1 ####                                                         (0.010 / 0.980)
+ 19.526:     1 ####                                                         (0.010 / 0.990)
+ 20.131:     0                                                              (0.000 / 0.990)
+ 20.736:     0                                                              (0.000 / 0.990)
+ 21.341:     0                                                              (0.000 / 0.990)
+ 21.946:     0                                                              (0.000 / 0.990)
+ 22.550:     0                                                              (0.000 / 0.990)
+ 23.155:     0                                                              (0.000 / 0.990)
+ 23.760:     0                                                              (0.000 / 0.990)
+ 24.365:     1 ####                                                         (0.010 / 1.000)
+recovered = [a = 3.71002,b = 1.859]
+
+
+
+*/
+go3 ?=>
+  Data = gamma_dist_n(3,2,100),
+  println(data=Data),
+  show_simple_stats(Data),
+  show_histogram(Data),
+  [Methods,Explain] = recommend_abc_stats_explained(Data),
+  println(methods=Methods),
+  println(explain=Explain),
+  reset_store,
+  run_model(10_000,$model3(Data),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.99],
+                           % show_histogram,
+                           min_accepted_samples=100 % ,show_accepted_samples=true
+                           , garbage_collect_when=10
+                          ]),
+  Post = get_store().get("post"),
+  show_simple_stats(Post),
+  show_histogram(Post),
+  A = get_store().get("a").mean,
+  B = get_store().get("b").mean,
+  println(recovered=[a=A,b=B]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+  
+model3(Data) =>
+  Max = Data.max,
+  A = uniform(0,30),
+  B = uniform(0,30),
+
+  X = gamma_dist_n(A,B,Data.len),
+  % observe_abc(Data,X),
+  observe_abc(Data,X,1/4),
+  % observe_abc(Data,X,1,[mean,stdev,iqr,mad,skewness]),
+
+  Post = gamma_dist(A,B),
+
+  if observed_ok then
+    add("a",A),
+    add("b",B),
+    add("post",Post),
+  end.

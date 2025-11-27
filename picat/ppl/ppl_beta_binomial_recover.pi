@@ -1,0 +1,421 @@
+/* 
+
+  Beta Binomial recover in Picat.
+
+  Data and parameters from
+  https://en.wikipedia.org/wiki/Beta-binomial_distribution#Example
+
+  Note that the "recover" is a bit misnomer: The recovering is
+  the _histogram_ (frequencies) of the beta_binomial samples, 
+  not the parameters.
+
+  * go2/0 is an attempt to do parameter recovering of the frequences, but that
+    does not work well..
+
+  * go3/0 exapands the dataseta and do a "proper" parameter recovery.
+    Not too bad in term of the total differences of the frequences, 
+    but it does not get the same parameters: it's rather 100-A and 100-B.
+    Let's consider this as an experiment...
+
+  Cf my Gamble model gamble_beta_binomial_recover.rkt
+  (which only do the first - histogram - part).
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  How well does the distribution of the generated samples do by
+  comparing the generated frequencies (histogram) from the 
+  given parameters?
+  
+
+[len = 13,sum = 6115,mean = 470.385,stdev = 457.715]
+var : x
+Probabilities:
+6: 0.2063500000000000
+7: 0.1932000000000000
+5: 0.1690500000000000
+8: 0.1385000000000000
+4: 0.1056000000000000
+9: 0.0754500000000000
+3: 0.0524500000000000
+10: 0.0285000000000000
+2: 0.0194000000000000
+11: 0.0059500000000000
+1: 0.0039000000000000
+12: 0.0012000000000000
+0: 0.0004500000000000
+mean = 6.2101
+Histogram (total 20000)
+      0:     9                                                              (0.000 / 0.000)
+      1:    78 #                                                            (0.004 / 0.004)
+      2:   388 ######                                                       (0.019 / 0.024)
+      3:  1049 ###############                                              (0.052 / 0.076)
+      4:  2112 ###############################                              (0.106 / 0.182)
+      5:  3381 #################################################            (0.169 / 0.351)
+      6:  4127 ############################################################ (0.206 / 0.557)
+      7:  3864 ########################################################     (0.193 / 0.750)
+      8:  2770 ########################################                     (0.139 / 0.889)
+      9:  1509 ######################                                       (0.075 / 0.964)
+     10:   570 ########                                                     (0.029 / 0.993)
+     11:   119 ##                                                           (0.006 / 0.999)
+     12:    24                                                              (0.001 / 1.000)
+HPD intervals:
+HPD interval (0.94): 3.00000000000000..9.00000000000000
+
+
+males=    1 families:     3 est:     3 diff:     0
+males=    2 families:    24 est:    24 diff:     0
+males=    3 families:   104 est:   119 diff:   -15
+males=    4 families:   286 est:   321 diff:   -35
+males=    5 families:   670 est:   646 diff:    24
+males=    6 families:  1033 est:  1034 diff:    -1
+males=    7 families:  1343 est:  1262 diff:    81
+males=    8 families:  1112 est:  1181 diff:   -69
+males=    9 families:   829 est:   847 diff:   -18
+males=   10 families:   478 est:   461 diff:    17
+males=   11 families:   181 est:   174 diff:     7
+males=   12 families:    45 est:    36 diff:     9
+males=   13 families:     7 est:     7 diff:     0
+total_diff = 276
+
+
+*/
+go ?=>
+  Males    = [0,1,2,3,4,5,6,7,8,9,10,11,12],
+  Families = [3,24,104,286,670,1033,1343,1112,829,478,181,45,7],
+  Sum = Families.sum,
+  println([len=Families.len,sum=Families.sum,mean=Families.mean,stdev=Families.stdev]),
+  reset_store,
+  NumRuns = 20_000,
+  run_model(NumRuns,$model(Males,Families),[show_probs,mean,
+                           % show_percentiles,
+                           show_histogram,
+                           show_hpd_intervals,hpd_intervals=[0.94]
+                           % min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  Xs = get_store().get("x").get_freq(),
+  TotalDiff = 0,
+  foreach(I in 0..12)
+    Fam = Families[I+1],
+    % We have to adjust for the number of runs
+    Est  = round(Xs.get(I,0) * Sum / NumRuns),
+    Diff = Fam-Est,
+    TotalDiff := TotalDiff + abs(Diff),
+    printf("males=%5d families:%6d est:%6d diff:%6d\n",I+1,Fam,Est,Diff)
+  end,
+  println(total_diff=TotalDiff),
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Males,Families) =>
+  X = beta_binomial_dist(12,34.09558,31.5715),
+  add("x",X).
+
+
+
+/*
+  Here we try to actually recover the distribution (histogram) of the
+  data. Some trickery is needed since observe_abc/2-3 does not
+  care about the ordering of the data.
+
+  Well, even after that trickery the result is not good, i.e.
+  the parameters A and B are not recovered.
+
+goal = go2
+[len = 13,sum = 6115,mean = 470.385,stdev = 457.715]
+min_accepted_samples = 20
+76.8425 = 81.2892 = [5,28,143,391,803,1266,1337,1067,673,293,86,19,4]
+57.5901 = 60.1571 = [2,30,148,401,789,1109,1328,1165,689,321,106,22,5]
+74.1623 = 70.4439 = [1,23,88,316,675,1084,1358,1170,838,392,136,33,1]
+35.5533 = 34.1377 = [2,18,131,350,696,1086,1256,1166,811,413,139,43,4]
+52.8845 = 51.5234 = [7,21,100,308,721,1123,1349,1174,777,372,135,25,3]
+14.4644 = 11.8044 = [3,21,104,286,541,864,1113,1098,927,660,354,120,24]
+63.547 = 69.6809 = [4,41,186,467,847,1283,1283,1024,632,246,86,15,1]
+74.8511 = 71.1318 = [5,18,93,316,696,1113,1254,1217,842,408,129,22,2]
+71.0607 = 58.2004 = [0,9,57,220,472,904,1288,1210,1036,589,261,61,8]
+72.5696 = 78.3535 = [5,31,154,456,858,1253,1321,1047,610,283,83,12,2]
+36.0173 = 37.1395 = [2,43,128,414,783,1168,1328,1053,712,338,127,15,4]
+58.7529 = 62.4555 = [2,28,157,389,820,1236,1301,1070,690,302,98,20,2]
+74.1568 = 58.9981 = [1,1,44,174,471,869,1308,1237,1059,619,268,57,7]
+17.9597 = 22.1901 = [11,88,300,634,1012,1156,1170,882,528,244,77,12,1]
+33.8141 = 31.8148 = [0,30,114,316,651,1058,1277,1148,837,478,154,46,6]
+86.7722 = 84.8295 = [1,23,105,348,746,1132,1351,1170,735,351,121,28,4]
+50.6429 = 51.8647 = [8,31,137,382,788,1142,1307,1146,731,335,88,19,1]
+70.5649 = 61.5583 = [2,17,64,229,565,994,1286,1276,965,479,193,43,2]
+74.2785 = 78.5712 = [2,34,152,421,806,1243,1271,1042,712,317,91,23,1]
+70.0133 = 60.8514 = [1,12,67,236,553,961,1287,1276,946,532,199,41,4]
+var : a
+Probabilities (truncated):
+86.772245674753677: 0.0500000000000000
+76.842529641856686: 0.0500000000000000
+74.851053941459895: 0.0500000000000000
+74.278467043432627: 0.0500000000000000
+.........
+35.553259186238641: 0.0500000000000000
+33.814112485299866: 0.0500000000000000
+17.959668542239658: 0.0500000000000000
+14.464379155293283: 0.0500000000000000
+mean = 58.3249
+HPD intervals:
+HPD interval (0.94): 14.46437915529328..76.84252964185669
+
+var : b
+Probabilities (truncated):
+84.829506131275323: 0.0500000000000000
+81.28920806631875: 0.0500000000000000
+78.571155005400612: 0.0500000000000000
+78.353458027519963: 0.0500000000000000
+.........
+34.137703959894225: 0.0500000000000000
+31.814757143992349: 0.0500000000000000
+22.190121897584817: 0.0500000000000000
+11.804419621734144: 0.0500000000000000
+mean = 56.8498
+HPD intervals:
+HPD interval (0.94): 22.19012189758482..84.82950613127532
+
+
+
+
+*/
+go2 ?=>
+  Males    = [0,1,2,3,4,5,6,7,8,9,10,11,12],
+  Families = [3,24,104,286,670,1033,1343,1112,829,478,181,45,7],
+  println([len=Families.len,sum=Families.sum,mean=Families.mean,stdev=Families.stdev]),
+  reset_store,
+  run_model(10_000,$model2(Males,Families),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_histogram,
+                           show_hpd_intervals,hpd_intervals=[0.94],
+                           min_accepted_samples=20,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(Males,Families) =>
+  Sum = Families.sum,
+
+  A = uniform(0,100),
+  B = uniform(0,100),
+
+  Freq = beta_binomial_dist_n(12,A,B,Sum).get_freq,
+  X = [ Freq.get(I,0) : I in 0..12],
+  % println(x=X),
+  
+  % The problem with observe_abc is that is does not
+  % discern different ordering of the data.
+  observe_abc(Families,X,1),
+  % So here we observe the ordering.
+  observe(X[1..7].sort == X[1..7]),
+  observe(X[7..12].sort_down == X[7..12]),  
+  
+  % foreach(I in 1..13)
+  %   observe(abs(Families[I]-X[I])<10)
+  % end, 
+
+  if observed_ok then
+    println(A=B=X),
+    add("a",A),
+    add("b",B),    
+  end.
+
+
+
+/* 
+
+  Recovering of parameters, take II.
+
+  Now we generate the full dataset from the Families frequencies and 
+  try to recover the parameters.
+
+  * First: Just 20 accepted samples
+
+  var : a
+  Probabilities (truncated):
+  93.028762141721671: 0.0500000000000000
+  88.033073715881017: 0.0500000000000000
+  87.206620251390447: 0.0500000000000000
+  85.388779214298722: 0.0500000000000000
+  .........
+  52.250783775118549: 0.0500000000000000
+  41.785283313032842: 0.0500000000000000
+  35.749977378058233: 0.0500000000000000
+  27.868609236492127: 0.0500000000000000
+  mean = 70.3046
+  HPD intervals:
+  HPD interval (0.94): 35.74997737805823..93.02876214172167
+
+  var : b
+  Probabilities (truncated):
+  86.484633053878611: 0.0500000000000000
+  86.088541050482789: 0.0500000000000000
+  84.687352219916576: 0.0500000000000000
+  83.893581751684465: 0.0500000000000000
+  .........
+  43.287035749893185: 0.0500000000000000
+  38.675802265608588: 0.0500000000000000
+  35.845676081183214: 0.0500000000000000
+  27.255991765882815: 0.0500000000000000
+  mean = 65.9837
+  HPD intervals:
+  HPD interval (0.94): 35.84567608118321..86.48463305387861
+
+
+  [a_mean = 70.3046,b_mean = 65.9837]
+  males=    1 families:     3 est:     4 diff:    -1
+  males=    2 families:    24 est:    16 diff:     8
+  males=    3 families:   104 est:    86 diff:    18
+  males=    4 families:   286 est:   282 diff:     4
+  males=    5 families:   670 est:   656 diff:    14
+  males=    6 families:  1033 est:  1116 diff:   -83
+  males=    7 families:  1343 est:  1305 diff:    38
+  males=    8 families:  1112 est:  1194 diff:   -82
+  males=    9 families:   829 est:   830 diff:    -1
+  males=   10 families:   478 est:   448 diff:    30
+  males=   11 families:   181 est:   146 diff:    35
+  males=   12 families:    45 est:    27 diff:    18
+  males=   13 families:     7 est:     5 diff:     2
+  total_diff = 334
+
+  Well, that's not too bad. Though the parameters here
+  are about 100-A and 100-B compared to the parameters
+  given in the Wikipedia page:
+  Picat> X=  [100-70.3046,100-65.9837]          
+  X = [29.695400000000006,34.016300000000001]
+
+
+  * Let's try that with 100 samples instead.
+    4min26s 
+    About the same:
+
+  Num accepted samples: 100  Total samples: 1708  (0.059%)
+
+  var : a
+  Probabilities (truncated):
+  99.681361298859755: 0.0100000000000000
+  99.678620416521383: 0.0100000000000000
+  99.471911228947292: 0.0100000000000000
+  99.213668936497385: 0.0100000000000000
+  .........
+  22.88404005713949: 0.0100000000000000
+  22.70270624323874: 0.0100000000000000
+  22.497495553687909: 0.0100000000000000
+  17.425945968099846: 0.0100000000000000
+  mean = 65.532
+  HPD intervals:
+  HPD interval (0.94): 24.35997977124526..99.68136129885976
+
+  var : b
+  Probabilities (truncated):
+  95.719658395144918: 0.0100000000000000
+  94.379289818172936: 0.0100000000000000
+  93.262972493312773: 0.0100000000000000
+  93.08186862295581: 0.0100000000000000
+  .........
+  22.056303882066302: 0.0100000000000000
+  21.666017697037208: 0.0100000000000000
+  20.274972273164881: 0.0100000000000000
+  16.380984483464147: 0.0100000000000000
+  mean = 60.8745
+  HPD intervals:
+  HPD interval (0.94): 21.66601769703721..92.47246821991749
+
+
+  [a_mean = 65.532,b_mean = 60.8745]
+  males=    1 families:     3 est:     3 diff:     0
+  males=    2 families:    24 est:    23 diff:     1
+  males=    3 families:   104 est:    90 diff:    14
+  males=    4 families:   286 est:   280 diff:     6
+  males=    5 families:   670 est:   653 diff:    17
+  males=    6 families:  1033 est:  1063 diff:   -30
+  males=    7 families:  1343 est:  1276 diff:    67
+  males=    8 families:  1112 est:  1264 diff:  -152
+  males=    9 families:   829 est:   839 diff:   -10
+  males=   10 families:   478 est:   437 diff:    41
+  males=   11 families:   181 est:   139 diff:    42
+  males=   12 families:    45 est:    43 diff:     2
+  males=   13 families:     7 est:     5 diff:     2
+  total_diff = 384
+
+  
+*/
+go3 ?=>
+  % Males    = [0,1,2,3,4,5,6,7,8,9,10,11,12],
+  Families = [3,24,104,286,670,1033,1343,1112,829,478,181,45,7],
+  Sum = Families.sum,
+  println([len=Families.len,sum=Families.sum,mean=Families.mean,stdev=Families.stdev]),
+  Data = [  [I : _ in 1..Families[I+1]] : I in 0..12].flatten,
+  % println(data=Data),
+  reset_store,
+  NumRuns = Sum, % 10_000,
+  run_model(NumRuns,$model3(Data,Families),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_histogram,
+                           show_hpd_intervals,hpd_intervals=[0.94],
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  AMean = get_store().get("a").mean(),
+  BMean = get_store().get("b").mean(),
+  println([a_mean=AMean,b_mean=BMean]),
+  Xs = beta_binomial_dist_n(12,AMean,BMean,Sum).get_freq(),
+  TotalDiff = 0,
+  foreach(I in 0..12)
+    Fam = Families[I+1],
+    % We have to adjust for the number of runs
+    Est  = round(Xs.get(I,0) * Sum / NumRuns),
+    Diff = Fam-Est,
+    TotalDiff := TotalDiff + abs(Diff),
+    printf("males=%5d families:%6d est:%6d diff:%6d\n",I+1,Fam,Est,Diff)
+  end,
+  println(total_diff=TotalDiff),
+  
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+  
+model3(Data,Families) =>
+  Len = Data.len,
+  Sum = Families.sum,
+
+  N = random_integer1(100),
+  A = uniform(0,100),
+  B = uniform(0,100),
+  X = beta_binomial_dist_n(12,A,B,Len),
+  observe_abc(Data,X,1/10),
+
+  /*
+  % Adding the stuff from model2 (but it's not better)
+  Freq = beta_binomial_dist_n(12,A,B,Sum).get_freq,
+  XF = [ Freq.get(I,0) : I in 0..12],
+  
+  % The problem with observe_abc is that is does not
+  % discern different ordering of the data.
+  observe_abc(Families,XF,1),
+  % So here we observe the ordering.
+  observe(XF[1..7].sort == XF[1..7]),
+  observe(XF[7..12].sort_down == XF[7..12]),  
+  */
+  if observed_ok then
+    println(A=B),
+    add("a",A),
+    add("b",B),    
+  end.

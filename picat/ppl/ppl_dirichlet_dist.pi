@@ -1,0 +1,153 @@
+/* 
+
+  Dirichlet distribution in Picat.
+
+  https://en.wikipedia.org/wiki/Dirichlet_distribution#Random_variate_generation
+
+  Example: Given a list of random values (0.0..1.0) that sums to 1,
+  what is the probability that the first value is larger than the sum
+  of the second and the third values.
+  Answer: 0.25
+
+  It does not matter how many values there are in the list.
+  Below is a run with 3..10 values and alpha (parameters) of 1s
+ 
+  Please see ppl_distributions.pi and ppl_distributions_test.pi
+  for more on this.
+
+  Cf my Gamble model gamble_.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Using a prior (Alpha) of 1s, it does not matter how many values 
+  there are in the list. Here's a run with 3..10 values and 
+  alpha (parameters) of 1s.
+ 
+  [n = 3,alpha = [1,1,1]]
+  var : d
+  Probabilities (truncated):
+  [0.994247100648135,0.004954634018986,0.000798265332879]: 0.0001000000000000
+  [0.990439139653633,0.001427934790665,0.008132925555702]: 0.0001000000000000
+  [0.986430949795318,0.00486517669733,0.008703873507352]: 0.0001000000000000
+  [0.983093263300149,0.003716119521896,0.013190617177955]: 0.0001000000000000
+  .........
+  [0.000295241276453,0.059552843686465,0.940151915037081]: 0.0001000000000000
+  [0.000238462252767,0.042552169949304,0.957209367797929]: 0.0001000000000000
+  [0.000139560004352,0.713733415968801,0.286127024026846]: 0.0001000000000000
+  [0.00003750975605,0.535618420327,0.464344069916951]: 0.0001000000000000
+  Mean (truncated)
+  mean = [[0.994247,0.00495463,0.000798265] = 0.0001,[0.990439,0.00142793,0.00813293] = 0.0001,[0.986431,0.00486518,0.00870387] = 0.0001,[0.983093,0.00371612,0.0131906] = 0.0001,[0.981585,0.0135059,0.00490902] = 0.0001,[0.98,0.00279564,0.0172043] = 0.0001,[0.978402,0.0136718,0.00792614] = 0.0001,[0.977369,0.0046549,0.0179763] = 0.0001,[0.974856,0.000528652,0.0246158] = 0.0001,[0.969951,0.00722778,0.0228216] = 0.0001,[0.969202,0.0163839,0.014414] = 0.0001,[0.968307,0.0121045,0.0195888] = 0.0001,[0.964959,0.0199561,0.0150847] = 0.0001,[0.962716,0.00330181,0.0339817] = 0.0001,[0.953319,0.00796058,0.0387202] = 0.0001,[0.952199,0.0418908,0.00591063] = 0.0001,[0.952037,0.00190238,0.0460608] = 0.0001,[0.951624,0.0233701,0.0250064] = 0.0001,[0.949501,0.049959,0.000540187] = 0.0001,[0.948352,0.0446716,0.00697636] = 0.0001]
+
+  var : p
+  Probabilities:
+  false: 0.7453000000000000
+  true: 0.2547000000000000
+  mean = 0.2547
+
+  [n = 4,alpha = [1,1,1,1]]
+  var : p
+  mean = 0.2502
+
+  [n = 5,alpha = [1,1,1,1,1]]
+  var : p
+  mean = 0.2511
+
+  [n = 6,alpha = [1,1,1,1,1,1]]
+  var : p
+  mean = 0.2465
+
+  [n = 7,alpha = [1,1,1,1,1,1,1]]
+  var : p
+  mean = 0.2551
+
+  [n = 8,alpha = [1,1,1,1,1,1,1,1]]
+  var : p
+  mean = 0.246
+
+  [n = 9,alpha = [1,1,1,1,1,1,1,1,1]]
+  var : p
+  mean = 0.255
+
+  [n = 10,alpha = [1,1,1,1,1,1,1,1,1,1]]
+  var : p
+  mean = 0.2541
+
+*/
+go ?=>
+  member(N,3..10),
+  Alpha = ones(N,1),
+  println([n=N,alpha=Alpha]),
+  Options = cond(N == 3,[show_probs_trunc,mean],[mean]),
+  reset_store,
+  run_model(10_000,$model(N,Alpha),Options),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(N,Alpha) =>
+  D = dirichlet_dist(Alpha),
+
+  P = check(D[1] > D[2]+D[3]),
+
+  if N == 3 then
+    add("d",D)
+  end,
+  add("p",P).
+
+/*
+  But this changes for other alpha values. Here we have n=3 and 
+  different parameter values (e.g. all 1s, all 10s, etc)
+
+  [n = 3,alpha = [1,1,1]]
+  var : p
+  mean = 0.245
+
+  [n = 3,alpha = [10,10,10]]
+  var : p
+  mean = 0.028
+
+  [n = 3,alpha = [20,20,20]]
+  var : p
+  mean = 0.0033
+
+  [n = 3,alpha = [50,50,50]]
+  var : p
+  mean = 0.0
+
+  [n = 3,alpha = [100,100,100]]
+  var : p
+  mean = 0.0
+
+
+*/
+go2 ?=>
+  N = 3,
+  member(As,[1,10,20,50,100]),
+  Alpha = ones(N,As),
+  println([n=N,alpha=Alpha]),
+  reset_store,
+  run_model(10_000,$model2(N,Alpha),[mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+  
+model2(N,Alpha) =>
+  D = dirichlet_dist(Alpha),
+  P = check(D[1] > D[2]+D[3]),
+  add("p",P).
+

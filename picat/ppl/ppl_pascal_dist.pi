@@ -1,0 +1,612 @@
+/* 
+
+  Pascal distribution in Picat.
+
+
+  The Pascal distribution gives the distribution of the number of trials 
+  with nonzero success probability p before n successes occur
+
+  Here's a simple example from Mathematica PascalDistribution:
+  """
+  Find the probability of getting 3 heads in no more than 6 flips
+
+  heads3 = PascalDistribution(3, 1/2)
+  Probability(x <= 6, x e heads3)
+  -> 
+  0.65625
+
+
+  Find the average number of flips before getting 3 heads:
+  Mean[heads3]
+  -> 6
+  """
+
+  * Find the probability of getting 3 heads in no more than 6 flips
+
+    Picat> X = pascal_dist_cdf(3,0.5,6)
+    X = 0.65625
+
+  * Find the average number of flips before getting 3 heads:
+
+    Picat> X = pascal_dist_mean(3,0.5)                    
+    X = 6.0
+
+  * Simulate the number of coin flips before getting 3 heads:
+
+    Picat> X = pascal_dist_n(3,0.5,20), X.show_scatter_plot(30,10)
+    Scatter plot:
+
+    ymax = 12
+    |      *                       
+    |                              
+    |                              
+    |                              
+    |  *                     *     
+    |*        *     * **           
+    |                       *     *
+    |   *       *        **     *  
+    |     *  *     *           *   
+    |            *                 
+    ymin = 3
+    x = [1,20]
+
+    X = [7,8,5,4,12,4,7,5,3,4,7,7,7,5,5,6,8,4,5,6]
+
+
+  Cf my Gamble model gamble_pascal_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Find the probability of getting 3 heads in no more than 6 flips
+
+  [n = 3,p = 0.5,check = 6]
+  var : d
+  Probabilities:
+  4: 0.1885000000000000
+  5: 0.1831000000000000
+  6: 0.1568000000000000
+  3: 0.1272000000000000
+  7: 0.1243000000000000
+  8: 0.0819000000000000
+  9: 0.0489000000000000
+  10: 0.0392000000000000
+  11: 0.0196000000000000
+  12: 0.0137000000000000
+  13: 0.0069000000000000
+  14: 0.0048000000000000
+  15: 0.0019000000000000
+  16: 0.0018000000000000
+  21: 0.0005000000000000
+  17: 0.0004000000000000
+  20: 0.0002000000000000
+  18: 0.0002000000000000
+  19: 0.0001000000000000
+  mean = 5.9703
+
+  var : prob
+  Probabilities:
+  true: 0.6556000000000000
+  false: 0.3444000000000000
+  mean = 0.6556
+
+  theoretical_mean = 6.0
+  theoretical_prob = 0.65625
+
+*/
+go ?=>
+  N = 3,
+  P = 0.5,
+  Check = 6,
+  println([n=N,p=P,check=Check]),
+  reset_store,
+  run_model(10_000,$model(N,P,Check),[show_probs,mean
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=pascal_dist_mean(N,P)),
+  println(theoretical_prob=pascal_dist_cdf(N,P,Check)),  
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(N,P,Check) =>
+  D = pascal_dist(N,P),
+  Prob = check(D <= Check),
+ 
+  add("d",D),
+  add("prob",Prob).
+
+
+/*
+  """
+  A coin was flipped 10 times and the 7'th head occurred at the 10'th flip. 
+  Find the probability of such an event if the coin is fair:
+
+  fair = PascalDistribution[7, 1/2];
+
+  Probability[x == 10, x e fair]]
+  -> 21/256
+  -> 0.0820313
+
+  Assuming the coin may not be fair, find the most likely value for p:
+  D = PascalDistribution[7, p];
+  FindMaximum[PDF[D, 10], {p, 0.9}]
+  -> {0.18678, {p -> 0.7}}
+  """
+
+  * Find the probability of such an event if the coin is fair:
+
+    Picat> X = pascal_dist_pdf(7,0.5,10)
+    X = 0.08203125
+
+  * Assuming the coin may not be fair, find the most likely value for p:
+
+    Picat> X = [pascal_dist_pdf(7,P,10) : P in 0..0.01..1 ], argmax(X).first=ArgMax,Max=X[ArgMax]
+    ArgMax = 71
+    Max = 0.1867795524
+
+
+  [n = 7,p = 0.5,check = 10]
+  var : d
+  Probabilities:
+  12: 0.1176000000000000
+  13: 0.1058000000000000
+  11: 0.1025000000000000
+  14: 0.1017000000000000
+  15: 0.0888000000000000
+  10: 0.0848000000000000
+  16: 0.0786000000000000
+  17: 0.0626000000000000
+  9: 0.0565000000000000
+  18: 0.0504000000000000
+  19: 0.0345000000000000
+  8: 0.0270000000000000
+  20: 0.0250000000000000
+  21: 0.0185000000000000
+  22: 0.0116000000000000
+  23: 0.0093000000000000
+  24: 0.0067000000000000
+  7: 0.0059000000000000
+  25: 0.0042000000000000
+  26: 0.0030000000000000
+  28: 0.0016000000000000
+  27: 0.0015000000000000
+  30: 0.0006000000000000
+  29: 0.0006000000000000
+  31: 0.0004000000000000
+  36: 0.0001000000000000
+  34: 0.0001000000000000
+  33: 0.0001000000000000
+  mean = 14.013
+
+  var : prob
+  Probabilities:
+  false: 0.9152000000000000
+  true: 0.0848000000000000
+  mean = 0.0848
+
+  theoretical_mean = 14.0
+  theoretical_prob = 0.0820312
+
+
+*/
+go2 ?=>
+  N = 7,
+  P = 0.5,
+  Check = 10,
+  println([n=N,p=P,check=Check]),
+  reset_store,
+  run_model(10_000,$model2(N,P,Check),[show_probs,mean
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=pascal_dist_mean(N,P)),
+  println(theoretical_prob=pascal_dist_pdf(N,P,Check)),  
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(N,P,Check) =>
+  D = pascal_dist(N,P),
+  Prob = check(D == Check),
+ 
+  add("d",D),
+  add("prob",Prob).
+
+
+/*
+  """
+  A basketball player shoots free throws until he hits 4 of them. His probability of scoring 
+  in any one of them is 0.7. 
+
+  Simulate the process:
+  throws = RandomVariate[PascalDistribution[4, 0.7], 50]
+  -> {5, 4, 5, 5, 8, 6, 7, 4, 8, 4, 7, 6, 6, 5, 4, 4, 6, 4, 5, 7, 6, 5, 7, 
+      9, 5, 4, 6, 6, 4, 7, 4, 6, 5, 5, 4, 10, 5, 7, 11, 5, 4, 5, 4, 7, 5, 
+      6, 6, 6, 8, 6}
+
+  Find the average number of throws until 4 hits:
+  Mean[PascalDistribution[4, 0.7]]
+  -> 5.71429
+
+  Find the probability that the player needs exactly 4 shots:
+  Probability[x == 4, x \[Distributed] PascalDistribution[4, 0.7]]
+  -> 0.2401
+  """
+
+  * Simulate the process:
+
+    Picat> X=pascal_dist_n(4,0.7,50), X.show_scatter_plot(40,10)
+    Scatter plot:
+
+    ymax = 14
+    |    *                                   
+    |                                        
+    |                                        
+    |                                        
+    |*             *                         
+    |               * *    *                 
+    |      *      *    *      * * *   *  *  *
+    |      *    *                **       ** 
+    | **  * ****   * * *  * ** *     * *  *  
+    |  **        *      ***   *    ** * *    
+    ymin = 4
+    x = [1,50]
+
+    X = [9,5,5,4,4,14,5,6,7,5,5,5,5,5,6,4,7,5,9,8,5,8,7,5,4,4,5,4,8,5,5,4,7,5,7,6,6,7,4,4,5,4,7,5,4,7,5,6,6,7]
+
+    
+
+  * Find the average number of throws until 4 hits:
+    Picat> X=pascal_dist_mean(4,0.7)                            
+    X = 5.714285714285714
+
+
+  * Find the probability that the player needs exactly 4 shots:
+
+    Picat> X=pascal_dist_pdf(4,0.7,4)
+    X = 0.2401
+
+
+  The model:
+
+  [n = 4,p = 0.7,check = 4]
+  var : d
+  Probabilities:
+  5: 0.2878000000000000
+  4: 0.2390000000000000
+  6: 0.2152000000000000
+  7: 0.1317000000000000
+  8: 0.0696000000000000
+  9: 0.0302000000000000
+  10: 0.0174000000000000
+  11: 0.0049000000000000
+  12: 0.0025000000000000
+  13: 0.0011000000000000
+  14: 0.0005000000000000
+  16: 0.0001000000000000
+  mean = 5.7175
+
+  var : prob
+  Probabilities:
+  false: 0.7610000000000000
+  true: 0.2390000000000000
+  mean = 0.239
+
+  theoretical_mean = 5.71429
+  theoretical_prob = 0.2401
+
+
+*/
+go3 ?=>
+  N = 4,
+  P = 0.7,
+  Check = 4,
+  println([n=N,p=P,check=Check]),
+  reset_store,
+  run_model(10_000,$model3(N,P,Check),[show_probs,mean
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=pascal_dist_mean(N,P)),
+  println(theoretical_prob=pascal_dist_pdf(N,P,Check)),  
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+
+
+model3(N,P,Check) =>
+  D = pascal_dist(N,P),
+  Prob = check(D == Check),
+ 
+  add("d",D),
+  add("prob",Prob).
+
+/*
+  """
+  Messages are being broadcast through two channels, with equal success rates. 
+  Find the probability that no more than 5 broadcasts will be needed to ensure that each 
+  channel has received at least 3 messages:
+  """
+
+  0.01 = 0.0
+  0.02 = 0.0
+  0.03 = 0.0
+  0.04 = 0.0
+  0.05 = 0.0
+  0.06 = 0.0
+  0.07 = 0.0
+  0.08 = 0.0
+  0.09 = 0.0
+  ...
+  0.89 = 0.975
+  0.9 = 0.986
+  0.91 = 0.986
+  0.92 = 0.994
+  0.93 = 0.992
+  0.94 = 0.998
+  0.95 = 0.998
+  0.96 = 1.0
+  0.97 = 1.0
+  0.98 = 1.0
+  0.99 = 1.0
+
+  Scatter plot:
+
+  ymax = 1.0
+  |                                                     *******
+  |                                                 ****       
+  |                                               ***          
+  |                                              *             
+  |                                            **              
+  |                                          **                
+  |                                         **                 
+  |                                        *                   
+  |                                     * *                    
+  |                                    ***                     
+  |                                    *                       
+  |                                  **                        
+  |                                 *                          
+  |                               **                           
+  |                             ***                            
+  |                            **                              
+  |                         ***                                
+  |                      ****                                  
+  |                  ******                                    
+  |******************                                          
+  ymin = 0.0
+  x = [0.01,0.99]
+
+
+
+*/
+go4 ?=>
+  Map = get_global_map(),
+  Map.put(mean,[]),
+  member(P,0.01..0.01..1),
+  reset_store,
+  run_model(1000,$model4(P),[presentation=[]]),
+  Mean = get_store().get("prob").mean,
+  println(P=Mean),
+  Map.put(mean,Map.get(mean)++[[P,Mean]]),
+  fail,
+  nl.
+go4 =>
+  nl,
+  Means = get_global_map().get(mean),
+  show_scatter_plot(Means),
+  nl.
+
+
+
+model4(P) => 
+  C1 = pascal_dist(3,P),
+  C2 = pascal_dist(3,P),
+  
+  Prob = check(max([C1,C2]) <= 5),
+
+  % add("c1",C1),
+  % add("c2",C2),  
+  add("prob",Prob).
+
+
+
+/*
+  Parameter recover
+
+data = [9,4,7,5,5,5,6,8,5,5,7,5,8,4,7,7,8,5,5,4,8,5,5,7,7,5,5,7,7,6,4,6,15,6,5,4,5,6,5,5,5,4,4,7,4,5,4,5,6,7]
+[len = 50,min = 4,mean = 5.86,median = 5.0,max = 15,variance = 3.4004,stdev = 1.84402]
+Histogram (total 50)
+      4:     9 ############################                                 (0.180 / 0.180)
+      5:    19 ############################################################ (0.380 / 0.560)
+      6:     6 ###################                                          (0.120 / 0.680)
+      7:    10 ################################                             (0.200 / 0.880)
+      8:     4 #############                                                (0.080 / 0.960)
+      9:     1 ###                                                          (0.020 / 0.980)
+     15:     1 ###                                                          (0.020 / 1.000)
+[[median,iqr,mad,q10,q90,kurtosis],Data appears strongly skewed and heavy-tailed. Using robust shape statistics.]
+min_accepted_samples = 100
+var : n
+Probabilities:
+4: 0.3500000000000000
+3: 0.2900000000000000
+5: 0.2600000000000000
+6: 0.1000000000000000
+mean = 4.17
+HPD intervals:
+HPD interval (0.84): 3.00000000000000..5.00000000000000
+HPD interval (0.9): 3.00000000000000..5.00000000000000
+HPD interval (0.94): 3.00000000000000..6.00000000000000
+HPD interval (0.99): 3.00000000000000..6.00000000000000
+HPD interval (0.99999): 3.00000000000000..6.00000000000000
+Histogram (total 100)
+      3:    29 ##################################################           (0.290 / 0.290)
+      4:    35 ############################################################ (0.350 / 0.640)
+      5:    26 #############################################                (0.260 / 0.900)
+      6:    10 #################                                            (0.100 / 1.000)
+
+var : p
+Probabilities (truncated):
+0.945663115072005: 0.0100000000000000
+0.937610966792589: 0.0100000000000000
+0.933231164287369: 0.0100000000000000
+0.932355373553806: 0.0100000000000000
+.........
+0.450502605633317: 0.0100000000000000
+0.430430905787869: 0.0100000000000000
+0.423600915079866: 0.0100000000000000
+0.368529530332562: 0.0100000000000000
+mean = 0.761945
+HPD intervals:
+HPD interval (0.84): 0.61581125943134..0.93761096679259
+HPD interval (0.9): 0.54267380077343..0.93323116428737
+HPD interval (0.94): 0.52040731639726..0.94566311507201
+HPD interval (0.99): 0.42360091507987..0.94566311507201
+HPD interval (0.99999): 0.36852953033256..0.94566311507201
+Histogram (total 100)
+  0.369:     1 ######                                                       (0.010 / 0.010)
+  0.383:     0                                                              (0.000 / 0.010)
+  0.397:     0                                                              (0.000 / 0.010)
+  0.412:     0                                                              (0.000 / 0.010)
+  0.426:     2 ############                                                 (0.020 / 0.030)
+  0.441:     0                                                              (0.000 / 0.030)
+  0.455:     2 ############                                                 (0.020 / 0.050)
+  0.470:     0                                                              (0.000 / 0.050)
+  0.484:     0                                                              (0.000 / 0.050)
+  0.498:     1 ######                                                       (0.010 / 0.060)
+  0.513:     0                                                              (0.000 / 0.060)
+  0.527:     1 ######                                                       (0.010 / 0.070)
+  0.542:     3 ##################                                           (0.030 / 0.100)
+  0.556:     1 ######                                                       (0.010 / 0.110)
+  0.571:     2 ############                                                 (0.020 / 0.130)
+  0.585:     2 ############                                                 (0.020 / 0.150)
+  0.599:     0                                                              (0.000 / 0.150)
+  0.614:     3 ##################                                           (0.030 / 0.180)
+  0.628:     1 ######                                                       (0.010 / 0.190)
+  0.643:     2 ############                                                 (0.020 / 0.210)
+  0.657:     5 ##############################                               (0.050 / 0.260)
+  0.672:     2 ############                                                 (0.020 / 0.280)
+  0.686:     3 ##################                                           (0.030 / 0.310)
+  0.700:     2 ############                                                 (0.020 / 0.330)
+  0.715:     2 ############                                                 (0.020 / 0.350)
+  0.729:     4 ########################                                     (0.040 / 0.390)
+  0.744:     2 ############                                                 (0.020 / 0.410)
+  0.758:     2 ############                                                 (0.020 / 0.430)
+  0.773:     2 ############                                                 (0.020 / 0.450)
+  0.787:     4 ########################                                     (0.040 / 0.490)
+  0.801:     3 ##################                                           (0.030 / 0.520)
+  0.816:     4 ########################                                     (0.040 / 0.560)
+  0.830:     5 ##############################                               (0.050 / 0.610)
+  0.845:     3 ##################                                           (0.030 / 0.640)
+  0.859:     3 ##################                                           (0.030 / 0.670)
+  0.874:    10 ############################################################ (0.100 / 0.770)
+  0.888:     5 ##############################                               (0.050 / 0.820)
+  0.902:     4 ########################                                     (0.040 / 0.860)
+  0.917:     6 ####################################                         (0.060 / 0.920)
+  0.931:     8 ################################################             (0.080 / 1.000)
+
+var : post
+Probabilities:
+5: 0.2600000000000000
+6: 0.2400000000000000
+7: 0.1600000000000000
+4: 0.1600000000000000
+3: 0.0900000000000000
+8: 0.0600000000000000
+9: 0.0200000000000000
+16: 0.0100000000000000
+mean = 5.59
+HPD intervals:
+HPD interval (0.84): 3.00000000000000..7.00000000000000
+HPD interval (0.9): 3.00000000000000..7.00000000000000
+HPD interval (0.94): 3.00000000000000..8.00000000000000
+HPD interval (0.99): 3.00000000000000..9.00000000000000
+HPD interval (0.99999): 3.00000000000000..16.00000000000000
+Histogram (total 100)
+      3:     9 #####################                                        (0.090 / 0.090)
+      4:    16 #####################################                        (0.160 / 0.250)
+      5:    26 ############################################################ (0.260 / 0.510)
+      6:    24 #######################################################      (0.240 / 0.750)
+      7:    16 #####################################                        (0.160 / 0.910)
+      8:     6 ##############                                               (0.060 / 0.970)
+      9:     2 #####                                                        (0.020 / 0.990)
+     16:     1 ##                                                           (0.010 / 1.000)
+
+theoretical_mean = 5.71429
+Post:
+normalized_rmse = 0.290964
+Good match; only small differences across the distribution.
+abc_fit_score_explained = [0.495037,Moderate mismatch; distributions differ in shape.]
+
+*/
+
+go5 ?=>
+  N = 4,
+  P = 0.7,
+  println([n=N,p=P]),  
+  Data = pascal_dist_n(N,P,50),
+  println(data=Data),
+  show_simple_stats(Data),
+  show_histogram(Data),
+  println(recommend_abc_stats_explained(Data)),
+  reset_store,
+  run_model(10_000,$model5(Data),[show_probs_trunc,mean,
+                           % show_simple_stats,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           show_histogram,
+                           min_accepted_samples=100 % ,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=pascal_dist_mean(N,P)),
+  analyze_post_simple(Data),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go5 => true.
+  
+  
+model5(Data) =>
+  N = Data.min-1 + random_integer(Data.max*2),
+  P = beta_dist(1,1),
+
+  X = pascal_dist_n(N,P,Data.len),
+  % observe_abc(Data,X,1/2),
+  observe_abc(Data,X,1,[median,iqr,mad,skewness]),
+  
+  Post = pascal_dist(N,P),
+
+  if observed_ok then
+    add("n",N),
+    add("p",P),
+    add("post",Post)
+  end.
+
+

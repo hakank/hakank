@@ -1,0 +1,161 @@
+/* 
+
+  Negative binomial basketball II in Picat.
+
+  From Mathematica (NegativeBinomialDistribution)
+  """
+  Assume the probability of fouling for each minute interval is 0.1 independently. 
+  Simulate the fouling process for 30 minutes
+
+    RandomVariate(BernoulliDistribution(0.1), 30)
+    -> 
+    (0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0)
+
+  A basketball player fouls out after 6 fouls. Find the expected playing time until foul out:
+    NExpectation(x + 6, x -> NegativeBinomialDistribution(6, 0.1))
+    -> 
+    60
+  """
+
+  * Assume the probability of fouling for each minute interval is 0.1 independently. 
+    Simulate the fouling process for 30 minutes
+
+    Picat> X = bernoulli_dist_n(0.1,30)
+    X = [0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0]
+
+  * A basketball player fouls out after 6 fouls. Find the expected playing time until foul out:
+
+    Picat> X=negative_binomial_dist_mean(6,0.1) + 6
+    X = 60.0
+
+
+  Cf my Gamble model gamble_negative_binomial_basketball2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Let's first simulate this with bernoulli trials.
+
+  var : n
+  Probabilities (truncated):
+  51: 0.0221000000000000
+  52: 0.0202000000000000
+  49: 0.0200000000000000
+  58: 0.0195000000000000
+  46: 0.0192000000000000
+  54: 0.0188000000000000
+  60: 0.0187000000000000
+  53: 0.0183000000000000
+  44: 0.0181000000000000
+  50: 0.0179000000000000
+  .........
+  180: 0.0001000000000000
+  170: 0.0001000000000000
+  169: 0.0001000000000000
+  162: 0.0001000000000000
+  159: 0.0001000000000000
+  155: 0.0001000000000000
+  154: 0.0001000000000000
+  151: 0.0001000000000000
+  148: 0.0001000000000000
+  137: 0.0001000000000000
+  mean = 60.0166
+  [min = 13,mean = 60.0166,median = 57.0,max = 180,variance = 525.255,stdev = 22.9184]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,truncate_size=10,
+                           show_simple_stats
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 0,
+  OK = false,
+  NumBs = 0,
+  while (OK == false)
+    N := N + 1,
+    B = bernoulli_dist(0.1),
+    if B == 1 then
+      NumBs := NumBs + 1
+    end,
+    if NumBs == 6 then
+      OK := true
+    end
+  end,
+  
+  add("n",N).
+
+
+/*
+   Now we simulate using negtive_binomial:
+
+   var : time until foul out
+   Probabilities (truncated):
+   54: 0.0203000000000000
+   53: 0.0200000000000000
+   61: 0.0195000000000000
+   62: 0.0194000000000000
+   56: 0.0190000000000000
+   51: 0.0189000000000000
+   43: 0.0189000000000000
+   52: 0.0188000000000000
+   45: 0.0183000000000000
+   55: 0.0176000000000000
+   .........
+   163: 0.0001000000000000
+   161: 0.0001000000000000
+   158: 0.0001000000000000
+   157: 0.0001000000000000
+   156: 0.0001000000000000
+   155: 0.0001000000000000
+   152: 0.0001000000000000
+   143: 0.0001000000000000
+   141: 0.0001000000000000
+   7: 0.0001000000000000
+   mean = 59.9162
+   [min = 7,mean = 59.9162,median = 57.0,max = 186,variance = 529.555,stdev = 23.0121]
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean,truncate_size=10,
+                            show_simple_stats
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  V = negative_binomial_dist(6,0.1),
+  TimeUntilFoulOut = V + 6,
+  
+  % add("v",V),
+  add("time until foul out",TimeUntilFoulOut).
+

@@ -1,0 +1,178 @@
+/* 
+
+  Sixty boys out of next 100 births in Picat.
+
+  From http://www.statistics101.net/statistics101web_000007.htm
+  """
+  From CliffsQuickReview Statistics, p. 60, example 4 
+  Assuming an equal chance of a new baby being a  
+  boy or a girl (that is pi=0.5), what is the 
+  likelihood that 60 or more out of the next 100 
+  births at a local hospital will be boys? 
+  The answer computed from the cumulative 
+  binomial distribution is 0.02844. The book's answer, 
+  0.0228, is based on the normal approximation to the  
+  binomial, and is therefore somewhat in error. 
+  """
+
+  Three methods:
+  - resampling
+  - binomial
+  - gaussian approximation
+
+  Using CDF:
+  Picat> X = 1-binomial_dist_cdf(100,0.5,59)
+  X = 0.028443966820593
+
+  Cf my Gamble model gamble_sixty_boys_out_of_next_100_births.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Resampling
+
+  var : s
+  Probabilities (truncated):
+  51: 0.0795000000000000
+  52: 0.0786000000000000
+  50: 0.0777000000000000
+  49: 0.0747000000000000
+  .........
+  31: 0.0002000000000000
+  71: 0.0001000000000000
+  67: 0.0001000000000000
+  28: 0.0001000000000000
+  mean = 50.0423
+
+  var : p
+  Probabilities:
+  false: 0.9766000000000000
+  true: 0.0234000000000000
+  mean = 0.0234
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Sample = resample(100,[0,1]), % 0: girls, 1: boy
+  S = Sample.sum,
+  P = check(S >= 60),
+  
+  add("s",S),
+  add("p",P).
+
+
+/*
+  Bernoulli dist
+
+  var : s
+  Probabilities (truncated):
+  49: 0.0815000000000000
+  50: 0.0796000000000000
+  51: 0.0777000000000000
+  52: 0.0734000000000000
+  .........
+  67: 0.0005000000000000
+  66: 0.0005000000000000
+  33: 0.0001000000000000
+  32: 0.0001000000000000
+  mean = 50.035
+
+  var : p
+  Probabilities:
+  false: 0.9703000000000001
+  true: 0.0297000000000000
+  mean = 0.0297
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  S = binomial_dist(100,0.5),
+  P = check(S >= 60),
+  
+  add("s",S),
+  add("p",P).
+
+
+/*
+  Gaussian approximation of binomial distribution
+
+  var : s
+  Probabilities (truncated):
+  69.001210332038966: 0.0001000000000000
+  68.565958041104764: 0.0001000000000000
+  67.984853367071224: 0.0001000000000000
+  67.759520241931483: 0.0001000000000000
+  .........
+  34.539909439173968: 0.0001000000000000
+  34.381377820894627: 0.0001000000000000
+  34.088086584576175: 0.0001000000000000
+  34.00417730532682: 0.0001000000000000
+  mean = 50.0333
+
+  var : p
+  Probabilities:
+  false: 0.9762000000000000
+  true: 0.0238000000000000
+  mean = 0.0238
+
+*/
+go3 ?=>
+  reset_store,
+  run_model(10_000,$model3,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+  
+model3() =>
+  Mu = 100*0.5,
+  Sigma = sqrt(100*0.5 * (1-0.5)),
+  S = normal_dist(Mu,Sigma),
+  P = check(S > 60),
+  add("s",S),
+  add("p",P).

@@ -1,0 +1,177 @@
+/* 
+
+  Erlang distribution in Picat.
+
+  See ppl_distributions.pi and ppl_distributions_test.pi
+  for more on this.
+
+  From Mathematica's ErlangDistribution:
+  """
+  Assume that the delay caused by a traffic signal is exponentially distributed 
+  with an average delay of 0.5 minutes. A driver has to drive a route that passes through 
+  seven unsynchronized traffic signals. Find the distribution for the delay passing all signals:
+
+  Mean[ExponentialDistribution[Lambda]] == 0.5
+  -> 1/Lambda == 0.5
+
+  Hence the distribution for the sum of 7 independent exponential variables:
+  trafficDelayDistribution = ErlangDistribution[7, 2]
+
+  Find the probability that traffic signals cause a delay greater than 5 minutes
+  Probability[d > 5, d e trafficDelayDistribution]
+  -> 25799/(9 E^10)
+  -> 0.130141
+  """  
+
+  Exact probabilities:
+  Picat> X=1-erlang_dist_cdf(7,2,5)
+  X = 0.130141420882483
+
+  Picat> X=erlang_dist_mean(7,2)  
+  X = 3.5
+
+  Cf my Gamble model gamble_erlang_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  var : d1
+  Probabilities (truncated):
+  10.560541024258841: 0.0001000000000000
+  10.118737469559784: 0.0001000000000000
+  10.09753803652848: 0.0001000000000000
+  9.613430593106536: 0.0001000000000000
+  .........
+  0.689298800401228: 0.0001000000000000
+  0.687309848008856: 0.0001000000000000
+  0.575429555186003: 0.0001000000000000
+  0.400104556818716: 0.0001000000000000
+  mean = 3.51958
+
+  var : d2
+  Probabilities (truncated):
+  10.299214890797595: 0.0001000000000000
+  9.905656666614085: 0.0001000000000000
+  9.69249349419: 0.0001000000000000
+  9.688622252744249: 0.0001000000000000
+  .........
+  0.630862930325916: 0.0001000000000000
+  0.591075896689323: 0.0001000000000000
+  0.416461492072138: 0.0001000000000000
+  0.279340578716277: 0.0001000000000000
+  mean = 3.47693
+
+  var : p1
+  Probabilities:
+  false: 0.8672000000000000
+  true: 0.1328000000000000
+  mean = [false = 0.8672,true = 0.1328]
+
+  var : p2
+  Probabilities:
+  false: 0.8729000000000000
+  true: 0.1271000000000000
+  mean = [false = 0.8729,true = 0.1271]
+
+
+*/
+go ?=>
+
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+
+erlang2(Lambdas) = sum([exponential_dist(Lambda) : Lambda in Lambdas]).
+
+model() =>
+  D1 = erlang_dist(7,2), % Mathematica's version
+  D2 = erlang2(ones(7,2)),
+
+  P1 = check(D1 > 5),
+  P2 = check(D2 > 5),  
+  
+  add("d1",D1),
+  add("d2",D2),
+  add("p1",P1),
+  add("p2",P2).
+
+
+/* 
+
+  Parameter recovery of erlang_dist(7,2) 
+
+  Not very good.
+
+  Num accepted samples: 100  Total samples: 346458  (0.000%)
+
+  var : K
+  Probabilities (truncated):
+  11: 0.1500000000000000
+  10: 0.1300000000000000
+  9: 0.0900000000000000
+  8: 0.0900000000000000
+  .........
+  21: 0.0100000000000000
+  19: 0.0100000000000000
+  4: 0.0100000000000000
+  3: 0.0100000000000000
+  mean = 10.32
+
+  var : lambda
+  Probabilities (truncated):
+  7.638631692326175: 0.0100000000000000
+  6.76819077728041: 0.0100000000000000
+  6.708001228957484: 0.0100000000000000
+  6.608792470256001: 0.0100000000000000
+  .........
+  1.408109779512421: 0.0100000000000000
+  1.380107964480905: 0.0100000000000000
+  1.348176530905849: 0.0100000000000000
+  1.039692394851936: 0.0100000000000000
+  mean = 3.44157
+
+
+  Mathematica: 
+  FindDistributionParameters[data, ErlangDistribution[k, lambda]]
+  -> {k -> 9, lambda -> 2.98245
+
+*/
+go2 ?=>
+  Data = erlang_dist_n(7,2,20),
+  println(data=Data),
+  reset_store,
+  run_model(10_000,$model2(Data),[show_probs_trunc,mean,
+                                  min_accepted_samples=100,show_accepted_samples=true
+                                 ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+
+model2(Data) =>
+  K = random_integer1(100),
+  Lambda = uniform(0.0001,100),
+  
+  X = erlang_dist_n(K,Lambda,Data.len),
+  observe_abc(Data,X,1/5),
+  
+  if observed_ok then
+    println(K=Lambda),
+    add("K",K),
+    add("lambda",Lambda),
+  end.

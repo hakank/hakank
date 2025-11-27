@@ -1,0 +1,229 @@
+/* 
+
+  Italian murder in Picat.
+
+  From Bellodi et.al  "Nonground Abductive Logic Programming with Probabilistic Integrity Constraints"
+  https://arxiv.org/pdf/2108.03033.pdf
+  Page 2
+  """
+  Example 1
+  Several years ago, a murder in Italy captured the attention of the population: a woman was
+  murdered, and the main indicted person was her husband. The collected evidence included the
+  following facts: the woman was killed in the house where she lived with her husband (house1); a
+  pillow stained with the blood of the victim was found in another house (house2) some hundreds
+  of km away; the husband had the keys of this second house.
+
+  ... 
+  (Page 12)
+  This solution (the most likely) states that the husband was the killer with a chance of 91%.
+  ...
+  This solution(much less probable) states that some unknown person entered the two houses 
+  and committed the murder with a chance of 9%.
+  """
+
+  Here are three somewhat different approaches to the problem
+
+  Cf my Gamble model gamble_italian_murder.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : killed husband, killed other
+  Probabilities:
+  [true,false]: 0.9074608408903545
+  [false,true]: 0.0925391591096455
+  mean = [[true,false] = 0.907461,[false,true] = 0.0925392]
+
+  var : enter husband house1, enter husband house2
+  Probabilities:
+  [true,true]: 0.4876339653751031
+  [false,true]: 0.2149629018961253
+  [true,false]: 0.2075432811211871
+  [false,false]: 0.0898598516075845
+  mean = [[true,true] = 0.487634,[false,true] = 0.214963,[true,false] = 0.207543,[false,false] = 0.0898599]
+
+  var : enter other house1, enter other house2
+  Probabilities:
+  [false,false]: 0.4800082440230833
+  [true,false]: 0.2244435284418796
+  [false,true]: 0.2040395713107997
+  [true,true]: 0.0915086562242374
+  mean = [[false,false] = 0.480008,[true,false] = 0.224444,[false,true] = 0.20404,[true,true] = 0.0915087]
+
+  var : killed husband
+  Probabilities:
+  true: 0.9074608408903545
+  false: 0.0925391591096455
+  mean = [true = 0.907461,false = 0.0925392]
+
+  var : killed other
+  Probabilities:
+  false: 0.9074608408903545
+  true: 0.0925391591096455
+  mean = [false = 0.907461,true = 0.0925392]
+
+  var : killer
+  Probabilities:
+  husband: 0.9074608408903545
+  other: 0.0925391591096455
+  mean = [husband = 0.907461,other = 0.0925392]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean %,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+% The probability that a person (husband or some other) enters a house
+% and did the killing
+enter(Person,House) = Res =>
+  if Person == husband then
+    % The husband has keys to both houses
+    Res = flip(7/10)
+  else
+    % Someone else had to do a break in to enter the house
+    Res = flip(3/10)
+  end.
+  
+% Probability that a person (husband or some other) killed, i.e.
+% entered both houses.
+killed(Person) = cond( (enter(Person,house1) == true, enter(Person,house2) == true),true,false).  
+
+
+model() =>
+
+  % Here we manually memoise all calls.
+
+  KilledHusband = killed(husband),
+  KilledOther = killed(other),
+
+  EnterHusbandHouse1 = enter(husband,house1),
+  EnterHusbandHouse2 = enter(husband,house2),  
+
+  EnterOtherHouse1 = enter(other,house1),
+  EnterOtherHouse2 = enter(other,house2),  
+
+  % Exactly one person killed the wife, either the husband or somebody else.
+  observe(  xor(KilledHusband,KilledOther) ),
+
+  Killer = cond(KilledHusband == true, husband,other),
+
+  if observed_ok then
+    add("killed husband, killed other",[KilledHusband,KilledOther]),
+    add("enter husband house1, enter husband house2",[EnterHusbandHouse1,EnterHusbandHouse2]),
+    add("enter other house1, enter other house2",[EnterOtherHouse1,EnterOtherHouse2]),
+    add("killed husband",KilledHusband),
+    add("killed other",KilledOther),
+    add("killer",Killer)
+  end.
+
+
+/*
+  Alternative model using maps for memoisation (and no functions)
+
+  var : killer
+  Probabilities:
+  husband: 0.9108971732896354
+  other: 0.0891028267103646
+  mean = [husband = 0.910897,other = 0.0891028]
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+
+% Using maps instead
+model2() =>
+
+  Enter = new_map([ [P,H]=cond(P == husband,flip(7/10),flip(3/10)) : P in [husband,other],
+                                                                      H in [house1,house2]]),
+  Killed = new_map([ P=cond( (Enter.get([P,house1]) == true, Enter.get([P,house2]) == true),true,false) :
+                                                                  P in [husband,other]]),
+
+  % Exactly one person killed the wife, either the husband or somebody else.
+  observe(  xor(Killed.get(husband),Killed.get(other)) ),
+
+  Killer = cond(Killed.get(husband) == true, husband,other),
+
+  if observed_ok then
+    add("killer",Killer)
+  end.
+
+
+
+
+/*
+  Using "local" tabling
+
+  Probabilities:
+  husband: 0.9018759018759018
+  other: 0.0981240981240981
+  mean = [husband = 0.901876,other = 0.0981241]
+  
+*/
+go3 ?=>
+  reset_store,
+  run_model(10_000,$model3,[show_probs_trunc,mean,
+                            use_local_tabling=true  % Needed for local tabling
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+  
+
+% The probability that a person (husband or some other) enters a house
+% and did the killing
+table
+enter3(Person,House) = Res =>
+  if Person == husband then
+    % The husband has keys to both houses
+    Res = flip(7/10)
+  else
+    % Someone else had to do a break in to enter the house
+    Res = flip(3/10)
+  end.
+  
+% Probability that a person (husband or some other) killed, i.e.
+% entered both houses.
+table
+killed3(Person) = cond( (enter3(Person,house1) == true, enter3(Person,house2) == true),true,false).  
+
+model3() =>
+
+  % Exactly one person killed the wife, either the husband or somebody else.
+  observe(  xor(killed3(husband),killed(other))  ),
+  Killer = cond(killed3(husband) == true, husband,other),
+  if observed_ok then
+    add("killer",Killer)
+  end.
+

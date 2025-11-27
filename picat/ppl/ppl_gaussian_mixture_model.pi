@@ -1,0 +1,222 @@
+/* 
+
+  Gaussian mixture model in Picat.
+
+  Although it's a small model, it's quite hard for Picat PPL's
+  rejection sampling system. 
+
+  We have to increase the Err value to about 0.09 to get
+  some reasonble result (in a fair time).
+
+  This is a port of my Gamble model gamble_gaussian_mixture_model.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+
+  Forcing 100 acceptepted samples (with min_accepted_samples=100).
+  Note: It took 4min13s and required over 12 milion runs.
+
+
+  Num accepted samples: 96  Total samples: 11830537  (0.000%)
+  Num accepted samples: 97  Total samples: 11869984  (0.000%)
+  Num accepted samples: 98  Total samples: 11872754  (0.000%)
+  Num accepted samples: 99  Total samples: 12011308  (0.000%)
+  Num accepted samples: 100  Total samples: 12084289  (0.000%)
+
+  var : a
+  Probabilities (truncated):
+  0.993750816208194: 0.0100000000000000
+  0.98649902827409: 0.0100000000000000
+  0.960944619942896: 0.0100000000000000
+  0.959238421152923: 0.0100000000000000
+  .........
+  -0.867987985661248: 0.0100000000000000
+  -0.872343945257526: 0.0100000000000000
+  -0.935584045916602: 0.0100000000000000
+  -0.947756657352558: 0.0100000000000000
+  mean = 0.107472
+
+  var : b
+  Probabilities (truncated):
+  0.998077448456584: 0.0100000000000000
+  0.974636652495077: 0.0100000000000000
+  0.974445085960647: 0.0100000000000000
+  0.973338090802235: 0.0100000000000000
+  .........
+  -0.719659695271244: 0.0100000000000000
+  -0.726276176854165: 0.0100000000000000
+  -0.75362115341873: 0.0100000000000000
+  -0.795406532378591: 0.0100000000000000
+  mean = 0.355496
+
+  var : p
+  Probabilities (truncated):
+  0.994771233657491: 0.0100000000000000
+  0.976869455797979: 0.0100000000000000
+  0.954116913582256: 0.0100000000000000
+  0.952604341283772: 0.0100000000000000
+  .........
+  0.000288556223269: 0.0100000000000000
+  0.000056750851051: 0.0100000000000000
+  0.000018449320422: 0.0100000000000000
+  0.000002283117637: 0.0100000000000000
+  mean = 0.319596
+
+  var : a-b
+  Probabilities (truncated):
+  1.304129485648186: 0.0100000000000000
+  1.208585815135662: 0.0100000000000000
+  1.122463006117597: 0.0100000000000000
+  1.100623026071406: 0.0100000000000000
+  .........
+  -1.549089476256207: 0.0100000000000000
+  -1.601155731641294: 0.0100000000000000
+  -1.608813714053861: 0.0100000000000000
+  -1.700892858999266: 0.0100000000000000
+  mean = -0.248025
+
+  var : a>b
+  Probabilities:
+  false: 0.6600000000000000
+  true: 0.3400000000000000
+  mean = [false = 0.66,true = 0.34]
+
+*/
+go ?=>
+  reset_store,
+  run_model(1_000_000,$model,[show_probs_trunc,mean
+                              , min_accepted_samples=100,show_accepted_samples=true
+                                    ]),
+  show_store_lengths(), nl,
+  nl.
+go => true.
+
+model() =>
+  Xs = [0.2,1.0,0.5,0.6],
+  Len = Xs.len,
+
+  P = beta_dist(0.5,1),
+  A = uniform_dist(-1,1),
+  B = uniform_dist(-1,1),
+
+  X = [cond(flip(P) == true, normal_dist(A, 1.0), normal_dist(B,1.0))  : _I in 1..Len],
+
+  Err = 0.09, % is quite large acceptance interval...
+  foreach(I in 1..Xs.len)
+    observe( abs(X[I]-Xs[I]) < Err),
+  end,
+
+  if observed_ok then
+    add("a",A),
+    add("b",B),
+    add("p",P),
+    add("a-b",A-B),
+    add("a>b",cond(A>B,true,false))
+  end.
+
+
+
+/*
+  Another approach: Using ABC observations.
+
+  var : a
+  Probabilities (truncated):
+  0.99998082779347: 0.0001000000000000
+  0.999831006862145: 0.0001000000000000
+  0.999397086910623: 0.0001000000000000
+  0.999278676695786: 0.0001000000000000
+  .........
+  -0.998103246091913: 0.0001000000000000
+  -0.998595000244023: 0.0001000000000000
+  -0.998834804631227: 0.0001000000000000
+  -0.998859393409854: 0.0001000000000000
+  mean = 0.128063
+
+  var : b
+  Probabilities (truncated):
+  0.999886911362357: 0.0001000000000000
+  0.999670034274305: 0.0001000000000000
+  0.999527733772773: 0.0001000000000000
+  0.99936184100777: 0.0001000000000000
+  .........
+  -0.998055603354264: 0.0001000000000000
+  -0.998253926633975: 0.0001000000000000
+  -0.998611555434117: 0.0001000000000000
+  -0.999893804080735: 0.0001000000000000
+  mean = 0.244097
+
+  var : p
+  Probabilities (truncated):
+  0.999510459937437: 0.0001000000000000
+  0.999307944402804: 0.0001000000000000
+  0.999213582713089: 0.0001000000000000
+  0.999191783539039: 0.0001000000000000
+  .........
+  0.0000001533819: 0.0001000000000000
+  0.000000085678399: 0.0001000000000000
+  0.000000074552126: 0.0001000000000000
+  0.000000036802924: 0.0001000000000000
+  mean = 0.337463
+
+  var : a-b
+  Probabilities (truncated):
+  1.910370689775036: 0.0001000000000000
+  1.904775910035137: 0.0001000000000000
+  1.894407535853986: 0.0001000000000000
+  1.893323831210529: 0.0001000000000000
+  .........
+  -1.930334139582857: 0.0001000000000000
+  -1.94642492474356: 0.0001000000000000
+  -1.94845068452342: 0.0001000000000000
+  -1.983654938630599: 0.0001000000000000
+  mean = -0.116035
+
+  var : a>b
+  Probabilities:
+  false: 0.5556000000000000
+  true: 0.4444000000000000
+  mean = [false = 0.5556,true = 0.4444]
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(1_000_000,$model2,[show_probs_trunc,mean
+                              , min_accepted_samples=10000,show_accepted_samples=true
+                                    ]),
+  show_store_lengths(), nl,
+  nl.
+go2 => true.
+
+model2() =>
+  Xs = [0.2,1.0,0.5,0.6],
+  Len = Xs.len,
+
+  P = beta_dist(0.5,1),
+  A = uniform_dist(-1,1),
+  B = uniform_dist(-1,1),
+
+  X = [cond(flip(P) == true, normal_dist(A, 1.0), normal_dist(B,1.0))  : _I in 1..Len],
+
+  % Err = 0.09, % is quite large acceptance interval...
+  % foreach(I in 1..Xs.len)
+  %   observe( abs(X[I]-Xs[I]) < Err),
+  % end,
+  observe_abc(Xs,X,1/2),
+  
+  if observed_ok then
+    add("a",A),
+    add("b",B),
+    add("p",P),
+    add("a-b",A-B),
+    add("a>b",cond(A>B,true,false))
+  end.
+  

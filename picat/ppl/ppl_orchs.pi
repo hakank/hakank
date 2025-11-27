@@ -1,0 +1,199 @@
+/* 
+
+  Orch problem in Picat.
+
+  From Church
+  """
+  ;;; Rejection sampling
+  (define (take-sample)
+    (define Legolas (random-integer 21))
+    (define Gimli (random-integer 21))
+    (define Eowyn (random-integer  21))
+    (define total-orcs (+ Legolas Gimli Eowyn))
+    (if (>= total-orcs 45) Gimli (take-sample)))
+  (hist (repeat 1000 take-sample) "Number of Orcs Gimli Took Out, Given That Everyone Took Out More Than 45")
+  """
+
+  Cf my Gamble model gamble_orchs.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : gimli
+  Probabilities:
+  19: 0.1265108783239323
+  20: 0.1216760676873489
+  21: 0.1192586623690572
+  18: 0.1015310233682514
+  16: 0.0926672038678485
+  17: 0.0765511684125705
+  15: 0.0709105560032232
+  14: 0.0644641418211120
+  13: 0.0644641418211120
+  12: 0.0402900886381950
+  11: 0.0354552780016116
+  10: 0.0249798549556809
+  9: 0.0249798549556809
+  8: 0.0153102336825141
+  7: 0.0072522159548751
+  6: 0.0056406124093473
+  5: 0.0056406124093473
+  4: 0.0024174053182917
+  mean = 16.3505
+  [len = 1241,min = 4,mean = 16.3505,median = 17,max = 21,variance = 14.1519,stdev = 3.7619]
+
+  var : total orchs
+  Probabilities:
+  45: 0.1369863013698630
+  46: 0.1273166800966962
+  47: 0.1152296535052377
+  49: 0.1063658340048348
+  48: 0.0966962127316680
+  50: 0.0934730056406124
+  51: 0.0676873489121676
+  52: 0.0612409347300564
+  53: 0.0451248992747784
+  54: 0.0370668815471394
+  55: 0.0330378726833199
+  56: 0.0273972602739726
+  57: 0.0241740531829170
+  58: 0.0112812248186946
+  59: 0.0072522159548751
+  60: 0.0056406124093473
+  62: 0.0016116035455278
+  61: 0.0016116035455278
+  63: 0.0008058017727639
+  mean = 49.3924
+  [len = 1241,min = 45,mean = 49.3924,median = 49,max = 63,variance = 13.3682,stdev = 3.65625]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs,mean,
+                           show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Legolas = discrete_uniform_dist(0,21),
+  Gimli = discrete_uniform_dist(0,21),
+  Eowyn = discrete_uniform_dist(0,21),
+  TotalOrchs = Legolas + Gimli + Eowyn,
+
+  observe(TotalOrchs >= 45),
+     
+  if observed_ok then
+    % add("legolas",Legolas),
+    add("gimli",Gimli),
+    add("total orchs",TotalOrchs),
+    % add("eowyn",Eowyn),    
+  end.
+
+
+/*
+  This is variant - perhaps more faithful to the Church model - 
+  which does not involve run_model/2 (so it needs some more
+  housekeeping).
+  
+
+  Gimli:
+  Probabilities:
+  21: 0.1416000000000000
+  20: 0.1309000000000000
+  19: 0.1123000000000000
+  18: 0.1008000000000000
+  17: 0.0920000000000000
+  16: 0.0792000000000000
+  15: 0.0679000000000000
+  14: 0.0553000000000000
+  13: 0.0512000000000000
+  12: 0.0421000000000000
+  11: 0.0319000000000000
+  10: 0.0282000000000000
+  9: 0.0219000000000000
+  8: 0.0161000000000000
+  7: 0.0123000000000000
+  6: 0.0082000000000000
+  5: 0.0047000000000000
+  4: 0.0029000000000000
+  3: 0.0005000000000000
+
+  Total orchs:
+  Probabilities:
+  45: 0.1434000000000000
+  46: 0.1274000000000000
+  47: 0.1177000000000000
+  48: 0.1031000000000000
+  49: 0.0914000000000000
+  50: 0.0787000000000000
+  51: 0.0695000000000000
+  52: 0.0546000000000000
+  53: 0.0514000000000000
+  54: 0.0387000000000000
+  55: 0.0344000000000000
+  56: 0.0291000000000000
+  57: 0.0200000000000000
+  58: 0.0138000000000000
+  59: 0.0106000000000000
+  60: 0.0077000000000000
+  61: 0.0053000000000000
+  62: 0.0025000000000000
+  63: 0.0007000000000000
+
+*/
+go2 ?=>
+  NumRuns = 10_000,
+  /*
+  Gimli = [],
+  TotalOrchs = [],
+  foreach(_ in 1..NumRuns)
+    [G,T] = model2(),
+    Gimli := Gimli ++ [G],
+    TotalOrchs := TotalOrchs ++ [T]
+  end,
+  */
+  Ts = [],
+  foreach(_ in 1..NumRuns)
+    Ts := Ts ++ [model2()],
+  end,
+  [Gimli,TotalOrchs] = Ts.transpose,
+  println("Gimli:"),
+  Gimli.show_probs(),
+  nl,
+  println("Total orchs:"),
+  TotalOrchs.show_probs(),
+  nl.
+go2 => true.
+  
+  
+model2() = Res =>
+  Legolas = discrete_uniform_dist(0,21),
+  Gimli = discrete_uniform_dist(0,21),
+  Eowyn = discrete_uniform_dist(0,21),
+  TotalOrchs = Legolas + Gimli + Eowyn,
+
+  if TotalOrchs >= 45 then
+    Res = [Gimli,TotalOrchs]
+  else
+    Res = model2()
+  end.

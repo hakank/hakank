@@ -1,0 +1,126 @@
+/* 
+
+  Russian roulette in Picat.
+
+  If two persons (a and b) play russian roulette until one of them dies,
+  what are the probabilites of survival for a and b?
+
+  The rule is that if a person survives a round he/she spins the 
+  magasine again, i.e. resets the probabilities to 1/6.
+  The assumption is that player 1 always start.
+
+  dies
+  Marginal:
+      1 : 0.5454545454545455
+      2 : 0.4545454545454545
+  ppp
+  Marginal:
+     0.5454545454545454 : 1
+
+  The exact probability is 6/11
+
+  And to speed it up a little, let's change the rule a little 
+  by adding a limit, say 1000: If there are more than 1000 games 
+  then the game stops and no one dies (output 0). 
+  However, we exclude that "player 0" case by using observe/fail.
+
+  What are the probabilities of death for players 1 and 2?
+
+
+  Cf my Gamble model gamble_russian_roulette.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  [num_bullets = 6,exact = 0.545455,rat = 6 / 11]
+  var : dies
+  Probabilities:
+  1: 0.5416000000000000
+  2: 0.4584000000000000
+  mean = 1.4584
+
+
+  [num_bullets = 10,exact = 0.526316,rat = 10 / 19]
+  var : dies
+  Probabilities:
+  1: 0.5204000000000000
+  2: 0.4796000000000000
+  mean = 1.4796
+
+
+  [num_bullets = 100,exact = 0.502513,rat = 100 / 199]
+  var : dies
+  Probabilities:
+  1: 0.5031000000000000
+  2: 0.4969000000000000
+  mean = 1.4969
+
+
+  [num_bullets = 1000,exact = 0.50025,rat = 1000 / 1999]
+  var : dies
+  Probabilities:
+  2: 0.5006341154090045
+  1: 0.4993658845909956
+  mean = 1.50063
+
+
+  [num_bullets = 10000,exact = 0.500025,rat = 10000 / 19999]
+  var : dies
+  Probabilities:
+  2: 0.5064655172413793
+  1: 0.4935344827586207
+  mean = 1.50647
+
+*/
+go ?=>
+  member(NumBullets, [6,10,100,1000,10_000]),
+  Limit = 1000,
+  Exact = (NumBullets / (NumBullets*2 - 1)),
+  Rat = Exact.to_rat,
+  println([num_bullets=NumBullets,exact=Exact,rat=Rat]),
+  reset_store,
+  run_model(10_000,$model(NumBullets,Limit),[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+
+f(A,NumBullets,Limit) = Res =>
+  if A.len > Limit then
+    Res = A ++ [0] % Handle the limit case
+  else
+    if flip(1/NumBullets) == true then
+      Res = A
+    else
+      Next = cond(A.last == 1, 2, 1),
+      Res = f(A ++ [Next],NumBullets,Limit)
+    end
+  end.
+  
+model(NumBullets,Limit) =>
+  % Player 1 is always the first shooter
+  A = f([1],NumBullets,Limit),
+
+  Dies = A.last,
+  observe(Dies != 0), 
+
+  if observed_ok then
+    add("dies",Dies),
+  end.

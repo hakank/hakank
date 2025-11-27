@@ -1,0 +1,85 @@
+/* 
+
+  Insurance cost in Picat.
+
+  From Statistics101 (Resampling Stats)
+  File insuranceCosts.txt
+  """
+  From Julian Simon's book "Resampling: The New Statistics" page 410-411:
+  A mutual insurance company charges its members according to the risk of
+  having an auto accident. It is known that there are two classes of
+  people--80 percent of the population with good driving judgment and with a
+  probability of .06 of having an accident each year, and 20 percent with poor
+  judgment and a probability of .6 of having an accident each year. The
+  company's policy is to charge (in addition to a fee to cover overhead
+  expenses) $100 for each percent of risk, i.e., a driver with a probability
+  of .6 should pay 60*$100 = $6000. If nothing is known of a driver except
+  that he had an accident last year, what fee should he pay?
+  -> 
+  probability: 0.43101415094339623
+  insurancePremium: 4310.141509433962
+  """
+
+
+  Cf my Gamble model gamble_insurance_cost.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Probabilities:
+  false: 0.5543000000000000
+  true: 0.4457000000000000
+  mean = [false = 0.5543,true = 0.4457]
+
+  probability = 0.4457
+  insurance_premium = 4457.0
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=10000,show_accepted_samples=false
+                          ]),
+  P = get_store().get("p").mean.new_map.get(true),
+  println(probability=P),
+  println(insurance_premium=P*100*100),
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Accidents = [accident,no_accident],
+  Driver = categorical([2/10,8/10],[bad_driver,good_driver]),
+
+  Accident = [cond(Driver == bad_driver,
+                  categorical([6/10,4/10],Accidents),
+                  categorical([6/100,94/100],Accidents)) : _ in 1..2],
+
+  FirstAccidentRecord = Accident[1],
+  SecondAccidentRecord = Accident[2],
+
+  % What is the probability of a second accident (given that there's a first accident)
+  P = check(SecondAccidentRecord == accident),
+
+  % We are only interested in the cases when there has been a first accident
+  observe(FirstAccidentRecord == accident),
+
+  if observed_ok then
+    add("p",P)
+  end.

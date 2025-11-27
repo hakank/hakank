@@ -1,0 +1,106 @@
+/* 
+
+  Dice 6 throws in Picat.
+
+  http://cplint.eu/example/inference/dice.swinb
+  """
+  A six-sided die is repeatedly thrown until the outcome is six. on(T,F) 
+  means that on the Tth throw the face F came out.
+  """
+  What is the probability that the die lands on face 1 at time 0?
+
+
+  Cf my Gamble model gamble_dice_6_throws.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  [t_val = 0,v_val = 1,obs_list = [[0,1,true]]]
+  var : on(tval,vval)
+  Probabilities:
+  false: 0.8395473496128648
+  true: 0.1604526503871352
+  mean = [false = 0.839547,true = 0.160453]
+
+
+  [t_val = 1,v_val = 1,obs_list = [[0,1,true]]]
+  var : on(tval,vval)
+  Probabilities:
+  false: 0.8572634625821625
+  true: 0.1427365374178375
+  mean = [false = 0.857263,true = 0.142737]
+
+
+  [t_val = 2,v_val = 1,obs_list = [[0,1,true]]]
+  var : on(tval,vval)
+  Probabilities:
+  false: 0.8861822763544729
+  true: 0.1138177236455271
+  mean = [false = 0.886182,true = 0.113818]
+
+
+  [t_val = 2,v_val = 1,obs_list = [[0,1,true],[1,1,true],[2,1,true]]]
+  var : on(tval,vval)
+  Probabilities:
+  false: 0.8842105263157894
+  true: 0.1157894736842105
+  mean = [false = 0.884211,true = 0.115789]
+
+
+*/
+go ?=>
+  member([TVal,VVal,ObsList], [ [0,1,[[0,1,true]]],
+                                [1,1,[[0,1,true]]],
+                                [2,1,[[0,1,true]]],
+                                [2,1,[[0,1,true],[1,1,true],[2,1,true]]]
+                               ]
+                               ),
+
+  println([t_val=TVal,v_val=VVal,obs_list=ObsList]),
+  reset_store,
+  run_model(100_000,$model(TVal,VVal,ObsList),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+% Throw a singe die
+throw_die(T) = categorical([1,1,1,1,1,1],1..6).
+
+on(T,V) = Res =>
+  ThrowDieT = throw_die(T),
+  if T == 0 then
+    if ThrowDieT == V, V != 6 then
+      Res = true
+    else 
+      Res = false
+    end
+  else
+    % It's not a 6, it's V, and no previous 6s
+    if ThrowDieT != 6, ThrowDieT == V, sum([cond(throw_die(P) == 6,1,0) : P in 0..T-1]) == 0 then
+       Res = true            
+    else
+       Res = false
+    end
+  end.
+
+model(TVal,VVal,ObsList) =>
+
+  foreach([T,V,TT] in ObsList) 
+    observe(on(T,V) == TT)  
+  end,
+  
+  if ObsList.len == 0 ; observed_ok then
+    add("on(tval,vval)",check(on(TVal,VVal))),
+  end.

@@ -1,0 +1,93 @@
+/* 
+
+  How much does each kid weigh? in Picat.
+
+  From MindYourDecisions 
+  """
+  Singapore nice homework puzzle
+
+  Four children were experimenting with a scale. As each did not want the others 
+  to know their individual mass, they agreed to weigh 3 people at a time. 
+  After trying all possible combinations, they kept getting the same four 
+  readings on the weighing scale.
+
+  63 kg
+  66 kg
+  69 kg
+  72 kg
+
+  But then they realized the group weighings provided too much information! 
+  What is the mass of each child?
+  """
+
+  Cf 
+  - my CP model how_much_does_each_kid_weigh.pi
+  - my Gamble model gamble_how_much_does_each_kid_weigh.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+import cp.
+% import ordset.
+
+main => go.
+
+/*
+  var : kids
+  Probabilities:
+  [18,21,24,27]: 1.0000000000000000
+
+*/
+go ?=>
+  reset_store,
+  time(run_model(100,$model,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=1,show_accepted_samples=true
+                          ])),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+
+/*
+  (boolean-subsets n m)
+  Returns all m-sized boolean subsets for lists of size n.
+  Example
+  Picat> boolean_subsets(4,3)
+  [[0,1,1,1],[1,0,1,1],[1,1,0,1],[1,1,1,0]]
+
+  Note: This is a CP function.
+
+*/
+boolean_subsets(N,M) = Res =>
+  X = new_list(N),
+  X :: 0..1,
+  sum(X) #= M,
+  Res = solve_all(X).
+
+model() =>
+  Totals = [63,66,69,72],
+
+  N = 4,
+  Kids = discrete_uniform_dist_n(15,30,N).sort,
+
+  Ts = [],
+  % Check all triplets  
+  foreach(S in boolean_subsets(4,3))
+     T = [Kids[I]*S[I] : I in 1..N].sum,
+     Ts := Ts ++ [T],
+  end,
+
+  observe(Totals.sort == Ts.sort),
+
+  if observed_ok then
+    add("kids",Kids)
+  end.
+

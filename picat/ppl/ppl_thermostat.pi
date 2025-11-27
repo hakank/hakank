@@ -1,0 +1,134 @@
+/* 
+
+  Thermostat problem in Picat.
+
+  OMEGA: Fast, casual Inference from Simple Parts 
+  From  https://www.youtube.com/watch?v=oCvbqKE2tWA
+  @ ~ 21min
+  
+  The Omega (Julia) model is here:
+  https://github.com/zenna/Omega.jl/blob/master/docs/src/causal.md
+
+
+  Cf my Gamble model gamble_.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : is AC on?
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : is window open?
+  Probabilities:
+  false: 1.0000000000000000
+  mean = [false = 1.0]
+
+  var : outside temp
+  Probabilities (truncated):
+  39.32539957103198: 0.0004081632653061
+  38.045300216817118: 0.0004081632653061
+  37.770576434195377: 0.0004081632653061
+  37.326605503932697: 0.0004081632653061
+  .........
+  5.010186561945925: 0.0004081632653061
+  4.625547895970008: 0.0004081632653061
+  4.515905104009026: 0.0004081632653061
+  4.024772753366593: 0.0004081632653061
+  mean = 20.5763
+
+  var : room temp
+  Probabilities (truncated):
+  25.781707100948193: 0.0004081632653061
+  25.767139165653372: 0.0004081632653061
+  25.600931029415307: 0.0004081632653061
+  25.546328472361857: 0.0004081632653061
+  .........
+  14.134149911853081: 0.0004081632653061
+  13.9584687654355: 0.0004081632653061
+  13.564962657844635: 0.0004081632653061
+  13.522571810027385: 0.0004081632653061
+  mean = 19.9746
+
+  var : thermostat
+  Probabilities (truncated):
+  25.781707100948193: 0.0004081632653061
+  25.767139165653372: 0.0004081632653061
+  25.600931029415307: 0.0004081632653061
+  25.546328472361857: 0.0004081632653061
+  .........
+  14.134149911853081: 0.0004081632653061
+  13.9584687654355: 0.0004081632653061
+  13.564962657844635: 0.0004081632653061
+  13.522571810027385: 0.0004081632653061
+  mean = 19.9746
+
+  var : this time
+  Probabilities:
+  morning: 0.3510204081632653
+  evening: 0.3302040816326531
+  afternoon: 0.3187755102040816
+  mean = [morning = 0.35102,evening = 0.330204,afternoon = 0.318776]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Times = [morning,afternoon,evening],
+  ThisTime = uniform_draw(Times),
+
+  IsWindowOpen = flip(0.5),
+  
+  % a.c. is off when window is closed
+  IsACOn = condt(IsWindowOpen,false,flip(0.5)),
+
+  
+
+  % hottest at noon, cool at night
+  OutsideTemp = cases([ [ThisTime == morning,normal_dist(20,2)],
+                        [ThisTime == afternoon,normal_dist(32,2)],
+                        [ThisTime == evening,normal_dist(10,2)],
+                        [true,normal_dist(25,2)]
+                      ]),
+  % a.c. chills the room
+  RoomTemp = condt(IsACOn,normal_dist(20,2), normal_dist(25,2)),
+
+  % great insulation
+  Thermostat = condt(IsWindowOpen,(OutsideTemp + RoomTemp)/2,RoomTemp),
+
+  % Observations
+  observe(IsACOn),
+  % observe(not IsWindowOpen),
+  % observe(abs(RoomTemp-20.0)<1.0),
+  % observe(RoomTemp > 20.0),
+  % observe(ThisTime == evening),
+  % observe(OutsideTemp < 10.0),
+  % observe(Thermostat > 30.0),  
+  
+  if observed_ok then
+    add_all([ ["this time",ThisTime],
+              ["is AC on?",IsACOn],
+              ["is window open?",IsWindowOpen],
+              ["outside temp",OutsideTemp],
+              ["room temp",RoomTemp],
+              ["thermostat",Thermostat]
+             ])
+  end.
+

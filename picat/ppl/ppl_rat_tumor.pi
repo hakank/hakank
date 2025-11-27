@@ -1,0 +1,103 @@
+/* 
+
+  Rat tumor in Picat.
+
+  PyMC3 hierachical binomial model: Rat Tumor example in
+  https://docs.pymc.io/pymc-examples/examples/generalized_linear_models/GLM-hierarchical-binominal-model.html
+  """
+  This short tutorial demonstrates how to (...) do inference for the rat tumour example found in chapter 
+  5 of Bayesian Data Analysis 3rd Edition.
+  """
+  
+  From the PyMC3 model:
+  """
+  # estimate the means from the samples
+  trace("ab").mean(axis=0)
+  
+  array(( 2.3851397 , 14.18267752))
+  """
+
+  Cf my Gamble model gamble_rat_tumor.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  Num accepted samples: 1000  Total samples: 8819  (0.113%)
+
+  var : x
+  mean = 2.51921
+  HPD intervals:
+  HPD interval (0.94): 1.73593168735612..2.99489496856637
+
+  var : z
+  mean = 2.6965
+  HPD intervals:
+  HPD interval (0.94): 1.89170276704634..3.22411857472838
+
+  var : ab 1
+  mean = 2.60035
+  HPD intervals:
+  HPD interval (0.94): 0.54192569155336..4.77364144719841
+
+  var : ab 2
+  mean = 13.3692
+  HPD intervals:
+  HPD interval (0.94): 5.67421193335867..19.98326090908761
+
+*/
+go ?=>
+  % rat data (BDA3, p. 102)
+  Y = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,
+       1,1,1,1,1,2,2,2,2,2,2,2,2,2,1,5,2,
+       5,3,2,7,7,3,3,2,9,10,4,4,4,4,4,4,4,
+       10,4,4,4,5,11,12,5,5,6,5,6,6,6,6,16,15,
+       15,9,4],
+  Ns = [20,20,20,20,20,20,20,19,19,19,19,18,18,17,20,20,20,
+        20,19,19,18,18,25,24,23,20,20,20,20,20,20,10,49,19,
+        46,27,17,49,47,20,20,13,48,50,20,20,20,20,20,20,20,
+        48,19,19,19,22,46,49,20,20,23,19,22,20,20,20,52,46,
+        47,24,14],
+
+  reset_store,
+  run_model(10_000,$model(Y,Ns),[% show_probs_trunc,
+                                 mean,
+                                 % show_percentiles,show_histogram,
+                                 show_hpd_intervals,hpd_intervals=[0.94],
+                                 min_accepted_samples=1000,show_accepted_samples=true
+                                ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Y,Ns) =>
+  N = Y.len,
+  AB = uniform_n(0.5,20,2),
+
+  X = log( AB[1] / (AB[1] / AB[2])),
+  Z = log(sum(AB)),
+
+  Theta = beta_dist_n(AB[1],AB[2],N),
+
+  Samples = [binomial_dist(Ns[I],Theta[I]) : I in 1..N],
+  observe_abc(Y,Samples,1/2),
+  
+  
+  if observed_ok then
+    add("x",X),
+    add("z",Z),
+    add("ab 1",AB[1]),
+    add("ab 2",AB[2]),    
+  end.

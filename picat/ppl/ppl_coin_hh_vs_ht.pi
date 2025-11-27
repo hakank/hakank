@@ -1,0 +1,194 @@
+/* 
+
+  Coin: HH vs HT in Picat.
+
+  From Daniel Litt ( Mar 16, 2024)
+  https://x.com/littmath/status/1769044719034647001
+  """
+  Flip a fair coin 100 times - it gives a sequence of heads (H) and tails (T). 
+  For each HH in the sequence of flips, Alice gets a point; for each HT, 
+  Bob does, so e.g. for the sequence THHHT Alice gets 2 points and Bob gets 1 point. 
+  Who is most likely to win?
+    Alice 26.3%
+    Bob   10.2% 
+    Equally likely 42.8%
+    See results 20.7%
+  """
+
+  The problem is also discussed in the Quanta Magazine article on Daniel Litt:
+  "Perplexing the Web, One Probability Puzzle at a Time" by Erica Klarreich:
+  https://www.quantamagazine.org/perplexing-the-web-one-probability-puzzle-at-a-time-20240829/?mc_cid=94caee8978
+
+
+  Cf my Gamble model gamble_coin_hh_vs_ht.rkt
+
+  Also see: 
+  *  the paper by Shalosh B. EKHAD and Doron ZEILBERGER: 
+    "How to Answer Questions of the Type: If you toss a coin n times, how likely is HH to show up more than HT?"
+    https://arxiv.org/pdf/2405.13561
+    (The paper refers to and discusses a Maple package that calculates the 
+     exact probabilities which calculates the exact probabilities for
+     much larger sequences than this Gamble/Racket model.)
+
+  * Geoffrey R. Grimmett:
+    "Alice and Bob on X: reversal, coupling, renewal"
+    https://arxiv.org/pdf/2409.00732
+
+  * Simon Segert: 
+    "A proof that HT is more likely to outnumber HH than vice versa in a sequence of n coin flips"
+    https://arxiv.org/pdf/2405.16660
+    
+  * Emin's Page: The Coin Paradox 
+    https://web.archive.org/web/20031208074118/www.csua.berkeley.edu/~emin/writings/coinGame.html
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Note: The values of Alice and Bob should be exactly the same.
+  So Bob has a slight advantage (bob_better_than_alice > alice_better_than_bob) 
+  even though the average points are the same, i.e. values alice and bob.
+
+  It's also interesting that Alice get more points than Bob.
+  Here Alice gets a maximum of 50 points, whereas Bob gets a maximum of 35 points.
+
+  var : alice
+  Probabilities (truncated):
+  24: 0.0711000000000000
+  22: 0.0703000000000000
+  23: 0.0698000000000000
+  25: 0.0692000000000000
+  .........
+  48: 0.0001000000000000
+  47: 0.0001000000000000
+  8: 0.0001000000000000
+  7: 0.0001000000000000
+  mean = 24.7659
+  max = 50
+
+  var : alice > bob
+  Probabilities:
+  false: 0.5434000000000000
+  true: 0.4566000000000000
+  mean = [false = 0.5434,true = 0.4566]
+  max = true
+
+  var : alice point
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+  max = true
+
+  var : bob
+  Probabilities (truncated):
+  25: 0.1552000000000000
+  24: 0.1476000000000000
+  26: 0.1432000000000000
+  23: 0.1258000000000000
+  .........
+  33: 0.0003000000000000
+  34: 0.0002000000000000
+  35: 0.0001000000000000
+  14: 0.0001000000000000
+  mean = 24.7308
+  max = 35
+
+  var : bob > Alice
+  Probabilities:
+  false: 0.5115000000000000
+  true: 0.4885000000000000
+  mean = [false = 0.5115,true = 0.4885]
+  max = true
+
+  var : bob point
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+  max = true
+
+  var : diff1
+  Probabilities (truncated):
+  -1: 0.0586000000000000
+  -3: 0.0572000000000000
+  0: 0.0549000000000000
+  -2: 0.0546000000000000
+  .........
+  25: 0.0001000000000000
+  -21: 0.0001000000000000
+  -22: 0.0001000000000000
+  -23: 0.0001000000000000
+  mean = 0.0351
+  max = 32
+
+  var : diff2
+  Probabilities (truncated):
+  1: 0.0586000000000000
+  3: 0.0572000000000000
+  0: 0.0549000000000000
+  2: 0.0546000000000000
+  .........
+  -26: 0.0001000000000000
+  -27: 0.0001000000000000
+  -29: 0.0001000000000000
+  -32: 0.0001000000000000
+  mean = -0.0351
+  max = 23
+
+  var : same
+  Probabilities:
+  false: 0.9451000000000001
+  true: 0.0549000000000000
+  mean = [false = 0.9451,true = 0.0549]
+  max = true
+
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,max]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 100, 
+
+  As = [cond(flip() == true,head,tail) : _ in 1..N],
+
+  Alice = [ cond( (As[I]==head,As[I+1]==head),1,0)  : I in 1..N-1].sum,
+  Bob   = [ cond( (As[I]==head,As[I+1]==tail),1,0)  : I in 1..N-1].sum,  
+
+  AlicePoint = check(Alice > 0),
+  BobPoint = check(Bob > 0),
+
+  AliceBetterThanBob = check(Alice > Bob),
+  Diff1 = Alice-Bob,
+  
+  BobBetterThanAlice = check(Bob > Alice),
+  Diff2 = Bob-Alice,
+
+  Same = check(Alice==Bob),
+
+  add("alice",Alice),
+  add("bob",Bob),
+  % add("alice,bob",[Alice,Bob]),
+  add("alice point",AlicePoint),
+  add("bob",Bob),
+  add("bob point",BobPoint),
+  add("alice > bob",AliceBetterThanBob),
+  add("diff1",Diff1),
+  add("bob > Alice",BobBetterThanAlice),
+  add("diff2",Diff2),
+  add("same",Same).
+

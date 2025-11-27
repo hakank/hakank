@@ -1,0 +1,139 @@
+/* 
+
+  Girl births in Picat.
+
+  From Gelman et.al "Regression and Other Stories", 69f
+
+  Part 1 (page 69)
+  """
+  The probability that a baby is a girl or boy is approximately 48.8% or 51.2%, respectively, 
+  and these of births do not vary much across the world. Suppose that 400 babies are born in a 
+  hospital in a given year. How many will be girls?
+  """
+
+  mean: 195.19999999999996
+  Credible interval (0.5): 187..200
+  Credible interval (0.9): 177..210
+
+
+  Part 2 (page 70)
+  """
+  Accounting for twins
+  We can complicate the model in various ways. For example, there is a 1/125 chance that a 
+  birth event results in fraternal twins, of which each has an approximate 49.5% chance of being a girl,  
+  and a 1/300 chance of identical twins, which have an approximate 49.5% chance of being a pair of girls.
+  """
+
+
+  Cf my Gamble model gamble_girl_births.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Model 1
+  var : girl
+  Probabilities (truncated):
+  198: 0.0436000000000000
+  196: 0.0411000000000000
+  194: 0.0387000000000000
+  195: 0.0382000000000000
+  .........
+  232: 0.0001000000000000
+  162: 0.0001000000000000
+  161: 0.0001000000000000
+  156: 0.0001000000000000
+  mean = 195.281
+  HPD intervals:
+  HPD interval (0.5): 186.00000000000000..199.00000000000000
+  HPD interval (0.9): 179.00000000000000..211.00000000000000
+
+  Model 2:
+  var : girl
+  Probabilities (truncated):
+  197: 0.0413000000000000
+  198: 0.0406000000000000
+  195: 0.0403000000000000
+  199: 0.0398000000000000
+  .........
+  162: 0.0002000000000000
+  159: 0.0002000000000000
+  230: 0.0001000000000000
+  164: 0.0001000000000000
+  mean = 195.23
+  HPD intervals:
+  HPD interval (0.5): 187.00000000000000..200.00000000000000
+  HPD interval (0.9): 179.00000000000000..211.00000000000000
+
+  var : identical twins
+  Probabilities:
+  false: 0.9967000000000000
+  true: 0.0033000000000000
+  mean = [false = 0.9967,true = 0.0033]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : fraternal twins
+  Probabilities:
+  false: 0.9902000000000000
+  true: 0.0098000000000000
+  mean = [false = 0.9902,true = 0.0098]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+  var : p
+  Probabilities:
+  0.488: 0.9869000000000000
+  0.495: 0.0131000000000000
+  mean = 0.488092
+  HPD intervals:
+  HPD interval (0.5): 0.48800000000000..0.48800000000000
+  HPD interval (0.9): 0.48800000000000..0.48800000000000
+
+*/
+go ?=>
+  println("Model 1:"),
+  reset_store,
+  run_model(10_000,$model1,[show_probs_trunc,mean,
+                            show_hpd_intervals,hpd_intervals=[0.5,0.9]]),
+  nl,
+  reset_store,
+  println("Model 2:"),
+  run_model(10_000,$model2,[show_probs_trunc,mean,                            
+                            show_hpd_intervals,hpd_intervals=[0.5,0.9]]),
+  
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+
+model1() =>
+  N = 400,
+  Girl = binomial_dist_smart(N,0.488),
+  add("girl",Girl).
+
+model2() =>
+  N = 400,
+  IdenticalTwins = flip(1/300),
+  FraternalTwins = flip(1/125),
+
+  % Cannot be both identical_twins and fraternal_twins
+  observe(not (IdenticalTwins,FraternalTwins)),
+
+  % The probability of a girl
+  P = cond( (IdenticalTwins ; FraternalTwins), 0.495, 0.488),
+
+  % Number of girls
+  Girl = binomial_dist_smart(N,P),
+  
+  add("girl",Girl),
+  add("identical twins",IdenticalTwins),
+  add("fraternal twins",FraternalTwins),
+  add("p",P).

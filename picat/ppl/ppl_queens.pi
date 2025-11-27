@@ -1,0 +1,128 @@
+/* 
+
+  N queens in Picat.
+
+  This model use the standard constraint programming 
+  formulation of the n-queens problem. 
+
+  Cf: 
+  - queens.pi
+  - my Gamble model gamble_queens.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+import cp.
+
+main => go.
+
+/*
+  Expected number of solutions for N=0..10 (from queens.pi):
+  N:  0          1 solutions
+  N:  1          1 solutions
+  N:  2          0 solutions
+  N:  3          0 solutions
+  N:  4          2 solutions
+  N:  5         10 solutions
+  N:  6          4 solutions
+  N:  7         40 solutions
+  N:  8         92 solutions
+
+  Here's the result of the model:
+
+  n = 2
+  [num_sols = 0,expected = 0]
+
+  n = 3
+  [num_sols = 0,expected = 0]
+
+  n = 4
+  var : queens
+  Probabilities:
+  [2,4,1,3]: 0.5207667731629393
+  [3,1,4,2]: 0.4792332268370607
+
+  [num_sols = 2,expected = 2]
+
+  n = 5
+  var : queens
+  Probabilities:
+  [4,2,5,3,1]: 0.1290322580645161
+  [1,4,2,5,3]: 0.1290322580645161
+  [3,5,2,4,1]: 0.1143695014662757
+  [2,4,1,3,5]: 0.1055718475073314
+  [5,2,4,1,3]: 0.1026392961876833
+  [4,1,3,5,2]: 0.1026392961876833
+  [3,1,4,2,5]: 0.0938416422287390
+  [1,3,5,2,4]: 0.0879765395894428
+  [5,3,1,4,2]: 0.0850439882697947
+  [2,5,3,1,4]: 0.0498533724340176
+
+  [num_sols = 10,expected = 10]
+
+  n = 6
+  var : queens
+  Probabilities:
+  [2,4,6,1,3,5]: 0.5714285714285714
+  [3,6,2,5,1,4]: 0.2142857142857143
+  [5,3,1,6,4,2]: 0.1428571428571428
+  [4,1,5,2,6,3]: 0.0714285714285714
+
+  [num_sols = 4,expected = 4]
+
+  n = 7
+  var : queens
+  Probabilities:
+  [5,1,4,7,3,6,2]: 0.2222222222222222
+  [6,4,7,1,3,5,2]: 0.1111111111111111
+  [6,3,7,4,1,5,2]: 0.1111111111111111
+  [6,2,5,1,4,7,3]: 0.1111111111111111
+  [5,7,2,6,3,1,4]: 0.1111111111111111
+  [4,2,7,5,3,1,6]: 0.1111111111111111
+  [3,5,7,2,4,6,1]: 0.1111111111111111
+  [1,4,7,3,6,2,5]: 0.1111111111111111
+
+  [num_sols = 8,expected = 40]
+
+  n = 8
+  var : queens
+  Probabilities:
+  [5,8,4,1,3,6,2,7]: 0.5000000000000000
+  [3,7,2,8,5,1,4,6]: 0.5000000000000000
+
+  [num_sols = 2,expected = 92]
+
+*/
+go ?=>
+  Expected = new_map([1=1,2=0,3=0,4=2,5=10,6=4,7=40,8=92]),
+  member(N,2..8),
+  println(n=N),
+  reset_store,
+  run_model(2*N*10_000,$model(N),[show_probs]),
+  NumSols = get_store().get("queens",[]).remove_dups.len,
+  println([num_sols=NumSols, expected=Expected.get(N)]),
+  nl,
+  fail,
+  nl.
+go => true.
+  
+model(N) =>
+
+  % Queens = random_integer1_n(N,N),
+  % Queens = shuffle(1..N),
+  Queens = resample_all(1..N),
+
+  observe(all_different(Queens)),
+  foreach(I in 1..N, J in I+1..N)
+    % observe(Queens[I] != Queens[J]),
+    observe(Queens[I]+I != Queens[J]+J),
+    observe(Queens[I]-I != Queens[J]-J)    
+  end,
+  
+  if observed_ok then
+    add("queens",Queens),
+  end.

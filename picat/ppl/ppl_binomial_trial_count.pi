@@ -1,0 +1,222 @@
+/* 
+
+  Binomial trial_count in Picat.
+
+  From infer.net test/Tests/BlogTests.cs
+  """
+   Example of inferring the size of a population.
+   Reference: "A. Raftery, "Inference for the binomial N parameter: 
+               A hierarchical Bayes approach", Biometrika 1988
+   http://pluto.huji.ac.il/~galelidan/52558/Material/Raftery.pdf
+
+   ....
+   ExpectationPropagation
+   impala
+   theta = Beta(80.24,91.17)(mean=0.4681)
+   N mode = 44, median = 45
+   waterbuck
+   theta = Beta(238,233.8)(mean=0.5044)
+   N mode = 124, median = 125
+   impala
+   N mode = 37, median = 65
+   waterbuck
+   N mode = 122, median = 208
+  
+   VariationalMessagePassing
+   impala
+   theta = Beta(106,370.9)(mean=0.2223)
+   N mode = 94, median = 94
+   waterbuck
+   theta = Beta(316,393)(mean=0.4457)
+   N mode = 141, median = 141
+   impala
+   N mode = 37, median = 65
+   waterbuck
+   N mode = 122, median = 208
+  """
+
+  Cf my Gamble model gamble_binomial_trial_count.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  test = impala
+  var : n
+  Probabilities (truncated):
+  27: 0.0600000000000000
+  38: 0.0500000000000000
+  32: 0.0500000000000000
+  35: 0.0400000000000000
+  .........
+  48: 0.0100000000000000
+  47: 0.0100000000000000
+  45: 0.0100000000000000
+  25: 0.0100000000000000
+  mean = 65.72
+  HPD intervals:
+  HPD interval (0.84): 25.00000000000000..90.00000000000000
+
+  var : theta
+  Probabilities (truncated):
+  0.890215872344115: 0.0100000000000000
+  0.871421191731034: 0.0100000000000000
+  0.831760237238452: 0.0100000000000000
+  0.829690103062725: 0.0100000000000000
+  .........
+  0.124910165577178: 0.0100000000000000
+  0.061829921133823: 0.0100000000000000
+  0.061672813551804: 0.0100000000000000
+  0.051822617434629: 0.0100000000000000
+  mean = 0.450492
+  HPD intervals:
+  HPD interval (0.84): 0.17757261931247..0.70881153537622
+
+  var : beta1
+  Probabilities (truncated):
+  97.103327503755381: 0.0100000000000000
+  96.96480843506977: 0.0100000000000000
+  96.88852826137493: 0.0100000000000000
+  96.876318876527392: 0.0100000000000000
+  .........
+  6.271047230097953: 0.0100000000000000
+  6.001601085346937: 0.0100000000000000
+  2.887616220390246: 0.0100000000000000
+  1.913175594067749: 0.0100000000000000
+  mean = 46.3831
+  HPD intervals:
+  HPD interval (0.84): 6.00160108534694..81.19222540380071
+
+  var : beta2
+  Probabilities (truncated):
+  99.684180038414979: 0.0100000000000000
+  98.351484119403864: 0.0100000000000000
+  97.498643582918973: 0.0100000000000000
+  97.382901003809138: 0.0100000000000000
+  .........
+  7.488064394839139: 0.0100000000000000
+  4.611869530944093: 0.0100000000000000
+  4.326026449876849: 0.0100000000000000
+  3.156949973877962: 0.0100000000000000
+  mean = 53.8141
+  HPD intervals:
+  HPD interval (0.84): 14.68886005705635..91.40750909960246
+
+
+  test = waterbuck
+  var : n
+  Probabilities (truncated):
+  109: 0.0400000000000000
+  148: 0.0300000000000000
+  123: 0.0300000000000000
+  121: 0.0300000000000000
+  .........
+  86: 0.0100000000000000
+  80: 0.0100000000000000
+  76: 0.0100000000000000
+  73: 0.0100000000000000
+  mean = 201.23
+  HPD intervals:
+  HPD interval (0.84): 73.00000000000000..292.00000000000000
+
+  var : theta
+  Probabilities (truncated):
+  0.915555872320324: 0.0100000000000000
+  0.801221459508458: 0.0100000000000000
+  0.799944999428883: 0.0100000000000000
+  0.790965779650605: 0.0100000000000000
+  .........
+  0.093442903330929: 0.0100000000000000
+  0.091530323215306: 0.0100000000000000
+  0.07663028248221: 0.0100000000000000
+  0.072857176466292: 0.0100000000000000
+  mean = 0.453752
+  HPD intervals:
+  HPD interval (0.84): 0.17379378861386..0.72739157104516
+
+  var : beta1
+  Probabilities (truncated):
+  96.211844794783673: 0.0100000000000000
+  94.300398764573217: 0.0100000000000000
+  94.19378881295853: 0.0100000000000000
+  93.17280648070053: 0.0100000000000000
+  .........
+  4.791812176765787: 0.0100000000000000
+  4.594731817112645: 0.0100000000000000
+  4.175444765563795: 0.0100000000000000
+  0.882225375567668: 0.0100000000000000
+  mean = 47.1012
+  HPD intervals:
+  HPD interval (0.84): 4.17544476556380..82.07978628104541
+
+  var : beta2
+  Probabilities (truncated):
+  96.576156515849831: 0.0100000000000000
+  96.231858394496072: 0.0100000000000000
+  95.840674508521658: 0.0100000000000000
+  95.749708294984742: 0.0100000000000000
+  .........
+  8.228420721939031: 0.0100000000000000
+  7.488125754142239: 0.0100000000000000
+  5.493628023142754: 0.0100000000000000
+  5.307368113755886: 0.0100000000000000
+  mean = 53.8518
+  HPD intervals:
+  HPD interval (0.84): 24.52171843057579..96.57615651584983
+
+
+*/
+go ?=>
+  member(Test,[impala,waterbuck]),
+  println(test=Test),
+  reset_store,
+  run_model(10_000,$model(Test),[show_probs_trunc,mean,
+                                 show_hpd_intervals,hpd_intervals=[0.84],
+                                 min_accepted_samples=100 % , show_accepted_samples=true
+                                 ]),
+  nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Test) =>
+  MaxN = 1000,
+
+  ImpalaL = [15,20,21,23,26],
+  WaterbuckL = [53,57,66,67,72],
+
+  if Test == impala then
+    Data = ImpalaL
+  else
+    Data = WaterbuckL
+  end,
+  Len = Data.len,
+  
+  Beta1 = uniform(0.1,100),
+  Beta2 = uniform(0.1,100),
+  
+  Theta = beta_dist(Beta1,Beta2),
+
+  % N = random_integer1(MaxN), 
+  N = categorical([1/I : I in 1..MaxN],1..MaxN),
+  
+  X = binomial_dist_btpe_n(N,Theta, Len),
+
+  % observe(X == Data),
+  observe_abc(Data,X,1/2),
+  
+  if observed_ok then
+    add("n",N),
+    add("theta",Theta),
+    add("beta1",Beta1),
+    add("beta2",Beta2),    
+  end.

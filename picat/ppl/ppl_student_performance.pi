@@ -1,0 +1,179 @@
+/* 
+
+  Student performance in Picat.
+
+  Port of the WebPPL model from
+  https://medium.com/@linz07m/understanding-probabilistic-programming-a-simple-demonstration-using-webppl-6a1121402bce
+  """
+  Let’s model a scenario where a student’s exam performance is uncertain.
+  Factors like their study hours, sleep, and past performance influence their grade.
+
+  // Define the model
+  var studentModel = function() {
+    // Prior belief: How well the student performs on average
+    var basePerformance = gaussian(70, 10); // Mean: 70, Std Dev: 10
+  
+    // Study hours factor: More hours improve performance
+    var studyHours = uniform(0, 10); // Study hours between 0 and 10
+    var studyEffect = studyHours * 3; // Each hour adds 3 points on average
+  
+    // Sleep factor: Poor sleep reduces performance
+    var sleepQuality = bernoulli(0.8); // 80% chance of good sleep
+    var sleepEffect = sleepQuality ? 5 : -10; // Good sleep adds, bad sleep reduces
+  
+    // Final grade calculation
+    var grade = basePerformance + studyEffect + sleepEffect;
+  
+    // Observation: Real-world observed grade
+    condition(grade > 85); // Observed that the grade was above 85
+  
+    return grade;
+  };
+
+  // Run inference to predict grade distribution
+  var predictedGrades = Infer({ method: "MCMC", samples: 1000 }, studentModel);
+
+  // Display the results
+  viz(predictedGrades);
+  """
+
+
+  Cf my Gamble model gamble_student_performance.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : base performance
+  Probabilities (truncated):
+  108.582714786607369: 0.0001788908765653
+  108.114225037759951: 0.0001788908765653
+  104.615301409654961: 0.0001788908765653
+  103.847907341629892: 0.0001788908765653
+  .........
+  51.976211160158414: 0.0001788908765653
+  51.796966382278981: 0.0001788908765653
+  51.03537770568812: 0.0001788908765653
+  50.197835802173735: 0.0001788908765653
+  mean = 74.6666
+  [len = 5590,min = 50.1978,mean = 74.6666,median = 74.5771,max = 108.583,variance = 73.6392,stdev = 8.58133]
+
+  var : study hours
+  Probabilities (truncated):
+  9.998809560201508: 0.0001788908765653
+  9.99807229731142: 0.0001788908765653
+  9.997966596855766: 0.0001788908765653
+  9.997650380245247: 0.0001788908765653
+  .........
+  0.021293782638988: 0.0001788908765653
+  0.007879324261043: 0.0001788908765653
+  0.005290317351599: 0.0001788908765653
+  0.001090713777156: 0.0001788908765653
+  mean = 6.28515
+  [len = 5590,min = 0.00109071,mean = 6.28515,median = 6.65498,max = 9.99881,variance = 6.51606,stdev = 2.55266]
+
+  var : study effect
+  Probabilities (truncated):
+  29.996428680604524: 0.0001788908765653
+  29.994216891934261: 0.0001788908765653
+  29.993899790567298: 0.0001788908765653
+  29.992951140735741: 0.0001788908765653
+  .........
+  0.063881347916965: 0.0001788908765653
+  0.023637972783129: 0.0001788908765653
+  0.015870952054798: 0.0001788908765653
+  0.003272141331468: 0.0001788908765653
+  mean = 18.8554
+  [len = 5590,min = 0.00327214,mean = 18.8554,median = 19.9649,max = 29.9964,variance = 58.6445,stdev = 7.65797]
+
+  var : sleep quality
+  Probabilities:
+  true: 0.9148479427549195
+  false: 0.0851520572450805
+  mean = 0.914848
+
+  var : sleep effect
+  Probabilities:
+  5: 0.9148479427549195
+  -10: 0.0851520572450805
+  mean = 3.72272
+  [len = 5590,min = -10,mean = 3.72272,median = 5.0,max = 5,variance = 17.5278,stdev = 4.18662]
+
+  var : grade
+  Probabilities (truncated):
+  132.976389206636497: 0.0001788908765653
+  132.687919227501197: 0.0001788908765653
+  132.628370718541476: 0.0001788908765653
+  132.159762894821995: 0.0001788908765653
+  .........
+  85.014829377872644: 0.0001788908765653
+  85.012394567661758: 0.0001788908765653
+  85.010033960412215: 0.0001788908765653
+  85.006628671258937: 0.0001788908765653
+  mean = 97.2448
+  [len = 5590,min = 85.0066,mean = 97.2448,median = 95.6867,max = 132.976,variance = 76.2975,stdev = 8.73484]
+
+  var : grade > base performance
+  Probabilities:
+  true: 0.9976744186046511
+  false: 0.0023255813953488
+  mean = 0.997674
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  
+  %  Prior belief: How well the student performs on average
+  BasePerformance = normal_dist(70,10),      %  Mean: 70, Std Dev: 10
+  
+  %  Study hours factor: More hours improve performance
+  StudyHours = uniform(0,10), %  Study hours between 0 and 10
+  StudyEffect = StudyHours * 3, %  Each hour adds 3 points on average
+  
+  % Sleep factor: Poor sleep reduces performance
+  SleepQuality = flip(0.8),                       %  80% chance of good sleep
+  SleepEffect = cond(SleepQuality == true,5,-10), %  Good sleep adds, bad sleep reduces
+  
+  % Final grade calculation
+  Grade = BasePerformance + StudyEffect + SleepEffect,
+  
+  % Observation: Real-world observed grade
+  observe(Grade > 85), %  Observed that the grade was above 85
+
+  % hakank: Did the person do better than base performance
+  P = check(Grade > BasePerformance),
+     
+  if observed_ok then
+    add("base performance",BasePerformance),
+    add("study hours",StudyHours),
+    add("study effect",StudyEffect),
+    add("sleep quality",SleepQuality),
+    add("sleep effect",SleepEffect),
+    add("grade",Grade),
+    add("grade > base performance",P),    
+  end.

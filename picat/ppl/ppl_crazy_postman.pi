@@ -1,0 +1,238 @@
+/* 
+
+  Crazy postman in Picat.
+
+  https://brainstellar.com/puzzles/probability/1003
+  """
+  A postman brought N letters to a house with two letter-boxes. Since the 
+  two boxes were empty, he puts 1 mail in each of the two mail boxes. Then 
+  he chooses one of boxes with probability proportional to number of letters 
+  present in that box, and puts the 3rd letter in it. He does this for all 
+  subsequent letters. What is the expected number of letters in the box with 
+  lower letters?
+
+  Solution: ... So, expected number of letters in the smaller box is 
+            asymptotically n/4
+  """
+
+  Cf my Gamble model gamble_crazy_postman.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  * Two letter boxes
+
+    [num_letters = 10,theoretical = 2.5]
+    var : min num letters
+    Probabilities:
+    1: 0.1864000000000000
+    2: 0.1840000000000000
+    4: 0.1793000000000000
+    3: 0.1782000000000000
+    5: 0.1776000000000000
+    6: 0.0945000000000000
+    mean = 3.2612
+
+
+    [num_letters = 20,theoretical = 5.0]
+    var : min num letters
+    Probabilities (truncated):
+    8: 0.0998000000000000
+    6: 0.0985000000000000
+    4: 0.0982000000000000
+    7: 0.0967000000000000
+    .........
+    9: 0.0944000000000000
+    2: 0.0917000000000000
+    10: 0.0903000000000000
+    11: 0.0440000000000000
+    mean = 5.7377
+
+
+    [num_letters = 100,theoretical = 25.0]
+    var : min num letters
+    Probabilities (truncated):
+    9: 0.0231000000000000
+    11: 0.0226000000000000
+    47: 0.0225000000000000
+    12: 0.0224000000000000
+    .........
+    46: 0.0174000000000000
+    35: 0.0172000000000000
+    32: 0.0167000000000000
+    51: 0.0081000000000000
+    mean = 25.3519
+
+
+*/
+go ?=>
+  member(NumLetters,[10,20,100]),
+  println([num_letters=NumLetters,theoretical=(NumLetters/4)]),
+  reset_store,
+  run_model(10_000,$model(NumLetters),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+
+
+f(I,B1,B2,NumLetters) = Res =>
+  if I >= NumLetters then
+    Res = [B1,B2]
+  else
+    NewB = categorical([B1,B2],[1,2]),
+    NewB1 = cond(NewB == 1, B1+1,B1),
+    NewB2 = cond(NewB == 2, B2+1,B2),
+    Res = f(I+1,NewB1,NewB2,NumLetters)
+  end.
+  
+model(NumLetters) =>
+  
+  [A,B] = f(0,1,1,NumLetters),
+
+  MinNumLetters = min(A,B),
+
+  add("min num letters",MinNumLetters).
+
+
+/*
+
+  Model 2 is a generalization and supports arbitrary number of boxes.
+  Also, we add max-num-letters.
+
+  [num_boxes = 2,num_letters = 10]
+  var : min num letters
+  Probabilities:
+  4: 0.1857000000000000
+  3: 0.1837000000000000
+  5: 0.1817000000000000
+  1: 0.1810000000000000
+  2: 0.1795000000000000
+  6: 0.0884000000000000
+  mean = 3.2728
+
+  var : max num letters
+  Probabilities:
+  8: 0.1857000000000000
+  9: 0.1837000000000000
+  7: 0.1817000000000000
+  11: 0.1810000000000000
+  10: 0.1795000000000000
+  6: 0.0884000000000000
+  mean = 8.7272
+
+
+  [num_boxes = 3,num_letters = 100]
+  var : min num letters
+  Probabilities (truncated):
+  2: 0.0591000000000000
+  1: 0.0572000000000000
+  3: 0.0556000000000000
+  4: 0.0555000000000000
+  .........
+  31: 0.0059000000000000
+  32: 0.0036000000000000
+  33: 0.0015000000000000
+  34: 0.0002000000000000
+  mean = 11.6131
+
+  var : max num letters
+  Probabilities (truncated):
+  52: 0.0306000000000000
+  51: 0.0304000000000000
+  50: 0.0281000000000000
+  53: 0.0278000000000000
+  .........
+  98: 0.0016000000000000
+  100: 0.0009000000000000
+  35: 0.0004000000000000
+  101: 0.0003000000000000
+  mean = 62.7168
+
+
+  [num_boxes = 10,num_letters = 100]
+  var : min num letters
+  Probabilities:
+  1: 0.5944000000000000
+  2: 0.2563000000000000
+  3: 0.1001000000000000
+  4: 0.0348000000000000
+  5: 0.0111000000000000
+  6: 0.0029000000000000
+  7: 0.0004000000000000
+  mean = 1.6222
+
+  var : max num letters
+  Probabilities (truncated):
+  27: 0.0556000000000000
+  26: 0.0547000000000000
+  28: 0.0537000000000000
+  25: 0.0527000000000000
+  .........
+  65: 0.0002000000000000
+  14: 0.0002000000000000
+  74: 0.0001000000000000
+  66: 0.0001000000000000
+  mean = 31.4373
+
+  [num_boxes = 100,num_letters = 1000]
+  var : min num letters
+  Probabilities:
+  1: 1.0000000000000000
+  mean = 1.0
+
+  var : max num letters
+  Probabilities (truncated):
+  51: 0.0401000000000000
+  52: 0.0394000000000000
+  46: 0.0386000000000000
+  49: 0.0385000000000000
+  .........
+  125: 0.0001000000000000
+  124: 0.0001000000000000
+  119: 0.0001000000000000
+  111: 0.0001000000000000
+  mean = 55.3414
+
+*/
+go2 ?=>
+  member([NumBoxes,NumLetters],[[2,10],[3,100],[10,100]]),
+  println([num_boxes=NumBoxes,num_letters=NumLetters]),
+  reset_store,
+  run_model(10_000,$model2(NumBoxes,NumLetters),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go2 => true.
+
+
+f2(I,Boxes,NumLetters) = Res =>
+  if I >= NumLetters then
+    Res = Boxes
+  else
+    NewB = categorical(Boxes,1..Boxes.len),
+    Boxes[NewB] := Boxes[NewB]+1,
+    Res = f2(I+1,Boxes,NumLetters)
+  end.
+  
+model2(NumBoxes,NumLetters) =>
+
+  Boxes = ones(NumBoxes,1),
+  BoxesRes = f2(0,Boxes,NumLetters),
+
+  MinNumLetters = min(BoxesRes),
+  MaxNumLetters = max(BoxesRes),
+  % intln([boxes=Boxes,min=MinNumLetters,max=MaxNumLetters]),
+
+  add("min num letters",MinNumLetters),
+  add("max num letters",MaxNumLetters).  

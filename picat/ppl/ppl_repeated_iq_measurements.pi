@@ -1,0 +1,104 @@
+/* 
+
+  Repeated IQ measurements in Picat.
+
+  From https://mhtess.github.io/bdappl/chapters/03-simpleModels.html
+  """
+  Repeated measures of IQ
+
+  The data are the measures xijx_(ij)xij​ 
+     for the i=1,...,ni = 1, . . . ,ni=1,...,n people 
+  and their j=1,...,mj = 1, . . . ,mj=1,...,m repeated test scores.
+
+  We assume that the differences in repeated test scores are distributed as 
+  Gaussian error terms with zero mean and unknown precision. The mean of the 
+  Gaussian of a person’s test scores corresponds to their latent true IQ. 
+  This will be different for each person. The standard deviation of the 
+  Gaussians corresponds to the accuracy of the testing instruments in 
+  measuring the one underlying IQ value. We assume this is the same for 
+  every person, since it is conceived as a property of the tests themselves.
+  """
+
+  Cf my Gamble model gamble_repeated_iq_measurements.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  Num accepted samples: 100  Total samples: 681280  (0.000%)
+  var : sigma
+  mean = 7.96712
+  HPD intervals:
+  HPD interval (0.9): 0.24762433033792..13.30654798695191
+
+  var : mu 1
+  mean = 95.974
+  HPD intervals:
+  HPD interval (0.9): 84.85707206877744..103.22446501963979
+
+  var : mu 2
+  mean = 110.744
+  HPD intervals:
+  HPD interval (0.9): 101.40961171193497..119.97935945167177
+
+  var : mu 3
+  mean = 154.194
+  HPD intervals:
+  HPD interval (0.9): 146.31217883262420..165.63719360420350
+
+*/
+go ?=>
+  reset_store,
+  run_model(1_000_000,$model,[% show_probs_trunc,
+                              mean,
+                              show_hpd_intervals,hpd_intervals=[0.9],
+                              min_accepted_samples=100,show_accepted_samples=true  
+                              ]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Data = [[90,95,100],   % P1
+          [105,110,115], % P2
+          [150,155,160]  % P3
+          ],
+  Len = Data.len,
+  % Means = [D.mean : D in Data],
+  % Stdevs = [D.stdev : D in Data],
+  
+  % everyone shares same sigma (corresponding to measurement error)
+  Sigma = uniform(0,50),
+
+  % Each person has a separate latent IQ
+  Mu = uniform_n(0,200,Len),
+
+  % Observe data
+  foreach(I in 1..Len)
+     Y = normal_dist_n(Mu[I],Sigma,Data[I].len),
+     observe_abc(Data[I],Y,2)
+     % YMean = Y.mean,
+     % YStdev = Y.stdev,
+     % observe( abs(Means[I]-YMean)<Stdevs[I]),
+     % observe( abs(Stdevs[I]-YStdev)<Stdevs[I])     
+  end,
+
+
+
+  if observed_ok then
+    add("sigma",Sigma),
+    add("mu 1",Mu[1]),
+    add("mu 2",Mu[2]),
+    add("mu 3",Mu[3]),    
+  end.

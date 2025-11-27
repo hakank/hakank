@@ -1,0 +1,106 @@
+/* 
+
+  Click graph in Picat.
+
+  From PSI I paper.
+  Where the objective is to determine how similar the 
+  clicks of A and B are.
+
+  Cf my Gamble model gamble_click_graph.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  clicks = [[true,true,true,false,false],[true,true,true,false,false]]
+  var : sim all
+  Probabilities (truncated):
+  0.998639848082624: 0.0010000000000000
+  0.998059035743614: 0.0010000000000000
+  0.997746356761896: 0.0010000000000000
+  0.997715513220856: 0.0010000000000000
+  .........
+  0.011753603821506: 0.0010000000000000
+  0.010036382363195: 0.0010000000000000
+  0.004697684200805: 0.0010000000000000
+  0.001868278254694: 0.0010000000000000
+  mean = 0.599464
+
+  var : sim 1
+  Probabilities:
+  true: 0.6550000000000000
+  false: 0.3450000000000000
+  mean = [true = 0.655,false = 0.345]
+
+
+  clicks = [[true,true,true,false,true,true],[false,false,false,true,false,false]]
+  var : sim all
+  Probabilities (truncated):
+  0.986526463174506: 0.0010000000000000
+  0.984096966676459: 0.0010000000000000
+  0.977998407547361: 0.0010000000000000
+  0.977298801288613: 0.0010000000000000
+  .........
+  0.001832617447634: 0.0010000000000000
+  0.00168651528735: 0.0010000000000000
+  0.001626677811903: 0.0010000000000000
+  0.000806179363656: 0.0010000000000000
+  mean = 0.317108
+
+  var : sim 1
+  Probabilities:
+  false: 0.7190000000000000
+  true: 0.2810000000000000
+  mean = [false = 0.719,true = 0.281]
+
+*/
+go ?=>
+  % Very similar clicks
+  SimilarClicks = [[true,true,true,false,false],
+                   [true,true,true,false,false]],
+  % Very different clicks
+  DifferentClicks = [[true,true,true,false,true,true],% true,false],
+                     [false,false,false,true,false,false] % ,false,true]
+                    ],
+
+  member(Clicks,[SimilarClicks,DifferentClicks]),
+  println(clicks=Clicks),
+  reset_store,
+  run_model(130_000,$model(Clicks),[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.84],
+                           min_accepted_samples=1000,show_accepted_samples=false % true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+model([As,Bs]) =>
+  Len = As.len,
+
+  SimAll = uniform(0,1),
+  Sim = flip_n(SimAll,Len),
+
+  PA = uniform_dist_n(0,1,Len),
+  PB = [ cond(Sim[I] == true, PA[I], uniform(0,1)) : I in 1..Len],
+
+  ClicksA = [flip(PA[I]) : I in 1..Len],
+  ClicksB = [flip(PB[I]) : I in 1..Len],
+  
+  observe(As==ClicksA),
+  observe(Bs==ClicksB),  
+  
+  if observed_ok then
+    add("sim all",SimAll),
+    add("sim 1",Sim[1]),
+  end.

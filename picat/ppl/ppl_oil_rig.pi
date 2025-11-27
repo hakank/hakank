@@ -1,0 +1,97 @@
+/* 
+
+  Oil rig in Picat.
+
+  From BayesiaLab
+
+  This is a port of my Gamble model gamble_oil_rig.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/* 
+  var : gain
+  Probabilities:
+  0: 0.5013905442987684
+  -70000: 0.2451330949543107
+  50000: 0.1553436630909813
+  200000: 0.0981326976559396
+  mean = 10234.4
+
+  var : oil
+  Probabilities:
+  dry: 0.4870878029400079
+  wet: 0.3108859753675010
+  soaking: 0.2020262216924911
+  mean = [dry = 0.487088,wet = 0.310886,soaking = 0.202026]
+
+  var : seismic_test
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : test_cost
+  Probabilities:
+  -10: 1.0000000000000000
+  mean = -10.0
+
+  var : test_result
+  Probabilities:
+  no_structure: 0.4294795391338895
+  open_structure: 0.3444576877234803
+  closed_structure: 0.2260627731426301
+  mean = [no_structure = 0.42948,open_structure = 0.344458,closed_structure = 0.226063]
+
+
+
+*/
+go ?=>
+  reset_store(),
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  fail,
+  nl.
+go => true.
+
+model() =>
+  Structures = [closed_structure,open_structure,no_structure],
+
+  SeismicTest = flip(0.5),
+  TestCost = condt(SeismicTest,-10,0),
+  Oil = categorical([50,30,20],[dry,wet,soaking]),
+  TestResult = condt(SeismicTest,
+                      case(Oil,[
+                                [dry,categorical([10,30,60],Structures)],
+                                [wet,categorical([30,40,40],Structures)],
+                                [soaking,categorical([50,40,10],Structures)]
+                                ]),
+                      "test_result: na"), 
+  Drill = flip(0.5),
+  Gain = condt(Drill,
+                case(Oil,[[dry,-70_000],
+                          [wet, 50_000],
+                          [soaking,200_000]
+                         ]),
+                0),
+
+   % observe(not Drill),
+   observe(SeismicTest),
+   % observe(Oil == soaking),
+   % observe(TestResult==open_structure),
+   % observe(Drill),
+
+   if observed_ok then
+      add_all([ ["seismic_test",SeismicTest],
+                ["test_cost",TestCost],
+                ["oil",Oil],
+                ["test_result",TestResult],
+                ["drill",Drill],
+                ["gain",Gain]
+                ])
+   end.

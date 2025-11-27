@@ -1,0 +1,131 @@
+/* 
+
+  BDA 2 in Picat.
+
+  From the WebPPL model https://github.com/probmods/ppaml2016/blob/gh-pages/chapters/5-data.md
+  """
+  Posterior prediction and model checking
+
+  One important use of posterior predictive distributions is to examine the descriptive 
+  adequacy of a model. The posterior predictive can be viewed as a set of predictions about 
+  what data the model expects to see, based on the posterior distribution over parameters. 
+  If these predictions do not match the data already seen, the model is descriptively inadequate.
+
+  Let's say we ran 2 experiments that we believe are conceptually the same (e.g., asking 
+  10 people whether or not they would vote for "Hillary Clinton or Donald Trump" and asking 
+  a separate group of 10 people if they would vote for "Donald Trump or Hillary Clinton"). 
+  Suppose we observed the following data from those 2 experiments: k1=0; k2=10.
+  """
+
+
+  Cf my Gamble model gamble_bda2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Using binomial_dist_smart(N,K) is fairly fast. 
+  Though it need quite a lot of samples.
+  
+  Here's the result of 1_000_000 samples (with 57 accepted!):
+
+  var : p
+  Probabilities (truncated):
+  0.900826262673903: 0.0175438596491228
+  0.871066430407287: 0.0175438596491228
+  0.857160014190645: 0.0175438596491228
+  0.831598484046478: 0.0175438596491228
+  .........
+  0.309959281861413: 0.0175438596491228
+  0.274073361954019: 0.0175438596491228
+  0.2612539056788: 0.0175438596491228
+  0.195389089616131: 0.0175438596491228
+  mean = 0.539498
+  HPD intervals:
+  HPD interval (0.84): 0.30995928186141..0.72007981685049
+
+  var : posterior predictive1
+  Probabilities (truncated):
+  1: 0.2105263157894737
+  10: 0.1052631578947368
+  6: 0.1052631578947368
+  2: 0.1052631578947368
+  .........
+  4: 0.0350877192982456
+  13: 0.0175438596491228
+  12: 0.0175438596491228
+  11: 0.0175438596491228
+  mean = 4.91228
+  HPD intervals:
+  HPD interval (0.84): 0.00000000000000..9.00000000000000
+
+  var : posterior predictive2
+  Probabilities (truncated):
+  0: 0.1403508771929824
+  9: 0.1228070175438596
+  1: 0.1228070175438596
+  6: 0.1052631578947368
+  .........
+  10: 0.0350877192982456
+  4: 0.0350877192982456
+  16: 0.0175438596491228
+  12: 0.0175438596491228
+  mean = 5.47368
+  HPD intervals:
+  HPD interval (0.84): 0.00000000000000..9.00000000000000
+
+
+  Variable lengths:
+  p = 57
+  posterior predictive1 = 57
+  posterior predictive2 = 57
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(1_000_000,$model,[show_probs_trunc,mean,show_hpd_intervals,hpd_intervals=[0.84]]),
+  nl,
+  show_store_lengths(),
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N1 = 10,
+  N2 = 10,
+
+  % Sample rate from uniform distribution
+  % P = uniform(0,1),
+  P = beta_dist(2,2),
+
+  K1 = binomial_dist_smart(N1,P),
+  K2 = binomial_dist_smart(N2,P),
+  % K1 = binomial_dist_btpe(N1,P),
+  % K2 = binomial_dist_btpe(N2,P),
+
+  observe(K1 == 0),
+  observe(K2 == 10),
+
+  % println([p=P,k1=K1,k2=K2,diff1=abs(K1-0),diff2=abs(K2-10)]),
+
+  % sample from binomial with updated p
+  PosteriorP = uniform(0,1),
+  PosteriorPredictive1 = binomial_dist_smart(N1,PosteriorP),
+  PosteriorPredictive2 = binomial_dist_smart(N2,PosteriorP),  
+  % PosteriorPredictive1 = binomial_dist_btpe(N1,PosteriorP),
+  % PosteriorPredictive2 = binomial_dist_btpe(N2,PosteriorP),  
+  if observed_ok then
+    println(ok=[P,PosteriorPredictive1,PosteriorPredictive2]),
+    add("p",P),
+    add("posterior predictive1",PosteriorPredictive1),
+    add("posterior predictive2",PosteriorPredictive2)
+  end.

@@ -1,0 +1,136 @@
+/* 
+
+  Coupon Collector's problem in Picat.
+
+  There are N different collector's cards hidden in a package, but we don't
+  know which card there is in the package we buy.
+  We want to collect all of them, how many packages must one buy to collect
+  all the different cards?
+
+  See https://en.wikipedia.org/wiki/Coupon_collector%27s_problem
+  """
+  In probability theory, the coupon collector's problem describes 'collect all coupons and win' 
+  contests. It asks the following question: If each box of a brand of cereals contains a 
+  coupon, and there are n different types of coupons, what is the probability that more 
+  than t boxes need to be bought to collect all n coupons? 
+
+  An alternative statement is: Given n coupons, how many coupons do you expect you need 
+  to draw with replacement before having drawn each coupon at least once? The mathematical 
+  analysis of the problem reveals that the expected number of trials needed grows as 
+  Θ(n log(n).
+  For example, when n = 50 it takes about 225[b] trials on average to collect all 50 coupons. 
+
+  ...
+
+  [b]: E(50) = 50(1 + 1/2 + 1/3 + ... + 1/50) = 224.9603, the expected number of trials to 
+  collect all 50 coupons. 
+
+   The approximation n*log(n) + γ*n + 1/2 for this expected number gives in this case 
+   ≈ 195.6011 + 28.8608 + 0.5 ≈ 224.9619.  [log is the natural logarithm]
+  """ 
+  
+
+  This is a port of my Gamble model gamble_coupon_collectors_problem.rkt.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  n = 10
+  theoretical = 29.2897
+  approx = 29.298
+  var : runs
+  Probabilities (truncated):
+  25: 0.04800000000000000 (6 / 125)
+  22: 0.04680000000000000 (117 / 2500)
+  24: 0.04580000000000000 (229 / 5000)
+  23: 0.04480000000000000 (28 / 625)
+  26: 0.04320000000000000 (27 / 625)
+  21: 0.04300000000000000 (43 / 1000)
+  27: 0.04200000000000000 (21 / 500)
+  29: 0.03880000000000000 (97 / 2500)
+  28: 0.03820000000000000 (191 / 5000)
+  20: 0.03760000000000000 (47 / 1250)
+  .........
+  103: 0.00020000000000000 (1 / 5000)
+  91: 0.00020000000000000 (1 / 5000)
+  89: 0.00020000000000000 (1 / 5000)
+  87: 0.00020000000000000 (1 / 5000)
+  85: 0.00020000000000000 (1 / 5000)
+  84: 0.00020000000000000 (1 / 5000)
+  78: 0.00020000000000000 (1 / 5000)
+  77: 0.00020000000000000 (1 / 5000)
+  75: 0.00020000000000000 (1 / 5000)
+  71: 0.00020000000000000 (1 / 5000)
+  mean = 29.3402
+
+
+  CPU time 0.379 seconds. Backtracks: 0
+
+
+  n = 100
+  theoretical = 518.738
+  approx = 518.739
+  var : runs
+  Probabilities (truncated):
+  419: 0.00640000000000000 (4 / 625)
+  488: 0.00580000000000000 (29 / 5000)
+  404: 0.00560000000000000 (7 / 1250)
+  508: 0.00540000000000000 (27 / 5000)
+  485: 0.00540000000000000 (27 / 5000)
+  461: 0.00520000000000000 (13 / 2500)
+  464: 0.00500000000000000 (1 / 200)
+  449: 0.00500000000000000 (1 / 200)
+  462: 0.00480000000000000 (3 / 625)
+  455: 0.00480000000000000 (3 / 625)
+  .........
+  295: 0.00020000000000000 (1 / 5000)
+  292: 0.00020000000000000 (1 / 5000)
+  287: 0.00020000000000000 (1 / 5000)
+  286: 0.00020000000000000 (1 / 5000)
+  283: 0.00020000000000000 (1 / 5000)
+  281: 0.00020000000000000 (1 / 5000)
+  280: 0.00020000000000000 (1 / 5000)
+  270: 0.00020000000000000 (1 / 5000)
+  268: 0.00020000000000000 (1 / 5000)
+  254: 0.00020000000000000 (1 / 5000)
+  mean = 518.737
+
+  CPU time 30.436 seconds. Backtracks: 0
+
+
+*/
+go ?=>
+  member(N,[10,100]),
+  println(n=N),
+  println(theoretical=coupon_collectors_problem_theoretical(N)),
+  println(approx=coupon_collectors_problem_approx(N)),  
+  reset_store(),
+  time2(run_model(5_000,$model(N),[show_probs_rat_trunc,mean,truncate_size=10])),
+  fail,
+  nl.
+go => true.
+
+model(N) =>
+  Slots = new_list(N,0), % fill with 0
+
+  Runs = 0,
+  Found = false,
+  while(Found == false)
+    if [cond(Slots[I]==0,1,0) : I in 1..N].sum == 0 then
+      Found := true
+    else
+      Runs := Runs + 1,
+      Slot = random_integer1(N),
+      Slots[Slot] := Slots[Slot] + 1 
+    end
+  end,
+  add("runs",Runs).
+  

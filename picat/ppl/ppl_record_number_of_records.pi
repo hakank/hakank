@@ -1,0 +1,327 @@
+/* 
+
+  Number of records for permutations and normal distribution in Picat.
+
+  How many records are there in a sequence of n elements?
+
+  This calculates the probabilities of the number of records for n values.
+
+  The theoretical values is quite good for permutations and continuous
+  distributions. For discrete distributions, e.g. uniform discrete, binomial, etc,
+  this does not apply. (I'm still trying to find out theories for these distributions.)
+
+  The mean is the harmonic_number(N).
+
+  Cf my Gamble model gamble_record_number_of_records.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  n = 10
+  PDF:
+   1 0.1 
+   2 0.282896825396825 
+   3 0.323164682539683 
+   4 0.199426807760141 
+   5 0.07421875 
+   6 0.017436342592593 
+   7 0.002604166666667 
+   8 0.000239748677249 
+   9 0.000012400793651 
+  10 0.000000275573192 
+
+  Sorted by prob:
+   3 0.323164682539683 
+   2 0.282896825396825 
+   4 0.199426807760141 
+   1 0.1 
+   5 0.07421875 
+   6 0.017436342592593 
+   7 0.002604166666667 
+   8 0.000239748677249 
+   9 0.000012400793651 
+  10 0.000000275573192 
+
+  CDF:
+   1 0.1 
+   2 0.382896825396825 
+   3 0.706061507936508 
+   4 0.905488315696649 
+   5 0.979707065696649 
+   6 0.997143408289242 
+   7 0.999747574955908 
+   8 0.999987323633157 
+   9 0.999999724426808 
+  10 1.0 
+
+  Quantile:
+  0.000001  1 
+  0.00001  1 
+  0.001  1 
+  0.01  1 
+  0.025  1 
+  0.05  1 
+  0.1  1 
+  0.25  2 
+  0.5  3 
+  0.75  4 
+  0.84  4 
+  0.9  4 
+  0.975  5 
+  0.99  6 
+  0.999  7 
+  0.99999  9 
+  0.999999  9 
+
+  Mean: = 2.92897
+  Mean (h_n): = 2.92897
+
+*/
+go ?=>
+  N = 10, % 10 value in the list
+  println(n=10),
+  println("PDF:"),
+  [V=num_records_dist_pdf(N,V)  : V in 1..N].printf_list,
+  nl,
+  println("Sorted by prob:"),
+  [V=num_records_dist_pdf(N,V)  : V in 1..N].sort_down(2).printf_list,  
+  nl,
+  println("CDF:"),
+  [V=num_records_dist_cdf(N,V)  : V in 1..N].printf_list,
+  nl,
+  println("Quantile:"),
+  [Q=num_records_dist_quantile(N,Q)  : Q in quantile_qs()].printf_list,
+  nl,
+  println("Mean:"=num_records_dist_mean(N)),
+  println("Mean (h_n):"=num_records_dist_mean_h_n(N)),  
+  
+  nl.
+go => true.
+
+/*
+
+  * draw_without_replacement(10,1..10)
+
+    n = 10
+    var : num records
+    Probabilities:
+    3: 0.3199000000000000
+    2: 0.2815000000000000
+    4: 0.2015000000000000
+    1: 0.1001000000000000
+    5: 0.0771000000000000
+    6: 0.0174000000000000
+    7: 0.0020000000000000
+    8: 0.0004000000000000
+    9: 0.0001000000000000
+    mean = 2.9368
+
+    var : h_n
+    Probabilities:
+    2.92897: 1.0000000000000000
+    mean = 2.92897
+
+    var : est
+    Probabilities:
+    2.8798: 1.0000000000000000
+    mean = 2.8798
+
+  * normal_dist(100,15)
+    n = 10
+    var : num records
+    Probabilities:
+    3: 0.3366000000000000
+    2: 0.2792000000000000
+    4: 0.1948000000000000
+    1: 0.0948000000000000
+    5: 0.0745000000000000
+    6: 0.0174000000000000
+    7: 0.0023000000000000
+    8: 0.0004000000000000
+    mean = 2.9384
+
+    var : h_n
+    Probabilities:
+    2.92897: 1.0000000000000000
+    mean = 2.92897
+
+    var : est
+    Probabilities:
+    2.8798: 1.0000000000000000
+    mean = 2.8798
+
+  * uniform(0,1)
+    n = 10
+    var : num records
+    Probabilities:
+    3: 0.3211000000000000
+    2: 0.2883000000000000
+    4: 0.1965000000000000
+    1: 0.1005000000000000
+    5: 0.0741000000000000
+    6: 0.0166000000000000
+    7: 0.0027000000000000
+    9: 0.0001000000000000
+    8: 0.0001000000000000
+    mean = 2.9171
+
+    var : h_n
+    Probabilities:
+    2.92897: 1.0000000000000000
+    mean = 2.92897
+
+    var : est
+    Probabilities:
+    2.8798: 1.0000000000000000
+    mean = 2.8798
+
+    theoretical_mean = 2.92897
+
+
+  * poisson(1)
+    Here we see how the theory doesn't work. For example, 
+    the mean is not about the estimated value of 2.92.
+    Instead it's quite lower: about 2.21.
+
+    n = 10
+    var : num records
+    Probabilities:
+    2: 0.4757000000000000
+    3: 0.2979000000000000
+    1: 0.1792000000000000
+    4: 0.0464000000000000
+    5: 0.0008000000000000
+    mean = 2.2139
+
+    var : h_n
+    Probabilities:
+    2.92897: 1.0000000000000000
+    mean = 2.92897
+
+    var : est
+    Probabilities:
+    2.8798: 1.0000000000000000
+    mean = 2.8798
+
+    theoretical_mean = 2.92897
+
+
+    Here we see the distribution of the number of distict values in
+    poisson(1)
+
+    Picat> [poisson_dist_n(1,10).remove_dups.len  : _ in 1..10000].show_freq
+    Show freqs:
+    2 = 533
+    3 = 4676
+    4 = 4183
+    5 = 594
+    6 = 14
+
+  * random_integer(10)
+    Same as for poisson(1)
+
+    n = 10
+    var : num records
+    Probabilities:
+    2: 0.3638000000000000
+    3: 0.3202000000000000
+    1: 0.1593000000000000
+    4: 0.1255000000000000
+    5: 0.0283000000000000
+    6: 0.0028000000000000
+    7: 0.0001000000000000
+    mean = 2.5085
+
+    var : h_n
+    Probabilities:
+    2.92897: 1.0000000000000000
+    mean = 2.92897
+
+    var : est
+    Probabilities:
+    2.8798: 1.0000000000000000
+    mean = 2.8798
+
+    theoretical_mean = 2.92897
+
+  * random_integer(100) 
+    This is more like it! However, there are duplicates so its mean is - still -
+    off the theoretical mean.
+
+    n = 10
+    var : num records
+    Probabilities:
+    3: 0.3199000000000000
+    2: 0.2929000000000000
+    4: 0.1961000000000000
+    1: 0.1031000000000000
+    5: 0.0717000000000000
+    6: 0.0143000000000000
+    7: 0.0020000000000000
+    mean = 2.8913
+
+    var : h_n
+    Probabilities:
+    2.92897: 1.0000000000000000
+    mean = 2.92897
+
+    var : est
+    Probabilities:
+    2.8798: 1.0000000000000000
+    mean = 2.8798
+
+    theoretical_mean = 2.92897
+
+*/
+go2 ?=>
+  N = 10,
+  println(n=N),
+  reset_store,
+  run_model(10_000,$model2(N),[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=num_records_dist_mean(N)),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(N) =>
+  % Permutations and continuous distributions
+  X = draw_without_replacement(N,1..N),
+  % X = normal_dist_n(100,15,N),
+  % X = uniform_dist_n(0,1,N),
+
+
+  % discrete distributions
+  % X = poisson_dist_n(1,N),
+  % X = random_integer_dist_n(10,N),
+  
+  % X = random_integer_dist_n(100,N),
+  
+
+  RecordsIx = get_records_ix(X),
+  NumRecords = RecordsIx.len,
+
+  HN = harmonic_number(N),
+  Est = log(N) + euler_gamma(),
+  
+  add("num records",NumRecords),
+  add("h_n",HN),
+  add("est",Est).
+

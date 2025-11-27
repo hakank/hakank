@@ -1,0 +1,135 @@
+/* 
+
+  AR(1) in Picat.
+
+  From Stan Users Guide, section 3.1 (page 51) "Autoregressive Models"
+  https://mc-stan.org/docs/2_19/stan-users-guide-2_19.pdf
+  (page 48f)
+
+  Mathematica:
+  """
+  eproc = EstimatedProcess[temp, ARProcess[1]]
+  -> ARProcess[0.731788, {0.157416}, 0.118305]
+  """
+
+  Cf my Gamble model gamble_ar1.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : alpha
+  Probabilities (truncated):
+  2.043764999401342: 0.0100000000000000
+  2.028903084212299: 0.0100000000000000
+  1.993448722000461: 0.0100000000000000
+  1.968023587759769: 0.0100000000000000
+  .........
+  0.229333295081246: 0.0100000000000000
+  0.223529092170411: 0.0100000000000000
+  0.17869307254768: 0.0100000000000000
+  0.164949030107986: 0.0100000000000000
+  mean = 1.06025
+
+  var : beta
+  Probabilities (truncated):
+  0.838915156348474: 0.0100000000000000
+  0.784960257696699: 0.0100000000000000
+  0.766296699982435: 0.0100000000000000
+  0.706628362892883: 0.0100000000000000
+  .........
+  -0.885100964433907: 0.0100000000000000
+  -0.887206705107812: 0.0100000000000000
+  -0.960978595661854: 0.0100000000000000
+  -0.993750107354686: 0.0100000000000000
+  mean = -0.173052
+
+  var : sigma
+  Probabilities (truncated):
+  0.78741043769283: 0.0100000000000000
+  0.737046651161837: 0.0100000000000000
+  0.726299640129462: 0.0100000000000000
+  0.711306787724287: 0.0100000000000000
+  .........
+  0.064364712552113: 0.0100000000000000
+  0.058781404374383: 0.0100000000000000
+  0.054432263130247: 0.0100000000000000
+  0.03810354606212: 0.0100000000000000
+  mean = 0.39733
+
+*/
+go ?=>
+  Ys = [0.705429,1.43062,0.618161,0.315107,1.09993,1.49022,0.690016,0.587519,
+        0.882984,1.0278,0.998615,0.878366,1.17405,0.532718,0.486417,
+        1.13685,1.32453,1.3661,0.914368,1.07217,1.1929,0.418664,
+        0.889512,1.47218,1.13471,0.410168,0.639765,0.664874,1.12101,
+        1.22703,-0.0931769,0.4275,0.901126,1.01896,1.27746,1.17844,
+        0.554775,0.325423,0.494777,1.05813,1.10177,1.11225,1.34575,
+        0.527594,0.323462,0.435063,0.739342,1.05661,1.42723,0.810924,
+        0.0114801,0.698537,1.13063,1.5286,0.968813,0.360574,0.959312,
+        1.2296,0.994434,0.59919,0.565326,0.855878,0.892557,0.831705,
+        1.31114,1.26013,0.448281,0.807847,0.746235,1.19471,1.23253,
+        0.724155,1.1464,0.969122,0.431289,1.03716,0.798294,0.94466,
+        1.29938,1.03269,0.273438,0.589431,1.2741,1.21863,0.845632,
+        0.880577,1.26184,0.57157,0.684231,0.854955,0.664501,0.968114,
+        0.472076,0.532901,1.4686,1.0264,0.27994,0.592303,0.828514,
+        0.625841],
+  reset_store,
+  run_model(10_000,$model(Ys),[show_probs_trunc,mean,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.84],
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+table
+y(I,Alpha,Beta,Sigma) = Res =>
+  if I == 1 then
+    Res = normal_dist(Alpha + Beta,Sigma)
+  else
+    Res = normal_dist(Alpha + (Beta * y(I-1,Alpha,Beta,Sigma)),Sigma)
+  end.
+  
+model(Ys) =>
+  Len = Ys.len,
+  Mean = Ys.mean,
+  Stdev = Ys.stdev,
+  
+  Alpha = normal_dist(2,2),
+  Beta = normal_dist(2,2),
+  Sigma = gamma_dist(2,2),
+  observe(Sigma > 0),
+
+  % Y = [y(I,Alpha,Beta,Sigma) : I in 1..Len],
+  Y = [],
+  foreach(I in 1..Len)
+    if I == 1 then
+      Y := Y ++ [normal_dist(Alpha + Beta,Sigma)]
+    else
+      V = normal_dist(Alpha + (Beta * Y[I-1]),Sigma),
+      Y := Y ++ [V]
+    end,
+  end,
+  YMean = Y.mean,
+  YStdev = Y.stdev,
+  observe(abs(Mean-YMean)<Stdev),
+  observe(abs(Stdev-YStdev)<Stdev),  
+  
+  if observed_ok then
+    add("alpha",Alpha),
+    add("beta",Beta),
+    add("sigma",Sigma),    
+  end.

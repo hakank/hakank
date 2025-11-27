@@ -1,0 +1,97 @@
+/* 
+
+  Dice problem in Picat.
+
+  From Think Bayes, page 21.
+  """
+  Suppose I have a box of dice that contains a 4-sided die, a 6-sided die, an
+  8-sided die, a 12-sided die, and a 20-sided die. If you have ever played
+  Dungeons & Dragons, you know what I am talking about.
+
+  Suppose I select a die from the box at random, roll it, and get a 6. What is
+  the probability that I rolled each die?
+
+   ...
+   
+  What if we roll a few more times and get 6, 8, 7, 7, 5, and 4?
+  """
+
+  For a similar (but harder) problem, see ppl_dice.pi.
+
+  This is a port of my Racket/Gamble model dice_problem.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  observed = [6]
+  min_accepted_samples = 10000
+  var : dice
+  Probabilities:
+  8: 0.34229999999999999 (3423 / 10000)
+  6: 0.28930000000000000 (2893 / 10000)
+  12: 0.22919999999999999 (573 / 2500)
+  20: 0.13919999999999999 (87 / 625)
+  mean = 10.0086
+
+  observed = [6,8,7,7,5,4]
+  min_accepted_samples = 10000
+  var : dice
+  Probabilities:
+  8: 0.69440000000000002 (434 / 625)
+  12: 0.29060000000000002 (1453 / 5000)
+  20: 0.01500000000000000 (3 / 200)
+  mean = 9.3424
+
+  observed = [1,1,1,1,1,1,1,1,1]
+  min_accepted_samples = 10000
+  var : dice
+  Probabilities:
+  4: 0.95989999999999998 (9599 / 10000)
+  6: 0.03740000000000000 (187 / 5000)
+  8: 0.00260000000000000 (13 / 5000)
+  12: 0.00010000000000000 (1 / 10000)
+  mean = 4.086
+
+*/
+go ?=>
+  member(Observed,[[6],[6,8,7,7,5,4],[1,1,1,1,1,1,1,1,1]]),
+  println(observed=Observed),
+  reset_store,
+  run_model(200_000,$model(Observed),[show_probs_rat,mean,
+                                      min_accepted_samples=10000,show_accepted_samples=false
+                                     ]),
+  fail,  
+  nl.
+go => true.
+
+% This was inspired by the PSI model (via the Gamble model)
+model(Observed) =>
+  N = Observed.len,
+  Mean = Observed.mean,
+  Stdev = max(1,Observed.stdev), % Fix for the [6] and 1s examples.
+
+  % Remove impossibe dice (ideally the should be done automatically)
+  Ds = [ D : D in [4,6,8,12,20], D >= Observed.max],
+  Dice = uniform_draw(Ds),
+
+  Throws = [random_integer(Dice)+1 : _ in 1..N],
+  ThrowsMean = Throws.mean,
+  ThrowsStdev = Throws.stdev,
+
+  % Note: Here we need a <= (for the [6] case)
+  observe(abs(Mean-ThrowsMean)<=Stdev),
+  observe(abs(Stdev-ThrowsStdev)<=Stdev),  
+
+  % observe(Throws == Observed) % This is very slow.
+  
+  if observed_ok then
+    add("dice",Dice)
+  end.

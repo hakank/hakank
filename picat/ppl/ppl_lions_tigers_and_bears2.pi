@@ -1,0 +1,177 @@
+/* 
+
+  Lions, tigers and bears in Picat.
+
+  From Allen Downey
+  https://twitter.com/AllenDowney/status/1063460117029535746
+  """
+  Today's Bayesian problem of the week: Suppose we visit a wild animal preserve where we 
+  know that the only animals are lions and tigers and bears, but we don't know how 
+  many of each there are.
+
+  During the tour, we see 3 lions, 2 tigers, and 1 bear. Assuming that every animal had an equal 
+  chance to appear in our sample, estimate the prevalence of each species. 
+ 
+  What is the probability that the next animal we see is a bear?
+  """
+
+  Also see: https://towardsdatascience.com/estimating-probabilities-with-bayesian-modeling-in-python-7144be007815
+
+  This version uses Dirichlet for the prior.
+
+
+  This is a port of my Gamble model gamble_lions_tigers_and_bears.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+
+  prior = [3,2,1]
+  var : next animal (Y[7])
+  Probabilities:
+  lion: 0.4423076923076923
+  tiger: 0.4134615384615384
+  bear: 0.1442307692307692
+  mean = [lion = 0.442308,tiger = 0.413462,bear = 0.144231]
+
+  var : probBear
+  Probabilities (truncated):
+  0.532537029455416: 0.0096153846153846
+  0.456006637486206: 0.0096153846153846
+  0.403080093204857: 0.0096153846153846
+  0.386821438123761: 0.0096153846153846
+  .........
+  0.018613017770005: 0.0096153846153846
+  0.017495056699795: 0.0096153846153846
+  0.016920511391153: 0.0096153846153846
+  0.016145354679952: 0.0096153846153846
+  mean = 0.156138
+
+  var : probLion
+  Probabilities (truncated):
+  0.832016244378055: 0.0096153846153846
+  0.803759836388674: 0.0096153846153846
+  0.803409738010715: 0.0096153846153846
+  0.768725659087671: 0.0096153846153846
+  .........
+  0.269994619525266: 0.0096153846153846
+  0.261167828497551: 0.0096153846153846
+  0.259350693387641: 0.0096153846153846
+  0.096569711244156: 0.0096153846153846
+  mean = 0.500187
+
+  var : probTiger
+  Probabilities (truncated):
+  0.656007463971644: 0.0096153846153846
+  0.626754429388053: 0.0096153846153846
+  0.624810306977201: 0.0096153846153846
+  0.59478526710962: 0.0096153846153846
+  .........
+  0.119656665474139: 0.0096153846153846
+  0.114104971379321: 0.0096153846153846
+  0.101714837800639: 0.0096153846153846
+  0.063981000131789: 0.0096153846153846
+  mean = 0.343675
+
+
+  prior = [1,1,1]
+  var : next animal (Y[7])
+  Probabilities:
+  lion: 0.4714285714285714
+  tiger: 0.2857142857142857
+  bear: 0.2428571428571429
+  mean = [lion = 0.471429,tiger = 0.285714,bear = 0.242857]
+
+  var : probBear
+  Probabilities (truncated):
+  0.566864765009841: 0.0142857142857143
+  0.527030824321541: 0.0142857142857143
+  0.498333331777103: 0.0142857142857143
+  0.436004625787022: 0.0142857142857143
+  .........
+  0.029802962892774: 0.0142857142857143
+  0.026953149448029: 0.0142857142857143
+  0.024217524797506: 0.0142857142857143
+  0.019310619591102: 0.0142857142857143
+  mean = 0.22153
+
+  var : probLion
+  Probabilities (truncated):
+  0.757612951191714: 0.0142857142857143
+  0.743967406851877: 0.0142857142857143
+  0.736124448401648: 0.0142857142857143
+  0.710320031052731: 0.0142857142857143
+  .........
+  0.19572294288938: 0.0142857142857143
+  0.194947518990517: 0.0142857142857143
+  0.188313319121133: 0.0142857142857143
+  0.106625081689002: 0.0142857142857143
+  mean = 0.455772
+
+  var : probTiger
+  Probabilities (truncated):
+  0.602411117125235: 0.0142857142857143
+  0.60207661549445: 0.0142857142857143
+  0.596506565011647: 0.0142857142857143
+  0.571984162342937: 0.0142857142857143
+  .........
+  0.103345884243497: 0.0142857142857143
+  0.087677415005418: 0.0142857142857143
+  0.064635570052476: 0.0142857142857143
+  0.032451847978115: 0.0142857142857143
+  mean = 0.322697
+
+
+*/
+go ?=>
+  member(Prior,[[3,2,1],[1,1,1]]),
+  println(prior=Prior),
+  reset_store(),
+  run_model(100_000,$model(Prior),[show_probs_trunc,mean]),
+  nl,
+  fail,
+  nl.
+go => true.
+
+model(Prior) =>
+  %  Prior
+  % The Dirichlet distribution ensures that the sum of probabilities is 1
+  % i.e. we don't have to ensure this via some specific constraint.
+  X = dirichlet_dist(Prior),
+
+  % The probabilities to calculate ("aliased" for simplicity)
+  ProbLion  = X[1],
+  ProbTiger = X[2],
+  ProbBear  = X[3],
+
+  % It shouldn't matter in what order we see the different animals.  
+  Obs = [lion,lion,lion,tiger,tiger,bear],
+  ObsLen = Obs.len,
+
+  % Posterior: What is the probability of an i'th lion, tiger, and bear given the observations?
+  Y = categorical_n(X,[lion,tiger,bear],ObsLen+1),
+
+  foreach(I in 1..ObsLen)
+    observe(Obs[I] == Y[I])
+  end,
+
+  NextAnimal = Y[ObsLen+1],
+
+  if observed_ok then
+    add_all([ ["next animal (Y[7])",NextAnimal],
+              % ["next is lion",cond(NextAnimal == lion,true,false)],
+              % ["next is tiger",cond(NextAnimal == tiger,true,false)],
+              % ["next is bear",cond(NextAnimal == bear,true,false)],
+              ["probLion",ProbLion],
+              ["probTiger",ProbTiger],
+              ["probBear",ProbBear]
+            ])
+  end.
+  

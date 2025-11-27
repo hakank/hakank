@@ -1,0 +1,341 @@
+/* 
+
+  Kth record for permutations in Picat.
+
+  What is the (index of) the k'th record for a permutation of m values?
+
+  Note: The things that's studied are the _indices_ of the records, not
+        the _values_.
+
+  Also, it is assumed that it is a permutation, i.e. different values.
+  This means that for discrete distributions with some probability 
+  of duplicates, this will not work. E.g. it might work quite well
+  for 10 values of random_integer(100), but not for 10 values of
+  random_integer(10).
+
+  Cf my Gamble model gamble_record_kth_record.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+/*
+
+  Probability that N is the K'th record.
+  For K=2..4.
+
+  Note: 1 (one) cannot be the K'th (K >= 2) record index,
+        since 1 is always the first record (index).
+  
+  K=2:
+   1 0.0 (0 / 1) 
+   2 0.5 (1 / 2) 
+   3 0.166666666666667 (1 / 6) 
+   4 0.083333333333333 (1 / 12) 
+   5 0.05 (1 / 20) 
+   6 0.033333333333333 (1 / 30) 
+   7 0.023809523809524 (1 / 42) 
+   8 0.017857142857143 (1 / 56) 
+   9 0.013888888888889 (1 / 72) 
+  10 0.011111111111111 (1 / 90) 
+  mean = 2.82897
+
+  K=3:
+   1 0.0 (0 / 1) 
+   2 0.0 (0 / 1) 
+   3 0.166666666666667 (1 / 6) 
+   4 0.125 (1 / 8) 
+   5 0.091666666666667 (11 / 120) 
+   6 0.069444444444444 (5 / 72) 
+   7 0.054365079365079 (137 / 2520) 
+   8 0.04375 (7 / 160) 
+   9 0.036011904761905 (121 / 3360) 
+  10 0.030198412698413 (761 / 25200) 
+  mean = 3.23165
+
+  K=4:
+   1 0.0 (0 / 1) 
+   2 0.0 (0 / 1) 
+   3 0.0 (0 / 1) 
+   4 0.041666666666667 (1 / 24) 
+   5 0.05 (1 / 20) 
+   6 0.048611111111111 (7 / 144) 
+   7 0.044642857142857 (5 / 112) 
+   8 0.040277777777778 (29 / 720) 
+   9 0.036188271604938 (469 / 12960) 
+  10 0.032551807760141 (5691 / 174829) 
+  mean = 1.99427
+
+  Quantile:
+  0.000001 = 2
+  0.00001 = 2
+  0.001 = 2
+  0.01 = 2
+  0.025 = 2
+  0.05 = 2
+  0.1 = 2
+  0.25 = 2
+  0.5 = 2
+  0.75 = 4
+  0.84 = 7
+  0.9 = 10
+  0.975 = 41
+  0.99 = 101
+
+*/
+go ?=>
+  N = 10,
+  println("K=2:"),
+  [V=k_record_dist_pdf(2,V).and_rat : V in 1..N].printf_list,
+  println(mean=k_record_dist_mean(2,N)),
+  nl,
+  println("K=3:"),
+  [V=k_record_dist_pdf(3,V).and_rat : V in 1..N].printf_list,
+  println(mean=k_record_dist_mean(3,N)),
+  nl,
+  println("K=4:"),
+  [V=k_record_dist_pdf(4,V).and_rat : V in 1..N].printf_list,
+  println(mean=k_record_dist_mean(4,N)),
+  nl,
+  println("Quantile:"),
+  Qs = quantile_qs(),
+  foreach(Q in Qs, Q <= 0.99)
+    println(Q=k_record_dist_quantile(2,Q)),
+  end,
+  nl.
+go => true.
+
+
+/*
+  Here are some experiments of this. For permutation-near distributions,
+  including continuous distributuins, this is fairly accurate. 
+  But for distributions with some (higher) probability of duplicates,
+  this does not work (see random_integer(10) below.
+
+  The value of 0 represents the cases when the first element in
+  the generated list is the max value.
+
+  * draw_without_replacement(10,1..10)  (permutation)
+
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    2: 0.4996000000000000
+    3: 0.1679000000000000
+    0: 0.1007000000000000
+    4: 0.0823000000000000
+    5: 0.0472000000000000
+    6: 0.0341000000000000
+    7: 0.0230000000000000
+    8: 0.0181000000000000
+    9: 0.0152000000000000
+    10: 0.0119000000000000
+    mean = 2.8343
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..7.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+  * random_integer1(100)
+
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    2: 0.4979000000000000
+    3: 0.1691000000000000
+    0: 0.1048000000000000
+    4: 0.0800000000000000
+    5: 0.0482000000000000
+    6: 0.0353000000000000
+    7: 0.0239000000000000
+    8: 0.0162000000000000
+    9: 0.0140000000000000
+    10: 0.0106000000000000
+    mean = 2.8048
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..7.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+
+  * normal(100,15)
+
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    2: 0.4969000000000000
+    3: 0.1583000000000000
+    0: 0.1057000000000000
+    4: 0.0875000000000000
+    5: 0.0500000000000000
+    6: 0.0361000000000000
+    7: 0.0254000000000000
+    8: 0.0150000000000000
+    9: 0.0137000000000000
+    10: 0.0114000000000000
+    mean = 2.8204
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..7.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+  * uniform(0,1)
+
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    2: 0.4923000000000000
+    3: 0.1684000000000000
+    0: 0.1062000000000000
+    4: 0.0825000000000000
+    5: 0.0499000000000000
+    6: 0.0324000000000000
+    7: 0.0238000000000000
+    8: 0.0177000000000000
+    9: 0.0153000000000000
+    10: 0.0115000000000000
+    mean = 2.8246
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..7.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+  * extreme_value(10,10)
+
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    2: 0.5027000000000000
+    3: 0.1596000000000000
+    0: 0.1026000000000000
+    4: 0.0849000000000000
+    5: 0.0488000000000000
+    6: 0.0339000000000000
+    7: 0.0255000000000000
+    8: 0.0162000000000000
+    9: 0.0142000000000000
+    10: 0.0116000000000000
+    mean = 2.8231
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..7.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+
+
+  * random_integer1(10) 
+    Note: This is NOT (guaranteed to b) a permutation.
+    We can note that the mean is lower than for the permutation-like
+    distributions (around 2.7 vs around 2.8)
+ 
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    2: 0.4553000000000000
+    3: 0.1588000000000000
+    0: 0.1567000000000000
+    4: 0.0845000000000000
+    5: 0.0483000000000000
+    6: 0.0313000000000000
+    7: 0.0236000000000000
+    8: 0.0191000000000000
+    9: 0.0133000000000000
+    10: 0.0091000000000000
+    mean = 2.683
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..7.00000000000000
+    HPD interval (0.99): 0.00000000000000..9.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+
+  * For K = 3 draw_without_replacement(10,1..10)
+
+    [n = 10,k = 3]
+    var : record ix k
+    Probabilities:
+    0: 0.3830000000000000
+    3: 0.1598000000000000
+    4: 0.1263000000000000
+    5: 0.0911000000000000
+    6: 0.0739000000000000
+    7: 0.0535000000000000
+    8: 0.0442000000000000
+    9: 0.0383000000000000
+    10: 0.0299000000000000
+    mean = 3.2553
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..9.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+  * For K = 4 draw_without_replacement(10,1..10)
+
+    [n = 10,k = 2]
+    var : record ix k
+    Probabilities:
+    0: 0.7140000000000000
+    6: 0.0513000000000000
+    5: 0.0485000000000000
+    7: 0.0440000000000000
+    4: 0.0407000000000000
+    8: 0.0379000000000000
+    9: 0.0326000000000000
+    10: 0.0310000000000000
+    mean = 1.9277
+    HPD intervals:
+    HPD interval (0.94): 0.00000000000000..9.00000000000000
+    HPD interval (0.99): 0.00000000000000..10.00000000000000
+    HPD interval (0.99999): 0.00000000000000..10.00000000000000
+
+
+
+*/
+go2 ?=>
+  N = 10,
+  K = 4,
+  println([n=10,k=K]),
+  reset_store,
+  run_model(10_000,$model2(N,K),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.94,0.99,0.99999]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(N,K) =>
+
+  X = draw_without_replacement(N,1..N),
+  % X = random_integer1_n(100,N),
+  % X = random_integer1_n(10,N),
+
+  % X = normal_dist_n(100,15,N),
+  % X = uniform_dist_n(0,1,N),
+  % X = extreme_value_dist_n(10,11,N),
+
+
+  RecordsIx = get_records_ix(X),
+  NumRecords = RecordsIx.len,
+
+  % The K'th record index
+  if NumRecords >= K then
+    RecordIxK = RecordsIx[K]
+  else
+    RecordIxK = 0
+  end,
+  
+  % add("num records",NumRecords),
+  add("record ix k",RecordIxK).

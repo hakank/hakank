@@ -1,0 +1,141 @@
+/* 
+
+  Galileo's dice in Picat.
+
+  From Mathematica DiscreteUniformDistribution
+  """
+  Solve Galileo's problem to determine the odds of getting 9 points versus 10 
+  points obtained in throws of three dice:
+
+  Although the number of integer partitions of 10 and 9 into a sum of three numbers 
+  1-6 are the same:
+  pointsD =  TransformedDistribution[ d1 + d2 + d3, {d1, d2, d3} e
+                          ProductDistribution[{DiscreteUniformDistribution[{1, 6}], 3}]];
+   ...
+
+  Odds of getting 10 points are higher:
+  odds = PDF[pointsD, 9]/ PDF[pointsD, 10]
+  -> 25/27
+  """
+
+
+  Cf my Gamble model gamble_galileos_dice.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+import cp. % for integer_partition
+% import ordset.
+
+main => go.
+
+/*
+
+  var : s
+  Probabilities (truncated):
+  11: 0.1252000000000000
+  10: 0.1229000000000000
+  12: 0.1222000000000000
+  9: 0.1135000000000000
+  .........
+  17: 0.0139000000000000
+  4: 0.0139000000000000
+  18: 0.0058000000000000
+  3: 0.0043000000000000
+  mean = 10.5005
+
+  var : p9
+  Probabilities:
+  false: 0.8865000000000000
+  true: 0.1135000000000000
+  mean = 0.1135
+
+  var : p10
+  Probabilities:
+  false: 0.8771000000000000
+  true: 0.1229000000000000
+  mean = 0.1229
+
+
+  [p10mean = 0.1229,p9mean = 0.1135,odds = 0.923515]
+  Sorted:
+  p10 = [[1,3,6],[1,4,5],[2,2,6],[2,3,5],[2,4,4],[3,3,4]] = 6
+  p9 = [[1,2,6],[1,3,5],[1,4,4],[2,2,5],[2,3,4],[3,3,3]] = 6
+  Unsorted:
+  p10u = [[1,3,6],[1,4,5],[1,5,4],[1,6,3],[2,2,6],[2,3,5],[2,4,4],[2,5,3],[2,6,2],[3,1,6],[3,2,5],[3,3,4],[3,4,3],[3,5,2],[3,6,1],[4,1,5],[4,2,4],[4,3,3],[4,4,2],[4,5,1],[5,1,4],[5,2,3],[5,3,2],[5,4,1],[6,1,3],[6,2,2],[6,3,1]] = 27
+  p9u = [[1,2,6],[1,3,5],[1,4,4],[1,5,3],[1,6,2],[2,1,6],[2,2,5],[2,3,4],[2,4,3],[2,5,2],[2,6,1],[3,1,5],[3,2,4],[3,3,3],[3,4,2],[3,5,1],[4,1,4],[4,2,3],[4,3,2],[4,4,1],[5,1,3],[5,2,2],[5,3,1],[6,1,2],[6,2,1]] = 25
+
+
+  For 10 there are 27 possible (unsorted) ways, but for 9 there are only 25 (unsorted). 
+  Thus we get the odds 25/27.
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+
+  Store = get_store(),
+  P10Mean = Store.get("p10").mean,
+  P9Mean = Store.get("p9").mean,
+  println([p10mean=P10Mean,p9mean=P9Mean,odds=(P9Mean/P10Mean)]),
+
+  println("Sorted:"),
+  P10 = integer_partition(10,3,1..6,true),
+  P9=integer_partition(9,3,1..6,true),
+  println(p10=P10=P10.len),
+  println(p9=P9=P9.len),
+  println("Unsorted:"),
+  P10U = integer_partition(10,3,1..6,false),
+  P9U=integer_partition(9,3,1..6,false),
+  println(p10u=P10U=P10U.len),
+  println(p9u=P9U=P9U.len),  
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+/*
+  integer_partition(N,M,Vals,Sorted)
+  Returns a list of possible integer partition of length M that
+  sums to N with each value is from the list Vals.
+
+  Note that it just checks for length m lists that sums to n.
+  - sorted true is the "normal" integer partition
+  - sorted false gives all possible combinations
+*/
+
+% Using CP
+integer_partition(N,M,Vals,Sorted) = Res =>
+  X = new_list(M),
+  X :: Vals,
+  sum(X) #= N,
+  Partitions = solve_all(X),
+  if Sorted == true then
+    Res = [P : P in Partitions, P ==sort(P)]
+  else
+    Res = Partitions
+  end.
+  
+model() =>
+  N = 3,
+  Ds = discrete_uniform_dist_n(1,6,N),
+
+  S = sum(Ds),
+  P9 = check(S == 9),
+  P10 = check(S == 10),
+  add("s",S),
+  add("p9",P9),
+  add("p10",P10).
+
+

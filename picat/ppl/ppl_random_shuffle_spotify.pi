@@ -1,0 +1,171 @@
+/* 
+
+  Random shuffle (in Spotify) in Picat.
+
+  From a (Swedish) forum discussion regarding Spotify's non random shuffling
+  of playlists (https://swedroid.se/folk-har-problem-med-spotifys-slumpmassiga-uppspelning/).
+
+  Some questions:
+
+  * What is the mean value until any of the previous tunes is played again?
+    Let's assume 100 tunes in a playlist.
+    
+    See model1.    
+
+
+  * What is the probability that the same tune is played immediately after
+    it has played.
+
+    See model2
+
+
+  Cf my Gamble model gamble_random_shuffle_spotify.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Model 1
+
+ - What is the mean value until any of the previous played tunes is played again?
+   Let's assume 100 tunes in a playlist.
+
+var : len
+Probabilities (truncated):
+11: 0.0635000000000000
+12: 0.0634000000000000
+9: 0.0630000000000000
+10: 0.0610000000000000
+.........
+42: 0.0001000000000000
+41: 0.0001000000000000
+40: 0.0001000000000000
+38: 0.0001000000000000
+mean = 12.2737
+Percentiles:
+(0.001 1)
+(0.01 2)
+(0.025 2)
+(0.05 3)
+(0.1 5)
+(0.25 8)
+(0.5 12)
+(0.75 16)
+(0.84 19)
+(0.9 21)
+(0.95 24)
+(0.975 26)
+(0.99 29)
+(0.999 35)
+(0.9999 41.000099999999293)
+(0.99999 41.900010000001203)
+
+   Thus, if we have 100 tunes and they are shuffled (i.e. drawn randomly), we can expect
+   to listen to an already played tune after about 12 tunes. 
+   However, we should not be very surprised (at surprise level 0.05) if it's just after 3 tunes, 
+   or as long as after 24 tunes.
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,show_percentiles]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+
+m1(A,N) = Ret =>
+  Len = A.len,
+  if Len = N then
+    Ret = N
+  else
+    I = random_integer1(N),
+    if membchk(I,A) then
+      Ret = Len
+    else
+      Ret = m1(A ++ [I], N)
+    end
+  end.
+model() =>
+  N = 100,
+
+  Len = m1([],N),
+    
+  add("len",Len).
+
+/*
+  - What is the probability that the same tune is played immediately after
+    it has played.
+
+    Exact for an infinite playlist: 1-1/exp(1) ~ 0.6321205588285577
+
+    n = 10
+    var : found a duplicate
+    Probabilities:
+    true: 0.6207000000000000
+    false: 0.3793000000000000
+    mean = [true = 0.6207,false = 0.3793]
+
+
+    n = 100
+    var : found a duplicate
+    Probabilities:
+    true: 0.6388000000000000
+    false: 0.3612000000000000
+    mean = [true = 0.6388,false = 0.3612]
+
+
+    n = 1000
+    var : found a duplicate
+    Probabilities:
+    true: 0.6300000000000000
+    false: 0.3700000000000000
+    mean = [true = 0.63,false = 0.37]
+
+   For these Ns the expected values are:
+   Picat> X=[1-((N-1)/N)**(N-1) : N in [10,100,1000]]
+   X = [0.612579511,0.630270362350274,0.631936511740777]
+
+
+*/
+
+go2 ?=>
+  printf("Exact for an infinite playlist: 1-1/exp(1) ~ %.16f\n", 1-1/exp(1)),
+  member(N,[10,100,1000]),
+  println(n=N),
+  reset_store,
+  run_model(10_000,$model2(N),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go2 => true.
+  
+
+m2(A,N) = Ret =>
+  Len = A.len,
+  if Len = N then
+    Ret = false
+  else
+    I = random_integer1(N),
+    if Len > 0, I == A.last then
+      Ret = true
+    else
+      Ret = m2(A ++ [I], N)
+    end
+  end.
+model2(N) =>
+  FoundADuplicate = m2([],N),
+  add("found a duplicate",FoundADuplicate).
+
+

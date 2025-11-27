@@ -1,0 +1,230 @@
+/* 
+
+  How tall is A? in Picat.
+
+  https://www.allendowney.com/blog/2018/10/18/how-tall-is-a/
+  """
+  Here are a series of problems I posed in my Bayesian statistics class:
+
+  1) Suppose you meet an adult resident of the U.S. who is 170 cm tall. 
+     What is the probability that they are male?
+
+  2) Suppose I choose two U.S. residents at random and A is taller than B.  
+     How tall is A?
+
+  3) In a room of 10 randomly chosen U.S. residents, A is the second tallest.  
+     How tall is A?  
+     And what is the probability that A is male?
+
+  As background: For adult male residents of the US, the mean and standard deviation of 
+  height are 178 cm and 7.7 cm. For adult female residents the corresponding stats 
+  are 163 cm and 7.3 cm.  And 51% of the adult population is female.
+  """
+
+  See below for the individual problems.
+
+
+  This is a port of my Gamble model gamble_how_tall_is_a.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+
+  Problem 1:
+
+  1) Suppose you meet an adult resident of the U.S. who is 170 cm tall. 
+  What is the probability that they are male?
+  
+  According to https://www.allendowney.com/blog/2018/10/18/how-tall-is-a/
+    female 0.5432225483131837
+    male 0.45677745168681627
+
+  This model:
+  Probabilities:
+  female: 0.5539682539682540
+  male: 0.4460317460317461
+  mean = [female = 0.553968,male = 0.446032]
+
+
+*/
+go ?=>
+  reset_store(),
+  run_model(100_000,$model1,[show_probs_trunc,mean]),
+  fail,
+  nl.
+go => true.
+
+model1() =>
+  Gender = categorical([0.49,0.51],["male","female"]),
+  Height = cond(Gender == "male",
+                normal_dist(178,7.7),
+                normal_dist(163,7.3)),
+
+  observe( abs(Height-170) <= 0.1),
+  if observed_ok then
+    add("gender",Gender)
+  end.
+
+/*
+  Problem 2
+
+  2) Suppose I choose two U.S. residents at random and A is taller than B.  
+  How tall is A?
+
+  Solution from https://www.allendowney.com/blog/2018/10/18/how-tall-is-a/
+  A: 176.67506663725212
+  B: 164.05298129722925
+
+  This model:
+
+  var : gender 1
+  Probabilities:
+  male: 0.7006452913893930
+  female: 0.2993547086106070
+  mean = [male = 0.700645,female = 0.299355]
+
+  var : gender 2
+  Probabilities:
+  female: 0.7150635208711433
+  male: 0.2849364791288566
+  mean = [female = 0.715064,male = 0.284936]
+
+  var : height 1
+  Probabilities (truncated):
+  208.959678098043554: 0.0001008267795927
+  205.008423799105287: 0.0001008267795927
+  204.334314443561993: 0.0001008267795927
+  203.948851672107253: 0.0001008267795927
+  .........
+  148.784010945897506: 0.0001008267795927
+  148.632822456386464: 0.0001008267795927
+  148.321960184269869: 0.0001008267795927
+  145.200238510809015: 0.0001008267795927
+  mean = 176.432
+
+  var : height 2
+  Probabilities (truncated):
+  193.103848001836695: 0.0001008267795927
+  191.573752368351421: 0.0001008267795927
+  191.422470636604999: 0.0001008267795927
+  190.540617126962445: 0.0001008267795927
+  .........
+  140.233030108770095: 0.0001008267795927
+  140.203182143850682: 0.0001008267795927
+  140.013561853613197: 0.0001008267795927
+  134.852511765863852: 0.0001008267795927
+  mean = 164.398
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(20_000,$model2,[show_probs_trunc,mean]),
+  fail,
+  nl.
+go2 => true.
+
+model2() =>
+  N = 2,
+  Gender = categorical_n([0.49,0.51],["male","female"],N),
+  Height = [ cond(Gender[P] == "male",
+                  normal_dist(178,7.7),
+                  normal_dist(163,7.3)) : P in 1..N],
+
+  observe(Height[1] > Height[2]),
+  if observed_ok then
+    add("height 1",Height[1]),
+    add("height 2",Height[2]),
+    add("gender 1",Gender[1]),
+    add("gender 2",Gender[2])
+  end.
+
+
+/*
+  Problem 3
+
+  3) In a room of 10 randomly chosen U.S. residents, A is the second tallest.  
+  How tall is A?  
+  And what is the probability that A is male?
+  
+  Solution from https://www.allendowney.com/blog/2018/10/18/how-tall-is-a/
+  A: 181.60660153115973
+
+  """
+  A is 182cm tall, and has a 92.2% chance of being male.
+  Also, A has a 80% chance of being between 175.8cm and 188.1cm
+  """
+  
+  This model
+
+  var : gender 1
+  Probabilities:
+  male: 0.9700598802395209
+  female: 0.0299401197604790
+  mean = [male = 0.97006,female = 0.0299401]
+
+  var : gender 2 (this is A)
+  Probabilities:
+  male: 0.9221556886227545
+  female: 0.0778443113772455
+  mean = [male = 0.922156,female = 0.0778443]
+
+  var : height 1
+  Probabilities (truncated):
+  206.641: 0.0029940119760479
+  206.185: 0.0029940119760479
+  203.308: 0.0029940119760479
+  202.896: 0.0029940119760479
+  176.257: 0.0029940119760479
+  174.564: 0.0029940119760479
+  174.202: 0.0029940119760479
+  171.422: 0.0029940119760479
+  mean = 186.711
+
+  var : height 2 (this is A)
+  Probabilities (truncated):
+  195.744: 0.0029940119760479
+  194.377: 0.0029940119760479
+  192.604: 0.0029940119760479
+  191.33: 0.0029940119760479
+  169.499: 0.0029940119760479
+  169.358: 0.0029940119760479
+  169.106: 0.0029940119760479
+  169.062: 0.0029940119760479
+  mean = 181.824
+
+
+*/
+go3 ?=>
+  reset_store,
+  run_model(30_000,$model3,[show_probs_trunc,mean]),
+  fail,
+  nl.
+go3 => true.
+
+model3() =>
+  N = 10,
+  Gender = categorical_n([0.49,0.51],["male","female"],N),
+  Height = [ cond(Gender[P] == "male",
+                  normal_dist(178,7.7),
+                  normal_dist(163,7.3)) : P in 1..N],
+
+  % person 1 is taller than all, especially person 2
+  observe(Height[1] > Height[2]),
+  % person 2 is taller than anyone else
+  % (we don't care about the height of person 3..10)
+  foreach(P in 3..10)
+    observe(Height[2] > Height[P])
+  end,
+  if observed_ok then
+    add("height 1",Height[1]),
+    add("height 2 (this is A)",Height[2]),
+    add("gender 1",Gender[1]),
+    add("gender 2 (this is A)",Gender[2])
+  end.

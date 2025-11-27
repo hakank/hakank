@@ -1,0 +1,180 @@
+/* 
+
+  Multinomial distribution in Picat.
+
+  Example from Mathematica MultinomialDistribution:
+  """
+  There are two candidates in an election where the winner is chosen 
+  based on a simple majority. Each of n voters votes for candidate 1 with 
+  probability p1 and for candidate 2 with probability p2, 
+   p1 + p2 < 1,  
+  so that a voter may choose not to vote for either candidate. When 
+  n=100, p1 =p2 =0.4, the probability of one swing vote is: 
+   D =  MultinomialDistribution[100 - 1, {0.4, 0.4, 1 - 0.4 - 0.4}]
+   Probability[x == y, {x, y, z} e D]
+   -> 0.0447288
+
+  Probability that a winner won by one vote:
+  Probability[ Abs[x - y] == 1, {x, y, z} e D]
+  -> 0.0888996
+
+  Probability that candidate 1 wins the election:
+  Probability[x > y, {x, y, z} e D]
+  -> 0.477636
+
+  Probable outcome of the next election:
+  RandomVariate[D]
+  -> {52, 36, 11}
+
+  Average outcome of an election:
+  Mean[D] 
+  -> {39.6, 39.6, 19.8}
+  """
+
+  And: probability that z > x && z > y
+  Probability[{z > x && z > y}, {x, y, z} e D]
+  -> 0.000225849
+
+
+  Random variate:
+  Picat> M = multinomial_dist(99,[4/10,4/10,2/10])     
+  M = [41,37,21]
+
+  Average outcome of an election:
+  Picat> M = multinomial_dist_mean(99,[4/10,4/10,2/10])           
+  M = [39.600000000000001,39.600000000000001,19.800000000000001]
+
+
+  And PDF (cf the value in the simulation):
+  Picat> M = multinomial_dist_pdf(99,[4/10,4/10,2/10],[39,39,21])                 
+  M = 0.008410054728325
+
+  Picat> M = multinomial_dist_cdf(99,[4/10,4/10,2/10],[21,51,27])
+  M = 0.000003237137614
+
+
+  Cf my Gamble model gamble_multinomial_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : m
+  Probabilities (truncated):
+  [39,40,20]: 0.0099000000000000
+  [41,39,19]: 0.0094000000000000
+  [40,40,19]: 0.0094000000000000
+  [39,39,21]: 0.0090000000000000
+  .........
+  [24,41,34]: 0.0001000000000000
+  [22,44,33]: 0.0001000000000000
+  [21,55,23]: 0.0001000000000000
+  [21,51,27]: 0.0001000000000000
+
+  var : x
+  Probabilities (truncated):
+  39: 0.0835000000000000
+  40: 0.0809000000000000
+  41: 0.0783000000000000
+  38: 0.0745000000000000
+  .........
+  21: 0.0002000000000000
+  58: 0.0001000000000000
+  57: 0.0001000000000000
+  22: 0.0001000000000000
+  mean = 39.5534
+
+  var : y
+  Probabilities (truncated):
+  39: 0.0825000000000000
+  40: 0.0797000000000000
+  41: 0.0773000000000000
+  37: 0.0755000000000000
+  .........
+  22: 0.0004000000000000
+  56: 0.0002000000000000
+  20: 0.0002000000000000
+  21: 0.0001000000000000
+  mean = 39.587
+
+  var : z
+  Probabilities (truncated):
+  20: 0.0999000000000000
+  18: 0.0974000000000000
+  19: 0.0970000000000000
+  21: 0.0934000000000000
+  .........
+  8: 0.0006000000000000
+  34: 0.0005000000000000
+  35: 0.0004000000000000
+  7: 0.0001000000000000
+  mean = 19.8596
+
+  var : p1
+  Probabilities:
+  false: 0.9529000000000000
+  true: 0.0471000000000000
+  mean = 0.0471
+
+  var : p2
+  Probabilities:
+  false: 0.9111000000000000
+  true: 0.0889000000000000
+  mean = 0.0889
+
+  var : p3
+  Probabilities:
+  false: 0.5318000000000001
+  true: 0.4682000000000000
+  mean = 0.4682
+
+  var : p4
+  Probabilities:
+  false: 0.9997000000000000
+  true: 0.0003000000000000
+  mean = 0.0003
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  M = multinomial_dist(99,[4/10,4/10,2/10]),
+  M = [X,Y,Z],
+
+  P1 = check(X == Y),
+  P2 = check(abs(X-Y) == 1),
+  P3 = check(X > Y),
+  P4 = check((Z > X, Z > Y)),
+  
+  add("m",M),
+  add("x",X),
+  add("y",Y),
+  add("z",Z),
+  add("p1",P1),
+  add("p2",P2),
+  add("p3",P3),
+  add("p4",P4).
+

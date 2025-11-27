@@ -1,0 +1,206 @@
+/* 
+
+  Zipf distributionin Picat.
+
+  https://en.wikipedia.org/wiki/Zipf%27s_law and Mathematica's ZipfDistribution
+
+ 
+  Note: Picat PPL supports two different zipf distributions: Mathematica's and a shifted version:
+  - zipf_mma_dist/1-2
+  - zipf_dist/1-2
+
+  For more on this see ppl_distributions.pi and ppl_distributions_test.pi
+
+
+  Cf my Gamble model gamble_zipf_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  From Mathematica:
+  """
+  Rank 15 web pages according to popularity. The access frequencies follow Zipf distribution 
+  with 0.3. Find the distribution of access frequencies:
+
+  d = ZipfDistribution(15, 0.3);
+  Mean(d)
+  -> 3.57738
+
+  Find the probability of the top-ranked site request:
+  PDF[d, 1]
+  -> 0.4053
+
+  
+  Find the probability of the request for one of the bottom five websites:
+  NProbability[x >= 11, x e d]]
+  -> 0.0735245
+
+  Simulate 30 independent requests:
+  requests = RandomVariate[\[ScriptCapitalD], 30]
+  -> {8, 2, 1, 1, 12, 1, 2, 11, 1, 2, 1, 5, 12, 2, 1, 2, 5, 4, 3, 15, 2, 5, 3, 5, 1, 1, 3, 7, 8, 1}
+  """
+
+  * Mean:
+
+    Picat> X = zipf_mma_dist_mean(15,0.3)
+    X = 3.577379582807594
+
+  * Find the probability of the top-ranked site request:
+
+    Picat> X = zipf_mma_dist_pdf(15,0.3,1)   
+    X = 0.405310352558022
+
+  * Find the probability of the request for one of the bottom five websites:
+
+    Picat> X = 1-zipf_mma_dist_cdf(15,0.3,10)
+    X = 0.073524495384378
+
+  * Simulate 30 independent requests:
+
+    X = zipf_mma_dist_n(15,0.3,30), X.show_scatter_plot(30,10)
+    ymax = 15
+    |        *                     
+    |                            * 
+    |                              
+    |           *               * *
+    |                              
+    |                     *        
+    |                      *       
+    |          *        *          
+    |    *  *    *    *  *   *     
+    |**** **  *   **** *    * **   
+    ymin = 1
+    x = [1,30]
+
+    X = [1,1,1,1,2,1,1,2,15,1,4,11,2,1,1,1,1,2,1,4,3,7,5,1,3,1,1,11,14,10]
+
+
+    The model:
+
+    [n = 15,alpha = 0.3,11]
+    var : d
+    Probabilities (truncated):
+    1: 0.4083000000000000
+    2: 0.1585000000000000
+    3: 0.0968000000000000
+    4: 0.0679000000000000
+    .........
+    11: 0.0181000000000000
+    14: 0.0139000000000000
+    13: 0.0111000000000000
+    15: 0.0106000000000000
+    mean = 3.5714
+
+    var : p
+    Probabilities:
+    false: 0.9276000000000000
+    true: 0.0724000000000000
+    mean = 0.0724
+
+    theoretical_mean = 3.57738
+    theoretical_prob = 0.0735245
+
+
+*/
+go ?=>
+  N = 15,
+  Alpha = 3/10,
+  Check = 11,
+  println([n=N,alpha=Alpha,Check]),
+  reset_store,
+  run_model(10_000,$model(N,Alpha,Check),[show_probs_trunc,mean % ,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=zipf_mma_dist_mean(N,Alpha)),
+  println(theoretical_prob=(1- zipf_mma_dist_cdf(N,Alpha,Check-1))),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(N,Alpha,Check) =>
+
+  D = zipf_mma_dist(N,Alpha),
+  P = check(D >= Check),
+  
+  add("d",D),
+  add("p",P).
+
+
+
+/*
+
+  Using zipf_dist/2 instead
+
+  [n = 15,alpha = 0.3,11]
+  var : d
+  Probabilities (truncated):
+  1: 0.1135000000000000
+  2: 0.0924000000000000
+  3: 0.0788000000000000
+  4: 0.0731000000000000
+  .........
+  14: 0.0538000000000000
+  11: 0.0531000000000000
+  13: 0.0529000000000000
+  15: 0.0512000000000000
+  mean = 7.0611
+  [len = 10000,min = 1,mean = 7.0611,median = 7.0,max = 15,variance = 19.5092,stdev = 4.41692]
+
+  var : p
+  Probabilities:
+  false: 0.7341000000000000
+  true: 0.2659000000000000
+  mean = 0.2659
+  show_simple_stats: no numeric data
+
+  theoretical_mean = 7.01817
+  theoretical_prob = 0.263041
+
+*/
+go2 ?=>
+  N = 15,
+  Alpha = 3/10,
+  Check = 11,
+  println([n=N,alpha=Alpha,Check]),
+  reset_store,
+  run_model(10_000,$model2(N,Alpha,Check),[show_probs_trunc,mean,
+                           show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println(theoretical_mean=zipf_dist_mean(N,Alpha)),
+  println(theoretical_prob=(1- zipf_dist_cdf(N,Alpha,Check-1))),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(N,Alpha,Check) =>
+
+  D = zipf_dist(N,Alpha),
+  P = check(D >= Check),
+  
+  add("d",D),
+  add("p",P).
+

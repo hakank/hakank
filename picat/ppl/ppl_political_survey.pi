@@ -1,0 +1,170 @@
+/* 
+
+  Political survey in Picat.
+
+  From "Resampling Stats Illustrations" (http://www.statistics101.net/PeterBruce_05-illus.pdf)
+  Page 27
+  """
+  A confidence interval for a political survey
+  (program “bush”)
+  One of the Gallup polls for the 1988 U. S. presidential election
+  showed 840 (56%) for Bush and 660 for Dukakis (a total of 1500
+  voters). Estimate bounds on the percentage of the entire electorate
+  that favors Bush.
+
+  Put another way, we would like to learn how variable our sample
+  result is. How much might one sample differ from another?
+  If we had unlimited time and money, we could take additional
+  surveys of 1500 each to see how much they differ from one an-
+  other. Lacking the ability to go back to the actual universe and
+  draw more samples from it, we do the next best thing — we create
+  a hypothetical “bootstrap” universe based on the sample data, and
+  then draw samples from it.
+  -> 
+  interval = 0.539 to 0.58
+  """
+
+
+  Cf my Gamble model gamble_political_survey.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  The answer of the question is the HPDs for bush_pct:
+  HPD interval (0.9): 0.53800000000000..0.58000000000000
+  HPD interval (0.95): 0.53400000000000..0.58400000000000
+  HPD interval (0.99): 0.52733333333333..0.59266666666667
+
+
+  var : bush
+  mean = 839.631
+  HPD intervals:
+  HPD interval (0.9): 806.00000000000000..869.00000000000000
+  HPD interval (0.95): 801.00000000000000..876.00000000000000
+  HPD interval (0.99): 791.00000000000000..889.00000000000000
+
+  var : dukakis
+  mean = 660.369
+  HPD intervals:
+  HPD interval (0.9): 627.00000000000000..690.00000000000000
+  HPD interval (0.95): 621.00000000000000..696.00000000000000
+  HPD interval (0.99): 610.00000000000000..708.00000000000000
+
+  var : diff
+  mean = 179.263
+  HPD intervals:
+  HPD interval (0.9): 112.00000000000000..238.00000000000000
+  HPD interval (0.95): 102.00000000000000..252.00000000000000
+  HPD interval (0.99): 82.00000000000000..278.00000000000000
+
+  var : bush pct
+  mean = 0.559754
+  HPD intervals:
+  HPD interval (0.9): 0.53800000000000..0.58000000000000
+  HPD interval (0.95): 0.53400000000000..0.58400000000000
+  HPD interval (0.99): 0.52733333333333..0.59266666666667
+
+  var : dukakis pct
+  mean = 0.440246
+  HPD intervals:
+  HPD interval (0.9): 0.41866666666667..0.46066666666667
+  HPD interval (0.95): 0.41466666666667..0.46466666666667
+  HPD interval (0.99): 0.40666666666667..0.47200000000000
+
+  var : bush wins
+  mean = 1.0
+  HPD intervals:
+  HPD interval (0.9): 1.00000000000000..1.00000000000000
+  HPD interval (0.95): 1.00000000000000..1.00000000000000
+  HPD interval (0.99): 1.00000000000000..1.00000000000000
+
+  var : dukakis wins
+  mean = 0.0
+  HPD intervals:
+  HPD interval (0.9): 0.00000000000000..0.00000000000000
+  HPD interval (0.95): 0.00000000000000..0.00000000000000
+  HPD interval (0.99): 0.00000000000000..0.00000000000000
+
+  Let's see this a binomial distribution where success is that
+  Bush wins:
+
+  Probability that Bush (with 840/1500 = 0.56):
+    Picat> X = 1-binomial_dist_cdf(1500,0.56,1500/2)
+    X = 0.999998252649594
+
+  Probability that Dukakis wins (with 660/1500 = 0.44):
+    Picat> X = 1-binomial_dist_cdf(1500,1-0.56,1500/2)  
+    X = 0.0000013588918
+
+  Here's list of P=0.5..0.57 and probability of get the majority of the votes
+  (i.e. > 1500/2 = 750 votes).
+
+  Picat> [(0.5+V)=(1-binomial_dist_cdf(1500,0.5+V,1500/2)) : V in 0.0..0.01..0.07].printf_list
+  0.5 0.489701071242976 
+  0.51 0.773066554252941 
+  0.52 0.936276858382219 
+  0.53 0.989288545781278 
+  0.54 0.998958188071871 
+  0.55 0.999942729774131 
+  0.56 0.999998252649594 
+  0.57 0.999999970873054 
+
+  And in even smaller increments:
+  Picat> [(0.5+V)=(1-binomial_dist_cdf(1500,0.5+V,1500/2)) : V in 0.0..0.001..0.007].printf_list
+  0.5 0.489701071242976 
+  0.501 0.520597880146481 
+  0.502 0.55137153236748 
+  0.503 0.581839371906766 
+  0.504 0.611824186218671 
+  0.505 0.641157286925651 
+  0.506 0.669681340648487 
+  0.507 0.697252871245271 
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[% show_probs_trunc,
+                           mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.9,0.95,0.99]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  NumVotes = 1500,
+  Votes = categorical_n([840,660],[bush,dukakis],NumVotes),
+
+  Bush = count_occurrences(bush,Votes),
+  BushPct = Bush/NumVotes,
+
+  Dukakis = count_occurrences(dukakis,Votes),
+  DukakisPct = Dukakis/NumVotes,
+
+  Diff = Bush-Dukakis,
+  BushWins = check1(Bush > Dukakis),
+  DukakisWins = check1(Dukakis > Bush),
+  
+  add("bush",Bush),
+  add("dukakis",Dukakis),
+  add("diff",Diff),
+  add("bush pct",BushPct),
+  add("dukakis pct",DukakisPct),
+  add("bush wins",BushWins),
+  add("dukakis wins",DukakisWins).
+

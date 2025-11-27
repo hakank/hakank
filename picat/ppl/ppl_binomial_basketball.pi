@@ -1,0 +1,192 @@
+/* 
+
+  Binomial basketball problem in Picat.
+
+  From https://reference.wolfram.com/language/ref/BinomialDistribution.html
+  """
+  A basketball player has a free-throw percentage of 0.75. 
+
+  Find the probability that the player hits 2 out of 3 free throws in a game.
+  [free_throwIs2]
+    Answer: 0.421875
+
+  Find the probability that the player hits the last 2 of 5 free throws. 
+  [q1]
+     Answer: 0.00878906
+   
+
+  Find the expected number of hits in a game with n free throws. 
+  [q2]
+    Answer: 0.75 n
+  """
+
+
+  Using PDFs:
+  1) Find the probability that the player hits 2 out of 3 free throws in a game.
+     Picat> X=binomial_dist_pdf(3,0.75,2)
+     X = 0.421875
+
+  2) Find the probability that the player hits the last 2 of 5 free throws.
+     Picat> X=binomial_dist_pdf(3,0.75,0)*binomial_dist_pdf(2,0.75,2)
+     X = 0.0087890625
+
+  3) Find the expected number of hits in a game with n free throws.
+     Picat> X=binomial_dist_mean(10,0.75)                            
+     X = 7.5
+
+     or perhaps clearer:
+     Picat>  X=binomial_dist_mean(1,0.75)   
+     X = 0.75
+
+
+  The three problems are solved in the models below, using either
+  binomial_dist and flips.
+
+  This is a port of my Gamble model gamble_binomial_basketball.rkt:
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  1) Find the probability that the player hits 2 out of 3 free throws in a game.
+  var : prob
+  Probabilities:
+  0: 0.58109999999999995 (5811 / 10000)
+  1: 0.41889999999999999 (4189 / 10000)
+  mean = 0.4189
+
+  theoretical = 0.421875
+
+  Using flips
+  var : prob
+  Probabilities:
+  0: 0.57730000000000004 (5773 / 10000)
+  1: 0.42270000000000002 (4227 / 10000)
+  mean = 0.4227
+
+
+  2) Find the probability that the player hits the last 2 of 5 free throws.
+  var : prob
+  Probabilities:
+  0: 0.99150000000000005 (1983 / 2000)
+  1: 0.00850000000000000 (17 / 2000)
+  mean = 0.0085
+
+  theoretical = 0.00878906
+
+  Using flips:
+  var : prob
+  Probabilities:
+  0: 0.99045000000000005 (19809 / 20000)
+  1: 0.00955000000000000 (191 / 20000)
+  mean = 0.00955
+
+
+  3) Find the expected number of hits in a game with n free throws.
+  var : expected
+  Probabilities:
+  8: 0.28620000000000001 (1431 / 5000)
+  7: 0.24485000000000001 (4897 / 20000)
+  9: 0.18915000000000001 (3783 / 20000)
+  6: 0.14674999999999999 (587 / 4000)
+  5: 0.05680000000000000 (71 / 1250)
+  10: 0.05605000000000000 (1121 / 20000)
+  4: 0.01625000000000000 (13 / 800)
+  3: 0.00355000000000000 (71 / 20000)
+  2: 0.00035000000000000 (7 / 20000)
+  1: 0.00005000000000000 (1 / 20000)
+  mean = 7.5073
+
+  theoretical = 7.5
+
+  Using flips:
+  var : expected
+  Probabilities:
+  8: 0.28039999999999998 (701 / 2500)
+  7: 0.25214999999999999 (5043 / 20000)
+  9: 0.18484999999999999 (3697 / 20000)
+  6: 0.14949999999999999 (299 / 2000)
+  5: 0.06060000000000000 (303 / 5000)
+  10: 0.05395000000000000 (1079 / 20000)
+  4: 0.01535000000000000 (307 / 20000)
+  3: 0.00270000000000000 (27 / 10000)
+  2: 0.00050000000000000 (1 / 2000)
+  mean = 7.4819
+
+*/
+go ?=>
+  reset_store,
+  println("1) Find the probability that the player hits 2 out of 3 free throws in a game."),
+  run_model(10_000,$model1,[show_probs_rat,mean]),
+  println(theoretical=binomial_dist_pdf(3,0.75,2)),
+  reset_store(), % Don't forget to reset the store when using more than one model.
+  println("\nUsing flips"),
+  run_model(10_000,$model1b,[show_probs_rat,mean]),
+
+  reset_store(),
+  println("2) Find the probability that the player hits the last 2 of 5 free throws."),
+  run_model(10_000,$model2,[show_probs_rat,mean]),
+  println(theoretical=binomial_dist_pdf(3,0.75,0)*binomial_dist_pdf(2,0.75,2)),
+  
+  reset_store(),
+  println("\nUsing flips:"),
+  run_model(20_000,$model2b,[show_probs_rat,mean]),
+
+  reset_store(),
+  println("3) Find the expected number of hits in a game with n free throws."),
+  run_model(20_000,$model3,[show_probs_rat,mean]),
+  println(theoretical=binomial_dist_mean(10,0.75)),
+  reset_store(),
+  println("\nUsing flips:"),
+  run_model(20_000,$model3b,[show_probs_rat,mean]),
+  nl.
+go => true.
+
+% Find the probability that the player hits 2 out of 3 free throws in a game
+model1() =>
+  P = 0.75,
+  FreeThrow = binomial_dist(3,P),
+  add("prob",cond(FreeThrow==2,1,0)).
+
+% Using flips instead
+model1b() =>
+  P = 0.75,
+  FreeThrow = bern_n(P,3).sum,
+  add("prob",cond(FreeThrow==2,1,0)).
+
+
+% Find the probability that the player hits the last 2 of 5 free throws
+model2() =>
+  P = 0.75,
+  FreeThrow3 = binomial_dist(3,P),
+  FreeThrow2 = binomial_dist(2,P),
+  Prob = cond((FreeThrow3 == 0,FreeThrow2 == 2),1,0),
+  add("prob",Prob).
+
+
+model2b() =>
+  P = 0.75,
+  FreeThrow3 = bern_n(P,3).sum,
+  FreeThrow2 = bern_n(P,2).sum,
+  Prob = cond((FreeThrow3 == 0,FreeThrow2 == 2),1,0),
+  add("prob",Prob).
+
+
+% Find the expected number of hits in a game with n free throws. 
+model3() =>
+  P = 0.75,
+  Expected = binomial_dist(10,P),
+  add("expected",Expected).
+
+model3b() =>
+  P = 0.75,
+  Expected = bern_n(P,10).sum,
+  add("expected",Expected).
+

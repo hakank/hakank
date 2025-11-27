@@ -1,0 +1,160 @@
+/* 
+
+  A/B test simple 2 in Picat.
+
+  (Yet another) simple A/B test.
+
+  Originally from http://rpubs.com/rasmusab/exercise_2_bayesian_ab_testing
+  but with some different values and an exact model.
+  
+  Two persons (or companies etc) has different number of trials and 
+  probability of success:
+    nA = 25 : number of trial for A
+    sA = 16 :; number of successes for A
+    
+    nB = 72 : number of trial for B
+    sB = 57 : number of successes for B
+
+  pA = 16/25 = 0.64
+  pB = 57/72 = 0.79167..
+
+  The question is if A (with the lesser success rate) can manage to be better than B,
+  and if so, by how much.
+
+  Cf my Gamble model gamble_ab_test_simple2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : rate A
+  Probabilities (truncated):
+  0.835164605718786: 0.0212765957446809
+  0.788329854045911: 0.0212765957446809
+  0.767663295080339: 0.0212765957446809
+  0.761235386467049: 0.0212765957446809
+  .........
+  0.508502947329584: 0.0212765957446809
+  0.504513937388825: 0.0212765957446809
+  0.44978619824123: 0.0212765957446809
+  0.364908721076063: 0.0212765957446809
+  mean = 0.626453
+  HPD intervals:
+  HPD interval (0.5): 0.59238499826284..0.71035855488254
+  HPD interval (0.84): 0.50451393738882..0.72354403019044
+  HPD interval (0.9): 0.50451393738882..0.76766329508034
+  HPD interval (0.95): 0.50451393738882..0.83516460571879
+  HPD interval (0.99): 0.36490872107606..0.83516460571879
+  HPD interval (0.999): 0.36490872107606..0.83516460571879
+  HPD interval (0.9999): 0.36490872107606..0.83516460571879
+  HPD interval (0.99999): 0.36490872107606..0.83516460571879
+
+  var : rate B
+  Probabilities (truncated):
+  0.823873424621186: 0.0212765957446809
+  0.823091161889683: 0.0212765957446809
+  0.815974941873116: 0.0212765957446809
+  0.809171622188615: 0.0212765957446809
+  .........
+  0.653582553146222: 0.0212765957446809
+  0.651888665672624: 0.0212765957446809
+  0.650182641963075: 0.0212765957446809
+  0.633957698779733: 0.0212765957446809
+  mean = 0.742232
+  HPD intervals:
+  HPD interval (0.5): 0.71874832476403..0.77561413335401
+  HPD interval (0.84): 0.68980679538157..0.82387342462119
+  HPD interval (0.9): 0.66497146110321..0.82387342462119
+  HPD interval (0.95): 0.65188866567262..0.82387342462119
+  HPD interval (0.99): 0.63395769877973..0.82387342462119
+  HPD interval (0.999): 0.63395769877973..0.82387342462119
+  HPD interval (0.9999): 0.63395769877973..0.82387342462119
+  HPD interval (0.99999): 0.63395769877973..0.82387342462119
+
+  var : diff
+  Probabilities (truncated):
+  0.337595352270415: 0.0212765957446809
+  0.306945967277507: 0.0212765957446809
+  0.300668674859032: 0.0212765957446809
+  0.28695887076627: 0.0212765957446809
+  .........
+  -0.007416327953634: 0.0212765957446809
+  -0.047760475618886: 0.0212765957446809
+  -0.051581884836725: 0.0212765957446809
+  -0.085429092151484: 0.0212765957446809
+  mean = 0.115779
+  HPD intervals:
+  HPD interval (0.5): 0.05207010316357..0.16658879992090
+  HPD interval (0.84): -0.05158188483673..0.23439829972654
+  HPD interval (0.9): -0.00741632795363..0.30694596727751
+  HPD interval (0.95): -0.05158188483673..0.30694596727751
+  HPD interval (0.99): -0.08542909215148..0.33759535227041
+  HPD interval (0.999): -0.08542909215148..0.33759535227041
+  HPD interval (0.9999): -0.08542909215148..0.33759535227041
+  HPD interval (0.99999): -0.08542909215148..0.33759535227041
+
+  var : diff > 0.0
+  Probabilities:
+  1: 0.8510638297872340
+  0: 0.1489361702127660
+  mean = 0.851064
+  HPD intervals:
+  HPD interval (0.5): 1.00000000000000..1.00000000000000
+  HPD interval (0.84): 1.00000000000000..1.00000000000000
+  HPD interval (0.9): 0.00000000000000..1.00000000000000
+  HPD interval (0.95): 0.00000000000000..1.00000000000000
+  HPD interval (0.99): 0.00000000000000..1.00000000000000
+  HPD interval (0.999): 0.00000000000000..1.00000000000000
+  HPD interval (0.9999): 0.00000000000000..1.00000000000000
+  HPD interval (0.99999): 0.00000000000000..1.00000000000000
+
+  var : p
+  Probabilities:
+  false: 0.8510638297872340
+  true: 0.1489361702127660
+  mean = [false = 0.851064,true = 0.148936]
+  HPD intervals:
+  show_hpd_intervals: data is not numeric
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean,show_hpd_intervals]),
+  nl,
+  show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  NA = 25, % Number of trials for A
+  NB = 75, % Number of trials for B
+
+  RateA = beta_dist(1,1),
+  RateB = beta_dist(1,1),  
+
+  SA = binomial_dist(NA,RateA),
+  SB = binomial_dist(NB,RateB),  
+
+  Diff = RateB - RateA,
+  P = check(RateA > RateB),
+
+  observe(SA == 16, SB == 57), % Number of successes for A and B
+  
+  if observed_ok then
+    add("rate A",RateA),
+    add("rate B",RateB),
+    add("diff",Diff),
+    add("diff > 0.0",cond(Diff > 0, 1,0)),
+    add("p",P)
+  end.

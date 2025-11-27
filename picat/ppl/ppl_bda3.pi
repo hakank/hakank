@@ -1,0 +1,123 @@
+/* 
+
+  BDA3 in Picat.
+
+  https://github.com/probmods/ppaml2016/blob/gh-pages/chapters/5-data.md
+  """
+  Part 2: Making predictions from data
+
+  Some times, we're more interested in getting model predictions than, say, 
+  analyzing learned model parameters. Uncertain and reversible financial models
+
+  Estimating Amazon hosting costs for a fictional video streaming company:
+  """
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : costs
+  Probabilities (truncated):
+  370.005444000000011: 0.0018000000000000
+  370.005443999999898: 0.0003000000000000
+  440.005451999999991: 0.0002000000000000
+  370.005443999999329: 0.0002000000000000
+  .........
+  320.280085231682051: 0.0001000000000000
+  320.276078484776576: 0.0001000000000000
+  320.257426728734458: 0.0001000000000000
+  320.035484638337493: 0.0001000000000000
+  mean = 388.644
+  HPD intervals:
+  HPD interval (0.84): 363.58838872165870..440.05646521316555
+
+  var : requests B
+  Probabilities (truncated):
+  50000.0: 0.0265000000000000
+  49999.999999999985448: 0.0019000000000000
+  49999.999999999992724: 0.0016000000000000
+  49999.999999999970896: 0.0012000000000000
+  .........
+  40050.376649444326176: 0.0001000000000000
+  40026.46967375400709: 0.0001000000000000
+  40022.815373369805457: 0.0001000000000000
+  40004.186124653446313: 0.0001000000000000
+  mean = 48805.9
+  HPD intervals:
+  HPD interval (0.84): 47134.66165441452176..50000.00000000000000
+
+  var : requests
+  Probabilities (truncated):
+  110000.0: 0.0019000000000000
+  109999.999999999970896: 0.0002000000000000
+  149999.999999930092599: 0.0001000000000000
+  149999.993778331321664: 0.0001000000000000
+  .........
+  100054.94154527792125: 0.0001000000000000
+  100054.127692625203053: 0.0001000000000000
+  100050.406209830136504: 0.0001000000000000
+  100006.790128183216439: 0.0001000000000000
+  mean = 117377.0
+  HPD intervals:
+  HPD interval (0.84): 108395.90268973856291..130037.36189517741150
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.84],
+                           % show_histogram,
+                           min_accepted_samples=10000 % ,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Resources = [["a", 1, beta_dist(0.01,0.1) * 20000 + 30000],
+               ["b",10, beta_dist(0.02,0.1) * 20000 + 30000],
+               ["c", 7, beta_dist(0.05,0.1) * 20000 + 30000]
+               ],
+  N = Resources.len,
+
+  [_Name,Storage1,Requests1] = Resources.transpose,  
+  Storage = Storage1.sum,
+  Requests = Requests1.sum,
+
+  Transfer1 = [ Storage1[I]*Requests1[I] : I in 1..N],
+  Transfer = Transfer1.sum,
+
+  
+  % B goes viral
+  % Requests of B > 40000
+  observe(Requests1[2] > 40_000),
+
+  Requests2 = 0.004 * Requests / 100_000,
+  Storage2 = 0.03 * Storage,
+  Transfer2 = Transfer * cases([[Transfer <= 1, 0],
+                               [Transfer <= 10_000, 0.09],
+                               [Transfer <= 40_000, 0.085],
+                               [Transfer <= 100_000,0.07],
+                               [true,0.05]]),
+  Costs = (Requests2 + Storage2 + Transfer2) / 100,
+  
+  if observed_ok then
+    add("costs",Costs),
+    add("requests B",Requests1[2]),    
+    add("requests",Requests),
+
+  end.

@@ -1,0 +1,108 @@
+/* 
+
+  Alarm problem (multi) in Picat.
+
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/02_bayes.html
+  """
+  Since the random variables in the Bayesian network are all Boolean, we only need a single literal 
+  in the head of the rules. We can extend the Bayesian network to have a multi-valued variable by 
+  indicating the severity of the earthquake. The literal earthquake now has three possible values 
+  none, mild, heavy instead of previously two (no or yes).
+  """
+  
+  ProbLog model:
+  """
+  person(john).
+  person(mary).
+  
+  0.7::burglary.
+  0.01::earthquake(heavy); 0.19::earthquake(mild); 0.8::earthquake(none).
+  
+  0.90::alarm :-   burglary, earthquake(heavy).
+  0.85::alarm :-   burglary, earthquake(mild).
+  0.80::alarm :-   burglary, earthquake(none).
+  0.10::alarm :- \+burglary, earthquake(mild).
+  0.30::alarm :- \+burglary, earthquake(heavy).
+  
+  0.8::calls(X) :- alarm, person(X).
+  0.1::calls(X) :- \+alarm, person(X).
+  
+  evidence(calls(john),true).
+  evidence(calls(mary),true).
+  
+  query(burglary).
+  query(earthquake(_)).
+  """
+
+  This is a port of my Racket/Gamble model gamble_alarm_multi.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  var : calls(mary)
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+  var : calls(john)
+  Probabilities:
+  false: 1.0000000000000000
+  mean = [false = 1.0]
+
+  var : alarm
+  Probabilities:
+  true: 0.9586947542337877
+  false: 0.0413052457662123
+  mean = [true = 0.958695,false = 0.0413052]
+
+  var : burglary
+  Probabilities:
+  true: 0.9442379182156134
+  false: 0.0557620817843866
+  mean = [true = 0.944238,false = 0.0557621]
+
+  var : earthquake
+  Probabilities:
+  none: 0.7707558859975217
+  mild: 0.2154068566707972
+  heavy: 0.0138372573316811
+  mean = [none = 0.770756,mild = 0.215407,heavy = 0.0138373]
+
+*/
+go ?=>
+  % reset_store,
+  run_model(50_000,$model,[show_probs,mean,
+                           presentation=["calls(mary)","calls(john)","alarm","burglary","earthquake"]]),
+  nl.
+go => true.
+
+calls(P,Alarm) = condt(Alarm, flip(0.8),flip(0.01)).
+model() =>
+  Burglary = flip(0.7),
+  Earthquake = categorical([0.01,0.19,0.8],["heavy","mild","none"]),
+  Alarm = cases([
+                 [(Burglary, Earthquake == "heavy"),flip(0.9)],
+                 [(Burglary, Earthquake == "mild"),flip(0.85)],
+                 [(Burglary, Earthquake == "none"),flip(0.80)],
+                 [(not Burglary, Earthquake == "heavy"),flip(0.30)],
+                 [(not Burglary, Earthquake == "mild"),flip(0.30)],
+                 [true,false]
+               ]),
+  CallsMary = calls("mary",Alarm),
+  CallsJohn = calls("john",Alarm),
+  observe(CallsMary == true,CallsJohn == false),
+  if observed_ok  then
+    add_all([["calls(mary)",CallsMary],
+             ["calls(john)",CallsJohn],
+             ["alarm",Alarm],
+             ["burglary",Burglary],
+             ["earthquake",Earthquake]])
+   end.

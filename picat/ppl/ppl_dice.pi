@@ -1,0 +1,82 @@
+/* 
+
+  Dice problem in Picat.
+
+  From Gamble's example dice.rkt
+  """
+  Somebody gives Norman a hat containing five slips of paper, numbered 1
+  to 5 respectively. Norman draws a slip from the hat. The number on the
+  slip is called n. Norman then repeats the following procedure ten
+  times:
+
+  Take n dice from the bag, throw them, report the total t, then put the
+  dice back in the bag.
+
+  The totals reported are 21, 15, 34, 12, 18, 38, 46, 13, 24, and 27.
+
+  The question is, what is the number on the slip Norman drew? (That is,
+  what is n?)
+
+  Assume all of the dice in the bag are 20-sided.
+  """
+
+
+  The result (for the accepted n) should be something like this (from my Gamble model)
+  3: 0.9999365920526166
+  4: 6.340794738337384e-5
+  5: 8.187980010948882e-34
+  mean: 3.0000634079473834
+
+  This is a port of my Racket/Gamble model dice.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+import util.
+
+main => go.
+
+
+/*
+ 
+  min_accepted_samples = 1000
+  var : n
+  Probabilities:
+  3: 0.99800000000000000 (499 / 500)
+  4: 0.00200000000000000 (1 / 500)
+  mean = 3.002
+
+*/ 
+go ?=>
+  reset_store,
+  run_model(1_000_000,$model,[show_probs_rat,mean,
+                              min_accepted_samples=1000 % ,show_accepted_samples=true
+                              ]),
+  % show_store_lengths,nl,
+  nl.
+go => true.
+
+/*
+
+  The 'trickery' is to find the smallest possible n by notice that 46 implies 
+  that n must be at least 46/20 = 2.3, i.e. at least n = 3.
+
+*/
+model() =>
+  Totals = [21,15,34,12,18,38,46,13,24,27],  
+  Len = Totals.len,
+  
+  % The minimum number of N that's possible is 3 (see comment above)
+  MinN = ceiling(Totals.max / 20), 
+  N = MinN + random_integer(5-MinN),
+
+  S = [ [dice(20) : _ in 1..N].sum : _ in 1..Len],
+  observe_abc(Totals,S,1/2),
+  
+  if observed_ok then
+    add("n",N)
+  end.
+

@@ -1,0 +1,78 @@
+/* 
+
+  Aircraft position in Picat.
+
+  From BLOG example/aircraft-position.blog
+
+  Cf my Gamble model gamble_aircraft_position.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  var : num aircraft
+  Probabilities:
+  3: 0.5680473372781065
+  4: 0.3609467455621302
+  5: 0.0591715976331361
+  6: 0.0118343195266272
+  mean = 3.51479
+
+  var : number of aircraft in position > 5
+  Probabilities:
+  1: 0.4023668639053254
+  0: 0.2781065088757396
+  2: 0.2721893491124260
+  3: 0.0414201183431953
+  4: 0.0059171597633136
+  mean = 1.09467
+
+  var : sum blips
+  Probabilities:
+  3: 1.0000000000000000
+  mean = 3.0
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(20_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+
+
+in_range(X,Y,Epsilon) = cond((X > (Y - Epsilon), X < (Y + Epsilon)),1,0).
+model() =>
+  NumAircraft = poisson_dist(5),
+  Blip = bern_n(0.9,NumAircraft),
+  SumBlips = Blip.sum,
+  Positions = normal_dist_n(0,10,NumAircraft),
+  ObsPos = [normal_dist(Positions[B],1) : B in 1..NumAircraft],
+
+  Epsilon = 0.05,
+
+  NumberAircraftInPositionGt5 = [1 : A in 1..NumAircraft, Positions[A] > 5].sum,
+  % Evidence
+  observe(SumBlips == 3),
+  % Note: there's an issue with ObsPos[1] if no aircrafts
+  observe(cond(
+               (SumBlips > 0,
+                abs(  normal_dist(in_range(ObsPos[1],5.0,Epsilon),1)-1)<=0.1
+               ),
+               true,
+               false)),
+  
+  if observed_ok then
+    add("num aircraft",NumAircraft),
+    add("sum blips",SumBlips),
+    add("number of aircraft in position > 5",NumberAircraftInPositionGt5)
+  end.

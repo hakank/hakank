@@ -1,0 +1,187 @@
+/* 
+
+  Discrete Markov Process - biased coin in Picat.
+
+  From Mathematica DiscreteMarkovProcess
+  """
+  A biased coin with probability of getting heads being p is flipped n times. 
+  Find the probability that the length of the longest run of heads exceeds a given number k. 
+  This can be modeled by using a discrete Markov process, where the state i represents 
+  having i-1 heads in a run. 
+  The resulting transition matrix for p==0.6, n==100, and k==10 is given by
+
+  ...
+
+  ({
+  {0.4, 0.6, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0.4, 0, 0.6, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0.4, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 0},
+  {0.4, 0, 0, 0, 0.6, 0, 0, 0, 0, 0, 0},
+  {0.4, 0, 0, 0, 0, 0.6, 0, 0, 0, 0, 0},
+  {0.4, 0, 0, 0, 0, 0, 0.6, 0, 0, 0, 0},
+  {0.4, 0, 0, 0, 0, 0, 0, 0.6, 0, 0, 0},
+  {0.4, 0, 0, 0, 0, 0, 0, 0, 0.6, 0, 0},
+  {0.4, 0, 0, 0, 0, 0, 0, 0, 0, 0.6, 0},
+  {0.4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6},
+  {0,   0, 0, 0, 0, 0, 0, 0, 0, 0,   1}
+  }
+
+  heads = RandomFunction[DiscreteMarkovProcess[1, m], {0, 200}];
+
+  The probability of getting at least 10 heads in a run after 100 coin flips:
+  Probability[x[100] == 11, x in DiscreteMarkovProcess[1, m]]
+  ->
+  0.20491
+
+  """
+
+  Note: There are some other - and simpler - ways of calculating this:
+
+  (discrete_markov_process_pdf transitions init-state 100 10): 0.20490987499817176
+
+  (probability-of-run-size 100 0.6 10): 0.20490987499817193
+  (prob-n-heads-after-k-in-max-m-tosses-cdf 0.6 100 10 100): 0.20490987499817193
+
+
+  Transitions
+  (0.4 0.6 0 0 0 0 0 0 0 0 0)
+  (0.4 0 0.6 0 0 0 0 0 0 0 0)
+  (0.4 0 0 0.6 0 0 0 0 0 0 0)
+  (0.4 0 0 0 0.6 0 0 0 0 0 0)
+  (0.4 0 0 0 0 0.6 0 0 0 0 0)
+  (0.4 0 0 0 0 0 0.6 0 0 0 0)
+  (0.4 0 0 0 0 0 0 0.6 0 0 0)
+  (0.4 0 0 0 0 0 0 0 0.6 0 0)
+  (0.4 0 0 0 0 0 0 0 0 0.6 0)
+  (0.4 0 0 0 0 0 0 0 0 0 0.6)
+  (0 0 0 0 0 0 0 0 0 0 1)
+  Init-state: (1.0 0 0 0 0 0 0 0 0 0 0)
+
+  Stationary:
+  '(0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0)
+
+  (discrete_markov_process_pdf transitions init-state 100 10): 0.20490987499817176
+
+  (probability-of-run-size 100 0.6 10): 0.20490987499817193
+  (prob-n-heads-after-k-in-max-m-tosses-cdf 0.6 100 10 100): 0.20490987499817193
+
+
+  Cf my Gamble model gamble_discrete_markov_process_biased_coin.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils, ppl_common_utils.
+import util.
+% import ordset.
+
+main => go.
+
+band_tm_matrix(N,P) = TM =>
+  P1 = 1-P,
+  TM = [],
+  foreach(I in 0..N)
+    Row = [],
+    foreach(J in 0..N)
+      V = cases([[(J == 0, I < N),P1],
+                 [(I == J - 1),P],
+                 [(I == N, J == N),1.0],
+                 [true, 0.0]
+                 ]),
+     Row := Row ++ [V]
+    end,
+    TM := TM ++ [Row]
+  end.
+
+
+/*
+  Transition matrix
+  [0.4,0.6,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+  [0.4,0.0,0.6,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+  [0.4,0.0,0.0,0.6,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+  [0.4,0.0,0.0,0.0,0.6,0.0,0.0,0.0,0.0,0.0,0.0]
+  [0.4,0.0,0.0,0.0,0.0,0.6,0.0,0.0,0.0,0.0,0.0]
+  [0.4,0.0,0.0,0.0,0.0,0.0,0.6,0.0,0.0,0.0,0.0]
+  [0.4,0.0,0.0,0.0,0.0,0.0,0.0,0.6,0.0,0.0,0.0]
+  [0.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.6,0.0,0.0]
+  [0.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.6,0.0]
+  [0.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.6]
+  [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0]
+
+  Theoretical:
+
+  stationary = [1.61215e-10,9.69697e-11,5.83264e-11,3.50828e-11,2.1102e-11,1.26927e-11,7.63454e-12,4.59211e-12,2.76212e-12,1.66139e-12,1.0]
+  pdf         : 0.20490987499817
+  run_size    : 0.20490987499817
+  prob_n_heads: 0.20490987499817
+
+  var : last val
+  Probabilities (truncated):
+  1: 0.3198000000000000
+  11: 0.2035000000000000
+  2: 0.1927000000000000
+  3: 0.1165500000000000
+  .........
+  7: 0.0158000000000000
+  8: 0.0087000000000000
+  9: 0.0048500000000000
+  10: 0.0030000000000000
+  mean = 4.1808
+
+  var : first pos
+  Probabilities (truncated):
+  100: 0.7980500000000000
+  11: 0.0062000000000000
+  25: 0.0032000000000000
+  32: 0.0031500000000000
+  .........
+  79: 0.0016500000000000
+  95: 0.0016000000000000
+  89: 0.0015500000000000
+  55: 0.0014500000000000
+  mean = 90.4557
+
+  var : p
+  Probabilities:
+  false: 0.7965000000000000
+  true: 0.2035000000000000
+  mean = 0.2035
+
+*/
+go ?=>
+  % The band_matrix for the transition matrix
+  TM = band_tm_matrix(10,0.6),
+  print_matrix(TM,"Transition matrix"),
+  InitState = [1.0,0,0,0,0,0,0,0,0,0,0],
+  println("Theoretical:"),
+  Stationary = stationary_dist(TM),
+  println(stationary=Stationary),
+  PDF=discrete_markov_process_dist_pdf(TM,InitState,100,TM.len),
+  printf("pdf         : %.14f\n",PDF),
+  printf("run_size    : %.14f\n",probability_of_run_size(100,0.6,10)),
+  printf("prob_n_heads: %.14f\n",prob_n_heads_after_k_in_max_m_tosses_dist_cdf(0.6,100,10,100)),
+  nl,
+  reset_store,
+  run_model(20_000,$model(TM,InitState),[show_probs_trunc,mean]),
+  nl,
+  nl.
+go => true.
+  
+  
+model(TM,InitState) =>
+  N = 100,
+  K = TM.len, % The state
+
+  X = markov_chain(TM,InitState,N),
+
+  LastVal = X.last,
+  FirstPos = find_first(X,K,N), % first time we get K (or N if not found)
+
+  P = check(LastVal == K),
+  
+  add("last val",LastVal),
+  add("first pos",FirstPos),
+  add("p",P).
+

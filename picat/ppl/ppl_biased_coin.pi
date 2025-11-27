@@ -1,0 +1,118 @@
+/* 
+
+  Biased coin in Picat.
+
+  From cplint: http://cplint.eu/example/inference/coin.pl
+  """
+  Throwing a coin with uncertainty on its fairness, from
+  J. Vennekens, S. Verbaeten, and M. Bruynooghe. Logic programs with annotated
+  disjunctions. In International Conference on Logic Programming,
+  volume 3131 of LNCS, pages 195-209. Springer, 2004.
+  """
+
+  From the cplint model:
+  """
+  heads(Coin): 1/2; tails(Coin) : 1/2:-toss(Coin),\+biased(Coin).
+  % if we toss a Coin that is not biased then it lands heads with probability 1/2
+  % and tails with probability 1/2
+
+  heads(Coin): 0.6 ; tails(Coin) : 0.4:-toss(Coin),biased(Coin).
+  % if we toss a Coin that is biased then it lands heads with probability 0.6
+  % % and tails with probability 0.4
+  
+  fair(Coin):0.9 ; biased(Coin):0.1.
+  % a Coin is fair with probability 0.9 and biased with probability 0.1
+  
+  toss(coin).
+  % coin is certainly tossed
+  
+
+  ?- prob(heads(coin),Prob).  % what is the probability that coin lands heads?
+  % expected result 0.51
+  
+  ?- prob(tails(coin),Prob).  % what is the probability that coin lands tails?
+  % expected result 0.49
+  
+  calculation: is fair and tail 0.9*0.5 + biased and tail 0.1*0.4 = 0.9*0.5 +  0.1*0.4 = 0.49
+  
+  ?- prob(heads(coin),biased(coin),Prob).
+  % what is the probability that coin lands heads given the coin is biased?
+  % expected result 0.6
+  """
+
+  This is a port of my Racket/Gamble model gamble_biased_coin.rkt
+
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+no observation
+Var coin_result:
+Probabilities:
+head: 0.5087000000000000
+tail: 0.4913000000000000
+mean = not_numeric
+Histogram:
+head      :  5087 ############################################################ (0.509 / 0.509)
+tail      :  4913 ##########################################################   (0.491 / 1.000)
+
+Var coin_type:
+Probabilities:
+fair: 0.8981000000000000
+biased: 0.1019000000000000
+mean = not_numeric
+Histogram:
+biased    :  1019 #######                                                      (0.102 / 0.102)
+fair      :  8981 ############################################################ (0.898 / 1.000)
+
+
+observe biased
+Var coin_result:
+Probabilities:
+head: 0.6115459882583171
+tail: 0.3884540117416830
+mean = not_numeric
+Histogram:
+head      :   625 ############################################################ (0.612 / 0.612)
+tail      :   397 ######################################                       (0.388 / 1.000)
+
+Var coin_type:
+Probabilities:
+biased: 1.0000000000000000
+mean = not_numeric
+Histogram:
+biased    :  1022 ############################################################ (1.000 / 1.000)
+
+*/
+go ?=>
+  member(Experiment,["no observation","observe biased"]),
+  println(Experiment),
+  reset_store,
+  run_model(10_000,$biased_coin(Experiment),[show_probs,mean,show_histogram]),
+  fail,  
+  nl.
+go => true.
+  
+  
+biased_coin(Experiment) =>
+  CoinType = categorical([9/10,1/10],["fair","biased"]),
+  CoinResult = cond(CoinType == "fair",
+                    categorical([1/2,1/2],["head","tail"]),
+                    categorical([6/10,4/10],["head","tail"])),
+  if Experiment == "observe biased" then
+    if CoinType == "biased" then
+      add("coin_type",CoinType),
+      add("coin_result",CoinResult)
+    end
+  else
+    add("coin_type",CoinType),
+    add("coin_result",CoinResult)
+  end.

@@ -1,0 +1,146 @@
+/* 
+
+  Duelling cowboys in Picat.
+
+  From http://cs.ioc.ee/ewscs/2020/katoen/katoen-slides-lecture1.pdf
+  """
+  int cowboyDuel(float a, b) { // 0 < a < 1, 0 < b < 1
+    int t := A [1] t := B; // decide who shoots first
+    bool c := true;
+    while (c) {
+       if (t = A) {
+          (c := false [a] t := B); // A shoots B with prob. a
+       } else {
+          (c := false [b] t := A); // B shoots A with prob. b
+       }
+    }
+    return t; // the survivor
+   }
+
+   Claim: Cowboy A wins the duel with probability a / (a+b-a*b)
+   """
+
+  Cf my Gamble model gamble_duelling_cowboys.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+% Probability that A wins
+theoretical(A,B) = A / ((A+B) - A*B).
+
+/*
+
+  theoretical = 0.379747
+  var : s
+  Probabilities:
+  b: 0.6203000000000000
+  a: 0.3797000000000000
+  mean = [b = 0.6203,a = 0.3797]
+
+*/
+go ?=>
+  AP = 0.3,
+  BP = 0.7,
+  println(theoretical=theoretical(AP,BP)),
+  reset_store,
+  run_model(10_000,$model1(AP,BP),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model1(AP,BP) =>
+  S = a, % A always starts
+  C = true, 
+  while(C == true)
+    if S == a then
+      if flip(AP)==true then
+        C := false, % A shoots B, it's over
+      else
+        S := b,     % otherwise, it's B's turm
+      end
+    else
+      if flip(BP)==true then
+        C := false  % B shoots A, it's over
+      else
+        S := a,     % otherwise, it's A's turn
+      end
+    end
+  end,
+  add("s",S).
+
+
+
+/*
+  Another model:
+
+  first_shooter = a
+  theoretical_for_a = 0.379747
+  var : survivor
+  Probabilities:
+  b: 0.6254999999999999
+  a: 0.3745000000000000
+  mean = [b = 0.6255,a = 0.3745]
+
+
+  first_shooter = b
+  var : survivor
+  Probabilities:
+  b: 0.8800000000000000
+  a: 0.1200000000000000
+  mean = [b = 0.88,a = 0.12]
+
+
+  first_shooter = random
+  var : survivor
+  Probabilities:
+  b: 0.7516000000000000
+  a: 0.2484000000000000
+  mean = [b = 0.7516,a = 0.2484]
+
+
+
+
+*/
+go2 ?=>
+  member(FirstShooter,[a,b,random]),
+  println(first_shooter=FirstShooter),
+  AP = 0.3,
+  BP = 0.7,
+  if FirstShooter == a then
+    println(theoretical_for_a=theoretical(AP,BP))
+  end,
+  reset_store,
+  run_model(10_000,$model2(FirstShooter,AP,BP),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go2 => true.
+  
+
+shoot(Shooter,AP,BP) = Ret =>
+  C = cond(Shooter == a, flip(AP), flip(BP)),
+  if C == true then
+    % Yes, the shooter succeeded. Return as the survivor.
+    Ret = Shooter
+  else
+    % Switch shooter and continue to the next roun
+    Ret = shoot(cond(Shooter == a,b,a),AP,BP)      
+  end.
+model2(FirstShooter,AP,BP) =>
+  Survivor = cond(FirstShooter == random,
+                  shoot(condt(flip(0.5),a,b),AP,BP),
+                  shoot(FirstShooter,AP,BP)),
+
+  add("survivor",Survivor).
+                  

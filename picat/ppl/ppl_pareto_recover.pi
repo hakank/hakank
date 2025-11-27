@@ -1,0 +1,108 @@
+/* 
+
+  Pareto distribution recover parameter in Picat.
+
+  Trying to recover parameters from 100 instances of pareto1_dist(100,2).
+
+  Warning: It's actually not too bad (see below), but it occasionally 
+  throws numeric errors such as:
+ 
+   error(domain_error(number,-nan),sqrt)
+
+
+  Theoretical mean:
+  Picat> X = pareto1_dist_mean(100,2)                   
+  X = 200.0
+
+  Cf my Gamble model gamble_pareto_recover.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : x
+  Probabilities (truncated):
+  102.940413110709898: 0.0100000000000000
+  102.803917905264356: 0.0100000000000000
+  102.527548646966082: 0.0100000000000000
+  102.474419430252581: 0.0100000000000000
+  .........
+  99.152130672408987: 0.0100000000000000
+  99.139284881855289: 0.0100000000000000
+  99.06889647683056: 0.0100000000000000
+  99.020376460535928: 0.0100000000000000
+  mean = 100.803
+
+  var : alpha
+  Probabilities (truncated):
+  2.843874482630694: 0.0100000000000000
+  2.449806016269049: 0.0100000000000000
+  2.435780512348646: 0.0100000000000000
+  2.422113153236971: 0.0100000000000000
+  .........
+  1.432200846091007: 0.0100000000000000
+  1.417632728688248: 0.0100000000000000
+  1.403560160926338: 0.0100000000000000
+  1.385769344999347: 0.0100000000000000
+  mean = 1.84399
+
+  var : post
+  Probabilities (truncated):
+  746.973303613524195: 0.0100000000000000
+  714.558861888896445: 0.0100000000000000
+  710.357605556579983: 0.0100000000000000
+  644.644239054401623: 0.0100000000000000
+  .........
+  102.505296419674991: 0.0100000000000000
+  102.435966103828505: 0.0100000000000000
+  102.034135283493839: 0.0100000000000000
+  100.507643108745015: 0.0100000000000000
+  mean = 194.089
+
+
+*/
+go ?=>
+  Data = pareto1_dist_n(100,2,100),
+  println(data=Data),
+  show_simple_stats(Data),
+  reset_store,
+  [Methods,Explain] = recommend_abc_stats_explained(Data),
+  println(methods=Methods),
+  println(Explain),
+  run_model(10_000,$model(Data),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model(Data) =>
+  X = normal_dist(Data.min,1),
+  Alpha = uniform(0.01,20),
+
+  Y = pareto1_dist_n(X,Alpha,Data.len),
+  observe_abc(Data,Y,1/10),
+  % observe_abc(Data,Y,1/10,[mean,stdev,q10,q90,kurtosis]), % often numeric errors
+
+  Post = pareto1_dist(X,Alpha),
+
+  if observed_ok then
+    add("x",X),
+    add("alpha",Alpha),
+    add("post",Post),        
+  end.

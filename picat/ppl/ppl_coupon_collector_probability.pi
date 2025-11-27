@@ -1,0 +1,433 @@
+/* 
+
+  Coupon Collector problem - probability in Picat.
+
+  From Siegrist "Probability Mathematical Statisics and Stochastic Processes"
+  """
+  Suppose that a standard, fair die is thrown until all 6 scores have occurred. 
+  Find each of the following:
+  1. The probability density function of the number of throws.
+  2. The mean of the number of throws.
+  3. The variance of the number of throws.
+  4. The probability that at least 10 throws are required.
+
+  ...
+
+  Mean
+  14.7
+  Variance
+  38.99
+  w >= 10
+  0.8109567901234568
+  """
+  
+
+  In Picat PPL:
+  
+  Mean:
+  Picat> X = coupon_collector_dist_mean(6,6)  
+  X = 14.699999999999999
+
+  Variance:
+  Picat> X = coupon_collector_dist_variance(6,6)
+  X = 38.990000000000002
+
+  P(w>=10)
+  Picat> X = 1-coupon_collector_dist_cdf(6,6,9) 
+  X = 0.810956790123456
+
+
+  Many (many) years ago, I collected cards with national flags. 
+  It was about 100 different type. The estimated number of
+  cards I had to collect:
+
+  Picat> X = coupon_collector_dist_mean(100,100)     
+  X = 518.737751763962024
+
+  Here are some quantile for this:
+  Picat> quantile_all($coupon_collector_dist(100,100)).printf_list
+   0.000001 100 
+   0.00001 100 
+   0.001 103 
+   0.01 313 
+   0.025 335 
+   0.05 355 
+   0.1 381 
+   0.25 429 
+   0.5 497 
+   0.75 583 
+   0.84 632 
+   0.9 681 
+   0.975 818 
+   0.99 902 
+   0.999 1052 
+   0.99999 1100 
+   0.999999 1100 
+
+  See ppl_distributions.pi and ppl_distributions_test.pi for more on this
+  distribution.
+
+
+  Cf my Gamble model gamble_coupon_collector_probability.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+/*
+
+  m = 10
+  Random:
+  [39,25,36,37,45,20,23,36,22,28]
+
+  PDF:
+  10 0.000362879999999 
+  11 0.001632959999999 
+  12 0.004191263999999 
+  13 0.008083152 
+  14 0.013045608576 
+  15 0.018634359744 
+  16 0.0243595864512 
+  17 0.029784618864 
+  18 0.034578190373126 
+  19 0.038528927611574 
+  20 0.0415357755775 
+
+  CDF:
+  10 0.000362879999999 
+  11 0.001995839999998 
+  12 0.006187103999997 
+  13 0.014270255999997 
+  14 0.027315864575996 
+  15 0.045950224319996 
+  16 0.070309810771196 
+  17 0.100094429635195 
+  18 0.134672620008322 
+  19 0.173201547619896 
+  20 0.214737323197396 
+
+  Quantile:
+  0.000001 10 
+  0.00001 10 
+  0.001 11 
+  0.01 13 
+  0.025 14 
+  0.05 16 
+  0.25 21 
+  0.5 27 
+  0.75 35 
+  0.84 39 
+  0.975 57 
+  0.99 66 
+  0.999 88 
+  0.99999 132 
+  0.999999 153 
+
+  mean:
+  mean = 29.2897
+  mean_euler = 29.298
+
+  variance:
+  mean = 125.687
+
+
+*/
+go ?=>
+  M = 10,
+  println(m=M),
+  println("Random:"),
+  println(coupon_collector_dist_n(M,M,10)),
+  nl,
+  println("PDF:"),
+  [K=coupon_collector_dist_pdf(M,M,K) : K in M..M*2].printf_list,
+  nl,
+  println("CDF:"),
+  [K=coupon_collector_dist_cdf(M,M,K) : K in M..M*2].printf_list,
+  nl,
+  println("Quantile:"),
+  Qs = quantile_qs(),
+  [Q=coupon_collector_dist_quantile(M,M,Q) : Q in Qs].printf_list,
+  nl,
+  println("mean:"),
+  println(mean=coupon_collector_dist_mean(M,M)),
+  println(mean_euler=coupon_collector_dist_mean_euler(M)),
+  nl,
+  println("variance:"),
+  println(mean=coupon_collector_dist_variance(M,M)),
+
+  nl.
+go => true.
+
+/*
+  Modeling the dice problem
+
+  var : d
+  Probabilities:
+  12: 0.0865000000000000
+  11: 0.0821000000000000
+  10: 0.0812000000000000
+  13: 0.0801000000000000
+  9: 0.0797000000000000
+  14: 0.0681000000000000
+  8: 0.0617000000000000
+  15: 0.0595000000000000
+  16: 0.0546000000000000
+  17: 0.0475000000000000
+  7: 0.0366000000000000
+  19: 0.0356000000000000
+  18: 0.0355000000000000
+  20: 0.0285000000000000
+  21: 0.0213000000000000
+  23: 0.0206000000000000
+  22: 0.0194000000000000
+  6: 0.0153000000000000
+  24: 0.0140000000000000
+  26: 0.0121000000000000
+  25: 0.0113000000000000
+  27: 0.0077000000000000
+  28: 0.0075000000000000
+  30: 0.0051000000000000
+  29: 0.0050000000000000
+  31: 0.0046000000000000
+  33: 0.0037000000000000
+  32: 0.0032000000000000
+  34: 0.0019000000000000
+  37: 0.0015000000000000
+  39: 0.0013000000000000
+  36: 0.0013000000000000
+  40: 0.0009000000000000
+  38: 0.0008000000000000
+  35: 0.0007000000000000
+  44: 0.0005000000000000
+  41: 0.0005000000000000
+  43: 0.0004000000000000
+  47: 0.0003000000000000
+  42: 0.0003000000000000
+  56: 0.0002000000000000
+  54: 0.0002000000000000
+  48: 0.0002000000000000
+  46: 0.0002000000000000
+  45: 0.0002000000000000
+  73: 0.0001000000000000
+  67: 0.0001000000000000
+  62: 0.0001000000000000
+  55: 0.0001000000000000
+  53: 0.0001000000000000
+  49: 0.0001000000000000
+  mean = 14.6103
+
+  var : p
+  Probabilities:
+  true: 0.8067000000000000
+  false: 0.1933000000000000
+  mean = 0.8067
+
+  Theoretical:
+  PDF:
+  11 0.084394290123457 
+  10 0.082768918609968 
+  12 0.081609262011211 
+  13 0.076042513421057 
+  9 0.075017146776406 
+  14 0.0689871548094 
+  15 0.061367389743464 
+  8 0.060013717421125 
+  16 0.053791659090959 
+  17 0.046628054317324 
+  18 0.040074664486202 
+  7 0.038580246913581 
+  19 0.034215960496571 
+  20 0.029064463899264 
+  21 0.024589943880674 
+  22 0.020739049636677 
+  23 0.017448023862377 
+  6 0.015432098765432 
+  24 0.014650606301168 
+  25 0.012282695263198 
+  26 0.010284883381606 
+  27 0.008603638589533 
+  28 0.007191650338287 
+  29 0.00600768456879 
+  30 0.005016169693129 
+  31 0.00418665407101 
+  32 0.003493221200667 
+  33 0.002913913390054 
+  34 0.002430191898965 
+  35 0.002026447205544 
+  36 0.001689564262455 
+  37 0.00140854242294 
+  38 0.001174166838104 
+  39 0.00097872669694 
+  40 0.000815775139395 
+  41 0.000679925657257 
+  42 0.000566680076122 
+  43 0.000472283638434 
+  44 0.000393603193391 
+  45 0.000328024991084 
+  46 0.000273369045915 
+  47 0.000227817462747 
+  48 0.000189854501961 
+  49 0.000158216495868 
+  50 0.000131850020494 
+
+  mean = 14.7
+
+
+
+*/ 
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs,mean
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println("Theoretical:"),
+  println("PDF:"),
+  [K=coupon_collector_dist_pdf(6,6,K) : K in 6..50].sort_down(2).printf_list,
+  nl,
+  println(mean=coupon_collector_dist_mean(6,6)),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+  
+model2() =>
+  M = 6,
+  D = coupon_collector_dist(M,M),
+
+  P = check(D >= 10),
+  
+  add("d",D),
+  add("p",P).
+
+
+/*
+  A more pure simulation of coupon collector problem. For m=k=10.
+  The problem
+  """
+  A box of a certain brand of cereal comes with a special toy. There are 
+  10 different toys in all. A collector buys boxes of cereal
+  until she has all 10 toys. Find each of the following:
+  1. The probability density function of the number boxes purchased.
+  2. The mean of the number of boxes purchased.
+  3. The variance of the number of boxes purchased.
+  4. The probability that no more than 15 boxes were purchased.
+  """
+
+  m = 10
+  var : len
+  Probabilities (truncated):
+  22: 0.0503000000000000
+  23: 0.0456000000000000
+  20: 0.0435000000000000
+  24: 0.0434000000000000
+  21: 0.0430000000000000
+  25: 0.0420000000000000
+  27: 0.0415000000000000
+  26: 0.0415000000000000
+  19: 0.0400000000000000
+  28: 0.0371000000000000
+  .........
+  77: 0.0002000000000000
+  68: 0.0002000000000000
+  115: 0.0001000000000000
+  98: 0.0001000000000000
+  94: 0.0001000000000000
+  90: 0.0001000000000000
+  88: 0.0001000000000000
+  87: 0.0001000000000000
+  86: 0.0001000000000000
+  82: 0.0001000000000000
+  mean = 29.2891
+
+  var : p
+  Probabilities:
+  false: 0.9528000000000000
+  true: 0.0472000000000000
+  mean = 0.0472
+
+  Theoretical:
+  PDF:
+  23 0.045068364358639 
+  22 0.044733116259693 
+  24 0.044707065704249 
+  25 0.043771519771445 
+  21 0.043586542461178 
+  26 0.042381533617262 
+  20 0.0415357755775 
+  27 0.04064806409473 
+  28 0.038669680608043 
+  19 0.038528927611574 
+  29 0.036531067596089 
+  18 0.034578190373126 
+  30 0.03430291158401 
+  17 0.029784618864 
+  16 0.0243595864512 
+  15 0.018634359744 
+  14 0.013045608576 
+  13 0.008083152 
+  12 0.004191263999999 
+  11 0.001632959999999 
+  10 0.000362879999999 
+
+  mean = 29.2897
+
+  prob = 0.0459502
+
+
+*/
+go3 ?=>
+  M = 100,
+  println(m=M),
+  reset_store,
+  run_model(10_000,$model3(M),[show_probs_trunc,mean,truncate_size=10
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  println("Theoretical:"),
+  println("PDF:"),
+  [K=coupon_collector_dist_pdf(M,M,K) : K in M..M*3].sort_down(2).printf_list,
+  nl,
+  println(mean=coupon_collector_dist_mean(M,M)),
+  nl,
+  println(prob=coupon_collector_dist_cdf(M,M,15)),
+  
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go3 => true.
+
+  
+model3(M) =>
+
+  OK = false,
+  A = [],
+  while (OK == false)
+    if A.remove_dups.len == M then
+      OK := true
+    else
+      A := A ++ [random_integer1(M)]
+    end
+  end,
+
+  Len = A.len,
+  P = check(Len <= 15),
+
+  add("len",Len),
+  add("p",P).
+

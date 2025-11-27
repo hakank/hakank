@@ -1,0 +1,254 @@
+/* 
+
+  Simpson's paradox in Picat.
+
+  http://cplint.eu/example/inference/simpson.swinb
+  """
+  From "Pearl, Judea. Causality. Cambridge university press, 2009"
+
+  Simpson's paradox ... refers to the phenomenon whereby an event C increases the probability 
+  of E in a given population p and, at the same time, decreases the probability 
+  of E in every subpopulation of p. In other words, if F and ¬F are two complementary 
+  properties describing two subpopulations, we might well encounter the inequalities
+    P(E|C)>P(E|¬C)
+    P(E|C,F)<P(E|¬C,F)
+    P(E|C,¬F)<P(E|¬C,¬F)
+   ... 
+  For example, if we associate C (connoting cause) with taking a certain drug, E (connoting effect) with 
+  recovery, and F with being a female, then ... the drug seems to be harmful to both males and females yet 
+  beneficial to the population as a whole. 
+
+  ...
+
+  % cplint code:
+
+  female:0.5.
+
+  recovery:0.6:- drug,\+ female.
+  recovery:0.7:- \+ drug,\+ female.
+
+  recovery:0.2:- drug,female.
+  recovery:0.3:- \+ drug,female.
+
+  drug:30/40:- \+ female.
+  drug:10/40:-female.
+
+  If we query for the conditional probabilities of recovery given treatment
+  on the whole population and on the two subpopulations, we get the results
+  in the tables above:
+
+  ?- prob(recovery,drug,P).
+  P = 0.49999999999999994
+
+  ?- prob(recovery,\+ drug,P).
+  P = 0.40000000000000013
+
+  ?- prob(recovery,(drug,female),P).
+  P = 0.2
+
+  ?- prob(recovery,(\+drug,female),P).
+  P = 0.3000000000000001
+
+  ?- prob(recovery,(drug,\+female),P).
+  P = 0.6
+
+  ?- prob(recovery,(\+ drug,\+female),P).
+  P = 0.7000000000000002
+  """
+
+
+  Cf my Gamble model gamble_simpson.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  * P(recovery | drug)
+
+    var : drug
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+    var : female
+    Probabilities:
+    false: 0.7535974768381628
+    true: 0.2464025231618372
+    mean = [false = 0.753597,true = 0.246403]
+
+    var : recovery
+    Probabilities:
+    true: 0.5093632958801498
+    false: 0.4906367041198502
+    mean = [true = 0.509363,false = 0.490637]
+
+
+  * P(recovery | not drug)
+    var : drug
+    Probabilities:
+    false: 1.0000000000000000
+    mean = [false = 1.0]
+
+    var : female
+    Probabilities:
+    true: 0.7556497175141242
+    false: 0.2443502824858757
+    mean = [true = 0.75565,false = 0.24435]
+
+    var : recovery
+    Probabilities:
+    false: 0.6077481840193705
+    true: 0.3922518159806295
+    mean = [false = 0.607748,true = 0.392252]
+
+  * P(recovery | drug and female)
+    var : drug
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+    var : female
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+    var : recovery
+    Probabilities:
+    false: 0.8052050473186120
+    true: 0.1947949526813880
+    mean = [false = 0.805205,true = 0.194795]
+
+  * P(recovery | not drug and female)
+    var : drug
+    Probabilities:
+    false: 1.0000000000000000
+    mean = [false = 1.0]
+
+    var : female
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+    var : recovery
+    Probabilities:
+    false: 0.7006148088746325
+    true: 0.2993851911253675
+    mean = [false = 0.700615,true = 0.299385]
+
+
+  * P(recovery | drug and not female)
+    var : drug
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+    var : female
+    Probabilities:
+    false: 1.0000000000000000
+    mean = [false = 1.0]
+
+    var : recovery
+    Probabilities:
+    true: 0.6013107591480066
+    false: 0.3986892408519934
+    mean = [true = 0.601311,false = 0.398689]
+
+
+  * P(recovery | not  drug and not female)
+    var : drug
+    Probabilities:
+    false: 1.0000000000000000
+    mean = [false = 1.0]
+
+    var : female
+    Probabilities:
+    false: 1.0000000000000000
+    mean = [false = 1.0]
+
+    var : recovery
+    Probabilities:
+    true: 0.6900958466453674
+    false: 0.3099041533546326
+    mean = [true = 0.690096,false = 0.309904]
+
+ 
+  * (P(drug,female | recovery)
+    var : drug
+    Probabilities:
+    true: 0.5670126353790613
+    false: 0.4329873646209386
+    mean = [true = 0.567013,false = 0.432987]
+
+    var : female
+    Probabilities:
+    false: 0.7044223826714802
+    true: 0.2955776173285198
+    mean = [false = 0.704422,true = 0.295578]
+
+    var : recovery
+    Probabilities:
+    true: 1.0000000000000000
+    mean = [true = 1.0]
+
+  * (P(drug,female | not recovery)
+    var : drug
+    Probabilities:
+    false: 0.5516922507860181
+    true: 0.4483077492139819
+    mean = [false = 0.551692,true = 0.448308]
+
+    var : female
+    Probabilities:
+    true: 0.6633992972073238
+    false: 0.3366007027926762
+    mean = [true = 0.663399,false = 0.336601]
+
+    var : recovery
+    Probabilities:
+    false: 1.0000000000000000
+    mean = [false = 1.0]
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Female = flip(0.5),
+  Drug   = condt(Female, flip(10/40), flip(30/40)),
+
+  Recovery = cases([ [(Drug,Female), flip(0.2)],
+                     [(Drug,not Female), flip(0.6)],
+                     [(not Drug,Female), flip(0.3)],
+                     [(not Drug,not Female), flip(0.7)],
+                     [true,xxx]  
+                   ]),
+
+  % Observations
+  observe(Drug),
+  % observe(not Drug),
+  % observe((Drug, Female)),
+  % observe((not Drug, Female)),
+  % observe((Drug,not Female)),
+  % observe((not Drug,not Female)),
+  % observe(Recovery),
+  % observe((not Recovery)),
+ 
+  if observed_ok then
+    add("drug",Drug),
+    add("female",Female),
+    add("recovery",Recovery),
+  end.
+

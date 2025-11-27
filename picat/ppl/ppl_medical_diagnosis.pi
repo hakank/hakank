@@ -1,0 +1,195 @@
+/* 
+
+  Medical diagnosis in Picat.
+
+  https://edu.swi-prolog.org/mod/assign/view.php?id=249
+  """
+  Medical diagnosis
+
+  Develop an expert system for medical diagnosis.
+
+  Consider three diseases: flu, gastroenteritis and bronchitis.
+
+  A priori, flu has probability 0.3, gastroenteritis 0 0.2, and bronchitis 0.25.
+
+  If you have the flu, you may have the following symptons, associated with their
+  probabilities (symptoms are not mutually exclusive):
+
+    fever, 0.8
+    cough 0.6
+    sore throat 0.5
+    headaches 0.4
+    aches 0.7
+
+  If you have gastroenteritis, you may have the following symptons, associated with their
+  probabilities (symptoms are not mutually exclusive):
+
+    diarrhea 0.8
+    aches 0.7
+    nausea 0.4
+    fatigue 0.3
+
+  If you have bronchitis, you may have the following symptons, associated with their probabilities
+  (symptoms are not mutually exclusive):
+
+    cough 0.8
+    fatigue 0.7
+    fever 0.3
+
+  Compute the probability of each disease given that the patient has the symptoms fever and aches.
+
+  Do the same supposing the patient adds that he also experiences fatigue.
+  """
+
+
+  This is a port of my Gamble model gamble_medical_diagnosis.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+  * With fever and aches:
+
+    var : bronchitis
+    Probabilities:
+    false: 0.7790385805652982
+    true: 0.2209614194347019
+    mean = [false = 0.779039,true = 0.220961]
+
+    var : flu
+    Probabilities:
+    true: 0.9830823189601815
+    false: 0.0169176810398184
+    mean = [true = 0.983082,false = 0.0169177]
+
+    var : gastroenteritis
+    Probabilities:
+    false: 0.8025582834743140
+    true: 0.1974417165256860
+    mean = [false = 0.802558,true = 0.197442]
+
+  * With fever, aches and fatigue
+    var : bronchitis
+    Probabilities:
+    true: 0.7730173199635370
+    false: 0.2269826800364631
+    mean = [true = 0.773017,false = 0.226983]
+
+    var : flu
+    Probabilities:
+    true: 0.9580674567000912
+    false: 0.0419325432999088
+    mean = [true = 0.958067,false = 0.0419325]
+
+    var : gastroenteritis
+    Probabilities:
+    false: 0.6508659981768460
+    true: 0.3491340018231541
+    mean = [false = 0.650866,true = 0.349134]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(30_000,$model,[show_probs_trunc,mean]),
+  nl,
+  fail,
+  nl.
+go => true.
+
+model() =>
+   /*
+     Consider three diseases: flu, gastroenteritis and bronchitis.   
+     A priori, flu has probability 0.3, gastroenteritis 0.2, and bronchitis 0.25.
+   
+   */
+   Flu             = flip(0.3),
+   Gastroenteritis = flip(0.2),
+   Bronchitis      = flip(0.25),
+
+   
+    
+  /*
+    If you have the flu, you may have the following symptons, associated with their
+    probabilities (symptoms are not mutually exclusive):
+      
+    fever, 0.8
+    cough 0.6
+    sore throat 0.5
+    headaches 0.4
+    aches 0.7
+  */
+  Fever = cases([
+                  [Flu,flip(0.8)],
+                  [Bronchitis,flip(0.3)],
+                  [true,false]
+                ]),
+
+
+  Cough = cases([
+                  [Flu,flip(0.6)],
+                  [Bronchitis,flip(0.8)],
+                  [true,false]                 
+                ]),
+
+  SoreThroat = condt(Flu,flip(0.5),false),
+  Headaches  = condt(Flu,flip(0.4),false),
+
+  Aches      = condt(Flu,
+                     flip(0.7),
+                     condt(Gastroenteritis, flip(0.7), false)),
+
+  /*
+    If you have gastroenteritis, you may have the following symptons, associated with their
+    probabilities (symptoms are not mutually exclusive):
+      
+    diarrhea 0.8
+    aches 0.7
+    nausea 0.4
+    fatigue 0.3
+  */
+
+  Diarrhea = condt(Gastroenteritis, flip(0.8), false),
+  Nausea   = condt(Gastroenteritis, flip(0.4), false),
+  Fatigue  = condt(Gastroenteritis,
+                   flip(0.3),
+                   cond(Bronchitis, flip(0.7),false)),
+
+  /*
+      If you have bronchitis, you may have the following symptons, associated with their probabilities
+      (symptoms are not mutually exclusive):
+      
+      cough 0.8
+      fatigue 0.7
+      fever 0.3
+  */
+  % These were commented in the Gamble model...
+  /*
+  if Bronchitis then
+    if flip(0.8) == true then
+      observe(Cough == true)
+    end,
+    if flip(0.7) == true then
+      observe(Fatigue == true)
+    end,    
+    if flip(0.3) == true then
+      observe(Fever == true)
+    end    
+  end,
+  */
+  
+  observe(Fever==true),
+  observe(Aches==true),
+  % observe(Fatigue==true),  
+
+  if observed_ok then
+    add("flu",Flu),
+    add("gastroenteritis",Gastroenteritis),
+    add("bronchitis",Bronchitis),
+  end.

@@ -1,0 +1,133 @@
+/* 
+
+  Poisson ball in Picat.
+
+  From BLOG example/poisson-ball.blog
+  """
+  Model file for balls in an urn, allowing observation errors. 
+  This version uses a Poisson prior for the number of balls.
+  """
+
+  From the BLOG model:
+  """
+  Number of samples: 10000
+  Distribution of values for size({b for Ball b : true})
+	1	0.002277696767494217
+	2	0.037901628922145
+	3	0.06626837356628651
+	4	0.14542024945719828
+	5	0.13738770990089835
+	6	0.15957876546757163
+	7	0.16423283762671992
+	8	0.13011669431711056
+	9	0.07695198342323599
+	10	0.036771911110967545
+	11	0.026139880433985713
+	12	0.009039422390335408
+	13	0.0033121424202575286
+	14	0.00391132263483252
+	15	6.513038068763545E-4
+	16	2.1900930456675324E-5
+	17	1.5927949423036546E-5
+	18	2.488742097349472E-7
+  """
+
+
+  Cf my Gamble model gamble_poisson_ball.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  Num accepted samples: 100  Total samples: 114036  (0.001%)
+  var : num balls
+  Probabilities:
+  5: 0.2100000000000000
+  6: 0.1600000000000000
+  7: 0.1400000000000000
+  4: 0.1400000000000000
+  8: 0.1300000000000000
+  9: 0.0700000000000000
+  2: 0.0700000000000000
+  10: 0.0400000000000000
+  11: 0.0200000000000000
+  3: 0.0200000000000000
+  mean = 6.04
+
+  var : obs color 1
+  Probabilities:
+  blue: 1.0000000000000000
+  mean = [blue = 1.0]
+
+  var : obs color 2
+  Probabilities:
+  green: 1.0000000000000000
+  mean = [green = 1.0]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs,mean,
+                           min_accepted_samples=100,show_accepted_samples=true]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+
+true_color(B) = categorical([0.5,0.5],[blue,green]).
+
+ball_drawn(D,NumBalls) = random_integer1(NumBalls).
+
+obs_color(D,NumBalls) = Res =>
+  TrueColor = true_color(ball_drawn(D,NumBalls)),
+  if TrueColor == blue then
+    Res = categorical([0.8,0.2],[blue,green])
+  else
+    Res = categorical([0.2,0.8],[blue,green])
+  end.
+  
+model() =>
+  Observations = [blue,green,blue,green,blue,green,blue,green,blue,green],
+  N = Observations.len,
+
+  % This does not work ("error: random(1,0)")
+  % NumBalls = poisson_dist(6),
+  % observe(NumBalls > 0),
+
+  % This works:
+  % NumBalls = 1+poisson_dist(6),
+
+  % Better: generate a new sample if == 0
+  NumBalls = poisson_gt0_dist(6),
+
+  /*
+   """
+   Evidence file asserting that the drawn balls appeared blue on half the 
+   draws and green on half the draws.
+   """
+  */
+  ObsColor = [obs_color(D,NumBalls) : D in 1..N],
+  foreach(D in 1..N)
+    observe(ObsColor[D] == Observations[D])
+  end,
+
+  % NumTrue = [cond(ObsColor[D] == Observations[D],1,0) : D in 1..N].sum,
+  % Prob = NumTrue / N,
+
+  if observed_ok then
+    add("num balls",NumBalls),
+    % add("num true",NumTrue),
+    % add("prob",Prob),
+    add("obs color 1",ObsColor[1]),
+    add("obs color 2",ObsColor[2]),    
+  end.

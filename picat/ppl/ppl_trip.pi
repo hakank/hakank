@@ -1,0 +1,211 @@
+/* 
+
+  Trip in Picat.
+
+  https://dtai.cs.kuleuven.be/problog/tutorial/basic/06_more_features.html
+  """
+  Suppose we are packing our bags to go on a trip. We have a set of items, each having a 
+  particular weight, and we pack each item with probability inversely proportional to its 
+  weight. We want to compute the probability that we will have excess baggage, i.e., 
+  that the total weight of our baggage will exceed a given limit. We can model this with 
+  the following ProbLog program.
+
+  Note that this program uses several Prolog builtins such as support for lists and 
+  arithmetic. The program also uses another feature of ProbLog2, namely support for 
+  (intensional) probabilistic facts with a `flexible’ probability. This means that the 
+  probability is not prespecified but is an arithmetic expression that needs to be 
+  computed. In the program, this is used in the intensional probabilistic 
+  fact “P::pack(Item) :- …”, which says that the probability of packing an item is 
+  inversely proportional to its weight. Such a flexible probability can be used in 
+  ProbLog2 under the restriction that the arithmetic expression can be evaluated at 
+  call-time (i.e., by the time the probabilistic fact is reached by SLD resolution to 
+  prove the queries and evidence).
+
+  ... 
+
+  (ProbLog code:)
+  weight(skis,6).
+  weight(boots,4).
+  weight(helmet,3).
+  weight(gloves,2).
+  
+  % intensional probabilistic fact with flexible probability:
+  P::pack(Item) :- weight(Item,Weight),  P is 1.0/Weight.
+  
+  excess(Limit) :- excess((skis,boots,helmet,gloves),Limit). % all possible items
+  excess((),Limit) :- Limit<0.
+  excess((I|R),Limit) :- pack(I), weight(I,W), L is Limit-W, excess(R,L).
+  excess((I|R),Limit) :- \+pack(I), excess(R,Limit).
+  query(excess(8)). % 0.11805556  
+  """
+  
+  Cf my Gamble model gamble_trip.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  limit = 4
+  var : prob exact limit
+  Probabilities:
+  0: 0.8209745762711864
+  1: 0.1790254237288136
+  mean = 0.179025
+
+  var : selected
+  Probabilities:
+  [2,[gloves = 2]]: 0.5381355932203390
+  [3,[helmet = 3]]: 0.2828389830508475
+  [4,[boots = 4]]: 0.1790254237288136
+  mean = [[2,[gloves = 2]] = 0.538136,[3,[helmet = 3]] = 0.282839,[4,[boots = 4]] = 0.179025]
+
+  var : sum_weights
+  Probabilities:
+  2: 0.5381355932203390
+  3: 0.2828389830508475
+  4: 0.1790254237288136
+  mean = 2.64089
+
+
+  limit = 8
+  var : prob exact limit
+  Probabilities:
+  0: 0.9392516507703595
+  1: 0.0607483492296405
+  mean = 0.0607483
+
+  var : selected
+  Probabilities:
+  [2,[gloves = 2]]: 0.3141599413059428
+  [5,[helmet = 3,gloves = 2]]: 0.1517241379310345
+  [3,[helmet = 3]]: 0.1515774027879677
+  [6,[boots = 4,gloves = 2]]: 0.1062362435803375
+  [4,[boots = 4]]: 0.1046221570066031
+  [8,[skis = 6,gloves = 2]]: 0.0607483492296405
+  [6,[skis = 6]]: 0.0595744680851064
+  [7,[boots = 4,helmet = 3]]: 0.0513573000733676
+  mean = [[2,[gloves = 2]] = 0.31416,[5,[helmet = 3,gloves = 2]] = 0.151724,[3,[helmet = 3]] = 0.151577,[6,[boots = 4,gloves = 2]] = 0.106236,[4,[boots = 4]] = 0.104622,[8,[skis = 6,gloves = 2]] = 0.0607483,[6,[skis = 6]] = 0.0595745,[7,[boots = 4,helmet = 3]] = 0.0513573]
+
+  var : sum_weights
+  Probabilities:
+  2: 0.3141599413059428
+  6: 0.1658107116654439
+  5: 0.1517241379310345
+  3: 0.1515774027879677
+  4: 0.1046221570066031
+  8: 0.0607483492296405
+  7: 0.0513573000733676
+  mean = 4.10051
+
+
+  limit = 10
+  var : prob exact limit
+  Probabilities:
+  0: 0.9815950920245399
+  1: 0.0184049079754601
+  mean = 0.0184049
+
+  var : selected
+  Probabilities (truncated):
+  [2,[gloves = 2]]: 0.2831629175187457
+  [5,[helmet = 3,gloves = 2]]: 0.1416496250852079
+  [3,[helmet = 3]]: 0.1415132924335378
+  [6,[boots = 4,gloves = 2]]: 0.0909338786639400
+  .........
+  [7,[boots = 4,helmet = 3]]: 0.0471710974778459
+  [9,[boots = 4,helmet = 3,gloves = 2]]: 0.0430811179277437
+  [9,[skis = 6,helmet = 3]]: 0.0302658486707566
+  [10,[skis = 6,boots = 4]]: 0.0184049079754601
+  mean = [[2,[gloves = 2]] = 0.283163,[5,[helmet = 3,gloves = 2]] = 0.14165,[3,[helmet = 3]] = 0.141513,[6,[boots = 4,gloves = 2]] = 0.0909339,[4,[boots = 4]] = 0.0858896,[8,[skis = 6,gloves = 2]] = 0.0593047,[6,[skis = 6]] = 0.058623,[7,[boots = 4,helmet = 3]] = 0.0471711,[9,[boots = 4,helmet = 3,gloves = 2]] = 0.0430811,[9,[skis = 6,helmet = 3]] = 0.0302658,[10,[skis = 6,boots = 4]] = 0.0184049]
+
+  var : sum_weights
+  Probabilities:
+  2: 0.2831629175187457
+  6: 0.1495569188820723
+  5: 0.1416496250852079
+  3: 0.1415132924335378
+  4: 0.0858895705521472
+  9: 0.0733469665985003
+  8: 0.0593047034764826
+  7: 0.0471710974778459
+  10: 0.0184049079754601
+  mean = 4.58882
+
+
+  limit = 15
+  var : prob exact limit
+  Probabilities:
+  0: 0.9915617128463476
+  1: 0.0084382871536524
+  mean = 0.00843829
+
+  var : selected
+  Probabilities (truncated):
+  [2,[gloves = 2]]: 0.2615869017632242
+  [5,[helmet = 3,gloves = 2]]: 0.1340050377833753
+  [3,[helmet = 3]]: 0.1243073047858942
+  [6,[boots = 4,gloves = 2]]: 0.0900503778337532
+  .........
+  [10,[skis = 6,boots = 4]]: 0.0205289672544081
+  [12,[skis = 6,boots = 4,gloves = 2]]: 0.0141057934508816
+  [15,[skis = 6,boots = 4,helmet = 3,gloves = 2]]: 0.0084382871536524
+  [13,[skis = 6,boots = 4,helmet = 3]]: 0.0078085642317380
+  mean = [[2,[gloves = 2]] = 0.261587,[5,[helmet = 3,gloves = 2]] = 0.134005,[3,[helmet = 3]] = 0.124307,[6,[boots = 4,gloves = 2]] = 0.0900504,[4,[boots = 4]] = 0.0894207,[8,[skis = 6,gloves = 2]] = 0.0547859,[6,[skis = 6]] = 0.0547859,[9,[boots = 4,helmet = 3,gloves = 2]] = 0.0458438,[7,[boots = 4,helmet = 3]] = 0.0437028,[11,[skis = 6,helmet = 3,gloves = 2]] = 0.0254408,[9,[skis = 6,helmet = 3]] = 0.0251889,[10,[skis = 6,boots = 4]] = 0.020529,[12,[skis = 6,boots = 4,gloves = 2]] = 0.0141058,[15,[skis = 6,boots = 4,helmet = 3,gloves = 2]] = 0.00843829,[13,[skis = 6,boots = 4,helmet = 3]] = 0.00780856]
+
+  var : sum_weights
+  Probabilities (truncated):
+  2: 0.2615869017632242
+  6: 0.1448362720403023
+  5: 0.1340050377833753
+  3: 0.1243073047858942
+  .........
+  10: 0.0205289672544081
+  12: 0.0141057934508816
+  15: 0.0084382871536524
+  13: 0.0078085642317380
+  mean = 5.05882
+
+*/
+go ?=>
+  member(Limit,[4,8,10,15]),
+  println(limit=Limit),
+  reset_store,
+  run_model(10_000,$model(Limit),[show_probs_trunc,mean]),
+  nl,
+  fail,
+  nl.
+go => true.
+
+  
+model(Limit) =>
+  
+  Items = [skis,boots,helmet,gloves],
+  N = Items.len,
+
+  Weights = [6,4,3,2],
+
+  % Select the items: 0..1
+  Selected = [bern(1/Weights[I]) : I in 1..N],
+  
+  SumWeights = [Selected[I]*Weights[I] : I in 1..N] .sum,
+
+  % Neater presentation 
+  SelectedP = [SumWeights,[ Items[I]=Weights[I] : I in 1..N, Selected[I]==1]],
+
+  observe(SumWeights > 0, SumWeights  <= Limit),
+  % observe(SumWeights  == Limit),
+  
+  if observed_ok then
+    add("sum_weights",SumWeights),
+    add("selected",SelectedP),
+    % Probability of reaching the limit exactly
+    add("prob exact limit",cond(SumWeights==Limit,1,0))
+  end.

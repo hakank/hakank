@@ -1,0 +1,190 @@
+/* 
+
+  Pill puzzle in Picat.
+
+  https://en.wikipedia.org/wiki/Pill_puzzle
+  """
+  The pill jar puzzle is a probability puzzle, which asks the expected value of the number of 
+  half-pills remaining when the last whole pill is popped from a jar initially containing n 
+  whole pills and the way to proceed is by removing a pill from the bottle at random. 
+  If the pill removed is a whole pill, it is broken into two half pills. One half pill is 
+  consumed and the other one is returned to the jar. If the pill removed is a half pill, 
+  then it is simply consumed and nothing is returned to the jar.
+  ...
+
+  The expected value is then given by, E(X1) + E(X2) + ... + E(Xn). 
+  Since E(Xk) = P(Xk = 1) = 1/(n − k + 1), the sought expected value is 
+  1/n + 1/(n − 1) + 1/(n − 2) + ... + 1 = Hn (the nth harmonic number).
+  """
+
+
+  Cf my Gamble model gamble_pill_puzzle.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  [n = 1,harmonic_number = 1.0]
+  var : half
+  Probabilities:
+  1: 1.0000000000000000
+  mean = 1.0
+
+
+  [n = 2,harmonic_number = 1.5]
+  var : half
+  Probabilities:
+  1: 0.5089000000000000
+  2: 0.4911000000000000
+  mean = 1.4911
+
+
+  [n = 3,harmonic_number = 1.83333]
+  var : half
+  Probabilities:
+  2: 0.3987000000000000
+  1: 0.3866000000000000
+  3: 0.2147000000000000
+  mean = 1.8281
+
+
+  [n = 4,harmonic_number = 2.08333]
+  var : half
+  Probabilities:
+  1: 0.3428000000000000
+  2: 0.3282000000000000
+  3: 0.2282000000000000
+  4: 0.1008000000000000
+  mean = 2.087
+
+
+  [n = 5,harmonic_number = 2.28333]
+  var : half
+  Probabilities:
+  1: 0.3085000000000000
+  2: 0.3059000000000000
+  3: 0.2301000000000000
+  4: 0.1184000000000000
+  5: 0.0371000000000000
+  mean = 2.2697
+
+
+  [n = 6,harmonic_number = 2.45]
+  var : half
+  Probabilities:
+  2: 0.2904000000000000
+  1: 0.2761000000000000
+  3: 0.2188000000000000
+  4: 0.1368000000000000
+  5: 0.0630000000000000
+  6: 0.0149000000000000
+  mean = 2.4649
+
+
+  [n = 7,harmonic_number = 2.59286]
+  var : half
+  Probabilities:
+  1: 0.2749000000000000
+  2: 0.2665000000000000
+  3: 0.2120000000000000
+  4: 0.1378000000000000
+  5: 0.0735000000000000
+  6: 0.0281000000000000
+  7: 0.0072000000000000
+  mean = 2.5816
+
+
+  [n = 8,harmonic_number = 2.71786]
+  var : half
+  Probabilities:
+  2: 0.2587000000000000
+  1: 0.2563000000000000
+  3: 0.2102000000000000
+  4: 0.1390000000000000
+  5: 0.0801000000000000
+  6: 0.0378000000000000
+  7: 0.0147000000000000
+  8: 0.0032000000000000
+  mean = 2.7161
+
+
+  [n = 9,harmonic_number = 2.82897]
+  var : half
+  Probabilities:
+  2: 0.2501000000000000
+  1: 0.2495000000000000
+  3: 0.1958000000000000
+  4: 0.1391000000000000
+  5: 0.0901000000000000
+  6: 0.0483000000000000
+  7: 0.0201000000000000
+  8: 0.0062000000000000
+  9: 0.0008000000000000
+  mean = 2.8313
+
+
+  [n = 10,harmonic_number = 2.92897]
+  var : half
+  Probabilities:
+  1: 0.2398000000000000
+  2: 0.2350000000000000
+  3: 0.1991000000000000
+  4: 0.1450000000000000
+  5: 0.0929000000000000
+  6: 0.0515000000000000
+  7: 0.0244000000000000
+  8: 0.0099000000000000
+  9: 0.0024000000000000
+  mean = 2.9322
+
+*/
+go ?=>
+  member(N,1..10),
+  println([n=N,harmonic_number=harmonic_number(N)]),
+  reset_store,
+  run_model(10_000,$model(N),[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+
+f(A) = Res =>
+  W = count_occurrences(w,A),
+  if W == 0 then
+    % How many half pills are left?
+    Res = count_occurrences(h,A)  
+  else
+    % Pick a pill at random
+    Len = A.len,
+    Pick = random_integer1(Len),
+    Val = A[Pick],
+    % Remove that pill
+    NewA = A.delete(Val),
+    if Val == w then
+      Res = f(NewA ++ [h])
+    else
+      Res = f(NewA)    
+    end
+  end.
+
+model(N) =>
+  Init = rep(N,w),
+  Half = f(Init),
+  add("half",Half).
+

@@ -1,0 +1,133 @@
+/* 
+
+  Correct given Intelligence in Picat.
+
+  Inspired by 
+  https://www.reddit.com/r/Probability/comments/1en5u8e/q_how_to_think_about_probability_of_being/
+  """
+  [Q] How to think about probability of being right/wrong, considering intelligence distribution?
+
+  Hi folks, it's been a while since I exercised my probability muscle (and truth be told, 
+  I was never great with probabilities), so I'm turning to you for help.
+
+  I have the following problem statement: Consider a normal distribution of intelligence. 
+  What is the probability of lower-than-average IQ people being wrong/right about any 
+  given topic? For simplification, don't take into account the complexity of topics 
+  they need to answer.
+
+  Given only the hypothesis above, my naive answer would be that we can consider (for 
+  the sake of the problem) intelligence unrelated to being right/wrong. Is p=0.5 just as 
+  if it's a fair coin toss, then?
+
+  But what if we try to solve it by making the assumption that intelligence does correlate 
+  with being right/wrong? What does the math look like then?
+
+  Thanks in advance!
+  """
+
+  The idea in this model is that the higher a person's intelligence is, the probabiity  
+  of being correct increases. 
+  I'm using the CDF for this correlation: a person correct answers 
+  a question with probability flip(CDF...)), i.e.the CDF is the probability to flip.
+  This might very well be a doubtful approach.
+
+  Let's assume that we are asking just true/false questions.
+
+  Here are some diffent point values for different values of IQ:
+
+  Picat> X=normal_dist_cdf(100,15,80)
+  X = 0.091211219725868
+
+  Picat> X=normal_dist_cdf(100,15,90)
+  X = 0.252492537546923
+
+  Picat> X=normal_dist_cdf(100,15,100)
+  X = 0.5
+
+  Picat> X=normal_dist_cdf(100,15,120)
+  X = 0.908788780274132
+
+  Picat> X=normal_dist_cdf(100,15,130)
+  X = 0.977249868051821
+
+  Below are simulations for some ranges.
+
+  Cf my Gamble model gamble_correct_given_intelligence.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  * A person with IQ < 100
+
+    [mean = 100,sigma = 15,lower_limit = 0,upper_limit = 99]
+    var : iq
+    mean = 87.4807
+
+    var : prob correct
+    mean = 0.237524
+
+    var : correct
+    mean = 0.242903
+
+  * A person with IQ > 130
+
+    [mean = 100,sigma = 15,lower_limit = 131,upper_limit = 400]
+    var : iq
+    mean = 136.275
+
+    var : prob correct
+    mean = 0.990128
+
+    var : correct
+    mean = 0.991045
+
+  * A person with IQ between 120 and 130
+
+    [mean = 100,sigma = 15,lower_limit = 120,upper_limit = 130]
+    var : iq
+    mean = 124.12
+
+    var : prob correct
+    mean = 0.943051
+
+    var : correct
+    mean = 0.942716
+
+
+*/
+go ?=>
+  Presentation = ["iq","prob correct","correct"],
+  
+  member([Mean,Sigma,Low,Up], [[100,15,0,99],    % IQ < 100
+                               [100,15,131,400], % IQ > 130
+                               [100,15,120,130]  % 120 =< IQ <= 130
+                              ]),
+  reset_store,
+  run_model(20_000,$model(Mean,Sigma,Low,Up),[mean]),
+  nl,
+  % show_store_lengths,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Mean,Sigma,LowerLimit,UpperLimit) =>
+  IQ = normal_dist(Mean,Sigma),
+
+  ProbCorrect = normal_dist_cdf(Mean,Sigma,IQ),
+  Correct = bern(ProbCorrect),
+
+  observe(IQ >= LowerLimit, IQ <= UpperLimit),
+  if observed_ok then
+    add("iq",IQ),
+    add("prob correct",ProbCorrect),
+    add("correct",Correct),       
+  end.

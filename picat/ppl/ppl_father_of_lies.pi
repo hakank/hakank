@@ -1,0 +1,137 @@
+/* 
+
+  Father of lies in Picat.
+
+  From https://brainstellar.com/puzzles/probability/28
+  """
+  A father claims about snowfall last night. First daughter tells 
+  that the probability of snowfall on a particular night is 1/8. 
+  Second daughter tells that 5 out of 6 times the father is lying! 
+  What is the probability that there actually was a snowfall?
+  """
+
+  Cf my Gamble model gamble_father_of_lies.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : snowing
+  Probabilities:
+  false: 0.9727719484659317
+  true: 0.0272280515340683
+  mean = [false = 0.972772,true = 0.0272281]
+
+  var : father says
+  Probabilities:
+  snow: 1.0000000000000000
+  mean = [snow = 1.0]
+
+  The probability the it actually did snow last night is 0.0272280515340683 (exact prob is 1/36).
+
+  Note: This assumes that the father really knows whether it snowed last night or not. 
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  % Probability of snowing is 1/8
+  Snowing = flip(1/8),
+
+  % Father lies 5 times of 6.
+  % We must take care of when he says "snow" both when it's snowing
+  % and when it's not snowing (i.e. he lies).
+
+  FatherSays = cond(Snowing == true,
+                    categorical([1/6,5/6],[snow,not_snow]),
+                    categorical([1/6,5/6],[not_snow,snow])),
+ 
+  observe(FatherSays == snow),
+  
+  if observed_ok then
+    add("snowing",Snowing),
+    add("father says",FatherSays),    
+  end.
+
+
+
+/*
+  What if we add aother component: the father does not know
+  if it snowed or not with a probability of 1/2, and thus just
+  say snow/not snow with probability 1/2.
+
+  var : snowing
+  Probabilities:
+  false: 0.9342084200416200
+  true: 0.0657915799583800
+  mean = [false = 0.934208,true = 0.0657916]
+
+  var : father_knows
+  Probabilities:
+  true: 0.5935649111573555
+  false: 0.4064350888426445
+  mean = [true = 0.593565,false = 0.406435]
+
+  var : father says
+  Probabilities:
+  snow: 1.0000000000000000
+  mean = [snow = 1.0]
+
+  
+  Then the probability of snowing would be about 1/15 0.0666666() given that he
+  said it was snowing.
+
+  It's a little strange that the probability that he knows now is 
+  about 3/5 (0.6)...
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  % Probability of snowing is 1/8
+  Snowing = flip(1/8),
+
+  % If the father does not know he just say something randomly.
+  % - There is a 50% probability that he does not know.
+  % - If he knows then he lies 5 times of 6.
+  FatherKnows = flip(1/2),
+  FatherSays = cond(FatherKnows == false,
+                     % Father does not know (with probability 1/2) and then just say something
+                     cond(flip(1/2) == true, snow, not_snow),
+                     % Father know, and as before lies 5 times of 6
+                     cond(Snowing == true,
+                          categorical([1/6,5/6],[snow,not_snow]),
+                          categorical([1/6,5/6],[not_snow,snow]))),
+ 
+  observe(FatherSays == snow),
+  
+  if observed_ok then
+    add("snowing",Snowing),
+    add("father knows",FatherKnows),    
+    add("father says",FatherSays),    
+  end.

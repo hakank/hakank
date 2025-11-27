@@ -1,0 +1,315 @@
+/* 
+
+  Cats, rats, and elephants in Picat.
+
+  "Cats and rats and elephants"
+  https://www.allendowney.com/blog/2018/12/11/cats-and-rats-and-elephants/
+  """
+  A few weeks ago I posted 'Lions and Tigers and Bears', 
+  (https://www.allendowney.com/blog/2018/12/03/lions-and-tigers-and-bears/)
+  which poses a Bayesian problem related to the Dirichlet distribution.  If you have 
+  not read it, you might want to start there.
+
+  Now here’s the follow-up question:
+
+    Suppose there are six species that might be in a zoo: lions and tigers and bears, 
+    and cats and rats and elephants. Every zoo has a subset of these species, and every 
+    subset is equally likely.
+
+    One day we visit a zoo and see 3 lions, 2 tigers, and one bear. Assuming that every 
+    animal in the zoo has an equal chance to be seen, what is the probability that the 
+    next animal we see is an elephant?
+  """
+
+  Note: The approach in this model is the same as in the
+  "Lions and Tigers and Bears" problem, just added
+    - the three new animals
+    - queries which calculates subsets and number of different animals
+
+  Cf 
+  - ppl_lions_tigers_and_bears2.pi
+  - my Gamble model gamble_cats_rats_and_elephants.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  * With an informed dirichlet alpha prior:  [60,50,40,30,20,10]
+    100 accepted samples
+    11.6s
+
+
+    Num accepted samples: 98  Total samples: 384362  (0.000%)
+    Num accepted samples: 99  Total samples: 384852  (0.000%)
+    Num accepted samples: 100  Total samples: 391611  (0.000%)
+
+    var : a 6
+    Probabilities:
+    [lion,tiger,bear]: 0.7400000000000000
+    [lion,tiger,bear,cat]: 0.1300000000000000
+    [lion,tiger,bear,rat]: 0.0900000000000000
+    [lion,tiger,bear,elephants]: 0.0400000000000000
+    mean = [[lion,tiger,bear] = 0.74,[lion,tiger,bear,cat] = 0.13,[lion,tiger,bear,rat] = 0.09,[lion,tiger,bear,elephants] = 0.04]
+
+    var : obs 7
+    Probabilities:
+    lion: 0.3200000000000000
+    bear: 0.2400000000000000
+    tiger: 0.1800000000000000
+    cat: 0.1300000000000000
+    rat: 0.0900000000000000
+    elephants: 0.0400000000000000
+    mean = [lion = 0.32,bear = 0.24,tiger = 0.18,cat = 0.13,rat = 0.09,elephants = 0.04]
+
+    var : num animals
+    Probabilities:
+    3: 0.7400000000000000
+    4: 0.2600000000000000
+    mean = 3.26
+
+    var : p lion
+    Probabilities (truncated):
+    0.368607927676813: 0.0100000000000000
+    0.356862842895281: 0.0100000000000000
+    0.348109989315871: 0.0100000000000000
+    0.345451974192081: 0.0100000000000000
+    .........
+    0.23750885921053: 0.0100000000000000
+    0.237202423548204: 0.0100000000000000
+    0.233325447028747: 0.0100000000000000
+    0.225808723235512: 0.0100000000000000
+    mean = 0.290587
+
+    var : p tiger
+    Probabilities (truncated):
+    0.288907147017962: 0.0100000000000000
+    0.288370074655493: 0.0100000000000000
+    0.287932684631944: 0.0100000000000000
+    0.287729790031541: 0.0100000000000000
+    .........
+    0.197619434218648: 0.0100000000000000
+    0.190800736891046: 0.0100000000000000
+    0.188242657041052: 0.0100000000000000
+    0.182797028853135: 0.0100000000000000
+    mean = 0.240061
+
+    var : p bear
+    Probabilities (truncated):
+    0.256535418008806: 0.0100000000000000
+    0.246087667048377: 0.0100000000000000
+    0.245775210835666: 0.0100000000000000
+    0.238213732396125: 0.0100000000000000
+    .........
+    0.141341363166525: 0.0100000000000000
+    0.134688594928587: 0.0100000000000000
+    0.133635296218246: 0.0100000000000000
+    0.122586646169455: 0.0100000000000000
+    mean = 0.189444
+
+    var : p cat
+    Probabilities (truncated):
+    0.196349374187018: 0.0100000000000000
+    0.18740497072443: 0.0100000000000000
+    0.187302975388584: 0.0100000000000000
+    0.18171349147708: 0.0100000000000000
+    .........
+    0.097810153891124: 0.0100000000000000
+    0.097437479085822: 0.0100000000000000
+    0.092111564105546: 0.0100000000000000
+    0.085247644110597: 0.0100000000000000
+    mean = 0.136376
+
+    var : p rat
+    Probabilities (truncated):
+    0.148454795077059: 0.0100000000000000
+    0.138423341780626: 0.0100000000000000
+    0.133846627873528: 0.0100000000000000
+    0.129688727851527: 0.0100000000000000
+    .........
+    0.053764913598051: 0.0100000000000000
+    0.052826482552415: 0.0100000000000000
+    0.048297316474607: 0.0100000000000000
+    0.040293738037688: 0.0100000000000000
+    mean = 0.0936246
+
+    var : p elephant
+    Probabilities (truncated):
+    0.097964888093668: 0.0100000000000000
+    0.092673691235666: 0.0100000000000000
+    0.080015190378436: 0.0100000000000000
+    0.079285613844613: 0.0100000000000000
+    .........
+    0.029480763090691: 0.0100000000000000
+    0.02929198111991: 0.0100000000000000
+    0.026496112058077: 0.0100000000000000
+    0.02428681258123: 0.0100000000000000
+    mean = 0.0499081
+
+
+  * With an uninformed dirichlet alpha prior: [1/6,1/6,1/6,1/6,1/6,1/6]
+    100 accepted samples
+    Unsurprisingly much slower: 3min10s    
+
+    Num accepted samples: 98  Total samples: 5138602  (0.000%)
+    Num accepted samples: 99  Total samples: 5247151  (0.000%)
+    Num accepted samples: 100  Total samples: 5357419  (0.000%)
+
+    var : a 6
+    Probabilities:
+    [lion,tiger,bear]: 0.9700000000000000
+    [lion,tiger,bear,rat]: 0.0200000000000000
+    [lion,tiger,bear,cat]: 0.0100000000000000
+    mean = [[lion,tiger,bear] = 0.97,[lion,tiger,bear,rat] = 0.02,[lion,tiger,bear,cat] = 0.01]
+
+    var : obs 7
+    Probabilities:
+    lion: 0.4200000000000000
+    tiger: 0.3200000000000000
+    bear: 0.2300000000000000
+    rat: 0.0200000000000000
+    cat: 0.0100000000000000
+    mean = [lion = 0.42,tiger = 0.32,bear = 0.23,rat = 0.02,cat = 0.01]
+
+    var : num animals
+    Probabilities:
+    3: 0.9700000000000000
+    4: 0.0300000000000000
+    mean = 3.03
+
+    var : p lion
+    Probabilities (truncated):
+    0.822604108975505: 0.0100000000000000
+    0.799423020970842: 0.0100000000000000
+    0.786551799332256: 0.0100000000000000
+    0.774665852574846: 0.0100000000000000
+    .........
+    0.160573876796277: 0.0100000000000000
+    0.154297041270085: 0.0100000000000000
+    0.135598415568806: 0.0100000000000000
+    0.134421779288009: 0.0100000000000000
+    mean = 0.458483
+
+    var : p tiger
+    Probabilities (truncated):
+    0.700919682164855: 0.0100000000000000
+    0.688946202270267: 0.0100000000000000
+    0.659297830498484: 0.0100000000000000
+    0.643288694551685: 0.0100000000000000
+    .........
+    0.063092967682947: 0.0100000000000000
+    0.06030660859176: 0.0100000000000000
+    0.059756576789872: 0.0100000000000000
+    0.039637704705132: 0.0100000000000000
+    mean = 0.29764
+
+    var : p bear
+    Probabilities (truncated):
+    0.527183982148688: 0.0100000000000000
+    0.487443824391822: 0.0100000000000000
+    0.466984232249691: 0.0100000000000000
+    0.461602658298017: 0.0100000000000000
+    .........
+    0.004167844760898: 0.0100000000000000
+    0.003544806142174: 0.0100000000000000
+    0.001145822144019: 0.0100000000000000
+    0.001011075460599: 0.0100000000000000
+    mean = 0.163538
+
+    var : p cat
+    Probabilities (truncated):
+    0.342050650495837: 0.0100000000000000
+    0.226366710006567: 0.0100000000000000
+    0.175892036436736: 0.0100000000000000
+    0.159802869685925: 0.0100000000000000
+    .........
+    0.000000009727607: 0.0100000000000000
+    0.000000007738176: 0.0100000000000000
+    0.000000003551683: 0.0100000000000000
+    0.000000000000013: 0.0100000000000000
+    mean = 0.0245009
+
+    var : p rat
+    Probabilities (truncated):
+    0.334158944965043: 0.0100000000000000
+    0.306226322694685: 0.0100000000000000
+    0.229624008320819: 0.0100000000000000
+    0.184454309788634: 0.0100000000000000
+    .........
+    0.000000000000953: 0.0100000000000000
+    0.000000000000365: 0.0100000000000000
+    0.000000000000004: 0.0100000000000000
+    0.0: 0.0100000000000000
+    mean = 0.0260784
+
+    var : p elephant
+    Probabilities (truncated):
+    0.347855637137252: 0.0100000000000000
+    0.32561668353683: 0.0100000000000000
+    0.303145771395241: 0.0100000000000000
+    0.218743822622483: 0.0100000000000000
+    .........
+    0.000000000996861: 0.0100000000000000
+    0.00000000083133: 0.0100000000000000
+    0.000000000003376: 0.0100000000000000
+    0.000000000000106: 0.0100000000000000
+    mean = 0.0297598
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean ,
+                           % show_percentiles,show_histogram,
+                           % show_hpd_intervals,hpd_intervals=[0.84],
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  % The animals:
+  Animals = [lion, tiger, bear, cat, rat, elephants],
+
+  % Prior
+  % We draw 6 times with the multinomial distribution.
+  % What is the probability of different combinations of the number of each animal?
+  % Alphas = [1/6,1/6,1/6,1/6,1/6,1/6], % uninformed prior
+  Alphas = [60,50,40,30,20,10], % informed prior
+
+  % Draw 6 animals
+  X = dirichlet_dist(Alphas),
+
+  % Probabilities for each animal
+  [PLion,PTiger,PBear,PCat,PRat,PElephant] = X,
+
+  O = categorical_n(X,Animals,7),
+
+  observe(O.take(6) == [lion,lion,lion,tiger,tiger,bear]),
+
+  A6 = O.remove_dups,
+  NumAnimals = O.remove_dups.len,
+
+  if observed_ok then
+    add("a 6",A6),
+    add("obs 7",O[7]),
+    add("num animals",NumAnimals),
+    add("p lion",PLion),
+    add("p tiger",PTiger),
+    add("p bear",PBear),
+    add("p cat",PCat),
+    add("p rat",PRat),
+    add("p elephant",PElephant),
+    
+  end.

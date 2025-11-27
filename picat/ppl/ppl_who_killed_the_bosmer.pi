@@ -1,0 +1,130 @@
+/* 
+
+  Who killed the Bosmer problem in Picat.
+
+  From https://swi-prolog.discourse.group/t/similar-einstein-riddle/5142/6
+  """
+  A Bosmer, was slain. The Altmer claims the Dunmer is guilty. The Dunmer says 
+  the Khajiit did it. The Orc swears he didn’t kill the Bosmer. The Khajiit says 
+  the Dunmer is lying. If only one of these speaks the truth, who killed 
+  the Bosmer?
+  """
+
+  Port of my Gamble model gamble_who_killed_the_bosmer.rkt.
+
+  Compare with my Picat CP model  who_killed_the_bosmer.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+  I.e. Orc is Guilty, and Khajiit speaks the truth.
+
+var : AltmerG
+Probabilities:
+0: 1.00000000000000000 (1 / 1)
+
+var : AltmerT
+Probabilities:
+0: 1.00000000000000000 (1 / 1)
+
+var : DunmerG
+Probabilities:
+0: 1.00000000000000000 (1 / 1)
+
+var : DunmerT
+Probabilities:
+0: 1.00000000000000000 (1 / 1)
+
+var : Guilty
+Probabilities:
+Orc: 1.00000000000000000 (1 / 1)
+
+var : KhajiitG
+Probabilities:
+0: 1.00000000000000000 (1 / 1)
+
+var : KhajiitT
+Probabilities:
+1: 1.00000000000000000 (1 / 1)
+
+var : OrcG
+Probabilities:
+1: 1.00000000000000000 (1 / 1)
+
+var : OrcT
+Probabilities:
+0: 1.00000000000000000 (1 / 1)
+
+var : SpeaksTruth
+Probabilities:
+Khajiit: 1.00000000000000000 (1 / 1)
+
+
+
+*/
+go ?=>
+  reset_store(),
+  run_model(20_000,$model,[show_probs_rat]),
+  fail,
+  nl.
+go => true.
+
+
+
+model() =>
+  P = 1/2, % Prior probability
+  People = ["Altmer","Dunmer","Orc","Khajiit"],  
+  
+  %  Speaks the truth?
+  AltmerT  = bernoulli_dist(P),
+  DunmerT  = bernoulli_dist(P),
+  OrcT     = bernoulli_dist(P),
+  KhajiitT = bernoulli_dist(P),
+   
+  % Is guilty?
+  AltmerG  = bernoulli_dist(P),
+  DunmerG  = bernoulli_dist(P),
+  OrcG     = bernoulli_dist(P),
+  KhajiitG = bernoulli_dist(P),
+
+  % A Bosmer, was slain.
+  
+  if 
+    % The Altmer claims the Dunmer is guilty.
+    AltmerT == DunmerG,
+   
+    % The Dunmer says the Khajiit did it.
+    DunmerT == KhajiitG,
+   
+    % The Orc swears he didn’t kill the Bosmer.
+    cond(OrcG == 0,true,false) == cond(OrcT == 1,true,false),
+   
+    %  The Khajiit says the Dunmer is lying.
+    cond(DunmerT == 0,true,false) == cond(KhajiitT == 1,true,false),
+   
+    %  If only one of these speaks the truth, who killed the Bosmer?""
+    AltmerT + DunmerT + OrcT + KhajiitT == 1,
+    AltmerG + DunmerG + OrcG + KhajiitG == 1 then
+
+    SpeaksTruth = [ Person : {Person,T} in zip(People,[AltmerT,DunmerT,OrcT, KhajiitT]), T == 1].first,
+    Guilty = [ Person : {Person,G} in zip(People,[AltmerG,DunmerG,OrcG, KhajiitG]), G == 1].first,
+  add_all([ ["AltmerT",AltmerT],
+            ["DunmerT",DunmerT],
+            ["OrcT",OrcT],
+            ["KhajiitT",KhajiitT],
+            ["AltmerG",AltmerG],
+            ["DunmerG",DunmerG],
+            ["OrcG",OrcG],
+            ["KhajiitG",KhajiitG],
+            ["SpeaksTruth",SpeaksTruth],
+            ["Guilty",Guilty]])
+  end.
+  
+ 

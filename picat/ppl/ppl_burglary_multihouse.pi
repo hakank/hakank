@@ -1,0 +1,197 @@
+/* 
+
+  Burglary multihouse in Picat.
+
+  From BLOG example/burglary-multihouse.blog
+
+  Cf my Gamble model gamble_burglary_multihouse.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : earthquake
+  Probabilities:
+  true: 0.9285714285714286
+  false: 0.0714285714285714
+  mean = [true = 0.928571,false = 0.0714286]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(100_000,$model,[show_probs_trunc,mean]),
+  nl,
+  show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+
+burglary(H) = flip(0.003).
+
+alarm(H,E) = Res =>
+  B = burglary(H),
+  Res = cases([ [(not B, not E), flip(0.01)],
+                [(not B,     E), flip(0.40)],
+                [(    B, not E), flip(0.80)],
+                [(    B,     E), flip(0.90)]]).
+  
+model() =>
+  Earthquake = flip(0.002),
+
+  observe(alarm("maryhouse",Earthquake)),
+  observe(alarm("johnhouse",Earthquake)),
+  observe(alarm("cathyhouse",Earthquake)),
+  observe(not alarm("rogerhouse",Earthquake)),
+  
+  if observed_ok then
+    add("earthquake",Earthquake),
+  end.
+
+
+/*
+  Another approach: everything is in the model
+
+  var : earthquake
+  Probabilities:
+  true: 0.9166666666666666
+  false: 0.0833333333333333
+  mean = [true = 0.916667,false = 0.0833333]
+
+*/ 
+go2 ?=>
+  reset_store,
+  run_model(100_000,$model2,[show_probs_trunc,mean]),
+  nl,
+  show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+
+model2() =>
+  People = [mary,john,cathy,roger],
+  Earthquake = flip(0.002),
+  Burglary = new_map([P=flip(0.003) : P in People]),
+  Alarm  = new_map([P=cases([ [(not B, not Earthquake), flip(0.01)],
+                              [(not B,     Earthquake), flip(0.40)],
+                              [(    B, not Earthquake), flip(0.80)],
+                              [(    B,     Earthquake), flip(0.90)]])
+                     : P in People, B = Burglary.get(P)]),
+
+  observe(Alarm.get(mary)),
+  observe(Alarm.get(john)),
+  observe(Alarm.get(cathy)),
+  observe(not Alarm.get(roger)),  
+  
+  if observed_ok then
+    add("earthquake",Earthquake),
+  end.
+
+
+
+
+/*
+
+  obs = none
+  var : earthquake
+  Probabilities:
+  false: 0.9979000000000000
+  true: 0.0021000000000000
+  mean = [false = 0.9979,true = 0.0021]
+
+
+  obs = [mary]
+  var : earthquake
+  Probabilities:
+  false: 0.9394856278366112
+  true: 0.0605143721633888
+  mean = [false = 0.939486,true = 0.0605144]
+
+
+  obs = [john]
+  var : earthquake
+  Probabilities:
+  false: 0.9416666666666667
+  true: 0.0583333333333333
+  mean = [false = 0.941667,true = 0.0583333]
+
+
+  obs = [cathy]
+  var : earthquake
+  Probabilities:
+  false: 0.9397406559877955
+  true: 0.0602593440122044
+  mean = [false = 0.939741,true = 0.0602593]
+
+
+  obs = [roger]
+  var : earthquake
+  Probabilities:
+  false: 0.9322429906542056
+  true: 0.0677570093457944
+  mean = [false = 0.932243,true = 0.067757]
+
+
+  obs = [mary,john]
+  var : earthquake
+  Probabilities:
+  true: 0.8085106382978723
+  false: 0.1914893617021277
+  mean = [true = 0.808511,false = 0.191489]
+
+
+  obs = [mary,john,cathy]
+  var : earthquake
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+
+  obs = [mary,john,cathy,roger]
+  var : earthquake
+  Probabilities:
+  true: 1.0000000000000000
+  mean = [true = 1.0]
+
+*/
+go3 ?=>
+  member(Obs,$[none,[mary],[john],[cathy],[roger],[mary,john],[mary,john,cathy],[mary,john,cathy,roger]]),
+  println(obs=Obs),
+  reset_store,
+  run_model(100_000,$model3(Obs),[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go3 => true.
+
+model3(Obs) =>
+  People = [mary,john,cathy,roger],
+  Earthquake = flip(0.002),
+  Burglary = new_map([P=flip(0.003) : P in People]),
+  Alarm  = new_map([P=cases([ [(not B, not Earthquake), flip(0.01)],
+                              [(not B,     Earthquake), flip(0.40)],
+                              [(    B, not Earthquake), flip(0.80)],
+                              [(    B,     Earthquake), flip(0.90)]])
+                     : P in People, B = Burglary.get(P)]),
+
+  if Obs != none then
+    foreach(O in Obs) 
+      observe(Alarm.get(O))
+    end
+  end,
+  
+  if Obs == none ; observed_ok then
+    add("earthquake",Earthquake),
+  end.
+
+

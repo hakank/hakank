@@ -1,0 +1,177 @@
+/* 
+
+  Weather (Figaro) in Picat.
+
+  Weather model from "Practical Probabilistic Programming" 
+  page 21ff
+  Figaro code at page 24
+  """
+
+  Figaro output:
+  """
+  Today's greeting is "Hello, world!" with probability 0.27999999999999997.
+  If today's greeting is "Hello, world!", today's weather is sunny with probability 0.4285714285714285.
+  If today's greeting is "Hello, world!", tomorrow's greeting will be "Hello, world!" with probability 0.24857142857142858.
+  """
+
+
+  Cf my Gamble model gamble_weather_figaro.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+observe_greeting = false
+var : sunny today
+Probabilities:
+false: 0.7780000000000000
+true: 0.2220000000000000
+mean = 0.222
+
+var : greeting today
+Probabilities:
+Oh no, not again: 0.6166666666666667
+Hello, world!: 0.2666666666666667
+Howdy, universe!: 0.1166666666666667
+
+var : sunny tomorrow
+Probabilities:
+false: 0.7856666666666666
+true: 0.2143333333333333
+mean = 0.214333
+
+var : greeting tomorrow
+Probabilities:
+Oh no, not again: 0.7123333333333334
+Hello, world!: 0.1746666666666667
+Howdy, universe!: 0.1130000000000000
+
+
+observe_greeting = Hello, world!
+min_accepted_samples = 3000
+var : sunny today
+Probabilities:
+false: 0.6100000000000000
+true: 0.3900000000000000
+mean = 0.39
+
+var : greeting today
+Probabilities:
+Hello, world!: 1.0000000000000000
+mean = [Hello, world! = 1.0]
+
+var : sunny tomorrow
+Probabilities:
+false: 0.6596666666666666
+true: 0.3403333333333333
+mean = 0.340333
+
+var : greeting tomorrow
+Probabilities:
+Oh no, not again: 0.5963333333333334
+Hello, world!: 0.2343333333333333
+Howdy, universe!: 0.1693333333333333
+
+
+observe_greeting = Howdy, universe!
+min_accepted_samples = 3000
+var : sunny today
+Probabilities:
+true: 1.0000000000000000
+mean = 1.0
+
+var : greeting today
+Probabilities:
+Howdy, universe!: 1.0000000000000000
+mean = [Howdy, universe! = 1.0]
+
+var : sunny tomorrow
+Probabilities:
+true: 0.7923333333333333
+false: 0.2076666666666667
+mean = 0.792333
+
+var : greeting tomorrow
+Probabilities:
+Hello, world!: 0.4193333333333333
+Howdy, universe!: 0.3920000000000000
+Oh no, not again: 0.1886666666666667
+
+
+observe_greeting = Oh no, not again
+min_accepted_samples = 3000
+var : sunny today
+Probabilities:
+false: 1.0000000000000000
+mean = 0.0
+
+var : greeting today
+Probabilities:
+Oh no, not again: 1.0000000000000000
+mean = [Oh no, not again = 1.0]
+
+var : sunny tomorrow
+Probabilities:
+false: 0.9446666666666667
+true: 0.0553333333333333
+mean = 0.0553333
+
+var : greeting tomorrow
+Probabilities:
+Oh no, not again: 0.8513333333333334
+Hello, world!: 0.1193333333333333
+Howdy, universe!: 0.0293333333333333
+
+
+
+*/
+go ?=>
+  member(ObserveGreeting,[false,
+                          "Hello, world!",
+                          "Howdy, universe!",
+                          "Oh no, not again"]),
+  println(observe_greeting=ObserveGreeting),
+  reset_store,
+  Opts = [show_probs_trunc,mean],
+  Options = cond(ObserveGreeting == false,
+                 Opts,
+                 Opts++[min_accepted_samples=3000,show_accepted_samples=false]),             
+  run_model(3000,$model(ObserveGreeting),Options),
+  
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(ObserveGreeting) =>
+  SunnyToday = flip(2/10),
+  GreetingToday = cond(SunnyToday == true,
+                       categorical([5/10,5/10],["Hello, world!","Howdy, universe!"]),
+                       categorical([2/10,8/10],["Hello, world!","Oh no, not again"])),
+
+  SunnyTomorrow = cond(SunnyToday,flip(8/10),flip(5/100)),
+  GreetingTomorrow = cond(SunnyTomorrow == true,
+                          categorical([5/10,5/10],["Hello, world!","Howdy, universe!"]),
+                          categorical([1/10,9/10],["Hello, world!","Oh no, not again"])),
+
+  if ObserveGreeting != false then
+    observe(GreetingToday == ObserveGreeting)
+  end,
+  
+  if ObserveGreeting == false ; observed_ok then
+    add("sunny today",SunnyToday),
+    add("greeting today",GreetingToday),    
+    add("sunny tomorrow",SunnyTomorrow),
+    add("greeting tomorrow",GreetingTomorrow),    
+  end.

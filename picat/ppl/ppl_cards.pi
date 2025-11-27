@@ -1,0 +1,112 @@
+/* 
+
+  Card problem in Picat.
+
+  Second assignment of the CPLINT course:
+  https://edu.swi-prolog.org/mod/assign/view.php?id=243
+  """
+  http://cplint.eu/p/cards.swinb
+  Cards
+
+  Suppose you have two decks of poker cards (52 cards, 4 suits, 13 ranks: A, K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2).
+
+  Suppose you draw a card from the first deck and one from the second.
+
+  Write a program to compute the probability that in this way you obtain one pair (two cards of the same rank).
+
+  Can you do it with a single probabilistic clause?
+
+  Add code to compute the probability that you draw at least one ace.
+  """
+
+  Note that the two cards are from two different deck of cards!
+
+  This is a port of my Gamble model gamble_cards.rkt.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  var : pair
+  Probabilities:
+  false: 0.92500000000000004 (37 / 40)
+  true: 0.07500000000000000 (3 / 40)
+  mean = [false = 0.925,true = 0.075]
+
+  var : at least one ace
+  Probabilities:
+  false: 0.85029999999999994 (8503 / 10000)
+  true: 0.14970000000000000 (1497 / 10000)
+  mean = [false = 0.8503,true = 0.1497]
+
+  var : exactly one ace
+  Probabilities:
+  false: 0.85670000000000002 (8567 / 10000)
+  true: 0.14330000000000001 (1433 / 10000)
+  mean = [false = 0.8567,true = 0.1433]
+
+  var : two aces
+  Probabilities:
+  false: 0.99360000000000004 (621 / 625)
+  true: 0.00640000000000000 (4 / 625)
+  mean = [false = 0.9936,true = 0.0064]
+
+  var : a king or queen in spades
+  Probabilities:
+  false: 0.92279999999999995 (2307 / 2500)
+  true: 0.07720000000000000 (193 / 2500)
+  mean = [false = 0.9228,true = 0.0772]
+
+
+*/
+go ?=>
+  reset_store(),
+  run_model(10_000,$model,[show_probs_rat,mean,
+                           presentation=["pair","at least one ace","exactly one ace",
+                                         "two aces","a king or queen in spades"]]),
+  nl.
+go => true.
+
+suit(C) = C.first.
+rank(C) = C.second.
+
+model() =>
+  Suits = ["hearts","spades","clubs","diamonds"],
+  Ranks = ["ace","king","queen","jack","v10","v9","v8","v7","v6","v5","v4","v3","v2"],
+
+  C1 = [uniform_draw(Suits),uniform_draw(Ranks)],
+  C2 = [uniform_draw(Suits),uniform_draw(Ranks)],
+  
+  % Probability of a pair
+  Pair = (rank(C1) == rank(C2)).check,
+
+  % At least an ace
+  AtLeastOneAce = (rank(C1) == "ace" ; rank(C2) == "ace").check,
+
+  % Exactly one ace
+  % ExactlyOneAce = cond( [C1.rank,C2.rank].remove_dups==["ace"],true,false),
+  ExactlyOneAce = xor(C1.rank=="ace",C2.rank=="ace"),
+
+  % Two aces
+  TwoAces = (rank(C1) == "ace",rank(C2) == "ace").check,
+
+  % A King or a Queen in spades
+  AKingOrQueenInSpades = cond(( (C1.suit == "spades", membchk(C1.rank,["king","queen"]))
+                                 ;
+                                (C2.suit == "spades", membchk(C2.rank,["king","queen"]))
+                                ),true,false),
+
+  add_all([ ["pair",Pair],
+            ["at least one ace",AtLeastOneAce],
+            ["exactly one ace",ExactlyOneAce],
+            ["two aces",TwoAces],
+            ["a king or queen in spades",AKingOrQueenInSpades]
+          ]).
+  

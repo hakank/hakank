@@ -1,0 +1,140 @@
+/* 
+
+  Craps in Picat.
+
+  https://en.wikipedia.org/wiki/Craps
+  """
+  Craps is a dice game in which players bet on the outcomes of a pair of dice. 
+  Players can wager money against each other (playing "street craps") or against 
+  a bank ("casino craps").
+
+  ... 
+  
+  If the come-out roll is 7 or 11, the bet wins.
+  If the come-out roll is 2, 3 or 12, the bet loses (known as "crapping out").
+  If the roll is any other value, it establishes a point.
+  - If, with a point established, that point is rolled again 
+    before a 7, the bet wins.
+  - If, with a point established, a 7 is rolled before the point is 
+    rolled again ("seven out"), the bet loses.
+  """
+
+  Cf 
+  - ppl_craps.pi
+  - my Gamble model gamble_craps2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  As expected, the bank/casino has a small edge over the customer: it wins with a 
+  probability of 0.504 (outcome) according to this model.
+  With a small probability (0.0012), there are very long runs, e.g. more than 20 
+  throws.
+ 
+  var : a
+  Probabilities (truncated):
+  [7]: 0.1710000000000000
+  [3]: 0.0560000000000000
+  [11]: 0.0546000000000000
+  [2]: 0.0289000000000000
+  [12]: 0.0279000000000000
+  [8,7]: 0.0250000000000000
+  [6,7]: 0.0225000000000000
+  [6,6]: 0.0201000000000000
+  [9,7]: 0.0193000000000000
+  [8,8]: 0.0193000000000000
+  .........
+  [4,2,6,3,7]: 0.0001000000000000
+  [4,2,5,9,7]: 0.0001000000000000
+  [4,2,5,8,6,11,4]: 0.0001000000000000
+  [4,2,5,7]: 0.0001000000000000
+  [4,2,5,2,6,3,9,6,4]: 0.0001000000000000
+  [4,2,5,2,5,5,9,7]: 0.0001000000000000
+  [4,2,3,12,4]: 0.0001000000000000
+  [4,2,2,11,4]: 0.0001000000000000
+  [4,2,2,8,11,7]: 0.0001000000000000
+  [4,2,2,6,8,7]: 0.0001000000000000
+  mean = []
+
+  var : len
+  Probabilities (truncated):
+  1: 0.3384000000000000
+  2: 0.1890000000000000
+  3: 0.1316000000000000
+  4: 0.0953000000000000
+  5: 0.0689000000000000
+  6: 0.0516000000000000
+  7: 0.0369000000000000
+  8: 0.0245000000000000
+  9: 0.0185000000000000
+  10: 0.0119000000000000
+  .........
+  19: 0.0010000000000000
+  18: 0.0008000000000000
+  21: 0.0003000000000000
+  27: 0.0002000000000000
+  23: 0.0002000000000000
+  38: 0.0001000000000000
+  28: 0.0001000000000000
+  26: 0.0001000000000000
+  25: 0.0001000000000000
+  20: 0.0001000000000000
+  mean = 3.3371
+
+  var : outcome
+  Probabilities:
+  lose: 0.5042000000000000
+  win: 0.4958000000000000
+  mean = []
+
+  var : long run
+  Probabilities:
+  false: 0.9988000000000000
+  true: 0.0012000000000000
+  mean = 0.0012
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,truncate_size=10]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+game(A,Point) = Res =>
+  [D1,D2] = dice_n(2),
+  S = D1 + D2,
+  NewA = A ++ [S],
+  if Point == 0 then
+    Res = cond((S == 7 ; S == 11),[NewA,win],
+               cond((S == 2 ; S == 3 ; S == 12),[NewA,lose],
+                     game(NewA,S)))
+  else
+    Res = cond(S == 7,[NewA,lose],
+               cond(S == Point,[NewA,win],
+                    game(NewA,Point)))
+  end.
+
+model() =>
+  [A,Outcome] = game([],0),
+
+  Len = A.len,
+  PLongRun = check(Len >= 20), % Long runs
+
+  add("a",A),
+  add("len",Len),
+  add("outcome",Outcome),
+  add("long run",PLongRun).
+

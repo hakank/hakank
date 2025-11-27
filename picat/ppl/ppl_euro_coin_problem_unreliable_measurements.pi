@@ -1,0 +1,101 @@
+/* 
+
+  The Euro coin problem (II) in Picat.
+
+  From Think Bayes, page 33ff
+  """
+  A statistical statement appeared in "The Guardian" on Friday January 4, 2002:
+      When spun on edge 250 times, a Belgian one-euro coin
+      came up heads 140 times and tails 110. 'It looks very
+      suspicious to me,' said Barry Blight, a statistics lecturer
+      at the London School of Economics. 'If the coin were
+      unbiased, the chance of getting a result as extreme as
+      that would be less than 7%.'
+
+  But do these data give evidence that the coin is biased rather than fair?
+  """
+ 
+  Continues on page 41:
+  """
+  Exercise 4.1. Suppose that instead of observing coin tosses directly, you measure
+  the outcome using an instrument that is not always correct. Specifically, suppose
+  there is a probability y that an actual heads is reported as tails, or actual tails re-
+  ported as heads.
+
+  Write a class that estimates the bias of a coin given a series of outcomes and the
+  value of y .
+  How does the spread of the posterior distribution depend on y ?
+  """
+
+
+  This is a port of my Gamble model gamble_euro_coin_problem_unreliable_measurements.rkt
+
+  Cf ppl_euro_coin_problem.pi
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+
+main => go.
+
+/*
+  var : error
+  Probabilities:
+  false: 0.7743902439024390
+  true: 0.2256097560975610
+  mean = [false = 0.77439,true = 0.22561]
+
+  var : prob
+  Probabilities (truncated):
+  0.658094887453242: 0.0060975609756098
+  0.632800800113125: 0.0060975609756098
+  0.620114454389477: 0.0060975609756098
+  0.618616458260796: 0.0060975609756098
+  .........
+  0.400225594175126: 0.0060975609756098
+  0.388029100136468: 0.0060975609756098
+  0.378401684077659: 0.0060975609756098
+  0.373332914045469: 0.0060975609756098
+  mean = 0.535277
+
+  var : prob < 0.5
+  Probabilities:
+  0: 0.7500000000000000
+  1: 0.2500000000000000
+  mean = 0.25
+
+  var : prob > 0.5
+  Probabilities:
+  1: 0.7500000000000000
+  0: 0.2500000000000000
+  mean = 0.75
+
+*/
+go ?=>
+  reset_store,
+  time2(run_model(30_000,$model,[show_probs_trunc,mean])),
+  nl.
+go => true.
+
+model() =>
+  % Probability of throwing head
+  Prob = beta_dist(2,2),
+
+  % We measure incorrect with probability 0.2
+  % I.e. we see a head as tail, and vice versa
+  Error = flip(0.2),
+  
+  ThrowCoin = bernoulli_dist_n(Prob, 250),
+  Sum250 = [cond(Error,1-C,C) : C in ThrowCoin].sum,
+
+  observe(Sum250 == 140),
+
+  if observed_ok then
+    add("error",Error),    
+    add("prob",Prob),  
+    add("prob > 0.5",cond(Prob > 0.5,1,0)),
+    add("prob < 0.5",cond(Prob < 0.5,1,0))
+  end.

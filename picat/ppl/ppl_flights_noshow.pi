@@ -1,0 +1,125 @@
+/* 
+
+  Flights noshow in Picat.
+
+  From "Resampling Stats Illustrations" (http://www.statistics101.net/PeterBruce_05-illus.pdf)
+  Page 38
+  """
+  Hypothesis test for a difference in proportions
+  (program “noshow”)
+  Fly-By-Night Airways wishes to determine whether its business
+  routes have a different passenger no-show rate than its vacation
+  routes. It divides its routes into business and vacation, setting
+  aside those routes that are neither. Taking a sample of 1000 reser-
+  vations for each group, it determines that 384 passengers failed to
+  show up on the business routes, while 341 failed to show up on the
+  vacation routes. How likely is it that such a difference (43 or
+  greater) occurred by chance, if the routes do not differ in this
+  respect?
+  ...
+  If the two routes do not differ, then our best estimate of the overall
+  no-show rate (our null hypothesis) is (384+341)/2000 = 36.3%. We
+  now want to test whether 2 groups of 1000 drawn from this no-
+  show rate are likely to show differences as great as those observed.
+  -> 
+  prob = .028
+  """
+
+  Cf my Gamble model gamble_flights_noshow.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : business
+  Probabilities (truncated):
+  1004: 0.0310000000000000
+  1000: 0.0290000000000000
+  1001: 0.0280000000000000
+  999: 0.0270000000000000
+  .........
+  959: 0.0010000000000000
+  956: 0.0010000000000000
+  952: 0.0010000000000000
+  941: 0.0010000000000000
+  mean = 999.86
+  HPD intervals:
+  HPD interval (0.94): 969.00000000000000..1030.00000000000000
+
+  var : vacation
+  Probabilities (truncated):
+  1000: 0.0370000000000000
+  1011: 0.0280000000000000
+  1007: 0.0280000000000000
+  997: 0.0270000000000000
+  .........
+  964: 0.0010000000000000
+  961: 0.0010000000000000
+  952: 0.0010000000000000
+  949: 0.0010000000000000
+  mean = 1000.56
+  HPD intervals:
+  HPD interval (0.94): 968.00000000000000..1028.00000000000000
+
+  var : diff
+  Probabilities (truncated):
+  0: 0.0220000000000000
+  -12: 0.0210000000000000
+  -16: 0.0200000000000000
+  3: 0.0190000000000000
+  .........
+  -56: 0.0010000000000000
+  -58: 0.0010000000000000
+  -73: 0.0010000000000000
+  -79: 0.0010000000000000
+  mean = -0.701
+  HPD intervals:
+  HPD interval (0.94): -43.00000000000000..40.00000000000000
+
+  var : p
+  Probabilities:
+  false: 0.9710000000000000
+  true: 0.0290000000000000
+  mean = 0.029
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(1000,$model,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.94]
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  R = 0..1363,
+
+  % Count how many of the 1000 bookings are within 0.999
+  Business = [ V : V in resample(R), V < 1000].len,
+  Vacation = [ V : V in resample(R), V < 1000].len,  
+
+
+  Diff = Business - Vacation,
+  P = check(Diff >= 43),
+
+  add("business",Business),
+  add("vacation",Vacation),
+  add("diff",Diff),
+  add("p",P).

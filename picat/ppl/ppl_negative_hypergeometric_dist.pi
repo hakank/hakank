@@ -1,0 +1,209 @@
+/* 
+
+  Negative Hypergeometric distribution in Picat.
+
+  From Mathematica BetaBinomialDistribution
+  """
+  Define a negative hypergeometric distribution:
+  NegativeHypergeometricDistribution(w_, wtot_, btot_) := BetaBinomialDistribution(w, wtot - w + 1, btot)
+  Find the probability that b black balls were sampled without replacement before a w^th 
+  white ball was drawn from an urn initially filled with k_b black and  k_w white balls:
+
+  Mean@NegativeHypergeometricDistribution(3, 10, 20) ;; N
+  -> 5.45455
+  Probability(x > 10, x ~ NegativeHypergeometricDistribution(3, 10, 20)) ;; N
+  -> 0.0742771
+  """
+
+
+  Picat> X = negative_hypergeometric_dist_mean(3,10,20)
+  X = 5.454545454545454
+
+  Picat> X =1- negative_hypergeometric_dist_cdf(3,10,20,10)
+  X = 0.074277147140718
+
+  Cf my Gamble model gamble_negative_hypergeometric_dist.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+
+/*
+  Find the probability that b black balls were sampled without replacement before a w^th 
+  white ball was drawn from an urn initially filled with k_b black and  k_w white balls:
+
+  First a basic simulation.
+
+  var : n
+  Probabilities (truncated):
+  7: 0.1229000000000000
+  8: 0.1159000000000000
+  6: 0.1124000000000000
+  9: 0.1096000000000000
+  .........
+  19: 0.0026000000000000
+  20: 0.0011000000000000
+  22: 0.0001000000000000
+  21: 0.0001000000000000
+  mean = 8.4802
+
+  var : num white drawn
+  Probabilities:
+  3: 1.0000000000000000
+  mean = 3.0
+
+  var : num black drawn
+  Probabilities (truncated):
+  4: 0.1229000000000000
+  5: 0.1159000000000000
+  3: 0.1124000000000000
+  6: 0.1096000000000000
+  .........
+  16: 0.0026000000000000
+  17: 0.0011000000000000
+  19: 0.0001000000000000
+  18: 0.0001000000000000
+  mean = 5.4802
+
+  var : p
+  Probabilities:
+  false: 0.9245000000000000
+  true: 0.0755000000000000
+  mean = 0.0755
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  W = 3,  % Number of white balls to draw
+  B = 10, % Number of black balls to check
+  WTot =  10, % Total number of white
+  BTot = 20,  % Total number of black
+
+  Balls = ones(WTot,white) ++ ones(BTot,black),
+  
+  N = 0,
+  NumWhiteDrawn = 0,
+  NumBlackDrawn = 0,  
+  OK = false,
+  while (OK == false)
+    N := N + 1,
+    Drawn = draw_without_replacement(1,Balls).first, % Note the .first
+    Balls := delete(Balls,Drawn), % Remove the drawn ball
+    if Drawn == white  then
+      NumWhiteDrawn := NumWhiteDrawn + 1
+    else
+      NumBlackDrawn := NumBlackDrawn + 1    
+    end,
+    if NumWhiteDrawn == W then
+      % We have now drawn W white balls
+      OK := true
+    end
+  end,
+
+  % What is the probability that we have drawn more than B (10) black balls
+  P = check(NumBlackDrawn > B),
+
+  add("n",N),
+  add("num white drawn",NumWhiteDrawn),
+  add("num black drawn",NumBlackDrawn),
+  add("p",P).
+
+
+
+
+/*
+
+var : d
+Probabilities (truncated):
+4: 0.1211000000000000
+5: 0.1186000000000000
+3: 0.1176000000000000
+6: 0.1073000000000000
+.........
+16: 0.0022000000000000
+17: 0.0008000000000000
+19: 0.0001000000000000
+18: 0.0001000000000000
+mean = 5.488
+Histogram (total 10000)
+      0:   286 ##############                                               (0.029 / 0.029)
+      1:   613 ##############################                               (0.061 / 0.090)
+      2:   972 ################################################             (0.097 / 0.187)
+      3:  1176 ##########################################################   (0.118 / 0.305)
+      4:  1211 ############################################################ (0.121 / 0.426)
+      5:  1186 ###########################################################  (0.119 / 0.544)
+      6:  1073 #####################################################        (0.107 / 0.652)
+      7:   919 ##############################################               (0.092 / 0.744)
+      8:   754 #####################################                        (0.075 / 0.819)
+      9:   614 ##############################                               (0.061 / 0.880)
+     10:   463 #######################                                      (0.046 / 0.927)
+     11:   307 ###############                                              (0.031 / 0.957)
+     12:   194 ##########                                                   (0.019 / 0.977)
+     13:   101 #####                                                        (0.010 / 0.987)
+     14:    66 ###                                                          (0.007 / 0.993)
+     15:    33 ##                                                           (0.003 / 0.997)
+     16:    22 #                                                            (0.002 / 0.999)
+     17:     8                                                              (0.001 / 1.000)
+     18:     1                                                              (0.000 / 1.000)
+     19:     1                                                              (0.000 / 1.000)
+
+var : p
+Probabilities:
+false: 0.9267000000000000
+true: 0.0733000000000000
+mean = 0.0733
+Histogram (total 10000)
+false     :  9267 ############################################################ (0.927 / 0.927)
+true      :   733 #####                                                        (0.073 / 1.000)
+
+
+
+*/
+go2 ?=>
+  reset_store,
+  run_model(10_000,$model2,[show_probs_trunc,mean,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           show_histogram
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2() =>
+  W = 3,
+  WTot =  10,
+  BTot = 20,
+  
+  D = negative_hypergeometric_dist(W,WTot,BTot),
+  P = check(D > 10),
+  
+  add("d",D),
+  add("p",P).
+

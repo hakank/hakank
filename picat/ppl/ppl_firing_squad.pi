@@ -1,0 +1,195 @@
+/* 
+
+  Firing squad example (Judea Pearl) in Picat.
+
+  From Judea Pearl:
+  court_order: a court order to shoot a prisoner is given
+  captain_signals: captain signal to a and b to shoot the prisoner
+  a_shoots: person a shoots at the prisoner
+  b_shoots: person b shoots at the prisoner
+  death: the prisoner is dead (due to the shooting of a and/or b)
+
+  Cf my Gamble model gamble_firing_squad.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils, ppl_common_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  [observation = 0,No observation]
+  var : court order
+  Probabilities:
+  true: 0.7951000000000000
+  false: 0.2049000000000000
+  mean = 0.7951
+
+  var : captain signals
+  Probabilities:
+  true: 0.7374000000000001
+  false: 0.2626000000000000
+  mean = 0.7374
+
+  var : a shoots
+  Probabilities:
+  true: 0.7267000000000000
+  false: 0.2733000000000000
+  mean = 0.7267
+
+  var : b shoots
+  Probabilities:
+  true: 0.7223000000000001
+  false: 0.2777000000000000
+  mean = 0.7223
+
+  var : death
+  Probabilities:
+  true: 0.7012000000000000
+  false: 0.2988000000000000
+  mean = 0.7012
+
+
+  [observation = 1,Death == true]
+  var : court order
+  Probabilities:
+  true: 0.9361519782888159
+  false: 0.0638480217111841
+  mean = 0.936152
+
+  var : captain signals
+  Probabilities:
+  true: 0.9414369375803456
+  false: 0.0585630624196543
+  mean = 0.941437
+
+  var : a shoots
+  Probabilities:
+  true: 0.9267247536066276
+  false: 0.0732752463933724
+  mean = 0.926725
+
+  var : b shoots
+  Probabilities:
+  true: 0.9271532638194544
+  false: 0.0728467361805456
+  mean = 0.927153
+
+  var : death
+  Probabilities:
+  true: 1.0000000000000000
+  mean = 1.0
+
+
+  [observation = 2,Captain signals == false]
+  var : court order
+  Probabilities:
+  false: 0.6979047619047619
+  true: 0.3020952380952381
+  mean = 0.302095
+
+  var : captain signals
+  Probabilities:
+  false: 1.0000000000000000
+  mean = 0.0
+
+  var : a shoots
+  Probabilities:
+  false: 0.9165714285714286
+  true: 0.0834285714285714
+  mean = 0.0834286
+
+  var : b shoots
+  Probabilities:
+  false: 0.9028571428571428
+  true: 0.0971428571428571
+  mean = 0.0971429
+
+  var : death
+  Probabilities:
+  false: 0.8445714285714285
+  true: 0.1554285714285714
+  mean = 0.155429
+
+
+  [observation = 3,BShoots == false]
+  var : court order
+  Probabilities:
+  false: 0.6013488197826902
+  true: 0.3986511802173098
+  mean = 0.398651
+
+  var : captain signals
+  Probabilities:
+  false: 0.8613713001124016
+  true: 0.1386286998875984
+  mean = 0.138629
+
+  var : a shoots
+  Probabilities:
+  false: 0.7755713750468340
+  true: 0.2244286249531660
+  mean = 0.224429
+
+  var : b shoots
+  Probabilities:
+  false: 1.0000000000000000
+  mean = 0.0
+
+  var : death
+  Probabilities:
+  false: 0.7954289996253279
+  true: 0.2045710003746722
+  mean = 0.204571
+
+
+*/
+go ?=>
+  ObsMap = new_map([0="No observation",
+                    1="Death == true",
+                    2="Captain signals == false",
+                    3="BShoots == false"]),
+  member(Observation,0..3),
+  println([observation=Observation,ObsMap.get(Observation)]),
+  reset_store,
+  run_model(10_000,$model(Observation),[show_probs_trunc,mean]),
+  nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Observation) =>
+  CourtOrder = flip(0.8),
+  CaptainSignals = cond(CourtOrder == true,flip(0.9),flip(0.1)),
+  AShoots = cond(CaptainSignals == true,flip(0.95),flip(0.1)),
+  BShoots = cond(CaptainSignals == true,flip(0.95),flip(0.1)),  
+
+  % The prisoner don't die if neither A or B shoots
+  Death = cond((AShoots == true ; BShoots == true),flip(0.9),false),
+
+
+  if Observation == 1 then
+    observe(Death == true)
+  end,
+
+  if Observation == 2 then
+    observe(CaptainSignals == false)
+  end,
+
+  if Observation == 3 then
+    observe(BShoots == false)
+  end,
+
+  if Observation == 0 ; observed_ok then
+    add("court order",CourtOrder),
+    add("captain signals",CaptainSignals),
+    add("a shoots",AShoots),
+    add("b shoots",BShoots),
+    add("death",Death)
+  end.

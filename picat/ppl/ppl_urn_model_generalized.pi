@@ -1,0 +1,577 @@
+/* 
+
+  Urn model, generalized in Picat.
+
+  This is a generalization of the 2-ball model in beta_binomial_urn_model.wppl
+
+  Some features:
+  * arbitrary number of types (colors) of balls
+  * when a ball of a certain type is draw there are three options
+    - remove that ball
+    - keep the ball add some arbitrary number of balls of the same type
+    - remove the ball and remove some arbitrary number of of the same type
+  * The returned values are
+    - total number of observed balls
+    - average number of observed balls
+    - total number of balls left
+    - average number of balls left
+    - the number of observed balls for each type
+    - the number of left balls for each type
+    - number of draws
+  * One can add probability for an event
+  * One can add some observation
+   
+  Cf my Gamble model gamble_urn_model_generalized.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+ * First a simple example: balls:(1 1) add_balls:(1 1) num_draws:10
+   Start with 1 white ball and 1 black ball and draw atmost 10 balls
+   - If we draw a white ball, add another white ball.
+   - If we draw a black ball, add another black ball.
+
+  [num_balls = [1,1],add_balls = [1,1],num_draws = 10]
+
+  var : num observed total
+  Probabilities:
+  10: 1.0000000000000000
+  mean = 10.0
+
+  var : num observed mean
+  Probabilities:
+  5.0: 1.0000000000000000
+  mean = 5.0
+
+  var : num balls left total
+  Probabilities:
+  12: 1.0000000000000000
+  mean = 12.0
+
+  var : num balls left mean
+  Probabilities:
+  6.0: 1.0000000000000000
+  mean = 6.0
+
+  var : num observed
+  Probabilities:
+  [3,7]: 0.1010000000000000
+  [5,5]: 0.1000000000000000
+  [1,9]: 0.0980000000000000
+  [0,10]: 0.0950000000000000
+  [7,3]: 0.0930000000000000
+  [8,2]: 0.0920000000000000
+  [9,1]: 0.0910000000000000
+  [6,4]: 0.0850000000000000
+  [4,6]: 0.0850000000000000
+  [2,8]: 0.0820000000000000
+  [10,0]: 0.0780000000000000
+  mean = []
+
+  var : num balls left
+  Probabilities:
+  [4,8]: 0.1010000000000000
+  [6,6]: 0.1000000000000000
+  [2,10]: 0.0980000000000000
+  [1,11]: 0.0950000000000000
+  [8,4]: 0.0930000000000000
+  [9,3]: 0.0920000000000000
+  [10,2]: 0.0910000000000000
+  [7,5]: 0.0850000000000000
+  [5,7]: 0.0850000000000000
+  [3,9]: 0.0820000000000000
+  [11,1]: 0.0780000000000000
+  mean = []
+
+  var : num runs
+  Probabilities:
+  10: 1.0000000000000000
+  mean = 10.0
+
+  var : num observed, num balls left
+  Probabilities:
+  [[3,7],[4,8]]: 0.1010000000000000
+  [[5,5],[6,6]]: 0.1000000000000000
+  [[1,9],[2,10]]: 0.0980000000000000
+  [[0,10],[1,11]]: 0.0950000000000000
+  [[7,3],[8,4]]: 0.0930000000000000
+  [[8,2],[9,3]]: 0.0920000000000000
+  [[9,1],[10,2]]: 0.0910000000000000
+  [[6,4],[7,5]]: 0.0850000000000000
+  [[4,6],[5,7]]: 0.0850000000000000
+  [[2,8],[3,9]]: 0.0820000000000000
+  [[10,0],[11,1]]: 0.0780000000000000
+  mean = []
+
+  var : p
+  Probabilities:
+  1: 1.0000000000000000
+  mean = 1.0
+
+  var : progress
+  Probabilities (truncated):
+  [2,2,2,2,2,2,2,2,2,2]: 0.0950000000000000
+  [1,1,1,1,1,1,1,1,1,1]: 0.0780000000000000
+  [2,2,2,2,2,2,2,2,2,1]: 0.0140000000000000
+  [2,2,2,2,2,2,2,1,2,2]: 0.0140000000000000
+  [2,2,2,2,2,2,1,2,2,2]: 0.0140000000000000
+  [2,1,1,1,1,1,1,1,1,1]: 0.0120000000000000
+  [1,1,1,2,1,1,1,1,1,1]: 0.0120000000000000
+  [1,1,1,1,1,1,1,1,1,2]: 0.0120000000000000
+  [2,2,2,2,2,1,2,2,2,2]: 0.0110000000000000
+  [2,2,2,1,2,2,2,2,2,2]: 0.0110000000000000
+  .........
+  [1,1,1,1,2,1,1,2,2,1]: 0.0010000000000000
+  [1,1,1,1,1,2,2,2,1,2]: 0.0010000000000000
+  [1,1,1,1,1,2,2,2,1,1]: 0.0010000000000000
+  [1,1,1,1,1,2,2,1,2,2]: 0.0010000000000000
+  [1,1,1,1,1,2,2,1,2,1]: 0.0010000000000000
+  [1,1,1,1,1,2,1,1,2,1]: 0.0010000000000000
+  [1,1,1,1,1,1,2,2,2,2]: 0.0010000000000000
+  [1,1,1,1,1,1,2,2,1,1]: 0.0010000000000000
+  [1,1,1,1,1,1,1,2,2,2]: 0.0010000000000000
+  [1,1,1,1,1,1,1,2,1,2]: 0.0010000000000000
+  mean = []
+
+
+  * Perhaps a little more interesting case: balls:(10 5) add_balls:(0 1) num_draws:10
+    10 white balls and 5 black balls and (max 10) draws.
+    If we draw a white ball, this is removed (and no white is added).
+    If we draw a black ball, this is kept and an extra black is added.
+
+    [num_balls = [10,5],add_balls = [0,1],num_draws = 10]
+
+    var : num observed total
+    Probabilities:
+    10: 1.0000000000000000
+    mean = 10.0
+
+    var : num observed mean
+    Probabilities:
+    5.0: 1.0000000000000000
+    mean = 5.0
+
+    var : num balls left total
+    Probabilities:
+    19: 0.1940000000000000
+    18: 0.1940000000000000
+    20: 0.1850000000000000
+    17: 0.1330000000000000
+    21: 0.1240000000000000
+    16: 0.0630000000000000
+    22: 0.0570000000000000
+    23: 0.0220000000000000
+    15: 0.0210000000000000
+    24: 0.0070000000000000
+    mean = 18.994
+
+    var : num balls left mean
+    Probabilities:
+    9.5: 0.1940000000000000
+    9.0: 0.1940000000000000
+    10.0: 0.1850000000000000
+    8.5: 0.1330000000000000
+    10.5: 0.1240000000000000
+    8.0: 0.0630000000000000
+    11.0: 0.0570000000000000
+    11.5: 0.0220000000000000
+    7.5: 0.0210000000000000
+    12.0: 0.0070000000000000
+    mean = 9.497
+
+    var : num observed
+    Probabilities:
+    [7,3]: 0.1940000000000000
+    [6,4]: 0.1940000000000000
+    [5,5]: 0.1850000000000000
+    [8,2]: 0.1330000000000000
+    [4,6]: 0.1240000000000000
+    [9,1]: 0.0630000000000000
+    [3,7]: 0.0570000000000000
+    [2,8]: 0.0220000000000000
+    [10,0]: 0.0210000000000000
+    [1,9]: 0.0070000000000000
+    mean = []
+
+    var : num balls left
+    Probabilities:
+    [10,9]: 0.1940000000000000
+    [10,8]: 0.1940000000000000
+    [10,10]: 0.1850000000000000
+    [10,7]: 0.1330000000000000
+    [10,11]: 0.1240000000000000
+    [10,6]: 0.0630000000000000
+    [10,12]: 0.0570000000000000
+    [10,13]: 0.0220000000000000
+    [10,5]: 0.0210000000000000
+    [10,14]: 0.0070000000000000
+    mean = []
+
+    var : num runs
+    Probabilities:
+    10: 1.0000000000000000
+    mean = 10.0
+
+    var : num observed, num balls left
+    Probabilities:
+    [[7,3],[10,8]]: 0.1940000000000000
+    [[6,4],[10,9]]: 0.1940000000000000
+    [[5,5],[10,10]]: 0.1850000000000000
+    [[8,2],[10,7]]: 0.1330000000000000
+    [[4,6],[10,11]]: 0.1240000000000000
+    [[9,1],[10,6]]: 0.0630000000000000
+    [[3,7],[10,12]]: 0.0570000000000000
+    [[2,8],[10,13]]: 0.0220000000000000
+    [[10,0],[10,5]]: 0.0210000000000000
+    [[1,9],[10,14]]: 0.0070000000000000
+    mean = []
+
+    var : p
+    Probabilities:
+    1: 1.0000000000000000
+    mean = 1.0
+
+    var : progress
+    Probabilities (truncated):
+    [1,1,1,1,1,1,1,1,1,1]: 0.0210000000000000
+    [1,1,1,1,1,1,1,1,1,2]: 0.0120000000000000
+    [1,1,2,1,1,1,1,1,1,1]: 0.0080000000000000
+    [1,1,1,2,1,1,1,1,1,2]: 0.0080000000000000
+    [1,1,1,1,1,2,2,1,1,2]: 0.0080000000000000
+    [1,1,1,1,1,1,1,1,2,1]: 0.0080000000000000
+    [1,1,1,1,2,1,1,1,1,1]: 0.0070000000000000
+    [1,1,1,1,1,2,1,1,1,1]: 0.0070000000000000
+    [2,1,1,1,1,1,1,1,2,1]: 0.0060000000000000
+    [1,2,1,1,1,1,1,1,2,1]: 0.0060000000000000
+    .........
+    [1,1,1,1,2,2,2,2,2,2]: 0.0010000000000000
+    [1,1,1,1,2,2,2,2,2,1]: 0.0010000000000000
+    [1,1,1,1,2,2,2,1,1,1]: 0.0010000000000000
+    [1,1,1,1,2,2,1,1,2,2]: 0.0010000000000000
+    [1,1,1,1,2,1,2,2,2,1]: 0.0010000000000000
+    [1,1,1,1,2,1,2,2,1,1]: 0.0010000000000000
+    [1,1,1,1,1,2,2,1,2,2]: 0.0010000000000000
+    [1,1,1,1,1,2,1,2,2,2]: 0.0010000000000000
+    [1,1,1,1,1,2,1,1,1,2]: 0.0010000000000000
+    [1,1,1,1,1,1,2,2,2,2]: 0.0010000000000000
+    mean = []
+
+
+  * balls:(3 2 1) add_balls:(-1 0 1) num_draws:10
+    Three type of balls: white, black, and red.
+    Start with 3 white, 2 black, and 1 red ball and draw atmost 10 balls.
+    White ball is drawn: Remove the ball and remove another white ball
+    Black ball is drawn: Remove the ball but does not remove or add another ball
+    Red ball is drawn: Put the ball back, and add another red ball.
+
+    [num_balls = [3,2,1],add_balls = [-1,0,1],num_draws = 10]
+
+    var : num observed total
+    Probabilities:
+    10: 1.0000000000000000
+    mean = 10.0
+
+    var : num observed mean
+    Probabilities:
+    3.33333: 1.0000000000000000
+    mean = 3.33333
+
+    var : num balls left total
+    Probabilities:
+    7: 0.1780000000000000
+    8: 0.1510000000000000
+    6: 0.1480000000000000
+    5: 0.1290000000000000
+    9: 0.1070000000000000
+    10: 0.0880000000000000
+    4: 0.0800000000000000
+    11: 0.0410000000000000
+    3: 0.0390000000000000
+    12: 0.0270000000000000
+    13: 0.0050000000000000
+    15: 0.0030000000000000
+    14: 0.0030000000000000
+    16: 0.0010000000000000
+    mean = 7.21
+
+    var : num balls left mean
+    Probabilities:
+    2.33333: 0.1780000000000000
+    2.66667: 0.1510000000000000
+    2.0: 0.1480000000000000
+    1.66667: 0.1290000000000000
+    3.0: 0.1070000000000000
+    3.33333: 0.0880000000000000
+    1.33333: 0.0800000000000000
+    3.66667: 0.0410000000000000
+    1.0: 0.0390000000000000
+    4.0: 0.0270000000000000
+    4.33333: 0.0050000000000000
+    5.0: 0.0030000000000000
+    4.66667: 0.0030000000000000
+    5.33333: 0.0010000000000000
+    mean = 2.40333
+
+    var : num observed
+    Probabilities (truncated):
+    [3,3,4]: 0.1300000000000000
+    [3,4,3]: 0.1190000000000000
+    [3,5,2]: 0.1050000000000000
+    [3,2,5]: 0.0800000000000000
+    [3,6,1]: 0.0710000000000000
+    [2,4,4]: 0.0680000000000000
+    [2,2,6]: 0.0570000000000000
+    [2,3,5]: 0.0500000000000000
+    [3,1,6]: 0.0480000000000000
+    [2,5,3]: 0.0460000000000000
+    .........
+    [1,6,3]: 0.0030000000000000
+    [1,1,8]: 0.0030000000000000
+    [0,1,9]: 0.0030000000000000
+    [1,7,2]: 0.0020000000000000
+    [0,3,7]: 0.0020000000000000
+    [0,2,8]: 0.0020000000000000
+    [1,9,0]: 0.0010000000000000
+    [1,0,9]: 0.0010000000000000
+    [0,4,6]: 0.0010000000000000
+    [0,0,10]: 0.0010000000000000
+    mean = []
+
+    var : num balls left
+    Probabilities (truncated):
+    [0,2,5]: 0.1300000000000000
+    [0,2,4]: 0.1190000000000000
+    [0,2,3]: 0.1050000000000000
+    [0,2,6]: 0.0800000000000000
+    [0,2,2]: 0.0710000000000000
+    [1,2,5]: 0.0680000000000000
+    [1,2,7]: 0.0570000000000000
+    [1,2,6]: 0.0500000000000000
+    [0,2,7]: 0.0480000000000000
+    [1,2,4]: 0.0460000000000000
+    .........
+    [3,2,10]: 0.0030000000000000
+    [2,2,9]: 0.0030000000000000
+    [2,2,4]: 0.0030000000000000
+    [3,2,9]: 0.0020000000000000
+    [3,2,8]: 0.0020000000000000
+    [2,2,3]: 0.0020000000000000
+    [3,2,11]: 0.0010000000000000
+    [3,2,7]: 0.0010000000000000
+    [2,2,10]: 0.0010000000000000
+    [2,2,1]: 0.0010000000000000
+    mean = []
+
+    var : num runs
+    Probabilities:
+    10: 1.0000000000000000
+    mean = 10.0
+
+    var : num observed, num balls left
+    Probabilities (truncated):
+    [[3,3,4],[0,2,5]]: 0.1300000000000000
+    [[3,4,3],[0,2,4]]: 0.1190000000000000
+    [[3,5,2],[0,2,3]]: 0.1050000000000000
+    [[3,2,5],[0,2,6]]: 0.0800000000000000
+    [[3,6,1],[0,2,2]]: 0.0710000000000000
+    [[2,4,4],[1,2,5]]: 0.0680000000000000
+    [[2,2,6],[1,2,7]]: 0.0570000000000000
+    [[2,3,5],[1,2,6]]: 0.0500000000000000
+    [[3,1,6],[0,2,7]]: 0.0480000000000000
+    [[2,5,3],[1,2,4]]: 0.0460000000000000
+    .........
+    [[1,6,3],[2,2,4]]: 0.0030000000000000
+    [[1,1,8],[2,2,9]]: 0.0030000000000000
+    [[0,1,9],[3,2,10]]: 0.0030000000000000
+    [[1,7,2],[2,2,3]]: 0.0020000000000000
+    [[0,3,7],[3,2,8]]: 0.0020000000000000
+    [[0,2,8],[3,2,9]]: 0.0020000000000000
+    [[1,9,0],[2,2,1]]: 0.0010000000000000
+    [[1,0,9],[2,2,10]]: 0.0010000000000000
+    [[0,4,6],[3,2,7]]: 0.0010000000000000
+    [[0,0,10],[3,2,11]]: 0.0010000000000000
+    mean = []
+
+    var : p
+    Probabilities:
+    1: 1.0000000000000000
+    mean = 1.0
+
+    var : progress
+    Probabilities (truncated):
+    [1,1,1,3,3,3,3,3,3,3]: 0.0050000000000000
+    [1,1,1,2,2,2,3,2,2,2]: 0.0040000000000000
+    [2,2,1,1,1,2,2,3,3,2]: 0.0030000000000000
+    [2,1,1,2,2,2,1,3,2,3]: 0.0030000000000000
+    [2,1,1,1,2,2,2,2,2,2]: 0.0030000000000000
+    [1,2,3,2,3,3,3,1,3,3]: 0.0030000000000000
+    [1,1,3,3,3,3,3,3,3,3]: 0.0030000000000000
+    [1,1,2,1,2,2,2,2,2,2]: 0.0030000000000000
+    [1,1,1,2,3,3,3,3,3,3]: 0.0030000000000000
+    [1,1,1,2,2,2,2,2,2,3]: 0.0030000000000000
+    .........
+    [1,1,1,2,2,3,2,3,3,2]: 0.0010000000000000
+    [1,1,1,2,2,3,2,3,2,3]: 0.0010000000000000
+    [1,1,1,2,2,3,2,2,2,3]: 0.0010000000000000
+    [1,1,1,2,2,2,3,3,3,3]: 0.0010000000000000
+    [1,1,1,2,2,2,3,3,2,2]: 0.0010000000000000
+    [1,1,1,2,2,2,3,2,3,2]: 0.0010000000000000
+    [1,1,1,2,2,2,3,2,2,3]: 0.0010000000000000
+    [1,1,1,2,2,2,2,3,3,3]: 0.0010000000000000
+    [1,1,1,2,2,2,2,3,3,2]: 0.0010000000000000
+    [1,1,1,2,2,2,2,2,3,3]: 0.0010000000000000
+    mean = []
+
+
+*/
+go ?=>
+  % Very simple case;
+  % NumBalls = [1,1],
+  % AddBalls = [1,1],
+  % NumDraws = 10,
+
+  % Perhaps a little more interesting
+  % NumBalls = [10,5],
+  % AddBalls = [0,1],
+  % NumDraws = 10,
+
+  NumBalls = [3,2,1],
+  AddBalls = [-1,0,1],
+  NumDraws = 10,
+
+
+  println([num_balls=NumBalls,add_balls=AddBalls,num_draws=NumDraws]),
+
+  
+  %  Experimental: Probability
+  Prob = false,
+  % Prob = [num_observed,[6,4]],
+  if Prob != false then
+    println(prob=Prob)
+  end,
+
+  %  Experimental: Observation
+  % Obs = [num_observed,[6,4]],
+  Obs = false,
+  if Obs != false then
+    println(obs=Obs)
+  end,
+  nl,
+  reset_store,
+  run_model(1_000,$urn_model(NumBalls,AddBalls,NumDraws,Prob,Obs),[show_probs_trunc,mean,
+                           truncate_size = 10
+                           % show_simple_stats % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.84,0.9,0.94,0.99,0.99999],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+
+/*
+
+  A general Urn model, N balls
+  Given
+   - array of (N) initial balls
+   - array of (N) indicating how many balls to add if the i'th ball type is observed
+     If negative: remove that many balls of the color of the drawn ball. 
+     * > 1: Add some more balls of the same color
+     *  1: Add the draw ball back (draw with replacement)
+     *  0: Do not add any ball (draw without replacement)
+     * < 0: Draw without replacement and remove extra balls of the same color
+   - number of draws
+   - obs: optional function for observation/fail
+   - prob: optional function for probability
+  Returns
+   - array of N observed balls
+   - array of N left balls
+   - number of runs (might be < N if the add number are negative)
+   - the progression of the draws (a list)
+
+  The runs are terminated (before the N number of runs) if any of the 
+  number of balls <= 0.
+
+*/
+f(NumBalls,NumObserved,Progress,Iter, NumDraws,Balls,AddBalls) = Res =>
+ if Iter >= NumDraws ; [cond(V < 0,1,0) : V in NumBalls].sum >= 1 ; NumBalls.map(abs).sum == 0 then
+   Res = [NumObserved,NumBalls,Iter,Progress]
+ else
+   Len = Balls.len,
+   Ball = categorical(NumBalls,1..Len),
+   Res = f([cond(Ball == I, NumBalls[I] + AddBalls[I], NumBalls[I])   : I in 1..Len],
+           [cond(Ball == I, NumObserved[I] + 1, NumObserved[I])   : I in 1..Len],
+           Progress ++ [Ball],
+           Iter+1,
+           NumDraws,Balls,AddBalls)
+ end.
+
+urn_model(Balls,AddBalls,NumDraws) =>
+  urn_model(Balls,AddBalls,NumDraws, false,false).
+urn_model(Balls,AddBalls,NumDraws, Prob, Obs) =>
+  Len = Balls.len,
+  [NumObserved,NumBallsLeft,NumRuns,Progress] =
+               f(Balls,ones(Len,0),[],0, NumDraws,Balls,AddBalls),
+  NumObservedTotal = NumObserved.sum,
+  NumObservedMean = NumObserved.mean,
+  NumBallsLeftTotal = NumBallsLeft.sum,
+  NumBallsLeftMean = NumBallsLeft.mean,
+
+  % Observation
+  if Obs != false then
+    [What,O] = Obs,
+    if What == num_observed then
+      observe(O == NumObserved)
+    elseif What == num_balls_left then
+      observe(O == NumBallsLeft)
+    elseif What == num_runs then
+      observe(O == NumRuns)
+    else
+      printf("Not a proper observations: %w\n", Obs)
+    end
+  end,
+
+  % Probability
+  if Prob != false then
+    [What,O] = Prob,
+    if What == num_observed then
+      P = check(O == NumObserved),
+    elseif What == num_balls_left then
+      P = check(O == NumBallsLeft)
+    elseif What == num_runs then
+      P = check(O == NumRuns)
+    else
+      printf("Not a proper probability: %w\n", Prob),
+      P = 0
+    end
+  else
+    P = 1
+  end,
+
+  if var(Obs) ; Obs == false ; observed_ok then
+    add("num observed total",NumObservedTotal),
+    add("num observed mean",NumObservedMean),    
+    add("num balls left total",NumBallsLeftTotal),
+    add("num balls left mean",NumBallsLeftMean),
+    add("num observed",NumObserved),
+    add("num balls left",NumBallsLeft),
+    add("num runs",NumRuns),
+    add("num observed, num balls left",[NumObserved,NumBallsLeft]),
+    add("p",P),
+    add("progress",Progress)
+  end.
+  

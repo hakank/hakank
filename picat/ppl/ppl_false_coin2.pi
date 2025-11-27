@@ -1,0 +1,131 @@
+/* 
+
+  False coin in Picat.
+
+  From Peter Winkler
+  Celebration of Mind (Gathering For Gardner):
+  "CoM Apr 2021 - Drawing from Urns - Peter Winkler"
+  https://www.youtube.com/watch?v=A0GxvYPTKDk&list=PL5_D5QQxvWKVtX4Vklvhsf5KTYZBLDSwO&index=3
+
+  @3:43
+  """
+  You have two quarters.
+  Both are sitting on a table heads up.
+  One of them is an ordinary quarter, but the
+  other has a head on the other side as well.
+
+  You get two flips to help you guess which is which.
+
+  Should you flip each coin once or one coin twice.
+  """
+
+  According to this model it's better to flip the same coin twice
+  than once for each coin. But that's under the condition that
+  all the flips shows head. If either flip shows tail then it's
+  settled that it's the ordinary coin.
+
+
+  Cf my Gamble model gamble_false_coin2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : coin A
+  Probabilities:
+  1: 0.7978927203065134
+  2: 0.2021072796934866
+  mean = 1.20211
+
+  var : side A
+  Probabilities:
+  head: 1.0000000000000000
+  mean = [head = 1.0]
+
+  var : coin B
+  Probabilities:
+  2: 0.7978927203065134
+  1: 0.2021072796934866
+  mean = 1.79789
+
+  var : side B
+  Probabilities:
+  head: 1.0000000000000000
+  mean = [head = 1.0]
+
+  var : coin A = coin1
+  Probabilities:
+  1: 0.7978927203065134
+  0: 0.2021072796934866
+  mean = 0.797893
+
+  var : coin B = coin1
+  Probabilities:
+  0: 0.7978927203065134
+  1: 0.2021072796934866
+  mean = 0.202107
+
+*/
+go ?=>
+  reset_store,
+  run_model(20_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+flip_coin(C) = cond(C,
+                    categorical([1,0],[head,tail]),
+                    categorical([1/2,1/2],[head,tail])).
+model() =>
+  % The two coins
+  Coin1 = 1, % fake coin:   head,head
+  Coin2 = 2, % proper coin: head,tail
+  Coins = [Coin1,Coin2],
+
+  % The setup: both coins are head (no real flipping)
+  CoinA = uniform_draw(Coins),
+  SideA = flip_coin(CoinA == Coin1),
+  observe(SideA == head),
+
+  CoinB = cond(CoinA==Coin1,Coin2,Coin1),
+  SideB = flip_coin(CoinB== Coin1),
+  observe(SideB == head),
+
+  % observe(CoinA == Coin1 ; CoinB == Coin1)
+
+  % Flip same Coin
+  CoinSame_1 = CoinA,
+  CoinSame_1_flip = flip_coin(CoinSame_1 == Coin1),
+  CoinSame_2 = CoinSame_1,
+  CoinSame_2_flip = flip_coin(CoinSame_2 == Coin1),
+  observe(CoinSame_1_flip == head),
+  observe(CoinSame_2_flip == head),
+    
+  % Flip both Coins
+  CoinBoth_1 = CoinA,
+  CoinBoth_1_flip = flip_coin(CoinBoth_1 == Coin1),
+  CoinBoth_2 = CoinB,
+  CoinBoth_2_flip = flip_coin(CoinBoth_2 == Coin1),
+  observe(CoinBoth_1_flip == head),
+  observe(CoinBoth_2_flip == head),
+  
+  
+  if observed_ok then
+    add("coin A",CoinA),
+    add("side A",SideA),
+    add("coin B",CoinB),
+    add("side B",SideB),
+    % Probability of fake Coin
+    add("coin A = coin1",cond(CoinA == Coin1,1,0)),
+    add("coin B = coin1",cond(CoinB == Coin1,1,0)),    
+  end.

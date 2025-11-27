@@ -1,0 +1,274 @@
+/* 
+
+  Weibull distribution in Picat.
+
+  https://en.wikipedia.org/wiki/Weibull_distribution
+  """
+  In probability theory and statistics, the Weibull distribution /ˈwaɪbʊl/ 
+  is a continuous probability distribution. It models a broad range of random 
+  variables, largely in the nature of a time to failure or time between events. 
+  Examples are maximum one-day rainfalls and the time a user spends on a web page.
+
+  The distribution is named after Swedish mathematician Waloddi Weibull, who 
+  described it in detail in 1939, although it was first identified by 
+  René Maurice Fréchet and first applied by Rosin & Rammler (1933) to describe a 
+  particle size distribution.
+  """
+
+  For more on this, see ppl_distributions.pi and ppl_distributions_test.pi.
+
+  Picat> X = weibull_dist_n(2, 1000,10)
+  X = [302.183517030208691,1744.19409768221044,789.874757778459184,1736.656902589854781,1401.554350035683228,1253.151371659718279,1034.991832460598062,1316.03717280026126,677.673878204829975,1659.455917774004547]
+
+  Picat> X = weibull_dist_pdf(2, 1000,1000)
+  X = 0.000735758882343
+
+  Picat> X = weibull_dist_cdf(2, 1000,1000)
+  X = 0.632120558828558
+
+  Picat> X = weibull_dist_quantile(2, 1000,0.99999)
+  X = 3393.070212208226167
+
+  Picat> X = weibull_dist_mean(2, 1000)                
+  X = 886.226925452758337
+
+
+  Cf my Gamble model gamble_weibull_dist.rkt
+  Note: My Gamble implementation has the reversed order of the parameters.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+
+  var : d
+  Probabilities (truncated):
+  3253.255749224873853: 0.0001000000000000
+  2945.453835644694209: 0.0001000000000000
+  2830.187875496586003: 0.0001000000000000
+  2791.157918609011631: 0.0001000000000000
+  .........
+  14.55838386800915: 0.0001000000000000
+  13.278528931271303: 0.0001000000000000
+  12.844669290063148: 0.0001000000000000
+  4.86394579837734: 0.0001000000000000
+  mean = 884.978
+
+  var : cdf
+  Probabilities:
+  true: 0.6379000000000000
+  false: 0.3621000000000000
+  mean = 0.6379
+
+  var : max 10
+  Probabilities (truncated):
+  1556.570476151455523: 0.0002000000000000
+  3391.930799744608521: 0.0001000000000000
+  3336.364615366645012: 0.0001000000000000
+  3257.154163839445573: 0.0001000000000000
+  .........
+  802.912158974836416: 0.0001000000000000
+  800.409213288408523: 0.0001000000000000
+  779.414853745490063: 0.0001000000000000
+  722.359894355143865: 0.0001000000000000
+  mean = 1679.66
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean % ,
+                           % show_percentiles,
+                           % show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           % min_accepted_samples=1000,show_accepted_samples=true
+                          ]),
+  nl,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Lambda = 2,
+  K = 1000,
+
+  D = weibull_dist(Lambda,K),
+  CDF = check(D <= 1000),
+  
+  Max10 = weibull_dist_n(Lambda,K,10).max,
+  
+  add("d",D),
+  add("cdf",CDF),
+  add("max 10",Max10).
+
+
+/*
+  Recover weibull_dist(2,1000)  using uninformed priors.
+
+  Not too bad. However, it's might give error such as error(domain_error(number,-nan),sqrt)
+          
+
+data = [1354.16,708.172,1236.25,1265.57,1557.7,469.135,638.986,1209.14,570.454,898.537,805.564,995.593,673.64,848.714,1743.95,1574.57,1004.89,1123.99,390.753,966.368]
+[min = 390.753,mean = 1001.81,median = 980.98,max = 1743.95,variance = 136855.0,stdev = 369.94]
+Histogram (total 20)
+390.753:     1 ####################                                         (0.050 / 0.050)
+458.413:     1 ####################                                         (0.050 / 0.100)
+526.073:     0                                                              (0.000 / 0.100)
+593.732:     1 ####################                                         (0.050 / 0.150)
+661.392:     2 ########################################                     (0.100 / 0.250)
+729.052:     1 ####################                                         (0.050 / 0.300)
+796.711:     1 ####################                                         (0.050 / 0.350)
+864.371:     1 ####################                                         (0.050 / 0.400)
+932.031:     1 ####################                                         (0.050 / 0.450)
+999.690:     3 ############################################################ (0.150 / 0.600)
+1067.350:     0                                                              (0.000 / 0.600)
+1135.010:     1 ####################                                         (0.050 / 0.650)
+1202.670:     2 ########################################                     (0.100 / 0.750)
+1270.329:     1 ####################                                         (0.050 / 0.800)
+1337.989:     1 ####################                                         (0.050 / 0.850)
+1405.649:     0                                                              (0.000 / 0.850)
+1473.308:     0                                                              (0.000 / 0.850)
+1540.968:     2 ########################################                     (0.100 / 0.950)
+1608.628:     0                                                              (0.000 / 0.950)
+1676.287:     1 ####################                                         (0.050 / 1.000)
+methods = [mean,stdev,q25,q75]
+explain = Data shows mild skewness or moderate tails. Adding quantiles for shape.
+...
+Num accepted samples: 100  Total samples: 162858  (0.001%)
+var : lambda
+Probabilities (truncated):
+12.131950823651604: 0.0100000000000000
+11.850703513180234: 0.0100000000000000
+11.110000317501836: 0.0100000000000000
+10.882719890625552: 0.0100000000000000
+.........
+1.530118752983454: 0.0100000000000000
+1.382842660594193: 0.0100000000000000
+1.343904995053962: 0.0100000000000000
+1.056522131458168: 0.0100000000000000
+mean = 5.38349
+
+var : k
+Probabilities (truncated):
+1641.933751125789286: 0.0100000000000000
+1631.693687118447315: 0.0100000000000000
+1574.851307819993735: 0.0100000000000000
+1538.868849882329414: 0.0100000000000000
+.........
+738.640237012244825: 0.0100000000000000
+738.397329458220497: 0.0100000000000000
+715.280850750990567: 0.0100000000000000
+594.11580236354655: 0.0100000000000000
+mean = 1107.32
+
+var : post
+Probabilities (truncated):
+2608.25832862894822: 0.0100000000000000
+2013.436870809953916: 0.0100000000000000
+1980.763461056046026: 0.0100000000000000
+1921.57871481454049: 0.0100000000000000
+.........
+358.580147303459: 0.0100000000000000
+340.541302572201346: 0.0100000000000000
+300.098525747703775: 0.0100000000000000
+131.606076792283176: 0.0100000000000000
+mean = 1054.43
+
+
+[min = 131.606,mean = 1054.43,median = 1028.69,max = 2608.26,variance = 171136.0,stdev = 413.686]
+Histogram (total 100)
+131.606:     1 #####                                                        (0.010 / 0.010)
+193.522:     0                                                              (0.000 / 0.010)
+255.439:     0                                                              (0.000 / 0.010)
+317.355:     2 ##########                                                   (0.020 / 0.030)
+379.271:     3 ###############                                              (0.030 / 0.060)
+441.188:     1 #####                                                        (0.010 / 0.070)
+503.104:     2 ##########                                                   (0.020 / 0.090)
+565.020:     5 #########################                                    (0.050 / 0.140)
+626.937:     2 ##########                                                   (0.020 / 0.160)
+688.853:     2 ##########                                                   (0.020 / 0.180)
+750.769:     6 ##############################                               (0.060 / 0.240)
+812.685:     5 #########################                                    (0.050 / 0.290)
+874.602:     9 #############################################                (0.090 / 0.380)
+936.518:     5 #########################                                    (0.050 / 0.430)
+998.434:     7 ###################################                          (0.070 / 0.500)
+1060.351:     3 ###############                                              (0.030 / 0.530)
+1122.267:    12 ############################################################ (0.120 / 0.650)
+1184.183:     4 ####################                                         (0.040 / 0.690)
+1246.100:     4 ####################                                         (0.040 / 0.730)
+1308.016:     3 ###############                                              (0.030 / 0.760)
+1369.932:     6 ##############################                               (0.060 / 0.820)
+1431.849:     7 ###################################                          (0.070 / 0.890)
+1493.765:     1 #####                                                        (0.010 / 0.900)
+1555.681:     2 ##########                                                   (0.020 / 0.920)
+1617.597:     1 #####                                                        (0.010 / 0.930)
+1679.514:     1 #####                                                        (0.010 / 0.940)
+1741.430:     0                                                              (0.000 / 0.940)
+1803.346:     0                                                              (0.000 / 0.940)
+1865.263:     2 ##########                                                   (0.020 / 0.960)
+1927.179:     1 #####                                                        (0.010 / 0.970)
+1989.095:     2 ##########                                                   (0.020 / 0.990)
+2051.012:     0                                                              (0.000 / 0.990)
+2112.928:     0                                                              (0.000 / 0.990)
+2174.844:     0                                                              (0.000 / 0.990)
+2236.760:     0                                                              (0.000 / 0.990)
+2298.677:     0                                                              (0.000 / 0.990)
+2360.593:     0                                                              (0.000 / 0.990)
+2422.509:     0                                                              (0.000 / 0.990)
+2484.426:     0                                                              (0.000 / 0.990)
+2546.342:     1 #####                                                        (0.010 / 1.000)
+
+
+  Mathematica: FindDistributionParameters[data, WeibullDistribution[alpha, beta]]
+  -> {alpha -> 2.97022, beta -> 1125.09}
+
+*/
+go2 ?=>
+  Data = weibull_dist_n(2,1000,20),
+  println(data=Data),
+  show_simple_stats(Data),
+  Data.show_histogram,
+  [Methods,Explain] = recommend_abc_stats_explained(Data),
+  println(methods=Methods),
+  println(explain=Explain),
+  reset_store,
+  run_model(10_000,$model2(Data),[show_probs_trunc,mean,
+                           % show_percentiles,
+                           show_hpd_intervals,hpd_intervals=[0.94],
+                           % show_histogram,
+                           min_accepted_samples=100,show_accepted_samples=true
+                          ]),
+  nl,
+  Post = get_store().get("post"),
+  Post.show_simple_stats,
+  Post.show_histogram,
+  % show_store_lengths,nl,
+  % fail,
+  nl.
+go2 => true.
+  
+  
+model2(Data) =>
+  Lambda = uniform(0,100),
+  K      = uniform(0,10000),
+  
+  X = weibull_dist_n(Lambda,K,Data.len),
+  observe_abc(Data,X,1/2),
+  % observe_abc(Data,X,1,[mean,stdev,iqr,skewness]),
+
+  Post = weibull_dist(Lambda,K),
+
+  if observed_ok then
+    add("lambda",Lambda),
+    add("k",K),
+    add("post",Post)
+  end.

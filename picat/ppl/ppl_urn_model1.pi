@@ -1,0 +1,101 @@
+/* 
+
+  Urn model in Picat.
+
+  From https://reference.wolfram.com/language/ref/HypergeometricDistribution.html
+  """
+  Suppose an urn has 100 elements, of which 40 are special.
+  ...
+  Compute the probability that there are more than 25 special elements in a 
+  draw of 50 elements.
+    Answer: 0.0120902
+
+  Compute the expected number of special elements in a draw of 50 elements.
+    Answer: 20
+  """
+
+  Exact probability of more than 25 special element in a draw of 50 elements:
+  Picat> X=1-hypergeometric_dist_cdf(50, 40, 100, 25)
+  X = 0.012090173809299
+
+  Expected number of special element in a draw of 50 elements:
+  Picat> X=hypergeometric_dist_mean(50, 40, 100)              
+  X = 20.0
+
+
+  Cf my Gamble model gamble_urn_model1.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  exact prob: 0.012090173809299
+  exact expected: 20.000000000000000
+
+  var : more than 25 special of 50
+  Probabilities:
+  false: 0.9867047713717694
+  true: 0.0132952286282306
+  mean = [false = 0.986705,true = 0.0132952]
+
+  var : sum_special
+  Probabilities:
+  40: 1.0000000000000000
+  mean = 40.0
+
+  var : sum_special of 50
+  Probabilities (truncated):
+  20: 0.1628976143141153
+  21: 0.1488568588469185
+  19: 0.1386679920477137
+  18: 0.1182902584493042
+  .........
+  13: 0.0027335984095427
+  28: 0.0018638170974155
+  12: 0.0008697813121272
+  11: 0.0002485089463221
+  mean = 20.0111
+
+*/
+go ?=>
+  reset_store,
+  printf("exact prob: %.15f\n",(1-hypergeometric_dist_cdf(50, 40, 100, 25))),
+  printf("exact expected: %.15f\n\n",hypergeometric_dist_mean(50, 40, 100)),  
+  run_model(100_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 100,
+  NumSpecial = 40,
+
+  X = categorical_n([N-NumSpecial,NumSpecial],[nonspecial,special],N),
+  
+  % We have exactly 40 special elements (no random there!)
+  SumSpecial = [cond(X[I] == special,1,0) : I in 1..N].sum,
+  
+  % Compute the expected number of special elements in a draw of 50 elements.
+  SumSpecialOf50 = [cond(X[I] == special,1,0) : I in 1..50].sum,
+
+  % What's the probability that there are more than 25 special elements
+  % in a draw of 50 elements
+  MoreThan25SpecialOf50 = cond(SumSpecialOf50 > 25,true,false),
+  
+  observe(SumSpecial == 40),
+  
+  if observed_ok then
+    add("sum_special",SumSpecial),
+    add("sum_special of 50",SumSpecialOf50),
+    add("more than 25 special of 50",MoreThan25SpecialOf50)    
+  end.

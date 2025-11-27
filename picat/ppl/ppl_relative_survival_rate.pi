@@ -1,0 +1,481 @@
+/* 
+
+  Relative survival rate in Picat.
+
+  This is from Mathematica's MortalityData.
+
+  What are the probabilities for me (68 yo) to live to some
+  certain years?
+
+
+  Here's the Mathematica code for finding out the distribution (via simulation):
+  """
+  dist = MortalityData[<|"Age" -> Quantity[68, "Years"], 
+                         "Gender" -> "Male", "Country" -> "Sweden"|>, 
+                         "DistributionDimensionless"];
+  data = RandomVariate[dist, 100000];
+  FindDistribution[data, 5]
+  ->
+  {MixtureDistribution[{0.24289, 0.75711}, 
+   {NormalDistribution[63.2241, 20.1759], 
+    NormalDistribution[83.7858, 6.6877]}], 
+
+   MixtureDistribution[{0.133122,0.866878}, 
+   {CauchyDistribution[55.4482, 7.22314], 
+    LogNormalDistribution[4.40851, 0.0994048]}], 
+
+    DataDistribution[
+   "Histogram", {{0.00033112582781456954`, 0.0006622516556291391, 
+   0.0009933774834437086, 0.00033112582781456954`, 
+   0.001986754966887417, 0.005629139072847682, 0.008278145695364239, 
+   0.022516556291390728`, 0.04437086092715232, 0.01423841059602649, 
+   0.00033112582781456954`, 0.00033112582781456954`}, {0., 10., 20., 
+   30., 40., 50., 60., 70., 80., 90., 100., 110., 120.}}, 1, 302], 
+
+   MixtureDistribution[{0.339342, 
+   0.660658}, {LogisticDistribution[80.078, 12.2699], 
+   GammaDistribution[176.314, 0.474448]}], 
+
+   StudentTDistribution[82.301, 7.46076, 2.17909]}
+   """
+
+   Let's try the first (best) alternative:
+  {MixtureDistribution[{0.24289, 0.75711}, 
+   {NormalDistribution[63.2241, 20.1759], 
+    NormalDistribution[83.7858, 6.6877]}], 
+
+  And for my mother when 98 yo:
+  MixtureDistribution[{0.259834,0.740166}, 
+   {NormalDistribution[70.2181, 17.4385], 
+    NormalDistribution[88.0611, 7.08593]}]
+
+
+  Here are some queries. 
+  I am 68 yo now, what is the probability that I will be 
+  72, 77, 82, 87, and 100 yo?
+
+  When my mother was 98 yo, what was the probabilities that
+  she would live to be 99, and 100 years?
+  Unfortunately, she passed away some weeks before she held 
+  her 99'th birthday. RIP!
+
+  Cf my Gamble model gamble_relative_survival_rate.rkt
+  
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+% import ordset.
+
+main => go.
+
+/*
+  Here are some queries.
+
+  * I am 68 yo now, what is the probability that I will be 
+    72, 77, 82, 87, and 100 yo?
+
+    One can note that the expected value of survival (surv) is about 79 years.
+   
+
+[gender = male,obs = false,pval = 67]
+var : p
+mean = 0.9532
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 true)
+(0.1 true)
+(0.25 true)
+(0.5 true)
+(0.75 true)
+(0.84 true)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 78.8168
+Percentiles:
+(0.001 57.037210021844395)
+(0.01 62.089013492666581)
+(0.025 64.894742954787844)
+(0.05 67.246808088713394)
+(0.1 69.833623634410245)
+(0.25 74.150423177368538)
+(0.5 78.737680020374114)
+(0.75 83.505480708275016)
+(0.84 85.827916103731283)
+(0.9 87.894180461048876)
+(0.95 90.42962424323359)
+(0.975 92.633504124296721)
+(0.99 95.278363215864957)
+(0.999 100.34805563583011)
+(0.9999 103.18916351648249)
+(0.99999 103.51770636939673)
+
+
+[gender = male,obs = 67,pval = 72]
+min_accepted_samples = 10000
+var : p
+mean = 0.8726
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 true)
+(0.5 true)
+(0.75 true)
+(0.84 true)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 79.4714
+Percentiles:
+(0.001 67.125892556500602)
+(0.01 67.707701382369393)
+(0.025 68.466726640620976)
+(0.05 69.486148064269301)
+(0.1 71.25550366777145)
+(0.25 74.781134324006203)
+(0.5 79.135326683049925)
+(0.75 83.749773507386251)
+(0.84 85.83802342737323)
+(0.9 87.827357706902461)
+(0.95 90.358428680108943)
+(0.975 92.6032112297206)
+(0.99 95.259191616200937)
+(0.999 101.0593347328508)
+(0.9999 103.45410775004751)
+(0.99999 103.57698786363056)
+
+
+[gender = male,obs = 67,pval = 77]
+min_accepted_samples = 10000
+var : p
+mean = 0.6288
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 false)
+(0.5 true)
+(0.75 true)
+(0.84 true)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 79.5111
+Percentiles:
+(0.001 67.097551097001499)
+(0.01 67.70541985534777)
+(0.025 68.495402743171539)
+(0.05 69.524408277826936)
+(0.1 71.204388750998959)
+(0.25 74.701416942056568)
+(0.5 79.206115295645276)
+(0.75 83.812265173686171)
+(0.84 86.05872485558119)
+(0.9 88.065914785600967)
+(0.95 90.522637227167039)
+(0.975 92.675128992138653)
+(0.99 95.313186168432878)
+(0.999 99.737393091839962)
+(0.9999 104.10499681171)
+(0.99999 106.25220354556254)
+
+
+[gender = male,obs = 67,pval = 82]
+min_accepted_samples = 10000
+var : p
+mean = 0.3428
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 false)
+(0.5 false)
+(0.75 true)
+(0.84 true)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 79.6043
+Percentiles:
+(0.001 67.065442689593496)
+(0.01 67.7592514730826)
+(0.025 68.712044251447253)
+(0.05 69.663706952932799)
+(0.1 71.409125891342853)
+(0.25 74.91119938323834)
+(0.5 79.24406288338281)
+(0.75 83.850039661665022)
+(0.84 85.97833317969129)
+(0.9 88.139939668298865)
+(0.95 90.64606211349259)
+(0.975 92.940675770870953)
+(0.99 95.458440145921458)
+(0.999 100.00151186826992)
+(0.9999 104.61162828748859)
+(0.99999 105.66769616614445)
+
+
+[gender = male,obs = 67,pval = 87]
+min_accepted_samples = 10000
+var : p
+mean = 0.1327
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 false)
+(0.5 false)
+(0.75 false)
+(0.84 false)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 79.5486
+Percentiles:
+(0.001 67.081093935291733)
+(0.01 67.677356839135427)
+(0.025 68.552410823792428)
+(0.05 69.592909316673342)
+(0.1 71.137541328751624)
+(0.25 74.750549534525206)
+(0.5 79.20632585777156)
+(0.75 83.879370715994582)
+(0.84 86.135331058016988)
+(0.9 88.165104544106143)
+(0.95 90.715231371677632)
+(0.975 93.02735632255785)
+(0.99 95.491679520331502)
+(0.999 101.02262133167113)
+(0.9999 104.43642003504665)
+(0.99999 105.87765906500223)
+
+
+[gender = male,obs = 67,pval = 100]
+min_accepted_samples = 10000
+var : p
+mean = 0.0013
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 false)
+(0.5 false)
+(0.75 false)
+(0.84 false)
+(0.9 false)
+(0.95 false)
+(0.975 false)
+(0.99 false)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 79.533
+Percentiles:
+(0.001 67.107795084586513)
+(0.01 67.604922550687547)
+(0.025 68.419285173153838)
+(0.05 69.601665758532405)
+(0.1 71.347951265152815)
+(0.25 74.888535784975048)
+(0.5 79.188126427842619)
+(0.75 83.8429479049707)
+(0.84 86.0093126117617)
+(0.9 87.989367460613991)
+(0.95 90.490341920019986)
+(0.975 92.655121203679371)
+(0.99 95.170557553240684)
+(0.999 100.38130619148492)
+(0.9999 103.88922202545847)
+(0.99999 104.89894121626148)
+
+
+  * When my mother was 98 yo, what was the probability that should
+    live to 99 and 100?
+
+
+[gender = female,obs = 98,pval = 99]
+min_accepted_samples = 10000
+var : p
+mean = 0.6876
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 false)
+(0.5 true)
+(0.75 true)
+(0.84 true)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 100.522
+Percentiles:
+(0.001 98.002364894183998)
+(0.01 98.024566395913411)
+(0.025 98.072147413497035)
+(0.05 98.139743961158587)
+(0.1 98.288132970655852)
+(0.25 98.778212176716451)
+(0.5 99.873951477217716)
+(0.75 101.60991380320316)
+(0.84 102.68643511994186)
+(0.9 103.68357531704608)
+(0.95 105.12537858499005)
+(0.975 106.40907671052257)
+(0.99 107.86614854177927)
+(0.999 111.82193133265741)
+(0.9999 114.32536821529681)
+(0.99999 114.57615305713502)
+
+
+[gender = female,obs = 98,pval = 100]
+min_accepted_samples = 10000
+var : p
+mean = 0.4745
+Percentiles:
+(0.001 false)
+(0.01 false)
+(0.025 false)
+(0.05 false)
+(0.1 false)
+(0.25 false)
+(0.5 false)
+(0.75 true)
+(0.84 true)
+(0.9 true)
+(0.95 true)
+(0.975 true)
+(0.99 true)
+(0.999 true)
+(0.9999 true)
+(0.99999 true)
+
+var : surv
+mean = 100.488
+Percentiles:
+(0.001 98.004201459247639)
+(0.01 98.030318565499201)
+(0.025 98.075129320829689)
+(0.05 98.145575977193005)
+(0.1 98.293118262887702)
+(0.25 98.800427987927065)
+(0.5 99.867522220261236)
+(0.75 101.51836271638055)
+(0.84 102.49579183775883)
+(0.9 103.51453778174293)
+(0.95 104.93873888822681)
+(0.975 106.40441937918465)
+(0.99 108.40976161036717)
+(0.999 112.07000059832379)
+(0.9999 115.34013752734765)
+(0.99999 118.12244597711792)
+
+ 
+*/
+go ?=>
+  member([Gender,Obs,PVal],[[male,false,67],
+                            [male,67,72],
+                            [male,67,77],
+                            [male,67,82],
+                            [male,67,87],
+                            [male,67,100],
+
+                            [female,98,99], % My mother
+                            [female,98,100] 
+                     ]),
+  println([gender=Gender,obs=Obs,pval=PVal]),
+  reset_store,
+  O = [mean,show_percentiles],
+  Options = cond(Obs==false,
+                 O,
+                 O++[min_accepted_samples=10_000,show_accepted_samples=false]),
+          
+  run_model(10_000,$model(Gender,Obs,PVal),Options),
+  nl,
+  % show_store_lengths,nl,
+  fail,
+  nl.
+go => true.
+  
+  
+model(Gender,Obs,PVal) =>
+
+  if Gender == male then
+    Normal1 = normal_dist(63.2241, 20.1759),
+    Normal2 = normal_dist(83.7858, 6.6877),
+    Surv = 0.24289 * Normal1 + 0.75711*Normal2
+  else
+    Normal1 = normal_dist(70.2181, 17.4385),
+    Normal2 = normal_dist(88.0611, 7.08593),
+    Surv = 0.259834 * Normal1 + 0.740166*Normal2
+  end,
+
+  P = check(Surv >= PVal),
+  
+  if Obs != false then
+    observe(Surv >= Obs),
+  end,
+  
+  if Obs == false ; observed_ok then
+    add("p",P),
+    add("surv",Surv)
+  end.
+

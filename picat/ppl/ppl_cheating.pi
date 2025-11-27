@@ -1,0 +1,109 @@
+/* 
+
+  Cheating in Picat.
+
+  The model is a port of the Cheating model (the first version) in
+  https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/blob/master/Chapter2_MorePyMC/Ch2_MorePyMC_PyMC3.ipynb
+  """
+  Social data has an additional layer of interest as people are not always honest with responses, 
+  which adds a further complication into inference. For example, simply asking individuals "Have 
+  you ever cheated on a test?" will surely contain some rate of dishonesty. What you can say for 
+  certain is that the true rate is less than your observed rate (assuming individuals lie only 
+  about not cheating; I cannot imagine one who would admit "Yes" to cheating when in fact they 
+  hadn't cheated).
+
+  To present an elegant solution to circumventing this dishonesty problem, and to demonstrate 
+  Bayesian modeling, we first need to introduce the binomial distribution.
+
+  ...
+
+  We will use the binomial distribution to determine the frequency of students cheating during 
+  an exam. If we let N be the total number of students who took the exam, and assuming each 
+  student is interviewed post-exam (answering without consequence), we will receive integer X 
+  "Yes I did cheat" answers. We then find the posterior distribution of p, given N, some 
+  specified prior on p, and observed data X.
+
+  This is a completely absurd model. No student, even with a free-pass against punishment, 
+  would admit to cheating. What we need is a better algorithm to ask students if they had 
+  cheated. Ideally the algorithm should encourage individuals to be honest while preserving 
+  privacy. The following proposed algorithm is a solution I greatly admire for its ingenuity 
+  and effectiveness:
+
+    In the interview process for each student, the student flips a coin, hidden from the 
+    interviewer. The student agrees to answer honestly if the coin comes up heads. Otherwise, 
+    if the coin comes up tails, the student (secretly) flips the coin again, and answers 
+    "Yes, I did cheat" if the coin flip lands heads, and "No, I did not cheat", if the coin 
+    flip lands tails. This way, the interviewer does not know if a "Yes" was the result of a 
+    guilty plea, or a Heads on a second coin toss. Thus privacy is preserved and the 
+    researchers receive honest answers.
+  """
+
+
+  Cf my Gamble model gamble_cheating.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  var : obs prop
+  Probabilities (truncated):
+  0.38: 0.1002865329512894
+  0.37: 0.1002865329512894
+  0.39: 0.0945558739255014
+  0.35: 0.0945558739255014
+  .........
+  0.46: 0.0085959885386819
+  0.27: 0.0057306590257880
+  0.48: 0.0028653295128940
+  0.47: 0.0028653295128940
+  mean = 0.364384
+
+  var : p
+  Probabilities (truncated):
+  0.662683203659339: 0.0028653295128940
+  0.581290297480901: 0.0028653295128940
+  0.567943276636276: 0.0028653295128940
+  0.563194939197598: 0.0028653295128940
+  .........
+  0.009147487585036: 0.0028653295128940
+  0.008089932616842: 0.0028653295128940
+  0.006758604201841: 0.0028653295128940
+  0.005770708436971: 0.0028653295128940
+  mean = 0.241906
+
+*/
+go ?=>
+  reset_store,
+  run_model(20_000,$model,[show_probs_trunc,mean]),
+  nl,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  N = 100,
+  YesResponse = 35,
+   
+  P = uniform(0,1), % freq cheating
+   
+  Truths = bern_n(P,N),
+  FirstFlips = bern_n(0.5,N),
+  SecondFlips = bern_n(0.5,N),   
+
+  Val = [ FirstFlips[I]*Truths[I] + (1-FirstFlips[I])*SecondFlips[I] : I in 1..N],
+  ValSum = Val.sum,
+  ObsProp = ValSum / N,
+  observe(binomial_dist(N, ObsProp) == YesResponse),
+    
+  if observed_ok then
+    add("p",P),
+    add("obs prop",ObsProp)
+  end.

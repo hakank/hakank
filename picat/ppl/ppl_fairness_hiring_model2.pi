@@ -1,0 +1,132 @@
+/* 
+
+  Fairness hiring model 2 in Picat.
+
+  Port of SPPL model
+  https://github.com/probcomp/sppl/blob/master/examples/fairness-hiring-model-2.ipynb
+
+  The SPPL model gives the following exact probabilities:
+  p(hire): 0.911360805292618
+  p(hire|male):0.9777674365554804
+  p(hire|female):0.8449541740297555
+  p(hire|female)/p(hire|male): 0.8641668176293485
+
+
+  Cf my Gamble model gamble_fairness_hiring_model2.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+  var : is male
+  Probabilities:
+  true: 0.5004999999999999
+  false: 0.4995000000000000
+  mean = [true = 0.5005,false = 0.4995]
+  variance = data is not numeric
+
+  var : hire
+  Probabilities:
+  1: 0.9170000000000000
+  0: 0.0830000000000000
+  mean = 0.917
+  variance = 0.076111
+
+  var : college rank
+  Probabilities (truncated):
+  63.522618485694046: 0.0001000000000000
+  59.734512029092933: 0.0001000000000000
+  59.474353768162132: 0.0001000000000000
+  58.880107878401475: 0.0001000000000000
+  .........
+  -9.721152107001046: 0.0001000000000000
+  -10.080650359811671: 0.0001000000000000
+  -11.042384482359189: 0.0001000000000000
+  -12.614881112804525: 0.0001000000000000
+  mean = 25.1249
+  variance = 101.161
+
+  var : years exp
+  Probabilities (truncated):
+  32.954534979760766: 0.0001000000000000
+  31.684166226678663: 0.0001000000000000
+  31.157106325935093: 0.0001000000000000
+  30.475944598795543: 0.0001000000000000
+  .........
+  -5.350581737689481: 0.0001000000000000
+  -5.376313057425978: 0.0001000000000000
+  -5.489058773480666: 0.0001000000000000
+  -6.487258033403403: 0.0001000000000000
+  mean = 12.5994
+  variance = 30.9411
+
+  var : hire, is male
+  Probabilities:
+  [1,true]: 0.4884000000000000
+  [1,false]: 0.4286000000000000
+  [0,false]: 0.0709000000000000
+  [0,true]: 0.0121000000000000
+  mean = [[1,true] = 0.4884,[1,false] = 0.4286,[0,false] = 0.0709,[0,true] = 0.0121]
+  variance = data is not numeric
+
+  var : hire given male
+  Probabilities:
+  0: 0.5116000000000001
+  1: 0.4884000000000000
+  mean = 0.4884
+  variance = 0.249865
+
+  var : hire given female
+  Probabilities:
+  0: 0.5714000000000000
+  1: 0.4286000000000000
+  mean = 0.4286
+  variance = 0.244902
+
+  [female = 0.4286,male = 0.4884,female/male = 0.877559]
+
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,variance]),
+  nl,
+  Store = get_store(),
+  HireMale = Store.get("hire given male").mean,
+  HireFemale = Store.get("hire given female").mean,
+  println([female=HireFemale,male=HireMale,"female/male"=(HireFemale/HireMale)]),
+
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  % Population model
+  IsMale = flip(0.5),
+  CollegeRank = normal_dist(25,10),
+  YearsExp = condt(IsMale,normal_dist(15,5),normal_dist(10,5)),
+
+  % Hiring decision
+  Hire = cond( (CollegeRank <= 5 ; YearsExp > 5),1,0),
+
+  HireGivenMale = cond((Hire==1,IsMale==true),1,0),
+  HireGivenFemale = cond((Hire==1,IsMale==false),1,0),
+
+  add("is male",IsMale),
+  add("hire",Hire),                
+  add("college rank",CollegeRank),
+  add("years exp",YearsExp),
+  add("hire, is male",[Hire,IsMale]),
+  add("hire given male",HireGivenMale),
+  add("hire given female",HireGivenFemale).
+

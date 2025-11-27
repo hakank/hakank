@@ -1,0 +1,152 @@
+/* 
+
+  Cat problem in Picat.
+
+  https://www.youtube.com/watch?v=e1Ykk_CqKTY&t=458s
+
+  Probabilistic Programming: What It Is and How It Works - Noel Welsh
+
+  We can see either 1, 2, or 3 cats.
+  There are 3 different enticements:
+  
+  - Milkshake
+  - Fish
+  - Nothing
+ 
+  And there are different probabilities how many cats there are given
+  an enticement, see below.
+
+  Now: We see 3 cats, what is the probability that it's a milkshake?
+
+  The video got the following (for 3 cats):
+   - milkshake: 0.42
+   - fish: 0.04
+   - nothing: 0.03
+
+  Normalized to percentage (from the video): 
+
+  0.42/(0.42 + 0.04 + 0.03) milkshake
+      0.85714285714285714286
+  0.04/(0.42 + 0.04 + 0.03) fish
+      0.081632653061224489796
+  0.03/(0.42 + 0.04 + 0.03)  nothing
+      0.061224489795918367347
+
+
+  Here are two models.
+
+  Model2 seems to be the correct one (i.e. corresponds to the video),
+  i.e. where the enticements are mutual exclusive.
+  In model 1 we accept that fish and milkshake can coexist.
+
+
+  This is a port of my Gamble model gamble_cat.rkt.
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions,ppl_utils.
+
+main => go.
+
+/*
+
+  Model 1:
+  var : cat
+  Probabilities:
+  3: 1.00000000000000000 (1 / 1)
+  mean = 3.0
+
+  var : fish
+  Probabilities:
+  false: 0.87673443046143917 (2717 / 3099)
+  true: 0.12326556953856083 (382 / 3099)
+  mean = [false = 0.876734,true = 0.123266]
+
+  var : milkshake
+  Probabilities:
+  true: 0.93212864364848880 (8666 / 9297)
+  false: 0.06787135635151124 (631 / 9297)
+  mean = [true = 0.932129,false = 0.0678714]
+
+  var : nothing
+  Probabilities:
+  false: 0.96579541787673440 (2993 / 3099)
+  true: 0.03420458212326557 (106 / 3099)
+  mean = [false = 0.965795,true = 0.0342046]
+
+
+  Model 2:
+  var : cat
+  Probabilities:
+  3: 1.00000000000000000 (1 / 1)
+  mean = 3.0
+
+  var : enticement
+  Probabilities:
+  milkshake: 0.85151848289130139 (12393 / 14554)
+  fish: 0.08300123677339563 (604 / 7277)
+  nothing: 0.06548028033530301 (953 / 14554)
+  mean = [milkshake = 0.851518,fish = 0.0830012,nothing = 0.0654803]
+
+*/
+go ?=>
+  reset_store(),
+  println("Model 1:"),
+  run_model(30_000,$model1,[show_probs_rat,mean]),
+
+  reset_store,
+  println("Model 2:"),
+  run_model(30_000,$model2,[show_probs_rat,mean]),
+  
+  nl.
+go => true.
+
+model1() =>
+  OneCat    = 1,
+  TwoCats   = 2,
+  ThreeCats = 3,
+
+  Vs = [OneCat,TwoCats,ThreeCats],
+
+  % probability of an enticement in the garden
+  Milkshake = flip(0.6),
+  Fish      = flip(0.1),
+  Nothing   = flip(0.3),
+
+  Cat = cases([ [(not Nothing,Milkshake),          categorical([0.1,0.2,0.7],Vs)],
+                [(not Nothing,Fish),               categorical([0.2,0.4,0.4],Vs)],
+                [(Nothing,not Fish,not Milkshake), categorical([0.6,0.3,0.1],Vs)],
+                [true,false]]),
+
+  observe(Cat == ThreeCats),
+  if observed_ok() then
+    add_all([["milkshake",Milkshake],
+             ["fish",Fish],
+             ["nothing",Nothing],
+             ["cat",Cat]])
+   end.
+
+
+model2() =>
+  OneCat    = 1,
+  TwoCats   = 2,
+  ThreeCats = 3,
+
+  Vs = [OneCat,TwoCats,ThreeCats],
+
+  % probability of an enticement in the garden
+  Enticement = categorical([0.6,0.1,0.3],["milkshake","fish","nothing"]),
+
+  Cat = case(Enticement,[ ["milkshake", categorical([0.1,0.2,0.7],Vs)],
+                          ["fish",      categorical([0.2,0.4,0.4],Vs)],
+                          ["nothing",   categorical([0.6,0.3,0.1],Vs)]
+                         ]),
+  observe(Cat == ThreeCats),
+  if observed_ok then
+    add("enticement",Enticement),
+    add("cat",Cat)    
+  end.
+  

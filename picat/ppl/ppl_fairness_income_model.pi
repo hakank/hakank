@@ -1,0 +1,170 @@
+/* 
+
+  Fairness income model in Picat.
+
+  Port of SPPL model fairness-income-model-2.ipynb
+
+  The (original) SPPL model gives the following exact probabilities:
+  female_prior: 0.33066502427854466
+  female_given_no_hire: 0.33412533774074804
+  p_female_given_no hire / p_female: 1.046470962495416
+
+  However, the range of age in the SPPL model is really strange:
+  age has a mean of 178 years and the values of capital_gain is way too large: mean = 42765784.8959
+  (the decision model checks for capital_gain in the range of 4000...9000).
+  
+  I guess that second parameter to Normal in the SPPL model is the variance, but it should be std. 
+  After sqrt'ing all the second parameters of capital_gain and age, the quantiles are for:
+  * age: between 19..65
+  * capital gain: between about 500..21000
+  
+  With adjusted sigma, the SPPL model gives this:
+    female_prior: 0.3307616495624872
+    female_given_no_hire: 0.21962121326454134
+    p_female_given_no hire / p_female:  -33.60136716120389
+
+
+  I filed an issue about this at the SPPL repo: https://github.com/probcomp/sppl/issues/115
+  and the answer was that the data is machine generated so it might not be realistic...
+
+
+  Cf my Gamble model gamble_fairness_income_model.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : sex
+  Probabilities:
+  male: 0.7861743237440961
+  female: 0.2138256762559038
+  mean = [male = 0.786174,female = 0.213826]
+  variance = data is not numeric
+
+  var : capital gain
+  Probabilities (truncated):
+  30915.309385354335973: 0.0004293688278231
+  29654.486032491069636: 0.0004293688278231
+  29503.664692947411822: 0.0004293688278231
+  28804.954081870651862: 0.0004293688278231
+  .........
+  4729.125854826466821: 0.0004293688278231
+  4726.118135138460275: 0.0004293688278231
+  4725.663882519792423: 0.0004293688278231
+  4723.482991141452658: 0.0004293688278231
+  mean = 9703.83
+  variance = 1.78203e+07
+
+  var : age
+  Probabilities (truncated):
+  83.606155809006012: 0.0004293688278231
+  82.565853017330014: 0.0004293688278231
+  82.354066805721956: 0.0004293688278231
+  81.301665801788147: 0.0004293688278231
+  .........
+  18.091652992223292: 0.0004293688278231
+  18.072457647384706: 0.0004293688278231
+  18.026675522003952: 0.0004293688278231
+  18.012559690259284: 0.0004293688278231
+  mean = 40.6456
+  variance = 143.373
+
+  var : hire
+  Probabilities:
+  0: 1.0000000000000000
+  mean = 0.0
+  variance = 0.0
+
+  var : sex prior
+  Probabilities:
+  male: 0.6664000000000000
+  female: 0.3336000000000000
+  mean = [male = 0.6664,female = 0.3336]
+  variance = data is not numeric
+
+  var : sex female prior
+  Probabilities:
+  0: 0.6664000000000000
+  1: 0.3336000000000000
+  mean = 0.3336
+  variance = 0.222311
+
+  var : sex female given no hire
+  Probabilities:
+  0: 0.7861743237440961
+  1: 0.2138256762559038
+  mean = 0.213826
+  variance = 0.168104
+
+  [sex_female_given_no_hire = 0.213826,sex_female_prior = 0.3336,female|no hire/female = -35.9036]
+
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,variance]),
+  Store = get_store(),
+  SexFemalePrior = Store.get("sex female prior").mean,
+  SexFemaleGivenNoHire = Store.get("sex female given no hire").mean,
+  println([sex_female_given_no_hire=SexFemaleGivenNoHire,
+           sex_female_prior=SexFemalePrior,
+           "female|no hire/female"=(100*((SexFemaleGivenNoHire/SexFemalePrior)-1))]),
+  
+  nl,
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Sex = categorical([0.3307,0.6693],["female","male"]),
+  CapitalGain = cond(Sex=="female",
+                     normal_dist(568.4105,sqrt(24248365.5428)),
+                     normal_dist(1329.3700,sqrt(69327473.1006))),
+
+  Age = cond( (Sex == "female", CapitalGain < 7298.0000),
+              normal_dist(38.4208,sqrt(184.9151)),
+              normal_dist(38.6361,sqrt(187.2435))),
+  observe(Age > 18),
+
+  Relationship = cond( (Sex == "female",CapitalGain < 7298.0000),
+                      categorical([0.0491,0.1556,0.4012,0.2589,0.0294,0.1058],0..5),
+                      categorical([0.0416,0.1667,0.4583,0.2292,0.0166,0.0876],0..5)),
+
+  % Decision model
+  % (What I understand is that t is hire (1) / no hire (0)
+  T = cases([[Relationship == 1, cond(CapitalGain < 5095.5,1,0)],
+             [Relationship == 2, cond(CapitalGain < 4718.5,1,0)],
+             [Relationship == 3, cond(CapitalGain < 5095.5,1,0)],
+             [Relationship == 4, cond(CapitalGain < 8296  ,1,0)],
+             [Relationship == 5, 1],
+             [CapitalGain < 4668.5,1],
+             [true,0]
+             ]),
+            
+  % Prior and posterior
+  SexPrior = categorical([0.3307,0.6693],["female","male"]),
+  SexFemalePrior = cond(SexPrior == "female",1,0),
+  SexFemaleGivenNoHire = cond(Sex == "female",1,0), % posterior from the model
+
+  % Observation
+  observe(T == 0),
+  add("sex prior",SexPrior),
+  add("sex female prior",SexFemalePrior),
+  if observed_ok then
+    add("sex",Sex),
+    add("capital gain",CapitalGain),
+    add("age",Age),
+    add("hire",T),
+    add("sex female given no hire",SexFemaleGivenNoHire)    
+  end.

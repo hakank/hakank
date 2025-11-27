@@ -1,0 +1,141 @@
+/* 
+
+  Fairness Hiring model 1 in Picat.
+
+  Port of SPPL model
+  https://github.com/probcomp/sppl/blob/master/examples/fairness-hiring-model-1.ipynb
+
+  The SPPL model gives the following exact probabilities:
+    p_hire_given_minority:0.007131626828051439
+    p_hire_given_majority:0.01945024229170891
+    min/maj: 0.3666600508668959
+
+  Cf my Gamble model gamble_fairness_hiring_model1.rkt
+
+  This program was created by Hakan Kjellerstrand, hakank@gmail.com
+  See also my Picat page: http://www.hakank.org/picat/
+
+*/
+
+import ppl_distributions, ppl_utils.
+import util.
+
+main => go.
+
+/*
+
+  var : ethnicity
+  Probabilities:
+  majority: 0.8454144973968762
+  minority: 0.1545855026031238
+  mean = [majority = 0.845414,minority = 0.154586]
+  variance = data is not numeric
+
+  var : years experience
+  Probabilities (truncated):
+  7: 0.1981377653183821
+  8: 0.1925310372446936
+  9: 0.1558870644773729
+  6: 0.1537845414497397
+  .........
+  2: 0.0029034841810172
+  1: 0.0007008410092111
+  14: 0.0005006007208650
+  0: 0.0001001201441730
+  mean = 7.49449
+  variance = 3.74997
+
+  var : college rank
+  Probabilities (truncated):
+  49.589704274016711: 0.0001001201441730
+  49.538496951104001: 0.0001001201441730
+  49.228464184050551: 0.0001001201441730
+  49.195901413091832: 0.0001001201441730
+  .........
+  -17.95497845657637: 0.0001001201441730
+  -18.22337127077008: 0.0001001201441730
+  -19.110980446795047: 0.0001001201441730
+  -21.951826220603145: 0.0001001201441730
+  mean = 20.7039
+  variance = 51.118
+
+  var : hire
+  Probabilities:
+  0: 0.9775730877052463
+  1: 0.0224269122947537
+  mean = 0.0224269
+  variance = 0.0219239
+
+  var : hire ethnicity
+  Probabilities:
+  [0,majority]: 0.8249899879855827
+  [0,minority]: 0.1525830997196636
+  [1,majority]: 0.0204245094112936
+  [1,minority]: 0.0020024028834602
+  mean = [[0,majority] = 0.82499,[0,minority] = 0.152583,[1,majority] = 0.0204245,[1,minority] = 0.0020024]
+  variance = data is not numeric
+
+  var : hire given minority
+  Probabilities:
+  0: 0.9979975971165399
+  1: 0.0020024028834602
+  mean = 0.0020024
+  variance = 0.00199839
+
+  var : hire given majority
+  Probabilities:
+  0: 0.9795754905887064
+  1: 0.0204245094112936
+  mean = 0.0204245
+  variance = 0.0200073
+
+  [min = 0.0020024,maj = 0.0204245,min/maj = 0.0980392]
+
+
+*/
+go ?=>
+  reset_store,
+  run_model(10_000,$model,[show_probs_trunc,mean,variance]),
+  nl,
+  Store = get_store(),
+  HireGivenMinority = Store.get("hire given minority").mean,
+  HireGivenMajority = Store.get("hire given majority").mean,
+
+  println([min=HireGivenMinority,maj=HireGivenMajority,"min/maj"=(HireGivenMinority/HireGivenMajority)]),
+  % show_store_lengths,
+  % fail,
+  nl.
+go => true.
+  
+  
+model() =>
+  Ethnicity = categorical([0.15,0.85],[minority,majority]),
+  YearsExperience = binomial_dist(15,0.5),
+  CollegeRank = cond(Ethnicity == minority, laplace_dist(25, 5), laplace_dist(20,5)),
+  
+  % Top 50 colleges and at most 20 years of experience.
+  observe(CollegeRank <= 50),
+  observe(YearsExperience <= 20),
+
+  % Hiring decision (from the underlying decision tree)
+  Hire =  cond(CollegeRank <= 5,
+               1,
+               cond( (YearsExperience-5) > CollegeRank,
+                     1,
+                     0)),
+  HireGivenMinority = cond((Hire == 1,Ethnicity == minority),1,0),
+  HireGivenMajority = cond((Hire == 1,Ethnicity == majority),1,0),
+
+  % observe(Ethnicity == minority),
+  % observe(Ethnicity == majority),
+
+  if observed_ok then
+    add_all([ ["ethnicity",Ethnicity],
+              ["years experience",YearsExperience],
+              ["college rank",CollegeRank],
+              ["hire",Hire],
+              ["hire ethnicity",[Hire,Ethnicity]],
+              ["hire given minority",HireGivenMinority],
+              ["hire given majority",HireGivenMajority]
+              ])
+  end.
